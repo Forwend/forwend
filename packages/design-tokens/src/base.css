@@ -1,0 +1,59 @@
+/* Page defaults and the browser surfaces no component draws: selection, caret, focus, scrollbars. */
+@layer base {
+  html {
+    background: var(--fw-bg);
+    color: var(--fw-ink);
+    font-family: var(--fw-font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    scrollbar-color: var(--fw-line-strong) transparent;
+    accent-color: var(--fw-accent);
+  }
+
+  body {
+    background: var(--fw-bg);
+    color: var(--fw-ink);
+    caret-color: var(--fw-accent);
+    transition:
+      background-color var(--fw-duration-base) var(--fw-ease-out),
+      color var(--fw-duration-base) var(--fw-ease-out);
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--fw-accent) 28%, transparent);
+    color: var(--fw-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--fw-focus);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  a {
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: 1px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* !important: the reduced-motion override has to beat every component style. */
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

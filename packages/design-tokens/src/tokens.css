@@ -1,11 +1,120 @@
-/* Placeholder tokens. F004 replaces them with the chosen direction. */
+/*
+ * Forwend design tokens. Source of truth for every color, size, radius, shadow and duration.
+ * Direction: Dawn Path (light) with Dusk Ledger dark sections (D-13).
+ * Light is the default; set data-theme="dark" on <html> or on any section to switch.
+ * test/contrast.test.ts reads the color values from this file.
+ */
+
 :root,
 [data-theme="light"] {
-  --color-bg: #ffffff;
-  --color-text: #0b1220;
+  color-scheme: light;
+
+  /* Grounds */
+  --fw-bg: #f4f8f7;
+  --fw-surface: #ffffff;
+  --fw-surface-2: #eaf2f0;
+  --fw-sunken: #e2ecea;
+  --fw-glass: rgb(255 255 255 / 0.72);
+
+  /* Text */
+  --fw-ink: #0f2219;
+  --fw-muted: #3a5047;
+  --fw-subtle: #566a62;
+
+  /* Lines */
+  --fw-line: #d3e0dc;
+  --fw-line-strong: #a9bfb8;
+
+  /* Actions */
+  --fw-primary: #0f2219;
+  --fw-on-primary: #f5faf7;
+  --fw-accent: #1f6a8c;
+  --fw-on-accent: #ffffff;
+  --fw-focus: #1f6a8c;
+
+  /* Status */
+  --fw-success: #1b6e45;
+  --fw-success-soft: #e2f2e9;
+  --fw-warning: #865500;
+  --fw-warning-soft: #f8eed8;
+  --fw-danger: #b42318;
+  --fw-danger-soft: #fbe9e7;
+  --fw-info: #1f6a8c;
+  --fw-info-soft: #e3f0f6;
+
+  /* Elevation */
+  --fw-shadow-sm: 0 1px 2px rgb(15 34 25 / 0.06), 0 1px 1px rgb(15 34 25 / 0.04);
+  --fw-shadow-md: 0 10px 24px -12px rgb(15 34 25 / 0.28);
+  --fw-shadow-lg: 0 28px 56px -24px rgb(15 34 25 / 0.38);
 }
 
 [data-theme="dark"] {
-  --color-bg: #0b1220;
-  --color-text: #f5f7fa;
+  color-scheme: dark;
+
+  --fw-bg: #0d1412;
+  --fw-surface: #141d1a;
+  --fw-surface-2: #1a2521;
+  --fw-sunken: #0a0f0d;
+  --fw-glass: rgb(20 29 26 / 0.72);
+
+  --fw-ink: #eef4f1;
+  --fw-muted: #b4c3bd;
+  --fw-subtle: #8fa29a;
+
+  --fw-line: #25322d;
+  --fw-line-strong: #3a4a43;
+
+  --fw-primary: #eef4f1;
+  --fw-on-primary: #0f2219;
+  --fw-accent: #7cc0dd;
+  --fw-on-accent: #0b1a22;
+  --fw-focus: #7cc0dd;
+
+  --fw-success: #5cc08b;
+  --fw-success-soft: #12291e;
+  --fw-warning: #e3b054;
+  --fw-warning-soft: #2c2210;
+  --fw-danger: #f0857a;
+  --fw-danger-soft: #2f1714;
+  --fw-info: #7cc0dd;
+  --fw-info-soft: #102430;
+
+  --fw-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --fw-shadow-md: 0 12px 28px -12px rgb(0 0 0 / 0.6);
+  --fw-shadow-lg: 0 30px 60px -24px rgb(0 0 0 / 0.7);
+}
+
+:root {
+  /* The app sets the *-loaded variables with next/font; the rest are fallbacks. */
+  --fw-font-display: var(--fw-font-display-loaded, ui-serif), Georgia, serif;
+  --fw-font-sans: var(--fw-font-sans-loaded, ui-sans-serif), system-ui, sans-serif;
+  --fw-font-mono: var(--fw-font-mono-loaded, ui-monospace), "SFMono-Regular", monospace;
+
+  /* Radius */
+  --fw-radius-sm: 0.5rem;
+  --fw-radius-md: 0.75rem;
+  --fw-radius-lg: 1.25rem;
+  --fw-radius-xl: 1.75rem;
+  --fw-radius-pill: 9999px;
+
+  /* Icon sizes */
+  --fw-icon-sm: 1rem;
+  --fw-icon-md: 1.125rem;
+  --fw-icon-lg: 1.5rem;
+
+  /* Glass blur, only where a panel sits on imagery */
+  --fw-blur-glass: 14px;
+
+  /* Motion */
+  --fw-duration-fast: 140ms;
+  --fw-duration-base: 240ms;
+  --fw-duration-slow: 480ms;
+  --fw-duration-slower: 900ms;
+  --fw-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --fw-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Layers */
+  --fw-z-nav: 40;
+  --fw-z-overlay: 50;
+  --fw-z-toast: 60;
 }
