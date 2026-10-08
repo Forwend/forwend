@@ -150,7 +150,7 @@ quorums, authorization signatures, users, webhooks. It was updated on 2026-10-07
 | Email | Resend | Waitlist (later real), invoice emails, receipts. |
 | Errors / analytics | Sentry; PostHog or Plausible | Privacy-friendly; ask before paid plans. |
 | Developer docs (later) | Fumadocs (Next.js-native) | Phase 10. |
-| Images | Grok Build CLI (`grok`, `imagine` skill: `image_gen`) for landscapes and textures; product UI is built in code | See §P3.4. |
+| Images | Codex CLI built-in `image_gen` (`codex exec`) for landscapes and textures; product UI is built in code. Changed from Grok on 2026-10-08: Grok had no credits | See §P3.4. |
 
 ---
 
@@ -223,7 +223,7 @@ flowchart TD
 |---|---|---|
 | 1 | PLAN.md in the repo | — |
 | 2 | Harness: AGENTS.md, PROJECT.md, task queue, walking skeleton, CI | `harness-bootstrap` |
-| 3 | Design tokens, `/kit`, landing with mock waitlist, generated images | `impeccable`, `typescript-structure`, Grok `imagine`, `design:accessibility-review` |
+| 3 | Design tokens, `/kit`, landing with mock waitlist, generated images | `impeccable`, `typescript-structure`, Codex `image_gen`, `design:accessibility-review` |
 | 4 | Answers to the risky questions, before building on them | `deep-research` (only for doc gaps) |
 | 5 | Invoice receiver + factory, tested | `fizz`, `fizz-convert`, `solidity-auditor`, `token-integration-analyzer`, `dimensional-analysis` |
 | 6 | Go API, worker, signer, ledger, outbox | `code-review`, `security-review` |
@@ -397,14 +397,17 @@ Quality:
 - [ ] `design:accessibility-review` pass; `typescript-structure` audit pass.
 - [ ] Optional preview deploy on Vercel (free tier; ask first).
 
-### P3.4 Image pipeline (Grok Build CLI)
+### P3.4 Image pipeline (Codex CLI; Grok originally)
 
-- Tool: `~/.grok/bin/grok` with its `imagine` skill (`image_gen`, `image_edit`). Run headless:
-  `grok -p "<prompt> ... save the image to apps/web/public/images/raw/hero-dawn.png"`.
-  Check in Phase 3 that headless mode can save files, and check that Grok Imagine's terms allow
-  commercial use.
+Update 2026-10-08: Grok returned HTTP 403 (no credits), so the owner switched to Codex (D-9).
+
+- Tool: the Codex CLI built-in `image_gen` tool (feature `image_generation`, no API key; uses the
+  owner's ChatGPT plan). Run headless, then copy the result into the repo:
+  `codex exec --sandbox workspace-write "Use your built-in image_gen tool ... then copy the file
+  from $CODEX_HOME/generated_images to apps/web/public/images/<slot>.png"`. Convert to WebP
+  (`cwebp -q 82`) before committing. Check that OpenAI's terms allow commercial use (A-2).
 - Use images only for mood (landscapes, textures). Product screens, charts, numbers and text are
-  built in React/HTML. Grok's own skill says image models get exact text and numbers wrong.
+  built in React/HTML. Image models get exact text and numbers wrong.
 - Keep a consistent style: one style suffix for every prompt, for example
   *"painterly digital illustration, soft morning light, gentle haze, muted greens and sky blues,
   wide cinematic composition, no text, no people in focus"*. Generate a few candidates per slot
@@ -414,7 +417,7 @@ Quality:
   open sky in the upper third for a headline, painterly digital illustration, soft morning
   light, …style suffix"*.
 - Leave empty sky or calm areas where text will sit; check the 360px mobile crop.
-- Optimize with `sharp` to AVIF + WebP at 640/1280/1920/2560 widths; serve via `next/image`.
+- Commit one WebP per image; `next/image` serves AVIF/WebP at the right widths.
 - Record every final prompt, the slot, and the date in `docs/images.md`, so images can be made
   again in the same style.
 

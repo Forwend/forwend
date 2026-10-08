@@ -13,6 +13,7 @@ test.describe("/kit/directions", () => {
       await expect(comp.getByRole("heading", { level: 3 })).toBeVisible();
       await expect(comp.getByRole("button", { name: "Join waitlist" })).toBeVisible();
       await expect(comp.getByTestId("product-panel")).toBeVisible();
+      await expect(comp.getByRole("img", { name: /Generated hero candidate/ })).toBeVisible();
     }
   });
 
