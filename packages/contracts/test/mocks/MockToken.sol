@@ -63,3 +63,10 @@ contract NoReturnToken {
         balanceOf[to] += amount;
     }
 }
+
+/// A token whose balanceOf always reverts.
+contract BrokenToken {
+    function balanceOf(address) external pure returns (uint256) {
+        revert("broken");
+    }
+}

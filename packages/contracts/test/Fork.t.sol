@@ -37,6 +37,7 @@ contract BaseSepoliaForkTest is Test {
         vm.prank(payer);
         USDC.transfer(at, 30e6); // 5 USDC overpaid
 
+        vm.prank(executor);
         InvoiceReceiver r = InvoiceReceiver(factory.deploy(t));
         vm.prank(executor);
         r.settle();

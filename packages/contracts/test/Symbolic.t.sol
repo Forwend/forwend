@@ -33,6 +33,7 @@ contract SymbolicTest is Test {
             settleDeadline: DEADLINE,
             intendedChainId: block.chainid
         });
+        vm.prank(executor);
         receiver = InvoiceReceiver(factory.deploy(t));
     }
 

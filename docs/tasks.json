@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 39,
+  "nextId": 40,
   "tasks": [
     {
       "id": "F001",
@@ -3697,6 +3697,94 @@
         "branch": "docs/f038-agents-md-has-a-rule-for-related-naming",
         "base": "main"
       }
+    },
+    {
+      "id": "F039",
+      "type": "feat",
+      "behavior": "Contract v1 fixes from the attacker and stuck-funds review plus invoice status views: every payable address stays deployable, holds are capped, recover works with broken invoice tokens, deploy is restricted to our keys, and status can be read by invoice id",
+      "acceptance": [
+        "predict and deploy never reject terms (an address that can hold money is always deployable); settle refuses amount 0, chain mismatch and a recipient that is 0, the receiver, the factory, the implementation or the token, so such money goes to refund instead",
+        "The executor-to-authority switch and full refunds open at min(settleDeadline, deployedAt + 30 days), so wrong or huge deadlines cannot freeze money",
+        "recover reads the invoice-token balance with a low-level call: a token without code or with a reverting balanceOf no longer blocks recovery of other tokens or the native coin; the Arc native-USDC guard still holds",
+        "deploy is callable only by the executor or the refund authority, records deployedAt and receiverOf(invoiceId) (first write wins); factory.status(terms), factory.statusOf(invoiceId) and receiver.status() return receiver, deployed, chain match, balance, settled, refundable, settleable and who may settle now; Settled, Refunded and Recovered events carry invoiceId",
+        "packages/contracts/AGENTS.md, PLAN.md and the diagrams describe these rules and the new process rules (Guard checks the Delay inner operation and txExpiration, independent canary, pause alert, Arc checkout uses ERC-20 transfer and balanceOf, testnet keys never shown to real payers, Safe original owner keys kept recoverable); tests cover every change"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "contracts",
+        "lint"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T22:41:15Z",
+        "checks": [
+          {
+            "id": "contracts",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 7.0,
+            "log": "docs/runs/F039-20261008T224115Z-contracts.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F039-20261008T224115Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F039-20261008T224115Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.6,
+            "log": "docs/runs/F039-20261008T224115Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F039-20261008T224115Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.8,
+            "log": "docs/runs/F039-20261008T224115Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F039-20261008T224115Z-keep.log"
+          }
+        ],
+        "taskHash": "c428da433f91fc7c",
+        "filesHash": "436cf028888ccc0e"
+      },
+      "branch": "feat/f039-contract-v1-fixes-from-the-attacker-and",
+      "baseCommit": "141d916c6fffa7ed548dbc3911763c5691ecd1c6",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

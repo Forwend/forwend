@@ -36,7 +36,7 @@ jobs:
           BASE_SEPOLIA_RPC: https://sepolia.base.org
       - name: Contract symbolic tests (Halmos)
         working-directory: packages/contracts
-        run: pipx run halmos==0.3.3 --match-contract Symbolic
+        run: forge clean && pipx run halmos==0.3.3 --match-contract Symbolic
       - name: Build
         run: pnpm build
       - name: Install Playwright browser

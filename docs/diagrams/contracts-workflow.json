@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "forwend-contracts-workflow",
-  "revision": 6,
+  "revision": 7,
   "kind": "workflow",
   "title": "Invoice receiver contracts v1: full workflow",
   "theme": "dark",
@@ -126,7 +126,7 @@
       "label": "Show checkout",
       "groupId": "backend",
       "ports": [],
-      "description": "The page recomputes the address from the terms and refuses a mismatch; no third-party scripts. Warnings: other networks can lose money; USDC.e is a different token"
+      "description": "The page recomputes the address from the terms and refuses a mismatch; no third-party scripts. Warnings: other networks can lose money; USDC.e is a different token. On Arc: an ERC-20 transfer, never a native send"
     },
     {
       "id": "cancel",
@@ -216,7 +216,7 @@
     {
       "id": "window",
       "kind": "decision",
-      "label": "Before settleDeadline?",
+      "label": "Before the effective deadline?",
       "groupId": "signer",
       "ports": []
     },
@@ -233,7 +233,7 @@
       "label": "Factory.deploy(terms)",
       "groupId": "chain",
       "ports": [],
-      "description": "Clone with immutable args at the predicted address. Lazy: only after a confirmed deposit. Anyone may call it; same terms, same address"
+      "description": "Clone with immutable args at the predicted address, only by the executor or the Safe, after a confirmed deposit. Never rejects terms, so every address a payer saw stays deployable. Records deployedAt and receiverOf(invoiceId)"
     },
     {
       "id": "settle",
@@ -241,7 +241,7 @@
       "label": "Receiver.settle()",
       "groupId": "chain",
       "ports": [],
-      "description": "Intended chain only. Exactly amount to the fixed recipient, once; checks the recipient received it. Needs balance >= amount and no pause. Executor until settleDeadline, then only the multisig"
+      "description": "Intended chain only. Refuses unsafe terms (amount 0, bad recipient), so that money goes to refund. Exactly amount to the fixed recipient, once; checks the recipient received it. Executor until min(settleDeadline, deployedAt + 30 days), then only the multisig"
     },
     {
       "id": "wallet",
