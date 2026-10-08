@@ -30,8 +30,6 @@ export const ART = {
     ground: "#F1F4FA",
     dot: "#1F44D6",
     dotSoft: "#9DB0F2",
-    /** Dawn Path river blue, for the halftone texture on the landing. */
-    dotDawn: "#8DBFD4",
   },
 } as const;
 

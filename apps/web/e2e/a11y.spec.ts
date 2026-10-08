@@ -15,10 +15,17 @@ async function blockingViolations(page: import("@playwright/test").Page) {
 }
 
 test.describe("accessibility", () => {
-  test("/ has no serious or critical axe violations", async ({ page }) => {
-    await page.goto(`${PUBLIC_URL}/`);
-    expect(await blockingViolations(page)).toEqual([]);
-  });
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`/ has no serious or critical axe violations in the ${colorScheme} theme`, async ({
+      browser,
+    }) => {
+      const context = await browser.newContext({ colorScheme, reducedMotion: "reduce" });
+      const page = await context.newPage();
+      await page.goto(`${PUBLIC_URL}/`);
+      expect(await blockingViolations(page)).toEqual([]);
+      await context.close();
+    });
+  }
 
   for (const theme of ["light", "dark"]) {
     test(`/kit has no serious or critical axe violations in the ${theme} theme`, async ({

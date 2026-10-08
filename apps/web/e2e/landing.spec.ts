@@ -256,3 +256,58 @@ test.describe("hero frame and legibility", () => {
     });
   }
 });
+
+test.describe("dark theme", () => {
+  test("the theme script runs in <head>, before any page content", async ({ request }) => {
+    const html = await (await request.get("/")).text();
+    const head = html.slice(0, html.indexOf("</head>"));
+    expect(head).toContain('localStorage.getItem("fw-theme")');
+    expect(html.indexOf('localStorage.getItem("fw-theme")')).toBeLessThan(html.indexOf("<body"));
+  });
+
+  for (const scheme of ["dark", "light"] as const) {
+    test(`follows a ${scheme} system preference when nothing is saved`, async ({ browser }) => {
+      const context = await browser.newContext({ colorScheme: scheme });
+      const page = await context.newPage();
+      await page.goto("/");
+      await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
+      await context.close();
+    });
+  }
+
+  test("the nav toggle switches the theme and the choice survives a reload", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({ colorScheme: "light" });
+    const page = await context.newPage();
+    await page.goto("/");
+    const nav = page.locator('[data-section="nav"]');
+    await nav.getByRole("button", { name: "Switch to dark theme" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(nav.getByRole("button", { name: "Switch to light theme" })).toBeVisible();
+    await context.close();
+  });
+
+  for (const width of [1440, 390]) {
+    test(`uses the night hero with readable text at ${width}px`, async ({ browser }) => {
+      const context = await browser.newContext({
+        colorScheme: "dark",
+        reducedMotion: "reduce",
+        viewport: { width, height: 900 },
+      });
+      const page = await context.newPage();
+      await page.goto("/");
+      await page.waitForLoadState("networkidle");
+      const hero = page.locator('[data-section="hero"]');
+      const visible = hero.locator("img:visible");
+      await expect(visible).toHaveCount(1);
+      expect(await visible.getAttribute("src")).toContain("hero-night.webp");
+      for (const text of [hero.locator("h1 + p"), hero.getByText(/^Private beta/)]) {
+        expect(await textContrast(page, text)).toBeGreaterThanOrEqual(4.5);
+      }
+      await context.close();
+    });
+  }
+});

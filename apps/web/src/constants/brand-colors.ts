@@ -5,3 +5,8 @@ export const BRAND_COLORS = {
   ink: "#0f2219",
   muted: "#3a5047",
 } as const;
+
+/** Dark-theme copies, same rule as above. */
+export const BRAND_COLORS_DARK = {
+  bg: "#0d1412",
+} as const;

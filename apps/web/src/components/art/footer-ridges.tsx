@@ -1,10 +1,8 @@
-import { ART } from "@/constants/art";
 import { ridgePath } from "@/lib/art";
 import type { RidgeSpec } from "@/types/art/shapes";
 
 const W = 1600;
 const H = 600;
-const C = ART.dawn;
 
 const LAYERS: readonly { spec: RidgeSpec; fill: string; opacity: number }[] = [
   {
@@ -17,7 +15,7 @@ const LAYERS: readonly { spec: RidgeSpec; fill: string; opacity: number }[] = [
         [22, 230, 2.2],
       ],
     },
-    fill: C.far,
+    fill: "var(--fw-art-ridge-far)",
     opacity: 0.7,
   },
   {
@@ -30,7 +28,7 @@ const LAYERS: readonly { spec: RidgeSpec; fill: string; opacity: number }[] = [
         [16, 180, 0.6],
       ],
     },
-    fill: C.mid,
+    fill: "var(--fw-art-ridge-mid)",
     opacity: 0.75,
   },
   {
@@ -43,7 +41,7 @@ const LAYERS: readonly { spec: RidgeSpec; fill: string; opacity: number }[] = [
         [12, 260, 0.2],
       ],
     },
-    fill: C.hillFar,
+    fill: "var(--fw-art-ridge-near)",
     opacity: 0.85,
   },
 ];

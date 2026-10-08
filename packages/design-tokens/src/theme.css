@@ -2,6 +2,9 @@
  * Maps the --fw-* tokens to Tailwind utilities (bg-surface, text-muted, rounded-lg, shadow-md, ...).
  * Tailwind's default color palette is removed, so only token colors exist as utilities.
  */
+/* `dark:` follows data-theme (on <html> or any section), not only the system preference. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme inline {
   --color-*: initial;
   --color-transparent: transparent;
@@ -30,6 +33,10 @@
   --color-danger-soft: var(--fw-danger-soft);
   --color-info: var(--fw-info);
   --color-info-soft: var(--fw-info-soft);
+  --color-art-ridge-far: var(--fw-art-ridge-far);
+  --color-art-ridge-mid: var(--fw-art-ridge-mid);
+  --color-art-ridge-near: var(--fw-art-ridge-near);
+  --color-art-dot: var(--fw-art-dot);
 
   --font-display: var(--fw-font-display);
   --font-sans: var(--fw-font-sans);

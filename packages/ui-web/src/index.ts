@@ -38,4 +38,5 @@ export type * from "./types/ui/button";
 export type * from "./types/ui/display";
 export type * from "./types/ui/email-capture";
 export type * from "./types/ui/fields";
+export type * from "./types/ui/theme-switch";
 export type * from "./types/ui/tone";

@@ -40,3 +40,13 @@
   fill: var(--fw-accent);
   stroke: var(--fw-on-accent);
 }
+
+/* At night the water is dark, so the route and the lit rings switch to light ink. */
+[data-theme="dark"] .fw-river-path {
+  stroke: var(--fw-ink);
+  opacity: 0.7;
+}
+
+[data-theme="dark"] .fw-river-mark-lit {
+  stroke: var(--fw-ink);
+}
