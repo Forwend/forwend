@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { textContrast } from "./contrast";
 
 const ORDER = [
   "nav",
@@ -214,3 +215,44 @@ for (const width of [360, 390]) {
     }
   });
 }
+
+test.describe("hero frame and legibility", () => {
+  for (const [width, height] of [
+    [1440, 900],
+    [390, 844],
+  ] as const) {
+    test(`is full-bleed with no rounded corners at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto("/");
+      const box = await page.evaluate(() => {
+        const hero = document.querySelector('[data-section="hero"]') as HTMLElement;
+        const art = hero.querySelector("img")?.parentElement as HTMLElement;
+        const r = hero.getBoundingClientRect();
+        return {
+          left: r.left,
+          right: r.right,
+          height: r.height,
+          viewport: document.documentElement.clientWidth,
+          radius: [getComputedStyle(hero).borderRadius, getComputedStyle(art).borderRadius],
+        };
+      });
+      expect(box.left).toBe(0);
+      expect(box.right).toBe(box.viewport);
+      expect(box.radius).toEqual(["0px", "0px"]);
+      if (width >= 1024) expect(box.height).toBeGreaterThanOrEqual(height);
+    });
+  }
+
+  for (const width of [1440, 390]) {
+    test(`subhead and beta note read at >= 4.5:1 at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.goto("/");
+      await page.waitForLoadState("networkidle");
+      const hero = page.locator('[data-section="hero"]');
+      for (const text of [hero.locator("h1 + p"), hero.getByText(/^Private beta/)]) {
+        expect(await textContrast(page, text)).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+});

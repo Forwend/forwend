@@ -7,7 +7,7 @@ export function Hero() {
     <section
       data-section={LANDING_SECTIONS.hero}
       aria-labelledby="hero-title"
-      className="relative isolate m-2 flex min-h-[62rem] flex-col px-4 pt-4 pb-6 sm:m-3 sm:min-h-[64rem] sm:px-8 sm:pt-5 lg:min-h-[max(46rem,calc(100svh-1rem))]"
+      className="relative isolate flex min-h-[62rem] flex-col px-4 pt-4 pb-6 sm:min-h-[64rem] sm:px-8 sm:pt-5 lg:min-h-svh"
     >
       <div className="mx-auto mt-24 flex w-full max-w-3xl flex-col items-center text-center sm:mt-36">
         <h1

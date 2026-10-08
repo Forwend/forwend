@@ -11,7 +11,14 @@ test.describe("mock waitlist", () => {
     await hero.getByLabel("Email address").fill("name@example.com");
     await hero.getByRole("button", { name: "Join waitlist" }).click();
 
-    await expect(hero.getByText("You're on the list.", { exact: false })).toBeVisible();
+    const confirmation = hero.getByRole("status");
+    await expect(confirmation).toContainText("You're on the list.");
+    await expect(confirmation).toContainText("name@example.com");
+    await expect(confirmation.locator("svg")).toBeVisible();
+    // The confirmation replaces the form: no disabled, greyed-out button is left behind.
+    await expect(hero.getByRole("button", { name: "Join waitlist" })).toHaveCount(0);
+    const background = await confirmation.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(background).not.toBe("rgba(0, 0, 0, 0)");
     await page.waitForTimeout(500);
     expect(requests).toEqual([]);
   });
@@ -22,8 +29,36 @@ test.describe("mock waitlist", () => {
     await hero.getByLabel("Email address").fill("abc");
     await hero.getByRole("button", { name: "Join waitlist" }).click();
 
-    await expect(hero.getByText("Enter a full email address", { exact: false })).toBeVisible();
+    const error = hero.getByText("Enter a full email address", { exact: false });
+    await expect(error).toBeVisible();
+    // The error sits on a solid surface, never directly on the landscape.
+    expect(await error.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(
+      "rgba(0, 0, 0, 0)",
+    );
     await expect(hero.getByText("You're on the list.", { exact: false })).toHaveCount(0);
     await expect(hero.getByLabel("Email address")).toHaveAttribute("aria-invalid", "true");
   });
+});
+
+test("the email field paints over the browser autofill tint with the surface color", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const input = page.locator('[data-section="hero"] input[type="email"]');
+  // Real autofill cannot be triggered from a test; check the rule that overrides it is present.
+  const rule = await page.evaluate(() =>
+    [...document.styleSheets]
+      .flatMap((sheet) => {
+        try {
+          return [...sheet.cssRules].map((r) => r.cssText);
+        } catch {
+          return [];
+        }
+      })
+      .find((text) => text.includes(":autofill") && text.includes("--fw-surface")),
+  );
+  expect(rule, "an :autofill rule using --fw-surface").toBeTruthy();
+  const box = await input.boundingBox();
+  const pill = await input.locator("..").boundingBox();
+  expect(box && pill && pill.height - (box?.height ?? 0)).toBeLessThanOrEqual(14);
 });

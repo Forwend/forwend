@@ -1,5 +1,5 @@
 export const WAITLIST_COPY = {
-  success: "You're on the list. We will email you when access opens.",
+  success: "You're on the list.",
   invalid: "Enter a full email address, like name@company.com.",
 } as const;
 
