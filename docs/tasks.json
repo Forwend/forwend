@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 30,
+  "nextId": 31,
   "tasks": [
     {
       "id": "F001",
@@ -2873,12 +2873,107 @@
         "branch": "docs/f029-the-repo-has-mapgrain-diagrams-of-the-fu",
         "base": "main"
       }
+    },
+    {
+      "id": "F030",
+      "type": "docs",
+      "behavior": "docs/diagrams holds only the mapgrain JSON sources; diagrams are opened with npx mapgrain studio instead of committed HTML viewers",
+      "acceptance": [
+        "docs/diagrams has no .html files and both .json files still pass the diagrams check",
+        "PLAN.md tells readers to open the diagrams with npx mapgrain@0.2.5 studio <file>"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "diagrams"
+      ],
+      "refs": [],
+      "keep": [
+        "docs/diagrams/*.json",
+        "apps/*",
+        "packages/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T19:07:54Z",
+        "checks": [
+          {
+            "id": "diagrams",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": "docs/runs/F030-20261008T190754Z-diagrams.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F030-20261008T190754Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F030-20261008T190754Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F030-20261008T190754Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F030-20261008T190754Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.3,
+            "log": "docs/runs/F030-20261008T190754Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F030-20261008T190754Z-keep.log"
+          }
+        ],
+        "taskHash": "9c8cdd3a4f718873",
+        "filesHash": "454da8c89787e2c8",
+        "commit": "09363f2",
+        "doneAt": "2026-10-08T19:08:05Z",
+        "proof": {
+          "1": "diagrams check passed; ls docs/diagrams shows only .json",
+          "2": "PLAN.md Phase 5 diagrams line (git diff)"
+        }
+      },
+      "branch": "docs/f030-docs-diagrams-holds-only-the-mapgrain-js",
+      "baseCommit": "dc118f6d8bb0756739547c9564f2147b4d56c867",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f030-docs-diagrams-holds-only-the-mapgrain-js",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-08T16:39:34Z",
+    "at": "2026-10-08T19:06:27Z",
     "clean": true,
     "problems": [],
-    "note": "F016-F021 merged (PRs #17-#22): tests pruned to behavior, interaction polish, brand logos and custom icons, motion components, 404 page, eight directions. Queue empty."
+    "note": "F028 testnet-first plan (PR #30) and F029 contract diagrams (PR #29) merged. Next: phase 4 spikes S-4/S-5/S-6, then phase 5 contracts."
   }
 }

@@ -455,8 +455,7 @@ rule (D-03…D-08), with fuzz and invariant tests.
 
 ### Design
 
-Diagrams (mapgrain JSON; open the `.html` files in a browser; rebuild with
-`npx mapgrain@0.2.5 view <file>.json -o <file>.html`):
+Diagrams (mapgrain JSON; open one in the editor with `npx mapgrain@0.2.5 studio <file>.json`):
 [full contract workflow](docs/diagrams/contracts-workflow.json),
 [invoice states](docs/diagrams/invoice-lifecycle.json).
 
