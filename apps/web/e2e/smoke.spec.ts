@@ -13,3 +13,10 @@ test("an unknown URL returns 404 with a way back home", async ({ page }) => {
   await page.getByRole("link", { name: "Back to Forwend" }).click();
   await expect(page).toHaveURL("/");
 });
+
+test("page titles use the 'Forwend | …' format", async ({ page }) => {
+  await page.goto("/");
+  await expect(page).toHaveTitle(/^Forwend \| /);
+  await page.goto("/no-such-page");
+  await expect(page).toHaveTitle("Forwend | Page not found");
+});

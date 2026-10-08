@@ -4,10 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { NOT_FOUND } from "@/constants/copy";
 import { NOT_FOUND_IMAGE } from "@/constants/landing-images";
-import { SITE } from "@/constants/site";
 
 export const metadata: Metadata = {
-  title: `Page not found · ${SITE.name}`,
+  title: "Page not found",
   robots: { index: false, follow: false },
 };
 

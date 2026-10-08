@@ -1,3 +1,4 @@
+import type { Theme } from "@forwend/design-tokens";
 import type { ReactNode } from "react";
 import type { NavVariant } from "./comp";
 import type { KitSectionTitle } from "./content";
@@ -22,4 +23,9 @@ export interface ImageCompProps {
   name: string;
   image: { src: string; width: number; height: number };
   comp: ImageCompSpec;
+}
+
+export interface OnGroundProps {
+  theme: Theme;
+  children: ReactNode;
 }
