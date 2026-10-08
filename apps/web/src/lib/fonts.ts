@@ -7,6 +7,7 @@ const display = Libre_Caslon_Display({
   variable: "--fw-font-display-loaded",
 });
 const sans = Hanken_Grotesk({ subsets: ["latin"], variable: "--fw-font-sans-loaded" });
-const mono = Geist_Mono({ subsets: ["latin"], variable: "--fw-font-mono-loaded" });
+// Amounts and addresses sit below the headline; not preloading keeps the first paint lighter.
+const mono = Geist_Mono({ subsets: ["latin"], variable: "--fw-font-mono-loaded", preload: false });
 
 export const fontVars = [display, sans, mono].map((f) => f.variable).join(" ");
