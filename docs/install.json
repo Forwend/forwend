@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 2,
+  "skillVersion": "2.0.0",
+  "files": {
+    "scripts/harness.py": "605216dfa467a3185b3ea49fd3a702282483ba31da00de19cb41135ac8e57623",
+    "AGENTS.md#harness": "158796637bd245ce1a53cbd9cfe1ce8547aaaa9a24b61af249be112cd1d8c218"
+  },
+  "updatedAt": "2026-10-08T12:12:13Z"
+}
