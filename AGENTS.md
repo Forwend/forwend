@@ -11,7 +11,7 @@ Roadmap and money rules: [PLAN.md](PLAN.md). Current release requirements and de
 
 ## Project rules
 
-- Layout: `apps/web` (Next.js), `packages/design-tokens`, `packages/ui-web`. Create other PLAN.md folders only in the phase that needs them.
+- Layout: `apps/web` (Next.js), `packages/design-tokens`, `packages/ui-web`, `packages/contracts` (Foundry; run `forge` inside it, libraries are git submodules in `lib/`). Everything lives under `apps/` or `packages/`; the Go backend goes to `apps/backend`. Create other PLAN.md folders only in the phase that needs them.
 - TypeScript structure (D-11): every named `interface`, `type` and `enum` lives in the package's `src/types/<domain>/…`; finite runtime values are `as const` objects in `src/constants/<domain>.ts` with unions derived in `src/types/`. No repeated domain string literals in components. Imports flow constants → types (type-only) → code. List any framework-forced exception in the PR.
 - Use tokens from `packages/design-tokens` for every color, size, radius, shadow and duration. No raw hex or pixel values in components.
 - New reusable components appear on `/kit` with all their states in the same change.
