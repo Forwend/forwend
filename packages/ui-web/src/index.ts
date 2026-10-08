@@ -11,6 +11,7 @@ export {
 export { EmailCapture } from "./components/email-capture";
 export { Checkbox, SelectField, Switch, TextField } from "./components/fields";
 export { Accordion, CodeBlock, Dialog, Tabs, Tooltip, useCopy } from "./components/interactive";
+export { DotLoader, ProgressBar, Shimmer, Spinner, SuccessCheck } from "./components/motion";
 export {
   ActivityRow,
   Money,
@@ -40,5 +41,6 @@ export type * from "./types/ui/display";
 export type * from "./types/ui/email-capture";
 export type * from "./types/ui/fields";
 export type * from "./types/ui/icons";
+export type * from "./types/ui/motion";
 export type * from "./types/ui/theme-switch";
 export type * from "./types/ui/tone";
