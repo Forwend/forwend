@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 import {Base} from "./Base.t.sol";
 import {InvoiceReceiver} from "../src/InvoiceReceiver.sol";
 import {InvoiceTerms, MAX_HOLD} from "../src/InvoiceTypes.sol";
-import {BrokenToken, MockToken} from "./mocks/MockToken.sol";
+import {BrokenToken, MockToken, ReturnBombToken} from "./mocks/MockToken.sol";
 
 /// Money can never be held longer than MAX_HOLD after deployment, and a broken invoice token never blocks recovery.
 contract HoldTest is Base {
@@ -66,6 +66,18 @@ contract HoldTest is Base {
         InvoiceReceiver r = deployed(t);
         vm.prank(authority);
         r.recover(address(other), payer, 4e6);
+        assertEq(other.balanceOf(payer), 4e6);
+    }
+
+    function test_returnBombTokenDoesNotBlockRecover() public {
+        ReturnBombToken bomb = new ReturnBombToken();
+        InvoiceTerms memory t = termsFor(address(bomb));
+        MockToken other = new MockToken();
+        address at = factory.predict(t);
+        other.mint(at, 4e6);
+        InvoiceReceiver r = deployed(t);
+        vm.prank(authority);
+        r.recover(address(other), payer, 4e6); // the reply copy is capped at 32 bytes
         assertEq(other.balanceOf(payer), 4e6);
     }
 }

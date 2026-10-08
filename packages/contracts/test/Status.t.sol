@@ -61,6 +61,22 @@ contract StatusTest is Base {
         assertEq(s.refundable, 0); // refund() does not work on another chain; recover() does
     }
 
+    function test_unsafeTermsAreNotSettleable() public {
+        InvoiceTerms[3] memory bad;
+        for (uint256 i; i < bad.length; i++) {
+            bad[i] = terms();
+            bad[i].invoiceId = bytes32(i + 100);
+        }
+        bad[0].amount = 0;
+        bad[1].recipient = address(0);
+        bad[2].recipient = factory.implementation();
+        for (uint256 i; i < bad.length; i++) {
+            pay(bad[i], AMOUNT);
+            deployed(bad[i]);
+            assertFalse(factory.status(bad[i]).settleable);
+        }
+    }
+
     function test_tokenWithoutCodeReadsAsZero() public {
         InvoiceStatus memory s = factory.status(termsFor(makeAddr("no code token")));
         assertEq(s.balance, 0);

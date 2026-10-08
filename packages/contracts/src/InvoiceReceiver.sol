@@ -11,6 +11,7 @@ import {
     InvoiceTerms,
     effectiveDeadline,
     refundableAmount,
+    safeToSettle,
     tryBalanceOf
 } from "./InvoiceTypes.sol";
 
@@ -82,12 +83,7 @@ contract InvoiceReceiver is ReentrancyGuard {
         if (settled) revert AlreadySettled();
         address allowed = block.timestamp <= deadline() ? factory.executor() : factory.refundAuthority();
         if (msg.sender != allowed) revert Unauthorized();
-        // Terms are not checked at deploy (an address that holds money must stay deployable), so unsafe terms are
-        // refused here and their money goes to refund instead.
-        if (
-            t.amount == 0 || t.recipient == address(0) || t.recipient == address(this)
-                || t.recipient == address(factory) || t.recipient == self || t.recipient == t.token
-        ) revert InvalidTerms();
+        if (!safeToSettle(t, address(this), address(factory), self)) revert InvalidTerms();
         IERC20 token = IERC20(t.token);
         if (token.balanceOf(address(this)) < t.amount) revert NotPaid();
 

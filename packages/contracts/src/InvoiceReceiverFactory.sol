@@ -3,7 +3,14 @@ pragma solidity 0.8.30;
 
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {InvoiceReceiver} from "./InvoiceReceiver.sol";
-import {InvoiceStatus, InvoiceTerms, effectiveDeadline, refundableAmount, tryBalanceOf} from "./InvoiceTypes.sol";
+import {
+    InvoiceStatus,
+    InvoiceTerms,
+    effectiveDeadline,
+    refundableAmount,
+    safeToSettle,
+    tryBalanceOf
+} from "./InvoiceTypes.sol";
 
 /// Deploys invoice receivers at addresses that commit to their terms. Deployed through the CREATE2 deployer with the
 /// same bytecode and constructor args everywhere, so it has one address on every chain. Rules: ../AGENTS.md.
@@ -98,7 +105,8 @@ contract InvoiceReceiverFactory {
         s.refundable =
             s.onIntendedChain ? refundableAmount(s.balance, t.amount, s.settled, s.deadline, block.timestamp) : 0;
         s.settler = block.timestamp <= s.deadline ? executor : refundAuthority;
-        s.settleable = s.onIntendedChain && !paused && !s.settled && t.amount != 0 && s.balance >= t.amount;
+        s.settleable = s.onIntendedChain && !paused && !s.settled && s.balance >= t.amount
+            && safeToSettle(t, s.receiver, address(this), implementation);
     }
 
     function _address(InvoiceTerms memory t) private view returns (address receiver, bytes memory args, bytes32 salt) {

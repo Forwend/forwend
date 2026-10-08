@@ -57,8 +57,10 @@ Receiver:
   what is above `amount`. The rule lives in one function (`refundableAmount`) used by the receiver and `status`.
 - `recover(token, to, amount)`: refund authority only. On the intended chain it never sends the invoice token and never
   lowers the invoice-token balance (on Arc the native coin and USDC are one balance). The balance is read with a
-  low-level call, so a broken invoice token (no code, reverting `balanceOf`) never blocks recovery of other tokens or
-  the native coin. `token = address(0)` is the native coin.
+  low-level call that copies at most 32 bytes, so a broken invoice token (no code, reverting `balanceOf`, huge reply)
+  never blocks recovery of other tokens or the native coin. Accepted: a malicious invoice token that burns all gas can
+  still block `recover`; only a compromised API can put one in the terms, and it could steal more directly. No gas cap
+  on the read: Tempo's built-in tokens cost far more gas than Ethereum's. `token = address(0)` is the native coin.
 - Checks-effects-interactions and `nonReentrant` on `settle`, `refund` and `recover`.
 - No `approve`, no `isValidSignature` (USDC `permit` accepts contract signatures), no `fallback` or `receive`, no
   `selfdestruct`, no `delegatecall`, no external calls except to the token and reads from the factory. Calling the

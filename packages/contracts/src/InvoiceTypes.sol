@@ -53,9 +53,25 @@ function refundableAmount(uint256 balance, uint256 amount, bool settled, uint64 
     return balance > amount ? balance - amount : 0;
 }
 
-/// Balance read that never reverts: false for a token without code or with a failing balanceOf.
-function tryBalanceOf(address token, address account) view returns (bool ok, uint256 balance) {
-    (bool success, bytes memory data) = token.staticcall(abi.encodeWithSignature("balanceOf(address)", account));
-    if (!success || data.length < 32) return (false, 0);
-    return (true, abi.decode(data, (uint256)));
+/// Terms that settle() accepts. Terms are not checked at deploy (an address that holds money must stay deployable), so
+/// unsafe ones are refused when money moves and go to refund instead. Shared by settle() and status().
+function safeToSettle(InvoiceTerms memory t, address receiver, address factory, address implementation)
+    pure
+    returns (bool)
+{
+    return t.amount != 0 && t.recipient != address(0) && t.recipient != receiver && t.recipient != factory
+        && t.recipient != implementation && t.recipient != t.token;
+}
+
+/// Balance read that never reverts: false for a token without code, with a failing balanceOf or a short reply. Copies
+/// at most 32 bytes of the reply, so a token returning huge data cannot burn the caller's gas.
+function tryBalanceOf(address token, address account) view returns (bool ok, uint256 amount) {
+    bytes memory callData = abi.encodeWithSignature("balanceOf(address)", account);
+    uint256 size;
+    assembly ("memory-safe") {
+        ok := staticcall(gas(), token, add(callData, 0x20), mload(callData), 0x00, 0x20)
+        size := returndatasize()
+        amount := mload(0x00)
+    }
+    if (!ok || size < 32) return (false, 0);
 }

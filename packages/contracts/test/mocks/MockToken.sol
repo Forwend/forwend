@@ -70,3 +70,12 @@ contract BrokenToken {
         revert("broken");
     }
 }
+
+/// A token whose balanceOf returns about 1 MB of data (a "return bomb").
+contract ReturnBombToken {
+    function balanceOf(address) external pure returns (uint256) {
+        assembly {
+            return(0, 1000000)
+        }
+    }
+}
