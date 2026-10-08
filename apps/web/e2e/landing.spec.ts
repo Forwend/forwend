@@ -140,3 +140,44 @@ test.describe("landing page", () => {
     }
   });
 });
+
+const overlaps = (a: DOMRect, b: DOMRect) =>
+  a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+
+for (const width of [360, 390]) {
+  test(`at ${width}px all four river marks are in open water`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    const result = await page.evaluate(() => {
+      const hero = document.querySelector('[data-section="hero"]') as HTMLElement;
+      const rect = (el: Element | null) => (el as HTMLElement).getBoundingClientRect();
+      const marks = [...hero.querySelectorAll("circle[data-river-mark]")]
+        .filter((c) => (c as SVGElement).getBoundingClientRect().width > 0)
+        .map((c) => (c as SVGElement).getBoundingClientRect());
+      const blockers = {
+        form: rect(hero.querySelector("form")),
+        note: rect(
+          [...hero.querySelectorAll("p")].find((p) => p.textContent?.startsWith("Private beta")) ??
+            null,
+        ),
+        panel: rect(
+          hero.querySelector('[aria-label="Sample payment progress"]')?.closest(".rounded-lg") ??
+            null,
+        ),
+      };
+      return {
+        marks: marks.map((m) => m.toJSON()),
+        blockers: Object.fromEntries(Object.entries(blockers).map(([k, v]) => [k, v.toJSON()])),
+      };
+    });
+    expect(result.marks).toHaveLength(4);
+    for (const [i, mark] of result.marks.entries()) {
+      for (const [name, box] of Object.entries(result.blockers)) {
+        expect(overlaps(mark as DOMRect, box as DOMRect), `mark ${i} overlaps the ${name}`).toBe(
+          false,
+        );
+      }
+    }
+  });
+}

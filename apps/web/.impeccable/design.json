@@ -1,0 +1,334 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-08T00:00:00Z",
+  "title": "Design System: Forwend",
+  "extensions": {
+    "colorMeta": {
+      "pine-ink": {
+        "role": "primary",
+        "displayName": "Pine Ink",
+        "canonical": "#0f2219",
+        "tonalRamp": [
+          "oklch(15% 0.03 160)",
+          "oklch(23% 0.03 160)",
+          "oklch(35% 0.03 160)",
+          "oklch(47% 0.03 160)",
+          "oklch(60% 0.03 160)",
+          "oklch(73% 0.025 160)",
+          "oklch(85% 0.02 160)",
+          "oklch(95% 0.01 160)"
+        ]
+      },
+      "river-blue": {
+        "role": "secondary",
+        "displayName": "River Blue",
+        "canonical": "#1f6a8c",
+        "tonalRamp": [
+          "oklch(15% 0.06 233)",
+          "oklch(27% 0.08 233)",
+          "oklch(38% 0.09 233)",
+          "oklch(49% 0.09 233)",
+          "oklch(61% 0.09 233)",
+          "oklch(74% 0.08 233)",
+          "oklch(86% 0.05 233)",
+          "oklch(95% 0.02 233)"
+        ]
+      },
+      "settled-green": {
+        "role": "status",
+        "displayName": "Settled Green",
+        "canonical": "#1b6e45",
+        "tonalRamp": [
+          "oklch(15% 0.05 155)",
+          "oklch(27% 0.08 155)",
+          "oklch(38% 0.1 155)",
+          "oklch(48% 0.1 155)",
+          "oklch(61% 0.1 155)",
+          "oklch(74% 0.09 155)",
+          "oklch(86% 0.05 155)",
+          "oklch(95% 0.02 155)"
+        ]
+      },
+      "amber-warning": {
+        "role": "status",
+        "displayName": "Amber Warning",
+        "canonical": "#865500",
+        "tonalRamp": [
+          "oklch(15% 0.05 70)",
+          "oklch(27% 0.08 70)",
+          "oklch(38% 0.1 70)",
+          "oklch(50% 0.11 70)",
+          "oklch(62% 0.12 70)",
+          "oklch(75% 0.11 70)",
+          "oklch(87% 0.06 70)",
+          "oklch(95% 0.03 70)"
+        ]
+      },
+      "signal-red": {
+        "role": "status",
+        "displayName": "Signal Red",
+        "canonical": "#b42318",
+        "tonalRamp": [
+          "oklch(15% 0.06 30)",
+          "oklch(27% 0.1 30)",
+          "oklch(39% 0.15 30)",
+          "oklch(52% 0.19 30)",
+          "oklch(63% 0.17 30)",
+          "oklch(75% 0.12 30)",
+          "oklch(87% 0.06 30)",
+          "oklch(95% 0.02 30)"
+        ]
+      },
+      "dawn-mist": { "role": "neutral", "displayName": "Dawn Mist", "canonical": "#f4f8f7" },
+      "paper-white": { "role": "neutral", "displayName": "Paper White", "canonical": "#ffffff" },
+      "meadow-wash": { "role": "neutral", "displayName": "Meadow Wash", "canonical": "#eaf2f0" },
+      "sunken-mist": { "role": "neutral", "displayName": "Sunken Mist", "canonical": "#e2ecea" },
+      "glass-white": {
+        "role": "neutral",
+        "displayName": "Glass White",
+        "canonical": "rgb(255 255 255 / 0.72)"
+      },
+      "moss-muted": { "role": "neutral", "displayName": "Moss Muted", "canonical": "#3a5047" },
+      "lichen-subtle": {
+        "role": "neutral",
+        "displayName": "Lichen Subtle",
+        "canonical": "#566a62"
+      },
+      "frost-line": { "role": "neutral", "displayName": "Frost Line", "canonical": "#d3e0dc" },
+      "sage-line": { "role": "neutral", "displayName": "Sage Line", "canonical": "#a9bfb8" },
+      "dusk-ground": {
+        "role": "neutral",
+        "displayName": "Dusk Ground (dark theme bg)",
+        "canonical": "#0d1412"
+      },
+      "dusk-ink": {
+        "role": "primary",
+        "displayName": "Dusk Ink (dark theme ink and primary)",
+        "canonical": "#eef4f1"
+      },
+      "dusk-river": {
+        "role": "secondary",
+        "displayName": "Dusk River (dark theme accent)",
+        "canonical": "#7cc0dd"
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero headline only." },
+      "headline": { "displayName": "Headline", "purpose": "Every section heading (h2)." },
+      "title": { "displayName": "Title", "purpose": "Step titles and sub-headings (h3)." },
+      "lead": { "displayName": "Lead", "purpose": "Paragraph under a heading, in Moss Muted." },
+      "body": { "displayName": "Body", "purpose": "Running text, max 65ch." },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Badges, status pills, chips, timeline labels."
+      },
+      "amount": {
+        "displayName": "Amount",
+        "purpose": "Every money value, address and hash; tabular figures."
+      }
+    },
+    "shadows": [
+      {
+        "name": "rest",
+        "value": "0 1px 2px rgb(15 34 25 / 0.06), 0 1px 1px rgb(15 34 25 / 0.04)",
+        "purpose": "Solid panels, fields, secondary buttons, active tab."
+      },
+      {
+        "name": "lift",
+        "value": "0 10px 24px -12px rgb(15 34 25 / 0.28)",
+        "purpose": "Primary buttons, nav pill, email capture, featured card, tooltip."
+      },
+      {
+        "name": "float",
+        "value": "0 28px 56px -24px rgb(15 34 25 / 0.38)",
+        "purpose": "Glass panels on imagery, checkout card, toast, dialog."
+      },
+      {
+        "name": "rest-dark",
+        "value": "0 1px 2px rgb(0 0 0 / 0.4)",
+        "purpose": "Rest in the dark theme."
+      },
+      {
+        "name": "lift-dark",
+        "value": "0 12px 28px -12px rgb(0 0 0 / 0.6)",
+        "purpose": "Lift in the dark theme."
+      },
+      {
+        "name": "float-dark",
+        "value": "0 30px 60px -24px rgb(0 0 0 / 0.7)",
+        "purpose": "Float in the dark theme."
+      }
+    ],
+    "motion": [
+      { "name": "duration-fast", "value": "140ms", "purpose": "Hover and border changes." },
+      {
+        "name": "duration-base",
+        "value": "240ms",
+        "purpose": "Theme switch, accordion chevron, switch thumb, tooltip delay."
+      },
+      {
+        "name": "duration-slow",
+        "value": "480ms",
+        "purpose": "Timeline step and river mark changes."
+      },
+      {
+        "name": "duration-slower",
+        "value": "900ms",
+        "purpose": "Base unit for the river draw (x4)."
+      },
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Default easing."
+      },
+      {
+        "name": "ease-in-out",
+        "value": "cubic-bezier(0.65, 0, 0.35, 1)",
+        "purpose": "Symmetric moves."
+      },
+      {
+        "name": "blur-glass",
+        "value": "14px",
+        "purpose": "Backdrop blur for glass panels over imagery and dialog backdrop."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ink pill for the main action; presses down 1px.",
+      "html": "<button class=\"ds-btn-primary\">Join waitlist</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; height: 40px; padding: 0 20px; border: none; border-radius: var(--fw-radius-pill); background: var(--fw-primary); color: var(--fw-on-primary); font: 500 0.875rem/1.25rem var(--fw-font-sans); box-shadow: var(--fw-shadow-md); cursor: pointer; transition: background-color var(--fw-duration-fast) var(--fw-ease-out), transform var(--fw-duration-fast) var(--fw-ease-out); } .ds-btn-primary:hover { background: color-mix(in oklab, var(--fw-primary) 86%, var(--fw-bg)); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 2px solid var(--fw-focus); outline-offset: 3px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "White pill with a strong line border for second actions.",
+      "html": "<button class=\"ds-btn-secondary\">Open dialog</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; height: 40px; padding: 0 20px; border: 1px solid var(--fw-line-strong); border-radius: var(--fw-radius-pill); background: var(--fw-surface); color: var(--fw-ink); font: 500 0.875rem/1.25rem var(--fw-font-sans); box-shadow: var(--fw-shadow-sm); cursor: pointer; transition: background-color var(--fw-duration-fast) var(--fw-ease-out); } .ds-btn-secondary:hover { background: var(--fw-surface-2); } .ds-btn-secondary:active { transform: translateY(1px); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--fw-focus); outline-offset: 3px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "text-field",
+      "description": "Labeled 44px field with a river-blue focus ring.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Email</span><input class=\"ds-field-input\" placeholder=\"you@example.com\"></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; font-family: var(--fw-font-sans); } .ds-field-label { font-size: 0.875rem; font-weight: 500; color: var(--fw-ink); } .ds-field-input { height: 44px; padding: 0 14px; border: 1px solid var(--fw-line-strong); border-radius: var(--fw-radius-md); background: var(--fw-surface); color: var(--fw-ink); font-size: 1rem; box-shadow: var(--fw-shadow-sm); transition: border-color var(--fw-duration-fast) var(--fw-ease-out), box-shadow var(--fw-duration-fast) var(--fw-ease-out); } .ds-field-input::placeholder { color: var(--fw-subtle); } .ds-field-input:hover { border-color: var(--fw-subtle); } .ds-field-input:focus-visible { outline: none; border-color: var(--fw-focus); box-shadow: 0 0 0 4px color-mix(in oklab, var(--fw-focus) 22%, transparent); }"
+    },
+    {
+      "name": "Email Capture",
+      "kind": "custom",
+      "refersTo": "email-capture",
+      "description": "Signature waitlist form: field and ink button inside one pill.",
+      "html": "<form class=\"ds-capture\"><input class=\"ds-capture-input\" type=\"email\" placeholder=\"you@example.com\" aria-label=\"Email address\"><button class=\"ds-capture-btn\" type=\"button\">Join waitlist</button></form>",
+      "css": ".ds-capture { display: flex; align-items: center; gap: 6px; max-width: 28rem; padding: 6px 6px 6px 20px; border: 1px solid var(--fw-line-strong); border-radius: var(--fw-radius-pill); background: var(--fw-surface); box-shadow: var(--fw-shadow-md); transition: box-shadow var(--fw-duration-fast); } .ds-capture:focus-within { box-shadow: var(--fw-shadow-md), 0 0 0 4px color-mix(in oklab, var(--fw-focus) 22%, transparent); } .ds-capture-input { flex: 1; min-width: 0; border: none; background: transparent; color: var(--fw-ink); font: 1rem var(--fw-font-sans); } .ds-capture-input:focus { outline: none; } .ds-capture-input::placeholder { color: var(--fw-subtle); } .ds-capture-btn { height: 40px; padding: 0 20px; border: none; border-radius: var(--fw-radius-pill); background: var(--fw-primary); color: var(--fw-on-primary); font: 500 0.875rem var(--fw-font-sans); box-shadow: var(--fw-shadow-md); cursor: pointer; } .ds-capture-btn:hover { background: color-mix(in oklab, var(--fw-primary) 86%, var(--fw-bg)); } .ds-capture-btn:focus-visible { outline: 2px solid var(--fw-focus); outline-offset: 3px; }"
+    },
+    {
+      "name": "Nav Pill",
+      "kind": "nav",
+      "refersTo": "nav-pill",
+      "description": "Floating glass pill nav with the waitlist pill at its right end.",
+      "html": "<nav class=\"ds-nav\"><span class=\"ds-nav-brand\">Forwend</span><a class=\"ds-nav-link\" href=\"#\">How it works</a><a class=\"ds-nav-link\" href=\"#\">FAQ</a><a class=\"ds-nav-cta\" href=\"#\">Join waitlist</a></nav>",
+      "css": ".ds-nav { display: inline-flex; align-items: center; gap: 24px; padding: 6px 6px 6px 20px; border: 1px solid color-mix(in oklab, var(--fw-surface) 70%, transparent); border-radius: var(--fw-radius-pill); background: var(--fw-glass); backdrop-filter: blur(var(--fw-blur-glass)); box-shadow: var(--fw-shadow-md); font-family: var(--fw-font-sans); } .ds-nav-brand { font-weight: 600; letter-spacing: -0.025em; color: var(--fw-ink); } .ds-nav-link { font-size: 0.875rem; color: var(--fw-muted); text-decoration: none; transition: color var(--fw-duration-fast); } .ds-nav-link:hover { color: var(--fw-ink); } .ds-nav-cta { display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border-radius: var(--fw-radius-pill); background: var(--fw-primary); color: var(--fw-on-primary); font-size: 0.875rem; font-weight: 500; text-decoration: none; box-shadow: var(--fw-shadow-md); } .ds-nav-cta:focus-visible, .ds-nav-link:focus-visible { outline: 2px solid var(--fw-focus); outline-offset: 3px; }"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "status-pill-settled",
+      "description": "Payment status on its soft tone ground; always bordered so it changes in place.",
+      "html": "<span class=\"ds-status\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg>Settled</span>",
+      "css": ".ds-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid transparent; border-radius: var(--fw-radius-pill); background: var(--fw-success-soft); color: var(--fw-success); font: 500 0.75rem/1rem var(--fw-font-sans); }"
+    },
+    {
+      "name": "Token Chip",
+      "kind": "chip",
+      "refersTo": "token-chip",
+      "description": "Two-part pill naming token and network.",
+      "html": "<span class=\"ds-chip\"><span class=\"ds-chip-token\">USDC</span><span class=\"ds-chip-net\">Base</span></span>",
+      "css": ".ds-chip { display: inline-flex; overflow: hidden; border: 1px solid var(--fw-line); border-radius: var(--fw-radius-pill); font: 500 0.75rem/1rem var(--fw-font-sans); } .ds-chip-token { padding: 4px 10px; background: var(--fw-surface); color: var(--fw-ink); } .ds-chip-net { padding: 4px 10px; border-left: 1px solid var(--fw-line); background: var(--fw-surface-2); color: var(--fw-muted); }"
+    },
+    {
+      "name": "Glass Invoice Panel",
+      "kind": "card",
+      "refersTo": "panel-glass",
+      "description": "Translucent panel used only over landscape art, with mono amount and timeline.",
+      "html": "<div class=\"ds-glass\"><div class=\"ds-glass-row\"><span>Invoice FW-0042</span><span class=\"ds-glass-badge\">Sample</span></div><p class=\"ds-glass-amount\">1,250.00</p><ol class=\"ds-timeline\"><li class=\"is-done\"><span></span>Detected</li><li class=\"is-done\"><span></span>Confirming</li><li class=\"is-done\"><span></span>Paid</li><li class=\"is-now\"><span></span>Settled</li></ol></div>",
+      "css": ".ds-glass { max-width: 28rem; padding: 24px; border: 1px solid color-mix(in oklab, var(--fw-surface) 60%, transparent); border-radius: var(--fw-radius-lg); background: var(--fw-glass); backdrop-filter: blur(var(--fw-blur-glass)); box-shadow: var(--fw-shadow-lg); color: var(--fw-ink); font-family: var(--fw-font-sans); } .ds-glass-row { display: flex; justify-content: space-between; font-size: 0.875rem; font-weight: 500; } .ds-glass-badge { padding: 2px 10px; border: 1px solid var(--fw-line); border-radius: var(--fw-radius-pill); background: var(--fw-surface-2); color: var(--fw-muted); font-size: 0.75rem; } .ds-glass-amount { margin: 16px 0 20px; font: 2.25rem/1.15 var(--fw-font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.025em; } .ds-timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 0.75rem; font-weight: 500; } .ds-timeline li { display: flex; flex-direction: column; gap: 8px; } .ds-timeline span { height: 4px; border-radius: var(--fw-radius-pill); background: var(--fw-line); transition: background-color var(--fw-duration-slow) var(--fw-ease-out); } .ds-timeline .is-done span { background: var(--fw-ink); } .ds-timeline .is-now span { background: var(--fw-accent); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Dawn Path",
+    "overview": "The payment is a path. A river runs from the viewer toward a bright horizon, and an invoice moves along it through four steps: detected, confirming, paid, settled. The world is a cool dawn landscape (pale sky, meadow greens, river blue) under one deep green-black ink that carries all type and the main buttons. Product UI sits on top of the landscape, built in code, never painted in.\n\nDensity is low on the landing and medium inside product panels. The sky stays open: the hero headline sits in the upper third, and the rest of the sky is left empty on purpose (charged emptiness, meaning space that is kept empty because it gives weight to what is near it). Product showcases drop into dark framed sections (\"Dusk Ledger\"), and a halftone dot field in river blue is a quiet secondary texture (\"Halftone Horizon\"). Both themes, light and dark, are complete; a section switches locally with `data-theme=\"dark\"`.\n\nThe mood art (dawn landscape, dusk ridges, halftone ridge, grainy footer ridges) is code-drawn SVG standing in for generated images. Its colors are artwork, kept in `src/constants/art.ts`, not UI tokens.",
+    "keyCharacteristics": [
+      "One ink (#0f2219) for type and primary buttons; no cream, no warm paper.",
+      "River blue is the only accent and also means \"current step\" and \"info\".",
+      "Serif display over a quiet grotesk; every amount and address in mono with tabular figures.",
+      "Everything round: pill buttons, pill nav, pill chips, generous panel corners.",
+      "Glass only over imagery; solid surfaces everywhere else.",
+      "Statuses change in place; row geometry never moves."
+    ],
+    "rules": [
+      {
+        "name": "The One Ink Rule",
+        "body": "Type and the primary button use the same ink. Do not add a second dark color for headings or buttons.",
+        "section": "colors"
+      },
+      {
+        "name": "The River Means Now Rule",
+        "body": "River blue marks the current or lit step and interactive affordances. Completed steps are ink, upcoming steps are line color. Do not use river blue for decoration in UI.",
+        "section": "colors"
+      },
+      {
+        "name": "The Token-Only Rule",
+        "body": "Tailwind's default palette is removed; only token colors exist as utilities. Art colors live in `src/constants/art.ts` and never appear in UI components.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Money Rule",
+        "body": "Every amount, address, transaction hash and event name is set in Geist Mono with tabular figures. Never set a number that represents money in the serif or grotesk.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Serif Weight Rule",
+        "body": "The display serif is loaded at 400 only. Do not bold it or use it below headline size.",
+        "section": "typography"
+      },
+      {
+        "name": "The No Kicker Rule",
+        "body": "No eyebrow labels or uppercase tracked text above headings. The heading speaks first.",
+        "section": "typography"
+      },
+      {
+        "name": "The Glass Over Land Rule",
+        "body": "A translucent, blurred panel is allowed only where it sits on landscape art (the hero invoice) and for the fixed nav pill, which floats over every section. Everywhere else panels are solid.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use Pine Ink for type and primary buttons, and River Blue only for the current step, links, focus and lit marks.",
+      "Do set every amount, address and hash in Geist Mono with tabular figures.",
+      "Do frame full-bleed sections as inset rounded frames (8 to 12px inset, 1.75rem radius).",
+      "Do switch a product showcase to dark with `data-theme=\"dark\"` on the section, not with separate dark colors.",
+      "Do label every piece of demo data with a \"Sample\" badge.",
+      "Do keep statuses the same size across states so a change happens in place.",
+      "Do use motion tokens: 140ms for hover, 240ms for theme and accordions, 480ms for step changes, out-expo easing (`cubic-bezier(0.16, 1, 0.3, 1)`)."
+    ],
+    "donts": [
+      "Don't use glass panels away from landscape art; the nav pill is the only exception.",
+      "Don't add eyebrow or kicker labels above headings.",
+      "Don't use hard offset shadows; shadows are soft and ink-tinted.",
+      "Don't use cream or warm paper as a UI ground; warmth lives only in the art's horizon glow.",
+      "Don't fill the open sky in the hero with badges, metrics or logos.",
+      "Don't set the display serif in bold or below headline size.",
+      "Don't use art colors from `src/constants/art.ts` in UI components."
+    ]
+  }
+}
