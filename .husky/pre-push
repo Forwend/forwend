@@ -1,0 +1,2 @@
+#!/bin/sh
+python3 scripts/harness.py hook pre-push

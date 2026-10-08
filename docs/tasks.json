@@ -14,7 +14,7 @@
         "husky is installed and python3 scripts/harness.py hook install wires the pre-commit and pre-push hooks"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "build",
         "e2e"
@@ -29,7 +29,67 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T12:24:11Z",
+        "checks": [
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F001-20261008T122411Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.1,
+            "log": "docs/runs/F001-20261008T122411Z-e2e.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F001-20261008T122411Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F001-20261008T122411Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F001-20261008T122411Z-unit.log"
+          }
+        ],
+        "taskHash": "6fd0a2a2598bee25",
+        "filesHash": "a5d3186e127d914a",
+        "commit": "5333e9f",
+        "doneAt": "2026-10-08T12:24:22Z",
+        "proof": {
+          "1": "build check: pnpm install + pnpm build exit 0 (docs/runs/F001-20261008T122411Z-build.log)",
+          "2": "e2e check: apps/web/e2e/smoke.spec.ts asserts title contains Forwend",
+          "3": "lint, typecheck, unit (Vitest in design-tokens, ui-web, web) and e2e checks all passed in verify",
+          "4": ".github/workflows/ci.yml runs lint, typecheck, unit, build, e2e on pull_request with node-version-file .nvmrc; runs on this PR",
+          "5": "husky 9.1.7 installed, prepare script runs husky; harness.py hook install wrote .husky/pre-commit and .husky/pre-push"
+        }
+      },
+      "branch": "build/f001-walking-skeleton-pnpm-turborepo-monorepo",
+      "baseCommit": "764b056753e393232a65265333a72f42387784c4",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "build/f001-walking-skeleton-pnpm-turborepo-monorepo",
+        "base": "main"
+      }
     },
     {
       "id": "F002",
@@ -230,5 +290,17 @@
       "blockedReason": null,
       "evidence": null
     }
-  ]
+  ],
+  "lastWrapup": {
+    "at": "2026-10-08T12:14:08Z",
+    "clean": false,
+    "problems": [
+      "lint failed (log docs/runs/wrapup-20261008T121407Z-lint.log)",
+      "typecheck failed (log docs/runs/wrapup-20261008T121407Z-typecheck.log)",
+      "unit failed (log docs/runs/wrapup-20261008T121407Z-unit.log)",
+      "build failed (log docs/runs/wrapup-20261008T121407Z-build.log)",
+      "e2e failed (log docs/runs/wrapup-20261008T121407Z-e2e.log)"
+    ],
+    "note": "Bootstrap done: PLAN.md, PROJECT.md (R-1..R-13), checks, queue F001-F008 merged in PR #1. Required checks fail with missing-command until F001 adds package.json. Next: start F001 walking skeleton."
+  }
 }
