@@ -344,7 +344,7 @@
       "dependsOn": [
         "F004"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "kit-e2e",
         "ui-unit",
@@ -359,9 +359,99 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-08 review pass by subagent: All 5 acceptance lines proven by tests that pass: ui-unit 11/11, kit+a11y e2e 8/8. (1) kit.spec.ts:47-66 checks the 9 h2 headings by exact name and meta robots noindex (layout.tsx metadata robots index:false). (2) kit.spec.ts:68 requests the production build on PUBLIC_URL without KIT_ENABLED and gets 404 (layout.tsx calls notFound(), force-dynamic). (3) payments.test.tsx Money test: text is '1,234.56 USDC' and the figures span has tabular-nums; formatTokenAmount is pure bigint, no Number/parseFloat/toFixed anywhere in ui-web or kit. (4) Address test: shows 0x1234…5678, the copy click calls clipboard.writeText with the full address, and the label changes to 'Address copied'; StatusPill test: 10 statuses, labels match PAYMENT_STATUSES and are all distinct. (5) a11y.spec.ts: axe finds 0 serious/critical issues in light and dark. Correctness: explorer link has target=_blank rel='noreferrer noopener'; QrCode encodes real data with uqr and is pinned to data-theme=light, so it shows dark modules on a light ground in both themes (confirmed in kit-dark.png); Tabs and Tooltip use Radix (arrow keys, opens on focus); Dialog uses native showModal (Esc, focus trap) with a labelled close button; TextField sets aria-invalid and aria-describedby for the error or hint; EmailCapture uses an sr-only label, aria-invalid and an aria-live message. Rules: types live in src/types/{ui,payments,kit}; finite values are as-const constants with derived unions; components use token utilities only (no raw hex, no default palette); payment sample data is labelled. Screenshots: all states are visible and contrast is fine in light and dark; the 390px layout does not break (kit nav and code block scroll inside their own boxes). Non-blocking: (a) payments-showcase.tsx repeats token='USDC' and decimals={6} about 11 times, and its timeline step labels repeat SAMPLE_STEPS and PAYMENT_STATUSES labels; move them to constants (SAMPLE_INVOICE.token exists). (b) The Toast tone dot uses the soft tone background (display.tsx:128), so it is almost invisible, especially in dark. (c) useCopy (interactive.tsx:1464) has no catch for a clipboard rejection and does not clear its timer on unmount; the 1600ms timeout and Tooltip delayDuration=200 are raw durations, not tokens. (d) Dialog backdrop uses the default Tailwind backdrop-blur-sm, not --fw-blur-glass. (e) The a11y dark test runs axe right after setting data-theme while body colors transition over 240ms; to be safe, wait for the transition or emulate reduced motion. (f) The anchor slug logic is duplicated in page.tsx:93 and kit-section.tsx:159. (g) QR quiet zone is border 2 plus padding, under the 4 modules the spec recommends; scanners usually accept it. (h) The kit's sample copy ('Arbitrum (planned)', the invented forwend.invoices.create API in CodeBlock) is fine on a private noindex page, but do not reuse it on the landing page in F006-F008."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T12:59:15Z",
+        "checks": [
+          {
+            "id": "kit-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.3,
+            "log": "docs/runs/F005-20261008T125915Z-kit-e2e.log"
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F005-20261008T125915Z-ui-unit.log"
+          },
+          {
+            "id": "a11y-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.8,
+            "log": "docs/runs/F005-20261008T125915Z-a11y-e2e.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F005-20261008T125915Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F005-20261008T125915Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F005-20261008T125915Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F005-20261008T125915Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.1,
+            "log": "docs/runs/F005-20261008T125915Z-e2e.log"
+          }
+        ],
+        "taskHash": "8a870130278365d3",
+        "filesHash": "cf1b7bacdb7c9155",
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "All 5 acceptance lines proven by tests that pass: ui-unit 11/11, kit+a11y e2e 8/8. (1) kit.spec.ts:47-66 checks the 9 h2 headings by exact name and meta robots noindex (layout.tsx metadata robots index:false). (2) kit.spec.ts:68 requests the production build on PUBLIC_URL without KIT_ENABLED and gets 404 (layout.tsx calls notFound(), force-dynamic). (3) payments.test.tsx Money test: text is '1,234.56 USDC' and the figures span has tabular-nums; formatTokenAmount is pure bigint, no Number/parseFloat/toFixed anywhere in ui-web or kit. (4) Address test: shows 0x1234…5678, the copy click calls clipboard.writeText with the full address, and the label changes to 'Address copied'; StatusPill test: 10 statuses, labels match PAYMENT_STATUSES and are all distinct. (5) a11y.spec.ts: axe finds 0 serious/critical issues in light and dark. Correctness: explorer link has target=_blank rel='noreferrer noopener'; QrCode encodes real data with uqr and is pinned to data-theme=light, so it shows dark modules on a light ground in both themes (confirmed in kit-dark.png); Tabs and Tooltip use Radix (arrow keys, opens on focus); Dialog uses native showModal (Esc, focus trap) with a labelled close button; TextField sets aria-invalid and aria-describedby for the error or hint; EmailCapture uses an sr-only label, aria-invalid and an aria-live message. Rules: types live in src/types/{ui,payments,kit}; finite values are as-const constants with derived unions; components use token utilities only (no raw hex, no default palette); payment sample data is labelled. Screenshots: all states are visible and contrast is fine in light and dark; the 390px layout does not break (kit nav and code block scroll inside their own boxes). Non-blocking: (a) payments-showcase.tsx repeats token='USDC' and decimals={6} about 11 times, and its timeline step labels repeat SAMPLE_STEPS and PAYMENT_STATUSES labels; move them to constants (SAMPLE_INVOICE.token exists). (b) The Toast tone dot uses the soft tone background (display.tsx:128), so it is almost invisible, especially in dark. (c) useCopy (interactive.tsx:1464) has no catch for a clipboard rejection and does not clear its timer on unmount; the 1600ms timeout and Tooltip delayDuration=200 are raw durations, not tokens. (d) Dialog backdrop uses the default Tailwind backdrop-blur-sm, not --fw-blur-glass. (e) The a11y dark test runs axe right after setting data-theme while body colors transition over 240ms; to be safe, wait for the transition or emulate reduced motion. (f) The anchor slug logic is duplicated in page.tsx:93 and kit-section.tsx:159. (g) QR quiet zone is border 2 plus padding, under the 4 modules the spec recommends; scanners usually accept it. (h) The kit's sample copy ('Arbitrum (planned)', the invented forwend.invoices.create API in CodeBlock) is fine on a private noindex page, but do not reuse it on the landing page in F006-F008.",
+          "at": "2026-10-08T13:01:54Z",
+          "filesHash": "cf1b7bacdb7c9155"
+        },
+        "commit": "73b5a36",
+        "doneAt": "2026-10-08T13:02:18Z",
+        "proof": {
+          "1": "e2e/kit.spec.ts '/kit shows every foundation and component section and is not indexed'",
+          "2": "e2e/kit.spec.ts '/kit returns 404 when KIT_ENABLED is not set'",
+          "3": "packages/ui-web/test/payments.test.tsx Money: text 1,234.56 USDC with tabular-nums",
+          "4": "packages/ui-web/test/payments.test.tsx Address short form + clipboard full address; StatusPill 10 distinct labels",
+          "5": "e2e/a11y.spec.ts axe on /kit light and dark: 0 serious or critical violations"
+        }
+      },
+      "branch": "feat/f005-the-kit-page-shows-every-token-and-base",
+      "baseCommit": "e77a60d5257d7fd1c045e5f8865dcd4545e0f864",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f005-the-kit-page-shows-every-token-and-base",
+        "base": "main"
+      }
     },
     {
       "id": "F006",
