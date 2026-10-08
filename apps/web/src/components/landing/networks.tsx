@@ -13,11 +13,13 @@ export function Networks() {
       aria-label={NETWORKS.label}
       className="mx-auto max-w-6xl px-4 py-10 sm:px-8"
     >
-      <ul className="flex flex-wrap items-center justify-center gap-x-8 gap-y-5 text-xl text-ink md:justify-between">
+      {/* From lg each item takes an equal share and divide-x draws one line between neighbours;
+          on phones items wrap, so there are no dividers to dangle at line ends. */}
+      <ul className="flex flex-wrap items-center justify-center gap-x-8 gap-y-5 text-xl text-ink lg:flex-nowrap lg:gap-x-0 lg:divide-x lg:divide-line-strong">
         {ITEMS.map((item) => (
           <li
             key={item.name}
-            className={`inline-flex items-center gap-2.5 ${item.mono ? "font-mono text-lg" : "font-medium tracking-tight"}`}
+            className={`inline-flex items-center gap-2.5 lg:flex-1 lg:justify-center ${item.mono ? "font-mono text-lg" : "font-medium tracking-tight"}`}
           >
             {item.logo ? <BrandIcon name={item.logo} className="size-[var(--fw-icon-lg)]" /> : null}
             {item.name}
