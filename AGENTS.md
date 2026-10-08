@@ -17,7 +17,7 @@ Roadmap and money rules: [PLAN.md](PLAN.md). Current release requirements and de
 - New reusable components appear on `/kit` with all their states in the same change.
 - Money is `bigint` base units plus decimals; never `number` or float. Tokens are identified by chain ID + contract, never by ticker alone.
 - Landing copy is honest: no customer logos, funding badges, or claims of being regulated, insured or live.
-- Images: mood images (landscapes, textures) come from the Grok CLI (`grok -p`, `imagine` skill); product UI, charts and text are built in code. Record slot, prompt and date for every image in `docs/images.md`.
+- Images: mood images (landscapes, textures) come from the Codex CLI built-in `image_gen` tool, run headless with `codex exec` (D-9); product UI, charts and text are built in code. Store them as WebP in `apps/web/public/images/` and record slot, file, prompt and date in `docs/images.md`.
 - Respect `prefers-reduced-motion`; no scroll hijacking.
 - Commits, PRs and comments carry no AI attribution (no Co-Authored-By for an AI, no "Generated with" footer).
 - Do not spend money, deploy, or create provider accounts without Sasha's explicit yes.

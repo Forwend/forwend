@@ -65,8 +65,8 @@ Acctual, Coinbase Business exist); the clarity of money states is the claim to t
   product sections, halftone/dither image treatment, grainy gradient footer, real product UI
   over the landscape.
 - Motif chosen in PLAN.md: "the path forward" — a river or road leading toward a bright horizon.
-- Mood images come from the Grok image tool; until credits are available, code-drawn
-  illustrations stand in. Product UI, numbers and text are always built in code.
+- Mood images come from the Codex image tool (`image_gen`); code-drawn illustrations stand in
+  until the generated images are wired in. Product UI, numbers and text are always built in code.
 
 ## Evidence on Hand
 

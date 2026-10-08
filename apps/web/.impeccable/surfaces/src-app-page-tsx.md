@@ -10,7 +10,7 @@ related_targets: ["src/app/kit"]
 Scope: `/` landing (Persuade), plus the private `/kit/directions` comparison and `/kit` (Operate) that share its world.
 Audience: freelancers and merchants paid in stablecoins, pre-launch visitors. Action: join the waitlist.
 Proof available: none commercial. Demonstration data only, labeled as sample.
-Constraints: no logos, funding badges, eyebrow labels, or claims of being live, regulated or insured. Mood art is code-drawn SVG until Grok images are unblocked (F002).
+Constraints: no logos, funding badges, eyebrow labels, or claims of being live, regulated or insured. Mood art is code-drawn SVG until the Codex-generated images (F002, docs/images.md) are wired into the landing.
 Owner choice pending: the owner reviews `/kit/directions` and may switch from the default below.
 
 ## Direction contract

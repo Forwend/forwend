@@ -61,7 +61,7 @@ PLAN.md. This file holds the current release's requirements and the decisions th
 | D-6 | Money is `bigint` base units plus token decimals everywhere in TypeScript; formatted only for display (number/float) | agent default | 2026-10-08 | Floats lose cents; matches on-chain integers |
 | D-7 | Landing shows real product UI built in code, no generated screenshots, no fake social proof (logo walls, funding badges) | user (PLAN C-08) | 2026-10-08 | Trust for a payments brand; image models garble numbers and text |
 | D-8 | The waitlist is a front-end mock until the site is public (real storage now) | user | 2026-10-08 | Start fast; making it real is queued before launch |
-| D-9 | Landscape and texture images come from the Grok Build CLI (`imagine` skill); optimized to AVIF/WebP; prompts kept in `docs/images.md` (stock images; other generators) | user | 2026-10-08 | Consistent custom style, reproducible later |
+| D-9 | Landscape and texture images come from the Codex CLI built-in `image_gen` tool, run headless with `codex exec`; stored as WebP, served through next/image; prompts kept in `docs/images.md` (Grok CLI, which had no credits; stock images; code-only art) | user | 2026-10-08 | Grok returned HTTP 403 (no credits); owner chose Codex |
 | D-10 | Biome for lint and format; Vitest for unit; Playwright + axe for browser tests (ESLint + Prettier) | agent default | 2026-10-08 | One fast tool; browser tests prove visible behavior |
 | D-11 | TypeScript structure: all named types in `src/types/<domain>/`, finite runtime values as `as const` objects in `src/constants/<domain>.ts`, no repeated domain string literals (types next to code) | user | 2026-10-08 | Single source of truth per domain (typescript-structure skill) |
 | D-12 | Backend in Go with the official Privy Go SDK wrapped in `backend/internal/privy`; built from PLAN phase 6 (TypeScript backend; porting Privy's TS SDK) | user | 2026-10-08 | Learning goal; official SDK covers the REST API |
@@ -72,8 +72,8 @@ PLAN.md. This file holds the current release's requirements and the decisions th
 
 | ID | We believe that | Wrong if | Test and threshold | Owner | Status |
 |---|---|---|---|---|---|
-| A-1 | `grok -p` in headless mode can generate an image and save it to a given path | The image tool only works in the interactive TUI | Generate one hero candidate headless; the file exists | agent | partly tested 2026-10-08: headless reaches `image_gen`, which returned HTTP 403 (no credits). Until credits exist, image slots use code-drawn SVG art |
-| A-2 | Grok Imagine output may be used commercially on our website | xAI terms forbid or restrict commercial use | Read the current xAI terms before the landing goes public | user | open |
+| A-1 | `codex exec` can generate an image with its built-in `image_gen` tool and save it into the repo | The tool only works in the interactive app | Generate the three hero candidates headless | agent | confirmed 2026-10-08 (F002): three candidates generated and copied into `apps/web/public/images/candidates/` |
+| A-2 | Images generated with OpenAI image models through Codex may be used commercially on our website | OpenAI terms forbid or restrict it for our plan | Read the current OpenAI terms of use before the landing goes public | user | open |
 | A-3 | Lighthouse can run locally against the production build | Headless Chrome cannot reach the score reliably | Local runs with devtools throttling: Performance 100, Accessibility 100, LCP 1.5 s (2026-10-08). Not in CI yet | agent | partly tested |
 
 ## Open questions
