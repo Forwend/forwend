@@ -66,6 +66,7 @@ PLAN.md. This file holds the current release's requirements and the decisions th
 | D-11 | TypeScript structure: all named types in `src/types/<domain>/`, finite runtime values as `as const` objects in `src/constants/<domain>.ts`, no repeated domain string literals (types next to code) | user | 2026-10-08 | Single source of truth per domain (typescript-structure skill) |
 | D-12 | Backend in Go with the official Privy Go SDK wrapped in `backend/internal/privy`; built from PLAN phase 6 (TypeScript backend; porting Privy's TS SDK) | user | 2026-10-08 | Learning goal; official SDK covers the REST API |
 | D-13 | Visual direction: A Dawn Path for marketing, B Dusk Ledger's dark framed product sections, C Halftone Horizon's dots as a secondary texture. Fonts: Libre Caslon Display (display), Hanken Grotesk (UI), Geist Mono (amounts, addresses) (pure A, B or C; other faces) | agent default, pending owner review | 2026-10-08 | Q-1; PLAN §P3.2 recommendation |
+| D-14 | The Lighthouse check uses real ("devtools") throttling with the mobile preset (default simulated throttling) | agent default | 2026-10-08 | R-11. On localhost the page scripts run before first paint, so simulation adds every script to the LCP path: simulated LCP 3.1 s, real throttled LCP 1.5 s, first paint 1.4 s either way. Re-check with simulation against the deployed site |
 
 ## Assumptions
 
@@ -73,7 +74,7 @@ PLAN.md. This file holds the current release's requirements and the decisions th
 |---|---|---|---|---|---|
 | A-1 | `grok -p` in headless mode can generate an image and save it to a given path | The image tool only works in the interactive TUI | Generate one hero candidate headless; the file exists | agent | partly tested 2026-10-08: headless reaches `image_gen`, which returned HTTP 403 (no credits). Until credits exist, image slots use code-drawn SVG art |
 | A-2 | Grok Imagine output may be used commercially on our website | xAI terms forbid or restrict commercial use | Read the current xAI terms before the landing goes public | user | open |
-| A-3 | Lighthouse can run locally in CI against the production build | Headless Chrome in CI cannot reach the score reliably | Three CI runs within ±5 points | agent | open |
+| A-3 | Lighthouse can run locally against the production build | Headless Chrome cannot reach the score reliably | Local runs with devtools throttling: Performance 100, Accessibility 100, LCP 1.5 s (2026-10-08). Not in CI yet | agent | partly tested |
 
 ## Open questions
 
