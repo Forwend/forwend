@@ -458,7 +458,8 @@ rule (D-03…D-08), with fuzz and invariant tests.
 
 Diagrams (mapgrain JSON; open one in the editor with `npx mapgrain@0.2.5 studio <file>.json`):
 [full contract workflow](docs/diagrams/contracts-workflow.json),
-[invoice states](docs/diagrams/invoice-lifecycle.json).
+[invoice states](docs/diagrams/invoice-lifecycle.json),
+[who can move money](docs/diagrams/security-keys.json).
 
 - `InvoiceReceiverFactory`
   - `predict(terms) → address` (view) and `deploy(terms) → address`.

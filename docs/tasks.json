@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 32,
+  "nextId": 34,
   "tasks": [
     {
       "id": "F001",
@@ -3058,6 +3058,117 @@
         "branch": "docs/f031-plan-md-describes-contract-v1-with-the-a",
         "base": "main"
       }
+    },
+    {
+      "id": "F032",
+      "type": "docs",
+      "behavior": "The contract diagrams show the v1 design with every agreed case: invoice creation checks, dust, cancel, settle window, missed settlement, pause, multisig refunds and recovery; plus a diagram of who holds which key",
+      "acceptance": [
+        "docs/diagrams/contracts-workflow.json, invoice-lifecycle.json and security-keys.json pass the diagrams check",
+        "The workflow shows: Privy session and profile check, request validation (idempotency key, token allowlist, minimum), recipient read from the profile wallet, save and watch, checkout warnings, cancel, dust, expiry and late, partial top-up, finalized wait, signer recipient re-check, settle window, missed settlement by the multisig, pause, lazy deploy, settle, held funds, claim and approval, multisig refund, wrong-network or wrong-token review with approve or reject, recover, unsupported network",
+        "The lifecycle routes a reorg back through the confirmed total, has a cancelled state, and loops refunds while money is still held",
+        "The security diagram shows each key and service, what it can move, and what a leak allows, matching PLAN.md Phase 5 and Phase 6"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "diagrams"
+      ],
+      "refs": [
+        "C-10"
+      ],
+      "keep": [
+        "apps/*",
+        "packages/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-10-08 review pass by reviewer: All 3 files pass mapgrain@0.2.5 validate. Every acceptance-2 case is present (auth, valid, recipient, save, checkout, cancel, dust, intime/expiry, partial w23, final, intent, window, missed w30/w31, pause w35, deploy, settle, held, claim/approve, saferefund/refund, support/review/recover, lost). Lifecycle: reorg l2 plus l3/l4 route by confirmed total, cancelled state, refund loop l16. Money/security rules match PLAN: settle executor until window then multisig only, pause stops settle only, refund multisig only, repeatable, never takes amount before window, recover covers other token/native/wrong chain, recipient from Privy re-checked by signer, server has no send rights, leak impact matches. Cosmetic notes: (1) refund/recover say 'deploys the receiver first if needed', but a receiver cannot deploy itself; it is Factory.deploy then the call, e.g. batched in the Safe tx. (2) Lifecycle has no back edge from paid if a safe-block deposit reorgs before finalized (the signer re-check keeps money safe). (3) l8 lets the creator cancel a partially paid invoice; PLAN Phase 9 says 'cancel an unpaid invoice'. (4) Native coin sent after deploy is rejected (payer keeps it), not shown. (5) security-keys deployer node has no explicit 'if leaked' line; signer leak also exposes its gas balance and could settle a funded cancelled invoice to the recipient before the window ends (matches PLAN wording, design note). (6) missed->no (w31) can hardly happen because intime already filters late deposits. (7) security-keys.json is untracked and not linked from PLAN Phase 5 Design."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T21:06:30Z",
+        "checks": [
+          {
+            "id": "diagrams",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F032-20261008T210630Z-diagrams.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F032-20261008T210630Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F032-20261008T210630Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F032-20261008T210630Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F032-20261008T210630Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.4,
+            "log": "docs/runs/F032-20261008T210630Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F032-20261008T210630Z-keep.log"
+          }
+        ],
+        "taskHash": "959b84aef88823fa",
+        "filesHash": "5252d83e33aab12d"
+      },
+      "branch": "docs/f032-the-contract-diagrams-show-the-v1-design",
+      "baseCommit": "555d9b2109a550a76b75f70a970c211c8f6a9234",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F033",
+      "type": "fix",
+      "behavior": "The landing money-rules refund line matches PLAN D-08: refunds come only from held money, one per approved claim, and settled money is never pulled back",
+      "acceptance": [
+        "apps/web/src/constants/landing.ts no longer says 'One refund per invoice'; the new line says refunds come from held money only, one per approved claim, and settled money is never pulled back"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "lint",
+        "build"
+      ],
+      "refs": [],
+      "keep": [
+        "packages/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

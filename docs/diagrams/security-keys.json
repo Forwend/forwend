@@ -1,0 +1,392 @@
+{
+  "schemaVersion": 1,
+  "id": "forwend-security-keys",
+  "revision": 1,
+  "kind": "architecture",
+  "title": "Who can move money",
+  "theme": "dark",
+  "layoutHints": {
+    "direction": "right",
+    "pinnedNodeIds": []
+  },
+  "groups": [
+    {
+      "id": "outside",
+      "label": "Outside Forwend",
+      "parentId": null
+    },
+    {
+      "id": "servers",
+      "label": "Our servers",
+      "parentId": null
+    },
+    {
+      "id": "chain",
+      "label": "On chain",
+      "parentId": null
+    }
+  ],
+  "nodes": [
+    {
+      "id": "creator",
+      "kind": "actor",
+      "label": "Freelancer or merchant",
+      "groupId": "outside",
+      "ports": []
+    },
+    {
+      "id": "payer",
+      "kind": "actor",
+      "label": "Payer",
+      "groupId": "outside",
+      "ports": []
+    },
+    {
+      "id": "privy",
+      "kind": "external",
+      "label": "Privy",
+      "groupId": "outside",
+      "ports": [],
+      "description": "Login and users' wallets. Users sign their own sends; our server gets no send rights"
+    },
+    {
+      "id": "userwallet",
+      "kind": "external",
+      "label": "User's Privy wallet",
+      "groupId": "outside",
+      "ports": [],
+      "description": "Receives settlements. Only the user moves money out"
+    },
+    {
+      "id": "token",
+      "kind": "external",
+      "label": "USDC / USDT contract",
+      "groupId": "outside",
+      "ports": [],
+      "description": "The issuer can freeze any address or pause the token. Outside our control"
+    },
+    {
+      "id": "api",
+      "kind": "service",
+      "label": "API",
+      "groupId": "servers",
+      "ports": [],
+      "description": "No private keys. If hacked: can create bad invoices or show a wrong checkout; the signer re-checks the recipient"
+    },
+    {
+      "id": "worker",
+      "kind": "service",
+      "label": "Worker (watcher)",
+      "groupId": "servers",
+      "ports": [],
+      "description": "No keys. Reads the chain, keeps the ledger. If hacked: wrong states, no money moves"
+    },
+    {
+      "id": "db",
+      "kind": "datastore",
+      "label": "Postgres",
+      "groupId": "servers",
+      "ports": [],
+      "description": "Invoices, ledger, intents. If changed: the signer refuses terms that differ from Privy and the chain"
+    },
+    {
+      "id": "signer",
+      "kind": "service",
+      "label": "Signer: executor key",
+      "groupId": "servers",
+      "ports": [],
+      "description": "If leaked: can only deploy receivers and settle the exact amount to the fixed recipient before the window ends. Cannot steal"
+    },
+    {
+      "id": "deployer",
+      "kind": "service",
+      "label": "Deployer key",
+      "groupId": "servers",
+      "ports": [],
+      "description": "Used once per chain to deploy the factory. Holds nothing after"
+    },
+    {
+      "id": "safe",
+      "kind": "system",
+      "label": "Safe multisig: refund authority",
+      "groupId": "chain",
+      "ports": [],
+      "description": "Several owners must approve. Refunds held money, recovers wrong tokens, settles missed payments, pauses. One leaked owner key moves nothing"
+    },
+    {
+      "id": "factory",
+      "kind": "system",
+      "label": "Factory v1",
+      "groupId": "chain",
+      "ports": [],
+      "description": "No owner. Only the Safe can set its pause flag"
+    },
+    {
+      "id": "receiver",
+      "kind": "system",
+      "label": "Invoice receiver (one per invoice)",
+      "groupId": "chain",
+      "ports": [],
+      "description": "No key. Pays only the recipient; refunds and recovery only by the Safe"
+    }
+  ],
+  "edges": [
+    {
+      "id": "a1",
+      "source": {
+        "nodeId": "creator"
+      },
+      "target": {
+        "nodeId": "api"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "create invoice"
+    },
+    {
+      "id": "a2",
+      "source": {
+        "nodeId": "api"
+      },
+      "target": {
+        "nodeId": "privy"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "verify login, read wallet"
+    },
+    {
+      "id": "a3",
+      "source": {
+        "nodeId": "api"
+      },
+      "target": {
+        "nodeId": "db"
+      },
+      "type": "writes",
+      "direction": "forward",
+      "label": "invoice + address"
+    },
+    {
+      "id": "a4",
+      "source": {
+        "nodeId": "payer"
+      },
+      "target": {
+        "nodeId": "token"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "transfer to receiver address"
+    },
+    {
+      "id": "a5",
+      "source": {
+        "nodeId": "worker"
+      },
+      "target": {
+        "nodeId": "token"
+      },
+      "type": "reads",
+      "direction": "forward",
+      "label": "Transfer logs"
+    },
+    {
+      "id": "a6",
+      "source": {
+        "nodeId": "worker"
+      },
+      "target": {
+        "nodeId": "db"
+      },
+      "type": "writes",
+      "direction": "forward",
+      "label": "ledger, states"
+    },
+    {
+      "id": "a7",
+      "source": {
+        "nodeId": "signer"
+      },
+      "target": {
+        "nodeId": "db"
+      },
+      "type": "reads",
+      "direction": "forward",
+      "label": "settle intents"
+    },
+    {
+      "id": "a8",
+      "source": {
+        "nodeId": "signer"
+      },
+      "target": {
+        "nodeId": "privy"
+      },
+      "type": "reads",
+      "direction": "forward",
+      "label": "re-check recipient"
+    },
+    {
+      "id": "a9",
+      "source": {
+        "nodeId": "signer"
+      },
+      "target": {
+        "nodeId": "factory"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "deploy(terms)"
+    },
+    {
+      "id": "a10",
+      "source": {
+        "nodeId": "signer"
+      },
+      "target": {
+        "nodeId": "receiver"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "settle()"
+    },
+    {
+      "id": "a11",
+      "source": {
+        "nodeId": "deployer"
+      },
+      "target": {
+        "nodeId": "factory"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "one-time deploy"
+    },
+    {
+      "id": "a12",
+      "source": {
+        "nodeId": "factory"
+      },
+      "target": {
+        "nodeId": "receiver"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "deploys clone"
+    },
+    {
+      "id": "a13",
+      "source": {
+        "nodeId": "safe"
+      },
+      "target": {
+        "nodeId": "receiver"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "refund, recover, late settle"
+    },
+    {
+      "id": "a14",
+      "source": {
+        "nodeId": "safe"
+      },
+      "target": {
+        "nodeId": "factory"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "pause"
+    },
+    {
+      "id": "a15",
+      "source": {
+        "nodeId": "receiver"
+      },
+      "target": {
+        "nodeId": "userwallet"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "settle pays the amount"
+    },
+    {
+      "id": "a16",
+      "source": {
+        "nodeId": "receiver"
+      },
+      "target": {
+        "nodeId": "payer"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "refund"
+    }
+  ],
+  "views": [
+    {
+      "id": "overview",
+      "kind": "overview",
+      "name": "All"
+    }
+  ],
+  "layout": {
+    "version": 1,
+    "revision": 1,
+    "positions": {
+      "creator": {
+        "x": 2722,
+        "y": 329.33333333333337
+      },
+      "payer": {
+        "x": 2340.5,
+        "y": 86
+      },
+      "privy": {
+        "x": 2246,
+        "y": 405
+      },
+      "userwallet": {
+        "x": 2246,
+        "y": 230.00000000000003
+      },
+      "token": {
+        "x": 2660,
+        "y": 473.33333333333337
+      },
+      "api": {
+        "x": 69,
+        "y": 474.7
+      },
+      "worker": {
+        "x": 83,
+        "y": 677.7
+      },
+      "db": {
+        "x": 489,
+        "y": 463.8666666666667
+      },
+      "signer": {
+        "x": 69,
+        "y": 271.7
+      },
+      "deployer": {
+        "x": 518,
+        "y": 196.5
+      },
+      "safe": {
+        "x": 964,
+        "y": 87
+      },
+      "factory": {
+        "x": 1376,
+        "y": 196.5
+      },
+      "receiver": {
+        "x": 1776,
+        "y": 186.5
+      }
+    }
+  }
+}
