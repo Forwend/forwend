@@ -9,7 +9,9 @@ to a bank when they choose.
 - Repository: https://github.com/ensp1re/forwend (private)
 - Source research: the research canvas (106 blocks, saved 2026-10-06). This plan keeps its
   agreed decisions. Where I suggest a change, the row is marked **Changed**, with the reason.
-- Status: plan only. No code, contracts, provider accounts or real funds.
+- Status: phases 1–3 done (plan, harness, design system, `/kit`, landing page; harness tasks
+  F001–F029). Next: phase 4 spikes and phase 5 contracts. No contracts, provider accounts or
+  real funds yet.
 
 ---
 
@@ -73,7 +75,7 @@ to a bank when they choose.
 | D-12 | Developer credentials: merchant ID and project ID (public, no authority), secret API key (server only, scoped), webhook signing secret (separate), optional public key for browser components. |
 | D-13 | Hosted checkout and branded components (logo, colors, layout). No custom domains in the MVP. |
 | D-14 | Wrong-chain payments: show strong warnings, offer a support request, review case by case. Never promise recovery. |
-| D-15 | Testing: local tests, fork tests and review first, then personal mainnet trials with tiny amounts. A public developer sandbox is deferred. |
+| D-15 **Changed** | Testing: local tests, fork tests and review first, then a full testnet deployment (Base Sepolia, Arbitrum Sepolia, Arc testnet, Tempo testnet) where the whole product runs end to end with Privy on testnets and faucet tokens, then personal mainnet trials with tiny amounts. Bank withdrawal is built last. A public developer sandbox is still deferred. Changed by Sasha, 2026-10-08: test everything with free testnet tokens before any real money. Privy supports testnets: Base Sepolia and Arbitrum Sepolia are built in; Arc and Tempo testnets are added as custom chains with viem `defineChain`. |
 | D-16 | KYC is deferred for the private prototype only. It must be resolved before other people use real money. |
 | D-17 | Planned chains: Base, Arbitrum, Arc, Tempo (BNB optional). Planned tokens: USDC, USDT. Each chain/token pair is enabled only after its exact contract is verified. |
 | D-18 | No MetaMask connection in the MVP. Cross-chain send and recurring wallet billing are later. |
@@ -228,7 +230,7 @@ flowchart TD
 | 5 | Invoice receiver + factory, tested | `fizz`, `fizz-convert`, `solidity-auditor`, `token-integration-analyzer`, `dimensional-analysis` |
 | 6 | Go API, worker, signer, ledger, outbox | `code-review`, `security-review` |
 | 7 | Logged-in app shell, profile switcher | `impeccable`, `typescript-structure` |
-| 8 | One invoice paid and settled end to end on a local fork | `code-review`, `differential-review` |
+| 8 | One invoice paid and settled end to end on a local fork, then on Base Sepolia | `code-review`, `differential-review` |
 | 9 | Freelancer invoices, shared page, partial/excess/expired/refund flows | `impeccable`, `ux-copy`, `typescript-structure` |
 | 10 | Stores, API keys, webhooks, SDK, checkout components | `typescript-structure`, `security-review` |
 | 11 | Send to profile/wallet, bank withdrawal via one off-ramp | `deep-research` (provider), `security-review` |
@@ -439,7 +441,7 @@ Testnets, sandboxes and local forks only. No real funds.
 | S-3 Gas for profile wallets | Does Privy gas sponsorship cover USDC sends on Base/Arbitrum? Cost? | Sponsored send works on Base Sepolia. | Paymaster (C-07). |
 | S-4 Chains | On Base, Arbitrum, Arc and Tempo testnets with go-ethereum: fetch blocks/receipts, decode USDC `Transfer` logs, read `safe`/`finalized` tags, parse fee/tx types. Note Tempo's custom transaction type. | Logs and receipts decode on all four. | Use raw JSON-RPC for receipts on that chain, or Alloy/viem for that adapter. |
 | S-5 Deterministic deployer | Is CreateX or the standard CREATE2 deployer on all four chains (and testnets)? | Same factory address on all four. | Deploy the factory from a fresh deployer EOA with the same nonce on each chain, or accept that the wrong-chain recovery differs per chain. |
-| S-6 Token contracts | Exact USDC/USDT contracts and decimals per chain (USDT0 vs bridged USDT, Arc/Tempo specifics). | Table of verified contracts with source links. | Leave that pair disabled. |
+| S-6 Token contracts | Exact USDC/USDT contracts and decimals per chain (USDT0 vs bridged USDT, Arc/Tempo specifics), and which test tokens exist on each testnet (if there is no testnet USDT, test its behavior with a mock token that copies its non-standard return values). | Table of verified contracts with source links. | Leave that pair disabled. |
 | S-7 RPC | Alchemy free tier: `eth_getLogs` block range limits, rate limits, `safe`/`finalized` support per chain; monthly cost for 4-chain polling. | Estimated usage fits the free tier during development. | QuickNode. |
 
 **Gate:** Q-06 answered; the chain/token table for Base USDC is verified; spike notes merged.
@@ -498,8 +500,12 @@ Diagrams (mapgrain JSON; open the `.html` files in a browser; rebuild with
 - [ ] `/dimensional-analysis` on amount/decimals math.
 - [ ] `/solidity-auditor` pass + Slither with no high/medium findings left open.
 - [ ] Gas report: deploy-clone + settle cost on Base.
+- [ ] Deploy the factory on Base Sepolia, Arbitrum Sepolia, Arc testnet and Tempo testnet at the
+      same address (S-5) and check that `predict` gives the same receiver address on all four.
+      Needs Sasha's yes for the deployer key, faucet funds and the RPC account.
 
-**Gate:** all tests, fuzz runs and invariants pass in CI; no open high/medium findings.
+**Gate:** all tests, fuzz runs and invariants pass in CI; no open high/medium findings; the
+factory is live on the four testnets at one address.
 
 ---
 
@@ -584,7 +590,7 @@ idempotency key and get one invoice.
 
 ## Phase 8: First money slice (Base + USDC)
 
-**Goal:** the core loop works end to end on a local fork, through the real UI.
+**Goal:** the core loop works end to end on a local fork and on Base Sepolia, through the real UI.
 
 - [ ] Create an invoice from the dashboard (amount, due date, checkout expiry, note).
 - [ ] Hosted checkout page `/pay/<invoice>`: no signup for the payer; freelancer/merchant name,
@@ -597,7 +603,8 @@ idempotency key and get one invoice.
 - [ ] Playwright e2e against the local stack: create → pay on fork → settled.
 - [ ] `/differential-review` of the money path.
 
-**Gate:** the e2e test passes in CI with Anvil; manual run by Sasha on the local stack.
+**Gate:** the e2e test passes in CI with Anvil; manual run by Sasha on Base Sepolia with testnet
+USDC. Then enable Arbitrum Sepolia, Arc testnet and Tempo testnet one at a time (C-01).
 
 ---
 
@@ -688,7 +695,8 @@ Bank withdrawal (needs Q-01 and Q-04):
 - [ ] Signer keys moved to KMS/Turnkey (Q-05); stop-signing switch; alerts on unusual signing.
 - [ ] Reconciliation job that compares ledger vs chain balances and alerts on mismatch.
 - [ ] Recovery drills: signer crash, RPC outage, reorg, webhook outage.
-- [ ] Optional: deploy to Base Sepolia first (free) to catch RPC/indexing issues that forks hide.
+- [ ] Full testnet run on all enabled testnets (D-15): the same invoice script as the mainnet
+      gate (exact, partial, overpaid, expired, late, refund) reconciles to zero difference.
 - [ ] Mainnet deploy of the factory on Base (needs Sasha's yes), invoices of $1–$5, Sasha only.
 - [ ] Legal: jurisdiction, KYC/KYB policy, terms of service, privacy policy before any outside user.
 

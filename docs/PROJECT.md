@@ -16,7 +16,7 @@ PLAN.md. This file holds the current release's requirements and the decisions th
 ## Scope
 
 - First release (PLAN phase 3): R-1…R-12. A walking skeleton, the design system, the private `/kit` page, and a landing page with a mock waitlist.
-- Later, in PLAN order: technical spikes (phase 4), contracts (5), Go backend (6), app shell and profiles (7), first payment on Base + USDC (8), freelancer flow and payment exceptions (9), merchant stores and developer API/SDK (10), send and bank withdrawal (11), security review and tiny mainnet trials (12).
+- Later, in PLAN order: technical spikes (phase 4), contracts (5) with the factory deployed on four testnets, Go backend (6), app shell and profiles (7), first payment on Base Sepolia + USDC (8), freelancer flow and payment exceptions (9), merchant stores and developer API/SDK (10), send and bank withdrawal (11), security review, full testnet run and tiny mainnet trials (12). Everything is tested on public testnets before any mainnet trial (PLAN D-15).
 - Later, before the site is public: the waitlist stores signups for real (PLAN C-09).
 - Out: customer logos, funding badges, or any claim of being regulated, insured or live (PLAN C-08); mobile app; custom checkout domains.
 
