@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!docs/tasks.json", "!docs/install.json"]
+    "includes": ["**", "!docs/tasks.json", "!docs/install.json", "!docs/diagrams"]
   },
   "formatter": {
     "enabled": true,

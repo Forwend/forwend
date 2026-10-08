@@ -1,0 +1,952 @@
+{
+  "schemaVersion": 1,
+  "id": "forwend-contracts-workflow",
+  "revision": 1,
+  "kind": "workflow",
+  "title": "Invoice receiver contracts: full workflow",
+  "theme": "dark",
+  "layoutHints": {
+    "direction": "right",
+    "pinnedNodeIds": []
+  },
+  "groups": [
+    {
+      "id": "creator",
+      "label": "Freelancer or merchant",
+      "parentId": null
+    },
+    {
+      "id": "payer",
+      "label": "Payer",
+      "parentId": null
+    },
+    {
+      "id": "backend",
+      "label": "Backend (api + worker)",
+      "parentId": null
+    },
+    {
+      "id": "signer",
+      "label": "Signer",
+      "parentId": null
+    },
+    {
+      "id": "chain",
+      "label": "Contracts (factory + receiver)",
+      "parentId": null
+    },
+    {
+      "id": "admin",
+      "label": "Platform admin",
+      "parentId": null
+    }
+  ],
+  "nodes": [
+    {
+      "id": "setup",
+      "kind": "job",
+      "label": "Deploy factory once per chain",
+      "groupId": "chain",
+      "ports": [],
+      "description": "CREATE2 deployer gives one address on Base Sepolia, Arbitrum Sepolia, Arc testnet and Tempo testnet (C-03). Mainnet only after trials"
+    },
+    {
+      "id": "create",
+      "kind": "job",
+      "label": "Create invoice",
+      "groupId": "creator",
+      "ports": [],
+      "description": "Amount, token, network, expiry"
+    },
+    {
+      "id": "terms",
+      "kind": "job",
+      "label": "Fix invoice terms",
+      "groupId": "backend",
+      "ports": [],
+      "description": "invoiceId, recipient (profile wallet), token, amount, expiresAt, intendedChainId, refundAuthority, executor. Terms never change"
+    },
+    {
+      "id": "predict",
+      "kind": "job",
+      "label": "Factory.predict(terms)",
+      "groupId": "chain",
+      "ports": [],
+      "description": "View call, no gas. salt = keccak256(terms). Other terms give another address"
+    },
+    {
+      "id": "checkout",
+      "kind": "job",
+      "label": "Show checkout",
+      "groupId": "backend",
+      "ports": [],
+      "description": "Receiver address + QR, network and token warning. Nothing is deployed yet"
+    },
+    {
+      "id": "send",
+      "kind": "job",
+      "label": "Send a plain USDC transfer",
+      "groupId": "payer",
+      "ports": [],
+      "description": "From a wallet or an exchange withdrawal. No approve, no contract call"
+    },
+    {
+      "id": "where",
+      "kind": "decision",
+      "label": "Right network and token?",
+      "groupId": "payer",
+      "ports": []
+    },
+    {
+      "id": "detect",
+      "kind": "job",
+      "label": "Watcher sees Transfer log",
+      "groupId": "backend",
+      "ports": [],
+      "description": "eth_getLogs for allowlisted tokens to active receiver addresses. State: detected, not final"
+    },
+    {
+      "id": "intime",
+      "kind": "decision",
+      "label": "Block time before expiresAt?",
+      "groupId": "backend",
+      "ports": []
+    },
+    {
+      "id": "total",
+      "kind": "decision",
+      "label": "Confirmed total reaches amount?",
+      "groupId": "backend",
+      "ports": [],
+      "description": "Confirmed = safe block (Q-06)"
+    },
+    {
+      "id": "partial",
+      "kind": "job",
+      "label": "Partially paid",
+      "groupId": "backend",
+      "ports": [],
+      "description": "Show remaining amount and deadline"
+    },
+    {
+      "id": "expiry",
+      "kind": "job",
+      "label": "expiresAt passes",
+      "groupId": "backend",
+      "ports": [],
+      "description": "Expired partial stays in the receiver"
+    },
+    {
+      "id": "final",
+      "kind": "job",
+      "label": "Wait for finalized block",
+      "groupId": "backend",
+      "ports": [],
+      "description": "Then queue one settle intent"
+    },
+    {
+      "id": "intent",
+      "kind": "job",
+      "label": "Settle intent",
+      "groupId": "signer",
+      "ports": [],
+      "description": "Re-reads ledger and chain, checks terms match the address, caps amount"
+    },
+    {
+      "id": "deployed",
+      "kind": "decision",
+      "label": "Receiver deployed?",
+      "groupId": "signer",
+      "ports": []
+    },
+    {
+      "id": "deploy",
+      "kind": "job",
+      "label": "Factory.deploy(terms)",
+      "groupId": "chain",
+      "ports": [],
+      "description": "Clone with immutable args at the predicted address. Lazy: only after a confirmed deposit. No initializer to front-run"
+    },
+    {
+      "id": "settle",
+      "kind": "job",
+      "label": "Receiver.settle()",
+      "groupId": "chain",
+      "ports": [],
+      "description": "Executor only. Sends min(balance, amount - settled) to the fixed recipient. Refuses if total never reached amount. Cannot pay twice"
+    },
+    {
+      "id": "wallet",
+      "kind": "job",
+      "label": "Profile wallet gets the invoice amount",
+      "groupId": "creator",
+      "ports": [],
+      "description": "State: settled"
+    },
+    {
+      "id": "excess",
+      "kind": "decision",
+      "label": "Anything left in the receiver?",
+      "groupId": "backend",
+      "ports": []
+    },
+    {
+      "id": "held",
+      "kind": "job",
+      "label": "Held for the payer",
+      "groupId": "backend",
+      "ports": [],
+      "description": "Overpay excess, expired partial or late deposit. Never settled to the creator, never revenue"
+    },
+    {
+      "id": "claim",
+      "kind": "job",
+      "label": "Start a refund claim",
+      "groupId": "payer",
+      "ports": [],
+      "description": "Prove identity and destination. Never auto-refund to an exchange sender"
+    },
+    {
+      "id": "approve",
+      "kind": "decision",
+      "label": "Approve claim?",
+      "groupId": "admin",
+      "ports": []
+    },
+    {
+      "id": "refundsig",
+      "kind": "job",
+      "label": "Sign EIP-712 refund",
+      "groupId": "signer",
+      "ports": [],
+      "description": "refundAuthority signs chain, receiver, invoice, token, amount, to, nonce, deadline"
+    },
+    {
+      "id": "refund",
+      "kind": "job",
+      "label": "Receiver.refund(to, amount, sig)",
+      "groupId": "chain",
+      "ports": [],
+      "description": "One refund per invoice, all held funds. Never touches settled money. Deploys the receiver first if needed"
+    },
+    {
+      "id": "support",
+      "kind": "job",
+      "label": "Wrong-network or wrong-token case",
+      "groupId": "admin",
+      "ports": [],
+      "description": "Payer reports the tx hash. Case-by-case review, recovery never promised"
+    },
+    {
+      "id": "supported",
+      "kind": "decision",
+      "label": "Supported network?",
+      "groupId": "admin",
+      "ports": []
+    },
+    {
+      "id": "recoversig",
+      "kind": "job",
+      "label": "Sign EIP-712 recover",
+      "groupId": "signer",
+      "ports": [],
+      "description": "Same terms give the same address on that chain (C-03)"
+    },
+    {
+      "id": "recover",
+      "kind": "job",
+      "label": "Receiver.recover(token, to, amount, sig)",
+      "groupId": "chain",
+      "ports": [],
+      "description": "Deploy the receiver on that chain if needed, then return the funds"
+    },
+    {
+      "id": "payerback",
+      "kind": "job",
+      "label": "Payer gets the funds back",
+      "groupId": "payer",
+      "ports": []
+    },
+    {
+      "id": "lost",
+      "kind": "job",
+      "label": "No recovery possible",
+      "groupId": "admin",
+      "ports": [],
+      "description": "Unsupported network: tell the payer plainly"
+    },
+    {
+      "id": "done",
+      "kind": "job",
+      "label": "Invoice settled",
+      "groupId": "creator",
+      "ports": []
+    }
+  ],
+  "edges": [
+    {
+      "id": "w1",
+      "source": {
+        "nodeId": "setup"
+      },
+      "target": {
+        "nodeId": "predict"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "one-time setup"
+    },
+    {
+      "id": "w2",
+      "source": {
+        "nodeId": "create"
+      },
+      "target": {
+        "nodeId": "terms"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w3",
+      "source": {
+        "nodeId": "terms"
+      },
+      "target": {
+        "nodeId": "predict"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w4",
+      "source": {
+        "nodeId": "predict"
+      },
+      "target": {
+        "nodeId": "checkout"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "receiver address"
+    },
+    {
+      "id": "w5",
+      "source": {
+        "nodeId": "checkout"
+      },
+      "target": {
+        "nodeId": "send"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w6",
+      "source": {
+        "nodeId": "send"
+      },
+      "target": {
+        "nodeId": "where"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w7",
+      "source": {
+        "nodeId": "where"
+      },
+      "target": {
+        "nodeId": "detect"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "yes"
+    },
+    {
+      "id": "w8",
+      "source": {
+        "nodeId": "where"
+      },
+      "target": {
+        "nodeId": "support"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "no"
+    },
+    {
+      "id": "w9",
+      "source": {
+        "nodeId": "detect"
+      },
+      "target": {
+        "nodeId": "intime"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w10",
+      "source": {
+        "nodeId": "intime"
+      },
+      "target": {
+        "nodeId": "total"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "yes"
+    },
+    {
+      "id": "w11",
+      "source": {
+        "nodeId": "intime"
+      },
+      "target": {
+        "nodeId": "held"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "no: late deposit"
+    },
+    {
+      "id": "w12",
+      "source": {
+        "nodeId": "total"
+      },
+      "target": {
+        "nodeId": "final"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "yes: paid"
+    },
+    {
+      "id": "w13",
+      "source": {
+        "nodeId": "total"
+      },
+      "target": {
+        "nodeId": "partial"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "no"
+    },
+    {
+      "id": "w14",
+      "source": {
+        "nodeId": "partial"
+      },
+      "target": {
+        "nodeId": "send"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "payer tops up"
+    },
+    {
+      "id": "w15",
+      "source": {
+        "nodeId": "partial"
+      },
+      "target": {
+        "nodeId": "expiry"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "no top-up"
+    },
+    {
+      "id": "w16",
+      "source": {
+        "nodeId": "expiry"
+      },
+      "target": {
+        "nodeId": "held"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w17",
+      "source": {
+        "nodeId": "final"
+      },
+      "target": {
+        "nodeId": "intent"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w18",
+      "source": {
+        "nodeId": "intent"
+      },
+      "target": {
+        "nodeId": "deployed"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w19",
+      "source": {
+        "nodeId": "deployed"
+      },
+      "target": {
+        "nodeId": "deploy"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "no"
+    },
+    {
+      "id": "w20",
+      "source": {
+        "nodeId": "deployed"
+      },
+      "target": {
+        "nodeId": "settle"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "yes"
+    },
+    {
+      "id": "w21",
+      "source": {
+        "nodeId": "deploy"
+      },
+      "target": {
+        "nodeId": "settle"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w22",
+      "source": {
+        "nodeId": "settle"
+      },
+      "target": {
+        "nodeId": "wallet"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w23",
+      "source": {
+        "nodeId": "wallet"
+      },
+      "target": {
+        "nodeId": "excess"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w24",
+      "source": {
+        "nodeId": "excess"
+      },
+      "target": {
+        "nodeId": "done"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "no"
+    },
+    {
+      "id": "w25",
+      "source": {
+        "nodeId": "excess"
+      },
+      "target": {
+        "nodeId": "held"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "overpaid"
+    },
+    {
+      "id": "w26",
+      "source": {
+        "nodeId": "held"
+      },
+      "target": {
+        "nodeId": "claim"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w27",
+      "source": {
+        "nodeId": "claim"
+      },
+      "target": {
+        "nodeId": "approve"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w28",
+      "source": {
+        "nodeId": "approve"
+      },
+      "target": {
+        "nodeId": "refundsig"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "approved"
+    },
+    {
+      "id": "w29",
+      "source": {
+        "nodeId": "approve"
+      },
+      "target": {
+        "nodeId": "held"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "rejected: stays held"
+    },
+    {
+      "id": "w30",
+      "source": {
+        "nodeId": "refundsig"
+      },
+      "target": {
+        "nodeId": "refund"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w31",
+      "source": {
+        "nodeId": "refund"
+      },
+      "target": {
+        "nodeId": "payerback"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w32",
+      "source": {
+        "nodeId": "support"
+      },
+      "target": {
+        "nodeId": "supported"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w33",
+      "source": {
+        "nodeId": "supported"
+      },
+      "target": {
+        "nodeId": "recoversig"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "yes, approved"
+    },
+    {
+      "id": "w34",
+      "source": {
+        "nodeId": "supported"
+      },
+      "target": {
+        "nodeId": "lost"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "no"
+    },
+    {
+      "id": "w35",
+      "source": {
+        "nodeId": "recoversig"
+      },
+      "target": {
+        "nodeId": "recover"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w36",
+      "source": {
+        "nodeId": "recover"
+      },
+      "target": {
+        "nodeId": "payerback"
+      },
+      "type": "calls",
+      "direction": "forward"
+    }
+  ],
+  "views": [
+    {
+      "id": "overview",
+      "kind": "overview",
+      "name": "All"
+    },
+    {
+      "id": "view-pay",
+      "kind": "path",
+      "name": "Pay and settle",
+      "path": {
+        "from": "create",
+        "to": "done"
+      },
+      "nodeIds": [
+        "setup",
+        "create",
+        "terms",
+        "predict",
+        "checkout",
+        "send",
+        "where",
+        "detect",
+        "intime",
+        "total",
+        "partial",
+        "final",
+        "intent",
+        "deployed",
+        "deploy",
+        "settle",
+        "wallet",
+        "excess",
+        "done"
+      ],
+      "edgeIds": [
+        "w1",
+        "w2",
+        "w3",
+        "w4",
+        "w5",
+        "w6",
+        "w7",
+        "w9",
+        "w10",
+        "w12",
+        "w13",
+        "w14",
+        "w17",
+        "w18",
+        "w19",
+        "w20",
+        "w21",
+        "w22",
+        "w23",
+        "w24"
+      ]
+    },
+    {
+      "id": "view-refund",
+      "kind": "path",
+      "name": "Held funds and refund",
+      "path": {
+        "from": "held",
+        "to": "payerback"
+      },
+      "nodeIds": [
+        "intime",
+        "expiry",
+        "partial",
+        "excess",
+        "held",
+        "claim",
+        "approve",
+        "refundsig",
+        "refund",
+        "payerback"
+      ],
+      "edgeIds": [
+        "w11",
+        "w15",
+        "w16",
+        "w25",
+        "w26",
+        "w27",
+        "w28",
+        "w29",
+        "w30",
+        "w31"
+      ]
+    },
+    {
+      "id": "view-recover",
+      "kind": "path",
+      "name": "Wrong network or token",
+      "path": {
+        "from": "where",
+        "to": "payerback"
+      },
+      "nodeIds": [
+        "send",
+        "where",
+        "support",
+        "supported",
+        "recoversig",
+        "recover",
+        "payerback",
+        "lost"
+      ],
+      "edgeIds": [
+        "w6",
+        "w8",
+        "w32",
+        "w33",
+        "w34",
+        "w35",
+        "w36"
+      ]
+    }
+  ],
+  "layout": {
+    "version": 1,
+    "revision": 1,
+    "positions": {
+      "create": {
+        "x": 28,
+        "y": 22
+      },
+      "wallet": {
+        "x": 4937,
+        "y": 22
+      },
+      "done": {
+        "x": 5589,
+        "y": 22
+      },
+      "send": {
+        "x": 1440,
+        "y": 183
+      },
+      "where": {
+        "x": 1789,
+        "y": 183
+      },
+      "claim": {
+        "x": 5928,
+        "y": 183
+      },
+      "payerback": {
+        "x": 7253,
+        "y": 183
+      },
+      "terms": {
+        "x": 386,
+        "y": 395
+      },
+      "checkout": {
+        "x": 1085,
+        "y": 395
+      },
+      "detect": {
+        "x": 2127,
+        "y": 395
+      },
+      "intime": {
+        "x": 2482,
+        "y": 395
+      },
+      "total": {
+        "x": 2772,
+        "y": 395
+      },
+      "partial": {
+        "x": 3276,
+        "y": 395
+      },
+      "final": {
+        "x": 3276,
+        "y": 492
+      },
+      "expiry": {
+        "x": 3617,
+        "y": 395
+      },
+      "excess": {
+        "x": 5271,
+        "y": 395
+      },
+      "held": {
+        "x": 5589,
+        "y": 395
+      },
+      "recoversig": {
+        "x": 2772,
+        "y": 681
+      },
+      "intent": {
+        "x": 3617,
+        "y": 681
+      },
+      "deployed": {
+        "x": 3970,
+        "y": 681
+      },
+      "refundsig": {
+        "x": 6539,
+        "y": 681
+      },
+      "setup": {
+        "x": 28,
+        "y": 893
+      },
+      "predict": {
+        "x": 737,
+        "y": 893
+      },
+      "recover": {
+        "x": 3276,
+        "y": 893
+      },
+      "deploy": {
+        "x": 4244,
+        "y": 893
+      },
+      "settle": {
+        "x": 4598,
+        "y": 893
+      },
+      "refund": {
+        "x": 6897,
+        "y": 893
+      },
+      "support": {
+        "x": 2127,
+        "y": 1082
+      },
+      "supported": {
+        "x": 2482,
+        "y": 1082
+      },
+      "lost": {
+        "x": 2772,
+        "y": 1082
+      },
+      "approve": {
+        "x": 6279,
+        "y": 1082
+      }
+    }
+  }
+}

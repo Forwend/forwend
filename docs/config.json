@@ -96,6 +96,14 @@
       "id": "lighthouse",
       "argv": ["pnpm", "--filter", "@forwend/web", "lighthouse"],
       "timeoutSeconds": 900
+    },
+    {
+      "id": "diagrams",
+      "argv": [
+        "sh",
+        "-c",
+        "for f in docs/diagrams/*.json; do npx -y mapgrain@0.2.5 validate \"$f\" || exit 1; done"
+      ]
     }
   ],
   "delivery": {
