@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "forwend-contracts-workflow",
-  "revision": 4,
+  "revision": 6,
   "kind": "workflow",
   "title": "Invoice receiver contracts v1: full workflow",
   "theme": "dark",
@@ -48,7 +48,7 @@
       "label": "Deploy factory v1 once per chain",
       "groupId": "chain",
       "ports": [],
-      "description": "CREATE2 deployer: same factory address on Base Sepolia, Arbitrum Sepolia, Arc testnet, Tempo testnet. The refund-authority Safe also has one address on all of them"
+      "description": "CREATE2 deployer (never nonce-based): same factory address and bytecode on Base Sepolia, Arbitrum Sepolia, Arc testnet, Tempo testnet. The factory holds the refund authority (Safe) and the executor; they are not in the terms"
     },
     {
       "id": "login",
@@ -102,15 +102,15 @@
       "label": "Fix invoice terms",
       "groupId": "backend",
       "ports": [],
-      "description": "invoiceId, recipient, token, amount, expiresAt, intendedChainId, refundAuthority (Safe), executor. Terms never change"
+      "description": "invoiceId (256 random bits), recipient, token, amount, expiresAt (default 1 h, creator can change), settleDeadline, intendedChainId. Terms never change"
     },
     {
       "id": "predict",
       "kind": "job",
-      "label": "Factory.predict(terms)",
+      "label": "Compute receiver address",
       "groupId": "chain",
       "ports": [],
-      "description": "View call, no gas. Other terms give another address"
+      "description": "Locally, from the factory address and init-code hash compiled into the backend (same result as Factory.predict). Never from the database or an RPC"
     },
     {
       "id": "save",
@@ -126,7 +126,7 @@
       "label": "Show checkout",
       "groupId": "backend",
       "ports": [],
-      "description": "Full address and QR, copy only from this page. Warnings: other networks can lose money; USDC.e is a different token"
+      "description": "The page recomputes the address from the terms and refuses a mismatch; no third-party scripts. Warnings: other networks can lose money; USDC.e is a different token"
     },
     {
       "id": "cancel",
@@ -203,7 +203,7 @@
       "label": "Wait for finalized block",
       "groupId": "backend",
       "ports": [],
-      "description": "Then queue one settle intent"
+      "description": "A second RPC confirms the balance; then queue one settle intent"
     },
     {
       "id": "intent",
@@ -216,7 +216,7 @@
     {
       "id": "window",
       "kind": "decision",
-      "label": "Before expiresAt + settle window?",
+      "label": "Before settleDeadline?",
       "groupId": "signer",
       "ports": []
     },
@@ -241,7 +241,7 @@
       "label": "Receiver.settle()",
       "groupId": "chain",
       "ports": [],
-      "description": "Exactly amount to the fixed recipient, once. Needs balance >= amount and no pause. Executor until the window ends, then only the multisig"
+      "description": "Intended chain only. Exactly amount to the fixed recipient, once; checks the recipient received it. Needs balance >= amount and no pause. Executor until settleDeadline, then only the multisig"
     },
     {
       "id": "wallet",
@@ -271,7 +271,7 @@
       "label": "Paid on time? (our outage)",
       "groupId": "admin",
       "ports": [],
-      "description": "Settlement missed the window"
+      "description": "Settlement missed settleDeadline"
     },
     {
       "id": "pause",
@@ -310,7 +310,7 @@
       "label": "Multisig approves refund",
       "groupId": "admin",
       "ports": [],
-      "description": "A proposed Safe transaction; several owners approve. One refund per approved claim (D-08)"
+      "description": "A proposed Safe transaction; owners check the hash with an independent tool; 24-48 h delay. One refund per approved claim (D-08), to the sender by default"
     },
     {
       "id": "refund",
@@ -318,7 +318,7 @@
       "label": "Receiver.refund(to, amount)",
       "groupId": "chain",
       "ports": [],
-      "description": "Refund authority only. Total never above the refundable amount; never the amount owed before the window ends. If not deployed yet, the same Safe transaction calls Factory.deploy first"
+      "description": "Refund authority only, intended chain only. May repeat; never more than the refundable amount, never the amount owed before settleDeadline. If not deployed yet, the queued Safe transaction calls Factory.deploy first (MultiSendCallOnly)"
     },
     {
       "id": "payerback",
@@ -355,7 +355,8 @@
       "kind": "job",
       "label": "Multisig approves recover",
       "groupId": "admin",
-      "ports": []
+      "ports": [],
+      "description": "Same Safe rules: independent hash check, 24-48 h delay"
     },
     {
       "id": "recover",
@@ -363,7 +364,7 @@
       "label": "Receiver.recover(token, to, amount)",
       "groupId": "chain",
       "ports": [],
-      "description": "If not deployed on that chain, the same Safe transaction calls Factory.deploy first. Any non-invoice token, the native coin, or a wrong chain"
+      "description": "Any non-invoice token, the native coin, or a wrong chain. On the intended chain it never lowers the invoice-token balance (Arc: native coin = USDC). If not deployed on that chain, the queued Safe transaction calls Factory.deploy first (MultiSendCallOnly)"
     },
     {
       "id": "lost",

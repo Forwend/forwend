@@ -441,7 +441,7 @@ Testnets, sandboxes and local forks only. No real funds.
 | S-2 Privy wallets per profile | Can one Privy user own several embedded wallets (one per profile), and who must approve a send? | Several wallets per user, sends signed by the user. | One wallet with ledger sub-balances (worse), or another provider. |
 | S-3 Gas for profile wallets | Does Privy gas sponsorship cover USDC sends on Base/Arbitrum? Cost? | Sponsored send works on Base Sepolia. | Paymaster (C-07). |
 | S-4 Chains | On Base, Arbitrum, Arc and Tempo testnets with go-ethereum: fetch blocks/receipts, decode USDC `Transfer` logs, read `safe`/`finalized` tags, parse fee/tx types. Note Tempo's custom transaction type. | Logs and receipts decode on all four. | Use raw JSON-RPC for receipts on that chain, or Alloy/viem for that adapter. |
-| S-5 Deterministic deployer | Is CreateX or the standard CREATE2 deployer on all four chains (and testnets)? Can the refund-authority Safe be deployed at one address on all four? | Same factory address on all four. | Deploy the factory from a fresh deployer EOA with the same nonce on each chain, or accept that the wrong-chain recovery differs per chain. |
+| S-5 Deterministic deployer | Is CreateX or the standard CREATE2 deployer on all four chains (and testnets)? Can the refund-authority Safe be deployed at one address on all four? | Same factory address on all four. Testnets: passed 2026-10-09 ([notes](docs/spikes/s5-s6-testnets.md)). | Never a nonce-based fallback (a leaked deployer key could put other code at our address on a new chain). That chain gets its own factory address and no cross-chain recovery. |
 | S-6 Token contracts | Exact USDC/USDT contracts and decimals per chain (USDT0 vs bridged USDT, Arc/Tempo specifics), and which test tokens exist on each testnet (if there is no testnet USDT, test its behavior with a mock token that copies its non-standard return values). | Table of verified contracts with source links. | Leave that pair disabled. |
 | S-7 RPC | Alchemy free tier: `eth_getLogs` block range limits, rate limits, `safe`/`finalized` support per chain; monthly cost for 4-chain polling. | Estimated usage fits the free tier during development. | QuickNode. |
 
@@ -461,55 +461,65 @@ Diagrams (mapgrain JSON; open one in the editor with `npx mapgrain@0.2.5 studio 
 [invoice states](docs/diagrams/invoice-lifecycle.json),
 [who can move money](docs/diagrams/security-keys.json).
 
+The full rule list, each with a test, is in [packages/contracts/AGENTS.md](packages/contracts/AGENTS.md).
+
 - `InvoiceReceiverFactory`
-  - `predict(terms) → address` (view) and `deploy(terms) → address`.
-  - Receiver = OZ clone with immutable args (C-04). `salt = keccak256(abi.encode(terms))`.
-  - Terms: `invoiceId (bytes32)`, `recipient`, `token`, `amount`, `expiresAt`, `intendedChainId`,
-    `refundAuthority`, `executor`. Deploying with other terms gives a different address, so nobody
-    can take over an address with different terms.
-  - Deployed at the same address on every chain (C-03).
-  - `paused` flag, set only by the refund authority. While on, every receiver from this factory
-    refuses `settle()`. It never blocks refunds and cannot move funds.
+  - `predict(terms) → address` (view) and `deploy(terms) → address`. Receiver = OZ clone with
+    immutable args (C-04). Other terms give another address, so nobody can take over an address.
+  - Terms: `invoiceId` (256 random bits), `recipient`, `token`, `amount`, `expiresAt`,
+    `settleDeadline`, `intendedChainId`. No authority or executor in the terms: the API writes the
+    terms and must not be able to choose who can move money.
+  - `refundAuthority` is an immutable constructor argument (the Safe multisig; a test EOA on
+    testnets). `executor` is stored in the factory and only the refund authority can change it.
+  - `paused`, set only by the refund authority, blocks `settle()` on every receiver; never refunds.
+  - Creates the implementation in its constructor; `deploy` returns an already deployed receiver
+    and records every receiver it deploys.
+  - Deployed through the CREATE2 deployer with identical bytecode, so it has the same address on
+    every chain (C-03). Never a nonce-based deployment.
   - One factory per release (`v1`, `v2`, ...). New invoices use the newest; old factories stay
     deployed so old receivers can still be deployed for recovery.
 - `InvoiceReceiver`
-  - `settle()`: sends exactly `amount` of `token` to the fixed `recipient`, once. Requires the
-    balance ≥ `amount`, not settled before, and the factory not paused. The executor may call it
-    until `expiresAt + settleWindow` (a few minutes for finality); after that only the refund
-    authority may, for an on-time payment whose settlement was missed. A plain ERC-20 transfer
-    does not call the receiver, so the contract cannot see when each deposit arrived: the deadline
-    closes most late cases on-chain, and the backend checks block times for the rest.
+  - `settle()`: sends exactly `amount` of `token` to `recipient`, once, on the intended chain only.
+    Requires balance ≥ `amount` and no pause. The executor may call it until `settleDeadline`
+    (default 24 h after `expiresAt`, longer than finality on every chain); after that only the
+    refund authority, for an on-time payment whose settlement was missed. Checks that the
+    recipient received exactly `amount`. A plain ERC-20 transfer does not call the receiver, so the
+    contract cannot see when each deposit arrived: the backend checks block times for late money.
   - `refund(to, amount)`: refund authority only (the Safe calls it directly, so there are no
-    signatures to replay across chains). May be called more than once (D-08), but the total never
-    exceeds the refundable amount: the whole balance once settled or after the settle window;
-    before that, only what is above `amount`, so the recipient's money is never refunded.
-  - `recover(token, to, amount)`: refund authority only. Returns any token that is not the invoice
-    token, the native coin (`token = address(0)`), or anything on a chain other than
-    `intendedChainId` (C-03). The receiver has no `receive()`: a native-coin transfer after
-    deployment is rejected, so the payer keeps it; a transfer before deployment is recoverable.
-  - No admin sweep, no proxy or upgrade, no owner that can take funds. A bug is fixed by a new
-    factory version; the pause stops settlement meanwhile.
-  - `recipient` is the profile wallet read from Privy by the signer, never from user input. A
-    contract cannot tell the right recipient from a wrong one, so this check lives in the backend
-    (Phase 6).
-  - Uses `SafeERC20`; only allowlisted tokens (the backend only creates invoices for verified
-    token contracts; fee-on-transfer tokens are not allowed).
+    signatures to replay). May repeat (D-08), never above the refundable amount: the whole balance
+    once settled or after `settleDeadline`; before that, only what is above `amount`.
+  - `recover(token, to, amount)`: refund authority only. Any token that is not the invoice token,
+    the native coin (`address(0)`), or anything on a chain other than `intendedChainId` (C-03). On
+    the intended chain it never lowers the invoice-token balance (on Arc the native coin is USDC).
+    No `receive()`: a native transfer after deployment is rejected, so the payer keeps it.
+  - No admin sweep, no proxy or upgrade, no `approve`, no signature validation, no
+    `delegatecall`, no `selfdestruct`. A bug is fixed by a new factory version; the pause stops
+    settlement meanwhile.
+  - `recipient` is the profile wallet read from Privy, never from user input; the contract cannot
+    tell a right recipient from a wrong one, so this check lives in the backend (Phase 6).
+  - Uses `SafeERC20`; only allowlisted tokens (fee-on-transfer tokens are not allowed).
+- Refund-authority Safe: 1.4.1+, at least 3 of 5 hardware-key owners, same address on every chain
+  and deployed on all of them on day one. Refunds, recoveries, post-deadline settles, Safe admin
+  changes and the delay's own settings go only through a 24–48 h Delay module; a Guard allows
+  direct transactions only for pause, executor change, and queuing or cancelling on the Delay
+  module, never with `delegatecall`. Details in `packages/contracts/AGENTS.md`.
 
 ### Done-list
 - [x] Foundry project in `packages/contracts/`, OZ 5.7.0 pinned (F035).
-- [ ] Unit tests for: exact pay, partial then top-up, overpay (settle amount, excess held),
+- [ ] A unit test for every rule in `packages/contracts/AGENTS.md`, including: exact pay, partial then top-up, overpay (settle amount, excess held),
       expired partial (no settle, refund works), late deposit, double settle blocked, settle
-      refused after the window, multisig settle after the window, two refunds within the
-      refundable amount, refund above it blocked, refund before the window cannot take `amount`,
+      refused after `settleDeadline`, multisig settle after it, two refunds within the
+      refundable amount, refund above it blocked, refund before `settleDeadline` cannot take `amount`,
       non-multisig caller blocked, pause blocks settle but not refund, `recover()` on another
       token and on the native coin, native transfer after deploy rejected, cross-chain
       same-address check and same call rejected on the other chain (two Anvil instances).
-- [ ] Fork test against Base (real USDC contract).
+- [ ] Halmos symbolic tests for `settle`, `refund` and `recover`.
+- [ ] Fork test against Base Sepolia (real USDC contract).
 - [ ] `/fizz` to generate a stateful fuzz suite (Echidna/Medusa), `/fizz-convert` for these
       invariants:
       - settled ≤ amount, always;
       - settled + refunded ≤ total received;
-      - refunds never take the `amount` owed to `recipient` before the settle window ends;
+      - refunds never take the `amount` owed to `recipient` before `settleDeadline`;
       - only `recipient` ever receives settlement;
       - executor alone cannot move funds anywhere except `recipient`.
 - [ ] `/token-integration-analyzer` on USDC/USDT behavior (USDT's non-standard `approve`/return values,
@@ -518,11 +528,13 @@ Diagrams (mapgrain JSON; open one in the editor with `npx mapgrain@0.2.5 studio 
 - [ ] `/solidity-auditor` pass + Slither with no high/medium findings left open.
 - [ ] Gas report: deploy-clone + settle cost on Base.
 - [ ] Deploy the factory on Base Sepolia, Arbitrum Sepolia, Arc testnet and Tempo testnet at the
-      same address (S-5) and check that `predict` gives the same receiver address on all four.
-      Needs Sasha's yes for the deployer key, faucet funds and the RPC account.
+      same address through the CREATE2 deployer (S-5), deploy one real receiver on each and check
+      it matches `predict`. Burner deployer key, test refund-authority key and Infura keys are in
+      the root `.env` (approved by Sasha, 2026-10-09).
 
 **Gate:** all tests, fuzz runs and invariants pass in CI; no open high/medium findings; the
-factory is live on the four testnets at one address.
+factory is live on the four testnets at one address, and a real receiver deployed on each matches
+`predict`.
 
 ---
 
@@ -572,7 +584,15 @@ held funds ──verified claim + platform approval──▶ refund_pending ─�
 ### Done-list
 - [ ] Go module, three binaries, `sqlc` + migrations, Docker Compose (Postgres + Anvil fork of Base).
 - [ ] Privy token verification middleware; profile authorization on every request.
-- [ ] Invoice create with idempotency key; the receiver address is predicted from the factory.
+- [ ] Invoice create with idempotency key and a 256-bit random `invoiceId`; checkout expiry
+      defaults to 1 hour after creation, and the creator can change it per invoice (merchants set
+      their own default in settings, Phase 10).
+- [ ] The receiver address is computed locally from the factory address and init-code hash
+      compiled into the binary (never from the database or an RPC call); `(chain_id,
+      receive_address)` is unique; the watcher alerts on any invoice whose address does not
+      recompute.
+- [ ] A second, independent RPC confirms the balance before an invoice is marked paid or a
+      webhook is sent.
 - [ ] Watcher with block cursor, safe/finalized handling and a reorg test (Anvil `anvil_reorg`
       or snapshot/revert).
 - [ ] Ledger + state machine with SQL-enforced transitions; property tests for the state machine.
@@ -615,11 +635,15 @@ idempotency key and get one invoice.
 
 **Goal:** the core loop works end to end on a local fork and on Base Sepolia, through the real UI.
 
-- [ ] Create an invoice from the dashboard (amount, due date, checkout expiry, note).
+- [ ] Create an invoice from the dashboard (amount, due date, checkout expiry (default 1 hour, the
+      creator can change it), note).
 - [ ] Hosted checkout page `/pay/<invoice>`: no signup for the payer; freelancer/merchant name,
       invoice number, amount, token, network, gas note, address + QR, copy button behind a
       "network confirmed" checkbox, live status (polling or server-sent events).
 - [ ] Separate "pay from a wallet" and "pay from an exchange" instructions.
+- [ ] The checkout page recomputes the receive address from the terms and refuses to show a
+      mismatch; it loads no third-party scripts; a canary compares the live address with the
+      database.
 - [ ] States on checkout and dashboard: detected, confirming, paid, settled.
 - [ ] Settlement lands in the profile wallet; activity shows it with the tx hash.
 - [ ] Receipt page (shareable) and a PDF invoice/receipt.
@@ -668,6 +692,8 @@ refunded, late deposit → held.
 **Goal:** merchants accept payments through the hosted checkout, API, SDK or components.
 
 - [ ] Merchant profile → stores/projects; branding per store (logo, colors).
+- [ ] Merchant settings: default checkout expiry (1 hour unless changed); the API can override it
+      per invoice.
 - [ ] Team roles: Admin (all stores), Developer and Finance (assigned stores). Store-scoped checks
       on every API call; a test that another merchant's project ID is rejected.
 - [ ] Secret API keys: shown once, stored hashed, scoped, revocable; prefix such as `fw_sk_`.
