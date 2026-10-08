@@ -1,9 +1,9 @@
+import { FreelancerIcon, MerchantIcon, PaymentPathIcon } from "@forwend/ui-web";
 import {
   AlertTriangle,
   ArrowDownLeft,
   ArrowRight,
   ArrowUpRight,
-  Building2,
   Check,
   Clock,
   Code2,
@@ -36,7 +36,9 @@ export const KIT_ICONS = [
   { name: "Warning", Icon: AlertTriangle },
   { name: "Security", Icon: Shield },
   { name: "Personal", Icon: User },
-  { name: "Merchant", Icon: Building2 },
+  { name: "Merchant", Icon: MerchantIcon },
+  { name: "Freelancer", Icon: FreelancerIcon },
+  { name: "Payment path", Icon: PaymentPathIcon },
   { name: "Developers", Icon: Code2 },
   { name: "Next", Icon: ArrowRight },
 ] as const;

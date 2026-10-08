@@ -29,8 +29,9 @@ export function Tabs({ items, label, defaultValue }: TabsProps) {
           <RadixTabs.Trigger
             key={item.value}
             value={item.value}
-            className="shrink-0 rounded-pill px-4 py-2 text-sm font-medium text-muted transition-colors duration-[var(--fw-duration-fast)] ease-out hover:text-ink data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-sm"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-pill px-4 py-2 text-sm font-medium text-muted transition-colors duration-[var(--fw-duration-fast)] ease-out hover:text-ink data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-sm"
           >
+            {item.icon}
             {item.label}
           </RadixTabs.Trigger>
         ))}
@@ -76,13 +77,14 @@ export function Accordion({ items }: AccordionProps) {
   );
 }
 
-export function Tooltip({ content, children }: TooltipProps) {
+export function Tooltip({ content, children, side = "top" }: TooltipProps) {
   return (
     <RadixTooltip.Provider delayDuration={DURATION_MS.base}>
       <RadixTooltip.Root>
         <RadixTooltip.Trigger asChild>{children}</RadixTooltip.Trigger>
         <RadixTooltip.Portal>
           <RadixTooltip.Content
+            side={side}
             sideOffset={6}
             className="z-[var(--fw-z-overlay)] max-w-xs rounded-md bg-primary px-3 py-1.5 text-xs text-on-primary shadow-md"
           >

@@ -12,6 +12,7 @@ import { encode } from "uqr";
 import { ACTIVITY_DIRECTIONS } from "../constants/activity";
 import { PAYMENT_STATUSES } from "../constants/payment-status";
 import { STEP_STATES } from "../constants/timeline";
+import { BrandIcon } from "../icons/brand-icon";
 import { cx } from "../lib/cx";
 import { formatTokenAmount } from "../lib/money";
 import { TONE_CLASSES } from "../lib/tone";
@@ -26,6 +27,7 @@ import type {
   StatusPillProps,
   TokenChipProps,
 } from "../types/payments/display";
+import type { BrandIconName } from "../types/ui/icons";
 
 export function Money({ baseUnits, decimals, token, fractionDigits, className }: MoneyProps) {
   return (
@@ -38,11 +40,23 @@ export function Money({ baseUnits, decimals, token, fractionDigits, className }:
   );
 }
 
+// Tokens with a published logo show it; others show the ticker only.
+const TOKEN_LOGOS: Partial<Record<string, BrandIconName>> = { USDC: "usdc", USDT: "usdt" };
+const NETWORK_LOGOS: Partial<Record<string, BrandIconName>> = { Base: "base" };
+
 export function TokenChip({ token, network }: TokenChipProps) {
+  const tokenLogo = TOKEN_LOGOS[token];
+  const networkLogo = NETWORK_LOGOS[network];
   return (
     <span className="inline-flex items-center overflow-hidden rounded-pill border border-line text-xs font-medium">
-      <span className="bg-surface px-2.5 py-1 text-ink">{token}</span>
-      <span className="border-l border-line bg-surface-2 px-2.5 py-1 text-muted">{network}</span>
+      <span className="inline-flex items-center gap-1.5 bg-surface px-2.5 py-1 text-ink">
+        {tokenLogo ? <BrandIcon name={tokenLogo} className="size-[var(--fw-icon-sm)]" /> : null}
+        {token}
+      </span>
+      <span className="inline-flex items-center gap-1.5 border-l border-line bg-surface-2 px-2.5 py-1 text-muted">
+        {networkLogo ? <BrandIcon name={networkLogo} className="size-3.5" /> : null}
+        {network}
+      </span>
     </span>
   );
 }

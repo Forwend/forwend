@@ -64,7 +64,10 @@ export default function KitPage() {
       <KitSection title="Motion" note="Exponential ease-out from a visible resting state.">
         <MotionSamples />
       </KitSection>
-      <KitSection title="Icons" note="Lucide, 1.75 stroke.">
+      <KitSection
+        title="Icons"
+        note="Lucide plus Forwend icons (Merchant, Freelancer, Payment path), one 1.75 stroke."
+      >
         <IconSet />
       </KitSection>
       <KitSection title="Components">
