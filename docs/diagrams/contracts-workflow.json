@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "forwend-contracts-workflow",
-  "revision": 1,
+  "revision": 4,
   "kind": "workflow",
-  "title": "Invoice receiver contracts: full workflow",
+  "title": "Invoice receiver contracts v1: full workflow",
   "theme": "dark",
   "layoutHints": {
     "direction": "right",
@@ -27,7 +27,7 @@
     },
     {
       "id": "signer",
-      "label": "Signer",
+      "label": "Signer (executor key)",
       "parentId": null
     },
     {
@@ -37,7 +37,7 @@
     },
     {
       "id": "admin",
-      "label": "Platform admin",
+      "label": "Platform admin + Safe multisig",
       "parentId": null
     }
   ],
@@ -45,10 +45,17 @@
     {
       "id": "setup",
       "kind": "job",
-      "label": "Deploy factory once per chain",
+      "label": "Deploy factory v1 once per chain",
       "groupId": "chain",
       "ports": [],
-      "description": "CREATE2 deployer gives one address on Base Sepolia, Arbitrum Sepolia, Arc testnet and Tempo testnet (C-03). Mainnet only after trials"
+      "description": "CREATE2 deployer: same factory address on Base Sepolia, Arbitrum Sepolia, Arc testnet, Tempo testnet. The refund-authority Safe also has one address on all of them"
+    },
+    {
+      "id": "login",
+      "kind": "job",
+      "label": "Log in with Privy",
+      "groupId": "creator",
+      "ports": []
     },
     {
       "id": "create",
@@ -56,7 +63,38 @@
       "label": "Create invoice",
       "groupId": "creator",
       "ports": [],
-      "description": "Amount, token, network, expiry"
+      "description": "Amount, token, network, expiry. Merchants: through the API, one invoice per order or per payment-link visit"
+    },
+    {
+      "id": "auth",
+      "kind": "job",
+      "label": "Check session and profile",
+      "groupId": "backend",
+      "ports": [],
+      "description": "Verify the Privy token; the user may act for this profile"
+    },
+    {
+      "id": "valid",
+      "kind": "decision",
+      "label": "Request valid?",
+      "groupId": "backend",
+      "ports": [],
+      "description": "Idempotency key, token on the allowlist, amount at least the minimum"
+    },
+    {
+      "id": "reject",
+      "kind": "job",
+      "label": "Reject request",
+      "groupId": "backend",
+      "ports": []
+    },
+    {
+      "id": "recipient",
+      "kind": "job",
+      "label": "Read recipient from profile wallet",
+      "groupId": "backend",
+      "ports": [],
+      "description": "From the Privy wallet record, never from the request"
     },
     {
       "id": "terms",
@@ -64,7 +102,7 @@
       "label": "Fix invoice terms",
       "groupId": "backend",
       "ports": [],
-      "description": "invoiceId, recipient (profile wallet), token, amount, expiresAt, intendedChainId, refundAuthority, executor. Terms never change"
+      "description": "invoiceId, recipient, token, amount, expiresAt, intendedChainId, refundAuthority (Safe), executor. Terms never change"
     },
     {
       "id": "predict",
@@ -72,7 +110,15 @@
       "label": "Factory.predict(terms)",
       "groupId": "chain",
       "ports": [],
-      "description": "View call, no gas. salt = keccak256(terms). Other terms give another address"
+      "description": "View call, no gas. Other terms give another address"
+    },
+    {
+      "id": "save",
+      "kind": "job",
+      "label": "Save invoice and watch address",
+      "groupId": "backend",
+      "ports": [],
+      "description": "Terms, address, receive_method = evm_create2 (C-10). The watcher adds the address"
     },
     {
       "id": "checkout",
@@ -80,7 +126,15 @@
       "label": "Show checkout",
       "groupId": "backend",
       "ports": [],
-      "description": "Receiver address + QR, network and token warning. Nothing is deployed yet"
+      "description": "Full address and QR, copy only from this page. Warnings: other networks can lose money; USDC.e is a different token"
+    },
+    {
+      "id": "cancel",
+      "kind": "job",
+      "label": "Cancel invoice (optional)",
+      "groupId": "creator",
+      "ports": [],
+      "description": "Backend stops settling; anything sent later is held"
     },
     {
       "id": "send",
@@ -94,7 +148,7 @@
       "id": "where",
       "kind": "decision",
       "label": "Right network and token?",
-      "groupId": "payer",
+      "groupId": "backend",
       "ports": []
     },
     {
@@ -103,7 +157,14 @@
       "label": "Watcher sees Transfer log",
       "groupId": "backend",
       "ports": [],
-      "description": "eth_getLogs for allowlisted tokens to active receiver addresses. State: detected, not final"
+      "description": "Allowlisted token to an active receiver address. State: detected, not final"
+    },
+    {
+      "id": "dust",
+      "kind": "decision",
+      "label": "At least the minimum?",
+      "groupId": "backend",
+      "ports": []
     },
     {
       "id": "intime",
@@ -150,7 +211,14 @@
       "label": "Settle intent",
       "groupId": "signer",
       "ports": [],
-      "description": "Re-reads ledger and chain, checks terms match the address, caps amount"
+      "description": "Re-reads ledger and chain, and the recipient from Privy. Refuses if anything differs from the terms"
+    },
+    {
+      "id": "window",
+      "kind": "decision",
+      "label": "Before expiresAt + settle window?",
+      "groupId": "signer",
+      "ports": []
     },
     {
       "id": "deployed",
@@ -165,7 +233,7 @@
       "label": "Factory.deploy(terms)",
       "groupId": "chain",
       "ports": [],
-      "description": "Clone with immutable args at the predicted address. Lazy: only after a confirmed deposit. No initializer to front-run"
+      "description": "Clone with immutable args at the predicted address. Lazy: only after a confirmed deposit. Anyone may call it; same terms, same address"
     },
     {
       "id": "settle",
@@ -173,7 +241,7 @@
       "label": "Receiver.settle()",
       "groupId": "chain",
       "ports": [],
-      "description": "Executor only. Sends min(balance, amount - settled) to the fixed recipient. Refuses if total never reached amount. Cannot pay twice"
+      "description": "Exactly amount to the fixed recipient, once. Needs balance >= amount and no pause. Executor until the window ends, then only the multisig"
     },
     {
       "id": "wallet",
@@ -191,12 +259,35 @@
       "ports": []
     },
     {
+      "id": "done",
+      "kind": "job",
+      "label": "Invoice settled",
+      "groupId": "creator",
+      "ports": []
+    },
+    {
+      "id": "missed",
+      "kind": "decision",
+      "label": "Paid on time? (our outage)",
+      "groupId": "admin",
+      "ports": [],
+      "description": "Settlement missed the window"
+    },
+    {
+      "id": "pause",
+      "kind": "job",
+      "label": "Pause switch",
+      "groupId": "admin",
+      "ports": [],
+      "description": "Multisig sets the factory pause: settle stops, refunds still work. Used when a bug is found"
+    },
+    {
       "id": "held",
       "kind": "job",
       "label": "Held for the payer",
       "groupId": "backend",
       "ports": [],
-      "description": "Overpay excess, expired partial or late deposit. Never settled to the creator, never revenue"
+      "description": "Overpay excess, expired partial, late deposit, dust, or money after cancel. Never settled to the creator, never revenue"
     },
     {
       "id": "claim",
@@ -214,20 +305,27 @@
       "ports": []
     },
     {
-      "id": "refundsig",
+      "id": "saferefund",
       "kind": "job",
-      "label": "Sign EIP-712 refund",
-      "groupId": "signer",
+      "label": "Multisig approves refund",
+      "groupId": "admin",
       "ports": [],
-      "description": "refundAuthority signs chain, receiver, invoice, token, amount, to, nonce, deadline"
+      "description": "A proposed Safe transaction; several owners approve. One refund per approved claim (D-08)"
     },
     {
       "id": "refund",
       "kind": "job",
-      "label": "Receiver.refund(to, amount, sig)",
+      "label": "Receiver.refund(to, amount)",
       "groupId": "chain",
       "ports": [],
-      "description": "One refund per invoice, all held funds. Never touches settled money. Deploys the receiver first if needed"
+      "description": "Refund authority only. Total never above the refundable amount; never the amount owed before the window ends. If not deployed yet, the same Safe transaction calls Factory.deploy first"
+    },
+    {
+      "id": "payerback",
+      "kind": "job",
+      "label": "Payer gets the money back",
+      "groupId": "payer",
+      "ports": []
     },
     {
       "id": "support",
@@ -235,52 +333,45 @@
       "label": "Wrong-network or wrong-token case",
       "groupId": "admin",
       "ports": [],
-      "description": "Payer reports the tx hash. Case-by-case review, recovery never promised"
+      "description": "Payer reports the tx hash. Includes USDC.e and native coins"
     },
     {
       "id": "supported",
       "kind": "decision",
-      "label": "Supported network?",
+      "label": "Our factory on that chain?",
       "groupId": "admin",
       "ports": []
     },
     {
-      "id": "recoversig",
-      "kind": "job",
-      "label": "Sign EIP-712 recover",
-      "groupId": "signer",
+      "id": "review",
+      "kind": "decision",
+      "label": "Approve recovery?",
+      "groupId": "admin",
       "ports": [],
-      "description": "Same terms give the same address on that chain (C-03)"
+      "description": "Case by case, never promised"
+    },
+    {
+      "id": "saferecover",
+      "kind": "job",
+      "label": "Multisig approves recover",
+      "groupId": "admin",
+      "ports": []
     },
     {
       "id": "recover",
       "kind": "job",
-      "label": "Receiver.recover(token, to, amount, sig)",
+      "label": "Receiver.recover(token, to, amount)",
       "groupId": "chain",
       "ports": [],
-      "description": "Deploy the receiver on that chain if needed, then return the funds"
-    },
-    {
-      "id": "payerback",
-      "kind": "job",
-      "label": "Payer gets the funds back",
-      "groupId": "payer",
-      "ports": []
+      "description": "If not deployed on that chain, the same Safe transaction calls Factory.deploy first. Any non-invoice token, the native coin, or a wrong chain"
     },
     {
       "id": "lost",
       "kind": "job",
-      "label": "No recovery possible",
+      "label": "No recovery",
       "groupId": "admin",
       "ports": [],
-      "description": "Unsupported network: tell the payer plainly"
-    },
-    {
-      "id": "done",
-      "kind": "job",
-      "label": "Invoice settled",
-      "groupId": "creator",
-      "ports": []
+      "description": "Unsupported network or rejected case. The payer was warned at checkout"
     }
   ],
   "edges": [
@@ -299,10 +390,10 @@
     {
       "id": "w2",
       "source": {
-        "nodeId": "create"
+        "nodeId": "login"
       },
       "target": {
-        "nodeId": "terms"
+        "nodeId": "create"
       },
       "type": "calls",
       "direction": "forward"
@@ -310,6 +401,63 @@
     {
       "id": "w3",
       "source": {
+        "nodeId": "create"
+      },
+      "target": {
+        "nodeId": "auth"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w4",
+      "source": {
+        "nodeId": "auth"
+      },
+      "target": {
+        "nodeId": "valid"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w5",
+      "source": {
+        "nodeId": "valid"
+      },
+      "target": {
+        "nodeId": "recipient"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "yes"
+    },
+    {
+      "id": "w6",
+      "source": {
+        "nodeId": "valid"
+      },
+      "target": {
+        "nodeId": "reject"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "no"
+    },
+    {
+      "id": "w7",
+      "source": {
+        "nodeId": "recipient"
+      },
+      "target": {
+        "nodeId": "terms"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w8",
+      "source": {
         "nodeId": "terms"
       },
       "target": {
@@ -319,19 +467,30 @@
       "direction": "forward"
     },
     {
-      "id": "w4",
+      "id": "w9",
       "source": {
         "nodeId": "predict"
       },
       "target": {
-        "nodeId": "checkout"
+        "nodeId": "save"
       },
       "type": "calls",
       "direction": "forward",
       "label": "receiver address"
     },
     {
-      "id": "w5",
+      "id": "w10",
+      "source": {
+        "nodeId": "save"
+      },
+      "target": {
+        "nodeId": "checkout"
+      },
+      "type": "calls",
+      "direction": "forward"
+    },
+    {
+      "id": "w11",
       "source": {
         "nodeId": "checkout"
       },
@@ -342,7 +501,19 @@
       "direction": "forward"
     },
     {
-      "id": "w6",
+      "id": "w12",
+      "source": {
+        "nodeId": "cancel"
+      },
+      "target": {
+        "nodeId": "held"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "anything sent later"
+    },
+    {
+      "id": "w13",
       "source": {
         "nodeId": "send"
       },
@@ -353,7 +524,7 @@
       "direction": "forward"
     },
     {
-      "id": "w7",
+      "id": "w14",
       "source": {
         "nodeId": "where"
       },
@@ -365,7 +536,7 @@
       "outcome": "yes"
     },
     {
-      "id": "w8",
+      "id": "w15",
       "source": {
         "nodeId": "where"
       },
@@ -377,18 +548,42 @@
       "outcome": "no"
     },
     {
-      "id": "w9",
+      "id": "w16",
       "source": {
         "nodeId": "detect"
       },
       "target": {
-        "nodeId": "intime"
+        "nodeId": "dust"
       },
       "type": "calls",
       "direction": "forward"
     },
     {
-      "id": "w10",
+      "id": "w17",
+      "source": {
+        "nodeId": "dust"
+      },
+      "target": {
+        "nodeId": "intime"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "yes"
+    },
+    {
+      "id": "w18",
+      "source": {
+        "nodeId": "dust"
+      },
+      "target": {
+        "nodeId": "held"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "no: dust"
+    },
+    {
+      "id": "w19",
       "source": {
         "nodeId": "intime"
       },
@@ -400,7 +595,7 @@
       "outcome": "yes"
     },
     {
-      "id": "w11",
+      "id": "w20",
       "source": {
         "nodeId": "intime"
       },
@@ -412,7 +607,7 @@
       "outcome": "no: late deposit"
     },
     {
-      "id": "w12",
+      "id": "w21",
       "source": {
         "nodeId": "total"
       },
@@ -424,7 +619,7 @@
       "outcome": "yes: paid"
     },
     {
-      "id": "w13",
+      "id": "w22",
       "source": {
         "nodeId": "total"
       },
@@ -436,7 +631,7 @@
       "outcome": "no"
     },
     {
-      "id": "w14",
+      "id": "w23",
       "source": {
         "nodeId": "partial"
       },
@@ -448,7 +643,7 @@
       "label": "payer tops up"
     },
     {
-      "id": "w15",
+      "id": "w24",
       "source": {
         "nodeId": "partial"
       },
@@ -460,7 +655,7 @@
       "label": "no top-up"
     },
     {
-      "id": "w16",
+      "id": "w25",
       "source": {
         "nodeId": "expiry"
       },
@@ -471,7 +666,7 @@
       "direction": "forward"
     },
     {
-      "id": "w17",
+      "id": "w26",
       "source": {
         "nodeId": "final"
       },
@@ -482,18 +677,66 @@
       "direction": "forward"
     },
     {
-      "id": "w18",
+      "id": "w27",
       "source": {
         "nodeId": "intent"
       },
       "target": {
-        "nodeId": "deployed"
+        "nodeId": "window"
       },
       "type": "calls",
       "direction": "forward"
     },
     {
-      "id": "w19",
+      "id": "w28",
+      "source": {
+        "nodeId": "window"
+      },
+      "target": {
+        "nodeId": "deployed"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "yes"
+    },
+    {
+      "id": "w29",
+      "source": {
+        "nodeId": "window"
+      },
+      "target": {
+        "nodeId": "missed"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "no"
+    },
+    {
+      "id": "w30",
+      "source": {
+        "nodeId": "missed"
+      },
+      "target": {
+        "nodeId": "deployed"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "yes: multisig settles"
+    },
+    {
+      "id": "w31",
+      "source": {
+        "nodeId": "missed"
+      },
+      "target": {
+        "nodeId": "held"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "no"
+    },
+    {
+      "id": "w32",
       "source": {
         "nodeId": "deployed"
       },
@@ -505,7 +748,7 @@
       "outcome": "no"
     },
     {
-      "id": "w20",
+      "id": "w33",
       "source": {
         "nodeId": "deployed"
       },
@@ -517,7 +760,7 @@
       "outcome": "yes"
     },
     {
-      "id": "w21",
+      "id": "w34",
       "source": {
         "nodeId": "deploy"
       },
@@ -528,7 +771,19 @@
       "direction": "forward"
     },
     {
-      "id": "w22",
+      "id": "w35",
+      "source": {
+        "nodeId": "pause"
+      },
+      "target": {
+        "nodeId": "settle"
+      },
+      "type": "calls",
+      "direction": "forward",
+      "label": "can block"
+    },
+    {
+      "id": "w36",
       "source": {
         "nodeId": "settle"
       },
@@ -539,7 +794,7 @@
       "direction": "forward"
     },
     {
-      "id": "w23",
+      "id": "w37",
       "source": {
         "nodeId": "wallet"
       },
@@ -550,7 +805,7 @@
       "direction": "forward"
     },
     {
-      "id": "w24",
+      "id": "w38",
       "source": {
         "nodeId": "excess"
       },
@@ -562,7 +817,7 @@
       "outcome": "no"
     },
     {
-      "id": "w25",
+      "id": "w39",
       "source": {
         "nodeId": "excess"
       },
@@ -574,7 +829,7 @@
       "outcome": "overpaid"
     },
     {
-      "id": "w26",
+      "id": "w40",
       "source": {
         "nodeId": "held"
       },
@@ -585,7 +840,7 @@
       "direction": "forward"
     },
     {
-      "id": "w27",
+      "id": "w41",
       "source": {
         "nodeId": "claim"
       },
@@ -596,19 +851,19 @@
       "direction": "forward"
     },
     {
-      "id": "w28",
+      "id": "w42",
       "source": {
         "nodeId": "approve"
       },
       "target": {
-        "nodeId": "refundsig"
+        "nodeId": "saferefund"
       },
       "type": "outcome",
       "direction": "forward",
       "outcome": "approved"
     },
     {
-      "id": "w29",
+      "id": "w43",
       "source": {
         "nodeId": "approve"
       },
@@ -620,9 +875,9 @@
       "outcome": "rejected: stays held"
     },
     {
-      "id": "w30",
+      "id": "w44",
       "source": {
-        "nodeId": "refundsig"
+        "nodeId": "saferefund"
       },
       "target": {
         "nodeId": "refund"
@@ -631,7 +886,7 @@
       "direction": "forward"
     },
     {
-      "id": "w31",
+      "id": "w45",
       "source": {
         "nodeId": "refund"
       },
@@ -642,7 +897,7 @@
       "direction": "forward"
     },
     {
-      "id": "w32",
+      "id": "w46",
       "source": {
         "nodeId": "support"
       },
@@ -653,19 +908,19 @@
       "direction": "forward"
     },
     {
-      "id": "w33",
+      "id": "w47",
       "source": {
         "nodeId": "supported"
       },
       "target": {
-        "nodeId": "recoversig"
+        "nodeId": "review"
       },
       "type": "outcome",
       "direction": "forward",
-      "outcome": "yes, approved"
+      "outcome": "yes"
     },
     {
-      "id": "w34",
+      "id": "w48",
       "source": {
         "nodeId": "supported"
       },
@@ -677,9 +932,33 @@
       "outcome": "no"
     },
     {
-      "id": "w35",
+      "id": "w49",
       "source": {
-        "nodeId": "recoversig"
+        "nodeId": "review"
+      },
+      "target": {
+        "nodeId": "saferecover"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "approved"
+    },
+    {
+      "id": "w50",
+      "source": {
+        "nodeId": "review"
+      },
+      "target": {
+        "nodeId": "lost"
+      },
+      "type": "outcome",
+      "direction": "forward",
+      "outcome": "rejected"
+    },
+    {
+      "id": "w51",
+      "source": {
+        "nodeId": "saferecover"
       },
       "target": {
         "nodeId": "recover"
@@ -688,7 +967,7 @@
       "direction": "forward"
     },
     {
-      "id": "w36",
+      "id": "w52",
       "source": {
         "nodeId": "recover"
       },
@@ -706,33 +985,25 @@
       "name": "All"
     },
     {
-      "id": "view-pay",
+      "id": "view-create",
       "kind": "path",
-      "name": "Pay and settle",
+      "name": "Create invoice",
       "path": {
-        "from": "create",
-        "to": "done"
+        "from": "login",
+        "to": "checkout"
       },
       "nodeIds": [
         "setup",
+        "login",
         "create",
+        "auth",
+        "valid",
+        "reject",
+        "recipient",
         "terms",
         "predict",
-        "checkout",
-        "send",
-        "where",
-        "detect",
-        "intime",
-        "total",
-        "partial",
-        "final",
-        "intent",
-        "deployed",
-        "deploy",
-        "settle",
-        "wallet",
-        "excess",
-        "done"
+        "save",
+        "checkout"
       ],
       "edgeIds": [
         "w1",
@@ -742,19 +1013,64 @@
         "w5",
         "w6",
         "w7",
+        "w8",
         "w9",
-        "w10",
-        "w12",
+        "w10"
+      ]
+    },
+    {
+      "id": "view-pay",
+      "kind": "path",
+      "name": "Pay and settle",
+      "path": {
+        "from": "send",
+        "to": "done"
+      },
+      "nodeIds": [
+        "checkout",
+        "send",
+        "where",
+        "detect",
+        "dust",
+        "intime",
+        "total",
+        "partial",
+        "expiry",
+        "final",
+        "intent",
+        "window",
+        "missed",
+        "deployed",
+        "deploy",
+        "pause",
+        "settle",
+        "wallet",
+        "excess",
+        "done"
+      ],
+      "edgeIds": [
+        "w11",
         "w13",
         "w14",
+        "w16",
         "w17",
-        "w18",
         "w19",
-        "w20",
         "w21",
         "w22",
         "w23",
-        "w24"
+        "w24",
+        "w26",
+        "w27",
+        "w28",
+        "w29",
+        "w30",
+        "w32",
+        "w33",
+        "w34",
+        "w35",
+        "w36",
+        "w37",
+        "w38"
       ]
     },
     {
@@ -766,28 +1082,33 @@
         "to": "payerback"
       },
       "nodeIds": [
+        "cancel",
+        "dust",
         "intime",
         "expiry",
-        "partial",
+        "missed",
         "excess",
         "held",
         "claim",
         "approve",
-        "refundsig",
+        "saferefund",
         "refund",
         "payerback"
       ],
       "edgeIds": [
-        "w11",
-        "w15",
-        "w16",
+        "w12",
+        "w17",
+        "w18",
+        "w20",
         "w25",
-        "w26",
-        "w27",
-        "w28",
-        "w29",
-        "w30",
-        "w31"
+        "w31",
+        "w39",
+        "w40",
+        "w41",
+        "w42",
+        "w43",
+        "w44",
+        "w45"
       ]
     },
     {
@@ -803,19 +1124,22 @@
         "where",
         "support",
         "supported",
-        "recoversig",
+        "review",
+        "saferecover",
         "recover",
         "payerback",
         "lost"
       ],
       "edgeIds": [
-        "w6",
-        "w8",
-        "w32",
-        "w33",
-        "w34",
-        "w35",
-        "w36"
+        "w13",
+        "w15",
+        "w46",
+        "w47",
+        "w48",
+        "w49",
+        "w50",
+        "w51",
+        "w52"
       ]
     }
   ],
@@ -823,129 +1147,177 @@
     "version": 1,
     "revision": 1,
     "positions": {
-      "create": {
+      "login": {
         "x": 28,
+        "y": 22
+      },
+      "cancel": {
+        "x": 28,
+        "y": 102
+      },
+      "create": {
+        "x": 385,
         "y": 22
       },
       "wallet": {
-        "x": 4937,
+        "x": 8295,
         "y": 22
       },
       "done": {
-        "x": 5589,
+        "x": 8947,
         "y": 22
       },
       "send": {
-        "x": 1440,
-        "y": 183
-      },
-      "where": {
-        "x": 1789,
-        "y": 183
+        "x": 3433,
+        "y": 257
       },
       "claim": {
-        "x": 5928,
-        "y": 183
+        "x": 9301,
+        "y": 257
       },
       "payerback": {
-        "x": 7253,
-        "y": 183
+        "x": 10622,
+        "y": 257
+      },
+      "auth": {
+        "x": 740,
+        "y": 426
+      },
+      "valid": {
+        "x": 1086,
+        "y": 426
+      },
+      "reject": {
+        "x": 1686,
+        "y": 426
+      },
+      "recipient": {
+        "x": 1686,
+        "y": 506
       },
       "terms": {
-        "x": 386,
-        "y": 395
+        "x": 2044,
+        "y": 426
+      },
+      "save": {
+        "x": 2733,
+        "y": 426
       },
       "checkout": {
-        "x": 1085,
-        "y": 395
+        "x": 3077,
+        "y": 426
+      },
+      "where": {
+        "x": 3782,
+        "y": 426
       },
       "detect": {
-        "x": 2127,
-        "y": 395
+        "x": 4120,
+        "y": 426
+      },
+      "dust": {
+        "x": 4478,
+        "y": 426
       },
       "intime": {
-        "x": 2482,
-        "y": 395
+        "x": 4816,
+        "y": 426
       },
       "total": {
-        "x": 2772,
-        "y": 395
+        "x": 5318,
+        "y": 426
       },
       "partial": {
-        "x": 3276,
-        "y": 395
+        "x": 5822,
+        "y": 426
       },
       "final": {
-        "x": 3276,
-        "y": 492
+        "x": 5822,
+        "y": 523
       },
       "expiry": {
-        "x": 3617,
-        "y": 395
+        "x": 6166,
+        "y": 426
       },
       "excess": {
-        "x": 5271,
-        "y": 395
+        "x": 8629,
+        "y": 426
       },
       "held": {
-        "x": 5589,
-        "y": 395
-      },
-      "recoversig": {
-        "x": 2772,
-        "y": 681
+        "x": 8947,
+        "y": 426
       },
       "intent": {
-        "x": 3617,
-        "y": 681
+        "x": 6166,
+        "y": 712
+      },
+      "window": {
+        "x": 6509,
+        "y": 712
       },
       "deployed": {
-        "x": 3970,
-        "y": 681
-      },
-      "refundsig": {
-        "x": 6539,
-        "y": 681
+        "x": 7311,
+        "y": 712
       },
       "setup": {
         "x": 28,
-        "y": 893
+        "y": 1004
       },
       "predict": {
-        "x": 737,
-        "y": 893
+        "x": 2391,
+        "y": 1004
       },
       "recover": {
-        "x": 3276,
-        "y": 893
+        "x": 5822,
+        "y": 1004
       },
       "deploy": {
-        "x": 4244,
-        "y": 893
+        "x": 7585,
+        "y": 1004
       },
       "settle": {
-        "x": 4598,
-        "y": 893
+        "x": 7940,
+        "y": 1004
       },
       "refund": {
-        "x": 6897,
-        "y": 893
+        "x": 10264,
+        "y": 1004
+      },
+      "pause": {
+        "x": 28,
+        "y": 1201
       },
       "support": {
-        "x": 2127,
-        "y": 1082
+        "x": 4120,
+        "y": 1201
       },
       "supported": {
-        "x": 2482,
-        "y": 1082
+        "x": 4478,
+        "y": 1201
+      },
+      "review": {
+        "x": 4816,
+        "y": 1201
+      },
+      "saferecover": {
+        "x": 5318,
+        "y": 1201
       },
       "lost": {
-        "x": 2772,
-        "y": 1082
+        "x": 5318,
+        "y": 1281
+      },
+      "missed": {
+        "x": 6815,
+        "y": 1201
       },
       "approve": {
-        "x": 6279,
-        "y": 1082
+        "x": 9652,
+        "y": 1201
+      },
+      "saferefund": {
+        "x": 9912,
+        "y": 1201
       }
     }
   }

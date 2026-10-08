@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "forwend-invoice-lifecycle",
-  "revision": 1,
+  "revision": 2,
   "kind": "lifecycle",
   "title": "Invoice states",
   "theme": "dark",
@@ -48,8 +48,7 @@
       "label": "Settled",
       "groupId": null,
       "ports": [],
-      "description": "Invoice amount in the profile wallet",
-      "marker": "final"
+      "description": "Invoice amount in the profile wallet. Ends here unless more money arrives"
     },
     {
       "id": "expired",
@@ -57,8 +56,15 @@
       "label": "Expired",
       "groupId": null,
       "ports": [],
-      "description": "Nothing received",
-      "marker": "final"
+      "description": "Nothing received. Ends here unless money arrives"
+    },
+    {
+      "id": "cancelled",
+      "kind": "state",
+      "label": "Cancelled",
+      "groupId": null,
+      "ports": [],
+      "description": "Creator cancelled before payment"
     },
     {
       "id": "expired_partial",
@@ -73,14 +79,15 @@
       "label": "Held for refund",
       "groupId": null,
       "ports": [],
-      "description": "Excess, expired partial or late deposit"
+      "description": "Excess, expired partial, late, dust or after cancel"
     },
     {
       "id": "refund_pending",
       "kind": "state",
       "label": "Refund pending",
       "groupId": null,
-      "ports": []
+      "ports": [],
+      "description": "Multisig owners approving"
     },
     {
       "id": "refunded",
@@ -88,6 +95,7 @@
       "label": "Refunded",
       "groupId": null,
       "ports": [],
+      "description": "Nothing held any more",
       "marker": "final"
     }
   ],
@@ -114,7 +122,7 @@
       },
       "type": "transition",
       "direction": "forward",
-      "guard": "transfer reorged"
+      "guard": "reorged, nothing else confirmed"
     },
     {
       "id": "l3",
@@ -163,7 +171,7 @@
       "type": "transition",
       "direction": "forward",
       "label": "settle() confirmed",
-      "guard": "finalized"
+      "guard": "finalized; executor, or multisig after the window"
     },
     {
       "id": "l7",
@@ -187,7 +195,7 @@
       },
       "type": "transition",
       "direction": "forward",
-      "guard": "expiresAt passes"
+      "guard": "expiresAt passes or creator cancels"
     },
     {
       "id": "l9",
@@ -228,6 +236,30 @@
     {
       "id": "l12",
       "source": {
+        "nodeId": "open"
+      },
+      "target": {
+        "nodeId": "cancelled"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "label": "creator cancels"
+    },
+    {
+      "id": "l13",
+      "source": {
+        "nodeId": "cancelled"
+      },
+      "target": {
+        "nodeId": "held"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "guard": "money arrives"
+    },
+    {
+      "id": "l14",
+      "source": {
         "nodeId": "held"
       },
       "target": {
@@ -238,7 +270,7 @@
       "label": "claim verified + approved"
     },
     {
-      "id": "l13",
+      "id": "l15",
       "source": {
         "nodeId": "refund_pending"
       },
@@ -247,7 +279,21 @@
       },
       "type": "transition",
       "direction": "forward",
-      "label": "refund() confirmed"
+      "label": "refund() confirmed",
+      "guard": "nothing left held"
+    },
+    {
+      "id": "l16",
+      "source": {
+        "nodeId": "refund_pending"
+      },
+      "target": {
+        "nodeId": "held"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "label": "refund() confirmed",
+      "guard": "money still held (another claim)"
     }
   ],
   "views": [
@@ -263,43 +309,47 @@
     "positions": {
       "open": {
         "x": 12,
-        "y": 17.416666666666664
+        "y": 370.5
       },
       "detected": {
-        "x": 392,
-        "y": 12
+        "x": 412.4,
+        "y": 146.75
       },
       "partial": {
-        "x": 720,
-        "y": 12.25
+        "x": 795.3333333333334,
+        "y": 12
       },
       "paid": {
-        "x": 751,
-        "y": 164.75
+        "x": 847,
+        "y": 171.5
       },
       "settled": {
-        "x": 974,
-        "y": 156.25
+        "x": 1132,
+        "y": 156
       },
       "expired": {
-        "x": 426,
-        "y": 216.75
+        "x": 754,
+        "y": 315.5
+      },
+      "cancelled": {
+        "x": 392,
+        "y": 390
       },
       "expired_partial": {
-        "x": 999,
-        "y": 12.25
+        "x": 1166,
+        "y": 12
       },
       "held": {
-        "x": 1344,
-        "y": 156.25
+        "x": 1520,
+        "y": 307.6
       },
       "refund_pending": {
-        "x": 1738,
-        "y": 164.75
+        "x": 1914,
+        "y": 312.26666666666665
       },
       "refunded": {
-        "x": 2001,
-        "y": 164.75
+        "x": 2234,
+        "y": 312.26666666666665
       }
     }
   }
