@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 22,
+  "nextId": 23,
   "tasks": [
     {
       "id": "F001",
@@ -2177,12 +2177,98 @@
         "branch": "feat/f021-five-more-visual-directions-on-kit-direc",
         "base": "main"
       }
+    },
+    {
+      "id": "F022",
+      "type": "feat",
+      "behavior": "Arbitrum, Arc and Tempo show their official logos next to Base, USDC and USDT",
+      "acceptance": [
+        "Given the networks strip and token chips, then Arbitrum, Arc and Tempo show logos taken from each project's official sources (Arbitrum bridge repo, arc.io, Tempo brand kit), with the source of each recorded in the code"
+      ],
+      "dependsOn": [
+        "F021"
+      ],
+      "state": "passing",
+      "verification": [
+        "build"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-08 review pass by subagent: Sources checked by fetching them myself. Arbitrum: OffchainLabs/arbitrum-token-bridge ArbitrumLogo.svg; all 7 path/polygon shapes match the source after whitespace collapse, CSS classes inlined as fills #213147/#12AAFF/#9DCCED/#FFFFFF, same viewBox 0 0 2500 2500. Arc: arc.io CDN arc-icon.svg; path d is byte-identical, fill white changed to currentColor, viewBox 0 0 31 32. Tempo: downloaded digital/svg/mark-black.svg from the tempo.xyz/brand Drive folder; path d is byte-identical; the T spans x 862.67-1057.33 and y 440-640, so viewBox 852 430 216 220 holds all of it, centered at (960,540) with about 10 units of margin. Source comments are in brand-data.ts. NETWORK_LOGOS in payments.tsx and landing.ts are wired up. Screenshots: I took my own from a fresh build at 1440/1280/1279/1024/768/390 in both themes. Logos are crisp; Arc and Tempo use the text color (dark on light, light on dark); Arbitrum keeps its brand colors and reads well on both backgrounds. At 1280 the list sits on one line with the note on the right; below xl the note goes under the list; at 390 it wraps neatly. No duplicate DOM ids. Minor: the committed apps/web/.impeccable/review/f022-networks.png is stale (USDT wraps at 1280 there but not in the current build); f022-networks-widths.png matches. Checks: playwright 18 passed (axe light/dark included), pnpm lint clean (153 files), pnpm typecheck 3/3 successful. Arc terms: arc.io allows logo use only for projects building on Arc or with a signed agreement. A pre-launch site that lists Arc as planned does not clearly meet that rule yet, so the owner should decide. The page does not claim an endorsement: the strip is labelled 'Planned networks and stablecoins' and the copy says 'We plan to support'."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T17:07:01Z",
+        "checks": [
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.2,
+            "log": "docs/runs/F022-20261008T170701Z-build.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F022-20261008T170701Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F022-20261008T170701Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": "docs/runs/F022-20261008T170701Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.3,
+            "log": "docs/runs/F022-20261008T170701Z-e2e.log"
+          }
+        ],
+        "taskHash": "5f34b84daa984dc7",
+        "filesHash": "4541ba8b7630b3db",
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Sources checked by fetching them myself. Arbitrum: OffchainLabs/arbitrum-token-bridge ArbitrumLogo.svg; all 7 path/polygon shapes match the source after whitespace collapse, CSS classes inlined as fills #213147/#12AAFF/#9DCCED/#FFFFFF, same viewBox 0 0 2500 2500. Arc: arc.io CDN arc-icon.svg; path d is byte-identical, fill white changed to currentColor, viewBox 0 0 31 32. Tempo: downloaded digital/svg/mark-black.svg from the tempo.xyz/brand Drive folder; path d is byte-identical; the T spans x 862.67-1057.33 and y 440-640, so viewBox 852 430 216 220 holds all of it, centered at (960,540) with about 10 units of margin. Source comments are in brand-data.ts. NETWORK_LOGOS in payments.tsx and landing.ts are wired up. Screenshots: I took my own from a fresh build at 1440/1280/1279/1024/768/390 in both themes. Logos are crisp; Arc and Tempo use the text color (dark on light, light on dark); Arbitrum keeps its brand colors and reads well on both backgrounds. At 1280 the list sits on one line with the note on the right; below xl the note goes under the list; at 390 it wraps neatly. No duplicate DOM ids. Minor: the committed apps/web/.impeccable/review/f022-networks.png is stale (USDT wraps at 1280 there but not in the current build); f022-networks-widths.png matches. Checks: playwright 18 passed (axe light/dark included), pnpm lint clean (153 files), pnpm typecheck 3/3 successful. Arc terms: arc.io allows logo use only for projects building on Arc or with a signed agreement. A pre-launch site that lists Arc as planned does not clearly meet that rule yet, so the owner should decide. The page does not claim an endorsement: the strip is labelled 'Planned networks and stablecoins' and the copy says 'We plan to support'.",
+          "at": "2026-10-08T17:08:57Z",
+          "filesHash": "4541ba8b7630b3db"
+        },
+        "commit": "12ba664",
+        "doneAt": "2026-10-08T17:09:14Z",
+        "proof": {
+          "1": "review: markup matches each official source file (Arbitrum bridge repo, arc.io icon, Tempo brand kit mark), source comments in brand-data.ts; f022-networks-widths.png"
+        }
+      },
+      "branch": "feat/f022-arbitrum-arc-and-tempo-show-their-offici",
+      "baseCommit": "19f7142286a9b59ddc0309b0578a9c8a99b959c2",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f022-arbitrum-arc-and-tempo-show-their-offici",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-08T15:40:55Z",
+    "at": "2026-10-08T16:39:34Z",
     "clean": true,
     "problems": [],
-    "note": "F012-F015 merged (PRs #13-#17): full-bleed hero, readable text and clean waitlist field, site-wide dark theme, visual audit with role tokens and band/card/frame rule. Queue empty."
+    "note": "F016-F021 merged (PRs #17-#22): tests pruned to behavior, interaction polish, brand logos and custom icons, motion components, 404 page, eight directions. Queue empty."
   }
 }
