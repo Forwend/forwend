@@ -31,7 +31,7 @@ export function DuskLedgerComp() {
             {CTA.joinWaitlist}
           </button>
         </div>
-        <div className="rounded-[1.5rem] border border-[var(--line)] bg-black/30 p-3 backdrop-blur-sm">
+        <div className="rounded-[1.5rem] border border-[var(--line)] bg-[rgb(0_0_0/0.3)] p-3 backdrop-blur-sm">
           <InvoicePanel className="max-w-none" />
         </div>
       </div>

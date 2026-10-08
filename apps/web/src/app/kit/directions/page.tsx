@@ -14,9 +14,7 @@ const COMPS: Record<DirectionId, ComponentType> = {
 
 export default function DirectionsPage() {
   return (
-    <main
-      className={`${directionFontVars} mx-auto max-w-[90rem] px-3 py-10 font-[family-name:var(--font-sans)] sm:px-6`}
-    >
+    <main className={`${directionFontVars} mx-auto max-w-[90rem] px-3 py-10 font-sans sm:px-6`}>
       <h1 className="text-2xl font-semibold tracking-tight">Visual directions</h1>
       <p className="mt-2 max-w-2xl text-pretty opacity-75">
         Three hero comps on one page. Landscape art is drawn in code until the Grok images are

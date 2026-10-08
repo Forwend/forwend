@@ -26,3 +26,21 @@ test.describe("/kit/directions", () => {
     expect(response.status()).toBe(404);
   });
 });
+
+test.describe("/kit theme switch", () => {
+  test("switches <html> to dark and back, changing the body background", async ({ page }) => {
+    await page.goto(`${KIT_URL}/kit`);
+    const html = page.locator("html");
+    const bodyBg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    await expect(html).toHaveAttribute("data-theme", "light");
+    const light = await bodyBg();
+
+    await page.getByRole("button", { name: "Switch to dark theme" }).click();
+    await expect(html).toHaveAttribute("data-theme", "dark");
+    await expect.poll(bodyBg).not.toBe(light);
+
+    await page.getByRole("button", { name: "Switch to light theme" }).click();
+    await expect(html).toHaveAttribute("data-theme", "light");
+    await expect.poll(bodyBg).toBe(light);
+  });
+});

@@ -1,9 +1,6 @@
 @import "tailwindcss";
 @import "@forwend/design-tokens/tokens.css";
+@import "@forwend/design-tokens/theme.css";
+@import "@forwend/design-tokens/base.css";
 
 @source "../../../../packages/ui-web/src";
-
-body {
-  background: var(--color-bg);
-  color: var(--color-text);
-}

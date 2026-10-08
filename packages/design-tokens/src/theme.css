@@ -1,0 +1,74 @@
+/*
+ * Maps the --fw-* tokens to Tailwind utilities (bg-surface, text-muted, rounded-lg, shadow-md, ...).
+ * Tailwind's default color palette is removed, so only token colors exist as utilities.
+ */
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-bg: var(--fw-bg);
+  --color-surface: var(--fw-surface);
+  --color-surface-2: var(--fw-surface-2);
+  --color-sunken: var(--fw-sunken);
+  --color-glass: var(--fw-glass);
+  --color-ink: var(--fw-ink);
+  --color-muted: var(--fw-muted);
+  --color-subtle: var(--fw-subtle);
+  --color-line: var(--fw-line);
+  --color-line-strong: var(--fw-line-strong);
+  --color-primary: var(--fw-primary);
+  --color-on-primary: var(--fw-on-primary);
+  --color-accent: var(--fw-accent);
+  --color-on-accent: var(--fw-on-accent);
+  --color-focus: var(--fw-focus);
+  --color-success: var(--fw-success);
+  --color-success-soft: var(--fw-success-soft);
+  --color-warning: var(--fw-warning);
+  --color-warning-soft: var(--fw-warning-soft);
+  --color-danger: var(--fw-danger);
+  --color-danger-soft: var(--fw-danger-soft);
+  --color-info: var(--fw-info);
+  --color-info-soft: var(--fw-info-soft);
+
+  --font-display: var(--fw-font-display);
+  --font-sans: var(--fw-font-sans);
+  --font-mono: var(--fw-font-mono);
+
+  --radius-sm: var(--fw-radius-sm);
+  --radius-md: var(--fw-radius-md);
+  --radius-lg: var(--fw-radius-lg);
+  --radius-xl: var(--fw-radius-xl);
+  --radius-pill: var(--fw-radius-pill);
+
+  --shadow-sm: var(--fw-shadow-sm);
+  --shadow-md: var(--fw-shadow-md);
+  --shadow-lg: var(--fw-shadow-lg);
+
+  --blur-glass: var(--fw-blur-glass);
+
+  --ease-out: var(--fw-ease-out);
+  --ease-in-out: var(--fw-ease-in-out);
+
+  /* Type scale: display never above 6rem. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.6;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.6;
+  --text-xl: 1.375rem;
+  --text-xl--line-height: 1.4;
+  --text-2xl: 1.75rem;
+  --text-2xl--line-height: 1.25;
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 1.15;
+  --text-4xl: 3rem;
+  --text-4xl--line-height: 1.08;
+  --text-5xl: 4rem;
+  --text-5xl--line-height: 1.04;
+  --text-6xl: 5.25rem;
+  --text-6xl--line-height: 1;
+}

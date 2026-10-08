@@ -20,7 +20,7 @@ export function InvoicePanel({ className = "" }: { className?: string }) {
         {SAMPLE_INVOICE.client} · {SAMPLE_INVOICE.service}
       </p>
       <p className="mt-4 flex items-baseline gap-2">
-        <span className="font-[family-name:var(--font-mono)] text-3xl tabular-nums tracking-tight">
+        <span className="font-mono text-3xl tabular-nums tracking-tight">
           {formatTokenAmount({
             baseUnits: SAMPLE_INVOICE.baseUnits,
             decimals: SAMPLE_INVOICE.decimals,
@@ -45,7 +45,7 @@ export function InvoicePanel({ className = "" }: { className?: string }) {
           );
         })}
       </ol>
-      <p className="mt-4 font-[family-name:var(--font-mono)] text-xs text-[var(--muted)]">
+      <p className="mt-4 font-mono text-xs text-[var(--muted)]">
         Tx {shortHash} · settled to your wallet
       </p>
     </div>
