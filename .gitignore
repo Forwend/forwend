@@ -10,3 +10,4 @@ test-results/
 playwright-report/
 .env*.local
 .DS_Store
+apps/web/.impeccable/review/

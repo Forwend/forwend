@@ -1,0 +1,16 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
+import { isKitEnabled } from "@/lib/kit";
+
+export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Kit · Forwend",
+  robots: { index: false, follow: false },
+};
+
+export default function KitLayout({ children }: Readonly<{ children: ReactNode }>) {
+  if (!isKitEnabled()) notFound();
+  return children;
+}
