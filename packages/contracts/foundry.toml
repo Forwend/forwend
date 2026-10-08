@@ -11,6 +11,10 @@ cbor_metadata = false
 optimizer = true
 optimizer_runs = 10_000
 
+[lint]
+# Public immutables are part of the ABI (refundAuthority(), implementation(), factory()).
+exclude_lints = ["screaming-snake-case-immutable"]
+
 [fuzz]
 runs = 1_000
 

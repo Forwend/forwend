@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "forge build",
-    "test": "forge test",
-    "rpc": "node script/rpc.mjs"
+    "test": "forge fmt --check && forge test",
+    "rpc": "node script/rpc.mjs",
+    "symbolic": "halmos --match-contract Symbolic"
   }
 }

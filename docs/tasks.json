@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 36,
+  "nextId": 37,
   "tasks": [
     {
       "id": "F001",
@@ -3402,6 +3402,93 @@
         "branch": "chore/f035-a-foundry-workspace-in-contracts-builds",
         "base": "main"
       }
+    },
+    {
+      "id": "F036",
+      "type": "feat",
+      "behavior": "InvoiceReceiverFactory and InvoiceReceiver v1 implement every rule in packages/contracts/AGENTS.md, proven by unit, fuzz, invariant, cross-chain, fork and Halmos symbolic tests",
+      "acceptance": [
+        "packages/contracts/src has InvoiceTypes.sol, InvoiceReceiverFactory.sol and InvoiceReceiver.sol implementing the Terms, Factory and Receiver rules of packages/contracts/AGENTS.md",
+        "forge test passes: a unit test per rule, fuzz tests on amounts and time, five invariants (exact settlement, conservation, executor never paid, owed amount kept before settleDeadline, invoice token never recovered), the cross-chain CREATE2 test, and the Base Sepolia fork test with real USDC (CI uses the public RPC)",
+        "Halmos check_settle, check_refund and check_recoverNeverTakesInvoiceToken pass locally and in CI",
+        "Breaking a rule makes the tests fail: removing the owed-amount guard in refundable() and removing the settle caller check each fail forge tests, and the first also fails Halmos"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "contracts",
+        "lint"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T22:01:20Z",
+        "checks": [
+          {
+            "id": "contracts",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F036-20261008T220120Z-contracts.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F036-20261008T220120Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F036-20261008T220120Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.0,
+            "log": "docs/runs/F036-20261008T220120Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F036-20261008T220120Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.5,
+            "log": "docs/runs/F036-20261008T220120Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F036-20261008T220120Z-keep.log"
+          }
+        ],
+        "taskHash": "0b3be02d0726595e",
+        "filesHash": "0cbaf891dbcde354"
+      },
+      "branch": "feat/f036-invoicereceiverfactory-and-invoicereceiv",
+      "baseCommit": "e8465bf736c0c6fa5116750ce517e53edb0f13c6",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
