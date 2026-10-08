@@ -2686,7 +2686,7 @@
         "PLAN.md status line says phases 1-3 are done and docs/PROJECT.md scope reflects testnet-first"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "lint"
       ],
@@ -2698,7 +2698,60 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T19:03:03Z",
+        "checks": [
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F028-20261008T190303Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F028-20261008T190303Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F028-20261008T190303Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F028-20261008T190303Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.7,
+            "log": "docs/runs/F028-20261008T190303Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F028-20261008T190303Z-keep.log"
+          }
+        ],
+        "taskHash": "d8c18c52198b2f1e",
+        "filesHash": "c336a8d24d235147"
+      },
+      "branch": "docs/f028-plan-md-and-docs-project-md-say-forwend",
+      "baseCommit": "694ea16b9d1c7a9e2a2a4f588e0dd85d30d417cc",
+      "failedVerifies": 0
     },
     {
       "id": "F029",
