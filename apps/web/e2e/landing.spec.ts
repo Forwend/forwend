@@ -65,15 +65,37 @@ test.describe("landing page", () => {
     await expect(item.getByText(/settles to a wallet that belongs to your profile/)).toBeVisible();
   });
 
-  for (const width of [360, 768, 1280, 1536]) {
+  // 330 also covers the ~345px layout width Linux CI gets at 360 (classic 15px scrollbar).
+  for (const width of [330, 360, 768, 1280, 1536]) {
     test(`has no horizontal scroll at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/");
-      const { scroll, viewport } = await page.evaluate(() => ({
-        scroll: document.documentElement.scrollWidth,
-        viewport: window.innerWidth,
-      }));
-      expect(scroll).toBeLessThanOrEqual(viewport);
+      const { scroll, viewport, culprits } = await page.evaluate(() => {
+        const vw = document.documentElement.clientWidth;
+        // Elements that stick out past the viewport and are not inside a scrolling or clipping box.
+        const culprits = [...document.querySelectorAll("body *")]
+          .filter((el) => el.getBoundingClientRect().right > vw + 0.5)
+          .filter((el) => {
+            for (let a = el.parentElement; a; a = a.parentElement) {
+              if (["hidden", "auto", "clip", "scroll"].includes(getComputedStyle(a).overflowX))
+                return false;
+            }
+            return true;
+          })
+          .slice(0, 5)
+          .map(
+            (el) =>
+              `<${el.tagName.toLowerCase()} class="${String(el.getAttribute("class")).slice(0, 80)}"> right=${Math.round(el.getBoundingClientRect().right)} text="${el.textContent?.trim().slice(0, 40)}"`,
+          );
+        return {
+          scroll: document.documentElement.scrollWidth,
+          viewport: window.innerWidth,
+          culprits,
+        };
+      });
+      expect(scroll, `wider than the viewport:\n${culprits.join("\n")}`).toBeLessThanOrEqual(
+        viewport,
+      );
     });
   }
 
@@ -140,3 +162,44 @@ test.describe("landing page", () => {
     }
   });
 });
+
+const overlaps = (a: DOMRect, b: DOMRect) =>
+  a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+
+for (const width of [360, 390]) {
+  test(`at ${width}px all four river marks are in open water`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    const result = await page.evaluate(() => {
+      const hero = document.querySelector('[data-section="hero"]') as HTMLElement;
+      const rect = (el: Element | null) => (el as HTMLElement).getBoundingClientRect();
+      const marks = [...hero.querySelectorAll("circle[data-river-mark]")]
+        .filter((c) => (c as SVGElement).getBoundingClientRect().width > 0)
+        .map((c) => (c as SVGElement).getBoundingClientRect());
+      const blockers = {
+        form: rect(hero.querySelector("form")),
+        note: rect(
+          [...hero.querySelectorAll("p")].find((p) => p.textContent?.startsWith("Private beta")) ??
+            null,
+        ),
+        panel: rect(
+          hero.querySelector('[aria-label="Sample payment progress"]')?.closest(".rounded-lg") ??
+            null,
+        ),
+      };
+      return {
+        marks: marks.map((m) => m.toJSON()),
+        blockers: Object.fromEntries(Object.entries(blockers).map(([k, v]) => [k, v.toJSON()])),
+      };
+    });
+    expect(result.marks).toHaveLength(4);
+    for (const [i, mark] of result.marks.entries()) {
+      for (const [name, box] of Object.entries(result.blockers)) {
+        expect(overlaps(mark as DOMRect, box as DOMRect), `mark ${i} overlaps the ${name}`).toBe(
+          false,
+        );
+      }
+    }
+  });
+}

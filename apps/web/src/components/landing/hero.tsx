@@ -1,4 +1,3 @@
-import { DawnLandscape } from "@/components/art/dawn-landscape";
 import { HERO, LANDING_SECTIONS } from "@/constants/landing";
 import { HeroJourney } from "./hero-journey";
 import { WaitlistForm } from "./waitlist-form";
@@ -8,10 +7,9 @@ export function Hero() {
     <section
       data-section={LANDING_SECTIONS.hero}
       aria-labelledby="hero-title"
-      className="relative isolate m-2 flex min-h-[max(46rem,calc(100svh-1rem))] flex-col overflow-hidden rounded-xl px-4 pt-4 pb-6 sm:m-3 sm:px-8 sm:pt-5"
+      className="relative isolate m-2 flex min-h-[62rem] flex-col px-4 pt-4 pb-6 sm:m-3 sm:min-h-[64rem] sm:px-8 sm:pt-5 lg:min-h-[max(46rem,calc(100svh-1rem))]"
     >
-      <DawnLandscape className="absolute inset-0 -z-20 h-full w-full" />
-      <div className="mx-auto mt-28 flex max-w-3xl flex-col items-center text-center sm:mt-36">
+      <div className="mx-auto mt-24 flex w-full max-w-3xl flex-col items-center text-center sm:mt-36">
         <h1
           id="hero-title"
           className="font-display text-[clamp(2.75rem,7vw,5.25rem)] leading-[1.02] tracking-[-0.02em] text-ink"

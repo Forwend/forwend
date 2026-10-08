@@ -17,7 +17,7 @@ export function MoneyRules() {
         ))}
         <div className="grid gap-3 py-6 md:grid-cols-[16rem_1fr] md:gap-10">
           <dt>
-            <span className="inline-flex items-center gap-1.5 rounded-pill bg-danger-soft px-2.5 py-1 text-xs font-medium text-danger">
+            <span className="inline-flex items-center gap-1.5 rounded-pill border border-transparent bg-danger-soft px-2.5 py-1 text-xs font-medium text-danger">
               <AlertTriangle aria-hidden className="size-[var(--fw-icon-sm)]" />
               {RULES.wrongNetwork.title}
             </span>
