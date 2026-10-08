@@ -8,14 +8,17 @@ export function MoneyRules() {
     <Section id="rules" section={LANDING_SECTIONS.rules} title={RULES.title} body={RULES.body}>
       <dl className="divide-y divide-line border-y border-line">
         {RULES.items.map((item) => (
-          <div key={item.status} className="grid gap-3 py-6 md:grid-cols-[16rem_1fr] md:gap-10">
+          <div
+            key={item.status}
+            className="grid gap-3 py-6 md:grid-cols-[--spacing(64)_1fr] md:gap-10"
+          >
             <dt>
               <StatusPill status={item.status} />
             </dt>
             <dd className="max-w-prose text-lg text-ink">{item.body}</dd>
           </div>
         ))}
-        <div className="grid gap-3 py-6 md:grid-cols-[16rem_1fr] md:gap-10">
+        <div className="grid gap-3 py-6 md:grid-cols-[--spacing(64)_1fr] md:gap-10">
           <dt>
             <span className="inline-flex items-center gap-1.5 rounded-pill border border-transparent bg-danger-soft px-2.5 py-1 text-xs font-medium text-danger">
               <AlertTriangle aria-hidden className="size-[var(--fw-icon-sm)]" />

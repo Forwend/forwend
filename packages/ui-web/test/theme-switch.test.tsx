@@ -17,17 +17,19 @@ describe("ThemeSwitch", () => {
 
   afterEach(() => cleanup());
 
+  // The accessible name is CSS-driven (dark: variant); browser tests check it, jsdom has no Tailwind CSS.
+
   it("toggles data-theme on <html> between light and dark", () => {
     render(<ThemeSwitch />);
-    fireEvent.click(screen.getByRole("button", { name: "Switch to dark theme" }));
+    fireEvent.click(screen.getByRole("button"));
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
-    fireEvent.click(screen.getByRole("button", { name: "Switch to light theme" }));
+    fireEvent.click(screen.getByRole("button"));
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
   it("remembers the choice in localStorage", () => {
     render(<ThemeSwitch />);
-    fireEvent.click(screen.getByRole("button", { name: "Switch to dark theme" }));
+    fireEvent.click(screen.getByRole("button"));
     expect(localStorage.getItem("fw-theme")).toBe("dark");
   });
 });

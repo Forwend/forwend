@@ -22,7 +22,7 @@ export function CheckoutPreview() {
       data-theme="dark"
       data-section={LANDING_SECTIONS.checkout}
       aria-labelledby="checkout-title"
-      className="relative isolate overflow-hidden bg-bg text-ink"
+      className="relative isolate overflow-hidden border-y border-line bg-bg text-ink"
     >
       <div className="absolute inset-x-0 top-0 -z-10 h-112">
         <Image

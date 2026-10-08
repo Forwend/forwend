@@ -365,3 +365,37 @@ test.describe("river line", () => {
     });
   }
 });
+
+test.describe("dark theme details", () => {
+  test("the theme switch is named for the current theme without any page script", async ({
+    browser,
+  }) => {
+    // With page scripts off, React never runs, so only CSS can choose the switch's accessible name.
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    await page.goto("/");
+    const nav = page.locator('[data-section="nav"]');
+    await expect(nav.getByRole("button", { name: "Switch to dark theme" })).toBeVisible();
+    await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
+    await expect(nav.getByRole("button", { name: "Switch to light theme" })).toBeVisible();
+    await context.close();
+  });
+
+  test("the checkout band has a visible edge against the page in dark", async ({ browser }) => {
+    const context = await browser.newContext({ colorScheme: "dark" });
+    const page = await context.newPage();
+    await page.goto("/");
+    const border = await page
+      .locator('[data-section="checkout"]')
+      .evaluate((el) => [
+        getComputedStyle(el).borderTopWidth,
+        getComputedStyle(el).borderBottomWidth,
+        getComputedStyle(el).borderBottomColor,
+      ]);
+    expect(border[0]).toBe("1px");
+    expect(border[1]).toBe("1px");
+    const page_bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    expect(border[2]).not.toBe(page_bg);
+    await context.close();
+  });
+});

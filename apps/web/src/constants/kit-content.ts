@@ -49,3 +49,20 @@ export const EASINGS = [
     use: "Moves between two resting states",
   },
 ] as const;
+
+// Role sizes from theme.css: fluid, each with its own line height and letter spacing.
+export const TYPE_ROLES = [
+  { token: "text-hero", className: "font-display text-hero", sample: "Get paid in stablecoins." },
+  { token: "text-section", className: "font-display text-section", sample: "See every step." },
+  {
+    token: "text-amount-lg",
+    className: "font-mono tabular-nums text-amount-lg",
+    sample: "1,250.00",
+  },
+  { token: "text-amount", className: "font-mono tabular-nums text-amount", sample: "1,250.00" },
+  {
+    token: "text-2xs",
+    className: "font-mono text-2xs",
+    sample: "Tx 0x8f3a…c21d · settled to your wallet",
+  },
+] as const;

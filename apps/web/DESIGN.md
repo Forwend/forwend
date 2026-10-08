@@ -356,7 +356,7 @@ Calm and solid: ink pills that press down 1px.
 ### Inputs / Fields
 - **Style:** 44px tall, 0.75rem radius, Paper White, Sage Line border, Rest shadow; hover border to Lichen Subtle.
 - **Focus:** border turns River Blue plus a 4px ring of River Blue at 22%.
-- **Error / Disabled:** Signal Red border and message; 50% opacity when disabled.
+- **Error / Disabled:** Signal Red border and message. Disabled: Frost Line border, Meadow Wash fill and Lichen Subtle text, with a not-allowed cursor.
 - **Email Capture:** the signature form: one pill of fixed height (54px: 1px border, 6px padding, 40px button) with the field and a primary button inside it, Lift shadow, Sage Line border, same 4px ring on focus-within. The confirmation uses the same pill (Frost Line border) with a round Settled Green check, the message in ink and the email in Moss Muted, so nothing jumps between states. Browser autofill is painted Paper White (the surface token) with ink text. An error turns the border Signal Red and shows the message on a solid Paper White pill chip with Rest shadow, in a 28px row that is always reserved. A hidden live region stays mounted in every state so screen readers announce the error or the confirmation.
 
 ### Navigation
