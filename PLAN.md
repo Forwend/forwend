@@ -100,7 +100,7 @@ to a bank when they choose.
 | ID | Question | Default until answered | Blocks |
 |---|---|---|---|
 | Q-01 | Company jurisdiction and launch countries | The product is global; payments in stablecoins work anywhere. Not a priority now. For planning bank withdrawal, the first corridors are **EU/EEA (SEPA, EUR)** and **US (ACH, USD)**, the routes most off-ramp providers cover. Company jurisdiction is decided when Phase 11 starts. | Off-ramp choice, KYC rules, public launch (Phase 11–12) |
-| Q-02 | Backend language | **Decided: Go.** Privy integration: the official Go SDK (`github.com/privy-io/go-sdk`), wrapped in our own small `backend/internal/privy` package; access tokens verified locally as JWTs with the app's verification key. See §1.4. | — |
+| Q-02 | Backend language | **Decided: Go.** Privy integration: the official Go SDK (`github.com/privy-io/go-sdk`), wrapped in our own small `apps/backend/internal/privy` package; access tokens verified locally as JWTs with the app's verification key. See §1.4. | — |
 | Q-03 | Landing visual direction | Pick from 3 comps in Phase 3 (see §P3.2). | Phase 3 |
 | Q-04 | Off-ramp provider | Shortlist: Bridge, MoonPay Enterprise, BVNK, Fipto. Chosen after Q-01. | Phase 11 |
 | Q-05 | Key storage for the signer | Local dev key for development; AWS KMS (secp256k1) or Turnkey before mainnet. | Mainnet trial (Phase 12) |
@@ -118,7 +118,7 @@ quorums, authorization signatures, users, webhooks. It was updated on 2026-10-07
 - **Do not write raw REST calls by hand** as the default. Wallet actions need authorization
   signatures (canonical JSON signed with a P-256 key), which the SDK already implements and
   which are easy to get wrong.
-- **Do** wrap the SDK in our own small package `backend/internal/privy` that exposes only the
+- **Do** wrap the SDK in our own small package `apps/backend/internal/privy` that exposes only the
   calls we use (verify user, create profile wallet, get wallet, send with policy). The rest of
   the backend depends on that package, not on the SDK. If the SDK misses an endpoint, call it
   through the SDK's raw request option inside this package.
@@ -168,11 +168,11 @@ packages/
   api-client/               generated TS client from api/openapi.yaml   (Phase 6)
   checkout/                 embeddable checkout components              (Phase 10)
   sdk/                      Node SDK for merchants                      (Phase 10)
-backend/                    Go module                                    (Phase 6)
+apps/backend/               Go module                                    (Phase 6)
   cmd/api/  cmd/worker/  cmd/signer/
   internal/                 profiles, invoices, ledger, chains, webhooks
   db/                       migrations, sqlc queries
-contracts/                  Foundry project                              (Phase 5)
+packages/contracts/         Foundry project, chains.json, RPC picker     (Phase 5)
 api/openapi.yaml            public API contract                          (Phase 6)
 infra/docker-compose.yml    local Postgres, Anvil                        (Phase 5–6)
 docs/                       PROJECT.md, tasks.json (harness), ADRs, images.md
@@ -496,7 +496,7 @@ Diagrams (mapgrain JSON; open one in the editor with `npx mapgrain@0.2.5 studio 
     token contracts; fee-on-transfer tokens are not allowed).
 
 ### Done-list
-- [ ] Foundry project in `contracts/`, OZ 5.x pinned.
+- [x] Foundry project in `packages/contracts/`, OZ 5.7.0 pinned (F035).
 - [ ] Unit tests for: exact pay, partial then top-up, overpay (settle amount, excess held),
       expired partial (no settle, refund works), late deposit, double settle blocked, settle
       refused after the window, multisig settle after the window, two refunds within the

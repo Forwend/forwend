@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 34,
+  "nextId": 36,
   "tasks": [
     {
       "id": "F001",
@@ -3190,6 +3190,136 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F034",
+      "type": "docs",
+      "behavior": "Contract security rules from the 2026-10-09 design review live in packages/contracts/AGENTS.md, and PLAN.md Phase 5, the S-5 spike and the diagrams match them (do this when contract work starts, before S-5)",
+      "acceptance": [
+        "packages/contracts/AGENTS.md exists and says: until the first mainnet deployment the contracts may be redesigned and patched freely; after it, deployed contracts never change and fixes ship as a new factory version",
+        "Terms carry only invoiceId (256-bit random), recipient, token, amount, expiresAt, settleDeadline, intendedChainId. refundAuthority is a factory constant (the Safe); executor is stored in the factory and only the Safe can change it",
+        "Deployment only through a CREATE2 deployer whose address commits to the code (CreateX without the chainId-guarded salt, or the standard CREATE2 deployer); the factory creates the implementation; no nonce-based fallback in S-5; a chain without such a deployer gets its own factory and no cross-chain recovery; the gate compares a real deployed receiver with predict on every testnet",
+        "Receiver rules: settle and refund require block.chainid == intendedChainId; recover never takes the invoice token on the intended chain; predict/deploy reject amount 0, recipient 0/receiver/factory/token, token 0, expiresAt 0, settleDeadline < expiresAt, chain id 0 (expiry in the past is checked by the backend only: late deposits deploy the receiver after expiry); on the intended chain recover never lowers the invoice-token balance (Arc: the native coin is the same balance as USDC); CEI + nonReentrant; no approve, no isValidSignature, no fallback/receive, no selfdestruct, no delegatecall; the implementation reverts when called directly; deploy returns the existing address; settle checks the recipient balance rose by exactly amount; settleDeadline >= p99 finality lag + margin (or >= 24h)",
+        "Safe rules: version >= 1.4.1, >= 3-of-5 hardware keys, deployed on every planned chain at once, owner changes applied on every chain; a Guard blocks delegatecall and allows only the factory and deployed receivers; a 24-48h Delay module on refund and recover (pause stays instant); refunds go to the deposit's sender by default, any other address needs written evidence; owners check the transaction hash with an independent tool",
+        "Backend rules: receive address computed locally from factory address and init-code hash compiled into the binary and recomputed on the checkout page; unique (chain_id, receive_address); watcher alerts on any mismatch; a second independent RPC confirms the balance before paid or a webhook; checkout has no third-party scripts and pinned dependencies, and a canary compares the live checkout address with the database",
+        "Phase 5 tests add halmos symbolic tests for settle, refund and recover, and a test for each rule above; security-keys.json no longer claims the signer check covers an API compromise",
+        "PLAN.md records the expiry rule: an invoice expires 1 hour after creation by default; the creator can change it per invoice, and a merchant can set its own default in settings (backend and UI, Phases 6-10)"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "lint"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F035",
+      "type": "chore",
+      "behavior": "A Foundry workspace in packages/contracts builds and tests, and a chain config plus RPC picker returns a working RPC per testnet: each Infura key in turn, then public RPCs",
+      "acceptance": [
+        "forge build and forge test pass in packages/contracts with OpenZeppelin 5.x pinned, and CI runs them on pull requests; the package is a pnpm workspace package run by Turborepo, and PLAN.md/AGENTS.md place contracts in packages/contracts and the Go backend in apps/backend",
+        "packages/contracts/chains.json lists Base Sepolia 84532, Arbitrum Sepolia 421614, Arc testnet 5042002, Tempo Moderato 42431 with Infura network names where Infura serves them and public RPCs; node packages/contracts/script/rpc.mjs <chain> prints the first URL whose eth_chainId matches, trying every key in INFURA_API_KEYS before public RPCs",
+        ".env is git-ignored, .env.example lists INFURA_API_KEYS, DEPLOYER_PRIVATE_KEY and REFUND_AUTHORITY_PRIVATE_KEY without values",
+        "docs/spikes/s5-s6-testnets.md records per testnet: chain id, RPC results, CreateX, CREATE2 deployer and Safe factory presence, test token contracts and decimals, with sources and date"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "contracts",
+        "lint"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T21:40:04Z",
+        "checks": [
+          {
+            "id": "contracts",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F035-20261008T214004Z-contracts.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F035-20261008T214004Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F035-20261008T214004Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F035-20261008T214004Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F035-20261008T214004Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.3,
+            "log": "docs/runs/F035-20261008T214004Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F035-20261008T214004Z-keep.log"
+          }
+        ],
+        "taskHash": "f592a1fdb91e190d",
+        "filesHash": "66d69cf1c5dd633d",
+        "commit": "8bc8b2c",
+        "doneAt": "2026-10-08T21:40:25Z",
+        "proof": {
+          "1": "contracts check (forge build/test) passed; CI installs Foundry and submodules",
+          "2": "rpc.mjs run per chain: Infura for Base/Arbitrum/Arc, public for Tempo; skips keys without access",
+          "3": "git check-ignore .env; .env.example committed without values",
+          "4": "docs/spikes/s5-s6-testnets.md"
+        }
+      },
+      "branch": "chore/f035-a-foundry-workspace-in-contracts-builds",
+      "baseCommit": "2263dde07ff408a229c2681f6be731ee2ef91955",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f035-a-foundry-workspace-in-contracts-builds",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {

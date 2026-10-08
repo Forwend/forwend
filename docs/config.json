@@ -98,6 +98,11 @@
       "timeoutSeconds": 900
     },
     {
+      "id": "contracts",
+      "argv": ["pnpm", "--filter", "@forwend/contracts", "test"],
+      "timeoutSeconds": 900
+    },
+    {
       "id": "diagrams",
       "argv": [
         "sh",

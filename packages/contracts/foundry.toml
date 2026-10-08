@@ -1,0 +1,20 @@
+[profile.default]
+src = "src"
+test = "test"
+script = "script"
+libs = ["lib"]
+solc_version = "0.8.30"
+# Same bytecode on every chain: the factory address depends on it (C-03).
+evm_version = "cancun"
+bytecode_hash = "none"
+cbor_metadata = false
+optimizer = true
+optimizer_runs = 10_000
+
+[fuzz]
+runs = 1_000
+
+[invariant]
+runs = 256
+depth = 64
+fail_on_revert = false

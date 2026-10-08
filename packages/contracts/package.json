@@ -1,0 +1,10 @@
+{
+  "name": "@forwend/contracts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test",
+    "rpc": "node script/rpc.mjs"
+  }
+}
