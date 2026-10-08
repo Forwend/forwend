@@ -2710,7 +2710,7 @@
         "Every money rule shown matches PLAN.md D-03..D-08, C-03, C-04 and Phase 5 design; no step lets the executor send funds anywhere but the recipient"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "diagrams"
       ],
@@ -2791,11 +2791,23 @@
           "summary": "Both JSON files pass mapgrain@0.2.5 validate; committed .html viewers are byte-identical to a fresh 'mapgrain view' build. Accept 2: every case present (setup, predict, send, detect, intime/expiry, partial->send top-up w14, final, deployed/deploy lazy, settle, held, claim, approve, refundsig/refund, support/supported/recoversig/recover, lost). Accept 3: settle only after finalized (w12->final->intent), executor-only settle to fixed recipient with min(balance, amount-settled); late deposit (w11) and expired partial (w15/w16) go to held, never settled; overpay excess held (w25); refund/recover signed by refundAuthority, one refund, never touches settled funds; no auto-refund to exchange sender; no reopen of expired in lifecycle; D-14 recovery never promised. Cosmetic notes, not blocking: (1) lifecycle l2 detected->open on reorg should return to partial when a top-up is reorged; (2) lifecycle 'settled' and 'expired' carry marker final but have outgoing edges l10/l11; (3) node labels refund/recover omit nonce, deadline from the PLAN signatures (refundsig description has them); (4) 'supported' decision merges network support and admin approval, no 'supported but rejected' outcome; (5) 'where' decision sits in the payer lane though it is a fact checked by support; (6) setup description lists all four testnets while C-01 adds Arc/Tempo after spikes.",
           "at": "2026-10-08T18:59:47Z",
           "filesHash": "702f6acccc4fb2ee"
+        },
+        "commit": "b806151",
+        "doneAt": "2026-10-08T19:00:09Z",
+        "proof": {
+          "1": "diagrams check (mapgrain@0.2.5 validate on both files); viewers committed",
+          "2": "independent review mapped each case to node ids",
+          "3": "independent review checked D-03..D-08, C-03, C-04, Phase 5"
         }
       },
       "branch": "docs/f029-the-repo-has-mapgrain-diagrams-of-the-fu",
       "baseCommit": "fb08c3ee343b36bbb724835b263dab7bcdb192f0",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f029-the-repo-has-mapgrain-diagrams-of-the-fu",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
