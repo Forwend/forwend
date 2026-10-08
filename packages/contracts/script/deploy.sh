@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Deploys the factory (idempotent) and the probe receiver on one testnet. With a token and an amount it also runs a
+# real invoice: plain transfer with 10% extra, deploy, settle by the executor, refund of the extra by the refund
+# authority. Reads keys from the root .env (git-ignored) and never prints them.
+# Usage: script/deploy.sh <chain> [<token> <amount in base units>]
+set -euo pipefail
+cd "$(dirname "$0")/.."
+set -a && . ../../.env && set +a
+
+chain=$1
+rpc=$(node script/rpc.mjs "$chain")
+REFUND_AUTHORITY=$(cast wallet address --private-key "$REFUND_AUTHORITY_PRIVATE_KEY")
+EXECUTOR=$(cast wallet address --private-key "$DEPLOYER_PRIVATE_KEY")
+export REFUND_AUTHORITY EXECUTOR
+
+# Gas comes from the chain's own estimate: Tempo prices contract and storage creation differently from Ethereum.
+out=$(forge script script/Smoke.s.sol --rpc-url "$rpc" --broadcast --slow --skip-simulation)
+factory=$(grep -m1 -oE 'factory 0x[0-9a-fA-F]{40}' <<<"$out" | cut -d' ' -f2)
+probe=$(grep -m1 -oE 'probe receiver 0x[0-9a-fA-F]{40}' <<<"$out" | cut -d' ' -f3)
+implementation=$(cast call "$factory" "implementation()(address)" --rpc-url "$rpc")
+echo "chain=$chain factory=$factory implementation=$implementation probe=$probe refundAuthority=$REFUND_AUTHORITY executor=$EXECUTOR"
+[ $# -lt 3 ] && exit 0
+
+token=$2
+amount=$3
+extra=$((amount / 10))
+T='(bytes32,address,address,uint256,uint64,uint64,uint256)'
+recipient=0x$(cast keccak "forwend.testnet.recipient" | tail -c 41)
+chain_id=$(cast chain-id --rpc-url "$rpc")
+now=$(cast block latest --field timestamp --rpc-url "$rpc")
+id=$(cast keccak "forwend.testnet.flow.$chain_id.$now")
+terms="($id,$recipient,$token,$amount,$((now + 3600)),$((now + 3600 + 86400)),$chain_id)"
+at=$(cast call "$factory" "predict($T)(address)" "$terms" --rpc-url "$rpc")
+balance() { cast call "$token" "balanceOf(address)(uint256)" "$1" --rpc-url "$rpc" | cut -d' ' -f1; }
+tx() {
+  cast send --rpc-url "$rpc" --json "$@" |
+    node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s);if(r.status!=="0x1"){console.error(r);process.exit(1)}console.log(r.transactionHash)})'
+}
+
+before=$(balance "$recipient")
+pay=$(tx "$token" "transfer(address,uint256)" "$at" $((amount + extra)) --private-key "$DEPLOYER_PRIVATE_KEY")
+deploy=$(tx "$factory" "deploy($T)" "$terms" --private-key "$DEPLOYER_PRIVATE_KEY")
+settle=$(tx "$at" "settle()" --private-key "$DEPLOYER_PRIVATE_KEY")
+refund=$(tx "$at" "refund(address,uint256)" "$EXECUTOR" "$extra" --private-key "$REFUND_AUTHORITY_PRIVATE_KEY")
+
+[ $(($(balance "$recipient") - before)) -eq "$amount" ] || { echo "recipient not paid exactly $amount" >&2; exit 1; }
+[ "$(balance "$at")" -eq 0 ] || { echo "receiver not empty" >&2; exit 1; }
+echo "flow receiver=$at pay=$pay deploy=$deploy settle=$settle refund=$refund"
