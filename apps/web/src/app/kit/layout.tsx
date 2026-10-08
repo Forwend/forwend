@@ -6,7 +6,7 @@ import { isKitEnabled } from "@/lib/kit";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Kit · Forwend",
+  title: "Kit",
   robots: { index: false, follow: false },
 };
 

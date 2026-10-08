@@ -11,6 +11,7 @@ import {
   TypographySamples,
 } from "@/components/kit/foundations";
 import { KitSection } from "@/components/kit/kit-section";
+import { LogoShowcase } from "@/components/kit/logo-showcase";
 import { MotionShowcase } from "@/components/kit/motion-showcase";
 import { PaymentsShowcase } from "@/components/kit/payments-showcase";
 import { KIT_SECTIONS } from "@/constants/kit-content";
@@ -41,6 +42,12 @@ export default function KitPage() {
         </div>
         <ThemeSwitch />
       </header>
+      <KitSection
+        title="Logo"
+        note="The mark alone and with the wordmark, in both themes, plus the app icons."
+      >
+        <LogoShowcase />
+      </KitSection>
       <KitSection
         title="Colors"
         note="Semantic tokens. Each has a light and a dark value; switch the theme to compare."

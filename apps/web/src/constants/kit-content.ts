@@ -1,5 +1,6 @@
 // What the /kit page displays. Values mirror packages/design-tokens/src/{tokens,theme}.css.
 export const KIT_SECTIONS = [
+  "Logo",
   "Colors",
   "Typography",
   "Spacing",
