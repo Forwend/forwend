@@ -9,4 +9,11 @@ describe("Button", () => {
     expect(button.getAttribute("type")).toBe("button");
     expect(button.dataset.variant).toBe("primary");
   });
+
+  it("is busy and disabled while loading", () => {
+    render(<Button loading>Saving</Button>);
+    const button = screen.getByRole("button", { name: "Saving" });
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+  });
 });

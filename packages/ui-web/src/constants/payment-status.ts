@@ -1,0 +1,15 @@
+import { TONES } from "./tone";
+
+// The payment states users see (PLAN D-10, docs/PROJECT.md domain). Labels are final UI copy.
+export const PAYMENT_STATUSES = {
+  detected: { label: "Detected", tone: TONES.info },
+  confirming: { label: "Confirming", tone: TONES.info },
+  paid: { label: "Paid", tone: TONES.success },
+  partiallyPaid: { label: "Partially paid", tone: TONES.warning },
+  overpaid: { label: "Overpaid", tone: TONES.warning },
+  expired: { label: "Expired", tone: TONES.neutral },
+  expiredPartiallyPaid: { label: "Expired, partially paid", tone: TONES.warning },
+  settled: { label: "Settled", tone: TONES.success },
+  refundPending: { label: "Refund pending", tone: TONES.accent },
+  refunded: { label: "Refunded", tone: TONES.neutral },
+} as const;
