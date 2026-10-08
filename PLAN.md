@@ -499,17 +499,17 @@ The full rule list, each with a test, is in [packages/contracts/AGENTS.md](packa
     tell a right recipient from a wrong one, so this check lives in the backend (Phase 6).
   - Uses `SafeERC20`; only allowlisted tokens (fee-on-transfer tokens are not allowed).
 - Refund-authority Safe: 1.4.1+, at least 3 of 5 hardware-key owners, same address on every chain
-  and deployed on all of them on day one. Refunds, recoveries and post-deadline settles go only
-  through a 24–48 h Delay module; a Guard keeps direct transactions to the Safe's own admin calls,
-  the Delay module, the factory and `MultiSendCallOnly` (pause stays instant). Details in
-  `packages/contracts/AGENTS.md`.
+  and deployed on all of them on day one. Refunds, recoveries, post-deadline settles, Safe admin
+  changes and the delay's own settings go only through a 24–48 h Delay module; a Guard allows
+  direct transactions only for pause, executor change, and queuing or cancelling on the Delay
+  module, never with `delegatecall`. Details in `packages/contracts/AGENTS.md`.
 
 ### Done-list
 - [x] Foundry project in `packages/contracts/`, OZ 5.7.0 pinned (F035).
 - [ ] A unit test for every rule in `packages/contracts/AGENTS.md`, including: exact pay, partial then top-up, overpay (settle amount, excess held),
       expired partial (no settle, refund works), late deposit, double settle blocked, settle
-      refused after the window, multisig settle after the window, two refunds within the
-      refundable amount, refund above it blocked, refund before the window cannot take `amount`,
+      refused after `settleDeadline`, multisig settle after it, two refunds within the
+      refundable amount, refund above it blocked, refund before `settleDeadline` cannot take `amount`,
       non-multisig caller blocked, pause blocks settle but not refund, `recover()` on another
       token and on the native coin, native transfer after deploy rejected, cross-chain
       same-address check and same call rejected on the other chain (two Anvil instances).

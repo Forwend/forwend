@@ -57,13 +57,16 @@ Receiver:
 Safe (mainnet; testnets use an EOA):
 - Safe 1.4.1 or newer, at least 3 of 5 owners on hardware keys, the same address on every planned chain, deployed on all
   of them on day one; owner changes are applied on every chain.
-- A Guard on direct Safe transactions allows as targets only: the Safe itself (owner, threshold, guard and module
-  changes, so keys can always be rotated), the Delay module (queue and cancel), the factory (`setPaused`,
-  `setExecutor`) and `MultiSendCallOnly` 1.4.1, the only allowed `delegatecall`. It rejects direct calls to a
-  receiver's `refund`, `recover` and post-deadline `settle`, so those run only through the Delay module.
-- The Delay module (24–48 h, with alerts and a cancel path) is the only route to `refund`, `recover` and post-deadline
-  `settle`. Safe 1.4.1 Guards do not check module transactions, so the Delay module is the control there.
-  `setPaused` stays instant.
+- Everything that can move money or weaken the controls goes through a 24–48 h Delay module, with alerts, so honest
+  owners can cancel a transaction that tricked signers approved: a receiver's `refund`, `recover` and post-deadline
+  `settle`; Safe admin changes (owners, threshold, guard, modules, fallback handler), so key rotation also waits; and the
+  Delay module's own settings.
+- A Guard allows a direct (undelayed) Safe transaction only for: `factory.setPaused`, `factory.setExecutor` (harmless:
+  the executor can only pay the fixed recipient), queuing a transaction on the Delay module, and cancelling one
+  (`setTxNonce`). Direct transactions never use `delegatecall`, so a batch cannot hide a call. Delayed transactions
+  may batch through `MultiSendCallOnly` 1.4.1 (deploy, then refund). Safe 1.4.1 Guards do not check module
+  transactions; the delay is the control there.
+- The delay cannot stop owners who hold the threshold of keys themselves; it stops tricked or blind signing.
 - Refunds go to the deposit's sender by default; any other address needs written evidence. Owners check every
   transaction hash with an independent tool before signing.
 

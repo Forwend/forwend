@@ -3218,59 +3218,60 @@
       ],
       "review": true,
       "notes": [
-        "2026-10-08 review fail by reviewer: Acceptance 1-8 are all present in the text and the 3 diagrams pass mapgrain validate. Fail because the Safe rules contradict each other and can freeze funds: (1) 'Guard allows only the factory and receivers as targets' blocks Safe self-calls, so addOwner/swapOwner/changeThreshold/setGuard/enableModule are impossible; this contradicts 'owner changes applied on every chain', and since refundAuthority is immutable in the factory, losing keys over time freezes all held funds (overpay, late, expired, missed settle) forever. (2) The same Guard blocks calls to the Delay module (queue and the cancel path target the Delay contract), and it lets owners call refund/recover directly on receivers, so the 24-48 h delay is not enforced. Safe 1.4.1 Guards do not check module transactions. Fix: Guard allows self-calls (or a named allowlist of Safe admin selectors) and the Delay module; it rejects direct refund/recover/settle-after-deadline selectors so they only run through the Delay; setPaused and setExecutor stay direct. (3) contracts-workflow refund and recover nodes say 'the same Safe transaction calls Factory.deploy first'; that needs MultiSend, which is a delegatecall the Guard blocks. Say two transactions, or allow MultiSendCallOnly by address. Cosmetic: PLAN.md line 520 and the contracts-workflow 'missed' node still say 'settle window'; the Phase 5 Gate line does not mention the real-receiver vs predict check (the Done-list does); state how the factory's first executor is set (constructor arg changes the CREATE2 address)."
+        "2026-10-08 review fail by reviewer: Acceptance 1-8 are all present in the text and the 3 diagrams pass mapgrain validate. Fail because the Safe rules contradict each other and can freeze funds: (1) 'Guard allows only the factory and receivers as targets' blocks Safe self-calls, so addOwner/swapOwner/changeThreshold/setGuard/enableModule are impossible; this contradicts 'owner changes applied on every chain', and since refundAuthority is immutable in the factory, losing keys over time freezes all held funds (overpay, late, expired, missed settle) forever. (2) The same Guard blocks calls to the Delay module (queue and the cancel path target the Delay contract), and it lets owners call refund/recover directly on receivers, so the 24-48 h delay is not enforced. Safe 1.4.1 Guards do not check module transactions. Fix: Guard allows self-calls (or a named allowlist of Safe admin selectors) and the Delay module; it rejects direct refund/recover/settle-after-deadline selectors so they only run through the Delay; setPaused and setExecutor stay direct. (3) contracts-workflow refund and recover nodes say 'the same Safe transaction calls Factory.deploy first'; that needs MultiSend, which is a delegatecall the Guard blocks. Say two transactions, or allow MultiSendCallOnly by address. Cosmetic: PLAN.md line 520 and the contracts-workflow 'missed' node still say 'settle window'; the Phase 5 Gate line does not mention the real-receiver vs predict check (the Done-list does); state how the factory's first executor is set (constructor arg changes the CREATE2 address).",
+        "2026-10-08 review fail by reviewer: Re-review of 7d6498e. Fixed: owner rotation is possible, the Delay queue/cancel are reachable, deploy+refund goes through MultiSendCallOnly, the first executor is defined, settleDeadline wording is used, and the Gate checks predict. The 3 diagrams validate. Still fails: the rule 'refund, recover and post-deadline settle run only through the Delay module' is not true as written. The same 3 owners the delay should slow down can skip it instantly: (1) a direct MultiSendCallOnly batch whose inner call is receiver.refund(attacker): the Guard sees only to=MultiSendCallOnly, operation=delegatecall, unless it decodes the batch; (2) a direct self-call setGuard(0) or disableModule, then a direct refund; (3) a direct Delay.setTxCooldown(0) or setTxExpiration, since the Delay is an allowed target. This is the blind-signing case (signers tricked into one malicious transaction) that the delay and the hash check exist for. Fix in AGENTS.md, PLAN.md and the security-keys node: the Guard decodes MultiSendCallOnly batches and applies the same target and function rules to each inner call; Safe admin changes (owners, threshold, guard, modules, fallback handler) and Delay settings go through the Delay too (rotation still works, after 24-48 h); direct transactions are allowed only for setPaused, setExecutor (harmless: the executor can only pay the recipient), queueing on the Delay and cancel (setTxNonce). Cosmetic: PLAN.md lines 511-512 (unit test list) still say 'the window'."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 2,
         "status": "passed",
-        "at": "2026-10-08T21:52:14Z",
+        "at": "2026-10-08T21:53:52Z",
         "checks": [
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F034-20261008T215214Z-lint.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F034-20261008T215352Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F034-20261008T215214Z-typecheck.log"
+            "log": "docs/runs/F034-20261008T215352Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.5,
-            "log": "docs/runs/F034-20261008T215214Z-unit.log"
+            "log": "docs/runs/F034-20261008T215352Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.5,
-            "log": "docs/runs/F034-20261008T215214Z-build.log"
+            "log": "docs/runs/F034-20261008T215352Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 8.3,
-            "log": "docs/runs/F034-20261008T215214Z-e2e.log"
+            "seconds": 8.6,
+            "log": "docs/runs/F034-20261008T215352Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F034-20261008T215214Z-keep.log"
+            "log": "docs/runs/F034-20261008T215352Z-keep.log"
           }
         ],
         "taskHash": "7a80a196917b073c",
-        "filesHash": "561935157a994c1d"
+        "filesHash": "af778975b045a2bb"
       },
       "branch": "docs/f034-contract-security-rules-from-the-2026-10",
       "baseCommit": "5057eba453f4b1a9f8bc5c1359ac7839147f4747",
