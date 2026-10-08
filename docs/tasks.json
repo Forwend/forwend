@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 16,
+  "nextId": 22,
   "tasks": [
     {
       "id": "F001",
@@ -1644,12 +1644,205 @@
         "branch": "fix/f015-small-polish-from-the-f014-review-accura",
         "base": "main"
       }
+    },
+    {
+      "id": "F016",
+      "type": "test",
+      "behavior": "The test suite covers only important behavior: layout, size, font, color and pixel checks are removed and the rule is written in AGENTS.md",
+      "acceptance": [
+        "Given apps/web/e2e, then no test checks layout, sizes, fonts, colors, contrast pixels or section order; remaining browser tests cover the waitlist, theme choice and no-flash, kit privacy, and axe accessibility",
+        "Given AGENTS.md, then it states that tests cover important behavior only (money, payments, forms, privacy, theme persistence, accessibility), not layout or styling"
+      ],
+      "dependsOn": [
+        "F015"
+      ],
+      "state": "passing",
+      "verification": [
+        "e2e",
+        "unit"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T15:44:46Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.1,
+            "log": "docs/runs/F016-20261008T154446Z-e2e.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.8,
+            "log": "docs/runs/F016-20261008T154446Z-unit.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F016-20261008T154446Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F016-20261008T154446Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F016-20261008T154446Z-build.log"
+          }
+        ],
+        "taskHash": "8eb9d20f7bb2f0ca",
+        "filesHash": "bdb2962742673d3b",
+        "commit": "3536ba2",
+        "doneAt": "2026-10-08T15:45:05Z",
+        "proof": {
+          "1": "apps/web/e2e now holds only waitlist, theme, kit privacy, seo, smoke and axe specs (e2e check passes)",
+          "2": "AGENTS.md project rules: tests cover important behavior only"
+        }
+      },
+      "branch": "test/f016-the-test-suite-covers-only-important-beh",
+      "baseCommit": "cc7cc4f5d5fa664d279b20d867c655bec7129734",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "test/f016-the-test-suite-covers-only-important-beh",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F017",
+      "type": "feat",
+      "behavior": "Every clickable element shows a pointer, presses do not move, the scrollbar and select are custom, the accordion opens one item at a time with a smooth animation, the code block has syntax colors, and the site never mentions generated images",
+      "acceptance": [
+        "Given buttons, links, tabs, summary rows, selects and switches, then the cursor is a pointer (not-allowed when disabled) and pressing does not shift or scale them",
+        "Given the FAQ or any Accordion, when one item opens, then the open one closes, and items open and close with a height animation (instant under reduced motion)",
+        "Given SelectField, then it is a custom listbox styled with tokens (keyboard and screen-reader friendly), not the native select; the page scrollbar uses token colors and a slim custom style",
+        "Given CodeBlock, then code shows token-colored syntax highlighting in both themes; no page text says images are generated"
+      ],
+      "dependsOn": [
+        "F016"
+      ],
+      "state": "not_started",
+      "verification": [
+        "build",
+        "e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F018",
+      "type": "feat",
+      "behavior": "Brand logos for supported networks and tokens, footer social links that say Coming soon on hover, and custom Merchant and Freelancer icons",
+      "acceptance": [
+        "Given the networks strip and token chips, then Base, USDC and USDT show their brand logos (from thesvg, MIT, credited); networks without a published logo keep their name only",
+        "Given the footer, then X, GitHub, Discord, Telegram and LinkedIn icons appear and show a Coming soon tooltip on hover and keyboard focus; they are not links yet",
+        "Given the profile tabs and the kit icon set, then Merchant and Freelancer use custom SVG icons drawn in the same 24px grid and 1.75 stroke as Lucide"
+      ],
+      "dependsOn": [
+        "F017"
+      ],
+      "state": "not_started",
+      "verification": [
+        "build"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F019",
+      "type": "feat",
+      "behavior": "The kit shows custom loading and motion components: spinner, dot loader, shimmer skeleton, indeterminate progress bar and a success check that draws itself",
+      "acceptance": [
+        "Given /kit, then an Animations section shows Spinner, DotLoader, Shimmer, ProgressBar (indeterminate) and SuccessCheck from ui-web, each with an accessible label and token colors, and all stop moving under reduced motion"
+      ],
+      "dependsOn": [
+        "F018"
+      ],
+      "state": "not_started",
+      "verification": [
+        "build",
+        "ui-unit"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F020",
+      "type": "feat",
+      "behavior": "A custom 404 page in the site's style with its own illustration and a way back home",
+      "acceptance": [
+        "Given an unknown URL, then the response is 404 and the page shows the custom illustration, a short message and a link back to the home page, in both themes"
+      ],
+      "dependsOn": [
+        "F019"
+      ],
+      "state": "not_started",
+      "verification": [
+        "build",
+        "e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F021",
+      "type": "feat",
+      "behavior": "Five more visual directions on /kit/directions, each with its own palette, type and image",
+      "acceptance": [
+        "Given KIT_ENABLED=1, when /kit/directions loads, then eight directions are shown (the existing three plus five new), each with a headline, a primary button, a product panel and its own image"
+      ],
+      "dependsOn": [
+        "F020"
+      ],
+      "state": "not_started",
+      "verification": [
+        "build"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-08T14:39:13Z",
+    "at": "2026-10-08T15:40:55Z",
     "clean": true,
     "problems": [],
-    "note": "All tasks F001-F011 passing (PRs #2-#12). Images now from Codex image_gen (D-9); hero and checkout use them. Open for owner: direction review (D-13), Lighthouse method (D-14), OpenAI image terms (A-2), real waitlist storage before going public (C-09)."
+    "note": "F012-F015 merged (PRs #13-#17): full-bleed hero, readable text and clean waitlist field, site-wide dark theme, visual audit with role tokens and band/card/frame rule. Queue empty."
   }
 }
