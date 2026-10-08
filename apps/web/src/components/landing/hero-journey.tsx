@@ -36,8 +36,8 @@ export function HeroJourney() {
 
   return (
     <>
-      {/* Below lg the art stops partway down the panel, so the panel covers its bottom edge. */}
-      <div className="absolute inset-x-0 top-0 bottom-36 -z-10 overflow-hidden rounded-xl lg:bottom-0">
+      {/* The art fades into the page at the bottom; below lg that happens behind the invoice panel. */}
+      <div className="absolute inset-x-0 top-0 bottom-36 -z-10 overflow-hidden [mask-image:linear-gradient(to_bottom,black_84%,transparent)] lg:bottom-0">
         <Image
           src={HERO_IMAGE.src}
           alt=""
@@ -46,6 +46,8 @@ export function HeroJourney() {
           sizes="100vw"
           className="object-cover object-center"
         />
+        {/* Soft light behind the headline and form, so text stays readable over the bright mountains. */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_62%_46%_at_50%_34%,color-mix(in_oklab,var(--fw-bg)_72%,transparent),transparent_100%)]" />
         <svg
           viewBox={`0 0 ${RIVER_VIEWBOX.width} ${RIVER_VIEWBOX.height}`}
           preserveAspectRatio="xMidYMid slice"
