@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "forwend-security-keys",
-  "revision": 1,
+  "revision": 3,
   "kind": "architecture",
   "title": "Who can move money",
   "theme": "dark",
@@ -71,7 +71,7 @@
       "label": "API",
       "groupId": "servers",
       "ports": [],
-      "description": "No private keys. If hacked: can create bad invoices or show a wrong checkout; the signer re-checks the recipient"
+      "description": "No private keys. If hacked: can create bad invoices, but cannot choose the refund authority or executor (not in the terms). The checkout recomputes the address from compiled constants and a canary checks it; the signer re-checks the recipient"
     },
     {
       "id": "worker",
@@ -95,7 +95,7 @@
       "label": "Signer: executor key",
       "groupId": "servers",
       "ports": [],
-      "description": "If leaked: can only deploy receivers and settle the exact amount to the fixed recipient before the window ends. Cannot steal"
+      "description": "Executor key. If leaked: can only deploy receivers and settle the exact amount to the fixed recipient before settleDeadline, and spend its own gas. The Safe can replace it"
     },
     {
       "id": "deployer",
@@ -103,7 +103,7 @@
       "label": "Deployer key",
       "groupId": "servers",
       "ports": [],
-      "description": "Used once per chain to deploy the factory. Holds nothing after"
+      "description": "Used once per chain through the CREATE2 deployer, so the address commits to the code. If leaked: can only deploy the same code again"
     },
     {
       "id": "safe",
@@ -111,7 +111,7 @@
       "label": "Safe multisig: refund authority",
       "groupId": "chain",
       "ports": [],
-      "description": "Several owners must approve. Refunds held money, recovers wrong tokens, settles missed payments, pauses. One leaked owner key moves nothing"
+      "description": "3-of-5 hardware-key owners, same address on every chain. Guard: no delegatecall, only our contracts. 24-48 h delay on refund and recover; pause is instant. Fewer than 3 leaked keys move nothing"
     },
     {
       "id": "factory",
@@ -119,7 +119,7 @@
       "label": "Factory v1",
       "groupId": "chain",
       "ports": [],
-      "description": "No owner. Only the Safe can set its pause flag"
+      "description": "Holds the refund authority (immutable) and the executor (only the Safe changes it). Only the Safe sets the pause flag"
     },
     {
       "id": "receiver",
@@ -333,11 +333,11 @@
   ],
   "layout": {
     "version": 1,
-    "revision": 1,
+    "revision": 4,
     "positions": {
       "creator": {
-        "x": 2722,
-        "y": 329.33333333333337
+        "x": 2746,
+        "y": 322.91263798232546
       },
       "payer": {
         "x": 2340.5,

@@ -3206,7 +3206,7 @@
         "PLAN.md records the expiry rule: an invoice expires 1 hour after creation by default; the creator can change it per invoice, and a merchant can set its own default in settings (backend and UI, Phases 6-10)"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "lint"
       ],
@@ -3219,7 +3219,60 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T21:49:41Z",
+        "checks": [
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F034-20261008T214941Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F034-20261008T214941Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F034-20261008T214941Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F034-20261008T214941Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.6,
+            "log": "docs/runs/F034-20261008T214941Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F034-20261008T214941Z-keep.log"
+          }
+        ],
+        "taskHash": "7a80a196917b073c",
+        "filesHash": "e7e67ca6fd9e1fc4"
+      },
+      "branch": "docs/f034-contract-security-rules-from-the-2026-10",
+      "baseCommit": "5057eba453f4b1a9f8bc5c1359ac7839147f4747",
+      "failedVerifies": 0
     },
     {
       "id": "F035",

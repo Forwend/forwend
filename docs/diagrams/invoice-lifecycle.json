@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "forwend-invoice-lifecycle",
-  "revision": 2,
+  "revision": 3,
   "kind": "lifecycle",
   "title": "Invoice states",
   "theme": "dark",
@@ -171,7 +171,7 @@
       "type": "transition",
       "direction": "forward",
       "label": "settle() confirmed",
-      "guard": "finalized; executor, or multisig after the window"
+      "guard": "finalized; executor, or multisig after settleDeadline"
     },
     {
       "id": "l7",
