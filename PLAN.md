@@ -453,6 +453,11 @@ rule (D-03…D-08), with fuzz and invariant tests.
 
 ### Design
 
+Diagrams (mapgrain JSON; open the `.html` files in a browser; rebuild with
+`npx mapgrain@0.2.5 view <file>.json -o <file>.html`):
+[full contract workflow](docs/diagrams/contracts-workflow.json),
+[invoice states](docs/diagrams/invoice-lifecycle.json).
+
 - `InvoiceReceiverFactory`
   - `predict(terms) → address` (view) and `deploy(terms) → address`.
   - Receiver = OZ clone with immutable args (C-04). `salt = keccak256(abi.encode(terms))`.

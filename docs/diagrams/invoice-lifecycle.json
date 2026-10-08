@@ -1,0 +1,306 @@
+{
+  "schemaVersion": 1,
+  "id": "forwend-invoice-lifecycle",
+  "revision": 1,
+  "kind": "lifecycle",
+  "title": "Invoice states",
+  "theme": "dark",
+  "layoutHints": {
+    "direction": "right",
+    "pinnedNodeIds": []
+  },
+  "groups": [],
+  "nodes": [
+    {
+      "id": "open",
+      "kind": "state",
+      "label": "Open",
+      "groupId": null,
+      "ports": [],
+      "description": "Address predicted, nothing deployed",
+      "marker": "initial"
+    },
+    {
+      "id": "detected",
+      "kind": "state",
+      "label": "Detected",
+      "groupId": null,
+      "ports": [],
+      "description": "Deposit seen, not confirmed"
+    },
+    {
+      "id": "partial",
+      "kind": "state",
+      "label": "Partially paid",
+      "groupId": null,
+      "ports": []
+    },
+    {
+      "id": "paid",
+      "kind": "state",
+      "label": "Paid",
+      "groupId": null,
+      "ports": []
+    },
+    {
+      "id": "settled",
+      "kind": "state",
+      "label": "Settled",
+      "groupId": null,
+      "ports": [],
+      "description": "Invoice amount in the profile wallet",
+      "marker": "final"
+    },
+    {
+      "id": "expired",
+      "kind": "state",
+      "label": "Expired",
+      "groupId": null,
+      "ports": [],
+      "description": "Nothing received",
+      "marker": "final"
+    },
+    {
+      "id": "expired_partial",
+      "kind": "state",
+      "label": "Expired, partially paid",
+      "groupId": null,
+      "ports": []
+    },
+    {
+      "id": "held",
+      "kind": "state",
+      "label": "Held for refund",
+      "groupId": null,
+      "ports": [],
+      "description": "Excess, expired partial or late deposit"
+    },
+    {
+      "id": "refund_pending",
+      "kind": "state",
+      "label": "Refund pending",
+      "groupId": null,
+      "ports": []
+    },
+    {
+      "id": "refunded",
+      "kind": "state",
+      "label": "Refunded",
+      "groupId": null,
+      "ports": [],
+      "marker": "final"
+    }
+  ],
+  "edges": [
+    {
+      "id": "l1",
+      "source": {
+        "nodeId": "open"
+      },
+      "target": {
+        "nodeId": "detected"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "label": "deposit seen"
+    },
+    {
+      "id": "l2",
+      "source": {
+        "nodeId": "detected"
+      },
+      "target": {
+        "nodeId": "open"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "guard": "transfer reorged"
+    },
+    {
+      "id": "l3",
+      "source": {
+        "nodeId": "detected"
+      },
+      "target": {
+        "nodeId": "partial"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "guard": "confirmed total < amount"
+    },
+    {
+      "id": "l4",
+      "source": {
+        "nodeId": "detected"
+      },
+      "target": {
+        "nodeId": "paid"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "guard": "confirmed total >= amount"
+    },
+    {
+      "id": "l5",
+      "source": {
+        "nodeId": "partial"
+      },
+      "target": {
+        "nodeId": "detected"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "label": "next deposit seen"
+    },
+    {
+      "id": "l6",
+      "source": {
+        "nodeId": "paid"
+      },
+      "target": {
+        "nodeId": "settled"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "label": "settle() confirmed",
+      "guard": "finalized"
+    },
+    {
+      "id": "l7",
+      "source": {
+        "nodeId": "open"
+      },
+      "target": {
+        "nodeId": "expired"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "guard": "expiresAt passes"
+    },
+    {
+      "id": "l8",
+      "source": {
+        "nodeId": "partial"
+      },
+      "target": {
+        "nodeId": "expired_partial"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "guard": "expiresAt passes"
+    },
+    {
+      "id": "l9",
+      "source": {
+        "nodeId": "expired_partial"
+      },
+      "target": {
+        "nodeId": "held"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "label": "funds stay in receiver"
+    },
+    {
+      "id": "l10",
+      "source": {
+        "nodeId": "settled"
+      },
+      "target": {
+        "nodeId": "held"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "guard": "excess > 0 or late deposit"
+    },
+    {
+      "id": "l11",
+      "source": {
+        "nodeId": "expired"
+      },
+      "target": {
+        "nodeId": "held"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "guard": "late deposit"
+    },
+    {
+      "id": "l12",
+      "source": {
+        "nodeId": "held"
+      },
+      "target": {
+        "nodeId": "refund_pending"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "label": "claim verified + approved"
+    },
+    {
+      "id": "l13",
+      "source": {
+        "nodeId": "refund_pending"
+      },
+      "target": {
+        "nodeId": "refunded"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "label": "refund() confirmed"
+    }
+  ],
+  "views": [
+    {
+      "id": "overview",
+      "kind": "overview",
+      "name": "All"
+    }
+  ],
+  "layout": {
+    "version": 1,
+    "revision": 1,
+    "positions": {
+      "open": {
+        "x": 12,
+        "y": 17.416666666666664
+      },
+      "detected": {
+        "x": 392,
+        "y": 12
+      },
+      "partial": {
+        "x": 720,
+        "y": 12.25
+      },
+      "paid": {
+        "x": 751,
+        "y": 164.75
+      },
+      "settled": {
+        "x": 974,
+        "y": 156.25
+      },
+      "expired": {
+        "x": 426,
+        "y": 216.75
+      },
+      "expired_partial": {
+        "x": 999,
+        "y": 12.25
+      },
+      "held": {
+        "x": 1344,
+        "y": 156.25
+      },
+      "refund_pending": {
+        "x": 1738,
+        "y": 164.75
+      },
+      "refunded": {
+        "x": 2001,
+        "y": 164.75
+      }
+    }
+  }
+}
