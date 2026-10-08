@@ -2686,7 +2686,7 @@
         "PLAN.md status line says phases 1-3 are done and docs/PROJECT.md scope reflects testnet-first"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "lint"
       ],
@@ -2747,11 +2747,23 @@
           }
         ],
         "taskHash": "d8c18c52198b2f1e",
-        "filesHash": "c336a8d24d235147"
+        "filesHash": "c336a8d24d235147",
+        "commit": "e2399a2",
+        "doneAt": "2026-10-08T19:03:20Z",
+        "proof": {
+          "1": "PLAN.md D-15 row replaced, marked Changed with reason (git diff)",
+          "2": "PLAN.md Phase 5 done-list and gate, Phase 8 goal and gate, Phase 12 testnet line (git diff)",
+          "3": "PLAN.md status line and docs/PROJECT.md scope line (git diff); lint passed"
+        }
       },
       "branch": "docs/f028-plan-md-and-docs-project-md-say-forwend",
       "baseCommit": "694ea16b9d1c7a9e2a2a4f588e0dd85d30d417cc",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f028-plan-md-and-docs-project-md-say-forwend",
+        "base": "main"
+      }
     },
     {
       "id": "F029",
