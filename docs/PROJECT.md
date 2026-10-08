@@ -65,12 +65,13 @@ PLAN.md. This file holds the current release's requirements and the decisions th
 | D-10 | Biome for lint and format; Vitest for unit; Playwright + axe for browser tests (ESLint + Prettier) | agent default | 2026-10-08 | One fast tool; browser tests prove visible behavior |
 | D-11 | TypeScript structure: all named types in `src/types/<domain>/`, finite runtime values as `as const` objects in `src/constants/<domain>.ts`, no repeated domain string literals (types next to code) | user | 2026-10-08 | Single source of truth per domain (typescript-structure skill) |
 | D-12 | Backend in Go with the official Privy Go SDK wrapped in `backend/internal/privy`; built from PLAN phase 6 (TypeScript backend; porting Privy's TS SDK) | user | 2026-10-08 | Learning goal; official SDK covers the REST API |
+| D-13 | Visual direction: A Dawn Path for marketing, B Dusk Ledger's dark framed product sections, C Halftone Horizon's dots as a secondary texture. Fonts: Libre Caslon Display (display), Hanken Grotesk (UI), Geist Mono (amounts, addresses) (pure A, B or C; other faces) | agent default, pending owner review | 2026-10-08 | Q-1; PLAN §P3.2 recommendation |
 
 ## Assumptions
 
 | ID | We believe that | Wrong if | Test and threshold | Owner | Status |
 |---|---|---|---|---|---|
-| A-1 | `grok -p` in headless mode can generate an image and save it to a given path | The image tool only works in the interactive TUI | Generate one hero candidate headless; the file exists | agent | open |
+| A-1 | `grok -p` in headless mode can generate an image and save it to a given path | The image tool only works in the interactive TUI | Generate one hero candidate headless; the file exists | agent | partly tested 2026-10-08: headless reaches `image_gen`, which returned HTTP 403 (no credits). Until credits exist, image slots use code-drawn SVG art |
 | A-2 | Grok Imagine output may be used commercially on our website | xAI terms forbid or restrict commercial use | Read the current xAI terms before the landing goes public | user | open |
 | A-3 | Lighthouse can run locally in CI against the production build | Headless Chrome in CI cannot reach the score reliably | Three CI runs within ±5 points | agent | open |
 
@@ -78,6 +79,6 @@ PLAN.md. This file holds the current release's requirements and the decisions th
 
 | ID | Question, options, recommended | Who can answer | Blocks | Default in use |
 |---|---|---|---|---|
-| Q-1 | Which visual direction: A Dawn Path, B Dusk Ledger, C Halftone Horizon? Recommended: A for marketing, with B's dark framed product sections and C's halftone as a texture | user | R-2…R-12 (tokens onward) | none; tasks after the comps wait for the answer |
+| Q-1 | Which visual direction: A Dawn Path, B Dusk Ledger, C Halftone Horizon? Compare on `/kit/directions` | user | no | D-13 (owner asked to build without stopping; review later) |
 | Q-2 | Where is the company based? | user | no (PLAN phase 11) | Global product; first withdrawal corridors EU/EEA (SEPA) and US (ACH) |
 | Q-3 | Preview deploys on Vercel free tier? | user | no | Local only until approved |
