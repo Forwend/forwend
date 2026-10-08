@@ -102,7 +102,7 @@
       "dependsOn": [
         "F001"
       ],
-      "state": "not_started",
+      "state": "blocked",
       "verification": [
         "images-check"
       ],
@@ -113,9 +113,13 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": null
+      "notes": [
+        "2026-10-08 blocked: question: Grok image_gen returns HTTP 403 personal-team-blocked:spending-limit (out of credits). Needs Sasha to add Grok credits or a SuperGrok subscription (spending money). A-1 untested: headless grok -p does reach image_gen; only billing failed."
+      ],
+      "blockedReason": "question: Grok image_gen returns HTTP 403 personal-team-blocked:spending-limit (out of credits). Needs Sasha to add Grok credits or a SuperGrok subscription (spending money). A-1 untested: headless grok -p does reach image_gen; only billing failed.",
+      "evidence": null,
+      "branch": "feat/f002-hero-image-candidates-for-directions-a-d",
+      "baseCommit": "ee16363e27999ee89674590e67021afead7b4dde"
     },
     {
       "id": "F003",
@@ -126,9 +130,9 @@
         "Given a production build without KIT_ENABLED, when /kit/directions is requested, then the response is 404"
       ],
       "dependsOn": [
-        "F002"
+        "F001"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "kit-e2e"
       ],
@@ -139,9 +143,83 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-08 review fail by subagent: Functional acceptance met: kit.spec.ts passes 3/3 when I re-ran it (three labeled comps, each with h3, Join waitlist button and product-panel; noindex meta; 404 on the server without KIT_ENABLED). The gate reads process.env at request time (lib/kit.ts plus force-dynamic layout). formatTokenAmount is exact bigint math, and its tests cover values above 2^53, 18 decimals and negatives. Sample data is labeled. No secrets. DEFECT (material, visual contrast): apps/web/src/components/directions/dusk-ledger-comp.tsx:15 uses var(--scrim), but COMP_UI.dusk (apps/web/src/constants/art.ts:46-53) has no 'scrim' key, so the scrim gradient never renders. Because of that, on the 390px screenshot the B Dusk Ledger subhead (muted #C2B6AE, 18px body text) sits on the orange horizon glow. Pixels sampled from .impeccable/review/b-mobile-crop.png give contrast of 1.36-2.23:1 on the right half of lines 2-3 (for example x365,y440 bg 173,131,111 = 1.69:1; x365,y468 bg 195,148,117 = 1.36:1). WCAG AA needs 4.5:1. Fix: define the scrim color, or move or darken the text so the subhead reaches at least 4.5:1 at 390px, then re-shoot the screenshots. Non-blocking: 'Join waitlist' is repeated 4 times across the comp components (D-11 repeated literal). apps/web types are flat files (src/types/invoice.ts) instead of the src/types/<domain>/ folders ui-web uses. formatTokenAmount shows '-0.00' for tiny negative amounts.",
+        "2026-10-08 review pass by subagent: Previous blocker fixed. COMP_UI.dusk now has scrim rgba(13,12,17,0.78) (apps/web/src/constants/art.ts:53) and dusk-ledger-comp.tsx:16 uses it; on a live KIT_ENABLED=1 server, getComputedStyle shows linear-gradient(rgba(0,0,0,0) 8%, rgba(13,12,17,0.78) 42%). Dusk muted text changed to #DDD3CC. My own 390px full-page screenshot is byte-identical to .impeccable/review/directions-mobile.png. Pixel check (background sampled at least 3px away from glyphs): comp B subhead at 390px, lightest background (56,44,40), 9.15:1; headline 12.6:1; comp B subhead at 1440px 12.82:1. No regression: comp A subhead #33493F is 6.06:1 (mobile) and 6.00:1 (desktop); comp C subhead #46517A is 7.01:1. Minor notes fixed: 'Join waitlist' appears only in constants/copy.ts:3 (CTA.joinWaitlist, used by comp-nav, the three comps and app/page.tsx); types live in src/types/{art,kit,payments}/; formatTokenAmount skips the minus sign when the shown value is all zeros (packages/ui-web/src/lib/money.ts:19), tested in money.test.ts ('does not print negative zero', -1n/6 -> '0.00'). Checks: playwright e2e/kit.spec.ts 3/3 passed (three labeled comps, each with h3, button and panel; noindex; 404 without KIT_ENABLED); biome lint clean; typecheck OK; unit tests 6+3+1 passed. Every var(--x) used in comps is defined."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T12:40:33Z",
+        "checks": [
+          {
+            "id": "kit-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.7,
+            "log": "docs/runs/F003-20261008T124033Z-kit-e2e.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F003-20261008T124033Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F003-20261008T124033Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F003-20261008T124033Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F003-20261008T124033Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.7,
+            "log": "docs/runs/F003-20261008T124033Z-e2e.log"
+          }
+        ],
+        "taskHash": "8e2d942c068d9ddd",
+        "filesHash": "791382aec2a8fd2f",
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Previous blocker fixed. COMP_UI.dusk now has scrim rgba(13,12,17,0.78) (apps/web/src/constants/art.ts:53) and dusk-ledger-comp.tsx:16 uses it; on a live KIT_ENABLED=1 server, getComputedStyle shows linear-gradient(rgba(0,0,0,0) 8%, rgba(13,12,17,0.78) 42%). Dusk muted text changed to #DDD3CC. My own 390px full-page screenshot is byte-identical to .impeccable/review/directions-mobile.png. Pixel check (background sampled at least 3px away from glyphs): comp B subhead at 390px, lightest background (56,44,40), 9.15:1; headline 12.6:1; comp B subhead at 1440px 12.82:1. No regression: comp A subhead #33493F is 6.06:1 (mobile) and 6.00:1 (desktop); comp C subhead #46517A is 7.01:1. Minor notes fixed: 'Join waitlist' appears only in constants/copy.ts:3 (CTA.joinWaitlist, used by comp-nav, the three comps and app/page.tsx); types live in src/types/{art,kit,payments}/; formatTokenAmount skips the minus sign when the shown value is all zeros (packages/ui-web/src/lib/money.ts:19), tested in money.test.ts ('does not print negative zero', -1n/6 -> '0.00'). Checks: playwright e2e/kit.spec.ts 3/3 passed (three labeled comps, each with h3, button and panel; noindex; 404 without KIT_ENABLED); biome lint clean; typecheck OK; unit tests 6+3+1 passed. Every var(--x) used in comps is defined.",
+          "at": "2026-10-08T12:42:20Z",
+          "filesHash": "791382aec2a8fd2f"
+        },
+        "commit": "e7b53b1",
+        "doneAt": "2026-10-08T12:42:38Z",
+        "proof": {
+          "1": "e2e/kit.spec.ts 'shows three labeled hero comps...' checks labels A Dawn Path, B Dusk Ledger, C Halftone Horizon, h3 headline, Join waitlist button and product-panel in each",
+          "2": "e2e/kit.spec.ts 'returns 404 when KIT_ENABLED is not set' against the production server started without the flag"
+        }
+      },
+      "branch": "feat/f003-the-private-kit-directions-page-shows-th",
+      "baseCommit": "ee16363e27999ee89674590e67021afead7b4dde",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f003-the-private-kit-directions-page-shows-th",
+        "base": "main"
+      }
     },
     {
       "id": "F004",
@@ -232,7 +310,9 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-08 Image slots use code-drawn SVG landscape art until F002 (Grok images) is unblocked; F002 then swaps real images into the same slots."
+      ],
       "blockedReason": null,
       "evidence": null
     },
@@ -292,15 +372,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-08T12:14:08Z",
-    "clean": false,
-    "problems": [
-      "lint failed (log docs/runs/wrapup-20261008T121407Z-lint.log)",
-      "typecheck failed (log docs/runs/wrapup-20261008T121407Z-typecheck.log)",
-      "unit failed (log docs/runs/wrapup-20261008T121407Z-unit.log)",
-      "build failed (log docs/runs/wrapup-20261008T121407Z-build.log)",
-      "e2e failed (log docs/runs/wrapup-20261008T121407Z-e2e.log)"
-    ],
-    "note": "Bootstrap done: PLAN.md, PROJECT.md (R-1..R-13), checks, queue F001-F008 merged in PR #1. Required checks fail with missing-command until F001 adds package.json. Next: start F001 walking skeleton."
+    "at": "2026-10-08T12:26:16Z",
+    "clean": true,
+    "problems": [],
+    "note": "F001 merged (PR #2). Next: F002 hero image candidates via grok -p (tests A-1)."
   }
 }
