@@ -49,3 +49,17 @@ contract ReentrantToken is MockToken {
         }
     }
 }
+
+/// USDT-style token: transfer returns nothing.
+contract NoReturnToken {
+    mapping(address => uint256) public balanceOf;
+
+    function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
+    }
+
+    function transfer(address to, uint256 amount) external {
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+    }
+}

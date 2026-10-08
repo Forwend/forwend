@@ -3426,65 +3426,67 @@
         "packages/ui-web/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-08 review pass by reviewer: No money or security issue found. forge test: 45 pass, 1 skipped (fork without RPC); fork test with real Base Sepolia USDC passes; Halmos 0.3.3: check_settle, check_refund, check_recoverNeverTakesInvoiceToken pass. Mutations checked in a scratch copy: removing the owed guard in refundable() fails 4 forge tests (unit, fuzz, invariant) and Halmos check_refund; removing the settle caller check fails 3 unit tests and Halmos check_settle. Invariant handler measured: settle succeeds in 184/257 runs, refund in 202 (195 after deadline), so invariants are not vacuous. Checked: executor can only pay recipient; refunds keep amount until settleDeadline (boundary <= / > consistent with settle); recover blocks invoice token by address and by balance-drop check (Arc native/USDC; only sub-1e12-wei dust above the 6-dec balance could leave, which is not owed money); CEI + nonReentrant; implementation reverts NotClone; predict/deploy share _address so validation and address match; salt = keccak(args); factory address commits to (authority, executor) via CREATE2 deployer; SafeERC20 covers no-return and false-return tokens; fee-on-transfer reverts RecipientMismatch. Non-blocking notes (tests missing for rules that hold in code, confirmed by throwaway PoCs): no test for nonReentrant on refund/recover; no USDT no-return-value mock (FeeToken stands in); no test that events are emitted; recipient == receiver rejection cannot be tested (hash fixed point); recover's to-address checks untested. invariant_invoiceTokenNeverRecovered is weak (attacker balance <= totalRefunded), but no recover of the invoice token succeeded in any run."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 2,
         "status": "passed",
-        "at": "2026-10-08T22:01:20Z",
+        "at": "2026-10-08T22:06:03Z",
         "checks": [
           {
             "id": "contracts",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.6,
-            "log": "docs/runs/F036-20261008T220120Z-contracts.log"
+            "seconds": 1.2,
+            "log": "docs/runs/F036-20261008T220603Z-contracts.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F036-20261008T220120Z-lint.log"
+            "seconds": 0.2,
+            "log": "docs/runs/F036-20261008T220603Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F036-20261008T220120Z-typecheck.log"
+            "seconds": 0.2,
+            "log": "docs/runs/F036-20261008T220603Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.0,
-            "log": "docs/runs/F036-20261008T220120Z-unit.log"
+            "seconds": 1.4,
+            "log": "docs/runs/F036-20261008T220603Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.6,
-            "log": "docs/runs/F036-20261008T220120Z-build.log"
+            "log": "docs/runs/F036-20261008T220603Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
             "seconds": 8.5,
-            "log": "docs/runs/F036-20261008T220120Z-e2e.log"
+            "log": "docs/runs/F036-20261008T220603Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F036-20261008T220120Z-keep.log"
+            "log": "docs/runs/F036-20261008T220603Z-keep.log"
           }
         ],
         "taskHash": "0b3be02d0726595e",
-        "filesHash": "0cbaf891dbcde354"
+        "filesHash": "12ff4bcc605775fc"
       },
       "branch": "feat/f036-invoicereceiverfactory-and-invoicereceiv",
       "baseCommit": "e8465bf736c0c6fa5116750ce517e53edb0f13c6",
