@@ -1,4 +1,4 @@
-import { BUTTON_SIZES, buttonClasses } from "@forwend/ui-web";
+import { BUTTON_SIZES, buttonClasses, Logo } from "@forwend/ui-web";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -24,8 +24,8 @@ export default function NotFound() {
       />
       {/* Light behind the text in both themes, and a fade into the page at the bottom. */}
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_55%_at_50%_35%,color-mix(in_oklab,var(--fw-bg)_82%,transparent),transparent)]" />
-      <Link href="/" className="font-semibold tracking-tight text-ink">
-        {SITE.name}
+      <Link href="/">
+        <Logo />
       </Link>
       <div className="mt-32 sm:mt-40 flex max-w-2xl flex-col items-center">
         <p className="font-mono text-sm text-muted">404</p>

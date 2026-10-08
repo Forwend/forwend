@@ -1,4 +1,4 @@
-import { BrandIcon, Tooltip } from "@forwend/ui-web";
+import { BrandIcon, Logo, Tooltip } from "@forwend/ui-web";
 import { FooterRidges } from "@/components/art/footer-ridges";
 import { FOOTER, LANDING_SECTIONS, NAV_LINKS } from "@/constants/landing";
 import { SITE } from "@/constants/site";
@@ -13,7 +13,7 @@ export function SiteFooter() {
       <div className="mx-auto max-w-6xl px-4 pt-12 pb-60 sm:px-8">
         <div className="flex flex-col gap-10 md:flex-row md:justify-between">
           <div className="max-w-xs">
-            <p className="text-lg font-semibold tracking-tight text-ink">{SITE.name}</p>
+            <Logo className="text-lg" />
             <p className="mt-2 text-muted">{FOOTER.tagline}</p>
             {/* Not links yet: each shows "Coming soon" on hover and keyboard focus. */}
             <ul aria-label="Social channels" className="mt-6 flex gap-2">

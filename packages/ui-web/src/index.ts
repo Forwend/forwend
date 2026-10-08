@@ -32,6 +32,7 @@ export { STEP_STATES } from "./constants/timeline";
 export { TONES } from "./constants/tone";
 export { BrandIcon } from "./icons/brand-icon";
 export { FreelancerIcon, MerchantIcon, PaymentPathIcon } from "./icons/custom-icons";
+export { Logo, LogoMark } from "./icons/logo";
 export { shortAddress } from "./lib/address";
 export { formatTokenAmount } from "./lib/money";
 export type { TokenAmountInput } from "./types/money/amount";
