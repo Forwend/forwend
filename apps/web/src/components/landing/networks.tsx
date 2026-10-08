@@ -6,9 +6,9 @@ export function Networks() {
     <section
       data-section={LANDING_SECTIONS.networks}
       aria-label={NETWORKS.label}
-      className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 sm:px-8 md:flex-row md:items-center md:justify-between"
+      className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 sm:px-8 xl:flex-row xl:items-center xl:justify-between"
     >
-      <ul className="flex flex-wrap items-center gap-x-8 gap-y-3 text-xl text-ink">
+      <ul className="flex flex-wrap items-center gap-x-6 gap-y-3 text-xl text-ink">
         {NETWORKS.networks.map((n) => (
           <li key={n.name} className="inline-flex items-center gap-2 font-medium tracking-tight">
             {n.logo ? <BrandIcon name={n.logo} className="size-[var(--fw-icon-lg)]" /> : null}
@@ -23,7 +23,7 @@ export function Networks() {
           </li>
         ))}
       </ul>
-      <p className="max-w-sm text-sm text-muted">{NETWORKS.note}</p>
+      <p className="max-w-xs text-sm text-muted xl:text-right">{NETWORKS.note}</p>
     </section>
   );
 }

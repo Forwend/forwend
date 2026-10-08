@@ -40,9 +40,14 @@ export function Money({ baseUnits, decimals, token, fractionDigits, className }:
   );
 }
 
-// Tokens with a published logo show it; others show the ticker only.
+// Tokens and networks show their logos; anything without one shows its name only.
 const TOKEN_LOGOS: Partial<Record<string, BrandIconName>> = { USDC: "usdc", USDT: "usdt" };
-const NETWORK_LOGOS: Partial<Record<string, BrandIconName>> = { Base: "base" };
+const NETWORK_LOGOS: Partial<Record<string, BrandIconName>> = {
+  Base: "base",
+  Arbitrum: "arbitrum",
+  Arc: "arc",
+  Tempo: "tempo",
+};
 
 export function TokenChip({ token, network }: TokenChipProps) {
   const tokenLogo = TOKEN_LOGOS[token];

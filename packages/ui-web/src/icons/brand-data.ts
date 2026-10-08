@@ -1,4 +1,6 @@
-// Brand logos from thesvg (https://github.com/glincker/thesvg), MIT License: see LICENSE-thesvg.txt.
+// Brand logos. Base, USDC, USDT and the social icons come from thesvg
+// (https://github.com/glincker/thesvg), MIT License: see LICENSE-thesvg.txt.
+// Arbitrum, Arc and Tempo come from each project's official sources (see the comment on each).
 // Copied as static markup so the app does not ship the full 7,400-icon package.
 // fill "currentColor" icons take the text color; "none" keeps the brand colors in the markup.
 export const BRAND_ICONS = {
@@ -57,5 +59,29 @@ export const BRAND_ICONS = {
     fill: "currentColor",
     markup:
       '<path d="M218.123 218.127h-37.931v-59.403c0-14.165-.253-32.4-19.728-32.4-19.756 0-22.779 15.434-22.779 31.369v60.43h-37.93V95.967h36.413v16.694h.51a39.907 39.907 0 0 1 35.928-19.733c38.445 0 45.533 25.288 45.533 58.186l-.016 67.013ZM56.955 79.27c-12.157.002-22.014-9.852-22.016-22.009-.002-12.157 9.851-22.014 22.008-22.016 12.157-.003 22.014 9.851 22.016 22.008A22.013 22.013 0 0 1 56.955 79.27m18.966 138.858H37.95V95.967h37.97v122.16ZM237.033.018H18.89C8.58-.098.125 8.161-.001 18.471v219.053c.122 10.315 8.576 18.582 18.89 18.474h218.144c10.336.128 18.823-8.139 18.966-18.474V18.454c-.147-10.33-8.635-18.588-18.966-18.453" />',
+  },
+  // Source: github.com/OffchainLabs/arbitrum-token-bridge (official Offchain Labs repo), colors match the Arbitrum brand guidelines.
+  arbitrum: {
+    title: "Arbitrum",
+    viewBox: "0 0 2500 2500",
+    fill: "none",
+    markup:
+      '<g id="Layer_x0020_1"> <g id="_2405588477232"> <rect fill="none" width="2500" height="2500"></rect> <g> <g> <path fill="#213147" d="M226,760v980c0,63,33,120,88,152l849,490c54,31,121,31,175,0l849-490c54-31,88-89,88-152V760 c0-63-33-120-88-152l-849-490c-54-31-121-31-175,0L314,608c-54,31-87,89-87,152H226z"></path> <g> <g> <g> <path fill="#12AAFF" d="M1435,1440l-121,332c-3,9-3,19,0,29l208,571l241-139l-289-793C1467,1422,1442,1422,1435,1440z"></path> </g> <g> <path fill="#12AAFF" d="M1678,882c-7-18-32-18-39,0l-121,332c-3,9-3,19,0,29l341,935l241-139L1678,883V882z"></path> </g> </g> </g> <g> <path fill="#9DCCED" d="M1250,155c6,0,12,2,17,5l918,530c11,6,17,18,17,30v1060c0,12-7,24-17,30l-918,530c-5,3-11,5-17,5 s-12-2-17-5l-918-530c-11-6-17-18-17-30V719c0-12,7-24,17-30l918-530c5-3,11-5,17-5l0,0V155z M1250,0c-33,0-65,8-95,25L237,555 c-59,34-95,96-95,164v1060c0,68,36,130,95,164l918,530c29,17,62,25,95,25s65-8,95-25l918-530c59-34,95-96,95-164V719 c0-68-36-130-95-164L1344,25c-29-17-62-25-95-25l0,0H1250z"></path> </g> <polygon fill="#213147" points="642,2179 727,1947 897,2088 738,2234 "></polygon> <g> <path fill="#FFFFFF" d="M1172,644H939c-17,0-33,11-39,27L401,2039l241,139l550-1507c5-14-5-28-19-28L1172,644z"></path> <path fill="#FFFFFF" d="M1580,644h-233c-17,0-33,11-39,27L738,2233l241,139l620-1701c5-14-5-28-19-28V644z"></path> </g> </g> </g> </g> </g>',
+  },
+  // Source: arc.io site logo (Circle); usage rules: arc.io/brand-guidelines-and-partner-toolkit.
+  arc: {
+    title: "Arc",
+    viewBox: "0 0 31 32",
+    fill: "currentColor",
+    markup:
+      '<path d="M0 32C0.260374 24.166 1.59328 16.8547 3.82135 11.1696C6.64316 3.96673 10.728 0 15.3227 0C19.9174 0 24.0016 3.96673 26.824 11.1696C28.292 14.9157 29.372 19.3668 30.0119 24.2089C30.0691 24.6414 30.1178 25.0809 30.1678 25.5195C30.184 25.5466 30.1938 25.5718 30.1905 25.5923C30.1905 25.5923 30.5666 27.9326 30.6465 32H30.604C30.0462 31.5439 23.4681 26.3931 12.5636 27.8845C12.7282 26.0457 12.9544 24.2565 13.2467 22.5415C13.2617 22.4538 13.2789 22.3692 13.2942 22.2821C17.5711 22.1536 21.3146 22.6486 24.1853 23.2972C24.1746 23.2293 24.1657 23.1594 24.1547 23.0918C23.5647 19.4302 22.6941 16.0779 21.5717 13.2131C19.7364 8.52888 17.3416 5.61852 15.3227 5.61852C13.3038 5.61852 10.909 8.52888 9.07379 13.2131C8.62954 14.3462 8.22512 15.5545 7.86244 16.8291C7.35258 18.615 6.92424 20.5296 6.58214 22.5413C6.0758 25.5124 5.75944 28.6987 5.64292 32H0Z" />',
+  },
+  // Source: Tempo brand kit (tempo.xyz/brand), digital/svg/mark-black.svg.
+  tempo: {
+    title: "Tempo",
+    viewBox: "852 430 216 220",
+    fill: "currentColor",
+    markup:
+      '<path d="M931.47,640h-54.67l50.67-154.67h-64.8l14.13-45.33h180.53l-14.13,45.33h-61.33l-50.4,154.67Z"/>',
   },
 } as const;

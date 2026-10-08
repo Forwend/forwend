@@ -48,9 +48,9 @@ export const NETWORKS = {
   label: "Planned networks and stablecoins",
   networks: [
     { name: "Base", logo: "base" },
-    { name: "Arbitrum", logo: null },
-    { name: "Arc", logo: null },
-    { name: "Tempo", logo: null },
+    { name: "Arbitrum", logo: "arbitrum" },
+    { name: "Arc", logo: "arc" },
+    { name: "Tempo", logo: "tempo" },
   ],
   tokens: [
     { name: "USDC", logo: "usdc" },
