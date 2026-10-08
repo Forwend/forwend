@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { NavVariant } from "./comp";
 import type { KitSectionTitle } from "./content";
+import type { ImageCompSpec } from "./directions";
 
 export interface KitSectionProps {
   title: KitSectionTitle;
@@ -15,4 +16,10 @@ export interface KitGroupProps {
 
 export interface CompNavProps {
   variant: NavVariant;
+}
+
+export interface ImageCompProps {
+  name: string;
+  image: { src: string; width: number; height: number };
+  comp: ImageCompSpec;
 }
