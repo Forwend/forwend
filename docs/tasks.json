@@ -2979,7 +2979,7 @@
         "PLAN.md says the contract receiver is v1 and the backend keeps the receive-address method per chain family so unique wallets per invoice can replace it; Later lists Tron, Solana and Bitcoin with the method each needs"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "lint"
       ],
@@ -3041,11 +3041,23 @@
           }
         ],
         "taskHash": "1df1256c040d13b2",
-        "filesHash": "7fc727225c3d4570"
+        "filesHash": "7fc727225c3d4570",
+        "commit": "d1bae19",
+        "doneAt": "2026-10-08T20:59:53Z",
+        "proof": {
+          "1": "PLAN.md Phase 5 design, done-list, invariants (git diff)",
+          "2": "PLAN.md D-08, D-14, glossary, Phase 9 claim line (git diff)",
+          "3": "PLAN.md C-10 and Later section (git diff); lint passed"
+        }
       },
       "branch": "docs/f031-plan-md-describes-contract-v1-with-the-a",
       "baseCommit": "8171a3d72bd125fba286acf8e9e04d4e15f685c8",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f031-plan-md-describes-contract-v1-with-the-a",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
