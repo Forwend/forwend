@@ -32,7 +32,8 @@ Factory:
   The first executor is a constructor argument, so it is part of the factory address: use the same one on every chain.
 - `paused` is set only by the refund authority and blocks `settle` only, never refunds.
 - Creates the implementation in its constructor. `deploy` returns the existing receiver if it is already deployed and
-  records every receiver it deploys (the Safe Guard allows only these).
+  records every receiver it deploys (`isReceiver`), so owners and monitoring can check that a queued refund targets
+  one of our receivers.
 - Deployed only through the CREATE2 deployer `0x4e59b44847b379578588920cA78FbF26c0B4956C`, with the same bytecode on
   every chain (`foundry.toml` pins solc, `evm_version` and no metadata hash). Never a nonce-based deployment: a leaked
   deployer key could then put other code at our addresses on a new chain. A chain without the CREATE2 deployer gets its
