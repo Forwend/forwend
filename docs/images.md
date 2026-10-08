@@ -27,3 +27,21 @@ Planned slots: hero (desktop 16:9 and a mobile crop), checkout band (dusk), call
 | Direction F Aurora Night (1916x821) | `images/candidates/f-aurora-night.webp` | A quiet northern night over a frozen lake surrounded by low pine hills, soft green and violet aurora ribbons across a deep navy sky, the lake reflecting the aurora, a thin path of footprints crossing the ice toward the horizon, the upper half mostly sky. Painterly digital illustration, calm, cinematic, no text, no people, no buildings, no logos. | 2026-10-08 |
 | Direction G Terracotta Mesa (2172x724) | `images/candidates/g-terracotta-mesa.webp` | A wide desert mesa landscape at midday, layered terracotta and sand-colored rock formations, a single straight road running from the bottom center toward the horizon, clear pale sky in the upper half with no objects, crisp shadows. Warm but restrained palette, painterly digital illustration with clean shapes, no text, no people, no cars, no buildings, no logos. | 2026-10-08 |
 | Direction H Glass Garden (2048x768) | `images/candidates/h-glass-garden.webp` | An abstract composition of soft frosted glass shapes and gentle gradients in mint, lilac and pale blue, floating panels and rounded forms catching soft light on a near-white background, one thin glowing line flowing through the shapes from left to right, the upper half calm and mostly empty. Clean modern 3D render look, soft shadows, no text, no numbers, no logos. | 2026-10-08 |
+
+## Logo
+
+Source: the owner's hand-drawn draft (2026-10-08). Steps used to make the files:
+
+1. Codex `image_gen` edit mode on the draft: "Turn this rough draft into a clean, professional logo
+   mark. Keep the same idea and silhouette ... perfectly mirror-symmetric ... pure flat white shape on
+   a pure solid black square background, no tile, no text."
+2. The left half was mirrored onto the right for exact symmetry, upscaled to 2048px and thresholded.
+3. Traced to a vector with potrace (npm `potrace`, turdSize 40, optTolerance 0.25).
+4. Files built from that one path with `sharp` and `png-to-ico`:
+   - `packages/ui-web/src/icons/logo-data.ts`: the mark path (used by `Logo` and `LogoMark`)
+   - `apps/web/public/brand/forwend-mark.svg`: one-color mark (currentColor)
+   - `apps/web/public/brand/forwend-icon.svg` and `apps/web/src/app/icon.svg`: tile, `--fw-primary`
+     #0f2219 with the mark in `--fw-on-primary` #f5faf7, mark at 62% of the tile
+   - `apps/web/src/app/favicon.ico` (16, 32, 48), `apps/web/src/app/apple-icon.png` (180, square)
+   - `apps/web/public/icon-192.png`, `icon-512.png`, `icon-maskable-512.png` (mark at 50% for the
+     maskable safe zone)

@@ -12,3 +12,13 @@ export interface BrandIconProps {
 
 /** Same props shape as Lucide icons, so custom and Lucide icons are interchangeable. */
 export type CustomIconProps = SVGProps<SVGSVGElement> & { strokeWidth?: number };
+
+export interface LogoMarkProps {
+  className?: string;
+  /** Accessible name when the mark stands alone; omit next to a visible wordmark. */
+  label?: string;
+}
+
+export interface LogoProps {
+  className?: string;
+}
