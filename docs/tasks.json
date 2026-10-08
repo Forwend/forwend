@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 38,
+  "nextId": 39,
   "tasks": [
     {
       "id": "F001",
@@ -3612,12 +3612,97 @@
         "branch": "feat/f037-the-v1-factory-is-live-at-one-address-on",
         "base": "main"
       }
+    },
+    {
+      "id": "F038",
+      "type": "docs",
+      "behavior": "AGENTS.md has a rule for related naming and a structured, scalable layout of folders and files",
+      "acceptance": [
+        "AGENTS.md project rules say: one job per file and folder, group by domain, related files share names (source, test, types), split files and add folders as a domain grows, follow the existing pattern first"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "lint"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/*",
+        "packages/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T22:31:34Z",
+        "checks": [
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F038-20261008T223134Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F038-20261008T223134Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F038-20261008T223134Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F038-20261008T223134Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.7,
+            "log": "docs/runs/F038-20261008T223134Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F038-20261008T223134Z-keep.log"
+          }
+        ],
+        "taskHash": "0717b048917b7c22",
+        "filesHash": "28e2d43f7404cd45",
+        "commit": "898f2c2",
+        "doneAt": "2026-10-08T22:31:45Z",
+        "proof": {
+          "1": "AGENTS.md project rules, structure and naming line"
+        }
+      },
+      "branch": "docs/f038-agents-md-has-a-rule-for-related-naming",
+      "baseCommit": "30d0fac166f986a0d2da806d109853c80324fcc2",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f038-agents-md-has-a-rule-for-related-naming",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-08T19:06:27Z",
+    "at": "2026-10-08T22:29:10Z",
     "clean": true,
     "problems": [],
-    "note": "F028 testnet-first plan (PR #30) and F029 contract diagrams (PR #29) merged. Next: phase 4 spikes S-4/S-5/S-6, then phase 5 contracts."
+    "note": "F034-F037 merged (PRs #34-#37): Foundry workspace in packages/contracts, contract security rules, v1 factory+receiver with full tests (Halmos in CI), deployed on 4 testnets at 0xCB9c...6864. Next: F033 landing refund line; then Phase 6 backend in apps/backend."
   }
 }
