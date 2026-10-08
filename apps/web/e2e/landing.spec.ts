@@ -65,7 +65,8 @@ test.describe("landing page", () => {
     await expect(item.getByText(/settles to a wallet that belongs to your profile/)).toBeVisible();
   });
 
-  for (const width of [360, 768, 1280, 1536]) {
+  // 330 also covers the ~345px layout width Linux CI gets at 360 (classic 15px scrollbar).
+  for (const width of [330, 360, 768, 1280, 1536]) {
     test(`has no horizontal scroll at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/");
