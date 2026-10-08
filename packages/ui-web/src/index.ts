@@ -27,7 +27,7 @@ export { ACTIVITY_DIRECTIONS } from "./constants/activity";
 export { BUTTON_SIZES, BUTTON_VARIANTS } from "./constants/button";
 export { CAPTURE_STATUS } from "./constants/email-capture";
 export { PANEL_TONES } from "./constants/panel";
-export { PAYMENT_STATUSES } from "./constants/payment-status";
+export { PAYMENT_STATUS, PAYMENT_STATUSES } from "./constants/payment-status";
 export { STEP_STATES } from "./constants/timeline";
 export { TONES } from "./constants/tone";
 export { shortAddress } from "./lib/address";

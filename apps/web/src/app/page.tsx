@@ -1,14 +1,33 @@
-import { Button } from "@forwend/ui-web";
-import { CTA } from "@/constants/copy";
-import { SITE } from "@/constants/site";
+import { CheckoutPreview } from "@/components/landing/checkout-preview";
+import { Developers } from "@/components/landing/developers";
+import { Faq } from "@/components/landing/faq";
+import { Fees } from "@/components/landing/fees";
+import { FinalCta } from "@/components/landing/final-cta";
+import { Hero } from "@/components/landing/hero";
+import { HowItWorks } from "@/components/landing/how-it-works";
+import { MoneyRules } from "@/components/landing/money-rules";
+import { Networks } from "@/components/landing/networks";
+import { Profiles } from "@/components/landing/profiles";
+import { SiteFooter } from "@/components/landing/site-footer";
+import { SiteNav } from "@/components/landing/site-nav";
 
-// Placeholder home page. F006 builds the landing page.
 export default function HomePage() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col items-start justify-center gap-6 p-6">
-      <h1 className="text-4xl font-semibold">{SITE.name}</h1>
-      <p>{SITE.description}</p>
-      <Button>{CTA.joinWaitlist}</Button>
-    </main>
+    <>
+      <SiteNav />
+      <main>
+        <Hero />
+        <Networks />
+        <HowItWorks />
+        <Profiles />
+        <CheckoutPreview />
+        <MoneyRules />
+        <Developers />
+        <Fees />
+        <Faq />
+        <FinalCta />
+      </main>
+      <SiteFooter />
+    </>
   );
 }

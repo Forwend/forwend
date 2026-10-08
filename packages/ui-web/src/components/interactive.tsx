@@ -13,13 +13,13 @@ export function Tabs({ items, label, defaultValue }: TabsProps) {
     <RadixTabs.Root defaultValue={defaultValue ?? items[0]?.value}>
       <RadixTabs.List
         aria-label={label}
-        className="inline-flex flex-wrap gap-1 rounded-pill border border-line bg-surface-2 p-1"
+        className="grid w-full grid-cols-2 gap-1 rounded-lg border border-line bg-surface-2 p-1 sm:inline-flex sm:w-auto sm:rounded-pill"
       >
         {items.map((item) => (
           <RadixTabs.Trigger
             key={item.value}
             value={item.value}
-            className="rounded-pill px-4 py-2 text-sm font-medium text-muted transition-colors duration-[var(--fw-duration-fast)] ease-out hover:text-ink data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-sm"
+            className="shrink-0 rounded-pill px-4 py-2 text-sm font-medium text-muted transition-colors duration-[var(--fw-duration-fast)] ease-out hover:text-ink data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-sm"
           >
             {item.label}
           </RadixTabs.Trigger>

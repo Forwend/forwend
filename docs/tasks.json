@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 9,
+  "nextId": 11,
   "tasks": [
     {
       "id": "F001",
@@ -466,7 +466,7 @@
       "dependsOn": [
         "F005"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "landing-e2e",
         "images-check",
@@ -482,10 +482,101 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-10-08 Image slots use code-drawn SVG landscape art until F002 (Grok images) is unblocked; F002 then swaps real images into the same slots."
+        "2026-10-08 Image slots use code-drawn SVG landscape art until F002 (Grok images) is unblocked; F002 then swaps real images into the same slots.",
+        "2026-10-08 review fail by subagent: Money amounts are clipped at common widths; the acceptance tests pass but the layout is broken where it matters most. (1) apps/web/src/components/landing/checkout-preview.tsx:52-57: at 360px the checkout Money (text-4xl, flex-wrap row with TokenChip) is wider than the card; 'USDC' ends at x=372 while the card's right border is at 336 and the viewport is 360, so the section's overflow-hidden cuts it to 'USD' (measured with Playwright on pnpm start; screenshot shows '1,250.00 USD'). It also runs past the card border at 390 (372 vs 366, visible in .impeccable/review/mobile.png). The no-scroll test passes only because the section clips it. (2) apps/web/src/components/landing/profile-panels.tsx:44-58: in the Personal tab at 1280 and 1536px the sm:grid-cols-3 StatTiles are too narrow, so '4,210.50 USDC' and '1,250.00 USDC' run past the tile border and 'USDC' is clipped (786>762, 989>965 at 1280). Fix: let the amount wrap or shrink (for example a smaller size below sm on checkout, and fewer columns or smaller value text for the tiles until xl), and add a landing test that every Money element fits inside its card at 360/768/1280/1536. What passes: all 13 tests in landing, a11y and smoke are green; section order, nav Join waitlist, networks strip, 4 tabs, FAQ expand, no 'trusted by', no scroll at 4 widths, reduced motion (base.css !important plus a JS matchMedia guard in hero-payment), axe on / all proven. check-images.mjs exits 1 for an unrecorded probe file (tested, then removed). next.config sets AVIF/WebP; the next/image test passes with no images because there are none yet (F006 note, F002). Smoke change OK: F001 only required the title, and that check is kept. Copy matches D-02..D-17 and C-01/C-08: no live, regulated or insured claims, no pricing, wrong-network recovery never promised, API marked preview, sample panels have a 'Sample' badge. Money is bigint; no raw hex or default Tailwind palette in components.",
+        "2026-10-08 review pass by subagent: Prior defects fixed and now guarded by a test. (1) Overflow fixed: checkout Money uses text-[clamp(1.75rem,7.5vw,2.25rem)] (checkout-preview.tsx:56), Money is flex-wrap with data-money (packages/ui-web/src/components/payments.tsx:32), StatTile value is text-xl (payments.tsx:142). mobile.png at 390 shows '1,250.00 USDC' inside the checkout card. (2) The new test 'keeps every amount inside its card' really catches overflow. Mutation A: checkout amount set to text-5xl, the 360px test FAILED with '1,250.00 USDC (339 > 336)'. Mutation B: StatTile value set to text-4xl, the 1280px test FAILED with '4,210.50 USDC (814 > 762)' and '1,250.00 USDC (1016 > 965)'. Both files restored byte-for-byte (cmp OK, git status back to the same 27 entries). (3) Runs: playwright landing+a11y+smoke 17/17 passed; ui-web unit 11/11; pnpm lint clean (129 files); pnpm typecheck 3/3; check-images exit 0 (no rasters yet, F002 blocked, documented in docs/images.md). (4) Screenshots (desktop, first viewport, mobile 390): no overflow, overlap or contrast problems seen. River marks sit on the river and light in step with the hero timeline; subhead is one line; hero note is ink; tabs are one row; mono tx line in the hero panel; halftone and footer grain visible. Code block scrolls inside its own pre on mobile (overflow-x-auto), not the page. (5) Copy honesty: no live, regulated or insured claim, no pricing ('Pricing is not set yet'), wrong-network recovery 'never promised' (D-14), API marked preview, sample panels carry a Sample badge, no 'trusted by' (C-08). FAQ wallet text matches D-02, identity text fits D-16, refund and overpay text fits D-05..D-08. Old non-blocking notes done: PROFILE_TABS and PAYMENT_STATUS constants, SAMPLE_WITHDRAWAL in fees.tsx. (6) Acceptance 1-4 proven by landing-e2e (order, nav CTA, networks, tabs, FAQ, no trusted-by, no scroll at 360/768/1280/1536, reduced motion), images-check plus next.config AVIF/WebP, and a11y-e2e on /. Nit, not blocking: the hero note 'We will email you when access opens' sits next to a form whose submit does nothing yet (waitlist-form.tsx onSubmit no-op). That is fine while the site is private (C-09, F007), but it must be real before the site goes public.",
+        "2026-10-08 review fail by subagent: Hero regression from the last design batch, between sm and lg (and partly on phones). apps/web/src/components/landing/hero.tsx:13 and hero-journey.tsx:41 set the landscape and river overlay to h-[calc(100%-19rem)] below lg. That shrinks the art, so the horizon and river move up behind the hero text and form. Measured with Playwright on pnpm start, reduced motion, viewport height 800: (1) 768px: the subhead 'Invoices, checkout and an API for USDC and USDT.' (text-muted) now sits on the dark pine clusters and mountains; 'Invoices,' and 'USDT.' are hard to read. The waitlist form (y 368-422) covers river marks 2 and 3 (y 377, 416), so only 2 of 4 step marks show. (2) 360px: the form (y 380-434) covers marks 1 and 2 (y 386, 423) and the top of the river. (3) 390x800: the form covers marks 2 and 3 (y 382, 422). In .impeccable/review/mobile.png (390, taller viewport) mark 1 is behind the form. The river step marks are the hero's signature moment (they light in step with the panel timeline), and the earlier pass relied on 'River marks sit on the river'. Fix: keep the river and marks clear of the text block below lg. For example, use a larger landscape height, keep the full height and put the panel after the art in flow, or move the marks/viewBox crop (preserveAspectRatio xMidYMax slice). Then check 360/390/768 again. What passes: playwright landing+a11y+kit+smoke 23/23; ui-web unit 11/11. Panel no longer covers the river on mobile (it sits below the art on bg-surface-2). Tabs: 2x2 grid at 360 (4 landing tabs; the 3 kit tabs leave one empty cell, fine), one pill row at 640, kit e2e and axe green. dawn-landscape right pine cluster at x 1560+ looks right on desktop-first-viewport.png (no trees behind the panel). 1024+ (lg) hero is unchanged and fine.",
+        "2026-10-08 review pass by subagent: Revert confirmed; previous regression gone. (1) Code: grep for '19rem' in apps/web/src and packages/ui-web/src finds nothing. hero.tsx:13 DawnLandscape is 'absolute inset-0 -z-20 h-full w-full' and hero-journey.tsx:41 river svg is 'absolute inset-0 -z-10 h-full w-full' at all widths, same as the earlier passing review. Kept items present: Tabs list is 'grid w-full grid-cols-2 ... sm:inline-flex sm:w-auto sm:rounded-pill' (packages/ui-web/src/components/interactive.tsx:16); right foreground pines start at x 1560 (apps/web/src/components/art/dawn-landscape.tsx:112). (2) Runs: playwright landing+a11y+kit+smoke 23/23 passed (6.8s), including no horizontal scroll at 360/768/1280/1536, amounts inside cards at 4 widths, reduced motion, axe on / and /kit. ui-web unit 11/11 passed. (3) Screenshots: tablet-first-viewport.png (768): h1 and subhead on sky, form and note on pale sky/mountain tops, all readable; no text on dark pines. desktop-first-viewport.png (1440): text on sky, note over pale mountains in ink, readable; 4 river marks visible on the river, panel at right, no pines behind panel. mobile.png (390, cropped 0-1300, 1300-2300, 2300-3800): hero text on sky, note readable, nothing past the edges; tabs show as a 2x2 grid; checkout and invoice amounts ('1,250.00 USDC') fit their cards. Known: on 390 and 768 the invoice panel covers most of the river and its marks (only mark 1 visible); this is queued as F010 and out of scope here."
       ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T13:28:42Z",
+        "checks": [
+          {
+            "id": "landing-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.9,
+            "log": "docs/runs/F006-20261008T132842Z-landing-e2e.log"
+          },
+          {
+            "id": "images-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F006-20261008T132842Z-images-check.log"
+          },
+          {
+            "id": "a11y-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.1,
+            "log": "docs/runs/F006-20261008T132842Z-a11y-e2e.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F006-20261008T132842Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F006-20261008T132842Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F006-20261008T132842Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F006-20261008T132842Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 7.5,
+            "log": "docs/runs/F006-20261008T132842Z-e2e.log"
+          }
+        ],
+        "taskHash": "521f1e7ddd8cb779",
+        "filesHash": "80a98671ad986f55",
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Revert confirmed; previous regression gone. (1) Code: grep for '19rem' in apps/web/src and packages/ui-web/src finds nothing. hero.tsx:13 DawnLandscape is 'absolute inset-0 -z-20 h-full w-full' and hero-journey.tsx:41 river svg is 'absolute inset-0 -z-10 h-full w-full' at all widths, same as the earlier passing review. Kept items present: Tabs list is 'grid w-full grid-cols-2 ... sm:inline-flex sm:w-auto sm:rounded-pill' (packages/ui-web/src/components/interactive.tsx:16); right foreground pines start at x 1560 (apps/web/src/components/art/dawn-landscape.tsx:112). (2) Runs: playwright landing+a11y+kit+smoke 23/23 passed (6.8s), including no horizontal scroll at 360/768/1280/1536, amounts inside cards at 4 widths, reduced motion, axe on / and /kit. ui-web unit 11/11 passed. (3) Screenshots: tablet-first-viewport.png (768): h1 and subhead on sky, form and note on pale sky/mountain tops, all readable; no text on dark pines. desktop-first-viewport.png (1440): text on sky, note over pale mountains in ink, readable; 4 river marks visible on the river, panel at right, no pines behind panel. mobile.png (390, cropped 0-1300, 1300-2300, 2300-3800): hero text on sky, note readable, nothing past the edges; tabs show as a 2x2 grid; checkout and invoice amounts ('1,250.00 USDC') fit their cards. Known: on 390 and 768 the invoice panel covers most of the river and its marks (only mark 1 visible); this is queued as F010 and out of scope here.",
+          "at": "2026-10-08T13:30:28Z",
+          "filesHash": "80a98671ad986f55"
+        },
+        "commit": "61466d4",
+        "doneAt": "2026-10-08T13:30:44Z",
+        "proof": {
+          "1": "e2e/landing.spec.ts 'shows every section in order' (order, visibility, nav Join waitlist, h1, networks, developer code, no 'trusted by'), 'profile tabs switch panels', 'an FAQ item expands on click'",
+          "2": "e2e/landing.spec.ts 'has no horizontal scroll at 360/768/1280/1536px' and 'respects reduced motion' (max animation/transition <= 0.01s)",
+          "3": "images-check (scripts/check-images.mjs, docs/images.md) and e2e 'serves every image through next/image'; next.config images.formats avif, webp",
+          "4": "e2e/a11y.spec.ts '/ has no serious or critical axe violations'"
+        }
+      },
+      "branch": "feat/f006-the-landing-page-explains-forwend-in-ord",
+      "baseCommit": "9545615c698d1e9e12a3a03eae363477c2ca910a",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f006-the-landing-page-explains-forwend-in-ord",
+        "base": "main"
+      }
     },
     {
       "id": "F007",
@@ -537,6 +628,58 @@
       ],
       "keep": [],
       "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F009",
+      "type": "fix",
+      "behavior": "Kit polish from the F005 review: visible toast dot, safe copy helper, token blur and timings, QR quiet zone, stable dark axe check",
+      "acceptance": [
+        "Given a failed clipboard write, when copy is clicked, then no unhandled error is thrown and the label stays 'Copy'; the copied timer is cleared on unmount (unit test)",
+        "Given the QR code, then its quiet zone is 4 modules; the toast dot uses the solid tone color; the dialog backdrop and tooltip use token blur and token durations",
+        "Given /kit in the dark theme, when axe runs after theme transitions settle, then there are 0 serious or critical violations"
+      ],
+      "dependsOn": [
+        "F008"
+      ],
+      "state": "not_started",
+      "verification": [
+        "ui-unit",
+        "a11y-e2e"
+      ],
+      "refs": [
+        "R-5",
+        "R-10"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F010",
+      "type": "fix",
+      "behavior": "On phones the hero river shows all four payment marks in open water and runs into the invoice panel",
+      "acceptance": [
+        "Given a 390px viewport, when / loads, then all four river marks are visible and none overlaps the email field or the hero note (browser test comparing bounding boxes)",
+        "Given a 390px viewport, then the landscape continues under the top of the invoice panel with no hard horizontal edge across the river (manual: design review)"
+      ],
+      "dependsOn": [
+        "F006"
+      ],
+      "state": "not_started",
+      "verification": [
+        "landing-e2e"
+      ],
+      "refs": [
+        "R-6",
+        "R-7"
+      ],
+      "keep": [],
+      "review": true,
       "notes": [],
       "blockedReason": null,
       "evidence": null

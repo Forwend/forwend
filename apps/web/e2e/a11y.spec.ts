@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { KIT_URL } from "./servers";
+import { KIT_URL, PUBLIC_URL } from "./servers";
 
 const BLOCKING = new Set(["serious", "critical"]);
 
@@ -15,6 +15,11 @@ async function blockingViolations(page: import("@playwright/test").Page) {
 }
 
 test.describe("accessibility", () => {
+  test("/ has no serious or critical axe violations", async ({ page }) => {
+    await page.goto(`${PUBLIC_URL}/`);
+    expect(await blockingViolations(page)).toEqual([]);
+  });
+
   for (const theme of ["light", "dark"]) {
     test(`/kit has no serious or critical axe violations in the ${theme} theme`, async ({
       page,
