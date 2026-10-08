@@ -23,3 +23,9 @@ export interface HalftoneSpec {
   /** Rows below the edge before dots reach full size. */
   ramp: number;
 }
+
+export interface HalftoneRidgeProps {
+  className?: string;
+  /** Light dots with no ground, for use as a background texture. */
+  soft?: boolean;
+}

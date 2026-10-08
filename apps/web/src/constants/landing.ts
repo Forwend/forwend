@@ -1,0 +1,205 @@
+import { PAYMENT_STATUS } from "@forwend/ui-web";
+
+// Landing page copy. Claims stay inside what PLAN.md and docs/PROJECT.md decide; nothing here says
+// the product is live, regulated or insured, and no pricing is stated.
+
+export const LANDING_SECTIONS = {
+  nav: "nav",
+  hero: "hero",
+  networks: "networks",
+  how: "how",
+  profiles: "profiles",
+  checkout: "checkout",
+  rules: "rules",
+  developers: "developers",
+  fees: "fees",
+  faq: "faq",
+  cta: "cta",
+  footer: "footer",
+} as const;
+
+export const PROFILE_TABS = {
+  personal: "personal",
+  freelancer: "freelancer",
+  merchant: "merchant",
+  developers: "developers",
+} as const;
+
+export const NAV_LINKS = [
+  { href: "#how", label: "How it works" },
+  { href: "#profiles", label: "Profiles" },
+  { href: "#developers", label: "Developers" },
+  { href: "#faq", label: "FAQ" },
+] as const;
+
+export const HERO = {
+  title: "Get paid in stablecoins. See every step.",
+  body: "Invoices, checkout and an API for USDC and USDT.",
+  note: "Private beta in development. We will email you when access opens.",
+} as const;
+
+export const NETWORKS = {
+  label: "Planned networks and stablecoins",
+  networks: ["Base", "Arbitrum", "Arc", "Tempo"],
+  tokens: ["USDC", "USDT"],
+  note: "Planned. Each network goes live only after its token contracts are verified and tested.",
+} as const;
+
+export const HOW = {
+  title: "From invoice to your wallet, on one visible path.",
+  steps: [
+    {
+      title: "Create an invoice",
+      body: "Set the amount, the stablecoin and the network. Share a link or a PDF.",
+    },
+    {
+      title: "Your client pays",
+      body: "From a wallet or straight from an exchange withdrawal. No account needed to pay.",
+    },
+    {
+      title: "We confirm it on chain",
+      body: "You see detected, then confirmed. Nothing counts as paid until the network finalizes it.",
+    },
+    {
+      title: "It settles to your wallet",
+      body: "The invoice amount moves to your profile wallet. Keep it, send it, or withdraw to a bank.",
+    },
+  ],
+} as const;
+
+export const PROFILES = {
+  title: "One login. A profile for each way you get paid.",
+  body: "Keep personal money, client work and a store apart, each with its own wallet and history.",
+  tabs: {
+    personal: {
+      label: "Personal",
+      title: "Your everyday stablecoin account",
+      body: "Receive, hold and send USDC. See what is available, what is still arriving, and anything held for a refund.",
+    },
+    freelancer: {
+      label: "Freelancer",
+      title: "Invoices your clients can actually pay",
+      body: "Saved clients, due dates and a payment page that shows the exact token and network. Partial payments show what is still due.",
+    },
+    merchant: {
+      label: "Merchant",
+      title: "Checkout for every store you run",
+      body: "Hosted checkout and payment links per store, with your logo and colors. Every payment keeps its store and order reference.",
+    },
+    developers: {
+      label: "Developers",
+      title: "Payments your backend can trust",
+      body: "Create an invoice with one call, then react to signed events. Detected and confirmed are separate events, never mixed up.",
+    },
+  },
+} as const;
+
+export const CHECKOUT = {
+  title: "A checkout that names the network.",
+  body: "The payer sees the exact stablecoin, network and amount next to the address and QR code, with a clear warning before they send.",
+  points: [
+    "Pay from a wallet or from an exchange",
+    "Live status from detected to settled",
+    "No sign-up for the person paying",
+  ],
+} as const;
+
+export const RULES = {
+  title: "When a payment does not match, the rules are written down.",
+  body: "Blockchain transfers cannot be stopped once sent, so every case has a rule instead of a surprise.",
+  items: [
+    {
+      status: PAYMENT_STATUS.partiallyPaid,
+      body: "The invoice waits for the rest until it expires. You and your client see exactly what is still due.",
+    },
+    {
+      status: PAYMENT_STATUS.overpaid,
+      body: "You receive the invoice amount. The extra is held separately so the payer can claim it back.",
+    },
+    {
+      status: PAYMENT_STATUS.expiredPartiallyPaid,
+      body: "An expired invoice cannot be reopened. What arrived is held for one verified refund.",
+    },
+  ],
+  wrongNetwork: {
+    title: "Sent on the wrong network",
+    body: "Open a support request from the invoice page. Recovery is reviewed case by case and is never promised.",
+  },
+  footnote:
+    "One refund per invoice returns everything still held. Money already settled to you is never pulled back.",
+} as const;
+
+export const DEVELOPERS = {
+  title: "An API that tells you what actually happened.",
+  body: "Built around the problems developers report most with crypto payments.",
+  points: [
+    "Idempotent invoice creation: retries never create a second invoice",
+    "Separate detected, confirmed and settled events",
+    "Signed webhooks with retries and manual replay",
+    "Fetch the current state of any invoice at any time",
+  ],
+  note: "Preview. The API is in design and names may change.",
+  code: `// Create an invoice (preview)
+const invoice = await forwend.invoices.create(
+  { amount: "1250.00", token: "USDC", network: "base" },
+  { idempotencyKey: "order-1042" },
+);
+
+// Handle a signed webhook
+const event = forwend.webhooks.verify(rawBody, headers, secret);
+if (event.type === "invoice.settled") {
+  await markOrderPaid(event.data.reference);
+}`,
+} as const;
+
+export const FEES = {
+  title: "See the net amount before you confirm.",
+  body: "Withdrawals to a bank are always your choice. Before you approve, the quote shows the rate, each fee and what reaches your account.",
+  quote: {
+    title: "Withdrawal quote",
+    lines: ["Exchange rate", "Network fee", "Provider fee", "Arrives in your bank"],
+    pending: "Shown in your quote",
+  },
+  note: "Pricing is not set yet. Bank withdrawals depend on your country and our payout partner.",
+} as const;
+
+export const FAQ = {
+  title: "Questions",
+  items: [
+    {
+      question: "Who holds my money?",
+      answer:
+        "Each invoice has its own payment contract. When it is paid, the invoice amount settles to a wallet that belongs to your profile. Your personal wallet is created when you sign up, and each new profile gets its own.",
+    },
+    {
+      question: "Which networks and stablecoins?",
+      answer:
+        "We plan to support USDC and USDT on Base, Arbitrum, Arc and Tempo. We start with USDC on Base and add each network only after testing it.",
+    },
+    {
+      question: "What if someone sends on the wrong network?",
+      answer:
+        "The checkout warns before anyone sends. If it still happens, open a support request from the invoice page. Recovery is reviewed case by case and cannot be guaranteed.",
+    },
+    {
+      question: "Do I need to verify my identity?",
+      answer:
+        "Bank withdrawals will need identity checks. Other rules depend on your country and are not final yet.",
+    },
+    {
+      question: "When can I use it?",
+      answer:
+        "Forwend is in private development. Join the waitlist and we will email you when the beta opens.",
+    },
+  ],
+} as const;
+
+export const FINAL_CTA = {
+  title: "Be first to get paid with Forwend.",
+  body: "Join the waitlist for early access to invoices, checkout and the API.",
+} as const;
+
+export const FOOTER = {
+  tagline: "Stablecoin payments you can follow from invoice to wallet.",
+  legal: ["Terms (coming soon)", "Privacy (coming soon)"],
+} as const;

@@ -1,5 +1,19 @@
 import { TONES } from "./tone";
 
+/** Status ids, for code that names one status. */
+export const PAYMENT_STATUS = {
+  detected: "detected",
+  confirming: "confirming",
+  paid: "paid",
+  partiallyPaid: "partiallyPaid",
+  overpaid: "overpaid",
+  expired: "expired",
+  expiredPartiallyPaid: "expiredPartiallyPaid",
+  settled: "settled",
+  refundPending: "refundPending",
+  refunded: "refunded",
+} as const;
+
 // The payment states users see (PLAN D-10, docs/PROJECT.md domain). Labels are final UI copy.
 export const PAYMENT_STATUSES = {
   detected: { label: "Detected", tone: TONES.info },

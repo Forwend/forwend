@@ -1,15 +1,6 @@
-import type { ReactNode } from "react";
-import type { KitSectionTitle } from "@/types/kit/content";
+import type { KitGroupProps, KitSectionProps } from "@/types/kit/props";
 
-export function KitSection({
-  title,
-  note,
-  children,
-}: {
-  title: KitSectionTitle;
-  note?: string;
-  children: ReactNode;
-}) {
+export function KitSection({ title, note, children }: KitSectionProps) {
   const id = title.toLowerCase().replace(/\s+/g, "-");
   return (
     <section
@@ -25,7 +16,7 @@ export function KitSection({
   );
 }
 
-export function KitGroup({ title, children }: { title: string; children: ReactNode }) {
+export function KitGroup({ title, children }: KitGroupProps) {
   return (
     <div className="border-t border-line pt-6 first:border-t-0 first:pt-0">
       <h3 className="text-sm font-semibold text-muted">{title}</h3>

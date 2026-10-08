@@ -1,10 +1,10 @@
 import { NAV_VARIANTS } from "@/constants/comp";
 import { CTA } from "@/constants/copy";
-import type { NavVariant } from "@/types/kit/comp";
+import type { CompNavProps } from "@/types/kit/props";
 
 const LINKS = ["Product", "Developers", "FAQ"] as const;
 
-export function CompNav({ variant }: { variant: NavVariant }) {
+export function CompNav({ variant }: CompNavProps) {
   const shell =
     variant === NAV_VARIANTS.pill
       ? "mx-auto w-fit gap-6 rounded-full border border-[var(--line)] bg-[var(--surface)] py-1.5 pr-1.5 pl-5 backdrop-blur-md"

@@ -109,7 +109,7 @@ export function DawnLandscape({ className }: { className?: string }) {
       <path d={ridgePath(MEADOW)} fill="url(#dawn-meadow)" />
       <path d={RIVER} fill="url(#dawn-river)" />
       <path d={pines(23, -60, 380, 9, 820, 0.78)} fill={C.pine} />
-      <path d={pines(31, 1240, W + 60, 9, 820, 0.78)} fill={C.pine} />
+      <path d={pines(31, 1560, W + 100, 4, 820, 0.78)} fill={C.pine} />
     </svg>
   );
 }

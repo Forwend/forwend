@@ -4,3 +4,37 @@
 @import "@forwend/design-tokens/base.css";
 
 @source "../../../../packages/ui-web/src";
+
+/* Hero signature: the river path draws forward as the sample payment settles. */
+@keyframes fw-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.fw-river-path {
+  fill: none;
+  stroke: var(--fw-on-accent);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0.85;
+  animation: fw-draw calc(var(--fw-duration-slower) * 4) var(--fw-ease-out) 0.5s forwards;
+}
+
+.fw-river-mark {
+  fill: var(--fw-glass);
+  stroke: var(--fw-on-accent);
+  stroke-width: 3;
+  transition:
+    r var(--fw-duration-slow) var(--fw-ease-out),
+    fill var(--fw-duration-slow) var(--fw-ease-out);
+}
+
+.fw-river-mark-lit {
+  fill: var(--fw-accent);
+}
