@@ -3524,7 +3524,7 @@
         "packages/contracts/deployments.json records per chain: factory, implementation, refund authority, executor, probe receiver, and the flow transaction hashes; docs/spikes/s5-s6-testnets.md notes that Arc and Tempo tokens are chain-native and cannot be simulated in Foundry"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "contracts",
         "lint"
@@ -3594,11 +3594,24 @@
           }
         ],
         "taskHash": "3a6fae113af2fd27",
-        "filesHash": "0d02bae11fd99d1b"
+        "filesHash": "0d02bae11fd99d1b",
+        "commit": "08b6b61",
+        "doneAt": "2026-10-08T22:25:57Z",
+        "proof": {
+          "1": "script/deploy.sh ran on all four chains (idempotent, probe == predict check in Smoke.s.sol)",
+          "2": "cast code on all four: factory 0xCB9c...6864 and probe 0x17D3...d3a5 present",
+          "3": "deploy.sh flow on Arc and Tempo: exact settle and receiver empty checks passed; hashes in deployments.json",
+          "4": "packages/contracts/deployments.json and docs/spikes/s5-s6-testnets.md"
+        }
       },
       "branch": "feat/f037-the-v1-factory-is-live-at-one-address-on",
       "baseCommit": "29c8d1b4c3cab830ce2e908b6b61d65da472e69f",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f037-the-v1-factory-is-live-at-one-address-on",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
