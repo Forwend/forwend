@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { COLOR_TOKENS } from "../src";
+import { COLOR_TOKENS, DURATION_MS } from "../src";
 
 const css = readFileSync(new URL("../src/tokens.css", import.meta.url), "utf8");
 const theme = readFileSync(new URL("../src/theme.css", import.meta.url), "utf8");
@@ -23,5 +23,11 @@ describe("COLOR_TOKENS", () => {
     for (const name of COLOR_TOKENS) {
       expect(theme).toContain(`--color-${name}: var(--fw-${name});`);
     }
+  });
+});
+
+describe("DURATION_MS", () => {
+  it.each(Object.entries(DURATION_MS))("%s matches --fw-duration-%s", (name, ms) => {
+    expect(css).toContain(`--fw-duration-${name}: ${ms}ms;`);
   });
 });

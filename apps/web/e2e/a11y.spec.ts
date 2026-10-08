@@ -24,6 +24,8 @@ test.describe("accessibility", () => {
     test(`/kit has no serious or critical axe violations in the ${theme} theme`, async ({
       page,
     }) => {
+      // Reduced motion makes the theme change instant, so axe never samples colors mid-transition.
+      await page.emulateMedia({ reducedMotion: "reduce" });
       await page.goto(`${KIT_URL}/kit`);
       await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
       expect(await blockingViolations(page)).toEqual([]);

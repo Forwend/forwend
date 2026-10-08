@@ -1,10 +1,12 @@
 "use client";
 
+import { DURATION_MS } from "@forwend/design-tokens";
 import * as RadixTabs from "@radix-ui/react-tabs";
 import * as RadixTooltip from "@radix-ui/react-tooltip";
 import { Check, Copy, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BUTTON_VARIANTS } from "../constants/button";
+import { COPIED_LABEL_MS } from "../constants/timing";
 import type { CodeBlockProps, DialogProps, TabsProps, TooltipProps } from "../types/ui/display";
 import { Button } from "./button";
 
@@ -40,7 +42,7 @@ export function Tabs({ items, label, defaultValue }: TabsProps) {
 
 export function Tooltip({ content, children }: TooltipProps) {
   return (
-    <RadixTooltip.Provider delayDuration={200}>
+    <RadixTooltip.Provider delayDuration={DURATION_MS.base}>
       <RadixTooltip.Root>
         <RadixTooltip.Trigger asChild>{children}</RadixTooltip.Trigger>
         <RadixTooltip.Portal>
@@ -67,7 +69,7 @@ export function Dialog({ triggerLabel, title, children, closeLabel = "Close" }: 
       <dialog
         ref={ref}
         aria-label={title}
-        className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-xl border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[color-mix(in_oklab,var(--fw-ink)_40%,transparent)] backdrop:backdrop-blur-sm"
+        className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-xl border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[color-mix(in_oklab,var(--fw-ink)_40%,transparent)] backdrop:backdrop-blur-glass"
       >
         <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
           <h2 className="text-lg font-semibold">{title}</h2>
@@ -88,10 +90,20 @@ export function Dialog({ triggerLabel, title, children, closeLabel = "Close" }: 
 
 export function useCopy(text: string): [boolean, () => Promise<void>] {
   const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => () => clearTimeout(timer.current), []);
+
   const copy = async () => {
-    await navigator.clipboard.writeText(text);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Clipboard blocked (permissions, insecure context): keep the "Copy" label, nothing copied.
+      return;
+    }
     setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setCopied(false), COPIED_LABEL_MS);
   };
   return [copied, copy];
 }

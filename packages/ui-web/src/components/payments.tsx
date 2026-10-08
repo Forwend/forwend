@@ -48,7 +48,7 @@ export function TokenChip({ token, network }: TokenChipProps) {
 }
 
 export function QrCode({ value, label, className }: QrCodeProps) {
-  const { data, size } = encode(value, { border: 2 });
+  const { data, size } = encode(value, { border: 4 });
   return (
     // Always dark modules on a light ground: scanners often fail on inverted codes.
     <svg
@@ -57,7 +57,7 @@ export function QrCode({ value, label, className }: QrCodeProps) {
       aria-label={label}
       viewBox={`0 0 ${size} ${size}`}
       shapeRendering="crispEdges"
-      className={cx("aspect-square rounded-md bg-surface p-1", className)}
+      className={cx("aspect-square rounded-md bg-surface", className)}
     >
       <path
         fill="var(--fw-ink)"
