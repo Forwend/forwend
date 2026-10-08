@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 2,
+  "checks": [
+    {
+      "id": "lint",
+      "argv": [
+        "pnpm",
+        "lint"
+      ],
+      "required": true,
+      "precommit": true
+    },
+    {
+      "id": "typecheck",
+      "argv": [
+        "pnpm",
+        "typecheck"
+      ],
+      "required": true,
+      "precommit": true
+    },
+    {
+      "id": "unit",
+      "argv": [
+        "pnpm",
+        "test"
+      ],
+      "required": true
+    },
+    {
+      "id": "build",
+      "argv": [
+        "pnpm",
+        "build"
+      ],
+      "required": true,
+      "timeoutSeconds": 600
+    },
+    {
+      "id": "e2e",
+      "argv": [
+        "pnpm",
+        "e2e"
+      ],
+      "required": true,
+      "wrapup": true,
+      "timeoutSeconds": 600
+    },
+    {
+      "id": "tokens-unit",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@forwend/design-tokens",
+        "test"
+      ]
+    },
+    {
+      "id": "ui-unit",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@forwend/ui-web",
+        "test"
+      ]
+    },
+    {
+      "id": "kit-e2e",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@forwend/web",
+        "exec",
+        "playwright",
+        "test",
+        "e2e/kit.spec.ts"
+      ],
+      "timeoutSeconds": 600
+    },
+    {
+      "id": "landing-e2e",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@forwend/web",
+        "exec",
+        "playwright",
+        "test",
+        "e2e/landing.spec.ts"
+      ],
+      "timeoutSeconds": 600
+    },
+    {
+      "id": "waitlist-e2e",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@forwend/web",
+        "exec",
+        "playwright",
+        "test",
+        "e2e/waitlist.spec.ts"
+      ],
+      "timeoutSeconds": 600
+    },
+    {
+      "id": "a11y-e2e",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@forwend/web",
+        "exec",
+        "playwright",
+        "test",
+        "e2e/a11y.spec.ts"
+      ],
+      "timeoutSeconds": 600
+    },
+    {
+      "id": "seo-e2e",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@forwend/web",
+        "exec",
+        "playwright",
+        "test",
+        "e2e/seo.spec.ts"
+      ],
+      "timeoutSeconds": 600
+    },
+    {
+      "id": "images-check",
+      "argv": [
+        "node",
+        "scripts/check-images.mjs"
+      ]
+    },
+    {
+      "id": "lighthouse",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@forwend/web",
+        "lighthouse"
+      ],
+      "timeoutSeconds": 900
+    }
+  ],
+  "delivery": {
+    "mode": "pr",
+    "base": "main",
+    "merge": "squash",
+    "checksWaitSeconds": 90
+  }
+}

@@ -1,0 +1,234 @@
+{
+  "schemaVersion": 2,
+  "nextId": 9,
+  "tasks": [
+    {
+      "id": "F001",
+      "type": "build",
+      "behavior": "Walking skeleton: pnpm + Turborepo monorepo with the Next.js web app, design-tokens and ui-web packages, every check wired, and CI on pull requests",
+      "acceptance": [
+        "Given a clean clone, when pnpm install then pnpm build run, then both exit 0",
+        "Given the built app, when / loads, then the page title contains Forwend (Playwright smoke test)",
+        "pnpm lint (Biome), pnpm typecheck, pnpm test (one passing Vitest test per package) and pnpm e2e each exit 0",
+        "A GitHub Actions workflow runs lint, typecheck, unit, build and e2e on every pull request, using the Node version in .nvmrc",
+        "husky is installed and python3 scripts/harness.py hook install wires the pre-commit and pre-push hooks"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "build",
+        "e2e"
+      ],
+      "refs": [
+        "R-1",
+        "D-1",
+        "D-2",
+        "D-10"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F002",
+      "type": "feat",
+      "behavior": "Hero image candidates for directions A Dawn Path, B Dusk Ledger and C Halftone Horizon are generated with the Grok CLI and recorded",
+      "acceptance": [
+        "Given apps/web/public/images/, at least one hero candidate exists for each of directions A, B and C, generated headless with grok -p (proves A-1)",
+        "Given every file in apps/web/public/images/, when node scripts/check-images.mjs runs, then each has an entry in docs/images.md with slot, prompt and date"
+      ],
+      "dependsOn": [
+        "F001"
+      ],
+      "state": "not_started",
+      "verification": [
+        "images-check"
+      ],
+      "refs": [
+        "R-9",
+        "A-1",
+        "D-9"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F003",
+      "type": "feat",
+      "behavior": "The private /kit/directions page shows three hero comps side by side so Sasha can pick the visual direction",
+      "acceptance": [
+        "Given KIT_ENABLED=1, when /kit/directions loads, then three hero comps labeled A Dawn Path, B Dusk Ledger and C Halftone Horizon are visible, each with a headline, a primary button and one product panel",
+        "Given a production build without KIT_ENABLED, when /kit/directions is requested, then the response is 404"
+      ],
+      "dependsOn": [
+        "F002"
+      ],
+      "state": "not_started",
+      "verification": [
+        "kit-e2e"
+      ],
+      "refs": [
+        "R-13",
+        "D-3",
+        "Q-1"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F004",
+      "type": "feat",
+      "behavior": "Design tokens for the chosen direction in light and dark themes, with fonts and a theme switch",
+      "acceptance": [
+        "Given packages/design-tokens, when the token unit test computes contrast, then every text/background pair listed in the test is >= 4.5:1 (body) or >= 3:1 (large text) in light and dark",
+        "Given /kit, when the theme switch is clicked, then <html> gets data-theme=dark and the computed body background changes; clicking again restores light"
+      ],
+      "dependsOn": [
+        "F003"
+      ],
+      "state": "not_started",
+      "verification": [
+        "tokens-unit",
+        "kit-e2e"
+      ],
+      "refs": [
+        "R-2",
+        "R-3",
+        "D-4",
+        "Q-1"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F005",
+      "type": "feat",
+      "behavior": "The /kit page shows every token and base and payment component in all states, and stays private",
+      "acceptance": [
+        "Given KIT_ENABLED=1, when /kit loads, then headings Colors, Typography, Spacing, Radius, Shadows, Motion, Icons, Components and Payment components are visible and the page has <meta name=robots content=noindex>",
+        "Given a production build without KIT_ENABLED, when /kit is requested, then the response is 404",
+        "Given amount 1234560000n with 6 decimals and token USDC, when Money renders, then text is 1,234.56 USDC using tabular figures",
+        "Given address 0x1234567890abcdef1234567890abcdef12345678, when Address renders, then it shows 0x1234…5678 and the copy button copies the full address; each of the 10 payment statuses renders its own label in the status pill",
+        "Given /kit, when axe runs, then there are 0 violations with impact serious or critical"
+      ],
+      "dependsOn": [
+        "F004"
+      ],
+      "state": "not_started",
+      "verification": [
+        "kit-e2e",
+        "ui-unit",
+        "a11y-e2e"
+      ],
+      "refs": [
+        "R-4",
+        "R-5",
+        "R-10",
+        "D-5",
+        "D-6"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F006",
+      "type": "feat",
+      "behavior": "The landing page explains Forwend in ordered sections with final images, on every common width",
+      "acceptance": [
+        "Given /, when it loads, then visible in order: nav with Join waitlist, hero h1, network strip (Base, Arbitrum, Arc, Tempo, USDC, USDT), how it works, profile tabs (Personal, Freelancer, Merchant, Developers; each click shows its panel), checkout preview, money rules, developer code sample, fees, FAQ (an item expands on click), final call to action, footer; the text trusted by does not appear",
+        "Given widths 360, 768, 1280 and 1536 px, when / loads, then document.documentElement.scrollWidth <= viewport width; given prefers-reduced-motion: reduce, no element runs a CSS animation or transition longer than 0.01 s",
+        "Given every file in apps/web/public/images/, each has an entry in docs/images.md and the page serves it through next/image as AVIF or WebP",
+        "Given /, when axe runs, then there are 0 violations with impact serious or critical"
+      ],
+      "dependsOn": [
+        "F005"
+      ],
+      "state": "not_started",
+      "verification": [
+        "landing-e2e",
+        "images-check",
+        "a11y-e2e"
+      ],
+      "refs": [
+        "R-6",
+        "R-7",
+        "R-9",
+        "R-10",
+        "D-7"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F007",
+      "type": "feat",
+      "behavior": "The mock waitlist form confirms a valid email without sending or storing anything",
+      "acceptance": [
+        "Given the hero form, when name@example.com is submitted, then You're on the list appears and no network request starts after the click",
+        "Given abc, when submitted, then an error message appears and the success text does not"
+      ],
+      "dependsOn": [
+        "F006"
+      ],
+      "state": "not_started",
+      "verification": [
+        "waitlist-e2e"
+      ],
+      "refs": [
+        "R-8",
+        "D-8"
+      ],
+      "keep": [
+        "the waitlist submit sends no network request and stores nothing (mock until PLAN C-09)"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F008",
+      "type": "feat",
+      "behavior": "Search metadata, sitemap and a fast production landing page",
+      "acceptance": [
+        "Given /, when it loads, then it has a title, a meta description and an og:image of 1200x630; /sitemap.xml lists / and not /kit; /robots.txt exists",
+        "Given a production build, when Lighthouse runs on / (mobile preset), then Performance >= 90, Accessibility >= 95 and LCP < 2.5 s"
+      ],
+      "dependsOn": [
+        "F006"
+      ],
+      "state": "not_started",
+      "verification": [
+        "seo-e2e",
+        "lighthouse"
+      ],
+      "refs": [
+        "R-11",
+        "R-12",
+        "A-3"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    }
+  ]
+}
