@@ -2,7 +2,7 @@ import { ChevronDown, Inbox } from "lucide-react";
 import { PANEL_TONES } from "../constants/panel";
 import { TONES } from "../constants/tone";
 import { cx } from "../lib/cx";
-import { TONE_CLASSES } from "../lib/tone";
+import { TONE_CLASSES, TONE_DOT_CLASSES } from "../lib/tone";
 import type {
   AccordionProps,
   BadgeProps,
@@ -66,7 +66,10 @@ export function Toast({ tone = TONES.neutral, title, description }: ToastProps) 
       role="status"
       className="flex w-full max-w-sm items-start gap-3 rounded-lg border border-line bg-surface p-4 shadow-lg"
     >
-      <span className={cx("mt-1.5 size-2 shrink-0 rounded-pill border", TONE_CLASSES[tone])} />
+      <span
+        aria-hidden
+        className={cx("mt-1.5 size-2 shrink-0 rounded-pill", TONE_DOT_CLASSES[tone])}
+      />
       <span>
         <span className="block text-sm font-semibold text-ink">{title}</span>
         {description ? (
