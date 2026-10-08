@@ -11,7 +11,7 @@ import type {
 } from "../types/ui/fields";
 
 const CONTROL =
-  "h-11 w-full rounded-md border border-line-strong bg-surface px-3.5 text-base text-ink shadow-sm transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] ease-out placeholder:text-subtle hover:border-subtle focus-visible:border-focus focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color-mix(in_oklab,var(--fw-focus)_22%,transparent)] disabled:opacity-50 aria-[invalid=true]:border-danger";
+  "h-11 w-full rounded-md border border-line-strong bg-surface px-3.5 text-base text-ink shadow-sm transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] ease-out placeholder:text-subtle hover:border-subtle focus-visible:border-focus focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color-mix(in_oklab,var(--fw-focus)_22%,transparent)] disabled:cursor-not-allowed disabled:border-line disabled:bg-surface-2 disabled:text-subtle aria-[invalid=true]:border-danger";
 
 export function TextField({ label, hint, error, id, className, ...props }: TextFieldProps) {
   const autoId = useId();
@@ -100,7 +100,7 @@ export function Switch({ label, checked, onCheckedChange, disabled }: SwitchProp
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onCheckedChange(!checked)}
-      className="group inline-flex items-center gap-3 text-sm disabled:opacity-50"
+      className="group inline-flex items-center gap-3 text-sm disabled:cursor-not-allowed disabled:text-subtle"
     >
       <span
         className={cx(

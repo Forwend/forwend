@@ -1,8 +1,10 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Button } from "../src";
 
 describe("Button", () => {
+  afterEach(() => cleanup());
+
   it("renders a primary button by default", () => {
     render(<Button>Join waitlist</Button>);
     const button = screen.getByRole("button", { name: "Join waitlist" });
@@ -10,10 +12,18 @@ describe("Button", () => {
     expect(button.dataset.variant).toBe("primary");
   });
 
-  it("is busy and disabled while loading", () => {
-    render(<Button loading>Saving</Button>);
+  it("is busy and ignores clicks while loading, without looking disabled", () => {
+    const onClick = vi.fn();
+    render(
+      <Button loading onClick={onClick}>
+        Saving
+      </Button>,
+    );
     const button = screen.getByRole("button", { name: "Saving" });
     expect(button.getAttribute("aria-busy")).toBe("true");
-    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect((button as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(button);
+    expect(onClick).not.toHaveBeenCalled();
   });
 });

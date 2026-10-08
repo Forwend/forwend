@@ -78,4 +78,20 @@
   --text-5xl--line-height: 1.04;
   --text-6xl: 5.25rem;
   --text-6xl--line-height: 1;
+
+  /* Role sizes: fluid, each with its own line height and letter spacing. */
+  --text-hero: clamp(2.75rem, 7vw, 5.25rem);
+  --text-hero--line-height: 1.02;
+  --text-hero--letter-spacing: -0.02em;
+  --text-section: clamp(2.25rem, 4.6vw, 3.75rem);
+  --text-section--line-height: 1.06;
+  --text-section--letter-spacing: -0.015em;
+  --text-amount: clamp(1.625rem, 8vw, 1.875rem);
+  --text-amount--line-height: 1.1;
+  --text-amount-lg: clamp(1.75rem, 7.5vw, 2.25rem);
+  --text-amount-lg--line-height: 1.1;
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  /* Token unit next to an amount, relative to the amount's size. */
+  --text-unit: 0.8em;
 }

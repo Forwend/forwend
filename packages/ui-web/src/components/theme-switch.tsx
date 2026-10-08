@@ -15,9 +15,11 @@ function readTheme(): Theme {
     : THEMES.light;
 }
 
-function saved(): string | null {
+// Only "light" or "dark" count as a choice, the same rule as THEME_INIT_SCRIPT.
+function saved(): Theme | null {
   try {
-    return localStorage.getItem(THEME_STORAGE_KEY);
+    const value = localStorage.getItem(THEME_STORAGE_KEY);
+    return value === THEMES.light || value === THEMES.dark ? value : null;
   } catch {
     return null;
   }
@@ -61,11 +63,9 @@ export function ThemeSwitch({ className }: ThemeSwitchProps) {
         className,
       )}
     >
-      {theme === THEMES.dark ? (
-        <Sun aria-hidden className="size-[var(--fw-icon-md)]" />
-      ) : (
-        <Moon aria-hidden className="size-[var(--fw-icon-md)]" />
-      )}
+      {/* Icons follow data-theme through CSS, so they are right before hydration too. */}
+      <Sun aria-hidden className="hidden size-[var(--fw-icon-md)] dark:block" />
+      <Moon aria-hidden className="size-[var(--fw-icon-md)] dark:hidden" />
     </button>
   );
 }

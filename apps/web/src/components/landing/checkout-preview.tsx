@@ -22,9 +22,9 @@ export function CheckoutPreview() {
       data-theme="dark"
       data-section={LANDING_SECTIONS.checkout}
       aria-labelledby="checkout-title"
-      className="relative isolate mx-2 overflow-hidden rounded-xl bg-bg text-ink sm:mx-3"
+      className="relative isolate overflow-hidden bg-bg text-ink"
     >
-      <div className="absolute inset-x-0 top-0 -z-10 h-[28rem]">
+      <div className="absolute inset-x-0 top-0 -z-10 h-112">
         <Image
           src={CHECKOUT_IMAGE.src}
           alt=""
@@ -33,13 +33,10 @@ export function CheckoutPreview() {
           className="object-cover object-[70%_center] opacity-80"
         />
       </div>
-      <div className="absolute inset-x-0 top-0 -z-10 h-[28rem] bg-[linear-gradient(to_bottom,transparent,var(--fw-bg))]" />
+      <div className="absolute inset-x-0 top-0 -z-10 h-112 bg-[linear-gradient(to_bottom,transparent,var(--fw-bg))]" />
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-14 px-4 py-20 sm:px-8 sm:py-28 lg:grid-cols-[1fr_1fr] lg:items-center">
         <div>
-          <h2
-            id="checkout-title"
-            className="font-display text-[clamp(2.25rem,4.6vw,3.75rem)] leading-[1.06] tracking-[-0.015em]"
-          >
+          <h2 id="checkout-title" className="font-display text-section">
             {CHECKOUT.title}
           </h2>
           <p className="mt-5 max-w-lg text-lg text-muted">{CHECKOUT.body}</p>
@@ -52,7 +49,7 @@ export function CheckoutPreview() {
             ))}
           </ul>
         </div>
-        <div className="rounded-xl border border-line bg-surface p-5 shadow-lg sm:p-7">
+        <div className="rounded-lg border border-line bg-surface p-5 shadow-lg sm:p-7">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm text-muted">Pay {SAMPLE_INVOICE.client}</p>
             <Badge>Sample</Badge>
@@ -62,7 +59,7 @@ export function CheckoutPreview() {
               baseUnits={SAMPLE_INVOICE.baseUnits}
               decimals={SAMPLE_INVOICE.decimals}
               token={SAMPLE_INVOICE.token}
-              className="text-[clamp(1.75rem,7.5vw,2.25rem)]"
+              className="text-amount-lg"
             />
             <TokenChip token={SAMPLE_INVOICE.token} network={SAMPLE_INVOICE.network} />
           </div>

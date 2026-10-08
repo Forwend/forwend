@@ -28,7 +28,7 @@ export function HeroPayment({ states }: HeroPaymentProps) {
         <Money
           baseUnits={SAMPLE_INVOICE.baseUnits}
           decimals={SAMPLE_INVOICE.decimals}
-          className="text-[clamp(1.625rem,8vw,1.875rem)] text-ink"
+          className="text-amount text-ink"
         />
         <TokenChip token={SAMPLE_INVOICE.token} network={SAMPLE_INVOICE.network} />
       </div>
@@ -41,7 +41,7 @@ export function HeroPayment({ states }: HeroPaymentProps) {
           }))}
         />
       </div>
-      <p className="mt-4 font-mono text-[0.6875rem] text-muted sm:text-xs" aria-live="polite">
+      <p className="mt-4 font-mono text-2xs text-muted sm:text-xs" aria-live="polite">
         {settled
           ? `Tx ${shortHash} · settled to your wallet`
           : "Waiting for network confirmations…"}

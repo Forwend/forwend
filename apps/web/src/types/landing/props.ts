@@ -1,6 +1,6 @@
 import type { StepState } from "@forwend/ui-web";
 import type { ReactNode } from "react";
-import type { LandingSection, ProfileTab } from "./content";
+import type { LandingSection, ProfileTab, SectionLayout } from "./content";
 
 export interface SectionProps {
   id?: string;
@@ -9,6 +9,7 @@ export interface SectionProps {
   body?: string;
   children: ReactNode;
   className?: string;
+  layout?: SectionLayout;
 }
 
 export interface ProfilePanelLayoutProps {

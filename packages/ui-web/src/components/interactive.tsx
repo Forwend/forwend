@@ -69,7 +69,7 @@ export function Dialog({ triggerLabel, title, children, closeLabel = "Close" }: 
       <dialog
         ref={ref}
         aria-label={title}
-        className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-xl border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[color-mix(in_oklab,var(--fw-ink)_40%,transparent)] backdrop:backdrop-blur-glass"
+        className="m-auto w-[calc(100vw-(--spacing(8)))] max-w-lg rounded-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[color-mix(in_oklab,var(--fw-ink)_40%,transparent)] backdrop:backdrop-blur-glass"
       >
         <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
           <h2 className="text-lg font-semibold">{title}</h2>

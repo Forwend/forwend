@@ -50,3 +50,12 @@
 [data-theme="dark"] .fw-river-mark-lit {
   stroke: var(--fw-ink);
 }
+
+/* Paper grain on the footer ridges in light mode; at night it would grey out the dark ridges. */
+.fw-footer-grain {
+  filter: url(#footer-grain);
+}
+
+[data-theme="dark"] .fw-footer-grain {
+  filter: none;
+}

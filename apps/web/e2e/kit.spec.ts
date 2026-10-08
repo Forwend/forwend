@@ -70,3 +70,60 @@ test.describe("/kit", () => {
     expect(response.status()).toBe(404);
   });
 });
+
+test.describe("interaction states on /kit", () => {
+  test("buttons show hover, keyboard focus and a distinct disabled state", async ({ page }) => {
+    await page.goto(`${KIT_URL}/kit`);
+    const style = (el: import("@playwright/test").Locator, prop: string) =>
+      el.evaluate((node, p) => getComputedStyle(node).getPropertyValue(p), prop);
+
+    const primary = page.getByRole("button", { name: "Size md" });
+    const resting = await style(primary, "background-color");
+    await primary.hover();
+    await expect.poll(() => style(primary, "background-color")).not.toBe(resting);
+
+    await page.mouse.move(0, 0);
+    await primary.focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(primary).toBeFocused();
+    expect(await style(primary, "outline-style")).toBe("solid");
+    expect(Number.parseFloat(await style(primary, "outline-width"))).toBeGreaterThanOrEqual(2);
+
+    const disabled = page.getByRole("button", { name: "Disabled" }).first();
+    await expect(disabled).toBeDisabled();
+    expect(await style(disabled, "background-color")).not.toBe(resting);
+  });
+
+  test("a loading button keeps its colors and is marked busy", async ({ page }) => {
+    await page.goto(`${KIT_URL}/kit`);
+    const loading = page.getByRole("button", { name: "Saving" });
+    await expect(loading).toHaveAttribute("aria-busy", "true");
+    const primary = page.getByRole("button", { name: "Size md" });
+    const bg = (el: import("@playwright/test").Locator) =>
+      el.evaluate((node) => getComputedStyle(node).backgroundColor);
+    expect(await bg(loading)).toBe(await bg(primary));
+  });
+
+  test("text fields show a focus ring", async ({ page }) => {
+    await page.goto(`${KIT_URL}/kit`);
+    const field = page.getByLabel("Invoice amount");
+    const before = await field.evaluate((n) => getComputedStyle(n).boxShadow);
+    await field.focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(field).toBeFocused();
+    await expect.poll(() => field.evaluate((n) => getComputedStyle(n).boxShadow)).not.toBe(before);
+  });
+
+  test("tabs mark the active tab", async ({ page }) => {
+    await page.goto(`${KIT_URL}/kit`);
+    const merchant = page.getByRole("tab", { name: "Merchant" });
+    const personal = page.getByRole("tab", { name: "Personal" });
+    await merchant.click();
+    await expect(merchant).toHaveAttribute("aria-selected", "true");
+    const bg = (el: import("@playwright/test").Locator) =>
+      el.evaluate((node) => getComputedStyle(node).backgroundColor);
+    expect(await bg(merchant)).not.toBe(await bg(personal));
+  });
+});
