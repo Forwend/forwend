@@ -3,7 +3,9 @@ import type { ComponentType } from "react";
 import { DawnPathComp } from "@/components/directions/dawn-path-comp";
 import { DuskLedgerComp } from "@/components/directions/dusk-ledger-comp";
 import { HalftoneHorizonComp } from "@/components/directions/halftone-horizon-comp";
+import { ImageComp } from "@/components/directions/image-comp";
 import { DIRECTION_IDS, DIRECTIONS } from "@/constants/directions";
+import { IMAGE_DIRECTIONS } from "@/constants/image-directions";
 import { directionFontVars } from "@/lib/direction-fonts";
 import type { DirectionId } from "@/types/kit/directions";
 
@@ -43,6 +45,15 @@ export default function DirectionsPage() {
             </section>
           );
         })}
+        {IMAGE_DIRECTIONS.map((d) => (
+          <section key={d.id} data-testid={`direction-${d.id}`} aria-labelledby={`${d.id}-label`}>
+            <h2 id={`${d.id}-label`} className="text-lg font-semibold">
+              {d.letter} {d.name}
+            </h2>
+            <p className="mt-1 mb-4 text-sm opacity-75">{d.summary}</p>
+            <ImageComp name={d.name} image={d.image} comp={d.comp} />
+          </section>
+        ))}
       </div>
     </main>
   );
