@@ -44,3 +44,28 @@ test.describe("/kit theme switch", () => {
     await expect.poll(bodyBg).toBe(light);
   });
 });
+
+test.describe("/kit", () => {
+  test("shows every foundation and component section and is not indexed", async ({ page }) => {
+    await page.goto(`${KIT_URL}/kit`);
+    for (const title of [
+      "Colors",
+      "Typography",
+      "Spacing",
+      "Radius",
+      "Shadows",
+      "Motion",
+      "Icons",
+      "Components",
+      "Payment components",
+    ]) {
+      await expect(page.getByRole("heading", { level: 2, name: title, exact: true })).toBeVisible();
+    }
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  });
+
+  test("returns 404 when KIT_ENABLED is not set", async ({ request }) => {
+    const response = await request.get(`${PUBLIC_URL}/kit`);
+    expect(response.status()).toBe(404);
+  });
+});
