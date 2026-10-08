@@ -21,7 +21,7 @@ export function HalftoneRidge({ className, soft = false }: HalftoneRidgeProps) {
       focusable="false"
     >
       {soft ? null : <rect width={W} height={H} fill={C.ground} />}
-      <g fill={soft ? C.dotDawn : C.dot}>
+      <g fill={soft ? "var(--fw-art-dot)" : C.dot}>
         {DOTS.map((d) => (
           <circle key={`${d.cx}-${d.cy}`} cx={d.cx} cy={d.cy} r={d.r} />
         ))}

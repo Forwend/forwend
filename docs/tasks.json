@@ -1288,7 +1288,7 @@
       "dependsOn": [
         "F012"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "landing-e2e",
         "a11y-e2e",
@@ -1301,9 +1301,98 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-08 review pass by subagent: PASS. Tests: playwright landing+a11y+kit+waitlist 40/40 passed (incl. dark: head script before <body>, dark/light system pref, toggle+reload persists, night hero img visible with text contrast >=4.5 at 1440/390, axe 0 serious/critical on / and /kit in both themes); design-tokens 63/63, ui-web 14/14, web 16/16; pnpm lint and typecheck clean. Screenshots: dark hero uses hero-night.webp with same composition, river path and 4 marks sit on the moonlit water (desktop and 390 mobile), headline/subhead/beta note readable; nav toggle shows Sun in dark, Moon in light; every section (networks strip, steps, profiles tabs/card, rules list, API code block, withdrawal quote, FAQ, CTA, footer) has dark surfaces, readable text, visible borders; checkout band keeps the dusk image in a rounded frame and stays distinct; CTA halftone dots are dark teal (--fw-art-dot #2f5f73); kit dark shows all tokens incl. new art-* swatches; light screenshots match previous look. Security: THEME_INIT_SCRIPT (packages/design-tokens/src/constants/themes.ts:16) is a compile-time constant that interpolates only THEME_STORAGE_KEY; no user input reaches dangerouslySetInnerHTML (apps/web/src/app/layout.tsx:38). No-flash proof adequate: script is a sync inline <script> in <head>, ThemeSwitch never sets the attribute on mount and the server renders data-theme=light, so data-theme=dark under an emulated dark preference can only come from the head script, which runs before body parse. Non-blocking notes: (1) footer-ridges.tsx grain filter lightens the far ridge to ~#32383b grey (token #1d2a33 at 0.7) because noise passes through where layer opacity <1; still reads dark. (2) hero-journey.tsx: priority stays on the dawn image, so dark visitors preload the unused dawn image and the night image (the dark LCP) is not prioritized. (3) theme-switch.tsx: initial state is light, so in dark mode the nav icon shows Moon until hydration. (4) saved() treats any non-empty stored value as an explicit choice, while the init script ignores unknown values; edge case only."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T15:05:04Z",
+        "checks": [
+          {
+            "id": "landing-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 12.3,
+            "log": "docs/runs/F013-20261008T150504Z-landing-e2e.log"
+          },
+          {
+            "id": "a11y-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 7.2,
+            "log": "docs/runs/F013-20261008T150504Z-a11y-e2e.log"
+          },
+          {
+            "id": "kit-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.4,
+            "log": "docs/runs/F013-20261008T150504Z-kit-e2e.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F013-20261008T150504Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F013-20261008T150504Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F013-20261008T150504Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.5,
+            "log": "docs/runs/F013-20261008T150504Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 13.2,
+            "log": "docs/runs/F013-20261008T150504Z-e2e.log"
+          }
+        ],
+        "taskHash": "3a4522fa99c7064b",
+        "filesHash": "a63758476b83c450",
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "PASS. Tests: playwright landing+a11y+kit+waitlist 40/40 passed (incl. dark: head script before <body>, dark/light system pref, toggle+reload persists, night hero img visible with text contrast >=4.5 at 1440/390, axe 0 serious/critical on / and /kit in both themes); design-tokens 63/63, ui-web 14/14, web 16/16; pnpm lint and typecheck clean. Screenshots: dark hero uses hero-night.webp with same composition, river path and 4 marks sit on the moonlit water (desktop and 390 mobile), headline/subhead/beta note readable; nav toggle shows Sun in dark, Moon in light; every section (networks strip, steps, profiles tabs/card, rules list, API code block, withdrawal quote, FAQ, CTA, footer) has dark surfaces, readable text, visible borders; checkout band keeps the dusk image in a rounded frame and stays distinct; CTA halftone dots are dark teal (--fw-art-dot #2f5f73); kit dark shows all tokens incl. new art-* swatches; light screenshots match previous look. Security: THEME_INIT_SCRIPT (packages/design-tokens/src/constants/themes.ts:16) is a compile-time constant that interpolates only THEME_STORAGE_KEY; no user input reaches dangerouslySetInnerHTML (apps/web/src/app/layout.tsx:38). No-flash proof adequate: script is a sync inline <script> in <head>, ThemeSwitch never sets the attribute on mount and the server renders data-theme=light, so data-theme=dark under an emulated dark preference can only come from the head script, which runs before body parse. Non-blocking notes: (1) footer-ridges.tsx grain filter lightens the far ridge to ~#32383b grey (token #1d2a33 at 0.7) because noise passes through where layer opacity <1; still reads dark. (2) hero-journey.tsx: priority stays on the dawn image, so dark visitors preload the unused dawn image and the night image (the dark LCP) is not prioritized. (3) theme-switch.tsx: initial state is light, so in dark mode the nav icon shows Moon until hydration. (4) saved() treats any non-empty stored value as an explicit choice, while the init script ignores unknown values; edge case only.",
+          "at": "2026-10-08T15:08:16Z",
+          "filesHash": "a63758476b83c450"
+        },
+        "commit": "3938bfd",
+        "doneAt": "2026-10-08T15:08:42Z",
+        "proof": {
+          "1": "e2e/landing.spec.ts 'the theme script runs in <head>' and 'follows a dark/light system preference when nothing is saved'; design-tokens test/theme-script.test.ts",
+          "2": "e2e/landing.spec.ts 'the nav toggle switches the theme and the choice survives a reload'; ui-web theme-switch test (localStorage)",
+          "3": "e2e/landing.spec.ts 'uses the night hero with readable text at 1440px/390px'; art components read --fw-art-* tokens (both themes in tokens.css)",
+          "4": "e2e/a11y.spec.ts '/' in light and dark and '/kit' in light and dark: 0 serious/critical"
+        }
+      },
+      "branch": "feat/f013-the-whole-site-has-a-dark-theme-a-toggle",
+      "baseCommit": "44b619a7264d1ab570c11a7a84506703f5e71431",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f013-the-whole-site-has-a-dark-theme-a-toggle",
+        "base": "main"
+      }
     },
     {
       "id": "F014",
@@ -1335,7 +1424,8 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-10-08 From the F012 review: success pill is 4px taller than the form pill (beta note moves 4px); keep one persistent live region across form/success so screen readers announce the confirmation; update the doc comment in packages/ui-web/src/types/ui/email-capture.ts:7."
+        "2026-10-08 From the F012 review: success pill is 4px taller than the form pill (beta note moves 4px); keep one persistent live region across form/success so screen readers announce the confirmation; update the doc comment in packages/ui-web/src/types/ui/email-capture.ts:7.",
+        "2026-10-08 From the F013 review: footer grain greys the far ridge in dark; hero night image should get priority in dark (dawn image is prioritized for everyone); ThemeSwitch shows the light icon until hydration (read data-theme in the initial state or render both icons with CSS); saved() should accept only light/dark like the head script."
       ],
       "blockedReason": null,
       "evidence": null

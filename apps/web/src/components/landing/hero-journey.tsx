@@ -5,7 +5,7 @@ import { STEP_STATES } from "@forwend/ui-web";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { FINAL_STEP_STATES, HERO_STEP_DELAYS_MS, HERO_STEPS } from "@/constants/hero-motion";
-import { HERO_IMAGE } from "@/constants/landing-images";
+import { HERO_IMAGE, HERO_NIGHT_IMAGE } from "@/constants/landing-images";
 import { RIVER_MARKS, RIVER_MARKS_COMPACT, RIVER_SOURCE, RIVER_VIEWBOX } from "@/constants/river";
 import { smoothPath } from "@/lib/art";
 import { HeroPayment } from "./hero-payment";
@@ -44,10 +44,18 @@ export function HeroJourney() {
           fill
           priority
           sizes="100vw"
-          className="object-cover object-center"
+          className="object-cover object-center dark:hidden"
+        />
+        {/* Same composition at night, so the river marks line up in both themes. */}
+        <Image
+          src={HERO_NIGHT_IMAGE.src}
+          alt=""
+          fill
+          sizes="100vw"
+          className="hidden object-cover object-center dark:block"
         />
         {/* Soft light behind the headline and form, so text stays readable over the bright mountains. */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_62%_46%_at_50%_34%,color-mix(in_oklab,var(--fw-bg)_72%,transparent),transparent_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_56%_at_50%_42%,color-mix(in_oklab,var(--fw-bg)_80%,transparent),transparent_100%)] lg:bg-[radial-gradient(ellipse_64%_52%_at_50%_36%,color-mix(in_oklab,var(--fw-bg)_78%,transparent),transparent_100%)]" />
         <svg
           viewBox={`0 0 ${RIVER_VIEWBOX.width} ${RIVER_VIEWBOX.height}`}
           preserveAspectRatio="xMidYMid slice"

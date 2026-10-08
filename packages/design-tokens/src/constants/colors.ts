@@ -22,4 +22,8 @@ export const COLOR_TOKENS = [
   "danger-soft",
   "info",
   "info-soft",
+  "art-ridge-far",
+  "art-ridge-mid",
+  "art-ridge-near",
+  "art-dot",
 ] as const;

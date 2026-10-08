@@ -42,6 +42,12 @@
   --fw-info: #1f6a8c;
   --fw-info-soft: #e3f0f6;
 
+  /* Art: code-drawn ridges and halftone dots (footer, call to action) */
+  --fw-art-ridge-far: #a9c3cb;
+  --fw-art-ridge-mid: #8babaf;
+  --fw-art-ridge-near: #7da38f;
+  --fw-art-dot: #8dbfd4;
+
   /* Elevation */
   --fw-shadow-sm: 0 1px 2px rgb(15 34 25 / 0.06), 0 1px 1px rgb(15 34 25 / 0.04);
   --fw-shadow-md: 0 10px 24px -12px rgb(15 34 25 / 0.28);
@@ -78,6 +84,11 @@
   --fw-danger-soft: #2f1714;
   --fw-info: #7cc0dd;
   --fw-info-soft: #102430;
+
+  --fw-art-ridge-far: #1d2a33;
+  --fw-art-ridge-mid: #17222a;
+  --fw-art-ridge-near: #122019;
+  --fw-art-dot: #2f5f73;
 
   --fw-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
   --fw-shadow-md: 0 12px 28px -12px rgb(0 0 0 / 0.6);

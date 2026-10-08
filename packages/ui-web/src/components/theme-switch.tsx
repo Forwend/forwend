@@ -1,17 +1,44 @@
 "use client";
 
 import type { Theme } from "@forwend/design-tokens";
-import { THEME_ATTRIBUTE, THEMES } from "@forwend/design-tokens";
+import { THEME_ATTRIBUTE, THEME_STORAGE_KEY, THEMES } from "@forwend/design-tokens";
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
+import { cx } from "../lib/cx";
+import type { ThemeSwitchProps } from "../types/ui/theme-switch";
 
-// Toggles data-theme on <html>. The choice is not stored; the app shell adds persistence later.
-export function ThemeSwitch() {
+const DARK_QUERY = "(prefers-color-scheme: dark)";
+
+function readTheme(): Theme {
+  return document.documentElement.getAttribute(THEME_ATTRIBUTE) === THEMES.dark
+    ? THEMES.dark
+    : THEMES.light;
+}
+
+function saved(): string | null {
+  try {
+    return localStorage.getItem(THEME_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+// THEME_INIT_SCRIPT sets the theme before paint; this button changes it and remembers the choice.
+export function ThemeSwitch({ className }: ThemeSwitchProps) {
   const [theme, setTheme] = useState<Theme>(THEMES.light);
 
   useEffect(() => {
-    const current = document.documentElement.getAttribute(THEME_ATTRIBUTE);
-    setTheme(current === THEMES.dark ? THEMES.dark : THEMES.light);
+    setTheme(readTheme());
+    // With no saved choice, keep following the system when it changes.
+    const media = window.matchMedia(DARK_QUERY);
+    const onChange = () => {
+      if (saved()) return;
+      const next = media.matches ? THEMES.dark : THEMES.light;
+      document.documentElement.setAttribute(THEME_ATTRIBUTE, next);
+      setTheme(next);
+    };
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
   }, []);
 
   const next = theme === THEMES.dark ? THEMES.light : THEMES.dark;
@@ -21,10 +48,18 @@ export function ThemeSwitch() {
       type="button"
       onClick={() => {
         document.documentElement.setAttribute(THEME_ATTRIBUTE, next);
+        try {
+          localStorage.setItem(THEME_STORAGE_KEY, next);
+        } catch {
+          // Storage blocked: the switch still works for this page view.
+        }
         setTheme(next);
       }}
       aria-label={`Switch to ${next} theme`}
-      className="inline-flex size-10 items-center justify-center rounded-pill border border-line bg-surface text-ink shadow-sm transition-colors duration-[var(--fw-duration-fast)] ease-out hover:bg-surface-2"
+      className={cx(
+        "inline-flex size-10 shrink-0 items-center justify-center rounded-pill border border-line bg-surface text-ink shadow-sm transition-colors duration-[var(--fw-duration-fast)] ease-out hover:bg-surface-2",
+        className,
+      )}
     >
       {theme === THEMES.dark ? (
         <Sun aria-hidden className="size-[var(--fw-icon-md)]" />
