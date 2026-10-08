@@ -39,8 +39,8 @@ to a bank when they choose.
 | Factory | The contract that deploys invoice receivers. |
 | Settlement | Moving the paid invoice amount from the receiver to the profile wallet. |
 | Executor | Our backend wallet that calls `settle()` and pays gas. It cannot choose where money goes. |
-| Refund authority | A separate key that signs narrow refund instructions. It is not the executor. |
-| Signer | Our isolated backend process that holds the executor and refund keys. |
+| Refund authority | A Safe multisig (several people must approve each action) at the same address on every chain. It alone can refund held funds, recover wrong tokens, settle a missed on-time payment and pause settlement. It is not the executor. |
+| Signer | Our isolated backend process that holds the executor key. Refunds are approved and sent by the multisig's owners, not by the signer. |
 | Watcher | Our backend worker that reads the chain and records incoming transfers. |
 | Reorg | A chain reorganization: recent blocks are replaced, so a seen transfer can disappear. |
 | Finality | The point after which a block will not change. Each chain has its own rule. |
@@ -68,13 +68,13 @@ to a bank when they choose.
 | D-05 | Paid or overpaid: settle **only the invoice amount** to the profile wallet. The excess stays held as money we owe the payer. |
 | D-06 | An expired invoice cannot be topped up or reopened. A new payment needs a new invoice and new address. |
 | D-07 | Expired partial payments and late deposits stay held in the receiver for a verified, platform-approved refund. They are never settled to the merchant, forfeited, or counted as revenue. |
-| D-08 | **One refund per invoice**: it returns the whole eligible held amount in one transaction. It never pulls back money already settled. Never auto-refund to an exchange sender address. |
+| D-08 **Changed** | **Refunds come only from held funds**, one per approved claim. Normally one refund returns everything held; when several payers sent money (for example two people paid the same invoice), each approved payer gets their own refund. The total never exceeds the held amount and never pulls back money already settled. Never auto-refund to an exchange sender address. |
 | D-09 | Balances stay in stablecoins. Bank withdrawal is manual and user-started: quote, fees and confirmation first. No automatic payouts. |
 | D-10 | Payment events have explicit states: detected (unconfirmed), confirmed, settled. Detection is never treated as final. A browser redirect never marks an invoice paid. |
 | D-11 | Merchant profile → stores/projects. Each store has its own project ID, keys, branding and webhook. At first, stores share the merchant wallet. Developer and Finance roles see assigned stores; Admin sees all. |
 | D-12 | Developer credentials: merchant ID and project ID (public, no authority), secret API key (server only, scoped), webhook signing secret (separate), optional public key for browser components. |
 | D-13 | Hosted checkout and branded components (logo, colors, layout). No custom domains in the MVP. |
-| D-14 | Wrong-chain payments: show strong warnings, offer a support request, review case by case. Never promise recovery. |
+| D-14 **Changed** | Wrong-chain payments: checkout warns before sending that money sent on another network can be lost. A support request is reviewed case by case; on a chain where our factory exists, `recover()` can return it. Never promise recovery. |
 | D-15 **Changed** | Testing: local tests, fork tests and review first, then a full testnet deployment (Base Sepolia, Arbitrum Sepolia, Arc testnet, Tempo testnet) where the whole product runs end to end with Privy on testnets and faucet tokens, then personal mainnet trials with tiny amounts. Bank withdrawal is built last. A public developer sandbox is still deferred. Changed by Sasha, 2026-10-08: test everything with free testnet tokens before any real money. Privy supports testnets: Base Sepolia and Arbitrum Sepolia are built in; Arc and Tempo testnets are added as custom chains with viem `defineChain`. |
 | D-16 | KYC is deferred for the private prototype only. It must be resolved before other people use real money. |
 | D-17 | Planned chains: Base, Arbitrum, Arc, Tempo (BNB optional). Planned tokens: USDC, USDT. Each chain/token pair is enabled only after its exact contract is verified. |
@@ -93,6 +93,7 @@ to a bank when they choose.
 | C-07 **Changed** | **Profile wallets need gas.** A user with only USDC on Base cannot send without ETH. Check Privy's gas sponsorship before building Send; if it does not fit, use a paymaster. Arc and Tempo pay fees in stablecoins, so this mainly affects Base and Arbitrum. | The research found users confused by fee tokens. A Send button that fails for lack of ETH is a support problem on day one. |
 | C-08 **Changed** | **The landing page shows no fake social proof**: no "trusted by" logos and no "we raised $20M" badge. Show real things instead: supported networks and tokens, how the money flow works, the fees. | It is a payments brand with no customers yet. Fake proof hurts trust, and with money involved it is a legal risk too. |
 | C-09 **Changed** | **The mock waitlist must become real before the site is public.** A form that shows "You're on the list" but stores nothing loses every signup and misleads visitors. Saving to one Postgres table or a Resend audience takes very little code. | Mock is fine while the site is private. Keep it as a queued task, not a forgotten one. |
+| C-10 **Changed** | **The per-invoice contract is v1, and replaceable.** The backend stores, for each invoice, its receive address and the method that made it (`evm_create2` now; `hd_wallet` or `solana_pda` later), and the watcher reads each chain family through its own adapter. Switching to a unique wallet per invoice, or adding Tron, Solana and Bitcoin, then adds a method and an adapter without changing invoices, ledger or UI. | Sasha wants to test the contract design first and keep the option to move to unique wallets per invoice and to non-EVM chains. |
 
 ### 1.3 Open questions (each has a default so work can continue)
 
@@ -440,7 +441,7 @@ Testnets, sandboxes and local forks only. No real funds.
 | S-2 Privy wallets per profile | Can one Privy user own several embedded wallets (one per profile), and who must approve a send? | Several wallets per user, sends signed by the user. | One wallet with ledger sub-balances (worse), or another provider. |
 | S-3 Gas for profile wallets | Does Privy gas sponsorship cover USDC sends on Base/Arbitrum? Cost? | Sponsored send works on Base Sepolia. | Paymaster (C-07). |
 | S-4 Chains | On Base, Arbitrum, Arc and Tempo testnets with go-ethereum: fetch blocks/receipts, decode USDC `Transfer` logs, read `safe`/`finalized` tags, parse fee/tx types. Note Tempo's custom transaction type. | Logs and receipts decode on all four. | Use raw JSON-RPC for receipts on that chain, or Alloy/viem for that adapter. |
-| S-5 Deterministic deployer | Is CreateX or the standard CREATE2 deployer on all four chains (and testnets)? | Same factory address on all four. | Deploy the factory from a fresh deployer EOA with the same nonce on each chain, or accept that the wrong-chain recovery differs per chain. |
+| S-5 Deterministic deployer | Is CreateX or the standard CREATE2 deployer on all four chains (and testnets)? Can the refund-authority Safe be deployed at one address on all four? | Same factory address on all four. | Deploy the factory from a fresh deployer EOA with the same nonce on each chain, or accept that the wrong-chain recovery differs per chain. |
 | S-6 Token contracts | Exact USDC/USDT contracts and decimals per chain (USDT0 vs bridged USDT, Arc/Tempo specifics), and which test tokens exist on each testnet (if there is no testnet USDT, test its behavior with a mock token that copies its non-standard return values). | Table of verified contracts with source links. | Leave that pair disabled. |
 | S-7 RPC | Alchemy free tier: `eth_getLogs` block range limits, rate limits, `safe`/`finalized` support per chain; monthly cost for 4-chain polling. | Estimated usage fits the free tier during development. | QuickNode. |
 
@@ -466,32 +467,48 @@ Diagrams (mapgrain JSON; open one in the editor with `npx mapgrain@0.2.5 studio 
     `refundAuthority`, `executor`. Deploying with other terms gives a different address, so nobody
     can take over an address with different terms.
   - Deployed at the same address on every chain (C-03).
+  - `paused` flag, set only by the refund authority. While on, every receiver from this factory
+    refuses `settle()`. It never blocks refunds and cannot move funds.
+  - One factory per release (`v1`, `v2`, ...). New invoices use the newest; old factories stay
+    deployed so old receivers can still be deployed for recovery.
 - `InvoiceReceiver`
-  - `settle()` (executor only): sends `min(balance, amount − settled)` of `token` to the fixed
-    `recipient`, only when the confirmed balance reaches `amount` and the payment was not late.
-    The backend decides "late" from block timestamps; the contract also refuses to settle when a
-    total ≥ `amount` was never reached. Tracks `settled` so it can never pay twice.
-  - `refund(to, amount, nonce, deadline, sig)`: needs an EIP-712 signature from
-    `refundAuthority`, binding chain, receiver, invoice, token, amount, destination, nonce and
-    deadline. One refund per invoice (D-08). Never touches settled funds.
-  - `recover(token, to, amount, nonce, deadline, sig)`: refund-authority-signed rescue for a token
-    that is not the invoice token, or for the wrong chain (C-03).
-  - No admin sweep, no upgradeability, no owner that can take funds.
+  - `settle()`: sends exactly `amount` of `token` to the fixed `recipient`, once. Requires the
+    balance ≥ `amount`, not settled before, and the factory not paused. The executor may call it
+    until `expiresAt + settleWindow` (a few minutes for finality); after that only the refund
+    authority may, for an on-time payment whose settlement was missed. A plain ERC-20 transfer
+    does not call the receiver, so the contract cannot see when each deposit arrived: the deadline
+    closes most late cases on-chain, and the backend checks block times for the rest.
+  - `refund(to, amount)`: refund authority only (the Safe calls it directly, so there are no
+    signatures to replay across chains). May be called more than once (D-08), but the total never
+    exceeds the refundable amount: the whole balance once settled or after the settle window;
+    before that, only what is above `amount`, so the recipient's money is never refunded.
+  - `recover(token, to, amount)`: refund authority only. Returns any token that is not the invoice
+    token, the native coin (`token = address(0)`), or anything on a chain other than
+    `intendedChainId` (C-03). The receiver has no `receive()`: a native-coin transfer after
+    deployment is rejected, so the payer keeps it; a transfer before deployment is recoverable.
+  - No admin sweep, no proxy or upgrade, no owner that can take funds. A bug is fixed by a new
+    factory version; the pause stops settlement meanwhile.
+  - `recipient` is the profile wallet read from Privy by the signer, never from user input. A
+    contract cannot tell the right recipient from a wrong one, so this check lives in the backend
+    (Phase 6).
   - Uses `SafeERC20`; only allowlisted tokens (the backend only creates invoices for verified
     token contracts; fee-on-transfer tokens are not allowed).
 
 ### Done-list
 - [ ] Foundry project in `contracts/`, OZ 5.x pinned.
 - [ ] Unit tests for: exact pay, partial then top-up, overpay (settle amount, excess held),
-      expired partial (no settle, refund works), late deposit, double settle blocked, refund
-      replay blocked, second refund blocked, wrong signer, expired signature, `recover()` on
-      another token, cross-chain same-address check (two Anvil instances).
+      expired partial (no settle, refund works), late deposit, double settle blocked, settle
+      refused after the window, multisig settle after the window, two refunds within the
+      refundable amount, refund above it blocked, refund before the window cannot take `amount`,
+      non-multisig caller blocked, pause blocks settle but not refund, `recover()` on another
+      token and on the native coin, native transfer after deploy rejected, cross-chain
+      same-address check and same call rejected on the other chain (two Anvil instances).
 - [ ] Fork test against Base (real USDC contract).
 - [ ] `/fizz` to generate a stateful fuzz suite (Echidna/Medusa), `/fizz-convert` for these
       invariants:
       - settled ≤ amount, always;
       - settled + refunded ≤ total received;
-      - at most one refund per invoice;
+      - refunds never take the `amount` owed to `recipient` before the settle window ends;
       - only `recipient` ever receives settlement;
       - executor alone cannot move funds anywhere except `recipient`.
 - [ ] `/token-integration-analyzer` on USDC/USDT behavior (USDT's non-standard `approve`/return values,
@@ -520,7 +537,8 @@ and settle invoices safely, all on local Postgres + Anvil.
   to active receiver addresses), confirmation/finality tracking, reorg handling, invoice state
   machine, outbox processing, webhook delivery, reconciliation.
 - `signer`: separate process, own credentials, no public routes, no user sessions. Accepts only
-  typed intents ("settle invoice X", "refund invoice Y to Z"). Re-reads the ledger and the chain
+  typed intents ("settle invoice X"). Refunds are not signed here: an approved claim becomes a
+  proposed Safe transaction that the multisig owners approve. Re-reads the ledger and the chain
   itself before signing. Caps amounts, allows only known contract methods, writes its own audit
   log. Separate DB role with read access plus its own intent tables.
 
@@ -529,12 +547,13 @@ and settle invoices safely, all on local Postgres + Anvil.
 - `merchants → stores(project_id, branding)`, `team_members(role, store scope)` (Phase 10)
 - `chains(chain_id, confirm_rule, finality_rule)`, `tokens(chain_id, contract, decimals, enabled)`
 - `invoices`: immutable terms (`invoice_id`, profile, chain, token, `amount NUMERIC(78,0)`,
-  `expires_at`, recipient address, receiver address, salt), `idempotency_key` unique per profile,
+  `expires_at`, recipient address, receive address, `receive_method` (C-10), salt). Addresses are
+  text with a `chain_family`, never a 20-byte EVM type, `idempotency_key` unique per profile,
   separate status columns for **payment**, **settlement** and **refund**.
 - `chain_transfers`: unique `(chain_id, tx_hash, log_index)`, `block_hash`, `block_number`,
   `block_time`, status `detected|confirmed|reorged`.
 - `ledger_entries`: append-only; received, settled, refunded, held amounts per invoice.
-- `settlement_intents`, `refund_intents`: unique per invoice; nonce and tx hash tracked;
+- `settlement_intents` (unique per invoice), `refund_intents` (one per approved claim); nonce and tx hash tracked;
   reconcile before any retry.
 - `refund_claims`, `support_cases` (wrong chain, late).
 - `outbox_events`, `webhook_endpoints`, `webhook_deliveries` (Phase 10).
@@ -556,6 +575,10 @@ held funds ──verified claim + platform approval──▶ refund_pending ─�
 - [ ] Watcher with block cursor, safe/finalized handling and a reorg test (Anvil `anvil_reorg`
       or snapshot/revert).
 - [ ] Ledger + state machine with SQL-enforced transitions; property tests for the state machine.
+- [ ] Signer: re-reads the recipient from Privy and refuses if it differs from the terms. The server
+      never gets rights to send from user wallets.
+- [ ] Ignore deposits below a minimum amount (dust) for invoice state; they stay refundable.
+- [ ] Alert when the executor's gas balance is low.
 - [ ] Signer: deploy-receiver-if-needed + `settle()` intent; refuses on mismatched terms; nonce
       management; reconcile-before-retry test (kill the signer mid-send, restart, no double send).
 - [ ] Outbox with `SKIP LOCKED` workers.
@@ -626,7 +649,11 @@ Exceptions:
 - [ ] Expired partially paid and late deposits: held; claim path.
 - [ ] Claim flow: payer proves identity/destination (method to decide: for example, sign a
       message from the paying wallet when it is not an exchange, or a support review with
-      evidence); platform approval in an internal admin view; one refund of all eligible funds.
+      evidence); platform approval in an internal admin view; the multisig sends one refund per
+      approved claim (D-08).
+- [ ] Checkout warnings: other networks can lose money (D-14); bridged USDC.e on Arbitrum is a
+      different token; copy the address only from this page (address poisoning).
+- [ ] Cancel an unpaid invoice: the backend stops settling it; anything sent later is held.
 - [ ] Wrong-network support request with tx hash; internal review queue.
 - [ ] `ux-copy` pass on all exception messages; `typescript-structure` audit.
 
@@ -708,6 +735,12 @@ to zero difference.
 
 - Mobile app (Expo, shares tokens, API client).
 - More chain/token pairs (Arbitrum, Arc, Tempo, USDT, BNB) via the chain registry.
+- Non-EVM chains (C-10), each after a spike: Tron (TVM is close to the EVM and has CREATE2, so
+  probably the same receiver contract; check), Solana (a PDA, Solana's address-from-seeds, owned
+  by a Rust program, or HD addresses), Bitcoin (HD wallet addresses from an xpub; BTC only, since
+  Bitcoin has no practical USDC/USDT, so it needs price quotes). Users' payout wallets there come
+  from Privy if it supports the chain.
+- Unique wallet per invoice instead of the receiver contract, if testing shows it is better (C-10).
 - Cross-chain send (NEAR Intents or similar; quote shows fees and final amount).
 - Recurring invoices for freelancers; wallet-authorized recurring billing for merchants (billing
   contract with limits and cancellation).
