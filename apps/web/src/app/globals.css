@@ -27,8 +27,9 @@
 }
 
 .fw-river-mark {
+  /* Unlit marks need a dark ring: the painted water is bright near the sun. */
   fill: var(--fw-glass);
-  stroke: var(--fw-on-accent);
+  stroke: var(--fw-accent);
   stroke-width: 3;
   transition:
     r var(--fw-duration-slow) var(--fw-ease-out),
@@ -37,4 +38,5 @@
 
 .fw-river-mark-lit {
   fill: var(--fw-accent);
+  stroke: var(--fw-on-accent);
 }

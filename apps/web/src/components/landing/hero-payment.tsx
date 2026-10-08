@@ -16,7 +16,7 @@ const shortHash = `${SAMPLE_INVOICE.txHash.slice(0, 6)}…${SAMPLE_INVOICE.txHas
 export function HeroPayment({ states }: HeroPaymentProps) {
   const settled = states[HERO_STEPS.length - 1] === STEP_STATES.current;
   return (
-    <Panel tone={PANEL_TONES.glass} className="w-full max-w-md p-5 sm:p-6">
+    <Panel tone={PANEL_TONES.glass} className="w-full max-w-md p-4 sm:p-6">
       <div className="flex items-center justify-between gap-3 text-sm">
         <span className="font-medium">Invoice {SAMPLE_INVOICE.id}</span>
         <Badge>Sample</Badge>
@@ -28,7 +28,7 @@ export function HeroPayment({ states }: HeroPaymentProps) {
         <Money
           baseUnits={SAMPLE_INVOICE.baseUnits}
           decimals={SAMPLE_INVOICE.decimals}
-          className="text-3xl text-ink"
+          className="text-[clamp(1.625rem,8vw,1.875rem)] text-ink"
         />
         <TokenChip token={SAMPLE_INVOICE.token} network={SAMPLE_INVOICE.network} />
       </div>
@@ -41,7 +41,7 @@ export function HeroPayment({ states }: HeroPaymentProps) {
           }))}
         />
       </div>
-      <p className="mt-4 font-mono text-xs text-muted" aria-live="polite">
+      <p className="mt-4 font-mono text-[0.6875rem] text-muted sm:text-xs" aria-live="polite">
         {settled
           ? `Tx ${shortHash} · settled to your wallet`
           : "Waiting for network confirmations…"}

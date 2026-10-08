@@ -153,6 +153,17 @@ test.describe("landing page", () => {
     await context.close();
   });
 
+  test("uses the generated hero and checkout images", async ({ page }) => {
+    await page.goto("/");
+    const src = (section: string) =>
+      page.locator(`[data-section="${section}"] img`).first().getAttribute("src");
+    expect(await src("hero")).toMatch(/\/_next\/image\?url=%2Fimages%2Fhero-dawn\.webp/);
+    expect(await src("checkout")).toMatch(/\/_next\/image\?url=%2Fimages%2Fcheckout-dusk\.webp/);
+    const hero = page.locator('[data-section="hero"] img').first();
+    await expect(hero).toHaveJSProperty("complete", true);
+    expect(await hero.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  });
+
   test("serves every image through next/image", async ({ page }) => {
     await page.goto("/");
     for (const src of await page
