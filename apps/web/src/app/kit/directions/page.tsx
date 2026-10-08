@@ -18,8 +18,7 @@ export default function DirectionsPage() {
     <main className={`${directionFontVars} mx-auto max-w-[90rem] px-3 py-10 font-sans sm:px-6`}>
       <h1 className="text-2xl font-semibold tracking-tight">Visual directions</h1>
       <p className="mt-2 max-w-2xl text-pretty opacity-75">
-        Three hero comps on one page, each with its generated image candidate below. Pick one; it
-        becomes the design tokens.
+        Hero comps on one page, each with its image below. Pick one; it becomes the design tokens.
       </p>
       <div className="mt-10 flex flex-col gap-16">
         {DIRECTIONS.map((d) => {
@@ -36,13 +35,10 @@ export default function DirectionsPage() {
                   src={d.image.src}
                   width={d.image.width}
                   height={d.image.height}
-                  alt={`Generated hero candidate for ${d.name}`}
+                  alt={`Hero image for ${d.name}`}
                   sizes="(min-width: 1440px) 1392px, 100vw"
                   className="h-auto w-full rounded-xl"
                 />
-                <figcaption className="mt-2 text-sm opacity-75">
-                  Generated with Codex image_gen; prompt in docs/images.md.
-                </figcaption>
               </figure>
             </section>
           );

@@ -1,7 +1,6 @@
 export { Address } from "./components/address";
 export { Button, buttonClasses } from "./components/button";
 export {
-  Accordion,
   Badge,
   EmptyState,
   NavPill,
@@ -11,7 +10,7 @@ export {
 } from "./components/display";
 export { EmailCapture } from "./components/email-capture";
 export { Checkbox, SelectField, Switch, TextField } from "./components/fields";
-export { CodeBlock, Dialog, Tabs, Tooltip, useCopy } from "./components/interactive";
+export { Accordion, CodeBlock, Dialog, Tabs, Tooltip, useCopy } from "./components/interactive";
 export {
   ActivityRow,
   Money,

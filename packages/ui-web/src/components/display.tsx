@@ -1,10 +1,9 @@
-import { ChevronDown, Inbox } from "lucide-react";
+import { Inbox } from "lucide-react";
 import { PANEL_TONES } from "../constants/panel";
 import { TONES } from "../constants/tone";
 import { cx } from "../lib/cx";
 import { TONE_CLASSES, TONE_DOT_CLASSES } from "../lib/tone";
 import type {
-  AccordionProps,
   BadgeProps,
   EmptyStateProps,
   NavPillProps,
@@ -38,25 +37,6 @@ export function Panel({ tone = PANEL_TONES.solid, className, ...props }: PanelPr
       )}
       {...props}
     />
-  );
-}
-
-export function Accordion({ items }: AccordionProps) {
-  return (
-    <div className="divide-y divide-line border-y border-line">
-      {items.map((item) => (
-        <details key={item.question} className="group">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-left text-lg font-medium text-ink [&::-webkit-details-marker]:hidden">
-            {item.question}
-            <ChevronDown
-              aria-hidden
-              className="size-[var(--fw-icon-md)] shrink-0 text-subtle transition-transform duration-[var(--fw-duration-base)] ease-out group-open:rotate-180"
-            />
-          </summary>
-          <div className="max-w-prose pb-6 text-muted">{item.answer}</div>
-        </details>
-      ))}
-    </div>
   );
 }
 
