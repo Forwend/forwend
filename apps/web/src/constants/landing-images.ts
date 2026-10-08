@@ -10,3 +10,4 @@ export const CHECKOUT_IMAGE = {
   width: 1916,
   height: 821,
 } as const;
+export const NOT_FOUND_IMAGE = { src: "/images/not-found.webp", width: 1916, height: 821 } as const;
