@@ -41,8 +41,7 @@ export default function DirectionsPage() {
                   className="h-auto w-full rounded-xl"
                 />
                 <figcaption className="mt-2 text-sm opacity-75">
-                  Generated with Codex image_gen; prompt in docs/images.md. Not yet used on the
-                  landing page.
+                  Generated with Codex image_gen; prompt in docs/images.md.
                 </figcaption>
               </figure>
             </section>

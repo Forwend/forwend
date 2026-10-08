@@ -9,8 +9,9 @@ import {
   TokenChip,
 } from "@forwend/ui-web";
 import { Check } from "lucide-react";
-import { DuskLandscape } from "@/components/art/dusk-landscape";
+import Image from "next/image";
 import { CHECKOUT, LANDING_SECTIONS } from "@/constants/landing";
+import { CHECKOUT_IMAGE } from "@/constants/landing-images";
 import { SAMPLE_DEPOSIT_ADDRESS } from "@/constants/landing-samples";
 import { SAMPLE_INVOICE, SAMPLE_STEPS } from "@/constants/sample-invoice";
 
@@ -23,7 +24,15 @@ export function CheckoutPreview() {
       aria-labelledby="checkout-title"
       className="relative isolate mx-2 overflow-hidden rounded-xl bg-bg text-ink sm:mx-3"
     >
-      <DuskLandscape className="absolute inset-x-0 top-0 -z-10 h-[28rem] w-full opacity-70" />
+      <div className="absolute inset-x-0 top-0 -z-10 h-[28rem]">
+        <Image
+          src={CHECKOUT_IMAGE.src}
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover object-[70%_center] opacity-80"
+        />
+      </div>
       <div className="absolute inset-x-0 top-0 -z-10 h-[28rem] bg-[linear-gradient(to_bottom,transparent,var(--fw-bg))]" />
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-14 px-4 py-20 sm:px-8 sm:py-28 lg:grid-cols-[1fr_1fr] lg:items-center">
         <div>

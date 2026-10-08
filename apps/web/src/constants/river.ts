@@ -1,39 +1,22 @@
-import { cubicPoint } from "@/lib/art";
+// The river in the hero image (/images/hero-dawn.webp), in that image's pixels (1672x941).
+// Positions were picked on water by eye; check them visually whenever the image changes.
+export const RIVER_VIEWBOX = { width: 1672, height: 941 } as const;
 
-// Centerline of the river in DawnLandscape (viewBox 1600x1000), as three cubic segments.
-const S1 = [
-  [802, 682],
-  [800, 712],
-  [812, 730],
-  [806, 752],
-] as const;
-const S2 = [
-  [806, 752],
-  [798, 792],
-  [758, 822],
-  [766, 872],
-] as const;
-const S3 = [
-  [766, 872],
-  [772, 922],
-  [800, 962],
-  [815, 1000],
-] as const;
-
-export const RIVER_PATH = `M${S1[0].join(" ")} C${[S1[1], S1[2], S1[3]].map((p) => p.join(" ")).join(" ")} C${[S2[1], S2[2], S2[3]].map((p) => p.join(" ")).join(" ")} C${[S3[1], S3[2], S3[3]].map((p) => p.join(" ")).join(" ")}`;
-
-/** One mark per payment step, from the horizon toward the visitor (desktop: panel beside the river). */
+/** One mark per payment step, from the sunrise toward the visitor (desktop: panel beside the river). */
 export const RIVER_MARKS = [
-  cubicPoint(...S1, 0.25),
-  cubicPoint(...S2, 0.15),
-  cubicPoint(...S2, 0.85),
-  cubicPoint(...S3, 0.7),
+  [855, 635],
+  [930, 665],
+  [790, 730],
+  [930, 810],
 ] as const;
 
-/** Phones: the panel overlaps the lower river, so the marks sit in the open water above it. */
+/** Phones: the panel overlaps the lower river, so the last mark stays in the open water above it. */
 export const RIVER_MARKS_COMPACT = [
-  cubicPoint(...S1, 0.15),
-  cubicPoint(...S1, 0.6),
-  cubicPoint(...S1, 0.95),
-  cubicPoint(...S2, 0.22),
+  [855, 630],
+  [925, 660],
+  [800, 712],
+  [830, 748],
 ] as const;
+
+/** Where the drawn line starts: the river mouth under the sun. */
+export const RIVER_SOURCE = [848, 606] as const;

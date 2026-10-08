@@ -13,14 +13,14 @@ export const DIRECTIONS: readonly Direction[] = [
     name: "Dawn Path",
     summary:
       "Light dawn valley, serif headline, a river that doubles as the payment's progress line.",
-    image: { src: "/images/candidates/hero-a-dawn-path.webp", width: 1672, height: 941 },
+    image: { src: "/images/hero-dawn.webp", width: 1672, height: 941 },
   },
   {
     id: DIRECTION_IDS.duskLedger,
     letter: "B",
     name: "Dusk Ledger",
     summary: "Dusk ridges falling into near-black framed product sections with a warm accent.",
-    image: { src: "/images/candidates/hero-b-dusk-ledger.webp", width: 1916, height: 821 },
+    image: { src: "/images/checkout-dusk.webp", width: 1916, height: 821 },
   },
   {
     id: DIRECTION_IDS.halftoneHorizon,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { halftoneDots, ridgePath } from "@/lib/art";
+import { halftoneDots, ridgePath, smoothPath } from "@/lib/art";
 
 describe("art helpers", () => {
   it("closes ridge shapes at the bottom corners", () => {
@@ -12,5 +12,16 @@ describe("art helpers", () => {
     const dots = halftoneDots({ width: 100, height: 100, cell: 10, edge: () => 50, ramp: 2 });
     expect(dots.every((d) => d.cy > 50)).toBe(true);
     expect(Math.max(...dots.map((d) => d.r))).toBeCloseTo(4.6);
+  });
+
+  it("draws a smooth path that passes through every point", () => {
+    const d = smoothPath([
+      [0, 0],
+      [10, 10],
+      [20, 0],
+    ]);
+    expect(d.startsWith("M0 0")).toBe(true);
+    expect(d).toContain(" 10 10 C");
+    expect(d.endsWith(" 20 0")).toBe(true);
   });
 });

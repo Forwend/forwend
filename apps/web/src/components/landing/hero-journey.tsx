@@ -2,10 +2,12 @@
 
 import type { StepState } from "@forwend/ui-web";
 import { STEP_STATES } from "@forwend/ui-web";
+import Image from "next/image";
 import { useEffect, useState } from "react";
-import { DawnLandscape } from "@/components/art/dawn-landscape";
 import { FINAL_STEP_STATES, HERO_STEP_DELAYS_MS, HERO_STEPS } from "@/constants/hero-motion";
-import { RIVER_MARKS, RIVER_MARKS_COMPACT, RIVER_PATH } from "@/constants/river";
+import { HERO_IMAGE } from "@/constants/landing-images";
+import { RIVER_MARKS, RIVER_MARKS_COMPACT, RIVER_SOURCE, RIVER_VIEWBOX } from "@/constants/river";
+import { smoothPath } from "@/lib/art";
 import { HeroPayment } from "./hero-payment";
 
 function statesAt(reached: number): StepState[] {
@@ -36,15 +38,32 @@ export function HeroJourney() {
     <>
       {/* Below lg the art stops partway down the panel, so the panel covers its bottom edge. */}
       <div className="absolute inset-x-0 top-0 bottom-36 -z-10 overflow-hidden rounded-xl lg:bottom-0">
-        <DawnLandscape className="absolute inset-0 h-full w-full" />
+        <Image
+          src={HERO_IMAGE.src}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center"
+        />
         <svg
-          viewBox="0 0 1600 1000"
+          viewBox={`0 0 ${RIVER_VIEWBOX.width} ${RIVER_VIEWBOX.height}`}
           preserveAspectRatio="xMidYMid slice"
           aria-hidden="true"
           focusable="false"
           className="absolute inset-0 h-full w-full"
         >
-          <path d={RIVER_PATH} pathLength={1} className="fw-river-path" />
+          {[
+            { marks: RIVER_MARKS_COMPACT, className: "lg:hidden" },
+            { marks: RIVER_MARKS, className: "hidden lg:inline" },
+          ].map(({ marks, className }) => (
+            <path
+              key={`path-${className}`}
+              d={smoothPath([RIVER_SOURCE, ...marks])}
+              pathLength={1}
+              className={`fw-river-path ${className}`}
+            />
+          ))}
           {[
             { marks: RIVER_MARKS_COMPACT, className: "lg:hidden" },
             { marks: RIVER_MARKS, className: "hidden lg:inline" },

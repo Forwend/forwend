@@ -1,0 +1,7 @@
+// Generated with Codex image_gen; prompts and dates in docs/images.md.
+export const HERO_IMAGE = { src: "/images/hero-dawn.webp", width: 1672, height: 941 } as const;
+export const CHECKOUT_IMAGE = {
+  src: "/images/checkout-dusk.webp",
+  width: 1916,
+  height: 821,
+} as const;
