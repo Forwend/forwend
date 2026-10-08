@@ -4,6 +4,7 @@ import {
   RADII,
   SHADOWS,
   SPACING_STEPS,
+  TYPE_ROLES,
   TYPE_SCALE,
 } from "@/constants/kit-content";
 import { KIT_ICONS } from "@/constants/kit-icons";
@@ -43,6 +44,20 @@ export function TypographySamples() {
               <span className="text-ink" style={{ fontSize: t.size }}>
                 {t.sample}
               </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <p className="text-sm text-muted">Role sizes: fluid, used by the landing page</p>
+        <ul className="mt-4 flex flex-col gap-4">
+          {TYPE_ROLES.map((r) => (
+            <li
+              key={r.token}
+              className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-6"
+            >
+              <code className="w-28 shrink-0 font-mono text-xs text-subtle">{r.token}</code>
+              <span className={`${r.className} text-ink`}>{r.sample}</span>
             </li>
           ))}
         </ul>

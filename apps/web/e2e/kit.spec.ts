@@ -127,3 +127,13 @@ test.describe("interaction states on /kit", () => {
     expect(await bg(merchant)).not.toBe(await bg(personal));
   });
 });
+
+test("/kit typography shows the role type tokens", async ({ page }) => {
+  await page.goto(`${KIT_URL}/kit`);
+  const typography = page.locator("section", {
+    has: page.getByRole("heading", { name: "Typography", exact: true }),
+  });
+  for (const token of ["text-hero", "text-section", "text-amount-lg", "text-amount"]) {
+    await expect(typography.getByText(token, { exact: true })).toBeVisible();
+  }
+});

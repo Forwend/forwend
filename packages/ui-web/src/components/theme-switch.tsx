@@ -57,15 +57,16 @@ export function ThemeSwitch({ className }: ThemeSwitchProps) {
         }
         setTheme(next);
       }}
-      aria-label={`Switch to ${next} theme`}
       className={cx(
         "inline-flex size-10 shrink-0 items-center justify-center rounded-pill border border-line bg-surface text-ink shadow-sm transition-colors duration-[var(--fw-duration-fast)] ease-out hover:bg-surface-2",
         className,
       )}
     >
-      {/* Icons follow data-theme through CSS, so they are right before hydration too. */}
+      {/* Icons and the accessible name follow data-theme through CSS, so both are right before hydration. */}
       <Sun aria-hidden className="hidden size-[var(--fw-icon-md)] dark:block" />
       <Moon aria-hidden className="size-[var(--fw-icon-md)] dark:hidden" />
+      <span className="sr-only dark:hidden">Switch to dark theme</span>
+      <span className="sr-only hidden dark:inline">Switch to light theme</span>
     </button>
   );
 }
