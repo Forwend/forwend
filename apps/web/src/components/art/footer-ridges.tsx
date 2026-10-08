@@ -72,7 +72,7 @@ export function FooterRidges({ className }: { className?: string }) {
           <feBlend in2="SourceGraphic" mode="multiply" />
         </filter>
       </defs>
-      <g filter="url(#footer-grain)">
+      <g className="fw-footer-grain">
         {LAYERS.map(({ spec, fill, opacity }) => (
           <path key={spec.baseY} d={ridgePath(spec)} fill={fill} opacity={opacity} />
         ))}

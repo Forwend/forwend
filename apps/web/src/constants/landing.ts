@@ -18,6 +18,12 @@ export const LANDING_SECTIONS = {
   footer: "footer",
 } as const;
 
+/** Stacked: heading above the content. Split: heading left, content right on wide screens. */
+export const SECTION_LAYOUTS = {
+  stacked: "stacked",
+  split: "split",
+} as const;
+
 export const PROFILE_TABS = {
   personal: "personal",
   freelancer: "freelancer",

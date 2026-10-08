@@ -53,7 +53,7 @@ export function Accordion({ items }: AccordionProps) {
               className="size-[var(--fw-icon-md)] shrink-0 text-subtle transition-transform duration-[var(--fw-duration-base)] ease-out group-open:rotate-180"
             />
           </summary>
-          <div className="max-w-[65ch] pb-6 text-muted">{item.answer}</div>
+          <div className="max-w-prose pb-6 text-muted">{item.answer}</div>
         </details>
       ))}
     </div>

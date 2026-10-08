@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-08T00:00:00Z",
+  "generatedAt": "2026-10-08T18:30:00Z",
   "title": "Design System: Forwend",
   "extensions": {
     "colorMeta": {
@@ -79,23 +79,51 @@
           "oklch(95% 0.02 30)"
         ]
       },
-      "dawn-mist": { "role": "neutral", "displayName": "Dawn Mist", "canonical": "#f4f8f7" },
-      "paper-white": { "role": "neutral", "displayName": "Paper White", "canonical": "#ffffff" },
-      "meadow-wash": { "role": "neutral", "displayName": "Meadow Wash", "canonical": "#eaf2f0" },
-      "sunken-mist": { "role": "neutral", "displayName": "Sunken Mist", "canonical": "#e2ecea" },
+      "dawn-mist": {
+        "role": "neutral",
+        "displayName": "Dawn Mist",
+        "canonical": "#f4f8f7"
+      },
+      "paper-white": {
+        "role": "neutral",
+        "displayName": "Paper White",
+        "canonical": "#ffffff"
+      },
+      "meadow-wash": {
+        "role": "neutral",
+        "displayName": "Meadow Wash",
+        "canonical": "#eaf2f0"
+      },
+      "sunken-mist": {
+        "role": "neutral",
+        "displayName": "Sunken Mist",
+        "canonical": "#e2ecea"
+      },
       "glass-white": {
         "role": "neutral",
         "displayName": "Glass White",
         "canonical": "rgb(255 255 255 / 0.72)"
       },
-      "moss-muted": { "role": "neutral", "displayName": "Moss Muted", "canonical": "#3a5047" },
+      "moss-muted": {
+        "role": "neutral",
+        "displayName": "Moss Muted",
+        "canonical": "#3a5047"
+      },
       "lichen-subtle": {
         "role": "neutral",
         "displayName": "Lichen Subtle",
         "canonical": "#566a62"
       },
-      "frost-line": { "role": "neutral", "displayName": "Frost Line", "canonical": "#d3e0dc" },
-      "sage-line": { "role": "neutral", "displayName": "Sage Line", "canonical": "#a9bfb8" },
+      "frost-line": {
+        "role": "neutral",
+        "displayName": "Frost Line",
+        "canonical": "#d3e0dc"
+      },
+      "sage-line": {
+        "role": "neutral",
+        "displayName": "Sage Line",
+        "canonical": "#a9bfb8"
+      },
       "dusk-ground": {
         "role": "neutral",
         "displayName": "Dusk Ground (dark theme bg)",
@@ -110,21 +138,84 @@
         "role": "secondary",
         "displayName": "Dusk River (dark theme accent)",
         "canonical": "#7cc0dd"
+      },
+      "art-ridge-far": {
+        "role": "art",
+        "displayName": "Ridge Far (art)",
+        "canonical": "#a9c3cb"
+      },
+      "art-ridge-mid": {
+        "role": "art",
+        "displayName": "Ridge Mid (art)",
+        "canonical": "#8babaf"
+      },
+      "art-ridge-near": {
+        "role": "art",
+        "displayName": "Ridge Near (art)",
+        "canonical": "#7da38f"
+      },
+      "art-dot": {
+        "role": "art",
+        "displayName": "Art Dot (halftone)",
+        "canonical": "#8dbfd4"
+      },
+      "dusk-art-ridge-far": {
+        "role": "art",
+        "displayName": "Dusk Ridge Far (art, dark)",
+        "canonical": "#1d2a33"
+      },
+      "dusk-art-ridge-mid": {
+        "role": "art",
+        "displayName": "Dusk Ridge Mid (art, dark)",
+        "canonical": "#17222a"
+      },
+      "dusk-art-ridge-near": {
+        "role": "art",
+        "displayName": "Dusk Ridge Near (art, dark)",
+        "canonical": "#122019"
+      },
+      "dusk-art-dot": {
+        "role": "art",
+        "displayName": "Dusk Art Dot (halftone, dark)",
+        "canonical": "#2f5f73"
       }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "Hero headline only." },
-      "headline": { "displayName": "Headline", "purpose": "Every section heading (h2)." },
-      "title": { "displayName": "Title", "purpose": "Step titles and sub-headings (h3)." },
-      "lead": { "displayName": "Lead", "purpose": "Paragraph under a heading, in Moss Muted." },
-      "body": { "displayName": "Body", "purpose": "Running text, max 65ch." },
+      "display": {
+        "displayName": "Display",
+        "purpose": "Hero headline only (text-hero)."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Every section heading (h2) (text-section)."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Step titles and sub-headings (h3)."
+      },
+      "lead": {
+        "displayName": "Lead",
+        "purpose": "Paragraph under a heading, in Moss Muted."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running text, max 65ch."
+      },
       "label": {
         "displayName": "Label",
         "purpose": "Badges, status pills, chips, timeline labels."
       },
       "amount": {
         "displayName": "Amount",
-        "purpose": "Every money value, address and hash; tabular figures."
+        "purpose": "Hero invoice amount (text-amount); mono, tabular figures."
+      },
+      "amount-lg": {
+        "displayName": "Amount Large",
+        "purpose": "Checkout card amount (text-amount-lg)."
+      },
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "Hero transaction line on phones (text-2xs)."
       }
     },
     "shadows": [
@@ -160,7 +251,11 @@
       }
     ],
     "motion": [
-      { "name": "duration-fast", "value": "140ms", "purpose": "Hover and border changes." },
+      {
+        "name": "duration-fast",
+        "value": "140ms",
+        "purpose": "Hover and border changes."
+      },
       {
         "name": "duration-base",
         "value": "240ms",
@@ -193,9 +288,18 @@
       }
     ],
     "breakpoints": [
-      { "name": "sm", "value": "640px" },
-      { "name": "md", "value": "768px" },
-      { "name": "lg", "value": "1024px" }
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
     ]
   },
   "components": [
@@ -203,9 +307,9 @@
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "Ink pill for the main action; presses down 1px.",
-      "html": "<button class=\"ds-btn-primary\">Join waitlist</button>",
-      "css": ".ds-btn-primary { display: inline-flex; align-items: center; height: 40px; padding: 0 20px; border: none; border-radius: var(--fw-radius-pill); background: var(--fw-primary); color: var(--fw-on-primary); font: 500 0.875rem/1.25rem var(--fw-font-sans); box-shadow: var(--fw-shadow-md); cursor: pointer; transition: background-color var(--fw-duration-fast) var(--fw-ease-out), transform var(--fw-duration-fast) var(--fw-ease-out); } .ds-btn-primary:hover { background: color-mix(in oklab, var(--fw-primary) 86%, var(--fw-bg)); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 2px solid var(--fw-focus); outline-offset: 3px; }"
+      "description": "Ink pill for the main action; presses down 1px. Disabled turns Meadow Wash; loading keeps its colors.",
+      "html": "<button class=\"ds-btn-primary\">Join waitlist</button> <button class=\"ds-btn-primary\" disabled>Join waitlist</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; height: 40px; padding: 0 20px; border: none; border-radius: var(--fw-radius-pill); background: var(--fw-primary); color: var(--fw-on-primary); font: 500 0.875rem/1.25rem var(--fw-font-sans); box-shadow: var(--fw-shadow-md); cursor: pointer; transition: background-color var(--fw-duration-fast) var(--fw-ease-out), transform var(--fw-duration-fast) var(--fw-ease-out); } .ds-btn-primary:hover { background: color-mix(in oklab, var(--fw-primary) 86%, var(--fw-bg)); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 2px solid var(--fw-focus); outline-offset: 3px; } .ds-btn-primary:disabled { pointer-events: none; border: 1px solid var(--fw-line); background: var(--fw-surface-2); color: var(--fw-subtle); box-shadow: none; }"
     },
     {
       "name": "Secondary Button",
@@ -227,9 +331,9 @@
       "name": "Email Capture",
       "kind": "custom",
       "refersTo": "email-capture",
-      "description": "Signature waitlist form: field and ink button inside one pill.",
+      "description": "Signature waitlist form: field and ink button inside one fixed-height (54px) pill, shared with the confirmation.",
       "html": "<form class=\"ds-capture\"><input class=\"ds-capture-input\" type=\"email\" placeholder=\"you@example.com\" aria-label=\"Email address\"><button class=\"ds-capture-btn\" type=\"button\">Join waitlist</button></form>",
-      "css": ".ds-capture { display: flex; align-items: center; gap: 6px; max-width: 28rem; padding: 6px 6px 6px 20px; border: 1px solid var(--fw-line-strong); border-radius: var(--fw-radius-pill); background: var(--fw-surface); box-shadow: var(--fw-shadow-md); transition: box-shadow var(--fw-duration-fast); } .ds-capture:focus-within { box-shadow: var(--fw-shadow-md), 0 0 0 4px color-mix(in oklab, var(--fw-focus) 22%, transparent); } .ds-capture-input { flex: 1; min-width: 0; border: none; background: transparent; color: var(--fw-ink); font: 1rem var(--fw-font-sans); } .ds-capture-input:focus { outline: none; } .ds-capture-input::placeholder { color: var(--fw-subtle); } .ds-capture-btn { height: 40px; padding: 0 20px; border: none; border-radius: var(--fw-radius-pill); background: var(--fw-primary); color: var(--fw-on-primary); font: 500 0.875rem var(--fw-font-sans); box-shadow: var(--fw-shadow-md); cursor: pointer; } .ds-capture-btn:hover { background: color-mix(in oklab, var(--fw-primary) 86%, var(--fw-bg)); } .ds-capture-btn:focus-visible { outline: 2px solid var(--fw-focus); outline-offset: 3px; }"
+      "css": ".ds-capture { display: flex; align-items: center; gap: 6px; height: 54px; max-width: 28rem; padding: 6px 6px 6px 20px; border: 1px solid var(--fw-line-strong); border-radius: var(--fw-radius-pill); background: var(--fw-surface); box-shadow: var(--fw-shadow-md); transition: box-shadow var(--fw-duration-fast); } .ds-capture:focus-within { box-shadow: var(--fw-shadow-md), 0 0 0 4px color-mix(in oklab, var(--fw-focus) 22%, transparent); } .ds-capture-input { flex: 1; min-width: 0; border: none; background: transparent; color: var(--fw-ink); font: 1rem var(--fw-font-sans); } .ds-capture-input:focus { outline: none; } .ds-capture-input:autofill { box-shadow: inset 0 0 0 10rem var(--fw-surface); -webkit-text-fill-color: var(--fw-ink); } .ds-capture-input::placeholder { color: var(--fw-subtle); } .ds-capture-btn { height: 40px; padding: 0 20px; border: none; border-radius: var(--fw-radius-pill); background: var(--fw-primary); color: var(--fw-on-primary); font: 500 0.875rem var(--fw-font-sans); box-shadow: var(--fw-shadow-md); cursor: pointer; } .ds-capture-btn:hover { background: color-mix(in oklab, var(--fw-primary) 86%, var(--fw-bg)); } .ds-capture-btn:focus-visible { outline: 2px solid var(--fw-focus); outline-offset: 3px; }"
     },
     {
       "name": "Nav Pill",
@@ -238,6 +342,14 @@
       "description": "Floating glass pill nav with the waitlist pill at its right end.",
       "html": "<nav class=\"ds-nav\"><span class=\"ds-nav-brand\">Forwend</span><a class=\"ds-nav-link\" href=\"#\">How it works</a><a class=\"ds-nav-link\" href=\"#\">FAQ</a><a class=\"ds-nav-cta\" href=\"#\">Join waitlist</a></nav>",
       "css": ".ds-nav { display: inline-flex; align-items: center; gap: 24px; padding: 6px 6px 6px 20px; border: 1px solid color-mix(in oklab, var(--fw-surface) 70%, transparent); border-radius: var(--fw-radius-pill); background: var(--fw-glass); backdrop-filter: blur(var(--fw-blur-glass)); box-shadow: var(--fw-shadow-md); font-family: var(--fw-font-sans); } .ds-nav-brand { font-weight: 600; letter-spacing: -0.025em; color: var(--fw-ink); } .ds-nav-link { font-size: 0.875rem; color: var(--fw-muted); text-decoration: none; transition: color var(--fw-duration-fast); } .ds-nav-link:hover { color: var(--fw-ink); } .ds-nav-cta { display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border-radius: var(--fw-radius-pill); background: var(--fw-primary); color: var(--fw-on-primary); font-size: 0.875rem; font-weight: 500; text-decoration: none; box-shadow: var(--fw-shadow-md); } .ds-nav-cta:focus-visible, .ds-nav-link:focus-visible { outline: 2px solid var(--fw-focus); outline-offset: 3px; }"
+    },
+    {
+      "name": "Theme Switch",
+      "kind": "button",
+      "refersTo": "theme-switch",
+      "description": "Round icon button that flips data-theme on <html> and saves the choice; 32px and unfilled inside the nav.",
+      "html": "<button class=\"ds-theme\" type=\"button\" aria-label=\"Switch to dark theme\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/></svg></button>",
+      "css": ".ds-theme { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 1px solid var(--fw-line); border-radius: var(--fw-radius-pill); background: var(--fw-surface); color: var(--fw-ink); box-shadow: var(--fw-shadow-sm); cursor: pointer; transition: background-color var(--fw-duration-fast) var(--fw-ease-out); } .ds-theme:hover { background: var(--fw-surface-2); } .ds-theme:focus-visible { outline: 2px solid var(--fw-focus); outline-offset: 3px; }"
     },
     {
       "name": "Status Pill",
@@ -266,12 +378,12 @@
   ],
   "narrative": {
     "northStar": "Dawn Path",
-    "overview": "The payment is a path. A river runs from the viewer toward a bright horizon, and an invoice moves along it through four steps: detected, confirming, paid, settled. The world is a cool dawn landscape (pale sky, meadow greens, river blue) under one deep green-black ink that carries all type and the main buttons. Product UI sits on top of the landscape, built in code, never painted in.\n\nDensity is low on the landing and medium inside product panels. The sky stays open: the hero headline sits in the upper third, and the rest of the sky is left empty on purpose (charged emptiness, meaning space that is kept empty because it gives weight to what is near it). Product showcases drop into dark framed sections (\"Dusk Ledger\"), and a halftone dot field in river blue is a quiet secondary texture (\"Halftone Horizon\"). Both themes, light and dark, are complete; a section switches locally with `data-theme=\"dark\"`.\n\nThe mood art (dawn landscape, dusk ridges, halftone ridge, grainy footer ridges) is code-drawn SVG standing in for generated images. Its colors are artwork, kept in `src/constants/art.ts`, not UI tokens.",
+    "overview": "The payment is a path. A river runs from the viewer toward a bright horizon, and an invoice moves along it through four steps: detected, confirming, paid, settled. The world is a cool dawn landscape (pale sky, meadow greens, river blue) under one deep green-black ink that carries all type and the main buttons. Product UI sits on top of the landscape, built in code, never painted in.\n\nDensity is low on the landing and medium inside product panels. The sky stays open: the hero headline sits in the upper third, and the rest of the sky is left empty on purpose (charged emptiness, meaning space that is kept empty because it gives weight to what is near it). Product showcases drop into dark full-bleed bands (\"Dusk Ledger\"), and a halftone dot field in river blue is a quiet secondary texture (\"Halftone Horizon\"). Both themes, light and dark, are complete and cover the whole site: `data-theme` on `<html>` picks the theme before the first paint (the saved choice, else the system setting), and a section can still force dark locally with `data-theme=\"dark\"`.\n\nThe hero and checkout art are generated images: a dawn landscape, a night landscape with the same composition (so the river marks line up in both themes), and a dusk ridge for the checkout band. The footer ridges and the soft halftone dots are code-drawn SVG, colored by the art tokens, which change with the theme. The footer ridges carry a paper grain in light only; at night the grain would grey out the dark ridges.",
     "keyCharacteristics": [
       "One ink (#0f2219) for type and primary buttons; no cream, no warm paper.",
       "River blue is the only accent and also means \"current step\" and \"info\".",
       "Serif display over a quiet grotesk; every amount and address in mono with tabular figures.",
-      "Everything round: pill buttons, pill nav, pill chips, generous panel corners.",
+      "Everything round: pill buttons, pill nav, pill chips, generous card corners; page bands run edge to edge with no corners.",
       "Glass only over imagery; solid surfaces everywhere else.",
       "Statuses change in place; row geometry never moves."
     ],
@@ -288,7 +400,7 @@
       },
       {
         "name": "The Token-Only Rule",
-        "body": "Tailwind's default palette is removed; only token colors exist as utilities. Art colors live in `src/constants/art.ts` and never appear in UI components.",
+        "body": "Tailwind's default palette is removed; only token colors exist as utilities. Art colors (the art tokens and the images) are for art only and never appear in UI components. The hex values in `src/constants/art.ts` belong to the old direction comps and the Open Graph image, not to new UI.",
         "section": "colors"
       },
       {
@@ -302,6 +414,11 @@
         "section": "typography"
       },
       {
+        "name": "The Role Token Rule",
+        "body": "The hero headline, section headings and featured amounts use their role tokens (`text-hero`, `text-section`, `text-amount`, `text-amount-lg`). Do not write a one-off size for them.",
+        "section": "typography"
+      },
+      {
         "name": "The No Kicker Rule",
         "body": "No eyebrow labels or uppercase tracked text above headings. The heading speaks first.",
         "section": "typography"
@@ -310,13 +427,19 @@
         "name": "The Glass Over Land Rule",
         "body": "A translucent, blurred panel is allowed only where it sits on landscape art (the hero invoice) and for the fixed nav pill, which floats over every section. Everywhere else panels are solid.",
         "section": "elevation"
+      },
+      {
+        "name": "The Band, Card, Frame Rule",
+        "body": "Bands are full-bleed with square edges. Cards are 1.25rem. Only a frame that contains cards gets 1.75rem.",
+        "section": "shapes"
       }
     ],
     "dos": [
       "Do use Pine Ink for type and primary buttons, and River Blue only for the current step, links, focus and lit marks.",
       "Do set every amount, address and hash in Geist Mono with tabular figures.",
-      "Do frame full-bleed sections as inset rounded frames (8 to 12px inset, 1.75rem radius).",
+      "Do run the hero, the checkout band and the call-to-action band edge to edge; give cards 1.25rem and only card-holding frames 1.75rem.",
       "Do switch a product showcase to dark with `data-theme=\"dark\"` on the section, not with separate dark colors.",
+      "Do write theme-only differences with the `dark:` variant, which follows `data-theme`, not the system setting.",
       "Do label every piece of demo data with a \"Sample\" badge.",
       "Do keep statuses the same size across states so a change happens in place.",
       "Do use motion tokens: 140ms for hover, 240ms for theme and accordions, 480ms for step changes, out-expo easing (`cubic-bezier(0.16, 1, 0.3, 1)`)."
@@ -325,6 +448,8 @@
       "Don't use glass panels away from landscape art; the nav pill is the only exception.",
       "Don't add eyebrow or kicker labels above headings.",
       "Don't use hard offset shadows; shadows are soft and ink-tinted.",
+      "Don't inset or round a full-bleed band.",
+      "Don't write one-off sizes for the hero headline, section headings or featured amounts; use the role tokens.",
       "Don't use cream or warm paper as a UI ground; warmth lives only in the art's horizon glow.",
       "Don't fill the open sky in the hero with badges, metrics or logos.",
       "Don't set the display serif in bold or below headline size.",

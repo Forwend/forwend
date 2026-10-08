@@ -1406,7 +1406,7 @@
       "dependsOn": [
         "F013"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "landing-e2e",
         "kit-e2e",
@@ -1425,10 +1425,111 @@
       "review": true,
       "notes": [
         "2026-10-08 From the F012 review: success pill is 4px taller than the form pill (beta note moves 4px); keep one persistent live region across form/success so screen readers announce the confirmation; update the doc comment in packages/ui-web/src/types/ui/email-capture.ts:7.",
-        "2026-10-08 From the F013 review: footer grain greys the far ridge in dark; hero night image should get priority in dark (dawn image is prioritized for everyone); ThemeSwitch shows the light icon until hydration (read data-theme in the initial state or render both icons with CSS); saved() should accept only light/dark like the head script."
+        "2026-10-08 From the F013 review: footer grain greys the far ridge in dark; hero night image should get priority in dark (dawn image is prioritized for everyone); ThemeSwitch shows the light icon until hydration (read data-theme in the initial state or render both icons with CSS); saved() should accept only light/dark like the head script.",
+        "2026-10-08 review pass by subagent: PASS. Ran: playwright all e2e 50/50 passed (incl. a11y both themes, kit interaction states, river pixel test light+dark, waitlist live region + 54px pill); ui-web 14/14; design-tokens 63/63; web 16/16; pnpm lint exit 0; pnpm typecheck exit 0. Lighthouse log F014-20261008T152502Z: perf 99, a11y 100, LCP 1646 ms. Grep of landing, /kit and ui-web components: no text-[/tracking-[/leading-[/rounded-[ raw values, no hex/rgb; remaining arbitrary values are var(--fw-*), --spacing(), grid track ratios and object-position. Role tokens in theme.css used for hero/section/amount/2xs/unit. Band/card/frame rule holds in code and screenshots: checkout and CTA bands full-bleed with no radius, fees/checkout cards rounded-lg (1.25rem), only profile tray rounded-xl. Split layout for Fees/FAQ reads well at 1440, stacks at 768/390. Earlier-review follow-ups done: one persistent sr-only live region, success pill same 54px height, email-capture.ts doc comment updated, footer grain off in dark via .fw-footer-grain, night hero loading=eager, ThemeSwitch icons via dark: variant, saved() accepts only light/dark. Button loading keeps colors with aria-busy/aria-disabled and blocks clicks (unit test). Non-blocking: (1) apps/web/DESIGN.md:359 still says fields are 50% opacity when disabled; fields.tsx:14 now uses border-line/bg-surface-2/text-subtle. (2) money-rules.tsx:11,18 md:grid-cols-[16rem_1fr] is a raw rem track. (3) In dark the checkout band fades into the same ground as the page, so its bottom edge disappears (desktop-dark.png). (4) ThemeSwitch aria-label still comes from state that starts as light until hydration (icon is fixed). (5) Kit typography section does not show the new role tokens."
       ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T15:25:02Z",
+        "checks": [
+          {
+            "id": "landing-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 15.5,
+            "log": "docs/runs/F014-20261008T152502Z-landing-e2e.log"
+          },
+          {
+            "id": "kit-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.2,
+            "log": "docs/runs/F014-20261008T152502Z-kit-e2e.log"
+          },
+          {
+            "id": "a11y-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 7.1,
+            "log": "docs/runs/F014-20261008T152502Z-a11y-e2e.log"
+          },
+          {
+            "id": "lighthouse",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 25.8,
+            "log": "docs/runs/F014-20261008T152502Z-lighthouse.log"
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F014-20261008T152502Z-ui-unit.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F014-20261008T152502Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F014-20261008T152502Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F014-20261008T152502Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.5,
+            "log": "docs/runs/F014-20261008T152502Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 16.2,
+            "log": "docs/runs/F014-20261008T152502Z-e2e.log"
+          }
+        ],
+        "taskHash": "ec9d3b63e40ebac5",
+        "filesHash": "8c0cb31c184cde6c",
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "PASS. Ran: playwright all e2e 50/50 passed (incl. a11y both themes, kit interaction states, river pixel test light+dark, waitlist live region + 54px pill); ui-web 14/14; design-tokens 63/63; web 16/16; pnpm lint exit 0; pnpm typecheck exit 0. Lighthouse log F014-20261008T152502Z: perf 99, a11y 100, LCP 1646 ms. Grep of landing, /kit and ui-web components: no text-[/tracking-[/leading-[/rounded-[ raw values, no hex/rgb; remaining arbitrary values are var(--fw-*), --spacing(), grid track ratios and object-position. Role tokens in theme.css used for hero/section/amount/2xs/unit. Band/card/frame rule holds in code and screenshots: checkout and CTA bands full-bleed with no radius, fees/checkout cards rounded-lg (1.25rem), only profile tray rounded-xl. Split layout for Fees/FAQ reads well at 1440, stacks at 768/390. Earlier-review follow-ups done: one persistent sr-only live region, success pill same 54px height, email-capture.ts doc comment updated, footer grain off in dark via .fw-footer-grain, night hero loading=eager, ThemeSwitch icons via dark: variant, saved() accepts only light/dark. Button loading keeps colors with aria-busy/aria-disabled and blocks clicks (unit test). Non-blocking: (1) apps/web/DESIGN.md:359 still says fields are 50% opacity when disabled; fields.tsx:14 now uses border-line/bg-surface-2/text-subtle. (2) money-rules.tsx:11,18 md:grid-cols-[16rem_1fr] is a raw rem track. (3) In dark the checkout band fades into the same ground as the page, so its bottom edge disappears (desktop-dark.png). (4) ThemeSwitch aria-label still comes from state that starts as light until hydration (icon is fixed). (5) Kit typography section does not show the new role tokens.",
+          "at": "2026-10-08T15:29:32Z",
+          "filesHash": "8c0cb31c184cde6c"
+        },
+        "commit": "c653c8e",
+        "doneAt": "2026-10-08T15:29:55Z",
+        "proof": {
+          "1": "grep of landing, /kit and ui-web shows no raw sizes/colors/letter-spacing (only var(--fw-*) and --spacing()); bands full-bleed and cards rounded-lg in code and screenshots at 360/768/1280+/1536 in both themes; e2e/landing.spec.ts no-scroll at 330-1536",
+          "2": "e2e/kit.spec.ts 'interaction states on /kit' (hover, keyboard focus outline, disabled bg, loading keeps colors, field focus ring, active tab); ui-web button and theme-switch unit tests",
+          "3": "e2e/a11y.spec.ts '/' and '/kit' in light and dark: 0 serious/critical; lighthouse: performance 99, accessibility 100, LCP 1646 ms"
+        }
+      },
+      "branch": "refactor/f014-a-visual-audit-pass-makes-spacing-type-c",
+      "baseCommit": "4089eff737e0792c525f944539c64ea4995631ad",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f014-a-visual-audit-pass-makes-spacing-type-c",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {

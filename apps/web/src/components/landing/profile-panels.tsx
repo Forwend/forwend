@@ -85,7 +85,7 @@ export function FreelancerPanel() {
               baseUnits={SAMPLE_INVOICE.baseUnits}
               decimals={SAMPLE_INVOICE.decimals}
               token={SAMPLE_INVOICE.token}
-              className="mt-1 text-3xl text-ink"
+              className="mt-1 text-amount-lg text-ink"
             />
           </div>
           <TokenChip token={SAMPLE_INVOICE.token} network={SAMPLE_INVOICE.network} />

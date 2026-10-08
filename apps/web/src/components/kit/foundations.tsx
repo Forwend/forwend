@@ -49,7 +49,7 @@ export function TypographySamples() {
       </div>
       <div>
         <p className="text-sm text-muted">Numbers and addresses: Geist Mono, tabular figures</p>
-        <p className="mt-4 font-mono text-3xl tabular-nums text-ink">
+        <p className="mt-4 font-mono text-amount-lg tabular-nums text-ink">
           1,250.00 · 98,431.07 · 0x8f3a…c21d
         </p>
       </div>

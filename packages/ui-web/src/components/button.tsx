@@ -9,7 +9,7 @@ import type {
 } from "../types/ui/button";
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-pill font-medium whitespace-nowrap transition-[background-color,color,box-shadow,transform] duration-[var(--fw-duration-fast)] ease-out active:translate-y-px disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-pill font-medium whitespace-nowrap transition-[background-color,color,box-shadow,transform] duration-[var(--fw-duration-fast)] ease-out active:translate-y-px disabled:pointer-events-none disabled:border-line disabled:bg-surface-2 disabled:text-subtle disabled:shadow-none";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary:
@@ -41,15 +41,19 @@ export function Button({
   type = "button",
   className,
   children,
+  onClick,
   ...props
 }: ButtonProps) {
+  // Loading keeps the button's own colors (with a spinner) and ignores clicks; disabled greys it out.
   return (
     <button
       type={type}
       data-variant={variant ?? BUTTON_VARIANTS.primary}
-      disabled={disabled || loading}
+      disabled={disabled}
       aria-busy={loading || undefined}
-      className={cx(buttonClasses({ variant, size }), className)}
+      aria-disabled={loading || undefined}
+      onClick={loading ? (event) => event.preventDefault() : onClick}
+      className={cx(buttonClasses({ variant, size }), loading && "cursor-progress", className)}
       {...props}
     >
       {loading ? <Loader2 aria-hidden className="size-[var(--fw-icon-sm)] animate-spin" /> : null}

@@ -12,7 +12,7 @@ export function MoneyRules() {
             <dt>
               <StatusPill status={item.status} />
             </dt>
-            <dd className="max-w-[65ch] text-lg text-ink">{item.body}</dd>
+            <dd className="max-w-prose text-lg text-ink">{item.body}</dd>
           </div>
         ))}
         <div className="grid gap-3 py-6 md:grid-cols-[16rem_1fr] md:gap-10">
@@ -22,7 +22,7 @@ export function MoneyRules() {
               {RULES.wrongNetwork.title}
             </span>
           </dt>
-          <dd className="max-w-[65ch] text-lg text-ink">{RULES.wrongNetwork.body}</dd>
+          <dd className="max-w-prose text-lg text-ink">{RULES.wrongNetwork.body}</dd>
         </div>
       </dl>
       <p className="mt-6 max-w-2xl text-muted">{RULES.footnote}</p>

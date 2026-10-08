@@ -33,7 +33,7 @@ export function Money({ baseUnits, decimals, token, fractionDigits, className }:
       <span className="font-mono tabular-nums tracking-tight">
         {formatTokenAmount({ baseUnits, decimals, fractionDigits })}
       </span>
-      {token ? <span className="text-[0.8em] text-muted"> {token}</span> : null}
+      {token ? <span className="text-unit text-muted"> {token}</span> : null}
     </span>
   );
 }

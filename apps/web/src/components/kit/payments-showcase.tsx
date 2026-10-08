@@ -28,9 +28,9 @@ export function PaymentsShowcase() {
           baseUnits={SAMPLE_INVOICE.baseUnits}
           decimals={SAMPLE_INVOICE.decimals}
           token="USDC"
-          className="text-4xl"
+          className="text-amount-lg"
         />
-        <Money baseUnits={1234560000n} decimals={6} token="USDC" className="text-xl" />
+        <Money baseUnits={1234560000n} decimals={6} token="USDC" className="text-amount" />
         <Money baseUnits={980000n} decimals={6} token="USDT" />
       </KitGroup>
       <KitGroup title="Token and network">

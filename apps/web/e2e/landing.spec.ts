@@ -311,3 +311,57 @@ test.describe("dark theme", () => {
     });
   }
 });
+
+test.describe("river line", () => {
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`is actually painted on the hero in the ${colorScheme} theme`, async ({ browser }) => {
+      // Computed styles can look right while nothing paints, so compare pixels at points on the line
+      // with the line shown and hidden.
+      const context = await browser.newContext({
+        colorScheme,
+        reducedMotion: "reduce",
+        viewport: { width: 1440, height: 900 },
+      });
+      const page = await context.newPage();
+      await page.goto("/");
+      await page.waitForLoadState("networkidle");
+      // Scroll away and back first, so the check runs on a repainted hero, as a visitor sees it.
+      await page.evaluate(async () => {
+        for (let y = 0; y < document.body.scrollHeight; y += 600) {
+          window.scrollTo(0, y);
+          await new Promise((r) => setTimeout(r, 30));
+        }
+        window.scrollTo(0, 0);
+      });
+      await page.waitForTimeout(300);
+      const points = await page.evaluate(() => {
+        const path = [...document.querySelectorAll<SVGPathElement>(".fw-river-path")].find(
+          (el) => getComputedStyle(el).display !== "none",
+        );
+        if (!path) return [];
+        const matrix = path.getScreenCTM();
+        const length = path.getTotalLength();
+        return [0.25, 0.5, 0.75].map((t) => {
+          const p = path.getPointAtLength(length * t);
+          return {
+            x: (matrix?.a ?? 1) * p.x + (matrix?.e ?? 0),
+            y: (matrix?.d ?? 1) * p.y + (matrix?.f ?? 0),
+          };
+        });
+      });
+      expect(points).toHaveLength(3);
+      const grab = async () =>
+        Promise.all(
+          points.map(({ x, y }) =>
+            page.screenshot({ clip: { x: x - 2, y: y - 2, width: 4, height: 4 } }),
+          ),
+        );
+      const shown = await grab();
+      await page.addStyleTag({ content: ".fw-river-path { visibility: hidden !important; }" });
+      const hidden = await grab();
+      const differs = shown.map((buf, i) => !buf.equals(hidden[i] as Buffer));
+      expect(differs.filter(Boolean).length).toBeGreaterThanOrEqual(2);
+      await context.close();
+    });
+  }
+});

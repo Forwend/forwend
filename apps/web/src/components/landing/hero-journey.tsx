@@ -37,7 +37,7 @@ export function HeroJourney() {
   return (
     <>
       {/* The art fades into the page at the bottom; below lg that happens behind the invoice panel. */}
-      <div className="absolute inset-x-0 top-0 bottom-36 -z-10 overflow-hidden [mask-image:linear-gradient(to_bottom,black_84%,transparent)] lg:bottom-0">
+      <div className="absolute inset-x-0 top-0 bottom-36 -z-10 overflow-hidden lg:bottom-0">
         <Image
           src={HERO_IMAGE.src}
           alt=""
@@ -52,10 +52,15 @@ export function HeroJourney() {
           alt=""
           fill
           sizes="100vw"
+          // The theme is only known in the browser, so both images start loading at once;
+          // the dawn image keeps the high priority (the default theme and the Lighthouse run).
+          loading="eager"
           className="hidden object-cover object-center dark:block"
         />
         {/* Soft light behind the headline and form, so text stays readable over the bright mountains. */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_56%_at_50%_42%,color-mix(in_oklab,var(--fw-bg)_80%,transparent),transparent_100%)] lg:bg-[radial-gradient(ellipse_64%_52%_at_50%_36%,color-mix(in_oklab,var(--fw-bg)_78%,transparent),transparent_100%)]" />
+        {/* Fades the art into the page below the river overlay, so the marks and line keep full strength. */}
+        <div className="absolute inset-x-0 bottom-0 h-1/6 bg-[linear-gradient(to_bottom,transparent,var(--fw-bg))]" />
         <svg
           viewBox={`0 0 ${RIVER_VIEWBOX.width} ${RIVER_VIEWBOX.height}`}
           preserveAspectRatio="xMidYMid slice"
@@ -96,7 +101,7 @@ export function HeroJourney() {
           ))}
         </svg>
       </div>
-      <div className="mt-auto flex justify-center pt-12 lg:justify-end lg:pr-[6%]">
+      <div className="mt-auto flex justify-center pt-12 lg:justify-end lg:pr-20">
         <HeroPayment states={states} />
       </div>
     </>

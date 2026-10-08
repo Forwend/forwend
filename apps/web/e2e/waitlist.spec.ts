@@ -11,13 +11,17 @@ test.describe("mock waitlist", () => {
     await hero.getByLabel("Email address").fill("name@example.com");
     await hero.getByRole("button", { name: "Join waitlist" }).click();
 
-    const confirmation = hero.getByRole("status");
+    // Visible confirmation inside the pill, plus the same text in the live region for screen readers.
+    const confirmation = hero.locator('[data-capture="confirmation"]');
+    await expect(hero.locator('p.sr-only[aria-live="polite"]')).toHaveText("You're on the list.");
     await expect(confirmation).toContainText("You're on the list.");
     await expect(confirmation).toContainText("name@example.com");
     await expect(confirmation.locator("svg")).toBeVisible();
     // The confirmation replaces the form: no disabled, greyed-out button is left behind.
     await expect(hero.getByRole("button", { name: "Join waitlist" })).toHaveCount(0);
     const background = await confirmation.evaluate((el) => getComputedStyle(el).backgroundColor);
+    // Same height as the form pill, so nothing below moves.
+    expect(Math.round((await confirmation.boundingBox())?.height ?? 0)).toBe(54);
     expect(background).not.toBe("rgba(0, 0, 0, 0)");
     await page.waitForTimeout(500);
     expect(requests).toEqual([]);
@@ -29,7 +33,11 @@ test.describe("mock waitlist", () => {
     await hero.getByLabel("Email address").fill("abc");
     await hero.getByRole("button", { name: "Join waitlist" }).click();
 
-    const error = hero.getByText("Enter a full email address", { exact: false });
+    const error = hero.locator('p[id$="-error"]');
+    await expect(error).toContainText("Enter a full email address");
+    await expect(hero.locator('p.sr-only[aria-live="polite"]')).toContainText(
+      "Enter a full email address",
+    );
     await expect(error).toBeVisible();
     // The error sits on a solid surface, never directly on the landscape.
     expect(await error.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(

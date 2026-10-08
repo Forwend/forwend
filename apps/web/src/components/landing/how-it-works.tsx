@@ -10,11 +10,11 @@ export function HowItWorks() {
           <li key={step.title} className="group relative pl-8 md:pt-10 md:pl-0">
             <span
               aria-hidden
-              className="absolute top-2 left-[0.4375rem] h-[calc(100%+2.5rem)] w-px bg-line-strong md:top-[0.4375rem] md:left-0 md:h-px md:w-[calc(100%+1.5rem)] group-last:hidden"
+              className="absolute top-2 left-1.75 h-[calc(100%+--spacing(10))] w-px bg-line-strong md:top-1.75 md:left-0 md:h-px md:w-[calc(100%+--spacing(6))] group-last:hidden"
             />
             <span
               aria-hidden
-              className={`absolute top-0 left-0 size-[0.9375rem] rounded-pill border-2 ${
+              className={`absolute top-0 left-0 size-3.75 rounded-pill border-2 ${
                 i === HOW.steps.length - 1 ? "border-accent bg-accent" : "border-ink bg-bg"
               }`}
             />
