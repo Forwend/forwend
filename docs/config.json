@@ -3,78 +3,45 @@
   "checks": [
     {
       "id": "lint",
-      "argv": [
-        "pnpm",
-        "lint"
-      ],
+      "argv": ["pnpm", "lint"],
       "required": true,
       "precommit": true
     },
     {
       "id": "typecheck",
-      "argv": [
-        "pnpm",
-        "typecheck"
-      ],
+      "argv": ["pnpm", "typecheck"],
       "required": true,
       "precommit": true
     },
     {
       "id": "unit",
-      "argv": [
-        "pnpm",
-        "test"
-      ],
+      "argv": ["pnpm", "test"],
       "required": true
     },
     {
       "id": "build",
-      "argv": [
-        "pnpm",
-        "build"
-      ],
+      "argv": ["pnpm", "build"],
       "required": true,
       "timeoutSeconds": 600
     },
     {
       "id": "e2e",
-      "argv": [
-        "pnpm",
-        "e2e"
-      ],
+      "argv": ["pnpm", "e2e"],
       "required": true,
       "wrapup": true,
       "timeoutSeconds": 600
     },
     {
       "id": "tokens-unit",
-      "argv": [
-        "pnpm",
-        "--filter",
-        "@forwend/design-tokens",
-        "test"
-      ]
+      "argv": ["pnpm", "--filter", "@forwend/design-tokens", "test"]
     },
     {
       "id": "ui-unit",
-      "argv": [
-        "pnpm",
-        "--filter",
-        "@forwend/ui-web",
-        "test"
-      ]
+      "argv": ["pnpm", "--filter", "@forwend/ui-web", "test"]
     },
     {
       "id": "kit-e2e",
-      "argv": [
-        "pnpm",
-        "--filter",
-        "@forwend/web",
-        "exec",
-        "playwright",
-        "test",
-        "e2e/kit.spec.ts"
-      ],
+      "argv": ["pnpm", "--filter", "@forwend/web", "exec", "playwright", "test", "e2e/kit.spec.ts"],
       "timeoutSeconds": 600
     },
     {
@@ -118,32 +85,16 @@
     },
     {
       "id": "seo-e2e",
-      "argv": [
-        "pnpm",
-        "--filter",
-        "@forwend/web",
-        "exec",
-        "playwright",
-        "test",
-        "e2e/seo.spec.ts"
-      ],
+      "argv": ["pnpm", "--filter", "@forwend/web", "exec", "playwright", "test", "e2e/seo.spec.ts"],
       "timeoutSeconds": 600
     },
     {
       "id": "images-check",
-      "argv": [
-        "node",
-        "scripts/check-images.mjs"
-      ]
+      "argv": ["node", "scripts/check-images.mjs"]
     },
     {
       "id": "lighthouse",
-      "argv": [
-        "pnpm",
-        "--filter",
-        "@forwend/web",
-        "lighthouse"
-      ],
+      "argv": ["pnpm", "--filter", "@forwend/web", "lighthouse"],
       "timeoutSeconds": 900
     }
   ],

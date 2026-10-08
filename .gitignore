@@ -1,2 +1,12 @@
 docs/runs/
 docs/.harness.lock
+node_modules/
+.next/
+.turbo/
+next-env.d.ts
+*.tsbuildinfo
+coverage/
+test-results/
+playwright-report/
+.env*.local
+.DS_Store

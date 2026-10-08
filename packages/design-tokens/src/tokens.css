@@ -1,0 +1,11 @@
+/* Placeholder tokens. F004 replaces them with the chosen direction. */
+:root,
+[data-theme="light"] {
+  --color-bg: #ffffff;
+  --color-text: #0b1220;
+}
+
+[data-theme="dark"] {
+  --color-bg: #0b1220;
+  --color-text: #f5f7fa;
+}
