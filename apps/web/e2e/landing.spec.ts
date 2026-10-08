@@ -69,11 +69,32 @@ test.describe("landing page", () => {
     test(`has no horizontal scroll at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/");
-      const { scroll, viewport } = await page.evaluate(() => ({
-        scroll: document.documentElement.scrollWidth,
-        viewport: window.innerWidth,
-      }));
-      expect(scroll).toBeLessThanOrEqual(viewport);
+      const { scroll, viewport, culprits } = await page.evaluate(() => {
+        const vw = document.documentElement.clientWidth;
+        // Elements that stick out past the viewport and are not inside a scrolling or clipping box.
+        const culprits = [...document.querySelectorAll("body *")]
+          .filter((el) => el.getBoundingClientRect().right > vw + 0.5)
+          .filter((el) => {
+            for (let a = el.parentElement; a; a = a.parentElement) {
+              if (["hidden", "auto", "clip", "scroll"].includes(getComputedStyle(a).overflowX))
+                return false;
+            }
+            return true;
+          })
+          .slice(0, 5)
+          .map(
+            (el) =>
+              `<${el.tagName.toLowerCase()} class="${String(el.getAttribute("class")).slice(0, 80)}"> right=${Math.round(el.getBoundingClientRect().right)} text="${el.textContent?.trim().slice(0, 40)}"`,
+          );
+        return {
+          scroll: document.documentElement.scrollWidth,
+          viewport: window.innerWidth,
+          culprits,
+        };
+      });
+      expect(scroll, `wider than the viewport:\n${culprits.join("\n")}`).toBeLessThanOrEqual(
+        viewport,
+      );
     });
   }
 
