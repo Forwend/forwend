@@ -56,7 +56,6 @@ export const NETWORKS = {
     { name: "USDC", logo: "usdc" },
     { name: "USDT", logo: "usdt" },
   ],
-  note: "Planned. Each network goes live only after its token contracts are verified and tested.",
 } as const;
 
 export const HOW = {
