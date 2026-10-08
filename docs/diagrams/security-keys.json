@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "forwend-security-keys",
-  "revision": 3,
+  "revision": 4,
   "kind": "architecture",
   "title": "Who can move money",
   "theme": "dark",
@@ -111,7 +111,7 @@
       "label": "Safe multisig: refund authority",
       "groupId": "chain",
       "ports": [],
-      "description": "3-of-5 hardware-key owners, same address on every chain. Guard: no delegatecall, only our contracts. 24-48 h delay on refund and recover; pause is instant. Fewer than 3 leaked keys move nothing"
+      "description": "3-of-5 hardware-key owners, same address on every chain. Refund, recover and late settle only through a 24-48 h Delay module; direct transactions limited to Safe admin, the Delay module, the factory and MultiSendCallOnly. Pause is instant. Fewer than 3 leaked keys move nothing"
     },
     {
       "id": "factory",

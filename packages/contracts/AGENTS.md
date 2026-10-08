@@ -26,8 +26,10 @@ Terms (immutable clone args):
   deposit deploys the receiver after expiry.
 
 Factory:
-- `refundAuthority` is an immutable constructor argument: the Safe on mainnet, a test EOA on testnets.
+- `refundAuthority` is an immutable constructor argument: the Safe on mainnet, a test EOA on testnets. Losing it means
+  a new factory, so the Safe must always be able to rotate its own owners.
 - `executor` is stored in the factory; only the refund authority can change it (a leaked executor key is replaceable).
+  The first executor is a constructor argument, so it is part of the factory address: use the same one on every chain.
 - `paused` is set only by the refund authority and blocks `settle` only, never refunds.
 - Creates the implementation in its constructor. `deploy` returns the existing receiver if it is already deployed and
   records every receiver it deploys (the Safe Guard allows only these).
@@ -55,8 +57,13 @@ Receiver:
 Safe (mainnet; testnets use an EOA):
 - Safe 1.4.1 or newer, at least 3 of 5 owners on hardware keys, the same address on every planned chain, deployed on all
   of them on day one; owner changes are applied on every chain.
-- A Guard blocks `delegatecall` and allows only the factory and receivers it deployed as targets.
-- A 24–48 h Delay module on `refund` and `recover`, with alerts and a cancel path; `setPaused` stays instant.
+- A Guard on direct Safe transactions allows as targets only: the Safe itself (owner, threshold, guard and module
+  changes, so keys can always be rotated), the Delay module (queue and cancel), the factory (`setPaused`,
+  `setExecutor`) and `MultiSendCallOnly` 1.4.1, the only allowed `delegatecall`. It rejects direct calls to a
+  receiver's `refund`, `recover` and post-deadline `settle`, so those run only through the Delay module.
+- The Delay module (24–48 h, with alerts and a cancel path) is the only route to `refund`, `recover` and post-deadline
+  `settle`. Safe 1.4.1 Guards do not check module transactions, so the Delay module is the control there.
+  `setPaused` stays instant.
 - Refunds go to the deposit's sender by default; any other address needs written evidence. Owners check every
   transaction hash with an independent tool before signing.
 

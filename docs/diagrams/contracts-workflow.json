@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "forwend-contracts-workflow",
-  "revision": 5,
+  "revision": 6,
   "kind": "workflow",
   "title": "Invoice receiver contracts v1: full workflow",
   "theme": "dark",
@@ -271,7 +271,7 @@
       "label": "Paid on time? (our outage)",
       "groupId": "admin",
       "ports": [],
-      "description": "Settlement missed the window"
+      "description": "Settlement missed settleDeadline"
     },
     {
       "id": "pause",
@@ -318,7 +318,7 @@
       "label": "Receiver.refund(to, amount)",
       "groupId": "chain",
       "ports": [],
-      "description": "Refund authority only, intended chain only. May repeat; never more than the refundable amount, never the amount owed before settleDeadline. If not deployed yet, the same Safe transaction calls Factory.deploy first"
+      "description": "Refund authority only, intended chain only. May repeat; never more than the refundable amount, never the amount owed before settleDeadline. If not deployed yet, the queued Safe transaction calls Factory.deploy first (MultiSendCallOnly)"
     },
     {
       "id": "payerback",
@@ -364,7 +364,7 @@
       "label": "Receiver.recover(token, to, amount)",
       "groupId": "chain",
       "ports": [],
-      "description": "Any non-invoice token, the native coin, or a wrong chain. On the intended chain it never lowers the invoice-token balance (Arc: native coin = USDC). If not deployed on that chain, the same Safe transaction calls Factory.deploy first"
+      "description": "Any non-invoice token, the native coin, or a wrong chain. On the intended chain it never lowers the invoice-token balance (Arc: native coin = USDC). If not deployed on that chain, the queued Safe transaction calls Factory.deploy first (MultiSendCallOnly)"
     },
     {
       "id": "lost",

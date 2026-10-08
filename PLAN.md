@@ -499,8 +499,10 @@ The full rule list, each with a test, is in [packages/contracts/AGENTS.md](packa
     tell a right recipient from a wrong one, so this check lives in the backend (Phase 6).
   - Uses `SafeERC20`; only allowlisted tokens (fee-on-transfer tokens are not allowed).
 - Refund-authority Safe: 1.4.1+, at least 3 of 5 hardware-key owners, same address on every chain
-  and deployed on all of them on day one; a Guard that blocks `delegatecall` and allows only our
-  contracts; a 24–48 h delay on refunds and recoveries (pause stays instant).
+  and deployed on all of them on day one. Refunds, recoveries and post-deadline settles go only
+  through a 24–48 h Delay module; a Guard keeps direct transactions to the Safe's own admin calls,
+  the Delay module, the factory and `MultiSendCallOnly` (pause stays instant). Details in
+  `packages/contracts/AGENTS.md`.
 
 ### Done-list
 - [x] Foundry project in `packages/contracts/`, OZ 5.7.0 pinned (F035).
@@ -517,7 +519,7 @@ The full rule list, each with a test, is in [packages/contracts/AGENTS.md](packa
       invariants:
       - settled ≤ amount, always;
       - settled + refunded ≤ total received;
-      - refunds never take the `amount` owed to `recipient` before the settle window ends;
+      - refunds never take the `amount` owed to `recipient` before `settleDeadline`;
       - only `recipient` ever receives settlement;
       - executor alone cannot move funds anywhere except `recipient`.
 - [ ] `/token-integration-analyzer` on USDC/USDT behavior (USDT's non-standard `approve`/return values,
@@ -531,7 +533,8 @@ The full rule list, each with a test, is in [packages/contracts/AGENTS.md](packa
       the root `.env` (approved by Sasha, 2026-10-09).
 
 **Gate:** all tests, fuzz runs and invariants pass in CI; no open high/medium findings; the
-factory is live on the four testnets at one address.
+factory is live on the four testnets at one address, and a real receiver deployed on each matches
+`predict`.
 
 ---
 
