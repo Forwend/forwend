@@ -19,6 +19,7 @@ Roadmap and money rules: [PLAN.md](PLAN.md). Current release requirements and de
 - Landing copy is honest: no customer logos, funding badges, or claims of being regulated, insured or live.
 - Images: mood images (landscapes, textures) come from the Codex CLI built-in `image_gen` tool, run headless with `codex exec` (D-9); product UI, charts and text are built in code. Store them as WebP in `apps/web/public/images/` and record slot, file, prompt and date in `docs/images.md`.
 - Respect `prefers-reduced-motion`; no scroll hijacking.
+- Tests cover important behavior only: money and payment logic, forms, privacy (/kit), theme persistence, accessibility (axe). No tests for layout, sizes, fonts, colors, pixels or section order; judge those in review screenshots.
 - Commits, PRs and comments carry no AI attribution (no Co-Authored-By for an AI, no "Generated with" footer).
 - Do not spend money, deploy, or create provider accounts without Sasha's explicit yes.
 
