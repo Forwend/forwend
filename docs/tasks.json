@@ -3232,7 +3232,7 @@
         "docs/spikes/s5-s6-testnets.md records per testnet: chain id, RPC results, CreateX, CREATE2 deployer and Safe factory presence, test token contracts and decimals, with sources and date"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "contracts",
         "lint"
@@ -3302,11 +3302,24 @@
           }
         ],
         "taskHash": "f592a1fdb91e190d",
-        "filesHash": "66d69cf1c5dd633d"
+        "filesHash": "66d69cf1c5dd633d",
+        "commit": "8bc8b2c",
+        "doneAt": "2026-10-08T21:40:25Z",
+        "proof": {
+          "1": "contracts check (forge build/test) passed; CI installs Foundry and submodules",
+          "2": "rpc.mjs run per chain: Infura for Base/Arbitrum/Arc, public for Tempo; skips keys without access",
+          "3": "git check-ignore .env; .env.example committed without values",
+          "4": "docs/spikes/s5-s6-testnets.md"
+        }
       },
       "branch": "chore/f035-a-foundry-workspace-in-contracts-builds",
       "baseCommit": "2263dde07ff408a229c2681f6be731ee2ef91955",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f035-a-foundry-workspace-in-contracts-builds",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
