@@ -17,6 +17,7 @@ export interface TabItem {
   value: string;
   label: string;
   content: ReactNode;
+  icon?: ReactNode;
 }
 
 export interface TabsProps {
@@ -44,6 +45,7 @@ export interface DialogProps {
 export interface TooltipProps {
   content: string;
   children: ReactNode;
+  side?: "top" | "right" | "bottom" | "left";
 }
 
 export interface ToastProps {

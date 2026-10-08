@@ -1,3 +1,4 @@
+import { BrandIcon } from "@forwend/ui-web";
 import { LANDING_SECTIONS, NETWORKS } from "@/constants/landing";
 
 export function Networks() {
@@ -9,14 +10,16 @@ export function Networks() {
     >
       <ul className="flex flex-wrap items-center gap-x-8 gap-y-3 text-xl text-ink">
         {NETWORKS.networks.map((n) => (
-          <li key={n} className="font-medium tracking-tight">
-            {n}
+          <li key={n.name} className="inline-flex items-center gap-2 font-medium tracking-tight">
+            {n.logo ? <BrandIcon name={n.logo} className="size-[var(--fw-icon-lg)]" /> : null}
+            {n.name}
           </li>
         ))}
         <li aria-hidden className="hidden h-5 w-px bg-line-strong sm:block" />
         {NETWORKS.tokens.map((t) => (
-          <li key={t} className="font-mono text-lg">
-            {t}
+          <li key={t.name} className="inline-flex items-center gap-2 font-mono text-lg">
+            <BrandIcon name={t.logo} className="size-[var(--fw-icon-lg)]" />
+            {t.name}
           </li>
         ))}
       </ul>

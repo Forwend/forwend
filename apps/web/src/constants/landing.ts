@@ -46,8 +46,16 @@ export const HERO = {
 
 export const NETWORKS = {
   label: "Planned networks and stablecoins",
-  networks: ["Base", "Arbitrum", "Arc", "Tempo"],
-  tokens: ["USDC", "USDT"],
+  networks: [
+    { name: "Base", logo: "base" },
+    { name: "Arbitrum", logo: null },
+    { name: "Arc", logo: null },
+    { name: "Tempo", logo: null },
+  ],
+  tokens: [
+    { name: "USDC", logo: "usdc" },
+    { name: "USDT", logo: "usdt" },
+  ],
   note: "Planned. Each network goes live only after its token contracts are verified and tested.",
 } as const;
 
@@ -207,5 +215,13 @@ export const FINAL_CTA = {
 
 export const FOOTER = {
   tagline: "Stablecoin payments you can follow from invoice to wallet.",
+  socialsSoon: "Coming soon",
+  socials: [
+    { name: "X", icon: "x" },
+    { name: "GitHub", icon: "github" },
+    { name: "Discord", icon: "discord" },
+    { name: "Telegram", icon: "telegram" },
+    { name: "LinkedIn", icon: "linkedin" },
+  ],
   legal: ["Terms (coming soon)", "Privacy (coming soon)"],
 } as const;
