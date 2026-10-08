@@ -9,7 +9,7 @@ import type {
 } from "../types/ui/button";
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-pill font-medium whitespace-nowrap transition-[background-color,color,box-shadow,transform] duration-[var(--fw-duration-fast)] ease-out active:translate-y-px disabled:pointer-events-none disabled:border-line disabled:bg-surface-2 disabled:text-subtle disabled:shadow-none";
+  "inline-flex items-center justify-center gap-2 rounded-pill font-medium whitespace-nowrap transition-[background-color,color,box-shadow] duration-[var(--fw-duration-fast)] ease-out disabled:border-line disabled:bg-surface-2 disabled:text-subtle disabled:shadow-none";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary:

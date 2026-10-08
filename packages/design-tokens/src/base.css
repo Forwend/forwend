@@ -6,7 +6,6 @@
     font-family: var(--fw-font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    scrollbar-color: var(--fw-line-strong) transparent;
     accent-color: var(--fw-accent);
   }
 
@@ -17,6 +16,53 @@
     transition:
       background-color var(--fw-duration-base) var(--fw-ease-out),
       color var(--fw-duration-base) var(--fw-ease-out);
+  }
+
+  /* Everything clickable shows a pointer; disabled controls say so. */
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="option"],
+  [role="switch"],
+  [role="combobox"],
+  summary,
+  a[href],
+  label[for],
+  select,
+  input[type="checkbox"],
+  input[type="radio"] {
+    cursor: pointer;
+  }
+
+  :disabled,
+  [aria-disabled="true"],
+  [data-disabled] {
+    cursor: not-allowed;
+  }
+
+  /* Slim scrollbars in token colors (standard properties; WebKit pseudo-elements for Safari). */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--fw-line-strong) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: var(--fw-radius-pill);
+    background: var(--fw-line-strong) padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--fw-subtle) padding-box;
   }
 
   ::selection {
@@ -56,4 +102,36 @@
       scroll-behavior: auto !important;
     }
   }
+}
+
+/* Accordion height animation (Radix sets --radix-accordion-content-height). */
+@keyframes fw-accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes fw-accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+/* Syntax colors for CodeBlock (sugar-high reads --sh-*), from the theme's tokens. */
+.fw-code {
+  --sh-keyword: var(--fw-accent);
+  --sh-string: var(--fw-success);
+  --sh-class: var(--fw-warning);
+  --sh-entity: var(--fw-warning);
+  --sh-property: var(--fw-info);
+  --sh-jsxliterals: var(--fw-ink);
+  --sh-identifier: var(--fw-ink);
+  --sh-sign: var(--fw-subtle);
+  --sh-comment: var(--fw-subtle);
 }

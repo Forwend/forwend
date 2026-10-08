@@ -7,6 +7,6 @@ export interface Direction {
   letter: string;
   name: string;
   summary: string;
-  /** Generated hero candidate for this direction (docs/images.md). */
+  /** Hero image for this direction (source and prompt in docs/images.md). */
   image: { src: string; width: number; height: number };
 }

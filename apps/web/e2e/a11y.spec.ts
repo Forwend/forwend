@@ -27,15 +27,18 @@ test.describe("accessibility", () => {
     });
   }
 
-  for (const theme of ["light", "dark"]) {
-    test(`/kit has no serious or critical axe violations in the ${theme} theme`, async ({
-      page,
+  for (const colorScheme of ["light", "dark"] as const) {
+    // The theme comes from the system preference through the head script, as for a real visitor;
+    // setting data-theme by hand after load raced with hydration and made this test flaky.
+    test(`/kit has no serious or critical axe violations in the ${colorScheme} theme`, async ({
+      browser,
     }) => {
-      // Reduced motion makes the theme change instant, so axe never samples colors mid-transition.
-      await page.emulateMedia({ reducedMotion: "reduce" });
+      const context = await browser.newContext({ colorScheme, reducedMotion: "reduce" });
+      const page = await context.newPage();
       await page.goto(`${KIT_URL}/kit`);
-      await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
+      await expect(page.locator("html")).toHaveAttribute("data-theme", colorScheme);
       expect(await blockingViolations(page)).toEqual([]);
+      await context.close();
     });
   }
 });

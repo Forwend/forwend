@@ -71,10 +71,17 @@ export function ComponentsShowcase() {
             defaultValue="client@"
             error="Enter a full email address, like name@company.com."
           />
-          <SelectField label="Network" defaultValue="base" hint="Only tested networks are listed.">
-            <option value="base">Base</option>
-            <option value="arbitrum">Arbitrum (planned)</option>
-          </SelectField>
+          <SelectField
+            label="Network"
+            defaultValue="base"
+            hint="Only tested networks are listed."
+            options={[
+              { value: "base", label: "Base" },
+              { value: "arbitrum", label: "Arbitrum (planned)", disabled: true },
+              { value: "arc", label: "Arc (planned)", disabled: true },
+              { value: "tempo", label: "Tempo (planned)", disabled: true },
+            ]}
+          />
         </div>
         <Checkbox label="Send a reminder on the due date" defaultChecked />
         <Switch label="Email me when a payment settles" checked={on} onCheckedChange={setOn} />

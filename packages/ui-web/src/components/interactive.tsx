@@ -1,13 +1,21 @@
 "use client";
 
 import { DURATION_MS } from "@forwend/design-tokens";
+import * as RadixAccordion from "@radix-ui/react-accordion";
 import * as RadixTabs from "@radix-ui/react-tabs";
 import * as RadixTooltip from "@radix-ui/react-tooltip";
-import { Check, Copy, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Check, ChevronDown, Copy, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { highlight } from "sugar-high";
 import { BUTTON_VARIANTS } from "../constants/button";
 import { COPIED_LABEL_MS } from "../constants/timing";
-import type { CodeBlockProps, DialogProps, TabsProps, TooltipProps } from "../types/ui/display";
+import type {
+  AccordionProps,
+  CodeBlockProps,
+  DialogProps,
+  TabsProps,
+  TooltipProps,
+} from "../types/ui/display";
 import { Button } from "./button";
 
 export function Tabs({ items, label, defaultValue }: TabsProps) {
@@ -37,6 +45,34 @@ export function Tabs({ items, label, defaultValue }: TabsProps) {
         </RadixTabs.Content>
       ))}
     </RadixTabs.Root>
+  );
+}
+
+// One item open at a time; opening another closes it. Height animates (instant under reduced motion).
+export function Accordion({ items }: AccordionProps) {
+  return (
+    <RadixAccordion.Root
+      type="single"
+      collapsible
+      className="divide-y divide-line border-y border-line"
+    >
+      {items.map((item) => (
+        <RadixAccordion.Item key={item.question} value={item.question}>
+          <RadixAccordion.Header>
+            <RadixAccordion.Trigger className="group flex w-full items-center justify-between gap-6 py-5 text-left text-lg font-medium text-ink transition-colors duration-[var(--fw-duration-fast)] hover:text-accent">
+              {item.question}
+              <ChevronDown
+                aria-hidden
+                className="size-[var(--fw-icon-md)] shrink-0 text-subtle transition-transform duration-[var(--fw-duration-base)] ease-out group-data-[state=open]:rotate-180"
+              />
+            </RadixAccordion.Trigger>
+          </RadixAccordion.Header>
+          <RadixAccordion.Content className="overflow-hidden data-[state=closed]:animate-[fw-accordion-up_var(--fw-duration-base)_var(--fw-ease-out)] data-[state=open]:animate-[fw-accordion-down_var(--fw-duration-base)_var(--fw-ease-out)]">
+            <div className="max-w-prose pb-6 text-muted">{item.answer}</div>
+          </RadixAccordion.Content>
+        </RadixAccordion.Item>
+      ))}
+    </RadixAccordion.Root>
   );
 }
 
@@ -110,6 +146,7 @@ export function useCopy(text: string): [boolean, () => Promise<void>] {
 
 export function CodeBlock({ code, language, copyLabel = "Copy code" }: CodeBlockProps) {
   const [copied, copy] = useCopy(code);
+  const html = useMemo(() => highlight(code), [code]);
   return (
     <div
       data-theme="dark"
@@ -131,8 +168,9 @@ export function CodeBlock({ code, language, copyLabel = "Copy code" }: CodeBlock
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <pre className="overflow-x-auto p-4 font-mono text-sm leading-relaxed">
-        <code>{code}</code>
+      <pre className="fw-code overflow-x-auto p-4 font-mono text-sm leading-relaxed">
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: sugar-high escapes the code text and only adds its own span markup */}
+        <code dangerouslySetInnerHTML={{ __html: html }} />
       </pre>
     </div>
   );
