@@ -26,6 +26,23 @@ all four testnets. No nonce-based fallback is needed on any of them.
 
 No official testnet USDT was found on these chains; USDT behaviour is tested with a mock token (PLAN S-6).
 
+## Deployment (F037, 2026-10-09)
+
+The v1 factory `0xCB9cc4b71331E7C09f4605CFD767F5C5143F6864` and the probe receiver
+`0x17D3b2324ECf3B7b921E1Cf05D8C810040abd3a5` have the same addresses on all four testnets
+(`packages/contracts/deployments.json`). A real invoice was paid, settled and refunded on Arc (USDC) and Tempo (AlphaUSD).
+Base and Arbitrum Sepolia ran without a payment because the deployer has no test USDC there (Circle faucet).
+
+Findings:
+- Arc USDC and Tempo TIP-20 tokens are built into the chain. Foundry cannot run them locally (`StackUnderflow`,
+  `OpcodeNotFound`), so scripts that touch them fail in simulation and fork tests cannot cover them. The payment flow runs
+  with `cast` against the chain instead.
+- Tempo prices contract and storage creation higher than Ethereum: the factory deploy ran out of gas with Foundry's local
+  estimate (2.62M of 2.66M). Deploys use `--skip-simulation`, so the chain estimates gas itself. The backend signer must
+  also use the chain's `eth_estimateGas`, never a hard-coded limit.
+- Tempo charges fees in a TIP-20 stablecoin (PathUSD here), so the executor and refund authority need a stablecoin balance
+  there, like USDC on Arc.
+
 ## Sources
 
 - Arc RPCs and contract addresses: https://docs.arc.io/arc/references/rpc-endpoints, https://docs.arc.io/arc/references/contract-addresses
