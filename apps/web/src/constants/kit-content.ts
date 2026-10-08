@@ -7,6 +7,7 @@ export const KIT_SECTIONS = [
   "Shadows",
   "Motion",
   "Icons",
+  "Animations",
   "Components",
   "Payment components",
 ] as const;

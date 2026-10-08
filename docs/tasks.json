@@ -1920,7 +1920,7 @@
       "dependsOn": [
         "F018"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "build",
         "ui-unit"
@@ -1928,9 +1928,82 @@
       "refs": [],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-08 review fail by subagent: Shimmer sweep never crosses the block. packages/ui-web/src/components/motion.tsx:57 puts after:-translate-x-full on the ::after; in Tailwind 4.3.3 that sets the separate CSS 'translate' property (-100%), which adds to the keyframe 'transform' from packages/design-tokens/src/base.css:159-163 (fw-shimmer: to translateX(100%)). Net movement is -100% -> 0%, not -100% -> +100%. Browser evidence (localhost:3000/kit, sampled every 110ms): ::after translate stays '-100%' while transform goes 106 -> 255px (block width 256px) and then resets to 0. So the 70% surface-colored band slows down until it covers the whole block, then snaps away each 1.44s loop. Fix: drop after:-translate-x-full and give fw-shimmer 'from { transform: translateX(-100%) }' (same as fw-progress). Everything else passes: tokens only (--fw-line, --fw-accent, bg-accent, bg-surface-2, text-success, --fw-surface); roles and labels are correct (Spinner and DotLoader role=status, ProgressBar role=progressbar with no value because it is indeterminate, SuccessCheck role=img, Shimmer aria-hidden). With reducedMotion=reduce: 0 running animations; SuccessCheck circle and tick stroke-dashoffset are 0px (fully drawn); ProgressBar segment rests at x=0, 154px wide, visible; Shimmer blocks keep the surface-2 fill. Play again remounts the check. Screenshot: apps/web/.impeccable/review/f019-animations.png (light | dark). Checks: ui-web test 15/15 passed, playwright 17/17 passed, biome lint clean, typecheck passed.",
+        "2026-10-08 review pass by subagent: Re-review after the Shimmer fix. motion.tsx:57 no longer sets after:-translate-x-full; base.css fw-shimmer goes from translateX(-100%) to translateX(100%). Browser check on localhost:3000/kit, ::after sampled every 110ms on a 256px block: translate=none, transform x = -206, -157, -74, 40, 135, 187, 223, 243, 253, then resets to -256, so the band now crosses the full block. Reduced motion (reducedMotion=reduce, light and dark): 0 running animations; SuccessCheck circle and tick stroke-dashoffset 0px (fully drawn, and with animation-delay now 0ms the tick does not lag); ProgressBar segment rests at x=0, 154px wide; Shimmer blocks keep their surface-2 fill (rgb(234,242,240) light, rgb(26,37,33) dark). Minor, not blocking: under reduced motion the shimmer band rests centered over each block (transform none), which shows as a soft lighter middle in light mode; the blocks still read as placeholders. Tokens only; roles and labels still correct (status x2, progressbar, img; Shimmer aria-hidden). Screenshot retaken: apps/web/.impeccable/review/f019-animations.png (light | dark, reduced motion). Checks: pnpm --filter @forwend/ui-web test 15/15 passed; playwright e2e/a11y.spec.ts 4/4 passed (axe on / and /kit, both themes). Earlier full playwright run 17/17, lint and typecheck passed."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-08T16:21:51Z",
+        "checks": [
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.0,
+            "log": "docs/runs/F019-20261008T162151Z-build.log"
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": "docs/runs/F019-20261008T162151Z-ui-unit.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F019-20261008T162151Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": "docs/runs/F019-20261008T162151Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F019-20261008T162151Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.6,
+            "log": "docs/runs/F019-20261008T162151Z-e2e.log"
+          }
+        ],
+        "taskHash": "65176fc9319948bd",
+        "filesHash": "3df4cf753552f099",
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Re-review after the Shimmer fix. motion.tsx:57 no longer sets after:-translate-x-full; base.css fw-shimmer goes from translateX(-100%) to translateX(100%). Browser check on localhost:3000/kit, ::after sampled every 110ms on a 256px block: translate=none, transform x = -206, -157, -74, 40, 135, 187, 223, 243, 253, then resets to -256, so the band now crosses the full block. Reduced motion (reducedMotion=reduce, light and dark): 0 running animations; SuccessCheck circle and tick stroke-dashoffset 0px (fully drawn, and with animation-delay now 0ms the tick does not lag); ProgressBar segment rests at x=0, 154px wide; Shimmer blocks keep their surface-2 fill (rgb(234,242,240) light, rgb(26,37,33) dark). Minor, not blocking: under reduced motion the shimmer band rests centered over each block (transform none), which shows as a soft lighter middle in light mode; the blocks still read as placeholders. Tokens only; roles and labels still correct (status x2, progressbar, img; Shimmer aria-hidden). Screenshot retaken: apps/web/.impeccable/review/f019-animations.png (light | dark, reduced motion). Checks: pnpm --filter @forwend/ui-web test 15/15 passed; playwright e2e/a11y.spec.ts 4/4 passed (axe on / and /kit, both themes). Earlier full playwright run 17/17, lint and typecheck passed.",
+          "at": "2026-10-08T16:22:56Z",
+          "filesHash": "3df4cf753552f099"
+        },
+        "commit": "a011b76",
+        "doneAt": "2026-10-08T16:23:11Z",
+        "proof": {
+          "1": "packages/ui-web/test/motion.test.tsx roles and names; review: token colors, reduced-motion still frames, shimmer sweep crosses the block (f019-animations.png)"
+        }
+      },
+      "branch": "feat/f019-the-kit-shows-custom-loading-and-motion",
+      "baseCommit": "23fb8c43e3cd362c2fd0c0ea78f5660df11849b5",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f019-the-kit-shows-custom-loading-and-motion",
+        "base": "main"
+      }
     },
     {
       "id": "F020",

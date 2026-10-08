@@ -97,6 +97,7 @@
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
@@ -134,4 +135,51 @@
   --sh-identifier: var(--fw-ink);
   --sh-sign: var(--fw-subtle);
   --sh-comment: var(--fw-subtle);
+}
+
+/* Motion components (ui-web components/motion.tsx). */
+@keyframes fw-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fw-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-40%);
+  }
+}
+
+@keyframes fw-shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes fw-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@keyframes fw-draw-in {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
 }

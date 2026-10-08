@@ -11,6 +11,7 @@ import {
   TypographySamples,
 } from "@/components/kit/foundations";
 import { KitSection } from "@/components/kit/kit-section";
+import { MotionShowcase } from "@/components/kit/motion-showcase";
 import { PaymentsShowcase } from "@/components/kit/payments-showcase";
 import { KIT_SECTIONS } from "@/constants/kit-content";
 
@@ -69,6 +70,12 @@ export default function KitPage() {
         note="Lucide plus Forwend icons (Merchant, Freelancer, Payment path), one 1.75 stroke."
       >
         <IconSet />
+      </KitSection>
+      <KitSection
+        title="Animations"
+        note="Custom loaders and feedback, built from the motion tokens."
+      >
+        <MotionShowcase />
       </KitSection>
       <KitSection title="Components">
         <ComponentsShowcase />
