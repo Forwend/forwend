@@ -2883,7 +2883,7 @@
         "PLAN.md tells readers to open the diagrams with npx mapgrain@0.2.5 studio <file>"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "diagrams"
       ],
@@ -2952,11 +2952,22 @@
           }
         ],
         "taskHash": "9c8cdd3a4f718873",
-        "filesHash": "454da8c89787e2c8"
+        "filesHash": "454da8c89787e2c8",
+        "commit": "09363f2",
+        "doneAt": "2026-10-08T19:08:05Z",
+        "proof": {
+          "1": "diagrams check passed; ls docs/diagrams shows only .json",
+          "2": "PLAN.md Phase 5 diagrams line (git diff)"
+        }
       },
       "branch": "docs/f030-docs-diagrams-holds-only-the-mapgrain-js",
       "baseCommit": "dc118f6d8bb0756739547c9564f2147b4d56c867",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f030-docs-diagrams-holds-only-the-mapgrain-js",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
