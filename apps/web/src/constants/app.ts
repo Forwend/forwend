@@ -2,6 +2,7 @@ import { House } from "lucide-react";
 
 /** Signed-in app routes. */
 export const APP_ROUTES = {
+  site: "/",
   signIn: "/sign-in",
   home: "/app",
 } as const;
@@ -25,10 +26,6 @@ export const APP_NAV = [{ href: APP_ROUTES.home, label: "Overview", icon: House 
 export const LOGIN_METHODS = ["email", "google", "passkey"] as const;
 
 export const APP_COPY = {
-  signInTitle: "Sign in to Forwend",
-  signInBody:
-    "Use your email, Google or a passkey. A personal profile and its wallet are made on your first sign-in.",
-  signInButton: "Sign in",
   notConfigured: "Sign-in is not set up here: NEXT_PUBLIC_PRIVY_APP_ID is missing.",
   checkingSignIn: "Checking your sign-in",
   loading: "Loading your profiles",

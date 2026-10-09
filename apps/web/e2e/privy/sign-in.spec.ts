@@ -15,13 +15,57 @@ async function blockingViolations(page: Page) {
 }
 
 async function signIn(page: Page) {
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.getByPlaceholder("your@email.com").fill(email);
-  await page.keyboard.press("Enter");
-  // Privy focuses the first code box and moves forward as each digit is typed.
-  await expect(page.getByRole("dialog")).toContainText(/code/i);
-  await page.keyboard.type(code);
+  await page.getByRole("textbox", { name: "Email" }).fill(email);
+  await page.getByRole("button", { name: "Email me a code" }).click();
+  // The code step, before typing: axe checks it too.
+  await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
+  expect(await blockingViolations(page)).toEqual([]);
+  // A pasted code with a space signs in without pressing the button.
+  await page.getByRole("textbox", { name: "Code" }).fill(`${code.slice(0, 3)} ${code.slice(3)}`);
 }
+
+for (const colorScheme of ["light", "dark"] as const) {
+  test(`/sign-in has no serious or critical axe violations in the ${colorScheme} theme`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({ colorScheme, reducedMotion: "reduce" });
+    const page = await context.newPage();
+    await page.goto("/sign-in");
+    await expect(page.getByRole("button", { name: "Email me a code" })).toBeVisible();
+    expect(await blockingViolations(page)).toEqual([]);
+    await context.close();
+  });
+}
+
+test("a wrong email address is named before any code is sent", async ({ page }) => {
+  await page.goto("/sign-in");
+  await page.getByRole("textbox", { name: "Email" }).fill("not-an-email");
+  await page.getByRole("button", { name: "Email me a code" }).click();
+  // Announced, and the form keeps its place.
+  const before = await page.getByRole("button", { name: "Continue with Google" }).boundingBox();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Enter an email like name@example.com." }),
+  ).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Email" })).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  expect(await page.getByRole("button", { name: "Continue with Google" }).boundingBox()).toEqual(
+    before,
+  );
+  expect(await blockingViolations(page)).toEqual([]);
+});
+
+test("a wrong code is named on the code field, with no other error", async ({ page }) => {
+  await page.goto("/sign-in");
+  await page.getByRole("textbox", { name: "Email" }).fill(email);
+  await page.getByRole("button", { name: "Email me a code" }).click();
+  const wrong = code === "000000" ? "111111" : "000000";
+  await page.getByRole("textbox", { name: "Code" }).fill(wrong);
+  await expect(page.getByRole("alert").filter({ hasText: "Wrong or expired code." })).toBeVisible();
+  await expect(page.getByText("Google sign-in did not finish")).toHaveCount(0);
+  expect(await blockingViolations(page)).toEqual([]);
+});
 
 test("a signed-out visit to /app goes to sign-in", async ({ page }) => {
   await page.goto("/app");
@@ -34,10 +78,9 @@ test("the Privy test account signs in and lands in the app shell with its person
 }) => {
   await page.goto("/sign-in");
   // The real sign-in page, with Privy ready on its allowed origin.
-  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Email me a code" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
 
-  // Privy's selectors (placeholder, dialog wording) hold for the pinned @privy-io/react-auth version.
   const signedUp = page.waitForResponse(
     (r) => r.url().endsWith("/api/v1/me") && r.request().method() === "POST",
   );
@@ -53,8 +96,6 @@ test("the Privy test account signs in and lands in the app shell with its person
   await expect(page.getByRole("heading", { level: 1, name: "Personal" })).toBeVisible();
   // POST /v1/me made the personal profile and its wallet.
   await expect(page.getByText(/^0x[0-9a-f]{4}/)).toBeVisible();
-  // Privy's own sign-in dialog is closed by now; axe checks our shell.
-  await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(await blockingViolations(page)).toEqual([]);
 
   const theme = await page.locator("html").getAttribute("data-theme");

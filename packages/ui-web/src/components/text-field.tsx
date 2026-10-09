@@ -22,7 +22,7 @@ export function TextField({ label, hint, error, id, className, ...props }: TextF
         {...props}
       />
       {error ? (
-        <p id={`${fieldId}-error`} className="text-sm text-danger">
+        <p id={`${fieldId}-error`} role="alert" className="text-sm text-danger">
           {error}
         </p>
       ) : hint ? (

@@ -25,7 +25,9 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
 ## Data and trust
 
 - The landing waitlist is a mock that sends and stores nothing (D-8).
-- Users sign in with the Privy React SDK (email code, Google, passkey; D-21) on `/sign-in`. Privy loads only in the
+- Users sign in on `/sign-in` with our own forms (email code with the `CodeInput` boxes, Google; D-21) on the Privy
+  React SDK's headless hooks; Privy's modal is not used. Passkey sign-in comes back once users can add a passkey to
+  their account. Privy loads only in the
   `(app)` route group (`/sign-in`, `/app`), never on the landing page or checkout. `/app` sends signed-out visitors to
   `/sign-in` and calls `POST /v1/me` each time it loads, which makes the personal profile and its wallet once (R-34).
 - The browser calls the backend same-origin at `/api/v1/…`; `next.config.ts` forwards it to `API_URL`, so the api needs

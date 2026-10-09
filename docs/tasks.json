@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 70,
+  "nextId": 71,
   "tasks": [
     {
       "id": "F001",
@@ -7180,6 +7180,118 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F070",
+      "type": "feat",
+      "behavior": "The sign-in page is Forwend's own: our email-code, Google and passkey forms on a branded page",
+      "acceptance": [
+        "/sign-in is our own page: the landing hero's dawn (night in dark mode) horizon as a band that fades into the page, then one centered form (vertically centered on phones and tablets) built from ui-web components and tokens: email, then a 6-box CodeInput with one-time-code autofill and paste cleanup, resend and change email; Google. No cards, badges, sample data or extra copy; the Privy modal is not used; passkey sign-in is left out until users can add a passkey; errors are announced, name the field and the fix, and never move the form; CodeInput appears on /kit with its states. On phones the landing hero centers its headline and form in the first screen, with the river starting below it",
+        "The live Playwright test signs in the Privy test account through our form (pasted code with a space) and lands in /app; a wrong email and a wrong code each show only their own error; axe finds no serious or critical violation on /sign-in in both themes, on the code step and on the error states"
+      ],
+      "dependsOn": [
+        "F067"
+      ],
+      "state": "verified",
+      "verification": [
+        "e2e",
+        "unit"
+      ],
+      "refs": [
+        "R-34",
+        "D-9",
+        "D-21"
+      ],
+      "keep": [
+        "packages/contracts/*",
+        "apps/backend/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-10-09 review pass by subagent: Our own /sign-in on Privy headless hooks (email code + Google), landing hero dawn/night band, one centered form. Earlier findings fixed: passkey removed (docs say it returns later); Google error read from useLoginWithOAuth state, so a wrong email code no longer shows it (live test); TextField/CodeInput errors and form messages announced; CodeInput has no maxLength (pasted '123 456' signs in, live test), stays enabled while checking so focus is kept; auto-submit once per attempt+code, works after resend, Sign in retries; Button loading blocks double send; send failure is a generic form message; space kept for errors so the form does not move (boundingBox test); unbuilt-feature facts removed; '/' uses APP_ROUTES.site; meadow images and rows removed (images-check 10/10). Fresh verify 20:52:38Z passed (6 live tests incl. axe on both themes, code step, error states). Re-checked: lint, typecheck, unit 8/8, docs-check. Nits only: Messages comment still mentions a card; /kit 'Code (checking)' shows a disabled state the page no longer uses.",
+        "2026-10-09 review pass by subagent: Re-reviewed after phone layout change. Sign-in: flex column, main flex-1 items-center below lg, lg:block keeps the approved desktop. Landing hero: only max-sm classes added; mt-24 removed is overridden by sm:mt-36 at sm+ and justify-center has no effect at sm+ (no height there), so tablet/desktop are unchanged. Phone screenshots (m3, m-signin) show the headline and form in the first screen with the river below. Fresh verify 20:56:08Z passed (21 + 6 live e2e). Re-checked lint, typecheck, unit 8/8. Low, not blocking: on phones/tablets a form-level message (send failure, Google error, resent notice) grows the centered block and shifts the form up about half a line; field errors reserve space and do not. The Messages comment ('only pushes down what is below it') is not true there. Reserve one line for Messages if this matters.",
+        "2026-10-09 review pass by subagent: Checked the Messages diff: the box always keeps one text-sm line (min-h-5 = the line height), and the alert/status regions are always rendered, so a form-level message neither moves the centered phone form nor misses an announcement. Error and notice never show together. Send-failure and Google messages now fit one line at the form width (about 42 characters at text-sm in 327 to 384px). The e2e check for no Google error on a wrong code still matches the new text. Fresh verify 20:58:22Z passed (21 + 6 live e2e); lint clean."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T20:58:22Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 31.6,
+            "log": "docs/runs/F070-20261009T205822Z-e2e.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 27.7,
+            "log": "docs/runs/F070-20261009T205822Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F070-20261009T205822Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F070-20261009T205822Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F070-20261009T205822Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F070-20261009T205822Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.9,
+            "log": "docs/runs/F070-20261009T205822Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F070-20261009T205822Z-keep.log"
+          }
+        ],
+        "taskHash": "573679e0a0f63b49",
+        "filesHash": "d06c936b07c8bde4",
+        "proof": {
+          "1": "e2e: e2e/privy/sign-in.spec.ts drives our form on the real Privy app: a wrong email shows 'Enter an email like name@example.com.' as an alert with aria-invalid and the Google button keeps its exact position; a wrong code shows only 'Wrong or expired code.' (the test fails when Privy's shared onError is used); form messages keep one line reserved; images-check passes; CodeInput states are on /kit (a11y.spec checks /kit); landing specs pass; Impeccable detect found nothing; desktop and phone (390x844, 375x667) screenshots of sign-in and the landing hero in both themes were reviewed",
+          "2": "e2e: the live spec signs the test account in by pasting the code with a space and lands in /app with its Personal profile; axe finds no serious or critical violation on /sign-in in light and dark, on the code step and on both error states"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Checked the Messages diff: the box always keeps one text-sm line (min-h-5 = the line height), and the alert/status regions are always rendered, so a form-level message neither moves the centered phone form nor misses an announcement. Error and notice never show together. Send-failure and Google messages now fit one line at the form width (about 42 characters at text-sm in 327 to 384px). The e2e check for no Google error on a wrong code still matches the new text. Fresh verify 20:58:22Z passed (21 + 6 live e2e); lint clean.",
+          "at": "2026-10-09T20:59:46Z",
+          "filesHash": "d06c936b07c8bde4"
+        }
+      },
+      "branch": "feat/f070-the-sign-in-page-is-forwend-s-own-our-em",
+      "baseCommit": "d469e64c07290b8fc45671607d62d2fe62074a06",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

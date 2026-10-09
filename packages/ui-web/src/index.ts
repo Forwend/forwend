@@ -5,6 +5,7 @@ export { Badge } from "./components/badge";
 export { Button, buttonClasses } from "./components/button";
 export { Checkbox } from "./components/checkbox";
 export { CodeBlock } from "./components/code-block";
+export { CodeInput } from "./components/code-input";
 export { Dialog } from "./components/dialog";
 export { DotLoader } from "./components/dot-loader";
 export { EmailCapture } from "./components/email-capture";

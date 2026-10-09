@@ -9,6 +9,7 @@ import {
   CAPTURE_STATUS,
   Checkbox,
   CodeBlock,
+  CodeInput,
   Dialog,
   EmailCapture,
   EmptyState,
@@ -38,6 +39,7 @@ const SAMPLE_CODE = `const invoice = await forwend.invoices.create({
 
 export function ComponentsShowcase() {
   const [on, setOn] = useState(true);
+  const [code, setCode] = useState("826");
   return (
     <div className="flex flex-col gap-10">
       <KitGroup title="Button: variants">
@@ -82,6 +84,22 @@ export function ComponentsShowcase() {
               { value: "tempo", label: "Tempo (planned)", disabled: true },
             ]}
           />
+        </div>
+        <div className="grid w-full gap-6 md:grid-cols-3">
+          <CodeInput
+            label="Code (empty)"
+            value=""
+            onValueChange={noop}
+            hint="Paste or type 6 digits."
+          />
+          <CodeInput label="Code (partly typed)" value={code} onValueChange={setCode} />
+          <CodeInput
+            label="Code (wrong)"
+            value="826104"
+            onValueChange={noop}
+            error="Wrong or expired code. Try again."
+          />
+          <CodeInput label="Code (checking)" value="826104" onValueChange={noop} disabled />
         </div>
         <Checkbox label="Send a reminder on the due date" defaultChecked />
         <Switch label="Email me when a payment settles" checked={on} onCheckedChange={setOn} />
