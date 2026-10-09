@@ -3850,7 +3850,7 @@
         "packages/contracts/AGENTS.md has the audit rules: backend decides paid only for receivers it computed itself and the allowlisted token contract (on Arc also the system emitter for native USDC), ignores logs from any other address; no profile or merchant id in the terms; Safe deployed on every EVM chain before owner changes; accepted Arc sub-micro-USDC dust in recover; zero settle window is a backend rule; PLAN.md and diagrams match"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "contracts",
         "diagrams",
@@ -3938,11 +3938,23 @@
           "summary": "Re-review after doc-only edits. Code is the same as in the first pass; forge test: 69 passed, 1 skipped (fork). AGENTS.md now lists exactly the onlyClone functions (settle, refund, recover, terms, deadline, refundable, status) and says the settled and factory getters still answer, which matches the code. Acceptance 1 says the same. The new-chain rule (a factory there starts with the first executor, so the refund authority calls setExecutor right after deploy) is now written down. Earlier findings stand: the registration check cannot lock real money (deployedAt is set right after the clone is created, wrong-chain recovery works through the same-address factory); the CREATE2 address commits to the init code, so Deploy.s.sol accepts no wrong factory; the backend paid-detection rules cover fake tokens, look-alike clones and events, status/receiverOf spoofing, Arc native vs ERC-20, and reorgs. Optional, not blocking: Smoke.s.sol probe deploy uses the deployer key and fails where the executor was rotated (testnet tooling); settle could also reject a recipient that is a registered receiver; the refundAuthority check in Deploy.s.sol is redundant.",
           "at": "2026-10-09T00:19:51Z",
           "filesHash": "114af9d84f579e18"
+        },
+        "commit": "24347ed",
+        "doneAt": "2026-10-09T00:20:04Z",
+        "proof": {
+          "1": "contracts: InvoiceReceiver.t.sol test_cloneMadeOutsideFactoryReverts",
+          "2": "contracts: Deploy.t.sol test_scriptKeepsFactoryAfterExecutorRotation",
+          "3": "diagrams + independent review pass (AGENTS.md, PLAN.md, contracts-workflow.json)"
         }
       },
       "branch": "fix/f041-audit-follow-ups-receivers-work-only-whe",
       "baseCommit": "8600b831a26d8f691de491f979e479c8e0e556bd",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f041-audit-follow-ups-receivers-work-only-whe",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
