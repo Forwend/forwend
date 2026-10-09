@@ -13,8 +13,9 @@ Whole system: [architecture.md](../architecture.md).
 | `apps/web` | Pages and page-specific sections (landing, kit). Imports tokens and components; adds no raw colors or sizes. |
 | `/kit` | Shows every token and component with all states; private (`KIT_ENABLED=1`, `noindex`, not in the sitemap) (D-5, R-4). |
 
-In `ui-web/src`, `components/<component-name>.tsx` owns each component, `hooks/` holds shared React hooks,
-and `index.ts` is the public import surface. Shared field classes live in `constants/field.ts`.
+The target source layout and naming rules are in [structure.md](structure.md): routes assemble screens,
+features own product behavior, and shared UI components are grouped by purpose. Existing paths are migrated
+only in scoped refactors. `ui-web/src/index.ts` remains the public package entry point.
 
 ## Visual direction
 
@@ -42,7 +43,8 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   or merchant profile with one idempotency key per visit (R-35).
 - The browser calls the backend same-origin at `/api/v1/…`; `next.config.ts` forwards it to `API_URL`, so the api needs
   no CORS. The rewrite is fixed at `next build`, so `API_URL` must be set when building; Turbo hashes `.env*` and
-  these variables for the web build. Request and response types are written by hand in `src/types/app/` from `apps/backend/api/openapi.yaml`:
+  these variables for the web build. Request and response types are written by hand from `apps/backend/api/openapi.yaml`
+  and belong to their feature under the target structure (currently `src/types/app/`):
   `openapi-typescript` needs the TypeScript compiler API, which TypeScript 7 does not have.
 - The checkout page recomputes the receive address from the invoice terms and refuses to show a mismatch; it loads no
   third-party scripts ([money-safety.md](../backend/money-safety.md)).
