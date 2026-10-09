@@ -107,21 +107,22 @@ settlement intent (unique per invoice) in the same transaction. For each due int
    decides. The saved bytes must decode to `settle()` on this receiver on this chain with the saved hash.
 2. Otherwise re-reads the terms and refuses for good (`refused` with a reason, nothing sent) unless the invoice is
    `paid`, the recipient is the profile's wallet, the factory is the compiled one and the terms recompute the stored
-   receive address; also when `factory.status` predicts another address or the settler is not this executor
-   (deadline passed: the refund authority must act).
+   receive address; also when `factory.status` predicts another address.
 3. Waits and retries (back to `pending` with a reason; 1 min doubling to 1 h) on temporary conditions: wrong chain,
-   balance below the amount, not settleable (paused), a mined settle that left the receiver unsettled, or a saved
-   settle whose nonce another transaction took.
+   balance below the amount, not settleable (paused), a mined settle that left the receiver unsettled, a saved
+   settle whose nonce another transaction took, or a settler other than this executor (the deadline passed: it sends
+   nothing and waits for the refund authority's settle).
 4. Deploys the receiver if needed (`deploy` is idempotent), signs `settle()` with the chain's own gas estimate, saves
    sender, nonce, hash and signed bytes, then sends. After a crash it sends the same saved bytes again (same nonce, so
    at most one settle can be mined). The contract's `AlreadySettled` is a last guard.
-5. Once `settled()` is true, in one transaction: intent `confirmed`, a `settlement` ledger transaction (receiver and
-   recipient_payable each −amount; one per invoice) and the invoice's `settlement_status` `settled`.
+5. Once `settled()` is true at the finalized block (D-45), in one transaction: intent `confirmed`, a `settlement`
+   ledger transaction (receiver and recipient_payable each −amount; one per invoice) and the invoice's
+   `settlement_status` `settled`. A settle a reorg drops before that is reconciled like an unsent one.
+Each intent's attempt has a 3-minute limit, so an RPC that stops answering can't stall the others.
 It signs only `factory.deploy(terms)` and `receiver.settle()`, and only for chains enabled in the database: a chain
 disabled there is dropped next round, and a round whose enabled list can't be read sends nothing. A receiver settled
 outside our signer (the refund authority after the deadline) still confirms its intent. `retry` and `refuse` only
-change an intent still in the status the attempt loaded. Known limits: no fee bumping for a stuck transaction yet, and
-the settlement is booked when `settled()` reads true at the latest block, not at the finalized one.
+change an intent still in the status the attempt loaded. Known limit: no fee bumping for a stuck transaction yet.
 
 ## Invoice states
 
@@ -136,8 +137,10 @@ the settlement is booked when `settled()` reads true at the latest block, not at
   chain than booked (a missed log, an Arc native-coin payment) blocks expiry and logs a warning. An expired partial
   payment is moved to `payer_held` by an `expiry` ledger transaction. `refund_status` becomes `held` while
   `payer_held` > 0. One invoice's error doesn't stop the others; each balance call has a 10 s limit.
-- The second RPC reads `balanceOf` at its own head and reports that block. An answer from behind the watcher's
-  finalized block may miss final deposits, so it decides nothing (neither paid nor expired) until the node catches up.
+- The second RPC reads `balanceOf` at its own finalized block and reports that block, so a primary RPC that calls a
+  deposit final too early can't get an invoice paid (D-15, D-45). An answer from behind the watcher's finalized block
+  may miss final deposits, so it decides nothing (neither paid nor expired) until the node catches up. Every RPC in
+  the chain list serves `eth_call` at the finalized block (checked 2026-10-09).
 - `paid`, `expired` and `expired_partially_paid` are final. A trigger rejects any other status change, any change to
   invoice terms, and an invoice created with any status but `open`.
 - `GET /v1/invoices/{id}` lists deposits with `blocksLeft`/`secondsLeft` from the finalized block (R-28).

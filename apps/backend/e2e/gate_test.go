@@ -119,7 +119,8 @@ func TestMoneyLoop(t *testing.T) {
 	anvil.Transfer(token, receive, amount)
 	waitFor(t, "detected", func() bool { return observe() == ledger.Detected })
 	anvil.Mine(2) // the deposit's block becomes final (Anvil: finalized = latest - 2)
-	waitFor(t, "settled", func() bool { return observe() == "settled" })
+	// Real chains keep making blocks; Anvil only mines on demand, so the settle can become final (D-45).
+	waitFor(t, "settled", func() bool { anvil.Mine(1); return observe() == "settled" })
 	if !inOrder(seen, ledger.Detected, ledger.Paid, "settled") || !inOrder(deposit, "detected/true", "confirmed/false") {
 		t.Fatalf("invoice %v, deposit %v; want invoice detected -> paid -> settled and the deposit detected with "+
 			"blocks left -> confirmed", seen, deposit)

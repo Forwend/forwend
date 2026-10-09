@@ -6434,8 +6434,8 @@
       "type": "fix",
       "behavior": "Fix the Codex review findings: JWKS key age, signer only on enabled chains, confirm externally settled intents, guarded intent updates",
       "acceptance": [
-        "A withdrawn JWKS key stops verifying after MaxKeyAge (fake clock test); the signer drops clients for chains no longer enabled, skips a round when the enabled list can't be read, and only works on intents of chains it serves",
-        "A pending intent whose receiver was settled outside our signer is confirmed and booked (migration 00005 limits the sent-fields CHECK to sent); retry and refuse only update an intent still in the status they loaded"
+        "A withdrawn JWKS key stops verifying after MaxKeyAge and a failed refresh never extends that age; the signer drops chains no longer enabled, skips a round when the enabled list can't be read, works only on intents of chains it serves, and bounds each attempt so a hanging RPC stalls nothing",
+        "A settlement is confirmed only when the receiver is settled at the finalized block (a settle dropped by a reorg is sent again); a receiver settled outside our signer, or after the deadline by the refund authority, is confirmed and booked; paid needs the second RPC's finalized balance; retry and refuse only update an intent still in the status they loaded"
       ],
       "dependsOn": [],
       "state": "verified",
@@ -6452,82 +6452,84 @@
         "packages/contracts/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-09 review pass by subagent: All four fixes are correct. Backend test (go test -race) and e2e pass. Each new test fails when its fix is reverted in a scratch copy: TestWithdrawnKeyStopsVerifying (withdrawn key still accepted), TestExternallySettledIntentIsConfirmed (23514 settlement_intents_sent_check), TestStaleAttemptDoesNotOverwriteAConfirmedIntent (moved to refused), TestSignerSkipsChainsItDoesNotServe (no RPC for chain 31337). A scratch test also checked the Privy-unreachable fallback and that 50 concurrent stale requests make 1 fetch under -race; both pass. Notes, none blocking: (1) auth.go:103,109-111 sets fetchedAt before a refresh that fails, so a withdrawn key is trusted up to about 2x MaxKeyAge if Privy is down at the refresh. The fallback has no test in the repo. (2) architecture.md:122 says the refund authority settling after the deadline confirms the intent. That only holds if the signer did not look at the intent between the deadline and that settle. Otherwise service.go:133-134 refuses it first, and a refused intent is never looked at again, so the payout stays unbooked. R-30 says pending only, so this is a gap in the doc wording, not in the fix. (3) cmd/signer/main.go:61-80 (skip the round when the enabled list fails, drop disabled chains) is not covered by any test; it was checked by reading the code. The loop is one goroutine, so it cannot race with Run. A 'sent' intent on a disabled chain is not reconciled until the chain is enabled again. (4) The 00005 Down migration fails if a confirmed row without tx fields exists. That is normal for a constraint that gets stricter on Down. (5) retry/refuse do not check RowsAffected, so a stale call does nothing and reports no error. That is fine, and settle() sets in.status='sent' before reconcile (service.go:182), so the sent-path retry still matches."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-09T17:29:37Z",
+        "at": "2026-10-09T18:09:17Z",
         "checks": [
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 22.6,
-            "log": "docs/runs/F062-20261009T172937Z-backend.log"
+            "seconds": 25.2,
+            "log": "docs/runs/F062-20261009T180917Z-backend.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.6,
-            "log": "docs/runs/F062-20261009T172937Z-harness.log"
+            "log": "docs/runs/F062-20261009T180917Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F062-20261009T172937Z-docs-check.log"
+            "log": "docs/runs/F062-20261009T180917Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F062-20261009T172937Z-lint.log"
+            "log": "docs/runs/F062-20261009T180917Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F062-20261009T172937Z-typecheck.log"
+            "log": "docs/runs/F062-20261009T180917Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 22.6,
-            "log": "docs/runs/F062-20261009T172937Z-unit.log"
+            "seconds": 25.9,
+            "log": "docs/runs/F062-20261009T180917Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.0,
-            "log": "docs/runs/F062-20261009T172937Z-build.log"
+            "seconds": 2.4,
+            "log": "docs/runs/F062-20261009T180917Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 9.0,
-            "log": "docs/runs/F062-20261009T172937Z-e2e.log"
+            "seconds": 9.8,
+            "log": "docs/runs/F062-20261009T180917Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F062-20261009T172937Z-keep.log"
+            "log": "docs/runs/F062-20261009T180917Z-keep.log"
           }
         ],
-        "taskHash": "4ad8c4666e9d4846",
-        "filesHash": "165c2587c9e90ad1",
+        "taskHash": "34584cd5ba1a1bc1",
+        "filesHash": "6d91557b0995f879",
         "proof": {
-          "1": "backend: TestWithdrawnKeyStopsVerifying (a key Privy stops publishing fails after MaxKeyAge, a still-published key passes, 2 fetches); TestSignerSkipsChainsItDoesNotServe (no client for the chain: nothing sent, no error); cmd/signer drops disabled chains and skips a round when the enabled list fails; all failed before the fix",
-          "2": "backend: TestExternallySettledIntentIsConfirmed (receiver deployed and settled directly by the executor; the pending intent is confirmed and the invoice settled; failed before on settlement_intents_sent_check, fixed by migration 00005); TestStaleAttemptDoesNotOverwriteAConfirmedIntent (retry/refuse from a stale pending copy leave the confirmed intent)"
+          "1": "backend: TestWithdrawnKeyStopsVerifying and TestFailedRefreshDoesNotExtendKeyAge (auth); TestSignerSkipsChainsItDoesNotServe and TestHangingRPCDoesNotStallTheSigner (settlement); cmd/signer drops disabled chains and skips a round when the enabled list fails; every test fails with its fix removed",
+          "2": "backend: TestSettlesAPaidInvoiceOnce (sent, then confirmed only after finality), TestSettleDroppedByReorgIsSentAgain, TestExternallySettledIntentIsConfirmed, TestAfterTheDeadlineTheSignerWaitsForTheRefundAuthority, TestStaleAttemptDoesNotOverwriteAConfirmedIntent (settlement); TestPaidNeedsTheSecondRPCToAgree (ledger: a deposit the primary calls final early is not paid until the second RPC's finalized block holds it); every test fails with its fix removed; the e2e gate passes 3 of 3"
         }
       },
       "branch": "fix/f062-fix-the-codex-review-findings-jwks-key-a",

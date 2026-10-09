@@ -41,7 +41,8 @@ type Verifier struct {
 
 	mu        sync.Mutex
 	keys      map[string]*ecdsa.PublicKey
-	fetchedAt time.Time
+	fetchedAt time.Time // last successful fetch: the key list's age
+	triedAt   time.Time // last attempt: limits fetches to one per RefetchInterval
 }
 
 // NewVerifier loads the keys from the Privy JWKS URL; it fails if they can't be fetched.
@@ -64,7 +65,7 @@ func NewVerifier(ctx context.Context, appID, jwksURL string, client *http.Client
 	if err != nil {
 		return nil, err
 	}
-	v.keys, v.fetchedAt = keys, v.now()
+	v.keys, v.fetchedAt, v.triedAt = keys, v.now(), v.now()
 	return v, nil
 }
 
@@ -91,16 +92,19 @@ func (v *Verifier) Verify(ctx context.Context, token string) (string, error) {
 func (v *Verifier) keysFor(ctx context.Context, kid string) (jwt.VerificationKeySet, error) {
 	v.mu.Lock()
 	cached, known := v.lookup(kid)
-	age := v.now().Sub(v.fetchedAt)
 	switch {
-	case known && age < MaxKeyAge:
+	case known && v.now().Sub(v.fetchedAt) < MaxKeyAge:
 		v.mu.Unlock()
 		return cached, nil
-	case !known && age < RefetchInterval:
+	case v.now().Sub(v.triedAt) < RefetchInterval:
+		// Tried recently: a failed attempt must not count as a fresh list, nor be retried on every request.
 		v.mu.Unlock()
+		if known {
+			return cached, nil
+		}
 		return jwt.VerificationKeySet{}, fmt.Errorf("unknown key id %q", kid)
 	}
-	v.fetchedAt = v.now() // also on failure, so a broken JWKS endpoint isn't called on every request
+	v.triedAt = v.now()
 	v.mu.Unlock()
 
 	// The fetch is shared: a caller that hangs up must not abort it and waste the slot. The client timeout bounds it.
@@ -113,7 +117,7 @@ func (v *Verifier) keysFor(ctx context.Context, kid string) (jwt.VerificationKey
 	}
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	v.keys = keys
+	v.keys, v.fetchedAt = keys, v.now()
 	if set, ok := v.lookup(kid); ok {
 		return set, nil
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // Payment statuses. paid, expired and expired_partially_paid are final; the database rejects any other transition.
@@ -21,9 +22,9 @@ const (
 	ExpiredPartiallyPaid = "expired_partially_paid"
 )
 
-// BalanceOf reads a token balance from an RPC independent of the watcher's, so one bad provider can't mark an
-// invoice paid (D-15). It also returns the block it read at: an answer from behind the watcher's finalized block
-// can miss final deposits and is not used.
+// BalanceOf reads a token balance from an RPC independent of the watcher's, at that RPC's own finalized block, so
+// one bad provider can't mark an invoice paid with money that isn't final (D-15, D-45). It also returns the block it
+// read at: an answer from behind the watcher's finalized block can miss final deposits and is not used.
 type BalanceOf func(ctx context.Context, chainID uint64, token, holder string) (balance *big.Int, block uint64, err error)
 
 // split divides a deposit between what is still owed to the creator and what is held for the payer (D-24, D-26).
@@ -66,25 +67,29 @@ func status(current string, amount, owed *big.Int, anyTransfer, mayExpire, funde
 
 // BalanceFrom reads balances with one client per chain: give it RPCs other than the watcher's (D-15).
 func BalanceFrom(clients map[uint64]*ethclient.Client) BalanceOf {
-	// Reads at the node's own head: non-archive RPCs can't read state at an old finalized block.
+	// Every RPC in the chain list serves eth_call at its finalized block (checked 2026-10-09).
 	return func(ctx context.Context, chainID uint64, token, holder string) (*big.Int, uint64, error) {
 		client, ok := clients[chainID]
 		if !ok {
 			return nil, 0, fmt.Errorf("no balance RPC for chain %d", chainID)
 		}
-		head, err := client.BlockNumber(ctx)
+		final, err := client.HeaderByNumber(ctx, big.NewInt(int64(rpc.FinalizedBlockNumber)))
 		if err != nil {
-			return nil, 0, fmt.Errorf("balanceOf %s on chain %d: %w", holder, chainID, err)
+			return nil, 0, fmt.Errorf("balanceOf %s on chain %d: read finalized block: %w", holder, chainID, err)
 		}
+		head := final.Number.Uint64()
 		to := common.HexToAddress(token)
 		data := append(common.FromHex("0x70a08231"), common.LeftPadBytes(common.HexToAddress(holder).Bytes(), 32)...)
 		out, err := client.CallContract(ctx, ethereum.CallMsg{To: &to, Data: data}, new(big.Int).SetUint64(head))
 		if err != nil {
 			return nil, 0, fmt.Errorf("balanceOf %s on chain %d: %w", holder, chainID, err)
 		}
-		if len(out) != 32 {
-			return nil, 0, fmt.Errorf("balanceOf %s on chain %d: %d-byte answer", holder, chainID, len(out))
+		switch len(out) {
+		case 0: // no token contract at that block yet (deployed after it): nothing was paid there
+			return new(big.Int), head, nil
+		case 32:
+			return new(big.Int).SetBytes(out), head, nil
 		}
-		return new(big.Int).SetBytes(out), head, nil
+		return nil, 0, fmt.Errorf("balanceOf %s on chain %d: %d-byte answer", holder, chainID, len(out))
 	}
 }

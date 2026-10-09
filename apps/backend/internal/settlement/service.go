@@ -28,6 +28,9 @@ import (
 // ReceiptWait is how long one run waits for a sent transaction; an unmined one is reconciled on the next run.
 const ReceiptWait = time.Minute
 
+// AttemptTimeout bounds one intent's work, so a provider that stops answering can't stall every other intent.
+const AttemptTimeout = 3 * time.Minute
+
 // errStopped ends a run early in tests that simulate the signer being killed.
 var errStopped = errors.New("signer stopped")
 
@@ -38,11 +41,13 @@ type Signer struct {
 	sender  common.Address
 	clients map[uint64]*ethclient.Client
 	// stopAfter simulates a crash in tests: "save" stops after the signed settle is saved, "send" after it is sent.
-	stopAfter string
+	stopAfter      string
+	attemptTimeout time.Duration
 }
 
 func NewSigner(pool *pgxpool.Pool, key *ecdsa.PrivateKey, clients map[uint64]*ethclient.Client) *Signer {
-	return &Signer{pool: pool, key: key, sender: crypto.PubkeyToAddress(key.PublicKey), clients: clients}
+	return &Signer{pool: pool, key: key, sender: crypto.PubkeyToAddress(key.PublicKey), clients: clients,
+		attemptTimeout: AttemptTimeout}
 }
 
 // intent is one settlement intent with its invoice's terms.
@@ -81,9 +86,13 @@ func (s *Signer) Run(ctx context.Context) error {
 	}
 	var errs []error
 	for _, id := range ids {
-		if err := s.settle(ctx, id); errors.Is(err, errStopped) {
+		attempt, cancel := context.WithTimeout(ctx, s.attemptTimeout)
+		err := s.settle(attempt, id)
+		cancel()
+		if errors.Is(err, errStopped) {
 			return err
-		} else if err != nil {
+		}
+		if err != nil {
 			errs = append(errs, fmt.Errorf("settlement intent %d: %w", id, err))
 			// An RPC or database error: wait before the next try instead of hammering every run.
 			if _, werr := s.pool.Exec(ctx, `UPDATE settlement_intents SET next_attempt_at = now() + interval '30 seconds'
@@ -126,12 +135,13 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 		return err
 	}
 	switch {
-	case st.Settled:
-		return s.confirm(ctx, in)
+	case st.Settled: // settled outside our signer (the refund authority): record it once it is final
+		return s.confirmIfFinal(ctx, client, in)
 	case !strings.EqualFold(st.Receiver.Hex(), in.receive):
 		return s.refuse(ctx, in, "factory.predict gives another address than the stored receive address")
 	case st.Settler != s.sender:
-		return s.refuse(ctx, in, "the settler is "+st.Settler.Hex()+", not this executor (deadline passed?)")
+		// Past the deadline only the refund authority may settle; keep watching for its settle, never send.
+		return s.retry(ctx, in, "the settler is "+st.Settler.Hex()+", not this executor: waiting for the refund authority")
 	case !st.OnIntendedChain:
 		return s.retry(ctx, in, "RPC is not on the invoice's chain")
 	case st.Balance.Cmp(in.amount) < 0:
@@ -193,12 +203,12 @@ func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in int
 		!bytes.Equal(tx.Data(), settleSelector) || tx.ChainId().Uint64() != in.chainID {
 		return fmt.Errorf("saved transaction %s is not this receiver's settle on chain %d", *in.txHash, in.chainID)
 	}
-	settled, err := receiverSettled(ctx, client, receive)
+	settled, err := receiverSettled(ctx, client, receive, nil)
 	if err != nil {
 		return err
 	}
 	if settled {
-		return s.confirm(ctx, in)
+		return s.confirmIfFinal(ctx, client, in)
 	}
 	if r, err := client.TransactionReceipt(ctx, hash); err == nil {
 		// Mined but the receiver isn't settled: it reverted (e.g. paused). Try again later with a new transaction.
@@ -223,14 +233,24 @@ func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in int
 	if r, err := s.await(ctx, client, hash); err != nil || r == nil {
 		return err // not mined yet: the next run reconciles again
 	}
-	settled, err = receiverSettled(ctx, client, receive)
+	settled, err = receiverSettled(ctx, client, receive, nil)
 	if err != nil {
 		return err
 	}
 	if settled {
-		return s.confirm(ctx, in)
+		return s.confirmIfFinal(ctx, client, in)
 	}
 	return s.retry(ctx, in, "settle "+hash.Hex()+" mined but the receiver is not settled")
+}
+
+// confirmIfFinal records the settlement only once the receiver is settled at the finalized block (D-45). Until then
+// the intent stays as it is and the next run looks again; a reorg that drops the settle is reconciled as unsent.
+func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, in intent) error {
+	final, err := receiverSettled(ctx, client, common.HexToAddress(in.receive), finalized)
+	if err != nil || !final {
+		return err
+	}
+	return s.confirm(ctx, in)
 }
 
 // confirm records the settlement once: the intent, the ledger and the invoice, in one transaction.

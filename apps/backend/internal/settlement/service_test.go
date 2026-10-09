@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/address"
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
@@ -118,6 +121,15 @@ func (e env) paidInvoice(t *testing.T) (id, receive string) {
 	return id, receive
 }
 
+// final mines past the finalized block (Anvil: latest - 2) and runs the signer, which confirms what is now final.
+func (e env) final(t *testing.T, s *Signer) {
+	t.Helper()
+	e.anvil.Mine(2)
+	if err := s.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func (e env) nonce(t *testing.T) uint64 {
 	t.Helper()
 	n, err := e.client.NonceAt(context.Background(), common.HexToAddress(chaintest.Sender), nil)
@@ -163,8 +175,12 @@ func TestSettlesAPaidInvoiceOnce(t *testing.T) {
 	if err := e.signer(t).Run(ctx); err != nil {
 		t.Fatal(err)
 	}
+	if status, settlement, _ := e.intent(t, id); status != "sent" || settlement != "pending" {
+		t.Fatalf("settle mined but not final: intent %s, invoice settlement %s; want sent, pending", status, settlement)
+	}
+	e.final(t, e.signer(t))
 	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" {
-		t.Fatalf("after the signer: intent %s, invoice settlement %s", status, settlement)
+		t.Fatalf("after finality: intent %s, invoice settlement %s", status, settlement)
 	}
 	if got := e.balance(t, wallet); got != 5000000 {
 		t.Fatalf("recipient got %d, want exactly 5000000", got)
@@ -216,6 +232,7 @@ func TestRestartAfterSavingSendsTheSavedTransaction(t *testing.T) {
 	if err := e.signer(t).Run(ctx); err != nil {
 		t.Fatal(err)
 	}
+	e.final(t, e.signer(t))
 	if status, _, _ := e.intent(t, id); status != "confirmed" || e.balance(t, wallet) != 5000000 {
 		t.Fatalf("after the restart: intent %s, recipient %d", status, e.balance(t, wallet))
 	}
@@ -241,6 +258,7 @@ func TestRestartAfterSendingSendsNothing(t *testing.T) {
 	if err := e.signer(t).Run(ctx); err != nil {
 		t.Fatal(err)
 	}
+	e.final(t, e.signer(t))
 	if status, _, _ := e.intent(t, id); status != "confirmed" || e.balance(t, wallet) != 5000000 {
 		t.Fatalf("after the restart: intent %s, recipient %d", status, e.balance(t, wallet))
 	}
@@ -294,6 +312,7 @@ func TestSentSettleIsFinishedEvenIfTheWalletChanged(t *testing.T) {
 	if err := e.signer(t).Run(ctx); err != nil {
 		t.Fatal(err)
 	}
+	e.final(t, e.signer(t))
 	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" || e.balance(t, wallet) != 5000000 {
 		t.Fatalf("intent %s, invoice %s, recipient %d", status, settlement, e.balance(t, wallet))
 	}
@@ -319,6 +338,7 @@ func TestPausedFactoryIsRetried(t *testing.T) {
 	if err := e.signer(t).Run(ctx); err != nil {
 		t.Fatal(err)
 	}
+	e.final(t, e.signer(t))
 	if status, _, _ := e.intent(t, id); status != "confirmed" || e.balance(t, wallet) != 5000000 {
 		t.Fatalf("after unpausing: intent %s, recipient %d", status, e.balance(t, wallet))
 	}
@@ -347,6 +367,7 @@ func TestNonceTakenByAnotherTransaction(t *testing.T) {
 	if err := e.signer(t).Run(ctx); err != nil {
 		t.Fatal(err)
 	}
+	e.final(t, e.signer(t))
 	if status, _, _ := e.intent(t, id); status != "confirmed" || e.balance(t, wallet) != 5000000 {
 		t.Fatalf("intent %s, recipient %d", status, e.balance(t, wallet))
 	}
@@ -397,6 +418,10 @@ func TestExternallySettledIntentIsConfirmed(t *testing.T) {
 	if err := e.signer(t).Run(ctx); err != nil {
 		t.Fatal(err)
 	}
+	if status, _, _ := e.intent(t, id); status != "pending" {
+		t.Fatalf("settled outside but not final: intent %s, want pending", status)
+	}
+	e.final(t, e.signer(t))
 	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" {
 		t.Fatalf("intent %s, invoice %s; want confirmed and settled", status, settlement)
 	}
@@ -419,6 +444,7 @@ func TestStaleAttemptDoesNotOverwriteAConfirmedIntent(t *testing.T) {
 	if err := s.Run(ctx); err != nil {
 		t.Fatal(err)
 	}
+	e.final(t, s)
 	if err := s.retry(ctx, stale, "stale"); err != nil {
 		t.Fatal(err)
 	}
@@ -445,5 +471,109 @@ func TestSignerSkipsChainsItDoesNotServe(t *testing.T) {
 	}
 	if status, _, _ := e.intent(t, id); status != "pending" || e.nonce(t) != before {
 		t.Fatalf("intent %s, nonce moved %v", status, e.nonce(t) != before)
+	}
+}
+
+// A settle that a reorg drops before it is final is not booked; the saved bytes are sent again and booked once final.
+func TestSettleDroppedByReorgIsSentAgain(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, receive := e.paidInvoice(t)
+	s := e.signer(t)
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var saved string
+	if err := e.pool.QueryRow(ctx, "SELECT tx_hash FROM settlement_intents WHERE invoice_id = $1", id).Scan(&saved); err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.Reorg(1) // the block with the settle is replaced: the payout is gone
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if status, settlement, _ := e.intent(t, id); status != "sent" || settlement != "pending" {
+		t.Fatalf("after the reorg: intent %s, invoice %s; want sent, pending", status, settlement)
+	}
+	e.final(t, s)
+	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" {
+		t.Fatalf("once final: intent %s, invoice %s", status, settlement)
+	}
+	if e.balance(t, wallet) != 5000000 || e.balance(t, receive) != 1000000 {
+		t.Fatalf("recipient %d, receiver %d; want 5000000 and the 1000000 excess", e.balance(t, wallet), e.balance(t, receive))
+	}
+	if _, err := e.client.TransactionReceipt(ctx, common.HexToHash(saved)); err != nil {
+		t.Fatalf("the saved settle %s was not the one mined again: %v", saved, err)
+	}
+}
+
+// After the settle deadline only the refund authority may settle: the signer sends nothing, waits, and records the
+// authority's settle once it is final.
+func TestAfterTheDeadlineTheSignerWaitsForTheRefundAuthority(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, receive := e.paidInvoice(t)
+	e.anvil.Wait(3600 + 86400 + 60)
+	e.anvil.Mine(1)
+	before := e.nonce(t)
+	s := e.signer(t)
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if status, _, reason := e.intent(t, id); status != "pending" || !strings.Contains(reason, "refund authority") || e.nonce(t) != before {
+		t.Fatalf("after the deadline: intent %s (%s), sent %v; want pending, waiting, nothing sent", status, reason, e.nonce(t) != before)
+	}
+	var expires, deadline int64
+	if err := e.pool.QueryRow(ctx, "SELECT expires_at, settle_deadline FROM invoices WHERE id = $1", id).Scan(&expires, &deadline); err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.AsAuthority(strings.ToLower(common.Address(address.Factory).Hex()),
+		"deploy((bytes32,address,address,uint256,uint64,uint64,uint256))",
+		fmt.Sprintf("(%s,%s,%s,5000000,%d,%d,%d)", id, wallet, e.token, expires, deadline, chaintest.ChainID))
+	e.anvil.AsAuthority(receive, "settle()")
+	if _, err := e.pool.Exec(ctx, "UPDATE settlement_intents SET next_attempt_at = now()"); err != nil {
+		t.Fatal(err)
+	}
+	e.final(t, s)
+	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" || e.balance(t, wallet) != 5000000 {
+		t.Fatalf("after the authority settled: intent %s, invoice %s, recipient %d", status, settlement, e.balance(t, wallet))
+	}
+	if e.nonce(t) != before {
+		t.Fatal("the executor sent something after the deadline")
+	}
+}
+
+// An RPC that stops answering can't stall the signer: each intent's attempt has a deadline.
+func TestHangingRPCDoesNotStallTheSigner(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	e.paidInvoice(t)
+	stop := make(chan struct{})
+	hang := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select { // never answers; returns when the test ends so Close doesn't wait forever
+		case <-r.Context().Done():
+		case <-stop:
+		}
+	}))
+	defer hang.Close()
+	defer close(stop)
+	client, err := ethclient.Dial(hang.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key, err := crypto.HexToECDSA(strings.TrimPrefix(chaintest.Key, "0x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := NewSigner(e.pool, key, map[uint64]*ethclient.Client{chaintest.ChainID: client})
+	s.attemptTimeout = 300 * time.Millisecond
+	done := make(chan error, 1)
+	go func() { done <- s.Run(ctx) }()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("a hanging RPC was not reported")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Run is stuck on a hanging RPC")
 	}
 }
