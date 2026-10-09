@@ -30,10 +30,14 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   their account. Privy loads only in the
   `(app)` route group (`/sign-in`, `/app`), never on the landing page or checkout. `/app` sends signed-out visitors to
   `/sign-in` and calls `POST /v1/me` each time it loads, which makes the personal profile and its wallet once (R-34).
-- `/app` shows the chosen profile: the wallet amount first (pending and held only when not zero; with several tokens
-  a USD total marked as an estimate), the full receive address (`ReceiveAddress`) with QR code and an exact network
-  and token warning (the address never shows without it), and activity: invoices and their payments, where only a
-  payment carries "+". Money sent straight to the wallet shows in the balance once final, not in activity. Balances
+- The app shell: on desktop a sidebar with the profile switcher on top (a menu to switch or add a profile), the
+  profile type's pages (`APP_NAV`) and the account at the bottom (theme, sign out); on phones a header with the
+  switcher (a bottom sheet) and a tab bar (Overview, Balances, Receive in the center, Activity, Account). `/app` is the
+  dashboard: the total balance (one token in its unit, several as a USD estimate) with Send, Receive, Transfer and
+  Withdraw (only Receive works; the others say why when pressed), pending and held only when not zero, Networks (each
+  chain and token), and recent activity. Receive opens a sheet with the full address (`ReceiveAddress`), QR code and
+  an exact network and token warning (the address never shows without it). `/app/balances` and `/app/activity` list
+  everything; in activity only a payment carries "+". Money sent straight to the wallet shows in the balance once final, not in activity. Balances
   and activity are read again every 15 s while the tab is visible; only the newest answer is used. `/app/profiles/new` creates a freelancer
   or merchant profile with one idempotency key per visit (R-35).
 - The browser calls the backend same-origin at `/api/v1/…`; `next.config.ts` forwards it to `API_URL`, so the api needs

@@ -1,26 +1,32 @@
 "use client";
 
-import { Button, LogoMark, SelectField, Spinner, ThemeSwitch } from "@forwend/ui-web";
+import { Button, Spinner } from "@forwend/ui-web";
 import { usePrivy } from "@privy-io/react-auth";
-import { LogOut, Plus } from "lucide-react";
+import { ArrowDownLeft, CircleUser, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import { APP_COPY, APP_ROUTES } from "@/constants/app";
+import { APP_COPY, APP_NAV, APP_ROUTES, RECEIVE_EVENT, RECEIVE_HASH } from "@/constants/app";
+import { PROFILE_PAGE_COPY } from "@/constants/profile-page";
 import { signUp } from "@/lib/api";
-import { profileLabel } from "@/lib/profile";
 import type { Profile } from "@/types/app/profile";
 import type { AppSession } from "@/types/app/session";
+import { AccountMenu } from "./account-menu";
 import { AppSessionContext } from "./active-profile";
+import { ProfileSheet } from "./profile-sheet";
+import { ProfileSwitcher } from "./profile-switcher";
 
-// A 44px square with only the icon on phones; icon and label, or label alone, from sm up.
-const HEADER_ACTION =
-  "inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-pill text-sm font-medium text-ink transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 aria-[current=page]:bg-surface-2 sm:px-4";
+// A phone tab: icon over label, the whole cell is the target.
+const TAB =
+  "group flex h-16 flex-col items-center justify-center gap-1 text-xs text-muted outline-none focus-visible:text-ink aria-[current=page]:font-medium aria-[current=page]:text-ink";
+// The icon's pill marks the current page, as in the sidebar.
+const TAB_ICON =
+  "grid h-7 w-12 place-items-center rounded-pill transition-colors duration-[var(--fw-duration-fast)] group-aria-[current=page]:bg-surface-2";
 
-// Signed out: go to sign-in. Signed in: POST /v1/me (signs up on the first visit), then the top bar with
-// the profile and theme switchers, and the page for the chosen profile.
+// Signed out: go to sign-in. Signed in: POST /v1/me (signs up on the first visit), then the sidebar (profile switcher,
+// the profile type's pages, the account) on desktop or the tab bar on phones, and the page for the chosen profile.
 export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
-  const { ready, authenticated, getAccessToken, logout } = usePrivy();
+  const { ready, authenticated, getAccessToken, logout, user } = usePrivy();
   const router = useRouter();
   const pathname = usePathname();
   const [profiles, setProfiles] = useState<Profile[] | null>(null);
@@ -98,52 +104,123 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     );
   }
 
+  const email = user?.email?.address ?? user?.google?.email ?? APP_COPY.signedIn;
+  const nav = APP_NAV[active.kind];
+  // The tab bar holds working pages only: Overview and Balances, Receive, then Activity.
+  const pages = nav.flatMap((item) => (item.href ? [{ ...item, href: item.href }] : []));
+  const isCurrent = (href: string) => pathname === href;
+
   return (
-    <div className="min-h-dvh bg-bg">
-      {/* One row on every screen: home, the profile and its actions, then theme and sign out. */}
-      <header className="sticky top-0 z-10 border-b border-line bg-bg">
-        <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-3 md:gap-3 md:px-8">
-          <Link
-            href={APP_ROUTES.home}
-            aria-label={APP_COPY.home}
-            className="mr-1 grid size-11 shrink-0 place-items-center rounded-pill text-ink md:mr-3"
-          >
-            <LogoMark className="size-[var(--fw-icon-lg)]" />
-          </Link>
-          <SelectField
-            label={APP_COPY.profileLabel}
-            hideLabel
-            className="min-w-0 flex-1 sm:max-w-64"
-            value={active.profileId}
-            onValueChange={setActiveId}
-            options={profiles.map((p) => ({ value: p.profileId, label: profileLabel(p) }))}
-          />
-          <Link
-            href={APP_ROUTES.newProfile}
-            aria-label={APP_COPY.newProfile}
-            aria-current={pathname === APP_ROUTES.newProfile ? "page" : undefined}
-            className={HEADER_ACTION}
-          >
-            <Plus aria-hidden className="size-[var(--fw-icon-md)] shrink-0" />
-            <span className="hidden sm:inline">{APP_COPY.newProfile}</span>
-          </Link>
-          <div className="ml-auto flex shrink-0 items-center gap-1">
-            <ThemeSwitch className="size-11" />
-            <button
-              type="button"
-              aria-label={APP_COPY.signOut}
-              className={HEADER_ACTION}
-              onClick={signOut}
-            >
-              <LogOut aria-hidden className="size-[var(--fw-icon-md)] shrink-0 sm:hidden" />
-              <span className="hidden sm:inline">{APP_COPY.signOut}</span>
-            </button>
-          </div>
+    <div className="min-h-dvh bg-bg lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
+      {/* Desktop: the profile frames the sidebar from the top, the account closes it at the bottom. */}
+      <aside className="sticky top-0 hidden h-dvh flex-col gap-2 border-r border-line bg-surface p-3 lg:flex">
+        <ProfileSwitcher profiles={profiles} active={active} onSwitch={setActiveId} />
+        <nav aria-label={APP_COPY.mainNav} className="mt-4">
+          <ul className="flex flex-col gap-0.5">
+            {nav.map(({ href, label, icon: Icon }) => (
+              <li key={label}>
+                {href ? (
+                  <Link
+                    href={href}
+                    aria-current={isCurrent(href) ? "page" : undefined}
+                    className="flex h-10 items-center gap-3 rounded-md px-3 text-sm text-muted transition-colors duration-[var(--fw-duration-fast)] hover:bg-[color-mix(in_oklab,var(--fw-surface-2)_55%,transparent)] hover:text-ink aria-[current=page]:bg-surface-2 aria-[current=page]:font-medium aria-[current=page]:text-ink"
+                  >
+                    <Icon aria-hidden className="size-[var(--fw-icon-md)]" />
+                    {label}
+                  </Link>
+                ) : (
+                  // Not built yet: a line of text, not a link.
+                  <span className="flex h-10 items-center gap-3 px-3 text-sm text-subtle">
+                    <Icon aria-hidden className="size-[var(--fw-icon-md)]" />
+                    {label}
+                    <span className="ml-auto text-xs">{APP_COPY.soon}</span>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div className="mt-auto border-t border-line pt-2">
+          <AccountMenu email={email} onSignOut={signOut} />
         </div>
-      </header>
-      <main className="mx-auto max-w-5xl px-4 py-8 md:px-8 md:py-10">
-        <AppSessionContext value={session}>{children}</AppSessionContext>
-      </main>
+      </aside>
+
+      <div className="min-w-0">
+        {/* Phones: the switcher at the top; pages, Receive and the account in the tab bar below. */}
+        <header className="sticky top-0 z-10 border-b border-line bg-bg px-3 py-2 lg:hidden">
+          <div>
+            <ProfileSheet profiles={profiles} active={active} onSwitch={setActiveId} />
+          </div>
+        </header>
+        <main className="mx-auto max-w-6xl px-4 pt-6 pb-28 sm:px-6 lg:px-10 lg:pt-10 lg:pb-12">
+          <AppSessionContext value={session}>{children}</AppSessionContext>
+        </main>
+        <nav
+          aria-label={APP_COPY.mainNav}
+          className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
+        >
+          <ul className="mx-auto grid max-w-lg grid-cols-5">
+            {pages.slice(0, 2).map((item) => (
+              <TabLink key={item.href} {...item} current={isCurrent(item.href)} />
+            ))}
+            <li className="grid place-items-center">
+              <button
+                type="button"
+                aria-label={PROFILE_PAGE_COPY.receive}
+                onClick={() => {
+                  // On the dashboard the sheet opens in place; elsewhere it opens after going there.
+                  if (pathname === APP_ROUTES.home) window.dispatchEvent(new Event(RECEIVE_EVENT));
+                  else router.push(`${APP_ROUTES.home}${RECEIVE_HASH}`);
+                }}
+                className="-mt-5 grid size-14 place-items-center rounded-pill bg-primary text-on-primary shadow-lg outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
+                <ArrowDownLeft aria-hidden className="size-[var(--fw-icon-lg)]" />
+              </button>
+            </li>
+            {pages.slice(2, 3).map((item) => (
+              <TabLink key={item.href} {...item} current={isCurrent(item.href)} />
+            ))}
+            <li className="grid">
+              <AccountMenu
+                email={email}
+                onSignOut={signOut}
+                side="top"
+                trigger={
+                  <button type="button" className={TAB}>
+                    <span className={TAB_ICON}>
+                      <CircleUser aria-hidden className="size-[var(--fw-icon-md)]" />
+                    </span>
+                    {APP_COPY.account}
+                  </button>
+                }
+              />
+            </li>
+          </ul>
+        </nav>
+      </div>
     </div>
+  );
+}
+
+function TabLink({
+  href,
+  label,
+  icon: Icon,
+  current,
+}: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  current: boolean;
+}) {
+  return (
+    <li className="grid">
+      <Link href={href} aria-current={current ? "page" : undefined} className={TAB}>
+        <span className={TAB_ICON}>
+          <Icon aria-hidden className="size-[var(--fw-icon-md)]" />
+        </span>
+        {label}
+      </Link>
+    </li>
   );
 }

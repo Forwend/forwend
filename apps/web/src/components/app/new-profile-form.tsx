@@ -76,7 +76,6 @@ export function NewProfileForm() {
       </fieldset>
       <TextField
         label={COPY.nameLabel}
-        placeholder={COPY.namePlaceholder}
         value={name}
         onChange={(event) => {
           setName(event.target.value);

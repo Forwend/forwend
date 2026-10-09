@@ -6,6 +6,7 @@ import {
   QrCode,
   ReceiveAddress,
   SelectField,
+  Sheet,
   Skeleton,
 } from "@forwend/ui-web";
 import { useState } from "react";
@@ -13,14 +14,18 @@ import { PROFILE_PAGE_COPY as COPY } from "@/constants/profile-page";
 import { chainName, isTestnet } from "@/lib/chain";
 import type { Balances } from "@/types/app/money";
 
-// The address never shows without the warning that names its exact network and token, so while the enabled tokens
-// load, or if they fail, it stays hidden.
-export function ReceivePanel({
+// Receive, in a sheet over the dashboard. The address never shows without the warning naming its exact network and
+// token, so while the enabled tokens load, or if they fail, it stays hidden.
+export function ReceiveSheet({
+  open,
+  onOpenChange,
   address,
   balances,
   failed,
   onRetry,
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   address: string | null;
   balances: Balances | null;
   failed: boolean;
@@ -31,10 +36,7 @@ export function ReceivePanel({
   const chosen = tokens.find((t) => `${t.chainId}:${t.token}` === picked) ?? tokens[0];
 
   return (
-    <section aria-labelledby="receive-title" className="flex flex-col gap-4">
-      <h2 id="receive-title" className="text-lg font-medium text-ink">
-        {COPY.receive}
-      </h2>
+    <Sheet open={open} onOpenChange={onOpenChange} title={COPY.receive}>
       {!address ? (
         <p className="text-sm text-muted">{COPY.noWallet}</p>
       ) : !balances && failed ? (
@@ -49,9 +51,7 @@ export function ReceivePanel({
       ) : !chosen ? (
         <p className="text-sm text-muted">{COPY.receiveNoTokens}</p>
       ) : (
-        <div className="flex flex-col gap-4 rounded-lg border border-line bg-surface p-5 shadow-sm">
-          <QrCode value={address} label={COPY.receiveQrLabel} className="mx-auto w-40" />
-          <ReceiveAddress address={address} />
+        <div className="flex flex-col gap-4">
           {tokens.length > 1 ? (
             <SelectField
               label={COPY.receiveNetwork}
@@ -63,6 +63,8 @@ export function ReceivePanel({
               }))}
             />
           ) : null}
+          <QrCode value={address} label={COPY.receiveQrLabel} className="mx-auto w-44" />
+          <ReceiveAddress address={address} />
           <NetworkWarning token={chosen.symbol} network={chainName(chosen.chainId)} />
           <p className="text-sm text-muted">
             {isTestnet(chosen.chainId) ? `${chainName(chosen.chainId)} ${COPY.testnetNote} ` : null}
@@ -70,6 +72,6 @@ export function ReceivePanel({
           </p>
         </div>
       )}
-    </section>
+    </Sheet>
   );
 }

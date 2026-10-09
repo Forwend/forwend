@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 71,
+  "nextId": 73,
   "tasks": [
     {
       "id": "F001",
@@ -7392,6 +7392,145 @@
         "branch": "feat/f070-the-sign-in-page-is-forwend-s-own-our-em",
         "base": "main"
       }
+    },
+    {
+      "id": "F071",
+      "type": "feat",
+      "behavior": "The app is a modern fintech shell: a sidebar with a profile switcher and account menu, a personal dashboard with balance and actions, and a phone tab bar",
+      "acceptance": [
+        "Desktop: a sidebar with the profile switcher at the top (opens a smooth panel to switch profiles or add one), navigation by profile type (Overview, Balances, Activity work; pages not built yet are shown disabled as Soon per type, as the owner chose: Analytics for all, Invoices for freelancers, Checkout and Developers for merchants), and the signed-in account at the bottom (global settings: theme, a disabled Settings item marked Soon, sign out). Phones: a bottom tab bar with working pages only and the switcher as a sheet. Built through Impeccable (direction contract), then an Impeccable finish review and an independent review before commit",
+        "The personal dashboard shows a total balance card with Send, Receive, Transfer and Withdraw (only Receive works now; a press on the others shows why, on touch too), balances by chain and token, and recent activity; Receive keeps the full address, QR code and exact network and token warning; axe finds no serious or critical violation; the live Playwright test covers desktop and phone"
+      ],
+      "dependsOn": [
+        "F068"
+      ],
+      "state": "verified",
+      "verification": [
+        "e2e",
+        "unit"
+      ],
+      "refs": [
+        "R-34",
+        "R-35"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-10-09 owner decided 2026-10-10 (answers to two questions): per-type nav = \"Show future pages disabled\" (Invoices for freelancers, Checkout and Developers for merchants, Analytics for all, shown as Soon, never links); account menu = \"Add a disabled Settings item\" (Settings shown as Soon)",
+        "2026-10-09 review pass by subagent: Independent review, three rounds, checked live on localhost:3000 with one sign-in. Fixed and confirmed: the Profiles sheet closes when the window turns desktop-wide; profile buttons use aria-pressed (arrow keys do not switch); a press on a disabled action shows its reason in a role=status line that clears after 4 s; menus are non-modal and axe finds 0 serious or critical issues on the dashboard, the merchant sidebar, with the account menu open, on the phone pages and in the sheets; useTheme reads data-theme through useSyncExternalStore, so the sidebar and tab-bar menus agree after a resize; Soon pages and Settings are disabled text, not links; the tab bar shows working pages only; switching profile on Balances or Activity stays on that page; tab-bar Receive from another page opens the sheet and Back and Forward work; no horizontal scroll at 360px. The e2e axe helper catches cancelled animations. Verify 22:48:44Z; after it only ignored or build files changed; lint and web unit tests (16) pass again. Kept as chosen: TOKEN_ICONS picks logos by symbol (logos only).",
+        "2026-10-09 review pass by subagent: Re-check after the documenter's change, on top of the three earlier passing rounds (live checks of the shell, sheets, menus, theme sync, Soon items, disabled actions, axe, 360px, profile switching on every page). The delta is docs and one class only: docs/web/DESIGN.md gets an App shell section that matches the built shell; apps/web/.impeccable/design.json adds fw-pop-in, fw-sheet-up, Action Button, Menu and App Sidebar entries; balance-card.tsx uses the role token text-section (defined in design-tokens theme.css, used elsewhere) instead of text-5xl sm:text-6xl. Verify 22:52:30Z; after it only tasks.json and build or test files changed; docs-check 0 errors."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T22:52:30Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 46.2,
+            "log": "docs/runs/F071-20261009T225230Z-e2e.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 28.1,
+            "log": "docs/runs/F071-20261009T225230Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F071-20261009T225230Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F071-20261009T225230Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F071-20261009T225230Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F071-20261009T225230Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 7.4,
+            "log": "docs/runs/F071-20261009T225230Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F071-20261009T225230Z-keep.log"
+          }
+        ],
+        "taskHash": "501bf6ee95353f38",
+        "filesHash": "f3b4d54b35606bed",
+        "proof": {
+          "1": "e2e: e2e/privy/sign-in.spec.ts (live Privy and backend): the sidebar shows the switcher, the profile type's pages (Overview current, Balances, Activity; Analytics listed as coming, not a link; a merchant also lists Checkout and Developers as coming, the owner's choice) and the account at the bottom (theme, a disabled Settings item, sign out); switching profile on Balances stays there; on a 390px phone the tab bar marks Overview, Receive opens the sheet, the switcher opens a Profiles sheet, Account opens the menu, no horizontal scroll; a sheet open while the window turns desktop-wide closes; Impeccable: direction contract, finish review (ship), documenter (DESIGN.md App shell section), detector clean; ui-web test: two theme switches on one page agree",
+          "2": "e2e: the live spec checks the Total balance card (Send, Transfer, Withdraw aria-disabled; Receive opens a sheet with QR, the full address in groups and 'Send only USDC on Base Sepolia.'), Networks, Recent activity, the Balances and Activity pages, a merchant profile with its own wallet; axe (after opening fades) finds no serious or critical violation on the dashboard, sheet, open menus, Balances, new profile and phone; unit: test/balance-card.test.tsx (amount and network, pending and held only when not zero, USD estimate, a press on a disabled action shows why, retry)"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Re-check after the documenter's change, on top of the three earlier passing rounds (live checks of the shell, sheets, menus, theme sync, Soon items, disabled actions, axe, 360px, profile switching on every page). The delta is docs and one class only: docs/web/DESIGN.md gets an App shell section that matches the built shell; apps/web/.impeccable/design.json adds fw-pop-in, fw-sheet-up, Action Button, Menu and App Sidebar entries; balance-card.tsx uses the role token text-section (defined in design-tokens theme.css, used elsewhere) instead of text-5xl sm:text-6xl. Verify 22:52:30Z; after it only tasks.json and build or test files changed; docs-check 0 errors.",
+          "at": "2026-10-09T22:54:09Z",
+          "filesHash": "f3b4d54b35606bed"
+        }
+      },
+      "branch": "feat/f071-the-app-is-a-modern-fintech-shell-a-side",
+      "baseCommit": "fa6a325677804a59d8917524dc9916ea7b4027ba",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F072",
+      "type": "feat",
+      "behavior": "The backend records every token transfer in and out of profile wallets, so the app shows true transactions and a balance-over-time chart",
+      "acceptance": [
+        "The worker records every enabled-token transfer to or from each profile wallet on each enabled chain, with the same finality and reorg rules as deposits; GET /v1/profiles/{id}/transactions lists them newest first with cursor pages; GET /v1/profiles/{id}/balance-history returns points that end at the current finalized balance; tested on Anvil",
+        "The dashboard shows a smooth balance-over-time chart from that history and a Transactions page; openapi.yaml describes both routes; owner-only"
+      ],
+      "dependsOn": [
+        "F071"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "unit",
+        "backend"
+      ],
+      "refs": [
+        "R-33",
+        "D-45"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-08T18:30:00Z",
+  "generatedAt": "2026-10-10T00:00:00Z",
   "title": "Design System: Forwend",
   "extensions": {
     "colorMeta": {
@@ -285,6 +285,16 @@
         "name": "blur-glass",
         "value": "14px",
         "purpose": "Backdrop blur for glass panels over imagery and dialog backdrop."
+      },
+      {
+        "name": "fw-pop-in",
+        "value": "opacity 0, translateY(4px) scale(0.98) to rest; duration-base, ease-out",
+        "purpose": "Menus rise from the edge they open on. Off under reduced motion."
+      },
+      {
+        "name": "fw-sheet-up",
+        "value": "opacity 0, translateY(16px) to rest; duration-base, ease-out",
+        "purpose": "Bottom sheets and the centered sheet panel. Off under reduced motion."
       }
     ],
     "breakpoints": [
@@ -374,6 +384,30 @@
       "description": "Translucent panel used only over landscape art, with mono amount and timeline.",
       "html": "<div class=\"ds-glass\"><div class=\"ds-glass-row\"><span>Invoice FW-0042</span><span class=\"ds-glass-badge\">Sample</span></div><p class=\"ds-glass-amount\">1,250.00</p><ol class=\"ds-timeline\"><li class=\"is-done\"><span></span>Detected</li><li class=\"is-done\"><span></span>Confirming</li><li class=\"is-done\"><span></span>Paid</li><li class=\"is-now\"><span></span>Settled</li></ol></div>",
       "css": ".ds-glass { max-width: 28rem; padding: 24px; border: 1px solid color-mix(in oklab, var(--fw-surface) 60%, transparent); border-radius: var(--fw-radius-lg); background: var(--fw-glass); backdrop-filter: blur(var(--fw-blur-glass)); box-shadow: var(--fw-shadow-lg); color: var(--fw-ink); font-family: var(--fw-font-sans); } .ds-glass-row { display: flex; justify-content: space-between; font-size: 0.875rem; font-weight: 500; } .ds-glass-badge { padding: 2px 10px; border: 1px solid var(--fw-line); border-radius: var(--fw-radius-pill); background: var(--fw-surface-2); color: var(--fw-muted); font-size: 0.75rem; } .ds-glass-amount { margin: 16px 0 20px; font: 2.25rem/1.15 var(--fw-font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.025em; } .ds-timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 0.75rem; font-weight: 500; } .ds-timeline li { display: flex; flex-direction: column; gap: 8px; } .ds-timeline span { height: 4px; border-radius: var(--fw-radius-pill); background: var(--fw-line); transition: background-color var(--fw-duration-slow) var(--fw-ease-out); } .ds-timeline .is-done span { background: var(--fw-ink); } .ds-timeline .is-now span { background: var(--fw-accent); }"
+    },
+    {
+      "name": "Action Button",
+      "kind": "button",
+      "refersTo": "action-button",
+      "description": "Round icon money action with its label underneath. Only the main action is filled with ink; a not-built action stays in place in the subtle color.",
+      "html": "<div class=\"ds-actions\"><button class=\"ds-action\" type=\"button\" aria-disabled=\"true\"><span class=\"ds-action-icon\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M7 17 17 7M7 7h10v10\"/></svg></span>Send</button><button class=\"ds-action is-primary\" type=\"button\"><span class=\"ds-action-icon\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M17 7 7 17M17 17H7V7\"/></svg></span>Receive</button></div>",
+      "css": ".ds-actions { display: flex; gap: 32px; font-family: var(--fw-font-sans); } .ds-action { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 64px; border: none; background: none; color: var(--fw-ink); font-size: 0.875rem; cursor: pointer; outline: none; } .ds-action-icon { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid var(--fw-line); border-radius: var(--fw-radius-pill); background: var(--fw-surface); box-shadow: var(--fw-shadow-sm); transition: background-color var(--fw-duration-fast) var(--fw-ease-out); } .ds-action:hover .ds-action-icon { background: var(--fw-surface-2); } .ds-action:focus-visible .ds-action-icon { outline: 2px solid var(--fw-focus); outline-offset: 2px; } .ds-action.is-primary .ds-action-icon { border-color: var(--fw-primary); background: var(--fw-primary); color: var(--fw-on-primary); } .ds-action.is-primary:hover .ds-action-icon { opacity: 0.9; } .ds-action[aria-disabled=\"true\"] { color: var(--fw-subtle); cursor: not-allowed; } .ds-action[aria-disabled=\"true\"] .ds-action-icon { background: var(--fw-surface-2); box-shadow: none; }"
+    },
+    {
+      "name": "Menu",
+      "kind": "custom",
+      "refersTo": "menu",
+      "description": "Solid dropdown panel with the float shadow; radio items show a check, a not-built item reads Soon in plain text.",
+      "html": "<div class=\"ds-menu\" role=\"menu\"><div class=\"ds-menu-label\">Theme</div><div class=\"ds-menu-item\" role=\"menuitemradio\" aria-checked=\"true\">Light<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg></div><div class=\"ds-menu-item\" role=\"menuitemradio\" aria-checked=\"false\">Dark</div><div class=\"ds-menu-sep\"></div><div class=\"ds-menu-item\" role=\"menuitem\" aria-disabled=\"true\">Settings<span class=\"ds-menu-soon\">Soon</span></div><div class=\"ds-menu-item\" role=\"menuitem\" tabindex=\"0\">Sign out</div></div>",
+      "css": ".ds-menu { width: 256px; padding: 6px; border: 1px solid var(--fw-line); border-radius: var(--fw-radius-lg); background: var(--fw-surface); color: var(--fw-ink); box-shadow: var(--fw-shadow-lg); font-family: var(--fw-font-sans); } .ds-menu-label { padding: 8px 12px 4px; font-size: 0.75rem; color: var(--fw-muted); } .ds-menu-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: var(--fw-radius-md); font-size: 0.875rem; cursor: pointer; outline: none; } .ds-menu-item:hover, .ds-menu-item:focus-visible { background: var(--fw-surface-2); } .ds-menu-item[aria-disabled=\"true\"] { color: var(--fw-subtle); cursor: not-allowed; } .ds-menu-item[aria-disabled=\"true\"]:hover { background: none; } .ds-menu-soon { font-size: 0.75rem; } .ds-menu-sep { height: 1px; margin: 6px 0; background: var(--fw-line); }"
+    },
+    {
+      "name": "App Sidebar",
+      "kind": "nav",
+      "refersTo": "app-sidebar",
+      "description": "Signed-in sidebar on the surface: profile switcher on top, page links (current on the second surface), a not-built page as subtle text with Soon, account at the bottom.",
+      "html": "<aside class=\"ds-side\"><button class=\"ds-side-switch\" type=\"button\"><span class=\"ds-side-avatar\"></span><span><span class=\"ds-side-name\">Personal</span><span class=\"ds-side-addr\">0xb34d…43f2</span></span></button><nav><a class=\"ds-side-link\" href=\"#\" aria-current=\"page\">Overview</a><a class=\"ds-side-link\" href=\"#\">Balances</a><span class=\"ds-side-soon\">Analytics<span>Soon</span></span></nav></aside>",
+      "css": ".ds-side { display: flex; flex-direction: column; gap: 8px; width: 16rem; padding: 12px; border-right: 1px solid var(--fw-line); background: var(--fw-surface); font-family: var(--fw-font-sans); } .ds-side-switch { display: flex; align-items: center; gap: 12px; padding: 8px; border: none; border-radius: var(--fw-radius-lg); background: none; text-align: left; cursor: pointer; transition: background-color var(--fw-duration-fast) var(--fw-ease-out); } .ds-side-switch:hover { background: var(--fw-surface-2); } .ds-side-switch:focus-visible { outline: 2px solid var(--fw-focus); } .ds-side-avatar { width: 36px; height: 36px; border: 1px solid var(--fw-line); border-radius: var(--fw-radius-md); background: var(--fw-surface-2); } .ds-side-name { display: block; font-size: 0.875rem; font-weight: 500; color: var(--fw-ink); } .ds-side-addr { display: block; font: 0.75rem var(--fw-font-mono); color: var(--fw-muted); } .ds-side nav { display: flex; flex-direction: column; gap: 2px; margin-top: 16px; } .ds-side-link { display: flex; align-items: center; height: 40px; padding: 0 12px; border-radius: var(--fw-radius-md); font-size: 0.875rem; color: var(--fw-muted); text-decoration: none; transition: background-color var(--fw-duration-fast) var(--fw-ease-out); } .ds-side-link:hover { background: color-mix(in oklab, var(--fw-surface-2) 55%, transparent); color: var(--fw-ink); } .ds-side-link[aria-current=\"page\"] { background: var(--fw-surface-2); color: var(--fw-ink); font-weight: 500; } .ds-side-link:focus-visible { outline: 2px solid var(--fw-focus); outline-offset: 2px; } .ds-side-soon { display: flex; align-items: center; height: 40px; padding: 0 12px; font-size: 0.875rem; color: var(--fw-subtle); } .ds-side-soon span { margin-left: auto; font-size: 0.75rem; }"
     }
   ],
   "narrative": {

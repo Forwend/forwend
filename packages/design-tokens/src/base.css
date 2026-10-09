@@ -138,6 +138,21 @@
 }
 
 /* Shared UI motion: spinner, dot-loader, shimmer, progress-bar and success-check. */
+/* Menus and sheets: a short rise and fade from the edge they open on. */
+@keyframes fw-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+}
+
+@keyframes fw-sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
 @keyframes fw-spin {
   to {
     transform: rotate(360deg);

@@ -2,6 +2,7 @@
 
 import {
   Accordion,
+  ActionButton,
   Badge,
   BUTTON_SIZES,
   BUTTON_VARIANTS,
@@ -13,10 +14,19 @@ import {
   Dialog,
   EmailCapture,
   EmptyState,
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuLabel,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuSeparator,
+  MenuTrigger,
   NavPill,
   PANEL_TONES,
   Panel,
   SelectField,
+  Sheet,
   Skeleton,
   Switch,
   Tabs,
@@ -25,6 +35,7 @@ import {
   Toast,
   Tooltip,
 } from "@forwend/ui-web";
+import { ArrowDownLeft, ArrowUpRight, Landmark, Plus } from "lucide-react";
 import { useState } from "react";
 import { CTA } from "@/constants/copy";
 import { KitGroup } from "./kit-section";
@@ -39,6 +50,8 @@ const SAMPLE_CODE = `const invoice = await forwend.invoices.create({
 
 export function ComponentsShowcase() {
   const [on, setOn] = useState(true);
+  const [menuChoice, setMenuChoice] = useState("personal");
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [code, setCode] = useState("826");
   return (
     <div className="flex flex-col gap-10">
@@ -60,6 +73,41 @@ export function ComponentsShowcase() {
         <Button variant={BUTTON_VARIANTS.secondary} disabled>
           Disabled
         </Button>
+      </KitGroup>
+      <KitGroup title="Action buttons: primary, default, not yet available">
+        <ActionButton icon={ArrowDownLeft} label="Receive" primary />
+        <ActionButton icon={ArrowUpRight} label="Send" />
+        <ActionButton
+          icon={Landmark}
+          label="Withdraw"
+          disabledReason="Coming soon: withdraw to your bank account."
+        />
+      </KitGroup>
+      <KitGroup title="Menu and sheet">
+        <Menu>
+          <MenuTrigger asChild>
+            <Button variant={BUTTON_VARIANTS.secondary}>Open menu</Button>
+          </MenuTrigger>
+          <MenuContent>
+            <MenuLabel>Profiles</MenuLabel>
+            <MenuRadioGroup value={menuChoice} onValueChange={setMenuChoice}>
+              <MenuRadioItem value="personal">Personal</MenuRadioItem>
+              <MenuRadioItem value="merchant">Merchant · Studio Lumen</MenuRadioItem>
+            </MenuRadioGroup>
+            <MenuSeparator />
+            <MenuItem>
+              <Plus aria-hidden className="size-[var(--fw-icon-md)]" />
+              New profile
+            </MenuItem>
+            <MenuItem disabled>Unavailable item</MenuItem>
+          </MenuContent>
+        </Menu>
+        <Button variant={BUTTON_VARIANTS.secondary} onClick={() => setSheetOpen(true)}>
+          Open sheet
+        </Button>
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen} title="Receive">
+          <p className="text-muted">A bottom sheet on phones, a centered panel from sm up.</p>
+        </Sheet>
       </KitGroup>
       <KitGroup title="Fields">
         <div className="grid w-full gap-6 md:grid-cols-3">

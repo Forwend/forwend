@@ -18,12 +18,30 @@ Use `/kit` for the implemented components. This file owns visual use; token sour
 ## Type and color
 
 - Libre Caslon Display at 400 for large headings; Hanken Grotesk for UI and body; Geist Mono for money, addresses,
-  hashes and event names. Money uses tabular figures. No bold display serif or small serif labels.
+  hashes and event names. Money uses tabular figures. One exception: the app dashboard's total balance is the page's
+  single display moment, set in Libre Caslon Display with lining tabular figures; every other amount stays mono. No bold display serif or small serif labels.
 - Use role tokens for hero, section headings and featured amounts. No eyebrow labels or tracked uppercase kickers.
 - Text and primary buttons share the primary ink. River blue identifies links, focus, the current step and information.
   Completed steps use ink; upcoming steps use line color.
 - Success, warning and error use their matching text/background token pairs. Art colors never become UI colors.
 - Cool neutral surfaces, rounded controls and cards, pill navigation/buttons/chips. No hard offset shadows.
+
+## App shell
+
+The signed-in app (`/app`) uses these patterns. The menu, sheet and action button are in `/kit`.
+
+- Desktop: a full-height sidebar on the surface color with a line divider. The profile switcher sits at the top,
+  page links in the middle (the current page on the second surface), the account at the bottom. Switching a profile
+  keeps the current page.
+- Phones: a compact header with the switcher, and a bottom tab bar: icon over label for each page, a raised round
+  primary Receive button in the center, Account last. The current tab gets the same tint as the sidebar link.
+- A choice opened from the sidebar is a menu; the same choice on a phone is a bottom sheet, which becomes a centered
+  panel from small screens up. Both are solid surface panels with the float shadow and rise from the edge they open
+  on; reduced motion removes the movement.
+- Money actions are round icon buttons with the label underneath. Only the main action is filled with the primary
+  ink; the others are outlined on the surface.
+- A feature that is not built yet keeps its place in the subtle text color, with "Soon" as plain text at the end:
+  no badge, no link. A disabled action says why in its accessible name and shows the reason when pressed.
 
 ## Theme and behavior
 

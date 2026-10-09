@@ -42,6 +42,14 @@ export interface DialogProps {
   closeLabel?: string;
 }
 
+export interface SheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  closeLabel?: string;
+  children: ReactNode;
+}
+
 export interface TooltipProps {
   content: string;
   children: ReactNode;
