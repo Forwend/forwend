@@ -3824,7 +3824,7 @@
       "dependsOn": [
         "F041"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "contracts",
         "lint"
@@ -3894,11 +3894,23 @@
           }
         ],
         "taskHash": "ec5e4627de0730f0",
-        "filesHash": "dbf3407ee3de32d1"
+        "filesHash": "dbf3407ee3de32d1",
+        "commit": "3d77a08",
+        "doneAt": "2026-10-09T00:28:47Z",
+        "proof": {
+          "1": "script/deploy.sh on base-sepolia, arbitrum-sepolia, arc-testnet, tempo-moderato: factory 0xECe745390524e4d0B05D26F56AF7F1D38FDb7546, probe 0xed50aEC668Eba01Bc1735845c99E987714a94555, same code hash on all four",
+          "2": "deploy.sh flow on arc-testnet and tempo-moderato: recipient got exactly amount, receiver empty, statusOf check (settled, balance 0) in the script; tx hashes in deployments.json",
+          "3": "packages/contracts/deployments.json: new addresses + superseded F037 entry; contracts check passed"
+        }
       },
       "branch": "chore/f040-the-testnet-factory-and-probe-receiver-a",
       "baseCommit": "0e201ced11172649a72ca2c6eda97bd42e147bf9",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f040-the-testnet-factory-and-probe-receiver-a",
+        "base": "main"
+      }
     },
     {
       "id": "F041",
