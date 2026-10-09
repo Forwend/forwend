@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/url"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/ethereum/go-ethereum/rpc"
@@ -35,28 +35,28 @@ func Specs(path string) (map[uint64]Spec, error) {
 		return nil, fmt.Errorf("read chain list %s: %w", path, err)
 	}
 	out := map[uint64]Spec{}
-	for _, s := range byName {
+	for name, s := range byName {
+		if _, dup := out[s.ChainID]; dup {
+			return nil, fmt.Errorf("read chain list %s: chain id %d listed twice (%s)", path, s.ChainID, name)
+		}
 		out[s.ChainID] = s
 	}
 	return out, nil
 }
 
-// RPCs are the chain's clients: Primary for reading the chain and signing, Second for balance checks. Second is
-// another host when the list has one (D-15).
+// RPCs are the chain's clients on two different hosts: Primary for reading the chain and signing, Second for
+// balance checks (D-15).
 type RPCs struct {
 	Primary, Second *rpc.Client
 }
 
-// Close closes both clients.
 func (r RPCs) Close() {
 	r.Primary.Close()
-	if r.Second != r.Primary {
-		r.Second.Close()
-	}
+	r.Second.Close()
 }
 
-// Dial returns the first two working RPCs on different hosts. With only one working host, both are that host and
-// a warning is logged: fine for a local chain, never for real money.
+// Dial returns the first two working RPCs on different hosts. A chain with fewer is not served: balances must be
+// confirmed by an independent provider before paid (D-15).
 func Dial(ctx context.Context, spec Spec, infuraKeys []string) (RPCs, error) {
 	var urls []string
 	if spec.Infura != "" {
@@ -87,10 +87,17 @@ func Dial(ctx context.Context, spec Spec, infuraKeys []string) (RPCs, error) {
 	if picked.Primary == nil {
 		return RPCs{}, fmt.Errorf("no working RPC for chain %d", spec.ChainID)
 	}
-	slog.Warn("only one RPC host works; balances are checked on the same provider", "chain", spec.ChainID,
-		"host", firstHost)
-	picked.Second = picked.Primary
-	return picked, nil
+	picked.Primary.Close()
+	return RPCs{}, fmt.Errorf("chain %d has one working RPC host (%s); D-15 needs a second, independent one",
+		spec.ChainID, firstHost)
+}
+
+var urlKey = regexp.MustCompile(`(/v3/)[A-Za-z0-9_-]+`)
+
+// Redact returns err's text with API keys in RPC URLs replaced: go-ethereum puts the full URL, Infura key included,
+// into network errors. Use it for every RPC error that is logged.
+func Redact(err error) string {
+	return urlKey.ReplaceAllString(err.Error(), "${1}<key>")
 }
 
 func dial(ctx context.Context, u string, chainID uint64) (*rpc.Client, error) {

@@ -18,6 +18,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// RoundTimeout bounds one chain's scan and ledger run.
+const RoundTimeout = 2 * time.Minute
+
 func main() {
 	if err := run(); err != nil {
 		slog.Error("worker stopped", "err", err)
@@ -84,17 +87,20 @@ func (w *worker) round(ctx context.Context) {
 				continue
 			}
 			if r, err = chain.Dial(ctx, spec, w.keys); err != nil {
-				slog.Error("pick RPCs", "chain", id, "err", err)
+				slog.Error("pick RPCs", "chain", id, "err", chain.Redact(err))
 				continue
 			}
 			w.rpcs[id], w.balances[id] = r, ethclient.NewClient(r.Second)
 		}
-		err := watcher.NewChain(w.pool, id, r.Primary).Scan(ctx)
+		// A hanging RPC must not stop the other chains.
+		chainCtx, cancel := context.WithTimeout(ctx, RoundTimeout)
+		err := watcher.NewChain(w.pool, id, r.Primary).Scan(chainCtx)
 		if err == nil {
-			err = w.ledger.ProcessChain(ctx, id)
+			err = w.ledger.ProcessChain(chainCtx, id)
 		}
+		cancel()
 		if err != nil {
-			slog.Error("worker round", "chain", id, "err", err)
+			slog.Error("worker round", "chain", id, "err", chain.Redact(err))
 			w.close(id)
 		}
 	}

@@ -48,8 +48,10 @@ func TestMoneyLoop(t *testing.T) {
 	bin := build(t)
 
 	chains := filepath.Join(t.TempDir(), "chains.json")
-	if err := os.WriteFile(chains, fmt.Appendf(nil, `{"anvil": {"chainId": %d, "infura": null, "public": [%q]}}`,
-		chaintest.ChainID, anvil.URL), 0o600); err != nil {
+	// Two host names for the one Anvil: the worker needs a second, independent RPC for balances (D-15).
+	second := strings.Replace(anvil.URL, "127.0.0.1", "localhost", 1)
+	if err := os.WriteFile(chains, fmt.Appendf(nil, `{"anvil": {"chainId": %d, "infura": null, "public": [%q, %q]}}`,
+		chaintest.ChainID, anvil.URL, second), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	apiAddr := freeAddr(t)

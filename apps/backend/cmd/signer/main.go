@@ -60,7 +60,7 @@ func run() error {
 	for {
 		ids, err := chain.Enabled(ctx, pool)
 		if err != nil {
-			slog.Error("signer round", "err", err)
+			slog.Error("signer round", "err", chain.Redact(err))
 		}
 		for _, id := range ids {
 			if _, ok := rpcs[id]; ok {
@@ -73,13 +73,13 @@ func run() error {
 			}
 			r, err := chain.Dial(ctx, spec, cfg.Chains.InfuraKeys)
 			if err != nil {
-				slog.Error("pick RPCs", "chain", id, "err", err)
+				slog.Error("pick RPCs", "chain", id, "err", chain.Redact(err))
 				continue
 			}
 			rpcs[id], clients[id] = r, ethclient.NewClient(r.Primary)
 		}
 		if err := signer.Run(ctx); err != nil {
-			slog.Error("signer round", "err", err)
+			slog.Error("signer round", "err", chain.Redact(err))
 			for id, r := range rpcs { // pick RPCs again next round
 				r.Close()
 				delete(rpcs, id)

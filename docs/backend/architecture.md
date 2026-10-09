@@ -74,8 +74,10 @@ idempotency from [Brandur Leach](https://brandur.org/idempotency-keys).
 `worker` and `signer` read the shared chain list (`CHAINS_FILE`, `packages/contracts/chains.json`) and
 `INFURA_API_KEYS`, and serve the chains enabled in the `chains` table. `internal/chain` picks RPCs like
 `script/rpc.mjs`: each Infura key, then public RPCs, only URLs whose `eth_chainId` matches. The first working one
-reads the chain; the next one on another host checks balances (D-15). After any error the next round picks again, so a
-rate-limited key is skipped. Every `POLL_INTERVAL` the worker runs, per chain, a watcher scan then the ledger; the
+reads the chain; the next one on another host checks balances (D-15). A chain without two working hosts is not
+served (Tempo Moderato lists one RPC: add a second before enabling it). After any error the next round picks again,
+so a rate-limited key is skipped. Logged RPC errors are redacted: go-ethereum puts the URL, Infura key included, in
+network errors. Each chain's round has a 2-minute limit. Every `POLL_INTERVAL` the worker runs, per chain, a watcher scan then the ledger; the
 signer runs its due intents. The gate starts all three binaries against Postgres and Anvil, creates an invoice through
 the API, pays it and waits for detected → paid → settled with the deposit going detected → confirmed.
 
