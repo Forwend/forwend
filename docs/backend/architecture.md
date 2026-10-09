@@ -69,6 +69,22 @@ ledger designs from [Modern Treasury](https://www.moderntreasury.com/journal/acc
 [pgledger](https://github.com/pgr0ss/pgledger) and [Stripe](https://stripe.dev/blog/ledger-stripe-system-for-tracking-and-validating-money-movement),
 idempotency from [Brandur Leach](https://brandur.org/idempotency-keys).
 
+## Watcher
+
+`internal/watcher` (R-20), one `Chain` per chain; never two at once for one chain (they would race on the cursor).
+Each `Scan` reads the RPC's `finalized` and `latest` blocks, then `eth_getLogs` for `Transfer` from the invoices'
+tokens to their receive addresses, from just above the last finalized block (or the oldest `detected` row) to latest,
+in ranges of at most 2,000 blocks. One transaction then:
+- marks `detected` rows that are no longer on the chain `reorged` (before inserting, so a re-mined copy can be live);
+- inserts each deposit, `confirmed` when its block is at or below `finalized` (D-45), else `detected`; a `reorged` row
+  whose block is canonical again comes back;
+- moves `chain_cursors`.
+Only the invoice's own token counts, and the row stores the emitting contract, so the foreign key also rejects a
+look-alike. Block hashes and times come from the RPC, never computed in Go. Arc's native-coin `Transfer` logs (system
+emitter `0xffff…fffe`) are ignored; "paid" is decided from `balanceOf` (F049). A chain's first scan starts at its
+finalized block: deposits before it are not looked for. Scanning the same range again changes nothing, so a restarted
+worker resumes from the cursor.
+
 ## Invoice state machine
 ```
 open ──deposit seen──▶ detected ──confirmed < amount──▶ partially_paid ──confirmed ≥ amount──▶ paid

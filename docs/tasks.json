@@ -4822,7 +4822,7 @@
         "F044",
         "F045"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend"
       ],
@@ -4839,7 +4839,86 @@
         "2026-10-09 From F045 review: mark a transfer reorged before inserting its re-mined copy (otherwise a different log_index lets both stay live); on a reorg back to the original block (A->B->A) set the old row live again, since (chain_id, block_hash, log_index) is unique; decide how to store Arc native-coin Transfer logs (0xffff...fffe emitter), which the transfer->invoice token FK rejects. Book only confirmed transfers; the DB rejects other bookings and any change to a booked transfer."
       ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T14:47:13Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.6,
+            "log": "docs/runs/F048-20261009T144713Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F048-20261009T144713Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F048-20261009T144713Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F048-20261009T144713Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F048-20261009T144713Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.2,
+            "log": "docs/runs/F048-20261009T144713Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": "docs/runs/F048-20261009T144713Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.8,
+            "log": "docs/runs/F048-20261009T144713Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F048-20261009T144713Z-keep.log"
+          }
+        ],
+        "taskHash": "9ae09311b07b415e",
+        "filesHash": "f63b591b888beebe",
+        "proof": {
+          "1": "backend: TestDepositIsDetectedThenConfirmed on Anvil: a 5 USDC MockToken transfer to a receive address is a detected row (amount, sender, block time), still detected one block short of finalized, confirmed once its block is finalized; mutation of the finality comparison fails it",
+          "2": "backend: TestOnlyTheInvoiceTokenToAReceiveAddressCounts: a look-alike MockToken (also a listed token of another invoice) sending to the receive address, and the real token sending to an unknown address, add no row; without the token check the foreign key rejects the row",
+          "3": "backend: TestReorgMarksTheDepositReorged: anvil_reorg drops the block and the row becomes reorged; the same signed tx mined again is a new detected row; a new Chain (restarted worker) scanning twice adds nothing and later confirms it (2 rows total)"
+        }
+      },
+      "branch": "feat/f048-the-watcher-records-only-real-deposits-o",
+      "baseCommit": "9cf7af41ebc0d3fbae2ca63321650423960ff6bf",
+      "failedVerifies": 0
     },
     {
       "id": "F049",
@@ -4934,7 +5013,9 @@
         "packages/ui-web/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-09 From F048: cmd/worker does not run the watcher yet. Wire a loop calling watcher.NewChain(pool, chainID, rpcClient).Scan per enabled chain, with per-chain RPC URLs in config (only internal/config reads env), before the gate can see detected -> confirmed."
+      ],
       "blockedReason": null,
       "evidence": null
     },
@@ -5830,9 +5911,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-09T13:54:36Z",
+    "at": "2026-10-09T14:40:51Z",
     "clean": true,
     "problems": [],
-    "note": "F043, F044, F059, F045, F046 merged (PRs #49-#53). F046: local Privy token check + profile owner middleware, not yet wired (F047 notes say how). Next: F047 invoice API or F048 watcher."
+    "note": "This session merged F043, F044, F059, F045, F046, F047, F060 (PRs #49-#55). API: POST/GET invoices with Privy JWKS auth. Next: F048 watcher, or start F052 (Q-4 answered, Privy app in apps/backend/.env)."
   }
 }
