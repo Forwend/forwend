@@ -4999,7 +4999,7 @@
       "dependsOn": [
         "F057"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "ui-unit"
       ],
@@ -5097,11 +5097,18 @@
           "summary": "All 29 moved functions unchanged except shared field constant rename; all 52 named exports preserved. Client boundaries, imports and Tailwind discovery remain correct; no deleted-file imports or protected backend/contracts changes. Full verification and browser tests passed.",
           "at": "2026-10-09T11:27:41Z",
           "filesHash": "85c0d6bb772f27f5"
-        }
+        },
+        "commit": "b019113",
+        "doneAt": "2026-10-09T11:27:43Z"
       },
       "branch": "refactor/f058-give-shared-ui-components-and-hooks-conc",
       "baseCommit": "2fbc8b7c765fed4d483a62139b77e0f744126f1a",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f058-give-shared-ui-components-and-hooks-conc",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
