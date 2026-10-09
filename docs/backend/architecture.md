@@ -87,6 +87,27 @@ times come from the RPC, never computed in Go. Arc's native-coin `Transfer` logs
 chain's first scan starts at its finalized block: deposits before it are not looked for. Scanning again changes
 nothing, so a restarted worker resumes from the cursor.
 
+## Signer
+
+`internal/settlement` (R-22), one `Signer` per executor key. When the ledger marks an invoice `paid` it queues one
+settlement intent (unique per invoice) in the same transaction. For each due intent the signer:
+1. If a settle is already saved (`sent`), finishes it first, whatever changed since: the receiver's own `settled()`
+   decides. The saved bytes must decode to `settle()` on this receiver on this chain with the saved hash.
+2. Otherwise re-reads the terms and refuses for good (`refused` with a reason, nothing sent) unless the invoice is
+   `paid`, the recipient is the profile's wallet, the factory is the compiled one and the terms recompute the stored
+   receive address; also when `factory.status` predicts another address or the settler is not this executor
+   (deadline passed: the refund authority must act).
+3. Waits and retries (back to `pending` with a reason; 1 min doubling to 1 h) on temporary conditions: wrong chain,
+   balance below the amount, not settleable (paused), a mined settle that left the receiver unsettled, or a saved
+   settle whose nonce another transaction took.
+4. Deploys the receiver if needed (`deploy` is idempotent), signs `settle()` with the chain's own gas estimate, saves
+   sender, nonce, hash and signed bytes, then sends. After a crash it sends the same saved bytes again (same nonce, so
+   at most one settle can be mined). The contract's `AlreadySettled` is a last guard.
+5. Once `settled()` is true, in one transaction: intent `confirmed`, a `settlement` ledger transaction (receiver and
+   recipient_payable each −amount; one per invoice) and the invoice's `settlement_status` `settled`.
+It signs only `factory.deploy(terms)` and `receiver.settle()`. Known limits: no fee bumping for a stuck transaction
+yet, and the settlement is booked when `settled()` reads true at the latest block, not at the finalized one.
+
 ## Invoice states
 
 `internal/ledger` (R-21) runs after each scan, per invoice, in one transaction with the invoice row locked:

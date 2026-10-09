@@ -140,6 +140,13 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		invoiceID, next, refund); err != nil {
 		return fmt.Errorf("update invoice %s status: %w", invoiceID, err)
 	}
+	if next == Paid && current != Paid {
+		// The signer settles it; one intent per invoice (R-22).
+		if _, err := tx.Exec(ctx, `WITH i AS (INSERT INTO settlement_intents (invoice_id) VALUES ($1) ON CONFLICT DO NOTHING)
+			UPDATE invoices SET settlement_status = 'pending' WHERE id = $1`, invoiceID); err != nil {
+			return fmt.Errorf("queue invoice %s settlement: %w", invoiceID, err)
+		}
+	}
 	return tx.Commit(ctx)
 }
 
@@ -225,4 +232,11 @@ func accountBalance(ctx context.Context, tx pgx.Tx, invoiceID, account string) (
 	}
 	n, _ := new(big.Int).SetString(text, 10)
 	return n, nil
+}
+
+// BookSettlement records that amount left the receive address for the creator: what was owed to them is paid.
+// Call it in the transaction that marks the settlement confirmed; a second one for the invoice is rejected.
+func BookSettlement(ctx context.Context, tx pgx.Tx, invoiceID string, amount *big.Int) error {
+	out := new(big.Int).Neg(amount)
+	return book(ctx, tx, invoiceID, "settlement", nil, out, out, new(big.Int))
 }

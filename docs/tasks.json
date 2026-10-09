@@ -5086,7 +5086,7 @@
         "F043",
         "F049"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -5100,10 +5100,105 @@
       ],
       "review": true,
       "notes": [
-        "2026-10-09 From F045 review: settlement_intents.status 'failed' requires tx_hash, so R-22's 'refused, nothing sent' needs a status without tx_hash (e.g. 'refused') or a relaxed CHECK."
+        "2026-10-09 From F045 review: settlement_intents.status 'failed' requires tx_hash, so R-22's 'refused, nothing sent' needs a status without tx_hash (e.g. 'refused') or a relaxed CHECK.",
+        "2026-10-09 review fail by subagent: Money paths hold: the signer signs only factory.deploy(terms) on the compiled factory and settle() on the locally recomputed receiver, the tx is EIP-155 signed for the invoice chain, and the contract pays exactly amount to the committed recipient once. DB tampering or a lying RPC cannot redirect money or settle twice. Tests pass: go test -count=3 -race ./internal/settlement (ok 22.6s); pnpm --filter @forwend/backend test (all ok). BLOCKING (PoCs run on Anvil in a scratch copy): (1) service.go:92-95,108-111 run the DB checks and the receiver check BEFORE reconcile for status=sent, so an intent whose signed settle is in flight can be marked refused (reason 'recipient is not the profile wallet' after a wallet change, or a glitchy status answer). The tx then mines: recipient got 5000000 on chain, intent refused, settlement_status pending, ledger never books, refused is terminal. Breaks the stated invariant 'refused = nothing sent'. Fix: for sent intents reconcile first; the checks gate signing only. (2) service.go:114-123 and 174/205: transient chain conditions are terminal refusals. PoC: setPaused(true), Run, setPaused(false), Run -> intent refused, recipient 0, nothing resumes it; only a slog.Warn. Same for a lagging RPC's balance < amount, an RPC on the wrong chain, and a reverted settle (Paused, or AlreadySettled after a lagging-node nonce reset, which leaves the chain settled and the ledger not). Fix: retry those with next_attempt_at backoff (and on a reverted receipt re-read status: settled -> confirm); keep refusal for DB term mismatches and settler != executor. NON-BLOCKING: (3) service.go:170-172 confirms on any successful receipt for the stored tx_hash; PoC with a DB-tampered tx_hash -> confirmed and booked while the receiver still holds 6000000. Check the decoded raw_tx To == receiver, data == settle(), or the Settled log. (4) confirm books at latest, not finalized (D-45); a reorged-out settle that is not re-included leaves the ledger saying settled. (5) service.go:151 ignores rows affected of the save UPDATE. (6) service.go:178 uses s.sender, not the saved sender column (key rotation). (7) no fee bump: a stuck deploy makes a new deploy tx every run (125-139); await blocks 60 s per intent sequentially; next_attempt_at never set. (8) service.go:304 panics if a chain has no baseFee. (9) signer does not re-read ledger recipient_payable as architecture.md says (accepted risk in money-safety). (10) tests: 'kill after send' passes via status.settled because Anvil automines, not via the receipt path; nonce-taken path, factory mismatch and chain refusals untested (PoC shows nonce-taken works). (11) 00004 Down fails if refused rows exist. Ledger booking (receiver -amount, recipient_payable +amount, one per invoice, balanced), no secrets logged, stopAfter is unexported/test-only, must-not-change paths untouched.",
+        "2026-10-09 review pass by subagent: Re-review of HEAD 0d61694 (task = git diff HEAD~2). Both blocking findings fixed and verified. (1) service.go:99-102: a sent intent goes straight to reconcile; scratch PoC (wallet changed while the saved settle is unsent) now ends confirmed/settled, recipient 5000000. (2) service.go:120-125,188-218,249-256: wrong chain, balance below amount, not settleable, a mined settle that left the receiver unsettled, and a taken nonce now retry with 1 min doubling to 1 h; PoCs: pause -> pending with reason, unpause -> confirmed; saved settle mined reverted while paused -> pending, then a new settle confirms; nonce taken -> pending, then confirms. Refusal stays only for term mismatch, another predicted address, settler != executor. Non-blocking fixes verified: (3) service.go:177-180 saved bytes must be settle() on this receiver, this chain, saved hash, and confirm needs receiver.settled() (PoC: foreign tx_hash -> error, nothing booked, receiver keeps 6000000); (5) rows-affected check at 159; (6) nonce read for the saved sender at 194; (8) nil BaseFee is an error at 327; (11) Down resets refused rows. No money path changed: still only deploy on the compiled factory and settle on the recomputed receiver; the contract pays exactly amount to the committed recipient once. Runs: go test -count=3 -race ./internal/settlement ok 44.8s; pnpm --filter @forwend/backend test all ok. Still open, documented in architecture.md, not blocking: booking at latest not finalized (D-45); no fee bumping (a stuck deploy adds a new deploy per run; await blocks 60 s per intent); signer does not read ledger recipient_payable (accepted risk in money-safety.md). Minor: service.go:97 formats a nil error with %w when the chain ID differs; plain errors (RPC down, bad saved bytes) retry every run without next_attempt_at backoff; retry drops the old tx hash for the nonce-taken case (only the reason remains)."
       ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T16:07:21Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 16.7,
+            "log": "docs/runs/F050-20261009T160721Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F050-20261009T160721Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F050-20261009T160721Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F050-20261009T160721Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F050-20261009T160721Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 17.3,
+            "log": "docs/runs/F050-20261009T160721Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F050-20261009T160721Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 10.0,
+            "log": "docs/runs/F050-20261009T160721Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F050-20261009T160721Z-keep.log"
+          }
+        ],
+        "taskHash": "d5b341d2f4d63a19",
+        "filesHash": "1e4f8c29c1962d93",
+        "proof": {
+          "1": "backend: TestSettlesAPaidInvoiceOnce on Anvil with the real factory deployed by Deploy.s.sol at the compiled address: a 5 USDC invoice paid 6 goes paid -> intent; the signer re-reads terms, recomputes the address, reads factory.status, deploys the receiver and settles; the recipient gets exactly 5000000, the 1000000 excess stays, ledger receiver 1000000 / owed 0 / held 1000000, invoice settled",
+          "2": "backend: TestSettlesAPaidInvoiceOnce (second intent is a unique violation; a second run sends nothing), TestRestartAfterSavingSendsTheSavedTransaction, TestRestartAfterSendingSendsNothing, TestNonceTakenByAnotherTransaction (reconciled by nonce: signs again, settles once), TestSentSettleIsFinishedEvenIfTheWalletChanged, TestForeignTxHashIsNotConfirmed, TestPausedFactoryIsRetried",
+          "3": "backend: TestRefusesTermsThatDoNotMatch: a profile wallet that is no longer the recipient, and terms changed so they no longer compute the stored receive address, are refused with that reason; executor nonce, recipient and receive balances unchanged"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Re-review of HEAD 0d61694 (task = git diff HEAD~2). Both blocking findings fixed and verified. (1) service.go:99-102: a sent intent goes straight to reconcile; scratch PoC (wallet changed while the saved settle is unsent) now ends confirmed/settled, recipient 5000000. (2) service.go:120-125,188-218,249-256: wrong chain, balance below amount, not settleable, a mined settle that left the receiver unsettled, and a taken nonce now retry with 1 min doubling to 1 h; PoCs: pause -> pending with reason, unpause -> confirmed; saved settle mined reverted while paused -> pending, then a new settle confirms; nonce taken -> pending, then confirms. Refusal stays only for term mismatch, another predicted address, settler != executor. Non-blocking fixes verified: (3) service.go:177-180 saved bytes must be settle() on this receiver, this chain, saved hash, and confirm needs receiver.settled() (PoC: foreign tx_hash -> error, nothing booked, receiver keeps 6000000); (5) rows-affected check at 159; (6) nonce read for the saved sender at 194; (8) nil BaseFee is an error at 327; (11) Down resets refused rows. No money path changed: still only deploy on the compiled factory and settle on the recomputed receiver; the contract pays exactly amount to the committed recipient once. Runs: go test -count=3 -race ./internal/settlement ok 44.8s; pnpm --filter @forwend/backend test all ok. Still open, documented in architecture.md, not blocking: booking at latest not finalized (D-45); no fee bumping (a stuck deploy adds a new deploy per run; await blocks 60 s per intent); signer does not read ledger recipient_payable (accepted risk in money-safety.md). Minor: service.go:97 formats a nil error with %w when the chain ID differs; plain errors (RPC down, bad saved bytes) retry every run without next_attempt_at backoff; retry drops the old tx hash for the nonce-taken case (only the reason remains).",
+          "at": "2026-10-09T16:10:19Z",
+          "filesHash": "1e4f8c29c1962d93"
+        },
+        "commit": "0d61694",
+        "doneAt": "2026-10-09T16:10:35Z"
+      },
+      "branch": "feat/f050-the-signer-settles-a-paid-invoice-once-w",
+      "baseCommit": "7009f97f0258ffd7af23945073183897ccad6d52",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f050-the-signer-settles-a-paid-invoice-once-w",
+        "base": "main"
+      }
     },
     {
       "id": "F051",
@@ -5134,7 +5229,8 @@
       "notes": [
         "2026-10-09 From F048: cmd/worker does not run the watcher yet. Wire a loop calling watcher.NewChain(pool, chainID, rpcClient).Scan per enabled chain, with per-chain RPC URLs in config (only internal/config reads env), before the gate can see detected -> confirmed.",
         "2026-10-09 Correction to the F048 note: no new per-chain RPC variables. The worker reuses packages/contracts/chains.json (one source for chain IDs, Infura names, public RPCs) and INFURA_API_KEYS, with rpc.mjs's rule in Go: try each Infura key, then public RPCs, keep the first whose eth_chainId matches (D-15); move to the next on 429 (S-4 hit Infura rate limits). with-env.sh loads only apps/backend/.env, so INFURA_API_KEYS must be available to the backend too. Anvil (31337) uses its local URL. The second, independent RPC for balanceOf before paid is F049/D-15.",
-        "2026-10-09 From F049: each worker round per chain is watcher.Chain.Scan, then ledger.Service.ProcessChain; build the Service with ledger.BalanceFrom(clients) using RPCs other than the watcher's (D-15), e.g. a public RPC when the watcher uses Infura."
+        "2026-10-09 From F049: each worker round per chain is watcher.Chain.Scan, then ledger.Service.ProcessChain; build the Service with ledger.BalanceFrom(clients) using RPCs other than the watcher's (D-15), e.g. a public RPC when the watcher uses Infura.",
+        "2026-10-09 From F050: cmd/signer needs the executor private key (config, only internal/config reads env; never logged) and one ethclient per chain; loop settlement.NewSigner(pool, key, clients).Run. One Signer per executor key. The gate's 'settled' step is the signer confirming."
       ],
       "blockedReason": null,
       "evidence": null
@@ -6148,7 +6244,7 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-09T15:43:16Z",
+    "at": "2026-10-09T15:50:41Z",
     "clean": true,
     "problems": [],
     "note": "Merged this session: F043-F049, F059-F061 (PRs #49-#58). Money loop: address, API, auth, watcher, ledger/states done; next F050 signer (settle once), then F051 worker wiring + gate. F052 Privy spikes can start (Q-4 answered)."

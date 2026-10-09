@@ -35,17 +35,10 @@ type Terms struct {
 // Receive returns the receiver address the factory deploys for t: a CREATE2 clone (OpenZeppelin
 // Clones.cloneDeterministicWithImmutableArgs) with args = abi.encode(t) and salt = keccak256(args).
 func Receive(t Terms) ([20]byte, error) {
-	if t.Amount == nil || t.Amount.Sign() < 0 || t.Amount.BitLen() > 256 {
-		return [20]byte{}, ErrAmount
+	args, err := t.Encode()
+	if err != nil {
+		return [20]byte{}, err
 	}
-	args := make([]byte, 7*32)
-	copy(args[0:32], t.InvoiceID[:])
-	copy(args[44:64], t.Recipient[:])
-	copy(args[76:96], t.Token[:])
-	t.Amount.FillBytes(args[96:128])
-	binary.BigEndian.PutUint64(args[152:160], t.ExpiresAt)
-	binary.BigEndian.PutUint64(args[184:192], t.SettleDeadline)
-	binary.BigEndian.PutUint64(args[216:224], t.IntendedChainID)
 
 	// Clones._cloneCodeWithImmutableArgs: 0x61 <uint16 len(args)+0x2d> <prefix> <implementation> <suffix> <args>.
 	code := []byte{0x61, 0, 0}
@@ -61,6 +54,22 @@ func Receive(t Terms) ([20]byte, error) {
 	var out [20]byte
 	copy(out[:], hash[12:])
 	return out, nil
+}
+
+// Encode is abi.encode(InvoiceTerms): the clone's immutable args, and the argument of factory.deploy and status.
+func (t Terms) Encode() ([]byte, error) {
+	if t.Amount == nil || t.Amount.Sign() < 0 || t.Amount.BitLen() > 256 {
+		return nil, ErrAmount
+	}
+	args := make([]byte, 7*32)
+	copy(args[0:32], t.InvoiceID[:])
+	copy(args[44:64], t.Recipient[:])
+	copy(args[76:96], t.Token[:])
+	t.Amount.FillBytes(args[96:128])
+	binary.BigEndian.PutUint64(args[152:160], t.ExpiresAt)
+	binary.BigEndian.PutUint64(args[184:192], t.SettleDeadline)
+	binary.BigEndian.PutUint64(args[216:224], t.IntendedChainID)
+	return args, nil
 }
 
 func keccak(parts ...[]byte) []byte {

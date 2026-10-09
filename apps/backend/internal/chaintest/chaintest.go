@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -31,9 +32,10 @@ const ChainID = 31337
 
 // Anvil is a running local chain whose finalized block is always 2 blocks behind the latest.
 type Anvil struct {
-	t   *testing.T
-	URL string
-	RPC *rpc.Client
+	t         *testing.T
+	URL       string
+	RPC       *rpc.Client
+	authority string // the factory's refund authority, impersonated after DeployFactory
 }
 
 // Start runs Anvil on a free port until the test ends.
@@ -86,6 +88,51 @@ func (a *Anvil) DeployToken() string {
 		a.t.Fatalf("forge create: no deployedTo in\n%s", out)
 	}
 	return strings.ToLower(m[1])
+}
+
+var factoryLine = regexp.MustCompile(`factory (0x[0-9a-fA-F]{40})`)
+
+// DeployFactory deploys the v1 factory exactly as on the testnets (script/Deploy.s.sol through the CREATE2
+// deployer, with the testnet refund authority and first executor from deployments.json), so it lands at the same
+// address the Go code has compiled in. Then the refund authority, impersonated, makes Sender the executor, so tests
+// sign with Anvil's key. Returns the factory address in lowercase.
+func (a *Anvil) DeployFactory() string {
+	a.t.Helper()
+	raw, err := os.ReadFile(filepath.Join(contractsDir(), "deployments.json"))
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	var d struct {
+		Chains map[string]struct{ RefundAuthority, Executor string } `json:"chains"`
+	}
+	if err := json.Unmarshal(raw, &d); err != nil {
+		a.t.Fatal(err)
+	}
+	testnet := d.Chains["base-sepolia"]
+	out := a.runEnv([]string{"REFUND_AUTHORITY=" + testnet.RefundAuthority, "EXECUTOR=" + testnet.Executor,
+		"DEPLOYER_PRIVATE_KEY=" + Key}, "forge", "script", filepath.Join(contractsDir(), "script/Deploy.s.sol")+":Deploy",
+		"--root", contractsDir(),
+		"--rpc-url", a.URL, "--broadcast")
+	m := factoryLine.FindStringSubmatch(out)
+	if m == nil {
+		a.t.Fatalf("forge script Deploy: no factory in\n%s", out)
+	}
+	factory := strings.ToLower(m[1])
+	for _, call := range [][]any{{"anvil_setBalance", testnet.RefundAuthority, "0xde0b6b3a7640000"},
+		{"anvil_impersonateAccount", testnet.RefundAuthority}} {
+		if err := a.RPC.Call(nil, call[0].(string), call[1:]...); err != nil {
+			a.t.Fatal(err)
+		}
+	}
+	a.authority = testnet.RefundAuthority
+	a.AsAuthority(factory, "setExecutor(address)", Sender)
+	return factory
+}
+
+// AsAuthority sends a call from the factory's refund authority (after DeployFactory).
+func (a *Anvil) AsAuthority(to, sig string, args ...string) {
+	a.t.Helper()
+	a.run("cast", append([]string{"send", "--rpc-url", a.URL, "--unlocked", "--from", a.authority, to, sig}, args...)...)
 }
 
 // Mint gives the sender tokens.
@@ -187,9 +234,18 @@ func (a *Anvil) SendRaw(raw string) {
 
 func (a *Anvil) run(name string, args ...string) string {
 	a.t.Helper()
+	return a.runEnv(nil, name, args...)
+}
+
+func (a *Anvil) runEnv(env []string, name string, args ...string) string {
+	a.t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, name, args...).Output()
+	cmd := exec.CommandContext(ctx, name, args...)
+	if env != nil {
+		cmd.Env = append(os.Environ(), env...)
+	}
+	out, err := cmd.Output()
 	if err != nil {
 		stderr := ""
 		if ee, ok := err.(*exec.ExitError); ok {
