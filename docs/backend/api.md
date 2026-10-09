@@ -7,7 +7,7 @@ Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/profiles`, `POS
 
 - `apps/backend/api/openapi.yaml` (OpenAPI 3.1) describes every route; change it before code.
 - Go request and response types are written by hand in `internal/httpapi` until a generator is added (oapi-codegen
-  for Go, openapi-typescript for web); keep them equal to the spec.
+  for Go); the web app's are in `apps/web/src/types/app/` (see docs/web/architecture.md). Keep them equal to the spec.
 
 ## Routes
 

@@ -1,0 +1,82 @@
+import { readFileSync } from "node:fs";
+import { parseEnv } from "node:util";
+import AxeBuilder from "@axe-core/playwright";
+import { expect, type Page, test } from "@playwright/test";
+
+const { PRIVY_TEST_EMAIL: email = "", PRIVY_TEST_OTP: code = "" } = parseEnv(
+  readFileSync(".env", "utf8"),
+) as Record<string, string>;
+
+async function blockingViolations(page: Page) {
+  const { violations } = await new AxeBuilder({ page }).analyze();
+  return violations
+    .filter((v) => v.impact === "serious" || v.impact === "critical")
+    .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
+}
+
+async function signIn(page: Page) {
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByPlaceholder("your@email.com").fill(email);
+  await page.keyboard.press("Enter");
+  // Privy focuses the first code box and moves forward as each digit is typed.
+  await expect(page.getByRole("dialog")).toContainText(/code/i);
+  await page.keyboard.type(code);
+}
+
+test("a signed-out visit to /app goes to sign-in", async ({ page }) => {
+  await page.goto("/app");
+  await expect(page).toHaveURL("/sign-in");
+  await expect(page.getByRole("heading", { name: "Sign in to Forwend" })).toBeVisible();
+});
+
+test("the Privy test account signs in and lands in the app shell with its personal profile", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  // The real sign-in page, with Privy ready on its allowed origin.
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+  expect(await blockingViolations(page)).toEqual([]);
+
+  // Privy's selectors (placeholder, dialog wording) hold for the pinned @privy-io/react-auth version.
+  const signedUp = page.waitForResponse(
+    (r) => r.url().endsWith("/api/v1/me") && r.request().method() === "POST",
+  );
+  await signIn(page);
+  await expect(page).toHaveURL("/app", { timeout: 30_000 });
+  // The account signed up on an earlier run, so this is the repeat call: 200 with the same profile (201 the first
+  // time). The backend tests cover the first signup.
+  expect([200, 201]).toContain((await signedUp).status());
+
+  // The shell: sidebar, top bar with the profile and theme switchers.
+  await expect(page.getByRole("navigation", { name: "App" })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Profile" })).toHaveText("Personal");
+  await expect(page.getByRole("heading", { level: 1, name: "Personal" })).toBeVisible();
+  // POST /v1/me made the personal profile and its wallet.
+  await expect(page.getByText(/^0x[0-9a-f]{4}/)).toBeVisible();
+  // Privy's own sign-in dialog is closed by now; axe checks our shell.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(await blockingViolations(page)).toEqual([]);
+
+  const theme = await page.locator("html").getAttribute("data-theme");
+  await page.getByRole("button", { name: /theme|dark|light/i }).click();
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme", theme ?? "");
+
+  // Signing in again finds the same single personal profile.
+  await page.reload();
+  await page.getByRole("combobox", { name: "Profile" }).click();
+  await expect(page.getByRole("option", { name: "Personal" })).toHaveCount(1);
+  await page.keyboard.press("Escape");
+
+  // When the api fails, the user can retry or sign out, never stuck in the app.
+  await page.route("**/api/v1/me", (route) => route.fulfill({ status: 500 }));
+  await page.reload();
+  // Next.js adds its own route announcer alert; pick ours by its text.
+  await expect(
+    page.getByRole("alert").filter({ hasText: "We could not load your profiles" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL("/sign-in");
+  await page.unroute("**/api/v1/me");
+  await page.goto("/app");
+  await expect(page).toHaveURL("/sign-in");
+});

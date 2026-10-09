@@ -4,7 +4,8 @@ Next.js app: landing page, private `/kit`, later dashboard and checkout.
 
 ## Commands
 
-- `pnpm dev` from the root (http://localhost:3000; `/kit` needs `KIT_ENABLED=1`).
+- `pnpm dev` from the root (http://localhost:3000; `/kit` needs `KIT_ENABLED=1`). Sign-in and `/app` need
+  `apps/web/.env` (copy `.env.example`) and the backend api at `API_URL`.
 - `pnpm --filter @forwend/web test` (Vitest), `e2e` (Playwright), `lighthouse`.
 
 ## Read before writing code

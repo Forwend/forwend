@@ -4,6 +4,8 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "env": ["API_URL", "NEXT_PUBLIC_PRIVY_APP_ID"],
       "outputs": [".next/**", "!.next/cache/**", "out/**"]
     },
     "typecheck": {
