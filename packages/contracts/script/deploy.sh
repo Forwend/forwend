@@ -45,4 +45,7 @@ refund=$(tx "$at" "refund(address,uint256)" "$EXECUTOR" "$extra" --private-key "
 
 [ $(($(balance "$recipient") - before)) -eq "$amount" ] || { echo "recipient not paid exactly $amount" >&2; exit 1; }
 [ "$(balance "$at")" -eq 0 ] || { echo "receiver not empty" >&2; exit 1; }
-echo "flow receiver=$at pay=$pay deploy=$deploy settle=$settle refund=$refund"
+# statusOf: (receiver, deployed, onIntendedChain, balance, settled, refundable, ...) must read settled and empty.
+status=$(cast call "$factory" "statusOf(bytes32)((address,bool,bool,uint256,bool,uint256,bool,address,uint64))" "$id" --rpc-url "$rpc")
+grep -qi "^($at, true, true, 0, true, 0, " <<<"$status" || { echo "statusOf mismatch: $status" >&2; exit 1; }
+echo "flow invoiceId=$id receiver=$at pay=$pay deploy=$deploy settle=$settle refund=$refund"

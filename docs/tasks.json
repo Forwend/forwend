@@ -3824,7 +3824,7 @@
       "dependsOn": [
         "F041"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "contracts",
         "lint"
@@ -3838,7 +3838,67 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-09T00:28:19Z",
+        "checks": [
+          {
+            "id": "contracts",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.7,
+            "log": "docs/runs/F040-20261009T002819Z-contracts.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F040-20261009T002819Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F040-20261009T002819Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.0,
+            "log": "docs/runs/F040-20261009T002819Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F040-20261009T002819Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.7,
+            "log": "docs/runs/F040-20261009T002819Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F040-20261009T002819Z-keep.log"
+          }
+        ],
+        "taskHash": "ec5e4627de0730f0",
+        "filesHash": "dbf3407ee3de32d1"
+      },
+      "branch": "chore/f040-the-testnet-factory-and-probe-receiver-a",
+      "baseCommit": "0e201ced11172649a72ca2c6eda97bd42e147bf9",
+      "failedVerifies": 0
     },
     {
       "id": "F041",
@@ -3958,9 +4018,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-08T22:49:01Z",
+    "at": "2026-10-09T00:23:01Z",
     "clean": true,
     "problems": [],
-    "note": "F038 merged. F039 (review fixes + status views) verified and review-passed on its branch, blocked until Sasha's audit results. F040 redeploy queued after F039. F033 still queued."
+    "note": "F039 (PR #39) and F041 audit follow-ups (PR #40) merged. Audit branch claude/jolly-einstein-ljwgtw read only, not merged. Next: F040 redeploy testnets with new code; F033 landing refund line."
   }
 }
