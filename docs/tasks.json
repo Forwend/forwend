@@ -6560,7 +6560,7 @@
         "docs/PROJECT.md has R-31 (internal/privy wallets), R-32 (signup and profiles API), R-33 (balances and activity API), R-34 (login and app shell), R-35 (profiles, receive, balances and activity in the app), R-36 (re-authentication spike), and D-46 recording option A from the S-1 to S-3 spike"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -6638,11 +6638,18 @@
         "filesHash": "65628745d3baa686",
         "proof": {
           "1": "docs-check: docs/PROJECT.md now lists R-31 to R-36 and D-46; docs-check validates its links"
-        }
+        },
+        "commit": "2734342",
+        "doneAt": "2026-10-09T18:34:25Z"
       },
       "branch": "docs/f063-phase-7-is-defined-requirements-r-31-to",
       "baseCommit": "0e0744e0c4b46d973a0f637607db6e0ff00e0420",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f063-phase-7-is-defined-requirements-r-31-to",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
