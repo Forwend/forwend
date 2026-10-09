@@ -4101,7 +4101,7 @@
         "Migrations (goose, embedded) run twice on an empty database and both runs exit 0"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -4172,11 +4172,23 @@
           }
         ],
         "taskHash": "bc4b2af34644d08e",
-        "filesHash": "4e279542d9393e9b"
+        "filesHash": "4e279542d9393e9b",
+        "commit": "3f67cdb",
+        "doneAt": "2026-10-09T10:31:31Z",
+        "proof": {
+          "1": "backend check: gofmt, go vet, go test ./... pass; CI installs Go and runs them in pnpm test",
+          "2": "backend: internal/httpapi TestHealthz (200 ok, 503 when the database is closed); api binary smoke run returned {\"status\":\"ok\"} 200",
+          "3": "backend: internal/database TestMigrateTwiceOnEmptyDatabase"
+        }
       },
       "branch": "feat/f042-the-go-backend-builds-tests-and-starts-a",
       "baseCommit": "04557e9c6ebd6a678c67dfc259b125a04692a8b2",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f042-the-go-backend-builds-tests-and-starts-a",
+        "base": "main"
+      }
     },
     {
       "id": "F043",
