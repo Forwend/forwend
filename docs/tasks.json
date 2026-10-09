@@ -4999,28 +4999,115 @@
       "dependsOn": [
         "F057"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "ui-unit"
       ],
-      "refs": [],
+      "refs": [
+        "R-27"
+      ],
       "keep": [
         "apps/backend/*",
         "packages/contracts/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-09 Repository cleanup implemented and verified in F056-F058: concise guidance, reliable shared checks, API shutdown and errors, named UI files. F056 and F057 merged; F058 is awaiting review and PR delivery. No further product work is part of this request.",
+        "2026-10-09 review pass by independent-review: All 29 moved functions unchanged except shared field constant rename; all 52 named exports preserved. Client boundaries, imports and Tailwind discovery remain correct; no deleted-file imports or protected backend/contracts changes. Full verification and browser tests passed."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T11:26:26Z",
+        "checks": [
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F058-20261009T112626Z-ui-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F058-20261009T112626Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F058-20261009T112626Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F058-20261009T112626Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.6,
+            "log": "docs/runs/F058-20261009T112626Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.7,
+            "log": "docs/runs/F058-20261009T112626Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.9,
+            "log": "docs/runs/F058-20261009T112626Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.2,
+            "log": "docs/runs/F058-20261009T112626Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F058-20261009T112626Z-keep.log"
+          }
+        ],
+        "taskHash": "7a837467ea56991a",
+        "filesHash": "85c0d6bb772f27f5",
+        "proof": {
+          "1": "typecheck: unchanged public exports resolve through named component files and hooks/use-copy",
+          "2": "e2e: browser flows and accessibility pass; ui-unit covers clipboard, money, payment status, motion and theme"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-review",
+          "summary": "All 29 moved functions unchanged except shared field constant rename; all 52 named exports preserved. Client boundaries, imports and Tailwind discovery remain correct; no deleted-file imports or protected backend/contracts changes. Full verification and browser tests passed.",
+          "at": "2026-10-09T11:27:41Z",
+          "filesHash": "85c0d6bb772f27f5"
+        }
+      },
+      "branch": "refactor/f058-give-shared-ui-components-and-hooks-conc",
+      "baseCommit": "2fbc8b7c765fed4d483a62139b77e0f744126f1a",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-09T10:56:30Z",
-    "clean": false,
-    "problems": [
-      "e2e failed (log docs/runs/wrapup-20261009T105627Z-e2e.log)",
-      "debug leftover scripts/check-images.mjs:38: console.log("
-    ],
-    "note": "Structure and backend audit only; existing F055 changes retained. Backend uncached race tests and build passed. Temporary fixtures reproduced stale verification after check-time edits and API shutdown cutting an active request; configured backend-e2e has no script and exits 0. Findings reported to owner; no implementation changes or delivery performed. F055 still awaits independent review."
+    "at": "2026-10-09T11:27:15Z",
+    "clean": true,
+    "problems": [],
+    "note": "Repository cleanup implemented and verified in F056-F058: concise guidance, reliable shared checks, API shutdown and errors, named UI files. F056 and F057 merged; F058 is awaiting review and PR delivery. No further product work is part of this request."
   }
 }

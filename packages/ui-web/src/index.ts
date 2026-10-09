@@ -1,28 +1,35 @@
+export { Accordion } from "./components/accordion";
+export { ActivityRow } from "./components/activity-row";
 export { Address } from "./components/address";
+export { Badge } from "./components/badge";
 export { Button, buttonClasses } from "./components/button";
-export {
-  Badge,
-  EmptyState,
-  NavPill,
-  Panel,
-  Skeleton,
-  Toast,
-} from "./components/display";
+export { Checkbox } from "./components/checkbox";
+export { CodeBlock } from "./components/code-block";
+export { Dialog } from "./components/dialog";
+export { DotLoader } from "./components/dot-loader";
 export { EmailCapture } from "./components/email-capture";
-export { Checkbox, SelectField, Switch, TextField } from "./components/fields";
-export { Accordion, CodeBlock, Dialog, Tabs, Tooltip, useCopy } from "./components/interactive";
-export { DotLoader, ProgressBar, Shimmer, Spinner, SuccessCheck } from "./components/motion";
-export {
-  ActivityRow,
-  Money,
-  NetworkWarning,
-  PaymentTimeline,
-  QrCode,
-  StatTile,
-  StatusPill,
-  TokenChip,
-} from "./components/payments";
+export { EmptyState } from "./components/empty-state";
+export { Money } from "./components/money";
+export { NavPill } from "./components/nav-pill";
+export { NetworkWarning } from "./components/network-warning";
+export { Panel } from "./components/panel";
+export { PaymentTimeline } from "./components/payment-timeline";
+export { ProgressBar } from "./components/progress-bar";
+export { QrCode } from "./components/qr-code";
+export { SelectField } from "./components/select-field";
+export { Shimmer } from "./components/shimmer";
+export { Skeleton } from "./components/skeleton";
+export { Spinner } from "./components/spinner";
+export { StatTile } from "./components/stat-tile";
+export { StatusPill } from "./components/status-pill";
+export { SuccessCheck } from "./components/success-check";
+export { Switch } from "./components/switch";
+export { Tabs } from "./components/tabs";
+export { TextField } from "./components/text-field";
 export { ThemeSwitch } from "./components/theme-switch";
+export { Toast } from "./components/toast";
+export { TokenChip } from "./components/token-chip";
+export { Tooltip } from "./components/tooltip";
 export { ACTIVITY_DIRECTIONS } from "./constants/activity";
 export { BUTTON_SIZES, BUTTON_VARIANTS } from "./constants/button";
 export { CAPTURE_STATUS } from "./constants/email-capture";
@@ -30,6 +37,7 @@ export { PANEL_TONES } from "./constants/panel";
 export { PAYMENT_STATUS, PAYMENT_STATUSES } from "./constants/payment-status";
 export { STEP_STATES } from "./constants/timeline";
 export { TONES } from "./constants/tone";
+export { useCopy } from "./hooks/use-copy";
 export { BrandIcon } from "./icons/brand-icon";
 export { FreelancerIcon, MerchantIcon, PaymentPathIcon } from "./icons/custom-icons";
 export { Logo, LogoMark } from "./icons/logo";

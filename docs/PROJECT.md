@@ -67,6 +67,7 @@ Use harness `status` for progress.
 | R-24 | Privy works from Go for login and profile wallets (spikes S-1…S-3). | Given a Privy test app, when the spike program verifies an access token, creates and looks up a wallet per profile (several for one user), and tries a sponsored USDC send on Base Sepolia, then `docs/spikes/s1-s3-privy.md` records each result and the decision. | manual: agent, spike notes | PLAN S-1…S-3, Q-4 |
 | R-25 | Repository guidance has one owner per topic and checks cannot report false success. | Given the instruction map and check registry, when docs-check and harness regression tests run, then links and decision IDs resolve, changed inputs invalidate evidence, and missing checks cannot pass. | docs-check, harness | Owner cleanup request |
 | R-26 | API shutdown drains active responses and reports failure. | Given an active request, when termination starts, then its response completes before normal exit; a shutdown deadline closes the connection and returns an error. Database errors identify their operation and retain their cause. | backend | Owner skeleton review |
+| R-27 | Shared UI components and hooks are easy to locate by name. | Given the UI package, when a component or hook changes, then its name identifies its source file and the package exports, rendering and behavior remain unchanged. | typecheck, ui-unit, e2e | Owner structure cleanup |
 
 ## Decisions
 

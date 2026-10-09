@@ -9,7 +9,7 @@ import { isEmail } from "@/lib/waitlist";
 import type { WaitlistFormProps } from "@/types/landing/props";
 
 // mock: no network request and no storage. The confirmation is shown locally only.
-// Replace with a real signup store before the site is public (PLAN C-09).
+// Replace with a real signup store before the site is public (PROJECT D-8).
 export function WaitlistForm({ id }: WaitlistFormProps) {
   const [status, setStatus] = useState<CaptureStatus>(CAPTURE_STATUS.idle);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);

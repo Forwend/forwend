@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// The waitlist is a mock until the site is public (PLAN C-09): it must never send or store data.
+// The waitlist is a mock until the site is public (PROJECT D-8): it must never send or store data.
 test.describe("mock waitlist", () => {
   test("confirms a valid email without starting any network request", async ({ page }) => {
     await page.goto("/");

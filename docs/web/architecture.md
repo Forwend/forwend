@@ -13,6 +13,9 @@ Whole system: [architecture.md](../architecture.md).
 | `apps/web` | Pages and page-specific sections (landing, kit). Imports tokens and components; adds no raw colors or sizes. |
 | `/kit` | Shows every token and component with all states; private (`KIT_ENABLED=1`, `noindex`, not in the sitemap) (D-5, R-4). |
 
+In `ui-web/src`, `components/<component-name>.tsx` owns each component, `hooks/` holds shared React hooks,
+and `index.ts` is the public import surface. Shared field classes live in `constants/field.ts`.
+
 ## Visual direction
 
 A Dawn Path for marketing, B Dusk Ledger's dark framed product sections, C Halftone Horizon's dots as a secondary
