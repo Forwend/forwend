@@ -11,12 +11,28 @@ Runner regression tests live in `tests/test_harness.py`. No installed skill is n
 2. For new work, add a requirement in [PROJECT.md](PROJECT.md), then `add "behavior" --type fix --accept "..." --check CHECK --ref R-N --keep "path/*"`.
    Define unclear scope before coding. Split independent changes into tasks. Do not start unrelated queued product work.
 3. `start ID` creates the task branch from the latest base. Finish a pending PR before another task.
-4. Reproduce bugs first. Make the smallest fix and run its direct checks. Add tests for behavior, not formatting or copied prose.
+4. Before creating or moving files, read the owning structure rules: [web/UI](web/structure.md), [backend](backend/rules.md).
+   Identify the owner, filename and allowed dependencies; search for existing code before adding another shared helper.
+   Reproduce bugs first. Make the smallest fix and run its direct checks. Add tests for behavior, not formatting or copied prose.
 5. `verify ID --proof "1=CHECK: evidence" ...` runs task and required checks. Each acceptance line needs a named check.
 6. If review is required, a fresh reviewer reads `show ID` and the diff, then runs `review ID --pass|--fail --summary "findings"`.
 7. With commit/push/merge authorization, commit the verified files and run `done ID`. It pushes, opens the PR, checks CI and merges.
    Pending CI: repeat `done ID`. Failed CI: fix, verify, review and commit again. Approval or closed PR: ask the owner.
 8. Before stopping: `wrapup --note "result; next step"`. Resolve failures or report the exact remaining blocker.
+
+## Structure review
+
+Before verification, inspect added and moved paths and their imports against the owning structure rules.
+A reviewer checks feature ownership, concrete names, grouped UI families, dependency direction, and whether a
+growing file mixes independent responsibilities. No empty scaffolding, catch-all modules, duplicate request
+layers or arbitrary file-size limits. Explain any necessary exception in the task proof or review.
+
+For a refactor, acceptance must require unchanged behavior and public contracts, updated imports/exports and
+test discovery, and the relevant existing checks. Record unrelated cleanup separately rather than expanding
+the task. The structure rules do not authorize adding dependencies or moving code outside the task scope.
+
+`docs-check` validates documentation links and decision IDs, not source architecture. Structure review is
+manual until a task explicitly adds import-boundary checks; do not claim that passing lint proves ownership.
 
 ## Evidence and scope
 

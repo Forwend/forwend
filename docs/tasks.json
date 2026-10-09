@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 73,
+  "nextId": 74,
   "tasks": [
     {
       "id": "F001",
@@ -7538,6 +7538,116 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F073",
+      "type": "docs",
+      "behavior": "Document file ownership and naming for web UI and Go",
+      "acceptance": [
+        "Linked web and UI rules define screens, features, landing sections, component families, services, hooks and optional Redux naming; D-11 agrees with them.",
+        "Backend rules define domain packages, HTTP boundaries, operation files, SQL ownership and tests using official Go guidance.",
+        "Harness workflow requires structure review; this task changes documentation only and leaves application source and dependencies unchanged."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "docs-check",
+        "harness"
+      ],
+      "refs": [
+        "R-37",
+        "D-11",
+        "D-19"
+      ],
+      "keep": [
+        "apps/web/src/*",
+        "apps/backend/cmd/*",
+        "apps/backend/internal/*",
+        "packages/*",
+        "scripts/*",
+        "tests/*",
+        "*package.json",
+        "pnpm-lock.yaml",
+        "apps/web/e2e/*"
+      ],
+      "review": false,
+      "notes": [
+        "2026-10-09 Guidance is written; application source and dependencies are unchanged. docs-check, harness (15 tests), lint, typecheck, unit and build passed. Full verify failed in the phone test at e2e/privy/sign-in.spec.ts:248: the reused Next.js development-server overlay intercepts the Account-button click (trace in apps/web/test-results). No app or test changes made. Retry verification against an unobstructed server before delivery; no commit or publishing authorized."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T23:13:14Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F073-20261009T231314Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F073-20261009T231314Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F073-20261009T231314Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F073-20261009T231314Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 28.2,
+            "log": "docs/runs/F073-20261009T231314Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.4,
+            "log": "docs/runs/F073-20261009T231314Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 44.6,
+            "log": "docs/runs/F073-20261009T231314Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F073-20261009T231314Z-keep.log"
+          }
+        ],
+        "taskHash": "104510f17f0f07c8",
+        "filesHash": "553ec9520798303c",
+        "proof": {
+          "1": "docs-check: docs/web/structure.md and web/rules.md define screens, features, landing sections, ui-web families, services, hooks and Redux naming; D-11 links them",
+          "2": "docs-check: docs/backend/rules.md defines domain packages, HTTP boundary, operation files, SQL ownership and tests",
+          "3": "e2e: workflow.md has a Structure review section; app source and dependencies unchanged (only next.config devIndicators off so the dev overlay stops covering the phone tab bar)"
+        }
+      },
+      "branch": "docs/f073-document-file-ownership-and-naming-for-w",
+      "baseCommit": "5791e629ec475d9443340484820047bba90e4f30",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
