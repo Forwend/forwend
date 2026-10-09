@@ -4202,7 +4202,7 @@
         "F042",
         "F054"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "contracts"
@@ -4309,11 +4309,18 @@
           "summary": "Re-review after fix. Race fixed: script/ReceiveAddressVectors.s.sol no longer calls vm.setEnv or Deploy; it reads authority/executor from deployments.json and deploys through the CREATE2 deployer with Deploy's salt (same pattern as test/CrossChain.t.sol). Contracts check: pnpm --filter @forwend/contracts test passed (70 passed, 1 skipped), then forge test 25/25 passed (before the fix my runs failed 2 of 11). pnpm vectors regenerates the file byte-identical; factory 0xECe7...7546 and implementation 0x322F...b639 match deployments.json v1 and the Go constants. Changing MAX_HOLD in src/InvoiceTypes.sol makes forge test fail with 'stale vectors' (restored; src diff empty). Go address code still correct (ABI offsets, OZ clone template, salt=keccak256(args), CREATE2); backend check passes. 24 vectors cover acceptance line 1. No must-not-change paths touched; Deploy.s.sol, Deploy.t.sol and src unchanged. Non-blocking: SALT and CREATE2_DEPLOYER are now copied in ReceiveAddressVectors.s.sol:13-14 (also in Deploy.s.sol and CrossChain.t.sol); a salt change in Deploy alone would not show in the vectors, though the Go constants would then disagree with a new deployments.json. Terms.IntendedChainID is uint64 vs uint256 in Solidity (fine for real chain IDs). Biome exclusion of vectors/ is justified (byte-for-byte comparison).",
           "at": "2026-10-09T11:56:22Z",
           "filesHash": "e8512d9fc5dbc303"
-        }
+        },
+        "commit": "e1891c0",
+        "doneAt": "2026-10-09T11:56:42Z"
       },
       "branch": "feat/f043-go-computes-the-same-receive-address-as",
       "baseCommit": "bed9ce691855330d0b63d5d1002f5021ebf04e20",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f043-go-computes-the-same-receive-address-as",
+        "base": "main"
+      }
     },
     {
       "id": "F044",
