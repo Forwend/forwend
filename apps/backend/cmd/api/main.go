@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/auth"
 	"github.com/ensp1re/forwend/apps/backend/internal/config"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi"
@@ -41,9 +42,13 @@ func run() error {
 	}
 	defer pool.Close()
 
+	verifier, err := auth.NewVerifier(cfg.PrivyAppID, cfg.PrivyVerificationKey)
+	if err != nil {
+		return err
+	}
 	server := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           httpapi.NewMux(pool),
+		Handler:           httpapi.NewMux(pool, verifier),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

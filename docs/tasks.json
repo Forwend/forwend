@@ -4695,7 +4695,7 @@
         "F043",
         "F046"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend"
       ],
@@ -4712,7 +4712,86 @@
         "2026-10-09 From F046: wrap the invoice routes in requireUser(requireProfileOwner(...)) (internal/httpapi/auth.go); add PRIVY_APP_ID and PRIVY_VERIFICATION_KEY to config.LoadAPI and .env.example (until the Privy app exists, a local P-256 test key works); construct auth.NewVerifier and auth.NewService in cmd/api."
       ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T14:02:10Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.5,
+            "log": "docs/runs/F047-20261009T140210Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F047-20261009T140210Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F047-20261009T140210Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F047-20261009T140210Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F047-20261009T140210Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.3,
+            "log": "docs/runs/F047-20261009T140210Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F047-20261009T140210Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.7,
+            "log": "docs/runs/F047-20261009T140210Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F047-20261009T140210Z-keep.log"
+          }
+        ],
+        "taskHash": "7f31a6108b77a1e0",
+        "filesHash": "11a8dd3ef8edfabf",
+        "proof": {
+          "1": "backend: TestCreateInvoice: POST with Idempotency-Key, chainId, token, amount returns 201 with a 32-byte hex invoiceId, receiveAddress, expiresAt = now + 1h and settleDeadline = expiresAt + 24h; TestCreateInvoiceErrors: expiresIn 900 and 31536000 pass, 899, 31536001 and 0 return 422",
+          "2": "backend: TestCreateInvoice: recipient is the profile wallet and recomputing address.Receive from the stored terms equals receiveAddress; a recipient field in the request is 400; TestCreateInvoiceRefusesUnsettleableTerms: terms settle() would refuse are 422",
+          "3": "backend: TestCreateInvoiceIsIdempotent (same key and values -> 200 same invoice, other body -> 409), TestCreateInvoiceSameKeyConcurrently and TestCreateLosesTheInsertRaceToTheSameKey (one invoice per key under races), TestCreateInvoiceErrors (unknown/disabled token, amount 0 and 2^256 -> 422), TestCreateInvoice GET returns the same terms and statuses, TestGetInvoiceNotFound; docs-check: apps/backend/api/openapi.yaml describes both routes (validated with Redocly lint)"
+        }
+      },
+      "branch": "feat/f047-a-creator-makes-an-invoice-once-with-a-r",
+      "baseCommit": "31213fec45ba9c6e64afd9334173e9445c88af11",
+      "failedVerifies": 0
     },
     {
       "id": "F048",
@@ -5613,9 +5692,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-09T13:37:47Z",
+    "at": "2026-10-09T13:54:36Z",
     "clean": true,
     "problems": [],
-    "note": "F043, F044, F059, F045 merged (PRs #49-#52). F045: money schema with double-entry append-only ledger and booked-transfer guard; review notes for F048/F049/F050 are on those tasks. Next: F046 Privy token auth (needs no Privy app; tests use local keys)."
+    "note": "F043, F044, F059, F045, F046 merged (PRs #49-#53). F046: local Privy token check + profile owner middleware, not yet wired (F047 notes say how). Next: F047 invoice API or F048 watcher."
   }
 }
