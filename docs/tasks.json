@@ -5716,7 +5716,7 @@
         "An unknown kid refetches the keys at most once per minute, then 401; a known kid makes no network call; a failed fetch at startup stops the api with an error; PRIVY_VERIFICATION_KEY is no longer read"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -5730,7 +5730,8 @@
       ],
       "review": true,
       "notes": [
-        "2026-10-09 review fail by reviewer: BLOCKING: apps/backend/internal/auth/auth.go:99 runs the shared JWKS refetch with the request context (httpapi/auth.go:21 passes r.Context()). fetchedAt is set first (auth.go:96), so a client that sends any ES256 token with an unknown kid and hangs up aborts the fetch and spends the once-per-minute slot. Repeating this each minute keeps the api from ever loading a rotated key: unauthenticated, breaks R-29. Even a normal client disconnect gives a minute of 401s for the new key. Reproduced in a scratch copy: an httptest api, a JWKS that answers in 300 ms, an attacker request with a 50 ms timeout, then a token from the rotated key gets 401. With fetch(context.WithoutCancel(ctx)) the same test passes (the http.Client 10 s timeout still bounds it). Add a test for this. Non-blocking: auth.go:149-155 one malformed EC key fails the whole fetch instead of being skipped; auth.go:156 duplicate kid keeps the last; requests with the new kid that arrive during an in-flight refetch get 401; no test that a failed refetch keeps the old keys. Checked OK: alg check runs before keyfunc in golang-jwt v5.3.1, so none/HS256 never reach a fetch; the key set holds only *ecdsa.PublicKey; a missing kid tries only published keys (safe); 200 concurrent mixed requests under -race give exactly 1 refetch; 1 MiB body limit, status check, point check; the real Privy JWKS (2 EC P-256 ES256 sig keys) loads and the api starts; a refused JWKS URL stops the api with exit 1 and no secret in the log. pnpm --filter @forwend/backend test passes."
+        "2026-10-09 review fail by reviewer: BLOCKING: apps/backend/internal/auth/auth.go:99 runs the shared JWKS refetch with the request context (httpapi/auth.go:21 passes r.Context()). fetchedAt is set first (auth.go:96), so a client that sends any ES256 token with an unknown kid and hangs up aborts the fetch and spends the once-per-minute slot. Repeating this each minute keeps the api from ever loading a rotated key: unauthenticated, breaks R-29. Even a normal client disconnect gives a minute of 401s for the new key. Reproduced in a scratch copy: an httptest api, a JWKS that answers in 300 ms, an attacker request with a 50 ms timeout, then a token from the rotated key gets 401. With fetch(context.WithoutCancel(ctx)) the same test passes (the http.Client 10 s timeout still bounds it). Add a test for this. Non-blocking: auth.go:149-155 one malformed EC key fails the whole fetch instead of being skipped; auth.go:156 duplicate kid keeps the last; requests with the new kid that arrive during an in-flight refetch get 401; no test that a failed refetch keeps the old keys. Checked OK: alg check runs before keyfunc in golang-jwt v5.3.1, so none/HS256 never reach a fetch; the key set holds only *ecdsa.PublicKey; a missing kid tries only published keys (safe); 200 concurrent mixed requests under -race give exactly 1 refetch; 1 MiB body limit, status check, point check; the real Privy JWKS (2 EC P-256 ES256 sig keys) loads and the api starts; a refused JWKS URL stops the api with exit 1 and no secret in the log. pnpm --filter @forwend/backend test passes.",
+        "2026-10-09 review pass by reviewer: Re-review of af7992d. The earlier blocker is fixed: auth.go:100 now fetches with context.WithoutCancel(ctx), so a caller that hangs up can no longer abort the shared refetch and waste the once-per-minute slot. The http.Client 10 s timeout in cmd/api still bounds the fetch. New TestRefetchSurvivesACancelledRequest (auth_test.go:118) fails when the fix is reverted and passes with it. My scratch PoC (httptest api, JWKS that answers in 300 ms, attacker hangs up after 50 ms, then a token from the rotated key) now gets 200; with the fix reverted it gets 401. Non-blocking, unchanged from the first review: auth.go:149-155 one malformed EC key fails the whole fetch (fails safe); auth.go:156 duplicate kid keeps the last; a new-kid request that arrives during a running refetch gets 401; no test that a failed refetch keeps the old keys. auth_test.go:123-128 signs the same token twice (the cancelled call could reuse token). Still OK: alg check before keyfunc (golang-jwt v5.3.1), keyset holds only *ecdsa.PublicKey, a missing kid tries only published keys, 1 refetch under 200 concurrent requests with -race, the real Privy JWKS loads and the api starts, a failed startup fetch stops the api without printing secrets. pnpm --filter @forwend/backend test passes."
       ],
       "blockedReason": null,
       "evidence": {
@@ -5807,11 +5808,25 @@
         "proof": {
           "1": "backend: TestVerifyUsesTheKeyNamedByKid: with two published keys, tokens signed by either (kid set) and a token without kid pass, a kid naming the other key fails; TestOnlyValidPrivyTokensPass (httpapi, now over a JWKS) keeps every F046 rejection at 401; the real api loaded Privy's JWKS at startup",
           "2": "backend: TestUnknownKidRefetchesAtMostOncePerMinute (fake clock: no fetch within a minute, one fetch after, rotated key then passes, 5 unknown kids in a minute cause no fetch); TestRefetchSurvivesACancelledRequest (a hung-up caller can't abort the shared refetch); TestVerifyUsesTheKeyNamedByKid counts 1 fetch for known kids; TestVerificationMakesNoNetworkCall; TestNewVerifierNeedsKeys; config reads PRIVY_JWKS_URL, not PRIVY_VERIFICATION_KEY"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review of af7992d. The earlier blocker is fixed: auth.go:100 now fetches with context.WithoutCancel(ctx), so a caller that hangs up can no longer abort the shared refetch and waste the once-per-minute slot. The http.Client 10 s timeout in cmd/api still bounds the fetch. New TestRefetchSurvivesACancelledRequest (auth_test.go:118) fails when the fix is reverted and passes with it. My scratch PoC (httptest api, JWKS that answers in 300 ms, attacker hangs up after 50 ms, then a token from the rotated key) now gets 200; with the fix reverted it gets 401. Non-blocking, unchanged from the first review: auth.go:149-155 one malformed EC key fails the whole fetch (fails safe); auth.go:156 duplicate kid keeps the last; a new-kid request that arrives during a running refetch gets 401; no test that a failed refetch keeps the old keys. auth_test.go:123-128 signs the same token twice (the cancelled call could reuse token). Still OK: alg check before keyfunc (golang-jwt v5.3.1), keyset holds only *ecdsa.PublicKey, a missing kid tries only published keys, 1 refetch under 200 concurrent requests with -race, the real Privy JWKS loads and the api starts, a failed startup fetch stops the api without printing secrets. pnpm --filter @forwend/backend test passes.",
+          "at": "2026-10-09T14:36:09Z",
+          "filesHash": "22e7a27023c89c96"
+        },
+        "commit": "af7992d",
+        "doneAt": "2026-10-09T14:36:20Z"
       },
       "branch": "feat/f060-privy-key-rotation-never-breaks-sign-in",
       "baseCommit": "cce30feca64226a5e7d0bc9d098343d2d7cdd7f0",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f060-privy-key-rotation-never-breaks-sign-in",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
