@@ -12,3 +12,5 @@ playwright-report/
 .env*.local
 .DS_Store
 apps/web/.impeccable/review/
+
+__pycache__/

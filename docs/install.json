@@ -1,9 +1,13 @@
 {
   "schemaVersion": 2,
-  "skillVersion": "2.0.0",
+  "skillVersion": "local-reconciled-3",
   "files": {
-    "scripts/harness.py": "605216dfa467a3185b3ea49fd3a702282483ba31da00de19cb41135ac8e57623",
-    "AGENTS.md#harness": "158796637bd245ce1a53cbd9cfe1ce8547aaaa9a24b61af249be112cd1d8c218"
+    "scripts/harness.py": "9d9e2757829fdcd997d7d3fee18471b08695a21d14e5aa5b446d0c35be2c20b0",
+    "tests/test_harness.py": "d92b8e696b15eaf85ed4339d7be6cb3078d279284aff6998ace6472889543144",
+    "scripts/check-docs.py": "3fcedb1a5f3aa347477bd34cc1c683855cf18b05bf6ed4a2ade206ed31ff26a9",
+    "AGENTS.md": "3e9f8225e5402e9041bd583aa138feca9f964f61596a99414fd293e5a7884db3",
+    "docs/workflow.md": "26d953390c03a407dbc5ed148c52ff12ee9bfd9e4bb5ce46d29498c64a8ee2ac",
+    "docs/config.json": "35d73fda00b1bf686551aca82e15ecc26b8dc56b4c5a5c1903fc0f622cc7b3b7"
   },
-  "updatedAt": "2026-10-08T12:12:13Z"
+  "updatedAt": "2026-10-09"
 }

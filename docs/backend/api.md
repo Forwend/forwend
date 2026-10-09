@@ -1,17 +1,19 @@
 # Backend API rules
 
+Only `/healthz` exists today. The business API rules below apply when R-18/R-19 are built.
+
 ## Contract first
 
-- `api/openapi.yaml` (OpenAPI 3.1, repo root) is the source of truth. Change it first, then the code.
-- Go server types are generated with oapi-codegen; the web client with openapi-typescript.
+- `apps/backend/api/openapi.yaml` (OpenAPI 3.1) is planned. Create it with the first business endpoint; then change it before code.
+- Generate Go server types with oapi-codegen and web types with openapi-typescript; neither generator is installed yet.
 
 ## Routes
 
 - Prefix `/v1` (except `/healthz`). A breaking change means `/v2`.
 - Plural nouns, IDs in the path: `/v1/profiles/{profileId}/invoices`, `/v1/invoices/{invoiceId}`.
 - `GET` reads and never changes state. `POST` creates or runs an action (`POST /v1/invoices/{id}/cancel`).
-- Invoice terms, transfers and ledger entries never change: no `PUT` or `DELETE` on them. Status changes come from
-  the worker, not from clients.
+- Invoice terms and ledger entries are immutable. Transfer and invoice statuses change through validated worker
+  transitions. Clients cannot edit money records with `PUT` or `DELETE`.
 
 ## Requests and responses
 
@@ -29,7 +31,7 @@
 ## Auth
 
 - `Authorization: Bearer <Privy access token>`, checked by middleware on every route.
-- Public routes (checkout reads) are marked `security: []` in the spec. Nothing else is public.
+- Public routes (checkout reads) are marked `security: []` in the spec. `/healthz` is also public and uses its own status response. No other route is public by default.
 - Profile-scoped routes check that the user owns the profile: 403 otherwise.
 
 ## Errors
