@@ -4332,7 +4332,7 @@
       "dependsOn": [
         "F042"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -4420,11 +4420,18 @@
         "filesHash": "704ab06c80d823b3",
         "proof": {
           "1": "docs-check: docs/spikes/s4-chains.md records per chain (Base Sepolia, Arbitrum Sepolia, Arc testnet, Tempo Moderato) block, receipt and Transfer log decoding with go-ethereum v1.17.8, safe/finalized lag in 5 batched samples, comparison with Circle's block counts, and the confirm rule D-45 (received when seen, paid at finalized, progress from the finalized head) answering Q-7"
-        }
+        },
+        "commit": "270ec3d",
+        "doneAt": "2026-10-09T12:34:03Z"
       },
       "branch": "docs/f044-spike-s-4-go-ethereum-reads-blocks-recei",
       "baseCommit": "2f5e5023295952ab102a7944780e08bf6b97b188",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f044-spike-s-4-go-ethereum-reads-blocks-recei",
+        "base": "main"
+      }
     },
     {
       "id": "F045",
