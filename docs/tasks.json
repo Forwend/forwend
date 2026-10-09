@@ -5308,7 +5308,7 @@
         "Tests cover Base-like finality that jumps in steps, a busy day where the finalized head falls further behind and time left grows, and Arc/Tempo where finalized = latest gives 0 at once"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -5396,11 +5396,18 @@
         "proof": {
           "1": "backend: TestProgressOf table checks blocks left = B - finalized number and time left = T - finalized time (461 blocks/922 s, 1 block/2 s), both 0 and Final() once the finalized head reaches or passes B",
           "2": "backend: TestProgressOfStepFinality (Base-like jumps, never rises, ends final), TestProgressOfBusyDay (head 750 blocks behind gives 25 min vs 15 min normal), and the 'finalized equals latest' row for Arc/Tempo giving 0 at once"
-        }
+        },
+        "commit": "87a7902",
+        "doneAt": "2026-10-09T12:38:44Z"
       },
       "branch": "feat/f059-the-payer-sees-blocks-and-time-left-unti",
       "baseCommit": "4b6d9879336696fff1c30628821eba809d88ac45",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f059-the-payer-sees-blocks-and-time-left-unti",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
