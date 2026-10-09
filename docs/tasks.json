@@ -5086,7 +5086,7 @@
         "F043",
         "F049"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend"
       ],
@@ -5103,7 +5103,86 @@
         "2026-10-09 From F045 review: settlement_intents.status 'failed' requires tx_hash, so R-22's 'refused, nothing sent' needs a status without tx_hash (e.g. 'refused') or a relaxed CHECK."
       ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T15:58:10Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 15.5,
+            "log": "docs/runs/F050-20261009T155810Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F050-20261009T155810Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F050-20261009T155810Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F050-20261009T155810Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F050-20261009T155810Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 15.5,
+            "log": "docs/runs/F050-20261009T155810Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F050-20261009T155810Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.9,
+            "log": "docs/runs/F050-20261009T155810Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F050-20261009T155810Z-keep.log"
+          }
+        ],
+        "taskHash": "d5b341d2f4d63a19",
+        "filesHash": "f3b6b9e19edb023e",
+        "proof": {
+          "1": "backend: TestSettlesAPaidInvoiceOnce on Anvil with the real factory deployed by Deploy.s.sol at the compiled address: a 5 USDC invoice paid 6 goes paid -> intent; the signer re-reads terms, recomputes the address, reads factory.status, deploys the receiver and settles; the recipient gets exactly 5000000, the receiver keeps the 1000000 excess, ledger receiver 1000000 / owed 0 / held 1000000, invoice settled",
+          "2": "backend: TestSettlesAPaidInvoiceOnce (a second intent is a unique violation; a second run sends nothing), TestRestartAfterSavingSendsTheSavedTransaction (killed after saving: the restart sends the saved bytes, the saved hash is the mined one, 2 executor txs total), TestRestartAfterSendingSendsNothing (killed after sending: the restart sends nothing)",
+          "3": "backend: TestRefusesTermsThatDoNotMatch: a profile wallet that is no longer the recipient, and terms changed so they no longer compute the stored receive address, are refused with that reason; executor nonce, recipient and receive balances unchanged"
+        }
+      },
+      "branch": "feat/f050-the-signer-settles-a-paid-invoice-once-w",
+      "baseCommit": "7009f97f0258ffd7af23945073183897ccad6d52",
+      "failedVerifies": 0
     },
     {
       "id": "F051",
@@ -5134,7 +5213,8 @@
       "notes": [
         "2026-10-09 From F048: cmd/worker does not run the watcher yet. Wire a loop calling watcher.NewChain(pool, chainID, rpcClient).Scan per enabled chain, with per-chain RPC URLs in config (only internal/config reads env), before the gate can see detected -> confirmed.",
         "2026-10-09 Correction to the F048 note: no new per-chain RPC variables. The worker reuses packages/contracts/chains.json (one source for chain IDs, Infura names, public RPCs) and INFURA_API_KEYS, with rpc.mjs's rule in Go: try each Infura key, then public RPCs, keep the first whose eth_chainId matches (D-15); move to the next on 429 (S-4 hit Infura rate limits). with-env.sh loads only apps/backend/.env, so INFURA_API_KEYS must be available to the backend too. Anvil (31337) uses its local URL. The second, independent RPC for balanceOf before paid is F049/D-15.",
-        "2026-10-09 From F049: each worker round per chain is watcher.Chain.Scan, then ledger.Service.ProcessChain; build the Service with ledger.BalanceFrom(clients) using RPCs other than the watcher's (D-15), e.g. a public RPC when the watcher uses Infura."
+        "2026-10-09 From F049: each worker round per chain is watcher.Chain.Scan, then ledger.Service.ProcessChain; build the Service with ledger.BalanceFrom(clients) using RPCs other than the watcher's (D-15), e.g. a public RPC when the watcher uses Infura.",
+        "2026-10-09 From F050: cmd/signer needs the executor private key (config, only internal/config reads env; never logged) and one ethclient per chain; loop settlement.NewSigner(pool, key, clients).Run. One Signer per executor key. The gate's 'settled' step is the signer confirming."
       ],
       "blockedReason": null,
       "evidence": null
@@ -6148,7 +6228,7 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-09T15:43:16Z",
+    "at": "2026-10-09T15:50:41Z",
     "clean": true,
     "problems": [],
     "note": "Merged this session: F043-F049, F059-F061 (PRs #49-#58). Money loop: address, API, auth, watcher, ledger/states done; next F050 signer (settle once), then F051 worker wiring + gate. F052 Privy spikes can start (Q-4 answered)."

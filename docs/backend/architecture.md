@@ -87,6 +87,22 @@ times come from the RPC, never computed in Go. Arc's native-coin `Transfer` logs
 chain's first scan starts at its finalized block: deposits before it are not looked for. Scanning again changes
 nothing, so a restarted worker resumes from the cursor.
 
+## Signer
+
+`internal/settlement` (R-22), one `Signer` per executor key. When the ledger marks an invoice `paid` it queues one
+settlement intent (unique per invoice) in the same transaction. For each intent the signer:
+1. Re-reads the terms and refuses (`refused` with a reason, nothing sent) unless the invoice is `paid`, the recipient
+   is the profile's wallet, the factory is the compiled one and the terms recompute the stored receive address.
+2. Calls `factory.status(terms)`: already settled → only records it; another predicted address, wrong chain, a
+   settler other than this executor (deadline passed), a balance below the amount, or not settleable → refused.
+3. Deploys the receiver if needed (`deploy` is idempotent), signs `settle()` with the chain's own gas estimate, saves
+   nonce, hash and signed bytes, then sends. After a crash it reads the receipt; if none, it sends the same saved
+   bytes again (same nonce, so at most one settle can be mined); if its nonce went to another transaction it signs a
+   new one. The contract's `AlreadySettled` is a last guard.
+4. On a successful settle, in one transaction: intent `confirmed`, a `settlement` ledger transaction (receiver and
+   recipient_payable each −amount; one per invoice) and the invoice's `settlement_status` `settled`.
+It signs only `factory.deploy(terms)` and `receiver.settle()`.
+
 ## Invoice states
 
 `internal/ledger` (R-21) runs after each scan, per invoice, in one transaction with the invoice row locked:
