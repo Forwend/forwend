@@ -130,3 +130,70 @@ func TestRefetchSurvivesACancelledRequest(t *testing.T) {
 		t.Fatalf("rotated key after a cancelled refetch: %v", err)
 	}
 }
+
+// A key Privy stops publishing is no longer trusted once the key list is older than MaxKeyAge.
+func TestWithdrawnKeyStopsVerifying(t *testing.T) {
+	ctx := context.Background()
+	p := authtest.NewPrivy(t)
+	p.AddKey(t, "key-2")
+	v := newVerifier(t, p)
+	now := time.Now()
+	v.now = func() time.Time { return now }
+	token := authtest.Sign(t, p.Key("key-2"), "key-2", claims())
+	if _, err := v.Verify(ctx, token); err != nil {
+		t.Fatal(err)
+	}
+	p.RemoveKey("key-2")
+	now = now.Add(MaxKeyAge + time.Second)
+	if _, err := v.Verify(ctx, token); !errors.Is(err, ErrUnauthorized) {
+		t.Fatalf("withdrawn key after MaxKeyAge: got %v, want 401", err)
+	}
+	if _, err := v.Verify(ctx, authtest.Sign(t, p.Key("key-1"), "key-1", claims())); err != nil {
+		t.Fatalf("a still-published key: %v", err)
+	}
+	if n := p.Fetches.Load(); n != 2 {
+		t.Fatalf("%d fetches, want 2 (startup and one refresh)", n)
+	}
+}
+
+// A failed refresh must not count as a fresh list: once Privy is back, the next attempt drops a withdrawn key.
+func TestFailedRefreshDoesNotExtendKeyAge(t *testing.T) {
+	ctx := context.Background()
+	p := authtest.NewPrivy(t)
+	p.AddKey(t, "key-2")
+	down := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if down {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		res, err := http.Get(p.JWKSURL)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer res.Body.Close()
+		_, _ = io.Copy(w, res.Body)
+	}))
+	defer srv.Close()
+	v, err := NewVerifier(ctx, "app", srv.URL, http.DefaultClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	now := start
+	v.now = func() time.Time { return now }
+	token := authtest.Sign(t, p.Key("key-2"), "key-2", claims())
+
+	now = start.Add(MaxKeyAge + time.Second) // the list is old and Privy is down: keep the last list
+	down = true
+	if _, err := v.Verify(ctx, token); err != nil {
+		t.Fatalf("Privy down: %v", err)
+	}
+	down = false // Privy is back, with key-2 withdrawn
+	p.RemoveKey("key-2")
+	now = now.Add(RefetchInterval)
+	if _, err := v.Verify(ctx, token); !errors.Is(err, ErrUnauthorized) {
+		t.Fatalf("after Privy is back without the key: got %v, want 401", err)
+	}
+}

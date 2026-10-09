@@ -26,9 +26,13 @@ var ErrForbidden = errors.New("profile not owned by user")
 // RefetchInterval is the shortest time between two JWKS fetches caused by tokens with an unknown kid.
 const RefetchInterval = time.Minute
 
+// MaxKeyAge is how long a fetched key list is trusted: after it, the next token refetches it, so a key Privy
+// withdrew (rotated or revoked) stops verifying.
+const MaxKeyAge = time.Hour
+
 // Verifier checks Privy access tokens with the app's published signing keys (R-29). Keys are loaded at startup and
-// fetched again only when a token names an unknown kid, at most once per RefetchInterval.
-// ponytail: a key Privy withdraws stays trusted until such a refetch or a restart; add a timed refetch if that matters.
+// fetched again when a token names an unknown kid (at most once per RefetchInterval) or the list is older than
+// MaxKeyAge (R-30).
 type Verifier struct {
 	jwksURL string
 	client  *http.Client
@@ -37,7 +41,8 @@ type Verifier struct {
 
 	mu        sync.Mutex
 	keys      map[string]*ecdsa.PublicKey
-	fetchedAt time.Time
+	fetchedAt time.Time // last successful fetch: the key list's age
+	triedAt   time.Time // last attempt: limits fetches to one per RefetchInterval
 }
 
 // NewVerifier loads the keys from the Privy JWKS URL; it fails if they can't be fetched.
@@ -60,7 +65,7 @@ func NewVerifier(ctx context.Context, appID, jwksURL string, client *http.Client
 	if err != nil {
 		return nil, err
 	}
-	v.keys, v.fetchedAt = keys, v.now()
+	v.keys, v.fetchedAt, v.triedAt = keys, v.now(), v.now()
 	return v, nil
 }
 
@@ -82,28 +87,37 @@ func (v *Verifier) Verify(ctx context.Context, token string) (string, error) {
 
 // keysFor returns the key named kid, fetching the keys again if it is unknown and the last fetch is old enough.
 // A token without a kid may match any published key.
-// The lock is not held during the fetch, so known keys keep working while Privy answers.
+// A key list older than MaxKeyAge is fetched again first, so a withdrawn key stops verifying. The lock is not held
+// during the fetch, so known keys keep working while Privy answers.
 func (v *Verifier) keysFor(ctx context.Context, kid string) (jwt.VerificationKeySet, error) {
 	v.mu.Lock()
-	if set, ok := v.lookup(kid); ok {
+	cached, known := v.lookup(kid)
+	switch {
+	case known && v.now().Sub(v.fetchedAt) < MaxKeyAge:
 		v.mu.Unlock()
-		return set, nil
-	}
-	if v.now().Sub(v.fetchedAt) < RefetchInterval {
+		return cached, nil
+	case v.now().Sub(v.triedAt) < RefetchInterval:
+		// Tried recently: a failed attempt must not count as a fresh list, nor be retried on every request.
 		v.mu.Unlock()
+		if known {
+			return cached, nil
+		}
 		return jwt.VerificationKeySet{}, fmt.Errorf("unknown key id %q", kid)
 	}
-	v.fetchedAt = v.now() // also on failure, so a broken JWKS endpoint isn't called on every request
+	v.triedAt = v.now()
 	v.mu.Unlock()
 
 	// The fetch is shared: a caller that hangs up must not abort it and waste the slot. The client timeout bounds it.
 	keys, err := v.fetch(context.WithoutCancel(ctx))
 	if err != nil {
+		if known {
+			return cached, nil // Privy unreachable: keep signing in with the last list rather than lock users out
+		}
 		return jwt.VerificationKeySet{}, err
 	}
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	v.keys = keys
+	v.keys, v.fetchedAt = keys, v.now()
 	if set, ok := v.lookup(kid); ok {
 		return set, nil
 	}

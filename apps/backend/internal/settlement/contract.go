@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // The only calls the signer makes (packages/contracts/src/InvoiceReceiverFactory.sol, InvoiceReceiver.sol).
@@ -64,9 +65,12 @@ func callData(sel []byte, terms address.Terms) ([]byte, error) {
 	return append(append([]byte{}, sel...), args...), nil
 }
 
-// receiverSettled reads the receiver's own settled flag; false before it is deployed.
-func receiverSettled(ctx context.Context, client *ethclient.Client, receiver common.Address) (bool, error) {
-	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &receiver, Data: settledSelector}, nil)
+// finalized is the block tag for reads that must not be undone by a reorg (D-45).
+var finalized = big.NewInt(int64(rpc.FinalizedBlockNumber))
+
+// receiverSettled reads the receiver's own settled flag at block (nil: latest); false before it is deployed.
+func receiverSettled(ctx context.Context, client *ethclient.Client, receiver common.Address, block *big.Int) (bool, error) {
+	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &receiver, Data: settledSelector}, block)
 	if err != nil {
 		return false, fmt.Errorf("receiver.settled: %w", err)
 	}

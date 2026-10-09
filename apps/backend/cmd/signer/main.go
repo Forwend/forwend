@@ -60,7 +60,23 @@ func run() error {
 	for {
 		ids, err := chain.Enabled(ctx, pool)
 		if err != nil {
-			slog.Error("signer round", "err", chain.Redact(err))
+			// Without the enabled list a disabled chain can't be told apart: send nothing this round.
+			slog.Error("signer round skipped", "err", chain.Redact(err))
+			if !wait(ctx, cfg.Chains.PollInterval) {
+				return nil
+			}
+			continue
+		}
+		enabled := map[uint64]bool{}
+		for _, id := range ids {
+			enabled[id] = true
+		}
+		for id, r := range rpcs { // a chain disabled in the database is no longer served
+			if !enabled[id] {
+				r.Close()
+				delete(rpcs, id)
+				delete(clients, id)
+			}
 		}
 		for _, id := range ids {
 			if _, ok := rpcs[id]; ok {
@@ -86,10 +102,18 @@ func run() error {
 				delete(clients, id)
 			}
 		}
-		select {
-		case <-ctx.Done():
+		if !wait(ctx, cfg.Chains.PollInterval) {
 			return nil
-		case <-time.After(cfg.Chains.PollInterval):
 		}
+	}
+}
+
+// wait sleeps for d; false when the signer is stopping.
+func wait(ctx context.Context, d time.Duration) bool {
+	select {
+	case <-ctx.Done():
+		return false
+	case <-time.After(d):
+		return true
 	}
 }

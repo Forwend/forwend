@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 62,
+  "nextId": 63,
   "tasks": [
     {
       "id": "F001",
@@ -6428,12 +6428,134 @@
         "branch": "chore/f061-each-package-keeps-its-own-secrets-in-it",
         "base": "main"
       }
+    },
+    {
+      "id": "F062",
+      "type": "fix",
+      "behavior": "Fix the Codex review findings: JWKS key age, signer only on enabled chains, confirm externally settled intents, guarded intent updates",
+      "acceptance": [
+        "A withdrawn JWKS key stops verifying after MaxKeyAge and a failed refresh never extends that age; the signer drops chains no longer enabled, skips a round when the enabled list can't be read, works only on intents of chains it serves, and bounds each attempt so a hanging RPC stalls nothing",
+        "A settlement is confirmed only when the receiver is settled at the finalized block (a settle dropped by a reorg is sent again); a receiver settled outside our signer, or after the deadline by the refund authority, is confirmed and booked; paid needs the second RPC's finalized balance; retry and refuse only update an intent still in the status they loaded"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-30",
+        "R-22",
+        "R-29"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-10-09 review pass by subagent: All four fixes are correct. Backend test (go test -race) and e2e pass. Each new test fails when its fix is reverted in a scratch copy: TestWithdrawnKeyStopsVerifying (withdrawn key still accepted), TestExternallySettledIntentIsConfirmed (23514 settlement_intents_sent_check), TestStaleAttemptDoesNotOverwriteAConfirmedIntent (moved to refused), TestSignerSkipsChainsItDoesNotServe (no RPC for chain 31337). A scratch test also checked the Privy-unreachable fallback and that 50 concurrent stale requests make 1 fetch under -race; both pass. Notes, none blocking: (1) auth.go:103,109-111 sets fetchedAt before a refresh that fails, so a withdrawn key is trusted up to about 2x MaxKeyAge if Privy is down at the refresh. The fallback has no test in the repo. (2) architecture.md:122 says the refund authority settling after the deadline confirms the intent. That only holds if the signer did not look at the intent between the deadline and that settle. Otherwise service.go:133-134 refuses it first, and a refused intent is never looked at again, so the payout stays unbooked. R-30 says pending only, so this is a gap in the doc wording, not in the fix. (3) cmd/signer/main.go:61-80 (skip the round when the enabled list fails, drop disabled chains) is not covered by any test; it was checked by reading the code. The loop is one goroutine, so it cannot race with Run. A 'sent' intent on a disabled chain is not reconciled until the chain is enabled again. (4) The 00005 Down migration fails if a confirmed row without tx fields exists. That is normal for a constraint that gets stricter on Down. (5) retry/refuse do not check RowsAffected, so a stale call does nothing and reports no error. That is fine, and settle() sets in.status='sent' before reconcile (service.go:182), so the sent-path retry still matches.",
+        "2026-10-09 review pass by subagent: Re-review of HEAD (1aeb123, whole task HEAD~2). Pass. Backend test (go test -race) and e2e (2 of 2) pass. Every new test fails with its fix removed (checked in a scratch copy): confirmIfFinal->confirm fails TestSettlesAPaidInvoiceOnce, TestExternallySettledIntentIsConfirmed, TestSettleDroppedByReorgIsSentAgain; settler->refuse fails TestAfterTheDeadline...; BalanceFrom at head fails TestPaidNeedsTheSecondRPCToAgree; old auth.go fails TestFailedRefreshDoesNotExtendKeyAge; no attempt timeout fails TestHangingRPCDoesNotStallTheSigner (stuck). Finality: confirm() has one caller, confirmIfFinal (service.go:247-253), so nothing books before settled() is true at the finalized tag. If the settle is not final yet, the intent stays pending or sent and is checked again next round. A reorged settle is not settled at latest and has no receipt, so reconcile resends the saved bytes, or retries if its nonce was taken. I found no new state where a sent intent is stuck forever. The old one remains: a saved tx priced under a doubled base fee errors every round (the known no-fee-bump limit). eth_call at the finalized tag answered at the finalized block on Base Sepolia (lag 458), Arbitrum Sepolia (3746) and Tempo (1) public RPCs. Arc RPCs were blocked from here (HTTP 1009), but Arc finalized = latest (R-28). Anvil runs with --slots-in-an-epoch 1 (finalized = latest-2). An empty eth_call answer counted as 0 can't make an invoice paid; with booked > 0 it also blocks expiry. Notes, none blocking: (a) service.go:139-141, after the deadline: if the refund authority refunds instead of settling, the intent stays pending forever and is checked about hourly. Any intent refused earlier with 'deadline passed?' stays refused, because no migration moves it back. (b) An intent waiting for the authority backs off up to 1h, so its settle is booked up to about 1h late. (c) A sent settle whose deadline passed is resent once and reverts, costing gas, before the intent goes back to pending. (d) auth.go:99-104: while Privy is unreachable, a known key keeps verifying past MaxKeyAge (it fails open), with one retry a minute. This is the documented choice."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T18:09:17Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 25.2,
+            "log": "docs/runs/F062-20261009T180917Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F062-20261009T180917Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F062-20261009T180917Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F062-20261009T180917Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F062-20261009T180917Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 25.9,
+            "log": "docs/runs/F062-20261009T180917Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.4,
+            "log": "docs/runs/F062-20261009T180917Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.8,
+            "log": "docs/runs/F062-20261009T180917Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F062-20261009T180917Z-keep.log"
+          }
+        ],
+        "taskHash": "34584cd5ba1a1bc1",
+        "filesHash": "6d91557b0995f879",
+        "proof": {
+          "1": "backend: TestWithdrawnKeyStopsVerifying and TestFailedRefreshDoesNotExtendKeyAge (auth); TestSignerSkipsChainsItDoesNotServe and TestHangingRPCDoesNotStallTheSigner (settlement); cmd/signer drops disabled chains and skips a round when the enabled list fails; every test fails with its fix removed",
+          "2": "backend: TestSettlesAPaidInvoiceOnce (sent, then confirmed only after finality), TestSettleDroppedByReorgIsSentAgain, TestExternallySettledIntentIsConfirmed, TestAfterTheDeadlineTheSignerWaitsForTheRefundAuthority, TestStaleAttemptDoesNotOverwriteAConfirmedIntent (settlement); TestPaidNeedsTheSecondRPCToAgree (ledger: a deposit the primary calls final early is not paid until the second RPC's finalized block holds it); every test fails with its fix removed; the e2e gate passes 3 of 3"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Re-review of HEAD (1aeb123, whole task HEAD~2). Pass. Backend test (go test -race) and e2e (2 of 2) pass. Every new test fails with its fix removed (checked in a scratch copy): confirmIfFinal->confirm fails TestSettlesAPaidInvoiceOnce, TestExternallySettledIntentIsConfirmed, TestSettleDroppedByReorgIsSentAgain; settler->refuse fails TestAfterTheDeadline...; BalanceFrom at head fails TestPaidNeedsTheSecondRPCToAgree; old auth.go fails TestFailedRefreshDoesNotExtendKeyAge; no attempt timeout fails TestHangingRPCDoesNotStallTheSigner (stuck). Finality: confirm() has one caller, confirmIfFinal (service.go:247-253), so nothing books before settled() is true at the finalized tag. If the settle is not final yet, the intent stays pending or sent and is checked again next round. A reorged settle is not settled at latest and has no receipt, so reconcile resends the saved bytes, or retries if its nonce was taken. I found no new state where a sent intent is stuck forever. The old one remains: a saved tx priced under a doubled base fee errors every round (the known no-fee-bump limit). eth_call at the finalized tag answered at the finalized block on Base Sepolia (lag 458), Arbitrum Sepolia (3746) and Tempo (1) public RPCs. Arc RPCs were blocked from here (HTTP 1009), but Arc finalized = latest (R-28). Anvil runs with --slots-in-an-epoch 1 (finalized = latest-2). An empty eth_call answer counted as 0 can't make an invoice paid; with booked > 0 it also blocks expiry. Notes, none blocking: (a) service.go:139-141, after the deadline: if the refund authority refunds instead of settling, the intent stays pending forever and is checked about hourly. Any intent refused earlier with 'deadline passed?' stays refused, because no migration moves it back. (b) An intent waiting for the authority backs off up to 1h, so its settle is booked up to about 1h late. (c) A sent settle whose deadline passed is resent once and reverts, costing gas, before the intent goes back to pending. (d) auth.go:99-104: while Privy is unreachable, a known key keeps verifying past MaxKeyAge (it fails open), with one retry a minute. This is the documented choice.",
+          "at": "2026-10-09T18:13:38Z",
+          "filesHash": "6d91557b0995f879"
+        },
+        "commit": "1aeb123",
+        "doneAt": "2026-10-09T18:13:57Z"
+      },
+      "branch": "fix/f062-fix-the-codex-review-findings-jwks-key-a",
+      "baseCommit": "ec20e1f444f84535ff0856df10ce4bbb47f317bc",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f062-fix-the-codex-review-findings-jwks-key-a",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-09T16:38:47Z",
+    "at": "2026-10-09T17:16:24Z",
     "clean": true,
     "problems": [],
-    "note": "Merged this session: F043-F051, F059-F061 (PRs #49-#60). The Phase 6 money loop runs end to end (gate in CI). Open: F052 Privy spikes (Q-4 answered; start unblocks it). Known limits in architecture.md: Tempo needs a second RPC (D-15), no fee bumping, settlement booked at latest."
+    "note": "Merged this session: F043-F052, F059-F061 (PRs #49-#61). Phase 4 spikes and the Phase 6 money loop are done. Open decision for the owner: who signs profile-wallet sends (client only, session signer, or our own JWT auth); see docs/spikes/s1-s3-privy.md. Next: add phase 7 tasks (app shell, profiles, internal/privy)."
   }
 }

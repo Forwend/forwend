@@ -136,25 +136,24 @@ func TestDepositsMoveThePaymentStatus(t *testing.T) {
 	want(t, "run again", e.state(t, id), state{payment: Paid, refund: "held", receiver: 6000000, owed: 5000000, held: 1000000})
 }
 
-// A confirmed row the chain doesn't back (a bad RPC) never makes the invoice paid: the second RPC disagrees.
+// A deposit the primary RPC calls final too early (a lie or a bug) never makes the invoice paid: the second RPC
+// reads the balance at its own finalized block, which doesn't hold the deposit yet (D-15, D-45).
 func TestPaidNeedsTheSecondRPCToAgree(t *testing.T) {
 	e := newChainEnv(t)
 	id, receive := e.invoice(t, 1, 5000000, e.anvil.Now()+3600)
-	_, err := e.pool.Exec(context.Background(), `
-		INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index, block_hash,
-		    block_number, block_time, from_address, to_address, amount, status)
-		VALUES ($1, 'evm', $2, $3, '0x' || repeat('ee', 32), 0, '0x' || repeat('ee', 32), 1, 1, $4, $5, 5000000, 'confirmed')`,
-		chaintest.ChainID, e.token, id, chaintest.Sender, receive)
-	if err != nil {
+	e.anvil.Transfer(e.token, receive, "5000000")
+	e.run(t) // seen, not final
+	if _, err := e.pool.Exec(context.Background(), "UPDATE chain_transfers SET status = 'confirmed'"); err != nil {
 		t.Fatal(err)
 	}
 	e.run(t)
-	want(t, "booked 5 but 0 on chain", e.state(t, id), state{payment: PartiallyPaid, refund: "none", receiver: 5000000, owed: 5000000})
+	want(t, "booked on the primary's word, not final on the second RPC", e.state(t, id),
+		state{payment: PartiallyPaid, refund: "none", receiver: 5000000, owed: 5000000})
 
-	e.anvil.Transfer(e.token, receive, "5000000") // the chain now holds what was booked
+	e.anvil.Mine(2)
 	e.run(t)
 	if got := e.state(t, id); got.payment != Paid {
-		t.Fatalf("once the chain holds the booked amount: %+v", got)
+		t.Fatalf("once the second RPC's finalized block holds it: %+v", got)
 	}
 }
 
