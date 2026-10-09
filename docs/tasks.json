@@ -6903,7 +6903,7 @@
       "dependsOn": [
         "F065"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -6915,9 +6915,103 @@
         "packages/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-09 review pass by reviewer: Balances and activity API meet R-33. Review fixes verified: per-chain lock, failed picks remembered 30 s, parallel per-token reads with own timeout, cancelled requests keep shared clients, pending documented truthfully incl. settlement overlap, activity 401 test. go test -race ./internal/... ./cmd/... passes; gofmt and vet clean."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T19:45:42Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 27.9,
+            "log": "docs/runs/F066-20261009T194542Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F066-20261009T194542Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F066-20261009T194542Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F066-20261009T194542Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F066-20261009T194542Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 27.8,
+            "log": "docs/runs/F066-20261009T194542Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.2,
+            "log": "docs/runs/F066-20261009T194542Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.0,
+            "log": "docs/runs/F066-20261009T194542Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F066-20261009T194542Z-keep.log"
+          }
+        ],
+        "taskHash": "bdf8096d7d9d30c5",
+        "filesHash": "5e77461135fb40c7",
+        "proof": {
+          "1": "backend: internal/balance TestBalancesOnAnvil reads the wallet at Anvil's finalized block (a later unfinalized transfer is not counted), pending 1.0 detected + 2.0 owed, held 1.0, estimated 2.50 USD, only enabled tokens, no balance or total when the wallet is missing or the RPC fails; TestHungChainLeavesTheOthers and cmd/api balances tests keep one hung chain from blanking or slowing the others; httpapi TestGetBalances checks the JSON; e2e gate reads 5.00 USD through the real api on Anvil",
+          "2": "backend: internal/activity TestListNewestFirstInPages pages at every size (1-5) through invoices and deposits newest first with no skip or repeat, reorged and other profiles left out, empty for a new profile; httpapi TestGetActivity (pages, 400/401/422); TestProfilesBelongToTheirUser covers balances and activity (403 for another user); openapi.yaml passes redocly lint"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Balances and activity API meet R-33. Review fixes verified: per-chain lock, failed picks remembered 30 s, parallel per-token reads with own timeout, cancelled requests keep shared clients, pending documented truthfully incl. settlement overlap, activity 401 test. go test -race ./internal/... ./cmd/... passes; gofmt and vet clean.",
+          "at": "2026-10-09T19:47:57Z",
+          "filesHash": "5e77461135fb40c7"
+        },
+        "commit": "0bd9b15",
+        "doneAt": "2026-10-09T19:48:13Z"
+      },
+      "branch": "feat/f066-a-profile-shows-its-money-truthfully-bal",
+      "baseCommit": "4fbf8cedc662afe42d35368ddddf6c9174fe98fd",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f066-a-profile-shows-its-money-truthfully-bal",
+        "base": "main"
+      }
     },
     {
       "id": "F067",

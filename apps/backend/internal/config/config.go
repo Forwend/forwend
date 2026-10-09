@@ -19,6 +19,9 @@ type API struct {
 	PrivyJWKSURL string
 	// PrivyAppSecret lets the api make profile wallets: never log it.
 	PrivyAppSecret string
+	// ChainsFile and InfuraKeys reach the chains for wallet balances, as in Chains.
+	ChainsFile string
+	InfuraKeys []string
 }
 
 // Worker is what cmd/worker needs.
@@ -44,7 +47,8 @@ type Signer struct {
 func LoadAPI() (API, error) {
 	var r reader
 	c := API{DatabaseURL: r.get("DATABASE_URL"), Addr: r.get("API_ADDR"),
-		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyJWKSURL: r.get("PRIVY_JWKS_URL"), PrivyAppSecret: r.get("PRIVY_APP_SECRET")}
+		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyJWKSURL: r.get("PRIVY_JWKS_URL"), PrivyAppSecret: r.get("PRIVY_APP_SECRET"),
+		ChainsFile: r.get("CHAINS_FILE"), InfuraKeys: r.infuraKeys()}
 	return c, r.err()
 }
 
@@ -68,12 +72,7 @@ func LoadSigner() (Signer, error) {
 }
 
 func (r *reader) chains() Chains {
-	c := Chains{File: r.get("CHAINS_FILE")}
-	for _, k := range strings.Split(r.get("INFURA_API_KEYS"), ",") {
-		if k = strings.TrimSpace(k); k != "" {
-			c.InfuraKeys = append(c.InfuraKeys, k)
-		}
-	}
+	c := Chains{File: r.get("CHAINS_FILE"), InfuraKeys: r.infuraKeys()}
 	if raw := r.get("POLL_INTERVAL"); raw != "" {
 		d, err := time.ParseDuration(raw)
 		if err != nil || d <= 0 {
@@ -82,6 +81,16 @@ func (r *reader) chains() Chains {
 		c.PollInterval = d
 	}
 	return c
+}
+
+func (r *reader) infuraKeys() []string {
+	var keys []string
+	for _, k := range strings.Split(r.get("INFURA_API_KEYS"), ",") {
+		if k = strings.TrimSpace(k); k != "" {
+			keys = append(keys, k)
+		}
+	}
+	return keys
 }
 
 // reader collects every missing or invalid variable, so one run names them all.

@@ -58,7 +58,8 @@ func TestMoneyLoop(t *testing.T) {
 	common := []string{"DATABASE_URL=" + dbURL}
 	loop := append(common, "CHAINS_FILE="+chains, "INFURA_API_KEYS=none", "POLL_INTERVAL=200ms")
 	start(t, bin, "api", append(common, "API_ADDR="+apiAddr, "PRIVY_APP_ID="+appID, "PRIVY_JWKS_URL="+privy.JWKSURL,
-		"PRIVY_APP_SECRET=unused")) // this test makes its profile in the database
+		"PRIVY_APP_SECRET=unused", // this test makes its profile in the database
+		"CHAINS_FILE="+chains, "INFURA_API_KEYS=none"))
 	api := "http://" + apiAddr
 	waitFor(t, "api healthy", func() bool {
 		res, err := http.Get(api + "/healthz")
@@ -146,6 +147,22 @@ func TestMoneyLoop(t *testing.T) {
 		t.Fatalf("ledger receiver %d owed %d held %d (%v), want all 0 like the chain", receiver, owed, held, err)
 	}
 
+	// The API shows the creator's money: the wallet holds the amount at the finalized block, nothing pending or held,
+	// and the invoice and its deposit are in the activity.
+	anvil.Mine(2)
+	money := authed(t, api+"/v1/profiles/"+profile+"/balances", privy)
+	tokens, _ := money["tokens"].([]any)
+	if len(tokens) != 1 || money["estimatedUsdTotal"] != "5.00" {
+		t.Fatalf("balances %v, want the one token and an estimated 5.00 USD", money)
+	}
+	if tk := tokens[0].(map[string]any); tk["wallet"] != amount || tk["pending"] != "0" || tk["held"] != "0" {
+		t.Fatalf("balance %v, want wallet %s and nothing pending or held", tk, amount)
+	}
+	items, _ := authed(t, api+"/v1/profiles/"+profile+"/activity", privy)["items"].([]any)
+	if len(items) != 2 || items[0].(map[string]any)["kind"] != "deposit" || items[1].(map[string]any)["kind"] != "invoice" {
+		t.Fatalf("activity %v, want the deposit then the invoice", items)
+	}
+
 	// The same request with the same key: the same invoice, still one.
 	status, again := post(t, api+"/v1/profiles/"+profile+"/invoices", privy, body)
 	if status != http.StatusOK || again["invoiceId"] != id {
@@ -199,29 +216,47 @@ func freeAddr(t *testing.T) string {
 
 func post(t *testing.T, url string, privy *authtest.Privy, body string) (int, map[string]any) {
 	t.Helper()
-	now := time.Now()
-	token := authtest.Sign(t, privy.Key("key-1"), "key-1", jwt.MapClaims{"sub": "did:privy:gate", "iss": "privy.io",
-		"aud": appID, "iat": now.Unix(), "exp": now.Add(time.Hour).Unix()})
 	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Authorization", "Bearer "+token(t, privy))
 	req.Header.Set("Idempotency-Key", "gate-1")
 	return do(t, req)
 }
 
 func get(t *testing.T, url string) map[string]any {
 	t.Helper()
+	return getAs(t, url, "")
+}
+
+// authed is a GET as the gate's user.
+func authed(t *testing.T, url string, privy *authtest.Privy) map[string]any {
+	t.Helper()
+	return getAs(t, url, token(t, privy))
+}
+
+func getAs(t *testing.T, url, bearer string) map[string]any {
+	t.Helper()
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if bearer != "" {
+		req.Header.Set("Authorization", "Bearer "+bearer)
 	}
 	status, body := do(t, req)
 	if status != http.StatusOK {
 		t.Fatalf("GET %s: %d %v", url, status, body)
 	}
 	return body
+}
+
+func token(t *testing.T, privy *authtest.Privy) string {
+	t.Helper()
+	now := time.Now()
+	return authtest.Sign(t, privy.Key("key-1"), "key-1", jwt.MapClaims{"sub": "did:privy:gate", "iss": "privy.io",
+		"aud": appID, "iat": now.Unix(), "exp": now.Add(time.Hour).Unix()})
 }
 
 func do(t *testing.T, req *http.Request) (int, map[string]any) {

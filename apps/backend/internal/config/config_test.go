@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -14,12 +15,14 @@ func TestAPI(t *testing.T) {
 	t.Setenv("PRIVY_APP_ID", "app")
 	t.Setenv("PRIVY_JWKS_URL", "https://jwks")
 	t.Setenv("PRIVY_APP_SECRET", "secret")
+	t.Setenv("CHAINS_FILE", "chains.json")
+	t.Setenv("INFURA_API_KEYS", "a, b,")
 	got, err := config.LoadAPI()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.DatabaseURL != "postgres://x" || got.Addr != ":9" || got.PrivyAppID != "app" || got.PrivyJWKSURL != "https://jwks" ||
-		got.PrivyAppSecret != "secret" {
+		got.PrivyAppSecret != "secret" || got.ChainsFile != "chains.json" || !slices.Equal(got.InfuraKeys, []string{"a", "b"}) {
 		t.Fatalf("got %+v", got)
 	}
 }
@@ -30,8 +33,11 @@ func TestAPINamesEveryMissingVariable(t *testing.T) {
 	t.Setenv("PRIVY_APP_ID", "")
 	t.Setenv("PRIVY_JWKS_URL", "")
 	t.Setenv("PRIVY_APP_SECRET", "")
+	t.Setenv("CHAINS_FILE", "")
+	t.Setenv("INFURA_API_KEYS", "")
 	_, err := config.LoadAPI()
-	if err == nil || !strings.Contains(err.Error(), "DATABASE_URL, API_ADDR, PRIVY_APP_ID, PRIVY_JWKS_URL, PRIVY_APP_SECRET") {
+	if err == nil || !strings.Contains(err.Error(),
+		"DATABASE_URL, API_ADDR, PRIVY_APP_ID, PRIVY_JWKS_URL, PRIVY_APP_SECRET, CHAINS_FILE, INFURA_API_KEYS") {
 		t.Fatalf("got %v", err)
 	}
 }

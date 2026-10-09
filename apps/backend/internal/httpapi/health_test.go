@@ -17,7 +17,7 @@ func TestHealthz(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := httptest.NewServer(httpapi.NewMux(pool, nil, nil))
+	server := httptest.NewServer(httpapi.NewMux(pool, nil, nil, nil))
 	defer server.Close()
 
 	res, err := http.Get(server.URL + "/healthz")
