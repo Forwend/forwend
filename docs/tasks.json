@@ -7549,7 +7549,7 @@
         "Harness workflow requires structure review; this task changes documentation only and leaves application source and dependencies unchanged."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check",
         "harness"
@@ -7643,11 +7643,18 @@
           "1": "docs-check: docs/web/structure.md and web/rules.md define screens, features, landing sections, ui-web families, services, hooks and Redux naming; D-11 links them",
           "2": "docs-check: docs/backend/rules.md defines domain packages, HTTP boundary, operation files, SQL ownership and tests",
           "3": "e2e: workflow.md has a Structure review section; app source and dependencies unchanged (only next.config devIndicators off so the dev overlay stops covering the phone tab bar)"
-        }
+        },
+        "commit": "7cf73a9",
+        "doneAt": "2026-10-09T23:14:46Z"
       },
       "branch": "docs/f073-document-file-ownership-and-naming-for-w",
       "baseCommit": "5791e629ec475d9443340484820047bba90e4f30",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f073-document-file-ownership-and-naming-for-w",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
