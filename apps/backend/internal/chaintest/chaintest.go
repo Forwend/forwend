@@ -9,6 +9,7 @@ import (
 	"net"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -16,6 +17,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/rpc"
 )
+
+var deployedTo = regexp.MustCompile(`"deployedTo":\s*"(0x[0-9a-fA-F]{40})"`)
 
 // Anvil's first default account: public test key, never used outside a local chain.
 const (
@@ -47,10 +50,17 @@ func Start(t *testing.T) *Anvil {
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start anvil (install Foundry): %v", err)
 	}
-	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
+	exited := make(chan error, 1)
+	go func() { exited <- cmd.Wait() }()
+	t.Cleanup(func() { _ = cmd.Process.Kill(); <-exited })
 
 	a := &Anvil{t: t, URL: fmt.Sprintf("http://127.0.0.1:%d", port)}
 	for i := 0; ; i++ {
+		select {
+		case err := <-exited: // e.g. the port was taken: never talk to another process on it
+			t.Fatalf("anvil exited: %v", err)
+		default:
+		}
 		if a.RPC, err = rpc.Dial(a.URL); err == nil {
 			var id string
 			if err = a.RPC.Call(&id, "eth_chainId"); err == nil {
@@ -71,13 +81,11 @@ func (a *Anvil) DeployToken() string {
 	a.t.Helper()
 	out := a.run("forge", "create", "test/mocks/MockToken.sol:MockToken", "--root", contractsDir(),
 		"--rpc-url", a.URL, "--private-key", Key, "--broadcast", "--json")
-	var res struct {
-		DeployedTo string `json:"deployedTo"`
+	m := deployedTo.FindStringSubmatch(out)
+	if m == nil {
+		a.t.Fatalf("forge create: no deployedTo in\n%s", out)
 	}
-	if err := json.Unmarshal([]byte(out[strings.LastIndex(out, "{\n"):]), &res); err != nil || res.DeployedTo == "" {
-		a.t.Fatalf("forge create: %v\n%s", err, out)
-	}
-	return strings.ToLower(res.DeployedTo)
+	return strings.ToLower(m[1])
 }
 
 // Mint gives the sender tokens.

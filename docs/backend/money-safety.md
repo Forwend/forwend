@@ -21,7 +21,8 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - Ignore logs from every other address: anyone can deploy a look-alike token or clone that emits the same events.
 - A second, independent RPC confirms the balance before "paid" or a webhook.
 - Arc: checkout builds an ERC-20 `transfer` on `0x3600…`, never a native send. Native USDC sends log `Transfer` from
-  a system emitter (18 decimals); index it for deposit times, but decide from `balanceOf` (6 decimals).
+  a system emitter (18 decimals) that the watcher ignores, so such a payment has no transfer row: decide from
+  `balanceOf` (6 decimals) and hold or alert on balance without a matching transfer.
 - A deposit is received when seen and paid only at or below the chain's `finalized` block (D-45); show blocks and
   time left until then (`internal/finality`). Read headers, logs and receipts only, and compare block hashes the RPC
   returns: go-ethereum can't decode Base, Arbitrum and Tempo system transactions, and its `Header.Hash()` is wrong on

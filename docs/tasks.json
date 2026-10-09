@@ -4836,84 +4836,85 @@
       ],
       "review": true,
       "notes": [
-        "2026-10-09 From F045 review: mark a transfer reorged before inserting its re-mined copy (otherwise a different log_index lets both stay live); on a reorg back to the original block (A->B->A) set the old row live again, since (chain_id, block_hash, log_index) is unique; decide how to store Arc native-coin Transfer logs (0xffff...fffe emitter), which the transfer->invoice token FK rejects. Book only confirmed transfers; the DB rejects other bookings and any change to a booked transfer."
+        "2026-10-09 From F045 review: mark a transfer reorged before inserting its re-mined copy (otherwise a different log_index lets both stay live); on a reorg back to the original block (A->B->A) set the old row live again, since (chain_id, block_hash, log_index) is unique; decide how to store Arc native-coin Transfer logs (0xffff...fffe emitter), which the transfer->invoice token FK rejects. Book only confirmed transfers; the DB rejects other bookings and any change to a booked transfer.",
+        "2026-10-09 review fail by reviewer: Fail: one blocking defect. Acceptance lines pass (backend check ok; watcher tests -race -count=3 and -count=10 all pass; go mod tidy -diff clean, only go-ethereum v1.17.8 plus indirects added; must-not-change paths untouched; CI installs Foundry v1.5.1 and submodules before checks). BLOCKING (1): the watcher trusts one eth_getLogs answer, and treats a missing log as a reorg. (a) watcher.go:196-200 marks every detected row with block_number >= from that is absent from the answer as reorged, without comparing block hashes as S-4/D-45 require ('reorg checks must compare hashes the RPC returns'). If the answer is short (a load-balanced node one block behind that clamps toBlock to its head, or a provider returning [] on overload) in the scan where the row's block becomes final, the cursor moves to that finalized block (watcher.go:222-225), start() (:93-106) never rescans it (reorged rows do not hold the start back), and a canonical final deposit stays reorged forever. (b) Same cause: a deposit absent from that one answer in the scan where its block becomes final is never recorded. On Arc and Tempo finalized = latest, so every block is scanned once and a 1-block lag is enough. Reproduced in a scratch copy with an RPC proxy that answers eth_getLogs with [] once, then 3 healthy scans: TestPocLaggingLogsMissDepositForever -> 0 rows; TestPocLaggingLogsReorgFinalRowForever -> row left 'reorged'. Fix: mark a detected row reorged only when the RPC's header at its block_number has a different hash (or is missing below latest); and do not let one log answer be the last look at a block, e.g. rescan an overlap below last_finalized_block each scan (idempotent) or check the log node reached hi before advancing the cursor. Add a test with such a proxy. NON-BLOCKING: (2) watcher.go:169,177 confirm uses finalized from one call and the block hash from another; with load-balanced nodes a lagging node still on an orphan at height <= another node's finalized could pass. Consider reading header(n) and finalized in one JSON-RPC batch. (3) A->B->A works (scratch test: original row back to detected, B copy reorged) but is not tested; add a record()-level test. (4) Docs disagree: money-safety.md:23-24 says index Arc native Transfer logs for deposit times; architecture.md:83-84 says they are ignored. Update the owning doc; note for F049 that a native-only Arc payment creates no transfer row. (5) If a lagging node gives latest < finalized the cursor CHECK fails the scan (retried, noisy); rows above a lagging latest flap to reorged and back. (6) invoices() loads every invoice ever into one topic list each scan (ponytail noted). (7) chaintest.go:39-46 free-port race and no check that anvil is still running (a failed bind could connect to another anvil); chaintest.go:77 slices at LastIndex(out, '{\\n') which panics with -1 if forge prints compact JSON."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-09T14:47:13Z",
+        "at": "2026-10-09T14:56:13Z",
         "checks": [
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.6,
-            "log": "docs/runs/F048-20261009T144713Z-backend.log"
+            "seconds": 5.3,
+            "log": "docs/runs/F048-20261009T145613Z-backend.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.6,
-            "log": "docs/runs/F048-20261009T144713Z-harness.log"
+            "log": "docs/runs/F048-20261009T145613Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F048-20261009T144713Z-docs-check.log"
+            "log": "docs/runs/F048-20261009T145613Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F048-20261009T144713Z-lint.log"
+            "log": "docs/runs/F048-20261009T145613Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F048-20261009T144713Z-typecheck.log"
+            "log": "docs/runs/F048-20261009T145613Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.2,
-            "log": "docs/runs/F048-20261009T144713Z-unit.log"
+            "seconds": 5.9,
+            "log": "docs/runs/F048-20261009T145613Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.9,
-            "log": "docs/runs/F048-20261009T144713Z-build.log"
+            "log": "docs/runs/F048-20261009T145613Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 8.8,
-            "log": "docs/runs/F048-20261009T144713Z-e2e.log"
+            "seconds": 8.9,
+            "log": "docs/runs/F048-20261009T145613Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F048-20261009T144713Z-keep.log"
+            "log": "docs/runs/F048-20261009T145613Z-keep.log"
           }
         ],
         "taskHash": "9ae09311b07b415e",
-        "filesHash": "f63b591b888beebe",
+        "filesHash": "c387855ac8b11bab",
         "proof": {
-          "1": "backend: TestDepositIsDetectedThenConfirmed on Anvil: a 5 USDC MockToken transfer to a receive address is a detected row (amount, sender, block time), still detected one block short of finalized, confirmed once its block is finalized; mutation of the finality comparison fails it",
+          "1": "backend: TestDepositIsDetectedThenConfirmed on Anvil: a 5 USDC MockToken transfer to a receive address is a detected row (amount, sender, block time), still detected one block short of finalized, confirmed once its block is finalized",
           "2": "backend: TestOnlyTheInvoiceTokenToAReceiveAddressCounts: a look-alike MockToken (also a listed token of another invoice) sending to the receive address, and the real token sending to an unknown address, add no row; without the token check the foreign key rejects the row",
-          "3": "backend: TestReorgMarksTheDepositReorged: anvil_reorg drops the block and the row becomes reorged; the same signed tx mined again is a new detected row; a new Chain (restarted worker) scanning twice adds nothing and later confirms it (2 rows total)"
+          "3": "backend: TestReorgMarksTheDepositReorged (anvil_reorg -> reorged; the same signed tx mined again is a new detected row; a restarted Chain adds nothing and later confirms it), TestReorgBackToTheFirstBlock (A->B->A), TestLaggingNodeDoesNotLoseADeposit and TestLaggingNodeDoesNotReorgADeposit (an empty eth_getLogs answer neither loses nor reorgs a deposit; both failed on the reviewed code)"
         }
       },
       "branch": "feat/f048-the-watcher-records-only-real-deposits-o",
@@ -4950,7 +4951,8 @@
       "review": true,
       "notes": [
         "2026-10-09 From F045 review: booking a transfer that is already booked raises P0001 even with ON CONFLICT DO NOTHING, so treat that error as 'already booked'. Deposit entries are not tied to chain_transfers.amount, and a reversed deposit's transfer can't be booked again, so enforce receiver entry = transfer amount when booking. Invoice terms can still be UPDATEd; lock them if F049 adds a terms guard.",
-        "2026-10-09 From F045 review: book with the default deferred constraints; SET CONSTRAINTS ALL IMMEDIATE makes a normal booking fail (the booked-flag check runs before the ledger row exists)."
+        "2026-10-09 From F045 review: book with the default deferred constraints; SET CONSTRAINTS ALL IMMEDIATE makes a normal booking fail (the booked-flag check runs before the ledger row exists).",
+        "2026-10-09 From F048 review: an Arc payment sent as native coin (not ERC-20 transfer on 0x3600...) creates no chain_transfers row; decide paid from balanceOf and hold or alert on a balance with no matching transfer. The watcher may also miss a deposit if a node lags for 64+ blocks in a row; the balanceOf check is the backstop."
       ],
       "blockedReason": null,
       "evidence": null
@@ -5014,7 +5016,8 @@
       ],
       "review": true,
       "notes": [
-        "2026-10-09 From F048: cmd/worker does not run the watcher yet. Wire a loop calling watcher.NewChain(pool, chainID, rpcClient).Scan per enabled chain, with per-chain RPC URLs in config (only internal/config reads env), before the gate can see detected -> confirmed."
+        "2026-10-09 From F048: cmd/worker does not run the watcher yet. Wire a loop calling watcher.NewChain(pool, chainID, rpcClient).Scan per enabled chain, with per-chain RPC URLs in config (only internal/config reads env), before the gate can see detected -> confirmed.",
+        "2026-10-09 Correction to the F048 note: no new per-chain RPC variables. The worker reuses packages/contracts/chains.json (one source for chain IDs, Infura names, public RPCs) and INFURA_API_KEYS, with rpc.mjs's rule in Go: try each Infura key, then public RPCs, keep the first whose eth_chainId matches (D-15); move to the next on 429 (S-4 hit Infura rate limits). with-env.sh loads only apps/backend/.env, so INFURA_API_KEYS must be available to the backend too. Anvil (31337) uses its local URL. The second, independent RPC for balanceOf before paid is F049/D-15."
       ],
       "blockedReason": null,
       "evidence": null
