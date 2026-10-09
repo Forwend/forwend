@@ -32,6 +32,9 @@ func TestNewVerifierKeys(t *testing.T) {
 	if _, err := NewVerifier("app", publicPEM(t, elliptic.P384())); err == nil {
 		t.Fatal("P-384 key accepted; ES256 needs P-256")
 	}
+	if _, err := NewVerifier("", oneLine); err == nil {
+		t.Fatal("empty app ID accepted")
+	}
 	if _, err := NewVerifier("app", "not a key"); err == nil {
 		t.Fatal("garbage key accepted")
 	}

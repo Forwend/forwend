@@ -4583,82 +4583,84 @@
         "packages/ui-web/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-09 review pass by reviewer: PASS. Both acceptance lines proven on real Postgres through a real HTTP server (httpapi/auth_test.go: 11 token cases, 5 ownership cases, all pass; pnpm --filter @forwend/backend test green with -race). Verified golang-jwt v5.3.1 source: WithValidMethods rejects none/HS256/ES384/RS256 before the key func runs; WithIssuer/WithAudience make iss/aud required when set; aud arrays match if any entry equals the app ID; nbf checked when present; kid/jku/x5u headers ignored (fixed key). P-256 curve enforced at construction. Matches Privy docs (ES256, iss privy.io, aud app ID, sub DID; sid not checkable locally). Client errors use fixed messages; tokens never logged. Deferring cmd/api + config wiring to F047 is fine: no protected route exists yet and F047 notes carry it. Non-blocking: (1) auth/auth.go:41 NewVerifier accepts empty appID; WithAudience(\"\") then accepts any signed token whose aud array contains \"\" (config.LoadAPI rejects empty vars, so only a guard). (2) httpapi/auth.go:33 requireProfileOwner treats a missing user as \"\" and still queries; users.privy_user_id has no CHECK <> '', so returning 401/500 on an empty user would make misuse fail closed. (3) httpapi/auth.go:16 Bearer scheme match is case-sensitive (RFC 7235 says case-insensitive; Privy clients send 'Bearer'). (4) auth_test.go:187 no-network test only catches http.DefaultTransport use; the real proof is that internal/auth imports no net/http. (5) Tests assert status only, not the JSON error body shape. (6) service.go is tested from httpapi/auth_test.go, not service_test.go (rules.md naming)."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-09T13:44:57Z",
+        "at": "2026-10-09T13:47:45Z",
         "checks": [
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.7,
-            "log": "docs/runs/F046-20261009T134457Z-backend.log"
+            "seconds": 4.1,
+            "log": "docs/runs/F046-20261009T134745Z-backend.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.7,
-            "log": "docs/runs/F046-20261009T134457Z-harness.log"
+            "seconds": 0.6,
+            "log": "docs/runs/F046-20261009T134745Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F046-20261009T134457Z-docs-check.log"
+            "log": "docs/runs/F046-20261009T134745Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F046-20261009T134457Z-lint.log"
+            "seconds": 0.2,
+            "log": "docs/runs/F046-20261009T134745Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F046-20261009T134457Z-typecheck.log"
+            "log": "docs/runs/F046-20261009T134745Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.0,
-            "log": "docs/runs/F046-20261009T134457Z-unit.log"
+            "seconds": 4.9,
+            "log": "docs/runs/F046-20261009T134745Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.0,
-            "log": "docs/runs/F046-20261009T134457Z-build.log"
+            "seconds": 0.9,
+            "log": "docs/runs/F046-20261009T134745Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 10.3,
-            "log": "docs/runs/F046-20261009T134457Z-e2e.log"
+            "seconds": 9.9,
+            "log": "docs/runs/F046-20261009T134745Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F046-20261009T134457Z-keep.log"
+            "log": "docs/runs/F046-20261009T134745Z-keep.log"
           }
         ],
         "taskHash": "16fc982cd9c2a791",
-        "filesHash": "4a26226fdec40c29",
+        "filesHash": "0cb9d5416fe9d9fd",
         "proof": {
-          "1": "backend: TestOnlyValidPrivyTokensPass: a token signed with the configured ES256 key, iss privy.io, aud = app ID passes (200); expired, missing exp, other issuer, other audience, missing sub, alg none, alg HS256 keyed with the public key, signed by another key, tampered payload and no token each return 401; removing each claim check makes its case fail",
-          "2": "backend: TestOnlyTheOwnerActsForAProfile: another user's profile, a user not in the database, an unknown and a malformed profile ID return 403, the owner gets 200; TestVerificationMakesNoNetworkCall: with http.DefaultTransport failing every call, a valid token still passes"
+          "1": "backend: TestOnlyValidPrivyTokensPass: a token signed with the configured ES256 key, iss privy.io, aud = app ID passes (200); expired, missing exp, other issuer, other audience, missing sub, alg none, alg HS256 keyed with the public key, signed by another key, tampered payload and no token each return 401; TestNewVerifierKeys rejects an empty app ID and non-P-256 keys",
+          "2": "backend: TestOnlyTheOwnerActsForAProfile: another user's profile, a user not in the database, an unknown and a malformed profile ID return 403, the owner gets 200; TestOwnerCheckNeedsASignedInUser denies without a user; TestVerificationMakesNoNetworkCall: with http.DefaultTransport failing every call, a valid token still passes"
         }
       },
       "branch": "feat/f046-only-a-signed-in-user-acts-and-only-for",

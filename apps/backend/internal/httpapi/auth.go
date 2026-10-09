@@ -31,6 +31,10 @@ func requireUser(v *auth.Verifier, next http.Handler) http.Handler {
 func requireProfileOwner(s *auth.Service, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, _ := r.Context().Value(userKey{}).(string)
+		if user == "" { // not wrapped in requireUser: deny
+			writeError(w, r, auth.ErrUnauthorized)
+			return
+		}
 		if err := s.CheckProfileOwner(r.Context(), user, r.PathValue("profileId")); err != nil {
 			writeError(w, r, err)
 			return

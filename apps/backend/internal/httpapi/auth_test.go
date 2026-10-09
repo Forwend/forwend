@@ -183,6 +183,18 @@ func TestOnlyTheOwnerActsForAProfile(t *testing.T) {
 	}
 }
 
+// Without requireUser in front, the owner check denies instead of querying for an empty user.
+func TestOwnerCheckNeedsASignedInUser(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/v1/profiles/x/probe", nil)
+	requireProfileOwner(nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("handler ran without a user")
+	})).ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("got %d, want 401", rec.Code)
+	}
+}
+
 // Verification uses only the configured key: with every outgoing HTTP call failing, a valid token still passes.
 func TestVerificationMakesNoNetworkCall(t *testing.T) {
 	srv, privyKey, profile := authServer(t)

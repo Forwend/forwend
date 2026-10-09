@@ -26,6 +26,9 @@ type Verifier struct {
 // NewVerifier takes the Privy app ID and the PEM verification key from the Privy dashboard. Literal "\n" sequences
 // (a key kept on one line in .env) become newlines.
 func NewVerifier(appID, verificationKeyPEM string) (*Verifier, error) {
+	if appID == "" {
+		return nil, errors.New("empty Privy app ID") // would accept a token with an empty audience
+	}
 	key, err := jwt.ParseECPublicKeyFromPEM([]byte(strings.ReplaceAll(verificationKeyPEM, `\n`, "\n")))
 	if err != nil {
 		return nil, fmt.Errorf("parse Privy verification key: %w", err)
