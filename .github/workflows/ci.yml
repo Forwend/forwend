@@ -43,23 +43,12 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Lint
-        run: pnpm lint
-      - name: Typecheck
-        run: pnpm typecheck
-      - name: Unit tests
-        run: pnpm test
-        env:
-          BASE_SEPOLIA_RPC: https://sepolia.base.org
-      - name: Contract symbolic tests (Halmos)
-        working-directory: packages/contracts
-        run: forge clean && pipx run halmos==0.3.3 --match-contract Symbolic
-      - name: Build
-        run: pnpm build
       - name: Install Playwright browser
         run: pnpm --filter @forwend/web exec playwright install --with-deps chromium
-      - name: Browser tests
-        run: pnpm e2e
+      - name: Repository checks
+        run: python3 scripts/harness.py check --ci
+        env:
+          BASE_SEPOLIA_RPC: https://sepolia.base.org
       - name: Upload Playwright traces
         if: failure()
         uses: actions/upload-artifact@v7

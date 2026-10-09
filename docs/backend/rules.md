@@ -31,13 +31,14 @@ A feature package holds `<feature>.go` (types and their rules), `service.go` (us
 - Constructors name their type: `invoice.NewService`, `chain.NewClient`. Bare `New` only when it returns the type
   named like the package (`queries.New` → `*queries.Queries`).
 - Test helpers: `<package>test` (`databasetest`).
-- Files: lowercase, underscores only in `_test.go`. One job per file; `service.go` is tested in `service_test.go`.
+- Files: descriptive lowercase Go names; `_test.go` for tests. One job per file; `service.go` is tested in `service_test.go`.
 
 ## Code
 
 - Config: only `internal/config` reads env vars, one loader per set of needs (`LoadAPI`, `LoadWorker`). No defaults:
   a missing variable stops the binary with an error naming every missing one.
-- Dependencies come through constructors. No package-level state, no `init()` side effects except driver registration.
+- Dependencies come through constructors. No mutable global dependencies; named errors and embedded migration files are allowed.
+  No `init()` side effects except driver registration.
 - `context.Context` is the first parameter of anything doing I/O.
 - Errors: wrap with `%w`; expected failures are sentinel errors (`invoice.ErrConflict`). Never panic on input.
 - Interfaces only for an external boundary tests must replace (Privy) or two real implementations, declared where used.

@@ -10,7 +10,8 @@
       "dependsOn": ["^typecheck"]
     },
     "test": {
-      "passThroughEnv": ["DATABASE_URL"]
+      "passThroughEnv": ["DATABASE_URL", "BASE_SEPOLIA_RPC"],
+      "cache": false
     },
     "e2e": {
       "cache": false,

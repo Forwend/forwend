@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""Check navigation and canonical decision IDs without enforcing prose or heading style."""
+from pathlib import Path
+import re
+import sys
+
+root = Path(__file__).resolve().parent.parent
+files = [root / 'AGENTS.md', root / 'PLAN.md', *root.glob('apps/*/AGENTS.md'),
+         *root.glob('packages/*/AGENTS.md'), *root.glob('docs/**/*.md')]
+errors = []
+ids = {}
+for path in files:
+    if 'runs' in path.parts:
+        continue
+    for number, line in enumerate(path.read_text().splitlines(), 1):
+        for target in re.findall(r'\[[^\]]*\]\(([^)]+)\)', line):
+            target = target.split('#')[0]
+            if target and '://' not in target and not target.startswith('mailto:') and not (path.parent / target).exists():
+                errors.append(f'{path.relative_to(root)}:{number}: missing {target}')
+        match = re.match(r'\| (D-\d+) \|', line)
+        if match:
+            ident = match[1]
+            if ident in ids:
+                errors.append(f'{path.relative_to(root)}:{number}: duplicate {ident} (already in {ids[ident]})')
+            if path != root / 'docs/PROJECT.md':
+                errors.append(f'{path.relative_to(root)}:{number}: decisions belong in docs/PROJECT.md')
+            ids[ident] = str(path.relative_to(root))
+for error in errors:
+    print(error)
+print(f'docs-check: {len(errors)} errors')
+sys.exit(bool(errors))

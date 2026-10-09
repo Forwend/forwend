@@ -22,7 +22,7 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
 ## Data and trust
 
 - The landing waitlist is a mock that sends and stores nothing (D-8).
-- From PLAN Phase 7 the app talks to the backend through a TypeScript client generated from `api/openapi.yaml`
+- From PLAN Phase 7 the app talks to the backend through a TypeScript client generated from `apps/backend/api/openapi.yaml`
   (TanStack Query + openapi-fetch) and signs users in with the Privy React SDK.
 - The checkout page recomputes the receive address from the invoice terms and refuses to show a mismatch; it loads no
   third-party scripts ([money-safety.md](../backend/money-safety.md)).

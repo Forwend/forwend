@@ -2,6 +2,18 @@
   "schemaVersion": 2,
   "checks": [
     {
+      "id": "harness",
+      "argv": ["python3", "-m", "unittest", "discover", "-s", "tests"],
+      "required": true,
+      "precommit": true
+    },
+    {
+      "id": "docs-check",
+      "argv": ["python3", "scripts/check-docs.py"],
+      "required": true,
+      "precommit": true
+    },
+    {
       "id": "lint",
       "argv": ["pnpm", "lint"],
       "required": true,
@@ -41,51 +53,27 @@
     },
     {
       "id": "kit-e2e",
-      "argv": ["pnpm", "--filter", "@forwend/web", "exec", "playwright", "test", "e2e/kit.spec.ts"],
+      "argv": ["pnpm", "--filter", "@forwend/web", "e2e", "e2e/kit.spec.ts"],
       "timeoutSeconds": 600
     },
     {
       "id": "landing-e2e",
-      "argv": [
-        "pnpm",
-        "--filter",
-        "@forwend/web",
-        "exec",
-        "playwright",
-        "test",
-        "e2e/landing.spec.ts"
-      ],
+      "argv": ["pnpm", "--filter", "@forwend/web", "e2e", "e2e/landing.spec.ts"],
       "timeoutSeconds": 600
     },
     {
       "id": "waitlist-e2e",
-      "argv": [
-        "pnpm",
-        "--filter",
-        "@forwend/web",
-        "exec",
-        "playwright",
-        "test",
-        "e2e/waitlist.spec.ts"
-      ],
+      "argv": ["pnpm", "--filter", "@forwend/web", "e2e", "e2e/waitlist.spec.ts"],
       "timeoutSeconds": 600
     },
     {
       "id": "a11y-e2e",
-      "argv": [
-        "pnpm",
-        "--filter",
-        "@forwend/web",
-        "exec",
-        "playwright",
-        "test",
-        "e2e/a11y.spec.ts"
-      ],
+      "argv": ["pnpm", "--filter", "@forwend/web", "e2e", "e2e/a11y.spec.ts"],
       "timeoutSeconds": 600
     },
     {
       "id": "seo-e2e",
-      "argv": ["pnpm", "--filter", "@forwend/web", "exec", "playwright", "test", "e2e/seo.spec.ts"],
+      "argv": ["pnpm", "--filter", "@forwend/web", "e2e", "e2e/seo.spec.ts"],
       "timeoutSeconds": 600
     },
     {
@@ -118,6 +106,15 @@
     {
       "id": "backend-e2e",
       "argv": ["pnpm", "--filter", "@forwend/backend", "e2e"],
+      "timeoutSeconds": 900,
+      "package": "apps/backend",
+      "script": "e2e"
+    },
+    {
+      "id": "symbolic",
+      "argv": ["sh", "-c", "forge clean && pipx run halmos==0.3.3 --match-contract Symbolic"],
+      "cwd": "packages/contracts",
+      "ci": true,
       "timeoutSeconds": 900
     }
   ],

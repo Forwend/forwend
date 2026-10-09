@@ -1,31 +1,20 @@
-# Docs
+# Documentation map
 
-Map of the docs. Each app or package `AGENTS.md` points to its area here.
+Start with the root [AGENTS.md](../AGENTS.md). Read only the row relevant to your task.
 
-## Harness (fixed paths, read by `scripts/harness.py`)
-
-- [PROJECT.md](PROJECT.md): users, scope, terms, requirements (R-), decisions (D-), assumptions (A-), questions (Q-).
-- `tasks.json`: task queue; change it only through `python3 scripts/harness.py`.
-- `config.json`: checks and delivery. `install.json`: what bootstrap installed. `runs/`: check logs, not committed.
-
-## System
-
-- [architecture.md](architecture.md): parts, who holds which key, money flow.
-- [diagrams/](diagrams/): mapgrain diagrams (`npx mapgrain@0.2.5 studio <file>.json`).
-- [spikes/](spikes/): results of technical spikes, one file each.
-
-## Areas
-
-| Area | Docs |
+| Topic | Owner |
 |---|---|
-| Backend | [architecture](backend/architecture.md), [rules](backend/rules.md), [API](backend/api.md), [money safety](backend/money-safety.md) |
-| Contracts | [architecture](contracts/architecture.md), [rules](contracts/rules.md), [operations](contracts/operations.md) |
-| Web | [architecture](web/architecture.md), [rules](web/rules.md), [design](web/DESIGN.md), [product](web/PRODUCT.md), [images](web/images.md) |
+| Task workflow and checks | [workflow.md](workflow.md); [config.json](config.json) defines commands |
+| Requirements, decisions and open questions | [PROJECT.md](PROJECT.md) |
+| Future phases and release gates | [PLAN.md](../PLAN.md) |
+| System boundaries and money flow | [architecture.md](architecture.md) |
+| Backend | [architecture](backend/architecture.md), [code rules](backend/rules.md), [API](backend/api.md), [money safety](backend/money-safety.md) |
+| Contracts | [architecture](contracts/architecture.md), [code rules](contracts/rules.md), [operations](contracts/operations.md) |
+| Web and shared UI | [architecture](web/architecture.md), [code rules](web/rules.md), [design](web/DESIGN.md), [product copy](web/PRODUCT.md) |
+| Image sources | [web/images.md](web/images.md) |
+| Measured integration results | [spikes/](spikes/) |
+| System diagrams | [diagrams/](diagrams/) |
 
-## Adding docs
-
-- A new area gets `docs/<area>/` (`architecture.md`, `rules.md`, more only when needed) and a short `AGENTS.md` in
-  its package that points here.
-- Keep files short: bullets, one topic per file, no history, no folder listings that go stale.
-- Decisions go in PROJECT.md as D- rows. No plan, status or changelog files.
-- A procedure agents repeat becomes a skill in `.claude/skills/<name>/SKILL.md`, linked from the area's docs.
+`tasks.json` owns progress; use harness `status`/`show` instead of reading it.
+`runs/` contains ignored logs; `install.json` records harness-owned file hashes.
+Add a doc only when an existing owner cannot hold the topic. Link to rules rather than copying them.

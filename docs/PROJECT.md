@@ -4,9 +4,8 @@ Freelancers, merchants and developers get paid in stablecoins through invoices, 
 hosted checkout or an API, keep the balance in stablecoins, and send it or withdraw it to a bank
 when they choose.
 
-Discovery: tier 0 (spec supplied: [PLAN.md](../PLAN.md), built from a 106-block research canvas), checked 2026-10-08.
-The full roadmap (phases 1–12), the product money rules and the accepted changes C-01…C-09 live in
-PLAN.md. This file holds the current release's requirements and the decisions that bind code now.
+This file owns requirements, decisions and open questions. [PLAN.md](../PLAN.md) owns the roadmap.
+Use harness `status` for progress.
 
 ## Users and jobs
 
@@ -17,10 +16,10 @@ PLAN.md. This file holds the current release's requirements and the decisions th
 ## Scope
 
 - First release (PLAN phase 3): R-1…R-12. A walking skeleton, the design system, the private `/kit` page, and a landing page with a mock waitlist.
-- Current release (PLAN phase 6, Go backend in `apps/backend`, local Postgres + Anvil): R-14…R-24. Discovery: tier 3 by trigger (money moves), but PLAN phase 6 already specifies processes, data model and state machine; open facts are tested in spikes S-1…S-4 (R-16, R-24) instead of desk research. Done before: R-1…R-13 (phase 3), contracts and testnet factory (phase 5, `docs/contracts/rules.md`).
-- Later, in PLAN order: technical spikes (phase 4), app shell and profiles (7), first payment on Base Sepolia + USDC (8), freelancer flow and payment exceptions (9), merchant stores and developer API/SDK (10), send and bank withdrawal (11), security review, full testnet run and tiny mainnet trials (12). Everything is tested on public testnets before any mainnet trial (PLAN D-15).
-- Later, before the site is public: the waitlist stores signups for real (PLAN C-09).
-- Out: customer logos, funding badges, or any claim of being regulated, insured or live (PLAN C-08); mobile app; custom checkout domains.
+- Backend scope: R-14…R-24. Use harness `status` / `list` for completion; the roadmap is not a progress log.
+- Later, in PLAN order: technical spikes (phase 4), app shell and profiles (7), first payment on Base Sepolia + USDC (8), freelancer flow and payment exceptions (9), merchant stores and developer API/SDK (10), send and bank withdrawal (11), security review, full testnet run and tiny mainnet trials (12). Everything is tested on public testnets before any mainnet trial (D-34).
+- Later, before the site is public: the waitlist stores signups for real (D-8).
+- Out: customer logos, funding badges, or any claim of being regulated, insured or live (D-7); mobile app; custom checkout domains.
 
 ## Domain
 
@@ -28,7 +27,7 @@ PLAN.md. This file holds the current release's requirements and the decisions th
 |---|---|---|---|
 | Design token | A named value for color, type, spacing, radius, shadow, blur or motion | Defined in `packages/design-tokens`; read by Tailwind and components | Every color token has a light and a dark value |
 | Kit page | Private page `/kit` showing all tokens and components | Uses `packages/ui-web` | Not linked, `noindex`, not in the sitemap; 404 unless `KIT_ENABLED=1` |
-| Direction | One of three visual styles to compare: A Dawn Path, B Dusk Ledger, C Halftone Horizon | Chosen once; tokens follow it | Undecided until Q-1 is answered |
+| Direction | One of three visual styles to compare: A Dawn Path, B Dusk Ledger, C Halftone Horizon | Chosen once; tokens follow it | D-13 is the working direction; Q-1 is owner review |
 | Payment status | Label shown for an invoice or payment | Used by status pill, timeline | detected, confirming, paid, partially paid, overpaid, expired, expired–partially paid, settled, refund pending, refunded |
 | Base units | Integer token amount on chain (USDC: 6 decimals) | Money component input | Always `bigint` in TypeScript; never floating point |
 | Waitlist (mock) | Email form on the landing page | Landing hero and final CTA | Shows success, sends nothing and stores nothing |
@@ -57,39 +56,67 @@ PLAN.md. This file holds the current release's requirements and the decisions th
 | R-13 | Three visual directions can be compared side by side. | Given `KIT_ENABLED=1`, when `/kit/directions` loads, then three hero comps labeled A Dawn Path, B Dusk Ledger and C Halftone Horizon are visible, each with a headline, a primary button and one product panel. | manual: Sasha picks one (Q-1) | D-3 |
 | R-14 | The Go backend builds, tests and starts. | Given `apps/backend`, when `pnpm --filter @forwend/backend test` runs, then `gofmt -l` prints nothing and `go vet` and `go test ./...` exit 0. Given Postgres from `infra/docker-compose.yml`, when `api` starts, then `GET /healthz` returns 200 `{"status":"ok"}`; `worker` and `signer` build. Given an empty database, when migrations run twice, then both runs exit 0. | backend | PLAN phase 6, D-16 |
 | R-15 | Go computes the same receive address as the contract. | Given a vectors file that Foundry writes from `factory.predict` for at least 20 terms (edge values: amount 1 and 2^256−1, chain IDs of all four testnets, expiry 0 and 2^64−1), when the Go address code runs on each, then every address equals the vector. Given a contract change that alters the init code, when `forge test` runs, then the vectors test fails until the file is regenerated. | backend, contracts | PLAN phase 6, `docs/backend/money-safety.md` |
-| R-16 | Chain reading works on all four testnets (spike S-4). | Given Base Sepolia, Arbitrum Sepolia, Arc testnet and Tempo Moderato, when the spike program fetches a block, a receipt and token `Transfer` logs with go-ethereum and reads the `safe` and `finalized` tags, then `docs/spikes/s4-chains.md` records the result per chain and the confirm/finality rule (answers PLAN Q-06). | manual: agent, spike notes | PLAN S-4, Q-06 |
+| R-16 | Chain reading works on all four testnets (spike S-4). | Given Base Sepolia, Arbitrum Sepolia, Arc testnet and Tempo Moderato, when the spike program fetches a block, a receipt and token `Transfer` logs with go-ethereum and reads the `safe` and `finalized` tags, then `docs/spikes/s4-chains.md` records the result per chain and the confirm/finality rule (answers Q-7). | manual: agent, spike notes | PLAN S-4, Q-7 |
 | R-17 | The database enforces the money rules. | Given the migrated schema, when a test inserts a second invoice with the same `(chain_id, receive_address)` or the same `(profile_id, idempotency_key)`, a second transfer with the same `(chain_id, tx_hash, log_index)`, or updates or deletes a `ledger_entries` row, then Postgres rejects it. Amounts are `NUMERIC(78,0)`; addresses are text with a `chain_family`. | backend | PLAN phase 6 data model |
-| R-18 | Only a signed-in user acts, and only for their own profiles. | Given an ES256 access token signed with the configured verification key, issuer `privy.io` and audience = app ID, when it calls a protected route, then it passes. Given a token that is expired, has another issuer or audience, uses another algorithm or `none`, or has a bad signature, then 401. Given a valid token for a profile the user does not own, then 403. No network call per request. | backend | PLAN §1.4, D-12 |
+| R-18 | Only a signed-in user acts, and only for their own profiles. | Given an ES256 access token signed with the configured verification key, issuer `privy.io` and audience = app ID, when it calls a protected route, then it passes. Given a token that is expired, has another issuer or audience, uses another algorithm or `none`, or has a bad signature, then 401. Given a valid token for a profile the user does not own, then 403. No network call per request. | backend | D-12, D-21 |
 | R-19 | A creator makes an invoice once, with a correct receive address. | Given `POST /v1/profiles/{profileId}/invoices` with `Idempotency-Key`, `chainId`, `token` and `amount` (decimal string, base units), then 201 with `invoiceId` (32 random bytes, hex), `receiveAddress`, `expiresAt` = now + 1 h unless `expiresIn` is given (allowed 15 min to 365 days, else 422) and `settleDeadline` = `expiresAt` + 24 h. The recipient is the profile's wallet. The same key and body again → 200 with the same invoice; the same key with another body → 409; a disabled or unknown token, amount 0 or above 2^256−1 → 422. | backend | D-18, PLAN phase 6 |
 | R-20 | The watcher records only real deposits and survives reorgs and restarts. | Given Anvil with the allowlisted token, when 5 USDC is transferred to a receive address, then a `chain_transfers` row is `detected`, then `confirmed` once the block is at or below the confirm rule. A `Transfer` from a look-alike token contract or to an unknown address adds no row. After a reorg that drops the block, the row is `reorged`. Restarting the worker resumes from the cursor with no duplicate rows. | backend | PLAN phase 6, R-17 |
 | R-21 | Invoice states follow confirmed money and block time. | Given confirmed transfers, when their sum is below the amount then `partially_paid`; at or above then `paid` (above: the excess is `held`); a deposit with block time after `expiresAt` is `late` and held; when `expiresAt` passes, `expired` or `expired_partially_paid`. `paid` is set only after a second RPC's `balanceOf` agrees. The database rejects any other transition. A property test over random deposit sequences keeps ledger totals equal to the receiver balance. | backend | PLAN phase 6 state machine, D-15 |
 | R-22 | The signer settles a paid invoice once, and only correctly. | Given a paid invoice on Anvil with the real contracts, when its settlement intent runs, then the signer re-reads the terms, recomputes the address, checks the balance on chain, deploys the receiver if needed and calls `settle` with the executor key; the recipient gets exactly the amount. A second intent for the same invoice is rejected. Killing the signer after sending and restarting it sends nothing again (reconciled by nonce and tx hash). Terms whose recipient or address does not match → refused, nothing sent. | backend | PLAN phase 6 signer, `docs/contracts/rules.md` |
 | R-23 | The whole money loop runs locally. | Given Postgres and Anvil from compose, when the gate script creates an invoice through the API and pays it with the mock token, then the invoice goes detected → confirmed → paid → settled, and the ledger equals on-chain balances. Running it again with the same idempotency key gives one invoice. | backend-e2e | PLAN phase 6 gate |
 | R-24 | Privy works from Go for login and profile wallets (spikes S-1…S-3). | Given a Privy test app, when the spike program verifies an access token, creates and looks up a wallet per profile (several for one user), and tries a sponsored USDC send on Base Sepolia, then `docs/spikes/s1-s3-privy.md` records each result and the decision. | manual: agent, spike notes | PLAN S-1…S-3, Q-4 |
+| R-25 | Repository guidance has one owner per topic and checks cannot report false success. | Given the instruction map and check registry, when docs-check and harness regression tests run, then links and decision IDs resolve, changed inputs invalidate evidence, and missing checks cannot pass. | docs-check, harness | Owner cleanup request |
 
 ## Decisions
 
-| ID | Decision (alternatives considered) | By | Date | Because |
-|---|---|---|---|---|
-| D-1 | pnpm workspaces + Turborepo; Go and Foundry keep native tools (Nx; plain pnpm) | user (PLAN C-06) | 2026-10-08 | Less config while the repo is small |
-| D-2 | One Next.js app (App Router, TypeScript strict) for landing, `/kit`, dashboard and checkout (separate apps per surface) | agent default | 2026-10-08 | One deploy and one design system until a real reason to split |
-| D-3 | Choose the visual direction from three code comps, not from static mockups (pick from the references directly) | user | 2026-10-08 | Real type, spacing and images in the browser show the actual result |
-| D-4 | Tailwind CSS v4 reading CSS-variable tokens; light and dark themes from the start; `data-theme` on `<html>` (CSS-in-JS; light only) | agent default | 2026-10-08 | Both themes cost little with variables; the app dashboard needs dark |
-| D-5 | `/kit` lives in the web app behind `KIT_ENABLED`, `noindex`, outside the sitemap (separate Storybook) | user | 2026-10-08 | Same code and tokens as the real pages, no extra tool |
-| D-6 | Money is `bigint` base units plus token decimals everywhere in TypeScript; formatted only for display (number/float) | agent default | 2026-10-08 | Floats lose cents; matches on-chain integers |
-| D-7 | Landing shows real product UI built in code, no generated screenshots, no fake social proof (logo walls, funding badges) | user (PLAN C-08) | 2026-10-08 | Trust for a payments brand; image models garble numbers and text |
-| D-8 | The waitlist is a front-end mock until the site is public (real storage now) | user | 2026-10-08 | Start fast; making it real is queued before launch |
-| D-9 | Landscape and texture images come from the Codex CLI built-in `image_gen` tool, run headless with `codex exec`; stored as WebP, served through next/image; prompts kept in `docs/web/images.md` (Grok CLI, which had no credits; stock images; code-only art) | user | 2026-10-08 | Grok returned HTTP 403 (no credits); owner chose Codex |
-| D-10 | Biome for lint and format; Vitest for unit; Playwright + axe for browser tests (ESLint + Prettier) | agent default | 2026-10-08 | One fast tool; browser tests prove visible behavior |
-| D-11 | TypeScript structure: all named types in `src/types/<domain>/`, finite runtime values as `as const` objects in `src/constants/<domain>.ts`, no repeated domain string literals (types next to code) | user | 2026-10-08 | Single source of truth per domain (typescript-structure skill) |
-| D-12 | Backend in Go with the official Privy Go SDK wrapped in `apps/backend/internal/privy`; built from PLAN phase 6 (TypeScript backend; porting Privy's TS SDK) | user | 2026-10-08 | Learning goal; official SDK covers the REST API |
-| D-13 | Visual direction: A Dawn Path for marketing, B Dusk Ledger's dark framed product sections, C Halftone Horizon's dots as a secondary texture. Fonts: Libre Caslon Display (display), Hanken Grotesk (UI), Geist Mono (amounts, addresses) (pure A, B or C; other faces) | agent default, pending owner review | 2026-10-08 | Q-1; PLAN §P3.2 recommendation |
-| D-14 | The Lighthouse check uses real ("devtools") throttling with the mobile preset (default simulated throttling) | agent default | 2026-10-08 | R-11. On localhost the page scripts run before first paint, so simulation adds every script to the LCP path: simulated LCP 3.1 s, real throttled LCP 1.5 s, first paint 1.4 s either way. Re-check with simulation against the deployed site |
-| D-15 | RPC: Infura (keys in `INFURA_API_KEYS`, tried in turn) with public RPCs as fallback, each accepted only if `eth_chainId` matches; a second, independent provider confirms balances before "paid" (Alchemy first, PLAN stack) | user | 2026-10-08 | Keys already exist and cover Base and Arbitrum; Arc and Tempo use public RPCs |
-| D-16 | Backend: Go stdlib `net/http` routing, pgx v5 + sqlc, goose migrations embedded in the binary, go-ethereum; Postgres 17 in Docker Compose locally and as a CI service container (chi, GORM, golang-migrate) | agent default | 2026-10-09 | Fewest dependencies that cover PLAN phase 6; sqlc keeps SQL explicit for money queries |
-| D-17 | Backend tests run against real Postgres and Anvil, never SQL or chain mocks (sqlmock, go-ethereum simulated backend) | agent default | 2026-10-09 | Constraints, triggers, reorgs and the real contracts are what the tests must prove |
-| D-19 | Backend layout: official Go module layout (`cmd/<binary>` wiring only, all code in `internal/`, no `pkg/`), one package per feature (types, service, tests) with SQL in one sqlc package `internal/database/queries` and `httpapi` as the only HTTP layer, Go blog package-naming rules; written in `docs/backend/rules.md` (allaboutapps/go-starter: heavy Swagger 2 + SQLBoiler template; go-nuts: one commit, no tests; golang-standards/project-layout: not official, overkill by its own README) | user asked + agent | 2026-10-09 | Official guidance, fewest folders; tests on real Postgres make repository interfaces unnecessary |
-| D-18 | Checkout expiry: default 1 h, the creator may set 15 min to 365 days; `settleDeadline` = `expiresAt` + 24 h | user (1 h default) + agent (range) | 2026-10-09 | 15 min leaves time for confirmations; 365 days matches the contract rules |
+All D- IDs are defined here. The roadmap refers to these decisions.
+
+| ID | Decision | Reason |
+|---|---|---|
+| D-1 | pnpm workspaces + Turborepo; Go and Foundry use native tools. | One workspace, native compilers. |
+| D-2 | One Next.js app (App Router, TypeScript strict) for landing, `/kit`, dashboard and checkout | One deploy and one design system until a real reason to split |
+| D-3 | Choose the visual direction from three code comps, not from static mockups | Real type, spacing and images in the browser show the actual result |
+| D-4 | Tailwind CSS v4 reading CSS-variable tokens; light and dark themes from the start; `data-theme` on `<html>` | Both themes cost little with variables; the app dashboard needs dark |
+| D-5 | `/kit` lives in the web app behind `KIT_ENABLED`, `noindex`, outside the sitemap | Same code and tokens as the real pages, no extra tool |
+| D-6 | Money uses bigint base units plus token decimals in TypeScript; formatting never converts money to float. | Exact amounts. |
+| D-7 | Landing shows real product UI built in code, no generated screenshots, no fake social proof | Trust for a payments brand; image models garble numbers and text |
+| D-8 | The waitlist is a front-end mock until the site is public | Start fast; making it real is queued before launch |
+| D-9 | Generate landscape images with image_gen; store WebP and record prompts in docs/web/images.md. Product UI stays code. | Reproducible assets. |
+| D-10 | Biome for lint and format; Vitest for unit; Playwright + axe for browser tests | One fast tool; browser tests prove visible behavior |
+| D-11 | Named TypeScript types live in src/types/<domain>/; finite domain values live in src/constants/ with derived unions. | One definition per domain. |
+| D-12 | Backend in Go with the official Privy Go SDK wrapped in `apps/backend/internal/privy`; built from PLAN phase 6 | Learning goal; official SDK covers the REST API |
+| D-13 | Dawn Path marketing, Dusk Ledger product bands, Halftone Horizon texture. Libre Caslon Display, Hanken Grotesk and Geist Mono. | Q-1 remains open for owner review. |
+| D-14 | Lighthouse uses mobile devtools throttling locally; recheck simulated throttling on the deployed site. | Local rendering distorts simulated LCP. |
+| D-15 | Infura first for Base and Arbitrum; public RPC fallback only after chain-ID validation. A second independent provider confirms balances before paid. | Independent balance confirmation. |
+| D-16 | Go net/http, pgx + sqlc, embedded goose migrations, go-ethereum; Postgres 17. | Explicit SQL and few dependencies. |
+| D-17 | Database and chain integration tests use real Postgres and Anvil, not SQL or chain mocks. | Prove constraints, transactions and reorg behavior. |
+| D-18 | Checkout expiry: default 1 h, the creator may set 15 min to 365 days; `settleDeadline` = `expiresAt` + 24 h | 15 min leaves time for confirmations; 365 days matches the contract rules |
+| D-19 | Go binaries in cmd/, application packages in internal/: feature services, database queries and one HTTP boundary. | See backend/rules.md. |
+| D-20 | One login holds many profiles: personal, freelancer, merchant. Developer is a team role and workflow, not a profile. | Product policy |
+| D-21 | Privy handles login/onboarding **and** creates one default wallet per profile. Our database owns profiles, settings, permissions and links to Privy wallet IDs. A personal profile and wallet are created at signup. | Product policy |
+| D-22 | Invoices use **one invoice receiver contract per invoice**, at a CREATE2 address known in advance. Payers send an ordinary token transfer, so exchange withdrawals work. The executor pays gas. | Product policy |
+| D-23 | Partial payment: the invoice waits for the rest until expiry. | Product policy |
+| D-24 | Paid or overpaid: settle **only the invoice amount** to the profile wallet. The excess stays held as money we owe the payer. | Product policy |
+| D-25 | An expired invoice cannot be topped up or reopened. A new payment needs a new invoice and new address. | Product policy |
+| D-26 | Expired partial payments and late deposits stay held in the receiver for a verified, platform-approved refund. They are never settled to the merchant, forfeited, or counted as revenue. | Product policy |
+| D-27 | **Refunds come only from held funds**, one per approved claim. Normally one refund returns everything held; when several payers sent money (for example two people paid the same invoice), each approved payer gets their own refund. The total never exceeds the held amount and never pulls back money already settled. Never auto-refund to an exchange sender address. | Product policy |
+| D-28 | Balances stay in stablecoins. Bank withdrawal is manual and user-started: quote, fees and confirmation first. No automatic payouts. | Product policy |
+| D-29 | Payment events have explicit states: detected (unconfirmed), confirmed, settled. Detection is never treated as final. A browser redirect never marks an invoice paid. | Product policy |
+| D-30 | Merchant profile → stores/projects. Each store has its own project ID, keys, branding and webhook. At first, stores share the merchant wallet. Developer and Finance roles see assigned stores; Admin sees all. | Product policy |
+| D-31 | Developer credentials: merchant ID and project ID (public, no authority), secret API key (server only, scoped), webhook signing secret (separate), optional public key for browser components. | Product policy |
+| D-32 | Hosted checkout and branded components (logo, colors, layout). No custom domains in the MVP. | Product policy |
+| D-33 | Wrong-chain payments: checkout warns before sending that money sent on another network can be lost. A support request is reviewed case by case; on a chain where our factory exists, `recover()` can return it. Never promise recovery. | Product policy |
+| D-34 | Testing: local tests, fork tests and review first, then a full testnet deployment (Base Sepolia, Arbitrum Sepolia, Arc testnet, Tempo testnet) where the whole product runs end to end with Privy on testnets and faucet tokens, then personal mainnet trials with tiny amounts. Bank withdrawal is built last. A public developer sandbox is still deferred. | Product policy |
+| D-35 | KYC is deferred for the private prototype only. It must be resolved before other people use real money. | Product policy |
+| D-36 | Planned chains: Base, Arbitrum, Arc, Tempo (BNB optional). Planned tokens: USDC, USDT. Each chain/token pair is enabled only after its exact contract is verified. | Product policy |
+| D-37 | No MetaMask connection in the MVP. Cross-chain send and recurring wallet billing are later. | Product policy |
+| D-38 | Start with Base + USDC; enable Arbitrum, Arc, Tempo and other token pairs one at a time after their tests pass. | Product scope |
+| D-39 | Build the invoice engine and hosted checkout before the merchant developer API. Both use the same invoice service. | Product scope |
+| D-40 | Use a deterministic deployer for matching factory addresses across supported chains. No nonce-based fallback; a chain with another factory has no cross-chain recovery. | Product scope |
+| D-41 | Receiver terms are immutable clone arguments. Deploy only for settlement, refund or recovery; never merely to accept a payment. | Product scope |
+| D-42 | Sign webhooks using Standard Webhooks, with retry, replay and delivery records. | Product scope |
+| D-43 | Verify sponsored gas for profile-wallet sends on Base and Arbitrum; use a paymaster if Privy cannot provide it. | Product scope |
+| D-44 | Store the receive method per invoice (evm_create2 initially). Chain-family adapters allow later HD-wallet or non-EVM methods without changing invoice and ledger semantics. | Product scope |
 
 ## Assumptions
 
@@ -107,3 +134,8 @@ PLAN.md. This file holds the current release's requirements and the decisions th
 | Q-2 | Where is the company based? | user | no (PLAN phase 11) | Global product; first withdrawal corridors EU/EEA (SEPA) and US (ACH) |
 | Q-3 | Preview deploys on Vercel free tier? | user | no | Local only until approved |
 | Q-4 | Privy test app credentials for spikes S-1…S-3 | user (creating it, 2026-10-09) | R-24 only | Sasha creates a Privy app in test mode and adds `PRIVY_APP_ID`, `PRIVY_APP_SECRET` and `PRIVY_VERIFICATION_KEY` to the root `.env`; R-18 is tested with locally generated keys meanwhile |
+| Q-5 | Bank withdrawal provider: Bridge, MoonPay Enterprise, BVNK or Fipto | user | phase 11 | Compare coverage after Q-2; one adapter first |
+| Q-6 | Signer key storage before mainnet | user | phase 12 | KMS secp256k1 or Turnkey; local dev key only now |
+| Q-7 | Confirmation/finality rule per chain | S-4 spike | R-20…R-22 | Measure safe/finalized support; no untested rule enables a chain |
+| Q-8 | Hosting providers | user | deployment | Vercel web, Fly.io or Railway Go, Neon Postgres proposed; approval before publishing or spending |
+| Q-9 | Evidence for refund claims, especially exchange deposits | user | phase 9 refunds | Wallet signature for self-custody where possible; support evidence and verified destination otherwise |

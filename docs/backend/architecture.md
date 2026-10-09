@@ -3,6 +3,9 @@
 The Go backend in `apps/backend` (PLAN Phase 6). Code rules: [rules.md](rules.md).
 Requirements: R-14…R-24 in [PROJECT.md](../PROJECT.md). Whole system: [architecture.md](../architecture.md).
 
+Current skeleton: config, Postgres migrations and `/healthz`. Worker and signer only start and wait.
+The processes and schema below are the target for R-15…R-24.
+
 ## Processes
 - `api`: public HTTP API + dashboard API. Verifies Privy tokens, authorizes the active profile,
   creates invoices, serves state. Holds **no** private keys.

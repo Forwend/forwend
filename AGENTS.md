@@ -1,72 +1,33 @@
 # Forwend
 
-Stablecoin payment app: invoices, checkout and API in, stablecoin balances, send and bank withdrawal out.
+Stablecoin invoices, checkout, balances, send and bank withdrawal.
 
-## Where to look
+## Start here
 
-| Need | Read |
+Run `python3 scripts/harness.py status` at session start and after a restart. Use `show ID` for the active task.
+Read only the task's requirement rows and the relevant package instructions.
+
+| Work | Read |
 |---|---|
-| Map of all docs | [docs/README.md](docs/README.md) |
-| Requirements and decisions | [docs/PROJECT.md](docs/PROJECT.md) (the rows a task names) |
-| System, keys, money flow | [docs/architecture.md](docs/architecture.md) |
-| Roadmap and money rules | [PLAN.md](PLAN.md) |
-| Web (`apps/web`, `packages/ui-web`, `packages/design-tokens`) | [docs/web/](docs/web/) |
-| Backend (`apps/backend`) | [docs/backend/](docs/backend/) |
-| Contracts (`packages/contracts`) | [docs/contracts/](docs/contracts/) |
+| Task, checks, review, delivery | [docs/workflow.md](docs/workflow.md) |
+| Requirements and decisions | [docs/PROJECT.md](docs/PROJECT.md) |
+| System and money flow | [docs/architecture.md](docs/architecture.md) |
+| Future scope | [PLAN.md](PLAN.md) |
+| Web | [apps/web/AGENTS.md](apps/web/AGENTS.md) |
+| Shared UI / tokens | [packages/ui-web/AGENTS.md](packages/ui-web/AGENTS.md), [packages/design-tokens/AGENTS.md](packages/design-tokens/AGENTS.md) |
+| Backend | [apps/backend/AGENTS.md](apps/backend/AGENTS.md) |
+| Contracts | [packages/contracts/AGENTS.md](packages/contracts/AGENTS.md) |
 
-Each app and package has a short `AGENTS.md`: what it is, its commands, and which docs to read before changing it.
+## Shared rules
 
-## Commands
-
-- Setup: `pnpm install` (Node in `.nvmrc`, pnpm 10). Dev: `pnpm dev`.
-- Checks: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm e2e`.
-
-## Repo-wide rules
-
-- Code lives under `apps/` or `packages/`, docs under `docs/`. Create PLAN.md folders only in the phase that needs them.
-- One job per file and per folder; group by domain or feature. Related files share a name (`InvoiceReceiver.sol` /
-  `InvoiceReceiver.t.sol`). Names say what the thing is (`refund-claim-form`, not `form2`). Split a file the moment it
-  does a second job, and a folder the moment it mixes domains. Follow the package's existing pattern.
-- TypeScript (D-11): named types in `src/types/<domain>/`, finite values as `as const` in `src/constants/<domain>.ts`,
-  unions derived in `src/types/`. Imports flow constants → types (type-only) → code. No repeated domain string
-  literals. List any framework-forced exception in the PR.
-- Money is integer base units plus decimals (`bigint`, `*big.Int`, `NUMERIC(78,0)`), never floats. A token is chain ID +
-  contract, never a ticker.
-- Secrets only in git-ignored `.env` files (root, `apps/backend/.env`). Never print, log or commit a key or token.
-- Docs are short and practical: one topic per file, rules as bullets, no history. Update the doc in the same PR.
+- Application code belongs in `apps/` or `packages/`; tooling in `scripts/` and `tests/`; local services in `infra/`.
+  Docs belong in `docs/`, except this entry point and the roadmap. Create planned folders only when needed.
+- Group by feature. Give files concrete names; keep related source and tests together. Split unrelated responsibilities.
+- TypeScript: named types in `src/types/<domain>/`; finite domain values in `src/constants/`; derive unions from constants.
+  Use type-only imports. Do not repeat domain string values. Document framework-required exceptions in the PR.
+- Money is integer base units plus decimals (`bigint`, `*big.Int`, `NUMERIC(78,0)`). Identify tokens by chain + contract.
+- Secrets only in ignored `.env` files (root or `apps/backend`). Never print, log or commit keys, tokens or request bodies.
+- Every change uses a task branch and PR. No direct base-branch commits or pushes; no skipped hooks.
+- Follow the user's authorization for commits and publishing. Spending, deployments and provider accounts require explicit approval.
+- Keep rules in their owning doc; link instead of copying. Update that doc when behavior changes.
 - No AI attribution in commits, PRs or comments.
-- No spending money, deploying, or creating provider accounts without Sasha's explicit yes.
-
-<!-- harness:start (installed by harness-bootstrap; keep project notes outside these markers) -->
-## Harness
-
-Run `python3 scripts/harness.py status` before anything else in a session, and again whenever your context was compacted or restarted. It prints the task in progress with its branch, acceptance, checks and must-not-change list, the last verify and review results with log paths, recent notes, pull requests waiting for merge, how the last session ended, and the next step, so you do not need to read `docs/tasks.json`, old run logs, or the runner's source. `python3 scripts/harness.py <command> -h` explains any command.
-
-- `docs/PROJECT.md`: users, scope, domain terms and rules, requirements (R-), decisions (D-), assumptions (A-), open questions (Q-). Read the rows a task's refs name, not the whole file.
-- `docs/RESEARCH.md`, if present: cited facts (V-) behind the decisions. Open it for scope or domain questions only.
-- `docs/config.json`: the checks `verify` and `wrapup` run, and how work is delivered. `docs/runs/`: check logs, not committed.
-
-**Every change goes through a pull request.** After bootstrap, the base branch changes only by merging a task's pull request. Never commit to it or push it directly; the runner blocks that push. Each new feature, fix or other change, even one line, is a task (`add "<behavior>" --type fix ...`) built on its own branch.
-
-**Definition of done.** A task is done only when every acceptance line is proven by a test or check that passed in `verify` together with the required checks, nothing on its must-not-change list changed, an independent review passed if the task asks for one, and `done ID --proof` merged its pull request after the checks passed. The runner refuses `done` until these hold.
-
-Task loop, one task at a time:
-1. `start ID` for the task `status` suggests. It switches you to the task's own branch, cut from the latest base branch.
-2. For each acceptance line, write or extend a test and see it fail. Make the smallest change that passes. Run the relevant check directly while you work.
-3. Missing information? If a search can answer it, use at most 5 searches on primary sources, add the facts as V- rows (URL, date) and the choice as a D- row, `edit` the acceptance if it changed, and continue. If only the user can answer, `block ID --reason "question: ..."` and take another ready task.
-4. `verify ID`. On failure, read the printed log tail, fix the cause, verify again. After 3 failed verifies with no new idea, `note` what you tried and `block` the task.
-5. Task marked for review: someone with fresh context (a subagent or a new session that did not write the code) reads `show ID` and `git diff`, then records `review ID --pass` or `--fail` with `--summary "findings"`. A failed review returns the task to step 2.
-6. Commit on the task branch. The pre-commit hook runs the checks marked `precommit`; if it fails, fix the problem and commit again, never with `--no-verify`. Then `done ID --proof "1=<test for line 1>" ...`. It pushes the branch, opens the pull request, waits up to 90 seconds for the checks, merges, and returns you to the base branch. If checks fail, the task is active again: fix, commit, verify, `done`. If checks are still running, run `done ID` again. If the merge needs a person's approval or the pull request was closed, tell the user; do not start other work around it.
-7. Take the next ready task unless the user limited the work.
-
-Stay in scope: other work you notice becomes `add "<behavior>" --accept "..." --check ID`; do not fold it into the current change.
-
-New feature requests and fixes:
-- Small and clear (one behavior whose Given/When/Then you can write without guessing): add an R- row to `docs/PROJECT.md`, then `add` the task with `--type`, `--accept`, `--check`, `--ref R-n`, and `--keep` for what must not change.
-- Large or unclear, or touching money, personal data or security: define it before building. Use the harness-bootstrap skill if it is installed; otherwise ask the user at most 3 questions with a recommended default each, record the answers as D-, A- or Q- rows, and split the feature into tasks.
-- If a task is in progress, new work waits in the queue. If the user wants it first, `block` the current task with `--reason "paused for F0NN"`.
-
-When scope or an assumption changes: update its rows in `docs/PROJECT.md` (replace outdated rows; git keeps the history), find what depends on them with `grep -n "<ID>" docs/PROJECT.md` and `list`, then `edit` affected tasks (their evidence goes stale), `reopen` passing work that must change, `drop ID --reason "..."` work that is no longer wanted, and `add` new work. Doc changes also reach the base branch through a pull request: make them on the branch of the task they belong to, or queue a `--type docs` task for them.
-
-Keep context small: use `status` and `show` instead of state files, read log tails, and open only the rows a task needs. When your context is more than half full, `note ID "<done / next>"` so a compaction or restart loses nothing. Before you stop, run `wrapup --note "<done / next>"`: it runs the required checks, looks for debug leftovers and uncommitted work, and records how the session ended. Fix what it reports, or leave the report for the next session.
-<!-- harness:end -->
