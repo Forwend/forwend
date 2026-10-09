@@ -1,10 +1,10 @@
-// Fails when a file in apps/web/public/images has no entry in docs/images.md (slot, prompt, date).
+// Fails when a file in apps/web/public/images has no entry in docs/web/images.md (slot, prompt, date).
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
 const imagesDir = join(root, "apps/web/public/images");
-const ledger = readFileSync(join(root, "docs/images.md"), "utf8");
+const ledger = readFileSync(join(root, "docs/web/images.md"), "utf8");
 
 function files(dir) {
   if (!existsSync(dir)) return [];
@@ -31,8 +31,10 @@ const missing = files(imagesDir)
 
 if (missing.length > 0) {
   console.error(
-    `Images without a complete docs/images.md row (slot, file, prompt, date):\n${missing.join("\n")}`,
+    `Images without a complete docs/web/images.md row (slot, file, prompt, date):\n${missing.join("\n")}`,
   );
   process.exit(1);
 }
-console.log(`images-check: ${files(imagesDir).length} image(s), all recorded in docs/images.md`);
+console.log(
+  `images-check: ${files(imagesDir).length} image(s), all recorded in docs/web/images.md`,
+);

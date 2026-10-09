@@ -174,7 +174,7 @@ apps/backend/               Go module                                    (Phase 
 packages/contracts/         Foundry project, chains.json, RPC picker     (Phase 5)
 api/openapi.yaml            public API contract                          (Phase 6)
 infra/docker-compose.yml    local Postgres, Anvil; values from apps/backend/.env (Phase 6)
-docs/                       PROJECT.md, tasks.json (harness), ADRs, images.md
+docs/                       harness files, architecture.md, backend/, contracts/, web/ (map: docs/README.md)
 PLAN.md                     this file
 ```
 
@@ -420,7 +420,7 @@ Update 2026-10-08: Grok returned HTTP 403 (no credits), so the owner switched to
   light, …style suffix"*.
 - Leave empty sky or calm areas where text will sit; check the 360px mobile crop.
 - Commit one WebP per image; `next/image` serves AVIF/WebP at the right widths.
-- Record every final prompt, the slot, and the date in `docs/images.md`, so images can be made
+- Record every final prompt, the slot, and the date in `docs/web/images.md`, so images can be made
   again in the same style.
 
 **Gate:** Sasha approves the chosen direction on `/kit` and the landing page (review tasks);
@@ -455,67 +455,13 @@ rule (D-03…D-08), with fuzz and invariant tests.
 
 ### Design
 
-Diagrams (mapgrain JSON; open one in the editor with `npx mapgrain@0.2.5 studio <file>.json`):
-[full contract workflow](docs/diagrams/contracts-workflow.json),
-[invoice states](docs/diagrams/invoice-lifecycle.json),
-[who can move money](docs/diagrams/security-keys.json).
-
-The full rule list, each with a test, is in [packages/contracts/AGENTS.md](packages/contracts/AGENTS.md).
-
-- `InvoiceReceiverFactory`
-  - `predict(terms) → address` (view) and `deploy(terms) → address`. Receiver = OZ clone with
-    immutable args (C-04). Other terms give another address, so nobody can take over an address.
-  - Terms: `invoiceId` (256 random bits), `recipient`, `token`, `amount`, `expiresAt`,
-    `settleDeadline`, `intendedChainId`. No authority or executor in the terms: the API writes the
-    terms and must not be able to choose who can move money. No profile, merchant or project ID:
-    the terms are public forever and an ID would link every invoice of one profile; `invoiceId`
-    maps to the profile in our database.
-  - `refundAuthority` is an immutable constructor argument (the Safe multisig; a test EOA on
-    testnets). `executor` is stored in the factory and only the refund authority can change it.
-  - `paused`, set only by the refund authority, blocks `settle()` on every receiver; never refunds.
-  - `predict` and `deploy` never reject terms, so every address a payer could see stays
-    deployable; unsafe terms are refused by `settle` and their money goes to refund. Only the
-    executor or the refund authority may `deploy`.
-  - Creates the implementation in its constructor; `deploy` returns an already deployed receiver
-    and records `deployedAt` and `receiverOf(invoiceId)`.
-  - Read-only status: `status(terms)` (also before deployment), `statusOf(invoiceId)` and the
-    receiver's `status()`: deployed, balance, settled, refundable, settleable, who may settle now.
-  - Deployed through the CREATE2 deployer with identical bytecode, so it has the same address on
-    every chain (C-03). Never a nonce-based deployment.
-  - One factory per release (`v1`, `v2`, ...). New invoices use the newest; old factories stay
-    deployed so old receivers can still be deployed for recovery.
-- `InvoiceReceiver`
-  - `settle()`: sends exactly `amount` of `token` to `recipient`, once, on the intended chain only.
-    Requires balance ≥ `amount`, safe terms and no pause. The executor may call it until the
-    effective deadline, `min(settleDeadline, deployedAt + 30 days)` (`settleDeadline` defaults to
-    24 h after `expiresAt`, longer than finality on every chain); after that only the
-    refund authority, for an on-time payment whose settlement was missed. Checks that the
-    recipient received exactly `amount`. A plain ERC-20 transfer does not call the receiver, so the
-    contract cannot see when each deposit arrived: the backend checks block times for late money.
-  - `refund(to, amount)`: refund authority only (the Safe calls it directly, so there are no
-    signatures to replay). May repeat (D-08), never above the refundable amount: the whole balance
-    once settled or after the effective deadline; before that, only what is above `amount`.
-  - `recover(token, to, amount)`: refund authority only. Any token that is not the invoice token,
-    the native coin (`address(0)`), or anything on a chain other than `intendedChainId` (C-03). On
-    the intended chain it never lowers the invoice-token balance (on Arc the native coin is USDC).
-    No `receive()`: a native transfer after deployment is rejected, so the payer keeps it.
-  - No admin sweep, no proxy or upgrade, no `approve`, no signature validation, no
-    `delegatecall`, no `selfdestruct`. A bug is fixed by a new factory version; the pause stops
-    settlement meanwhile.
-  - Works only if our factory deployed it (`deployedAt`): the implementation and clones made
-    outside the factory revert on every call, views included.
-  - `recipient` is the profile wallet read from Privy, never from user input; the contract cannot
-    tell a right recipient from a wrong one, so this check lives in the backend (Phase 6).
-  - Uses `SafeERC20`; only allowlisted tokens (fee-on-transfer tokens are not allowed).
-- Refund-authority Safe: 1.4.1+, at least 3 of 5 hardware-key owners, same address on every chain
-  and deployed on all of them on day one. Refunds, recoveries, post-deadline settles, Safe admin
-  changes and the delay's own settings go only through a 24–48 h Delay module; a Guard allows
-  direct transactions only for pause, executor change, and queuing or cancelling on the Delay
-  module, never with `delegatecall`. Details in `packages/contracts/AGENTS.md`.
+Moved to [docs/contracts/architecture.md](docs/contracts/architecture.md) (design) and
+[docs/contracts/operations.md](docs/contracts/operations.md) (Safe, deploys). Code rules, each with a test:
+[docs/contracts/rules.md](docs/contracts/rules.md).
 
 ### Done-list
 - [x] Foundry project in `packages/contracts/`, OZ 5.7.0 pinned (F035).
-- [ ] A unit test for every rule in `packages/contracts/AGENTS.md`, including: exact pay, partial then top-up, overpay (settle amount, excess held),
+- [ ] A unit test for every rule in `docs/contracts/rules.md`, including: exact pay, partial then top-up, overpay (settle amount, excess held),
       expired partial (no settle, refund works), late deposit, double settle blocked, settle
       refused after `settleDeadline`, multisig settle after it, two refunds within the
       refundable amount, refund above it blocked, refund before `settleDeadline` cannot take `amount`,
@@ -554,43 +500,7 @@ factory is live on the four testnets at one address, and a real receiver deploye
 **Goal:** API, worker and signer that create invoices, watch the chain, keep an append-only ledger
 and settle invoices safely, all on local Postgres + Anvil.
 
-### Processes
-- `api`: public HTTP API + dashboard API. Verifies Privy tokens, authorizes the active profile,
-  creates invoices, serves state. Holds **no** private keys.
-- `worker`: chain watcher (block cursor per chain, `eth_getLogs` for allowlisted tokens filtered
-  to active receiver addresses), confirmation/finality tracking, reorg handling, invoice state
-  machine, outbox processing, webhook delivery, reconciliation.
-- `signer`: separate process, own credentials, no public routes, no user sessions. Accepts only
-  typed intents ("settle invoice X"). Refunds are not signed here: an approved claim becomes a
-  proposed Safe transaction that the multisig owners approve. Re-reads the ledger and the chain
-  itself before signing. Caps amounts, allows only known contract methods, writes its own audit
-  log. Separate DB role with read access plus its own intent tables.
-
-### Data model (first version)
-- `users`, `profiles(kind: personal|freelancer|merchant)`, `profile_wallets(provider, provider_wallet_id, address, chain_family)`
-- `merchants → stores(project_id, branding)`, `team_members(role, store scope)` (Phase 10)
-- `chains(chain_id, confirm_rule, finality_rule)`, `tokens(chain_id, contract, decimals, enabled)`
-- `invoices`: immutable terms (`invoice_id`, profile, chain, token, `amount NUMERIC(78,0)`,
-  `expires_at`, recipient address, receive address, `receive_method` (C-10), salt). Addresses are
-  text with a `chain_family`, never a 20-byte EVM type, `idempotency_key` unique per profile,
-  separate status columns for **payment**, **settlement** and **refund**.
-- `chain_transfers`: unique `(chain_id, tx_hash, log_index)`, `block_hash`, `block_number`,
-  `block_time`, status `detected|confirmed|reorged`.
-- `ledger_entries`: append-only; received, settled, refunded, held amounts per invoice.
-- `settlement_intents` (unique per invoice), `refund_intents` (one per approved claim); nonce and tx hash tracked;
-  reconcile before any retry.
-- `refund_claims`, `support_cases` (wrong chain, late).
-- `outbox_events`, `webhook_endpoints`, `webhook_deliveries` (Phase 10).
-- `chain_cursors(chain_id, last_safe_block, last_finalized_block)`.
-
-### Invoice state machine
-```
-open ──deposit seen──▶ detected ──confirmed < amount──▶ partially_paid ──confirmed ≥ amount──▶ paid
-paid ──settlement confirmed──▶ settled          (excess > 0 → excess_held, refund-eligible)
-open/partially_paid ──expires_at passes (block time)──▶ expired / expired_partially_paid (held)
-any deposit with block_time > expires_at ──▶ late (held, never auto-credited)
-held funds ──verified claim + platform approval──▶ refund_pending ──confirmed──▶ refunded
-```
+Processes, data model and invoice state machine: [docs/backend/architecture.md](docs/backend/architecture.md).
 
 ### Done-list
 - [ ] Go module, three binaries, `sqlc` + migrations, Docker Compose (Postgres + Anvil fork of Base).
