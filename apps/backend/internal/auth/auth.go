@@ -96,7 +96,8 @@ func (v *Verifier) keysFor(ctx context.Context, kid string) (jwt.VerificationKey
 	v.fetchedAt = v.now() // also on failure, so a broken JWKS endpoint isn't called on every request
 	v.mu.Unlock()
 
-	keys, err := v.fetch(ctx)
+	// The fetch is shared: a caller that hangs up must not abort it and waste the slot. The client timeout bounds it.
+	keys, err := v.fetch(context.WithoutCancel(ctx))
 	if err != nil {
 		return jwt.VerificationKeySet{}, err
 	}

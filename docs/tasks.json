@@ -5729,82 +5729,84 @@
         "packages/contracts/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-09 review fail by reviewer: BLOCKING: apps/backend/internal/auth/auth.go:99 runs the shared JWKS refetch with the request context (httpapi/auth.go:21 passes r.Context()). fetchedAt is set first (auth.go:96), so a client that sends any ES256 token with an unknown kid and hangs up aborts the fetch and spends the once-per-minute slot. Repeating this each minute keeps the api from ever loading a rotated key: unauthenticated, breaks R-29. Even a normal client disconnect gives a minute of 401s for the new key. Reproduced in a scratch copy: an httptest api, a JWKS that answers in 300 ms, an attacker request with a 50 ms timeout, then a token from the rotated key gets 401. With fetch(context.WithoutCancel(ctx)) the same test passes (the http.Client 10 s timeout still bounds it). Add a test for this. Non-blocking: auth.go:149-155 one malformed EC key fails the whole fetch instead of being skipped; auth.go:156 duplicate kid keeps the last; requests with the new kid that arrive during an in-flight refetch get 401; no test that a failed refetch keeps the old keys. Checked OK: alg check runs before keyfunc in golang-jwt v5.3.1, so none/HS256 never reach a fetch; the key set holds only *ecdsa.PublicKey; a missing kid tries only published keys (safe); 200 concurrent mixed requests under -race give exactly 1 refetch; 1 MiB body limit, status check, point check; the real Privy JWKS (2 EC P-256 ES256 sig keys) loads and the api starts; a refused JWKS URL stops the api with exit 1 and no secret in the log. pnpm --filter @forwend/backend test passes."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-09T14:32:06Z",
+        "at": "2026-10-09T14:35:18Z",
         "checks": [
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.9,
-            "log": "docs/runs/F060-20261009T143206Z-backend.log"
+            "seconds": 4.6,
+            "log": "docs/runs/F060-20261009T143518Z-backend.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.8,
-            "log": "docs/runs/F060-20261009T143206Z-harness.log"
+            "seconds": 0.6,
+            "log": "docs/runs/F060-20261009T143518Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F060-20261009T143206Z-docs-check.log"
+            "log": "docs/runs/F060-20261009T143518Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F060-20261009T143206Z-lint.log"
+            "log": "docs/runs/F060-20261009T143518Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F060-20261009T143206Z-typecheck.log"
+            "log": "docs/runs/F060-20261009T143518Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.1,
-            "log": "docs/runs/F060-20261009T143206Z-unit.log"
+            "seconds": 4.9,
+            "log": "docs/runs/F060-20261009T143518Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.1,
-            "log": "docs/runs/F060-20261009T143206Z-build.log"
+            "seconds": 1.0,
+            "log": "docs/runs/F060-20261009T143518Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 9.1,
-            "log": "docs/runs/F060-20261009T143206Z-e2e.log"
+            "seconds": 8.9,
+            "log": "docs/runs/F060-20261009T143518Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F060-20261009T143206Z-keep.log"
+            "log": "docs/runs/F060-20261009T143518Z-keep.log"
           }
         ],
         "taskHash": "25667983590abe07",
-        "filesHash": "049b1dec08f94a65",
+        "filesHash": "22e7a27023c89c96",
         "proof": {
           "1": "backend: TestVerifyUsesTheKeyNamedByKid: with two published keys, tokens signed by either (kid set) and a token without kid pass, a kid naming the other key fails; TestOnlyValidPrivyTokensPass (httpapi, now over a JWKS) keeps every F046 rejection at 401; the real api loaded Privy's JWKS at startup",
-          "2": "backend: TestUnknownKidRefetchesAtMostOncePerMinute (fake clock: no fetch within a minute, one fetch after, rotated key then passes, 5 unknown kids in a minute cause no fetch); TestVerifyUsesTheKeyNamedByKid counts 1 fetch for known kids; TestVerificationMakesNoNetworkCall; TestNewVerifierNeedsKeys (HTTP 500, no keys, RSA only, point off-curve, not JSON); config reads PRIVY_JWKS_URL, not PRIVY_VERIFICATION_KEY"
+          "2": "backend: TestUnknownKidRefetchesAtMostOncePerMinute (fake clock: no fetch within a minute, one fetch after, rotated key then passes, 5 unknown kids in a minute cause no fetch); TestRefetchSurvivesACancelledRequest (a hung-up caller can't abort the shared refetch); TestVerifyUsesTheKeyNamedByKid counts 1 fetch for known kids; TestVerificationMakesNoNetworkCall; TestNewVerifierNeedsKeys; config reads PRIVY_JWKS_URL, not PRIVY_VERIFICATION_KEY"
         }
       },
       "branch": "feat/f060-privy-key-rotation-never-breaks-sign-in",

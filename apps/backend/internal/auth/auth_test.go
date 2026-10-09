@@ -113,3 +113,20 @@ func TestNewVerifierNeedsKeys(t *testing.T) {
 		srv.Close()
 	}
 }
+
+// A caller that hangs up must not abort the shared refetch: the rotated key still loads.
+func TestRefetchSurvivesACancelledRequest(t *testing.T) {
+	p := authtest.NewPrivy(t)
+	v := newVerifier(t, p)
+	now := time.Now().Add(RefetchInterval)
+	v.now = func() time.Time { return now }
+	rotated := p.AddKey(t, "key-new")
+	token := authtest.Sign(t, rotated, "key-new", claims())
+
+	gone, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, _ = v.Verify(gone, authtest.Sign(t, rotated, "key-new", claims()))
+	if _, err := v.Verify(context.Background(), token); err != nil {
+		t.Fatalf("rotated key after a cancelled refetch: %v", err)
+	}
+}

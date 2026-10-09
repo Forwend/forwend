@@ -11,12 +11,12 @@ func TestAPI(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://x")
 	t.Setenv("API_ADDR", ":9")
 	t.Setenv("PRIVY_APP_ID", "app")
-	t.Setenv("PRIVY_JWKS_URL", "key")
+	t.Setenv("PRIVY_JWKS_URL", "https://jwks")
 	got, err := config.LoadAPI()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.DatabaseURL != "postgres://x" || got.Addr != ":9" || got.PrivyAppID != "app" || got.PrivyJWKSURL != "key" {
+	if got.DatabaseURL != "postgres://x" || got.Addr != ":9" || got.PrivyAppID != "app" || got.PrivyJWKSURL != "https://jwks" {
 		t.Fatalf("got %+v", got)
 	}
 }
