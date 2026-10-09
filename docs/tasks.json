@@ -6782,7 +6782,7 @@
       "dependsOn": [
         "F064"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -6879,11 +6879,18 @@
           "summary": "Independent review: ownership, idempotency (per-user keys, concurrent same key), signup once, 403 across users and error mapping verified by reading code and running go test -race. Four low findings fixed and rechecked: NUL in name now 422 (tested), ProfileWallet bounded by privy.Timeout 20s (tested), api.md names the POST /v1/me key exception, signup user+personal insert in one transaction. No blocking issues.",
           "at": "2026-10-09T19:22:25Z",
           "filesHash": "6482c1003ad2e221"
-        }
+        },
+        "commit": "da56146",
+        "doneAt": "2026-10-09T19:22:45Z"
       },
       "branch": "feat/f065-a-user-signs-up-once-and-owns-their-prof",
       "baseCommit": "b80c68291bca81547462abf4e3d0a84616b9bf30",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f065-a-user-signs-up-once-and-owns-their-prof",
+        "base": "main"
+      }
     },
     {
       "id": "F066",
