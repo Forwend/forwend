@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 40,
+  "nextId": 41,
   "tasks": [
     {
       "id": "F001",
@@ -3723,7 +3723,10 @@
       ],
       "review": true,
       "notes": [
-        "2026-10-08 review fail by reviewer: FAIL (1 must-fix, acceptance 4). forge test 65 pass/1 skip, fmt ok; Fork test pass; halmos 3/3 pass. MUST FIX: InvoiceReceiverFactory.sol:101 settleable ignores the new settle term checks (InvoiceReceiver.sol:87-90: recipient 0/receiver/factory/implementation/token). PoC: terms with recipient=0, paid AMOUNT, deployed -> status().settleable==true, settle() by status().settler reverts InvalidTerms. So status lies exactly for the unsafe-terms invoices this change makes deployable (money that must go to refund is reported as ready to settle), contradicting the InvoiceStatus comment (InvoiceTypes.sol:24) and the claim in Status.t.sol testFuzz_statusMatchesBehaviour, which only fuzzes valid terms. Fix: move the term checks into one pure function in InvoiceTypes.sol (like refundableAmount), e.g. safeTerms(t, receiver, factory, implementation), use it in settle and in _status (receiver = s.receiver, factory = address(this), implementation), and add the bad-recipient/amount-0 cases to the status test. No money moved by this bug. CHECKED OK: no-validation deploy (amount 0, recipient bad, token 0, chainId 0, deadline 0 or uint64 max) never strands money: settle refuses, refund/recover return it (PoCs incl. token=0 native recover on intended chain); deployedAt+MAX_HOLD cannot overflow; cap only moves settle/full refund to the refund authority, never to anyone else; executor deploys at settle time per backend rule so long (<=365d) invoices settle normally; tryBalanceOf ok for no code, reverting, short (<32 bytes) data and gas-burning balanceOf (recover passes with 10M gas); Arc native guard test still passes; status/statusOf views are staticcalls, no reentrancy; deploy restriction: authority can deploy and replace executor, Smoke/deploy.sh use the executor key. RESIDUAL (not blocking, compromised API/evil invoice token only, not a regression): an invoice token that mirrors another token's balance, or returns ~3MB (return bomb, tryBalanceOf copies all returndata, InvoiceTypes.sol:58), makes recover of other tokens revert permanently on the intended chain; optional hardening: read only 32 bytes of returndata in assembly. statusOf hides a second receiver with a duplicate invoiceId (documented). FOLLOW-UP: deployments.json lists the F037 factory built from old bytecode (permissionless deploy, term validation); the new code needs a new factory address and redeploy task."
+        "2026-10-08 review fail by reviewer: FAIL (1 must-fix, acceptance 4). forge test 65 pass/1 skip, fmt ok; Fork test pass; halmos 3/3 pass. MUST FIX: InvoiceReceiverFactory.sol:101 settleable ignores the new settle term checks (InvoiceReceiver.sol:87-90: recipient 0/receiver/factory/implementation/token). PoC: terms with recipient=0, paid AMOUNT, deployed -> status().settleable==true, settle() by status().settler reverts InvalidTerms. So status lies exactly for the unsafe-terms invoices this change makes deployable (money that must go to refund is reported as ready to settle), contradicting the InvoiceStatus comment (InvoiceTypes.sol:24) and the claim in Status.t.sol testFuzz_statusMatchesBehaviour, which only fuzzes valid terms. Fix: move the term checks into one pure function in InvoiceTypes.sol (like refundableAmount), e.g. safeTerms(t, receiver, factory, implementation), use it in settle and in _status (receiver = s.receiver, factory = address(this), implementation), and add the bad-recipient/amount-0 cases to the status test. No money moved by this bug. CHECKED OK: no-validation deploy (amount 0, recipient bad, token 0, chainId 0, deadline 0 or uint64 max) never strands money: settle refuses, refund/recover return it (PoCs incl. token=0 native recover on intended chain); deployedAt+MAX_HOLD cannot overflow; cap only moves settle/full refund to the refund authority, never to anyone else; executor deploys at settle time per backend rule so long (<=365d) invoices settle normally; tryBalanceOf ok for no code, reverting, short (<32 bytes) data and gas-burning balanceOf (recover passes with 10M gas); Arc native guard test still passes; status/statusOf views are staticcalls, no reentrancy; deploy restriction: authority can deploy and replace executor, Smoke/deploy.sh use the executor key. RESIDUAL (not blocking, compromised API/evil invoice token only, not a regression): an invoice token that mirrors another token's balance, or returns ~3MB (return bomb, tryBalanceOf copies all returndata, InvoiceTypes.sol:58), makes recover of other tokens revert permanently on the intended chain; optional hardening: read only 32 bytes of returndata in assembly. statusOf hides a second receiver with a duplicate invoiceId (documented). FOLLOW-UP: deployments.json lists the F037 factory built from old bytecode (permissionless deploy, term validation); the new code needs a new factory address and redeploy task.",
+        "2026-10-08 review pass by reviewer: PASS after cb023b6. Re-ran: forge fmt --check ok; forge test 67 pass/1 skip; Base Sepolia fork pass; halmos 3/3. Earlier must-fix resolved: safeToSettle (InvoiceTypes.sol) is shared by settle and _status; my recipient=0 PoC now shows settleable=false, and a 1000-run fuzz over recipient in {valid, 0, factory, token, implementation} x amount 0..AMOUNT x deposit 0..2*AMOUNT confirms status.settleable == settle() success by status.settler. tryBalanceOf now copies at most 32 bytes into scratch memory (memory-safe; failure, no code or short reply -> false,0); my 3 MB return-bomb PoC now recovers other tokens; reverting, short-reply, no-code and gas-burning tokens do not block recover; Arc native guard test passes. Earlier checks still hold: deploy without term checks never strands money, deadline cap only shifts control to the refund authority, status views are read-only calls, and the restricted deploy is safe (authority can deploy). Accepted residual (documented, compromised API only): a malicious invoice token that mirrors another token's balance or burns gas can still block recover on the intended chain. Follow-up: testnet factory in deployments.json is old bytecode; redeploy is a separate task.",
+        "2026-10-08 verified + independent review passed (cb023b6). Held unmerged on purpose: Sasha is auditing main@30d0fac; merge together with audit fixes, then F040 redeploys testnets.",
+        "2026-10-08 F038 merged. F039 (review fixes + status views) verified and review-passed on its branch, blocked until Sasha's audit results. F040 redeploy queued after F039. F033 still queued."
       ],
       "blockedReason": null,
       "evidence": {
@@ -3782,17 +3785,52 @@
           }
         ],
         "taskHash": "c428da433f91fc7c",
-        "filesHash": "258570fb9c056dfa"
+        "filesHash": "258570fb9c056dfa",
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS after cb023b6. Re-ran: forge fmt --check ok; forge test 67 pass/1 skip; Base Sepolia fork pass; halmos 3/3. Earlier must-fix resolved: safeToSettle (InvoiceTypes.sol) is shared by settle and _status; my recipient=0 PoC now shows settleable=false, and a 1000-run fuzz over recipient in {valid, 0, factory, token, implementation} x amount 0..AMOUNT x deposit 0..2*AMOUNT confirms status.settleable == settle() success by status.settler. tryBalanceOf now copies at most 32 bytes into scratch memory (memory-safe; failure, no code or short reply -> false,0); my 3 MB return-bomb PoC now recovers other tokens; reverting, short-reply, no-code and gas-burning tokens do not block recover; Arc native guard test passes. Earlier checks still hold: deploy without term checks never strands money, deadline cap only shifts control to the refund authority, status views are read-only calls, and the restricted deploy is safe (authority can deploy). Accepted residual (documented, compromised API only): a malicious invoice token that mirrors another token's balance or burns gas can still block recover on the intended chain. Follow-up: testnet factory in deployments.json is old bytecode; redeploy is a separate task.",
+          "at": "2026-10-08T22:48:34Z",
+          "filesHash": "258570fb9c056dfa"
+        }
       },
       "branch": "feat/f039-contract-v1-fixes-from-the-attacker-and",
       "baseCommit": "141d916c6fffa7ed548dbc3911763c5691ecd1c6",
       "failedVerifies": 0
+    },
+    {
+      "id": "F040",
+      "type": "chore",
+      "behavior": "The testnet factory and probe receiver are redeployed with the F039 code on all four testnets, a real invoice settles and refunds on Arc and Tempo again, and deployments.json lists the new addresses (old v1-preview factory kept as history)",
+      "acceptance": [
+        "script/deploy.sh ran on Base Sepolia, Arbitrum Sepolia, Arc testnet and Tempo Moderato with the merged F039 code; the factory and probe receiver have one new address on all four",
+        "On Arc and Tempo a real invoice is paid with 10% extra, settled exactly and the extra refunded; statusOf(invoiceId) shows it settled with balance 0",
+        "packages/contracts/deployments.json lists the new addresses and transaction hashes and keeps the F037 factory under a superseded entry"
+      ],
+      "dependsOn": [
+        "F039"
+      ],
+      "state": "not_started",
+      "verification": [
+        "contracts",
+        "lint"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-08T22:29:10Z",
+    "at": "2026-10-08T22:49:01Z",
     "clean": true,
     "problems": [],
-    "note": "F034-F037 merged (PRs #34-#37): Foundry workspace in packages/contracts, contract security rules, v1 factory+receiver with full tests (Halmos in CI), deployed on 4 testnets at 0xCB9c...6864. Next: F033 landing refund line; then Phase 6 backend in apps/backend."
+    "note": "F038 merged. F039 (review fixes + status views) verified and review-passed on its branch, blocked until Sasha's audit results. F040 redeploy queued after F039. F033 still queued."
   }
 }
