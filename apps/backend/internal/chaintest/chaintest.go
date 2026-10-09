@@ -121,6 +121,30 @@ func (a *Anvil) Mine(n int) {
 	}
 }
 
+// Now returns the latest block's time.
+func (a *Anvil) Now() int64 {
+	a.t.Helper()
+	var block struct {
+		Timestamp string `json:"timestamp"`
+	}
+	if err := a.RPC.Call(&block, "eth_getBlockByNumber", "latest", false); err != nil {
+		a.t.Fatal(err)
+	}
+	var n int64
+	if _, err := fmt.Sscanf(block.Timestamp, "0x%x", &n); err != nil {
+		a.t.Fatal(err)
+	}
+	return n
+}
+
+// Wait moves the chain's clock forward; the next mined block carries the new time.
+func (a *Anvil) Wait(seconds int64) {
+	a.t.Helper()
+	if err := a.RPC.Call(nil, "evm_increaseTime", seconds); err != nil {
+		a.t.Fatal(err)
+	}
+}
+
 // Reorg replaces the last depth blocks with new empty ones; their transactions are dropped.
 func (a *Anvil) Reorg(depth int) {
 	a.t.Helper()

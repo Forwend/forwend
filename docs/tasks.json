@@ -4951,7 +4951,7 @@
         "F048",
         "F059"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend"
       ],
@@ -4971,7 +4971,87 @@
         "2026-10-09 From F048 review: an Arc payment sent as native coin (not ERC-20 transfer on 0x3600...) creates no chain_transfers row; decide paid from balanceOf and hold or alert on a balance with no matching transfer. The watcher may also miss a deposit if a node lags for 64+ blocks in a row; the balanceOf check is the backstop."
       ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T15:22:37Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.9,
+            "log": "docs/runs/F049-20261009T152237Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F049-20261009T152237Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F049-20261009T152237Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F049-20261009T152237Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F049-20261009T152237Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 7.0,
+            "log": "docs/runs/F049-20261009T152237Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F049-20261009T152237Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.9,
+            "log": "docs/runs/F049-20261009T152237Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F049-20261009T152237Z-keep.log"
+          }
+        ],
+        "taskHash": "f6eb1dfa96d01936",
+        "filesHash": "67e2680ea862bdd6",
+        "proof": {
+          "1": "backend: TestDepositsMoveThePaymentStatus (Anvil: detected, 3 of 5 -> partially_paid, 6 of 5 -> paid with 1 held), TestExpiryHoldsPartialAndLatePayments (chain time past expiresAt -> expired_partially_paid with the 2 moved to held, unpaid -> expired, a later late deposit held), TestLateFullPaymentIsHeldNotPaid, TestOnTimeDepositPaysAfterExpiryFinalizes",
+          "2": "backend: TestPaidNeedsTheSecondRPCToAgree (a confirmed row the chain doesn't back stays partially_paid until balanceOf from a second client covers it); TestInvoiceStatusTransitionsAndTerms (database rejects paid->open, expired->paid, etc., and any change to amount, receive address, expiry or recipient)",
+          "3": "backend: TestLedgerMatchesTheReceiverBalance: 40 seeded random sequences of on-time/late, detected/confirmed/reorged deposits and expiry; after every step receiver = owed + held = confirmed deposits, owed <= amount and <= on-time deposits, never above the simulated balance, and equal to it once all are final",
+          "4": "backend: TestGetInvoiceListsDepositsWithProgress: GET lists non-reorged deposits; the confirmed one has 0/0, the detected one 20 blocks and 40 s left from the cursor's finalized block and time; openapi.yaml documents deposits (Redocly lint valid)"
+        }
+      },
+      "branch": "feat/f049-invoice-states-follow-confirmed-money-an",
+      "baseCommit": "67ab334578a049734b2caa426f4fabea74b839ef",
+      "failedVerifies": 0
     },
     {
       "id": "F050",
@@ -5033,7 +5113,8 @@
       "review": true,
       "notes": [
         "2026-10-09 From F048: cmd/worker does not run the watcher yet. Wire a loop calling watcher.NewChain(pool, chainID, rpcClient).Scan per enabled chain, with per-chain RPC URLs in config (only internal/config reads env), before the gate can see detected -> confirmed.",
-        "2026-10-09 Correction to the F048 note: no new per-chain RPC variables. The worker reuses packages/contracts/chains.json (one source for chain IDs, Infura names, public RPCs) and INFURA_API_KEYS, with rpc.mjs's rule in Go: try each Infura key, then public RPCs, keep the first whose eth_chainId matches (D-15); move to the next on 429 (S-4 hit Infura rate limits). with-env.sh loads only apps/backend/.env, so INFURA_API_KEYS must be available to the backend too. Anvil (31337) uses its local URL. The second, independent RPC for balanceOf before paid is F049/D-15."
+        "2026-10-09 Correction to the F048 note: no new per-chain RPC variables. The worker reuses packages/contracts/chains.json (one source for chain IDs, Infura names, public RPCs) and INFURA_API_KEYS, with rpc.mjs's rule in Go: try each Infura key, then public RPCs, keep the first whose eth_chainId matches (D-15); move to the next on 429 (S-4 hit Infura rate limits). with-env.sh loads only apps/backend/.env, so INFURA_API_KEYS must be available to the backend too. Anvil (31337) uses its local URL. The second, independent RPC for balanceOf before paid is F049/D-15.",
+        "2026-10-09 From F049: each worker round per chain is watcher.Chain.Scan, then ledger.Service.ProcessChain; build the Service with ledger.BalanceFrom(clients) using RPCs other than the watcher's (D-15), e.g. a public RPC when the watcher uses Infura."
       ],
       "blockedReason": null,
       "evidence": null
@@ -6047,9 +6128,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-09T14:40:51Z",
+    "at": "2026-10-09T15:15:13Z",
     "clean": true,
     "problems": [],
-    "note": "This session merged F043, F044, F059, F045, F046, F047, F060 (PRs #49-#55). API: POST/GET invoices with Privy JWKS auth. Next: F048 watcher, or start F052 (Q-4 answered, Privy app in apps/backend/.env)."
+    "note": "Merged this session: F043-F048, F059, F060, F061 (PRs #49-#57). Secrets now per package (.env in apps/backend and packages/contracts, no root .env). Next: F049 invoice states, or F052 Privy spikes."
   }
 }

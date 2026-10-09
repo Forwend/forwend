@@ -60,6 +60,20 @@ type Invoice struct {
 	SettlementStatus string
 	RefundStatus     string
 	CreatedAt        time.Time
+	Deposits         []Deposit // set by Get
+}
+
+// Deposit is a transfer to the receive address that is not reorged. Until its block is final, BlocksLeft and
+// TimeLeft say how far the chain's finalized block still has to go (R-28).
+type Deposit struct {
+	TxHash      string
+	LogIndex    uint64
+	Amount      *big.Int
+	BlockNumber uint64
+	Status      string // detected or confirmed
+	Late        bool   // block time after expiresAt: held for the payer (D-26)
+	BlocksLeft  uint64
+	TimeLeft    time.Duration
 }
 
 // normalize checks the request values that need no database and returns them in canonical form.

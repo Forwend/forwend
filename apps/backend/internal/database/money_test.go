@@ -336,3 +336,36 @@ func TestInvoicePaidInSeveralTransfers(t *testing.T) {
 		t.Fatalf("%d transfers booked, want 3", booked)
 	}
 }
+
+// Payment status moves only along the state machine, and invoice terms never change (R-21).
+func TestInvoiceStatusTransitionsAndTerms(t *testing.T) {
+	conn, profile := moneyDB(t)
+	ctx := context.Background()
+	set := func(id int, status string) error {
+		_, err := conn.Exec(ctx, "UPDATE invoices SET payment_status = $2 WHERE id = $1", hex32(id), status)
+		return err
+	}
+	for i, path := range [][]string{
+		{"detected", "open", "partially_paid", "paid"},
+		{"detected", "expired"},
+		{"partially_paid", "expired_partially_paid"},
+	} {
+		must(t, insertInvoice(conn, profile, i+1, hex20(100+i), fmt.Sprintf("key-%d", i), "5000000"))
+		for _, status := range path {
+			if err := set(i+1, status); err != nil {
+				t.Fatalf("path %v, step %s: %v", path, status, err)
+			}
+		}
+	}
+	for _, bad := range []struct {
+		id     int
+		status string
+	}{{1, "open"}, {1, "partially_paid"}, {2, "paid"}, {2, "open"}, {3, "partially_paid"}} {
+		wantCode(t, set(bad.id, bad.status), codeRaise, fmt.Sprintf("invoice %d -> %s", bad.id, bad.status))
+	}
+	for _, column := range []string{"amount = amount + 1", "receive_address = '" + hex20(999) + "'",
+		"expires_at = expires_at + 1", "recipient_address = '" + hex20(998) + "'"} {
+		_, err := conn.Exec(ctx, "UPDATE invoices SET "+column+" WHERE id = $1", hex32(1))
+		wantCode(t, err, codeRaise, column)
+	}
+}
