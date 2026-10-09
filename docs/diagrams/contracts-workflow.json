@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "forwend-contracts-workflow",
-  "revision": 7,
+  "revision": 8,
   "kind": "workflow",
   "title": "Invoice receiver contracts v1: full workflow",
   "theme": "dark",
@@ -157,7 +157,7 @@
       "label": "Watcher sees Transfer log",
       "groupId": "backend",
       "ports": [],
-      "description": "Allowlisted token to an active receiver address. State: detected, not final"
+      "description": "Only logs from the allowlisted token contract to a receive address we computed ourselves; logs from any other contract are ignored. Paid is decided from balanceOf (on Arc native USDC logs come from a system emitter). State: detected, not final"
     },
     {
       "id": "dust",
@@ -241,7 +241,7 @@
       "label": "Receiver.settle()",
       "groupId": "chain",
       "ports": [],
-      "description": "Intended chain only. Refuses unsafe terms (amount 0, bad recipient), so that money goes to refund. Exactly amount to the fixed recipient, once; checks the recipient received it. Executor until min(settleDeadline, deployedAt + 30 days), then only the multisig"
+      "description": "Intended chain only. Refuses unsafe terms (amount 0, bad recipient), so that money goes to refund. Exactly amount to the fixed recipient, once; checks the recipient received it. Executor until min(settleDeadline, deployedAt + 30 days), then only the multisig. Reverts unless the factory deployed this receiver (deployedAt), so clones made outside the factory do nothing"
     },
     {
       "id": "wallet",

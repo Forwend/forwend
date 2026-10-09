@@ -468,7 +468,9 @@ The full rule list, each with a test, is in [packages/contracts/AGENTS.md](packa
     immutable args (C-04). Other terms give another address, so nobody can take over an address.
   - Terms: `invoiceId` (256 random bits), `recipient`, `token`, `amount`, `expiresAt`,
     `settleDeadline`, `intendedChainId`. No authority or executor in the terms: the API writes the
-    terms and must not be able to choose who can move money.
+    terms and must not be able to choose who can move money. No profile, merchant or project ID:
+    the terms are public forever and an ID would link every invoice of one profile; `invoiceId`
+    maps to the profile in our database.
   - `refundAuthority` is an immutable constructor argument (the Safe multisig; a test EOA on
     testnets). `executor` is stored in the factory and only the refund authority can change it.
   - `paused`, set only by the refund authority, blocks `settle()` on every receiver; never refunds.
@@ -501,6 +503,8 @@ The full rule list, each with a test, is in [packages/contracts/AGENTS.md](packa
   - No admin sweep, no proxy or upgrade, no `approve`, no signature validation, no
     `delegatecall`, no `selfdestruct`. A bug is fixed by a new factory version; the pause stops
     settlement meanwhile.
+  - Works only if our factory deployed it (`deployedAt`): the implementation and clones made
+    outside the factory revert on every call, views included.
   - `recipient` is the profile wallet read from Privy, never from user input; the contract cannot
     tell a right recipient from a wrong one, so this check lives in the backend (Phase 6).
   - Uses `SafeERC20`; only allowlisted tokens (fee-on-transfer tokens are not allowed).
@@ -531,7 +535,9 @@ The full rule list, each with a test, is in [packages/contracts/AGENTS.md](packa
 - [ ] `/token-integration-analyzer` on USDC/USDT behavior (USDT's non-standard `approve`/return values,
       blocklists, pausing).
 - [ ] `/dimensional-analysis` on amount/decimals math.
-- [ ] `/solidity-auditor` pass + Slither with no high/medium findings left open.
+- [ ] `/solidity-auditor` pass + Slither with no high/medium findings left open. (2026-10-09:
+      solidity-auditor, fp-check and a fizz/Medusa campaign ran; findings fixed in F039 and F041.
+      Slither still to run.)
 - [ ] Gas report: deploy-clone + settle cost on Base.
 - [ ] Deploy the factory on Base Sepolia, Arbitrum Sepolia, Arc testnet and Tempo testnet at the
       same address through the CREATE2 deployer (S-5), deploy one real receiver on each and check
@@ -599,6 +605,10 @@ held funds ──verified claim + platform approval──▶ refund_pending ─�
       recompute.
 - [ ] A second, independent RPC confirms the balance before an invoice is marked paid or a
       webhook is sent.
+- [ ] The watcher decides "paid" only from `balanceOf` of the allowlisted token contract (chain ID +
+      address) on receive addresses it computed itself. It ignores logs and events from any other
+      address: anyone can deploy a look-alike token or clone that emits the same events. On Arc,
+      native USDC sends log `Transfer` from a system emitter (18 decimals), not from `0x3600…`.
 - [ ] Watcher with block cursor, safe/finalized handling and a reorg test (Anvil `anvil_reorg`
       or snapshot/revert).
 - [ ] Ledger + state machine with SQL-enforced transitions; property tests for the state machine.

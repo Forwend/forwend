@@ -15,7 +15,7 @@ contract Deploy is Script {
 
     function deployFactory() public returns (InvoiceReceiverFactory factory) {
         address authority = vm.envAddress("REFUND_AUTHORITY");
-        address executor = vm.envAddress("EXECUTOR");
+        address executor = vm.envAddress("EXECUTOR"); // the first executor, even after setExecutor
         bytes memory init = abi.encodePacked(type(InvoiceReceiverFactory).creationCode, abi.encode(authority, executor));
         address predicted = vm.computeCreate2Address(SALT, keccak256(init));
         if (predicted.code.length == 0) {
@@ -25,7 +25,8 @@ contract Deploy is Script {
             require(address(factory) == predicted, "factory address mismatch");
         }
         factory = InvoiceReceiverFactory(predicted);
-        require(factory.refundAuthority() == authority && factory.executor() == executor, "factory config mismatch");
+        // The CREATE2 address commits to both arguments; setExecutor later changes only the stored executor.
+        require(factory.refundAuthority() == authority, "factory config mismatch");
         console.log("factory", predicted);
     }
 }

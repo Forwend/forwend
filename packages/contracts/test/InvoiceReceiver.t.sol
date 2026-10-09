@@ -7,6 +7,7 @@ import {InvoiceReceiver} from "../src/InvoiceReceiver.sol";
 import {InvoiceTerms} from "../src/InvoiceTypes.sol";
 import {MockToken, FeeToken, ReentrantToken} from "./mocks/MockToken.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 contract FactoryTest is Base {
     function test_predictMatchesDeploy() public {
@@ -126,6 +127,30 @@ contract FactoryTest is Base {
         vm.prank(authority);
         vm.expectRevert(InvoiceReceiver.NotClone.selector);
         impl.recover(address(0), payer, 0);
+    }
+
+    function test_cloneMadeOutsideFactoryReverts() public {
+        InvoiceTerms memory t = terms();
+        address fake = Clones.cloneWithImmutableArgs(factory.implementation(), abi.encode(t));
+        token.mint(fake, AMOUNT);
+        InvoiceReceiver r = InvoiceReceiver(fake);
+        vm.warp(DEADLINE + 1);
+        vm.startPrank(authority);
+        vm.expectRevert(InvoiceReceiver.NotClone.selector);
+        r.settle();
+        vm.expectRevert(InvoiceReceiver.NotClone.selector);
+        r.refund(payer, AMOUNT);
+        vm.expectRevert(InvoiceReceiver.NotClone.selector);
+        r.recover(address(token), payer, AMOUNT);
+        vm.stopPrank();
+        vm.expectRevert(InvoiceReceiver.NotClone.selector);
+        r.terms();
+        vm.expectRevert(InvoiceReceiver.NotClone.selector);
+        r.status();
+        vm.expectRevert(InvoiceReceiver.NotClone.selector);
+        r.refundable();
+        vm.expectRevert(InvoiceReceiver.NotClone.selector);
+        r.deadline();
     }
 
     function test_receiverHasNoSignatureValidationOrApprove() public {

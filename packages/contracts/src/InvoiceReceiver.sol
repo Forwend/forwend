@@ -53,8 +53,9 @@ contract InvoiceReceiver is ReentrancyGuard {
         _;
     }
 
+    /// Only receivers our factory deployed: the implementation and clones made outside the factory revert.
     function _onlyClone() private view {
-        if (address(this) == self) revert NotClone();
+        if (factory.deployedAt(address(this)) == 0) revert NotClone();
     }
 
     function terms() public view onlyClone returns (InvoiceTerms memory) {
