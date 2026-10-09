@@ -7404,7 +7404,7 @@
       "dependsOn": [
         "F068"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "unit"
@@ -7497,11 +7497,18 @@
           "summary": "Re-check after the documenter's change, on top of the three earlier passing rounds (live checks of the shell, sheets, menus, theme sync, Soon items, disabled actions, axe, 360px, profile switching on every page). The delta is docs and one class only: docs/web/DESIGN.md gets an App shell section that matches the built shell; apps/web/.impeccable/design.json adds fw-pop-in, fw-sheet-up, Action Button, Menu and App Sidebar entries; balance-card.tsx uses the role token text-section (defined in design-tokens theme.css, used elsewhere) instead of text-5xl sm:text-6xl. Verify 22:52:30Z; after it only tasks.json and build or test files changed; docs-check 0 errors.",
           "at": "2026-10-09T22:54:09Z",
           "filesHash": "f3b4d54b35606bed"
-        }
+        },
+        "commit": "d7a2cd8",
+        "doneAt": "2026-10-09T22:54:32Z"
       },
       "branch": "feat/f071-the-app-is-a-modern-fintech-shell-a-side",
       "baseCommit": "fa6a325677804a59d8917524dc9916ea7b4027ba",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f071-the-app-is-a-modern-fintech-shell-a-side",
+        "base": "main"
+      }
     },
     {
       "id": "F072",
