@@ -16,6 +16,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/config"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi"
+	"github.com/ensp1re/forwend/apps/backend/internal/privy"
 )
 
 func main() {
@@ -48,7 +49,7 @@ func run() error {
 	}
 	server := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           httpapi.NewMux(pool, verifier),
+		Handler:           httpapi.NewMux(pool, verifier, privy.NewClient(cfg.PrivyAppID, cfg.PrivyAppSecret, "")),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

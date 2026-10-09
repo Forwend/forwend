@@ -57,7 +57,8 @@ func TestMoneyLoop(t *testing.T) {
 	apiAddr := freeAddr(t)
 	common := []string{"DATABASE_URL=" + dbURL}
 	loop := append(common, "CHAINS_FILE="+chains, "INFURA_API_KEYS=none", "POLL_INTERVAL=200ms")
-	start(t, bin, "api", append(common, "API_ADDR="+apiAddr, "PRIVY_APP_ID="+appID, "PRIVY_JWKS_URL="+privy.JWKSURL))
+	start(t, bin, "api", append(common, "API_ADDR="+apiAddr, "PRIVY_APP_ID="+appID, "PRIVY_JWKS_URL="+privy.JWKSURL,
+		"PRIVY_APP_SECRET=unused")) // this test makes its profile in the database
 	api := "http://" + apiAddr
 	waitFor(t, "api healthy", func() bool {
 		res, err := http.Get(api + "/healthz")

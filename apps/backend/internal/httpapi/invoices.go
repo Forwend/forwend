@@ -53,9 +53,9 @@ type depositJSON struct {
 // createInvoice is POST /v1/profiles/{profileId}/invoices: 201 when created, 200 when the same request is repeated.
 func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		key := r.Header.Get("Idempotency-Key")
-		if key == "" || len(key) > 255 || !utf8.ValidString(key) {
-			writeError(w, r, fmt.Errorf("%w: Idempotency-Key header must be 1 to 255 bytes of UTF-8", errMalformed))
+		key, err := idempotencyKey(r)
+		if err != nil {
+			writeError(w, r, err)
 			return
 		}
 		var body createInvoiceBody
@@ -104,6 +104,15 @@ func toInvoiceJSON(inv invoice.Invoice) invoiceJSON {
 			SecondsLeft: int64(d.TimeLeft / time.Second)})
 	}
 	return out
+}
+
+// idempotencyKey reads the Idempotency-Key header: 1 to 255 bytes of UTF-8.
+func idempotencyKey(r *http.Request) (string, error) {
+	key := r.Header.Get("Idempotency-Key")
+	if key == "" || len(key) > 255 || !utf8.ValidString(key) {
+		return "", fmt.Errorf("%w: Idempotency-Key header must be 1 to 255 bytes of UTF-8", errMalformed)
+	}
+	return key, nil
 }
 
 // decodeJSON reads one JSON object of at most 1 MB with no unknown fields.

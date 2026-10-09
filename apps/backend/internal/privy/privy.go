@@ -7,12 +7,17 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	privyclient "github.com/privy-io/go-sdk"
 )
 
 // ErrNoWallet means Privy returned no wallet where one must exist.
 var ErrNoWallet = errors.New("privy returned no wallet")
+
+// Timeout bounds one ProfileWallet call, retries included, so a hanging Privy fails the request before the api's
+// 30 s write timeout instead of holding it for the SDK's 10 minutes.
+var Timeout = 20 * time.Second
 
 // Wallet is a profile's Privy wallet; Address is lowercase.
 type Wallet struct {
@@ -35,6 +40,8 @@ func NewClient(appID, appSecret, apiURL string) *Client {
 // of creating a second one. No idempotency key: Privy replays a cached error for a key for 24 hours, so one failed
 // create would block the wallet. The lookup also filters by owner, so another user never gets this wallet.
 func (c *Client) ProfileWallet(ctx context.Context, privyUserID, profileID string) (Wallet, error) {
+	ctx, cancel := context.WithTimeout(ctx, Timeout)
+	defer cancel()
 	if w, err := c.find(ctx, privyUserID, profileID); err == nil || !errors.Is(err, ErrNoWallet) {
 		return w, err
 	}
