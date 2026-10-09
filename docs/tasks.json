@@ -7192,7 +7192,7 @@
       "dependsOn": [
         "F067"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "unit"
@@ -7287,11 +7287,18 @@
           "summary": "Checked the Messages diff: the box always keeps one text-sm line (min-h-5 = the line height), and the alert/status regions are always rendered, so a form-level message neither moves the centered phone form nor misses an announcement. Error and notice never show together. Send-failure and Google messages now fit one line at the form width (about 42 characters at text-sm in 327 to 384px). The e2e check for no Google error on a wrong code still matches the new text. Fresh verify 20:58:22Z passed (21 + 6 live e2e); lint clean.",
           "at": "2026-10-09T20:59:46Z",
           "filesHash": "d06c936b07c8bde4"
-        }
+        },
+        "commit": "f57c142",
+        "doneAt": "2026-10-09T21:00:02Z"
       },
       "branch": "feat/f070-the-sign-in-page-is-forwend-s-own-our-em",
       "baseCommit": "d469e64c07290b8fc45671607d62d2fe62074a06",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f070-the-sign-in-page-is-forwend-s-own-our-em",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
