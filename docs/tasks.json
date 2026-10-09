@@ -3177,7 +3177,7 @@
         "apps/web/src/constants/landing.ts no longer says 'One refund per invoice'; the new line says refunds come from held money only, one per approved claim, and settled money is never pulled back"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "lint",
         "build"
@@ -3189,7 +3189,70 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-09T00:35:19Z",
+        "checks": [
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F033-20261009T003519Z-lint.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.4,
+            "log": "docs/runs/F033-20261009T003519Z-build.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": "docs/runs/F033-20261009T003519Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": "docs/runs/F033-20261009T003519Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.5,
+            "log": "docs/runs/F033-20261009T003519Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F033-20261009T003519Z-keep.log"
+          }
+        ],
+        "taskHash": "983e47dccb28d05d",
+        "filesHash": "8d4a4376406dc133",
+        "commit": "eb8c1d8",
+        "doneAt": "2026-10-09T00:35:39Z",
+        "proof": {
+          "1": "landing.ts footnote now reads 'Refunds come only from held money, one per approved claim. Money already settled to you is never pulled back.'; lint and build passed"
+        }
+      },
+      "branch": "fix/f033-the-landing-money-rules-refund-line-matc",
+      "baseCommit": "277130d74772e22032fbc9e7baae3b1af6ca5d01",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f033-the-landing-money-rules-refund-line-matc",
+        "base": "main"
+      }
     },
     {
       "id": "F034",
@@ -4030,9 +4093,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-09T00:23:01Z",
+    "at": "2026-10-09T00:31:57Z",
     "clean": true,
     "problems": [],
-    "note": "F039 (PR #39) and F041 audit follow-ups (PR #40) merged. Audit branch claude/jolly-einstein-ljwgtw read only, not merged. Next: F040 redeploy testnets with new code; F033 landing refund line."
+    "note": "F040 merged (PR #41): factory 0xECe7…7546 on 4 testnets, Arc+Tempo flows with statusOf. Next: F033 landing refund line; then Phase 6 backend."
   }
 }
