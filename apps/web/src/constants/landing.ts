@@ -131,7 +131,7 @@ export const RULES = {
     },
     {
       status: PAYMENT_STATUS.expiredPartiallyPaid,
-      body: "An expired invoice cannot be reopened. What arrived is held for one verified refund.",
+      body: "An expired invoice cannot be reopened. What arrived is held until a verified refund.",
     },
   ],
   wrongNetwork: {
@@ -139,7 +139,7 @@ export const RULES = {
     body: "Open a support request from the invoice page. Recovery is reviewed case by case and is never promised.",
   },
   footnote:
-    "One refund per invoice returns everything still held. Money already settled to you is never pulled back.",
+    "Refunds come only from held money, one per approved claim. Money already settled to you is never pulled back.",
 } as const;
 
 export const DEVELOPERS = {
