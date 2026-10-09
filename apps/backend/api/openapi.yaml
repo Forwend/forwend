@@ -1,0 +1,192 @@
+openapi: 3.1.0
+info:
+  title: Forwend API
+  version: 0.1.0
+  description: |
+    Stablecoin invoices. Rules: docs/backend/api.md. Money is a decimal string in base units next to chainId and
+    token. Addresses are lowercase 0x hex. Times are RFC 3339 in UTC.
+servers:
+  - url: http://localhost:8080
+    description: Local (pnpm --filter @forwend/backend api)
+security:
+  - privyAccessToken: []
+paths:
+  /v1/profiles/{profileId}/invoices:
+    post:
+      operationId: createInvoice
+      summary: Create an invoice once per Idempotency-Key
+      description: |
+        The recipient is the profile's wallet, never a request field. The receive address is computed from the terms
+        (factory.predict). The same key with the same values returns the stored invoice with 200; with other values, 409.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: 1 to 255 bytes of UTF-8.
+          schema: { type: string, minLength: 1, maxLength: 255 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateInvoiceRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+        "200":
+          description: The same request was made before with this key; the stored invoice
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/IdempotencyConflict" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/invoices/{invoiceId}:
+    get:
+      operationId: getInvoice
+      summary: Read an invoice's terms and statuses
+      description: Public, so checkout can show the invoice and recompute the receive address from the terms.
+      security: []
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+      responses:
+        "200":
+          description: The invoice
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "500": { $ref: "#/components/responses/Internal" }
+components:
+  securitySchemes:
+    privyAccessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Privy access token (ES256, issuer privy.io, audience = app ID), verified locally.
+  parameters:
+    ProfileId:
+      name: profileId
+      in: path
+      required: true
+      description: A profile the signed-in user owns; any other value is 403.
+      schema: { type: string, format: uuid }
+  schemas:
+    InvoiceId:
+      type: string
+      description: The on-chain invoice id, 32 random bytes.
+      pattern: "^0x[0-9a-f]{64}$"
+    Address:
+      type: string
+      pattern: "^0x[0-9a-f]{40}$"
+    Uint256:
+      type: string
+      description: Base units, 1 to 2^256-1.
+      pattern: "^[0-9]+$"
+    CreateInvoiceRequest:
+      type: object
+      additionalProperties: false
+      required: [chainId, token, amount]
+      properties:
+        chainId: { type: integer, minimum: 1, maximum: 9223372036854775807 }
+        token:
+          type: string
+          description: Contract of an enabled token on chainId; any letter case.
+          pattern: "^0x[0-9a-fA-F]{40}$"
+        amount: { $ref: "#/components/schemas/Uint256" }
+        expiresIn:
+          type: integer
+          description: Seconds until expiry; default 3600.
+          minimum: 900
+          maximum: 31536000
+    Invoice:
+      type: object
+      required: [invoiceId, chainId, token, amount, recipient, factory, receiveAddress, expiresAt, settleDeadline,
+        paymentStatus, settlementStatus, refundStatus, createdAt]
+      properties:
+        invoiceId: { $ref: "#/components/schemas/InvoiceId" }
+        chainId: { type: integer }
+        token: { $ref: "#/components/schemas/Address" }
+        amount: { $ref: "#/components/schemas/Uint256" }
+        recipient:
+          allOf: [{ $ref: "#/components/schemas/Address" }]
+          description: The profile wallet that settlement pays.
+        factory: { $ref: "#/components/schemas/Address" }
+        receiveAddress:
+          allOf: [{ $ref: "#/components/schemas/Address" }]
+          description: Where the payer sends the token; factory.predict of these terms.
+        expiresAt: { type: string, format: date-time }
+        settleDeadline:
+          type: string
+          format: date-time
+          description: expiresAt + 24 h.
+        paymentStatus:
+          type: string
+          enum: [open, detected, partially_paid, paid, expired, expired_partially_paid]
+        settlementStatus:
+          type: string
+          enum: [none, pending, settled]
+        refundStatus:
+          type: string
+          enum: [none, held, refund_pending, refunded]
+        createdAt: { type: string, format: date-time }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [malformed_request, unauthorized, forbidden, invoice_not_found, idempotency_conflict,
+                invalid_value, internal]
+            message: { type: string }
+  responses:
+    MalformedRequest:
+      description: Not parseable, unknown field, wrong type, or missing Idempotency-Key (malformed_request)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Missing or invalid access token (unauthorized)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: The user does not own the profile, or it does not exist (forbidden)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    IdempotencyConflict:
+      description: The Idempotency-Key was used with other values (idempotency_conflict)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    InvalidValue:
+      description: |
+        A value breaks a rule (invalid_value): amount, expiresIn, a token or chain that is not enabled, a profile with
+        no wallet for the chain, or terms the contract would refuse to settle.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    InvoiceNotFound:
+      description: No invoice with this id (invoice_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Internal:
+      description: Unexpected error, no details (internal)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }

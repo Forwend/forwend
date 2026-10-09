@@ -22,11 +22,9 @@ import (
 
 const appID = "test-app"
 
-// authServer serves GET /v1/profiles/{profileId}/probe behind both checks, with Alice owning one profile.
-// Privy is replaced by a local P-256 key pair.
-func authServer(t *testing.T) (srv *httptest.Server, privyKey *ecdsa.PrivateKey, aliceProfile string) {
+// testVerifier stands in for Privy with a local P-256 key pair.
+func testVerifier(t *testing.T) (*auth.Verifier, *ecdsa.PrivateKey) {
 	t.Helper()
-	ctx := context.Background()
 	privyKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -39,6 +37,14 @@ func authServer(t *testing.T) (srv *httptest.Server, privyKey *ecdsa.PrivateKey,
 	if err != nil {
 		t.Fatal(err)
 	}
+	return verifier, privyKey
+}
+
+// authServer serves GET /v1/profiles/{profileId}/probe behind both checks, with Alice owning one profile.
+func authServer(t *testing.T) (srv *httptest.Server, privyKey *ecdsa.PrivateKey, aliceProfile string) {
+	t.Helper()
+	ctx := context.Background()
+	verifier, privyKey := testVerifier(t)
 
 	url := databasetest.New(t)
 	if err := database.Migrate(ctx, url); err != nil {

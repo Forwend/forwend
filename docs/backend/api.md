@@ -1,11 +1,12 @@
 # Backend API rules
 
-Only `/healthz` exists today. The business API rules below apply when R-18/R-19 are built.
+Routes today: `/healthz`, `POST /v1/profiles/{profileId}/invoices`, `GET /v1/invoices/{invoiceId}` (public).
 
 ## Contract first
 
-- `apps/backend/api/openapi.yaml` (OpenAPI 3.1) is planned. Create it with the first business endpoint; then change it before code.
-- Generate Go server types with oapi-codegen and web types with openapi-typescript; neither generator is installed yet.
+- `apps/backend/api/openapi.yaml` (OpenAPI 3.1) describes every route; change it before code.
+- Go request and response types are written by hand in `internal/httpapi` until a generator is added (oapi-codegen
+  for Go, openapi-typescript for web); keep them equal to the spec.
 
 ## Routes
 
@@ -27,6 +28,9 @@ Only `/healthz` exists today. The business API rules below apply when R-18/R-19 
 
 - Every `POST` that creates something or moves money needs an `Idempotency-Key` header.
 - First call: 201. Same key and body again: 200 with the same resource. Same key, other body: 409.
+- Keys are unique per profile, 1–255 characters; a missing or longer key is 400. The server stores a SHA-256 of the
+  normalized values, never the body, so field order, spacing and address letter case don't matter. A request that
+  fails validation stores nothing. Two requests with one key at once get one resource.
 
 ## Auth
 
