@@ -4743,7 +4743,7 @@
         "Roadmap and design docs keep product and safety decisions while removing duplicated values, history and procedural text"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness",
         "docs-check",
@@ -4853,11 +4853,18 @@
           "summary": "Documentation comparison preserves product policy, money safeguards, release gates and accessibility. Harness review confirmed duplicate checks and stale pending delivery are rejected. Fifteen harness regressions and all ten verification checks pass.",
           "at": "2026-10-09T11:11:39Z",
           "filesHash": "53199ec0ecdde05b"
-        }
+        },
+        "commit": "3c763d8",
+        "doneAt": "2026-10-09T11:11:45Z"
       },
       "branch": "fix/f056-make-repository-instructions-concise-and",
       "baseCommit": "3e690870517540e730cc1035f249fe30f3b08a37",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f056-make-repository-instructions-concise-and",
+        "base": "main"
+      }
     },
     {
       "id": "F057",
