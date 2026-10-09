@@ -1,29 +1,41 @@
 # Forwend
 
 Stablecoin payment app: invoices, checkout and API in, stablecoin balances, send and bank withdrawal out.
-Roadmap and money rules: [PLAN.md](PLAN.md). Current release requirements and decisions: [docs/PROJECT.md](docs/PROJECT.md).
 
-## Commands (available after F001)
+## Where to look
 
-- Setup: `pnpm install` (Node version in `.nvmrc`, pnpm 10)
-- Dev: `pnpm dev` (web on http://localhost:3000; `/kit` needs `KIT_ENABLED=1`)
-- Checks: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm e2e`
-- Backend (Go, `apps/backend`): `cp apps/backend/.env.example apps/backend/.env`, `pnpm --filter @forwend/backend postgres:up` (Docker), then `pnpm --filter @forwend/backend test` or `api` / `worker` / `signer`. Config comes only from environment variables (`apps/backend/.env` locally); no defaults in code. Go layout, naming and code rules: [apps/backend/AGENTS.md](apps/backend/AGENTS.md).
+| Need | Read |
+|---|---|
+| Map of all docs | [docs/README.md](docs/README.md) |
+| Requirements and decisions | [docs/PROJECT.md](docs/PROJECT.md) (the rows a task names) |
+| System, keys, money flow | [docs/architecture.md](docs/architecture.md) |
+| Roadmap and money rules | [PLAN.md](PLAN.md) |
+| Web (`apps/web`, `packages/ui-web`, `packages/design-tokens`) | [docs/web/](docs/web/) |
+| Backend (`apps/backend`) | [docs/backend/](docs/backend/) |
+| Contracts (`packages/contracts`) | [docs/contracts/](docs/contracts/) |
 
-## Project rules
+Each app and package has a short `AGENTS.md`: what it is, its commands, and which docs to read before changing it.
 
-- Layout: `apps/web` (Next.js), `packages/design-tokens`, `packages/ui-web`, `packages/contracts` (Foundry; run `forge` inside it, libraries are git submodules in `lib/`). Everything lives under `apps/` or `packages/`; the Go backend goes to `apps/backend`. Create other PLAN.md folders only in the phase that needs them.
-- Structure and naming: one job per file and per folder; group code by domain or feature (`src/<domain>/…`), never one big file or one catch-all folder. Related files share a name: source, test and types (`InvoiceReceiver.sol` / `InvoiceReceiver.t.sol`, `invoice-status.tsx` / `invoice-status.test.tsx` / `types/invoice/status.ts`). Names say what the thing is, not how it is used (`refund-claim-form`, not `form2`). When a file does a second job or a folder mixes domains, split it in the same change. Follow the existing pattern in the package before creating a new one.
-- TypeScript structure (D-11): every named `interface`, `type` and `enum` lives in the package's `src/types/<domain>/…`; finite runtime values are `as const` objects in `src/constants/<domain>.ts` with unions derived in `src/types/`. No repeated domain string literals in components. Imports flow constants → types (type-only) → code. List any framework-forced exception in the PR.
-- Use tokens from `packages/design-tokens` for every color, size, radius, shadow and duration. No raw hex or pixel values in components.
-- New reusable components appear on `/kit` with all their states in the same change.
-- Money is `bigint` base units plus decimals; never `number` or float. Tokens are identified by chain ID + contract, never by ticker alone.
-- Landing copy is honest: no customer logos, funding badges, or claims of being regulated, insured or live.
-- Images: mood images (landscapes, textures) come from the Codex CLI built-in `image_gen` tool, run headless with `codex exec` (D-9); product UI, charts and text are built in code. Store them as WebP in `apps/web/public/images/` and record slot, file, prompt and date in `docs/images.md`.
-- Respect `prefers-reduced-motion`; no scroll hijacking.
-- Tests cover important behavior only: money and payment logic, forms, privacy (/kit), theme persistence, accessibility (axe). No tests for layout, sizes, fonts, colors, pixels or section order; judge those in review screenshots.
-- Commits, PRs and comments carry no AI attribution (no Co-Authored-By for an AI, no "Generated with" footer).
-- Do not spend money, deploy, or create provider accounts without Sasha's explicit yes.
+## Commands
+
+- Setup: `pnpm install` (Node in `.nvmrc`, pnpm 10). Dev: `pnpm dev`.
+- Checks: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm e2e`.
+
+## Repo-wide rules
+
+- Code lives under `apps/` or `packages/`, docs under `docs/`. Create PLAN.md folders only in the phase that needs them.
+- One job per file and per folder; group by domain or feature. Related files share a name (`InvoiceReceiver.sol` /
+  `InvoiceReceiver.t.sol`). Names say what the thing is (`refund-claim-form`, not `form2`). Split a file the moment it
+  does a second job, and a folder the moment it mixes domains. Follow the package's existing pattern.
+- TypeScript (D-11): named types in `src/types/<domain>/`, finite values as `as const` in `src/constants/<domain>.ts`,
+  unions derived in `src/types/`. Imports flow constants → types (type-only) → code. No repeated domain string
+  literals. List any framework-forced exception in the PR.
+- Money is integer base units plus decimals (`bigint`, `*big.Int`, `NUMERIC(78,0)`), never floats. A token is chain ID +
+  contract, never a ticker.
+- Secrets only in git-ignored `.env` files (root, `apps/backend/.env`). Never print, log or commit a key or token.
+- Docs are short and practical: one topic per file, rules as bullets, no history. Update the doc in the same PR.
+- No AI attribution in commits, PRs or comments.
+- No spending money, deploying, or creating provider accounts without Sasha's explicit yes.
 
 <!-- harness:start (installed by harness-bootstrap; keep project notes outside these markers) -->
 ## Harness
