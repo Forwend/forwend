@@ -2,8 +2,13 @@ import { BUTTON_SIZES, buttonClasses, Logo } from "@forwend/ui-web";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { NOT_FOUND } from "@/constants/copy";
-import { NOT_FOUND_IMAGE } from "@/constants/landing-images";
+import { NOT_FOUND_IMAGE } from "@/shared/assets/images";
+
+const NOT_FOUND = {
+  title: "This path ends here.",
+  body: "The page you are looking for does not exist or has moved.",
+  action: "Back to Forwend",
+} as const;
 
 export const metadata: Metadata = {
   title: "Page not found",

@@ -1,10 +1,10 @@
+import "./globals.css";
 import { THEME_INIT_SCRIPT, THEMES } from "@forwend/design-tokens";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { BRAND_COLORS, BRAND_COLORS_DARK } from "@/constants/brand-colors";
-import { SITE } from "@/constants/site";
-import { fontVars } from "@/lib/fonts";
-import "./globals.css";
+import { BRAND_COLORS, BRAND_COLORS_DARK } from "@/shared/config/brand-colors";
+import { fontVars } from "@/shared/config/fonts";
+import { SITE } from "@/shared/config/site";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),

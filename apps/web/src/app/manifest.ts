@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
-import { BRAND_COLORS } from "@/constants/brand-colors";
-import { SITE } from "@/constants/site";
+import { BRAND_COLORS } from "@/shared/config/brand-colors";
+import { SITE } from "@/shared/config/site";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {

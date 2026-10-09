@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
-import { isKitEnabled } from "@/lib/kit";
+import { isKitEnabled } from "@/screens/kit/kit-access";
 
 export const dynamic = "force-dynamic";
 

@@ -12,9 +12,14 @@ apps/web/src/
   app/                         Next.js routes, layouts, metadata, loading and error boundaries
   screens/                     full screens that assemble features
     landing/
+    app-shell/                 signed-in frame: sidebar, phone header and tab bar
     dashboard/
     balances/
     activity/
+    new-profile/
+    sign-in/
+    kit/                       /kit
+    kit-directions/            /kit/directions
   features/                    product behavior, grouped by domain
     auth/
     profiles/
@@ -27,6 +32,9 @@ apps/web/src/
     hooks/                     domain-independent React hooks
     config/                    shared application configuration
     assets/                    shared image references; actual images stay in public/
+    chains/                    supported networks, their names and token marks
+    art/                       code-drawn illustrations used by landing and kit
+    examples/                  sample data shown on more than one screen
     formatting/                shared formatting functions
     components/                app-wide composition that does not belong in ui-web
   store/                       optional Redux store assembly and typed hooks

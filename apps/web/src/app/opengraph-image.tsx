@@ -1,11 +1,13 @@
 import { ImageResponse } from "next/og";
-import { ART } from "@/constants/art";
-import { BRAND_COLORS } from "@/constants/brand-colors";
-import { HERO } from "@/constants/landing";
-import { SITE } from "@/constants/site";
+import { HERO } from "@/screens/landing/sections/hero/hero-content";
+import { ART } from "@/shared/art/art-colors";
+import { BRAND_COLORS } from "@/shared/config/brand-colors";
+import { SITE } from "@/shared/config/site";
 
 export const alt = SITE.title;
+
 export const size = { width: 1200, height: 630 };
+
 export const contentType = "image/png";
 
 // Built in code: the dawn sky, the river and the headline. No raster asset to keep in sync.

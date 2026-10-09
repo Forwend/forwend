@@ -2,7 +2,7 @@
 version: 1
 slug: "apps-web-src-app-app-app-page-tsx"
 primary_target: "apps/web/src/app/(app)/app/page.tsx"
-related_targets: ["apps/web/src/components/app","apps/web/src/app/(app)/app"]
+related_targets: ["apps/web/src/screens/dashboard","apps/web/src/screens/app-shell","apps/web/src/features","apps/web/src/app/(app)/app"]
 ---
 
 # Signed-in app surface brief

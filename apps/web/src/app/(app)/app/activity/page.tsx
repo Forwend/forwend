@@ -1,9 +1,5 @@
-"use client";
-
-import { useAppSession } from "@/components/app/active-profile";
-import { ActivityList } from "@/components/app/activity-list";
+import { ActivityScreen } from "@/screens/activity/activity-screen";
 
 export default function ActivityPage() {
-  const { profile, token } = useAppSession();
-  return <ActivityList profileId={profile.profileId} token={token} />;
+  return <ActivityScreen />;
 }
