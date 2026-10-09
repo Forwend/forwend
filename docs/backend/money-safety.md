@@ -4,12 +4,13 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 ## Receive address
 
-- Compute it locally from the factory address and init-code hash compiled into the binary. Never read it from the
-  database or an RPC.
+- Compute it locally (`internal/address`) from the factory and implementation addresses compiled into the binary. The
+  init-code hash differs per invoice: the clone's init code contains the terms. Never read it from the database or an RPC.
 - `(chain_id, receive_address)` is unique. The watcher alerts on any invoice whose address does not recompute.
 - Before showing an address, run the same term checks as `settle`, plus expiry ≤ 365 days and settle deadline =
   expiry + 24 h. The contract accepts any terms, so these checks live only here.
-- Go address code and `predict` share test vectors.
+- Go address code and `predict` share test vectors: `packages/contracts/vectors/receive-address.json`, written by
+  `pnpm vectors` in `packages/contracts`. `forge test` fails while the file is stale.
 - The recipient is the profile wallet read from Privy, never from the request. The contract can't tell a wrong one.
 - The recipient wallet must exist on the invoice's chain before the invoice is created.
 - Receivers are deployed only when settling, refunding or recovering.
