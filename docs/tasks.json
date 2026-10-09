@@ -3177,7 +3177,7 @@
         "apps/web/src/constants/landing.ts no longer says 'One refund per invoice'; the new line says refunds come from held money only, one per approved claim, and settled money is never pulled back"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "lint",
         "build"
@@ -3238,11 +3238,21 @@
           }
         ],
         "taskHash": "983e47dccb28d05d",
-        "filesHash": "8d4a4376406dc133"
+        "filesHash": "8d4a4376406dc133",
+        "commit": "eb8c1d8",
+        "doneAt": "2026-10-09T00:35:39Z",
+        "proof": {
+          "1": "landing.ts footnote now reads 'Refunds come only from held money, one per approved claim. Money already settled to you is never pulled back.'; lint and build passed"
+        }
       },
       "branch": "fix/f033-the-landing-money-rules-refund-line-matc",
       "baseCommit": "277130d74772e22032fbc9e7baae3b1af6ca5d01",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f033-the-landing-money-rules-refund-line-matc",
+        "base": "main"
+      }
     },
     {
       "id": "F034",
