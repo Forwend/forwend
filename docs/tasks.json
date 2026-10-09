@@ -5308,7 +5308,7 @@
         "Tests cover Base-like finality that jumps in steps, a busy day where the finalized head falls further behind and time left grows, and Arc/Tempo where finalized = latest gives 0 at once"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -5322,7 +5322,92 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T12:38:09Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.3,
+            "log": "docs/runs/F059-20261009T123809Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F059-20261009T123809Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F059-20261009T123809Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F059-20261009T123809Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F059-20261009T123809Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.5,
+            "log": "docs/runs/F059-20261009T123809Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F059-20261009T123809Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.6,
+            "log": "docs/runs/F059-20261009T123809Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F059-20261009T123809Z-keep.log"
+          }
+        ],
+        "taskHash": "707a394e324ce464",
+        "filesHash": "4b410489bd4c948c",
+        "proof": {
+          "1": "backend: TestProgressOf table checks blocks left = B - finalized number and time left = T - finalized time (461 blocks/922 s, 1 block/2 s), both 0 and Final() once the finalized head reaches or passes B",
+          "2": "backend: TestProgressOfStepFinality (Base-like jumps, never rises, ends final), TestProgressOfBusyDay (head 750 blocks behind gives 25 min vs 15 min normal), and the 'finalized equals latest' row for Arc/Tempo giving 0 at once"
+        },
+        "commit": "87a7902",
+        "doneAt": "2026-10-09T12:38:44Z"
+      },
+      "branch": "feat/f059-the-payer-sees-blocks-and-time-left-unti",
+      "baseCommit": "4b6d9879336696fff1c30628821eba809d88ac45",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f059-the-payer-sees-blocks-and-time-left-unti",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
