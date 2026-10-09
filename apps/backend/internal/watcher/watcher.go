@@ -30,6 +30,8 @@ const (
 	// the last look at a block. Writes are idempotent, so rescanning is free of side effects.
 	// ponytail: a node that lags for RescanDepth blocks in a row still hides a deposit; F049's balance check catches it.
 	RescanDepth = 64
+	// MaxBatch is the most calls in one JSON-RPC batch.
+	MaxBatch = 100
 )
 
 // Chain watches one EVM chain. Run one Chain per chain: two at once would race on the cursor.
@@ -144,7 +146,9 @@ func (c *Chain) Scan(ctx context.Context) error {
 			reorged = append(reorged, p.id)
 		}
 	}
-	return c.record(ctx, reorged, deposits, finalized, max(latest, finalized))
+	// The cursor's finalized block never passes what this scan read: finalized was read after latest and may be
+	// higher, and blocks above latest were not scanned.
+	return c.record(ctx, reorged, deposits, min(finalized, latest), latest)
 }
 
 // start is where this scan begins. A new chain starts at its finalized block: deposits before the first scan are
@@ -253,8 +257,11 @@ func (c *Chain) headers(ctx context.Context, numbers []uint64) (uint64, map[uint
 		results[n] = &h
 		batch = append(batch, rpc.BatchElem{Method: "eth_getBlockByNumber", Args: []any{hexutil.EncodeUint64(n), false}, Result: &h})
 	}
-	if err := c.rpc.BatchCallContext(ctx, batch); err != nil {
-		return 0, nil, fmt.Errorf("read chain %d blocks: %w", c.chainID, err)
+	// RPC providers cap batch sizes; finalized stays in the first chunk with the first blocks.
+	for i := 0; i < len(batch); i += MaxBatch {
+		if err := c.rpc.BatchCallContext(ctx, batch[i:min(i+MaxBatch, len(batch))]); err != nil {
+			return 0, nil, fmt.Errorf("read chain %d blocks: %w", c.chainID, err)
+		}
 	}
 	for _, b := range batch {
 		if b.Error != nil {

@@ -13,11 +13,13 @@ import (
 	"testing"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-// laggingNode forwards to Anvil but answers eth_getLogs with [] while lag is set: a load-balanced node that is behind.
-func laggingNode(t *testing.T, target string, lag *atomic.Bool) *rpc.Client {
+// node forwards JSON-RPC to Anvil; hook may answer a single call itself (a non-nil result) or act before it is
+// forwarded. Batches go straight through.
+func node(t *testing.T, target string, hook func(method string) (result string)) *rpc.Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
@@ -26,9 +28,11 @@ func laggingNode(t *testing.T, target string, lag *atomic.Bool) *rpc.Client {
 			Method string          `json:"method"`
 		}
 		w.Header().Set("Content-Type", "application/json")
-		if json.Unmarshal(body, &req) == nil && req.Method == "eth_getLogs" && lag.Load() {
-			_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":` + string(req.ID) + `,"result":[]}`))
-			return
+		if json.Unmarshal(body, &req) == nil {
+			if result := hook(req.Method); result != "" {
+				_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":` + string(req.ID) + `,"result":` + result + `}`))
+				return
+			}
 		}
 		res, err := http.Post(target, "application/json", bytes.NewReader(body))
 		if err != nil {
@@ -45,6 +49,63 @@ func laggingNode(t *testing.T, target string, lag *atomic.Bool) *rpc.Client {
 	}
 	t.Cleanup(c.Close)
 	return c
+}
+
+// laggingNode answers eth_getLogs with [] while lag is set: a load-balanced node that is behind.
+func laggingNode(t *testing.T, target string, lag *atomic.Bool) *rpc.Client {
+	return node(t, target, func(method string) string {
+		if method == "eth_getLogs" && lag.Load() {
+			return "[]"
+		}
+		return ""
+	})
+}
+
+// The chain moves past the latest block this scan read before it reads finalized: the cursor must not skip the
+// blocks in between (Arc and Tempo finalize every block, so a slow scan meets this).
+func TestChainMovingDuringAScanLosesNothing(t *testing.T) {
+	e := setup(t)
+	var once atomic.Bool
+	e.chain = NewChain(e.pool, chaintest.ChainID, node(t, e.anvil.URL, func(method string) string {
+		if method == "eth_getLogs" && once.CompareAndSwap(false, true) {
+			e.anvil.Transfer(e.token, receive, "5000000")
+			e.anvil.Mine(2 * RescanDepth)
+		}
+		return ""
+	}))
+	e.anvil.Mine(1)
+	for range 3 {
+		e.scan(t)
+		e.anvil.Mine(1)
+	}
+	if _, n := e.rows(t); n != 1 {
+		t.Fatalf("%d rows, want the deposit made during the first scan", n)
+	}
+}
+
+// A node far behind answers eth_blockNumber once: the cursor must not jump past what was scanned.
+func TestLaggingLatestBlockLosesNothing(t *testing.T) {
+	e := setup(t)
+	e.anvil.Transfer(e.token, receive, "5000000")
+	var head hexutil.Uint64
+	if err := e.anvil.RPC.Call(&head, "eth_blockNumber"); err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.Mine(2 * RescanDepth)
+	var once atomic.Bool
+	e.chain = NewChain(e.pool, chaintest.ChainID, node(t, e.anvil.URL, func(method string) string {
+		if method == "eth_blockNumber" && once.CompareAndSwap(false, true) {
+			return `"` + (head - 1).String() + `"`
+		}
+		return ""
+	}))
+	for range 3 {
+		e.scan(t)
+		e.anvil.Mine(1)
+	}
+	if _, n := e.rows(t); n != 1 {
+		t.Fatalf("%d rows, want the deposit after a lagging latest block", n)
+	}
 }
 
 // An empty eth_getLogs answer in the scan where the deposit's block becomes final doesn't lose the deposit.
