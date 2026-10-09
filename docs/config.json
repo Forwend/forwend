@@ -109,6 +109,16 @@
         "-c",
         "for f in docs/diagrams/*.json; do npx -y mapgrain@0.2.5 validate \"$f\" || exit 1; done"
       ]
+    },
+    {
+      "id": "backend",
+      "argv": ["pnpm", "--filter", "@forwend/backend", "test"],
+      "timeoutSeconds": 900
+    },
+    {
+      "id": "backend-e2e",
+      "argv": ["pnpm", "--filter", "@forwend/backend", "e2e"],
+      "timeoutSeconds": 900
     }
   ],
   "delivery": {

@@ -9,7 +9,9 @@
     "typecheck": {
       "dependsOn": ["^typecheck"]
     },
-    "test": {},
+    "test": {
+      "passThroughEnv": ["DATABASE_URL"]
+    },
     "e2e": {
       "cache": false,
       "passThroughEnv": ["CI"]

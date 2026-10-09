@@ -170,11 +170,10 @@ packages/
   sdk/                      Node SDK for merchants                      (Phase 10)
 apps/backend/               Go module                                    (Phase 6)
   cmd/api/  cmd/worker/  cmd/signer/
-  internal/                 profiles, invoices, ledger, chains, webhooks
-  db/                       migrations, sqlc queries
+  internal/                 database (migrations, queries), profiles, invoices, ledger, chains, webhooks
 packages/contracts/         Foundry project, chains.json, RPC picker     (Phase 5)
 api/openapi.yaml            public API contract                          (Phase 6)
-infra/docker-compose.yml    local Postgres, Anvil                        (Phase 5–6)
+infra/docker-compose.yml    local Postgres, Anvil; values from apps/backend/.env (Phase 6)
 docs/                       PROJECT.md, tasks.json (harness), ADRs, images.md
 PLAN.md                     this file
 ```

@@ -13,6 +13,19 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: forwend
+          POSTGRES_PASSWORD: forwend
+          POSTGRES_DB: forwend
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U forwend" --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      DATABASE_URL: postgres://forwend:forwend@localhost:55432/forwend?sslmode=disable
     steps:
       - uses: actions/checkout@v7
         with:
@@ -20,6 +33,10 @@ jobs:
       - uses: foundry-rs/foundry-toolchain@v1
         with:
           version: v1.5.1
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/backend/go.mod
+          cache-dependency-path: apps/backend/go.sum
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
