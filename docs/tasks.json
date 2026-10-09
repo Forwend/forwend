@@ -4570,7 +4570,7 @@
       "dependsOn": [
         "F045"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend"
       ],
@@ -4585,7 +4585,85 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T13:44:57Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.7,
+            "log": "docs/runs/F046-20261009T134457Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F046-20261009T134457Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F046-20261009T134457Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F046-20261009T134457Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F046-20261009T134457Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.0,
+            "log": "docs/runs/F046-20261009T134457Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F046-20261009T134457Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 10.3,
+            "log": "docs/runs/F046-20261009T134457Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F046-20261009T134457Z-keep.log"
+          }
+        ],
+        "taskHash": "16fc982cd9c2a791",
+        "filesHash": "4a26226fdec40c29",
+        "proof": {
+          "1": "backend: TestOnlyValidPrivyTokensPass: a token signed with the configured ES256 key, iss privy.io, aud = app ID passes (200); expired, missing exp, other issuer, other audience, missing sub, alg none, alg HS256 keyed with the public key, signed by another key, tampered payload and no token each return 401; removing each claim check makes its case fail",
+          "2": "backend: TestOnlyTheOwnerActsForAProfile: another user's profile, a user not in the database, an unknown and a malformed profile ID return 403, the owner gets 200; TestVerificationMakesNoNetworkCall: with http.DefaultTransport failing every call, a valid token still passes"
+        }
+      },
+      "branch": "feat/f046-only-a-signed-in-user-acts-and-only-for",
+      "baseCommit": "129940a106c96569a601cc55be886ccdb37ddfd4",
+      "failedVerifies": 0
     },
     {
       "id": "F047",
@@ -4613,7 +4691,9 @@
         "packages/ui-web/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-09 From F046: wrap the invoice routes in requireUser(requireProfileOwner(...)) (internal/httpapi/auth.go); add PRIVY_APP_ID and PRIVY_VERIFICATION_KEY to config.LoadAPI and .env.example (until the Privy app exists, a local P-256 test key works); construct auth.NewVerifier and auth.NewService in cmd/api."
+      ],
       "blockedReason": null,
       "evidence": null
     },
@@ -5516,9 +5596,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-09T12:43:16Z",
+    "at": "2026-10-09T13:37:47Z",
     "clean": true,
     "problems": [],
-    "note": "F043, F044, F059 merged (PRs #49-#51). D-45: received when seen, paid at the chain's finalized block; internal/finality gives blocks/time left. Next: F045 money schema."
+    "note": "F043, F044, F059, F045 merged (PRs #49-#52). F045: money schema with double-entry append-only ledger and booked-transfer guard; review notes for F048/F049/F050 are on those tasks. Next: F046 Privy token auth (needs no Privy app; tests use local keys)."
   }
 }

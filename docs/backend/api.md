@@ -32,7 +32,13 @@ Only `/healthz` exists today. The business API rules below apply when R-18/R-19 
 
 - `Authorization: Bearer <Privy access token>`, checked by middleware on every route.
 - Public routes (checkout reads) are marked `security: []` in the spec. `/healthz` is also public and uses its own status response. No other route is public by default.
-- Profile-scoped routes check that the user owns the profile: 403 otherwise.
+- Profile-scoped routes check that the user owns the profile: 403 otherwise, also for an unknown or malformed
+  profile ID, so callers can't probe which profiles exist.
+- `internal/auth` verifies the token locally with the dashboard verification key (no network call): ES256 only,
+  issuer `privy.io`, audience = app ID, `exp` required, `sub` = the user's Privy DID. The Privy Go SDK (D-12) has no
+  local token check, so this uses `golang-jwt/jwt/v5` as in Privy's Go guide
+  (https://docs.privy.io/authentication/user-authentication/access-tokens).
+- `httpapi.requireUser` and `requireProfileOwner` wrap the protected handlers.
 
 ## Errors
 
