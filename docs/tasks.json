@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 41,
+  "nextId": 42,
   "tasks": [
     {
       "id": "F001",
@@ -3822,7 +3822,7 @@
         "packages/contracts/deployments.json lists the new addresses and transaction hashes and keeps the F037 factory under a superseded entry"
       ],
       "dependsOn": [
-        "F039"
+        "F041"
       ],
       "state": "not_started",
       "verification": [
@@ -3839,6 +3839,110 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F041",
+      "type": "fix",
+      "behavior": "Audit follow-ups: receivers work only when registered by our factory, the deploy script survives an executor change, and the paid-detection and new-chain rules are written down",
+      "acceptance": [
+        "A clone of the implementation made outside the factory (not in deployedAt) reverts on settle, refund, recover, terms, deadline, refundable and status, so only receivers our factory deployed can move money or report status",
+        "script/Deploy.s.sol returns the existing factory after setExecutor rotated the executor (EXECUTOR is the first executor the address commits to), and never deploys a second factory",
+        "packages/contracts/AGENTS.md has the audit rules: backend decides paid only for receivers it computed itself and the allowlisted token contract (on Arc also the system emitter for native USDC), ignores logs from any other address; no profile or merchant id in the terms; Safe deployed on every EVM chain before owner changes; accepted Arc sub-micro-USDC dust in recover; zero settle window is a backend rule; PLAN.md and diagrams match"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "contracts",
+        "diagrams",
+        "lint"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-10-09 review pass by reviewer: No must-fix findings. forge fmt --check clean; forge test 69 passed, 1 skipped (fork). Scratchpad PoCs passed: a wrong-chain receiver deployed by the CREATE2 factory on chain B can still recover the token and native coin; a deterministic clone made outside the factory is dead (status reverts, isReceiver false, statusOf empty, factory.status points to the real address); settle works in the same block as deploy (85.8k gas). The registration check cannot lock real money: deployedAt is set right after the clone is created, nothing calls the clone in between, block.timestamp is never 0, and receivers on other chains are registered by the same-address factory there. Deploy.s.sol: the CREATE2 address commits to the init code (authority + first executor), so any code at the predicted address is our factory; dropping the executor check accepts nothing new. The docs cover fake tokens, look-alike clone/factory events, receiverOf/status spoofing, Arc native vs ERC-20 balance, and reorgs (Phase 6 watcher). Optional: (1) AGENTS.md:72 and acceptance 1 say every view reverts, but the settled() and factory() getters do not (settled is always false on a fake clone, so harmless): reword. (2) A factory deployed on a new chain after setExecutor starts with the first, possibly leaked, executor; document that the Safe calls setExecutor there right after deploy, or make the script warn. (3) Smoke.s.sol deploys the probe with the deployer key, so it fails on chains where the executor was rotated (testnet tooling only). (4) settle could also reject a recipient that is a registered receiver (factory.deployedAt(recipient) != 0); the backend Privy-recipient rule covers this today. (5) The refundAuthority check in Deploy.s.sol is redundant but harmless.",
+        "2026-10-09 review pass by reviewer: Re-review after doc-only edits. Code is the same as in the first pass; forge test: 69 passed, 1 skipped (fork). AGENTS.md now lists exactly the onlyClone functions (settle, refund, recover, terms, deadline, refundable, status) and says the settled and factory getters still answer, which matches the code. Acceptance 1 says the same. The new-chain rule (a factory there starts with the first executor, so the refund authority calls setExecutor right after deploy) is now written down. Earlier findings stand: the registration check cannot lock real money (deployedAt is set right after the clone is created, wrong-chain recovery works through the same-address factory); the CREATE2 address commits to the init code, so Deploy.s.sol accepts no wrong factory; the backend paid-detection rules cover fake tokens, look-alike clones and events, status/receiverOf spoofing, Arc native vs ERC-20, and reorgs. Optional, not blocking: Smoke.s.sol probe deploy uses the deployer key and fails where the executor was rotated (testnet tooling); settle could also reject a recipient that is a registered receiver; the refundAuthority check in Deploy.s.sol is redundant."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-09T00:18:59Z",
+        "checks": [
+          {
+            "id": "contracts",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.9,
+            "log": "docs/runs/F041-20261009T001859Z-contracts.log"
+          },
+          {
+            "id": "diagrams",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": "docs/runs/F041-20261009T001859Z-diagrams.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F041-20261009T001859Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F041-20261009T001859Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.0,
+            "log": "docs/runs/F041-20261009T001859Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F041-20261009T001859Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.5,
+            "log": "docs/runs/F041-20261009T001859Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F041-20261009T001859Z-keep.log"
+          }
+        ],
+        "taskHash": "b5d35db6c6e9c24e",
+        "filesHash": "114af9d84f579e18",
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review after doc-only edits. Code is the same as in the first pass; forge test: 69 passed, 1 skipped (fork). AGENTS.md now lists exactly the onlyClone functions (settle, refund, recover, terms, deadline, refundable, status) and says the settled and factory getters still answer, which matches the code. Acceptance 1 says the same. The new-chain rule (a factory there starts with the first executor, so the refund authority calls setExecutor right after deploy) is now written down. Earlier findings stand: the registration check cannot lock real money (deployedAt is set right after the clone is created, wrong-chain recovery works through the same-address factory); the CREATE2 address commits to the init code, so Deploy.s.sol accepts no wrong factory; the backend paid-detection rules cover fake tokens, look-alike clones and events, status/receiverOf spoofing, Arc native vs ERC-20, and reorgs. Optional, not blocking: Smoke.s.sol probe deploy uses the deployer key and fails where the executor was rotated (testnet tooling); settle could also reject a recipient that is a registered receiver; the refundAuthority check in Deploy.s.sol is redundant.",
+          "at": "2026-10-09T00:19:51Z",
+          "filesHash": "114af9d84f579e18"
+        }
+      },
+      "branch": "fix/f041-audit-follow-ups-receivers-work-only-whe",
+      "baseCommit": "8600b831a26d8f691de491f979e479c8e0e556bd",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
