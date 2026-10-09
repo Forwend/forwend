@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/auth"
+	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ensp1re/forwend/apps/backend/internal/config"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi"
@@ -34,6 +35,10 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	specs, err := chain.Specs(cfg.ChainsFile)
+	if err != nil {
+		return err
+	}
 	if err := database.Migrate(ctx, cfg.DatabaseURL); err != nil {
 		return err
 	}
@@ -42,14 +47,17 @@ func run() error {
 		return err
 	}
 	defer pool.Close()
+	balances := &chainBalances{specs: specs, keys: cfg.InfuraKeys, chains: map[uint64]*chainRPCs{}}
+	defer balances.close()
 
 	verifier, err := auth.NewVerifier(ctx, cfg.PrivyAppID, cfg.PrivyJWKSURL, &http.Client{Timeout: 10 * time.Second})
 	if err != nil {
 		return err
 	}
 	server := &http.Server{
-		Addr:              cfg.Addr,
-		Handler:           httpapi.NewMux(pool, verifier, privy.NewClient(cfg.PrivyAppID, cfg.PrivyAppSecret, "")),
+		Addr: cfg.Addr,
+		Handler: httpapi.NewMux(pool, verifier, privy.NewClient(cfg.PrivyAppID, cfg.PrivyAppSecret, ""),
+			balances.read),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

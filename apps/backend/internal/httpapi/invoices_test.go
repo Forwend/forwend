@@ -40,7 +40,7 @@ type invoiceEnv struct {
 	bobProfile   string
 }
 
-// invoiceAPI serves the real routes on Postgres and a fake Privy, with Base Sepolia, enabled USDC and a disabled token.
+// invoiceAPI serves the real routes on Postgres, a fake Privy and wallet balances of 2500000 at block 100, with Base Sepolia, enabled USDC and a disabled token.
 func invoiceAPI(t *testing.T) invoiceEnv {
 	t.Helper()
 	ctx := context.Background()
@@ -73,7 +73,10 @@ func invoiceAPI(t *testing.T) invoiceEnv {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.srv = httptest.NewServer(NewMux(pool, verifier, privy.NewClient(privytest.AppID, privytest.AppSecret, e.wallets.URL)))
+	e.srv = httptest.NewServer(NewMux(pool, verifier, privy.NewClient(privytest.AppID, privytest.AppSecret, e.wallets.URL),
+		func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
+			return big.NewInt(2500000), 100, nil
+		}))
 	t.Cleanup(e.srv.Close)
 	return e
 }

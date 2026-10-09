@@ -107,6 +107,49 @@ paths:
         "409": { $ref: "#/components/responses/IdempotencyConflict" }
         "422": { $ref: "#/components/responses/InvalidValue" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/balances:
+    get:
+      operationId: getBalances
+      summary: The profile's money per enabled chain and token
+      description: |
+        The wallet balance is read at the second RPC's finalized block (D-15, D-45). Pending and held come from our
+        records and are not part of the wallet balance.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: The balances
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Balances" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/activity:
+    get:
+      operationId: getActivity
+      summary: The profile's invoices and deposits, newest first, in cursor pages
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: limit
+          in: query
+          description: Items per page; default 50.
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - name: cursor
+          in: query
+          description: nextCursor from the previous page.
+          schema: { type: string }
+      responses:
+        "200":
+          description: One page; an empty list for a new profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Activity" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/invoices/{invoiceId}:
     get:
       operationId: getInvoice
@@ -194,6 +237,84 @@ components:
           type: string
           maxLength: 64
           description: Optional; empty means none. At most 64 characters.
+    Balances:
+      type: object
+      required: [tokens, estimatedUsdTotal]
+      properties:
+        tokens:
+          type: array
+          items: { $ref: "#/components/schemas/TokenBalance" }
+        estimatedUsdTotal:
+          type: [string, "null"]
+          description: |
+            An estimate, not a quote: the sum of the wallet balances counting each stablecoin as 1 USD, with 2
+            decimals (for example "12.50"). Pending and held are not included. null when any wallet balance is missing.
+    TokenBalance:
+      type: object
+      required: [chainId, token, symbol, decimals, wallet, finalizedBlock, pending, held]
+      properties:
+        chainId: { type: integer }
+        token: { $ref: "#/components/schemas/Address" }
+        symbol: { type: string }
+        decimals: { type: integer, minimum: 0 }
+        wallet:
+          description: The profile wallet's balance at finalizedBlock; null when the profile has no wallet yet or the
+            chain could not be read.
+          oneOf:
+            - $ref: "#/components/schemas/Uint256"
+            - type: "null"
+        finalizedBlock:
+          type: [integer, "null"]
+          description: The second RPC's finalized block the wallet balance was read at.
+        pending:
+          type: string
+          pattern: "^[0-9]+$"
+          description: |
+            Not in the wallet yet: deposits to the profile's invoices the ledger has not booked (detected, or final but
+            not booked; a late or extra one is later moved to held), plus booked money owed to the creator and not
+            settled yet. The wallet balance and our records are read at different moments, so for a short time after a
+            settlement the amount can show in both wallet and pending, or briefly in neither.
+        held:
+          type: string
+          pattern: "^[0-9]+$"
+          description: Booked money held for payers (late or extra payments); never the creator's.
+    Activity:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ActivityItem" }
+        nextCursor:
+          type: [string, "null"]
+          description: Pass as cursor for the next page; null on the last page.
+    ActivityItem:
+      type: object
+      required: [kind, at, invoiceId, chainId, token, amount, status]
+      properties:
+        kind:
+          type: string
+          enum: [invoice, deposit]
+        at:
+          type: string
+          format: date-time
+          description: When the invoice was made or the deposit was seen.
+        invoiceId: { $ref: "#/components/schemas/InvoiceId" }
+        chainId: { type: integer }
+        token: { $ref: "#/components/schemas/Address" }
+        amount: { $ref: "#/components/schemas/Uint256" }
+        status:
+          type: string
+          description: An invoice's paymentStatus, or a deposit's status (detected or confirmed). Reorged deposits are
+            left out.
+        settlementStatus:
+          type: string
+          enum: [none, pending, settled]
+          description: Invoices only.
+        txHash:
+          type: string
+          pattern: "^0x[0-9a-f]{64}$"
+          description: Deposits only.
     CreateInvoiceRequest:
       type: object
       additionalProperties: false
@@ -305,7 +426,8 @@ components:
     InvalidValue:
       description: |
         A value breaks a rule (invalid_value): amount, expiresIn, a token or chain that is not enabled, a profile with
-        no wallet for the chain, or terms the contract would refuse to settle.
+        no wallet for the chain, terms the contract would refuse to settle, a profile kind or name, or an activity
+        limit or cursor.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

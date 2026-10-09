@@ -1,7 +1,7 @@
 # Backend API rules
 
 Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/profiles`, `POST /v1/profiles/{profileId}/invoices`,
-`GET /v1/invoices/{invoiceId}` (public).
+`GET /v1/profiles/{profileId}/balances`, `GET /v1/profiles/{profileId}/activity`, `GET /v1/invoices/{invoiceId}` (public).
 
 ## Contract first
 
