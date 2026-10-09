@@ -137,7 +137,7 @@
   --sh-comment: var(--fw-subtle);
 }
 
-/* Motion components (ui-web components/motion.tsx). */
+/* Shared UI motion: spinner, dot-loader, shimmer, progress-bar and success-check. */
 @keyframes fw-spin {
   to {
     transform: rotate(360deg);

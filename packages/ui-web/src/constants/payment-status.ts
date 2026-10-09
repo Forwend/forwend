@@ -14,7 +14,7 @@ export const PAYMENT_STATUS = {
   refunded: "refunded",
 } as const;
 
-// The payment states users see (PLAN D-10, docs/PROJECT.md domain). Labels are final UI copy.
+// The payment states users see (PROJECT D-29 and domain terms). Labels are final UI copy.
 export const PAYMENT_STATUSES = {
   detected: { label: "Detected", tone: TONES.info },
   confirming: { label: "Confirming", tone: TONES.info },

@@ -1,9 +1,9 @@
 "use client";
 
 import { Check, Copy, ExternalLink } from "lucide-react";
+import { useCopy } from "../hooks/use-copy";
 import { shortAddress } from "../lib/address";
 import type { AddressProps } from "../types/payments/display";
-import { useCopy } from "./interactive";
 
 export function Address({
   address,
