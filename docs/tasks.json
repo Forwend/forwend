@@ -7192,7 +7192,7 @@
       "dependsOn": [
         "F067"
       ],
-      "state": "passing",
+      "state": "verified",
       "verification": [
         "e2e",
         "unit"
@@ -7212,73 +7212,75 @@
         "2026-10-09 review pass by subagent: Re-reviewed after phone layout change. Sign-in: flex column, main flex-1 items-center below lg, lg:block keeps the approved desktop. Landing hero: only max-sm classes added; mt-24 removed is overridden by sm:mt-36 at sm+ and justify-center has no effect at sm+ (no height there), so tablet/desktop are unchanged. Phone screenshots (m3, m-signin) show the headline and form in the first screen with the river below. Fresh verify 20:56:08Z passed (21 + 6 live e2e). Re-checked lint, typecheck, unit 8/8. Low, not blocking: on phones/tablets a form-level message (send failure, Google error, resent notice) grows the centered block and shifts the form up about half a line; field errors reserve space and do not. The Messages comment ('only pushes down what is below it') is not true there. Reserve one line for Messages if this matters.",
         "2026-10-09 review pass by subagent: Checked the Messages diff: the box always keeps one text-sm line (min-h-5 = the line height), and the alert/status regions are always rendered, so a form-level message neither moves the centered phone form nor misses an announcement. Error and notice never show together. Send-failure and Google messages now fit one line at the form width (about 42 characters at text-sm in 327 to 384px). The e2e check for no Google error on a wrong code still matches the new text. Fresh verify 20:58:22Z passed (21 + 6 live e2e); lint clean.",
         "2026-10-09 checks failed on https://github.com/ensp1re/forwend/pull/68: checks (https://github.com/ensp1re/forwend/actions/runs/37990707707/job/114023830841)",
-        "2026-10-09 review pass by subagent: Code unchanged since the last pass: f57c142 holds the reviewed files, cfde939 and the working tree only change docs/tasks.json, and the key lines (Messages min-h-5, one-line errors, centered phone form, max-sm hero classes) match. The CI failure on run 37990707707 was Docker Hub 'toomanyrequests' in Initialize containers, before any check ran. Fresh verify 21:00:47Z passed (21 + 6 live e2e)."
+        "2026-10-09 review pass by subagent: Code unchanged since the last pass: f57c142 holds the reviewed files, cfde939 and the working tree only change docs/tasks.json, and the key lines (Messages min-h-5, one-line errors, centered phone form, max-sm hero classes) match. The CI failure on run 37990707707 was Docker Hub 'toomanyrequests' in Initialize containers, before any check ran. Fresh verify 21:00:47Z passed (21 + 6 live e2e).",
+        "2026-10-09 checks failed on https://github.com/ensp1re/forwend/pull/68: checks (https://github.com/ensp1re/forwend/actions/runs/37990968562/job/114024708725)",
+        "2026-10-09 review pass by subagent: Since the last pass only .github/workflows/ci.yml and docs/tasks.json changed. CI's postgres service image moved from Docker Hub postgres:17 to public.ecr.aws/docker/library/postgres:17, the same official image on AWS's public mirror; the 17 tag manifest returns 200 there. This fixes the root cause of runs 37990707707 and 37990968562 (Docker Hub anonymous pull limit). It is the only image CI pulls; infra/docker-compose.yml keeps postgres:17 for local use. No code or keep-path changes. Fresh verify 21:03:39Z passed (21 + 6 live e2e)."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-09T21:00:47Z",
+        "at": "2026-10-09T21:03:39Z",
         "checks": [
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 30.1,
-            "log": "docs/runs/F070-20261009T210047Z-e2e.log"
+            "seconds": 29.9,
+            "log": "docs/runs/F070-20261009T210339Z-e2e.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 29.3,
-            "log": "docs/runs/F070-20261009T210047Z-unit.log"
+            "seconds": 27.4,
+            "log": "docs/runs/F070-20261009T210339Z-unit.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.8,
-            "log": "docs/runs/F070-20261009T210047Z-harness.log"
+            "seconds": 0.7,
+            "log": "docs/runs/F070-20261009T210339Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F070-20261009T210047Z-docs-check.log"
+            "log": "docs/runs/F070-20261009T210339Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F070-20261009T210047Z-lint.log"
+            "log": "docs/runs/F070-20261009T210339Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F070-20261009T210047Z-typecheck.log"
+            "log": "docs/runs/F070-20261009T210339Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.9,
-            "log": "docs/runs/F070-20261009T210047Z-build.log"
+            "log": "docs/runs/F070-20261009T210339Z-build.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F070-20261009T210047Z-keep.log"
+            "log": "docs/runs/F070-20261009T210339Z-keep.log"
           }
         ],
         "taskHash": "573679e0a0f63b49",
-        "filesHash": "d06c936b07c8bde4",
+        "filesHash": "ee99451a56e8368d",
         "proof": {
           "1": "e2e: e2e/privy/sign-in.spec.ts drives our form on the real Privy app: a wrong email shows 'Enter an email like name@example.com.' as an alert with aria-invalid and the Google button keeps its exact position; a wrong code shows only 'Wrong or expired code.' (the test fails when Privy's shared onError is used); form messages keep one line reserved; images-check passes; CodeInput states are on /kit (a11y.spec checks /kit); landing specs pass; Impeccable detect found nothing; desktop and phone (390x844, 375x667) screenshots of sign-in and the landing hero in both themes were reviewed",
           "2": "e2e: the live spec signs the test account in by pasting the code with a space and lands in /app with its Personal profile; axe finds no serious or critical violation on /sign-in in light and dark, on the code step and on both error states"
@@ -7286,12 +7288,10 @@
         "review": {
           "result": "pass",
           "by": "subagent",
-          "summary": "Code unchanged since the last pass: f57c142 holds the reviewed files, cfde939 and the working tree only change docs/tasks.json, and the key lines (Messages min-h-5, one-line errors, centered phone form, max-sm hero classes) match. The CI failure on run 37990707707 was Docker Hub 'toomanyrequests' in Initialize containers, before any check ran. Fresh verify 21:00:47Z passed (21 + 6 live e2e).",
-          "at": "2026-10-09T21:02:12Z",
-          "filesHash": "d06c936b07c8bde4"
-        },
-        "commit": "1606cf7",
-        "doneAt": "2026-10-09T21:02:24Z"
+          "summary": "Since the last pass only .github/workflows/ci.yml and docs/tasks.json changed. CI's postgres service image moved from Docker Hub postgres:17 to public.ecr.aws/docker/library/postgres:17, the same official image on AWS's public mirror; the 17 tag manifest returns 200 there. This fixes the root cause of runs 37990707707 and 37990968562 (Docker Hub anonymous pull limit). It is the only image CI pulls; infra/docker-compose.yml keeps postgres:17 for local use. No code or keep-path changes. Fresh verify 21:03:39Z passed (21 + 6 live e2e).",
+          "at": "2026-10-09T21:05:01Z",
+          "filesHash": "ee99451a56e8368d"
+        }
       },
       "branch": "feat/f070-the-sign-in-page-is-forwend-s-own-our-em",
       "baseCommit": "d469e64c07290b8fc45671607d62d2fe62074a06",
