@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 42,
+  "nextId": 54,
   "tasks": [
     {
       "id": "F001",
@@ -4090,12 +4090,422 @@
         "branch": "fix/f041-audit-follow-ups-receivers-work-only-whe",
         "base": "main"
       }
+    },
+    {
+      "id": "F042",
+      "type": "feat",
+      "behavior": "The Go backend builds, tests and starts: api, worker and signer binaries, healthz, Postgres in compose, migrations",
+      "acceptance": [
+        "pnpm --filter @forwend/backend test runs gofmt -l (prints nothing), go vet and go test ./... and exits 0; CI installs Go and runs it",
+        "With Postgres from infra/docker-compose.yml, api serves GET /healthz -> 200 {\"status\":\"ok\"}; worker and signer build",
+        "Migrations (goose, embedded) run twice on an empty database and both runs exit 0"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-14"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 2,
+        "status": "passed",
+        "at": "2026-10-09T10:31:08Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F042-20261009T103108Z-backend.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F042-20261009T103108Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F042-20261009T103108Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.4,
+            "log": "docs/runs/F042-20261009T103108Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.8,
+            "log": "docs/runs/F042-20261009T103108Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 10.3,
+            "log": "docs/runs/F042-20261009T103108Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F042-20261009T103108Z-keep.log"
+          }
+        ],
+        "taskHash": "bc4b2af34644d08e",
+        "filesHash": "4e279542d9393e9b",
+        "commit": "3f67cdb",
+        "doneAt": "2026-10-09T10:31:31Z",
+        "proof": {
+          "1": "backend check: gofmt, go vet, go test ./... pass; CI installs Go and runs them in pnpm test",
+          "2": "backend: internal/httpapi TestHealthz (200 ok, 503 when the database is closed); api binary smoke run returned {\"status\":\"ok\"} 200",
+          "3": "backend: internal/database TestMigrateTwiceOnEmptyDatabase"
+        }
+      },
+      "branch": "feat/f042-the-go-backend-builds-tests-and-starts-a",
+      "baseCommit": "04557e9c6ebd6a678c67dfc259b125a04692a8b2",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f042-the-go-backend-builds-tests-and-starts-a",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F043",
+      "type": "feat",
+      "behavior": "Go computes the same receive address as factory.predict, checked by shared test vectors",
+      "acceptance": [
+        "Foundry writes a vectors file from factory.predict for at least 20 terms (amount 1 and 2^256-1, all four testnet chain IDs, expiry 0 and 2^64-1); the Go address code matches every vector",
+        "The factory address and init-code hash are compiled into the Go binary; a contract change that alters the init code makes forge test fail until the vectors are regenerated"
+      ],
+      "dependsOn": [
+        "F042"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "contracts"
+      ],
+      "refs": [
+        "R-15"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F044",
+      "type": "docs",
+      "behavior": "Spike S-4: go-ethereum reads blocks, receipts, Transfer logs and safe/finalized tags on all four testnets",
+      "acceptance": [
+        "docs/spikes/s4-chains.md records, per chain (Base Sepolia, Arbitrum Sepolia, Arc testnet, Tempo Moderato), block, receipt and token Transfer log decoding and safe/finalized support, and the confirm/finality rule that answers PLAN Q-06"
+      ],
+      "dependsOn": [
+        "F042"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-16"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F045",
+      "type": "feat",
+      "behavior": "The database enforces the money rules: unique receive address and idempotency key, unique transfers, append-only ledger",
+      "acceptance": [
+        "Migrations create users, profiles, profile_wallets, chains, tokens, invoices, chain_transfers, ledger_entries, settlement_intents, chain_cursors and outbox_events; amounts NUMERIC(78,0), addresses text with chain_family",
+        "Tests against Postgres: a duplicate (chain_id, receive_address), duplicate (profile_id, idempotency_key), duplicate (chain_id, tx_hash, log_index), and any UPDATE or DELETE on ledger_entries are rejected"
+      ],
+      "dependsOn": [
+        "F042"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-17"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F046",
+      "type": "feat",
+      "behavior": "Only a signed-in user acts, and only for their own profiles: Privy ES256 access tokens verified locally",
+      "acceptance": [
+        "A token signed with the configured ES256 verification key, issuer privy.io and audience = app ID passes; expired, other issuer, other audience, other alg or none, and bad signature each return 401",
+        "A valid token acting for a profile the user does not own returns 403; verification makes no network call per request"
+      ],
+      "dependsOn": [
+        "F045"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-18"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F047",
+      "type": "feat",
+      "behavior": "A creator makes an invoice once, with a receive address computed locally and the recipient from the profile wallet",
+      "acceptance": [
+        "POST /v1/profiles/{profileId}/invoices with Idempotency-Key, chainId, token, amount (decimal string) returns 201 with invoiceId (32 random bytes hex), receiveAddress, expiresAt = now + 1h unless expiresIn (15 min to 365 days, else 422), settleDeadline = expiresAt + 24h",
+        "The recipient is the profile wallet, never a request field; receiveAddress equals the Go computation of the stored terms",
+        "Same key and body -> 200 with the same invoice; same key, other body -> 409; unknown or disabled token, amount 0 or above 2^256-1 -> 422; GET /v1/invoices/{id} returns terms and statuses; api/openapi.yaml describes both routes"
+      ],
+      "dependsOn": [
+        "F043",
+        "F046"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-19"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F048",
+      "type": "feat",
+      "behavior": "The watcher records only real deposits of the allowlisted token and survives reorgs and restarts",
+      "acceptance": [
+        "On Anvil, a 5 USDC transfer (mock token) to a receive address gives a chain_transfers row detected, then confirmed once the block meets the confirm rule",
+        "A Transfer from a look-alike token contract, or to an unknown address, adds no row",
+        "After a reorg that drops the block the row is reorged; restarting the worker resumes from the cursor with no duplicate rows"
+      ],
+      "dependsOn": [
+        "F044",
+        "F045"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-20"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F049",
+      "type": "feat",
+      "behavior": "Invoice states follow confirmed money and block time, with a second RPC check before paid",
+      "acceptance": [
+        "Confirmed sums below amount -> partially_paid; at or above -> paid (excess held); deposit with block time after expiresAt -> late and held; expiry passes -> expired or expired_partially_paid",
+        "paid is set only after a second RPC's balanceOf agrees; the database rejects any other transition",
+        "A property test over random deposit sequences keeps ledger totals equal to the receiver balance"
+      ],
+      "dependsOn": [
+        "F048"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-21"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F050",
+      "type": "feat",
+      "behavior": "The signer settles a paid invoice once, with the executor key, only when terms and chain check out",
+      "acceptance": [
+        "On Anvil with the real contracts, a settlement intent re-reads the terms, recomputes the address, checks the balance on chain, deploys the receiver if needed and calls settle; the recipient gets exactly the amount",
+        "A second intent for the same invoice is rejected; killing the signer after sending and restarting it sends nothing again (reconciled by nonce and tx hash)",
+        "Terms whose recipient or address does not match are refused and nothing is sent"
+      ],
+      "dependsOn": [
+        "F043",
+        "F049"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-22"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F051",
+      "type": "test",
+      "behavior": "The whole money loop runs locally: create, pay, detect, confirm, paid, settled",
+      "acceptance": [
+        "With Postgres and Anvil from compose, the gate script creates an invoice through the API, pays it with the mock token and sees detected -> confirmed -> paid -> settled; the ledger equals on-chain balances",
+        "Running it again with the same idempotency key gives one invoice; CI runs the gate"
+      ],
+      "dependsOn": [
+        "F047",
+        "F050"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend-e2e",
+        "backend"
+      ],
+      "refs": [
+        "R-23"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F052",
+      "type": "docs",
+      "behavior": "Spikes S-1 to S-3: Privy from Go for token checks, wallets per profile and sponsored gas",
+      "acceptance": [
+        "docs/spikes/s1-s3-privy.md records, with the Privy test app: access token verification, create and look up a wallet per profile (several for one user), who must approve a send, and a sponsored USDC send on Base Sepolia, each with result and decision"
+      ],
+      "dependsOn": [
+        "F042"
+      ],
+      "state": "blocked",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-24"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/design-tokens/*",
+        "packages/ui-web/*"
+      ],
+      "review": false,
+      "notes": [
+        "2026-10-09 blocked: question: Q-4 Privy test app credentials (PRIVY_APP_ID, PRIVY_APP_SECRET, PRIVY_VERIFICATION_KEY in root .env); Sasha is creating the app"
+      ],
+      "blockedReason": "question: Q-4 Privy test app credentials (PRIVY_APP_ID, PRIVY_APP_SECRET, PRIVY_VERIFICATION_KEY in root .env); Sasha is creating the app",
+      "evidence": null
+    },
+    {
+      "id": "F053",
+      "type": "fix",
+      "behavior": "The Base Sepolia fork test runs in CI instead of skipping: turbo passes BASE_SEPOLIA_RPC to forge",
+      "acceptance": [
+        "turbo.json passes BASE_SEPOLIA_RPC to the test task, and the CI log shows Fork.t.sol test_realUsdcFlow passing, not skipped"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "contracts"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-09T00:31:57Z",
+    "at": "2026-10-09T00:38:51Z",
     "clean": true,
     "problems": [],
-    "note": "F040 merged (PR #41): factory 0xECe7…7546 on 4 testnets, Arc+Tempo flows with statusOf. Next: F033 landing refund line; then Phase 6 backend."
+    "note": "F033 merged (PR #42). Queue empty. Next session: Phase 6 Go backend in apps/backend (large: define with harness-bootstrap feature mode, split into tasks; Privy spikes S-1..S-3 first)."
   }
 }

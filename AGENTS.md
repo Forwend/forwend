@@ -8,6 +8,7 @@ Roadmap and money rules: [PLAN.md](PLAN.md). Current release requirements and de
 - Setup: `pnpm install` (Node version in `.nvmrc`, pnpm 10)
 - Dev: `pnpm dev` (web on http://localhost:3000; `/kit` needs `KIT_ENABLED=1`)
 - Checks: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm e2e`
+- Backend (Go, `apps/backend`): `cp apps/backend/.env.example apps/backend/.env`, `pnpm --filter @forwend/backend postgres:up` (Docker), then `pnpm --filter @forwend/backend test` or `api` / `worker` / `signer`. Config comes only from environment variables (`apps/backend/.env` locally); no defaults in code.
 
 ## Project rules
 

@@ -1,0 +1,15 @@
+# Local services for apps/backend. Values come from apps/backend/.env: pnpm --filter @forwend/backend postgres:up
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set in apps/backend/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in apps/backend/.env}
+      POSTGRES_DB: ${POSTGRES_DB:?set in apps/backend/.env}
+    ports:
+      - "${POSTGRES_PORT:?set in apps/backend/.env}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
