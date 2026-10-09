@@ -23,7 +23,7 @@ The processes and schema below are the target for R-15…R-24.
 - `merchants → stores(project_id, branding)`, `team_members(role, store scope)` (Phase 10)
 - `chains(chain_id, confirm_rule, finality_rule)`, `tokens(chain_id, contract, decimals, enabled)`
 - `invoices`: immutable terms (`invoice_id`, profile, chain, token, `amount NUMERIC(78,0)`,
-  `expires_at`, recipient address, receive address, `receive_method` (C-10), salt). Addresses are
+  `expires_at`, recipient address, receive address, `receive_method` (PROJECT D-44), salt). Addresses are
   text with a `chain_family`, never a 20-byte EVM type, `idempotency_key` unique per profile,
   separate status columns for **payment**, **settlement** and **refund**.
 - `chain_transfers`: unique `(chain_id, tx_hash, log_index)`, `block_hash`, `block_number`,

@@ -2,6 +2,7 @@ package httpapi_test
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -23,11 +24,13 @@ func TestHealthz(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	body := make([]byte, 64)
-	n, _ := res.Body.Read(body)
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
 	res.Body.Close()
-	if res.StatusCode != http.StatusOK || string(body[:n]) != `{"status":"ok"}` {
-		t.Fatalf("got %d %q", res.StatusCode, body[:n])
+	if res.StatusCode != http.StatusOK || string(body) != `{"status":"ok"}` {
+		t.Fatalf("got %d %q", res.StatusCode, body)
 	}
 
 	pool.Close()
