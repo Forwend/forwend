@@ -66,6 +66,7 @@ Use harness `status` for progress.
 | R-23 | The whole money loop runs locally. | Given Postgres and Anvil from compose, when the gate script creates an invoice through the API and pays it with the mock token, then the invoice goes detected → confirmed → paid → settled, and the ledger equals on-chain balances. Running it again with the same idempotency key gives one invoice. | backend-e2e | PLAN phase 6 gate |
 | R-24 | Privy works from Go for login and profile wallets (spikes S-1…S-3). | Given a Privy test app, when the spike program verifies an access token, creates and looks up a wallet per profile (several for one user), and tries a sponsored USDC send on Base Sepolia, then `docs/spikes/s1-s3-privy.md` records each result and the decision. | manual: agent, spike notes | PLAN S-1…S-3, Q-4 |
 | R-25 | Repository guidance has one owner per topic and checks cannot report false success. | Given the instruction map and check registry, when docs-check and harness regression tests run, then links and decision IDs resolve, changed inputs invalidate evidence, and missing checks cannot pass. | docs-check, harness | Owner cleanup request |
+| R-26 | API shutdown drains active responses and reports failure. | Given an active request, when termination starts, then its response completes before normal exit; a shutdown deadline closes the connection and returns an error. Database errors identify their operation and retain their cause. | backend | Owner skeleton review |
 
 ## Decisions
 

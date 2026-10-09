@@ -52,3 +52,10 @@ A feature package holds `<feature>.go` (types and their rules), `service.go` (us
 - Real Postgres (`databasetest.New(t)`) and real Anvil with the real contracts. No SQL or chain mocks (D-17).
 - One test per acceptance line; table tests for rules.
 - `go test -race` runs in the backend check.
+
+## Errors and shutdown
+
+- Database functions add operation context with `%w`; services translate expected failures to named domain errors.
+  HTTP handlers use `errors.Is` to map those errors to the API response. Log unexpected errors once at the boundary.
+- `cmd/api` wires config, database and listener. `httpapi.Serve` owns request draining and its deadline; close the pool
+  after it returns. `routes.go` registers handlers; `health.go` implements the public database health check.

@@ -2,17 +2,20 @@ package database_test
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
 )
 
-func TestMigrateTwiceOnEmptyDatabase(t *testing.T) {
+func TestOpenRetainsCancellationCause(t *testing.T) {
 	url := databasetest.New(t)
-	for i := range 2 {
-		if err := database.Migrate(context.Background(), url); err != nil {
-			t.Fatalf("run %d: %v", i+1, err)
-		}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := database.Open(ctx, url)
+	if !errors.Is(err, context.Canceled) || !strings.Contains(err.Error(), "connect to Postgres") {
+		t.Fatalf("want connection context and cancellation, got %v", err)
 	}
 }

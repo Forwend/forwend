@@ -3,8 +3,9 @@ package main
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -48,15 +49,10 @@ func run() error {
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
-	go func() {
-		<-ctx.Done()
-		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		_ = server.Shutdown(shutdown)
-	}()
-	slog.Info("api listening", "addr", cfg.Addr)
-	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-		return err
+	listener, err := net.Listen("tcp", cfg.Addr)
+	if err != nil {
+		return fmt.Errorf("listen for HTTP: %w", err)
 	}
-	return nil
+	slog.Info("api listening", "addr", listener.Addr().String())
+	return httpapi.Serve(ctx, server, listener, 10*time.Second)
 }
