@@ -8,7 +8,7 @@ Solidity invoice receivers v1: a factory and one receiver clone per invoice (Fou
 - Libraries are git submodules in `lib/` (`git submodule update --init --recursive`).
 - `pnpm vectors` rewrites `vectors/receive-address.json` (receive addresses the Go backend must match).
 - `node script/rpc.mjs <chain>` prints a working RPC (Infura keys, then public RPCs).
-- Keys only in the root `.env`. Never print or commit one.
+- Keys only in `packages/contracts/.env` (names in `.env.example`); scripts load it. Never print or commit one.
 
 ## Read before writing code
 

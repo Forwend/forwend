@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 61,
+  "nextId": 62,
   "tasks": [
     {
       "id": "F001",
@@ -5925,6 +5925,123 @@
       "delivery": {
         "mode": "pr",
         "branch": "feat/f060-privy-key-rotation-never-breaks-sign-in",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F061",
+      "type": "chore",
+      "behavior": "Each package keeps its own secrets in its own .env; there is no root .env",
+      "acceptance": [
+        "packages/contracts/.env holds DEPLOYER_PRIVATE_KEY, REFUND_AUTHORITY_PRIVATE_KEY and INFURA_API_KEYS (names in packages/contracts/.env.example); deploy.sh and rpc.mjs read it; apps/backend/.env also has INFURA_API_KEYS; the root .env is gone and no script reads it",
+        "AGENTS.md and packages/contracts/AGENTS.md state the rule; node script/rpc.mjs <chain> still finds a working RPC with only packages/contracts/.env"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "contracts",
+        "backend"
+      ],
+      "refs": [
+        "R-30"
+      ],
+      "keep": [
+        "apps/web/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T15:09:23Z",
+        "checks": [
+          {
+            "id": "contracts",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": "docs/runs/F061-20261009T150923Z-contracts.log"
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.5,
+            "log": "docs/runs/F061-20261009T150923Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F061-20261009T150923Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F061-20261009T150923Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F061-20261009T150923Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F061-20261009T150923Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.5,
+            "log": "docs/runs/F061-20261009T150923Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F061-20261009T150923Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.8,
+            "log": "docs/runs/F061-20261009T150923Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F061-20261009T150923Z-keep.log"
+          }
+        ],
+        "taskHash": "51bcec509e1da8b0",
+        "filesHash": "f9ea271dd244b3e6",
+        "proof": {
+          "1": "contracts: the root .env is removed; packages/contracts/.env holds the three keys (names in .env.example) and deploy.sh now sources ./.env, whose keys derive the deployed executor 0xe158... and refund authority 0x3E20...; apps/backend/.env has INFURA_API_KEYS; git grep finds no script reading ../../.env; forge tests pass",
+          "2": "backend: AGENTS.md and packages/contracts/AGENTS.md state the per-package rule; with INFURA_API_KEYS unset in the shell, node script/rpc.mjs found Infura for base-sepolia and arc-testnet and the public RPC for tempo-moderato from packages/contracts/.env; backend tests pass"
+        },
+        "commit": "9cc3a11",
+        "doneAt": "2026-10-09T15:09:56Z"
+      },
+      "branch": "chore/f061-each-package-keeps-its-own-secrets-in-it",
+      "baseCommit": "4761dc6b493dbe46a0f3f4768a1048f026439033",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f061-each-package-keeps-its-own-secrets-in-it",
         "base": "main"
       }
     }

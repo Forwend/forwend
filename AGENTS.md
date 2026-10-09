@@ -26,7 +26,8 @@ Read only the task's requirement rows and the relevant package instructions.
 - TypeScript: named types in `src/types/<domain>/`; finite domain values in `src/constants/`; derive unions from constants.
   Use type-only imports. Do not repeat domain string values. Document framework-required exceptions in the PR.
 - Money is integer base units plus decimals (`bigint`, `*big.Int`, `NUMERIC(78,0)`). Identify tokens by chain + contract.
-- Secrets only in ignored `.env` files (root or `apps/backend`). Never print, log or commit keys, tokens or request bodies.
+- Secrets only in the ignored `.env` of the package that reads them (`apps/backend`, `packages/contracts`); no root `.env`.
+  Each package lists its names in `.env.example`. Never print, log or commit keys, tokens or request bodies.
 - Every change uses a task branch and PR. No direct base-branch commits or pushes; no skipped hooks.
 - Follow the user's authorization for commits and publishing. Spending, deployments and provider accounts require explicit approval.
 - Keep rules in their owning doc; link instead of copying. Update that doc when behavior changes.

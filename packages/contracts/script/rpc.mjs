@@ -1,7 +1,10 @@
 // Prints a working RPC URL for a chain from chains.json: every Infura key in turn, then public RPCs.
 // A URL counts only if eth_chainId matches, so a key without access to the network is skipped.
-// Usage: node script/rpc.mjs <chain>   (reads INFURA_API_KEYS=key1,key2 from the environment)
-import { readFileSync } from "node:fs";
+// Usage: node script/rpc.mjs <chain>   (INFURA_API_KEYS=key1,key2 from the environment or packages/contracts/.env)
+import { existsSync, readFileSync } from "node:fs";
+
+const envFile = new URL("../.env", import.meta.url);
+if (existsSync(envFile)) process.loadEnvFile(envFile);
 
 const name = process.argv[2];
 const chains = JSON.parse(readFileSync(new URL("../chains.json", import.meta.url), "utf8"));
