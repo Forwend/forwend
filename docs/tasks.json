@@ -7666,7 +7666,7 @@
         "Unit tests sit beside their sources and the same tests still run; routes, rendered behavior, API calls and the kit are unchanged: lint, typecheck, unit, build, e2e and the live sign-in suite pass."
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "passing",
       "verification": [
         "docs-check",
         "ui-unit"
@@ -7685,89 +7685,104 @@
       ],
       "review": true,
       "notes": [
-        "2026-10-09 review pass by reviewer: Pure move: routes render the same trees via screens/, copy strings, classes, props, API paths and route exports (metadata, dynamic) unchanged; shared never imports screens/features, the only feature-to-feature import (receive -> balances type) is documented; 3 test files (16 tests) run from src/ beside sources; typecheck, unit and biome clean; no stale old-path references. Non-blocking: unrequested blank-line/import-style churn in moved files and globals.css import moved to the top of app/layout.tsx (no CSS effect), AUTH_COPY.soon reused for app-shell nav, structure.md tree does not list screens/kit-directions on its own line."
+        "2026-10-09 review pass by reviewer: Pure move: routes render the same trees via screens/, copy strings, classes, props, API paths and route exports (metadata, dynamic) unchanged; shared never imports screens/features, the only feature-to-feature import (receive -> balances type) is documented; 3 test files (16 tests) run from src/ beside sources; typecheck, unit and biome clean; no stale old-path references. Non-blocking: unrequested blank-line/import-style churn in moved files and globals.css import moved to the top of app/layout.tsx (no CSS effect), AUTH_COPY.soon reused for app-shell nav, structure.md tree does not list screens/kit-directions on its own line.",
+        "2026-10-09 review pass by reviewer: turbo.json: excluding .next/dev/** is correct. Next 16 sets distDir to .next/dev only in PHASE_DEVELOPMENT_SERVER (next/dist/server/config.js); next build and next start use the root .next (BUILD_ID, server, static, manifests), so the cached build output keeps everything next start needs. e2e is unaffected: both playwright configs run 'pnpm build && pnpm start' (next build directly, not via turbo), and apps/web/scripts/e2e.mjs only spawns playwright. structure.md: kit/ and kit-directions/ listed as sibling screens matches the code; no screen imports another screen, shared imports no screens/features. Pure move re-checked: every route page.tsx only renders its screen; old route bodies diff to the new screens only by import paths, the export name, and copy constants moved to their owner (same strings); 'use client' kept on the client screens. web typecheck clean, web unit 3 files/16 tests pass, docs-check 0 errors."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
-        "status": "failed",
-        "at": "2026-10-09T23:41:07Z",
+        "status": "passed",
+        "at": "2026-10-09T23:46:32Z",
         "checks": [
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F074-20261009T234107Z-docs-check.log"
+            "log": "docs/runs/F074-20261009T234632Z-docs-check.log"
           },
           {
             "id": "ui-unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.7,
-            "log": "docs/runs/F074-20261009T234107Z-ui-unit.log"
+            "seconds": 1.5,
+            "log": "docs/runs/F074-20261009T234632Z-ui-unit.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.6,
-            "log": "docs/runs/F074-20261009T234107Z-harness.log"
+            "log": "docs/runs/F074-20261009T234632Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F074-20261009T234107Z-lint.log"
+            "log": "docs/runs/F074-20261009T234632Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F074-20261009T234107Z-typecheck.log"
+            "seconds": 0.5,
+            "log": "docs/runs/F074-20261009T234632Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 27.2,
-            "log": "docs/runs/F074-20261009T234107Z-unit.log"
+            "seconds": 32.5,
+            "log": "docs/runs/F074-20261009T234632Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.8,
-            "log": "docs/runs/F074-20261009T234107Z-build.log"
+            "seconds": 4.8,
+            "log": "docs/runs/F074-20261009T234632Z-build.log"
           },
           {
             "id": "e2e",
-            "outcome": "failed",
-            "exit": 1,
-            "seconds": 254.0,
-            "log": "docs/runs/F074-20261009T234107Z-e2e.log"
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 44.1,
+            "log": "docs/runs/F074-20261009T234632Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F074-20261009T234107Z-keep.log"
+            "log": "docs/runs/F074-20261009T234632Z-keep.log"
           }
         ],
         "taskHash": "1e32bb9e39dca25e",
-        "filesHash": "f4a4133414ec0bf3",
+        "filesHash": "c860f1c2219e7575",
         "proof": {
-          "1": "build: routes are thin pages rendering screens/{landing,dashboard,balances,activity,new-profile,sign-in,kit,kit-directions}; product code in features/{auth,profiles,balances,receive,activity,waitlist}; shared/{api,config,hooks,chains,art,assets,examples}; src/types, src/constants and src/lib are gone",
+          "1": "build: routes are thin pages rendering screens/{landing,dashboard,balances,activity,new-profile,sign-in,kit,kit-directions}; product code in features/{auth,profiles,balances,receive,activity,waitlist}; shared/{api,config,hooks,chains,art,assets,examples}; src/types, src/constants and src/lib are gone; turbo no longer caches .next/dev, which overwrote the running dev server's files",
           "2": "lint: import scan finds no shared->features/screens and no features->screens imports; the one feature-to-feature import (receive takes the Balances type) is named in docs/web/architecture.md",
           "3": "unit: tests moved beside sources (features/*/*.test.ts*), vitest include src/**; same 3 files and 16 tests pass; e2e (main 21 + live 8) unchanged and passing"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "turbo.json: excluding .next/dev/** is correct. Next 16 sets distDir to .next/dev only in PHASE_DEVELOPMENT_SERVER (next/dist/server/config.js); next build and next start use the root .next (BUILD_ID, server, static, manifests), so the cached build output keeps everything next start needs. e2e is unaffected: both playwright configs run 'pnpm build && pnpm start' (next build directly, not via turbo), and apps/web/scripts/e2e.mjs only spawns playwright. structure.md: kit/ and kit-directions/ listed as sibling screens matches the code; no screen imports another screen, shared imports no screens/features. Pure move re-checked: every route page.tsx only renders its screen; old route bodies diff to the new screens only by import paths, the export name, and copy constants moved to their owner (same strings); 'use client' kept on the client screens. web typecheck clean, web unit 3 files/16 tests pass, docs-check 0 errors.",
+          "at": "2026-10-09T23:48:57Z",
+          "filesHash": "c860f1c2219e7575"
+        },
+        "commit": "80a1c23",
+        "doneAt": "2026-10-09T23:49:07Z"
       },
       "branch": "refactor/f074-the-web-app-s-files-live-in-screens-feat",
       "baseCommit": "ddc50c193d13b5744f1674d9ab5a0b3a051db4bd",
-      "failedVerifies": 2
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f074-the-web-app-s-files-live-in-screens-feat",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
