@@ -17,6 +17,8 @@ type API struct {
 	// Privy app ID, and the URL of its published token signing keys (JWKS).
 	PrivyAppID   string
 	PrivyJWKSURL string
+	// PrivyAppSecret lets the api make profile wallets: never log it.
+	PrivyAppSecret string
 }
 
 // Worker is what cmd/worker needs.
@@ -42,7 +44,7 @@ type Signer struct {
 func LoadAPI() (API, error) {
 	var r reader
 	c := API{DatabaseURL: r.get("DATABASE_URL"), Addr: r.get("API_ADDR"),
-		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyJWKSURL: r.get("PRIVY_JWKS_URL")}
+		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyJWKSURL: r.get("PRIVY_JWKS_URL"), PrivyAppSecret: r.get("PRIVY_APP_SECRET")}
 	return c, r.err()
 }
 

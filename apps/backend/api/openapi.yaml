@@ -11,6 +11,70 @@ servers:
 security:
   - privyAccessToken: []
 paths:
+  /v1/me:
+    post:
+      operationId: signUp
+      summary: Sign up once; makes the user, the personal profile and its wallet
+      description: |
+        Call after every sign-in. The first call makes the user and the personal profile with its Privy wallet (201).
+        Later calls change nothing (200), except that they retry a wallet Privy failed to make. No Idempotency-Key:
+        the user's token is the key.
+      responses:
+        "201":
+          description: Signed up
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "200":
+          description: Signed up before; nothing changed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/Internal" }
+    get:
+      operationId: getMe
+      summary: The signed-in user's profiles, oldest first
+      responses:
+        "200":
+          description: The profiles
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotSignedUp" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles:
+    post:
+      operationId: createProfile
+      summary: Create a freelancer or merchant profile with its own wallet, once per Idempotency-Key
+      description: |
+        Keys are per user. The same key with the same values returns the stored profile with 200; with other values, 409.
+        If Privy fails, the profile is stored without a wallet and the same request again makes it.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateProfileRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profile" }
+        "200":
+          description: The same request was made before with this key; the stored profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profile" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotSignedUp" }
+        "409": { $ref: "#/components/responses/IdempotencyConflict" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/invoices:
     post:
       operationId: createInvoice
@@ -20,11 +84,7 @@ paths:
         (factory.predict). The same key with the same values returns the stored invoice with 200; with other values, 409.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
-        - name: Idempotency-Key
-          in: header
-          required: true
-          description: 1 to 255 bytes of UTF-8.
-          schema: { type: string, minLength: 1, maxLength: 255 }
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -80,6 +140,12 @@ components:
       required: true
       description: A profile the signed-in user owns; any other value is 403.
       schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: 1 to 255 bytes of UTF-8.
+      schema: { type: string, minLength: 1, maxLength: 255 }
   schemas:
     InvoiceId:
       type: string
@@ -92,6 +158,42 @@ components:
       type: string
       description: Base units, 1 to 2^256-1.
       pattern: "^[0-9]+$"
+    Me:
+      type: object
+      required: [profiles]
+      properties:
+        profiles:
+          type: array
+          items: { $ref: "#/components/schemas/Profile" }
+    Profile:
+      type: object
+      required: [profileId, kind, name, walletAddress, createdAt]
+      properties:
+        profileId: { type: string, format: uuid }
+        kind:
+          type: string
+          enum: [personal, freelancer, merchant]
+        name:
+          type: [string, "null"]
+          description: null when none was given; always null for the personal profile.
+        walletAddress:
+          description: The profile's Privy wallet, where settlements pay; null until Privy has made it.
+          oneOf:
+            - $ref: "#/components/schemas/Address"
+            - type: "null"
+        createdAt: { type: string, format: date-time }
+    CreateProfileRequest:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [freelancer, merchant]
+        name:
+          type: string
+          maxLength: 64
+          description: Optional; empty means none. At most 64 characters.
     CreateInvoiceRequest:
       type: object
       additionalProperties: false
@@ -176,8 +278,8 @@ components:
           properties:
             code:
               type: string
-              enum: [malformed_request, unauthorized, forbidden, invoice_not_found, idempotency_conflict,
-                invalid_value, internal]
+              enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found,
+                idempotency_conflict, invalid_value, internal]
             message: { type: string }
   responses:
     MalformedRequest:
@@ -204,6 +306,11 @@ components:
       description: |
         A value breaks a rule (invalid_value): amount, expiresIn, a token or chain that is not enabled, a profile with
         no wallet for the chain, or terms the contract would refuse to settle.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotSignedUp:
+      description: The user has not called POST /v1/me yet (not_signed_up)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

@@ -19,6 +19,8 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/address"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
+	"github.com/ensp1re/forwend/apps/backend/internal/privy"
+	"github.com/ensp1re/forwend/apps/backend/internal/privy/privytest"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -31,13 +33,14 @@ const (
 type invoiceEnv struct {
 	srv          *httptest.Server
 	pool         *pgxpool.Pool
+	wallets      *privytest.Fake
 	privyKey     *ecdsa.PrivateKey
 	aliceProfile string // has an EVM wallet
 	walletless   string // Alice's second profile, without a wallet
 	bobProfile   string
 }
 
-// invoiceAPI serves the real routes on Postgres with Base Sepolia, enabled USDC and a disabled token.
+// invoiceAPI serves the real routes on Postgres and a fake Privy, with Base Sepolia, enabled USDC and a disabled token.
 func invoiceAPI(t *testing.T) invoiceEnv {
 	t.Helper()
 	ctx := context.Background()
@@ -51,7 +54,7 @@ func invoiceAPI(t *testing.T) invoiceEnv {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
-	e := invoiceEnv{pool: pool, privyKey: privyKey}
+	e := invoiceEnv{pool: pool, privyKey: privyKey, wallets: privytest.New(t)}
 	err = pool.QueryRow(ctx, `
 		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true)),
 		     t1 AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
@@ -62,7 +65,7 @@ func invoiceAPI(t *testing.T) invoiceEnv {
 		     b AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:bob') RETURNING id),
 		     ap AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM a RETURNING id),
 		     aw AS (INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
-		            SELECT id, 'privy', 'wallet-1', 'evm', $2 FROM ap),
+		            SELECT id, 'privy', 'fixture-wallet', 'evm', $2 FROM ap),
 		     a2 AS (INSERT INTO profiles (user_id, kind) SELECT id, 'merchant' FROM a RETURNING id),
 		     bp AS (INSERT INTO profiles (user_id, kind) SELECT id, 'personal' FROM b RETURNING id)
 		SELECT (SELECT id::text FROM ap), (SELECT id::text FROM a2), (SELECT id::text FROM bp)`,
@@ -70,7 +73,7 @@ func invoiceAPI(t *testing.T) invoiceEnv {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.srv = httptest.NewServer(NewMux(pool, verifier))
+	e.srv = httptest.NewServer(NewMux(pool, verifier, privy.NewClient(privytest.AppID, privytest.AppSecret, e.wallets.URL)))
 	t.Cleanup(e.srv.Close)
 	return e
 }

@@ -3,7 +3,7 @@
 The Go backend in `apps/backend` (PLAN Phase 6). Code rules: [rules.md](rules.md).
 Requirements: R-14…R-24 in [PROJECT.md](../PROJECT.md). Whole system: [architecture.md](../architecture.md).
 
-Built: invoice API, Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
+Built: signup and profiles API, invoice API, Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
 (`apps/backend/e2e`, R-23) runs the whole loop. Not built yet: refunds, webhooks, merchants.
 
 ## Processes
@@ -22,8 +22,8 @@ Built: invoice API, Privy auth, watcher, ledger and signer, run by `api`, `worke
 
 Built in `internal/database/migrations` (R-17); Postgres enforces the rules below, each with a test.
 
-- `users`, `profiles(kind: personal|freelancer|merchant)` (one personal per user),
-  `profile_wallets(provider, provider_wallet_id, address, chain_family)` (one per profile and family).
+- `users`, `profiles(kind: personal|freelancer|merchant, name, idempotency_key)` (one personal per user, made at
+  signup without a key; other kinds once per user and key), `profile_wallets(provider, provider_wallet_id, address, chain_family)` (one per profile and family).
 - `merchants → stores(project_id, branding)`, `team_members(role, store scope)` (Phase 10).
 - `chains(chain_id, chain_family, enabled)`, `tokens(chain_id, contract, decimals, enabled)`. One confirm rule for all
   chains (D-45), so no per-chain rule columns.
@@ -76,7 +76,14 @@ the wallet up by `external_id` = profile id and owner, and creates it only if mi
 call never makes a second one (Privy keeps `external_id` unique per app); the address comes back lowercase (R-31).
 No idempotency key: Privy replays a cached error for a key for 24 hours, which would block a wallet after one
 failed create. The server never signs
-for these wallets (D-46). Tests run against a fake Privy API; `-tags privylive` runs one against the Privy test app.
+for these wallets (D-46). Tests run against a fake Privy API (`privy/privytest`); `-tags privylive` runs one against
+the Privy test app. Each call is bounded by `privy.Timeout` (20 s, under the api's 30 s write timeout).
+
+`internal/profile` (R-32) signs a user up (`POST /v1/me`: the user and personal profile, inserted in one transaction with
+`ON CONFLICT DO NOTHING`) and creates freelancer and merchant profiles once per Idempotency-Key. Each then gets its
+wallet from `ProfileWallet`, outside any transaction; the wallet row is stored under a lock on the profile row, so
+concurrent requests store one, and a wallet already stored for another profile is an error. If Privy fails, the
+profile is left without a wallet (`walletAddress: null`) and repeating the request makes it.
 
 ## Running the loop
 

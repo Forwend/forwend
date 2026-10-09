@@ -1,6 +1,7 @@
 # Backend API rules
 
-Routes today: `/healthz`, `POST /v1/profiles/{profileId}/invoices`, `GET /v1/invoices/{invoiceId}` (public).
+Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/profiles`, `POST /v1/profiles/{profileId}/invoices`,
+`GET /v1/invoices/{invoiceId}` (public).
 
 ## Contract first
 
@@ -26,9 +27,10 @@ Routes today: `/healthz`, `POST /v1/profiles/{profileId}/invoices`, `GET /v1/inv
 
 ## Idempotency
 
-- Every `POST` that creates something or moves money needs an `Idempotency-Key` header.
+- Every `POST` that creates something or moves money needs an `Idempotency-Key` header. Exception: `POST /v1/me`
+  (signup) happens once per user, so the user's token is the key.
 - First call: 201. Same key and body again: 200 with the same resource. Same key, other body: 409.
-- Keys are unique per profile, 1–255 characters; a missing or longer key is 400. The server stores a SHA-256 of the
+- Keys are unique per profile (per user for `POST /v1/profiles`), 1–255 characters; a missing or longer key is 400. The server stores a SHA-256 of the
   normalized values, never the body, so field order, spacing and address letter case don't matter. A request that
   fails validation stores nothing. Two requests with one key at once get one resource.
 
@@ -44,7 +46,9 @@ Routes today: `/healthz`, `POST /v1/profiles/{profileId}/invoices`, `GET /v1/inv
   most once a minute; a known one makes no network call while the list is younger than an hour. An older list is
   fetched again first, so a key Privy withdrew stops verifying (R-30); if Privy is unreachable, the last list is kept. The Privy Go SDK (D-12) has no local token check, so this
   uses `golang-jwt/jwt/v5` as in Privy's Go guide (https://docs.privy.io/authentication/user-authentication/access-tokens).
-- `httpapi.requireUser` and `requireProfileOwner` wrap the protected handlers.
+- `httpapi.requireUser` and `requireProfileOwner` wrap the protected handlers. `/v1/me` and `POST /v1/profiles` act
+  only for the token's user. Every `{profileId}` route is listed in `profileRoutes` in `profiles_test.go`, which checks
+  that another user gets 403 on each.
 
 ## Errors
 
