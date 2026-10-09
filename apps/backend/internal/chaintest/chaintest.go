@@ -163,12 +163,25 @@ func (a *Anvil) RawTx(hash string) string {
 	return raw
 }
 
-// SendRaw broadcasts signed transaction bytes; Anvil mines them at once.
+// SendRaw broadcasts signed transaction bytes and waits until Anvil has mined them, like cast send does.
 func (a *Anvil) SendRaw(raw string) {
 	a.t.Helper()
 	var hash string
 	if err := a.RPC.Call(&hash, "eth_sendRawTransaction", raw); err != nil {
 		a.t.Fatal(err)
+	}
+	for i := 0; ; i++ {
+		var receipt map[string]any
+		if err := a.RPC.Call(&receipt, "eth_getTransactionReceipt", hash); err != nil {
+			a.t.Fatal(err)
+		}
+		if receipt != nil {
+			return
+		}
+		if i == 100 {
+			a.t.Fatalf("transaction %s not mined", hash)
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }
 
