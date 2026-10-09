@@ -68,6 +68,7 @@ Use harness `status` for progress.
 | R-25 | Repository guidance has one owner per topic and checks cannot report false success. | Given the instruction map and check registry, when docs-check and harness regression tests run, then links and decision IDs resolve, changed inputs invalidate evidence, and missing checks cannot pass. | docs-check, harness | Owner cleanup request |
 | R-26 | API shutdown drains active responses and reports failure. | Given an active request, when termination starts, then its response completes before normal exit; a shutdown deadline closes the connection and returns an error. Database errors identify their operation and retain their cause. | backend | Owner skeleton review |
 | R-27 | Shared UI components and hooks are easy to locate by name. | Given the UI package, when a component or hook changes, then its name identifies its source file and the package exports, rendering and behavior remain unchanged. | typecheck, ui-unit, e2e | Owner structure cleanup |
+| R-28 | The payer sees how much is left until a received payment is paid. | Given a deposit in block `B` with time `T` and the chain's finalized head `F`, when progress is computed, then blocks left = `max(0, B − F.number)` and time left = `max(0, T − F.time)`; both are 0 and the deposit is final once `F.number ≥ B`. When the finalized head falls further behind (a busy day), time left grows. A chain whose finalized head equals the latest block (Arc, Tempo) reports 0 at once. | backend | D-45, S-4 |
 
 ## Decisions
 
@@ -119,6 +120,7 @@ All D- IDs are defined here. The roadmap refers to these decisions.
 | D-42 | Sign webhooks using Standard Webhooks, with retry, replay and delivery records. | Product scope |
 | D-43 | Verify sponsored gas for profile-wallet sends on Base and Arbitrum; use a paymaster if Privy cannot provide it. | Product scope |
 | D-44 | Store the receive method per invoice (evm_create2 initially). Chain-family adapters allow later HD-wallet or non-EVM methods without changing invoice and ledger semantics. | Product scope |
+| D-45 | Confirmation rule (Q-7): a deposit is received when seen in a block and paid only at or below the chain's `finalized` block, on every chain; no fixed block count. Progress shown to the payer: blocks left = deposit block − finalized block, time left = deposit block time − finalized block time, recomputed every poll. Read chains through headers, logs and receipts; take block hashes from the RPC. | Measured in S-4 ([s4-chains](spikes/s4-chains.md)); finality is slower on busy days, and on L2s it counts L1 blocks |
 
 ## Assumptions
 
@@ -138,6 +140,6 @@ All D- IDs are defined here. The roadmap refers to these decisions.
 | Q-4 | Privy test app credentials for spikes S-1…S-3 | user (creating it, 2026-10-09) | R-24 only | Sasha creates a Privy app in test mode and adds `PRIVY_APP_ID`, `PRIVY_APP_SECRET` and `PRIVY_VERIFICATION_KEY` to the root `.env`; R-18 is tested with locally generated keys meanwhile |
 | Q-5 | Bank withdrawal provider: Bridge, MoonPay Enterprise, BVNK or Fipto | user | phase 11 | Compare coverage after Q-2; one adapter first |
 | Q-6 | Signer key storage before mainnet | user | phase 12 | KMS secp256k1 or Turnkey; local dev key only now |
-| Q-7 | Confirmation/finality rule per chain | S-4 spike | R-20…R-22 | Measure safe/finalized support; no untested rule enables a chain |
+| Q-7 | Confirmation/finality rule per chain | S-4 spike | R-20…R-22 | Answered by D-45 (S-4, 2026-10-09) |
 | Q-8 | Hosting providers | user | deployment | Vercel web, Fly.io or Railway Go, Neon Postgres proposed; approval before publishing or spending |
 | Q-9 | Evidence for refund claims, especially exchange deposits | user | phase 9 refunds | Wallet signature for self-custody where possible; support evidence and verified destination otherwise |

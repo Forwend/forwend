@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 59,
+  "nextId": 60,
   "tasks": [
     {
       "id": "F001",
@@ -4332,7 +4332,7 @@
       "dependsOn": [
         "F042"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend"
       ],
@@ -4347,7 +4347,84 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T12:33:28Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F044-20261009T123328Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F044-20261009T123328Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F044-20261009T123328Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F044-20261009T123328Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F044-20261009T123328Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.5,
+            "log": "docs/runs/F044-20261009T123328Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F044-20261009T123328Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.2,
+            "log": "docs/runs/F044-20261009T123328Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F044-20261009T123328Z-keep.log"
+          }
+        ],
+        "taskHash": "700aa08ec6f71248",
+        "filesHash": "704ab06c80d823b3",
+        "proof": {
+          "1": "docs-check: docs/spikes/s4-chains.md records per chain (Base Sepolia, Arbitrum Sepolia, Arc testnet, Tempo Moderato) block, receipt and Transfer log decoding with go-ethereum v1.17.8, safe/finalized lag in 5 batched samples, comparison with Circle's block counts, and the confirm rule D-45 (received when seen, paid at finalized, progress from the finalized head) answering Q-7"
+        }
+      },
+      "branch": "docs/f044-spike-s-4-go-ethereum-reads-blocks-recei",
+      "baseCommit": "2f5e5023295952ab102a7944780e08bf6b97b188",
+      "failedVerifies": 0
     },
     {
       "id": "F045",
@@ -4472,17 +4549,20 @@
       "acceptance": [
         "Confirmed sums below amount -> partially_paid; at or above -> paid (excess held); deposit with block time after expiresAt -> late and held; expiry passes -> expired or expired_partially_paid",
         "paid is set only after a second RPC's balanceOf agrees; the database rejects any other transition",
-        "A property test over random deposit sequences keeps ledger totals equal to the receiver balance"
+        "A property test over random deposit sequences keeps ledger totals equal to the receiver balance",
+        "GET /v1/invoices/{id} lists each received deposit with blocksLeft and secondsLeft from the finality progress (F059) until it is final"
       ],
       "dependsOn": [
-        "F048"
+        "F048",
+        "F059"
       ],
       "state": "not_started",
       "verification": [
         "backend"
       ],
       "refs": [
-        "R-21"
+        "R-21",
+        "R-28"
       ],
       "keep": [
         "apps/web/*",
@@ -5211,12 +5291,37 @@
         "branch": "refactor/f058-give-shared-ui-components-and-hooks-conc",
         "base": "main"
       }
+    },
+    {
+      "id": "F059",
+      "type": "feat",
+      "behavior": "The payer sees blocks and time left until a received payment is final, from the chain's finalized head",
+      "acceptance": [
+        "Table tests: blocks left = max(0, B - finalized number) and time left = max(0, T - finalized time); both 0 and final once the finalized head reaches B",
+        "Tests cover Base-like finality that jumps in steps, a busy day where the finalized head falls further behind and time left grows, and Arc/Tempo where finalized = latest gives 0 at once"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-28"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-09T11:27:15Z",
+    "at": "2026-10-09T12:02:31Z",
     "clean": true,
     "problems": [],
-    "note": "Repository cleanup implemented and verified in F056-F058: concise guidance, reliable shared checks, API shutdown and errors, named UI files. F056 and F057 merged; F058 is awaiting review and PR delivery. No further product work is part of this request."
+    "note": "F043 merged (PR #49): Go internal/address matches factory.predict on 24 Foundry vectors. F056-F058 merged earlier. Next: F044 spike or F045 money schema."
   }
 }

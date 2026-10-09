@@ -38,7 +38,7 @@ Write measured results and source links in `docs/spikes/`. Local forks, testnets
 | S-6 Tokens | Exact USDC/USDT contracts, decimals and behavior per chain; mocks for unavailable test tokens | Leave unverified pairs disabled |
 | S-7 RPC | Infura/public endpoints and independent confirmation provider: log ranges, rate limits, finality tags, polling cost | Choose another verified provider; approval before paid usage |
 
-Existing deployment measurements: [S-5/S-6](docs/spikes/s5-s6-testnets.md).
+Existing measurements: [S-4](docs/spikes/s4-chains.md), [S-5/S-6](docs/spikes/s5-s6-testnets.md).
 
 ## Phase 5: contracts
 
