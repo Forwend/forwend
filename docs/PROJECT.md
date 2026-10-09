@@ -69,6 +69,7 @@ Use harness `status` for progress.
 | R-26 | API shutdown drains active responses and reports failure. | Given an active request, when termination starts, then its response completes before normal exit; a shutdown deadline closes the connection and returns an error. Database errors identify their operation and retain their cause. | backend | Owner skeleton review |
 | R-27 | Shared UI components and hooks are easy to locate by name. | Given the UI package, when a component or hook changes, then its name identifies its source file and the package exports, rendering and behavior remain unchanged. | typecheck, ui-unit, e2e | Owner structure cleanup |
 | R-28 | The payer sees how much is left until a received payment is paid. | Given a deposit in block `B` with time `T` and the chain's finalized head `F`, when progress is computed, then blocks left = `max(0, B − F.number)` and time left = `max(0, T − F.time)`; both are 0 and the deposit is final once `F.number ≥ B`. When the finalized head falls further behind (a busy day), time left grows. A chain whose finalized head equals the latest block (Arc, Tempo) reports 0 at once. | backend | D-45, S-4 |
+| R-29 | Privy key rotation never breaks sign-in. | Given the keys published at `PRIVY_JWKS_URL`, when the api starts it loads them and verifies each token with the key named by its `kid`; tokens signed by any published ES256 key pass. Given a token with an unknown `kid`, the api fetches the keys again at most once per minute, then answers 401 if still unknown. A known `kid` makes no network call; a failed fetch at startup stops the api with an error. | backend | R-18, D-12 |
 
 ## Decisions
 
@@ -137,7 +138,7 @@ All D- IDs are defined here. The roadmap refers to these decisions.
 | Q-1 | Which visual direction: A Dawn Path, B Dusk Ledger, C Halftone Horizon? Compare on `/kit/directions` | user | no | D-13 (owner asked to build without stopping; review later) |
 | Q-2 | Where is the company based? | user | no (PLAN phase 11) | Global product; first withdrawal corridors EU/EEA (SEPA) and US (ACH) |
 | Q-3 | Preview deploys on Vercel free tier? | user | no | Local only until approved |
-| Q-4 | Privy test app credentials for spikes S-1…S-3 | user (creating it, 2026-10-09) | R-24 only | Sasha creates a Privy app in test mode and adds `PRIVY_APP_ID`, `PRIVY_APP_SECRET` and `PRIVY_VERIFICATION_KEY` to the root `.env`; R-18 is tested with locally generated keys meanwhile |
+| Q-4 | Privy test app credentials for spikes S-1…S-3 | user | R-24 only | Answered 2026-10-09: the app exists; `PRIVY_APP_ID`, `PRIVY_APP_SECRET` and `PRIVY_JWKS_URL` are in `apps/backend/.env` |
 | Q-5 | Bank withdrawal provider: Bridge, MoonPay Enterprise, BVNK or Fipto | user | phase 11 | Compare coverage after Q-2; one adapter first |
 | Q-6 | Signer key storage before mainnet | user | phase 12 | KMS secp256k1 or Turnkey; local dev key only now |
 | Q-7 | Confirmation/finality rule per chain | S-4 spike | R-20…R-22 | Answered by D-45 (S-4, 2026-10-09) |

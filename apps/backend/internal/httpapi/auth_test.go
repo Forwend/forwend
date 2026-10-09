@@ -6,7 +6,6 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/auth"
+	"github.com/ensp1re/forwend/apps/backend/internal/auth/authtest"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
 	"github.com/golang-jwt/jwt/v5"
@@ -22,22 +22,15 @@ import (
 
 const appID = "test-app"
 
-// testVerifier stands in for Privy with a local P-256 key pair.
+// testVerifier stands in for Privy with a local JWKS; tokens signed by the returned key carry kid "key-1".
 func testVerifier(t *testing.T) (*auth.Verifier, *ecdsa.PrivateKey) {
 	t.Helper()
-	privyKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	privy := authtest.NewPrivy(t)
+	verifier, err := auth.NewVerifier(context.Background(), appID, privy.JWKSURL, http.DefaultClient)
 	if err != nil {
 		t.Fatal(err)
 	}
-	der, err := x509.MarshalPKIXPublicKey(&privyKey.PublicKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	verifier, err := auth.NewVerifier(appID, string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der})))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return verifier, privyKey
+	return verifier, privy.Key("key-1")
 }
 
 // authServer serves GET /v1/profiles/{profileId}/probe behind both checks, with Alice owning one profile.
@@ -80,11 +73,7 @@ func claims(subject string) jwt.MapClaims {
 
 func signES256(t *testing.T, key *ecdsa.PrivateKey, c jwt.MapClaims) string {
 	t.Helper()
-	token, err := jwt.NewWithClaims(jwt.SigningMethodES256, c).SignedString(key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return token
+	return authtest.Sign(t, key, "key-1", c)
 }
 
 func get(t *testing.T, srv *httptest.Server, profile, token string) int {

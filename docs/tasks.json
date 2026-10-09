@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 60,
+  "nextId": 61,
   "tasks": [
     {
       "id": "F001",
@@ -4962,7 +4962,8 @@
       ],
       "review": false,
       "notes": [
-        "2026-10-09 blocked: question: Q-4 Privy test app credentials (PRIVY_APP_ID, PRIVY_APP_SECRET, PRIVY_VERIFICATION_KEY in root .env); Sasha is creating the app"
+        "2026-10-09 blocked: question: Q-4 Privy test app credentials (PRIVY_APP_ID, PRIVY_APP_SECRET, PRIVY_VERIFICATION_KEY in root .env); Sasha is creating the app",
+        "2026-10-09 Q-4 answered 2026-10-09: the Privy app exists; PRIVY_APP_ID, PRIVY_APP_SECRET, PRIVY_JWKS_URL and PRIVY_VERIFICATION_KEY are in apps/backend/.env (not the root .env). Unblocks when started."
       ],
       "blockedReason": "question: Q-4 Privy test app credentials (PRIVY_APP_ID, PRIVY_APP_SECRET, PRIVY_VERIFICATION_KEY in root .env); Sasha is creating the app",
       "evidence": null
@@ -5705,6 +5706,110 @@
         "branch": "feat/f059-the-payer-sees-blocks-and-time-left-unti",
         "base": "main"
       }
+    },
+    {
+      "id": "F060",
+      "type": "feat",
+      "behavior": "Privy key rotation never breaks sign-in: the api verifies tokens with the JWKS key named by their kid",
+      "acceptance": [
+        "At startup the api loads the ES256 keys from PRIVY_JWKS_URL and verifies each token with the key named by its kid; tokens signed by any published key pass, and every F046 rejection still answers 401",
+        "An unknown kid refetches the keys at most once per minute, then 401; a known kid makes no network call; a failed fetch at startup stops the api with an error; PRIVY_VERIFICATION_KEY is no longer read"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-29",
+        "R-18"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T14:32:06Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.9,
+            "log": "docs/runs/F060-20261009T143206Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.8,
+            "log": "docs/runs/F060-20261009T143206Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F060-20261009T143206Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F060-20261009T143206Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F060-20261009T143206Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.1,
+            "log": "docs/runs/F060-20261009T143206Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F060-20261009T143206Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.1,
+            "log": "docs/runs/F060-20261009T143206Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F060-20261009T143206Z-keep.log"
+          }
+        ],
+        "taskHash": "25667983590abe07",
+        "filesHash": "049b1dec08f94a65",
+        "proof": {
+          "1": "backend: TestVerifyUsesTheKeyNamedByKid: with two published keys, tokens signed by either (kid set) and a token without kid pass, a kid naming the other key fails; TestOnlyValidPrivyTokensPass (httpapi, now over a JWKS) keeps every F046 rejection at 401; the real api loaded Privy's JWKS at startup",
+          "2": "backend: TestUnknownKidRefetchesAtMostOncePerMinute (fake clock: no fetch within a minute, one fetch after, rotated key then passes, 5 unknown kids in a minute cause no fetch); TestVerifyUsesTheKeyNamedByKid counts 1 fetch for known kids; TestVerificationMakesNoNetworkCall; TestNewVerifierNeedsKeys (HTTP 500, no keys, RSA only, point off-curve, not JSON); config reads PRIVY_JWKS_URL, not PRIVY_VERIFICATION_KEY"
+        }
+      },
+      "branch": "feat/f060-privy-key-rotation-never-breaks-sign-in",
+      "baseCommit": "cce30feca64226a5e7d0bc9d098343d2d7cdd7f0",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

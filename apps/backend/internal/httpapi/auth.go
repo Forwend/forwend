@@ -18,7 +18,7 @@ func requireUser(v *auth.Verifier, next http.Handler) http.Handler {
 			writeError(w, r, auth.ErrUnauthorized)
 			return
 		}
-		user, err := v.Verify(token)
+		user, err := v.Verify(r.Context(), token)
 		if err != nil {
 			writeError(w, r, err)
 			return
