@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/config"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi"
 )
@@ -26,31 +27,34 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	url, err := database.URLFromEnv()
+	cfg, err := config.LoadAPI()
 	if err != nil {
 		return err
 	}
-	if err := database.Migrate(ctx, url); err != nil {
+	if err := database.Migrate(ctx, cfg.DatabaseURL); err != nil {
 		return err
 	}
-	pool, err := database.Open(ctx, url)
+	pool, err := database.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
 	}
 	defer pool.Close()
 
-	addr := os.Getenv("API_ADDR")
-	if addr == "" {
-		addr = ":8080"
+	server := &http.Server{
+		Addr:              cfg.Addr,
+		Handler:           httpapi.NewMux(pool),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
-	server := &http.Server{Addr: addr, Handler: httpapi.NewMux(pool), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		_ = server.Shutdown(shutdown)
 	}()
-	slog.Info("api listening", "addr", addr)
+	slog.Info("api listening", "addr", cfg.Addr)
 	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}

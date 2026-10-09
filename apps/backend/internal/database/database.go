@@ -5,9 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
-	"errors"
 	"io/fs"
-	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // registers the "pgx" database/sql driver for goose
@@ -17,15 +15,6 @@ import (
 
 //go:embed migrations/*.sql
 var migrations embed.FS
-
-// URLFromEnv returns DATABASE_URL. Locally it comes from apps/backend/.env (copy .env.example).
-func URLFromEnv() (string, error) {
-	url := os.Getenv("DATABASE_URL")
-	if url == "" {
-		return "", errors.New("DATABASE_URL is not set: copy apps/backend/.env.example to apps/backend/.env")
-	}
-	return url, nil
-}
 
 func Open(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	pool, err := pgxpool.New(ctx, url)
