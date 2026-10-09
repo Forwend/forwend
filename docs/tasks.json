@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 63,
+  "nextId": 64,
   "tasks": [
     {
       "id": "F001",
@@ -6454,7 +6454,8 @@
       "review": true,
       "notes": [
         "2026-10-09 review pass by subagent: All four fixes are correct. Backend test (go test -race) and e2e pass. Each new test fails when its fix is reverted in a scratch copy: TestWithdrawnKeyStopsVerifying (withdrawn key still accepted), TestExternallySettledIntentIsConfirmed (23514 settlement_intents_sent_check), TestStaleAttemptDoesNotOverwriteAConfirmedIntent (moved to refused), TestSignerSkipsChainsItDoesNotServe (no RPC for chain 31337). A scratch test also checked the Privy-unreachable fallback and that 50 concurrent stale requests make 1 fetch under -race; both pass. Notes, none blocking: (1) auth.go:103,109-111 sets fetchedAt before a refresh that fails, so a withdrawn key is trusted up to about 2x MaxKeyAge if Privy is down at the refresh. The fallback has no test in the repo. (2) architecture.md:122 says the refund authority settling after the deadline confirms the intent. That only holds if the signer did not look at the intent between the deadline and that settle. Otherwise service.go:133-134 refuses it first, and a refused intent is never looked at again, so the payout stays unbooked. R-30 says pending only, so this is a gap in the doc wording, not in the fix. (3) cmd/signer/main.go:61-80 (skip the round when the enabled list fails, drop disabled chains) is not covered by any test; it was checked by reading the code. The loop is one goroutine, so it cannot race with Run. A 'sent' intent on a disabled chain is not reconciled until the chain is enabled again. (4) The 00005 Down migration fails if a confirmed row without tx fields exists. That is normal for a constraint that gets stricter on Down. (5) retry/refuse do not check RowsAffected, so a stale call does nothing and reports no error. That is fine, and settle() sets in.status='sent' before reconcile (service.go:182), so the sent-path retry still matches.",
-        "2026-10-09 review pass by subagent: Re-review of HEAD (1aeb123, whole task HEAD~2). Pass. Backend test (go test -race) and e2e (2 of 2) pass. Every new test fails with its fix removed (checked in a scratch copy): confirmIfFinal->confirm fails TestSettlesAPaidInvoiceOnce, TestExternallySettledIntentIsConfirmed, TestSettleDroppedByReorgIsSentAgain; settler->refuse fails TestAfterTheDeadline...; BalanceFrom at head fails TestPaidNeedsTheSecondRPCToAgree; old auth.go fails TestFailedRefreshDoesNotExtendKeyAge; no attempt timeout fails TestHangingRPCDoesNotStallTheSigner (stuck). Finality: confirm() has one caller, confirmIfFinal (service.go:247-253), so nothing books before settled() is true at the finalized tag. If the settle is not final yet, the intent stays pending or sent and is checked again next round. A reorged settle is not settled at latest and has no receipt, so reconcile resends the saved bytes, or retries if its nonce was taken. I found no new state where a sent intent is stuck forever. The old one remains: a saved tx priced under a doubled base fee errors every round (the known no-fee-bump limit). eth_call at the finalized tag answered at the finalized block on Base Sepolia (lag 458), Arbitrum Sepolia (3746) and Tempo (1) public RPCs. Arc RPCs were blocked from here (HTTP 1009), but Arc finalized = latest (R-28). Anvil runs with --slots-in-an-epoch 1 (finalized = latest-2). An empty eth_call answer counted as 0 can't make an invoice paid; with booked > 0 it also blocks expiry. Notes, none blocking: (a) service.go:139-141, after the deadline: if the refund authority refunds instead of settling, the intent stays pending forever and is checked about hourly. Any intent refused earlier with 'deadline passed?' stays refused, because no migration moves it back. (b) An intent waiting for the authority backs off up to 1h, so its settle is booked up to about 1h late. (c) A sent settle whose deadline passed is resent once and reverts, costing gas, before the intent goes back to pending. (d) auth.go:99-104: while Privy is unreachable, a known key keeps verifying past MaxKeyAge (it fails open), with one retry a minute. This is the documented choice."
+        "2026-10-09 review pass by subagent: Re-review of HEAD (1aeb123, whole task HEAD~2). Pass. Backend test (go test -race) and e2e (2 of 2) pass. Every new test fails with its fix removed (checked in a scratch copy): confirmIfFinal->confirm fails TestSettlesAPaidInvoiceOnce, TestExternallySettledIntentIsConfirmed, TestSettleDroppedByReorgIsSentAgain; settler->refuse fails TestAfterTheDeadline...; BalanceFrom at head fails TestPaidNeedsTheSecondRPCToAgree; old auth.go fails TestFailedRefreshDoesNotExtendKeyAge; no attempt timeout fails TestHangingRPCDoesNotStallTheSigner (stuck). Finality: confirm() has one caller, confirmIfFinal (service.go:247-253), so nothing books before settled() is true at the finalized tag. If the settle is not final yet, the intent stays pending or sent and is checked again next round. A reorged settle is not settled at latest and has no receipt, so reconcile resends the saved bytes, or retries if its nonce was taken. I found no new state where a sent intent is stuck forever. The old one remains: a saved tx priced under a doubled base fee errors every round (the known no-fee-bump limit). eth_call at the finalized tag answered at the finalized block on Base Sepolia (lag 458), Arbitrum Sepolia (3746) and Tempo (1) public RPCs. Arc RPCs were blocked from here (HTTP 1009), but Arc finalized = latest (R-28). Anvil runs with --slots-in-an-epoch 1 (finalized = latest-2). An empty eth_call answer counted as 0 can't make an invoice paid; with booked > 0 it also blocks expiry. Notes, none blocking: (a) service.go:139-141, after the deadline: if the refund authority refunds instead of settling, the intent stays pending forever and is checked about hourly. Any intent refused earlier with 'deadline passed?' stays refused, because no migration moves it back. (b) An intent waiting for the authority backs off up to 1h, so its settle is booked up to about 1h late. (c) A sent settle whose deadline passed is resent once and reverts, costing gas, before the intent goes back to pending. (d) auth.go:99-104: while Privy is unreachable, a known key keeps verifying past MaxKeyAge (it fails open), with one retry a minute. This is the documented choice.",
+        "2026-10-09 Open notes from the final review: after the deadline a refund (not settle) by the authority leaves the intent pending forever (checked hourly); a sent settle past the deadline is resent once and reverts; no fee bumping for stuck txs."
       ],
       "blockedReason": null,
       "evidence": {
@@ -6550,12 +6551,111 @@
         "branch": "fix/f062-fix-the-codex-review-findings-jwks-key-a",
         "base": "main"
       }
+    },
+    {
+      "id": "F063",
+      "type": "docs",
+      "behavior": "Phase 7 is defined: requirements R-31 to R-36 and decision D-46 (user-approved profile-wallet sends)",
+      "acceptance": [
+        "docs/PROJECT.md has R-31 (internal/privy wallets), R-32 (signup and profiles API), R-33 (balances and activity API), R-34 (login and app shell), R-35 (profiles, receive, balances and activity in the app), R-36 (re-authentication spike), and D-46 recording option A from the S-1 to S-3 spike"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/*",
+        "packages/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T18:33:39Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F063-20261009T183339Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F063-20261009T183339Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F063-20261009T183339Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F063-20261009T183339Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 27.0,
+            "log": "docs/runs/F063-20261009T183339Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F063-20261009T183339Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.4,
+            "log": "docs/runs/F063-20261009T183339Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F063-20261009T183339Z-keep.log"
+          }
+        ],
+        "taskHash": "3d81376118eca7d2",
+        "filesHash": "65628745d3baa686",
+        "proof": {
+          "1": "docs-check: docs/PROJECT.md now lists R-31 to R-36 and D-46; docs-check validates its links"
+        },
+        "commit": "2734342",
+        "doneAt": "2026-10-09T18:34:25Z"
+      },
+      "branch": "docs/f063-phase-7-is-defined-requirements-r-31-to",
+      "baseCommit": "0e0744e0c4b46d973a0f637607db6e0ff00e0420",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f063-phase-7-is-defined-requirements-r-31-to",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-09T17:16:24Z",
+    "at": "2026-10-09T18:19:50Z",
     "clean": true,
     "problems": [],
-    "note": "Merged this session: F043-F052, F059-F061 (PRs #49-#61). Phase 4 spikes and the Phase 6 money loop are done. Open decision for the owner: who signs profile-wallet sends (client only, session signer, or our own JWT auth); see docs/spikes/s1-s3-privy.md. Next: add phase 7 tasks (app shell, profiles, internal/privy)."
+    "note": "Merged: F043-F052, F059-F062 (PRs #49-#62). Codex reviews (gpt-5.5, gpt-6-astra high) found 9 real bugs, all fixed in F062. Profile-wallet sends: option A (user approves in app), to test later. Next: phase 7 tasks (app shell, profiles, internal/privy)."
   }
 }
