@@ -472,22 +472,28 @@ The full rule list, each with a test, is in [packages/contracts/AGENTS.md](packa
   - `refundAuthority` is an immutable constructor argument (the Safe multisig; a test EOA on
     testnets). `executor` is stored in the factory and only the refund authority can change it.
   - `paused`, set only by the refund authority, blocks `settle()` on every receiver; never refunds.
+  - `predict` and `deploy` never reject terms, so every address a payer could see stays
+    deployable; unsafe terms are refused by `settle` and their money goes to refund. Only the
+    executor or the refund authority may `deploy`.
   - Creates the implementation in its constructor; `deploy` returns an already deployed receiver
-    and records every receiver it deploys.
+    and records `deployedAt` and `receiverOf(invoiceId)`.
+  - Read-only status: `status(terms)` (also before deployment), `statusOf(invoiceId)` and the
+    receiver's `status()`: deployed, balance, settled, refundable, settleable, who may settle now.
   - Deployed through the CREATE2 deployer with identical bytecode, so it has the same address on
     every chain (C-03). Never a nonce-based deployment.
   - One factory per release (`v1`, `v2`, ...). New invoices use the newest; old factories stay
     deployed so old receivers can still be deployed for recovery.
 - `InvoiceReceiver`
   - `settle()`: sends exactly `amount` of `token` to `recipient`, once, on the intended chain only.
-    Requires balance ≥ `amount` and no pause. The executor may call it until `settleDeadline`
-    (default 24 h after `expiresAt`, longer than finality on every chain); after that only the
+    Requires balance ≥ `amount`, safe terms and no pause. The executor may call it until the
+    effective deadline, `min(settleDeadline, deployedAt + 30 days)` (`settleDeadline` defaults to
+    24 h after `expiresAt`, longer than finality on every chain); after that only the
     refund authority, for an on-time payment whose settlement was missed. Checks that the
     recipient received exactly `amount`. A plain ERC-20 transfer does not call the receiver, so the
     contract cannot see when each deposit arrived: the backend checks block times for late money.
   - `refund(to, amount)`: refund authority only (the Safe calls it directly, so there are no
     signatures to replay). May repeat (D-08), never above the refundable amount: the whole balance
-    once settled or after `settleDeadline`; before that, only what is above `amount`.
+    once settled or after the effective deadline; before that, only what is above `amount`.
   - `recover(token, to, amount)`: refund authority only. Any token that is not the invoice token,
     the native coin (`address(0)`), or anything on a chain other than `intendedChainId` (C-03). On
     the intended chain it never lowers the invoice-token balance (on Arc the native coin is USDC).

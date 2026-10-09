@@ -13,8 +13,11 @@ contract FactoryTest is Base {
         InvoiceTerms memory t = terms();
         address predicted = factory.predict(t);
         assertEq(predicted.code.length, 0);
+        vm.prank(executor);
         assertEq(factory.deploy(t), predicted);
         assertTrue(factory.isReceiver(predicted));
+        assertEq(factory.deployedAt(predicted), block.timestamp);
+        assertEq(factory.receiverOf(t.invoiceId), predicted);
     }
 
     function test_otherTermsGiveOtherAddress() public {
@@ -24,52 +27,68 @@ contract FactoryTest is Base {
         assertTrue(factory.predict(a) != factory.predict(b));
     }
 
-    function test_deployTwiceReturnsSameReceiver() public {
+    function test_onlyOurKeysDeploy() public {
         InvoiceTerms memory t = terms();
-        vm.prank(attacker); // anyone may deploy; same terms, same contract
+        vm.prank(attacker);
+        vm.expectRevert(InvoiceReceiverFactory.Unauthorized.selector);
+        factory.deploy(t);
+        vm.prank(authority);
         address first = factory.deploy(t);
+        vm.prank(executor);
         assertEq(factory.deploy(t), first);
     }
 
-    function test_rejectsInvalidTerms() public {
-        InvoiceTerms memory t;
-        t = terms();
-        t.amount = 0;
-        _expectInvalid(t);
-        t = terms();
-        t.token = address(0);
-        _expectInvalid(t);
-        t = terms();
-        t.recipient = address(0);
-        _expectInvalid(t);
-        t = terms();
-        t.recipient = address(factory);
-        _expectInvalid(t);
-        t = terms();
-        t.recipient = address(token);
-        _expectInvalid(t);
-        t = terms();
-        t.expiresAt = 0;
-        t.settleDeadline = 0;
-        _expectInvalid(t);
-        t = terms();
+    function test_receiverOfFirstDeployWins() public {
+        InvoiceTerms memory a = terms();
+        InvoiceTerms memory b = terms();
+        b.amount = AMOUNT + 1; // same invoiceId, other terms (a backend bug)
+        address first = address(deployed(a));
+        deployed(b);
+        assertEq(factory.receiverOf(a.invoiceId), first);
+    }
+
+    /// Any address a payer could have been shown must stay deployable, or its money would be stuck forever.
+    function test_invalidTermsStayDeployableAndRefundable() public {
+        InvoiceTerms[5] memory bad;
+        for (uint256 i; i < bad.length; i++) {
+            bad[i] = terms();
+            bad[i].invoiceId = bytes32(i + 100);
+        }
+        bad[0].amount = 0;
+        bad[1].recipient = address(0);
+        bad[2].recipient = address(factory);
+        bad[3].recipient = address(token);
+        bad[4].recipient = factory.implementation();
+        for (uint256 i; i < bad.length; i++) {
+            pay(bad[i], AMOUNT);
+            InvoiceReceiver r = deployed(bad[i]);
+            vm.prank(executor);
+            vm.expectRevert(InvoiceReceiver.InvalidTerms.selector);
+            r.settle();
+        }
+        vm.warp(DEADLINE + 1);
+        for (uint256 i; i < bad.length; i++) {
+            InvoiceReceiver r = InvoiceReceiver(factory.predict(bad[i]));
+            vm.prank(authority);
+            r.refund(payer, AMOUNT);
+        }
+        assertEq(token.balanceOf(payer), AMOUNT * bad.length);
+    }
+
+    function test_deadlineBeforeExpiryStillWorks() public {
+        InvoiceTerms memory t = terms();
         t.settleDeadline = t.expiresAt - 1;
-        _expectInvalid(t);
-        t = terms();
-        t.intendedChainId = 0;
-        _expectInvalid(t);
+        t.intendedChainId = 0; // and a chain id no chain has
+        pay(t, AMOUNT);
+        InvoiceReceiver r = deployed(t);
+        vm.prank(authority);
+        r.recover(address(token), payer, AMOUNT); // never the intended chain, so recover returns it
+        assertEq(token.balanceOf(payer), AMOUNT);
     }
 
     function test_allowsDeployAfterExpiryForLateDeposits() public {
         vm.warp(DEADLINE + 30 days);
-        assertTrue(factory.deploy(terms()) != address(0));
-    }
-
-    function _expectInvalid(InvoiceTerms memory t) private {
-        vm.expectRevert(InvoiceReceiverFactory.InvalidTerms.selector);
-        factory.predict(t);
-        vm.expectRevert(InvoiceReceiverFactory.InvalidTerms.selector);
-        factory.deploy(t);
+        assertTrue(address(deployed(terms())) != address(0));
     }
 
     function test_onlyAuthorityChangesExecutorAndPause() public {
@@ -110,7 +129,7 @@ contract FactoryTest is Base {
     }
 
     function test_receiverHasNoSignatureValidationOrApprove() public {
-        address r = factory.deploy(terms());
+        address r = address(deployed(terms()));
         (bool ok,) = r.call(abi.encodeWithSignature("isValidSignature(bytes32,bytes)", bytes32(0), ""));
         assertFalse(ok);
         (ok,) = r.call(abi.encodeWithSignature("approve(address,uint256)", attacker, 1));

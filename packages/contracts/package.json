@@ -6,6 +6,6 @@
     "build": "forge build",
     "test": "forge fmt --check && forge test",
     "rpc": "node script/rpc.mjs",
-    "symbolic": "halmos --match-contract Symbolic"
+    "symbolic": "forge clean && halmos --match-contract Symbolic"
   }
 }

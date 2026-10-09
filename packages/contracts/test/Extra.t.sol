@@ -54,19 +54,19 @@ contract ExtraTest is Base {
         InvoiceReceiver r = deployed(t);
 
         vm.expectEmit(at);
-        emit InvoiceReceiver.Settled(recipient, AMOUNT);
+        emit InvoiceReceiver.Settled(t.invoiceId, recipient, AMOUNT);
         vm.prank(executor);
         r.settle();
 
         vm.expectEmit(at);
-        emit InvoiceReceiver.Refunded(payer, 1e6);
+        emit InvoiceReceiver.Refunded(t.invoiceId, payer, 1e6);
         vm.prank(authority);
         r.refund(payer, 1e6);
 
         MockToken other = new MockToken();
         other.mint(at, 3e6);
         vm.expectEmit(at);
-        emit InvoiceReceiver.Recovered(address(other), payer, 3e6);
+        emit InvoiceReceiver.Recovered(t.invoiceId, address(other), payer, 3e6);
         vm.prank(authority);
         r.recover(address(other), payer, 3e6);
     }

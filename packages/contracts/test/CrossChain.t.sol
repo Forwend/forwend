@@ -30,6 +30,7 @@ contract CrossChainTest is Test {
             settleDeadline: 1_000_000 + 1 days,
             intendedChainId: 84532
         });
+        vm.prank(executor);
         receiver = InvoiceReceiverFactory(factory).deploy(t);
         vm.revertToState(snapshot);
     }

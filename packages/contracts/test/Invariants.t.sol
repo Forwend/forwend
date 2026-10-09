@@ -43,6 +43,7 @@ contract Handler is Test {
     }
 
     function deploy() external {
+        vm.prank(executor);
         factory.deploy(t);
     }
 

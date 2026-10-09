@@ -52,6 +52,7 @@ abstract contract Base is Test {
     }
 
     function deployed(InvoiceTerms memory t) internal returns (InvoiceReceiver) {
+        vm.prank(executor);
         return InvoiceReceiver(factory.deploy(t));
     }
 }
