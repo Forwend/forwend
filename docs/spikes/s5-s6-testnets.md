@@ -26,12 +26,14 @@ all four testnets. No nonce-based fallback is needed on any of them.
 
 No official testnet USDT was found on these chains; USDT behaviour is tested with a mock token (PLAN S-6).
 
-## Deployment (F037, 2026-10-09)
+## Deployment (F040, 2026-10-09)
 
-The v1 factory `0xCB9cc4b71331E7C09f4605CFD767F5C5143F6864` and the probe receiver
-`0x17D3b2324ECf3B7b921E1Cf05D8C810040abd3a5` have the same addresses on all four testnets
-(`packages/contracts/deployments.json`). A real invoice was paid, settled and refunded on Arc (USDC) and Tempo (AlphaUSD).
-Base and Arbitrum Sepolia ran without a payment because the deployer has no test USDC there (Circle faucet).
+The v1 factory `0xECe745390524e4d0B05D26F56AF7F1D38FDb7546` and the probe receiver
+`0xed50aEC668Eba01Bc1735845c99E987714a94555` have the same addresses and code on all four testnets
+(`packages/contracts/deployments.json`). A real invoice was paid with 10% extra, settled, the extra refunded, and
+`statusOf(invoiceId)` read settled with balance 0 on Arc (USDC) and Tempo (AlphaUSD). Base and Arbitrum Sepolia ran
+without a payment because the deployer has no test USDC there (Circle faucet). The F037 factory
+`0xCB9cc4b71331E7C09f4605CFD767F5C5143F6864` runs the older code and is listed as superseded.
 
 Findings:
 - Arc USDC and Tempo TIP-20 tokens are built into the chain. Foundry cannot run them locally (`StackUnderflow`,
