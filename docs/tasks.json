@@ -5205,14 +5205,14 @@
       "type": "test",
       "behavior": "The whole money loop runs locally: create, pay, detect, confirm, paid, settled",
       "acceptance": [
-        "With Postgres and Anvil from compose, the gate script creates an invoice through the API, pays it with the mock token and sees detected -> confirmed -> paid -> settled; the ledger equals on-chain balances",
+        "With Postgres from compose and an Anvil the gate starts (Foundry), the gate script creates an invoice through the API, pays it with the mock token and sees detected -> confirmed -> paid -> settled; the ledger equals on-chain balances",
         "Running it again with the same idempotency key gives one invoice; CI runs the gate"
       ],
       "dependsOn": [
         "F047",
         "F050"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend-e2e",
         "backend"
@@ -5230,10 +5230,96 @@
         "2026-10-09 From F048: cmd/worker does not run the watcher yet. Wire a loop calling watcher.NewChain(pool, chainID, rpcClient).Scan per enabled chain, with per-chain RPC URLs in config (only internal/config reads env), before the gate can see detected -> confirmed.",
         "2026-10-09 Correction to the F048 note: no new per-chain RPC variables. The worker reuses packages/contracts/chains.json (one source for chain IDs, Infura names, public RPCs) and INFURA_API_KEYS, with rpc.mjs's rule in Go: try each Infura key, then public RPCs, keep the first whose eth_chainId matches (D-15); move to the next on 429 (S-4 hit Infura rate limits). with-env.sh loads only apps/backend/.env, so INFURA_API_KEYS must be available to the backend too. Anvil (31337) uses its local URL. The second, independent RPC for balanceOf before paid is F049/D-15.",
         "2026-10-09 From F049: each worker round per chain is watcher.Chain.Scan, then ledger.Service.ProcessChain; build the Service with ledger.BalanceFrom(clients) using RPCs other than the watcher's (D-15), e.g. a public RPC when the watcher uses Infura.",
-        "2026-10-09 From F050: cmd/signer needs the executor private key (config, only internal/config reads env; never logged) and one ethclient per chain; loop settlement.NewSigner(pool, key, clients).Run. One Signer per executor key. The gate's 'settled' step is the signer confirming."
+        "2026-10-09 From F050: cmd/signer needs the executor private key (config, only internal/config reads env; never logged) and one ethclient per chain; loop settlement.NewSigner(pool, key, clients).Run. One Signer per executor key. The gate's 'settled' step is the signer confirming.",
+        "2026-10-09 From F050 review (minor, fix while wiring): settlement service.go chain-ID mismatch wraps a nil error (%!w(<nil>)); plain errors retry every run without backoff; stuck txs have no fee bump."
       ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T16:21:57Z",
+        "checks": [
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.9,
+            "log": "docs/runs/F051-20261009T162157Z-backend-e2e.log"
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 21.6,
+            "log": "docs/runs/F051-20261009T162157Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F051-20261009T162157Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F051-20261009T162157Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F051-20261009T162157Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F051-20261009T162157Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 38.3,
+            "log": "docs/runs/F051-20261009T162157Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.7,
+            "log": "docs/runs/F051-20261009T162157Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.3,
+            "log": "docs/runs/F051-20261009T162157Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F051-20261009T162157Z-keep.log"
+          }
+        ],
+        "taskHash": "4bd7687fc34b0db6",
+        "filesHash": "9aa2d361d44234aa",
+        "proof": {
+          "1": "backend-e2e: TestMoneyLoop builds and starts the real api, worker and signer against a fresh Postgres database and an Anvil with the real factory at its compiled address; it creates an invoice through POST /v1/profiles/{id}/invoices, pays 5 USDC with the mock token, and sees the invoice open -> detected -> paid -> settled and the deposit detected (blocks left) -> confirmed; then the receive address and the ledger are both 0 and the profile wallet holds 5000000; passed 3 of 3 runs",
+          "2": "e2e: the same request with the same Idempotency-Key returns 200 with the same invoiceId and the database has 1 invoice; root pnpm e2e (a required check, run by CI through harness check --ci) now runs @forwend/backend:e2e with DATABASE_URL passed through turbo"
+        }
+      },
+      "branch": "test/f051-the-whole-money-loop-runs-locally-create",
+      "baseCommit": "cc101d5ed1a82eaa1a84335795c15edf410d939e",
+      "failedVerifies": 0
     },
     {
       "id": "F052",
@@ -6244,9 +6330,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-09T15:50:41Z",
+    "at": "2026-10-09T16:16:11Z",
     "clean": true,
     "problems": [],
-    "note": "Merged this session: F043-F049, F059-F061 (PRs #49-#58). Money loop: address, API, auth, watcher, ledger/states done; next F050 signer (settle once), then F051 worker wiring + gate. F052 Privy spikes can start (Q-4 answered)."
+    "note": "Merged this session: F043-F050, F059-F061 (PRs #49-#59). Money loop pieces done (address, API, auth, watcher, ledger, signer). Next: F051 wires worker/signer with Infura + second RPC and runs the local end-to-end gate. F052 Privy spikes can start."
   }
 }

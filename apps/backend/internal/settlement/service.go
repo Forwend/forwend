@@ -79,6 +79,11 @@ func (s *Signer) Run(ctx context.Context) error {
 			return err
 		} else if err != nil {
 			errs = append(errs, fmt.Errorf("settlement intent %d: %w", id, err))
+			// An RPC or database error: wait before the next try instead of hammering every run.
+			if _, werr := s.pool.Exec(ctx, `UPDATE settlement_intents SET next_attempt_at = now() + interval '30 seconds'
+				WHERE id = $1 AND status IN ('pending', 'sent')`, id); werr != nil {
+				errs = append(errs, werr)
+			}
 		}
 	}
 	return errors.Join(errs...)
@@ -93,8 +98,12 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 	if !ok {
 		return fmt.Errorf("no RPC for chain %d", in.chainID)
 	}
-	if got, err := client.ChainID(ctx); err != nil || got.Uint64() != in.chainID {
-		return fmt.Errorf("RPC for chain %d answers chain %v: %w", in.chainID, got, err)
+	got, err := client.ChainID(ctx)
+	if err != nil {
+		return fmt.Errorf("read RPC chain id: %w", err)
+	}
+	if got.Uint64() != in.chainID {
+		return fmt.Errorf("RPC for chain %d answers chain %d", in.chainID, got)
 	}
 	if in.status == "sent" {
 		// Already signed: finish it whatever changed since; it may be on the chain.

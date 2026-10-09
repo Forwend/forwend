@@ -7,6 +7,7 @@
     "postgres:up": "docker compose --env-file .env -f ../../infra/docker-compose.yml up -d --wait",
     "api": "sh scripts/with-env.sh go run ./cmd/api",
     "worker": "sh scripts/with-env.sh go run ./cmd/worker",
-    "signer": "sh scripts/with-env.sh go run ./cmd/signer"
+    "signer": "sh scripts/with-env.sh go run ./cmd/signer",
+    "e2e": "sh scripts/with-env.sh go test -tags e2e -count=1 -v ./e2e/"
   }
 }

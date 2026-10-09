@@ -3,6 +3,7 @@ package config_test
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/config"
 )
@@ -32,15 +33,26 @@ func TestAPINamesEveryMissingVariable(t *testing.T) {
 	}
 }
 
-func TestWorkerNeedsOnlyTheDatabase(t *testing.T) {
+func TestWorkerAndSigner(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://x")
-	t.Setenv("API_ADDR", "")
-	got, err := config.LoadWorker()
-	if err != nil || got.DatabaseURL != "postgres://x" {
-		t.Fatalf("got %+v, %v", got, err)
+	t.Setenv("CHAINS_FILE", "chains.json")
+	t.Setenv("INFURA_API_KEYS", "a, b,")
+	t.Setenv("POLL_INTERVAL", "3s")
+	t.Setenv("EXECUTOR_PRIVATE_KEY", "key")
+	w, err := config.LoadWorker()
+	if err != nil || w.Chains.File != "chains.json" || len(w.Chains.InfuraKeys) != 2 || w.Chains.InfuraKeys[1] != "b" ||
+		w.Chains.PollInterval != 3*time.Second {
+		t.Fatalf("worker: %+v, %v", w, err)
 	}
-	t.Setenv("DATABASE_URL", "")
-	if _, err := config.LoadWorker(); err == nil || !strings.Contains(err.Error(), "DATABASE_URL") {
-		t.Fatalf("missing DATABASE_URL: got %v", err)
+	s, err := config.LoadSigner()
+	if err != nil || s.ExecutorKey != "key" || s.Chains.File != "chains.json" {
+		t.Fatalf("signer: %+v, %v", s, err)
+	}
+
+	t.Setenv("POLL_INTERVAL", "soon")
+	t.Setenv("EXECUTOR_PRIVATE_KEY", "")
+	_, err = config.LoadSigner()
+	if err == nil || !strings.Contains(err.Error(), "EXECUTOR_PRIVATE_KEY") || !strings.Contains(err.Error(), "POLL_INTERVAL") {
+		t.Fatalf("missing key and bad interval: got %v", err)
 	}
 }
