@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/config"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 )
 
@@ -22,11 +23,11 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	url, err := database.URLFromEnv()
+	cfg, err := config.LoadWorker()
 	if err != nil {
 		return err
 	}
-	pool, err := database.Open(ctx, url)
+	pool, err := database.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
 	}

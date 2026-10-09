@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/database"
+	"github.com/ensp1re/forwend/apps/backend/internal/config"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -16,10 +16,11 @@ import (
 func New(t *testing.T) string {
 	t.Helper()
 	ctx := context.Background()
-	admin, err := database.URLFromEnv()
+	cfg, err := config.LoadWorker()
 	if err != nil {
 		t.Fatal(err)
 	}
+	admin := cfg.DatabaseURL
 	conn, err := pgx.Connect(ctx, admin)
 	if err != nil {
 		t.Fatalf("connect to Postgres (locally: pnpm --filter @forwend/backend postgres:up): %v", err)
