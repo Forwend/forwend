@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { API_BASE } from "./src/constants/api";
+import { API_BASE } from "./src/shared/config/api";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@forwend/design-tokens", "@forwend/ui-web"],

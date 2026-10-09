@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 74,
+  "nextId": 75,
   "tasks": [
     {
       "id": "F001",
@@ -7655,6 +7655,119 @@
         "branch": "docs/f073-document-file-ownership-and-naming-for-w",
         "base": "main"
       }
+    },
+    {
+      "id": "F074",
+      "type": "refactor",
+      "behavior": "The web app's files live in screens, features and shared per docs/web/structure.md, with unchanged routes and behavior",
+      "acceptance": [
+        "Routes compose screens; dashboard, balances, activity and landing code live in screens/; auth, profiles, balances, receive, activity and waitlist code live in features/; shared code has a concrete owner; no global types/ or catch-all constants/ and lib/ remain.",
+        "Imports follow the direction rules: shared never imports screens or features; a feature does not import another feature's private files.",
+        "Unit tests sit beside their sources and the same tests still run; routes, rendered behavior, API calls and the kit are unchanged: lint, typecheck, unit, build, e2e and the live sign-in suite pass."
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "docs-check",
+        "ui-unit"
+      ],
+      "refs": [
+        "R-37",
+        "D-11"
+      ],
+      "keep": [
+        "packages/*",
+        "apps/backend/*",
+        "*package.json",
+        "pnpm-lock.yaml",
+        "apps/web/e2e/*",
+        "apps/web/public/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-10-09 review pass by reviewer: Pure move: routes render the same trees via screens/, copy strings, classes, props, API paths and route exports (metadata, dynamic) unchanged; shared never imports screens/features, the only feature-to-feature import (receive -> balances type) is documented; 3 test files (16 tests) run from src/ beside sources; typecheck, unit and biome clean; no stale old-path references. Non-blocking: unrequested blank-line/import-style churn in moved files and globals.css import moved to the top of app/layout.tsx (no CSS effect), AUTH_COPY.soon reused for app-shell nav, structure.md tree does not list screens/kit-directions on its own line."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "failed",
+        "at": "2026-10-09T23:41:07Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F074-20261009T234107Z-docs-check.log"
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.7,
+            "log": "docs/runs/F074-20261009T234107Z-ui-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F074-20261009T234107Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F074-20261009T234107Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F074-20261009T234107Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 27.2,
+            "log": "docs/runs/F074-20261009T234107Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.8,
+            "log": "docs/runs/F074-20261009T234107Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "failed",
+            "exit": 1,
+            "seconds": 254.0,
+            "log": "docs/runs/F074-20261009T234107Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F074-20261009T234107Z-keep.log"
+          }
+        ],
+        "taskHash": "1e32bb9e39dca25e",
+        "filesHash": "f4a4133414ec0bf3",
+        "proof": {
+          "1": "build: routes are thin pages rendering screens/{landing,dashboard,balances,activity,new-profile,sign-in,kit,kit-directions}; product code in features/{auth,profiles,balances,receive,activity,waitlist}; shared/{api,config,hooks,chains,art,assets,examples}; src/types, src/constants and src/lib are gone",
+          "2": "lint: import scan finds no shared->features/screens and no features->screens imports; the one feature-to-feature import (receive takes the Balances type) is named in docs/web/architecture.md",
+          "3": "unit: tests moved beside sources (features/*/*.test.ts*), vitest include src/**; same 3 files and 16 tests pass; e2e (main 21 + live 8) unchanged and passing"
+        }
+      },
+      "branch": "refactor/f074-the-web-app-s-files-live-in-screens-feat",
+      "baseCommit": "ddc50c193d13b5744f1674d9ab5a0b3a051db4bd",
+      "failedVerifies": 2
     }
   ],
   "lastWrapup": {

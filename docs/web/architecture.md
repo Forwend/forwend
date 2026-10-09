@@ -44,8 +44,10 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
 - The browser calls the backend same-origin at `/api/v1/…`; `next.config.ts` forwards it to `API_URL`, so the api needs
   no CORS. The rewrite is fixed at `next build`, so `API_URL` must be set when building; Turbo hashes `.env*` and
   these variables for the web build. Request and response types are written by hand from `apps/backend/api/openapi.yaml`
-  and belong to their feature under the target structure (currently `src/types/app/`):
-  `openapi-typescript` needs the TypeScript compiler API, which TypeScript 7 does not have.
+  and belong to their feature (`features/profiles/profile.ts`, `features/balances/balances.ts`,
+  `features/activity/activity.ts`): `openapi-typescript` needs the TypeScript compiler API, which TypeScript 7 does not have.
+- Features depend on each other in one place: the receive sheet (`features/receive`) takes the `Balances` type from
+  `features/balances` to show which networks and tokens the address takes.
 - The checkout page recomputes the receive address from the invoice terms and refuses to show a mismatch; it loads no
   third-party scripts ([money-safety.md](../backend/money-safety.md)).
 

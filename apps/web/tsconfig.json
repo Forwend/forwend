@@ -13,6 +13,6 @@
     },
     "types": ["node"]
   },
-  "include": ["next-env.d.ts", "src", "test", "e2e", "*.ts", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "src", "e2e", "*.ts", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
 }
