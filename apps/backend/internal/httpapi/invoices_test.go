@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -181,7 +182,7 @@ func TestCreateInvoice(t *testing.T) {
 		t.Fatalf("GET: %d %v", got.status, got.body)
 	}
 	for k, v := range b {
-		if got.body[k] != v {
+		if !reflect.DeepEqual(got.body[k], v) {
 			t.Fatalf("GET %s = %v, POST gave %v", k, got.body[k], v)
 		}
 	}
@@ -307,5 +308,42 @@ func TestCreateInvoiceRefusesUnsettleableTerms(t *testing.T) {
 	r := e.post(t, "did:privy:alice", e.walletless, "key-1", basicBody)
 	if r.status != http.StatusUnprocessableEntity || errorCode(r) != "invalid_value" {
 		t.Fatalf("got %d %v", r.status, r.body)
+	}
+}
+
+// GET lists deposits that are not reorged; a detected one shows how far the finalized block still has to go.
+func TestGetInvoiceListsDepositsWithProgress(t *testing.T) {
+	e := invoiceAPI(t)
+	created := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody)
+	id, receive := created.body["invoiceId"].(string), created.body["receiveAddress"].(string)
+	expires, _ := time.Parse(time.RFC3339, created.body["expiresAt"].(string))
+	_, err := e.pool.Exec(context.Background(), `
+		WITH cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block, last_finalized_time)
+		             VALUES (84532, 1000, 980, $4))
+		INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index, block_hash,
+		    block_number, block_time, from_address, to_address, amount, status)
+		VALUES (84532, 'evm', $1, $2, '0x' || repeat('01', 32), 0, '0x' || repeat('01', 32), 970, $4 - 20, $3, $3, 2000000, 'confirmed'),
+		       (84532, 'evm', $1, $2, '0x' || repeat('02', 32), 1, '0x' || repeat('02', 32), 1000, $4 + 40, $3, $3, 1000000, 'detected'),
+		       (84532, 'evm', $1, $2, '0x' || repeat('03', 32), 2, '0x' || repeat('03', 32), 999, $4 + 38, $3, $3, 7000000, 'reorged')`,
+		usdc, id, receive, expires.Unix()-100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := e.get(t, id)
+	deposits, _ := r.body["deposits"].([]any)
+	if r.status != http.StatusOK || len(deposits) != 2 {
+		t.Fatalf("got %d %v", r.status, r.body["deposits"])
+	}
+	final, pending := deposits[0].(map[string]any), deposits[1].(map[string]any)
+	if final["status"] != "confirmed" || final["amount"] != "2000000" || final["blocksLeft"] != float64(0) ||
+		final["secondsLeft"] != float64(0) || final["late"] != false {
+		t.Fatalf("final deposit %v", final)
+	}
+	if pending["status"] != "detected" || pending["blocksLeft"] != float64(20) || pending["secondsLeft"] != float64(40) ||
+		pending["txHash"] != "0x"+strings.Repeat("02", 32) || pending["late"] != false {
+		t.Fatalf("pending deposit %v", pending)
+	}
+	if fresh := e.get(t, e.post(t, "did:privy:alice", e.aliceProfile, "key-2", basicBody).body["invoiceId"].(string)); !reflect.DeepEqual(fresh.body["deposits"], []any{}) {
+		t.Fatalf("no deposits should be [], got %v", fresh.body["deposits"])
 	}
 }

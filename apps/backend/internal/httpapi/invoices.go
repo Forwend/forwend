@@ -23,19 +23,31 @@ type createInvoiceBody struct {
 }
 
 type invoiceJSON struct {
-	InvoiceID        string `json:"invoiceId"`
-	ChainID          uint64 `json:"chainId"`
-	Token            string `json:"token"`
-	Amount           string `json:"amount"`
-	Recipient        string `json:"recipient"`
-	Factory          string `json:"factory"`
-	ReceiveAddress   string `json:"receiveAddress"`
-	ExpiresAt        string `json:"expiresAt"`
-	SettleDeadline   string `json:"settleDeadline"`
-	PaymentStatus    string `json:"paymentStatus"`
-	SettlementStatus string `json:"settlementStatus"`
-	RefundStatus     string `json:"refundStatus"`
-	CreatedAt        string `json:"createdAt"`
+	InvoiceID        string        `json:"invoiceId"`
+	ChainID          uint64        `json:"chainId"`
+	Token            string        `json:"token"`
+	Amount           string        `json:"amount"`
+	Recipient        string        `json:"recipient"`
+	Factory          string        `json:"factory"`
+	ReceiveAddress   string        `json:"receiveAddress"`
+	ExpiresAt        string        `json:"expiresAt"`
+	SettleDeadline   string        `json:"settleDeadline"`
+	PaymentStatus    string        `json:"paymentStatus"`
+	SettlementStatus string        `json:"settlementStatus"`
+	RefundStatus     string        `json:"refundStatus"`
+	CreatedAt        string        `json:"createdAt"`
+	Deposits         []depositJSON `json:"deposits"`
+}
+
+type depositJSON struct {
+	TxHash      string `json:"txHash"`
+	LogIndex    uint64 `json:"logIndex"`
+	Amount      string `json:"amount"`
+	BlockNumber uint64 `json:"blockNumber"`
+	Status      string `json:"status"`
+	Late        bool   `json:"late"`
+	BlocksLeft  uint64 `json:"blocksLeft"`
+	SecondsLeft int64  `json:"secondsLeft"`
 }
 
 // createInvoice is POST /v1/profiles/{profileId}/invoices: 201 when created, 200 when the same request is repeated.
@@ -79,13 +91,19 @@ func getInvoice(invoices *invoice.Service) http.HandlerFunc {
 }
 
 func toInvoiceJSON(inv invoice.Invoice) invoiceJSON {
-	return invoiceJSON{
+	out := invoiceJSON{
 		InvoiceID: inv.ID, ChainID: inv.ChainID, Token: inv.Token, Amount: inv.Amount.String(),
 		Recipient: inv.Recipient, Factory: inv.Factory, ReceiveAddress: inv.ReceiveAddress,
 		ExpiresAt: inv.ExpiresAt.Format(time.RFC3339), SettleDeadline: inv.SettleDeadline.Format(time.RFC3339),
 		PaymentStatus: inv.PaymentStatus, SettlementStatus: inv.SettlementStatus, RefundStatus: inv.RefundStatus,
-		CreatedAt: inv.CreatedAt.UTC().Format(time.RFC3339),
+		CreatedAt: inv.CreatedAt.UTC().Format(time.RFC3339), Deposits: []depositJSON{},
 	}
+	for _, d := range inv.Deposits {
+		out.Deposits = append(out.Deposits, depositJSON{TxHash: d.TxHash, LogIndex: d.LogIndex, Amount: d.Amount.String(),
+			BlockNumber: d.BlockNumber, Status: d.Status, Late: d.Late, BlocksLeft: d.BlocksLeft,
+			SecondsLeft: int64(d.TimeLeft / time.Second)})
+	}
+	return out
 }
 
 // decodeJSON reads one JSON object of at most 1 MB with no unknown fields.

@@ -87,11 +87,28 @@ times come from the RPC, never computed in Go. Arc's native-coin `Transfer` logs
 chain's first scan starts at its finalized block: deposits before it are not looked for. Scanning again changes
 nothing, so a restarted worker resumes from the cursor.
 
-## Invoice state machine
+## Invoice states
+
+`internal/ledger` (R-21) runs after each scan, per invoice, in one transaction with the invoice row locked:
+- Books each `confirmed`, not yet booked transfer in chain order: `receiver` gets the transfer amount; what is still
+  owed up to the invoice amount goes to `recipient_payable`, the rest to `payer_held`. A late deposit (block time
+  after `expires_at`) and any deposit after the invoice is final go entirely to `payer_held` (D-24, D-26).
+- Payment status: `open` → `detected` (a transfer seen) → `partially_paid` → `paid` when the full amount is owed and
+  a second RPC's `balanceOf` covers every booked deposit (D-15). An invoice owed in full never expires; it waits for
+  the second RPC. Otherwise it becomes `expired` or `expired_partially_paid` once the chain's finalized block time
+  passes `expires_at`, no transfer is still `detected`, and the second RPC's balance equals the booked amount. More on
+  chain than booked (a missed log, an Arc native-coin payment) blocks expiry and logs a warning. An expired partial
+  payment is moved to `payer_held` by an `expiry` ledger transaction. `refund_status` becomes `held` while
+  `payer_held` > 0. One invoice's error doesn't stop the others; each balance call has a 10 s limit.
+- The second RPC reads `balanceOf` at its own head and reports that block. An answer from behind the watcher's
+  finalized block may miss final deposits, so it decides nothing (neither paid nor expired) until the node catches up.
+- `paid`, `expired` and `expired_partially_paid` are final. A trigger rejects any other status change, any change to
+  invoice terms, and an invoice created with any status but `open`.
+- `GET /v1/invoices/{id}` lists deposits with `blocksLeft`/`secondsLeft` from the finalized block (R-28).
+
 ```
-open ──deposit seen──▶ detected ──confirmed < amount──▶ partially_paid ──confirmed ≥ amount──▶ paid
-paid ──settlement confirmed──▶ settled          (excess > 0 → excess_held, refund-eligible)
-open/partially_paid ──expires_at passes (block time)──▶ expired / expired_partially_paid (held)
-any deposit with block_time > expires_at ──▶ late (held, never auto-credited)
-held funds ──verified claim + platform approval──▶ refund_pending ──confirmed──▶ refunded
+open ──transfer seen──▶ detected ──booked < amount──▶ partially_paid ──booked ≥ amount and balanceOf agrees──▶ paid
+open/detected/partially_paid ──finalized block time > expires_at──▶ expired / expired_partially_paid (held)
+any deposit with block_time > expires_at ──▶ held for the payer, never owed to the creator
+paid ──settlement confirmed──▶ settled (F050)    held funds ──verified claim + approval──▶ refunded (later)
 ```

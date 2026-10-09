@@ -111,7 +111,7 @@ components:
     Invoice:
       type: object
       required: [invoiceId, chainId, token, amount, recipient, factory, receiveAddress, expiresAt, settleDeadline,
-        paymentStatus, settlementStatus, refundStatus, createdAt]
+        paymentStatus, settlementStatus, refundStatus, createdAt, deposits]
       properties:
         invoiceId: { $ref: "#/components/schemas/InvoiceId" }
         chainId: { type: integer }
@@ -139,6 +139,33 @@ components:
           type: string
           enum: [none, held, refund_pending, refunded]
         createdAt: { type: string, format: date-time }
+        deposits:
+          type: array
+          description: Transfers to the receive address that are not reorged, in chain order. Empty on create.
+          items: { $ref: "#/components/schemas/Deposit" }
+    Deposit:
+      type: object
+      required: [txHash, logIndex, amount, blockNumber, status, late, blocksLeft, secondsLeft]
+      properties:
+        txHash: { type: string, pattern: "^0x[0-9a-f]{64}$" }
+        logIndex: { type: integer, minimum: 0 }
+        amount: { $ref: "#/components/schemas/Uint256" }
+        blockNumber: { type: integer, minimum: 0 }
+        status:
+          type: string
+          enum: [detected, confirmed]
+          description: confirmed once the block is at or below the chain's finalized block (D-45).
+        late:
+          type: boolean
+          description: Block time after expiresAt; held for the payer, never paid to the creator.
+        blocksLeft:
+          type: integer
+          minimum: 0
+          description: Blocks until the deposit's block is final; 0 when confirmed.
+        secondsLeft:
+          type: integer
+          minimum: 0
+          description: Estimated seconds until final, from the chain's finalized block time; 0 when confirmed.
     Error:
       type: object
       required: [error]

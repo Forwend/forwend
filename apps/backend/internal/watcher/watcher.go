@@ -103,17 +103,18 @@ func (c *Chain) Scan(ctx context.Context) error {
 	}
 
 	// The finalized block and every block we judge come from one batch, so usually from one node.
-	var numbers []uint64
+	numbers := []uint64{latest}
 	for _, l := range logs {
 		numbers = append(numbers, l.BlockNumber)
 	}
 	for _, p := range open {
 		numbers = append(numbers, p.blockNumber)
 	}
-	finalized, headers, err := c.headers(ctx, numbers)
+	final, headers, err := c.headers(ctx, numbers)
 	if err != nil {
 		return err
 	}
+	finalized := uint64(final.Number)
 
 	var deposits []deposit
 	type logKey struct {
@@ -147,8 +148,15 @@ func (c *Chain) Scan(ctx context.Context) error {
 		}
 	}
 	// The cursor's finalized block never passes what this scan read: finalized was read after latest and may be
-	// higher, and blocks above latest were not scanned.
-	return c.record(ctx, reorged, deposits, min(finalized, latest), latest)
+	// higher, and blocks above latest were not scanned. Its time is that block's, for expiry and countdowns.
+	if finalized > latest {
+		h, ok := headers[latest]
+		if !ok {
+			return fmt.Errorf("read chain %d block %d: not found", c.chainID, latest)
+		}
+		final = h
+	}
+	return c.record(ctx, reorged, deposits, final, latest)
 }
 
 // start is where this scan begins. A new chain starts at its finalized block: deposits before the first scan are
@@ -162,7 +170,7 @@ func (c *Chain) start(ctx context.Context) (uint64, error) {
 		FROM chain_cursors cur WHERE cur.chain_id = $1`, c.chainID, RescanDepth).Scan(&from)
 	if errors.Is(err, pgx.ErrNoRows) {
 		finalized, _, err := c.headers(ctx, nil)
-		return finalized + 1, err
+		return uint64(finalized.Number) + 1, err
 	}
 	if err != nil {
 		return 0, fmt.Errorf("read chain %d cursor: %w", c.chainID, err)
@@ -241,9 +249,9 @@ func (c *Chain) pending(ctx context.Context, from uint64) ([]pending, error) {
 	return out, rows.Err()
 }
 
-// headers reads the finalized block number and the given blocks in one JSON-RPC batch. A block the node doesn't
-// have is left out.
-func (c *Chain) headers(ctx context.Context, numbers []uint64) (uint64, map[uint64]header, error) {
+// headers reads the finalized block and the given blocks in one JSON-RPC batch. A block the node doesn't have is
+// left out.
+func (c *Chain) headers(ctx context.Context, numbers []uint64) (header, map[uint64]header, error) {
 	unique := map[uint64]bool{}
 	var finalized *header
 	batch := []rpc.BatchElem{{Method: "eth_getBlockByNumber", Args: []any{"finalized", false}, Result: &finalized}}
@@ -260,16 +268,16 @@ func (c *Chain) headers(ctx context.Context, numbers []uint64) (uint64, map[uint
 	// RPC providers cap batch sizes; finalized stays in the first chunk with the first blocks.
 	for i := 0; i < len(batch); i += MaxBatch {
 		if err := c.rpc.BatchCallContext(ctx, batch[i:min(i+MaxBatch, len(batch))]); err != nil {
-			return 0, nil, fmt.Errorf("read chain %d blocks: %w", c.chainID, err)
+			return header{}, nil, fmt.Errorf("read chain %d blocks: %w", c.chainID, err)
 		}
 	}
 	for _, b := range batch {
 		if b.Error != nil {
-			return 0, nil, fmt.Errorf("read chain %d block %v: %w", c.chainID, b.Args[0], b.Error)
+			return header{}, nil, fmt.Errorf("read chain %d block %v: %w", c.chainID, b.Args[0], b.Error)
 		}
 	}
 	if finalized == nil {
-		return 0, nil, fmt.Errorf("read chain %d finalized block: not found", c.chainID)
+		return header{}, nil, fmt.Errorf("read chain %d finalized block: not found", c.chainID)
 	}
 	out := map[uint64]header{}
 	for n, h := range results {
@@ -277,12 +285,12 @@ func (c *Chain) headers(ctx context.Context, numbers []uint64) (uint64, map[uint
 			out[n] = **h
 		}
 	}
-	return uint64(finalized.Number), out, nil
+	return *finalized, out, nil
 }
 
 // record writes one scan: reorged rows first (so a re-mined copy can be live), then each deposit is inserted or
 // brought back, then the cursor moves.
-func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit, finalized, scanned uint64) error {
+func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit, finalized header, scanned uint64) error {
 	tx, err := c.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("record chain %d scan: %w", c.chainID, err)
@@ -312,11 +320,14 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 		}
 	}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) VALUES ($1, $2, $3)
+		INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block, last_finalized_time)
+		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (chain_id) DO UPDATE
 		SET last_scanned_block = greatest(excluded.last_scanned_block, chain_cursors.last_finalized_block),
 		    last_finalized_block = greatest(chain_cursors.last_finalized_block, excluded.last_finalized_block),
-		    updated_at = now()`, c.chainID, scanned, finalized)
+		    last_finalized_time = CASE WHEN excluded.last_finalized_block >= chain_cursors.last_finalized_block
+		        THEN excluded.last_finalized_time ELSE chain_cursors.last_finalized_time END,
+		    updated_at = now()`, c.chainID, scanned, uint64(finalized.Number), uint64(finalized.Timestamp))
 	if err != nil {
 		return fmt.Errorf("move chain %d cursor: %w", c.chainID, err)
 	}
