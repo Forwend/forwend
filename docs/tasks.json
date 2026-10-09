@@ -7192,7 +7192,7 @@
       "dependsOn": [
         "F067"
       ],
-      "state": "passing",
+      "state": "verified",
       "verification": [
         "e2e",
         "unit"
@@ -7210,69 +7210,71 @@
       "notes": [
         "2026-10-09 review pass by subagent: Our own /sign-in on Privy headless hooks (email code + Google), landing hero dawn/night band, one centered form. Earlier findings fixed: passkey removed (docs say it returns later); Google error read from useLoginWithOAuth state, so a wrong email code no longer shows it (live test); TextField/CodeInput errors and form messages announced; CodeInput has no maxLength (pasted '123 456' signs in, live test), stays enabled while checking so focus is kept; auto-submit once per attempt+code, works after resend, Sign in retries; Button loading blocks double send; send failure is a generic form message; space kept for errors so the form does not move (boundingBox test); unbuilt-feature facts removed; '/' uses APP_ROUTES.site; meadow images and rows removed (images-check 10/10). Fresh verify 20:52:38Z passed (6 live tests incl. axe on both themes, code step, error states). Re-checked: lint, typecheck, unit 8/8, docs-check. Nits only: Messages comment still mentions a card; /kit 'Code (checking)' shows a disabled state the page no longer uses.",
         "2026-10-09 review pass by subagent: Re-reviewed after phone layout change. Sign-in: flex column, main flex-1 items-center below lg, lg:block keeps the approved desktop. Landing hero: only max-sm classes added; mt-24 removed is overridden by sm:mt-36 at sm+ and justify-center has no effect at sm+ (no height there), so tablet/desktop are unchanged. Phone screenshots (m3, m-signin) show the headline and form in the first screen with the river below. Fresh verify 20:56:08Z passed (21 + 6 live e2e). Re-checked lint, typecheck, unit 8/8. Low, not blocking: on phones/tablets a form-level message (send failure, Google error, resent notice) grows the centered block and shifts the form up about half a line; field errors reserve space and do not. The Messages comment ('only pushes down what is below it') is not true there. Reserve one line for Messages if this matters.",
-        "2026-10-09 review pass by subagent: Checked the Messages diff: the box always keeps one text-sm line (min-h-5 = the line height), and the alert/status regions are always rendered, so a form-level message neither moves the centered phone form nor misses an announcement. Error and notice never show together. Send-failure and Google messages now fit one line at the form width (about 42 characters at text-sm in 327 to 384px). The e2e check for no Google error on a wrong code still matches the new text. Fresh verify 20:58:22Z passed (21 + 6 live e2e); lint clean."
+        "2026-10-09 review pass by subagent: Checked the Messages diff: the box always keeps one text-sm line (min-h-5 = the line height), and the alert/status regions are always rendered, so a form-level message neither moves the centered phone form nor misses an announcement. Error and notice never show together. Send-failure and Google messages now fit one line at the form width (about 42 characters at text-sm in 327 to 384px). The e2e check for no Google error on a wrong code still matches the new text. Fresh verify 20:58:22Z passed (21 + 6 live e2e); lint clean.",
+        "2026-10-09 checks failed on https://github.com/ensp1re/forwend/pull/68: checks (https://github.com/ensp1re/forwend/actions/runs/37990707707/job/114023830841)",
+        "2026-10-09 review pass by subagent: Code unchanged since the last pass: f57c142 holds the reviewed files, cfde939 and the working tree only change docs/tasks.json, and the key lines (Messages min-h-5, one-line errors, centered phone form, max-sm hero classes) match. The CI failure on run 37990707707 was Docker Hub 'toomanyrequests' in Initialize containers, before any check ran. Fresh verify 21:00:47Z passed (21 + 6 live e2e)."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-09T20:58:22Z",
+        "at": "2026-10-09T21:00:47Z",
         "checks": [
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 31.6,
-            "log": "docs/runs/F070-20261009T205822Z-e2e.log"
+            "seconds": 30.1,
+            "log": "docs/runs/F070-20261009T210047Z-e2e.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 27.7,
-            "log": "docs/runs/F070-20261009T205822Z-unit.log"
+            "seconds": 29.3,
+            "log": "docs/runs/F070-20261009T210047Z-unit.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.6,
-            "log": "docs/runs/F070-20261009T205822Z-harness.log"
+            "seconds": 0.8,
+            "log": "docs/runs/F070-20261009T210047Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F070-20261009T205822Z-docs-check.log"
+            "log": "docs/runs/F070-20261009T210047Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F070-20261009T205822Z-lint.log"
+            "log": "docs/runs/F070-20261009T210047Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.0,
-            "log": "docs/runs/F070-20261009T205822Z-typecheck.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F070-20261009T210047Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.9,
-            "log": "docs/runs/F070-20261009T205822Z-build.log"
+            "seconds": 0.9,
+            "log": "docs/runs/F070-20261009T210047Z-build.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F070-20261009T205822Z-keep.log"
+            "log": "docs/runs/F070-20261009T210047Z-keep.log"
           }
         ],
         "taskHash": "573679e0a0f63b49",
@@ -7284,12 +7286,10 @@
         "review": {
           "result": "pass",
           "by": "subagent",
-          "summary": "Checked the Messages diff: the box always keeps one text-sm line (min-h-5 = the line height), and the alert/status regions are always rendered, so a form-level message neither moves the centered phone form nor misses an announcement. Error and notice never show together. Send-failure and Google messages now fit one line at the form width (about 42 characters at text-sm in 327 to 384px). The e2e check for no Google error on a wrong code still matches the new text. Fresh verify 20:58:22Z passed (21 + 6 live e2e); lint clean.",
-          "at": "2026-10-09T20:59:46Z",
+          "summary": "Code unchanged since the last pass: f57c142 holds the reviewed files, cfde939 and the working tree only change docs/tasks.json, and the key lines (Messages min-h-5, one-line errors, centered phone form, max-sm hero classes) match. The CI failure on run 37990707707 was Docker Hub 'toomanyrequests' in Initialize containers, before any check ran. Fresh verify 21:00:47Z passed (21 + 6 live e2e).",
+          "at": "2026-10-09T21:02:12Z",
           "filesHash": "d06c936b07c8bde4"
-        },
-        "commit": "f57c142",
-        "doneAt": "2026-10-09T21:00:02Z"
+        }
       },
       "branch": "feat/f070-the-sign-in-page-is-forwend-s-own-our-em",
       "baseCommit": "d469e64c07290b8fc45671607d62d2fe62074a06",
