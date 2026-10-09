@@ -7139,7 +7139,7 @@
         "F066",
         "F067"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "unit"
@@ -7231,11 +7231,18 @@
           "summary": "Re-review after commit: c154ad6 holds the reviewed F068 change (round-2 fixes included, no cache file, no AI attribution). The only change since is 06b3938, one .gitignore line for **/.impeccable/hook.cache.json. Fresh verify passed (F068-20261009T215821Z).",
           "at": "2026-10-09T21:59:51Z",
           "filesHash": "4ea51a66cf355645"
-        }
+        },
+        "commit": "927700e",
+        "doneAt": "2026-10-09T22:00:03Z"
       },
       "branch": "feat/f068-a-user-creates-profiles-and-receives-mon",
       "baseCommit": "6f98bda84365ad4661b9a9cc77fc27a37186a97a",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f068-a-user-creates-profiles-and-receives-mon",
+        "base": "main"
+      }
     },
     {
       "id": "F069",
