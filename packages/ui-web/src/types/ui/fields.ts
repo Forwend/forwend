@@ -36,3 +36,18 @@ export interface SwitchProps {
   onCheckedChange: (checked: boolean) => void;
   disabled?: boolean;
 }
+
+export interface CodeInputProps {
+  label: string;
+  value: string;
+  onValueChange: (digits: string) => void;
+  /** Number of digits; 6 by default. */
+  length?: number;
+  hint?: string;
+  error?: string;
+  id?: string;
+  name?: string;
+  disabled?: boolean;
+  autoFocus?: boolean;
+  className?: string;
+}
