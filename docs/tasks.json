@@ -5937,7 +5937,7 @@
         "AGENTS.md and packages/contracts/AGENTS.md state the rule; node script/rpc.mjs <chain> still finds a working RPC with only packages/contracts/.env"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "contracts",
         "backend"
@@ -6032,11 +6032,18 @@
         "proof": {
           "1": "contracts: the root .env is removed; packages/contracts/.env holds the three keys (names in .env.example) and deploy.sh now sources ./.env, whose keys derive the deployed executor 0xe158... and refund authority 0x3E20...; apps/backend/.env has INFURA_API_KEYS; git grep finds no script reading ../../.env; forge tests pass",
           "2": "backend: AGENTS.md and packages/contracts/AGENTS.md state the per-package rule; with INFURA_API_KEYS unset in the shell, node script/rpc.mjs found Infura for base-sepolia and arc-testnet and the public RPC for tempo-moderato from packages/contracts/.env; backend tests pass"
-        }
+        },
+        "commit": "9cc3a11",
+        "doneAt": "2026-10-09T15:09:56Z"
       },
       "branch": "chore/f061-each-package-keeps-its-own-secrets-in-it",
       "baseCommit": "4761dc6b493dbe46a0f3f4768a1048f026439033",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f061-each-package-keeps-its-own-secrets-in-it",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
