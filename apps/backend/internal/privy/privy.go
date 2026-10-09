@@ -31,20 +31,21 @@ func NewClient(appID, appSecret, apiURL string) *Client {
 }
 
 // ProfileWallet returns the profile's wallet, creating it once: owned by the Privy user, external_id = profile id.
-// A repeated or concurrent call finds the existing wallet by external_id instead of creating a second one.
+// A repeated or concurrent call finds the existing wallet by external_id, which Privy keeps unique per app, instead
+// of creating a second one. No idempotency key: Privy replays a cached error for a key for 24 hours, so one failed
+// create would block the wallet. The lookup also filters by owner, so another user never gets this wallet.
 func (c *Client) ProfileWallet(ctx context.Context, privyUserID, profileID string) (Wallet, error) {
-	if w, err := c.find(ctx, profileID); err == nil || !errors.Is(err, ErrNoWallet) {
+	if w, err := c.find(ctx, privyUserID, profileID); err == nil || !errors.Is(err, ErrNoWallet) {
 		return w, err
 	}
 	created, err := c.sdk.Wallets.New(ctx, privyclient.WalletNewParams{
-		ChainType:           privyclient.WalletChainTypeEthereum,
-		Owner:               privyclient.OwnerInputUnion{OfOwnerInputUser: &privyclient.OwnerInputUser{UserID: privyUserID}},
-		ExternalID:          privyclient.String(profileID),
-		PrivyIdempotencyKey: privyclient.String("profile-wallet-" + profileID),
+		ChainType:  privyclient.WalletChainTypeEthereum,
+		Owner:      privyclient.OwnerInputUnion{OfOwnerInputUser: &privyclient.OwnerInputUser{UserID: privyUserID}},
+		ExternalID: privyclient.String(profileID),
 	})
 	if err != nil {
-		// Another request may have created it first (external_id is unique per app).
-		if w, ferr := c.find(ctx, profileID); ferr == nil {
+		// Another request may have created it first.
+		if w, ferr := c.find(ctx, privyUserID, profileID); ferr == nil {
 			return w, nil
 		}
 		return Wallet{}, fmt.Errorf("create Privy wallet for profile %s: %w", profileID, err)
@@ -52,8 +53,9 @@ func (c *Client) ProfileWallet(ctx context.Context, privyUserID, profileID strin
 	return Wallet{ID: created.ID, Address: strings.ToLower(created.Address)}, nil
 }
 
-func (c *Client) find(ctx context.Context, profileID string) (Wallet, error) {
-	page, err := c.sdk.Wallets.List(ctx, privyclient.WalletListParams{ExternalID: privyclient.String(profileID)})
+func (c *Client) find(ctx context.Context, privyUserID, profileID string) (Wallet, error) {
+	page, err := c.sdk.Wallets.List(ctx, privyclient.WalletListParams{ExternalID: privyclient.String(profileID),
+		UserID: privyclient.String(privyUserID)})
 	if err != nil {
 		return Wallet{}, fmt.Errorf("find Privy wallet for profile %s: %w", profileID, err)
 	}

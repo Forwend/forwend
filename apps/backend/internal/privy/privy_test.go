@@ -27,10 +27,14 @@ type fakePrivy struct {
 	keys    []string                  // privy-idempotency-key headers
 	// hideOnce makes the next list miss an existing wallet, as when another request created it in between.
 	hideOnce bool
+	// failCreates answers that many creates with 500. Like Privy, an error for an idempotency key is replayed for
+	// that key afterwards.
+	failCreates int
+	failedKeys  map[string]bool
 }
 
 func newFake(t *testing.T) (*fakePrivy, *Client) {
-	f := &fakePrivy{t: t, wallets: map[string]map[string]any{}}
+	f := &fakePrivy{t: t, wallets: map[string]map[string]any{}, failedKeys: map[string]bool{}}
 	srv := httptest.NewServer(f)
 	t.Cleanup(srv.Close)
 	return f, NewClient(appID, appSecret, srv.URL)
@@ -48,7 +52,9 @@ func (f *fakePrivy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.Method == http.MethodGet && r.URL.Path == "/v1/wallets":
 		data := []any{}
-		if wallet, ok := f.wallets[r.URL.Query().Get("external_id")]; ok && !f.hideOnce {
+		wallet, ok := f.wallets[r.URL.Query().Get("external_id")]
+		owner := r.URL.Query().Get("user_id")
+		if ok && !f.hideOnce && (owner == "" || wallet["owner_user"] == owner) {
 			data = append(data, wallet)
 		}
 		f.hideOnce = false
@@ -59,15 +65,27 @@ func (f *fakePrivy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			f.t.Error(err)
 		}
 		f.creates = append(f.creates, body)
-		f.keys = append(f.keys, r.Header.Get("privy-idempotency-key"))
+		key := r.Header.Get("privy-idempotency-key")
+		f.keys = append(f.keys, key)
+		if (key != "" && f.failedKeys[key]) || f.failCreates > 0 {
+			f.failCreates--
+			if key != "" {
+				f.failedKeys[key] = true
+			}
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":"internal"}`))
+			return
+		}
 		ext, _ := body["external_id"].(string)
 		if _, taken := f.wallets[ext]; taken {
 			w.WriteHeader(http.StatusConflict)
 			_, _ = w.Write([]byte(`{"error":"external_id already exists"}`))
 			return
 		}
+		owner, _ := body["owner"].(map[string]any)
 		wallet := map[string]any{"id": fmt.Sprintf("wallet-%d", len(f.wallets)+1), "chain_type": "ethereum",
-			"address": "0xAbCdEf0123456789aBcDeF0123456789AbCdEf01", "external_id": ext, "created_at": 1, "owner_id": nil,
+			"owner_user": owner["user_id"],
+			"address":    "0xAbCdEf0123456789aBcDeF0123456789AbCdEf01", "external_id": ext, "created_at": 1, "owner_id": nil,
 			"policy_ids": []any{}, "additional_signers": []any{}}
 		f.wallets[ext] = wallet
 		_ = json.NewEncoder(w).Encode(wallet)
@@ -93,9 +111,6 @@ func TestProfileWalletIsCreatedOnceAndFoundAgain(t *testing.T) {
 	owner, _ := body["owner"].(map[string]any)
 	if body["chain_type"] != "ethereum" || body["external_id"] != profile || owner["user_id"] != user {
 		t.Fatalf("create body %v: want an ethereum wallet owned by the user with external_id = profile id", body)
-	}
-	if f.keys[0] != "profile-wallet-"+profile {
-		t.Fatalf("idempotency key %q", f.keys[0])
 	}
 
 	again, err := c.ProfileWallet(ctx, user, profile)
@@ -152,5 +167,31 @@ func TestProfileWalletReportsPrivyErrors(t *testing.T) {
 	c := NewClient(appID, "wrong-secret", srv.URL)
 	if _, err := c.ProfileWallet(context.Background(), user, profile); err == nil {
 		t.Fatal("a Privy error was swallowed")
+	}
+}
+
+// A Privy error during create is reported, and the next call creates the wallet: no cached error blocks it.
+func TestProfileWalletRecoversFromAFailedCreate(t *testing.T) {
+	f, c := newFake(t)
+	ctx := context.Background()
+	f.failCreates = 3 // the first call and the SDK's two retries
+	if _, err := c.ProfileWallet(ctx, user, profile); err == nil {
+		t.Fatal("a failed create was not reported")
+	}
+	w, err := c.ProfileWallet(ctx, user, profile)
+	if err != nil || w.ID != "wallet-1" {
+		t.Fatalf("next call: %+v, %v; want the wallet created", w, err)
+	}
+}
+
+// Another user asking for this profile's wallet gets an error, never the owner's wallet.
+func TestProfileWalletBelongsToItsUser(t *testing.T) {
+	_, c := newFake(t)
+	ctx := context.Background()
+	if _, err := c.ProfileWallet(ctx, user, profile); err != nil {
+		t.Fatal(err)
+	}
+	if w, err := c.ProfileWallet(ctx, "did:privy:mallory", profile); err == nil {
+		t.Fatalf("another user got %+v", w)
 	}
 }

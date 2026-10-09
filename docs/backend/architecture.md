@@ -72,8 +72,10 @@ idempotency from [Brandur Leach](https://brandur.org/idempotency-keys).
 ## Privy
 
 `internal/privy` wraps the Privy Go SDK (D-12). `ProfileWallet` returns a profile's user-owned EVM wallet: it looks
-the wallet up by `external_id` = profile id and creates it only if missing (idempotency key = profile id), so a
-repeated or concurrent call never makes a second one; the address comes back lowercase (R-31). The server never signs
+the wallet up by `external_id` = profile id and owner, and creates it only if missing, so a repeated or concurrent
+call never makes a second one (Privy keeps `external_id` unique per app); the address comes back lowercase (R-31).
+No idempotency key: Privy replays a cached error for a key for 24 hours, which would block a wallet after one
+failed create. The server never signs
 for these wallets (D-46). Tests run against a fake Privy API; `-tags privylive` runs one against the Privy test app.
 
 ## Running the loop

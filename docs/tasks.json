@@ -6656,8 +6656,8 @@
       "type": "feat",
       "behavior": "The backend gives each profile one Privy wallet through internal/privy",
       "acceptance": [
-        "internal/privy returns a profile's user-owned EVM wallet: it creates one with external_id = profile id (idempotency key = profile id) or returns the existing one found by external_id, never a second; two concurrent creates end with one wallet; the address comes back lowercase",
-        "A fake Privy API (httptest, checking auth headers and request bodies) covers create, lookup and the create race; an opt-in test (build tag privylive) creates a user and asks for its profile wallet twice against the Privy test app"
+        "internal/privy returns a profile's user-owned EVM wallet: it creates one with external_id = profile id or returns the existing one found by external_id and owner, never a second; two concurrent creates end with one wallet; another user never gets it; a failed create doesn't block later ones; the address comes back lowercase",
+        "A fake Privy API (httptest, checking auth headers and request bodies, replaying cached errors per idempotency key) covers create, lookup, the create race, a failed create and another user; an opt-in test (build tag privylive) creates a user and asks for its profile wallet twice against the Privy test app"
       ],
       "dependsOn": [],
       "state": "verified",
@@ -6672,82 +6672,84 @@
         "packages/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-09 review fail by reviewer: FAIL. Defect: apps/backend/internal/privy/privy.go:43 sends a fixed privy-idempotency-key per profile. Privy docs (docs.privy.io/api-reference/idempotency-keys) say wallet create caches 4xx AND 5xx responses for the key's 24h lifetime and replays them; a new key is needed to retry. So one transient 5xx (or a 4xx such as a not-yet-visible user) during signup (R-32) blocks that profile's wallet for 24h: every retry, including the SDK's own 2 retries, replays the cached error. The key adds no safety: external_id is documented 'Unique per app. No two wallets in the same app can share an external_id' (docs.privy.io/wallets/wallets/external-ids), and the lookup-after-failed-create already covers the race. Fix: drop the idempotency key (line 43), update accept 1 and docs/backend/architecture.md:75, and add a fake case where the first create returns 500 and the next call succeeds (fake should replay cached errors per idempotency key, or assert no key is sent). Non-blocking: (1) privy.go:56 lists by external_id only; add UserID: privyUserID so a wallet owned by another Privy user is never returned (a caller passing a wrong user then fails closed via the create conflict instead of getting someone else's wallet). (2) List hides archived wallets by default (include_archived=false), so an archived profile wallet makes ProfileWallet fail with the create error; fine while nothing archives. (3) privy_test.go:150 only proves a failed lookup is reported, not 'create fails and lookup finds nothing returns the create error'. (4) The fake answers duplicate external_id with 409 (privy_test.go:65), which the SDK retries twice with backoff (tests take 1.3-1.5s); real Privy's duplicate code is undocumented; outcome is the same since any create error falls back to lookup. (5) SDK DefaultClientOptions reads PRIVY_APP_ID/SECRET/API_BASE_URL/API_CUSTOM_HEADERS from env; explicit options override the first three, CUSTOM_HEADERS would still apply (outside internal/config). OK: UUID profile ids are valid external_ids (36 chars, [0-9a-f-]); fallback cannot mask auth errors (lookup fails the same way) and can only return the wallet created for this external_id; SDK logging defaults to LogLevelNone, no header/body logs; timeouts come from ctx plus 10m response-header timeout; go.mod only adds lines, golang.org/x/crypto stays v0.55.0 (MVS picks max over SDK's v0.41.0), go mod tidy -diff clean, go mod verify ok; vet with e2e,privylive tags fine; no interface added, API URL injected, fits rules.md. Ran: pnpm --filter @forwend/backend test (all ok, privy 3.99s); live test -tags privylive PASS 3.77s."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-09T18:52:41Z",
+        "at": "2026-10-09T18:57:43Z",
         "checks": [
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 26.9,
-            "log": "docs/runs/F064-20261009T185241Z-backend.log"
+            "seconds": 24.5,
+            "log": "docs/runs/F064-20261009T185743Z-backend.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.6,
-            "log": "docs/runs/F064-20261009T185241Z-harness.log"
+            "log": "docs/runs/F064-20261009T185743Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F064-20261009T185241Z-docs-check.log"
+            "log": "docs/runs/F064-20261009T185743Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F064-20261009T185241Z-lint.log"
+            "log": "docs/runs/F064-20261009T185743Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F064-20261009T185241Z-typecheck.log"
+            "log": "docs/runs/F064-20261009T185743Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 25.3,
-            "log": "docs/runs/F064-20261009T185241Z-unit.log"
+            "seconds": 25.0,
+            "log": "docs/runs/F064-20261009T185743Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.8,
-            "log": "docs/runs/F064-20261009T185241Z-build.log"
+            "seconds": 1.9,
+            "log": "docs/runs/F064-20261009T185743Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 9.0,
-            "log": "docs/runs/F064-20261009T185241Z-e2e.log"
+            "seconds": 8.9,
+            "log": "docs/runs/F064-20261009T185743Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F064-20261009T185241Z-keep.log"
+            "log": "docs/runs/F064-20261009T185743Z-keep.log"
           }
         ],
-        "taskHash": "82ed1e5f1ef2de60",
-        "filesHash": "2008c1bf83eb3f95",
+        "taskHash": "9fc6cfd72ebfae2b",
+        "filesHash": "331d6edb22ea5f75",
         "proof": {
-          "1": "backend: TestProfileWalletIsCreatedOnceAndFoundAgain (one create with owner user_id, external_id = profile id, idempotency key; second call returns the same wallet with no create; lowercase address), TestProfileWalletLosesTheCreateRace, TestProfileWalletConcurrentCallsMakeOneWallet (10 concurrent calls, 1 wallet); each rule removed in turn fails a test",
-          "2": "backend: the fake Privy API checks Basic auth and privy-app-id and enforces unique external_id; TestLiveProfileWallet (build tag privylive) passed against the forwend Privy test app: created a user, got the same lowercase wallet twice, then deleted the user and archived the wallet; vetted by the backend check"
+          "1": "backend: TestProfileWalletIsCreatedOnceAndFoundAgain, TestProfileWalletLosesTheCreateRace, TestProfileWalletConcurrentCallsMakeOneWallet (1 wallet from 10 calls), TestProfileWalletBelongsToItsUser (another user gets an error), TestProfileWalletRecoversFromAFailedCreate (500s, then the next call creates it; failed with the old fixed idempotency key)",
+          "2": "backend: the fake Privy API checks Basic auth and privy-app-id, enforces unique external_id, filters by user_id and replays cached errors per idempotency key; TestLiveProfileWallet (-tags privylive) passed against the Privy test app after the change"
         }
       },
       "branch": "feat/f064-the-backend-gives-each-profile-one-privy",
