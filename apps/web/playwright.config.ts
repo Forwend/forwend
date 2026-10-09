@@ -3,6 +3,7 @@ import { KIT_PORT, KIT_URL, PUBLIC_PORT, PUBLIC_URL } from "./e2e/servers";
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: "privy/**", // playwright.privy.config.ts
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",

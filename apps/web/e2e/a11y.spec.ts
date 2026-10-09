@@ -41,4 +41,17 @@ test.describe("accessibility", () => {
       await context.close();
     });
   }
+
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`/sign-in has no serious or critical axe violations in the ${colorScheme} theme`, async ({
+      browser,
+    }) => {
+      const context = await browser.newContext({ colorScheme, reducedMotion: "reduce" });
+      const page = await context.newPage();
+      await page.goto(`${PUBLIC_URL}/sign-in`);
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      expect(await blockingViolations(page)).toEqual([]);
+      await context.close();
+    });
+  }
 });
