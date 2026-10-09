@@ -7192,7 +7192,7 @@
       "dependsOn": [
         "F067"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "unit"
@@ -7291,7 +7291,9 @@
           "summary": "Since the last pass only .github/workflows/ci.yml and docs/tasks.json changed. CI's postgres service image moved from Docker Hub postgres:17 to public.ecr.aws/docker/library/postgres:17, the same official image on AWS's public mirror; the 17 tag manifest returns 200 there. This fixes the root cause of runs 37990707707 and 37990968562 (Docker Hub anonymous pull limit). It is the only image CI pulls; infra/docker-compose.yml keeps postgres:17 for local use. No code or keep-path changes. Fresh verify 21:03:39Z passed (21 + 6 live e2e).",
           "at": "2026-10-09T21:05:01Z",
           "filesHash": "ee99451a56e8368d"
-        }
+        },
+        "commit": "8d943bc",
+        "doneAt": "2026-10-09T21:05:13Z"
       },
       "branch": "feat/f070-the-sign-in-page-is-forwend-s-own-our-em",
       "baseCommit": "d469e64c07290b8fc45671607d62d2fe62074a06",
