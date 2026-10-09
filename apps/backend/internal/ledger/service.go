@@ -2,13 +2,18 @@ package ledger
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/big"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// BalanceTimeout bounds one second-RPC balance call.
+const BalanceTimeout = 10 * time.Second
 
 type Service struct {
 	pool    *pgxpool.Pool
@@ -33,12 +38,13 @@ func (s *Service) ProcessChain(ctx context.Context, chainID uint64) error {
 	if err != nil {
 		return fmt.Errorf("list chain %d invoices to process: %w", chainID, err)
 	}
+	var errs []error // one invoice's failure must not stop the others
 	for _, id := range ids {
 		if err := s.Process(ctx, id); err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 // Process books the invoice's confirmed deposits in chain order, then sets its payment status, in one transaction
@@ -95,18 +101,27 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		owed.Add(owed, toCreator)
 	}
 
-	var anyTransfer bool
-	if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged')",
-		invoiceID).Scan(&anyTransfer); err != nil {
+	var anyTransfer, anyPending bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged'),
+		EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1 AND status = 'detected')`,
+		invoiceID).Scan(&anyTransfer, &anyPending); err != nil {
 		return fmt.Errorf("read invoice %s transfers: %w", invoiceID, err)
 	}
-	funded := false
-	if !final && owed.Cmp(amount) >= 0 {
+	funded, mayExpire := false, false
+	switch {
+	case final:
+	case owed.Cmp(amount) >= 0:
 		if funded, err = s.funded(ctx, tx, invoiceID, chainID, token, receive); err != nil {
 			return err
 		}
+	case finalizedTime > expiresAt && !anyPending:
+		// Expiry is final, so the ledger must explain the whole balance first: more on chain than booked is a
+		// deposit the watcher hasn't booked yet (a missed log, an Arc native-coin payment).
+		if mayExpire, err = s.balanced(ctx, tx, invoiceID, chainID, token, receive); err != nil {
+			return err
+		}
 	}
-	next := status(current, amount, owed, anyTransfer, finalizedTime > expiresAt, funded)
+	next := status(current, amount, owed, anyTransfer, mayExpire, funded)
 	if next == ExpiredPartiallyPaid && current != ExpiredPartiallyPaid {
 		// Never settled to the creator (D-26): what was owed to them is now held for the payer.
 		if err := book(ctx, tx, invoiceID, "expiry", nil, new(big.Int), new(big.Int).Neg(owed), owed); err != nil {
@@ -128,15 +143,10 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 }
 
 // funded asks the second RPC whether the receive address holds at least every booked deposit (D-15).
-// ponytail: the RPC call runs inside the transaction holding the invoice lock; fine while calls are short.
 func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chainID uint64, token, receive string) (bool, error) {
-	booked, err := accountBalance(ctx, tx, invoiceID, "receiver")
+	booked, onChain, err := s.compare(ctx, tx, invoiceID, chainID, token, receive)
 	if err != nil {
 		return false, err
-	}
-	onChain, err := s.balance(ctx, chainID, token, receive)
-	if err != nil {
-		return false, fmt.Errorf("check invoice %s balance: %w", invoiceID, err)
 	}
 	if onChain.Cmp(booked) < 0 {
 		slog.Warn("receive address holds less than booked; not paid", "invoice", invoiceID,
@@ -144,6 +154,34 @@ func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chain
 		return false, nil
 	}
 	return true, nil
+}
+
+// balanced asks the second RPC whether the receive address holds exactly what is booked.
+func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, chainID uint64, token, receive string) (bool, error) {
+	booked, onChain, err := s.compare(ctx, tx, invoiceID, chainID, token, receive)
+	if err != nil {
+		return false, err
+	}
+	if onChain.Cmp(booked) != 0 {
+		slog.Warn("receive address balance differs from the ledger; not expiring", "invoice", invoiceID,
+			"booked", booked.String(), "onChain", onChain.String())
+		return false, nil
+	}
+	return true, nil
+}
+
+// compare returns the booked receiver balance and the second RPC's balance.
+// ponytail: the RPC call runs inside the transaction holding the invoice lock, bounded by BalanceTimeout.
+func (s *Service) compare(ctx context.Context, tx pgx.Tx, invoiceID string, chainID uint64, token, receive string) (booked, onChain *big.Int, err error) {
+	if booked, err = accountBalance(ctx, tx, invoiceID, "receiver"); err != nil {
+		return nil, nil, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, BalanceTimeout)
+	defer cancel()
+	if onChain, err = s.balance(ctx, chainID, token, receive); err != nil {
+		return nil, nil, fmt.Errorf("check invoice %s balance: %w", invoiceID, err)
+	}
+	return booked, onChain, nil
 }
 
 // book writes one balanced ledger transaction: the receiver changes by intoReceiver, the creator's account by

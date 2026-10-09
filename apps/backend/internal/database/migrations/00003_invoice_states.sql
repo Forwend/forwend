@@ -14,6 +14,12 @@ ALTER TABLE chain_cursors ADD COLUMN last_finalized_time bigint NOT NULL DEFAULT
 -- +goose StatementBegin
 CREATE FUNCTION invoices_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.payment_status <> 'open' THEN
+            RAISE EXCEPTION 'invoice % must start open', NEW.id;
+        END IF;
+        RETURN NEW;
+    END IF;
     IF (NEW.id, NEW.profile_id, NEW.chain_id, NEW.chain_family, NEW.token_contract, NEW.amount, NEW.expires_at,
         NEW.settle_deadline, NEW.recipient_address, NEW.receive_method, NEW.factory_address, NEW.receive_address,
         NEW.idempotency_key, NEW.request_hash, NEW.created_at)
@@ -37,7 +43,7 @@ END;
 $$;
 -- +goose StatementEnd
 
-CREATE TRIGGER invoices_guard BEFORE UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION invoices_guard();
+CREATE TRIGGER invoices_guard BEFORE INSERT OR UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION invoices_guard();
 ALTER TABLE invoices ENABLE ALWAYS TRIGGER invoices_guard;
 
 -- +goose Down

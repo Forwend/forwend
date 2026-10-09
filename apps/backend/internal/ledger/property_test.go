@@ -38,7 +38,11 @@ func TestLedgerMatchesTheReceiverBalance(t *testing.T) {
 		t.Fatal(err)
 	}
 	onChain := map[string]*big.Int{} // the simulated receive address balances
+	lagging := false                 // the second RPC answers 0, as if behind
 	service := NewService(pool, func(_ context.Context, _ uint64, _, holder string) (*big.Int, error) {
+		if lagging {
+			return new(big.Int), nil
+		}
 		return new(big.Int).Set(onChain[holder]), nil
 	})
 
@@ -63,28 +67,43 @@ func TestLedgerMatchesTheReceiverBalance(t *testing.T) {
 		}
 
 		var detected []int64 // transfer ids not final yet
-		for step := 0; step < 12; step++ {
-			switch rng.IntN(5) {
-			case 0, 1: // a transfer lands, on time or late, final or not
-				txCounter++
-				value := int64(1 + rng.IntN(int(amount)))
-				status := []string{"detected", "confirmed"}[rng.IntN(2)]
-				blockTime := int64(expires - 500 + rng.IntN(1000))
-				var tid int64
-				err := pool.QueryRow(ctx, `
+		type missed struct{ value, blockTime int64 }
+		var unseen []missed // on chain, but the watcher hasn't recorded them yet
+		var finalized int64 // chain time only moves forward
+		insert := func(value, blockTime int64, status string) int64 {
+			txCounter++
+			var tid int64
+			err := pool.QueryRow(ctx, `
 					INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
 					    block_hash, block_number, block_time, from_address, to_address, amount, status)
 					VALUES ($1, 'evm', $2, $3, $4, 0, $4, $5, $6, '0x00000000000000000000000000000000000000ff', $7, $8, $9)
 					RETURNING id`, chainID, token, id, fmt.Sprintf("0x%064x", txCounter), txCounter, blockTime,
-					receive, value, status).Scan(&tid)
-				if err != nil {
-					t.Fatal(err)
-				}
+				receive, value, status).Scan(&tid)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if status == "detected" {
+				detected = append(detected, tid)
+			}
+			return tid
+		}
+		for step := 0; step < 12; step++ {
+			switch rng.IntN(5) {
+			case 0, 1: // a transfer lands in a new block, on time or late, final or not, or missed by the watcher
+				value := int64(1 + rng.IntN(int(amount)))
+				blockTime := max(int64(expires-500+rng.IntN(1000)), finalized+1)
 				onChain[receive].Add(onChain[receive], big.NewInt(value))
-				if status == "detected" {
-					detected = append(detected, tid)
+				if rng.IntN(4) == 0 {
+					unseen = append(unseen, missed{value, blockTime})
+				} else {
+					insert(value, blockTime, []string{"detected", "confirmed"}[rng.IntN(2)])
 				}
-			case 2: // a pending transfer becomes final, or is reorged away
+			case 2: // the watcher finds a missed transfer, or a pending one becomes final or is reorged away
+				if len(unseen) > 0 && rng.IntN(2) == 0 {
+					insert(unseen[0].value, unseen[0].blockTime, "detected")
+					unseen = unseen[1:]
+					continue
+				}
 				if len(detected) == 0 {
 					continue
 				}
@@ -101,16 +120,22 @@ func TestLedgerMatchesTheReceiverBalance(t *testing.T) {
 				} else if _, err := pool.Exec(ctx, "UPDATE chain_transfers SET status = 'confirmed' WHERE id = $1", tid); err != nil {
 					t.Fatal(err)
 				}
-			case 3: // chain time moves, maybe past expiry
+			case 3: // chain time moves forward, maybe past expiry
+				finalized = max(finalized, int64(expires-300+rng.IntN(600)))
 				if _, err := pool.Exec(ctx, "UPDATE chain_cursors SET last_finalized_time = $2 WHERE chain_id = $1",
-					chainID, int64(expires-300+rng.IntN(600))); err != nil {
+					chainID, finalized); err != nil {
 					t.Fatal(err)
 				}
 			}
+			lagging = rng.IntN(4) == 0
 			if err := service.Process(ctx, id); err != nil {
 				t.Fatalf("seed %d step %d: %v", seed, step, err)
 			}
 			checkInvariants(t, pool, seed, id, amount, onChain[receive], false)
+		}
+		lagging = false
+		for _, m := range unseen {
+			insert(m.value, m.blockTime, "detected")
 		}
 		for _, tid := range detected { // everything becomes final
 			if _, err := pool.Exec(ctx, "UPDATE chain_transfers SET status = 'confirmed' WHERE id = $1", tid); err != nil {
@@ -164,6 +189,8 @@ func checkInvariants(t *testing.T, pool *pgxpool.Pool, seed uint64, id string, a
 		fail("paid means the full amount is owed to the creator")
 	case (payment == Expired || payment == ExpiredPartiallyPaid) && owed != 0:
 		fail("an expired invoice owes the creator nothing")
+	case (payment == Expired || payment == ExpiredPartiallyPaid) && onTime >= amount:
+		fail("an invoice paid in full on time never expires")
 	case allFinal && big.NewInt(receiver).Cmp(onChain) != 0:
 		fail("once everything is final the ledger equals the receive address balance")
 	}

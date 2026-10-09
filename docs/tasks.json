@@ -4968,84 +4968,85 @@
       "notes": [
         "2026-10-09 From F045 review: booking a transfer that is already booked raises P0001 even with ON CONFLICT DO NOTHING, so treat that error as 'already booked'. Deposit entries are not tied to chain_transfers.amount, and a reversed deposit's transfer can't be booked again, so enforce receiver entry = transfer amount when booking. Invoice terms can still be UPDATEd; lock them if F049 adds a terms guard.",
         "2026-10-09 From F045 review: book with the default deferred constraints; SET CONSTRAINTS ALL IMMEDIATE makes a normal booking fail (the booked-flag check runs before the ledger row exists).",
-        "2026-10-09 From F048 review: an Arc payment sent as native coin (not ERC-20 transfer on 0x3600...) creates no chain_transfers row; decide paid from balanceOf and hold or alert on a balance with no matching transfer. The watcher may also miss a deposit if a node lags for 64+ blocks in a row; the balanceOf check is the backstop."
+        "2026-10-09 From F048 review: an Arc payment sent as native coin (not ERC-20 transfer on 0x3600...) creates no chain_transfers row; decide paid from balanceOf and hold or alert on a balance with no matching transfer. The watcher may also miss a deposit if a node lags for 64+ blocks in a row; the balanceOf check is the backstop.",
+        "2026-10-09 review fail by reviewer: FAIL: an invoice paid in full and on time can end up expired, and the expired state is final. (1) internal/ledger/ledger.go:50-54 and service.go:103-109: when owed >= amount but the second RPC reports less (lag of one block, or a different backend), funded=false, and in the same run as finalized time > expires_at, status() falls through to expired_partially_paid. An expiry ledger transaction moves the creator's full amount to payer_held. Reproduced: a confirmed on-time 5/5 deposit, balanceOf returns 0 once, then 5 -> expired_partially_paid, refund held. This is likely on Arc/Tempo, where finalized == latest. (2) service.go:109 expires on cursor time alone, but the watcher keeps a detected row as detected when one getLogs answer misses its log (watcher.go:137-144, RescanDepth comment). So the cursor can pass expiry while an on-time deposit is still detected or not seen yet. Process then sets expired, and the next scan books the on-time deposit to payer_held. Reproduced: detected on-time 5/5, cursor time 1001 > 1000 -> expired, confirm -> stays expired, refund held. docs/backend/architecture.md:98 says 'by then every on-time deposit is final', which this breaks. The F048 note asked F049 to use balanceOf as the backstop for missed deposits; balanceOf is read only when owed >= amount. Fix both: never pick an expired status while owed >= amount (stay non-final, warn, retry), and before expiring read balanceOf; if it is above booked, do not expire and alert (this also covers Arc native-coin payments). Wait RescanDepth blocks past expiry, or require no detected on-time rows. Add tests for both cases. The property test misses them: balance always agrees (property_test.go:531) and there is no 'on-time sum >= amount => paid' invariant. Non-blocking: ProcessChain stops at the first error (service.go:37), so one bad balance RPC stops expiry and booking for every later invoice on the chain; log and continue. balanceOf reads at latest, not finalized (ledger.go:73). The RPC call holds the row lock with no timeout. Nothing logs onChain > booked. The worker does not wire watcher, ledger or second RPC yet, so provider independence is not enforced. The DB does not enforce receiver entry = transfer amount (F045 note). INSERT can set any payment_status. OK: big.Int only, booking once (index + trigger), expiry txn has 2 balanced entries and one per invoice, trigger transitions match what status() can produce, the terms guard leaves settlement/refund columns free, row lock serializes Process, watcher cursor time = capped block's time, API deposits match openapi and leak nothing sensitive. pnpm --filter @forwend/backend test exit 0; go test -count=3 -race ./internal/ledger ok."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-09T15:22:37Z",
+        "at": "2026-10-09T15:29:59Z",
         "checks": [
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 6.9,
-            "log": "docs/runs/F049-20261009T152237Z-backend.log"
+            "seconds": 7.1,
+            "log": "docs/runs/F049-20261009T152959Z-backend.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.6,
-            "log": "docs/runs/F049-20261009T152237Z-harness.log"
+            "log": "docs/runs/F049-20261009T152959Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F049-20261009T152237Z-docs-check.log"
+            "log": "docs/runs/F049-20261009T152959Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F049-20261009T152237Z-lint.log"
+            "log": "docs/runs/F049-20261009T152959Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F049-20261009T152237Z-typecheck.log"
+            "log": "docs/runs/F049-20261009T152959Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 7.0,
-            "log": "docs/runs/F049-20261009T152237Z-unit.log"
+            "seconds": 7.5,
+            "log": "docs/runs/F049-20261009T152959Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.0,
-            "log": "docs/runs/F049-20261009T152237Z-build.log"
+            "seconds": 0.9,
+            "log": "docs/runs/F049-20261009T152959Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 8.9,
-            "log": "docs/runs/F049-20261009T152237Z-e2e.log"
+            "seconds": 9.2,
+            "log": "docs/runs/F049-20261009T152959Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F049-20261009T152237Z-keep.log"
+            "log": "docs/runs/F049-20261009T152959Z-keep.log"
           }
         ],
         "taskHash": "f6eb1dfa96d01936",
-        "filesHash": "67e2680ea862bdd6",
+        "filesHash": "7e9d1acea01c5ab8",
         "proof": {
-          "1": "backend: TestDepositsMoveThePaymentStatus (Anvil: detected, 3 of 5 -> partially_paid, 6 of 5 -> paid with 1 held), TestExpiryHoldsPartialAndLatePayments (chain time past expiresAt -> expired_partially_paid with the 2 moved to held, unpaid -> expired, a later late deposit held), TestLateFullPaymentIsHeldNotPaid, TestOnTimeDepositPaysAfterExpiryFinalizes",
-          "2": "backend: TestPaidNeedsTheSecondRPCToAgree (a confirmed row the chain doesn't back stays partially_paid until balanceOf from a second client covers it); TestInvoiceStatusTransitionsAndTerms (database rejects paid->open, expired->paid, etc., and any change to amount, receive address, expiry or recipient)",
-          "3": "backend: TestLedgerMatchesTheReceiverBalance: 40 seeded random sequences of on-time/late, detected/confirmed/reorged deposits and expiry; after every step receiver = owed + held = confirmed deposits, owed <= amount and <= on-time deposits, never above the simulated balance, and equal to it once all are final",
+          "1": "backend: TestDepositsMoveThePaymentStatus, TestExpiryHoldsPartialAndLatePayments, TestLateFullPaymentIsHeldNotPaid, TestOnTimeDepositPaysAfterExpiryFinalizes (Anvil); TestPendingOnTimeDepositDelaysExpiry and TestUnexplainedBalanceDelaysExpiry (expiry waits for pending deposits and for the ledger to explain the whole balance)",
+          "2": "backend: TestPaidNeedsTheSecondRPCToAgree and TestLaggingSecondRPCNeverExpiresAPaidInvoice (paid only when the second RPC covers the booked amount; a lagging one never expires a fully paid invoice); TestInvoiceStatusTransitionsAndTerms and TestInvoiceStartsOpen (the database rejects other transitions, term changes and a non-open first status); TestProcessChainContinuesAfterAnError",
+          "3": "backend: TestLedgerMatchesTheReceiverBalance: 40 seeded random sequences with on-time/late, detected/confirmed/reorged and watcher-missed deposits, forward-moving chain time and a randomly lagging second RPC; after every step receiver = owed + held = confirmed deposits, owed <= amount and <= on-time deposits, never above the balance, a fully on-time-paid invoice never expires, and the ledger equals the balance once all are final; it fails on the reviewed code",
           "4": "backend: TestGetInvoiceListsDepositsWithProgress: GET lists non-reorged deposits; the confirmed one has 0/0, the detected one 20 blocks and 40 s left from the cursor's finalized block and time; openapi.yaml documents deposits (Redocly lint valid)"
         }
       },

@@ -41,17 +41,19 @@ func split(amount, owedSoFar, deposit *big.Int, late, final bool) (toCreator, to
 	return toCreator, new(big.Int).Sub(deposit, toCreator)
 }
 
-// status is the next payment status from the booked money and the chain's finalized time. funded means the second
-// RPC agrees the receive address holds every booked deposit.
-func status(current string, amount, owed *big.Int, anyTransfer, expired, funded bool) string {
+// status is the next payment status from the booked money. funded means the second RPC agrees the receive address
+// holds every booked deposit; mayExpire means expiry has passed and the chain holds exactly what is booked.
+func status(current string, amount, owed *big.Int, anyTransfer, mayExpire, funded bool) string {
 	switch {
 	case current == Paid || current == Expired || current == ExpiredPartiallyPaid:
 		return current
 	case owed.Cmp(amount) >= 0 && funded:
 		return Paid
-	case expired && owed.Sign() > 0:
+	case owed.Cmp(amount) >= 0: // paid in full and on time: never expires, waits for the second RPC
+		return PartiallyPaid
+	case mayExpire && owed.Sign() > 0:
 		return ExpiredPartiallyPaid
-	case expired:
+	case mayExpire:
 		return Expired
 	case owed.Sign() > 0:
 		return PartiallyPaid

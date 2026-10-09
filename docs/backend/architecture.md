@@ -94,11 +94,14 @@ nothing, so a restarted worker resumes from the cursor.
   owed up to the invoice amount goes to `recipient_payable`, the rest to `payer_held`. A late deposit (block time
   after `expires_at`) and any deposit after the invoice is final go entirely to `payer_held` (D-24, D-26).
 - Payment status: `open` → `detected` (a transfer seen) → `partially_paid` → `paid` when the full amount is owed and
-  a second RPC's `balanceOf` covers every booked deposit (D-15); `expired` or `expired_partially_paid` once the chain's
-  finalized block time passes `expires_at` (by then every on-time deposit is final). An expired partial payment is
-  moved to `payer_held` by an `expiry` ledger transaction. `refund_status` becomes `held` while `payer_held` > 0.
-- `paid`, `expired` and `expired_partially_paid` are final. A trigger rejects any other status change and any change to
-  invoice terms.
+  a second RPC's `balanceOf` covers every booked deposit (D-15). An invoice owed in full never expires; it waits for
+  the second RPC. Otherwise it becomes `expired` or `expired_partially_paid` once the chain's finalized block time
+  passes `expires_at`, no transfer is still `detected`, and the second RPC's balance equals the booked amount. More on
+  chain than booked (a missed log, an Arc native-coin payment) blocks expiry and logs a warning. An expired partial
+  payment is moved to `payer_held` by an `expiry` ledger transaction. `refund_status` becomes `held` while
+  `payer_held` > 0. One invoice's error doesn't stop the others; each balance call has a 10 s limit.
+- `paid`, `expired` and `expired_partially_paid` are final. A trigger rejects any other status change, any change to
+  invoice terms, and an invoice created with any status but `open`.
 - `GET /v1/invoices/{id}` lists deposits with `blocksLeft`/`secondsLeft` from the finalized block (R-28).
 
 ```
