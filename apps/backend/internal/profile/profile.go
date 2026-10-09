@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -23,6 +24,10 @@ const (
 )
 
 const MaxNameLength = 64 // characters
+
+// RepairBudget bounds, together, the retries of missing wallets on profiles other than the personal one during
+// signup, so a slow Privy delays the app's load by at most this much (the api's write timeout is 30 s).
+var RepairBudget = 5 * time.Second
 
 var (
 	// ErrInvalid wraps a request value that breaks a rule; the message names it.
@@ -52,8 +57,10 @@ func NewService(pool *pgxpool.Pool, wallets *privy.Client) *Service {
 	return &Service{pool: pool, wallets: wallets}
 }
 
-// SignUp makes the user and their personal profile once, then makes sure the profile has its wallet. A repeated call
-// changes nothing, except that it retries a wallet Privy failed to make. created reports a new personal profile.
+// SignUp makes the user and their personal profile once, then makes sure every profile of the user has its wallet. A
+// repeated call changes nothing, except that it retries wallets Privy failed to make. Only the personal profile's
+// wallet must succeed; another profile's failure is logged and retried on the next call. created reports a new
+// personal profile.
 func (s *Service) SignUp(ctx context.Context, privyUserID string) (profiles []Profile, created bool, err error) {
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, "INSERT INTO users (privy_user_id) VALUES ($1) ON CONFLICT DO NOTHING",
@@ -71,15 +78,33 @@ func (s *Service) SignUp(ctx context.Context, privyUserID string) (profiles []Pr
 	if err != nil {
 		return nil, false, err
 	}
-	var personal string
-	if err := s.pool.QueryRow(ctx, `SELECT p.id::text FROM profiles p JOIN users u ON u.id = p.user_id
-		WHERE u.privy_user_id = $1 AND p.kind = $2`, privyUserID, Personal).Scan(&personal); err != nil {
-		return nil, false, fmt.Errorf("read personal profile: %w", err)
-	}
-	if err := s.ensureWallet(ctx, privyUserID, personal); err != nil {
+	profiles, err = s.List(ctx, privyUserID)
+	if err != nil {
 		return nil, false, err
 	}
-	profiles, err = s.List(ctx, privyUserID)
+	repaired := false
+	repairCtx, cancel := context.WithTimeout(ctx, RepairBudget)
+	defer cancel()
+	for _, p := range profiles {
+		if p.WalletAddress != "" {
+			continue
+		}
+		walletCtx := repairCtx
+		if p.Kind == Personal {
+			walletCtx = ctx // the personal wallet must exist; it has privy.Timeout of its own
+		}
+		if err := s.ensureWallet(walletCtx, privyUserID, p.ID); err != nil {
+			if p.Kind == Personal {
+				return nil, false, err
+			}
+			slog.Warn("make profile wallet", "profile", p.ID, "err", err)
+			continue
+		}
+		repaired = true
+	}
+	if repaired {
+		profiles, err = s.List(ctx, privyUserID)
+	}
 	return profiles, created, err
 }
 
@@ -138,8 +163,10 @@ func (s *Service) Create(ctx context.Context, privyUserID, idempotencyKey, kind,
 	if err != nil {
 		return Profile{}, false, fmt.Errorf("insert profile: %w", err)
 	}
+	// A wallet Privy fails to make now is made by the next signup call; the profile itself is created, so the user
+	// sees it (wallet not ready) and a retry with other values can't make a second one.
 	if err := s.ensureWallet(ctx, privyUserID, id); err != nil {
-		return Profile{}, false, err
+		slog.Warn("make profile wallet", "profile", id, "err", err)
 	}
 	profiles, err := s.List(ctx, privyUserID)
 	if err != nil {

@@ -7139,7 +7139,7 @@
         "F066",
         "F067"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "e2e",
         "unit"
@@ -7151,9 +7151,90 @@
         "packages/contracts/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-09 review fail by reviewer: Round-1 web findings fixed and verified (request rows unsigned, warning-gated receive panel, honest copy, paging, useLoad, tests, kit). New backend issues from the fixes: (1) POST /v1/me now retries every walletless profile's Privy wallet one after another, each up to privy.Timeout 20s, inside the api's 30s WriteTimeout (profile.go SignUp loop). If Privy hangs, every app load waits 20s per broken profile, and with 2+ broken profiles /v1/me times out, so the whole app shows 'We could not load your profiles' even though the personal wallet is fine. Bound the non-personal repair (one short shared deadline, or skip it on /v1/me and retry elsewhere). (2) If Privy fails during POST /v1/profiles, the server stores the profile and answers 500. The form says 'We could not create the profile', and since changed values now get a new key, an edited retry creates a second profile; the first appears after reload. Return the stored profile (walletAddress null) instead of 500, or tell the user the profile exists.",
+        "2026-10-09 review pass by reviewer: Round-2 fixes verified. SignUp: the personal wallet keeps the request context; other profiles' wallet repairs share one 5 s RepairBudget, tested with a slow Privy fake. Create: a wallet failure returns the profile with walletAddress null instead of 500, so an edited retry can't make a second profile; the next /v1/me makes the wallet (tested). Earlier web findings stay fixed: unsigned invoice rows, receive panel shown only with its network/token warning, honest copy, one-request paging, useLoad drops stale answers, render tests, /kit. Profile, httpapi and activity Go tests pass."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T21:55:25Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 37.2,
+            "log": "docs/runs/F068-20261009T215525Z-e2e.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 27.5,
+            "log": "docs/runs/F068-20261009T215525Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F068-20261009T215525Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F068-20261009T215525Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F068-20261009T215525Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F068-20261009T215525Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.9,
+            "log": "docs/runs/F068-20261009T215525Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F068-20261009T215525Z-keep.log"
+          }
+        ],
+        "taskHash": "4d668e6ca266445f",
+        "filesHash": "875a6be1c806b7a2",
+        "proof": {
+          "1": "e2e: e2e/privy/sign-in.spec.ts (live, real Privy and backend): the test account creates 'Merchant · E2E shop' through /app/profiles/new (first run; later runs reuse it to avoid extra Privy wallets), the switcher shows it, and its Receive address, read once on screen, differs from the personal one; Receive shows the QR code, the full address in groups of four (ui-web ReceiveAddress, on /kit), and 'Send only USDC on Base Sepolia.', and never shows the address without that warning; backend: a create whose wallet fails returns the profile without a wallet and the next signup makes it (TestCreateWithoutWalletThenSignUpRepairsIt); the repair of other profiles is bounded (TestSignUpRepairIsBounded fails without the deadline)",
+          "2": "unit: apps/web test/money-summary.test.tsx renders the wallet amount, pending and held apart and only when not zero, the estimated USD total with several tokens, no made-up 0, and retry; test/activity.test.ts maps statuses (an invoice is a request without '+'); backend activity items carry symbol and decimals; e2e: the live spec checks Balance and Activity ('No invoices yet...'), axe finds no serious or critical violation on /app and /app/profiles/new; Impeccable dual-agent critique ran and its fixes are in; 390px has no horizontal scroll"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Round-2 fixes verified. SignUp: the personal wallet keeps the request context; other profiles' wallet repairs share one 5 s RepairBudget, tested with a slow Privy fake. Create: a wallet failure returns the profile with walletAddress null instead of 500, so an edited retry can't make a second profile; the next /v1/me makes the wallet (tested). Earlier web findings stay fixed: unsigned invoice rows, receive panel shown only with its network/token warning, honest copy, one-request paging, useLoad drops stale answers, render tests, /kit. Profile, httpapi and activity Go tests pass.",
+          "at": "2026-10-09T21:57:30Z",
+          "filesHash": "875a6be1c806b7a2"
+        }
+      },
+      "branch": "feat/f068-a-user-creates-profiles-and-receives-mon",
+      "baseCommit": "6f98bda84365ad4661b9a9cc77fc27a37186a97a",
+      "failedVerifies": 0
     },
     {
       "id": "F069",

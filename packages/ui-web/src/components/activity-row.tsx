@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, FileText } from "lucide-react";
 import { ACTIVITY_DIRECTIONS } from "../constants/activity";
 import type { ActivityRowProps } from "../types/payments/display";
 import { Money } from "./money";
@@ -6,7 +6,9 @@ import { StatusPill } from "./status-pill";
 
 export function ActivityRow({ title, detail, direction, amount, status }: ActivityRowProps) {
   const incoming = direction === ACTIVITY_DIRECTIONS.incoming;
-  const Icon = incoming ? ArrowDownLeft : ArrowUpRight;
+  const request = direction === ACTIVITY_DIRECTIONS.request;
+  const Icon = request ? FileText : incoming ? ArrowDownLeft : ArrowUpRight;
+  const sign = request ? "" : incoming ? "+" : "−";
   return (
     <div className="flex items-center gap-4 py-3">
       <span className="flex size-10 shrink-0 items-center justify-center rounded-pill border border-line bg-surface-2 text-muted">
@@ -18,7 +20,7 @@ export function ActivityRow({ title, detail, direction, amount, status }: Activi
       </span>
       <span className="flex flex-col items-end gap-1">
         <span className={incoming ? "text-success" : "text-ink"}>
-          {incoming ? "+" : "−"}
+          {sign}
           <Money {...amount} />
         </span>
         <StatusPill status={status} />

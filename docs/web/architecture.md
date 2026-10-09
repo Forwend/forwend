@@ -30,6 +30,12 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   their account. Privy loads only in the
   `(app)` route group (`/sign-in`, `/app`), never on the landing page or checkout. `/app` sends signed-out visitors to
   `/sign-in` and calls `POST /v1/me` each time it loads, which makes the personal profile and its wallet once (R-34).
+- `/app` shows the chosen profile: the wallet amount first (pending and held only when not zero; with several tokens
+  a USD total marked as an estimate), the full receive address (`ReceiveAddress`) with QR code and an exact network
+  and token warning (the address never shows without it), and activity: invoices and their payments, where only a
+  payment carries "+". Money sent straight to the wallet shows in the balance once final, not in activity. Balances
+  and activity are read again every 15 s while the tab is visible; only the newest answer is used. `/app/profiles/new` creates a freelancer
+  or merchant profile with one idempotency key per visit (R-35).
 - The browser calls the backend same-origin at `/api/v1/…`; `next.config.ts` forwards it to `API_URL`, so the api needs
   no CORS. The rewrite is fixed at `next build`, so `API_URL` must be set when building; Turbo hashes `.env*` and
   these variables for the web build. Request and response types are written by hand in `src/types/app/` from `apps/backend/api/openapi.yaml`:

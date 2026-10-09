@@ -74,6 +74,15 @@ export function ComponentsShowcase() {
             error="Enter a full email address, like name@company.com."
           />
           <SelectField
+            label="Profile (label for screen readers only)"
+            hideLabel
+            defaultValue="personal"
+            options={[
+              { value: "personal", label: "Personal" },
+              { value: "merchant", label: "Merchant · Studio Lumen" },
+            ]}
+          />
+          <SelectField
             label="Network"
             defaultValue="base"
             hint="Only tested networks are listed."

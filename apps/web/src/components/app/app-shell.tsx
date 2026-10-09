@@ -1,17 +1,23 @@
 "use client";
 
-import { Button, Logo, SelectField, Spinner, ThemeSwitch } from "@forwend/ui-web";
+import { Button, LogoMark, SelectField, Spinner, ThemeSwitch } from "@forwend/ui-web";
 import { usePrivy } from "@privy-io/react-auth";
+import { LogOut, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
-import { APP_COPY, APP_NAV, APP_ROUTES } from "@/constants/app";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { APP_COPY, APP_ROUTES } from "@/constants/app";
 import { signUp } from "@/lib/api";
 import { profileLabel } from "@/lib/profile";
 import type { Profile } from "@/types/app/profile";
-import { ActiveProfileContext } from "./active-profile";
+import type { AppSession } from "@/types/app/session";
+import { AppSessionContext } from "./active-profile";
 
-// Signed out: go to sign-in. Signed in: POST /v1/me (signs up on the first visit), then the sidebar, the top bar with
+// A 44px square with only the icon on phones; icon and label, or label alone, from sm up.
+const HEADER_ACTION =
+  "inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-pill text-sm font-medium text-ink transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 aria-[current=page]:bg-surface-2 sm:px-4";
+
+// Signed out: go to sign-in. Signed in: POST /v1/me (signs up on the first visit), then the top bar with
 // the profile and theme switchers, and the page for the chosen profile.
 export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const { ready, authenticated, getAccessToken, logout } = usePrivy();
@@ -41,6 +47,26 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   useEffect(() => {
     if (ready && authenticated) void load();
   }, [ready, authenticated, load]);
+
+  const session = useMemo<AppSession | null>(() => {
+    const profile = profiles?.find((p) => p.profileId === activeId);
+    if (!profiles || !profile) return null;
+    return {
+      profile,
+      profiles,
+      token: async () => {
+        const token = await getAccessToken();
+        if (!token) throw new Error("signed out");
+        return token;
+      },
+      addProfile: (added) => {
+        setProfiles((list) =>
+          list?.some((p) => p.profileId === added.profileId) ? list : [...(list ?? []), added],
+        );
+        setActiveId(added.profileId);
+      },
+    };
+  }, [profiles, activeId, getAccessToken]);
 
   const signOut = async () => {
     await logout();
@@ -73,46 +99,51 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   }
 
   return (
-    <div className="min-h-dvh bg-bg md:grid md:grid-cols-[auto_1fr]">
-      <aside className="flex items-center gap-6 border-b border-line bg-surface px-4 py-3 md:w-60 md:flex-col md:items-stretch md:border-r md:border-b-0 md:py-6">
-        <Logo />
-        <nav aria-label="App">
-          <ul className="flex gap-1 md:flex-col">
-            {APP_NAV.map(({ href, label, icon: Icon }) => (
-              <li key={href}>
-                <Link
-                  href={href}
-                  aria-current={pathname === href ? "page" : undefined}
-                  className="flex items-center gap-2 rounded-pill px-3 py-2 text-muted hover:text-ink aria-[current=page]:bg-surface-2 aria-[current=page]:text-ink"
-                >
-                  <Icon aria-hidden className="size-[var(--fw-icon-md)]" />
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </aside>
-      <div className="flex min-w-0 flex-col">
-        <header className="flex flex-wrap items-end justify-between gap-4 border-b border-line px-4 py-3 md:px-8">
+    <div className="min-h-dvh bg-bg">
+      {/* One row on every screen: home, the profile and its actions, then theme and sign out. */}
+      <header className="sticky top-0 z-10 border-b border-line bg-bg">
+        <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-3 md:gap-3 md:px-8">
+          <Link
+            href={APP_ROUTES.home}
+            aria-label={APP_COPY.home}
+            className="mr-1 grid size-11 shrink-0 place-items-center rounded-pill text-ink md:mr-3"
+          >
+            <LogoMark className="size-[var(--fw-icon-lg)]" />
+          </Link>
           <SelectField
             label={APP_COPY.profileLabel}
-            className="w-64 max-w-full"
+            hideLabel
+            className="min-w-0 flex-1 sm:max-w-64"
             value={active.profileId}
             onValueChange={setActiveId}
             options={profiles.map((p) => ({ value: p.profileId, label: profileLabel(p) }))}
           />
-          <div className="flex items-center gap-2">
-            <ThemeSwitch />
-            <Button variant="ghost" onClick={signOut}>
-              {APP_COPY.signOut}
-            </Button>
+          <Link
+            href={APP_ROUTES.newProfile}
+            aria-label={APP_COPY.newProfile}
+            aria-current={pathname === APP_ROUTES.newProfile ? "page" : undefined}
+            className={HEADER_ACTION}
+          >
+            <Plus aria-hidden className="size-[var(--fw-icon-md)] shrink-0" />
+            <span className="hidden sm:inline">{APP_COPY.newProfile}</span>
+          </Link>
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            <ThemeSwitch className="size-11" />
+            <button
+              type="button"
+              aria-label={APP_COPY.signOut}
+              className={HEADER_ACTION}
+              onClick={signOut}
+            >
+              <LogOut aria-hidden className="size-[var(--fw-icon-md)] shrink-0 sm:hidden" />
+              <span className="hidden sm:inline">{APP_COPY.signOut}</span>
+            </button>
           </div>
-        </header>
-        <main className="flex-1 px-4 py-6 md:px-8">
-          <ActiveProfileContext value={active}>{children}</ActiveProfileContext>
-        </main>
-      </div>
+        </div>
+      </header>
+      <main className="mx-auto max-w-5xl px-4 py-8 md:px-8 md:py-10">
+        <AppSessionContext value={session}>{children}</AppSessionContext>
+      </main>
     </div>
   );
 }

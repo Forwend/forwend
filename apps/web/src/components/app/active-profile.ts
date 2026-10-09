@@ -1,13 +1,12 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { Profile } from "@/types/app/profile";
+import type { AppSession } from "@/types/app/session";
 
-/** The profile chosen in the switcher; the app shell provides it once the profiles are loaded. */
-export const ActiveProfileContext = createContext<Profile | null>(null);
+export const AppSessionContext = createContext<AppSession | null>(null);
 
-export function useActiveProfile(): Profile {
-  const profile = useContext(ActiveProfileContext);
-  if (!profile) throw new Error("useActiveProfile needs the app shell");
-  return profile;
+export function useAppSession(): AppSession {
+  const session = useContext(AppSessionContext);
+  if (!session) throw new Error("useAppSession needs the app shell");
+  return session;
 }

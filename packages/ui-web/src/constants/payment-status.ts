@@ -2,8 +2,10 @@ import { TONES } from "./tone";
 
 /** Status ids, for code that names one status. */
 export const PAYMENT_STATUS = {
+  open: "open",
   detected: "detected",
   confirming: "confirming",
+  confirmed: "confirmed",
   paid: "paid",
   partiallyPaid: "partiallyPaid",
   overpaid: "overpaid",
@@ -16,8 +18,10 @@ export const PAYMENT_STATUS = {
 
 // The payment states users see (PROJECT D-29 and domain terms). Labels are final UI copy.
 export const PAYMENT_STATUSES = {
+  open: { label: "Waiting for payment", tone: TONES.neutral },
   detected: { label: "Detected", tone: TONES.info },
   confirming: { label: "Confirming", tone: TONES.info },
+  confirmed: { label: "Confirmed", tone: TONES.success },
   paid: { label: "Paid", tone: TONES.success },
   partiallyPaid: { label: "Partially paid", tone: TONES.warning },
   overpaid: { label: "Overpaid", tone: TONES.warning },

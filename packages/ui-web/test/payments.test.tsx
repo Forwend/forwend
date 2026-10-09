@@ -28,9 +28,9 @@ describe("Address", () => {
 });
 
 describe("StatusPill", () => {
-  it("renders a distinct label for each of the 10 payment statuses", () => {
+  it("renders a distinct label for each of the 12 payment statuses", () => {
     const statuses = Object.keys(PAYMENT_STATUSES) as PaymentStatus[];
-    expect(statuses).toHaveLength(10);
+    expect(statuses).toHaveLength(12);
     const { container } = render(
       <div>
         {statuses.map((status) => (
@@ -44,6 +44,6 @@ describe("StatusPill", () => {
           .textContent,
     );
     expect(labels).toEqual(statuses.map((s) => PAYMENT_STATUSES[s].label));
-    expect(new Set(labels).size).toBe(10);
+    expect(new Set(labels).size).toBe(12);
   });
 });

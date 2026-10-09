@@ -37,6 +37,8 @@ type Item struct {
 	InvoiceID        string
 	ChainID          uint64
 	Token            string
+	Symbol           string // the token's symbol and decimals, also for a token no longer enabled
+	Decimals         int
 	Amount           *big.Int
 	Status           string
 	SettlementStatus string
@@ -74,7 +76,8 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int)
 	}
 	// Newest first; kind and key break ties, so pages never skip or repeat an item.
 	rows, err := s.pool.Query(ctx, `
-		SELECT kind, at, key, invoice_id, chain_id, token, amount::text, status, settlement_status, tx_hash FROM (
+		SELECT kind, at, key, invoice_id, a.chain_id, token, tk.symbol, tk.decimals, amount::text, status,
+		       settlement_status, tx_hash FROM (
 		    SELECT 'invoice' AS kind, created_at AS at, id AS key, id AS invoice_id, chain_id,
 		           token_contract AS token, amount, payment_status AS status, settlement_status, '' AS tx_hash
 		    FROM invoices WHERE profile_id = $1
@@ -83,7 +86,7 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int)
 		           '', t.tx_hash
 		    FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
 		    WHERE i.profile_id = $1 AND t.status <> 'reorged'
-		) a
+		) a JOIN tokens tk ON tk.chain_id = a.chain_id AND tk.contract = a.token
 		WHERE $2::timestamptz IS NULL OR (at, kind, key) < ($2, $3, $4)
 		ORDER BY at DESC, kind DESC, key DESC LIMIT $5`, profileID, after, afterKind, afterKey, limit+1)
 	if err != nil {
@@ -92,8 +95,8 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int)
 	items, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Item, error) {
 		var it Item
 		var amount string
-		err := row.Scan(&it.Kind, &it.At, &it.key, &it.InvoiceID, &it.ChainID, &it.Token, &amount, &it.Status,
-			&it.SettlementStatus, &it.TxHash)
+		err := row.Scan(&it.Kind, &it.At, &it.key, &it.InvoiceID, &it.ChainID, &it.Token, &it.Symbol, &it.Decimals,
+			&amount, &it.Status, &it.SettlementStatus, &it.TxHash)
 		it.Amount, _ = new(big.Int).SetString(amount, 10)
 		return it, err
 	})

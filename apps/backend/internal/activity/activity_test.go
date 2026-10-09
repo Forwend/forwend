@@ -121,7 +121,8 @@ func TestListNewestFirstInPages(t *testing.T) {
 
 	top, _ := s.List(ctx, profile, "", 1)
 	d := top.Items[0]
-	if d.Status != "detected" || d.TxHash != fmt.Sprintf("0x%064x", 11) || d.Amount.Int64() != 1000000 || d.ChainID != 84532 {
+	if d.Status != "detected" || d.TxHash != fmt.Sprintf("0x%064x", 11) || d.Amount.Int64() != 1000000 || d.ChainID != 84532 ||
+		d.Symbol != "USDC" || d.Decimals != 6 {
 		t.Fatalf("deposit item %+v", d)
 	}
 	inv, _ := s.List(ctx, profile, "", 3)
