@@ -62,10 +62,16 @@ type intent struct {
 	expires, deadline  uint64
 }
 
-// Run works through every pending or sent intent. One intent's failure doesn't stop the others.
+// Run works through every due pending or sent intent on the chains this signer serves (those with a client).
+// One intent's failure doesn't stop the others.
 func (s *Signer) Run(ctx context.Context) error {
-	rows, err := s.pool.Query(ctx, `SELECT id FROM settlement_intents
-		WHERE status IN ('pending', 'sent') AND next_attempt_at <= now() ORDER BY id`)
+	chains := make([]int64, 0, len(s.clients))
+	for id := range s.clients {
+		chains = append(chains, int64(id))
+	}
+	rows, err := s.pool.Query(ctx, `SELECT si.id FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
+		WHERE si.status IN ('pending', 'sent') AND si.next_attempt_at <= now() AND i.chain_id = ANY($1)
+		ORDER BY si.id`, chains)
 	if err != nil {
 		return fmt.Errorf("list settlement intents: %w", err)
 	}
@@ -257,10 +263,11 @@ func (s *Signer) confirm(ctx context.Context, in intent) error {
 // 1 h). A saved settle that can no longer mine is dropped so a new one is signed.
 func (s *Signer) retry(ctx context.Context, in intent, reason string) error {
 	slog.Warn("settlement waits", "invoice", in.invoiceID, "reason", reason)
+	// Only from the status this attempt loaded: a stale attempt never moves an intent that went on.
 	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'pending', sender = NULL, nonce = NULL,
 		tx_hash = NULL, raw_tx = NULL, reason = $2, attempts = attempts + 1, updated_at = now(),
 		next_attempt_at = now() + least(interval '1 minute' * power(2, least(attempts, 6)), interval '1 hour')
-		WHERE id = $1`, in.id, reason)
+		WHERE id = $1 AND status = $3`, in.id, reason, in.status)
 	return err
 }
 
@@ -269,7 +276,7 @@ func (s *Signer) retry(ctx context.Context, in intent, reason string) error {
 func (s *Signer) refuse(ctx context.Context, in intent, reason string) error {
 	slog.Warn("settlement refused", "invoice", in.invoiceID, "reason", reason)
 	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'refused', reason = $2, updated_at = now()
-		WHERE id = $1`, in.id, reason)
+		WHERE id = $1 AND status = $3`, in.id, reason, in.status)
 	return err
 }
 

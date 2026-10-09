@@ -373,3 +373,77 @@ func TestForeignTxHashIsNotConfirmed(t *testing.T) {
 		t.Fatalf("intent %s, invoice %s, receiver %d", status, settlement, e.balance(t, receive))
 	}
 }
+
+// settleOutside deploys and settles the receiver directly from the executor, not through our signer.
+func (e env) settleOutside(t *testing.T, id, receive string) {
+	t.Helper()
+	var expires, deadline int64
+	if err := e.pool.QueryRow(context.Background(), "SELECT expires_at, settle_deadline FROM invoices WHERE id = $1",
+		id).Scan(&expires, &deadline); err != nil {
+		t.Fatal(err)
+	}
+	terms := fmt.Sprintf("(%s,%s,%s,5000000,%d,%d,%d)", id, wallet, e.token, expires, deadline, chaintest.ChainID)
+	e.anvil.Send(strings.ToLower(common.Address(address.Factory).Hex()),
+		"deploy((bytes32,address,address,uint256,uint64,uint64,uint256))", terms)
+	e.anvil.Send(receive, "settle()")
+}
+
+// A receiver settled outside our signer (e.g. by the refund authority after the deadline) still confirms the intent.
+func TestExternallySettledIntentIsConfirmed(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, receive := e.paidInvoice(t)
+	e.settleOutside(t, id, receive)
+	if err := e.signer(t).Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" {
+		t.Fatalf("intent %s, invoice %s; want confirmed and settled", status, settlement)
+	}
+}
+
+// A stale attempt never moves an intent that went on: retry and refuse only change the status they loaded.
+func TestStaleAttemptDoesNotOverwriteAConfirmedIntent(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, _ := e.paidInvoice(t)
+	s := e.signer(t)
+	var intentID int64
+	if err := e.pool.QueryRow(ctx, "SELECT id FROM settlement_intents WHERE invoice_id = $1", id).Scan(&intentID); err != nil {
+		t.Fatal(err)
+	}
+	stale, err := s.load(ctx, intentID) // loaded while pending
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.retry(ctx, stale, "stale"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.refuse(ctx, stale, "stale"); err != nil {
+		t.Fatal(err)
+	}
+	if status, _, _ := e.intent(t, id); status != "confirmed" {
+		t.Fatalf("stale attempt moved the intent to %s", status)
+	}
+}
+
+// The signer works only on intents of chains it serves (enabled chains with an RPC).
+func TestSignerSkipsChainsItDoesNotServe(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, _ := e.paidInvoice(t)
+	key, err := crypto.HexToECDSA(strings.TrimPrefix(chaintest.Key, "0x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := e.nonce(t)
+	if err := NewSigner(e.pool, key, map[uint64]*ethclient.Client{}).Run(ctx); err != nil {
+		t.Fatalf("a chain it does not serve is not an error: %v", err)
+	}
+	if status, _, _ := e.intent(t, id); status != "pending" || e.nonce(t) != before {
+		t.Fatalf("intent %s, nonce moved %v", status, e.nonce(t) != before)
+	}
+}

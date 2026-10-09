@@ -117,8 +117,11 @@ settlement intent (unique per invoice) in the same transaction. For each due int
    at most one settle can be mined). The contract's `AlreadySettled` is a last guard.
 5. Once `settled()` is true, in one transaction: intent `confirmed`, a `settlement` ledger transaction (receiver and
    recipient_payable each −amount; one per invoice) and the invoice's `settlement_status` `settled`.
-It signs only `factory.deploy(terms)` and `receiver.settle()`. Known limits: no fee bumping for a stuck transaction
-yet, and the settlement is booked when `settled()` reads true at the latest block, not at the finalized one.
+It signs only `factory.deploy(terms)` and `receiver.settle()`, and only for chains enabled in the database: a chain
+disabled there is dropped next round, and a round whose enabled list can't be read sends nothing. A receiver settled
+outside our signer (the refund authority after the deadline) still confirms its intent. `retry` and `refuse` only
+change an intent still in the status the attempt loaded. Known limits: no fee bumping for a stuck transaction yet, and
+the settlement is booked when `settled()` reads true at the latest block, not at the finalized one.
 
 ## Invoice states
 

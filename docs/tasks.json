@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 62,
+  "nextId": 63,
   "tasks": [
     {
       "id": "F001",
@@ -6428,12 +6428,117 @@
         "branch": "chore/f061-each-package-keeps-its-own-secrets-in-it",
         "base": "main"
       }
+    },
+    {
+      "id": "F062",
+      "type": "fix",
+      "behavior": "Fix the Codex review findings: JWKS key age, signer only on enabled chains, confirm externally settled intents, guarded intent updates",
+      "acceptance": [
+        "A withdrawn JWKS key stops verifying after MaxKeyAge (fake clock test); the signer drops clients for chains no longer enabled, skips a round when the enabled list can't be read, and only works on intents of chains it serves",
+        "A pending intent whose receiver was settled outside our signer is confirmed and booked (migration 00005 limits the sent-fields CHECK to sent); retry and refuse only update an intent still in the status they loaded"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-30",
+        "R-22",
+        "R-29"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T17:29:37Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 22.6,
+            "log": "docs/runs/F062-20261009T172937Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F062-20261009T172937Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F062-20261009T172937Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F062-20261009T172937Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F062-20261009T172937Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 22.6,
+            "log": "docs/runs/F062-20261009T172937Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F062-20261009T172937Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.0,
+            "log": "docs/runs/F062-20261009T172937Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F062-20261009T172937Z-keep.log"
+          }
+        ],
+        "taskHash": "4ad8c4666e9d4846",
+        "filesHash": "165c2587c9e90ad1",
+        "proof": {
+          "1": "backend: TestWithdrawnKeyStopsVerifying (a key Privy stops publishing fails after MaxKeyAge, a still-published key passes, 2 fetches); TestSignerSkipsChainsItDoesNotServe (no client for the chain: nothing sent, no error); cmd/signer drops disabled chains and skips a round when the enabled list fails; all failed before the fix",
+          "2": "backend: TestExternallySettledIntentIsConfirmed (receiver deployed and settled directly by the executor; the pending intent is confirmed and the invoice settled; failed before on settlement_intents_sent_check, fixed by migration 00005); TestStaleAttemptDoesNotOverwriteAConfirmedIntent (retry/refuse from a stale pending copy leave the confirmed intent)"
+        }
+      },
+      "branch": "fix/f062-fix-the-codex-review-findings-jwks-key-a",
+      "baseCommit": "ec20e1f444f84535ff0856df10ce4bbb47f317bc",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-09T16:38:47Z",
+    "at": "2026-10-09T17:16:24Z",
     "clean": true,
     "problems": [],
-    "note": "Merged this session: F043-F051, F059-F061 (PRs #49-#60). The Phase 6 money loop runs end to end (gate in CI). Open: F052 Privy spikes (Q-4 answered; start unblocks it). Known limits in architecture.md: Tempo needs a second RPC (D-15), no fee bumping, settlement booked at latest."
+    "note": "Merged this session: F043-F052, F059-F061 (PRs #49-#61). Phase 4 spikes and the Phase 6 money loop are done. Open decision for the owner: who signs profile-wallet sends (client only, session signer, or our own JWT auth); see docs/spikes/s1-s3-privy.md. Next: add phase 7 tasks (app shell, profiles, internal/privy)."
   }
 }

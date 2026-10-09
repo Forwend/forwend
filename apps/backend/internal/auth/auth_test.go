@@ -130,3 +130,28 @@ func TestRefetchSurvivesACancelledRequest(t *testing.T) {
 		t.Fatalf("rotated key after a cancelled refetch: %v", err)
 	}
 }
+
+// A key Privy stops publishing is no longer trusted once the key list is older than MaxKeyAge.
+func TestWithdrawnKeyStopsVerifying(t *testing.T) {
+	ctx := context.Background()
+	p := authtest.NewPrivy(t)
+	p.AddKey(t, "key-2")
+	v := newVerifier(t, p)
+	now := time.Now()
+	v.now = func() time.Time { return now }
+	token := authtest.Sign(t, p.Key("key-2"), "key-2", claims())
+	if _, err := v.Verify(ctx, token); err != nil {
+		t.Fatal(err)
+	}
+	p.RemoveKey("key-2")
+	now = now.Add(MaxKeyAge + time.Second)
+	if _, err := v.Verify(ctx, token); !errors.Is(err, ErrUnauthorized) {
+		t.Fatalf("withdrawn key after MaxKeyAge: got %v, want 401", err)
+	}
+	if _, err := v.Verify(ctx, authtest.Sign(t, p.Key("key-1"), "key-1", claims())); err != nil {
+		t.Fatalf("a still-published key: %v", err)
+	}
+	if n := p.Fetches.Load(); n != 2 {
+		t.Fatalf("%d fetches, want 2 (startup and one refresh)", n)
+	}
+}

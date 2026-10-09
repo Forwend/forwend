@@ -63,6 +63,13 @@ func (p *Privy) AddKey(t *testing.T, kid string) *ecdsa.PrivateKey {
 	return key
 }
 
+// RemoveKey stops publishing a key, as Privy would after rotating or revoking it.
+func (p *Privy) RemoveKey(kid string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	delete(p.keys, kid)
+}
+
 // Key returns a published key.
 func (p *Privy) Key(kid string) *ecdsa.PrivateKey {
 	p.mu.Lock()
