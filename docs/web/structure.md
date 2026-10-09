@@ -154,7 +154,7 @@ packages/ui-web/src/
     navigation/                tabs, nav-pill, theme-switch
     overlays/                  dialog, sheet, menu, tooltip
     feedback/                  toast, empty-state, spinner, skeleton, shimmer, dot-loader, success-check
-    display/                   panel, badge, stat-tile, accordion, progress-bar
+    display/                   panel, badge, stat-tile, accordion, progress-bar, code-block
     payments/                  money, address, activity-row, status-pill, token-chip, payment-timeline,
                                receive-address, network-warning, qr-code
   hooks/                       hooks shared by multiple component families

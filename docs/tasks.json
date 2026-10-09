@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 75,
+  "nextId": 76,
   "tasks": [
     {
       "id": "F001",
@@ -7783,6 +7783,39 @@
         "branch": "refactor/f074-the-web-app-s-files-live-in-screens-feat",
         "base": "main"
       }
+    },
+    {
+      "id": "F075",
+      "type": "refactor",
+      "behavior": "ui-web components are grouped by purpose (buttons, forms, navigation, overlays, feedback, display, payments) with props and family values beside them, and the same public exports",
+      "acceptance": [
+        "packages/ui-web/src/components holds buttons, forms, navigation, overlays, feedback, display and payments; props types sit in their component file; family-only constants and helpers sit in their family; only values shared across families stay in hooks/, lib/ or types/; no types/ui or types/payments mixed files remain.",
+        "The package's public exports (names and kinds) are unchanged and apps/web compiles against them unchanged.",
+        "Tests sit beside their sources and the same tests run: lint, typecheck, unit (ui-unit), build, e2e (kit) pass."
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "docs-check",
+        "ui-unit"
+      ],
+      "refs": [
+        "R-37",
+        "D-11"
+      ],
+      "keep": [
+        "apps/*",
+        "packages/design-tokens/*",
+        "packages/contracts/*",
+        "*package.json",
+        "pnpm-lock.yaml"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null,
+      "branch": "refactor/f075-ui-web-components-are-grouped-by-purpose",
+      "baseCommit": "72739c1d925e93f882cff133ad2bbe08a408da0f"
     }
   ],
   "lastWrapup": {
