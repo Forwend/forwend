@@ -31,24 +31,24 @@ func TestLedgerMatchesTheReceiverBalance(t *testing.T) {
 		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES ($1, 'evm', 'sim', true)),
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		            VALUES ($1, 'evm', $2, 'USDC', 6, true)),
-		     cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) VALUES ($1, 0, 0)),
+		     cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) VALUES ($1, 100, 100)),
 		     u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:sim') RETURNING id)
 		INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u`, chainID, token)
 	if err != nil {
 		t.Fatal(err)
 	}
 	onChain := map[string]*big.Int{} // the simulated receive address balances
-	lagging := false                 // the second RPC answers 0, as if behind
-	service := NewService(pool, func(_ context.Context, _ uint64, _, holder string) (*big.Int, error) {
+	lagging := false                 // the second RPC answers 0 from before the finalized block
+	service := NewService(pool, func(_ context.Context, _ uint64, _, holder string) (*big.Int, uint64, error) {
 		if lagging {
-			return new(big.Int), nil
+			return new(big.Int), 99, nil
 		}
-		return new(big.Int).Set(onChain[holder]), nil
+		return new(big.Int).Set(onChain[holder]), 1000, nil
 	})
 
 	const expires = 1_000_000
 	var txCounter int
-	for seed := uint64(1); seed <= 40; seed++ {
+	for seed := uint64(1); seed <= 300; seed++ {
 		rng := rand.New(rand.NewPCG(seed, 0))
 		id, receive := fmt.Sprintf("0x%064x", seed), fmt.Sprintf("0x%040x", 0x1000+seed)
 		amount := int64(1 + rng.IntN(10_000_000))

@@ -100,6 +100,8 @@ nothing, so a restarted worker resumes from the cursor.
   chain than booked (a missed log, an Arc native-coin payment) blocks expiry and logs a warning. An expired partial
   payment is moved to `payer_held` by an `expiry` ledger transaction. `refund_status` becomes `held` while
   `payer_held` > 0. One invoice's error doesn't stop the others; each balance call has a 10 s limit.
+- The second RPC reads `balanceOf` at its own head and reports that block. An answer from behind the watcher's
+  finalized block may miss final deposits, so it decides nothing (neither paid nor expired) until the node catches up.
 - `paid`, `expired` and `expired_partially_paid` are final. A trigger rejects any other status change, any change to
   invoice terms, and an invoice created with any status but `open`.
 - `GET /v1/invoices/{id}` lists deposits with `blocksLeft`/`secondsLeft` from the finalized block (R-28).

@@ -20,6 +20,7 @@ type sim struct {
 	service *Service
 	answer  map[string]*big.Int // second RPC balance per receive address
 	down    map[string]bool     // second RPC errors for these addresses
+	behind  map[string]bool     // second RPC answers 0 from a block before the finalized one
 	n       int
 }
 
@@ -41,18 +42,21 @@ func newSim(t *testing.T) *sim {
 		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (1, 'evm', 'sim', true)),
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		            VALUES (1, 'evm', $1, 'USDC', 6, true)),
-		     cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) VALUES (1, 0, 0)),
+		     cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) VALUES (1, 100, 100)),
 		     u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:sim') RETURNING id)
 		INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u`, simToken)
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := &sim{t: t, pool: pool, answer: map[string]*big.Int{}, down: map[string]bool{}}
-	s.service = NewService(pool, func(_ context.Context, _ uint64, _, holder string) (*big.Int, error) {
-		if s.down[holder] {
-			return nil, errors.New("second RPC down")
+	s := &sim{t: t, pool: pool, answer: map[string]*big.Int{}, down: map[string]bool{}, behind: map[string]bool{}}
+	s.service = NewService(pool, func(_ context.Context, _ uint64, _, holder string) (*big.Int, uint64, error) {
+		switch {
+		case s.down[holder]:
+			return nil, 0, errors.New("second RPC down")
+		case s.behind[holder]:
+			return new(big.Int), 99, nil
 		}
-		return new(big.Int).Set(s.answer[holder]), nil
+		return new(big.Int).Set(s.answer[holder]), 1000, nil
 	})
 	return s
 }
@@ -169,6 +173,30 @@ func TestUnexplainedBalanceDelaysExpiry(t *testing.T) {
 	s.process(id)
 	if payment, _ := s.payment(id); payment != Expired {
 		t.Fatalf("once the balance matches the ledger: %s, want expired", payment)
+	}
+}
+
+// A missed on-time log and a second RPC behind the finalized block both read 0: that must not expire the invoice.
+func TestSecondRPCBehindFinalizedNeverDecides(t *testing.T) {
+	s := newSim(t)
+	id, receive := s.invoice()
+	s.answer[receive] = big.NewInt(5000000) // paid on time, but the watcher missed the log
+	s.behind[receive] = true
+	s.finalizedAt(simExpires + 1)
+	s.process(id)
+	if payment, _ := s.payment(id); payment != Open {
+		t.Fatalf("with the second RPC behind: %s, want open", payment)
+	}
+	s.behind[receive] = false
+	s.process(id)
+	if payment, _ := s.payment(id); payment != Open {
+		t.Fatalf("once it catches up, the unexplained balance still blocks expiry: %s", payment)
+	}
+	s.transfer(id, receive, 5000000, simExpires-10, "confirmed") // the watcher finds the log
+	s.answer[receive] = big.NewInt(5000000)                      // transfer() added it again; the chain holds 5
+	s.process(id)
+	if payment, _ := s.payment(id); payment != Paid {
+		t.Fatalf("after the watcher books it: %s, want paid", payment)
 	}
 }
 

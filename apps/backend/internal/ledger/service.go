@@ -58,14 +58,15 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 
 	var (
 		amountText, current, refund, token, receive string
-		chainID                                     uint64
+		chainID, finalizedBlock                     uint64
 		expiresAt, finalizedTime                    int64
 	)
 	err = tx.QueryRow(ctx, `
 		SELECT i.amount::text, i.payment_status, i.refund_status, i.token_contract, i.receive_address, i.chain_id,
-		       i.expires_at, coalesce(c.last_finalized_time, 0)
+		       i.expires_at, coalesce(c.last_finalized_time, 0), coalesce(c.last_finalized_block, 0)
 		FROM invoices i LEFT JOIN chain_cursors c ON c.chain_id = i.chain_id WHERE i.id = $1 FOR UPDATE OF i`,
-		invoiceID).Scan(&amountText, &current, &refund, &token, &receive, &chainID, &expiresAt, &finalizedTime)
+		invoiceID).Scan(&amountText, &current, &refund, &token, &receive, &chainID, &expiresAt, &finalizedTime,
+		&finalizedBlock)
 	if err != nil {
 		return fmt.Errorf("read invoice %s: %w", invoiceID, err)
 	}
@@ -111,13 +112,13 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	switch {
 	case final:
 	case owed.Cmp(amount) >= 0:
-		if funded, err = s.funded(ctx, tx, invoiceID, chainID, token, receive); err != nil {
+		if funded, err = s.funded(ctx, tx, invoiceID, chainID, finalizedBlock, token, receive); err != nil {
 			return err
 		}
 	case finalizedTime > expiresAt && !anyPending:
 		// Expiry is final, so the ledger must explain the whole balance first: more on chain than booked is a
 		// deposit the watcher hasn't booked yet (a missed log, an Arc native-coin payment).
-		if mayExpire, err = s.balanced(ctx, tx, invoiceID, chainID, token, receive); err != nil {
+		if mayExpire, err = s.balanced(ctx, tx, invoiceID, chainID, finalizedBlock, token, receive); err != nil {
 			return err
 		}
 	}
@@ -143,9 +144,9 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 }
 
 // funded asks the second RPC whether the receive address holds at least every booked deposit (D-15).
-func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chainID uint64, token, receive string) (bool, error) {
-	booked, onChain, err := s.compare(ctx, tx, invoiceID, chainID, token, receive)
-	if err != nil {
+func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (bool, error) {
+	booked, onChain, err := s.compare(ctx, tx, invoiceID, chainID, finalized, token, receive)
+	if err != nil || onChain == nil {
 		return false, err
 	}
 	if onChain.Cmp(booked) < 0 {
@@ -157,9 +158,9 @@ func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chain
 }
 
 // balanced asks the second RPC whether the receive address holds exactly what is booked.
-func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, chainID uint64, token, receive string) (bool, error) {
-	booked, onChain, err := s.compare(ctx, tx, invoiceID, chainID, token, receive)
-	if err != nil {
+func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (bool, error) {
+	booked, onChain, err := s.compare(ctx, tx, invoiceID, chainID, finalized, token, receive)
+	if err != nil || onChain == nil {
 		return false, err
 	}
 	if onChain.Cmp(booked) != 0 {
@@ -170,16 +171,23 @@ func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, cha
 	return true, nil
 }
 
-// compare returns the booked receiver balance and the second RPC's balance.
+// compare returns the booked receiver balance and the second RPC's balance. onChain is nil when that RPC is behind
+// the watcher's finalized block: it may not see final deposits yet, so nothing is decided until it catches up.
 // ponytail: the RPC call runs inside the transaction holding the invoice lock, bounded by BalanceTimeout.
-func (s *Service) compare(ctx context.Context, tx pgx.Tx, invoiceID string, chainID uint64, token, receive string) (booked, onChain *big.Int, err error) {
+func (s *Service) compare(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (booked, onChain *big.Int, err error) {
 	if booked, err = accountBalance(ctx, tx, invoiceID, "receiver"); err != nil {
 		return nil, nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, BalanceTimeout)
 	defer cancel()
-	if onChain, err = s.balance(ctx, chainID, token, receive); err != nil {
+	onChain, block, err := s.balance(ctx, chainID, token, receive)
+	if err != nil {
 		return nil, nil, fmt.Errorf("check invoice %s balance: %w", invoiceID, err)
+	}
+	if block < finalized {
+		slog.Warn("second RPC is behind the finalized block; deciding later", "invoice", invoiceID,
+			"rpcBlock", block, "finalized", finalized)
+		return booked, nil, nil
 	}
 	return booked, onChain, nil
 }
