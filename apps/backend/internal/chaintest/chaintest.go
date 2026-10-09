@@ -32,9 +32,10 @@ const ChainID = 31337
 
 // Anvil is a running local chain whose finalized block is always 2 blocks behind the latest.
 type Anvil struct {
-	t   *testing.T
-	URL string
-	RPC *rpc.Client
+	t         *testing.T
+	URL       string
+	RPC       *rpc.Client
+	authority string // the factory's refund authority, impersonated after DeployFactory
 }
 
 // Start runs Anvil on a free port until the test ends.
@@ -123,9 +124,15 @@ func (a *Anvil) DeployFactory() string {
 			a.t.Fatal(err)
 		}
 	}
-	a.run("cast", "send", "--rpc-url", a.URL, "--unlocked", "--from", testnet.RefundAuthority, factory,
-		"setExecutor(address)", Sender)
+	a.authority = testnet.RefundAuthority
+	a.AsAuthority(factory, "setExecutor(address)", Sender)
 	return factory
+}
+
+// AsAuthority sends a call from the factory's refund authority (after DeployFactory).
+func (a *Anvil) AsAuthority(to, sig string, args ...string) {
+	a.t.Helper()
+	a.run("cast", append([]string{"send", "--rpc-url", a.URL, "--unlocked", "--from", a.authority, to, sig}, args...)...)
 }
 
 // Mint gives the sender tokens.

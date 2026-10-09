@@ -16,6 +16,7 @@ ALTER TABLE settlement_intents ADD CONSTRAINT settlement_intents_sent_check
 CREATE UNIQUE INDEX ledger_transactions_one_settlement ON ledger_transactions (invoice_id) WHERE kind = 'settlement';
 
 -- +goose Down
+UPDATE settlement_intents SET status = 'pending', reason = NULL WHERE status = 'refused';
 DROP INDEX ledger_transactions_one_settlement;
 ALTER TABLE settlement_intents DROP CONSTRAINT settlement_intents_sent_check;
 ALTER TABLE settlement_intents DROP COLUMN reason;

@@ -277,3 +277,99 @@ func TestRefusesTermsThatDoNotMatch(t *testing.T) {
 		})
 	}
 }
+
+// A settle already sent is finished even if the database changed meanwhile: never "refused" while money moved.
+func TestSentSettleIsFinishedEvenIfTheWalletChanged(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, _ := e.paidInvoice(t)
+	crashing := e.signer(t)
+	crashing.stopAfter = "send"
+	if err := crashing.Run(ctx); !errors.Is(err, errStopped) {
+		t.Fatalf("got %v", err)
+	}
+	if _, err := e.pool.Exec(ctx, "UPDATE profile_wallets SET address = '0x2222222222222222222222222222222222222223'"); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.signer(t).Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" || e.balance(t, wallet) != 5000000 {
+		t.Fatalf("intent %s, invoice %s, recipient %d", status, settlement, e.balance(t, wallet))
+	}
+}
+
+// A paused factory is a temporary condition: the intent waits and settles after unpausing.
+func TestPausedFactoryIsRetried(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, _ := e.paidInvoice(t)
+	factory := strings.ToLower(common.Address(address.Factory).Hex())
+	e.anvil.AsAuthority(factory, "setPaused(bool)", "true")
+	if err := e.signer(t).Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if status, _, reason := e.intent(t, id); status != "pending" || reason == "" || e.balance(t, wallet) != 0 {
+		t.Fatalf("while paused: intent %s (%s), recipient %d; want pending with a reason", status, reason, e.balance(t, wallet))
+	}
+	e.anvil.AsAuthority(factory, "setPaused(bool)", "false")
+	if _, err := e.pool.Exec(ctx, "UPDATE settlement_intents SET next_attempt_at = now()"); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.signer(t).Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if status, _, _ := e.intent(t, id); status != "confirmed" || e.balance(t, wallet) != 5000000 {
+		t.Fatalf("after unpausing: intent %s, recipient %d", status, e.balance(t, wallet))
+	}
+}
+
+// A saved settle whose nonce another transaction took is signed again, and settles once.
+func TestNonceTakenByAnotherTransaction(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, _ := e.paidInvoice(t)
+	crashing := e.signer(t)
+	crashing.stopAfter = "save"
+	if err := crashing.Run(ctx); !errors.Is(err, errStopped) {
+		t.Fatalf("got %v", err)
+	}
+	e.anvil.Transfer(e.token, "0x00000000000000000000000000000000000000bb", "1") // takes the saved nonce
+	if err := e.signer(t).Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if status, _, reason := e.intent(t, id); status != "pending" || reason == "" {
+		t.Fatalf("after its nonce was taken: intent %s (%s), want pending to sign again", status, reason)
+	}
+	if _, err := e.pool.Exec(ctx, "UPDATE settlement_intents SET next_attempt_at = now()"); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.signer(t).Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if status, _, _ := e.intent(t, id); status != "confirmed" || e.balance(t, wallet) != 5000000 {
+		t.Fatalf("intent %s, recipient %d", status, e.balance(t, wallet))
+	}
+}
+
+// A tx_hash that is not this receiver's settle never confirms the settlement.
+func TestForeignTxHashIsNotConfirmed(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, receive := e.paidInvoice(t)
+	crashing := e.signer(t)
+	crashing.stopAfter = "save"
+	if err := crashing.Run(ctx); !errors.Is(err, errStopped) {
+		t.Fatalf("got %v", err)
+	}
+	other := e.anvil.Transfer(e.token, "0x00000000000000000000000000000000000000bb", "1")
+	if _, err := e.pool.Exec(ctx, "UPDATE settlement_intents SET tx_hash = $1", other); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.signer(t).Run(ctx); err == nil {
+		t.Fatal("a foreign tx_hash was accepted")
+	}
+	if status, settlement, _ := e.intent(t, id); status == "confirmed" || settlement == "settled" || e.balance(t, receive) != 6000000 {
+		t.Fatalf("intent %s, invoice %s, receiver %d", status, settlement, e.balance(t, receive))
+	}
+}

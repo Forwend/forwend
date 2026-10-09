@@ -14,9 +14,10 @@ import (
 
 // The only calls the signer makes (packages/contracts/src/InvoiceReceiverFactory.sol, InvoiceReceiver.sol).
 var (
-	deploySelector = selector("deploy((bytes32,address,address,uint256,uint64,uint64,uint256))")
-	statusSelector = selector("status((bytes32,address,address,uint256,uint64,uint64,uint256))")
-	settleSelector = selector("settle()")
+	deploySelector  = selector("deploy((bytes32,address,address,uint256,uint64,uint64,uint256))")
+	statusSelector  = selector("status((bytes32,address,address,uint256,uint64,uint64,uint256))")
+	settleSelector  = selector("settle()")
+	settledSelector = selector("settled()")
 )
 
 func selector(signature string) []byte {
@@ -61,4 +62,13 @@ func callData(sel []byte, terms address.Terms) ([]byte, error) {
 		return nil, err
 	}
 	return append(append([]byte{}, sel...), args...), nil
+}
+
+// receiverSettled reads the receiver's own settled flag; false before it is deployed.
+func receiverSettled(ctx context.Context, client *ethclient.Client, receiver common.Address) (bool, error) {
+	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &receiver, Data: settledSelector}, nil)
+	if err != nil {
+		return false, fmt.Errorf("receiver.settled: %w", err)
+	}
+	return len(out) == 32 && out[31] == 1, nil
 }

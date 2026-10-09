@@ -49,6 +49,7 @@ func NewSigner(pool *pgxpool.Pool, key *ecdsa.PrivateKey, clients map[uint64]*et
 type intent struct {
 	id                 int64
 	status             string
+	sender             *string
 	nonce              *int64
 	txHash             *string
 	rawTx              []byte
@@ -88,38 +89,40 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 	if err != nil {
 		return err
 	}
+	client, ok := s.clients[in.chainID]
+	if !ok {
+		return fmt.Errorf("no RPC for chain %d", in.chainID)
+	}
+	if got, err := client.ChainID(ctx); err != nil || got.Uint64() != in.chainID {
+		return fmt.Errorf("RPC for chain %d answers chain %v: %w", in.chainID, got, err)
+	}
+	if in.status == "sent" {
+		// Already signed: finish it whatever changed since; it may be on the chain.
+		return s.reconcile(ctx, client, in)
+	}
 	// Database checks: the terms must be the ones the payer saw and pay the profile wallet.
 	terms, reason := check(in)
 	if reason != "" {
 		return s.refuse(ctx, in, reason)
-	}
-	client, ok := s.clients[in.chainID]
-	if !ok {
-		return fmt.Errorf("no RPC for chain %d", in.chainID)
 	}
 	// Chain checks.
 	st, err := factoryStatus(ctx, client, terms)
 	if err != nil {
 		return err
 	}
-	if st.Settled {
-		return s.confirm(ctx, in)
-	}
-	if !strings.EqualFold(st.Receiver.Hex(), in.receive) {
-		return s.refuse(ctx, in, "factory.predict gives another address than the stored receive address")
-	}
-	if in.status == "sent" {
-		return s.reconcile(ctx, client, in)
-	}
 	switch {
-	case !st.OnIntendedChain:
-		return s.refuse(ctx, in, "RPC is not on the invoice's chain")
+	case st.Settled:
+		return s.confirm(ctx, in)
+	case !strings.EqualFold(st.Receiver.Hex(), in.receive):
+		return s.refuse(ctx, in, "factory.predict gives another address than the stored receive address")
 	case st.Settler != s.sender:
 		return s.refuse(ctx, in, "the settler is "+st.Settler.Hex()+", not this executor (deadline passed?)")
+	case !st.OnIntendedChain:
+		return s.retry(ctx, in, "RPC is not on the invoice's chain")
 	case st.Balance.Cmp(in.amount) < 0:
-		return s.refuse(ctx, in, "receive address holds "+st.Balance.String()+", less than the amount")
+		return s.retry(ctx, in, "receive address holds "+st.Balance.String()+", less than the amount")
 	case !st.Settleable:
-		return s.refuse(ctx, in, "factory.status says not settleable (paused or unsafe terms)")
+		return s.retry(ctx, in, "factory.status says not settleable (paused?)")
 	}
 
 	if !st.Deployed {
@@ -138,8 +141,7 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 		}
 	}
 
-	receiver := common.HexToAddress(in.receive)
-	tx, err := s.sign(ctx, client, in.chainID, receiver, settleSelector)
+	tx, err := s.sign(ctx, client, in.chainID, common.HexToAddress(in.receive), settleSelector)
 	if err != nil {
 		return err
 	}
@@ -148,46 +150,54 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 		return fmt.Errorf("encode settle: %w", err)
 	}
 	// Saved before it is sent: a crash after this point resends these bytes, never a new settle.
-	if _, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'sent', sender = $2, nonce = $3, tx_hash = $4,
-		raw_tx = $5, attempts = attempts + 1, updated_at = now() WHERE id = $1 AND status = 'pending'`,
-		in.id, strings.ToLower(s.sender.Hex()), int64(tx.Nonce()), tx.Hash().Hex(), raw); err != nil {
+	tag, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'sent', sender = $2, nonce = $3, tx_hash = $4,
+		raw_tx = $5, reason = NULL, attempts = attempts + 1, updated_at = now() WHERE id = $1 AND status = 'pending'`,
+		in.id, strings.ToLower(s.sender.Hex()), int64(tx.Nonce()), tx.Hash().Hex(), raw)
+	if err != nil {
 		return fmt.Errorf("save settle transaction: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return fmt.Errorf("save settle transaction: intent %d is no longer pending", in.id)
 	}
 	slog.Info("settle signed", "invoice", in.invoiceID, "tx", tx.Hash().Hex(), "nonce", tx.Nonce())
 	if s.stopAfter == "save" {
 		return errStopped
 	}
-	in.status, in.rawTx = "sent", raw
-	nonce, hash := int64(tx.Nonce()), tx.Hash().Hex()
-	in.nonce, in.txHash = &nonce, &hash
+	sender, nonce, hash := strings.ToLower(s.sender.Hex()), int64(tx.Nonce()), tx.Hash().Hex()
+	in.status, in.rawTx, in.sender, in.nonce, in.txHash = "sent", raw, &sender, &nonce, &hash
 	return s.reconcile(ctx, client, in)
 }
 
-// reconcile finishes a sent settle: confirmed if mined, sent again (the same bytes) if it is not on the chain yet,
-// back to pending if its nonce was used by another transaction.
+// reconcile finishes a sent settle. The receiver's own settled flag decides: confirmed once it is set. Otherwise
+// the saved bytes are sent again if their nonce is still free, or the intent goes back to pending.
 func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in intent) error {
+	tx := new(types.Transaction)
 	hash := common.HexToHash(*in.txHash)
+	receive := common.HexToAddress(in.receive)
+	if err := tx.UnmarshalBinary(in.rawTx); err != nil || tx.Hash() != hash || tx.To() == nil || *tx.To() != receive ||
+		!bytes.Equal(tx.Data(), settleSelector) || tx.ChainId().Uint64() != in.chainID {
+		return fmt.Errorf("saved transaction %s is not this receiver's settle on chain %d", *in.txHash, in.chainID)
+	}
+	settled, err := receiverSettled(ctx, client, receive)
+	if err != nil {
+		return err
+	}
+	if settled {
+		return s.confirm(ctx, in)
+	}
 	if r, err := client.TransactionReceipt(ctx, hash); err == nil {
-		if r.Status == types.ReceiptStatusSuccessful {
-			return s.confirm(ctx, in)
-		}
-		return s.refuse(ctx, in, "settle transaction "+*in.txHash+" reverted")
+		// Mined but the receiver isn't settled: it reverted (e.g. paused). Try again later with a new transaction.
+		return s.retry(ctx, in, fmt.Sprintf("settle %s mined with status %d but the receiver is not settled", hash.Hex(), r.Status))
 	} else if !errors.Is(err, ethereum.NotFound) {
 		return fmt.Errorf("read settle receipt: %w", err)
 	}
-	mined, err := client.NonceAt(ctx, s.sender, nil)
+	mined, err := client.NonceAt(ctx, common.HexToAddress(*in.sender), nil)
 	if err != nil {
 		return fmt.Errorf("read executor nonce: %w", err)
 	}
 	if int64(mined) > *in.nonce {
-		// Our nonce went to another transaction and ours is gone: sign a new settle next run.
-		_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'pending', nonce = NULL, tx_hash = NULL,
-			raw_tx = NULL, updated_at = now() WHERE id = $1 AND status = 'sent'`, in.id)
-		return err
-	}
-	tx := new(types.Transaction)
-	if err := tx.UnmarshalBinary(in.rawTx); err != nil || tx.Hash() != hash {
-		return fmt.Errorf("saved settle transaction %s does not decode to its hash", *in.txHash)
+		// The nonce went to another transaction and ours can never mine: sign a new settle.
+		return s.retry(ctx, in, "the saved settle's nonce was used by another transaction")
 	}
 	if err := client.SendTransaction(ctx, tx); err != nil && !strings.Contains(strings.ToLower(err.Error()), "known") {
 		return fmt.Errorf("send settle: %w", err)
@@ -195,16 +205,17 @@ func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in int
 	if s.stopAfter == "send" {
 		return errStopped
 	}
-	r, err := s.await(ctx, client, hash)
-	switch {
-	case err != nil:
-		return err
-	case r == nil:
-		return nil // not mined yet: the next run reconciles again
-	case r.Status != types.ReceiptStatusSuccessful:
-		return s.refuse(ctx, in, "settle transaction "+*in.txHash+" reverted")
+	if r, err := s.await(ctx, client, hash); err != nil || r == nil {
+		return err // not mined yet: the next run reconciles again
 	}
-	return s.confirm(ctx, in)
+	settled, err = receiverSettled(ctx, client, receive)
+	if err != nil {
+		return err
+	}
+	if settled {
+		return s.confirm(ctx, in)
+	}
+	return s.retry(ctx, in, "settle "+hash.Hex()+" mined but the receiver is not settled")
 }
 
 // confirm records the settlement once: the intent, the ledger and the invoice, in one transaction.
@@ -233,7 +244,19 @@ func (s *Signer) confirm(ctx context.Context, in intent) error {
 	return tx.Commit(ctx)
 }
 
-// refuse stops an intent without sending anything; an operator reads the reason.
+// retry puts the intent back to pending for a temporary condition, with a growing wait (1 min doubling, at most
+// 1 h). A saved settle that can no longer mine is dropped so a new one is signed.
+func (s *Signer) retry(ctx context.Context, in intent, reason string) error {
+	slog.Warn("settlement waits", "invoice", in.invoiceID, "reason", reason)
+	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'pending', sender = NULL, nonce = NULL,
+		tx_hash = NULL, raw_tx = NULL, reason = $2, attempts = attempts + 1, updated_at = now(),
+		next_attempt_at = now() + least(interval '1 minute' * power(2, least(attempts, 6)), interval '1 hour')
+		WHERE id = $1`, in.id, reason)
+	return err
+}
+
+// refuse stops an intent for good without sending anything; an operator reads the reason. Only for terms that
+// don't match, or a settler other than this executor.
 func (s *Signer) refuse(ctx context.Context, in intent, reason string) error {
 	slog.Warn("settlement refused", "invoice", in.invoiceID, "reason", reason)
 	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'refused', reason = $2, updated_at = now()
@@ -268,12 +291,12 @@ func (s *Signer) load(ctx context.Context, id int64) (intent, error) {
 	var in intent
 	var amount string
 	err := s.pool.QueryRow(ctx, `
-		SELECT si.id, si.status, si.nonce, si.tx_hash, si.raw_tx, i.id, i.payment_status, i.chain_id, i.token_contract,
+		SELECT si.id, si.status, si.sender, si.nonce, si.tx_hash, si.raw_tx, i.id, i.payment_status, i.chain_id, i.token_contract,
 		       i.recipient_address, i.factory_address, i.receive_address,
 		       (SELECT w.address FROM profile_wallets w WHERE w.profile_id = i.profile_id AND w.chain_family = i.chain_family),
 		       i.amount::text, i.expires_at, i.settle_deadline
 		FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id WHERE si.id = $1`, id).Scan(
-		&in.id, &in.status, &in.nonce, &in.txHash, &in.rawTx, &in.invoiceID, &in.payment, &in.chainID, &in.token,
+		&in.id, &in.status, &in.sender, &in.nonce, &in.txHash, &in.rawTx, &in.invoiceID, &in.payment, &in.chainID, &in.token,
 		&in.recipient, &in.factory, &in.receive, &in.wallet, &amount, &in.expires, &in.deadline)
 	if err != nil {
 		return intent{}, fmt.Errorf("read settlement intent %d: %w", id, err)
@@ -300,6 +323,9 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 	head, err := client.HeaderByNumber(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("read base fee: %w", err)
+	}
+	if head.BaseFee == nil {
+		return nil, fmt.Errorf("chain %d has no base fee (EIP-1559)", chainID)
 	}
 	feeCap := new(big.Int).Add(new(big.Int).Mul(head.BaseFee, big.NewInt(2)), tip)
 	tx := types.NewTx(&types.DynamicFeeTx{
