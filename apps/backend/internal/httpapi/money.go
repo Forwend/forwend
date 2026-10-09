@@ -37,6 +37,8 @@ type activityItemJSON struct {
 	InvoiceID        string `json:"invoiceId"`
 	ChainID          uint64 `json:"chainId"`
 	Token            string `json:"token"`
+	Symbol           string `json:"symbol"`
+	Decimals         int    `json:"decimals"`
 	Amount           string `json:"amount"`
 	Status           string `json:"status"`
 	SettlementStatus string `json:"settlementStatus,omitempty"`
@@ -91,7 +93,8 @@ func getActivity(activities *activity.Service) http.HandlerFunc {
 		}
 		for _, it := range page.Items {
 			out.Items = append(out.Items, activityItemJSON{Kind: it.Kind, At: it.At.UTC().Format(time.RFC3339Nano),
-				InvoiceID: it.InvoiceID, ChainID: it.ChainID, Token: it.Token, Amount: it.Amount.String(),
+				InvoiceID: it.InvoiceID, ChainID: it.ChainID, Token: it.Token, Symbol: it.Symbol, Decimals: it.Decimals,
+				Amount: it.Amount.String(),
 				Status: it.Status, SettlementStatus: it.SettlementStatus, TxHash: it.TxHash})
 		}
 		writeJSON(w, http.StatusOK, out)

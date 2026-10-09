@@ -11,12 +11,14 @@ describe("copy helper", () => {
     vi.restoreAllMocks();
   });
 
-  it("keeps the Copy label and throws nothing when the clipboard write fails", async () => {
+  it("says the copy failed, and throws nothing, when the clipboard write fails", async () => {
     const user = userEvent.setup();
     vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(new Error("denied"));
     render(<Address address={address} />);
     await user.click(screen.getByRole("button", { name: "Copy address" }));
-    expect(screen.getByRole("button", { name: "Copy address" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Copy failed: select the address instead" }),
+    ).toBeTruthy();
   });
 
   it("clears its timer when the component unmounts", async () => {

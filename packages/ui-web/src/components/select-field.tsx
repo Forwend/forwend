@@ -10,6 +10,7 @@ import type { SelectFieldProps } from "../types/ui/fields";
 // A custom listbox (Radix Select): keyboard and screen-reader support, styled with tokens.
 export function SelectField({
   label,
+  hideLabel,
   options,
   hint,
   id,
@@ -26,7 +27,11 @@ export function SelectField({
   return (
     <div className={cx("flex flex-col gap-1.5", className)}>
       {/* A <label for> does not name a button-based combobox, so link it with aria-labelledby. */}
-      <label id={`${fieldId}-label`} htmlFor={fieldId} className="text-sm font-medium text-ink">
+      <label
+        id={`${fieldId}-label`}
+        htmlFor={fieldId}
+        className={cx("text-sm font-medium text-ink", hideLabel && "sr-only")}
+      >
         {label}
       </label>
       <RadixSelect.Root

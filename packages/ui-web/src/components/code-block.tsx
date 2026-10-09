@@ -3,11 +3,13 @@
 import { Check, Copy } from "lucide-react";
 import { useMemo } from "react";
 import { highlight } from "sugar-high";
+import { COPY_STATUS } from "../constants/copy";
 import { useCopy } from "../hooks/use-copy";
 import type { CodeBlockProps } from "../types/ui/display";
 
 export function CodeBlock({ code, language, copyLabel = "Copy code" }: CodeBlockProps) {
-  const [copied, copy] = useCopy(code);
+  const [status, copy] = useCopy(code);
+  const copied = status === COPY_STATUS.copied;
   const html = useMemo(() => highlight(code), [code]);
   return (
     <div
@@ -27,7 +29,7 @@ export function CodeBlock({ code, language, copyLabel = "Copy code" }: CodeBlock
           ) : (
             <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
           )}
-          {copied ? "Copied" : "Copy"}
+          {copied ? "Copied" : status === COPY_STATUS.failed ? "Copy failed" : "Copy"}
         </button>
       </div>
       <pre className="fw-code overflow-x-auto p-4 font-mono text-sm leading-relaxed">

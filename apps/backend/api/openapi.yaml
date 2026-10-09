@@ -50,7 +50,8 @@ paths:
       summary: Create a freelancer or merchant profile with its own wallet, once per Idempotency-Key
       description: |
         Keys are per user. The same key with the same values returns the stored profile with 200; with other values, 409.
-        If Privy fails, the profile is stored without a wallet and the same request again makes it.
+        If Privy fails, the profile is still created and returned with walletAddress null; the next POST /v1/me makes
+        its wallet, so a retry never makes a second profile.
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
@@ -290,7 +291,7 @@ components:
           description: Pass as cursor for the next page; null on the last page.
     ActivityItem:
       type: object
-      required: [kind, at, invoiceId, chainId, token, amount, status]
+      required: [kind, at, invoiceId, chainId, token, symbol, decimals, amount, status]
       properties:
         kind:
           type: string
@@ -302,6 +303,10 @@ components:
         invoiceId: { $ref: "#/components/schemas/InvoiceId" }
         chainId: { type: integer }
         token: { $ref: "#/components/schemas/Address" }
+        symbol:
+          type: string
+          description: The token's symbol, also for a token no longer enabled.
+        decimals: { type: integer, minimum: 0 }
         amount: { $ref: "#/components/schemas/Uint256" }
         status:
           type: string

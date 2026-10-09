@@ -14,3 +14,6 @@ playwright-report/
 apps/web/.impeccable/review/
 
 __pycache__/
+
+# Impeccable design hook cache (local tool state)
+**/.impeccable/hook.cache.json

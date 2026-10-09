@@ -47,7 +47,8 @@ func TestGetActivity(t *testing.T) {
 	}
 	item := items[0].(map[string]any)
 	if item["kind"] != "invoice" || item["invoiceId"] != second || item["status"] != "open" ||
-		item["settlementStatus"] != "none" || item["amount"] != "5000000" || item["token"] != usdc {
+		item["settlementStatus"] != "none" || item["amount"] != "5000000" || item["token"] != usdc ||
+		item["symbol"] != "USDC" || item["decimals"] != float64(6) {
 		t.Fatalf("newest item %v, want the second invoice", item)
 	}
 	last := e.call(t, "GET", path+"?limit=1&cursor="+cursor, "did:privy:alice", "", "")

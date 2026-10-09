@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"time"
 )
 
 // AppID and AppSecret are what the fake accepts.
@@ -32,6 +33,8 @@ type Fake struct {
 	// FailCreates answers that many creates with 500; an error for an idempotency key is replayed for that key.
 	FailCreates int
 	failedKeys  map[string]bool
+	// Delay holds every answer that long (or until the caller gives up), like a slow Privy.
+	Delay time.Duration
 }
 
 // New starts the fake until the test ends.
@@ -58,6 +61,14 @@ func (f *Fake) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Authorization") != "Basic "+base64.StdEncoding.EncodeToString([]byte(AppID+":"+AppSecret)) ||
 		r.Header.Get("privy-app-id") != AppID {
 		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	f.mu.Lock()
+	delay := f.Delay
+	f.mu.Unlock()
+	select {
+	case <-time.After(delay):
+	case <-r.Context().Done():
 		return
 	}
 	f.mu.Lock()

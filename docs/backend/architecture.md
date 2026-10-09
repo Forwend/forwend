@@ -84,7 +84,9 @@ the Privy test app. Each call is bounded by `privy.Timeout` (20 s, under the api
 `ON CONFLICT DO NOTHING`) and creates freelancer and merchant profiles once per Idempotency-Key. Each then gets its
 wallet from `ProfileWallet`, outside any transaction; the wallet row is stored under a lock on the profile row, so
 concurrent requests store one, and a wallet already stored for another profile is an error. If Privy fails, the
-profile is left without a wallet (`walletAddress: null`) and repeating the request makes it.
+profile is still created and returned without a wallet (`walletAddress: null`). The next `POST /v1/me` retries every
+profile's missing wallet: the personal one must succeed, the others share a `RepairBudget` (5 s) so a slow Privy
+never holds the app's load.
 
 ## Running the loop
 

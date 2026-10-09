@@ -8,6 +8,7 @@ import {
   PAYMENT_STATUSES,
   PaymentTimeline,
   QrCode,
+  ReceiveAddress,
   STEP_STATES,
   StatTile,
   StatusPill,
@@ -42,6 +43,11 @@ export function PaymentsShowcase() {
           address={SAMPLE_ADDRESS}
           explorerHref={`https://basescan.org/address/${SAMPLE_ADDRESS}`}
         />
+      </KitGroup>
+      <KitGroup title="Receive address: full, grouped, with copy">
+        <div className="w-full max-w-xs">
+          <ReceiveAddress address={SAMPLE_ADDRESS} />
+        </div>
       </KitGroup>
       <KitGroup title="QR code and network warning">
         <QrCode
@@ -114,6 +120,13 @@ export function PaymentsShowcase() {
             direction={ACTIVITY_DIRECTIONS.incoming}
             amount={{ baseUnits: 300000000n, decimals: 6, token: "USDC" }}
             status="partiallyPaid"
+          />
+          <ActivityRow
+            title="Invoice FW-0043"
+            detail="Waiting for payment · Base"
+            direction={ACTIVITY_DIRECTIONS.request}
+            amount={{ baseUnits: 800000000n, decimals: 6, token: "USDC" }}
+            status="open"
           />
           <ActivityRow
             title="Withdrawal to bank"

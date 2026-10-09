@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
@@ -211,5 +212,59 @@ func TestSignUpRefusesAWalletStoredElsewhere(t *testing.T) {
 	}
 	if _, _, err := s.SignUp(ctx, alice); err == nil {
 		t.Fatal("a wallet stored for another profile was accepted")
+	}
+}
+
+// A profile whose wallet Privy failed to make is still created and returned, without a wallet, so a retry with other
+// values can't make a second one; the next signup call makes its wallet.
+func TestCreateWithoutWalletThenSignUpRepairsIt(t *testing.T) {
+	s, f, pool := newService(t)
+	ctx := context.Background()
+	if _, _, err := s.SignUp(ctx, alice); err != nil {
+		t.Fatal(err)
+	}
+	f.Lock()
+	f.FailCreates = 3 // the first call and the SDK's two retries
+	f.Unlock()
+	p, created, err := s.Create(ctx, alice, "key-1", Merchant, "Shop")
+	if err != nil || !created || p.Kind != Merchant || p.WalletAddress != "" {
+		t.Fatalf("create while Privy fails: %+v, %v, %v; want the stored profile without a wallet", p, created, err)
+	}
+	got, _, err := s.SignUp(ctx, alice)
+	if err != nil || len(got) != 2 || got[1].ID != p.ID || got[1].WalletAddress == "" {
+		t.Fatalf("after signup: %+v, %v; want the merchant profile with its wallet", got, err)
+	}
+	if count(t, pool, "profiles") != 2 {
+		t.Fatal("more than one merchant profile")
+	}
+}
+
+// A slow Privy never holds signup past RepairBudget for profiles other than the personal one.
+func TestSignUpRepairIsBounded(t *testing.T) {
+	s, f, _ := newService(t)
+	ctx := context.Background()
+	if _, _, err := s.SignUp(ctx, alice); err != nil {
+		t.Fatal(err)
+	}
+	f.Lock()
+	f.FailCreates = 6
+	f.Unlock()
+	for _, key := range []string{"key-1", "key-2"} {
+		if _, _, err := s.Create(ctx, alice, key, Merchant, key); err != nil {
+			t.Fatal(err)
+		}
+	}
+	defer func(old time.Duration) { RepairBudget = old }(RepairBudget)
+	RepairBudget = 300 * time.Millisecond
+	f.Lock()
+	f.Delay = 5 * time.Second
+	f.Unlock()
+	start := time.Now()
+	got, _, err := s.SignUp(ctx, alice)
+	if err != nil || len(got) != 3 {
+		t.Fatalf("signup with a slow Privy: %+v, %v; want the three profiles", got, err)
+	}
+	if d := time.Since(start); d > 2*time.Second {
+		t.Fatalf("signup took %v; want about RepairBudget (%v)", d, RepairBudget)
 	}
 }

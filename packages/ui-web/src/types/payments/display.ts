@@ -25,6 +25,15 @@ export interface AddressProps {
   explorerHref?: string;
   copyLabel?: string;
   copiedLabel?: string;
+  failedLabel?: string;
+}
+
+export interface ReceiveAddressProps {
+  address: string;
+  label?: string;
+  copyLabel?: string;
+  copiedLabel?: string;
+  failedLabel?: string;
 }
 
 export interface QrCodeProps {

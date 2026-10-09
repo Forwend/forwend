@@ -90,12 +90,13 @@ test("the Privy test account signs in and lands in the app shell with its person
   // time). The backend tests cover the first signup.
   expect([200, 201]).toContain((await signedUp).status());
 
-  // The shell: sidebar, top bar with the profile and theme switchers.
-  await expect(page.getByRole("navigation", { name: "App" })).toBeVisible();
+  // The shell: one top bar with home, the profile switcher, New profile, theme and sign out.
+  await expect(page.getByRole("link", { name: "Forwend home" })).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Profile" })).toHaveText("Personal");
-  await expect(page.getByRole("heading", { level: 1, name: "Personal" })).toBeVisible();
-  // POST /v1/me made the personal profile and its wallet.
-  await expect(page.getByText(/^0x[0-9a-f]{4}/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "New profile" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Personal overview" })).toBeAttached();
+  // POST /v1/me made the personal profile and its wallet: the Receive card shows it.
+  await expect(page.getByRole("button", { name: "Copy address" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
 
   const theme = await page.locator("html").getAttribute("data-theme");
@@ -120,4 +121,64 @@ test("the Privy test account signs in and lands in the app shell with its person
   await page.unroute("**/api/v1/me");
   await page.goto("/app");
   await expect(page).toHaveURL("/sign-in");
+});
+
+test("a profile shows its balances, receive address and activity; a new profile gets its own wallet", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await signIn(page);
+  await expect(page).toHaveURL("/app", { timeout: 30_000 });
+
+  // Balance: the wallet amount first, with its network; with no network enabled in this database, the page says so
+  // instead.
+  const balance = page.getByRole("region", { name: "Balance" });
+  const inWallet = balance.getByText(/In this profile's wallet on/);
+  await expect(inWallet.or(balance.getByText("No networks are enabled yet."))).toBeVisible();
+  if (await inWallet.isVisible()) {
+    // Receive: the QR code, the full address in groups, and a warning naming one exact network and token.
+    const receive = page.getByRole("region", { name: "Receive" });
+    await expect(
+      receive.getByRole("img", { name: "QR code of this profile's receive address" }),
+    ).toBeVisible();
+    await expect(receive.locator("p", { hasText: /^0x/ })).toHaveText(/^0x([0-9a-f]{4}){10}$/);
+    await expect(receive.getByRole("note")).toContainText(/Send only \S+ on .+\./);
+  }
+  const activity = page.getByRole("region", { name: "Activity" });
+  await expect(
+    activity
+      .getByText("No invoices yet. Invoices and their payments appear here.")
+      .or(activity.getByRole("list")),
+  ).toBeVisible();
+  expect(await blockingViolations(page)).toEqual([]);
+
+  // A merchant profile, made once for the test account (each one gets a real Privy wallet), then reused.
+  const switcher = page.getByRole("combobox", { name: "Profile" });
+  await switcher.click();
+  const existing = page.getByRole("option", { name: "Merchant · E2E shop" });
+  if (await existing.count()) {
+    await existing.click();
+  } else {
+    await page.keyboard.press("Escape");
+    await page.getByRole("link", { name: "New profile" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "New profile" })).toBeVisible();
+    expect(await blockingViolations(page)).toEqual([]);
+    await page.getByText("Merchant", { exact: true }).click();
+    await page.getByRole("textbox", { name: "Name (optional)" }).fill("E2E shop");
+    await page.getByRole("button", { name: "Create profile" }).click();
+    await expect(page).toHaveURL("/app");
+  }
+  await expect(switcher).toHaveText("Merchant · E2E shop");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Merchant · E2E shop overview" }),
+  ).toBeAttached();
+  // Its own wallet: not the personal profile's address (each read once its address is on screen).
+  const address = page.getByRole("region", { name: "Receive" }).locator("p", { hasText: /^0x/ });
+  await expect(address).toHaveText(/^0x([0-9a-f]{4}){10}$/);
+  const merchantWallet = await address.textContent();
+  await switcher.click();
+  await page.getByRole("option", { name: "Personal" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Personal overview" })).toBeAttached();
+  await expect(address).toHaveText(/^0x([0-9a-f]{4}){10}$/);
+  expect(await address.textContent()).not.toBe(merchantWallet);
 });

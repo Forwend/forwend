@@ -14,6 +14,8 @@ export interface SelectOption {
 
 export interface SelectFieldProps {
   label: string;
+  /** Keeps the label for screen readers only, for a select whose purpose is clear where it sits. */
+  hideLabel?: boolean;
   options: readonly SelectOption[];
   hint?: string;
   id?: string;

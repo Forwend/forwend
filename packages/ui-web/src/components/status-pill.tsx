@@ -1,12 +1,23 @@
-import { AlertTriangle, Check, CircleDashed, CircleDot, Clock, RotateCcw } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  Circle,
+  CircleCheck,
+  CircleDashed,
+  CircleDot,
+  Clock,
+  RotateCcw,
+} from "lucide-react";
 import { PAYMENT_STATUSES } from "../constants/payment-status";
 import { cx } from "../lib/cx";
 import { TONE_CLASSES } from "../lib/tone";
 import type { PaymentStatus, StatusPillProps } from "../types/payments/display";
 
 const STATUS_ICONS: Record<PaymentStatus, typeof Check> = {
+  open: Circle,
   detected: CircleDot,
   confirming: Clock,
+  confirmed: CircleCheck,
   paid: Check,
   partiallyPaid: CircleDashed,
   overpaid: AlertTriangle,
