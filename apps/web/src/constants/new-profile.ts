@@ -12,7 +12,6 @@ export const NEW_PROFILE_COPY = {
     [PROFILE_KINDS.merchant]: "Take payments from customers.",
   },
   nameLabel: "Name (optional)",
-  namePlaceholder: "Studio Lumen",
   create: "Create profile",
   cancel: "Cancel",
   errors: {

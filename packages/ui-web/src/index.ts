@@ -1,4 +1,5 @@
 export { Accordion } from "./components/accordion";
+export { ActionButton } from "./components/action-button";
 export { ActivityRow } from "./components/activity-row";
 export { Address } from "./components/address";
 export { Badge } from "./components/badge";
@@ -10,6 +11,17 @@ export { Dialog } from "./components/dialog";
 export { DotLoader } from "./components/dot-loader";
 export { EmailCapture } from "./components/email-capture";
 export { EmptyState } from "./components/empty-state";
+export {
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuItem,
+  MenuLabel,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuSeparator,
+  MenuTrigger,
+} from "./components/menu";
 export { Money } from "./components/money";
 export { NavPill } from "./components/nav-pill";
 export { NetworkWarning } from "./components/network-warning";
@@ -19,6 +31,7 @@ export { ProgressBar } from "./components/progress-bar";
 export { QrCode } from "./components/qr-code";
 export { ReceiveAddress } from "./components/receive-address";
 export { SelectField } from "./components/select-field";
+export { Sheet } from "./components/sheet";
 export { Shimmer } from "./components/shimmer";
 export { Skeleton } from "./components/skeleton";
 export { Spinner } from "./components/spinner";
@@ -41,6 +54,7 @@ export { PAYMENT_STATUS, PAYMENT_STATUSES } from "./constants/payment-status";
 export { STEP_STATES } from "./constants/timeline";
 export { TONES } from "./constants/tone";
 export { useCopy } from "./hooks/use-copy";
+export { useTheme } from "./hooks/use-theme";
 export { BrandIcon } from "./icons/brand-icon";
 export { FreelancerIcon, MerchantIcon, PaymentPathIcon } from "./icons/custom-icons";
 export { Logo, LogoMark } from "./icons/logo";
@@ -54,6 +68,7 @@ export type * from "./types/ui/display";
 export type * from "./types/ui/email-capture";
 export type * from "./types/ui/fields";
 export type * from "./types/ui/icons";
+export type * from "./types/ui/menu";
 export type * from "./types/ui/motion";
 export type * from "./types/ui/theme-switch";
 export type * from "./types/ui/tone";

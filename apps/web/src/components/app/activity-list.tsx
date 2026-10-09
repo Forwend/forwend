@@ -1,8 +1,16 @@
 "use client";
 
 import { ACTIVITY_DIRECTIONS, ActivityRow, Button, Skeleton } from "@forwend/ui-web";
+import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
-import { ACTIVITY_KINDS, ACTIVITY_MAX, ACTIVITY_PAGE_SIZE, REFRESH_MS } from "@/constants/app";
+import {
+  ACTIVITY_KINDS,
+  ACTIVITY_MAX,
+  ACTIVITY_PAGE_SIZE,
+  APP_ROUTES,
+  REFRESH_MS,
+} from "@/constants/app";
 import { PROFILE_PAGE_COPY as COPY } from "@/constants/profile-page";
 import { activityStatus } from "@/lib/activity";
 import { getActivity } from "@/lib/api";
@@ -17,18 +25,22 @@ const TIME = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
 });
 
-// Invoices and their payments, newest first. "Show more" asks for more rows in one request (up to the API's 100), so
-// the regular refresh reads the same rows again and never skips or repeats one between pages. An invoice is a
-// request, so its amount has no sign; only a payment shows "+".
+// Invoices and their payments, newest first, read again every REFRESH_MS. On the dashboard (preview) it shows the
+// latest few and links to the Activity page; there, "Show more" asks for more rows in one request (up to the API's
+// 100), so a refresh reads the same rows again and never skips or repeats one. An invoice is a request, so its amount
+// has no sign; only a payment shows "+".
 export function ActivityList({
   profileId,
   token,
+  preview,
 }: {
   profileId: string;
   token: () => Promise<string>;
+  /** On the dashboard: this many rows and a "View all" link. */
+  preview?: number;
 }) {
   const [shown, setShown] = useState({ profileId, limit: ACTIVITY_PAGE_SIZE });
-  const limit = shown.profileId === profileId ? shown.limit : ACTIVITY_PAGE_SIZE;
+  const limit = preview ?? (shown.profileId === profileId ? shown.limit : ACTIVITY_PAGE_SIZE);
   const list = useLoad(
     async () => getActivity(await token(), profileId, limit),
     [profileId, limit],
@@ -39,16 +51,35 @@ export function ActivityList({
   );
   const items = list.data?.items ?? [];
   const more = Boolean(list.data?.nextCursor);
+  const Heading = preview ? "h2" : "h1";
 
   return (
     <section
       aria-labelledby="activity-title"
       aria-busy={!list.data && !list.failed}
-      className="flex flex-col gap-4"
+      className={
+        preview
+          ? "flex flex-col gap-2 rounded-lg border border-line bg-surface p-6"
+          : "flex flex-col gap-4"
+      }
     >
-      <h2 id="activity-title" className="text-lg font-medium text-ink">
-        {COPY.activity}
-      </h2>
+      <div className="flex items-center justify-between gap-4">
+        <Heading
+          id="activity-title"
+          className={preview ? "text-sm text-muted" : "font-display text-3xl text-ink sm:text-4xl"}
+        >
+          {preview ? COPY.recentActivity : COPY.activity}
+        </Heading>
+        {preview && items.length > 0 ? (
+          <Link
+            href={APP_ROUTES.activity}
+            className="inline-flex h-11 items-center gap-1 rounded-pill px-3 text-sm text-ink hover:bg-surface-2"
+          >
+            {COPY.viewAll}
+            <ChevronRight aria-hidden className="size-[var(--fw-icon-sm)]" />
+          </Link>
+        ) : null}
+      </div>
       {list.failed && !list.data ? (
         <div role="alert" className="flex flex-wrap items-center gap-4 text-muted">
           {COPY.activityFailed}
@@ -59,7 +90,7 @@ export function ActivityList({
       ) : !list.data ? (
         <Skeleton className="h-24" />
       ) : items.length === 0 ? (
-        <p className="text-muted">{COPY.emptyActivity}</p>
+        <p className="py-2 text-muted">{COPY.emptyActivity}</p>
       ) : (
         <>
           <ul className="divide-y divide-line">
@@ -84,7 +115,7 @@ export function ActivityList({
               );
             })}
           </ul>
-          {more && limit < ACTIVITY_MAX ? (
+          {preview ? null : more && limit < ACTIVITY_MAX ? (
             <Button
               variant="secondary"
               className="self-start"
