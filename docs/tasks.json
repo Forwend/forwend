@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 64,
+  "nextId": 70,
   "tasks": [
     {
       "id": "F001",
@@ -6650,6 +6650,261 @@
         "branch": "docs/f063-phase-7-is-defined-requirements-r-31-to",
         "base": "main"
       }
+    },
+    {
+      "id": "F064",
+      "type": "feat",
+      "behavior": "The backend gives each profile one Privy wallet through internal/privy",
+      "acceptance": [
+        "internal/privy returns a profile's user-owned EVM wallet: it creates one with external_id = profile id or returns the existing one found by external_id and owner, never a second; two concurrent creates end with one wallet; another user never gets it; a failed create doesn't block later ones; the address comes back lowercase",
+        "A fake Privy API (httptest, checking auth headers and request bodies, replaying cached errors per idempotency key) covers create, lookup, the create race, a failed create and another user; an opt-in test (build tag privylive) creates a user and asks for its profile wallet twice against the Privy test app"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-31"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-10-09 review fail by reviewer: FAIL. Defect: apps/backend/internal/privy/privy.go:43 sends a fixed privy-idempotency-key per profile. Privy docs (docs.privy.io/api-reference/idempotency-keys) say wallet create caches 4xx AND 5xx responses for the key's 24h lifetime and replays them; a new key is needed to retry. So one transient 5xx (or a 4xx such as a not-yet-visible user) during signup (R-32) blocks that profile's wallet for 24h: every retry, including the SDK's own 2 retries, replays the cached error. The key adds no safety: external_id is documented 'Unique per app. No two wallets in the same app can share an external_id' (docs.privy.io/wallets/wallets/external-ids), and the lookup-after-failed-create already covers the race. Fix: drop the idempotency key (line 43), update accept 1 and docs/backend/architecture.md:75, and add a fake case where the first create returns 500 and the next call succeeds (fake should replay cached errors per idempotency key, or assert no key is sent). Non-blocking: (1) privy.go:56 lists by external_id only; add UserID: privyUserID so a wallet owned by another Privy user is never returned (a caller passing a wrong user then fails closed via the create conflict instead of getting someone else's wallet). (2) List hides archived wallets by default (include_archived=false), so an archived profile wallet makes ProfileWallet fail with the create error; fine while nothing archives. (3) privy_test.go:150 only proves a failed lookup is reported, not 'create fails and lookup finds nothing returns the create error'. (4) The fake answers duplicate external_id with 409 (privy_test.go:65), which the SDK retries twice with backoff (tests take 1.3-1.5s); real Privy's duplicate code is undocumented; outcome is the same since any create error falls back to lookup. (5) SDK DefaultClientOptions reads PRIVY_APP_ID/SECRET/API_BASE_URL/API_CUSTOM_HEADERS from env; explicit options override the first three, CUSTOM_HEADERS would still apply (outside internal/config). OK: UUID profile ids are valid external_ids (36 chars, [0-9a-f-]); fallback cannot mask auth errors (lookup fails the same way) and can only return the wallet created for this external_id; SDK logging defaults to LogLevelNone, no header/body logs; timeouts come from ctx plus 10m response-header timeout; go.mod only adds lines, golang.org/x/crypto stays v0.55.0 (MVS picks max over SDK's v0.41.0), go mod tidy -diff clean, go mod verify ok; vet with e2e,privylive tags fine; no interface added, API URL injected, fits rules.md. Ran: pnpm --filter @forwend/backend test (all ok, privy 3.99s); live test -tags privylive PASS 3.77s.",
+        "2026-10-09 review pass by reviewer: PASS on re-review of ea13b9b. Blocking finding fixed: privy.go no longer sends an idempotency key on wallet create, so a cached Privy error can no longer block a profile's wallet for 24h; duplicates are prevented by external_id (unique per app per Privy docs) plus the lookup after a failed create. Note 1 fixed: find() filters by ExternalID and UserID, so a wrong user gets an error (create conflicts, filtered lookup finds nothing), never another user's wallet. Fake now replays cached errors per idempotency key, fails N creates with 500, filters by user_id; TestProfileWalletRecoversFromAFailedCreate would fail with the old fixed key (the replayed 500), TestProfileWalletBelongsToItsUser would fail without the owner filter. Accept lines and docs/backend/architecture.md updated. Ran: pnpm --filter @forwend/backend test (all ok, privy 6.5s); go test -race -count=5 ./internal/privy/ ok (no flakes). Live privylive test not re-run by this reviewer (one run allowed, used on the first review; it passed then); the coordinator reports it passes with the owner filter. Nits, not blocking: privy_test.go:27,69 the fake still records keys but no test reads them; docs/backend/architecture.md:78 leaves a short line before 'for these wallets'; still open from the first review: archived wallets are hidden by List (include_archived=false), and PRIVY_API_CUSTOM_HEADERS from env is applied by the SDK."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T18:57:43Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 24.5,
+            "log": "docs/runs/F064-20261009T185743Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F064-20261009T185743Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F064-20261009T185743Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F064-20261009T185743Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F064-20261009T185743Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 25.0,
+            "log": "docs/runs/F064-20261009T185743Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F064-20261009T185743Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.9,
+            "log": "docs/runs/F064-20261009T185743Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F064-20261009T185743Z-keep.log"
+          }
+        ],
+        "taskHash": "9fc6cfd72ebfae2b",
+        "filesHash": "331d6edb22ea5f75",
+        "proof": {
+          "1": "backend: TestProfileWalletIsCreatedOnceAndFoundAgain, TestProfileWalletLosesTheCreateRace, TestProfileWalletConcurrentCallsMakeOneWallet (1 wallet from 10 calls), TestProfileWalletBelongsToItsUser (another user gets an error), TestProfileWalletRecoversFromAFailedCreate (500s, then the next call creates it; failed with the old fixed idempotency key)",
+          "2": "backend: the fake Privy API checks Basic auth and privy-app-id, enforces unique external_id, filters by user_id and replays cached errors per idempotency key; TestLiveProfileWallet (-tags privylive) passed against the Privy test app after the change"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS on re-review of ea13b9b. Blocking finding fixed: privy.go no longer sends an idempotency key on wallet create, so a cached Privy error can no longer block a profile's wallet for 24h; duplicates are prevented by external_id (unique per app per Privy docs) plus the lookup after a failed create. Note 1 fixed: find() filters by ExternalID and UserID, so a wrong user gets an error (create conflicts, filtered lookup finds nothing), never another user's wallet. Fake now replays cached errors per idempotency key, fails N creates with 500, filters by user_id; TestProfileWalletRecoversFromAFailedCreate would fail with the old fixed key (the replayed 500), TestProfileWalletBelongsToItsUser would fail without the owner filter. Accept lines and docs/backend/architecture.md updated. Ran: pnpm --filter @forwend/backend test (all ok, privy 6.5s); go test -race -count=5 ./internal/privy/ ok (no flakes). Live privylive test not re-run by this reviewer (one run allowed, used on the first review; it passed then); the coordinator reports it passes with the owner filter. Nits, not blocking: privy_test.go:27,69 the fake still records keys but no test reads them; docs/backend/architecture.md:78 leaves a short line before 'for these wallets'; still open from the first review: archived wallets are hidden by List (include_archived=false), and PRIVY_API_CUSTOM_HEADERS from env is applied by the SDK.",
+          "at": "2026-10-09T18:59:59Z",
+          "filesHash": "331d6edb22ea5f75"
+        },
+        "commit": "ea13b9b",
+        "doneAt": "2026-10-09T19:00:08Z"
+      },
+      "branch": "feat/f064-the-backend-gives-each-profile-one-privy",
+      "baseCommit": "aa3b613ecb81e62d122096d9e631e02ec6768290",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f064-the-backend-gives-each-profile-one-privy",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F065",
+      "type": "feat",
+      "behavior": "A user signs up once and owns their profiles: POST/GET /v1/me and POST /v1/profiles",
+      "acceptance": [
+        "POST /v1/me with a valid token for a new user creates the user, a personal profile and its wallet; calling it again changes nothing; GET /v1/me lists profiles with kind, name and wallet address",
+        "POST /v1/profiles with an Idempotency-Key creates a freelancer or merchant profile with its own wallet; another user's token gets 403 on every profile route (tested across users); openapi.yaml describes the routes"
+      ],
+      "dependsOn": [
+        "F064"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-32"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F066",
+      "type": "feat",
+      "behavior": "A profile shows its money truthfully: balances and activity API",
+      "acceptance": [
+        "GET /v1/profiles/{id}/balances returns per enabled chain and token the wallet balance at the second RPC's finalized block, pending and held amounts as separate fields, and an estimated USD total marked estimated; tested on Anvil",
+        "GET /v1/profiles/{id}/activity lists invoices and deposits newest first with cursor pages and an empty list for a new profile; both routes are owner-only and in openapi.yaml"
+      ],
+      "dependsOn": [
+        "F065"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-33"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F067",
+      "type": "feat",
+      "behavior": "A visitor signs in with Privy and lands in the app shell",
+      "acceptance": [
+        "Privy sign-in (email code; Google and passkey enabled in the dashboard) leads to /app with sidebar, top bar, profile switcher and theme switcher; the first sign-in calls POST /v1/me and the personal profile exists",
+        "A signed-out visit to /app goes to sign-in; Playwright signs in with the Privy test account (credentials only in the ignored apps/web/.env)"
+      ],
+      "dependsOn": [
+        "F065"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "unit"
+      ],
+      "refs": [
+        "R-34"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F068",
+      "type": "feat",
+      "behavior": "A user creates profiles and receives money in the app: receive address, QR, balances, activity",
+      "acceptance": [
+        "Creating a freelancer or merchant profile adds it to the switcher with its own wallet; the profile page shows the receive address with a QR code and an exact network and token warning",
+        "The page shows balances (estimated total marked, pending and held separate) and activity, with empty states for a new profile; axe finds 0 serious or critical violations"
+      ],
+      "dependsOn": [
+        "F066",
+        "F067"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "unit"
+      ],
+      "refs": [
+        "R-35"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F069",
+      "type": "docs",
+      "behavior": "Spike: what proves a recent Privy sign-in before money actions, and how sessions are listed and revoked",
+      "acceptance": [
+        "docs/spikes/s8-reauth.md records, with the Privy test app, which token claims or flows prove a recent sign-in, how sessions and devices are listed and revoked, and the rule the API will enforce before money actions"
+      ],
+      "dependsOn": [
+        "F067"
+      ],
+      "state": "not_started",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [
+        "R-36"
+      ],
+      "keep": [
+        "apps/*",
+        "packages/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
