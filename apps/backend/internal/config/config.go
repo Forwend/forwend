@@ -12,9 +12,9 @@ import (
 type API struct {
 	DatabaseURL string
 	Addr        string
-	// From the Privy dashboard: app ID and the PEM verification key for access tokens (one line with \n is fine).
-	PrivyAppID           string
-	PrivyVerificationKey string
+	// Privy app ID, and the URL of its published token signing keys (JWKS).
+	PrivyAppID   string
+	PrivyJWKSURL string
 }
 
 // Worker is what cmd/worker and cmd/signer need for now.
@@ -25,7 +25,7 @@ type Worker struct {
 func LoadAPI() (API, error) {
 	var r reader
 	c := API{DatabaseURL: r.get("DATABASE_URL"), Addr: r.get("API_ADDR"),
-		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyVerificationKey: r.get("PRIVY_VERIFICATION_KEY")}
+		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyJWKSURL: r.get("PRIVY_JWKS_URL")}
 	return c, r.err()
 }
 

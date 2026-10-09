@@ -42,7 +42,7 @@ func run() error {
 	}
 	defer pool.Close()
 
-	verifier, err := auth.NewVerifier(cfg.PrivyAppID, cfg.PrivyVerificationKey)
+	verifier, err := auth.NewVerifier(ctx, cfg.PrivyAppID, cfg.PrivyJWKSURL, &http.Client{Timeout: 10 * time.Second})
 	if err != nil {
 		return err
 	}

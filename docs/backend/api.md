@@ -38,10 +38,11 @@ Routes today: `/healthz`, `POST /v1/profiles/{profileId}/invoices`, `GET /v1/inv
 - Public routes (checkout reads) are marked `security: []` in the spec. `/healthz` is also public and uses its own status response. No other route is public by default.
 - Profile-scoped routes check that the user owns the profile: 403 otherwise, also for an unknown or malformed
   profile ID, so callers can't probe which profiles exist.
-- `internal/auth` verifies the token locally with the dashboard verification key (no network call): ES256 only,
-  issuer `privy.io`, audience = app ID, `exp` required, `sub` = the user's Privy DID. The Privy Go SDK (D-12) has no
-  local token check, so this uses `golang-jwt/jwt/v5` as in Privy's Go guide
-  (https://docs.privy.io/authentication/user-authentication/access-tokens).
+- `internal/auth` verifies the token locally: ES256 only, issuer `privy.io`, audience = app ID, `exp` required,
+  `sub` = the user's Privy DID. The key is the one named by the token's `kid` among those published at
+  `PRIVY_JWKS_URL` (Privy publishes more than one), loaded at startup (R-29). An unknown `kid` fetches the keys again at
+  most once a minute; a known one makes no network call. The Privy Go SDK (D-12) has no local token check, so this
+  uses `golang-jwt/jwt/v5` as in Privy's Go guide (https://docs.privy.io/authentication/user-authentication/access-tokens).
 - `httpapi.requireUser` and `requireProfileOwner` wrap the protected handlers.
 
 ## Errors
