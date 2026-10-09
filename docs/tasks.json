@@ -6903,7 +6903,7 @@
       "dependsOn": [
         "F065"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -7000,11 +7000,18 @@
           "summary": "Balances and activity API meet R-33. Review fixes verified: per-chain lock, failed picks remembered 30 s, parallel per-token reads with own timeout, cancelled requests keep shared clients, pending documented truthfully incl. settlement overlap, activity 401 test. go test -race ./internal/... ./cmd/... passes; gofmt and vet clean.",
           "at": "2026-10-09T19:47:57Z",
           "filesHash": "5e77461135fb40c7"
-        }
+        },
+        "commit": "0bd9b15",
+        "doneAt": "2026-10-09T19:48:13Z"
       },
       "branch": "feat/f066-a-profile-shows-its-money-truthfully-bal",
       "baseCommit": "4fbf8cedc662afe42d35368ddddf6c9174fe98fd",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f066-a-profile-shows-its-money-truthfully-bal",
+        "base": "main"
+      }
     },
     {
       "id": "F067",
