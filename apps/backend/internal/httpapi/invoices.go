@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"time"
+	"unicode/utf8"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 )
@@ -41,8 +42,8 @@ type invoiceJSON struct {
 func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key := r.Header.Get("Idempotency-Key")
-		if key == "" || len(key) > 255 {
-			writeError(w, r, fmt.Errorf("%w: Idempotency-Key header must be 1 to 255 characters", errMalformed))
+		if key == "" || len(key) > 255 || !utf8.ValidString(key) {
+			writeError(w, r, fmt.Errorf("%w: Idempotency-Key header must be 1 to 255 bytes of UTF-8", errMalformed))
 			return
 		}
 		var body createInvoiceBody

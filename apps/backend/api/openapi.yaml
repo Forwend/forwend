@@ -23,6 +23,7 @@ paths:
         - name: Idempotency-Key
           in: header
           required: true
+          description: 1 to 255 bytes of UTF-8.
           schema: { type: string, minLength: 1, maxLength: 255 }
       requestBody:
         required: true
@@ -96,7 +97,7 @@ components:
       additionalProperties: false
       required: [chainId, token, amount]
       properties:
-        chainId: { type: integer, minimum: 1 }
+        chainId: { type: integer, minimum: 1, maximum: 9223372036854775807 }
         token:
           type: string
           description: Contract of an enabled token on chainId; any letter case.

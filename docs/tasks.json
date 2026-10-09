@@ -4709,84 +4709,85 @@
       ],
       "review": true,
       "notes": [
-        "2026-10-09 From F046: wrap the invoice routes in requireUser(requireProfileOwner(...)) (internal/httpapi/auth.go); add PRIVY_APP_ID and PRIVY_VERIFICATION_KEY to config.LoadAPI and .env.example (until the Privy app exists, a local P-256 test key works); construct auth.NewVerifier and auth.NewService in cmd/api."
+        "2026-10-09 From F046: wrap the invoice routes in requireUser(requireProfileOwner(...)) (internal/httpapi/auth.go); add PRIVY_APP_ID and PRIVY_VERIFICATION_KEY to config.LoadAPI and .env.example (until the Privy app exists, a local P-256 test key works); construct auth.NewVerifier and auth.NewService in cmd/api.",
+        "2026-10-09 review pass by reviewer: PASS. Money safety holds: receiveAddress is address.Receive over exactly the inserted values (id, profile wallet, lowercased token, canonical amount, expiresAt/settleDeadline Unix, chainId, compiled Factory/Implementation); the race path returns the stored row; recipient comes only from profile_wallets with chain_family match; buildTerms (invoice/invoice.go:109) covers every safeToSettle condition (amount!=0 via normalize, recipient != zero/receiver/factory/implementation/token). Idempotency: hash over canonical values (token case, '005'=='5', absent expiresIn == 3600), per-profile scope, constraint invoices_profile_id_idempotency_key_key proven by TestCreateLosesTheInsertRaceToTheSameKey. pnpm --filter @forwend/backend test passes; openapi.yaml lints valid with Redocly. Non-blocking: (1) chainId > 2^63-1 returns 500 and logs ERROR (pgx int8 encode fails at invoice/service.go:47); bound it to int64 -> 422, and add a maximum to openapi.yaml:99. (2) Idempotency-Key with invalid UTF-8 returns 500 (Postgres 22021); check utf8.ValidString at httpapi/invoices.go:44 -> 400. (3) amount is parsed before the digits/length check (invoice/invoice.go:72): a ~1 MB digit string costs ~0.5 s CPU per authenticated request; check len<=78 and the regex first. (4) encoding/json matches field names case-insensitively, so ChainID/Amount are accepted despite additionalProperties:false; 400 messages show Go type names (createInvoiceBody). (5) buildTerms refusal is tested only for recipient==token (httpapi/invoices_test.go:297); a table test in invoice for zero/receiver/factory/implementation would pin all cases; service_test.go covers only the race. (6) Proof line 3 credits docs-check with Redocly lint, but scripts/check-docs.py does not lint the spec."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-09T14:02:10Z",
+        "at": "2026-10-09T14:06:48Z",
         "checks": [
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.5,
-            "log": "docs/runs/F047-20261009T140210Z-backend.log"
+            "seconds": 4.1,
+            "log": "docs/runs/F047-20261009T140648Z-backend.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.6,
-            "log": "docs/runs/F047-20261009T140210Z-harness.log"
+            "log": "docs/runs/F047-20261009T140648Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F047-20261009T140210Z-docs-check.log"
+            "log": "docs/runs/F047-20261009T140648Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F047-20261009T140210Z-lint.log"
+            "log": "docs/runs/F047-20261009T140648Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F047-20261009T140210Z-typecheck.log"
+            "log": "docs/runs/F047-20261009T140648Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.3,
-            "log": "docs/runs/F047-20261009T140210Z-unit.log"
+            "seconds": 4.9,
+            "log": "docs/runs/F047-20261009T140648Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.1,
-            "log": "docs/runs/F047-20261009T140210Z-build.log"
+            "seconds": 0.9,
+            "log": "docs/runs/F047-20261009T140648Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 8.7,
-            "log": "docs/runs/F047-20261009T140210Z-e2e.log"
+            "seconds": 8.8,
+            "log": "docs/runs/F047-20261009T140648Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F047-20261009T140210Z-keep.log"
+            "log": "docs/runs/F047-20261009T140648Z-keep.log"
           }
         ],
         "taskHash": "7f31a6108b77a1e0",
-        "filesHash": "11a8dd3ef8edfabf",
+        "filesHash": "8cb5c526608c4c97",
         "proof": {
           "1": "backend: TestCreateInvoice: POST with Idempotency-Key, chainId, token, amount returns 201 with a 32-byte hex invoiceId, receiveAddress, expiresAt = now + 1h and settleDeadline = expiresAt + 24h; TestCreateInvoiceErrors: expiresIn 900 and 31536000 pass, 899, 31536001 and 0 return 422",
-          "2": "backend: TestCreateInvoice: recipient is the profile wallet and recomputing address.Receive from the stored terms equals receiveAddress; a recipient field in the request is 400; TestCreateInvoiceRefusesUnsettleableTerms: terms settle() would refuse are 422",
-          "3": "backend: TestCreateInvoiceIsIdempotent (same key and values -> 200 same invoice, other body -> 409), TestCreateInvoiceSameKeyConcurrently and TestCreateLosesTheInsertRaceToTheSameKey (one invoice per key under races), TestCreateInvoiceErrors (unknown/disabled token, amount 0 and 2^256 -> 422), TestCreateInvoice GET returns the same terms and statuses, TestGetInvoiceNotFound; docs-check: apps/backend/api/openapi.yaml describes both routes (validated with Redocly lint)"
+          "2": "backend: TestCreateInvoice: recipient is the profile wallet and recomputing address.Receive from the stored terms equals receiveAddress; a recipient field in the request is 400; TestCreateInvoiceRefusesUnsettleableTerms and TestBuildTermsRefusesWhatSettleRefuses: terms settle() would refuse are 422",
+          "3": "backend: TestCreateInvoiceIsIdempotent (same key and values -> 200 same invoice, other body -> 409), TestCreateLosesTheInsertRaceToTheSameKey (one invoice per key under a race), TestCreateInvoiceErrors (unknown/disabled token, amount 0 and 2^256 -> 422, chainId over 2^63-1 -> 422, non-UTF-8 key -> 400), TestCreateInvoice GET returns the same terms and statuses, TestGetInvoiceNotFound; apps/backend/api/openapi.yaml describes both routes (Redocly lint run by hand, not by a check)"
         }
       },
       "branch": "feat/f047-a-creator-makes-an-invoice-once-with-a-r",

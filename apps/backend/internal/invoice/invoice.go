@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"regexp"
 	"strings"
@@ -63,14 +64,18 @@ type Invoice struct {
 
 // normalize checks the request values that need no database and returns them in canonical form.
 func (r Request) normalize() (token string, amount *big.Int, expiresIn time.Duration, err error) {
-	if r.ChainID == 0 {
-		return "", nil, 0, fmt.Errorf("%w: chainId is required", ErrInvalid)
+	if r.ChainID == 0 || r.ChainID > math.MaxInt64 { // stored as bigint
+		return "", nil, 0, fmt.Errorf("%w: chainId must be from 1 to 2^63-1", ErrInvalid)
 	}
 	if !evmAddress.MatchString(r.Token) {
 		return "", nil, 0, fmt.Errorf("%w: token must be a 0x-prefixed 20-byte hex address", ErrInvalid)
 	}
-	amount, ok := new(big.Int).SetString(r.Amount, 10)
-	if !digits.MatchString(r.Amount) || !ok || amount.Sign() == 0 || amount.Cmp(uint256Max) > 0 {
+	// Length and digits first: parsing a huge string costs CPU. 2^256-1 has 78 digits.
+	if len(r.Amount) > 78 || !digits.MatchString(r.Amount) {
+		return "", nil, 0, fmt.Errorf("%w: amount must be a decimal string from 1 to 2^256-1", ErrInvalid)
+	}
+	amount, _ = new(big.Int).SetString(r.Amount, 10)
+	if amount.Sign() == 0 || amount.Cmp(uint256Max) > 0 {
 		return "", nil, 0, fmt.Errorf("%w: amount must be a decimal string from 1 to 2^256-1", ErrInvalid)
 	}
 	expiresIn = DefaultExpiresIn

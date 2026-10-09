@@ -271,6 +271,9 @@ func TestCreateInvoiceErrors(t *testing.T) {
 		{"two JSON objects", "did:privy:alice", e.aliceProfile, "k17", body(`"amount": "1"`) + `{}`, 400, "malformed_request"},
 		{"no Idempotency-Key", "did:privy:alice", e.aliceProfile, "", body(`"amount": "1"`), 400, "malformed_request"},
 		{"Idempotency-Key over 255", "did:privy:alice", e.aliceProfile, strings.Repeat("k", 256), body(`"amount": "1"`), 400, "malformed_request"},
+		{"chainId above 2^63-1", "did:privy:alice", e.aliceProfile, "k20", `{"chainId": 9223372036854775808, "token": "` + usdc + `", "amount": "1"}`, 422, "invalid_value"},
+		{"amount longer than 78 digits", "did:privy:alice", e.aliceProfile, "k21", body(`"amount": "` + strings.Repeat("9", 79) + `"`), 422, "invalid_value"},
+		{"Idempotency-Key not UTF-8", "did:privy:alice", e.aliceProfile, "k\xff", body(`"amount": "1"`), 400, "malformed_request"},
 		{"no access token", "", e.aliceProfile, "k18", body(`"amount": "1"`), 401, "unauthorized"},
 		{"another user's profile", "did:privy:bob", e.aliceProfile, "k19", body(`"amount": "1"`), 403, "forbidden"},
 	}
