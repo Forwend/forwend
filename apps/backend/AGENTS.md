@@ -7,6 +7,8 @@ Go API, worker and signer (PLAN Phase 6). Requirements R-14…R-24 in `docs/PROJ
 - First time: `cp .env.example .env`, then `pnpm --filter @forwend/backend postgres:up` (Docker).
 - `pnpm --filter @forwend/backend test` (gofmt, vet, `go test -race` on real Postgres).
 - `pnpm --filter @forwend/backend api` (or `worker`, `signer`).
+- `sh scripts/with-env.sh go test -tags privylive ./internal/privy/`: opt-in test against the Privy test app
+  (creates a throwaway user and wallet, then removes them).
 - `pnpm --filter @forwend/backend e2e`: the money-loop gate with the real binaries on Postgres and Anvil (also in
   root `pnpm e2e` and CI).
 

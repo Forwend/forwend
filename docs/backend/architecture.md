@@ -69,6 +69,13 @@ ledger designs from [Modern Treasury](https://www.moderntreasury.com/journal/acc
 [pgledger](https://github.com/pgr0ss/pgledger) and [Stripe](https://stripe.dev/blog/ledger-stripe-system-for-tracking-and-validating-money-movement),
 idempotency from [Brandur Leach](https://brandur.org/idempotency-keys).
 
+## Privy
+
+`internal/privy` wraps the Privy Go SDK (D-12). `ProfileWallet` returns a profile's user-owned EVM wallet: it looks
+the wallet up by `external_id` = profile id and creates it only if missing (idempotency key = profile id), so a
+repeated or concurrent call never makes a second one; the address comes back lowercase (R-31). The server never signs
+for these wallets (D-46). Tests run against a fake Privy API; `-tags privylive` runs one against the Privy test app.
+
 ## Running the loop
 
 `worker` and `signer` read the shared chain list (`CHAINS_FILE`, `packages/contracts/chains.json`) and

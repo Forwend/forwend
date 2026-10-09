@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 64,
+  "nextId": 70,
   "tasks": [
     {
       "id": "F001",
@@ -6650,6 +6650,244 @@
         "branch": "docs/f063-phase-7-is-defined-requirements-r-31-to",
         "base": "main"
       }
+    },
+    {
+      "id": "F064",
+      "type": "feat",
+      "behavior": "The backend gives each profile one Privy wallet through internal/privy",
+      "acceptance": [
+        "internal/privy returns a profile's user-owned EVM wallet: it creates one with external_id = profile id (idempotency key = profile id) or returns the existing one found by external_id, never a second; two concurrent creates end with one wallet; the address comes back lowercase",
+        "A fake Privy API (httptest, checking auth headers and request bodies) covers create, lookup and the create race; an opt-in test (build tag privylive) creates a user and asks for its profile wallet twice against the Privy test app"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-31"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T18:52:41Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 26.9,
+            "log": "docs/runs/F064-20261009T185241Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F064-20261009T185241Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F064-20261009T185241Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F064-20261009T185241Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F064-20261009T185241Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 25.3,
+            "log": "docs/runs/F064-20261009T185241Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": "docs/runs/F064-20261009T185241Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.0,
+            "log": "docs/runs/F064-20261009T185241Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F064-20261009T185241Z-keep.log"
+          }
+        ],
+        "taskHash": "82ed1e5f1ef2de60",
+        "filesHash": "2008c1bf83eb3f95",
+        "proof": {
+          "1": "backend: TestProfileWalletIsCreatedOnceAndFoundAgain (one create with owner user_id, external_id = profile id, idempotency key; second call returns the same wallet with no create; lowercase address), TestProfileWalletLosesTheCreateRace, TestProfileWalletConcurrentCallsMakeOneWallet (10 concurrent calls, 1 wallet); each rule removed in turn fails a test",
+          "2": "backend: the fake Privy API checks Basic auth and privy-app-id and enforces unique external_id; TestLiveProfileWallet (build tag privylive) passed against the forwend Privy test app: created a user, got the same lowercase wallet twice, then deleted the user and archived the wallet; vetted by the backend check"
+        }
+      },
+      "branch": "feat/f064-the-backend-gives-each-profile-one-privy",
+      "baseCommit": "aa3b613ecb81e62d122096d9e631e02ec6768290",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F065",
+      "type": "feat",
+      "behavior": "A user signs up once and owns their profiles: POST/GET /v1/me and POST /v1/profiles",
+      "acceptance": [
+        "POST /v1/me with a valid token for a new user creates the user, a personal profile and its wallet; calling it again changes nothing; GET /v1/me lists profiles with kind, name and wallet address",
+        "POST /v1/profiles with an Idempotency-Key creates a freelancer or merchant profile with its own wallet; another user's token gets 403 on every profile route (tested across users); openapi.yaml describes the routes"
+      ],
+      "dependsOn": [
+        "F064"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-32"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F066",
+      "type": "feat",
+      "behavior": "A profile shows its money truthfully: balances and activity API",
+      "acceptance": [
+        "GET /v1/profiles/{id}/balances returns per enabled chain and token the wallet balance at the second RPC's finalized block, pending and held amounts as separate fields, and an estimated USD total marked estimated; tested on Anvil",
+        "GET /v1/profiles/{id}/activity lists invoices and deposits newest first with cursor pages and an empty list for a new profile; both routes are owner-only and in openapi.yaml"
+      ],
+      "dependsOn": [
+        "F065"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-33"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F067",
+      "type": "feat",
+      "behavior": "A visitor signs in with Privy and lands in the app shell",
+      "acceptance": [
+        "Privy sign-in (email code; Google and passkey enabled in the dashboard) leads to /app with sidebar, top bar, profile switcher and theme switcher; the first sign-in calls POST /v1/me and the personal profile exists",
+        "A signed-out visit to /app goes to sign-in; Playwright signs in with the Privy test account (credentials only in the ignored apps/web/.env)"
+      ],
+      "dependsOn": [
+        "F065"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "unit"
+      ],
+      "refs": [
+        "R-34"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F068",
+      "type": "feat",
+      "behavior": "A user creates profiles and receives money in the app: receive address, QR, balances, activity",
+      "acceptance": [
+        "Creating a freelancer or merchant profile adds it to the switcher with its own wallet; the profile page shows the receive address with a QR code and an exact network and token warning",
+        "The page shows balances (estimated total marked, pending and held separate) and activity, with empty states for a new profile; axe finds 0 serious or critical violations"
+      ],
+      "dependsOn": [
+        "F066",
+        "F067"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "unit"
+      ],
+      "refs": [
+        "R-35"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F069",
+      "type": "docs",
+      "behavior": "Spike: what proves a recent Privy sign-in before money actions, and how sessions are listed and revoked",
+      "acceptance": [
+        "docs/spikes/s8-reauth.md records, with the Privy test app, which token claims or flows prove a recent sign-in, how sessions and devices are listed and revoked, and the rule the API will enforce before money actions"
+      ],
+      "dependsOn": [
+        "F067"
+      ],
+      "state": "not_started",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [
+        "R-36"
+      ],
+      "keep": [
+        "apps/*",
+        "packages/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
