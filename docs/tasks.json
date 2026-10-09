@@ -4878,7 +4878,7 @@
       "dependsOn": [
         "F056"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -4975,11 +4975,18 @@
           "summary": "Shutdown drains active responses, closes connections on timeout and preserves error causes. Main closes Postgres after serving returns; route and migration splits preserve behavior. Uncached race tests on real Postgres and all nine checks passed.",
           "at": "2026-10-09T11:19:54Z",
           "filesHash": "16150e012e9f805d"
-        }
+        },
+        "commit": "4d49c61",
+        "doneAt": "2026-10-09T11:19:56Z"
       },
       "branch": "fix/f057-finish-active-api-requests-before-shutdo",
       "baseCommit": "5d31831d4edf0743609e4f83b3cbc41d824a3e22",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f057-finish-active-api-requests-before-shutdo",
+        "base": "main"
+      }
     },
     {
       "id": "F058",
