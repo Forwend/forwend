@@ -4622,7 +4622,7 @@
       "dependsOn": [
         "F054"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "lint",
         "images-check",
@@ -4712,11 +4712,24 @@
           "summary": "Re-review: all 9 must-fix items fixed. api.md matches R-19 (201 first, 200 replay, 409 other body, 422, decimal-string amount next to chainId and token), server timeouts and MaxBytesReader back, /healthz exception noted. rules.md restores .env.example, NNNNN_name.sql, no pkg/, file naming, missing-variable error, init() driver exception, interfaces for two real implementations, original bare New rule. operations.md: Safe on every EVM chain where a wrong-chain deposit could arrive, queued-transaction alerts, pause line corrected. contracts rules.md: no gas cap (Tempo), getters settled and factory only on outside clones (matches InvoiceReceiver.sol), implementation in constructor, newest factory, refunds may repeat. money-safety.md: recipient from Privy wallet, canary uses its own config, deploy rule in the receive-address section. Root AGENTS.md: import flow and folder split back; 72 lines; harness block identical to main. No contradictions found. lint and images-check pass, 0 broken relative links, no project CLAUDE.md, the must-not-change list holds (apps/web/src comment-only).",
           "at": "2026-10-09T10:57:18Z",
           "filesHash": "fdc934c89b5961a2"
+        },
+        "commit": "c3c31ba",
+        "doneAt": "2026-10-09T10:57:37Z",
+        "proof": {
+          "1": "docs/README.md, docs/architecture.md; review pass",
+          "2": "docs/backend/{architecture,rules,api,money-safety}.md, docs/contracts/{architecture,rules,operations}.md, docs/web/{architecture,rules,DESIGN,PRODUCT,images}.md; images-check passed",
+          "3": "five package AGENTS.md files of at most 16 lines; no CLAUDE.md; review pass",
+          "4": "root AGENTS.md 72 lines, harness block identical; 0 broken links; reviewer confirmed no rule lost"
         }
       },
       "branch": "docs/f055-docs-live-in-one-tree-docs-readme-md-map",
       "baseCommit": "289fc568a92b4ee3b73753363da8ba93a05a5bdc",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f055-docs-live-in-one-tree-docs-readme-md-map",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
