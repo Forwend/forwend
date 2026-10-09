@@ -3,8 +3,8 @@
 The Go backend in `apps/backend` (PLAN Phase 6). Code rules: [rules.md](rules.md).
 Requirements: R-14…R-24 in [PROJECT.md](../PROJECT.md). Whole system: [architecture.md](../architecture.md).
 
-Current skeleton: config, Postgres migrations and `/healthz`. Worker and signer only start and wait.
-The processes and schema below are the target for R-15…R-24.
+Built: invoice API, Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
+(`apps/backend/e2e`, R-23) runs the whole loop. Not built yet: refunds, webhooks, merchants.
 
 ## Processes
 - `api`: public HTTP API + dashboard API. Verifies Privy tokens, authorizes the active profile,
@@ -68,6 +68,18 @@ Sources: PostgreSQL 17 docs ([CREATE TRIGGER](https://www.postgresql.org/docs/17
 ledger designs from [Modern Treasury](https://www.moderntreasury.com/journal/accounting-for-developers-part-ii),
 [pgledger](https://github.com/pgr0ss/pgledger) and [Stripe](https://stripe.dev/blog/ledger-stripe-system-for-tracking-and-validating-money-movement),
 idempotency from [Brandur Leach](https://brandur.org/idempotency-keys).
+
+## Running the loop
+
+`worker` and `signer` read the shared chain list (`CHAINS_FILE`, `packages/contracts/chains.json`) and
+`INFURA_API_KEYS`, and serve the chains enabled in the `chains` table. `internal/chain` picks RPCs like
+`script/rpc.mjs`: each Infura key, then public RPCs, only URLs whose `eth_chainId` matches. The first working one
+reads the chain; the next one on another host checks balances (D-15). A chain without two working hosts is not
+served (Tempo Moderato lists one RPC: add a second before enabling it). After any error the next round picks again,
+so a rate-limited key is skipped. Logged RPC errors are redacted: go-ethereum puts the URL, Infura key included, in
+network errors. Each chain's round has a 2-minute limit. Every `POLL_INTERVAL` the worker runs, per chain, a watcher scan then the ledger; the
+signer runs its due intents. The gate starts all three binaries against Postgres and Anvil, creates an invoice through
+the API, pays it and waits for detected → paid → settled with the deposit going detected → confirmed.
 
 ## Watcher
 

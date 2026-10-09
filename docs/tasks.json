@@ -5205,14 +5205,14 @@
       "type": "test",
       "behavior": "The whole money loop runs locally: create, pay, detect, confirm, paid, settled",
       "acceptance": [
-        "With Postgres and Anvil from compose, the gate script creates an invoice through the API, pays it with the mock token and sees detected -> confirmed -> paid -> settled; the ledger equals on-chain balances",
+        "With Postgres from compose and an Anvil the gate starts (Foundry), the gate script creates an invoice through the API, pays it with the mock token and sees detected -> confirmed -> paid -> settled; the ledger equals on-chain balances",
         "Running it again with the same idempotency key gives one invoice; CI runs the gate"
       ],
       "dependsOn": [
         "F047",
         "F050"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend-e2e",
         "backend"
@@ -5230,10 +5230,112 @@
         "2026-10-09 From F048: cmd/worker does not run the watcher yet. Wire a loop calling watcher.NewChain(pool, chainID, rpcClient).Scan per enabled chain, with per-chain RPC URLs in config (only internal/config reads env), before the gate can see detected -> confirmed.",
         "2026-10-09 Correction to the F048 note: no new per-chain RPC variables. The worker reuses packages/contracts/chains.json (one source for chain IDs, Infura names, public RPCs) and INFURA_API_KEYS, with rpc.mjs's rule in Go: try each Infura key, then public RPCs, keep the first whose eth_chainId matches (D-15); move to the next on 429 (S-4 hit Infura rate limits). with-env.sh loads only apps/backend/.env, so INFURA_API_KEYS must be available to the backend too. Anvil (31337) uses its local URL. The second, independent RPC for balanceOf before paid is F049/D-15.",
         "2026-10-09 From F049: each worker round per chain is watcher.Chain.Scan, then ledger.Service.ProcessChain; build the Service with ledger.BalanceFrom(clients) using RPCs other than the watcher's (D-15), e.g. a public RPC when the watcher uses Infura.",
-        "2026-10-09 From F050: cmd/signer needs the executor private key (config, only internal/config reads env; never logged) and one ethclient per chain; loop settlement.NewSigner(pool, key, clients).Run. One Signer per executor key. The gate's 'settled' step is the signer confirming."
+        "2026-10-09 From F050: cmd/signer needs the executor private key (config, only internal/config reads env; never logged) and one ethclient per chain; loop settlement.NewSigner(pool, key, clients).Run. One Signer per executor key. The gate's 'settled' step is the signer confirming.",
+        "2026-10-09 From F050 review (minor, fix while wiring): settlement service.go chain-ID mismatch wraps a nil error (%!w(<nil>)); plain errors retry every run without backoff; stuck txs have no fee bump.",
+        "2026-10-09 review fail by subagent: FAIL, 2 blocking. Ran: backend test passed; gate passed 6 times in a row plus 4 at once ([open detected paid settled], deposit [detected/true confirmed/false]); no anvil or binary processes left over, test DBs dropped. Root pnpm e2e runs the gate (turbo passes DATABASE_URL; CI installs Foundry and Go; harness check --ci runs e2e). BLOCKING 1, Infura key in logs: go-ethereum v1.17.8 rpc/http.go:246 returns http.Client.Do's *url.Error, which holds the full URL. Repro: an RPC call to http://127.0.0.1:1/v3/SECRETKEY returns 'Post \"http://127.0.0.1:1/v3/SECRETKEY\": dial tcp ...: connection refused'; a timeout gives the same. watcher.go:82/217 and the settlement code wrap it with %w, and cmd/worker/main.go:97 and cmd/signer/main.go:82 log it, so any Infura timeout or connection reset writes the key to the logs. chain.Dial avoids this only on its own path. Fix: remove the keys from errors before logging, or rewrite *url.Error.URL. BLOCKING 2, D-15/R-21 bypassed: internal/chain/chain.go:89-92 uses Primary as Second when only one host answers and only logs a warning, so paid gets set on the same provider's balanceOf. tempo-moderato in packages/contracts/chains.json has one RPC, so it always runs this way. base-sepolia drops to Infura only if sepolia.base.org is down when the worker dials, and stays that way until the next error. docs/backend/architecture.md:77 says the second RPC is on another host. Fix: Dial returns an error without two hosts (allow one host only for 31337, or give the gate 127.0.0.1 and localhost as two hosts). Two Infura keys share a host and count as one provider, which is correct. NON-BLOCKING: (a) no timeout per chain round: watcher calls use the root ctx, so one hung RPC stops every chain, and a down chain is dialed again each round at up to 8s per URL (chain.go:96), which delays healthy chains (cmd/worker/main.go:78-99, signer loop). (b) cmd/signer/main.go:81-87 closes every chain's RPCs on any Run error, including 'no RPC for chain X' and DB errors. (c) docs/PROJECT.md:66 R-23 still says 'Anvil from compose'. The edited acceptance (an Anvil the gate starts) is fine because compose has no Anvil, but update R-23 too. (d) Dialing again starts from key 1, so a 429 moves to the next key only when eth_chainId also gets 429. (e) INFURA_API_KEYS is required even for local Anvil; the gate passes 'none'. .env.example should say a placeholder is needed. (f) cmd/worker/main.go:63-115 holds the round and re-dial logic, which is more than the 'wiring only' rule allows, and only the gate tests it. (g) go vet ./... skips the e2e build tag. (h) the settlement backoff (service.go:82) and the chain-ID error fix have no test, and stuck transactions from the F050 review still get no fee bump. (i) Specs silently overwrites a chainId that appears twice (chain.go:38). Executor key: never logged; the parse error does not echo it. Worker and signer before migrations: they log errors and recover. Shutdown: clean.'",
+        "2026-10-09 review pass by subagent: PASS on 13c9595. Both blocking findings are fixed. (1) Keys in logs: I ran the real worker and signer binaries against a fake RPC at http://127.0.0.1:PORT/v3/SECRETKEY plus the same URL with localhost. The fake answers eth_chainId and drops every other call. The worker logged 'read chain 31337 latest block: Post \"http://127.0.0.1:18645/v3/<key>\": EOF' and SECRETKEY appeared 0 times in the worker and signer logs. Every RPC error logged in cmd/worker and cmd/signer goes through chain.Redact (internal/chain/chain.go:95-101), and TestRedactHidesInfuraKeys covers go-ethereum's real error. (2) D-15: Dial now fails without two working hosts (chain.go:87-92), the test rejects one host listed twice, the gate lists Anvil as 127.0.0.1 and localhost, and architecture.md says Tempo Moderato needs a second RPC before it is enabled. Runs: pnpm --filter @forwend/backend test passed, including the new go vet -tags e2e. The gate passed 3 of 3 ([open detected paid settled], deposit [detected/true confirmed/false]) with no processes left over. Non-blocking, still open: (a) Redact only matches /v3/<key>; a future provider with a key elsewhere in the URL (for example Alchemy /v2/) would leak, so extend the pattern when one is added. (b) RoundTimeout covers only the worker; the signer loop has no per-round limit beyond ReceiptWait, so a hanging RPC can stop the signer. (c) Left as is by the author: the signer drops all clients after any error, dialing again always starts from the first Infura key, the settlement backoff and chain-ID fix have no tests, and stuck transactions get no fee bump."
       ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T16:29:22Z",
+        "checks": [
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.8,
+            "log": "docs/runs/F051-20261009T162922Z-backend-e2e.log"
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 17.2,
+            "log": "docs/runs/F051-20261009T162922Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F051-20261009T162922Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F051-20261009T162922Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F051-20261009T162922Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F051-20261009T162922Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 16.8,
+            "log": "docs/runs/F051-20261009T162922Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.7,
+            "log": "docs/runs/F051-20261009T162922Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.1,
+            "log": "docs/runs/F051-20261009T162922Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F051-20261009T162922Z-keep.log"
+          }
+        ],
+        "taskHash": "4bd7687fc34b0db6",
+        "filesHash": "3ef8ba860e655c92",
+        "proof": {
+          "1": "backend-e2e: TestMoneyLoop builds and starts the real api, worker and signer on a fresh Postgres database and an Anvil (two host names, as D-15 now requires) with the real factory; creates an invoice through the API, pays 5 USDC, and sees the invoice open -> detected -> paid -> settled and the deposit detected (blocks left) -> confirmed; then the receive address and ledger are 0 and the wallet holds 5000000; passed 3 of 3 runs",
+          "2": "e2e: the same Idempotency-Key returns 200 with the same invoiceId and there is 1 invoice; root pnpm e2e (required, run by CI through harness check --ci) runs @forwend/backend:e2e with DATABASE_URL passed through turbo"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "PASS on 13c9595. Both blocking findings are fixed. (1) Keys in logs: I ran the real worker and signer binaries against a fake RPC at http://127.0.0.1:PORT/v3/SECRETKEY plus the same URL with localhost. The fake answers eth_chainId and drops every other call. The worker logged 'read chain 31337 latest block: Post \"http://127.0.0.1:18645/v3/<key>\": EOF' and SECRETKEY appeared 0 times in the worker and signer logs. Every RPC error logged in cmd/worker and cmd/signer goes through chain.Redact (internal/chain/chain.go:95-101), and TestRedactHidesInfuraKeys covers go-ethereum's real error. (2) D-15: Dial now fails without two working hosts (chain.go:87-92), the test rejects one host listed twice, the gate lists Anvil as 127.0.0.1 and localhost, and architecture.md says Tempo Moderato needs a second RPC before it is enabled. Runs: pnpm --filter @forwend/backend test passed, including the new go vet -tags e2e. The gate passed 3 of 3 ([open detected paid settled], deposit [detected/true confirmed/false]) with no processes left over. Non-blocking, still open: (a) Redact only matches /v3/<key>; a future provider with a key elsewhere in the URL (for example Alchemy /v2/) would leak, so extend the pattern when one is added. (b) RoundTimeout covers only the worker; the signer loop has no per-round limit beyond ReceiptWait, so a hanging RPC can stop the signer. (c) Left as is by the author: the signer drops all clients after any error, dialing again always starts from the first Infura key, the settlement backoff and chain-ID fix have no tests, and stuck transactions get no fee bump.",
+          "at": "2026-10-09T16:31:41Z",
+          "filesHash": "3ef8ba860e655c92"
+        },
+        "commit": "13c9595",
+        "doneAt": "2026-10-09T16:31:53Z"
+      },
+      "branch": "test/f051-the-whole-money-loop-runs-locally-create",
+      "baseCommit": "cc101d5ed1a82eaa1a84335795c15edf410d939e",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "test/f051-the-whole-money-loop-runs-locally-create",
+        "base": "main"
+      }
     },
     {
       "id": "F052",
@@ -6244,9 +6346,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-09T15:50:41Z",
+    "at": "2026-10-09T16:16:11Z",
     "clean": true,
     "problems": [],
-    "note": "Merged this session: F043-F049, F059-F061 (PRs #49-#58). Money loop: address, API, auth, watcher, ledger/states done; next F050 signer (settle once), then F051 worker wiring + gate. F052 Privy spikes can start (Q-4 answered)."
+    "note": "Merged this session: F043-F050, F059-F061 (PRs #49-#59). Money loop pieces done (address, API, auth, watcher, ledger, signer). Next: F051 wires worker/signer with Infura + second RPC and runs the local end-to-end gate. F052 Privy spikes can start."
   }
 }

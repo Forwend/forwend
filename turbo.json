@@ -15,7 +15,7 @@
     },
     "e2e": {
       "cache": false,
-      "passThroughEnv": ["CI"]
+      "passThroughEnv": ["CI", "DATABASE_URL"]
     },
     "dev": {
       "cache": false,

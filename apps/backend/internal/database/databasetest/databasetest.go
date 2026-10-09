@@ -16,11 +16,10 @@ import (
 func New(t *testing.T) string {
 	t.Helper()
 	ctx := context.Background()
-	cfg, err := config.LoadWorker()
+	admin, err := config.LoadDatabaseURL()
 	if err != nil {
 		t.Fatal(err)
 	}
-	admin := cfg.DatabaseURL
 	conn, err := pgx.Connect(ctx, admin)
 	if err != nil {
 		t.Fatalf("connect to Postgres (locally: pnpm --filter @forwend/backend postgres:up): %v", err)
