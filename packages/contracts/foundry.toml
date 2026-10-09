@@ -10,6 +10,8 @@ bytecode_hash = "none"
 cbor_metadata = false
 optimizer = true
 optimizer_runs = 10_000
+# Receive-address vectors shared with the Go backend (script/ReceiveAddressVectors.s.sol).
+fs_permissions = [{ access = "read", path = "./deployments.json" }, { access = "read-write", path = "./vectors" }]
 
 [lint]
 # Public immutables are part of the ABI (refundAuthority(), implementation(), factory()).

@@ -12,7 +12,8 @@
       "!docs/tasks.json",
       "!docs/install.json",
       "!docs/diagrams",
-      "!packages/contracts/lib"
+      "!packages/contracts/lib",
+      "!packages/contracts/vectors"
     ]
   },
   "formatter": {

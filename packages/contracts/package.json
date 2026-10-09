@@ -6,6 +6,7 @@
     "build": "forge build",
     "test": "forge fmt --check && forge test",
     "rpc": "node script/rpc.mjs",
+    "vectors": "forge script script/ReceiveAddressVectors.s.sol",
     "symbolic": "forge clean && halmos --match-contract Symbolic"
   }
 }
