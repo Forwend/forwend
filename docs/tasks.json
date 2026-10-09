@@ -3710,7 +3710,7 @@
         "packages/contracts/AGENTS.md, PLAN.md and the diagrams describe these rules and the new process rules (Guard checks the Delay inner operation and txExpiration, independent canary, pause alert, Arc checkout uses ERC-20 transfer and balanceOf, testnet keys never shown to real payers, Safe original owner keys kept recoverable); tests cover every change"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "contracts",
         "lint"
@@ -3792,11 +3792,25 @@
           "summary": "PASS after cb023b6. Re-ran: forge fmt --check ok; forge test 67 pass/1 skip; Base Sepolia fork pass; halmos 3/3. Earlier must-fix resolved: safeToSettle (InvoiceTypes.sol) is shared by settle and _status; my recipient=0 PoC now shows settleable=false, and a 1000-run fuzz over recipient in {valid, 0, factory, token, implementation} x amount 0..AMOUNT x deposit 0..2*AMOUNT confirms status.settleable == settle() success by status.settler. tryBalanceOf now copies at most 32 bytes into scratch memory (memory-safe; failure, no code or short reply -> false,0); my 3 MB return-bomb PoC now recovers other tokens; reverting, short-reply, no-code and gas-burning tokens do not block recover; Arc native guard test passes. Earlier checks still hold: deploy without term checks never strands money, deadline cap only shifts control to the refund authority, status views are read-only calls, and the restricted deploy is safe (authority can deploy). Accepted residual (documented, compromised API only): a malicious invoice token that mirrors another token's balance or burns gas can still block recover on the intended chain. Follow-up: testnet factory in deployments.json is old bytecode; redeploy is a separate task.",
           "at": "2026-10-08T22:48:34Z",
           "filesHash": "258570fb9c056dfa"
+        },
+        "commit": "064dcaa",
+        "doneAt": "2026-10-09T00:09:44Z",
+        "proof": {
+          "1": "contracts: InvoiceReceiver.t.sol test_invalidTermsStayDeployableAndRefundable + Status.t.sol test_unsafeTermsAreNotSettleable",
+          "2": "contracts: Hold.t.sol test_hugeDeadlineIsCappedForPartialPayment, test_executorLosesSettleAtTheCap",
+          "3": "contracts: Hold.t.sol test_tokenWithoutCodeDoesNotBlockRecover, test_revertingBalanceTokenDoesNotBlockRecover, test_returnBombTokenDoesNotBlockRecover",
+          "4": "contracts: InvoiceReceiver.t.sol test_onlyOurKeysDeploy, test_receiverOfFirstDeployWins; Status.t.sol test_statusByInvoiceId, testFuzz_statusMatchesBehaviour",
+          "5": "diagrams + independent review pass (AGENTS.md, PLAN.md, docs/diagrams updated)"
         }
       },
       "branch": "feat/f039-contract-v1-fixes-from-the-attacker-and",
       "baseCommit": "141d916c6fffa7ed548dbc3911763c5691ecd1c6",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f039-contract-v1-fixes-from-the-attacker-and",
+        "base": "main"
+      }
     },
     {
       "id": "F040",
