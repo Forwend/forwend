@@ -5347,7 +5347,7 @@
       "dependsOn": [
         "F042"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -5439,11 +5439,18 @@
         "filesHash": "a150a3fb5037545b",
         "proof": {
           "1": "docs-check: docs/spikes/s1-s3-privy.md records, with the forwend Privy test app: a real access token verified by our JWKS verifier (tampered copy rejected); 3 user-owned wallets for one user found by external_id; who can sign (user-owned: not the server alone, not with a Privy access token; key-owned and ownerless: yes); a sponsored 0.5 USDC send on Base Sepolia from a wallet with 0 ETH (EIP-7702 + EntryPoint, gas spend 0 usd), plus Tempo; each with a decision"
-        }
+        },
+        "commit": "aa3f5bf",
+        "doneAt": "2026-10-09T17:10:38Z"
       },
       "branch": "docs/f052-spikes-s-1-to-s-3-privy-from-go-for-toke",
       "baseCommit": "a6d3c771da1953e4337610b5a80d48e0ff6e4f04",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f052-spikes-s-1-to-s-3-privy-from-go-for-toke",
+        "base": "main"
+      }
     },
     {
       "id": "F053",
