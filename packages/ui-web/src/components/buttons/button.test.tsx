@@ -23,6 +23,8 @@ describe("Button", () => {
     expect(button.getAttribute("aria-busy")).toBe("true");
     expect(button.getAttribute("aria-disabled")).toBe("true");
     expect((button as HTMLButtonElement).disabled).toBe(false);
+    // Only the spinner shows; the label keeps the width and the name.
+    expect(button.querySelector("[data-loading-label]")?.className).toContain("opacity-0");
     fireEvent.click(button);
     expect(onClick).not.toHaveBeenCalled();
   });

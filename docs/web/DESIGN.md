@@ -117,6 +117,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 
 - Apply the saved theme, otherwise the system choice, before first paint using `data-theme` on `<html>`.
   Product sections can force dark with their own `data-theme="dark"`. Use the theme variant for theme-only differences.
+- A loading button shows only a centered spinner, at its own size and colors, and keeps its accessible name.
 - Status changes keep row geometry stable. Labels accompany status colors. Mark all demonstration data as Sample.
 - Use motion tokens; respect reduced motion. No scroll hijacking or layout jumps during state changes.
 - Target WCAG 2.2 AA, including text contrast, keyboard access and accessible status announcements.
