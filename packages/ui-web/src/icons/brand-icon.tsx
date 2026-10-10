@@ -1,6 +1,14 @@
 import { cx } from "../lib/cx";
-import type { BrandIconProps } from "../types/ui/icons";
 import { BRAND_ICONS } from "./brand-data";
+
+export type BrandIconName = keyof typeof BRAND_ICONS;
+
+export interface BrandIconProps {
+  name: BrandIconName;
+  className?: string;
+  /** Accessible name; omit when a visible label sits next to the icon. */
+  label?: string;
+}
 
 export function BrandIcon({ name, className, label }: BrandIconProps) {
   const icon = BRAND_ICONS[name];

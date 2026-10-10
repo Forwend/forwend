@@ -1,4 +1,7 @@
-import type { CustomIconProps } from "../types/ui/icons";
+import type { SVGProps } from "react";
+
+/** Same props shape as Lucide icons, so custom and Lucide icons are interchangeable. */
+export type CustomIconProps = SVGProps<SVGSVGElement> & { strokeWidth?: number };
 
 // Forwend's own icons: 24px grid, round caps and joins, 1.75 stroke, like the Lucide set they sit beside.
 function Base({ children, strokeWidth = 1.75, ...props }: CustomIconProps) {

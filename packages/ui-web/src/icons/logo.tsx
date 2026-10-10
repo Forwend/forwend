@@ -1,6 +1,15 @@
 import { cx } from "../lib/cx";
-import type { LogoMarkProps, LogoProps } from "../types/ui/icons";
 import { LOGO_MARK } from "./logo-data";
+
+export interface LogoMarkProps {
+  className?: string;
+  /** Accessible name when the mark stands alone; omit next to a visible wordmark. */
+  label?: string;
+}
+
+export interface LogoProps {
+  className?: string;
+}
 
 /** The Forwend mark in the current text color. */
 export function LogoMark({ className, label }: LogoMarkProps) {

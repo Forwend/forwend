@@ -1,7 +1,6 @@
 "use client";
 
-import type { Theme } from "@forwend/design-tokens";
-import { THEME_ATTRIBUTE, THEME_STORAGE_KEY, THEMES } from "@forwend/design-tokens";
+import { THEME_ATTRIBUTE, THEME_STORAGE_KEY, THEMES, type Theme } from "@forwend/design-tokens";
 import { useSyncExternalStore } from "react";
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
