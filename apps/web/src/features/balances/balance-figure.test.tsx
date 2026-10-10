@@ -80,11 +80,14 @@ describe("BalanceFigure", () => {
 describe("MoneyActions", () => {
   afterEach(cleanup);
 
-  it("only Receive works; Send, Transfer and Withdraw say why in their name and do nothing", () => {
+  it("Receive and Request work; Send, Transfer and Withdraw say why in their name and do nothing", () => {
     const onReceive = vi.fn();
-    render(<MoneyActions onReceive={onReceive} />);
+    const onRequest = vi.fn();
+    render(<MoneyActions onReceive={onReceive} onRequest={onRequest} />);
     fireEvent.click(screen.getByRole("button", { name: "Receive" }));
     expect(onReceive).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button", { name: "Request" }));
+    expect(onRequest).toHaveBeenCalledOnce();
     for (const [name, reason] of [
       ["Send", "send to another wallet"],
       ["Transfer", "between your profiles"],
@@ -96,5 +99,6 @@ describe("MoneyActions", () => {
       fireEvent.click(button);
     }
     expect(onReceive).toHaveBeenCalledOnce();
+    expect(onRequest).toHaveBeenCalledOnce();
   });
 });

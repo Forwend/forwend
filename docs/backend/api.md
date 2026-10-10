@@ -55,7 +55,8 @@ R-19 and R-42; the full schema is in openapi.yaml.
   in the invoice's own transaction, so a failed create uses no number and a repeated Idempotency-Key returns the
   stored one.
 - Optional create fields: `title` (≤ 200 characters), `note` (≤ 2000), `dueDate` (`YYYY-MM-DD`, shown only; payment
-  still closes at `expiresAt`) and `client` `{ name ≤ 200, email ≤ 254, address ≤ 500 }`. Empty means none and is
+  still closes at `expiresAt`), `senderName` (≤ 100; the name the payer sees on a request from a profile without
+  billing details, D-52) and `client` `{ name ≤ 200, email ≤ 254, address ≤ 500 }`. Empty means none and is
   returned as null. Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken rule is
   422 `invalid_value`; these fields are part of the idempotency hash.
 - The number, these fields and `issuer` never change, like the terms: a database trigger rejects any update.
@@ -63,9 +64,9 @@ R-19 and R-42; the full schema is in openapi.yaml.
   authority settled the receiver outside the signer. The activity's invoice items carry it as `txHash`.
 - `GET /v1/profiles/{profileId}/invoices?limit=&cursor=`: the list format above, highest number (newest) first; items
   have no `deposits`. Owner only, like every `{profileId}` route.
-- The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due date and `issuer` (who bills
-  them; the issuer's own business details) but no `client`: the id is a bearer link, so it returns only what the
-  payer needs (OWASP API Security Top 10 2023, API3). Create and list, which only the owner calls, include `client`.
+- The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due date, `senderName` and
+  `issuer` (who bills them; the issuer's own business details) but no `client`: the id is a bearer link, so it returns
+  only what the payer needs (OWASP API Security Top 10 2023, API3). Create and list, which only the owner calls, include `client`.
 
 ## Invoice and receipt PDFs
 

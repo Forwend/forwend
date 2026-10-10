@@ -16,14 +16,15 @@ import (
 var errMalformed = errors.New("malformed request")
 
 type createInvoiceBody struct {
-	ChainID   uint64 `json:"chainId"`
-	Token     string `json:"token"`
-	Amount    string `json:"amount"`
-	ExpiresIn *int64 `json:"expiresIn"`
-	Title     string `json:"title"`
-	Note      string `json:"note"`
-	DueDate   string `json:"dueDate"`
-	Client    struct {
+	ChainID    uint64 `json:"chainId"`
+	Token      string `json:"token"`
+	Amount     string `json:"amount"`
+	ExpiresIn  *int64 `json:"expiresIn"`
+	Title      string `json:"title"`
+	Note       string `json:"note"`
+	DueDate    string `json:"dueDate"`
+	SenderName string `json:"senderName"`
+	Client     struct {
 		Name    string `json:"name"`
 		Email   string `json:"email"`
 		Address string `json:"address"`
@@ -38,6 +39,7 @@ type invoiceJSON struct {
 	DueDate          *string     `json:"dueDate"`
 	Client           *clientJSON `json:"client,omitempty"` // owner routes only
 	Issuer           *issuerJSON `json:"issuer"`
+	SenderName       *string     `json:"senderName"`
 	ChainID          uint64      `json:"chainId"`
 	Token            string      `json:"token"`
 	Amount           string      `json:"amount"`
@@ -106,7 +108,8 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 		inv, created, err := invoices.Create(r.Context(), r.PathValue("profileId"), key, invoice.Request{
 			ChainID: body.ChainID, Token: body.Token, Amount: body.Amount, ExpiresInSeconds: body.ExpiresIn,
 			Details: invoice.Details{Title: body.Title, Note: body.Note, DueDate: body.DueDate,
-				ClientName: body.Client.Name, ClientEmail: body.Client.Email, ClientAddress: body.Client.Address},
+				ClientName: body.Client.Name, ClientEmail: body.Client.Email, ClientAddress: body.Client.Address,
+				SenderName: body.SenderName},
 		})
 		if err != nil {
 			writeError(w, r, err)
@@ -161,7 +164,7 @@ func getInvoice(invoices *invoice.Service) http.HandlerFunc {
 func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 	out := invoiceJSON{
 		InvoiceID: inv.ID, Number: inv.Number, Title: orNull(inv.Title), Note: orNull(inv.Note),
-		DueDate: orNull(inv.DueDate), ChainID: inv.ChainID, Token: inv.Token, Amount: inv.Amount.String(),
+		DueDate: orNull(inv.DueDate), SenderName: orNull(inv.SenderName), ChainID: inv.ChainID, Token: inv.Token, Amount: inv.Amount.String(),
 		Recipient: inv.Recipient, Factory: inv.Factory, ReceiveAddress: inv.ReceiveAddress,
 		ExpiresAt: inv.ExpiresAt.Format(time.RFC3339), SettleDeadline: inv.SettleDeadline.Format(time.RFC3339),
 		PaymentStatus: inv.PaymentStatus, SettlementStatus: inv.SettlementStatus, RefundStatus: inv.RefundStatus,

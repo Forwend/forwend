@@ -57,12 +57,12 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	inv, err = scanInvoice(s.pool.QueryRow(ctx, `
 		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
 		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash,
-		    title, note, due_date, client_name, client_email, client_address)
+		    title, note, due_date, client_name, client_email, client_address, sender_name)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'evm_create2', $10, $11, $12, $13, NULLIF($14, ''), NULLIF($15, ''),
-		    NULLIF($16, '')::date, NULLIF($17, ''), NULLIF($18, ''), NULLIF($19, '')) RETURNING `+invoiceColumns,
+		    NULLIF($16, '')::date, NULLIF($17, ''), NULLIF($18, ''), NULLIF($19, ''), NULLIF($20, '')) RETURNING `+invoiceColumns,
 		hexID(id), profileID, r.ChainID, family, token, amount.String(), expiresAt.Unix(), settleDeadline.Unix(),
 		recipient, hexAddress(address.Factory), receive, idempotencyKey, hash, r.Title, r.Note, r.DueDate, r.ClientName,
-		r.ClientEmail, r.ClientAddress))
+		r.ClientEmail, r.ClientAddress, r.SenderName))
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.ConstraintName == "invoices_profile_id_idempotency_key_key" {
 		// A concurrent request with the same key won the insert.

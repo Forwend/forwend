@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { AUTH_COPY } from "@/features/auth/auth-copy";
 import { useGetBalancesQuery } from "@/features/balances/balances-api";
+import { RequestSheet } from "@/features/invoices/request-sheet";
 import { type AppSession, AppSessionContext } from "@/features/profiles/app-session";
 import {
   chosenProfile,
@@ -33,7 +34,7 @@ const SHELL_COPY = {
 
 // Signed out: go to sign-in. Signed in: POST /v1/me (signs up on the first visit), then the frame (sidebar and header
 // on desktop; top bar and tab bar on phones) around the page for the chosen profile. The frame owns what opens from
-// anywhere: Receive, the ⌘K menu and the phone profile sheet.
+// anywhere: Receive, a personal profile's Request, the ⌘K menu and the phone profile sheet.
 export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const { ready, authenticated, logout, user } = usePrivy();
   const router = useRouter();
@@ -45,6 +46,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const savedId = useMemo(() => (userId ? readChosenProfileId(userId) : null), [userId]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [receiving, setReceiving] = useState(false);
+  const [requesting, setRequesting] = useState(false);
   const [searching, setSearching] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -89,6 +91,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             profiles,
             chooseProfile: switchProfile,
             openReceive: () => setReceiving(true),
+            openRequest: () => setRequesting(true),
             openProfiles: () => setChoosing(true),
           }
         : null,
@@ -169,6 +172,15 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
         failed={balances.isError}
         onRetry={balances.refetch}
       />
+      <RequestSheet
+        open={requesting}
+        onOpenChange={setRequesting}
+        profileId={active.profileId}
+        senderName={active.name ?? ""}
+        tokens={balances.currentData?.tokens ?? null}
+        failed={balances.isError}
+        onRetry={balances.refetch}
+      />
       <CommandMenu
         open={searching}
         onOpenChange={setSearching}
@@ -176,6 +188,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
         active={active}
         onSwitch={switchProfile}
         onReceive={() => setReceiving(true)}
+        onRequest={() => setRequesting(true)}
       />
     </div>
   );

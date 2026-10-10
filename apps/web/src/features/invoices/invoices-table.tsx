@@ -24,16 +24,30 @@ import {
   invoiceStatus,
 } from "@/features/invoices/invoices";
 import { useGetInvoicesInfiniteQuery } from "@/features/invoices/invoices-api";
-import { INVOICES_COPY as COPY } from "@/features/invoices/invoices-copy";
+import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/invoices-copy";
 import { chainName } from "@/shared/chains/chains";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-function NewInvoiceLink({ className = "" }: { className?: string }) {
-  return (
-    <Link href={APP_ROUTES.newInvoice} className={`${buttonClasses({ size: "sm" })} ${className}`}>
-      <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
-      {COPY.newInvoice}
+// A personal profile's requests open the request sheet; invoices have their own page.
+function NewInvoiceLink({
+  className = "",
+  onRequest,
+}: {
+  className?: string;
+  onRequest?: () => void;
+}) {
+  const classes = `${buttonClasses({ size: "sm" })} ${className}`;
+  const icon = <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />;
+  return onRequest ? (
+    <button type="button" onClick={onRequest} className={classes}>
+      {icon}
+      {REQUESTS_COPY.newInvoice}
+    </button>
+  ) : (
+    <Link href={APP_ROUTES.newInvoice} className={classes}>
+      {icon}
+      {INVOICES_COPY.newInvoice}
     </Link>
   );
 }
@@ -42,13 +56,18 @@ const invoiceHref = (inv: InvoiceSummary) => `${APP_ROUTES.invoices}/${inv.invoi
 
 const clientName = (inv: InvoiceSummary) => inv.client?.name ?? inv.client?.email ?? null;
 
+/** With onRequest the list is a personal profile's requests: no client or due date, so rows show the note. */
 export function InvoicesTable({
   profileId,
   tokens,
+  onRequest,
 }: {
   profileId: string;
   tokens: readonly InvoiceToken[] | null;
+  onRequest?: () => void;
 }) {
+  const COPY = onRequest ? REQUESTS_COPY : INVOICES_COPY;
+  const label = (inv: InvoiceSummary) => (onRequest ? inv.note : clientName(inv));
   const list = useGetInvoicesInfiniteQuery(profileId, LIVE_QUERY);
   const [filter, setFilter] = useState<StatusFilter>(STATUS_FILTERS.all);
   const [search, setSearch] = useState("");
@@ -86,7 +105,7 @@ export function InvoicesTable({
             placeholder={COPY.searchPlaceholder}
             className="flex-1 sm:max-w-72"
           />
-          <NewInvoiceLink className="ml-auto" />
+          <NewInvoiceLink className="ml-auto" onRequest={onRequest} />
         </div>
       ) : null}
 
@@ -103,7 +122,7 @@ export function InvoicesTable({
         <EmptyState
           title={COPY.emptyTitle}
           description={COPY.emptyText}
-          action={<NewInvoiceLink />}
+          action={<NewInvoiceLink onRequest={onRequest} />}
         />
       ) : rows.length === 0 ? (
         <p className="rounded-md border border-line bg-surface px-5 py-8 text-sm text-muted">
@@ -112,8 +131,8 @@ export function InvoicesTable({
       ) : (
         <div className="rounded-md border border-line bg-surface">
           {/* Wide screens: a ruled table, scrolled sideways rather than squeezed when its column is narrow. Below xl
-              the sidebar leaves too little room for five columns, so rows stack as on phones. */}
-          <div className="hidden overflow-x-auto xl:block">
+              the sidebar leaves too little room for five columns, so rows stack as on phones, as requests always do. */}
+          <div className={onRequest ? "hidden" : "hidden overflow-x-auto xl:block"}>
             <table className="w-full min-w-[44rem] text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs text-muted">
@@ -174,7 +193,7 @@ export function InvoicesTable({
               </tbody>
             </table>
           </div>
-          <ul className="divide-y divide-line xl:hidden">
+          <ul className={`divide-y divide-line ${onRequest ? "" : "xl:hidden"}`}>
             {rows.map((inv) => (
               <li key={inv.invoiceId}>
                 <Link
@@ -184,8 +203,8 @@ export function InvoicesTable({
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-ink">
                       {invoiceNumber(inv.number)}
-                      {clientName(inv) ? (
-                        <span className="font-normal text-muted"> · {clientName(inv)}</span>
+                      {label(inv) ? (
+                        <span className="font-normal text-muted"> · {label(inv)}</span>
                       ) : null}
                     </span>
                     {/* The network first: a narrow row cuts the due date, never the network. */}

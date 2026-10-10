@@ -3,6 +3,7 @@ import {
   ChartLine,
   Code,
   FileText,
+  HandCoins,
   History,
   LayoutGrid,
   type LucideIcon,
@@ -11,7 +12,7 @@ import {
 } from "lucide-react";
 import { ACTIVITY_COPY } from "@/features/activity/activity-copy";
 import { BALANCES_COPY } from "@/features/balances/balances-copy";
-import { INVOICES_COPY, NEW_INVOICE_COPY } from "@/features/invoices/invoices-copy";
+import { INVOICES_COPY, NEW_INVOICE_COPY, REQUESTS_COPY } from "@/features/invoices/invoices-copy";
 import { PROFILE_KINDS, type ProfileKind } from "@/features/profiles/profile";
 import { TRANSACTIONS_COPY } from "@/features/transactions/transactions-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -40,6 +41,8 @@ export const NAV = {
   balances: { href: APP_ROUTES.balances, label: BALANCES_COPY.balancesTitle, icon: WalletCards },
   activity: { href: APP_ROUTES.activity, label: ACTIVITY_COPY.activity, icon: History },
   invoices: { href: APP_ROUTES.invoices, label: INVOICES_COPY.invoices, icon: FileText },
+  // A personal profile's invoices are requests (D-52): the same pages under their own name.
+  requests: { href: APP_ROUTES.invoices, label: REQUESTS_COPY.invoices, icon: HandCoins },
   checkout: { href: null, label: "Checkout", icon: ShoppingBag },
   developers: { href: null, label: "Developers", icon: Code },
   analytics: { href: null, label: "Analytics", icon: ChartLine },
@@ -50,7 +53,10 @@ const INSIGHTS: NavGroup = { label: "Insights", items: [NAV.analytics] };
 
 /** The sidebar's groups for each profile type; checkout and analytics join as they are built. */
 export const APP_NAV: Readonly<Record<ProfileKind, readonly NavGroup[]>> = {
-  [PROFILE_KINDS.personal]: [{ ...MONEY, items: [...MONEY.items, NAV.activity] }, INSIGHTS],
+  [PROFILE_KINDS.personal]: [
+    { ...MONEY, items: [...MONEY.items, NAV.requests, NAV.activity] },
+    INSIGHTS,
+  ],
   [PROFILE_KINDS.freelancer]: [
     MONEY,
     { label: "Get paid", items: [NAV.invoices, NAV.activity] },
@@ -75,16 +81,21 @@ export interface Crumb {
 }
 
 /**
- * The header's trail after the profile: the page, then a form under it. On an invoice's page the trail ends at
- * Invoices and gives the invoice's id, which the header names by its number once the invoice loads.
+ * The header's trail after the profile: the page, by the name the profile's sidebar gives it, then a form under it. On
+ * an invoice's page the trail ends at Invoices (Requests) and gives the invoice's id, which the header names by its
+ * number once the invoice loads.
  */
-export function breadcrumb(pathname: string): { trail: Crumb[]; invoiceId: string | null } {
+export function breadcrumb(
+  pathname: string,
+  kind: ProfileKind,
+): { trail: Crumb[]; invoiceId: string | null } {
   if (pathname === APP_ROUTES.newProfile) {
     return { trail: [{ label: "New profile", href: APP_ROUTES.newProfile }], invoiceId: null };
   }
   const page =
-    Object.values(NAV).find((item) => item.href && isCurrentPage(pathname, item.href)) ??
-    NAV.overview;
+    APP_NAV[kind]
+      .flatMap((group) => group.items)
+      .find((item) => item.href && isCurrentPage(pathname, item.href)) ?? NAV.overview;
   const crumb = { label: page.label, href: page.href ?? APP_ROUTES.home };
   if (pathname === APP_ROUTES.newInvoice) {
     return {
@@ -92,6 +103,7 @@ export function breadcrumb(pathname: string): { trail: Crumb[]; invoiceId: strin
       invoiceId: null,
     };
   }
-  const under = page === NAV.invoices ? pathname.slice(`${APP_ROUTES.invoices}/`.length) : "";
+  const under =
+    page.href === APP_ROUTES.invoices ? pathname.slice(`${APP_ROUTES.invoices}/`.length) : "";
   return { trail: [crumb], invoiceId: under && !under.includes("/") ? under : null };
 }

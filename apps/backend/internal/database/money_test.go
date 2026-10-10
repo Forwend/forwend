@@ -392,7 +392,7 @@ func TestInvoiceNumbers(t *testing.T) {
 	for _, column := range []string{"number = 9", "title = 'Logo'", "note = 'Thanks'", "due_date = '2026-11-01'",
 		"client_name = 'Bob'", "client_email = 'bob@example.com'", "client_address = 'Main St 1'",
 		"issuer_name = 'Alice'", "issuer_address = 'Main St 2'", "issuer_country = 'DE'", "issuer_tax_id = 'DE1'",
-		"issuer_email = 'alice@example.com'"} {
+		"issuer_email = 'alice@example.com'", "sender_name = 'Alice'"} {
 		_, err := conn.Exec(ctx, "UPDATE invoices SET "+column+" WHERE id = $1", hex32(1))
 		wantCode(t, err, codeRaise, column)
 	}

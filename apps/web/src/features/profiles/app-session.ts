@@ -11,6 +11,8 @@ export interface AppSession {
   /** Makes a profile the chosen one, such as a profile just created. */
   chooseProfile: (profileId: string) => void;
   openReceive: () => void;
+  /** Request money: a personal profile's request sheet. */
+  openRequest: () => void;
   openProfiles: () => void;
 }
 

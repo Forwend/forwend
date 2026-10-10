@@ -32,6 +32,7 @@ export const INVOICE_LIMITS = {
   clientName: 200,
   clientEmail: 254,
   clientAddress: 500,
+  senderName: 100,
 } as const;
 
 /** Form fields as the API names them in a 422 message. */
@@ -43,6 +44,7 @@ export const INVOICE_FIELDS = {
   clientName: "client.name",
   clientEmail: "client.email",
   clientAddress: "client.address",
+  senderName: "senderName",
 } as const;
 
 export const AMOUNT_ERRORS = {
@@ -113,6 +115,8 @@ export interface InvoiceSummary {
   /** Only in the owner's answers (create and list); the public GET leaves it out. */
   client?: InvoiceClient;
   issuer: InvoiceIssuer | null;
+  /** The name the payer sees when there is no issuer, such as on a personal profile's request. */
+  senderName: string | null;
   chainId: number;
   token: string;
   /** Base units. */
@@ -146,6 +150,7 @@ export interface CreateInvoiceBody {
   title: string;
   note: string;
   dueDate: string;
+  senderName: string;
   client: { name: string; email: string; address: string };
 }
 
@@ -230,7 +235,7 @@ export function confirmingProgress(blocksLeft: number, mostBlocksLeft: number): 
   return blocksLeft < mostBlocksLeft ? 1 - blocksLeft / mostBlocksLeft : null;
 }
 
-/** Invoices under the filter whose number, title or client name or email contains the search. */
+/** Invoices under the filter whose number, title, note or client name or email contains the search. */
 export function filterInvoices(
   items: readonly InvoiceSummary[],
   filter: StatusFilter,
@@ -241,8 +246,8 @@ export function filterInvoices(
     (inv) =>
       matchesStatus(invoiceStatus(inv), filter) &&
       (!query ||
-        [invoiceNumber(inv.number), inv.title, inv.client?.name, inv.client?.email].some((text) =>
-          text ? searchQuery(text).includes(query) : false,
+        [invoiceNumber(inv.number), inv.title, inv.note, inv.client?.name, inv.client?.email].some(
+          (text) => (text ? searchQuery(text).includes(query) : false),
         )),
   );
 }

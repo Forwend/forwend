@@ -78,6 +78,7 @@ describe("checkedReceiveAddress", () => {
     note: null,
     dueDate: null,
     issuer: null,
+    senderName: null,
     paymentStatus: "open",
     settlementStatus: "none",
     settlementTxHash: null,

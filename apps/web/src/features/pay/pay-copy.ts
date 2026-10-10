@@ -6,6 +6,9 @@ export const PAY_COPY = {
   failed: "We could not load this invoice. Check your connection and try again.",
   retry: "Try again",
   invoice: (number: string) => `Invoice ${number}`,
+  // A personal profile's request has no issuer, only the name its sender gave (D-52).
+  requests: (name: string, amount: string) => `${name} requests ${amount}`,
+  request: (number: string) => `Request ${number}`,
   noIssuer: "The sender gave no name or billing details for this invoice.",
   amountDue: "Amount due",
   amountPaid: "Amount paid",

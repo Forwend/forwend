@@ -82,6 +82,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   from real data, with a link to the step; it hides when every step is done or the user closes it.
 - Money actions are round icon buttons with the label underneath, on desktop and phones; only working actions are
   filled with the primary ink. In the header, Send is a dashed outline pill in the subtle color until it is built.
+- Personal overview actions: Receive, Request, Send, Transfer, Withdraw, in one row with a narrow gap on phones.
+  Request (also in ⌘K) opens a sheet with amount, note, checkout expiry and the name the payer sees, then the pay link
+  with Copy and View request. A personal profile's invoices are Requests in the sidebar, list and breadcrumb.
 - A feature that is not built yet keeps its place in the subtle text color, with "Soon" as plain text at the end:
   no badge, no link. A disabled action says why in its accessible name and shows "Coming soon" in a tooltip on
   hover or focus; no notice text is added to the page.
@@ -89,7 +92,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 ## Checkout
 
 - `/pay/<id>` is one centered column on every width: logo, the issuer name as the one display-serif heading over the
-  invoice number and title, then solid hairline panels: the amount (Geist Mono, featured amount size) with token mark
+  invoice number and title (a request without an issuer: "Name requests 12.50 USDC" over "Request INV-0001"), then
+  solid hairline panels: the amount (Geist Mono, featured amount size) with token mark
   and status pill, before-you-pay notes, the network confirm button, the send panel with wallet and exchange tabs (QR
   beside the full address from small screens up), and the status timeline with each payment received (amount, status,
   transaction and explorer link). No image and no glass; it follows the system theme.

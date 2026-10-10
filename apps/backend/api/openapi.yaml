@@ -150,7 +150,7 @@ paths:
         (factory.predict). The same key with the same values returns the stored invoice with 200; with other values, 409.
         The invoice gets the profile's next number in the same transaction (D-50): no gaps, and a repeat returns the
         same number. The insert also copies the profile's billing details as issuer (null without them). The number,
-        title, note, due date, client and issuer never change after creation.
+        title, note, due date, sender name, client and issuer never change after creation.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -285,7 +285,7 @@ paths:
       description: |
         Public, so checkout can show the invoice and recompute the receive address from the terms. Anyone with the id
         can read it, so it leaves out the client's name, email and address; the payer sees the number, title, note,
-        due date and issuer (who bills them).
+        due date, sender name and issuer (who bills them).
       security: []
       parameters:
         - name: invoiceId
@@ -651,6 +651,12 @@ components:
           type: string
           format: date
           description: Optional date the client should pay by (YYYY-MM-DD). Shown only; payment closes at expiresAt.
+        senderName:
+          type: string
+          maxLength: 100
+          description: |
+            Optional name the payer sees, for an invoice without billing details such as a personal profile's request
+            (D-52); empty means none.
         client:
           type: object
           additionalProperties: false
@@ -688,7 +694,7 @@ components:
               items: { $ref: "#/components/schemas/Deposit" }
     InvoiceSummary:
       type: object
-      required: [invoiceId, number, title, note, dueDate, issuer, chainId, token, amount, recipient, factory,
+      required: [invoiceId, number, title, note, dueDate, senderName, issuer, chainId, token, amount, recipient, factory,
         receiveAddress, expiresAt, settleDeadline, paymentStatus, settlementStatus, refundStatus, settlementTxHash,
         createdAt]
       properties:
@@ -704,6 +710,9 @@ components:
         dueDate:
           type: [string, "null"]
           format: date
+        senderName:
+          type: [string, "null"]
+          description: The name the payer sees when there is no issuer. In every response, the public GET too.
         client:
           type: object
           required: [name, email, address]
