@@ -124,7 +124,15 @@ func (s *Service) Of(ctx context.Context, profileID string) (Balances, error) {
 	}
 	out := Balances{Tokens: tokens}
 	if complete {
-		out.EstimatedUSD = usd.FloatString(2)
+		out.EstimatedUSD = usdString(usd)
 	}
 	return out, nil
+}
+
+// usdString cuts a non-negative USD amount to cents; big.Rat.FloatString would round half up, showing money the
+// wallet does not hold.
+func usdString(amount *big.Rat) string {
+	cents := new(big.Int).Quo(new(big.Int).Mul(amount.Num(), big.NewInt(100)), amount.Denom())
+	whole, rest := new(big.Int).QuoRem(cents, big.NewInt(100), new(big.Int))
+	return fmt.Sprintf("%s.%02d", whole, rest.Int64())
 }

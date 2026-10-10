@@ -307,8 +307,9 @@ components:
         estimatedUsdTotal:
           type: [string, "null"]
           description: |
-            An estimate, not a quote: the sum of the wallet balances counting each stablecoin as 1 USD, with 2
-            decimals (for example "12.50"). Pending and held are not included. null when any wallet balance is missing.
+            An estimate, not a quote: the sum of the wallet balances counting each stablecoin as 1 USD, cut (never
+            rounded up) to 2 decimals (for example "12.50"). Pending and held are not included. null when any wallet
+            balance is missing.
     TokenBalance:
       type: object
       required: [chainId, token, symbol, decimals, wallet, finalizedBlock, pending, held]
@@ -442,8 +443,8 @@ components:
         estimatedUsd:
           type: [string, "null"]
           description: |
-            An estimate, not a quote: the point's balances counting each stablecoin as 1 USD, with 2 decimals (for
-            example "12.50"). null when any token's series is null.
+            An estimate, not a quote: the point's balances counting each stablecoin as 1 USD, cut (never rounded up)
+            to 2 decimals (for example "12.50"). null when any token's series is null.
         receivedUsd:
           type: [string, "null"]
           description: The point's received amounts, counted like estimatedUsd.
