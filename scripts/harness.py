@@ -510,8 +510,12 @@ def delivery(state):
     remote_head = (git(root, 'symbolic-ref', '--short', 'refs/remotes/origin/HEAD') or '').strip()
     base = config.get('base') or config.get('defaultBranch') or (remote_head.split('/', 1)[1] if '/' in remote_head else 'main')
     wanted = config.get('mode') or ('local' if config.get('requirePR') is False else 'pr')
+    require_remote_checks = config.get('requireRemoteChecks', True)
+    if not isinstance(require_remote_checks, bool):
+        raise Refused(f'{CONFIG}: delivery.requireRemoteChecks must be a boolean', 2)
     has_origin = git(root, 'remote', 'get-url', 'origin') is not None
     return {'mode': wanted, 'wanted': wanted, 'hasOrigin': has_origin, 'base': base,
+            'requireRemoteChecks': require_remote_checks,
             'merge': config.get('merge') if config.get('merge') in ('squash', 'merge', 'rebase') else 'squash',
             # one `done` call waits this long, below the 2-minute command limit common in agent tools
             'wait': float(config.get('checksWaitSeconds', 90)),
@@ -684,7 +688,8 @@ def cmd_status(root, args):
         print(f'git: {here} @ {head}, ' + (f'{len(changed)} uncommitted paths' if changed else 'clean'))
         settings = delivery(state)
         if settings['mode'] == 'pr':
-            print(f'delivery: pull requests into {settings["base"]}; `done` merges after the checks pass')
+            gate = 'local and GitHub checks' if settings['requireRemoteChecks'] else 'local checks and any reported GitHub checks'
+            print(f'delivery: pull requests into {settings["base"]}; `done` merges after {gate} pass')
             elsewhere = branches_elsewhere(state)  # a clone on the base branch cannot see a queue that lives on a task branch
             if elsewhere:
                 print('task branches this queue does not show: ' + ', '.join(elsewhere[:3])
@@ -1177,7 +1182,7 @@ def pull_request(root, branch):
 
 
 def wait_for_checks(root, number_, settings):
-    """('pass' | 'fail' | 'pending', checks) or ('error', gh output) once nothing is pending or this call's wait is over."""
+    """Return a check outcome; 'not-required' means no remote checks under an explicit local-verification policy."""
     started = time.monotonic()
     workflows = root / '.github/workflows'
     expect_checks = workflows.is_dir() and any('pull_request' in path.read_text(encoding='utf-8', errors='replace')
@@ -1192,6 +1197,8 @@ def wait_for_checks(root, number_, settings):
                 return 'error', (result.stderr or result.stdout).strip()[-400:]
             checks = []
         if not checks:
+            if settings.get('requireRemoteChecks', True) is False:
+                return 'not-required', []
             if expect_checks and elapsed < min(settings['register'], settings['wait']):
                 time.sleep(settings['poll'])
                 continue
@@ -1270,7 +1277,10 @@ def deliver(root, task_id, settings, resumed):
             print('checks are still running: ' + ', '.join(check.get('name', '?') for check in checks))
             print(f'next: `done {task_id}` again to wait for them and merge')
             return 1
-        print('checks: ' + (', '.join(f'{check.get("name")} {check.get("bucket")}' for check in checks) or 'none reported'))
+        if outcome == 'not-required':
+            print(f'GitHub checks: not required for {base}; delivery uses the recorded local verification')
+        else:
+            print('checks: ' + ', '.join(f'{check.get("name")} {check.get("bucket")}' for check in checks))
         attempt = gh(root, 'pr', 'merge', str(pr['number']), f'--{settings["merge"]}', '--delete-branch',
                      '--match-head-commit', head)
         # the exit code is not the answer: a merge queue exits 0 without merging, and gh can fail after merging

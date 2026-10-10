@@ -121,6 +121,7 @@
   "delivery": {
     "mode": "pr",
     "base": "main",
+    "requireRemoteChecks": false,
     "merge": "squash",
     "checksWaitSeconds": 90
   }

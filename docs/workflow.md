@@ -1,7 +1,7 @@
 # Development workflow
 
 Entry point: `python3 scripts/harness.py`. Add `-h` after any command for options.
-Check definitions live only in [config.json](config.json); CI runs the same registry.
+Check definitions live only in [config.json](config.json); staging CI runs the same registry.
 Task state lives in `tasks.json` (edit through the runner); logs in ignored `runs/`.
 Runner regression tests live in `tests/test_harness.py`. No installed skill is needed to use this workflow.
 
@@ -16,9 +16,33 @@ Runner regression tests live in `tests/test_harness.py`. No installed skill is n
    Reproduce bugs first. Make the smallest fix and run its direct checks. Add tests for behavior, not formatting or copied prose.
 5. `verify ID --proof "1=CHECK: evidence" ...` runs task and required checks. Each acceptance line needs a named check.
 6. If review is required, a fresh reviewer reads `show ID` and the diff, then runs `review ID --pass|--fail --summary "findings"`.
-7. With commit/push/merge authorization, commit the verified files and run `done ID`. It pushes, opens the PR, checks CI and merges.
+7. With commit/push/merge authorization, commit the verified files and run `done ID`. It pushes, opens the PR,
+   checks the configured delivery policy and merges. Main requires fresh local verification; reported GitHub
+   failures or pending checks still block delivery, but absent checks are expected under the policy below.
    Pending CI: repeat `done ID`. Failed CI: fix, verify, review and commit again. Approval or closed PR: ask the owner.
 8. Before stopping: `wrapup --note "result; next step"`. Resolve failures or report the exact remaining blocker.
+
+## Development and staging CI
+
+- `main` is the development branch. Task branches still merge through PRs and must pass local `verify` and any
+  required review. Automatic GitHub Actions runs are disabled for PRs into main and pushes to main.
+- `staging` is the batch-validation branch. Its push event runs the full CI registry, including CI-only checks.
+  There is no additional PR-triggered run. Staging is not a deployment environment and this workflow deploys nothing.
+- `delivery.requireRemoteChecks: false` in [config.json](config.json) applies to normal task delivery into the
+  configured base, `main`. The default is true when omitted. It permits absent remote checks, never missing local
+  verification, failed/skipped checks, authentication errors or a stale verification record.
+- Keep staging free of independent commits. From a clean checkout, fetch origin, switch to staging, fast-forward
+  it to `origin/main` with `git merge --ff-only origin/main`, then push staging when a batch is ready. Each push
+  consumes one full CI run; promote deliberately, not after every task. Do not squash or delete staging.
+- A staging push happens before CI reports a result. Treat only a passing run for that exact commit as validated;
+  do not deploy or release an unverified batch. Fix failures on a task branch, merge into main, then promote again.
+- Bootstrap: merge the trigger and harness-policy changes into main before first publishing staging at that
+  updated main commit. Creating staging from the old workflow alone does not enable staging CI. The transition
+  PR may still receive a final run under the old trigger; no workflow-wide disable or skipped-check override is needed.
+
+GitHub's [branch filters](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)
+control which events start a workflow. This repo is private, so hosted runs consume the owner's included allowance
+under [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions).
 
 ## Structure review
 
@@ -41,7 +65,8 @@ manual until a task explicitly adds import-boundary checks; do not claim that pa
 - Proof names must refer to checks that passed. The description explains relevance; independent review checks that claim.
 - `--keep` path globs are enforced. Behavioral constraints need tests and review; prose alone is not a machine check.
 - Completed v2 records remain historical evidence. New verification uses v3 evidence; old unmerged verification must rerun.
-- Missing scripts, commands, remote or CI results never imply success. `passing` with pending delivery is not merged.
+- Missing scripts, commands, remotes or required CI results never imply success. Explicitly disabled remote checks
+  are reported as not required, not passed. `passing` with pending delivery is not merged.
 - Fix failed checks; never weaken them. After three failures without a new approach, `note` attempts and `block ID --reason "..."`.
 - `edit` changes task scope; `reopen` resumes completed work; `drop` removes obsolete work with a reason.
   Update affected PROJECT rows and task refs together. `note` records only useful handoff facts.
