@@ -11019,7 +11019,7 @@
       "dependsOn": [
         "F104"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -11107,11 +11107,18 @@
           "summary": "PASS. Every new host answered live with the right eth_chainId and a finalized block; each chain's hosts are different operators; the test counts hosts by URL host like hostOf and the pool's role picking; rpc.mjs only gains fallbacks; no other code reads public[0] only; docs match.",
           "at": "2026-10-10T21:04:52Z",
           "filesHash": "a7c0bff195106719"
-        }
+        },
+        "commit": "b64f0fb",
+        "doneAt": "2026-10-10T21:04:54Z"
       },
       "branch": "fix/f108-every-enabled-chain-has-at-least-two-ind",
       "baseCommit": "f36264dff6dd1d0a2a7e6ab47bf0d39cc382231d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f108-every-enabled-chain-has-at-least-two-ind",
+        "base": "main"
+      }
     },
     {
       "id": "F109",
