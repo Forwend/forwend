@@ -1,0 +1,210 @@
+import AxeBuilder from "@axe-core/playwright";
+import { expect, type Page, test } from "@playwright/test";
+import { PUBLIC_URL } from "./servers";
+
+// A sample invoice as GET /v1/invoices/{id} returns it. RECEIVE is factory.predict of these terms (the unit test checks
+// the computation against the R-15 vectors), so the page shows it only while every term is unchanged.
+const ID = "0x7f3a9c1e5b2d4086a1c3e5f7092b4d6f8a0c2e4f6a8b0d2f4e6c8a0b2d4f6e81";
+const RECEIVE = "0x586134f74b654f5835860ca198ae725344670078";
+const NOW = new Date("2026-10-10T12:00:00Z");
+const POLL_MS = 15_000;
+
+const OPEN = {
+  invoiceId: ID,
+  number: 1,
+  title: "Logo design",
+  note: "Thanks for the work together.",
+  dueDate: "2026-11-01",
+  issuer: {
+    name: "Alice Design GmbH",
+    address: "Hauptstr. 1\n10115 Berlin",
+    country: "DE",
+    taxId: null,
+    email: "billing@alice.example",
+  },
+  chainId: 84532,
+  token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+  amount: "1250000000",
+  recipient: "0x1111111111111111111111111111111111111111",
+  factory: "0xece745390524e4d0b05d26f56af7f1d38fdb7546",
+  receiveAddress: RECEIVE,
+  expiresAt: "2026-10-17T15:00:00Z",
+  settleDeadline: "2026-10-18T15:00:00Z",
+  paymentStatus: "open",
+  settlementStatus: "none",
+  refundStatus: "none",
+  settlementTxHash: null,
+  createdAt: "2026-10-10T11:00:00Z",
+  deposits: [] as object[],
+};
+const DEPOSIT = {
+  txHash: `0x${"3".repeat(64)}`,
+  logIndex: 0,
+  amount: "1250000000",
+  blockNumber: 100,
+  status: "detected",
+  late: false,
+  blocksLeft: 12,
+  secondsLeft: 150,
+};
+const DETECTED = { ...OPEN, paymentStatus: "detected", deposits: [DEPOSIT] };
+const CONFIRMED = [{ ...DEPOSIT, status: "confirmed", blocksLeft: 0, secondsLeft: 0 }];
+const PAID = { ...OPEN, paymentStatus: "paid", settlementStatus: "pending", deposits: CONFIRMED };
+const SETTLED = {
+  ...PAID,
+  settlementStatus: "settled",
+  settlementTxHash: `0x${"4".repeat(64)}`,
+};
+
+/** Answers the invoice read with each body in turn, then keeps the last; never reaches a backend. */
+async function mockInvoice(page: Page, ...bodies: object[]) {
+  let call = 0;
+  await page.route("**/api/v1/invoices/*", (route) =>
+    route.fulfill({ json: bodies[Math.min(call++, bodies.length - 1)] }),
+  );
+}
+
+async function openPay(page: Page, ...bodies: object[]) {
+  await page.clock.install({ time: NOW });
+  await mockInvoice(page, ...bodies);
+  await page.goto(`/pay/${ID}`);
+}
+
+const confirmButton = (page: Page) =>
+  page.getByRole("button", { name: "I will send USDC on Base Sepolia" });
+
+test.describe("pay page", () => {
+  test("shows who asks and the rules, then the address only after the payer confirms the network", async ({
+    page,
+  }) => {
+    const scripts: string[] = [];
+    page.on("request", (r) => {
+      if (r.resourceType() === "script") scripts.push(r.url());
+    });
+    await openPay(page, OPEN);
+
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Alice Design GmbH");
+    await expect(page.getByText("Invoice INV-0001 · Logo design")).toBeVisible();
+    await expect(page.locator("[data-money]")).toHaveText("1,250.00 USDC");
+    await expect(page.getByText("Base Sepolia", { exact: true }).first()).toBeVisible();
+    await expect(
+      page.locator("li", { hasText: `You are on ${new URL(PUBLIC_URL).host}.` }),
+    ).toBeVisible();
+    await expect(page.getByText(/^Send exactly 1,250\.00 USDC\. If you send more/)).toBeVisible();
+    await expect(
+      page.getByText("Forwend never asks you to pay a different address or an extra fee."),
+    ).toBeVisible();
+    await expect(page.getByText(/is a test network/)).toBeVisible();
+    await expect(page.getByText(RECEIVE)).toHaveCount(0);
+    await expect(page.getByRole("img", { name: /QR code/ })).toHaveCount(0);
+
+    await confirmButton(page).click();
+    await expect(page.getByRole("heading", { name: "Send the payment" })).toBeFocused();
+    await expect(page.getByText(RECEIVE)).toBeVisible();
+    await expect(page.getByRole("img", { name: "QR code of the address to pay" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "From a wallet" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(
+      page.getByText("Open your wallet and choose the Base Sepolia network."),
+    ).toBeVisible();
+
+    await page.getByRole("tab", { name: "From an exchange" }).click();
+    await expect(
+      page.getByText(/^Choose Withdraw, then USDC, then the Base Sepolia network/),
+    ).toBeVisible();
+    await expect(page.getByText(/withdrawal fee/)).toBeVisible();
+    await expect(page.getByText(RECEIVE)).toBeVisible();
+
+    expect(scripts.length).toBeGreaterThan(0);
+    for (const url of scripts) expect(new URL(url).origin, url).toBe(new URL(PUBLIC_URL).origin);
+  });
+
+  test("moves from waiting to detected, confirming, paid and settled without a reload", async ({
+    page,
+  }) => {
+    await openPay(page, OPEN, DETECTED, PAID, SETTLED);
+    await page.evaluate(() => {
+      (window as unknown as { stayed: boolean }).stayed = true;
+    });
+    const status = page.getByRole("status").filter({ hasText: /./ });
+
+    await expect(status).toHaveText(/^Waiting for your payment/);
+    await expect(page.locator("[data-status]")).toHaveText("Waiting for payment");
+
+    await page.clock.runFor(POLL_MS);
+    await expect(status).toHaveText(
+      "We see your payment. Confirming it on Base Sepolia: 12 blocks left, about 3 min.",
+    );
+    await expect(page.locator("[data-status]")).toHaveText("Detected");
+    // The full amount is on its way: no address invites a second payment.
+    await expect(confirmButton(page)).toHaveCount(0);
+
+    await page.clock.runFor(POLL_MS);
+    await expect(status).toHaveText(/^Paid\. Forwend is now sending the money/);
+
+    await page.clock.runFor(POLL_MS);
+    await expect(status).toHaveText(/^Settled\. The sender has received the money/);
+    await expect(page.locator("[data-status]")).toHaveText("Settled");
+    expect(await page.evaluate(() => (window as unknown as { stayed?: boolean }).stayed)).toBe(
+      true,
+    );
+  });
+
+  test("shows no address and warns the payer when a term does not match the address", async ({
+    page,
+  }) => {
+    await openPay(page, { ...OPEN, amount: "1250000001" });
+    await expect(
+      page.getByRole("alert").filter({
+        hasText: "This payment page does not match the invoice. Do not pay; contact the sender.",
+      }),
+    ).toBeVisible();
+    await expect(confirmButton(page)).toHaveCount(0);
+    await expect(page.getByText(RECEIVE)).toHaveCount(0);
+    await expect(page.getByRole("img", { name: /QR code/ })).toHaveCount(0);
+  });
+
+  test("answers 404 for a malformed id and shows the 404 page for an unknown one", async ({
+    page,
+  }) => {
+    expect((await page.goto("/pay/not-an-invoice"))?.status()).toBe(404);
+    await page.route("**/api/v1/invoices/*", (route) =>
+      route.fulfill({
+        status: 404,
+        json: { error: { code: "invoice_not_found", message: "invoice not found" } },
+      }),
+    );
+    await page.goto(`/pay/${ID}`);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("This path ends here.");
+  });
+
+  test("fits a 390 px phone without sideways scrolling", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openPay(page, OPEN);
+    await confirmButton(page).click();
+    await expect(page.getByText(RECEIVE)).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+    ).toBeLessThanOrEqual(0);
+  });
+
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`has no serious or critical axe violations in the ${colorScheme} theme`, async ({
+      browser,
+    }) => {
+      const context = await browser.newContext({ colorScheme, reducedMotion: "reduce" });
+      const page = await context.newPage();
+      await openPay(page, OPEN);
+      await confirmButton(page).click();
+      await expect(page.getByText(RECEIVE)).toBeVisible();
+      const results = await new AxeBuilder({ page }).analyze();
+      const blocking = results.violations
+        .filter((v) => v.impact === "serious" || v.impact === "critical")
+        .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
+      expect(blocking).toEqual([]);
+      await context.close();
+    });
+  }
+});

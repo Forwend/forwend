@@ -77,6 +77,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   no badge, no link. A disabled action says why in its accessible name and shows "Coming soon" in a tooltip on
   hover or focus; no notice text is added to the page.
 
+## Checkout
+
+- `/pay/<id>` is one centered column on every width: logo, the issuer name as the one display-serif heading over the
+  invoice number and title, then solid hairline panels: the amount (Geist Mono, featured amount size) with token mark
+  and status pill, before-you-pay notes, the network confirm button, the send panel with wallet and exchange tabs (QR
+  beside the full address from small screens up), and the status timeline. No image and no glass; it follows the
+  system theme.
+
 ## Theme and behavior
 
 - Apply the saved theme, otherwise the system choice, before first paint using `data-theme` on `<html>`.
