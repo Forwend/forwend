@@ -20,11 +20,12 @@ import { NetworksCard } from "@/features/balances/networks-card";
 import { ReceivedChart } from "@/features/balances/received-chart";
 import { useAppSession } from "@/features/profiles/app-session";
 import { ProfilePill } from "@/features/profiles/components/profile-pill";
-import { profileLabel } from "@/features/profiles/profile";
+import { PROFILE_KINDS, profileLabel } from "@/features/profiles/profile";
 import { TRANSACTION_DIRECTIONS, TRANSACTIONS_MAX } from "@/features/transactions/transactions";
 import { useGetTransactionsQuery } from "@/features/transactions/transactions-api";
 import { TRANSACTIONS_COPY } from "@/features/transactions/transactions-copy";
 import { TransactionsTable } from "@/features/transactions/transactions-table";
+import { OverviewChecklist } from "@/screens/dashboard/overview-checklist";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
 const BUSINESS_COPY = {
@@ -87,6 +88,8 @@ export function BusinessOverview() {
           onValueChange={setRange}
         />
       </div>
+
+      {profile.kind === PROFILE_KINDS.freelancer ? <OverviewChecklist /> : null}
 
       {balances.isError && !balances.currentData ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">

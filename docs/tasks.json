@@ -9917,7 +9917,7 @@
         "F085",
         "F086"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e",
@@ -9932,9 +9932,103 @@
         "packages/contracts/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-10 review pass by reviewer: PASS. Go onboarding tests -race (once, skip, 8 concurrent calls end in 1 onboarding and 3 profiles/wallets, errors, route 201/200, other user's token) and migration up/down pass; FOR UPDATE on the user row; wallets via SignUp, a Privy failure is repaired on the next POST /v1/me; first run shows only when onboardedAt is null, after the spinner; checklist never marks a step done falsely; storage in try/catch; real checkboxes in a fieldset; axe 0. Fixed after review: checkbox names no longer read twice (aria-labelledby the title), no shadow on checked cards, a missing country focuses the select, docs/web/architecture.md lists the first-run screen and /app/billing-details; e2e no longer assumes the shared Privy test account has no passkey. Re-verified 9 checks."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-10T22:21:51Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 52.1,
+            "log": "docs/runs/F092-20261010T222151Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 96.6,
+            "log": "docs/runs/F092-20261010T222151Z-e2e.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 47.5,
+            "log": "docs/runs/F092-20261010T222151Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F092-20261010T222151Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F092-20261010T222151Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F092-20261010T222151Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F092-20261010T222151Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.3,
+            "log": "docs/runs/F092-20261010T222151Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F092-20261010T222151Z-keep.log"
+          }
+        ],
+        "taskHash": "aa9a3e684f9bee65",
+        "filesHash": "67380e2296b35163",
+        "proof": {
+          "1": "backend: profile/onboard_test.go (once, skip, 8 concurrent calls, errors) and httpapi TestOnboardingRoute (201 then 200 same state, GET/POST /v1/me onboardedAt, another user's token, skip, 400/401/404/422) on real Postgres with the fake Privy API",
+          "2": "e2e: e2e/privy/sign-in.spec.ts first-run choose (desktop) and skip (phone, dark), checklist from data with skip/close persisted, billing details step; axe 0 serious/critical; unit tests in features/onboarding/onboarding.test.ts"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. Go onboarding tests -race (once, skip, 8 concurrent calls end in 1 onboarding and 3 profiles/wallets, errors, route 201/200, other user's token) and migration up/down pass; FOR UPDATE on the user row; wallets via SignUp, a Privy failure is repaired on the next POST /v1/me; first run shows only when onboardedAt is null, after the spinner; checklist never marks a step done falsely; storage in try/catch; real checkboxes in a fieldset; axe 0. Fixed after review: checkbox names no longer read twice (aria-labelledby the title), no shadow on checked cards, a missing country focuses the select, docs/web/architecture.md lists the first-run screen and /app/billing-details; e2e no longer assumes the shared Privy test account has no passkey. Re-verified 9 checks.",
+          "at": "2026-10-10T22:25:20Z",
+          "filesHash": "67380e2296b35163"
+        },
+        "commit": "3c46fdf",
+        "doneAt": "2026-10-10T22:25:22Z"
+      },
+      "branch": "feat/f092-new-users-choose-what-they-want-to-do-on",
+      "baseCommit": "2ca866205e20ecd05af91bd5de0ec2f84ab87c6d",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f092-new-users-choose-what-they-want-to-do-on",
+        "base": "main"
+      }
     },
     {
       "id": "F093",

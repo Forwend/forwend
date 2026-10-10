@@ -33,7 +33,7 @@ describe("profiles API", () => {
   it("sends the access token and adds a created profile to the cached list", async () => {
     const fetch = vi
       .spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(answer({ profiles: [personal] } satisfies Me))
+      .mockResolvedValueOnce(answer({ onboardedAt: null, profiles: [personal] } satisfies Me))
       .mockResolvedValueOnce(answer(merchant));
     const store = makeStore({ getAccessToken: async () => "token-1" });
 

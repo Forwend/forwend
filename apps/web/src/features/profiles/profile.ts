@@ -28,8 +28,10 @@ export interface Profile {
   createdAt: string;
 }
 
-/** POST and GET /v1/me. */
+/** POST and GET /v1/me, and POST /v1/me/onboarding. */
 export interface Me {
+  /** When the user made or skipped the first-run choice; null shows it. */
+  onboardedAt: string | null;
   profiles: Profile[];
 }
 

@@ -76,10 +76,17 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   invoice detail, pay page).
 - Transactions table: ruled table from medium screens; the network has its own column only on the widest screens and
   sits under the counterparty otherwise. Phone rows show the network first and cut the time, never the network.
-- First run (planned, not built): one "What do you want to do?" screen with four choice cards (any number) and Skip,
-  shown once after the first sign-in.
-- Onboarding checklist (planned, not built): a card on the overview listing the profile's steps, each done or not
-  from real data, with a link to the step; it hides when every step is done or the user closes it.
+- First run: while `/v1/me` has no `onboardedAt`, `/app` shows one standalone screen instead of the shell: the logo,
+  "What do you want to do?" in the display serif, four choice cards (checkboxes, any number; two columns from small
+  screens up) with an icon, a hint and the profile each one adds, then Continue and Skip for now. Continue with nothing
+  picked is Skip. Afterwards the app opens on the overview of the new freelancer profile, else the new merchant, else
+  the personal one (D-73).
+- Onboarding checklist: a "Get started" panel on the personal overview (under the balance card) and the freelancer
+  overview (above the figure strip), with "n of m done" and a close button in its ruled header. Each step is a row
+  with a round mark (filled ink with a check when done), title and hint; a step not done has its action (secondary
+  button or link) and Skip. Steps come from data: passkey linked, billing details (freelancer), first invoice or
+  request, first paid in full, first final money in. Skipped steps and the closed card are remembered per profile in
+  the browser; the card hides when closed or when every step left is done.
 - Money actions are round icon buttons with the label underneath, on desktop and phones; only working actions are
   filled with the primary ink. In the header, Send is a dashed outline pill in the subtle color until it is built.
 - Personal overview actions: Receive, Request, Send, Transfer, Withdraw, in one row with a narrow gap on phones.

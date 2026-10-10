@@ -21,13 +21,24 @@ type profileJSON struct {
 }
 
 type meJSON struct {
-	Profiles []profileJSON `json:"profiles"`
+	OnboardedAt *string       `json:"onboardedAt"`
+	Profiles    []profileJSON `json:"profiles"`
+}
+
+type onboardingBody struct {
+	Choices []string `json:"choices"`
 }
 
 // signUp is POST /v1/me: 201 when the personal profile is new, 200 when the user had signed up before.
 func signUp(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		list, created, err := profiles.SignUp(r.Context(), r.Context().Value(userKey{}).(string))
+		user := r.Context().Value(userKey{}).(string)
+		list, created, err := profiles.SignUp(r.Context(), user)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		at, err := profiles.OnboardedAt(r.Context(), user)
 		if err != nil {
 			writeError(w, r, err)
 			return
@@ -36,19 +47,46 @@ func signUp(profiles *profile.Service) http.HandlerFunc {
 		if created {
 			status = http.StatusCreated
 		}
-		writeJSON(w, status, toMeJSON(list))
+		writeJSON(w, status, toMeJSON(list, at))
 	}
 }
 
 // getMe is GET /v1/me: the signed-in user's profiles, oldest first.
 func getMe(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		list, err := profiles.List(r.Context(), r.Context().Value(userKey{}).(string))
+		user := r.Context().Value(userKey{}).(string)
+		list, err := profiles.List(r.Context(), user)
 		if err != nil {
 			writeError(w, r, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, toMeJSON(list))
+		at, err := profiles.OnboardedAt(r.Context(), user)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, toMeJSON(list, at))
+	}
+}
+
+// onboard is POST /v1/me/onboarding: 201 when this call made the first-run choice, 200 when it was made before.
+func onboard(profiles *profile.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body onboardingBody
+		if err := decodeJSON(w, r, &body); err != nil {
+			writeError(w, r, err)
+			return
+		}
+		list, at, onboarded, err := profiles.Onboard(r.Context(), r.Context().Value(userKey{}).(string), body.Choices)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		status := http.StatusOK
+		if onboarded {
+			status = http.StatusCreated
+		}
+		writeJSON(w, status, toMeJSON(list, &at))
 	}
 }
 
@@ -129,8 +167,12 @@ func toBillingDetailsJSON(d profile.BillingDetails) billingDetailsJSON {
 	}
 }
 
-func toMeJSON(list []profile.Profile) meJSON {
+func toMeJSON(list []profile.Profile, onboardedAt *time.Time) meJSON {
 	out := meJSON{Profiles: []profileJSON{}}
+	if onboardedAt != nil {
+		at := onboardedAt.UTC().Format(time.RFC3339)
+		out.OnboardedAt = &at
+	}
 	for _, p := range list {
 		out.Profiles = append(out.Profiles, toProfileJSON(p))
 	}
