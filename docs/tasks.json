@@ -10776,7 +10776,7 @@
       "dependsOn": [
         "F104"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -10874,11 +10874,18 @@
           "summary": "Pass. Read diff, check.go, lock.go, gas.go, mains, dev.sh, docs. Reran backend test (exit 0) and backend e2e (TestMoneyLoop on real binaries, exit 0). Mutation: lock.go taking the lock always makes TestLockRunsOneWorkerAtATime fail. dev.sh: sh -n and dash -n ok; dash stub runs: api dies before ready exit 1, worker dies after ready exit 1, TERM exit 130 with no leftover processes, commented key exit 1. Startup errors carry no secrets (pool errors name host#N, Redact on RPC error, bad key named without value, pgx errors carry no password). Only the api migrates; worker/signer CheckSchema is a single SELECT. D-15 check per enabled chain, 30 s each, DB ping 10 s. MinGas 342k x fee cap (2*base+tip) matches the signer's own fees(); comparison is wei vs wei so Arc (18-decimal native USDC balance) is consistent; Arbitrum L1 gap documented. Lock: session lock on a hijacked conn, pgxpool can still open conns, waiter takes over. Notes: Held is checked only between rounds, so a lost lock connection leaves at most one round (worker 2 min, signer up to 3 min per intent) overlapping a new holder; Tempo has no native gas coin, so CheckGas there would mean nothing if Tempo is ever enabled (it cannot pass D-15 today); 'Startup checks:' comment repeated in three mains is near the comments rule.",
           "at": "2026-10-10T19:45:38Z",
           "filesHash": "4b390c5dd5614b0f"
-        }
+        },
+        "commit": "90cca28",
+        "doneAt": "2026-10-10T19:45:54Z"
       },
       "branch": "fix/f106-each-backend-process-refuses-to-start-wi",
       "baseCommit": "859d13a32d29a65b59b6cfe3a6f6adaca366e7bc",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f106-each-backend-process-refuses-to-start-wi",
+        "base": "main"
+      }
     },
     {
       "id": "F107",
