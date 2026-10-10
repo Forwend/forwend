@@ -45,7 +45,7 @@ export function PaymentsShowcase() {
           explorerHref={`https://basescan.org/address/${SAMPLE_ADDRESS}`}
         />
       </KitGroup>
-      <KitGroup title="Receive address: full, grouped, with copy">
+      <KitGroup title="Receive address: full, start and end marked, with copy">
         <div className="w-full max-w-xs">
           <ReceiveAddress address={SAMPLE_ADDRESS} />
         </div>

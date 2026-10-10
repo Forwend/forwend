@@ -17,6 +17,7 @@ apps/web/src/
     dashboard/
     balances/
     activity/
+    transactions/
     new-profile/
     sign-in/
     kit/                       /kit
@@ -27,6 +28,7 @@ apps/web/src/
     balances/
     receive/
     activity/
+    transactions/
     waitlist/
   shared/                      code used by unrelated screens or features
     api/                       request client, API errors, optional RTK Query setup
@@ -153,7 +155,7 @@ packages/ui-web/src/
   components/
     buttons/                   button, action-button
     forms/                     text-field, select-field, checkbox, switch, code-input, email-capture
-    navigation/                tabs, nav-pill, theme-switch
+    navigation/                tabs, nav-pill, theme-switch, segmented-control
     overlays/                  dialog, sheet, menu, tooltip
     feedback/                  toast, empty-state, spinner, skeleton, shimmer, dot-loader, success-check
     display/                   panel, badge, stat-tile, accordion, progress-bar, code-block

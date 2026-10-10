@@ -3,7 +3,7 @@ export const KIT_ENV = {
   on: "1",
 } as const;
 
-// Read at request time, so one build can serve with or without the kit.
+// Always on in `next dev`; a production build serves it only with the flag, read at request time.
 export function isKitEnabled(): boolean {
-  return process.env[KIT_ENV.flag] === KIT_ENV.on;
+  return process.env.NODE_ENV === "development" || process.env[KIT_ENV.flag] === KIT_ENV.on;
 }

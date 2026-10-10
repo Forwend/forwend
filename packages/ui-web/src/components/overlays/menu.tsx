@@ -10,6 +10,8 @@ export type MenuItemProps = RadixMenu.DropdownMenuItemProps;
 
 export type MenuRadioItemProps = RadixMenu.DropdownMenuRadioItemProps;
 
+export type MenuCheckboxItemProps = RadixMenu.DropdownMenuCheckboxItemProps;
+
 // A dropdown menu on Radix (keyboard, focus and screen-reader roles), styled with tokens. It rises from the edge it
 // opens on; reduced motion drops the movement.
 
@@ -63,6 +65,33 @@ export function MenuRadioItem({ className, children, ...props }: MenuRadioItemPr
         <Check aria-hidden className="size-[var(--fw-icon-md)] text-ink" />
       </RadixMenu.ItemIndicator>
     </RadixMenu.RadioItem>
+  );
+}
+
+/** The menu stays open when the setting changes. */
+export function MenuCheckboxItem({
+  className,
+  children,
+  onSelect,
+  ...props
+}: MenuCheckboxItemProps) {
+  return (
+    <RadixMenu.CheckboxItem
+      className={cx(ITEM, "group", className)}
+      onSelect={(event) => {
+        event.preventDefault();
+        onSelect?.(event);
+      }}
+      {...props}
+    >
+      <span className="flex min-w-0 flex-1 items-center gap-3">{children}</span>
+      <span
+        aria-hidden
+        className="relative inline-flex h-5 w-9 shrink-0 rounded-pill border border-line-strong bg-surface-2 transition-colors duration-[var(--fw-duration-base)] group-data-[state=checked]:border-transparent group-data-[state=checked]:bg-accent"
+      >
+        <span className="absolute top-0.5 left-0.5 size-3.5 rounded-pill bg-surface shadow-sm transition-transform duration-[var(--fw-duration-base)] ease-out group-data-[state=checked]:translate-x-4" />
+      </span>
+    </RadixMenu.CheckboxItem>
   );
 }
 

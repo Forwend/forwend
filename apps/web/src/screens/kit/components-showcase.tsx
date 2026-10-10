@@ -15,6 +15,7 @@ import {
   EmailCapture,
   EmptyState,
   Menu,
+  MenuCheckboxItem,
   MenuContent,
   MenuItem,
   MenuLabel,
@@ -25,6 +26,7 @@ import {
   NavPill,
   PANEL_TONES,
   Panel,
+  SegmentedControl,
   SelectField,
   Sheet,
   Skeleton,
@@ -35,7 +37,7 @@ import {
   Toast,
   Tooltip,
 } from "@forwend/ui-web";
-import { ArrowDownLeft, ArrowUpRight, Landmark, Plus } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Landmark, Moon, Plus } from "lucide-react";
 import { useState } from "react";
 import { CTA } from "@/features/waitlist/waitlist";
 import { KitGroup } from "@/screens/kit/kit-section";
@@ -51,6 +53,8 @@ const SAMPLE_CODE = `const invoice = await forwend.invoices.create({
 export function ComponentsShowcase() {
   const [on, setOn] = useState(true);
   const [menuChoice, setMenuChoice] = useState("personal");
+  const [menuDark, setMenuDark] = useState(false);
+  const [range, setRange] = useState("1M");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [code, setCode] = useState("826");
   return (
@@ -83,6 +87,14 @@ export function ComponentsShowcase() {
           disabledReason="Coming soon: withdraw to your bank account."
         />
       </KitGroup>
+      <KitGroup title="Segmented control: a chart range or a table filter">
+        <SegmentedControl
+          label="Chart range"
+          value={range}
+          onValueChange={setRange}
+          options={["1W", "1M", "3M", "1Y"].map((value) => ({ value, label: value }))}
+        />
+      </KitGroup>
       <KitGroup title="Menu and sheet">
         <Menu>
           <MenuTrigger asChild>
@@ -100,6 +112,11 @@ export function ComponentsShowcase() {
               New profile
             </MenuItem>
             <MenuItem disabled>Unavailable item</MenuItem>
+            <MenuSeparator />
+            <MenuCheckboxItem checked={menuDark} onCheckedChange={setMenuDark}>
+              <Moon aria-hidden className="size-[var(--fw-icon-md)]" />
+              Dark mode
+            </MenuCheckboxItem>
           </MenuContent>
         </Menu>
         <Button variant={BUTTON_VARIANTS.secondary} onClick={() => setSheetOpen(true)}>

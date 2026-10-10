@@ -4,6 +4,7 @@ export const APP_ROUTES = {
   signIn: "/sign-in",
   home: "/app",
   balances: "/app/balances",
+  transactions: "/app/transactions",
   activity: "/app/activity",
   newProfile: "/app/profiles/new",
 } as const;

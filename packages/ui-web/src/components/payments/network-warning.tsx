@@ -9,9 +9,9 @@ export function NetworkWarning({ network, token }: NetworkWarningProps) {
   return (
     <div
       role="note"
-      className="flex items-start gap-3 rounded-lg border border-transparent bg-warning-soft p-4 text-sm text-warning"
+      className="flex items-start gap-2.5 rounded-md bg-warning-soft px-3 py-2.5 text-sm text-warning"
     >
-      <AlertTriangle aria-hidden className="mt-0.5 size-[var(--fw-icon-md)] shrink-0" />
+      <AlertTriangle aria-hidden className="mt-0.5 size-[var(--fw-icon-sm)] shrink-0" />
       <p>
         Send only <strong>{token}</strong> on <strong>{network}</strong>. Sending another token or
         using another network may make the funds unrecoverable.

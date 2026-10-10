@@ -10,6 +10,8 @@ export interface AppSession {
   profiles: Profile[];
   /** Makes a profile the chosen one, such as a profile just created. */
   chooseProfile: (profileId: string) => void;
+  openReceive: () => void;
+  openProfiles: () => void;
 }
 
 export const AppSessionContext = createContext<AppSession | null>(null);

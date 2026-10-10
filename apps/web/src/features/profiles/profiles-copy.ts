@@ -4,7 +4,6 @@ export const PROFILES_COPY = {
   newProfile: "New profile",
   profiles: "Profiles",
   switchProfile: "Switch profile",
-  walletNotReady: "Wallet not ready",
   profileLabel: "Profile",
 } as const;
 

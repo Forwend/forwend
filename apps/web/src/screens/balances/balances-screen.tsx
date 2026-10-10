@@ -11,7 +11,9 @@ export function BalancesScreen() {
   const balances = useGetBalancesQuery(profile.profileId, LIVE_QUERY);
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-display text-3xl text-ink sm:text-4xl">{BALANCES_COPY.balancesTitle}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">
+        {BALANCES_COPY.balancesTitle}
+      </h1>
       <BalancesList
         balances={balances.currentData ?? null}
         failed={balances.isError}
