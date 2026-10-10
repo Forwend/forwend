@@ -8543,7 +8543,7 @@
         "Unknown routes still return HTTP 404 with noindex metadata, a clear message, and a working link home; existing browser checks pass."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "docs-check"
@@ -8627,11 +8627,18 @@
         "proof": {
           "1": "e2e: Existing browser suite passes; screenshots and computed layout inspected at 1440x900, 390x844, 320x568, 844x390, and 768x1024 in light and dark. Content is centered when it fits; short screens scroll with no overlap or horizontal overflow. 404 is 240px desktop and 112px phone. Axe reports zero serious or critical violations in ten views. New status-number token is demonstrated in kit.",
           "2": "e2e: Existing smoke tests prove HTTP 404, page title, and navigation home. Manual browser inspection verifies robots noindex and keyboard navigation through logo and home action."
-        }
+        },
+        "commit": "5c6378b",
+        "doneAt": "2026-10-10T10:35:23Z"
       },
       "branch": "fix/f081-center-the-404-page-and-make-its-status",
       "baseCommit": "44c0a05f2259edcd73196a99efd4cfaa98fc10e9",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f081-center-the-404-page-and-make-its-status",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
