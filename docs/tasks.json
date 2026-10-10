@@ -9462,7 +9462,7 @@
         "R-39: the light balance card uses a muted landscape and pale wash so chart ticks and action labels remain readable on desktop and phone; the dark card retains its existing appearance"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -9545,11 +9545,18 @@
         "filesHash": "d7e287b931adf31f",
         "proof": {
           "1": "e2e: browser suite passes; desktop and phone light previews reviewed and approved, with the existing dark image and wash preserved; styles remain scoped to the balance hero"
-        }
+        },
+        "commit": "34c2ede",
+        "doneAt": "2026-10-10T14:11:28Z"
       },
       "branch": "fix/f098-improve-balance-card-contrast-in-the-lig",
       "baseCommit": "364470afadc781d4c295114b0ce1b87d683a0640",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f098-improve-balance-card-contrast-in-the-lig",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
