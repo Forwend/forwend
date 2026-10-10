@@ -9561,7 +9561,7 @@
       "dependsOn": [
         "F085"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "docs-check"
@@ -9660,11 +9660,18 @@
           "summary": "Independent review passed. Deps: only codeberg.org/go-pdf/fpdf v0.12.0 (go.sum +2 lines, go mod verify ok). document renders from invoice.Get data only; fonts go:embed, byte-identical to upstream notofonts unhinted NotoSans 2.015 (sha256 checked), OFL.txt present. Public routes reuse invoice.Get: 404 for unknown and malformed ids; no client email in the PDF. Receipt 409 unless payment_status=paid; paid time = max block_time of deposit ledger txs with a recipient_payable entry, which is the completing deposit since split() books nothing to the creator once final or late and deposits book in block order. Amounts via big.Rat FloatString, exact; token/chain lookup does not filter enabled, so disabled tokens still render. Stress-rendered both PDFs with control chars, invalid UTF-8, U+FFFE/FFFF, CJK, RTL, 5000-char words, 3000 newlines, emoji: no panic, no error (bmp() guards the >U+FFFF index panic). ETag sha256 of deterministic bytes via http.ServeContent gives 304; Cache-Control private, no-cache. PUBLIC_WEB_URL reduced to scheme://host after http(s) validation; id is hex-validated, so no link injection. Boundaries: document -> invoice, ledger; invoice -> ledger; no cycle. Tests inflate streams and decode UTF-16 Tj text, cover both acceptance lines. pnpm --filter @forwend/backend test passes. Minor, not blocking: paid time is the completing deposit's block time, not when the second-RPC funded check flipped status.",
           "at": "2026-10-10T17:40:21Z",
           "filesHash": "4a0023f22d4929fe"
-        }
+        },
+        "commit": "d3be5f1",
+        "doneAt": "2026-10-10T17:40:38Z"
       },
       "branch": "feat/f089-the-api-serves-invoice-and-receipt-pdfs",
       "baseCommit": "df8825c8709379963f79132de44eea3568852902",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f089-the-api-serves-invoice-and-receipt-pdfs",
+        "base": "main"
+      }
     },
     {
       "id": "F090",
