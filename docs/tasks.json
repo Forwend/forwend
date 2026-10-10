@@ -8435,7 +8435,7 @@
         "Workflow guidance explains development on main, deliberate fast-forward promotion to staging, and validation of the exact staging commit."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness",
         "docs-check"
@@ -8521,11 +8521,18 @@
           "1": "docs-check: Workflow parsed with Ruby YAML; the only event is push with branches [staging]. Reviewed the diff: all CI jobs are unchanged.",
           "2": "harness: 19 runner regression tests pass, including absent remote checks, reported failures and pending checks, authentication errors, strict default policy, and failed local verification.",
           "3": "docs-check: Workflow guidance and R-40/D-48 describe fast-forward staging promotion and exact-commit validation; documentation links and decision IDs pass."
-        }
+        },
+        "commit": "dd06d22",
+        "doneAt": "2026-10-10T10:26:21Z"
       },
       "branch": "ci/f080-run-github-ci-only-on-staging-pushes",
       "baseCommit": "098bd66c082145151b46fc0b75925acbd67c2e15",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "ci/f080-run-github-ci-only-on-staging-pushes",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
