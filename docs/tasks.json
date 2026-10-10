@@ -9037,7 +9037,7 @@
         "R-42: create stores title, note, due date (separate from expiresAt) and client name, email and address; GET /v1/profiles/{id}/invoices lists newest first with cursor pages and gives another user 403; a settled invoice returns its settlement tx hash; openapi.yaml and docs/backend/api.md describe the new fields and route"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "docs-check"
@@ -9138,11 +9138,18 @@
           "summary": "Re-review after merging origin/main (PR #84, F098): branch diff vs origin/main is only F084 backend files, docs/backend/api.md, docs/backend/architecture.md and docs/tasks.json. apps/web, docs/PROJECT.md, docs/web/DESIGN.md identical to origin/main. tasks.json: no task dropped, main's F098 entry identical, only F084 state/evidence/notes changed, new F099 (signer settle-hash fix) added, F090 dependsOn gains F099, nextId bumped. harness validate ok. Earlier code review still holds; no F084 code changed by the merge.",
           "at": "2026-10-10T14:41:41Z",
           "filesHash": "1aa826f0321620f3"
-        }
+        },
+        "commit": "d212af5",
+        "doneAt": "2026-10-10T14:41:51Z"
       },
       "branch": "feat/f084-invoices-get-a-per-profile-number-inv-00",
       "baseCommit": "2a56081227dc52fb2a1d37c13e40b2aa7135dcd2",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f084-invoices-get-a-per-profile-number-inv-00",
+        "base": "main"
+      }
     },
     {
       "id": "F085",
