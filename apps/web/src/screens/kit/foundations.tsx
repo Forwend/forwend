@@ -49,7 +49,7 @@ export function TypographySamples() {
         </ul>
       </div>
       <div>
-        <p className="text-sm text-muted">Role sizes: fluid, used by the landing page</p>
+        <p className="text-sm text-muted">Role sizes: fluid, used across Forwend</p>
         <ul className="mt-4 flex flex-col gap-4">
           {TYPE_ROLES.map((r) => (
             <li
