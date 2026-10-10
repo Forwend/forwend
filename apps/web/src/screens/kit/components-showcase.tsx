@@ -26,6 +26,7 @@ import {
   NavPill,
   PANEL_TONES,
   Panel,
+  SearchField,
   SegmentedControl,
   SelectField,
   Sheet,
@@ -56,6 +57,7 @@ export function ComponentsShowcase() {
   const [menuChoice, setMenuChoice] = useState("personal");
   const [menuDark, setMenuDark] = useState(false);
   const [range, setRange] = useState("1M");
+  const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [code, setCode] = useState("826");
   return (
@@ -94,6 +96,15 @@ export function ComponentsShowcase() {
           value={range}
           onValueChange={setRange}
           options={["1W", "1M", "3M", "1Y"].map((value) => ({ value, label: value }))}
+        />
+      </KitGroup>
+      <KitGroup title="Search field: filters a list in its toolbar">
+        <SearchField
+          label="Search invoices"
+          value={search}
+          onValueChange={setSearch}
+          placeholder="Search number, client or title"
+          className="w-72"
         />
       </KitGroup>
       <KitGroup title="Menu and sheet">

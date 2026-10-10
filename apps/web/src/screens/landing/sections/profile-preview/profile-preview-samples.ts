@@ -9,7 +9,7 @@ export const SAMPLE_BALANCES = {
   held: { baseUnits: 25000000n, ...USDC },
 } as const;
 
-export const SAMPLE_PERSONAL_ACTIVITY: readonly ActivityRowProps[] = [
+export const SAMPLE_PERSONAL_ACTIVITY: readonly (ActivityRowProps & { title: string })[] = [
   {
     title: "From Maya's Freelancer profile",
     detail: "Own-profile transfer · Base",
@@ -26,7 +26,7 @@ export const SAMPLE_PERSONAL_ACTIVITY: readonly ActivityRowProps[] = [
   },
 ];
 
-export const SAMPLE_STORE_ACTIVITY: readonly ActivityRowProps[] = [
+export const SAMPLE_STORE_ACTIVITY: readonly (ActivityRowProps & { title: string })[] = [
   {
     title: "Order #1042",
     detail: "North Pier Coffee · Hosted checkout",

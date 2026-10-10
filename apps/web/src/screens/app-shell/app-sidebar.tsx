@@ -45,7 +45,9 @@ export function AppSidebar({
     );
 
   return (
-    <aside className="sticky top-0 hidden h-dvh flex-col border-r border-line bg-surface lg:flex">
+    <aside
+      className={`fixed inset-y-0 left-0 hidden flex-col border-r border-line bg-surface lg:flex ${collapsed ? "w-16" : "w-64"}`}
+    >
       <div
         className={`flex h-14 shrink-0 items-center gap-2 border-b border-line ${collapsed ? "justify-center" : "px-3"}`}
       >

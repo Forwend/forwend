@@ -517,3 +517,321 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
   }
   await context.close();
 });
+
+// The app pages on sample data: the API is mocked, so the rows, statuses and transactions are known. One merchant
+// profile with four invoices, the payments to two of them, and transfers on Base Sepolia.
+const MERCHANT_ID = "22222222-2222-2222-2222-222222222222";
+const USDC = "0x036cbd53842c5426634e7929541ec2318f3dcf7e";
+const hash = (c: string) => `0x${c.repeat(64)}`;
+const NOW = Date.now();
+const sampleInvoice = (
+  number: number,
+  paymentStatus: string,
+  settlementStatus: string,
+  title: string | null,
+  client: string | null,
+) => ({
+  invoiceId: `0x${String(number).padStart(4, "0")}${"a".repeat(60)}`,
+  number,
+  title,
+  note: null,
+  dueDate: null,
+  client: { name: client, email: null, address: null },
+  issuer: null,
+  chainId: 84532,
+  token: USDC,
+  amount: `${number}000000`,
+  recipient: `0x${"7a21".repeat(10)}`,
+  receiveAddress: `0x${"c".repeat(40)}`,
+  expiresAt: new Date(NOW + 86_400_000).toISOString(),
+  settleDeadline: new Date(NOW + 2 * 86_400_000).toISOString(),
+  paymentStatus,
+  settlementStatus,
+  settlementTxHash: settlementStatus === "settled" ? hash("f") : null,
+  createdAt: new Date(NOW - number * 3_600_000).toISOString(),
+});
+const CONFIRMING_INVOICE = sampleInvoice(4, "detected", "none", "Brand site", "Brightline Studio");
+const SETTLED_INVOICE = sampleInvoice(3, "paid", "settled", "October retainer", "Kettle & Co.");
+const OPEN_INVOICE = sampleInvoice(2, "open", "none", "Logo refresh", "Mara Ilić");
+const INVOICES = [
+  CONFIRMING_INVOICE,
+  SETTLED_INVOICE,
+  OPEN_INVOICE,
+  sampleInvoice(1, "expired", "none", null, null),
+];
+const sampleDeposit = (inv: typeof CONFIRMING_INVOICE, status: string, blocksLeft: number) => ({
+  txHash: hash(status === "detected" ? "d" : "e"),
+  logIndex: 0,
+  amount: inv.amount,
+  blockNumber: 1000,
+  status,
+  late: false,
+  blocksLeft,
+  secondsLeft: blocksLeft * 3,
+});
+const DEPOSITS: Record<string, object[]> = {
+  [CONFIRMING_INVOICE.invoiceId]: [sampleDeposit(CONFIRMING_INVOICE, "detected", 120)],
+  [SETTLED_INVOICE.invoiceId]: [sampleDeposit(SETTLED_INVOICE, "confirmed", 0)],
+};
+const activityItem = (
+  inv: typeof CONFIRMING_INVOICE,
+  deposit?: { txHash: string; status: string },
+) => ({
+  kind: deposit ? "deposit" : "invoice",
+  at: inv.createdAt,
+  invoiceId: inv.invoiceId,
+  chainId: inv.chainId,
+  token: inv.token,
+  symbol: "USDC",
+  decimals: 6,
+  amount: inv.amount,
+  status: deposit ? deposit.status : inv.paymentStatus,
+  ...(deposit ? { txHash: deposit.txHash } : { settlementStatus: inv.settlementStatus }),
+});
+const ACTIVITY = INVOICES.flatMap((inv) => [
+  ...((DEPOSITS[inv.invoiceId] ?? []) as { txHash: string; status: string }[]).map((d) =>
+    activityItem(inv, d),
+  ),
+  activityItem(inv),
+]);
+const TRANSFERS = Array.from({ length: 30 }, (_, i) => ({
+  chainId: 84532,
+  token: USDC,
+  symbol: "USDC",
+  decimals: 6,
+  direction: i % 4 === 3 ? "out" : "in",
+  amount: `${(i + 1) * 1_000_000}`,
+  counterparty: `0x${String(i).padStart(2, "0")}${"b".repeat(38)}`,
+  txHash: `0x${String(i).padStart(2, "0")}${"9".repeat(62)}`,
+  logIndex: 0,
+  blockNumber: 1000 - i,
+  at: new Date(NOW - i * 7_200_000).toISOString(),
+  status: "confirmed",
+}));
+
+async function mockApi(page: Page) {
+  // Our API only: Privy's own API is also under /api/v1.
+  await page.route("/api/v1/**", (route) => {
+    const url = new URL(route.request().url());
+    const path = url.pathname.replace(/^\/api/, "");
+    const limit = Number(url.searchParams.get("limit") ?? 20);
+    const listOf = <T>(items: T[]) => ({ items: items.slice(0, limit), nextCursor: null });
+    if (path === "/v1/me") {
+      return route.fulfill({
+        json: {
+          profiles: [
+            {
+              profileId: MERCHANT_ID,
+              kind: "merchant",
+              name: "Sample shop",
+              walletAddress: `0x${"7a21".repeat(10)}`,
+              createdAt: "2026-09-02T00:00:00Z",
+            },
+          ],
+        },
+      });
+    }
+    const invoice = INVOICES.find((inv) => path === `/v1/invoices/${inv.invoiceId}`);
+    if (invoice) {
+      const { client: _, ...open } = invoice;
+      return route.fulfill({ json: { ...open, deposits: DEPOSITS[invoice.invoiceId] ?? [] } });
+    }
+    const what = path.split(`/v1/profiles/${MERCHANT_ID}/`)[1];
+    if (what === "invoices") return route.fulfill({ json: listOf(INVOICES) });
+    if (what === "activity") return route.fulfill({ json: listOf(ACTIVITY) });
+    if (what === "transactions") return route.fulfill({ json: listOf(TRANSFERS) });
+    if (what === "balances") {
+      return route.fulfill({
+        json: {
+          tokens: [
+            {
+              chainId: 84532,
+              token: USDC,
+              symbol: "USDC",
+              decimals: 6,
+              wallet: "18420350000",
+              finalizedBlock: 1000,
+              pending: "0",
+              held: "0",
+            },
+          ],
+          estimatedUsdTotal: "18420.35",
+        },
+      });
+    }
+    if (what === "balance-history") {
+      // A point per day: a year of them is what once ran the chart's hidden table far below the page.
+      const days = Number(url.searchParams.get("days"));
+      const zeros = Array.from({ length: days }, () => "0");
+      return route.fulfill({
+        json: {
+          points: zeros.map((_, i) => ({
+            at: new Date(NOW - (days - 1 - i) * 86_400_000).toISOString(),
+            estimatedUsd: "18420.35",
+            receivedUsd: "0.00",
+            sentUsd: "0.00",
+          })),
+          tokens: [
+            {
+              chainId: 84532,
+              token: USDC,
+              symbol: "USDC",
+              decimals: 6,
+              balances: zeros.map(() => "18420350000"),
+              received: zeros,
+              sent: zeros,
+            },
+          ],
+        },
+      });
+    }
+    return route.fulfill({ status: 404, json: {} });
+  });
+}
+
+test("app pages navigate from the breadcrumb and rows, filter and search, link to the explorer, and keep the sidebar fixed", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page);
+  const sidebar = page.locator("aside");
+  const crumbs = page.getByRole("banner").getByRole("navigation", { name: "Breadcrumb" });
+  const main = page.getByRole("main");
+  const basescan = (txHash: string) => `https://sepolia.basescan.org/tx/${txHash}`;
+  // The page's name is the breadcrumb's: the heading stays for screen readers only.
+  const hiddenHeading = async (name: string) => {
+    const heading = page.getByRole("heading", { level: 1, name });
+    await expect(heading).toBeAttached();
+    expect((await heading.boundingBox())?.width).toBeLessThanOrEqual(1);
+  };
+
+  // Invoices: status filter and search in the toolbar, over the loaded rows.
+  await page.goto("/app/invoices");
+  await expect(crumbs.getByRole("link", { name: "Invoices" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await hiddenHeading("Invoices");
+  const rows = main.getByRole("row").filter({ hasText: "INV-" });
+  await expect(rows).toHaveCount(4);
+  const status = main.getByRole("group", { name: "Status" });
+  await status.getByText("Settled", { exact: true }).click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows).toContainText("INV-0003");
+  await status.getByText("Open", { exact: true }).click();
+  await expect(rows).toHaveCount(2);
+  const search = main.getByRole("searchbox", { name: "Search invoices" });
+  await search.fill("brightline");
+  await expect(rows).toHaveCount(1);
+  await expect(rows).toContainText("INV-0004");
+  await status.getByText("All", { exact: true }).click();
+  await search.fill("inv-0001");
+  await expect(rows).toHaveCount(1);
+  await expect(rows).toContainText("Expired");
+  await search.fill("");
+  expect(await blockingViolations(page)).toEqual([]);
+
+  // A row opens its invoice; the breadcrumb ends at its number and leads back, with no separate back link.
+  await rows.filter({ hasText: "INV-0004" }).click();
+  await expect(page).toHaveURL(`/app/invoices/${CONFIRMING_INVOICE.invoiceId}`);
+  await expect(crumbs.getByRole("link", { name: "INV-0004" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await hiddenHeading("INV-0004");
+  await expect(main.getByRole("link", { name: "Invoices" })).toHaveCount(0);
+  // A payment on its way: pending, a short line, and its transaction on Basescan.
+  await expect(main.getByRole("status").filter({ hasText: /./ })).toHaveText(
+    "Confirming · about 6 min left 120 blocks",
+  );
+  await expect(
+    main.getByRole("region", { name: "Amount" }).locator("[data-status=detected]"),
+  ).toBeVisible();
+  const payment = main.getByRole("link", { name: "View transaction on Basescan" });
+  await expect(payment).toHaveAttribute("href", basescan(hash("d")));
+  await expect(payment).toHaveAttribute("target", "_blank");
+  expect(await blockingViolations(page)).toEqual([]);
+  await crumbs.getByRole("link", { name: "Invoices" }).click();
+  await expect(page).toHaveURL("/app/invoices");
+  await crumbs.getByRole("link", { name: "Merchant · Sample shop" }).click();
+  await expect(page).toHaveURL("/app");
+
+  // Activity: every row opens its invoice, a payment also links to its transaction; filter and search.
+  await sidebar.getByRole("link", { name: "Activity" }).click();
+  await hiddenHeading("Activity");
+  const items = main.getByRole("listitem");
+  await expect(items).toHaveCount(6);
+  await expect(
+    items.first().getByRole("link", { name: "View transaction on Basescan" }),
+  ).toHaveAttribute("href", basescan(hash("d")));
+  const activityStatus = main.getByRole("group", { name: "Status" });
+  await activityStatus.getByText("Paid", { exact: true }).click();
+  await expect(items).toHaveCount(1);
+  await expect(items).toContainText("Confirmed");
+  await activityStatus.getByText("All", { exact: true }).click();
+  await main.getByRole("searchbox", { name: "Search activity" }).fill(hash("e").slice(0, 10));
+  await expect(items).toHaveCount(1);
+  expect(await blockingViolations(page)).toEqual([]);
+  await items.getByRole("link", { name: "Payment" }).click();
+  await expect(page).toHaveURL(`/app/invoices/${SETTLED_INVOICE.invoiceId}`);
+  await page.goBack();
+  await main.getByRole("searchbox", { name: "Search activity" }).fill("");
+  await items
+    .filter({ hasText: "Waiting for payment" })
+    .getByRole("link", { name: "Invoice" })
+    .click();
+  await expect(page).toHaveURL(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
+
+  // Transactions: each transfer links to its transaction.
+  await sidebar.getByRole("link", { name: "Transactions" }).click();
+  await hiddenHeading("Transactions");
+  await expect(
+    main.getByRole("table").getByRole("link", { name: "View transaction on Basescan" }).first(),
+  ).toHaveAttribute("href", basescan(`0x00${"9".repeat(62)}`));
+  expect(await blockingViolations(page)).toEqual([]);
+
+  // The sidebar stays in view down to the bottom of a long page, open and collapsed, and nothing runs on below the
+  // content (a year of chart data once did).
+  await sidebar.getByRole("link", { name: "Overview", exact: true }).click();
+  await main.getByRole("group", { name: "Chart range" }).getByText("1Y", { exact: true }).click();
+  await expect(main.getByRole("img", { name: /^Received/ })).toBeVisible();
+  for (const collapse of [false, true]) {
+    if (collapse) await page.getByRole("button", { name: "Collapse sidebar" }).click();
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const box = await sidebar.boundingBox();
+    expect(box).toMatchObject({ x: 0, y: 0, height: 900, width: collapse ? 64 : 256 });
+    const below = await page.evaluate(
+      () =>
+        document.documentElement.scrollHeight -
+        (document.querySelector("main")?.getBoundingClientRect().bottom ?? 0) -
+        window.scrollY,
+    );
+    expect(below).toBeLessThanOrEqual(1);
+  }
+  await page.getByRole("button", { name: "Expand sidebar" }).click();
+  await context.close();
+
+  // A phone: the filters and rows fit without sideways scrolling, and the invoice has its back link.
+  const phone = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    storageState: session,
+  });
+  const small = await phone.newPage();
+  await mockApi(small);
+  for (const path of ["/app/invoices", "/app/activity", "/app/transactions"]) {
+    await small.goto(path);
+    await expect(small.getByRole("main").getByRole("searchbox")).toBeVisible();
+    expect(await small.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  }
+  await small.goto(`/app/invoices/${CONFIRMING_INVOICE.invoiceId}`);
+  await expect(small.getByRole("heading", { level: 1, name: "INV-0004" })).toBeVisible();
+  await expect(small.getByRole("main").getByRole("link", { name: "Invoices" })).toBeVisible();
+  expect(await small.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  expect(await blockingViolations(small)).toEqual([]);
+  await phone.close();
+});

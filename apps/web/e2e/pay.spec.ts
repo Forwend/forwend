@@ -48,6 +48,11 @@ const DEPOSIT = {
   secondsLeft: 150,
 };
 const DETECTED = { ...OPEN, paymentStatus: "detected", deposits: [DEPOSIT] };
+// The next read: half the blocks have passed.
+const CONFIRMING = {
+  ...DETECTED,
+  deposits: [{ ...DEPOSIT, blocksLeft: 6, secondsLeft: 75 }],
+};
 const CONFIRMED = [{ ...DEPOSIT, status: "confirmed", blocksLeft: 0, secondsLeft: 0 }];
 const PAID = { ...OPEN, paymentStatus: "paid", settlementStatus: "pending", deposits: CONFIRMED };
 const SETTLED = {
@@ -124,29 +129,47 @@ test.describe("pay page", () => {
   test("moves from waiting to detected, confirming, paid and settled without a reload", async ({
     page,
   }) => {
-    await openPay(page, OPEN, DETECTED, PAID, SETTLED);
+    await openPay(page, OPEN, DETECTED, CONFIRMING, PAID, SETTLED);
     await page.evaluate(() => {
       (window as unknown as { stayed: boolean }).stayed = true;
     });
     const status = page.getByRole("status").filter({ hasText: /./ });
+    // The amount panel's pill; each payment below has its own.
+    const pill = page.locator("[data-status]").first();
+    const progress = page.getByRole("list", { name: "Payment progress" });
 
     await expect(status).toHaveText(/^Waiting for your payment/);
-    await expect(page.locator("[data-status]")).toHaveText("Waiting for payment");
+    await expect(pill).toHaveText("Waiting for payment");
 
+    // A short line, the blocks apart; the pill and the step show a payment on its way, not done.
     await page.clock.runFor(POLL_MS);
-    await expect(status).toHaveText(
-      "We see your payment. Confirming it on Base Sepolia: 12 blocks left, about 3 min.",
-    );
-    await expect(page.locator("[data-status]")).toHaveText("Detected");
+    await expect(status).toHaveText("Confirming · about 3 min left 12 blocks");
+    await expect(pill).toHaveText("Detected");
+    await expect(pill).toHaveAttribute("data-status", "detected");
+    await expect(progress.locator("[aria-current=step]")).toHaveText("Confirming");
     // The full amount is on its way: no address invites a second payment.
     await expect(confirmButton(page)).toHaveCount(0);
+
+    // What arrived, with proof on the chain's explorer.
+    const explorer = page.getByRole("link", { name: "View transaction on Basescan" });
+    const payment = page.getByRole("listitem").filter({ has: explorer });
+    await expect(payment).toContainText(/1,250\.00\s*USDC\s*Confirming/);
+    await expect(explorer).toHaveAttribute(
+      "href",
+      `https://sepolia.basescan.org/tx/${DEPOSIT.txHash}`,
+    );
+    await expect(explorer).toHaveAttribute("target", "_blank");
+    await expect(explorer).toHaveAttribute("rel", "noopener noreferrer");
+
+    await page.clock.runFor(POLL_MS);
+    await expect(status).toHaveText("Confirming · about 2 min left 6 blocks");
 
     await page.clock.runFor(POLL_MS);
     await expect(status).toHaveText(/^Paid\. Forwend is now sending the money/);
 
     await page.clock.runFor(POLL_MS);
     await expect(status).toHaveText(/^Settled\. The sender has received the money/);
-    await expect(page.locator("[data-status]")).toHaveText("Settled");
+    await expect(pill).toHaveText("Settled");
     expect(await page.evaluate(() => (window as unknown as { stayed?: boolean }).stayed)).toBe(
       true,
     );
@@ -196,14 +219,18 @@ test.describe("pay page", () => {
     }) => {
       const context = await browser.newContext({ colorScheme, reducedMotion: "reduce" });
       const page = await context.newPage();
-      await openPay(page, OPEN);
+      const blocking = async () =>
+        (await new AxeBuilder({ page }).analyze()).violations
+          .filter((v) => v.impact === "serious" || v.impact === "critical")
+          .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
+      await openPay(page, OPEN, CONFIRMING);
       await confirmButton(page).click();
       await expect(page.getByText(RECEIVE)).toBeVisible();
-      const results = await new AxeBuilder({ page }).analyze();
-      const blocking = results.violations
-        .filter((v) => v.impact === "serious" || v.impact === "critical")
-        .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
-      expect(blocking).toEqual([]);
+      expect(await blocking()).toEqual([]);
+      // A payment on its way: the pending pills, the filling step and the payment with its explorer link.
+      await page.clock.runFor(POLL_MS);
+      await expect(page.getByRole("link", { name: "View transaction on Basescan" })).toBeVisible();
+      expect(await blocking()).toEqual([]);
       await context.close();
     });
   }

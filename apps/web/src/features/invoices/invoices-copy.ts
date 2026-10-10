@@ -9,6 +9,10 @@ import {
 
 const atMost = (n: number) => `Use at most ${n.toLocaleString("en-US")} characters.`;
 
+/** "about 19 min" or "under a minute": how long a payment has left to confirm. */
+export const timeLeft = (seconds: number) =>
+  seconds < 60 ? "under a minute" : `about ${Math.ceil(seconds / 60)} min`;
+
 export const INVOICES_COPY = {
   invoices: "Invoices",
   newInvoice: "New invoice",
@@ -17,6 +21,9 @@ export const INVOICES_COPY = {
   failed: "We could not load the invoices.",
   retry: "Try again",
   loadMore: "Show more",
+  search: "Search invoices",
+  searchPlaceholder: "Search number, client or title",
+  noMatch: "No invoices match this filter.",
   columns: {
     invoice: "Invoice",
     client: "Client",
@@ -93,8 +100,11 @@ export const INVOICE_COPY = {
     [INVOICE_STEPS.paid]: "Paid",
     [INVOICE_STEPS.settled]: "Settled",
   } satisfies Record<InvoiceStep, string>,
-  timeLeft: (blocks: number, seconds: number) =>
-    `Confirming the payment: ${blocks} ${blocks === 1 ? "block" : "blocks"} left, ${seconds < 60 ? "under a minute" : `about ${Math.ceil(seconds / 60)} min`}.`,
+  confirming: (seconds: number) => `Confirming · ${timeLeft(seconds)} left`,
+  blocks: (blocks: number) =>
+    blocks === 1 ? "1 block" : `${blocks.toLocaleString("en-US")} blocks`,
+  deposits: "Payments received",
+  late: "After the checkout closed",
   share: "Pay link",
   shareHint: "Send this link to your client. They pay without an account.",
   copy: "Copy link",

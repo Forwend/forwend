@@ -8,6 +8,9 @@ import {
   type ApiPaymentStatus,
   type ApiSettlementStatus,
   activityStatus,
+  matchesStatus,
+  type StatusFilter,
+  searchQuery,
 } from "@/features/activity/activity";
 
 export const INVOICES_PAGE_SIZE = 20;
@@ -217,6 +220,31 @@ export function invoiceProgress(inv: Invoice) {
     blocksLeft: Math.max(0, ...confirming.map((d) => d.blocksLeft)),
     secondsLeft: Math.max(0, ...confirming.map((d) => d.secondsLeft)),
   };
+}
+
+/**
+ * How far confirming got, 0 to 1, against the most blocks left seen while watching: the API gives no starting count.
+ * Null until a block passes, so the bar never shows progress nobody saw.
+ */
+export function confirmingProgress(blocksLeft: number, mostBlocksLeft: number): number | null {
+  return blocksLeft < mostBlocksLeft ? 1 - blocksLeft / mostBlocksLeft : null;
+}
+
+/** Invoices under the filter whose number, title or client name or email contains the search. */
+export function filterInvoices(
+  items: readonly InvoiceSummary[],
+  filter: StatusFilter,
+  search: string,
+): InvoiceSummary[] {
+  const query = searchQuery(search);
+  return items.filter(
+    (inv) =>
+      matchesStatus(invoiceStatus(inv), filter) &&
+      (!query ||
+        [invoiceNumber(inv.number), inv.title, inv.client?.name, inv.client?.email].some((text) =>
+          text ? searchQuery(text).includes(query) : false,
+        )),
+  );
 }
 
 const DUE_DATE = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone: "UTC" });

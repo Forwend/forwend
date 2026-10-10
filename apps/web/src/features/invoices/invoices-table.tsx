@@ -1,10 +1,22 @@
 "use client";
 
-import { Button, buttonClasses, EmptyState, Skeleton, StatusPill } from "@forwend/ui-web";
+import {
+  Button,
+  buttonClasses,
+  EmptyState,
+  SearchField,
+  SegmentedControl,
+  Skeleton,
+  StatusPill,
+} from "@forwend/ui-web";
 import { Plus } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+import { STATUS_FILTERS, type StatusFilter } from "@/features/activity/activity";
+import { ACTIVITY_COPY } from "@/features/activity/activity-copy";
 import { InvoiceAmount } from "@/features/invoices/invoice-amount";
 import {
+  filterInvoices,
   formatDueDate,
   type InvoiceSummary,
   type InvoiceToken,
@@ -38,7 +50,11 @@ export function InvoicesTable({
   tokens: readonly InvoiceToken[] | null;
 }) {
   const list = useGetInvoicesInfiniteQuery(profileId, LIVE_QUERY);
+  const [filter, setFilter] = useState<StatusFilter>(STATUS_FILTERS.all);
+  const [search, setSearch] = useState("");
   const items = list.data?.pages.flatMap((page) => page.items) ?? [];
+  // Over the pages loaded so far; "Show more" loads older ones into the same filter.
+  const rows = filterInvoices(items, filter, search);
 
   return (
     <section
@@ -46,12 +62,33 @@ export function InvoicesTable({
       aria-busy={!list.data && !list.isError}
       className="flex flex-col gap-4"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 id="invoices-title" className="text-2xl font-semibold tracking-tight text-ink">
-          {COPY.invoices}
-        </h1>
-        {items.length > 0 ? <NewInvoiceLink /> : null}
-      </div>
+      {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
+      <h1 id="invoices-title" className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
+        {COPY.invoices}
+      </h1>
+      {items.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Phones: the search first, the filter on its own row below. */}
+          <SegmentedControl
+            label={ACTIVITY_COPY.filterLabel}
+            className="max-sm:order-last"
+            value={filter}
+            onValueChange={setFilter}
+            options={Object.values(STATUS_FILTERS).map((value) => ({
+              value,
+              label: ACTIVITY_COPY.filters[value],
+            }))}
+          />
+          <SearchField
+            label={COPY.search}
+            value={search}
+            onValueChange={setSearch}
+            placeholder={COPY.searchPlaceholder}
+            className="flex-1 sm:max-w-72"
+          />
+          <NewInvoiceLink className="ml-auto" />
+        </div>
+      ) : null}
 
       {list.isError && !list.data ? (
         <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
@@ -68,6 +105,10 @@ export function InvoicesTable({
           description={COPY.emptyText}
           action={<NewInvoiceLink />}
         />
+      ) : rows.length === 0 ? (
+        <p className="rounded-md border border-line bg-surface px-5 py-8 text-sm text-muted">
+          {COPY.noMatch}
+        </p>
       ) : (
         <div className="rounded-md border border-line bg-surface">
           {/* Wide screens: a ruled table, scrolled sideways rather than squeezed when its column is narrow. Below xl
@@ -94,7 +135,7 @@ export function InvoicesTable({
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {items.map((inv) => (
+                {rows.map((inv) => (
                   // The number's link covers the row, so the whole row opens the invoice.
                   <tr
                     key={inv.invoiceId}
@@ -134,7 +175,7 @@ export function InvoicesTable({
             </table>
           </div>
           <ul className="divide-y divide-line xl:hidden">
-            {items.map((inv) => (
+            {rows.map((inv) => (
               <li key={inv.invoiceId}>
                 <Link
                   href={invoiceHref(inv)}

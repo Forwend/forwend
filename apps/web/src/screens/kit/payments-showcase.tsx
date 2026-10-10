@@ -14,6 +14,7 @@ import {
   StatusPill,
   TokenChip,
 } from "@forwend/ui-web";
+import { ExternalLink } from "lucide-react";
 import { KitGroup } from "@/screens/kit/kit-section";
 import { SAMPLE_INVOICE } from "@/shared/examples/sample-invoice";
 
@@ -71,7 +72,21 @@ export function PaymentsShowcase() {
             label="Payment progress, confirming"
             steps={[
               { label: "Detected", state: STEP_STATES.complete, detail: "12:04" },
-              { label: "Confirming", state: STEP_STATES.current, detail: "8 of 12" },
+              {
+                label: "Confirming",
+                state: STEP_STATES.current,
+                detail: "8 of 12",
+                progress: 0.66,
+              },
+              { label: "Paid", state: STEP_STATES.upcoming },
+              { label: "Settled", state: STEP_STATES.upcoming },
+            ]}
+          />
+          <PaymentTimeline
+            label="Payment progress, confirming with no known share"
+            steps={[
+              { label: "Detected", state: STEP_STATES.complete },
+              { label: "Confirming", state: STEP_STATES.current, progress: null },
               { label: "Paid", state: STEP_STATES.upcoming },
               { label: "Settled", state: STEP_STATES.upcoming },
             ]}
@@ -114,6 +129,17 @@ export function PaymentsShowcase() {
             direction={ACTIVITY_DIRECTIONS.incoming}
             amount={{ baseUnits: 1250000000n, decimals: 6, token: "USDC" }}
             status="settled"
+            action={
+              <a
+                href={`https://basescan.org/tx/0x${"8f3a".repeat(16)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="View transaction on Basescan"
+                className="rounded-sm p-1 text-muted hover:bg-surface-2 hover:text-ink"
+              >
+                <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
+              </a>
+            }
           />
           <ActivityRow
             title="North Pier Coffee"

@@ -4,12 +4,13 @@ import {
   Button,
   buttonClasses,
   Money,
+  SearchField,
   SegmentedControl,
   Skeleton,
   StatusPill,
   shortAddress,
 } from "@forwend/ui-web";
-import { ArrowDownLeft, ArrowUpRight, ChevronRight, Download, Search } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, ChevronRight, Download } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import {
@@ -27,6 +28,7 @@ import {
 import { useGetTransactionsQuery } from "@/features/transactions/transactions-api";
 import { TRANSACTIONS_COPY } from "@/features/transactions/transactions-copy";
 import { chainName } from "@/shared/chains/chains";
+import { ExplorerLink } from "@/shared/chains/explorer-link";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -92,11 +94,12 @@ function ProfileTransactions({
       <div
         className={`flex flex-wrap items-center justify-between gap-3 ${pageHeading ? "" : "border-b border-line px-4 py-3 sm:px-5"}`}
       >
+        {/* As the page's heading, the header's breadcrumb names it on desktop, so it shows only on phones. */}
         <Heading
           id={`${profileId}-transactions`}
           className={
             pageHeading
-              ? "text-2xl font-semibold tracking-tight text-ink"
+              ? "text-2xl font-semibold tracking-tight text-ink lg:sr-only"
               : "text-base font-semibold text-ink"
           }
         >
@@ -123,17 +126,13 @@ function ProfileTransactions({
                 label: TRANSACTIONS_COPY.filters[value],
               }))}
             />
-            <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm focus-within:outline-2 focus-within:outline-focus sm:w-64 sm:flex-none max-sm:order-last max-sm:basis-full">
-              <Search aria-hidden className="size-[var(--fw-icon-sm)] shrink-0 text-muted" />
-              <span className="sr-only">{TRANSACTIONS_COPY.search}</span>
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={TRANSACTIONS_COPY.searchPlaceholder}
-                className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-subtle"
-              />
-            </label>
+            <SearchField
+              label={TRANSACTIONS_COPY.search}
+              value={search}
+              onValueChange={setSearch}
+              placeholder={TRANSACTIONS_COPY.searchPlaceholder}
+              className="flex-1 sm:w-64 sm:flex-none max-sm:order-last max-sm:basis-full"
+            />
             <button
               type="button"
               onClick={exportCsv}
@@ -201,7 +200,10 @@ function ProfileTransactions({
                       {chainName(t.chainId)}
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap text-muted">
-                      <time dateTime={t.at}>{DATE.format(new Date(t.at))}</time>
+                      <span className="inline-flex items-center gap-1">
+                        <time dateTime={t.at}>{DATE.format(new Date(t.at))}</time>
+                        <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
+                      </span>
                     </td>
                     <td className="px-3 py-3">
                       <StatusPill status={transactionStatus(t)} />
@@ -225,7 +227,10 @@ function ProfileTransactions({
                 />
                 <span className="ml-auto flex shrink-0 flex-col items-end gap-1">
                   <Amount t={t} />
-                  <StatusPill status={transactionStatus(t)} />
+                  <span className="flex items-center gap-1">
+                    <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
+                    <StatusPill status={transactionStatus(t)} />
+                  </span>
                 </span>
               </li>
             ))}

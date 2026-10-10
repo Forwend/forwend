@@ -74,7 +74,8 @@ export function BusinessOverview() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-col items-start gap-2">
           <ProfilePill name={profileLabel(profile)} onClick={openProfiles} />
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">
+          {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
+          <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
             <span className="sr-only">{profileLabel(profile)} </span>
             {BUSINESS_COPY.overview}
           </h1>

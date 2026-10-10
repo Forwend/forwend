@@ -112,9 +112,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
 
   const email = user?.email?.address ?? user?.google?.email ?? AUTH_COPY.signedIn;
   return (
-    <div
-      className={`min-h-dvh bg-bg lg:grid ${collapsed ? "lg:grid-cols-[4rem_minmax(0,1fr)]" : "lg:grid-cols-[16rem_minmax(0,1fr)]"}`}
-    >
+    <div className="min-h-dvh bg-bg">
       <AppSidebar
         profiles={profiles}
         active={active}
@@ -124,7 +122,8 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
         onSignOut={signOut}
         collapsed={collapsed}
       />
-      <div className="min-w-0">
+      {/* The sidebar is fixed on desktop; the content starts after it. */}
+      <div className={`min-w-0 ${collapsed ? "lg:pl-16" : "lg:pl-64"}`}>
         <AppHeader
           active={active}
           pathname={pathname}

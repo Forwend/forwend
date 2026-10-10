@@ -196,17 +196,21 @@ export function ChartReadout({
       <p aria-live="polite" className="sr-only">
         {active === null ? "" : `${dayLabel(series, active)}: ${amountLabel(series, active)}`}
       </p>
-      <table className="sr-only">
-        <caption>{label}</caption>
-        <tbody>
-          {series.values.map((_, i) => (
-            <tr key={series.dates[i]?.toISOString() ?? i}>
-              <th scope="row">{dayLabel(series, i)}</th>
-              <td>{amountLabel(series, i)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* sr-only on the table itself does not hold: a table grows to its rows, and a year of rows ran far below the
+          page, leaving an empty area to scroll through. A block wrapper clips it. */}
+      <div className="sr-only">
+        <table>
+          <caption>{label}</caption>
+          <tbody>
+            {series.values.map((_, i) => (
+              <tr key={series.dates[i]?.toISOString() ?? i}>
+                <th scope="row">{dayLabel(series, i)}</th>
+                <td>{amountLabel(series, i)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }

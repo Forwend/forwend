@@ -4,9 +4,7 @@ import {
   Button,
   COPY_STATUS,
   formatTokenAmount,
-  PaymentTimeline,
   Skeleton,
-  STEP_STATES,
   StatusPill,
   useCopy,
 } from "@forwend/ui-web";
@@ -15,11 +13,12 @@ import { Check, ChevronLeft, Copy } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { InvoiceAmount } from "@/features/invoices/invoice-amount";
+import { InvoiceDeposits } from "@/features/invoices/invoice-deposits";
+import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/invoice-progress";
 import {
   exactDigits,
   formatDueDate,
   INVOICE_STEPS,
-  INVOICE_TIMELINE,
   type Invoice,
   type InvoiceSummary,
   type InvoiceToken,
@@ -30,6 +29,7 @@ import {
 } from "@/features/invoices/invoices";
 import { useGetInvoiceQuery, useGetProfileInvoiceQuery } from "@/features/invoices/invoices-api";
 import { INVOICE_COPY as COPY } from "@/features/invoices/invoices-copy";
+import { ExplorerLink } from "@/shared/chains/explorer-link";
 import { TokenMark } from "@/shared/chains/token-mark";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -41,7 +41,8 @@ const PANEL = "rounded-md border border-line bg-surface";
 const PANEL_TITLE = "border-b border-line px-4 py-3 text-base font-semibold text-ink sm:px-5";
 
 // The public read gives the terms, statuses and deposits and is read again every REFRESH_MS; the profile's own list
-// gives the client once, and also tells whether this profile made the invoice.
+// gives the client once, and also tells whether this profile made the invoice. On desktop the header's breadcrumb leads
+// back; phones have no breadcrumb, so they get a back link.
 export function InvoiceDetail({
   invoiceId,
   profileId,
@@ -61,7 +62,7 @@ export function InvoiceDetail({
     <div className="flex flex-col gap-6">
       <Link
         href={APP_ROUTES.invoices}
-        className="-ml-1 inline-flex items-center gap-1 self-start rounded-sm px-1 text-sm text-muted hover:text-ink"
+        className="-ml-1 inline-flex items-center gap-1 self-start rounded-sm px-1 text-sm text-muted hover:text-ink lg:hidden"
       >
         <ChevronLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
         {COPY.back}
@@ -99,42 +100,37 @@ function Loaded({
   clientFailed: boolean;
   tokens: readonly InvoiceToken[] | null;
 }) {
-  const { done, current, blocksLeft, secondsLeft } = invoiceProgress(invoice);
+  const { current, blocksLeft, secondsLeft } = invoiceProgress(invoice);
   const token = tokens?.find((t) => tokenKey(t) === tokenKey(invoice));
   const amount = BigInt(invoice.amount);
-  // No details under the steps: a phone leaves each column too little room for them.
-  const steps = INVOICE_TIMELINE.map((step, i) => ({
-    label: COPY.steps[step],
-    state:
-      i < done
-        ? STEP_STATES.complete
-        : step === current
-          ? STEP_STATES.current
-          : STEP_STATES.upcoming,
-  }));
   const client = mine?.client;
   const issuer = invoice.issuer;
 
   return (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">
-            {invoiceNumber(invoice.number)}
-          </h1>
-          {invoice.title ? <p className="mt-1 break-words text-muted">{invoice.title}</p> : null}
-        </div>
-        <StatusPill status={invoiceStatus(invoice)} />
+      {/* The number is the breadcrumb's last step on desktop, so the heading shows only on phones. */}
+      <div className="flex flex-col gap-1 lg:contents">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
+          {invoiceNumber(invoice.number)}
+        </h1>
+        {invoice.title ? (
+          <p className="break-words text-muted lg:text-lg lg:font-medium lg:text-ink">
+            {invoice.title}
+          </p>
+        ) : null}
       </div>
 
       <section aria-labelledby="invoice-amount" className={PANEL}>
-        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line px-4 py-4 sm:px-5">
-          <div className="min-w-0">
+        <div className="flex flex-col gap-3 border-b border-line px-4 py-4 sm:px-5">
+          <div className="flex items-center justify-between gap-3">
             <h2 id="invoice-amount" className="text-sm text-muted">
               {COPY.amount}
             </h2>
+            <StatusPill status={invoiceStatus(invoice)} />
+          </div>
+          <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
             {token ? (
-              <p className="mt-1 flex flex-wrap items-baseline gap-x-2 text-ink">
+              <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-ink">
                 <span className="text-3xl font-semibold tracking-tight break-all sm:text-4xl">
                   {formatTokenAmount({
                     baseUnits: amount,
@@ -145,18 +141,22 @@ function Loaded({
                 <span className="text-lg font-medium text-muted">{token.symbol}</span>
               </p>
             ) : (
-              <p className="mt-1 text-ink">
+              <p className="min-w-0 text-ink">
                 <InvoiceAmount invoice={invoice} tokens={tokens} />
               </p>
             )}
+            {token ? <TokenMark chainId={invoice.chainId} symbol={token.symbol} /> : null}
           </div>
-          {token ? <TokenMark chainId={invoice.chainId} symbol={token.symbol} /> : null}
         </div>
         <div className="flex flex-col gap-3 px-4 py-5 sm:px-5">
-          <PaymentTimeline label={COPY.progress} steps={steps} />
-          {current === INVOICE_STEPS.confirming ? (
-            <p className="text-sm text-muted">{COPY.timeLeft(blocksLeft, secondsLeft)}</p>
-          ) : null}
+          {/* No details under the steps: a phone leaves each column too little room for them. */}
+          <InvoiceTimeline invoice={invoice} label={COPY.progress} />
+          <p role="status" className="text-sm text-ink empty:sr-only">
+            {current === INVOICE_STEPS.confirming ? (
+              <ConfirmingStatus blocks={blocksLeft} seconds={secondsLeft} />
+            ) : null}
+          </p>
+          <InvoiceDeposits invoice={invoice} token={token ?? null} />
         </div>
       </section>
 
@@ -175,7 +175,12 @@ function Loaded({
             <Row term={COPY.created}>{TIME.format(new Date(invoice.createdAt))}</Row>
             {invoice.settlementTxHash ? (
               <Row term={COPY.settlement}>
-                <span className="font-mono break-all">{invoice.settlementTxHash}</span>
+                <span className="font-mono break-all">{invoice.settlementTxHash}</span>{" "}
+                <ExplorerLink
+                  chainId={invoice.chainId}
+                  txHash={invoice.settlementTxHash}
+                  className="align-middle"
+                />
               </Row>
             ) : null}
             <Row term={COPY.note}>{invoice.note ?? COPY.none}</Row>

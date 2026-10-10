@@ -11,7 +11,8 @@ export function BalancesScreen() {
   const balances = useGetBalancesQuery(profile.profileId, LIVE_QUERY);
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">
+      {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
+      <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
         {BALANCES_COPY.balancesTitle}
       </h1>
       <BalancesList
