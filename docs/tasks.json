@@ -7521,7 +7521,7 @@
       "dependsOn": [
         "F071"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "unit",
@@ -7622,11 +7622,18 @@
           "summary": "PASS on re-review. All earlier findings are resolved. (1) Disabled token: wallets() now also reads tokens that still have detected rows on the chain, and transfers() counts a disabled token's log only when it matches an existing detected row (same block hash and log index). Checked: such a row confirms once final, and the scan start goes back to 64 blocks below finalized (TestDetectedTransferOfADisabledTokenStillConfirms). In a scratch Anvil test (deleted afterwards), a disabled token's detected row whose block was replaced is marked reorged; its re-mined copy is not recorded, as the docs say for new transfers of a disabled token; and the start went back to finalized+1-64 (67 vs 130). A token row cannot be removed while wallet_transfers rows reference it (FK, no ON DELETE), so that case cannot happen. The filter never applies to enabled tokens. For a disabled token it skips only rows that would be new (a re-mined copy, or a reorged row coming back), which matches the documented rule, so no update of an existing detected row is lost. (2) Partial index wallet_transfers_detected (chain_id, block_number) WHERE status = 'detected' was added. (3) F079 and R-39 now cover the dashboard chart and Transactions page; F079 depends on F072. (4) My earlier fix holds: history day buckets are [00:00, next 00:00), and history_test mints a transfer at exactly 00:00 UTC. Ran: pnpm --filter @forwend/backend test, all packages pass. Verify passed at 10:12:39Z (9 checks).",
           "at": "2026-10-10T10:15:33Z",
           "filesHash": "7e761db27b084bf7"
-        }
+        },
+        "commit": "c3cfda0",
+        "doneAt": "2026-10-10T10:15:49Z"
       },
       "branch": "feat/f072-the-backend-records-every-token-transfer",
       "baseCommit": "f5e2efb7ec3c28d97b46024ed8345c67c9a7b04e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f072-the-backend-records-every-token-transfer",
+        "base": "main"
+      }
     },
     {
       "id": "F073",
