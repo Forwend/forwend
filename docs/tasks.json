@@ -9687,7 +9687,7 @@
         "F089",
         "F099"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "unit"
@@ -9778,11 +9778,18 @@
           "summary": "PASS after two fixes. paidAt/settledAt read in the single invoice query, settledAt from the unique settlement ledger entry booked in the same transaction as settled; no private data leaked; explorer links per chain via txLink; dashboard receipt link gated on paid like the API's 409; pay page has no Privy or new scripts, same-origin PDF links, axe 0 serious/critical on settled in both themes. FIXED: the receipt PDF listed late deposits held for the payer (D-26), now only confirmed non-late ones, TestReceiptPDF adds a late deposit (fails without the fix); a paid or settled pay page no longer shows the checkout countdown (e2e asserts it). Re-verified 8 checks.",
           "at": "2026-10-10T21:44:08Z",
           "filesHash": "d4f2df7f96cf76ab"
-        }
+        },
+        "commit": "c3860aa",
+        "doneAt": "2026-10-10T21:44:10Z"
       },
       "branch": "feat/f090-the-pay-page-shows-a-receipt-after-settl",
       "baseCommit": "8d9a1ee5116c732b615593eda92029bfd9917ae6",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f090-the-pay-page-shows-a-receipt-after-settl",
+        "base": "main"
+      }
     },
     {
       "id": "F091",
