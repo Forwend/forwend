@@ -72,6 +72,17 @@ func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, i
 	if err != nil || !final {
 		return err
 	}
+	if in.txHash != nil {
+		// The receiver can be settled once; if our saved settle reverted or never mined, another settler (the refund
+		// authority after the deadline) did it, and the settlement has no hash of ours.
+		r, err := client.TransactionReceipt(ctx, common.HexToHash(*in.txHash))
+		if err != nil && !errors.Is(err, ethereum.NotFound) {
+			return fmt.Errorf("read settle receipt: %w", err)
+		}
+		if r == nil || r.Status != types.ReceiptStatusSuccessful {
+			in.txHash = nil
+		}
+	}
 	return s.confirm(ctx, in)
 }
 
@@ -93,8 +104,8 @@ func (s *Signer) confirm(ctx context.Context, in intent) error {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `
-		WITH i AS (UPDATE settlement_intents SET status = 'confirmed', updated_at = now() WHERE id = $1)
-		UPDATE invoices SET settlement_status = 'settled' WHERE id = $2`, in.id, in.invoiceID); err != nil {
+		WITH i AS (UPDATE settlement_intents SET status = 'confirmed', tx_hash = $3, updated_at = now() WHERE id = $1)
+		UPDATE invoices SET settlement_status = 'settled' WHERE id = $2`, in.id, in.invoiceID, in.txHash); err != nil {
 		return fmt.Errorf("confirm settlement: %w", err)
 	}
 	slog.Info("settled", "invoice", in.invoiceID, "amount", in.amount.String())
