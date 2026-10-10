@@ -20,6 +20,7 @@ apps/web/src/
     transactions/
     invoices/
     new-profile/
+    pay/                       public checkout /pay/<id>
     sign-in/
     kit/                       /kit
     kit-directions/            /kit/directions
@@ -31,6 +32,7 @@ apps/web/src/
     activity/
     transactions/
     invoices/
+    pay/                       checkout: address recompute, payer steps and status
     waitlist/
   shared/                      code used by unrelated screens or features
     api/                       request client, API errors, optional RTK Query setup

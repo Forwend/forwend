@@ -114,8 +114,11 @@ export interface InvoiceSummary {
   token: string;
   /** Base units. */
   amount: string;
+  /** The profile wallet that settlement pays. */
+  recipient: string;
   receiveAddress: string;
   expiresAt: string;
+  settleDeadline: string;
   paymentStatus: ApiPaymentStatus | (string & {});
   settlementStatus: ApiSettlementStatus | (string & {});
   settlementTxHash: string | null;

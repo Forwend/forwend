@@ -58,10 +58,19 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   these variables for the web build. Request and response types are written by hand from `apps/backend/api/openapi.yaml`
   and belong to their feature (`features/profiles/profile.ts`, `features/balances/balances.ts`,
   `features/activity/activity.ts`): `openapi-typescript` needs the TypeScript compiler API, which TypeScript 7 does not have.
-- Features depend on each other in two places: the receive sheet (`features/receive`) takes the `Balances` type from
-  `features/balances` to show which networks and tokens the address takes, and `features/invoices` takes the API
-  status values and `activityStatus` from `features/activity`, so an invoice shows the same status everywhere.
-- The checkout page recomputes the receive address from the invoice terms and refuses to show a mismatch; it loads no
+- Features depend on each other in three places: the receive sheet (`features/receive`) takes the `Balances` type from
+  `features/balances` to show which networks and tokens the address takes, `features/invoices` takes the API
+  status values and `activityStatus` from `features/activity`, so an invoice shows the same status everywhere, and
+  `features/pay` takes the `Invoice` type, the `getInvoice` query and the progress helpers from `features/invoices`
+  and the API status values from `features/activity`.
+- Checkout `/pay/<id>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed id is a 404;
+  an id the API does not know shows the 404 page. It reads the public `GET /v1/invoices/{id}` every 15 s through a
+  store whose requests carry no token (`providers/public-store-provider.tsx`). The browser recomputes the receive
+  address from the terms with the factory and implementation built into the page (`features/pay/receive-address.ts`,
+  keccak256 from `@noble/hashes`, tested against the R-15 vectors) and shows no address on a mismatch. Token symbol and
+  decimals come from `PAY_TOKENS` in the build, never the API; another token is refused, so enabling a token in the
+  API also needs an entry there. The refund rule, the scam note and the network warning come first; the address and
+  QR show only after the payer confirms the network. Paid and settled come only from the API (D-29). It loads no
   third-party scripts ([money-safety.md](../backend/money-safety.md)).
 
 ## Tests
