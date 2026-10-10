@@ -50,7 +50,8 @@ tokens **off** (no `identity_token` in any response), access token 1 h.
 
 ## Open questions
 
-- Owner: is 5 minutes right, and which actions count (also creating an invoice or a store key)?
+- Owner: is 5 minutes right, and which actions count (also creating an invoice or a store key)? Answered 2026-10-10
+  by [D-63](../PROJECT.md): 5 minutes; API keys yes, invoices no.
 - The `iat` = `latest_verified_at` match is measured, not documented by Privy. If it ever breaks, fall back to a
   short-lived reauth record keyed by `sid`, written by the API when it sees a matching pair.
 - Passkey re-proof is not run live; check `latest_verified_at` of the passkey account when the first passkey is linked.

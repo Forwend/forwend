@@ -66,6 +66,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   readers every value. Range choice is a segmented control.
 - Transactions table: ruled table from medium screens; the network has its own column only on the widest screens and
   sits under the counterparty otherwise. Phone rows show the network first and cut the time, never the network.
+- First run (planned, not built): one "What do you want to do?" screen with four choice cards (any number) and Skip,
+  shown once after the first sign-in.
+- Onboarding checklist (planned, not built): a card on the overview listing the profile's steps, each done or not
+  from real data, with a link to the step; it hides when every step is done or the user closes it.
 - Money actions are round icon buttons with the label underneath, on desktop and phones; only working actions are
   filled with the primary ink. In the header, Send is a dashed outline pill in the subtle color until it is built.
 - A feature that is not built yet keeps its place in the subtle text color, with "Soon" as plain text at the end:
