@@ -10518,7 +10518,7 @@
       "dependsOn": [
         "F086"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -10615,11 +10615,18 @@
           "summary": "PASS. Route behind profileScoped (401/403 before the query); the empty profile filter comes only from the public Get; malformed id 404 before the query, other profile's invoice 404; public GET still omits client; PK lookup. TestGetProfileInvoice fails without the profile filter. Web handles 404, other errors and loading; list hack fully removed; mocked e2e asserts the Client region; docs match. Live e2e passed after the owner restarted pnpm dev.",
           "at": "2026-10-10T23:33:01Z",
           "filesHash": "fb84c5181ad9beb9"
-        }
+        },
+        "commit": "02b1bda",
+        "doneAt": "2026-10-10T23:33:03Z"
       },
       "branch": "fix/f100-the-owner-reads-one-of-their-invoices-wi",
       "baseCommit": "488cb02fe8e9f28b33b736eccd4e075aa6078a3d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f100-the-owner-reads-one-of-their-invoices-wi",
+        "base": "main"
+      }
     },
     {
       "id": "F101",
