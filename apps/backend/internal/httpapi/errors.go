@@ -25,6 +25,8 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusForbidden, "forbidden", "not allowed for this profile"
 	case errors.Is(err, invoice.ErrNotFound):
 		status, code, message = http.StatusNotFound, "invoice_not_found", "invoice not found"
+	case errors.Is(err, profile.ErrNoBillingDetails):
+		status, code, message = http.StatusNotFound, "billing_details_not_found", "the profile has no billing details yet"
 	case errors.Is(err, profile.ErrNotSignedUp):
 		status, code, message = http.StatusNotFound, "not_signed_up", "sign up first with POST /v1/me"
 	case errors.Is(err, invoice.ErrConflict), errors.Is(err, profile.ErrConflict):

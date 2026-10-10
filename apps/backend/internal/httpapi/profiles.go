@@ -78,6 +78,57 @@ func createProfile(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
+type billingDetailsBody struct {
+	Name    string `json:"name"`
+	Address string `json:"address"`
+	Country string `json:"country"`
+	TaxID   string `json:"taxId"`
+	Email   string `json:"email"`
+}
+
+type billingDetailsJSON struct {
+	issuerJSON
+	UpdatedAt string `json:"updatedAt"`
+}
+
+// putBillingDetails is PUT /v1/profiles/{profileId}/billing-details: creates or replaces them, 200 either way.
+func putBillingDetails(profiles *profile.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body billingDetailsBody
+		if err := decodeJSON(w, r, &body); err != nil {
+			writeError(w, r, err)
+			return
+		}
+		d, err := profiles.SaveBillingDetails(r.Context(), r.PathValue("profileId"), profile.BillingDetails{
+			Name: body.Name, Address: body.Address, Country: body.Country, TaxID: body.TaxID, Email: body.Email})
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, toBillingDetailsJSON(d))
+	}
+}
+
+// getBillingDetails is GET /v1/profiles/{profileId}/billing-details: 404 until they are saved.
+func getBillingDetails(profiles *profile.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		d, err := profiles.BillingDetails(r.Context(), r.PathValue("profileId"))
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, toBillingDetailsJSON(d))
+	}
+}
+
+func toBillingDetailsJSON(d profile.BillingDetails) billingDetailsJSON {
+	return billingDetailsJSON{
+		issuerJSON: issuerJSON{Name: d.Name, Address: d.Address, Country: d.Country, TaxID: orNull(d.TaxID),
+			Email: d.Email},
+		UpdatedAt: d.UpdatedAt.UTC().Format(time.RFC3339),
+	}
+}
+
 func toMeJSON(list []profile.Profile) meJSON {
 	out := meJSON{Profiles: []profileJSON{}}
 	for _, p := range list {

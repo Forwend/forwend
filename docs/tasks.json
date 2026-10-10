@@ -9162,7 +9162,7 @@
       "dependsOn": [
         "F084"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend",
         "docs-check"
@@ -9176,9 +9176,96 @@
         "packages/contracts/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-10 review pass by reviewer: 00009 trigger keeps F084 numbering (same profiles UPDATE) and freezes all F084 fields plus issuer_*; Down restores 00008's function byte-for-byte, rollback test covers it. Issuer copied in the BEFORE INSERT trigger from one row, overriding any inserted values, so no partial or stale copy; replay reads the stored row. New table only has NOT NULLs, invoice issuer columns nullable: safe for existing rows. Country list matches tz iso3166.tab (249). Validation 422/400/401/404 shapes and both routes in the cross-user 403 list. openapi, api.md, architecture accurate. Backend tests pass on real Postgres. Minor, not blocking: whitespace-only name/address is accepted."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-10T14:51:47Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 25.6,
+            "log": "docs/runs/F085-20261010T145147Z-backend.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F085-20261010T145147Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F085-20261010T145147Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F085-20261010T145147Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F085-20261010T145147Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 27.3,
+            "log": "docs/runs/F085-20261010T145147Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F085-20261010T145147Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 48.2,
+            "log": "docs/runs/F085-20261010T145147Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F085-20261010T145147Z-keep.log"
+          }
+        ],
+        "taskHash": "c9c8e645f277f70c",
+        "filesHash": "835c3f6de7838815",
+        "proof": {
+          "1": "backend: TestBillingDetails (PUT/GET round trip, replace, 404 before PUT; 422 for each missing or empty required field name/address/country/email, bad email, bad country, too long fields, NUL; 400 unknown field; 401), TestProfilesBelongToTheirUser (PUT and GET billing-details in profileRoutes: Bob 403)",
+          "2": "backend: TestInvoiceKeepsItsIssuerCopy (edit after create: public GET, list and idempotent replay keep the old issuer; profile without details gives issuer null), TestInvoiceNumbers (issuer columns frozen), TestMigrationsRollBackAndReapply; docs-check: apps/backend/api/openapi.yaml billing-details paths and Issuer schema, docs/backend/api.md Billing details section, docs/backend/architecture.md data model"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "00009 trigger keeps F084 numbering (same profiles UPDATE) and freezes all F084 fields plus issuer_*; Down restores 00008's function byte-for-byte, rollback test covers it. Issuer copied in the BEFORE INSERT trigger from one row, overriding any inserted values, so no partial or stale copy; replay reads the stored row. New table only has NOT NULLs, invoice issuer columns nullable: safe for existing rows. Country list matches tz iso3166.tab (249). Validation 422/400/401/404 shapes and both routes in the cross-user 403 list. openapi, api.md, architecture accurate. Backend tests pass on real Postgres. Minor, not blocking: whitespace-only name/address is accepted.",
+          "at": "2026-10-10T14:54:58Z",
+          "filesHash": "835c3f6de7838815"
+        }
+      },
+      "branch": "feat/f085-a-profile-saves-its-billing-details-and",
+      "baseCommit": "2e37978058d20677f9934867b657c677aeba02bf",
+      "failedVerifies": 0
     },
     {
       "id": "F086",

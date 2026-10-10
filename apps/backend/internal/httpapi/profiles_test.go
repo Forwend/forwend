@@ -1,12 +1,14 @@
 package httpapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 // call sends a request as user ("" = no token) with an optional Idempotency-Key.
@@ -107,6 +109,8 @@ func TestCreateProfileRoute(t *testing.T) {
 
 // profileRoutes is every route with a {profileId}; add each new one here so the cross-user test covers it.
 var profileRoutes = []struct{ method, path, body string }{
+	{"PUT", "/v1/profiles/%s/billing-details", billingBody},
+	{"GET", "/v1/profiles/%s/billing-details", ""},
 	{"POST", "/v1/profiles/%s/invoices", basicBody},
 	{"GET", "/v1/profiles/%s/invoices", ""},
 	{"GET", "/v1/profiles/%s/balances", ""},
@@ -151,6 +155,99 @@ func TestProfilesBelongToTheirUser(t *testing.T) {
 			if r := e.call(t, route.method, path, alice, "alice-key-"+id, route.body); r.status == http.StatusForbidden {
 				t.Fatalf("Alice %s %s: 403 on her own profile", route.method, path)
 			}
+		}
+	}
+}
+
+const billingBody = `{"name": "Alice Design GmbH", "address": "Hauptstr. 1\n10115 Berlin", "country": "DE",
+	"taxId": "DE123456789", "email": "billing@alice.example"}`
+
+// PUT saves the profile's billing details and replaces them on the next PUT; GET returns them, 404 before the first.
+func TestBillingDetails(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	path := "/v1/profiles/" + e.aliceProfile + "/billing-details"
+	if r := e.call(t, "GET", path, alice, "", ""); r.status != http.StatusNotFound || errorCode(r) != "billing_details_not_found" {
+		t.Fatalf("GET before PUT: %d %v", r.status, r.body)
+	}
+
+	want := map[string]any{"name": "Alice Design GmbH", "address": "Hauptstr. 1\n10115 Berlin", "country": "DE",
+		"taxId": "DE123456789", "email": "billing@alice.example"}
+	saved := e.call(t, "PUT", path, alice, "", billingBody)
+	if saved.status != http.StatusOK {
+		t.Fatalf("PUT: %d %v", saved.status, saved.body)
+	}
+	if _, err := time.Parse(time.RFC3339, fmt.Sprint(saved.body["updatedAt"])); err != nil {
+		t.Fatalf("updatedAt %v", saved.body["updatedAt"])
+	}
+	delete(saved.body, "updatedAt")
+	if !reflect.DeepEqual(saved.body, want) {
+		t.Fatalf("PUT returned %v, want %v", saved.body, want)
+	}
+	got := e.call(t, "GET", path, alice, "", "")
+	delete(got.body, "updatedAt")
+	if got.status != http.StatusOK || !reflect.DeepEqual(got.body, want) {
+		t.Fatalf("GET: %d %v, want %v", got.status, got.body, want)
+	}
+
+	// A PUT replaces every field: a tax ID left out means none.
+	const short = `{"name": "Alice", "address": "Rue 2, Paris", "country": "FR", "email": "a@example.com"}`
+	e.call(t, "PUT", path, alice, "", short)
+	got = e.call(t, "GET", path, alice, "", "")
+	delete(got.body, "updatedAt")
+	if want := map[string]any{"name": "Alice", "address": "Rue 2, Paris", "country": "FR", "taxId": nil,
+		"email": "a@example.com"}; got.status != http.StatusOK || !reflect.DeepEqual(got.body, want) {
+		t.Fatalf("GET after the second PUT: %d %v, want %v", got.status, got.body, want)
+	}
+
+	// Each case changes one field of a valid body.
+	for _, c := range []struct {
+		field, value, code string
+		status             int
+	}{
+		{"name", `""`, "invalid_value", http.StatusUnprocessableEntity},
+		{"address", `""`, "invalid_value", http.StatusUnprocessableEntity},
+		{"country", `""`, "invalid_value", http.StatusUnprocessableEntity},
+		{"email", `""`, "invalid_value", http.StatusUnprocessableEntity},
+		{"email", `"not an email"`, "invalid_value", http.StatusUnprocessableEntity},
+		{"email", `"Alice <a@example.com>"`, "invalid_value", http.StatusUnprocessableEntity},
+		{"country", `"de"`, "invalid_value", http.StatusUnprocessableEntity},
+		{"country", `"XK"`, "invalid_value", http.StatusUnprocessableEntity},
+		{"country", `"DEU"`, "invalid_value", http.StatusUnprocessableEntity},
+		{"name", `"` + strings.Repeat("é", 201) + `"`, "invalid_value", http.StatusUnprocessableEntity},
+		{"address", `"` + strings.Repeat("a", 501) + `"`, "invalid_value", http.StatusUnprocessableEntity},
+		{"taxId", `"` + strings.Repeat("1", 51) + `"`, "invalid_value", http.StatusUnprocessableEntity},
+		{"email", `"` + strings.Repeat("a", 243) + `@example.com"`, "invalid_value", http.StatusUnprocessableEntity},
+		{"name", `"A\u0000"`, "invalid_value", http.StatusUnprocessableEntity},
+		{"phone", `"123"`, "malformed_request", http.StatusBadRequest},
+		{"name", `1`, "malformed_request", http.StatusBadRequest},
+	} {
+		var body map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(short), &body); err != nil {
+			t.Fatal(err)
+		}
+		body[c.field] = json.RawMessage(c.value)
+		raw, _ := json.Marshal(body)
+		if r := e.call(t, "PUT", path, alice, "", string(raw)); r.status != c.status || errorCode(r) != c.code {
+			t.Fatalf("PUT %s: %d %v, want %d %s", raw, r.status, r.body, c.status, c.code)
+		}
+	}
+	for _, field := range []string{"name", "address", "country", "email"} { // left out
+		var body map[string]string
+		_ = json.Unmarshal([]byte(short), &body)
+		delete(body, field)
+		raw, _ := json.Marshal(body)
+		if r := e.call(t, "PUT", path, alice, "", string(raw)); r.status != http.StatusUnprocessableEntity ||
+			errorCode(r) != "invalid_value" {
+			t.Fatalf("PUT without %s: %d %v, want 422", field, r.status, r.body)
+		}
+	}
+	if got := e.call(t, "GET", path, alice, "", ""); got.body["name"] != "Alice" {
+		t.Fatalf("a refused PUT changed the details: %v", got.body)
+	}
+	for _, method := range []string{"GET", "PUT"} {
+		if r := e.call(t, method, path, "", "", billingBody); r.status != http.StatusUnauthorized {
+			t.Fatalf("%s without a token: %d", method, r.status)
 		}
 	}
 }

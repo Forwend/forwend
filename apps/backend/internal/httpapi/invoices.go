@@ -37,6 +37,7 @@ type invoiceJSON struct {
 	Note             *string     `json:"note"`
 	DueDate          *string     `json:"dueDate"`
 	Client           *clientJSON `json:"client,omitempty"` // owner routes only
+	Issuer           *issuerJSON `json:"issuer"`
 	ChainID          uint64      `json:"chainId"`
 	Token            string      `json:"token"`
 	Amount           string      `json:"amount"`
@@ -56,6 +57,15 @@ type clientJSON struct {
 	Name    *string `json:"name"`
 	Email   *string `json:"email"`
 	Address *string `json:"address"`
+}
+
+// issuerJSON is billing details as an invoice copied them, and the body of the billing-details routes.
+type issuerJSON struct {
+	Name    string  `json:"name"`
+	Address string  `json:"address"`
+	Country string  `json:"country"`
+	TaxID   *string `json:"taxId"`
+	Email   string  `json:"email"`
 }
 
 // invoiceDetailJSON is one invoice read alone: with its deposits.
@@ -135,7 +145,7 @@ func listInvoices(invoices *invoice.Service) http.HandlerFunc {
 }
 
 // getInvoice is GET /v1/invoices/{invoiceId}: public, so checkout can read the terms and recompute the address. The
-// id is the only key, so it leaves out the client's contact details.
+// id is the only key, so it leaves out the client's contact details; the issuer is who bills the payer, so it stays.
 func getInvoice(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		inv, err := invoices.Get(r.Context(), r.PathValue("invoiceId"))
@@ -156,6 +166,10 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 		ExpiresAt: inv.ExpiresAt.Format(time.RFC3339), SettleDeadline: inv.SettleDeadline.Format(time.RFC3339),
 		PaymentStatus: inv.PaymentStatus, SettlementStatus: inv.SettlementStatus, RefundStatus: inv.RefundStatus,
 		SettlementTxHash: orNull(inv.SettlementTxHash), CreatedAt: inv.CreatedAt.UTC().Format(time.RFC3339),
+	}
+	if i := inv.Issuer; i != nil {
+		out.Issuer = &issuerJSON{Name: i.Name, Address: i.Address, Country: i.Country, TaxID: orNull(i.TaxID),
+			Email: i.Email}
 	}
 	if withClient {
 		out.Client = &clientJSON{Name: orNull(inv.ClientName), Email: orNull(inv.ClientEmail),
