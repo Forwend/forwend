@@ -8,6 +8,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/activity"
 	"github.com/ensp1re/forwend/apps/backend/internal/auth"
 	"github.com/ensp1re/forwend/apps/backend/internal/balance"
+	"github.com/ensp1re/forwend/apps/backend/internal/document"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
@@ -29,6 +30,8 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusNotFound, "billing_details_not_found", "the profile has no billing details yet"
 	case errors.Is(err, profile.ErrNotSignedUp):
 		status, code, message = http.StatusNotFound, "not_signed_up", "sign up first with POST /v1/me"
+	case errors.Is(err, document.ErrNotPaid):
+		status, code, message = http.StatusConflict, "invoice_not_paid", "the invoice is not paid, so it has no receipt yet"
 	case errors.Is(err, invoice.ErrConflict), errors.Is(err, profile.ErrConflict):
 		status, code, message = http.StatusConflict, "idempotency_conflict", "Idempotency-Key was used with another request"
 	case errors.Is(err, invoice.ErrInvalid), errors.Is(err, profile.ErrInvalid), errors.Is(err, activity.ErrInvalid),

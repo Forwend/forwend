@@ -96,6 +96,11 @@ type Invoice struct {
 	SettlementTxHash string // the signer's settle transaction once settled
 	CreatedAt        time.Time
 	Deposits         []Deposit // set by Get
+	Symbol           string    // the token's; set by Get
+	Decimals         int       // the token's; set by Get
+	Network          string    // the chain's name; set by Get
+	// PaidAt is the block time of the deposit that completed the amount owed to the creator; set by Get once paid.
+	PaidAt time.Time
 }
 
 // Deposit is a transfer to the receive address that is not reorged. Until its block is final, BlocksLeft and

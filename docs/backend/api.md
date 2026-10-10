@@ -5,7 +5,8 @@ Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/profiles`,
 `POST /v1/profiles/{profileId}/invoices`,
 `GET /v1/profiles/{profileId}/invoices`, `GET /v1/profiles/{profileId}/balances`, `GET /v1/profiles/{profileId}/activity`,
 `GET /v1/profiles/{profileId}/transactions`, `GET /v1/profiles/{profileId}/balance-history`,
-`GET /v1/invoices/{invoiceId}` (public).
+`GET /v1/invoices/{invoiceId}`, `GET /v1/invoices/{invoiceId}/invoice.pdf`, `GET /v1/invoices/{invoiceId}/receipt.pdf`
+(the last three public).
 
 ## Contract first
 
@@ -65,6 +66,27 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due date and `issuer` (who bills
   them; the issuer's own business details) but no `client`: the id is a bearer link, so it returns only what the
   payer needs (OWASP API Security Top 10 2023, API3). Create and list, which only the owner calls, include `client`.
+
+## Invoice and receipt PDFs
+
+R-47 and D-51; the full description is in openapi.yaml. Both are public like `GET /v1/invoices/{invoiceId}` and
+answer 404 `invoice_not_found` the same way.
+
+- `internal/document` draws them with `codeberg.org/go-pdf/fpdf` in a fixed layout, from `invoice.Get` only: no
+  templates, network or file reads. The font is Noto Sans, embedded (`internal/document/fonts`, SIL OFL 1.1). Long
+  texts wrap and are cut with "…"; characters above U+FFFF (emoji) print as "?".
+- `invoice.pdf`: number (`INV-0001`), title, issuer block from the invoice's copy (left out without one), "Bill to"
+  with the client's name and address but never the email (the id is a bearer link), the exact amount with the token's
+  symbol and decimals, network (chain name and id), due date, checkout expiry, created time, note, invoice id and the
+  pay link `PUBLIC_WEB_URL/pay/<invoiceId>`.
+- `receipt.pdf`: 409 `invoice_not_paid` until `paymentStatus` is `paid` (it stays paid once settled). Adds the paid
+  time, the confirmed deposits' tx hashes and amounts, the settlement status and `settlementTxHash`, and says to
+  check the receipt at the pay link, since a PDF can be edited. The paid time is the block time of the last deposit
+  the ledger booked to `recipient_payable`: the one that completed the amount.
+- The same data gives the same bytes (creation date = created or paid time, sorted catalog), so the `ETag` is a hash of
+  the file. `Cache-Control: private, no-cache`: a client revalidates and gets 304 while the file is unchanged; a late
+  deposit or the settlement changes the receipt. `Content-Disposition: attachment;
+  filename="forwend-INV-0001-invoice.pdf"` (or `-receipt.pdf`).
 
 ## Wallet transactions and balance history
 

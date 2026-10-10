@@ -3,6 +3,7 @@ module github.com/ensp1re/forwend/apps/backend
 go 1.27.1
 
 require (
+	codeberg.org/go-pdf/fpdf v0.12.0
 	github.com/ethereum/go-ethereum v1.17.8
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/jackc/pgx/v5 v5.11.0

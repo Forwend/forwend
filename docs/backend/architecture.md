@@ -3,7 +3,7 @@
 The Go backend in `apps/backend` (PLAN Phase 6). Code rules: [rules.md](rules.md).
 Requirements: R-14…R-24 in [PROJECT.md](../PROJECT.md). Whole system: [architecture.md](../architecture.md).
 
-Built: signup and profiles API, billing details, balances, activity, wallet transactions and balance history API, invoice API, Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
+Built: signup and profiles API, billing details, balances, activity, wallet transactions and balance history API, invoice API, invoice and receipt PDFs (`internal/document`, drawn in Go from the stored invoice), Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
 (`apps/backend/e2e`, R-23) runs the whole loop. Not built yet: refunds, webhooks, merchants.
 
 ## Processes

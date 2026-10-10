@@ -300,6 +300,47 @@ paths:
               schema: { $ref: "#/components/schemas/Invoice" }
         "404": { $ref: "#/components/responses/InvoiceNotFound" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/invoices/{invoiceId}/invoice.pdf:
+    get:
+      operationId: getInvoicePdf
+      summary: Download the invoice as a PDF
+      description: |
+        Public like GET /v1/invoices/{invoiceId} (R-47, D-51). Built on the server from the stored invoice only: number,
+        title, issuer (left out when the profile had no billing details), bill-to with the client's name and address
+        (never the email), amount with the token's symbol, network, due date, checkout expiry, created time, note, the
+        pay link and the invoice id. The same invoice always gives the same bytes.
+      security: []
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+      responses:
+        "200": { $ref: "#/components/responses/Pdf" }
+        "304": { description: The If-None-Match ETag still matches }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/invoices/{invoiceId}/receipt.pdf:
+    get:
+      operationId: getReceiptPdf
+      summary: Download the receipt of a paid invoice as a PDF
+      description: |
+        Public like the invoice PDF. 409 until paymentStatus is paid; a paid invoice stays paid, also once settled.
+        Shows the invoice's parties and amount, the paid time (block time of the deposit that completed the amount),
+        the confirmed deposits' tx hashes, the settlement status and settlementTxHash, and a line saying to check the
+        receipt at the pay link, since a PDF can be edited.
+      security: []
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+      responses:
+        "200": { $ref: "#/components/responses/Pdf" }
+        "304": { description: The If-None-Match ETag still matches }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "409": { $ref: "#/components/responses/InvoiceNotPaid" }
+        "500": { $ref: "#/components/responses/Internal" }
 components:
   securitySchemes:
     privyAccessToken:
@@ -743,7 +784,7 @@ components:
             code:
               type: string
               enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found,
-                billing_details_not_found, idempotency_conflict, invalid_value, internal]
+                billing_details_not_found, idempotency_conflict, invoice_not_paid, invalid_value, internal]
             message: { type: string }
   responses:
     MalformedRequest:
@@ -789,6 +830,26 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    InvoiceNotPaid:
+      description: The invoice is not paid, so it has no receipt yet (invoice_not_paid)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Pdf:
+      description: The PDF, as a download
+      headers:
+        Content-Disposition:
+          description: attachment; filename="forwend-INV-0001-invoice.pdf" (or -receipt.pdf)
+          schema: { type: string }
+        ETag:
+          description: A hash of the bytes; send it as If-None-Match to get 304 while nothing changed.
+          schema: { type: string }
+        Cache-Control:
+          description: private, no-cache. Revalidate with the ETag; a late deposit or the settlement changes the receipt.
+          schema: { type: string }
+      content:
+        application/pdf:
+          schema: { type: string, format: binary }
     Internal:
       description: Unexpected error, no details (internal)
       content:
