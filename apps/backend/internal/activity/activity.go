@@ -30,8 +30,9 @@ const (
 // ErrInvalid wraps a cursor or limit that breaks a rule.
 var ErrInvalid = errors.New("invalid activity request")
 
-// Item is an invoice made or a deposit seen (reorged ones are left out). For an invoice, Status is its payment status
-// and SettlementStatus is set; for a deposit, Status is detected or confirmed and TxHash is set.
+// Item is an invoice made or a deposit seen (reorged ones are left out). For an invoice, Status is its payment status,
+// SettlementStatus is set and TxHash is the settle transaction once settled; for a deposit, Status is detected or
+// confirmed and TxHash is set.
 type Item struct {
 	Kind             string
 	At               time.Time
@@ -80,7 +81,9 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int)
 		SELECT kind, at, key, invoice_id, a.chain_id, token, tk.symbol, tk.decimals, amount::text, status,
 		       settlement_status, tx_hash FROM (
 		    SELECT 'invoice' AS kind, created_at AS at, id AS key, id AS invoice_id, chain_id,
-		           token_contract AS token, amount, payment_status AS status, settlement_status, '' AS tx_hash
+		           token_contract AS token, amount, payment_status AS status, settlement_status,
+		           coalesce((SELECT s.tx_hash FROM settlement_intents s WHERE s.invoice_id = invoices.id
+		                     AND s.status = 'confirmed'), '') AS tx_hash
 		    FROM invoices WHERE profile_id = $1
 		    UNION ALL
 		    SELECT 'deposit', t.created_at, t.id::text, t.invoice_id, t.chain_id, t.token_contract, t.amount, t.status,

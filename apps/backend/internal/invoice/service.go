@@ -19,16 +19,23 @@ func NewService(pool *pgxpool.Pool) *Service {
 	return &Service{pool: pool, now: time.Now}
 }
 
-const invoiceColumns = `id, chain_id, token_contract, amount::text, recipient_address, factory_address, receive_address,
-	expires_at, settle_deadline, payment_status, settlement_status, refund_status, created_at`
+// invoiceColumns reads FROM invoices (not aliased).
+const invoiceColumns = `id, number, coalesce(title, ''), coalesce(note, ''),
+	coalesce(to_char(due_date, 'YYYY-MM-DD'), ''), coalesce(client_name, ''), coalesce(client_email, ''),
+	coalesce(client_address, ''),
+	chain_id, token_contract, amount::text, recipient_address, factory_address, receive_address,
+	expires_at, settle_deadline, payment_status, settlement_status, refund_status,
+	coalesce((SELECT tx_hash FROM settlement_intents s WHERE s.invoice_id = invoices.id AND s.status = 'confirmed'), ''),
+	created_at`
 
 func scanInvoice(row pgx.Row, before ...any) (Invoice, error) {
 	var inv Invoice
 	var amount string
 	var expiresAt, settleDeadline int64
-	dest := append(before, &inv.ID, &inv.ChainID, &inv.Token, &amount, &inv.Recipient, &inv.Factory,
+	dest := append(before, &inv.ID, &inv.Number, &inv.Title, &inv.Note, &inv.DueDate, &inv.ClientName,
+		&inv.ClientEmail, &inv.ClientAddress, &inv.ChainID, &inv.Token, &amount, &inv.Recipient, &inv.Factory,
 		&inv.ReceiveAddress, &expiresAt, &settleDeadline, &inv.PaymentStatus, &inv.SettlementStatus, &inv.RefundStatus,
-		&inv.CreatedAt)
+		&inv.SettlementTxHash, &inv.CreatedAt)
 	if err := row.Scan(dest...); errors.Is(err, pgx.ErrNoRows) {
 		return Invoice{}, ErrNotFound
 	} else if err != nil {

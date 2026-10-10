@@ -369,3 +369,29 @@ func TestInvoiceStatusTransitionsAndTerms(t *testing.T) {
 		wantCode(t, err, codeRaise, column)
 	}
 }
+
+// Each profile numbers its invoices from 1 inside the insert itself: a failed insert uses no number, and the number
+// and the invoice's details never change (D-50).
+func TestInvoiceNumbers(t *testing.T) {
+	conn, profile := moneyDB(t)
+	ctx := context.Background()
+	var other string
+	must(t, conn.QueryRow(ctx, `INSERT INTO profiles (user_id, kind)
+		SELECT user_id, 'merchant' FROM profiles WHERE id = $1 RETURNING id`, profile).Scan(&other))
+	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
+	wantCode(t, insertInvoice(conn, profile, 2, hex20(101), "key-2", "0"), codeCheck, "amount 0")
+	must(t, insertInvoice(conn, profile, 3, hex20(102), "key-3", "5000000"))
+	must(t, insertInvoice(conn, other, 4, hex20(103), "key-1", "5000000"))
+	for id, want := range map[int]int64{1: 1, 3: 2, 4: 1} {
+		var got int64
+		must(t, conn.QueryRow(ctx, "SELECT number FROM invoices WHERE id = $1", hex32(id)).Scan(&got))
+		if got != want {
+			t.Fatalf("invoice %d has number %d, want %d", id, got, want)
+		}
+	}
+	for _, column := range []string{"number = 9", "title = 'Logo'", "note = 'Thanks'", "due_date = '2026-11-01'",
+		"client_name = 'Bob'", "client_email = 'bob@example.com'", "client_address = 'Main St 1'"} {
+		_, err := conn.Exec(ctx, "UPDATE invoices SET "+column+" WHERE id = $1", hex32(1))
+		wantCode(t, err, codeRaise, column)
+	}
+}

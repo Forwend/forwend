@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"net/mail"
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/address"
 )
@@ -21,6 +23,15 @@ const (
 	MinExpiresIn     = 15 * time.Minute
 	MaxExpiresIn     = 365 * 24 * time.Hour
 	SettleWindow     = 24 * time.Hour
+)
+
+// Longest details, in characters (R-42).
+const (
+	MaxTitle         = 200
+	MaxNote          = 2000
+	MaxClientName    = 200
+	MaxClientEmail   = 254 // the longest address SMTP carries (RFC 5321)
+	MaxClientAddress = 500
 )
 
 var (
@@ -43,11 +54,24 @@ type Request struct {
 	Token            string
 	Amount           string
 	ExpiresInSeconds *int64
+	Details
 }
 
-// Invoice is the stored invoice: its terms (InvoiceTerms in the contract) and statuses.
+// Details are what the invoice says besides its terms; "" means none. Like the terms, they never change.
+type Details struct {
+	Title         string
+	Note          string
+	DueDate       string // YYYY-MM-DD; only shown: payment still closes at ExpiresAt
+	ClientName    string
+	ClientEmail   string
+	ClientAddress string
+}
+
+// Invoice is the stored invoice: its terms (InvoiceTerms in the contract), number, details and statuses.
 type Invoice struct {
+	Details
 	ID               string
+	Number           int64 // per profile, from 1; shown as INV-0001
 	ChainID          uint64
 	Token            string
 	Amount           *big.Int
@@ -59,6 +83,7 @@ type Invoice struct {
 	PaymentStatus    string
 	SettlementStatus string
 	RefundStatus     string
+	SettlementTxHash string // the signer's settle transaction once settled
 	CreatedAt        time.Time
 	Deposits         []Deposit // set by Get
 }
@@ -100,12 +125,44 @@ func (r Request) normalize() (token string, amount *big.Int, expiresIn time.Dura
 		}
 		expiresIn = time.Duration(*r.ExpiresInSeconds) * time.Second
 	}
+	if err := r.Details.check(); err != nil {
+		return "", nil, 0, err
+	}
 	return strings.ToLower(r.Token), amount, expiresIn, nil
 }
 
+func (d Details) check() error {
+	for _, f := range []struct {
+		name, value string
+		max         int
+	}{
+		{"title", d.Title, MaxTitle}, {"note", d.Note, MaxNote}, {"client.name", d.ClientName, MaxClientName},
+		{"client.email", d.ClientEmail, MaxClientEmail}, {"client.address", d.ClientAddress, MaxClientAddress},
+	} {
+		// Postgres text can't hold a NUL byte.
+		if !utf8.ValidString(f.value) || strings.ContainsRune(f.value, 0) || utf8.RuneCountInString(f.value) > f.max {
+			return fmt.Errorf("%w: %s must be at most %d characters of text", ErrInvalid, f.name, f.max)
+		}
+	}
+	if d.ClientEmail != "" {
+		if a, err := mail.ParseAddress(d.ClientEmail); err != nil || a.Address != d.ClientEmail {
+			return fmt.Errorf("%w: client.email must be an email address like name@example.com", ErrInvalid)
+		}
+	}
+	if d.DueDate != "" {
+		// Postgres has no year 0.
+		if day, err := time.Parse(time.DateOnly, d.DueDate); err != nil || day.Year() < 1 {
+			return fmt.Errorf("%w: dueDate must be a date like 2026-11-01", ErrInvalid)
+		}
+	}
+	return nil
+}
+
 // requestHash fingerprints the canonical request, so the same values sent again match and the body is never stored.
-func requestHash(chainID uint64, token string, amount *big.Int, expiresIn time.Duration) []byte {
-	h := sha256.Sum256(fmt.Appendf(nil, "%d|%s|%s|%d", chainID, token, amount, int64(expiresIn/time.Second)))
+// %q keeps the texts apart whatever they contain.
+func requestHash(chainID uint64, token string, amount *big.Int, expiresIn time.Duration, d Details) []byte {
+	h := sha256.Sum256(fmt.Appendf(nil, "%d|%s|%s|%d|%q|%q|%q|%q|%q|%q", chainID, token, amount,
+		int64(expiresIn/time.Second), d.Title, d.Note, d.DueDate, d.ClientName, d.ClientEmail, d.ClientAddress))
 	return h[:]
 }
 

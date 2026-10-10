@@ -181,12 +181,6 @@ func getBalanceHistory(balances *balance.Service) http.HandlerFunc {
 			return
 		}
 		out := balanceHistoryJSON{Points: []historyPointJSON{}, Tokens: []tokenHistoryJSON{}}
-		orNull := func(s string) *string {
-			if s == "" {
-				return nil
-			}
-			return &s
-		}
 		for _, p := range h.Points {
 			out.Points = append(out.Points, historyPointJSON{At: p.At.Format(time.RFC3339),
 				EstimatedUSD: orNull(p.EstimatedUSD), ReceivedUSD: orNull(p.ReceivedUSD), SentUSD: orNull(p.SentUSD)})

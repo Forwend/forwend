@@ -1,7 +1,7 @@
 # Backend API rules
 
 Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/profiles`, `POST /v1/profiles/{profileId}/invoices`,
-`GET /v1/profiles/{profileId}/balances`, `GET /v1/profiles/{profileId}/activity`,
+`GET /v1/profiles/{profileId}/invoices`, `GET /v1/profiles/{profileId}/balances`, `GET /v1/profiles/{profileId}/activity`,
 `GET /v1/profiles/{profileId}/transactions`, `GET /v1/profiles/{profileId}/balance-history`,
 `GET /v1/invoices/{invoiceId}` (public).
 
@@ -26,6 +26,27 @@ Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/profiles`, `POS
 - Money: decimal string in base units (`"5000000"`) next to `chainId` and `token` (contract address), as in R-19.
 - Times: RFC 3339 in UTC. IDs and addresses: strings.
 - Lists: `?limit=` (max 100) and `?cursor=`; response `{ "items": [...], "nextCursor": "…" }`.
+
+## Invoices
+
+R-19 and R-42; the full schema is in openapi.yaml.
+
+- `number` is an integer per profile: 1, 2, … in creation order (D-50). The API never formats it; the web shows
+  `INV-` and at least 4 digits (`INV-0001`). The insert takes it from the profile's counter row (`profiles.invoice_seq`)
+  in the invoice's own transaction, so a failed create uses no number and a repeated Idempotency-Key returns the
+  stored one.
+- Optional create fields: `title` (≤ 200 characters), `note` (≤ 2000), `dueDate` (`YYYY-MM-DD`, shown only; payment
+  still closes at `expiresAt`) and `client` `{ name ≤ 200, email ≤ 254, address ≤ 500 }`. Empty means none and is
+  returned as null. Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken rule is
+  422 `invalid_value`; these fields are part of the idempotency hash.
+- The number and these fields never change, like the terms: a database trigger rejects any update.
+- `settlementTxHash` is the signer's settle transaction once the invoice is settled; null before, and when the refund
+  authority settled the receiver outside the signer. The activity's invoice items carry it as `txHash`.
+- `GET /v1/profiles/{profileId}/invoices?limit=&cursor=`: the list format above, highest number (newest) first; items
+  have no `deposits`. Owner only, like every `{profileId}` route.
+- The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note and due date but no `client`:
+  the id is a bearer link, so it returns only what the payer needs (OWASP API Security Top 10 2023, API3). Create
+  and list, which only the owner calls, include `client`.
 
 ## Wallet transactions and balance history
 

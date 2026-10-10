@@ -20,7 +20,7 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	if err != nil {
 		return Invoice{}, false, err
 	}
-	hash := requestHash(r.ChainID, token, amount, expiresIn)
+	hash := requestHash(r.ChainID, token, amount, expiresIn, r.Details)
 	if inv, err := s.replay(ctx, profileID, idempotencyKey, hash); !errors.Is(err, ErrNotFound) {
 		return inv, false, err
 	}
@@ -54,16 +54,20 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		return Invoice{}, false, err
 	}
 	inv = Invoice{
-		ID: hexID(id), ChainID: r.ChainID, Token: token, Amount: amount, Recipient: recipient,
+		ID: hexID(id), Details: r.Details, ChainID: r.ChainID, Token: token, Amount: amount, Recipient: recipient,
 		Factory: hexAddress(address.Factory), ReceiveAddress: receive, ExpiresAt: expiresAt,
 		SettleDeadline: settleDeadline, PaymentStatus: "open", SettlementStatus: "none", RefundStatus: "none",
 	}
+	// The insert takes the profile's next number (migration 00008).
 	err = s.pool.QueryRow(ctx, `
 		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
-		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'evm_create2', $10, $11, $12, $13) RETURNING created_at`,
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash,
+		    title, note, due_date, client_name, client_email, client_address)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'evm_create2', $10, $11, $12, $13, NULLIF($14, ''), NULLIF($15, ''),
+		    NULLIF($16, '')::date, NULLIF($17, ''), NULLIF($18, ''), NULLIF($19, '')) RETURNING number, created_at`,
 		inv.ID, profileID, r.ChainID, family, token, amount.String(), expiresAt.Unix(), settleDeadline.Unix(),
-		recipient, inv.Factory, receive, idempotencyKey, hash).Scan(&inv.CreatedAt)
+		recipient, inv.Factory, receive, idempotencyKey, hash, r.Title, r.Note, r.DueDate, r.ClientName, r.ClientEmail,
+		r.ClientAddress).Scan(&inv.Number, &inv.CreatedAt)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.ConstraintName == "invoices_profile_id_idempotency_key_key" {
 		// A concurrent request with the same key won the insert.

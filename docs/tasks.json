@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 99,
+  "nextId": 100,
   "tasks": [
     {
       "id": "F001",
@@ -9037,7 +9037,7 @@
         "R-42: create stores title, note, due date (separate from expiresAt) and client name, email and address; GET /v1/profiles/{id}/invoices lists newest first with cursor pages and gives another user 403; a settled invoice returns its settlement tx hash; openapi.yaml and docs/backend/api.md describe the new fields and route"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "docs-check"
@@ -9051,9 +9051,105 @@
         "packages/contracts/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-10 review pass by reviewer: Pass. (1) BEFORE INSERT trigger numbering: the profile row lock is the first lock the insert takes, so creates for one profile take turns; any failed insert (CHECK, unique key, idempotency race) rolls the counter back with the statement, so no gaps. No deadlock path: only ensureWallet also locks profiles (FOR UPDATE, then profile_wallets), the worker/signer never lock profiles, FK checks take FOR KEY SHARE which does not conflict. No INSERT ... ON CONFLICT on invoices exists; a future one would burn a number when it skips a row. Backfill by (created_at, id) is tested; Down is covered by the existing DownTo(0) test. (2) Separate invoices_number trigger: fires after invoices_guard (name order), IS DISTINCT FROM covers number and all six detail columns, status transitions still pass (existing transition test runs on all migrations). (3) List: profile_id filter, owner-only route, limit 1-100 (422), bad cursor 422, number cursor is unique per profile so pages never skip or repeat. Validation, %q hash over new fields, public GET without client, owner create/list with client, settlementTxHash from the unique confirmed intent, activity txHash, openapi/api.md: correct. Old idempotency keys would 409 after the hash change; acceptable since nothing is deployed. Mutation check: replacing the counter with max(number)+1 makes TestCreateNumbersInvoicesAtOnce fail 3/3, so the concurrency test is meaningful. pnpm --filter @forwend/backend test passes. Follow-up (pre-existing, not F084): settlement.reconcile confirms a sent intent when the receiver is settled without checking that our tx did it, so settlementTxHash can name a reverted or never-mined settle if the refund authority settled after our late send; ledger amounts are unaffected, and api.md/openapi then overstate the null case.",
+        "2026-10-10 reopened: merged origin/main (PR #84, main's F098) to resolve a tasks.json conflict; no F084 code changed",
+        "2026-10-10 review pass by reviewer: Re-review after merging origin/main (PR #84, F098): branch diff vs origin/main is only F084 backend files, docs/backend/api.md, docs/backend/architecture.md and docs/tasks.json. apps/web, docs/PROJECT.md, docs/web/DESIGN.md identical to origin/main. tasks.json: no task dropped, main's F098 entry identical, only F084 state/evidence/notes changed, new F099 (signer settle-hash fix) added, F090 dependsOn gains F099, nextId bumped. harness validate ok. Earlier code review still holds; no F084 code changed by the merge."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-10T14:39:23Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 27.2,
+            "log": "docs/runs/F084-20261010T143923Z-backend.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F084-20261010T143923Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F084-20261010T143923Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F084-20261010T143923Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F084-20261010T143923Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 28.8,
+            "log": "docs/runs/F084-20261010T143923Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.7,
+            "log": "docs/runs/F084-20261010T143923Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 48.3,
+            "log": "docs/runs/F084-20261010T143923Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F084-20261010T143923Z-keep.log"
+          }
+        ],
+        "taskHash": "8840ff136ffd8d04",
+        "filesHash": "1aa826f0321620f3",
+        "proof": {
+          "1": "backend: TestCreateNumbersInvoicesAtOnce (10 concurrent creates get 1..10 once each; same Idempotency-Key returns the same number), TestCreateLosesTheInsertRaceToTheSameKey (the losing insert gives its number back, next create gets 2), TestInvoiceNumbers (failed insert uses no number; UPDATE of number or details raises), TestInvoiceNumbersForExistingInvoices (migration 00008 backfill by created_at, id)",
+          "2": "backend: TestCreateInvoiceStoresDetails (title, note, dueDate, client stored and returned; public GET has no client), TestCreateInvoiceErrors (length, email, dueDate 422), TestListInvoices (newest first, cursor pages, settlementTxHash null until the settle is confirmed, Bob 403), TestProfilesBelongToTheirUser (GET invoices route 403), TestListNewestFirstInPages (activity txHash), e2e TestMoneyLoop (real settle hash); docs-check: openapi.yaml and docs/backend/api.md describe the fields and route"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review after merging origin/main (PR #84, F098): branch diff vs origin/main is only F084 backend files, docs/backend/api.md, docs/backend/architecture.md and docs/tasks.json. apps/web, docs/PROJECT.md, docs/web/DESIGN.md identical to origin/main. tasks.json: no task dropped, main's F098 entry identical, only F084 state/evidence/notes changed, new F099 (signer settle-hash fix) added, F090 dependsOn gains F099, nextId bumped. harness validate ok. Earlier code review still holds; no F084 code changed by the merge.",
+          "at": "2026-10-10T14:41:41Z",
+          "filesHash": "1aa826f0321620f3"
+        },
+        "commit": "d212af5",
+        "doneAt": "2026-10-10T14:41:51Z"
+      },
+      "branch": "feat/f084-invoices-get-a-per-profile-number-inv-00",
+      "baseCommit": "2a56081227dc52fb2a1d37c13e40b2aa7135dcd2",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f084-invoices-get-a-per-profile-number-inv-00",
+        "base": "main"
+      }
     },
     {
       "id": "F085",
@@ -9215,7 +9311,8 @@
       "dependsOn": [
         "F086",
         "F087",
-        "F089"
+        "F089",
+        "F099"
       ],
       "state": "not_started",
       "verification": [
@@ -9557,6 +9654,32 @@
         "branch": "fix/f098-improve-balance-card-contrast-in-the-lig",
         "base": "main"
       }
+    },
+    {
+      "id": "F099",
+      "type": "fix",
+      "behavior": "A settlement's transaction hash is recorded only when our own settle transaction succeeded",
+      "acceptance": [
+        "When a sent settlement intent finds the receiver already settled (for example the refund authority settled after the deadline), the signer checks our transaction's receipt and keeps its tx_hash only if it succeeded, otherwise stores no hash; settlementTxHash and activity txHash are then null as openapi.yaml and api.md already say; a signer test on Anvil covers a sent intent that the refund authority settles"
+      ],
+      "dependsOn": [
+        "F084"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-22",
+        "R-42"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

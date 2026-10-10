@@ -77,12 +77,39 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/invoices:
+    get:
+      operationId: listInvoices
+      summary: The profile's invoices, newest first (highest number first), in cursor pages
+      description: Each item is the invoice without its deposits; GET /v1/invoices/{invoiceId} adds them.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: limit
+          in: query
+          description: Items per page; default 50.
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - name: cursor
+          in: query
+          description: nextCursor from the previous page.
+          schema: { type: string }
+      responses:
+        "200":
+          description: One page; an empty list for a new profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoices" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "500": { $ref: "#/components/responses/Internal" }
     post:
       operationId: createInvoice
       summary: Create an invoice once per Idempotency-Key
       description: |
         The recipient is the profile's wallet, never a request field. The receive address is computed from the terms
         (factory.predict). The same key with the same values returns the stored invoice with 200; with other values, 409.
+        The invoice gets the profile's next number in the same transaction (D-50): no gaps, and a repeat returns the
+        same number. The number, title, note, due date and client never change after creation.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -214,7 +241,10 @@ paths:
     get:
       operationId: getInvoice
       summary: Read an invoice's terms and statuses
-      description: Public, so checkout can show the invoice and recompute the receive address from the terms.
+      description: |
+        Public, so checkout can show the invoice and recompute the receive address from the terms. Anyone with the id
+        can read it, so it leaves out the client's name, email and address; the payer sees the number, title, note
+        and due date.
       security: []
       parameters:
         - name: invoiceId
@@ -379,7 +409,7 @@ components:
         txHash:
           type: string
           pattern: "^0x[0-9a-f]{64}$"
-          description: Deposits only.
+          description: A deposit's transaction; for an invoice, its settlementTxHash once there is one.
     Transactions:
       type: object
       required: [items, nextCursor]
@@ -488,12 +518,78 @@ components:
           description: Seconds until expiry; default 3600.
           minimum: 900
           maximum: 31536000
-    Invoice:
+        title:
+          type: string
+          maxLength: 200
+          description: Optional; empty means none. Lengths here and below count characters; no NUL.
+        note:
+          type: string
+          maxLength: 2000
+          description: Optional message to the payer; empty means none.
+        dueDate:
+          type: string
+          format: date
+          description: Optional date the client should pay by (YYYY-MM-DD). Shown only; payment closes at expiresAt.
+        client:
+          type: object
+          additionalProperties: false
+          description: Optional; who the invoice is for. Each empty field means none.
+          properties:
+            name: { type: string, maxLength: 200 }
+            email:
+              type: string
+              maxLength: 254
+              description: A plain address like name@example.com, without a display name.
+            address:
+              type: string
+              maxLength: 500
+              description: Postal address; may have line breaks.
+    Invoices:
       type: object
-      required: [invoiceId, chainId, token, amount, recipient, factory, receiveAddress, expiresAt, settleDeadline,
-        paymentStatus, settlementStatus, refundStatus, createdAt, deposits]
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/InvoiceSummary" }
+        nextCursor:
+          type: [string, "null"]
+          description: Pass as cursor for the next page; null on the last page.
+    Invoice:
+      description: An invoice read alone or just created, with its deposits.
+      allOf:
+        - $ref: "#/components/schemas/InvoiceSummary"
+        - type: object
+          required: [deposits]
+          properties:
+            deposits:
+              type: array
+              description: Transfers to the receive address that are not reorged, in chain order. Empty on create.
+              items: { $ref: "#/components/schemas/Deposit" }
+    InvoiceSummary:
+      type: object
+      required: [invoiceId, number, title, note, dueDate, chainId, token, amount, recipient, factory, receiveAddress,
+        expiresAt, settleDeadline, paymentStatus, settlementStatus, refundStatus, settlementTxHash, createdAt]
       properties:
         invoiceId: { $ref: "#/components/schemas/InvoiceId" }
+        number:
+          type: integer
+          minimum: 1
+          description: |
+            The profile's invoice number, from 1 in creation order, never changed. Clients show it as INV- and at
+            least 4 digits: 1 is INV-0001.
+        title: { type: [string, "null"] }
+        note: { type: [string, "null"] }
+        dueDate:
+          type: [string, "null"]
+          format: date
+        client:
+          type: object
+          required: [name, email, address]
+          description: Only in the owner's responses (create and list); the public GET leaves it out.
+          properties:
+            name: { type: [string, "null"] }
+            email: { type: [string, "null"] }
+            address: { type: [string, "null"] }
         chainId: { type: integer }
         token: { $ref: "#/components/schemas/Address" }
         amount: { $ref: "#/components/schemas/Uint256" }
@@ -518,11 +614,13 @@ components:
         refundStatus:
           type: string
           enum: [none, held, refund_pending, refunded]
+        settlementTxHash:
+          type: [string, "null"]
+          pattern: "^0x[0-9a-f]{64}$"
+          description: |
+            The signer's settle transaction once settlementStatus is settled. null before, and when the receiver was
+            settled outside the signer (by the refund authority after the deadline).
         createdAt: { type: string, format: date-time }
-        deposits:
-          type: array
-          description: Transfers to the receive address that are not reorged, in chain order. Empty on create.
-          items: { $ref: "#/components/schemas/Deposit" }
     Deposit:
       type: object
       required: [txHash, logIndex, amount, blockNumber, status, late, blocksLeft, secondsLeft]
@@ -583,8 +681,8 @@ components:
     InvalidValue:
       description: |
         A value breaks a rule (invalid_value): amount, expiresIn, a token or chain that is not enabled, a profile with
-        no wallet for the chain, terms the contract would refuse to settle, a profile kind or name, an activity or
-        transactions limit or cursor, or balance-history days.
+        no wallet for the chain, terms the contract would refuse to settle, an invoice title, note, due date or client
+        field, a profile kind or name, a list limit or cursor, or balance-history days.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
