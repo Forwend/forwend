@@ -15,9 +15,12 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
+	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 	"github.com/ensp1re/forwend/apps/backend/internal/watcher"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -181,6 +184,10 @@ func TestSettlesAPaidInvoiceOnce(t *testing.T) {
 	e.final(t, e.signer(t))
 	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" {
 		t.Fatalf("after finality: intent %s, invoice settlement %s", status, settlement)
+	}
+	hash := e.settlementTxHash(t, id)
+	if r, err := e.client.TransactionReceipt(ctx, common.HexToHash(hash)); err != nil || r.Status != types.ReceiptStatusSuccessful {
+		t.Fatalf("settlementTxHash %q: receipt %v (%v), want our successful settle", hash, r, err)
 	}
 	if got := e.balance(t, wallet); got != 5000000 {
 		t.Fatalf("recipient got %d, want exactly 5000000", got)
@@ -539,6 +546,63 @@ func TestAfterTheDeadlineTheSignerWaitsForTheRefundAuthority(t *testing.T) {
 	}
 	if e.nonce(t) != before {
 		t.Fatal("the executor sent something after the deadline")
+	}
+}
+
+// settlementTxHash is the hash GET /v1/invoices/{id} shows; "" is null.
+func (e env) settlementTxHash(t *testing.T, invoiceID string) string {
+	t.Helper()
+	inv, err := invoice.NewService(e.pool).Get(context.Background(), invoiceID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return inv.SettlementTxHash
+}
+
+// Our settle is saved but reverts or never mines, and the refund authority settles after the deadline: the intent
+// is confirmed and booked once, with no settlement tx hash, since our transaction did not settle.
+func TestSettledByTheRefundAuthorityAfterOurSettleFailedHasNoTxHash(t *testing.T) {
+	for name, send := range map[string]bool{"reverted": true, "never mined": false} {
+		t.Run(name, func(t *testing.T) {
+			e := setup(t)
+			ctx := context.Background()
+			id, receive := e.paidInvoice(t)
+			crashing := e.signer(t)
+			crashing.stopAfter = "save"
+			if err := crashing.Run(ctx); !errors.Is(err, errStopped) {
+				t.Fatalf("got %v", err)
+			}
+			e.anvil.Wait(3600 + 86400 + 60)
+			if send { // past the deadline only the refund authority may settle: ours reverts
+				var saved string
+				var raw []byte
+				if err := e.pool.QueryRow(ctx, "SELECT tx_hash, raw_tx FROM settlement_intents WHERE invoice_id = $1",
+					id).Scan(&saved, &raw); err != nil {
+					t.Fatal(err)
+				}
+				e.anvil.SendRaw(hexutil.Encode(raw))
+				if r, err := e.client.TransactionReceipt(ctx, common.HexToHash(saved)); err != nil || r.Status != types.ReceiptStatusFailed {
+					t.Fatalf("our settle: receipt %v (%v), want reverted", r, err)
+				}
+			}
+			e.anvil.AsAuthority(receive, "settle()")
+			s := e.signer(t)
+			if err := s.Run(ctx); err != nil {
+				t.Fatal(err)
+			}
+			e.final(t, s)
+			if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" || e.balance(t, wallet) != 5000000 {
+				t.Fatalf("intent %s, invoice %s, recipient %d", status, settlement, e.balance(t, wallet))
+			}
+			if hash := e.settlementTxHash(t, id); hash != "" {
+				t.Fatalf("settlementTxHash %s, want null: our settle did not settle the receiver", hash)
+			}
+			var booked int
+			if err := e.pool.QueryRow(ctx, "SELECT count(*) FROM ledger_transactions WHERE invoice_id = $1 AND kind = 'settlement'",
+				id).Scan(&booked); err != nil || booked != 1 {
+				t.Fatalf("settlement booked %d times (%v), want once", booked, err)
+			}
+		})
 	}
 }
 

@@ -159,8 +159,9 @@ settlement intent (unique per invoice) in the same transaction. For each due int
 Each intent's attempt has a 3-minute limit, so an RPC that stops answering can't stall the others.
 It signs only `factory.deploy(terms)` and `receiver.settle()`, and only for chains enabled in the database: a chain
 disabled there is dropped next round, and a round whose enabled list can't be read sends nothing. A receiver settled
-outside our signer (the refund authority after the deadline) still confirms its intent. `retry` and `refuse` only
-change an intent still in the status the attempt loaded. Known limit: no fee bumping for a stuck transaction yet.
+outside our signer (the refund authority after the deadline) still confirms its intent, with no tx hash: a saved
+settle keeps its hash only if its receipt succeeded. `retry` and `refuse` only change an intent still in the status
+the attempt loaded. Known limit: no fee bumping for a stuck transaction yet.
 
 ## Invoice states
 
