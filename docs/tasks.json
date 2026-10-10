@@ -10653,7 +10653,7 @@
       "dependsOn": [
         "F104"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -10752,11 +10752,18 @@
           "summary": "Traced every sent-intent transition in reconcile/unmined/confirmIfFinal/settle. No double send (the same signed bytes are resent, the contract's settled flag guards), no double booking (confirm checks the status FOR UPDATE), no premature confirm (every confirm needs settled() at the finalized block, and our receipt's block <= finalized). A retry happens only after a revert or once our nonce is used at finalized, so the old settle can never mine later. The log check is exact: status 1 plus a log from the receiver's address with the Settled topic0. Only the clone emits from that address, so the receipt check also catches a status-1 call to an address without code. Nonce: max(pending, deploy+1, max saved nonce with tx_hash +1). A saved but unsent settle is counted, so no reuse; it can leave a temporary gap until the same round resends it (later intents wait up to ReceiptWait). F099: TestSettledByTheRefundAuthority (reverted and never mined) still has no hash, and the st.Settled path is unchanged. TestNonceTakenByAnotherTransaction now expects sent until final: justified, because taken is decided at finalized so a lagging receipt read can't drop our settle. Gas, measured on an Anvil fork of Base Sepolia with real USDC and the real factory: settle used 135,632 gas (estimate 139,592) paying a fresh wallet and 118,532 paying a funded one; floor+1/5 = 150,000 covers it. Fixed: the SettleGasFloor comment now records this and says the floor does not cover Arbitrum's L1 data gas; re-verified with the same proofs (9/9 passed). Residual, non-blocking: (a) stuck case (no receipt, settled at finalized, our nonce used there) needs the executor key used outside the signer; it logs slog.Warn every round with no reason or backoff saved, so it shows only in logs; (b) a stale estimate on Arbitrum can still run out of gas: it reverts, is retried, and only wastes gas. EstimateGasAtBlock(deploy block) would close this; (c) a saved settle that can never be sent (fee cap below the base fee, no fee bumping) now blocks later settles on that chain. Ran pnpm --filter @forwend/backend test (-race) and e2e: both exit 0.",
           "at": "2026-10-10T19:19:11Z",
           "filesHash": "9faa449e86812c24"
-        }
+        },
+        "commit": "0616988",
+        "doneAt": "2026-10-10T19:19:43Z"
       },
       "branch": "fix/f105-settlements-estimate-gas-on-a-node-that",
       "baseCommit": "7c8fe800857c234184c656ee20b422c9b364ab9b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f105-settlements-estimate-gas-on-a-node-that",
+        "base": "main"
+      }
     },
     {
       "id": "F106",
