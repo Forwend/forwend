@@ -41,6 +41,12 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   everything; in activity only a payment carries "+". Money sent straight to the wallet shows in the balance once final, not in activity. Balances
   and activity are read again every 15 s while the tab is visible and when it comes back. `/app/profiles/new` creates a freelancer
   or merchant profile with one idempotency key per visit (R-35).
+- Invoices (freelancer and merchant profiles, R-44): `/app/invoices` lists them newest first with "Show more" cursor
+  pages; `/app/invoices/new` asks for a network and token from the profile's enabled tokens (the balances list), turns
+  the typed amount into exact base units without float, and sends one idempotency key per filled-in form;
+  `/app/invoices/<id>` shows the status timeline, due date apart from checkout expiry, client, issuer and the
+  `/pay/<id>` link with a copy button. The public `GET /v1/invoices/{id}` has no client, so the detail reads it from
+  the profile's list (cursor = number + 1, limit 1), which also tells whether the active profile made the invoice.
 - API data lives in an RTK Query cache (D-47): one store per tab (`store/store.ts`, mounted by
   `providers/store-provider.tsx` inside Privy), one `apiSlice` that adds the Privy access token, and endpoints
   injected by each feature (`features/*/…-api.ts`). Query arguments carry the profile, so a profile never shows
@@ -52,8 +58,9 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   these variables for the web build. Request and response types are written by hand from `apps/backend/api/openapi.yaml`
   and belong to their feature (`features/profiles/profile.ts`, `features/balances/balances.ts`,
   `features/activity/activity.ts`): `openapi-typescript` needs the TypeScript compiler API, which TypeScript 7 does not have.
-- Features depend on each other in one place: the receive sheet (`features/receive`) takes the `Balances` type from
-  `features/balances` to show which networks and tokens the address takes.
+- Features depend on each other in two places: the receive sheet (`features/receive`) takes the `Balances` type from
+  `features/balances` to show which networks and tokens the address takes, and `features/invoices` takes the API
+  status values and `activityStatus` from `features/activity`, so an invoice shows the same status everywhere.
 - The checkout page recomputes the receive address from the invoice terms and refuses to show a mismatch; it loads no
   third-party scripts ([money-safety.md](../backend/money-safety.md)).
 

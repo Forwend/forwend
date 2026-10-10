@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 100,
+  "nextId": 101,
   "tasks": [
     {
       "id": "F001",
@@ -9285,7 +9285,7 @@
       "dependsOn": [
         "F084"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "e2e"
@@ -9299,9 +9299,89 @@
         "packages/contracts/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-10 review pass by reviewer: R-44 met. Money exact: parseTokenAmount is bigint-only, rejects 0/negative/7 decimals/commas/junk; API gets base-unit strings; exactDigits keeps every non-zero digit. Idempotency key per JSON of form values (retry reuses, changed form gets new key; form keyed by profile). RTK Query injectEndpoints with profileId in args, Invoices tag invalidated by create, infinite query cursor correct. Labels, aria-invalid/aria-describedby, timeline list with aria-current, copy status, axe on all pages, 390px scroll checks. Structure follows structure.md; activity dependency named in architecture.md; TextAreaField on /kit with hint and error. Reviewer fix: the form now moves focus to the invalid field on a client or 422 error (flushSync + focus), e2e asserts it; verify re-run passed. Known follow-up F100 (one-item list read). Minor, not blocking: Party uses line text as React key; invoices screen fetches balances for a personal profile."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-10T15:35:59Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 32.0,
+            "log": "docs/runs/F086-20261010T153559Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 64.2,
+            "log": "docs/runs/F086-20261010T153559Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.8,
+            "log": "docs/runs/F086-20261010T153559Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F086-20261010T153559Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F086-20261010T153559Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F086-20261010T153559Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.5,
+            "log": "docs/runs/F086-20261010T153559Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F086-20261010T153559Z-keep.log"
+          }
+        ],
+        "taskHash": "13e0fa9bc441d713",
+        "filesHash": "419dbae7347bf2f9",
+        "proof": {
+          "1": "e2e: the live Privy test (e2e/privy/sign-in.spec.ts) opens Invoices from the merchant sidebar (a link, not Soon), creates an invoice with amount, title, note, due date, checkout expiry and client name, email and address, opens its detail (number, amount in USDC, status timeline, due date apart from checkout close, client, /pay link copied whole) and finds it in the list with number, client, amount, status and due date",
+          "2": "unit: features/invoices/invoices.test.ts turns 1, 0.000001 and 1234.56 into exact base units with bigint and rejects 7 decimals, 0, negatives and junk; e2e: create, list and detail on desktop and on a 390px phone (dark) with no sideways scroll, axe 0 serious or critical on the list, form, form error, detail and phone pages"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "R-44 met. Money exact: parseTokenAmount is bigint-only, rejects 0/negative/7 decimals/commas/junk; API gets base-unit strings; exactDigits keeps every non-zero digit. Idempotency key per JSON of form values (retry reuses, changed form gets new key; form keyed by profile). RTK Query injectEndpoints with profileId in args, Invoices tag invalidated by create, infinite query cursor correct. Labels, aria-invalid/aria-describedby, timeline list with aria-current, copy status, axe on all pages, 390px scroll checks. Structure follows structure.md; activity dependency named in architecture.md; TextAreaField on /kit with hint and error. Reviewer fix: the form now moves focus to the invalid field on a client or 422 error (flushSync + focus), e2e asserts it; verify re-run passed. Known follow-up F100 (one-item list read). Minor, not blocking: Party uses line text as React key; invoices screen fetches balances for a personal profile.",
+          "at": "2026-10-10T15:37:51Z",
+          "filesHash": "419dbae7347bf2f9"
+        }
+      },
+      "branch": "feat/f086-freelancer-and-merchant-profiles-create",
+      "baseCommit": "bf45dca5530e5a8434e0e7ddbe99a4348c98bf7b",
+      "failedVerifies": 0
     },
     {
       "id": "F087",
@@ -9867,6 +9947,33 @@
         "branch": "fix/f099-a-settlement-s-transaction-hash-is-recor",
         "base": "main"
       }
+    },
+    {
+      "id": "F100",
+      "type": "fix",
+      "behavior": "The owner reads one of their invoices with its client details from its own route, and the invoice detail page uses it",
+      "acceptance": [
+        "GET /v1/profiles/{id}/invoices/{invoiceId} returns one invoice of that profile with its client details (owner only, 404 for an invoice of another profile, 403 for another user); the dashboard invoice detail page reads the client from it instead of a one-item list page; openapi.yaml and api.md describe it"
+      ],
+      "dependsOn": [
+        "F086"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "R-42",
+        "R-44"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

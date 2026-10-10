@@ -39,6 +39,8 @@ export type { SelectFieldProps, SelectOption } from "./components/forms/select-f
 export { SelectField } from "./components/forms/select-field";
 export type { SwitchProps } from "./components/forms/switch";
 export { Switch } from "./components/forms/switch";
+export type { TextAreaFieldProps } from "./components/forms/text-area-field";
+export { TextAreaField } from "./components/forms/text-area-field";
 export type { TextFieldProps } from "./components/forms/text-field";
 export { TextField } from "./components/forms/text-field";
 export type { NavLink, NavPillProps } from "./components/navigation/nav-pill";
