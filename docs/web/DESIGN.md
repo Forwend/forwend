@@ -55,7 +55,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   stablecoin counted as 1 USD. An info icon after "USD" marks the estimate and explains it in a tooltip. A row for one
   token keeps its symbol.
 - Personal overview: the dawn (night in dark mode) valley image is the page's one image moment. A surface wash keeps
-  the total, its change over the range and the money actions readable over the sky. On desktop the card keeps the
+  the total, its change over the range and the money actions readable over the sky. In light mode, mute the image
+  and strengthen the pale wash toward the bottom so action labels and chart ticks need no text outline. On desktop the card keeps the
   4:1 shape within a minimum and maximum height: the total sits at the top left, the round actions at the
   bottom left, and the chart fills the right side. The total scales with its column (container units). Phones center
   the total and put the chart in its own panel below. The card has one padding on all sides.
