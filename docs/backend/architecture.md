@@ -146,8 +146,8 @@ Built in `internal/database/migrations` (R-17); Postgres enforces the rules belo
   (`in`|`out`) with the counterparty, so a transfer between two profile wallets is out for one and in for the other.
   Block fields, statuses and identity rules as in `chain_transfers`, with the wallet and direction in each key.
 - `ledger_transactions` + `ledger_entries`: double-entry, append-only (below).
-- `settlement_intents` (unique per invoice), `refund_intents` (one per approved claim); nonce and tx hash tracked;
-  reconcile before any retry.
+- `settlement_intents` (unique per invoice), `refund_intents` (one per approved claim); nonce and tx hash tracked,
+  with the hashes a fee replacement replaced; reconcile before any retry.
 - `refund_claims`, `support_cases` (wrong chain, late).
 - `outbox_events` (written in the same transaction as the change, published at least once), `webhook_endpoints`,
   `webhook_deliveries` (Phase 11).
@@ -255,12 +255,19 @@ nothing, so a restarted worker resumes from the cursor.
 `internal/settlement` (R-22), one `Signer` per executor key (the signer's lock, [startup](#startup)). When the ledger marks an invoice `paid` it queues one
 settlement intent (unique per invoice) in the same transaction. For each due intent the signer:
 1. If a settle is already saved (`sent`), finishes it first, whatever changed since. The saved bytes must decode to
-   `settle()` on this receiver on this chain with the saved hash. Its receipt decides first: status 1 with the
-   receiver's `Settled` log is our settle, which keeps its hash and is never signed again, whatever a lagging node
-   says about `settled()` at latest. Without a receipt, reads at one finalized block decide: the receiver settled
-   there while our nonce is unused there is another settler's work; settled there with our nonce used there waits
-   (logged) for our receipt; our nonce used there while the receiver is not settled means ours was dropped. Otherwise the saved bytes are sent again while their nonce is free and nobody
-   settled.
+   `settle()` on this receiver on this chain with the saved hash. A receipt for the saved hash or any version it
+   replaced (`replaced_hashes`, same nonce, so at most one mines) decides first: status 1 with the receiver's
+   `Settled` log is our settle, which keeps that hash and is never signed again, whatever a lagging node says about
+   `settled()` at latest. Without a receipt, reads at one finalized block decide: the receiver settled there while our
+   nonce is unused there is another settler's work; settled there with our nonce used there can't be resolved yet: the
+   intent stays `sent` with a reason and the growing wait of step 3 ([unresolved settles](#unresolved-settles)); our
+   nonce used there while the receiver is not settled means ours was dropped. Otherwise the saved bytes are sent
+   again while their nonce is free and nobody settled. Once `ReplaceAfter` (3 min) has passed since they were
+   signed (`signed_at`), the same executor signs them again first with the same nonce and gas and a higher fee: at
+   least an eighth more tip and fee cap (geth wants a tenth) and at least what a new settle gets now, so the settles
+   after it on the chain are not held up. The new version is saved before it is sent, keeping the old hash. A
+   replacement whose fee cap would pass `MaxFeeFactor` (2) times a new settle's is not signed; the saved bytes are
+   sent again as they are.
 2. Otherwise re-reads the terms and refuses for good (`refused` with a reason, nothing sent) unless the invoice is
    `paid`, the recipient is the profile's wallet, the factory is the compiled one and the terms recompute the stored
    receive address; also when `factory.status` predicts another address.
@@ -271,7 +278,9 @@ settlement intent (unique per invoice) in the same transaction. For each due int
 4. Deploys the receiver if needed (`deploy` is idempotent), then waits up to 10 s for the RPC to show the receiver's
    code at the deploy's block or later (else the attempt ends and is tried again): a node that has not seen the
    deploy estimates settle as a call to an empty address, which runs out of gas. Signs `settle()` with the chain's
-   own gas estimate, at least `SettleGasFloor`, plus a fifth, at the node's pending nonce but never below the one
+   own gas estimate, at the deploy's block when it deployed in this attempt (on Arbitrum that estimate counts the L1
+   data gas; a node that can't estimate at a block is asked at latest), at least `SettleGasFloor`, plus a fifth, at
+   the node's pending nonce but never below the one
    after the deploy it just sent or after the last settle saved for this chain (a lagging node may not count them).
    Saves sender, nonce, hash and signed bytes, then sends. After a crash it sends the same saved bytes again (same
    nonce, so at most one settle can be mined). The contract's `AlreadySettled` is a last guard.
@@ -284,7 +293,24 @@ It signs only `factory.deploy(terms)` and `receiver.settle()`, and only for chai
 disabled there is dropped next round, and a round whose enabled list can't be read sends nothing. A receiver settled
 outside our signer (the refund authority after the deadline) still confirms its intent, with no tx hash: a saved
 settle keeps its hash only if its receipt succeeded with the `Settled` log. `retry` and `refuse` only change an intent still in the status
-the attempt loaded. Known limit: no fee bumping for a stuck transaction yet.
+the attempt loaded.
+
+### Unresolved settles
+
+A sent settle with no receipt for any of its hashes while, at the finalized block, the receiver is settled and the
+executor's nonce is used, can be ours behind a node that lags on receipts, or our nonce taken by another transaction.
+The signer can't tell, so it keeps the intent `sent` with a reason and tries again after 2 min doubling to 1 h. To list
+them:
+
+```sql
+SELECT si.invoice_id, i.chain_id, si.sender, si.nonce, si.tx_hash, si.replaced_hashes, si.reason, si.attempts,
+       si.next_attempt_at
+FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
+WHERE si.status = 'sent' AND si.reason IS NOT NULL
+ORDER BY si.updated_at;
+```
+
+Refused intents (`status = 'refused'`) also carry their reason; waiting ones are `pending` with a reason.
 
 ## Invoice states
 

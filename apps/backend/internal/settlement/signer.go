@@ -36,11 +36,12 @@ type Signer struct {
 	stopAfter      string
 	attemptTimeout time.Duration
 	codeWait       time.Duration
+	replaceAfter   time.Duration
 }
 
 func NewSigner(pool *pgxpool.Pool, key *ecdsa.PrivateKey, clients map[uint64]*ethclient.Client) *Signer {
 	return &Signer{pool: pool, key: key, sender: crypto.PubkeyToAddress(key.PublicKey), clients: clients,
-		attemptTimeout: AttemptTimeout, codeWait: CodeWait}
+		attemptTimeout: AttemptTimeout, codeWait: CodeWait, replaceAfter: ReplaceAfter}
 }
 
 // intent is one settlement intent with its invoice's terms.
@@ -51,6 +52,8 @@ type intent struct {
 	nonce              *int64
 	txHash             *string
 	rawTx              []byte
+	replaced           []string // hashes of earlier versions of the saved settle, same nonce
+	signedAt           time.Time
 	invoiceID, payment string
 	chainID            uint64
 	token, recipient   string
@@ -101,13 +104,14 @@ func (s *Signer) load(ctx context.Context, id int64) (intent, error) {
 	var in intent
 	var amount string
 	err := s.pool.QueryRow(ctx, `
-		SELECT si.id, si.status, si.sender, si.nonce, si.tx_hash, si.raw_tx, i.id, i.payment_status, i.chain_id, i.token_contract,
+		SELECT si.id, si.status, si.sender, si.nonce, si.tx_hash, si.raw_tx, si.replaced_hashes,
+		       coalesce(si.signed_at, si.updated_at), i.id, i.payment_status, i.chain_id, i.token_contract,
 		       i.recipient_address, i.factory_address, i.receive_address,
 		       (SELECT w.address FROM profile_wallets w WHERE w.profile_id = i.profile_id AND w.chain_family = i.chain_family),
 		       i.amount::text, i.expires_at, i.settle_deadline
 		FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id WHERE si.id = $1`, id).Scan(
-		&in.id, &in.status, &in.sender, &in.nonce, &in.txHash, &in.rawTx, &in.invoiceID, &in.payment, &in.chainID, &in.token,
-		&in.recipient, &in.factory, &in.receive, &in.wallet, &amount, &in.expires, &in.deadline)
+		&in.id, &in.status, &in.sender, &in.nonce, &in.txHash, &in.rawTx, &in.replaced, &in.signedAt, &in.invoiceID,
+		&in.payment, &in.chainID, &in.token, &in.recipient, &in.factory, &in.receive, &in.wallet, &amount, &in.expires, &in.deadline)
 	if err != nil {
 		return intent{}, fmt.Errorf("read settlement intent %d: %w", id, err)
 	}
