@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
+import { readPayPage } from "../scripts/canary-pay-page";
 import { PUBLIC_URL } from "./servers";
 
 // A sample invoice as GET /v1/invoices/{id} returns it. RECEIVE is factory.predict of these terms (the unit test checks
@@ -203,6 +204,25 @@ test.describe("pay page", () => {
     await expect(confirmButton(page)).toHaveCount(0);
     await expect(page.getByText(RECEIVE)).toHaveCount(0);
     await expect(page.getByRole("img", { name: /QR code/ })).toHaveCount(0);
+  });
+
+  test("lets the canary read the shown address, or why there is none", async ({ browser }) => {
+    const read = async (body: object) => {
+      const page = await browser.newPage();
+      await page.clock.install({ time: NOW });
+      await mockInvoice(page, body);
+      const result = await readPayPage(page, PUBLIC_URL, ID);
+      await page.close();
+      return result;
+    };
+    expect(await read(OPEN)).toEqual({ id: ID, addresses: [RECEIVE], qrMatches: true });
+    expect(await read(PAID)).toEqual({
+      id: ID,
+      error: "no address shown: the invoice is not open for payment",
+    });
+    expect((await read({ ...OPEN, amount: "1250000001" })).error).toMatch(
+      /^page alert: This payment page does not match/,
+    );
   });
 
   test("answers 404 for a malformed id and shows the 404 page for an unknown one", async ({

@@ -14,6 +14,9 @@ Go API, worker and signer (PLAN Phase 6). Requirements R-14…R-24 in `docs/PROJ
   (creates a throwaway user and wallet, then removes them).
 - `pnpm --filter @forwend/backend e2e`: the money-loop gate with the real binaries on Postgres and Anvil (also in
   root `pnpm e2e` and CI).
+- `... | pnpm --silent --filter @forwend/backend canary`: checks the open invoices' terms on stdin against
+  `factory.predict` on two RPCs, the api and the pay page in Chromium; exit 1 on any difference
+  ([canary](../../docs/backend/money-safety.md#canary)).
 - `pnpm --filter @forwend/backend loadtest -users=1000 -duration=3m`: signed-in users polling the dashboard routes
   against the api on Anvil; not in any check ([load test](../../docs/backend/architecture.md#load-test)).
 

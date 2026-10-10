@@ -19,6 +19,9 @@ Built: signup and profiles API, billing details, balances, activity, wallet tran
   proposed Safe transaction that the multisig owners approve. Re-reads the ledger and the chain
   itself before signing. Caps amounts, allows only known contract methods, writes its own audit
   log. Separate DB role with read access plus its own intent tables.
+- `canary`: run on its own host by a scheduler, not beside the others. Checks open invoices' receive addresses
+  against `factory.predict` on two RPCs, the api and the pay page drawn in Chromium (address text and QR code), with
+  its own config and no shared address code ([money safety](money-safety.md#canary), R-51).
 
 ## Startup
 

@@ -3,6 +3,8 @@
 This file owns future scope and release gates. [PROJECT](docs/PROJECT.md) owns requirements and decisions;
 harness `status` owns progress. A phase is complete only when its gate has evidence.
 No phase grants permission to spend, publish, deploy or accept other people's money.
+This plan is not complete. When work shows a missing feature or a better solution, suggest it to the owner with the
+reason; it joins the plan once the owner agrees.
 
 | Phase | Outcome | Gate |
 |---|---|---|
@@ -174,6 +176,9 @@ Freelancer before merchant (D-55). Phase 9 comes first for both, so phases 10 an
   `sessions_revoked_at` and "Sign out everywhere". Actions built earlier, such as billing details, get the check here.
 - 12.2 Security settings: login methods; email and passkey before the first money action (recovery); a recovery
   explainer.
+- 12.2a Settings pages: account settings (security from 12.2, passkey sign-in) apart from each profile's settings.
+  Freelancer and personal profiles: billing details (now `/app/billing-details`, reached from the checklist) and
+  profile name; merchant profiles add stores and team (11.1, 11.2).
 - 12.3 Same-chain send to your own profiles and outside addresses. Review recipient, profile, chain, token, debit,
   network fee and amount received; fresh sign-in; Privy client signing with sponsored gas (D-46). After 12.1.
 - 12.4 Handles (D-67) and saved contacts; new addresses are confirmed. After 12.3.
