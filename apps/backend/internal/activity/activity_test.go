@@ -126,8 +126,18 @@ func TestListNewestFirstInPages(t *testing.T) {
 		t.Fatalf("deposit item %+v", d)
 	}
 	inv, _ := s.List(ctx, profile, "", 3)
-	if i := inv.Items[2]; i.Status != "open" || i.SettlementStatus != "none" || i.Amount.Int64() != 5000000 || i.Token != usdc {
+	if i := inv.Items[2]; i.Status != "open" || i.SettlementStatus != "none" || i.Amount.Int64() != 5000000 || i.Token != usdc ||
+		i.TxHash != "" {
 		t.Fatalf("invoice item %+v", i)
+	}
+
+	// A settled invoice carries its settlement transaction hash.
+	settle := fmt.Sprintf("0x%064x", 99)
+	exec(t, pool, `WITH i AS (INSERT INTO settlement_intents (invoice_id, status, tx_hash) VALUES ($1, 'confirmed', $2))
+		UPDATE invoices SET settlement_status = 'settled' WHERE id = $1`, a, settle)
+	all, _ := s.List(ctx, profile, "", DefaultLimit)
+	if i := all.Items[4]; i.InvoiceID != a || i.SettlementStatus != "settled" || i.TxHash != settle {
+		t.Fatalf("settled invoice item %+v, want tx hash %s", i, settle)
 	}
 }
 

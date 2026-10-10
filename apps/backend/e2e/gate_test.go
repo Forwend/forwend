@@ -23,6 +23,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
@@ -128,6 +129,12 @@ func TestMoneyLoop(t *testing.T) {
 			"blocks left -> confirmed", seen, deposit)
 	}
 	t.Logf("invoice: %v; deposit (status/blocks left): %v", seen, deposit)
+	// The API names the signer's settle transaction: a call to the receive address.
+	hash, _ := get(t, api+"/v1/invoices/"+id)["settlementTxHash"].(string)
+	settleTx, _, err := ethclient.NewClient(anvil.RPC).TransactionByHash(ctx, gethcommon.HexToHash(hash))
+	if err != nil || settleTx.To() == nil || !strings.EqualFold(settleTx.To().Hex(), receive) {
+		t.Fatalf("settlementTxHash %q: %v, want the settle transaction to %s", hash, err, receive)
+	}
 
 	// The ledger equals the chain: the receive address is empty, the creator holds the amount.
 	balance := ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: ethclient.NewClient(anvil.RPC)})

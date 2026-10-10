@@ -108,6 +108,7 @@ func TestCreateProfileRoute(t *testing.T) {
 // profileRoutes is every route with a {profileId}; add each new one here so the cross-user test covers it.
 var profileRoutes = []struct{ method, path, body string }{
 	{"POST", "/v1/profiles/%s/invoices", basicBody},
+	{"GET", "/v1/profiles/%s/invoices", ""},
 	{"GET", "/v1/profiles/%s/balances", ""},
 	{"GET", "/v1/profiles/%s/activity", ""},
 	{"GET", "/v1/profiles/%s/transactions", ""},

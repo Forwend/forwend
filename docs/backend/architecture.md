@@ -23,7 +23,7 @@ Built: signup and profiles API, balances, activity, wallet transactions and bala
 
 Built in `internal/database/migrations` (R-17); Postgres enforces the rules below, each with a test.
 
-- `users`, `profiles(kind: personal|freelancer|merchant, name, idempotency_key)` (one personal per user, made at
+- `users`, `profiles(kind: personal|freelancer|merchant, name, idempotency_key, invoice_seq)` (one personal per user, made at
   signup without a key; other kinds once per user and key), `profile_wallets(provider, provider_wallet_id, address, chain_family)` (one per profile and family).
 - `merchants → stores(project_id, branding)`, `team_members(role, store scope)` (Phase 11).
 - `chains(chain_id, chain_family, enabled)`, `tokens(chain_id, contract, decimals, enabled)`. One confirm rule for all
@@ -31,7 +31,9 @@ Built in `internal/database/migrations` (R-17); Postgres enforces the rules belo
 - `invoices`: immutable terms (`id` = the on-chain invoice id, profile, chain, token, `amount`, `expires_at` and
   `settle_deadline` as the contract's uint64 seconds, recipient, factory and receive address, `receive_method` (D-44)),
   separate **payment**, **settlement** and **refund** status columns, `idempotency_key` unique per profile with a
-  SHA-256 `request_hash` of the create request.
+  SHA-256 `request_hash` of the create request. `number` is unique per profile, taken from `profiles.invoice_seq` by
+  the insert trigger (D-50); it and the details (`title`, `note`, `due_date`, `client_name`, `client_email`,
+  `client_address`) never change.
 - `chain_transfers`: `block_hash`, `block_number`, `block_time`, status `detected|confirmed|reorged`. A transfer must go to
   its invoice's receive address, for the invoice's token, on its chain (foreign key).
 - `wallet_transfers` (R-38): enabled-token `Transfer` logs from or to a profile wallet, one row per wallet and direction

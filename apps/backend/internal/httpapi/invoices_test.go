@@ -150,8 +150,13 @@ func TestCreateInvoice(t *testing.T) {
 	if b["recipient"] != aliceWallet || b["amount"] != "5000000" || b["token"] != usdc || b["chainId"] != float64(84532) {
 		t.Fatalf("terms %v", b)
 	}
-	if b["paymentStatus"] != "open" || b["settlementStatus"] != "none" || b["refundStatus"] != "none" {
+	if b["paymentStatus"] != "open" || b["settlementStatus"] != "none" || b["refundStatus"] != "none" ||
+		b["settlementTxHash"] != nil {
 		t.Fatalf("statuses %v", b)
+	}
+	if b["number"] != float64(1) || b["title"] != nil || b["note"] != nil || b["dueDate"] != nil ||
+		!reflect.DeepEqual(b["client"], map[string]any{"name": nil, "email": nil, "address": nil}) {
+		t.Fatalf("number and details %v", b)
 	}
 	expiresAt, _ := time.Parse(time.RFC3339, b["expiresAt"].(string))
 	settleDeadline, _ := time.Parse(time.RFC3339, b["settleDeadline"].(string))
@@ -188,8 +193,51 @@ func TestCreateInvoice(t *testing.T) {
 		t.Fatalf("GET: %d %v", got.status, got.body)
 	}
 	for k, v := range b {
-		if !reflect.DeepEqual(got.body[k], v) {
+		if !reflect.DeepEqual(got.body[k], v) && k != "client" {
 			t.Fatalf("GET %s = %v, POST gave %v", k, got.body[k], v)
+		}
+	}
+	if _, ok := got.body["client"]; ok {
+		t.Fatalf("the public GET shows the client: %v", got.body["client"])
+	}
+}
+
+const detailsBody = `{"chainId": 84532, "token": "` + usdc + `", "amount": "5000000", "title": "Logo design",
+	"note": "Thanks!\nPay within 14 days.", "dueDate": "2026-11-01",
+	"client": {"name": "Bob Ltd", "email": "bob@example.com", "address": "Main St 1\nBerlin"}}`
+
+// The details are stored and returned to the owner; the public GET gives the payer the number, title, note and due
+// date, never the client's contact details.
+func TestCreateInvoiceStoresDetails(t *testing.T) {
+	e := invoiceAPI(t)
+	r := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", detailsBody)
+	if r.status != http.StatusCreated {
+		t.Fatalf("got %d %v", r.status, r.body)
+	}
+	want := map[string]any{"number": float64(1), "title": "Logo design", "note": "Thanks!\nPay within 14 days.",
+		"dueDate": "2026-11-01",
+		"client":  map[string]any{"name": "Bob Ltd", "email": "bob@example.com", "address": "Main St 1\nBerlin"}}
+	for k, v := range want {
+		if !reflect.DeepEqual(r.body[k], v) {
+			t.Fatalf("%s = %v, want %v", k, r.body[k], v)
+		}
+	}
+	again := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", detailsBody)
+	if again.status != http.StatusOK || again.body["invoiceId"] != r.body["invoiceId"] || again.body["number"] != float64(1) {
+		t.Fatalf("same key and body: %d %v", again.status, again.body)
+	}
+	other := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", strings.Replace(detailsBody, "Logo", "Icon", 1))
+	if other.status != http.StatusConflict || errorCode(other) != "idempotency_conflict" {
+		t.Fatalf("same key, other title: %d %v", other.status, other.body)
+	}
+
+	public := e.get(t, r.body["invoiceId"].(string))
+	if _, ok := public.body["client"]; public.status != http.StatusOK || ok {
+		t.Fatalf("public GET: %d %v; want 200 without the client", public.status, public.body)
+	}
+	for k, v := range want {
+		if k != "client" && !reflect.DeepEqual(public.body[k], v) {
+			t.Fatalf("public GET %s = %v, want %v", k, public.body[k], v)
 		}
 	}
 }
@@ -281,6 +329,21 @@ func TestCreateInvoiceErrors(t *testing.T) {
 		{"chainId above 2^63-1", "did:privy:alice", e.aliceProfile, "k20", `{"chainId": 9223372036854775808, "token": "` + usdc + `", "amount": "1"}`, 422, "invalid_value"},
 		{"amount longer than 78 digits", "did:privy:alice", e.aliceProfile, "k21", body(`"amount": "` + strings.Repeat("9", 79) + `"`), 422, "invalid_value"},
 		{"Idempotency-Key not UTF-8", "did:privy:alice", e.aliceProfile, "k\xff", body(`"amount": "1"`), 400, "malformed_request"},
+		{"longest texts", "did:privy:alice", e.aliceProfile, "k22", body(`"amount": "1", "title": "` + strings.Repeat("é", 200) +
+			`", "note": "` + strings.Repeat("n", 2000) + `", "client": {"name": "` + strings.Repeat("c", 200) +
+			`", "email": "` + strings.Repeat("e", 242) + `@example.com", "address": "` + strings.Repeat("a", 500) + `"}`), 201, ""},
+		{"title over 200", "did:privy:alice", e.aliceProfile, "k23", body(`"amount": "1", "title": "` + strings.Repeat("é", 201) + `"`), 422, "invalid_value"},
+		{"note over 2000", "did:privy:alice", e.aliceProfile, "k24", body(`"amount": "1", "note": "` + strings.Repeat("n", 2001) + `"`), 422, "invalid_value"},
+		{"client name over 200", "did:privy:alice", e.aliceProfile, "k25", body(`"amount": "1", "client": {"name": "` + strings.Repeat("c", 201) + `"}`), 422, "invalid_value"},
+		{"client email over 254", "did:privy:alice", e.aliceProfile, "k26", body(`"amount": "1", "client": {"email": "` + strings.Repeat("e", 243) + `@example.com"}`), 422, "invalid_value"},
+		{"client address over 500", "did:privy:alice", e.aliceProfile, "k27", body(`"amount": "1", "client": {"address": "` + strings.Repeat("a", 501) + `"}`), 422, "invalid_value"},
+		{"client email without @", "did:privy:alice", e.aliceProfile, "k28", body(`"amount": "1", "client": {"email": "bob.example.com"}`), 422, "invalid_value"},
+		{"client email with a name", "did:privy:alice", e.aliceProfile, "k29", body(`"amount": "1", "client": {"email": "Bob <bob@example.com>"}`), 422, "invalid_value"},
+		{"title with a NUL", "did:privy:alice", e.aliceProfile, "k30", body(`"amount": "1", "title": "a\u0000b"`), 422, "invalid_value"},
+		{"dueDate not a day", "did:privy:alice", e.aliceProfile, "k31", body(`"amount": "1", "dueDate": "2026-02-30"`), 422, "invalid_value"},
+		{"dueDate with a time", "did:privy:alice", e.aliceProfile, "k32", body(`"amount": "1", "dueDate": "2026-11-01T00:00:00Z"`), 422, "invalid_value"},
+		{"dueDate year 0", "did:privy:alice", e.aliceProfile, "k33", body(`"amount": "1", "dueDate": "0000-01-01"`), 422, "invalid_value"},
+		{"unknown client field", "did:privy:alice", e.aliceProfile, "k34", body(`"amount": "1", "client": {"phone": "1"}`), 400, "malformed_request"},
 		{"no access token", "", e.aliceProfile, "k18", body(`"amount": "1"`), 401, "unauthorized"},
 		{"another user's profile", "did:privy:bob", e.aliceProfile, "k19", body(`"amount": "1"`), 403, "forbidden"},
 	}
@@ -351,5 +414,89 @@ func TestGetInvoiceListsDepositsWithProgress(t *testing.T) {
 	}
 	if fresh := e.get(t, e.post(t, "did:privy:alice", e.aliceProfile, "key-2", basicBody).body["invoiceId"].(string)); !reflect.DeepEqual(fresh.body["deposits"], []any{}) {
 		t.Fatalf("no deposits should be [], got %v", fresh.body["deposits"])
+	}
+}
+
+// The owner lists the profile's invoices newest first in cursor pages, with client details and, once settled, the
+// settlement transaction hash.
+func TestListInvoices(t *testing.T) {
+	e := invoiceAPI(t)
+	path := "/v1/profiles/" + e.aliceProfile + "/invoices"
+	empty := e.call(t, "GET", path, "did:privy:alice", "", "")
+	if empty.status != http.StatusOK || !reflect.DeepEqual(empty.body, map[string]any{"items": []any{}, "nextCursor": nil}) {
+		t.Fatalf("new profile: %d %v", empty.status, empty.body)
+	}
+	var ids []any
+	for _, key := range []string{"key-1", "key-2", "key-3"} {
+		ids = append(ids, e.post(t, "did:privy:alice", e.aliceProfile, key, detailsBody).body["invoiceId"])
+	}
+
+	var got []any
+	cursor := ""
+	for page := 1; ; page++ {
+		r := e.call(t, "GET", path+"?limit=2&cursor="+cursor, "did:privy:alice", "", "")
+		items, _ := r.body["items"].([]any)
+		if r.status != http.StatusOK || len(items) != []int{2, 1}[page-1] {
+			t.Fatalf("page %d: %d %v", page, r.status, r.body)
+		}
+		for _, it := range items {
+			item := it.(map[string]any)
+			if _, ok := item["deposits"]; ok || item["title"] != "Logo design" ||
+				item["client"].(map[string]any)["email"] != "bob@example.com" {
+				t.Fatalf("item %v", item)
+			}
+			got = append(got, item["number"], item["invoiceId"])
+		}
+		next, _ := r.body["nextCursor"].(string)
+		if next == "" {
+			break
+		}
+		cursor = next
+	}
+	if want := []any{float64(3), ids[2], float64(2), ids[1], float64(1), ids[0]}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v\nwant %v", got, want)
+	}
+
+	// A sent settle is not a settlement yet; a confirmed one shows its hash in the list and the public GET.
+	first := ids[0].(string)
+	sent, settled := "0x"+strings.Repeat("0a", 32), "0x"+strings.Repeat("0b", 32)
+	if _, err := e.pool.Exec(context.Background(), `INSERT INTO settlement_intents (invoice_id, status, nonce, tx_hash, raw_tx)
+		VALUES ($1, 'sent', 0, $2, '\x00')`, first, sent); err != nil {
+		t.Fatal(err)
+	}
+	hashes := func() (list, public any) {
+		items := e.call(t, "GET", path, "did:privy:alice", "", "").body["items"].([]any)
+		return items[2].(map[string]any)["settlementTxHash"], e.get(t, first).body["settlementTxHash"]
+	}
+	if list, public := hashes(); list != nil || public != nil {
+		t.Fatalf("sent: settlementTxHash %v in the list, %v in GET; want null", list, public)
+	}
+	if _, err := e.pool.Exec(context.Background(), `
+		WITH i AS (UPDATE settlement_intents SET status = 'confirmed', tx_hash = $2 WHERE invoice_id = $1)
+		UPDATE invoices SET settlement_status = 'settled' WHERE id = $1`, first, settled); err != nil {
+		t.Fatal(err)
+	}
+	if list, public := hashes(); list != settled || public != settled {
+		t.Fatalf("settled: settlementTxHash %v in the list, %v in GET; want %s", list, public, settled)
+	}
+
+	for _, c := range []struct {
+		query, code string
+		status      int
+	}{
+		{"?limit=x", "malformed_request", http.StatusBadRequest},
+		{"?limit=0", "invalid_value", http.StatusUnprocessableEntity},
+		{"?limit=101", "invalid_value", http.StatusUnprocessableEntity},
+		{"?cursor=nope", "invalid_value", http.StatusUnprocessableEntity},
+	} {
+		if r := e.call(t, "GET", path+c.query, "did:privy:alice", "", ""); r.status != c.status || errorCode(r) != c.code {
+			t.Fatalf("%s: %d %v, want %d %s", c.query, r.status, r.body, c.status, c.code)
+		}
+	}
+	if r := e.call(t, "GET", path, "", "", ""); r.status != http.StatusUnauthorized {
+		t.Fatalf("without a token: %d", r.status)
+	}
+	if r := e.call(t, "GET", path, "did:privy:bob", "", ""); r.status != http.StatusForbidden || errorCode(r) != "forbidden" {
+		t.Fatalf("Bob: %d %v, want 403", r.status, r.body)
 	}
 }
