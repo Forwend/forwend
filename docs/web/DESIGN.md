@@ -18,8 +18,9 @@ Use `/kit` for the implemented components. This file owns visual use; token sour
 ## Type and color
 
 - Libre Caslon Display at 400 for large headings; Hanken Grotesk for UI and body; Geist Mono for money, addresses,
-  hashes and event names. Money uses tabular figures. One exception: the app dashboard's total balance is the page's
-  single display moment, set in Libre Caslon Display with lining tabular figures; every other amount stays mono. No bold display serif or small serif labels.
+  hashes and event names. Money uses tabular figures. In the app, headline figures (the total balance and the
+  overview figure strip) use Hanken Grotesk semibold with proportional figures; table amounts, addresses, hashes and
+  chart ticks stay Geist Mono with tabular figures. No bold display serif or small serif labels.
 - Use role tokens for hero, section headings and featured amounts. No eyebrow labels or tracked uppercase kickers.
 - Text and primary buttons share the primary ink. River blue identifies links, focus, the current step and information.
   Completed steps use ink; upcoming steps use line color.
@@ -28,20 +29,48 @@ Use `/kit` for the implemented components. This file owns visual use; token sour
 
 ## App shell
 
-The signed-in app (`/app`) uses these patterns. The menu, sheet and action button are in `/kit`.
+The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segmented control and switch are in `/kit`.
 
-- Desktop: a full-height sidebar on the surface color with a line divider. The profile switcher sits at the top,
-  page links in the middle (the current page on the second surface), the account at the bottom. Switching a profile
-  keeps the current page.
-- Phones: a compact header with the switcher, and a bottom tab bar: icon over label for each page, a raised round
-  primary Receive button in the center, Account last. The current tab gets the same tint as the sidebar link.
+- Desktop: a full-height sidebar on the surface color with a line divider. From top: one row with the logo mark,
+  a slash and the profile switcher (name only, no wallet address); page links in named groups for the profile
+  type (the current page on the second surface); the account menu at the bottom.
+  The collapse button sits at the start of the header. Collapsed, the sidebar is an icon rail with the profile tile on
+  top and names as tooltips; the choice is remembered in the browser.
+  Switching a profile keeps the current page.
+- Desktop header: a sticky bar across the content. Breadcrumb (profile, then page) on the left; on the right a search
+  field with the ⌘K hint, notifications, then Send and Receive. Content uses the header's side padding, with no
+  maximum width, so its edges line up with the header.
+- ⌘K (or the search field) opens one command dialog: pages, actions, other profiles and recent transactions,
+  filtered as you type. Arrow keys move, Enter opens, Escape closes.
+- The account menu holds the app's one theme control, a Dark mode switch item, on desktop and phones.
+- Phones: the header becomes a top bar with the account initial, a search pill and notifications. A bottom tab bar has Home, Transactions, Balances and Profiles (Profiles
+  opens the profile sheet); icon over label, the current tab's icon on the second surface. Pages show the active
+  profile as a pill that opens the same sheet.
 - A choice opened from the sidebar is a menu; the same choice on a phone is a bottom sheet, which becomes a centered
   panel from small screens up. Both are solid surface panels with the float shadow and rise from the edge they open
   on; reduced motion removes the movement.
-- Money actions are round icon buttons with the label underneath. Only the main action is filled with the primary
-  ink; the others are outlined on the surface.
+- Panels are solid surface with a hairline border, medium corners and no shadow; a panel's header row is ruled off.
+  Figure strips and tables use hairline rules between cells and rows, not separate cards.
+- Totals across tokens (the total balance, its chart, the business figures, money in and out) are in USD, each
+  stablecoin counted as 1 USD. An info icon after "USD" marks the estimate and explains it in a tooltip. A row for one
+  token keeps its symbol.
+- Personal overview: the dawn (night in dark mode) valley image is the page's one image moment. A surface wash keeps
+  the total, its change over the range and the money actions readable over the sky. On desktop the card keeps the
+  4:1 shape within a minimum and maximum height: the total sits at the top left, the round actions at the
+  bottom left, and the chart fills the right side. The total scales with its column (container units). Phones center
+  the total and put the chart in its own panel below. The card has one padding on all sides.
+- Business overview (merchant, freelancer): title and range control, a ruled figure strip, received-per-day bars,
+  networks and money flow, then the payments table with direction filter, search and CSV export.
+- Charts: one ink line (or ink bars) with a faint wash, a few hairline grid lines, round tick values from zero.
+  The river blue marks the latest or chosen point. Pointer or arrow keys show a readout; a hidden table gives screen
+  readers every value. Range choice is a segmented control.
+- Transactions table: ruled table from medium screens; the network has its own column only on the widest screens and
+  sits under the counterparty otherwise. Phone rows show the network first and cut the time, never the network.
+- Money actions are round icon buttons with the label underneath, on desktop and phones; only working actions are
+  filled with the primary ink. In the header, Send is a dashed outline pill in the subtle color until it is built.
 - A feature that is not built yet keeps its place in the subtle text color, with "Soon" as plain text at the end:
-  no badge, no link. A disabled action says why in its accessible name and shows the reason when pressed.
+  no badge, no link. A disabled action says why in its accessible name and shows "Coming soon" in a tooltip on
+  hover or focus; no notice text is added to the page.
 
 ## Theme and behavior
 

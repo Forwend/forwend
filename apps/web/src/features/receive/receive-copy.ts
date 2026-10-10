@@ -7,6 +7,8 @@ export const RECEIVE_COPY = {
   receiveNoTokens: "No networks are enabled yet, so there is nothing to receive.",
   receiveNote: "Money sent here shows in the balance once the network has finalized it.",
   testnetNote: "is a test network: tokens there have no real value.",
+  testnet: "Test network",
+  yourAddress: (network: string) => `Your ${network} address`,
   noWallet: "This profile's wallet is not ready yet. Reload the page to try again.",
   retry: "Try again",
 } as const;

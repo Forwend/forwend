@@ -11,28 +11,31 @@ export function NetworksCard({ balances }: { balances: Balances | null }) {
   return (
     <section
       aria-labelledby="networks-title"
-      className="flex flex-col gap-4 rounded-lg border border-line bg-surface p-6"
+      className="flex flex-col rounded-md border border-line bg-surface"
     >
-      <div className="flex items-center justify-between gap-4">
-        <h2 id="networks-title" className="text-sm text-muted">
-          {BALANCES_COPY.networks}
+      <div className="flex items-center justify-between gap-4 border-b border-line px-4 py-3 sm:px-5">
+        <h2 id="networks-title" className="text-base font-semibold text-ink">
+          {BALANCES_COPY.byNetwork}
         </h2>
         <Link
           href={APP_ROUTES.balances}
-          className="inline-flex h-11 items-center gap-1 rounded-pill px-3 text-sm text-ink hover:bg-surface-2"
+          className="inline-flex h-9 items-center gap-1 rounded-sm px-2 text-sm text-muted hover:bg-surface-2 hover:text-ink"
         >
-          {BALANCES_COPY.allBalances}
+          {BALANCES_COPY.viewAll}
           <ChevronRight aria-hidden className="size-[var(--fw-icon-sm)]" />
         </Link>
       </div>
       {!balances ? (
-        <Skeleton className="h-16" />
+        <Skeleton className="m-5 h-16" />
       ) : balances.tokens.length === 0 ? (
-        <p className="text-sm text-muted">{BALANCES_COPY.noTokens}</p>
+        <p className="px-5 py-6 text-sm text-muted">{BALANCES_COPY.noTokens}</p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="divide-y divide-line">
           {balances.tokens.map((t) => (
-            <li key={`${t.chainId}:${t.token}`} className="flex items-center justify-between gap-4">
+            <li
+              key={`${t.chainId}:${t.token}`}
+              className="flex items-center justify-between gap-4 px-4 py-3 sm:px-5"
+            >
               <TokenMark chainId={t.chainId} symbol={t.symbol} />
               {t.wallet === null ? (
                 <span className="text-sm text-subtle">—</span>

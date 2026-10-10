@@ -12,7 +12,7 @@ const ICONS = {
 export function ProfileAvatar({ kind }: { kind: ProfileKind }) {
   const Icon = ICONS[kind];
   return (
-    <span className="grid size-9 shrink-0 place-items-center rounded-md border border-line bg-surface-2 text-ink">
+    <span className="grid size-8 shrink-0 place-items-center rounded-sm bg-primary text-on-primary">
       <Icon aria-hidden className="size-[var(--fw-icon-md)]" />
     </span>
   );

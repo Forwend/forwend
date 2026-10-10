@@ -26,7 +26,7 @@ Use harness `status` for progress.
 | Term | Meaning | Relations | States and rules |
 |---|---|---|---|
 | Design token | A named value for color, type, spacing, radius, shadow, blur or motion | Defined in `packages/design-tokens`; read by Tailwind and components | Every color token has a light and a dark value |
-| Kit page | Private page `/kit` showing all tokens and components | Uses `packages/ui-web` | Not linked, `noindex`, not in the sitemap; 404 unless `KIT_ENABLED=1` |
+| Kit page | Private page `/kit` showing all tokens and components | Uses `packages/ui-web` | Not linked, `noindex`, not in the sitemap; in a production build 404 unless `KIT_ENABLED=1`; always on in `next dev` |
 | Direction | One of three visual styles to compare: A Dawn Path, B Dusk Ledger, C Halftone Horizon | Chosen once; tokens follow it | D-13 is the working direction; Q-1 is owner review |
 | Payment status | Label shown for an invoice or payment | Used by status pill, timeline | detected, confirming, paid, partially paid, overpaid, expired, expired–partially paid, settled, refund pending, refunded |
 | Base units | Integer token amount on chain (USDC: 6 decimals) | Money component input | Always `bigint` in TypeScript; never floating point |
@@ -93,7 +93,7 @@ All D- IDs are defined here. The roadmap refers to these decisions.
 | D-2 | One Next.js app (App Router, TypeScript strict) for landing, `/kit`, dashboard and checkout | One deploy and one design system until a real reason to split |
 | D-3 | Choose the visual direction from three code comps, not from static mockups | Real type, spacing and images in the browser show the actual result |
 | D-4 | Tailwind CSS v4 reading CSS-variable tokens; light and dark themes from the start; `data-theme` on `<html>` | Both themes cost little with variables; the app dashboard needs dark |
-| D-5 | `/kit` lives in the web app behind `KIT_ENABLED`, `noindex`, outside the sitemap | Same code and tokens as the real pages, no extra tool |
+| D-5 | `/kit` lives in the web app behind `KIT_ENABLED` (always on in `next dev`), `noindex`, outside the sitemap | Same code and tokens as the real pages, no extra tool |
 | D-6 | Money uses bigint base units plus token decimals in TypeScript; formatting never converts money to float. | Exact amounts. |
 | D-7 | Landing shows real product UI built in code, no generated screenshots, no fake social proof | Trust for a payments brand; image models garble numbers and text |
 | D-8 | The waitlist is a front-end mock until the site is public | Start fast; making it real is queued before launch |

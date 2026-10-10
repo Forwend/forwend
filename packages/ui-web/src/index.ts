@@ -43,6 +43,8 @@ export type { TextFieldProps } from "./components/forms/text-field";
 export { TextField } from "./components/forms/text-field";
 export type { NavLink, NavPillProps } from "./components/navigation/nav-pill";
 export { NavPill } from "./components/navigation/nav-pill";
+export type { SegmentedControlProps } from "./components/navigation/segmented-control";
+export { SegmentedControl } from "./components/navigation/segmented-control";
 export type { TabItem, TabsProps } from "./components/navigation/tabs";
 export { Tabs } from "./components/navigation/tabs";
 export type { ThemeSwitchProps } from "./components/navigation/theme-switch";
@@ -50,12 +52,14 @@ export { ThemeSwitch } from "./components/navigation/theme-switch";
 export type { DialogProps } from "./components/overlays/dialog";
 export { Dialog } from "./components/overlays/dialog";
 export type {
+  MenuCheckboxItemProps,
   MenuContentProps,
   MenuItemProps,
   MenuRadioItemProps,
 } from "./components/overlays/menu";
 export {
   Menu,
+  MenuCheckboxItem,
   MenuContent,
   MenuGroup,
   MenuItem,

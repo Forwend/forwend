@@ -33,7 +33,7 @@ export function BalancesList({
       {balances.tokens.map((t) => (
         <li
           key={`${t.chainId}:${t.token}`}
-          className="grid gap-4 rounded-lg border border-line bg-surface p-5 shadow-sm sm:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))] sm:items-center"
+          className="grid gap-4 rounded-md border border-line bg-surface p-5 sm:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))] sm:items-center"
         >
           <TokenMark chainId={t.chainId} symbol={t.symbol} />
           <Amount label={BALANCES_COPY.inWallet} t={t} value={t.wallet} strong />

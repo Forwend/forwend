@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Badge,
   Button,
   NetworkWarning,
   QrCode,
@@ -8,11 +9,13 @@ import {
   SelectField,
   Sheet,
   Skeleton,
+  TONES,
 } from "@forwend/ui-web";
 import { useState } from "react";
 import type { Balances } from "@/features/balances/balances";
 import { RECEIVE_COPY } from "@/features/receive/receive-copy";
 import { chainName, isTestnet } from "@/shared/chains/chains";
+import { TokenMark } from "@/shared/chains/token-mark";
 
 // Receive, in a sheet over the dashboard. The address never shows without the warning naming its exact network and
 // token, so while the enabled tokens load, or if they fail, it stays hidden.
@@ -62,11 +65,27 @@ export function ReceiveSheet({
                 label: `${t.symbol} · ${chainName(t.chainId)}`,
               }))}
             />
-          ) : null}
-          <QrCode value={address} label={RECEIVE_COPY.receiveQrLabel} className="mx-auto w-44" />
-          <ReceiveAddress address={address} />
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <TokenMark chainId={chosen.chainId} symbol={chosen.symbol} />
+              {isTestnet(chosen.chainId) ? (
+                <Badge tone={TONES.info}>{RECEIVE_COPY.testnet}</Badge>
+              ) : null}
+            </div>
+          )}
+          <div className="grid place-items-center rounded-lg bg-surface-2 p-5">
+            <QrCode
+              value={address}
+              label={RECEIVE_COPY.receiveQrLabel}
+              className="w-52 p-2 shadow-sm"
+            />
+          </div>
+          <ReceiveAddress
+            address={address}
+            label={RECEIVE_COPY.yourAddress(chainName(chosen.chainId))}
+          />
           <NetworkWarning token={chosen.symbol} network={chainName(chosen.chainId)} />
-          <p className="text-sm text-muted">
+          <p className="text-xs text-muted">
             {isTestnet(chosen.chainId)
               ? `${chainName(chosen.chainId)} ${RECEIVE_COPY.testnetNote} `
               : null}

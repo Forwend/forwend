@@ -2,30 +2,54 @@
 version: 1
 slug: "apps-web-src-app-app-app-page-tsx"
 primary_target: "apps/web/src/app/(app)/app/page.tsx"
-related_targets: ["apps/web/src/screens/dashboard","apps/web/src/screens/app-shell","apps/web/src/features","apps/web/src/app/(app)/app"]
+related_targets: ["apps/web/src/screens/dashboard","apps/web/src/screens/app-shell","apps/web/src/screens/transactions","apps/web/src/features","apps/web/src/app/(app)/app"]
 ---
 
 # Signed-in app surface brief
 
-Scope: `/app` shell and the personal dashboard (Operate), plus `/app/balances`, `/app/activity`, `/app/profiles/new`.
+Scope: `/app` shell (sidebar, header, phone top bar and tab bar), the personal overview, the business overview
+(merchant and freelancer), `/app/transactions`, `/app/balances`, `/app/activity`, `/app/profiles/new`. Operate mode.
 Audience: a signed-in person with one or more profiles (personal, freelancer, merchant) holding stablecoins on several
-chains. Task: see what they have and where, receive money, switch or add profiles; later send, transfer between
-profiles and withdraw to a bank (shown, disabled until built). Constraints: no fake data or features; every amount
-says its token and network; money in Geist Mono tabular; testnet only today.
-Owner pinned: a fintech sidebar (references: Linear-like workspace sidebar, neobank dashboards), a profile switcher at
-the sidebar top that opens a smooth panel to switch or add, the account at the sidebar bottom opening global settings,
-a dashboard led by a total balance card with actions, balances by chain and token, activity; a bottom tab bar on phones.
+chains. Task: see how much they have and how it moved, receive money, read transactions, switch or add profiles;
+business profiles also read what came in over a period. Send, transfer and withdraw stay shown and disabled until built.
+Constraints: no fake data or features; every amount says its token and network; testnet only today.
+
+Owner pins (2026-10-10, redesign after rejecting F071's look): an advanced app dashboard, not a landing page.
+References: Revolut mobile home (centered balance, round actions, cards below, bottom tabs), Linear-like workspace
+sidebar with grouped nav and a "Dark mode" switch row, a top header (breadcrumb, search, notifications, actions,
+references with 8px-ish content gutters, not a centered narrow column), a fintech overview with total balance on the
+left and a line chart on the right, a landscape image banner behind it (generated with Codex), Stripe-like business
+overview with KPI row, chart and a payments table. Merchant/freelancer UI differs from personal. One theme control
+only. No wallet address under the profile name. Header items chosen: breadcrumb + title, ⌘K search, Send/Receive,
+notifications bell.
 
 ## Direction contract
 
-THESIS: One account, several money identities: the profile is the frame of everything, switched in place like a workspace; the page answers "how much, where, and what can I do" in that order. Refuses the stock crypto-wallet screen (QR card first, tables of zeros).
+THESIS: A working money console, not a showcase: the frame (sidebar, header) is dense and quiet like a workspace tool,
+and the only image is the dawn sky the balance line is drawn across. Refuses the stack of same-size rounded cards with a
+centered narrow column, and refuses the crypto-wallet screen (address and QR as the headline).
 
-OWN-WORLD: Dawn Path product register: cool neutral surfaces, pine-ink type and primary pills, river blue only for focus and links, solid panels with soft shadows, Libre Caslon only for the one big amount heading, Hanken UI, Geist Mono for every amount and address. Sidebar on surface with hairline divider; cards rounded-lg; action buttons as round icon pills with labels underneath.
+OWN-WORLD: Dawn Path product register, tightened: cool neutral grounds, pine ink, hairline dividers instead of
+floating cards where data lives (KPI strip and tables are ruled, not boxed), radius md on panels, sm on controls.
+Hanken Grotesk semibold for headline figures (proportional), Geist Mono tabular for table amounts, addresses, hashes
+and axis ticks. River blue for focus, links and the chart's live point only. Codex dawn/night valley banner only
+behind the balance hero.
 
-STORY: They land, see their total (estimated, marked) and per-network balances, tap Receive to get the full address with QR and the exact network and token, check recent activity, switch to another profile from the sidebar top without leaving the page.
+STORY: They open the app, read the total and how it moved over the chosen range at a glance, press Receive in the
+header or the hero, scan the latest transactions, and switch to their merchant profile from the sidebar top, where the
+page becomes a business console: received this period, payment count, pending, a received-per-day chart and the
+payments table.
 
-FIRST VIEWPORT: Desktop: 16rem sidebar (switcher top, nav middle, account bottom); main shows a wide balance card (amount at display size, pending/held lines when present, four round actions: Send, Receive, Transfer, Withdraw) beside a Networks card listing each chain and token with its amount; below, Recent activity with View all. Phone: compact header (switcher, account), balance card and actions first, networks, activity, bottom tab bar Home, Balances, Receive (center), Activity, Account.
+FIRST VIEWPORT: Desktop: 15rem sidebar (logo + collapse; profile switcher; grouped nav; bottom: Dark mode switch row,
+account row). 56px header: breadcrumb "Profile / Page" left; ⌘K search field, bell, Receive (filled) and Send
+(outlined, disabled with reason) right. Content gutter 24px, max 1440px. Personal: full-width hero panel with the
+valley banner, balance block left (label, figure, change over range, pill actions), line chart right with range tabs
+and crosshair; below, transactions table (2fr) beside "Where your money is" networks list and in/out this month (1fr).
+Business: title row with range tabs and Export CSV, ruled KPI strip (Balance, Received, Payments, Pending), received
+bars chart beside balance-by-network, payments table with All/In/Out and search. Phone: top bar (account avatar,
+search pill, bell), centered balance over the banner with a profile pill, four round actions, cards for recent
+transactions and money in this month, bottom tabs Home, Transactions, Balances, Profiles.
 
-FORM: Brief-pinned by the owner, so no concept roll (a user-pinned direction beats the roll); code-led. Owner pin, verbatim: "i liked with sidebar more ... sidebar something like this ... where account info on the bottom of sidebar with everything else, and when i click it will component with global settings ... we can use selector where we can click and it will open such smooth component where we can add or switch between. this kind of UI/UX i wanna." No seed key: no roll ran.
+FORM: Brief-pinned by the owner with reference images, so no concept roll; code-led. No seed key: no roll ran.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance

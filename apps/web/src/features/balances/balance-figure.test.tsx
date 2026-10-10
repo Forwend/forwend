@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BalanceCard } from "@/features/balances/balance-card";
+import { BalanceFigure } from "@/features/balances/balance-figure";
 import type { Balances, TokenBalance } from "@/features/balances/balances";
+import { MoneyActions } from "@/features/balances/money-actions";
 
 const usdc: TokenBalance = {
   chainId: 84532,
@@ -15,26 +16,19 @@ const usdc: TokenBalance = {
   held: "0",
 };
 
-function show(balances: Balances | null, { failed = false, onReceive = () => {} } = {}) {
-  return render(
-    <BalanceCard
-      balances={balances}
-      failed={failed}
-      updatedAt={null}
-      onRetry={() => {}}
-      onReceive={onReceive}
-    />,
-  );
+function show(balances: Balances | null, { failed = false } = {}) {
+  return render(<BalanceFigure balances={balances} failed={failed} onRetry={() => {}} />);
 }
 
-describe("BalanceCard", () => {
+describe("BalanceFigure", () => {
   afterEach(cleanup);
 
-  it("shows one token's amount in its own unit and decimals, with its network", () => {
+  it("shows the total in USD, marked as an estimate, also for a single stablecoin", () => {
     show({ tokens: [usdc], estimatedUsdTotal: "2.50" });
-    expect(screen.getByText("2.50").closest("p")?.textContent).toContain("USDC");
-    expect(screen.getByText("In the wallet on Base Sepolia")).toBeTruthy();
-    expect(screen.queryByText(/Estimated in USD/)).toBeNull();
+    expect(screen.getByText("2.50").closest("p")?.textContent).toBe("2.50USD");
+    expect(
+      screen.getByRole("button", { name: /^Estimated: each stablecoin counts as 1 USD/ }),
+    ).toBeTruthy();
   });
 
   it("shows pending and held apart from the wallet, each only when there is some", () => {
@@ -42,22 +36,20 @@ describe("BalanceCard", () => {
     expect(screen.queryByText(/on its way/)).toBeNull();
     expect(screen.queryByText(/held for payers/)).toBeNull();
     rerender(
-      <BalanceCard
+      <BalanceFigure
         balances={{
           tokens: [{ ...usdc, pending: "1000000", held: "250000" }],
           estimatedUsdTotal: "2.50",
         }}
         failed={false}
-        updatedAt={null}
         onRetry={() => {}}
-        onReceive={() => {}}
       />,
     );
     expect(screen.getByText(/on its way/).textContent).toContain("1.00");
     expect(screen.getByText(/held for payers/).textContent).toContain("0.25");
   });
 
-  it("marks a several-token total as a USD estimate, and never shows a made-up 0", () => {
+  it("adds several stablecoins in USD, and never shows a made-up 0", () => {
     const usdt = {
       ...usdc,
       chainId: 421614,
@@ -65,24 +57,32 @@ describe("BalanceCard", () => {
       symbol: "USDT",
     };
     const { rerender } = show({ tokens: [usdc, usdt], estimatedUsdTotal: "5.00" });
-    expect(screen.getByText(/≈ 5.00/)).toBeTruthy();
-    expect(screen.getByText(/Estimated in USD.*across 2 networks/)).toBeTruthy();
+    expect(screen.getByText("5.00")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Estimated:/ })).toBeTruthy();
     rerender(
-      <BalanceCard
+      <BalanceFigure
         balances={{ tokens: [usdc, { ...usdt, wallet: null }], estimatedUsdTotal: null }}
         failed={false}
-        updatedAt={null}
         onRetry={() => {}}
-        onReceive={() => {}}
       />,
     );
     expect(screen.getByText(/—/)).toBeTruthy();
-    expect(screen.queryByText(/≈ 0/)).toBeNull();
+    expect(screen.queryByText("0.00")).toBeNull();
   });
 
-  it("only Receive works; Send, Transfer and Withdraw say they are coming", () => {
+  it("offers a retry when the balances could not be loaded", () => {
+    show(null, { failed: true });
+    expect(screen.getByRole("alert").textContent).toContain("We could not load the balances.");
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+  });
+});
+
+describe("MoneyActions", () => {
+  afterEach(cleanup);
+
+  it("only Receive works; Send, Transfer and Withdraw say why in their name and do nothing", () => {
     const onReceive = vi.fn();
-    show({ tokens: [usdc], estimatedUsdTotal: "2.50" }, { onReceive });
+    render(<MoneyActions onReceive={onReceive} />);
     fireEvent.click(screen.getByRole("button", { name: "Receive" }));
     expect(onReceive).toHaveBeenCalledOnce();
     for (const [name, reason] of [
@@ -93,16 +93,8 @@ describe("BalanceCard", () => {
       const button = screen.getByRole("button", { name: new RegExp(`^${name}`) });
       expect(button.getAttribute("aria-disabled")).toBe("true");
       expect(button.textContent).toContain(reason);
-      // A press (touch has no hover title) shows the reason in the card and announces it.
       fireEvent.click(button);
-      expect(screen.getByRole("status").textContent).toContain(reason);
     }
     expect(onReceive).toHaveBeenCalledOnce();
-  });
-
-  it("offers a retry when the balances could not be loaded", () => {
-    show(null, { failed: true });
-    expect(screen.getByRole("alert").textContent).toContain("We could not load the balances.");
-    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   });
 });
