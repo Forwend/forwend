@@ -216,6 +216,28 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/invoices/{invoiceId}:
+    get:
+      operationId: getProfileInvoice
+      summary: Read one of the profile's invoices with its client
+      description: The public GET /v1/invoices/{invoiceId} plus client. Another profile's invoice is not found here.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+      responses:
+        "200":
+          description: The invoice
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/balances:
     get:
       operationId: getBalances
@@ -787,7 +809,7 @@ components:
         client:
           type: object
           required: [name, email, address]
-          description: Only in the owner's responses (create and list); the public GET leaves it out.
+          description: Only in the owner's responses (create, list and the profile's GET); the public GET leaves it out.
           properties:
             name: { type: [string, "null"] }
             email: { type: [string, "null"] }

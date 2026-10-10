@@ -2,7 +2,6 @@ import {
   type CreateInvoiceBody,
   INVOICES_PAGE_SIZE,
   type Invoice,
-  type InvoiceSummary,
   type InvoicesPage,
 } from "@/features/invoices/invoices";
 import { apiSlice } from "@/shared/api/api-slice";
@@ -32,15 +31,10 @@ export const invoicesApi = apiSlice
       getInvoice: build.query<Invoice, string>({
         query: (invoiceId) => `/v1/invoices/${encodeURIComponent(invoiceId)}`,
       }),
-      // The API has no owner read of one invoice, and only the owner's list carries the client. The list's cursor is
-      // the number to list below (internal/invoice/list.go), so number + 1 with limit 1 is this invoice, if the profile
-      // owns it.
-      getProfileInvoice: build.query<InvoiceSummary | null, { profileId: string; number: number }>({
-        query: ({ profileId, number }) => ({
-          url: profileInvoices(profileId),
-          params: { limit: 1, cursor: String(number + 1) },
-        }),
-        transformResponse: (page: InvoicesPage) => page.items[0] ?? null,
+      /** The owner's read: the public one plus the client; 404 for another profile's invoice. */
+      getProfileInvoice: build.query<Invoice, { profileId: string; invoiceId: string }>({
+        query: ({ profileId, invoiceId }) =>
+          `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}`,
       }),
       /** One invoice per idempotency key, so a retried request never makes two. */
       createInvoice: build.mutation<

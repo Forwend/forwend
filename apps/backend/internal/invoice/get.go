@@ -15,11 +15,22 @@ import (
 
 // Get reads an invoice by its on-chain id (0x + 64 hex).
 func (s *Service) Get(ctx context.Context, id string) (Invoice, error) {
+	return s.get(ctx, "", id)
+}
+
+// GetOfProfile is Get for the profile's owner: another profile's invoice is ErrNotFound.
+func (s *Service) GetOfProfile(ctx context.Context, profileID, id string) (Invoice, error) {
+	return s.get(ctx, profileID, id)
+}
+
+// get reads any profile's invoice when profileID is "".
+func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error) {
 	id = strings.ToLower(id)
 	if len(id) != 66 || !strings.HasPrefix(id, "0x") || strings.Trim(id[2:], "0123456789abcdef") != "" {
 		return Invoice{}, ErrNotFound
 	}
-	inv, err := scanInvoice(s.pool.QueryRow(ctx, "SELECT "+invoiceColumns+" FROM invoices WHERE id = $1", id))
+	inv, err := scanInvoice(s.pool.QueryRow(ctx, "SELECT "+invoiceColumns+
+		" FROM invoices WHERE id = $1 AND profile_id = coalesce(nullif($2, '')::uuid, profile_id)", id, profileID))
 	if err != nil {
 		return Invoice{}, err
 	}

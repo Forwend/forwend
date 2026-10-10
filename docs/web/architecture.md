@@ -47,7 +47,7 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   the typed amount into exact base units without float, and sends one idempotency key per filled-in form;
   `/app/invoices/<id>` shows the status timeline, due date apart from checkout expiry, client, issuer and the
   `/pay/<id>` link with a copy button. The public `GET /v1/invoices/{id}` has no client, so the detail reads it from
-  the profile's list (cursor = number + 1, limit 1), which also tells whether the active profile made the invoice.
+  `GET /v1/profiles/{id}/invoices/{invoiceId}`, whose 404 also tells that the active profile did not make the invoice.
 - API data lives in an RTK Query cache (D-47): one store per tab (`store/store.ts`, mounted by
   `providers/store-provider.tsx` inside Privy), one `apiSlice` that adds the Privy access token, and endpoints
   injected by each feature (`features/*/…-api.ts`). On a 429 the slice waits `Retry-After` and sends the request once

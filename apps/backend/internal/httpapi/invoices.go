@@ -162,6 +162,18 @@ func getInvoice(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
+// getProfileInvoice is GET /v1/profiles/{profileId}/invoices/{invoiceId}: the public read with the client's details.
+func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		inv, err := invoices.GetOfProfile(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"))
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, toInvoiceDetailJSON(inv, true))
+	}
+}
+
 // toInvoiceJSON writes "" as null; withClient is for the owner only.
 func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 	out := invoiceJSON{

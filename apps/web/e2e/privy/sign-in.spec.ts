@@ -820,6 +820,13 @@ async function mockApi(page: Page) {
         },
       });
     }
+    // The public read leaves out the client; the profile's own read has it.
+    const owned = INVOICES.find(
+      (inv) => path === `/v1/profiles/${MERCHANT_ID}/invoices/${inv.invoiceId}`,
+    );
+    if (owned) {
+      return route.fulfill({ json: { ...owned, deposits: DEPOSITS[owned.invoiceId] ?? [] } });
+    }
     const invoice = INVOICES.find((inv) => path === `/v1/invoices/${inv.invoiceId}`);
     if (invoice) {
       const { client: _, ...open } = invoice;
@@ -933,6 +940,7 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   );
   await hiddenHeading("INV-0004");
   await expect(main.getByRole("link", { name: "Invoices" })).toHaveCount(0);
+  await expect(main.getByRole("region", { name: "Client" })).toContainText("Brightline Studio");
   // A payment on its way: pending, a short line, and its transaction on Basescan.
   await expect(main.getByRole("status").filter({ hasText: /./ })).toHaveText(
     "Confirming · about 6 min left 120 blocks",
