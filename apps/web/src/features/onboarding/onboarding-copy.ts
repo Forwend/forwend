@@ -45,7 +45,7 @@ export const CHECKLIST_COPY = {
   steps: {
     [CHECKLIST_STEPS.passkey]: {
       title: "Add a passkey",
-      hint: "Your fingerprint, face or screen lock instead of an email code. Passkey sign-in opens soon.",
+      hint: "Your fingerprint, face or screen lock instead of an email code.",
       action: "Add passkey",
     },
     [CHECKLIST_STEPS.billingDetails]: {

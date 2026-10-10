@@ -15,7 +15,7 @@ Product requirements and money policy live in [PROJECT](../PROJECT.md); future s
   after settlement the page is the payer's receipt (R-48), with the receipt PDF.
 - Personal profiles can request money: amount, note, expiry and a private link. Call it a request, not an invoice.
 - First run asks once what the user wants to do and says which profile each choice adds; the checklist names real next
-  steps only. Passkey sign-in is not on `/sign-in` yet, so the passkey step says it opens soon.
+  steps only. A passkey added there signs in from `/sign-in`.
 - Bank withdrawal is user-started: quote, fees, net amount and confirmation. Do not imply it is available before implemented.
 - Current public-facing material is pre-launch. No invented customers, testimonials, funding, insurance, regulation or volumes.
 - The waitlist is a local mock until real storage is built. Label demonstration invoices, addresses and amounts as Sample.

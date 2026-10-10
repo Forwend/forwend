@@ -1,7 +1,8 @@
 "use client";
 
 import { BrandIcon, Button, CodeInput, TextField } from "@forwend/ui-web";
-import { useLoginWithEmail, useLoginWithOAuth } from "@privy-io/react-auth";
+import { useLoginWithEmail, useLoginWithOAuth, useLoginWithPasskey } from "@privy-io/react-auth";
+import { Fingerprint } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   CODE_LENGTH,
@@ -13,14 +14,15 @@ import {
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Our own forms on Privy's headless sign-in: an email code, or Google (a redirect and back). The page moves on to
-// /app once Privy reports the user signed in. Passkeys come back when users can add one to their account.
+// Our own forms on Privy's headless sign-in: an email code, Google (a redirect and back) or a passkey added from the
+// checklist. The page moves on to /app once Privy reports the user signed in.
 export function SignInForm() {
   const { sendCode, loginWithCode } = useLoginWithEmail();
+  const { loginWithPasskey } = useLoginWithPasskey();
   const [step, setStep] = useState<SignInStep>(SIGN_IN_STEPS.email);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [busy, setBusy] = useState<"" | "send" | "code" | "resend">("");
+  const [busy, setBusy] = useState<"" | "send" | "code" | "resend" | "passkey">("");
   const [fieldError, setFieldError] = useState("");
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
@@ -165,7 +167,7 @@ export function SignInForm() {
           autoFocus
           className="min-h-26"
         />
-        <Button type="submit" loading={busy === "send"} disabled={googleBusy}>
+        <Button type="submit" loading={busy === "send"} disabled={googleBusy || busy === "passkey"}>
           {SIGN_IN_COPY.sendCode}
         </Button>
       </form>
@@ -187,6 +189,21 @@ export function SignInForm() {
       >
         <BrandIcon name="google" className="size-[var(--fw-icon-md)]" />
         {SIGN_IN_COPY.google}
+      </Button>
+      <Button
+        variant="secondary"
+        loading={busy === "passkey"}
+        disabled={googleBusy || (busy !== "" && busy !== "passkey")}
+        onClick={() => {
+          setFormError("");
+          setBusy("passkey");
+          loginWithPasskey()
+            .catch(() => setFormError(SIGN_IN_COPY.errors.passkey))
+            .finally(() => setBusy(""));
+        }}
+      >
+        <Fingerprint aria-hidden className="size-[var(--fw-icon-md)]" />
+        {SIGN_IN_COPY.passkey}
       </Button>
       <Messages error={formError} notice={notice} />
     </div>

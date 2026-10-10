@@ -64,7 +64,8 @@ export function Button({
   onClick,
   ...props
 }: ButtonProps) {
-  // Loading keeps the button's own colors (with a spinner) and ignores clicks; disabled greys it out.
+  // Loading keeps the button's own colors and ignores clicks; disabled greys it out. While loading only the spinner
+  // shows: the label stays in place, transparent, so the width holds and screen readers keep the button's name.
   return (
     <button
       type={type}
@@ -73,11 +74,26 @@ export function Button({
       aria-busy={loading || undefined}
       aria-disabled={loading || undefined}
       onClick={loading ? (event) => event.preventDefault() : onClick}
-      className={cx(buttonClasses({ variant, size }), loading && "cursor-progress", className)}
+      className={cx(
+        buttonClasses({ variant, size }),
+        loading && "relative cursor-progress",
+        className,
+      )}
       {...props}
     >
-      {loading ? <Loader2 aria-hidden className="size-[var(--fw-icon-sm)] animate-spin" /> : null}
-      {children}
+      {loading ? (
+        <>
+          <Loader2
+            aria-hidden
+            className="absolute inset-0 m-auto size-[var(--fw-icon-sm)] animate-spin"
+          />
+          <span data-loading-label className="inline-flex items-center gap-2 opacity-0">
+            {children}
+          </span>
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 }
