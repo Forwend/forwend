@@ -474,7 +474,25 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await share.getByRole("button", { name: "Copy link" }).click();
     await expect(share.getByRole("button", { name: "Link copied" })).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
+    // The PDFs come through the same-origin /api path; the receipt only once the invoice is paid.
+    const pdf = (name: string) => details.getByRole("link", { name });
+    const read = `/api/v1/invoices/${invoice.invoiceId}`;
+    const pdfPath = (file: string) => `${read}/${file}`;
+    await expect(pdf("Invoice PDF")).toHaveAttribute("href", pdfPath("invoice.pdf"));
+    const file = await page.request.get(pdfPath("invoice.pdf"));
+    expect([file.status(), file.headers()["content-type"]]).toEqual([200, "application/pdf"]);
+    await expect(pdf("Receipt PDF")).toHaveCount(0);
     expect(await blockingViolations(page)).toEqual([]);
+    await page.route(`**${read}`, async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({
+        response,
+        json: { ...(await response.json()), paymentStatus: "paid" },
+      });
+    });
+    await page.reload();
+    await expect(pdf("Receipt PDF")).toHaveAttribute("href", pdfPath("receipt.pdf"));
+    await page.unroute(`**${read}`);
 
     // Back in the list, newest first.
     await page.getByRole("link", { name: "Invoices" }).first().click();

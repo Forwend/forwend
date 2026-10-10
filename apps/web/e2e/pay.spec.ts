@@ -35,6 +35,8 @@ const OPEN = {
   refundStatus: "none",
   settlementTxHash: null,
   createdAt: "2026-10-10T11:00:00Z",
+  paidAt: null as string | null,
+  settledAt: null as string | null,
   deposits: [] as object[],
 };
 const DEPOSIT = {
@@ -54,11 +56,18 @@ const CONFIRMING = {
   deposits: [{ ...DEPOSIT, blocksLeft: 6, secondsLeft: 75 }],
 };
 const CONFIRMED = [{ ...DEPOSIT, status: "confirmed", blocksLeft: 0, secondsLeft: 0 }];
-const PAID = { ...OPEN, paymentStatus: "paid", settlementStatus: "pending", deposits: CONFIRMED };
+const PAID = {
+  ...OPEN,
+  paymentStatus: "paid",
+  settlementStatus: "pending",
+  paidAt: "2026-10-10T12:05:00Z",
+  deposits: CONFIRMED,
+};
 const SETTLED = {
   ...PAID,
   settlementStatus: "settled",
   settlementTxHash: `0x${"4".repeat(64)}`,
+  settledAt: "2026-10-10T12:20:00Z",
 };
 
 /** Answers the invoice read with each body in turn, then keeps the last; never reaches a backend. */
@@ -77,6 +86,8 @@ async function openPay(page: Page, ...bodies: object[]) {
 
 const confirmButton = (page: Page) =>
   page.getByRole("button", { name: "I will send USDC on Base Sepolia" });
+const receipt = (page: Page) => page.getByRole("region", { name: "Receipt" });
+const pdfPath = (file: string) => `/api/v1/invoices/${ID}/${file}`;
 
 test.describe("pay page", () => {
   test("shows who asks and the rules, then the address only after the payer confirms the network", async ({
@@ -100,6 +111,11 @@ test.describe("pay page", () => {
       page.getByText("Forwend never asks you to pay a different address or an extra fee."),
     ).toBeVisible();
     await expect(page.getByText(/is a test network/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Download invoice PDF" })).toHaveAttribute(
+      "href",
+      pdfPath("invoice.pdf"),
+    );
+    await expect(receipt(page)).toHaveCount(0);
     await expect(page.getByText(RECEIVE)).toHaveCount(0);
     await expect(page.getByRole("img", { name: /QR code/ })).toHaveCount(0);
 
@@ -208,9 +224,14 @@ test.describe("pay page", () => {
     await openPay(page, OPEN);
     await confirmButton(page).click();
     await expect(page.getByText(RECEIVE)).toBeVisible();
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
-    ).toBeLessThanOrEqual(0);
+    const overflow = () =>
+      page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(await overflow()).toBeLessThanOrEqual(0);
+    // The receipt's full transaction hashes wrap.
+    await mockInvoice(page, SETTLED);
+    await page.reload();
+    await expect(receipt(page)).toBeVisible();
+    expect(await overflow()).toBeLessThanOrEqual(0);
   });
 
   for (const colorScheme of ["light", "dark"] as const) {
@@ -231,7 +252,52 @@ test.describe("pay page", () => {
       await page.clock.runFor(POLL_MS);
       await expect(page.getByRole("link", { name: "View transaction on Basescan" })).toBeVisible();
       expect(await blocking()).toEqual([]);
+      // Settled: the receipt with its hashes, explorer links and PDF link.
+      await mockInvoice(page, SETTLED);
+      await page.reload();
+      await expect(receipt(page)).toBeVisible();
+      expect(await blocking()).toEqual([]);
       await context.close();
     });
   }
+});
+
+test.describe("pay page receipt", () => {
+  test.use({ timezoneId: "UTC", locale: "en-US" });
+
+  test("shows no receipt while paid, then the receipt once settled, beside the invoice PDF", async ({
+    page,
+  }) => {
+    await openPay(page, PAID, SETTLED);
+    const invoicePdf = page.getByRole("link", { name: "Download invoice PDF" });
+    await expect(page.getByRole("status").filter({ hasText: /./ })).toHaveText(/^Paid\./);
+    await expect(invoicePdf).toHaveAttribute("href", pdfPath("invoice.pdf"));
+    await expect(receipt(page)).toHaveCount(0);
+    await expect(page.getByText("Checkout closes")).toHaveCount(0);
+
+    await page.clock.runFor(POLL_MS);
+    const panel = receipt(page);
+    await expect(panel).toContainText(/Amount paid\s*1,250\.00\s*USDC/);
+    await expect(panel).toContainText(/Paid\s*Oct 10, 2026, 12:05\sPM/);
+    await expect(panel).toContainText(/Settled\s*Oct 10, 2026, 12:20\sPM/);
+    const explorer = panel.getByRole("link", { name: "View transaction on Basescan" });
+    await expect(explorer).toHaveCount(2);
+    for (const [i, [term, hash]] of [
+      ["Payment transaction", DEPOSIT.txHash],
+      ["Settlement transaction", SETTLED.settlementTxHash],
+    ].entries()) {
+      await expect(panel).toContainText(`${term}${hash}`);
+      await expect(explorer.nth(i)).toHaveAttribute(
+        "href",
+        `https://sepolia.basescan.org/tx/${hash}`,
+      );
+      await expect(explorer.nth(i)).toHaveAttribute("target", "_blank");
+      await expect(explorer.nth(i)).toHaveAttribute("rel", "noopener noreferrer");
+    }
+    await expect(panel.getByRole("link", { name: "Download receipt PDF" })).toHaveAttribute(
+      "href",
+      pdfPath("receipt.pdf"),
+    );
+    await expect(invoicePdf).toBeVisible();
+  });
 });

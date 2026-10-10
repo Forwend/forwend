@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Deposit, Invoice } from "@/features/invoices/invoices";
-import { PAY_STATES, payState, shortDuration } from "@/features/pay/pay";
+import { PAY_STATES, payState, receiptDeposits, shortDuration } from "@/features/pay/pay";
 
 const invoice: Invoice = {
   invoiceId: `0x${"1".repeat(64)}`,
@@ -21,6 +21,8 @@ const invoice: Invoice = {
   settlementStatus: "none",
   settlementTxHash: null,
   createdAt: "2026-10-10T10:00:00Z",
+  paidAt: null,
+  settledAt: null,
   deposits: [],
 };
 const deposit = (amount: string, extra: Partial<Deposit> = {}): Deposit => ({
@@ -76,6 +78,23 @@ describe("payState", () => {
       deposits: [deposit("1000"), deposit("250", { logIndex: 1 }), deposit("70", { late: true })],
     };
     expect(payState(over, after)).toMatchObject({ received: 1250n, extra: 250n, late: 70n });
+  });
+});
+
+describe("receiptDeposits", () => {
+  it("names only the confirmed payments made before the checkout closed", () => {
+    const paid = deposit("1000");
+    const settled = {
+      ...invoice,
+      paymentStatus: "paid",
+      settlementStatus: "settled",
+      deposits: [
+        paid,
+        deposit("70", { logIndex: 1, late: true }),
+        deposit("5", { logIndex: 2, status: "detected" }),
+      ],
+    };
+    expect(receiptDeposits(settled)).toEqual([paid]);
   });
 });
 

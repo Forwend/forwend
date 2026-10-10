@@ -12,6 +12,7 @@ import {
   type StatusFilter,
   searchQuery,
 } from "@/features/activity/activity";
+import { API_BASE } from "@/shared/config/api";
 
 export const INVOICES_PAGE_SIZE = 20;
 
@@ -63,10 +64,17 @@ export const INVOICE_STEPS = {
 /** The timeline, in order. */
 export const INVOICE_TIMELINE = Object.values(INVOICE_STEPS);
 
+/** The PDFs the API draws; the receipt answers 409 until the invoice is paid. */
+export const INVOICE_PDFS = {
+  invoice: "invoice",
+  receipt: "receipt",
+} as const;
+
 export type ExpiryChoice = keyof typeof EXPIRY_CHOICES;
 export type InvoiceField = (typeof INVOICE_FIELDS)[keyof typeof INVOICE_FIELDS];
 export type AmountError = (typeof AMOUNT_ERRORS)[keyof typeof AMOUNT_ERRORS];
 export type InvoiceStep = (typeof INVOICE_STEPS)[keyof typeof INVOICE_STEPS];
+export type InvoicePdf = (typeof INVOICE_PDFS)[keyof typeof INVOICE_PDFS];
 
 /** An enabled token, as GET /v1/profiles/{id}/balances lists it. */
 export interface InvoiceToken {
@@ -134,6 +142,10 @@ export interface InvoiceSummary {
 
 /** An invoice read alone or just created. */
 export interface Invoice extends InvoiceSummary {
+  /** Once paid: the block time of the deposit that completed the amount. */
+  paidAt: string | null;
+  /** Once settled: when the settlement was recorded as final. */
+  settledAt: string | null;
   deposits: Deposit[];
 }
 
@@ -163,6 +175,10 @@ export function invoiceNumber(n: number): string {
 export function exactDigits(baseUnits: bigint, decimals: number): number {
   const fraction = (baseUnits % 10n ** BigInt(decimals)).toString().padStart(decimals, "0");
   return Math.min(decimals, Math.max(2, fraction.replace(/0+$/, "").length));
+}
+
+export function invoicePdfUrl(invoiceId: string, pdf: InvoicePdf): string {
+  return `${API_BASE}/v1/invoices/${encodeURIComponent(invoiceId)}/${pdf}.pdf`;
 }
 
 export function tokenKey(t: { chainId: number; token: string }): string {

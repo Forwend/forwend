@@ -62,6 +62,9 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - The number, these fields and `issuer` never change, like the terms: a database trigger rejects any update.
 - `settlementTxHash` is the signer's settle transaction once the invoice is settled; null before, and when the refund
   authority settled the receiver outside the signer. The activity's invoice items carry it as `txHash`.
+- An invoice read alone (the public GET, and create) also has `paidAt` and `settledAt`, null until reached. `paidAt`
+  is the receipt's paid time (below); `settledAt` is when the settlement was recorded as final: the `created_at` of
+  the ledger's settlement transaction, written with `settlementStatus = settled`. List items have neither.
 - `GET /v1/profiles/{profileId}/invoices?limit=&cursor=`: the list format above, highest number (newest) first; items
   have no `deposits`. Owner only, like every `{profileId}` route.
 - The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due date, `senderName` and

@@ -70,10 +70,12 @@ type issuerJSON struct {
 	Email   string  `json:"email"`
 }
 
-// invoiceDetailJSON is one invoice read alone: with its deposits.
+// invoiceDetailJSON is one invoice read alone: with its deposits and, once reached, the paid and settled times.
 type invoiceDetailJSON struct {
 	invoiceJSON
-	Deposits []depositJSON `json:"deposits"`
+	PaidAt    *string       `json:"paidAt"`
+	SettledAt *string       `json:"settledAt"`
+	Deposits  []depositJSON `json:"deposits"`
 }
 
 type invoicesJSON struct {
@@ -182,7 +184,8 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 }
 
 func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON {
-	out := invoiceDetailJSON{invoiceJSON: toInvoiceJSON(inv, withClient), Deposits: []depositJSON{}}
+	out := invoiceDetailJSON{invoiceJSON: toInvoiceJSON(inv, withClient), PaidAt: orNullTime(inv.PaidAt),
+		SettledAt: orNullTime(inv.SettledAt), Deposits: []depositJSON{}}
 	for _, d := range inv.Deposits {
 		out.Deposits = append(out.Deposits, depositJSON{TxHash: d.TxHash, LogIndex: d.LogIndex, Amount: d.Amount.String(),
 			BlockNumber: d.BlockNumber, Status: d.Status, Late: d.Late, BlocksLeft: d.BlocksLeft,
@@ -196,6 +199,13 @@ func orNull(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+func orNullTime(t time.Time) *string {
+	if t.IsZero() {
+		return nil
+	}
+	return orNull(t.Format(time.RFC3339))
 }
 
 // idempotencyKey reads the Idempotency-Key header: 1 to 255 bytes of UTF-8.

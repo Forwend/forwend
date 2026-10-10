@@ -2,6 +2,7 @@
 
 import {
   Button,
+  buttonClasses,
   formatTokenAmount,
   Money,
   NetworkWarning,
@@ -12,7 +13,7 @@ import {
   StatusPill,
   Tabs,
 } from "@forwend/ui-web";
-import { Check, Globe, Info, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Check, FileDown, Globe, Info, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { notFound } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { InvoiceDeposits } from "@/features/invoices/invoice-deposits";
@@ -20,16 +21,19 @@ import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/invoice-p
 import {
   exactDigits,
   formatDueDate,
+  INVOICE_PDFS,
   type Invoice,
   invoiceNumber,
+  invoicePdfUrl,
   invoiceProgress,
   invoiceStatus,
 } from "@/features/invoices/invoices";
 import { useGetInvoiceQuery } from "@/features/invoices/invoices-api";
-import { PAY_STATES, payState, payToken, shortDuration } from "@/features/pay/pay";
+import { PAY_STATES, payState, payToken, receiptDeposits, shortDuration } from "@/features/pay/pay";
 import { PAY_COPY as COPY } from "@/features/pay/pay-copy";
 import { checkedReceiveAddress } from "@/features/pay/receive-address";
 import { chainName, isTestnet } from "@/shared/chains/chains";
+import { ExplorerLink } from "@/shared/chains/explorer-link";
 import { TokenMark } from "@/shared/chains/token-mark";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
@@ -38,6 +42,7 @@ const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle
 const PANEL = "rounded-md border border-line bg-surface";
 const PANEL_TITLE = "border-b border-line px-4 py-3 text-base font-semibold text-ink sm:px-5";
 const ICON = "mt-0.5 size-[var(--fw-icon-md)] shrink-0";
+const PDF_LINK = `${buttonClasses({ variant: "secondary", size: "sm" })} self-start`;
 
 const formatMoney = (units: bigint, token: { symbol: string; decimals: number }) =>
   `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`;
@@ -92,6 +97,13 @@ function Loaded({ invoice }: { invoice: Invoice }) {
             .join(" · ")}
         </p>
         {issuer || sender ? null : <p className="text-sm text-muted">{COPY.noIssuer}</p>}
+        <a
+          href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.invoice)}
+          className={`${PDF_LINK} mt-2`}
+        >
+          <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
+          {COPY.invoicePdf}
+        </a>
       </header>
       {address && token ? (
         <Checkout invoice={invoice} address={address} token={token} now={now} />
@@ -158,13 +170,16 @@ function Checkout({
         </div>
         <dl className="divide-y divide-line">
           {invoice.dueDate ? <Row term={COPY.dueDate}>{formatDueDate(invoice.dueDate)}</Row> : null}
-          <Row term={COPY.closes}>
-            {TIME.format(expiresAt)}
-            <span className="text-muted">
-              {" · "}
-              {pay.closed ? COPY.closedNow : COPY.closesIn(shortDuration(expiresAt - now))}
-            </span>
-          </Row>
+          {/* Once paid the checkout no longer matters to the payer; a countdown would read as still open. */}
+          {pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled ? null : (
+            <Row term={COPY.closes}>
+              {TIME.format(expiresAt)}
+              <span className="text-muted">
+                {" · "}
+                {pay.closed ? COPY.closedNow : COPY.closesIn(shortDuration(expiresAt - now))}
+              </span>
+            </Row>
+          )}
           {invoice.note ? (
             <Row term={COPY.note} stacked>
               {invoice.note}
@@ -172,6 +187,8 @@ function Checkout({
           ) : null}
         </dl>
       </section>
+
+      {pay.state === PAY_STATES.settled ? <Receipt invoice={invoice} token={token} /> : null}
 
       {isTestnet(invoice.chainId) ? (
         <p
@@ -301,6 +318,67 @@ function Status({
         <InvoiceDeposits invoice={invoice} token={token} />
       </div>
     </section>
+  );
+}
+
+function Receipt({
+  invoice,
+  token,
+}: {
+  invoice: Invoice;
+  token: { symbol: string; decimals: number };
+}) {
+  const amount = BigInt(invoice.amount);
+  const deposits = receiptDeposits(invoice);
+  return (
+    <section aria-labelledby="pay-receipt" className={PANEL}>
+      <h2 id="pay-receipt" className={PANEL_TITLE}>
+        {COPY.receipt}
+      </h2>
+      <dl className="divide-y divide-line">
+        <Row term={COPY.amountPaid}>
+          <Money
+            baseUnits={amount}
+            decimals={token.decimals}
+            fractionDigits={exactDigits(amount, token.decimals)}
+            token={token.symbol}
+          />
+        </Row>
+        {invoice.paidAt ? (
+          <Row term={COPY.paidAt}>{TIME.format(Date.parse(invoice.paidAt))}</Row>
+        ) : null}
+        {invoice.settledAt ? (
+          <Row term={COPY.settledAt}>{TIME.format(Date.parse(invoice.settledAt))}</Row>
+        ) : null}
+        {deposits.length > 0 ? (
+          <Row term={COPY.paymentTx(deposits.length)} stacked>
+            {deposits.map((d) => (
+              <TxHash key={`${d.txHash}:${d.logIndex}`} chainId={invoice.chainId} hash={d.txHash} />
+            ))}
+          </Row>
+        ) : null}
+        {invoice.settlementTxHash ? (
+          <Row term={COPY.settlementTx} stacked>
+            <TxHash chainId={invoice.chainId} hash={invoice.settlementTxHash} />
+          </Row>
+        ) : null}
+      </dl>
+      <div className="flex border-t border-line px-4 py-4 sm:px-5">
+        <a href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.receipt)} className={PDF_LINK}>
+          <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
+          {COPY.receiptPdf}
+        </a>
+      </div>
+    </section>
+  );
+}
+
+function TxHash({ chainId, hash }: { chainId: number; hash: string }) {
+  return (
+    <span className="flex flex-col items-start">
+      <span className="font-mono text-xs break-all">{hash}</span>
+      <ExplorerLink chainId={chainId} txHash={hash} named className="-ml-1" />
+    </span>
   );
 }
 

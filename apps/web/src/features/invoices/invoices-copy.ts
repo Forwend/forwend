@@ -3,7 +3,9 @@ import {
   type EXPIRY_CHOICES,
   INVOICE_FIELDS,
   INVOICE_LIMITS,
+  INVOICE_PDFS,
   INVOICE_STEPS,
+  type InvoicePdf,
   type InvoiceStep,
 } from "@/features/invoices/invoices";
 
@@ -146,6 +148,11 @@ export const INVOICE_COPY = {
   created: "Created",
   settlement: "Settlement transaction",
   note: "Note",
+  pdfs: "Documents",
+  pdf: {
+    [INVOICE_PDFS.invoice]: "Invoice PDF",
+    [INVOICE_PDFS.receipt]: "Receipt PDF",
+  } satisfies Record<InvoicePdf, string>,
   none: "None",
   client: "Client",
   noClient: "No client details.",

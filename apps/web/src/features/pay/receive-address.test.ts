@@ -83,6 +83,8 @@ describe("checkedReceiveAddress", () => {
     settlementStatus: "none",
     settlementTxHash: null,
     createdAt: "2026-10-10T10:00:00Z",
+    paidAt: null,
+    settledAt: null,
     deposits: [],
   };
 

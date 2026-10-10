@@ -69,7 +69,7 @@ func Receipt(inv invoice.Invoice, payLink string) ([]byte, error) {
 	d.row("Paid", stamp(inv.PaidAt), 1)
 	label := "Deposits"
 	for _, dep := range inv.Deposits {
-		if dep.Status == "confirmed" {
+		if dep.Status == "confirmed" && !dep.Late { // late money is held for the payer, not paid (D-26)
 			d.row(label, dep.TxHash+"\n"+amount(dep.Amount, inv.Decimals, inv.Symbol), 4)
 			label = ""
 		}
