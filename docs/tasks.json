@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 110,
+  "nextId": 111,
   "tasks": [
     {
       "id": "F001",
@@ -9687,7 +9687,7 @@
         "F089",
         "F099"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "e2e",
         "unit"
@@ -9700,9 +9700,96 @@
         "packages/contracts/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-10 review pass by reviewer: PASS after two fixes. paidAt/settledAt read in the single invoice query, settledAt from the unique settlement ledger entry booked in the same transaction as settled; no private data leaked; explorer links per chain via txLink; dashboard receipt link gated on paid like the API's 409; pay page has no Privy or new scripts, same-origin PDF links, axe 0 serious/critical on settled in both themes. FIXED: the receipt PDF listed late deposits held for the payer (D-26), now only confirmed non-late ones, TestReceiptPDF adds a late deposit (fails without the fix); a paid or settled pay page no longer shows the checkout countdown (e2e asserts it). Re-verified 8 checks."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-10T21:41:44Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 80.1,
+            "log": "docs/runs/F090-20261010T214144Z-e2e.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 48.9,
+            "log": "docs/runs/F090-20261010T214144Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F090-20261010T214144Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F090-20261010T214144Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F090-20261010T214144Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F090-20261010T214144Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.0,
+            "log": "docs/runs/F090-20261010T214144Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F090-20261010T214144Z-keep.log"
+          }
+        ],
+        "taskHash": "5a42810d08993a85",
+        "filesHash": "d4f2df7f96cf76ab",
+        "proof": {
+          "1": "e2e: apps/web/e2e/pay.spec.ts 'shows who asks and the rules...' checks the invoice PDF link (/api/v1/invoices/<id>/invoice.pdf) and no Receipt region while open; 'pay page receipt > shows no receipt while paid, then the receipt once settled, beside the invoice PDF' checks no receipt while paid, then amount, paid and settled times, deposit and settlement hashes with Basescan links (new tab) and the receipt PDF link; apps/web/e2e/privy/sign-in.spec.ts merchant detail checks the Invoice PDF link (200 application/pdf), no Receipt PDF unpaid, Receipt PDF once the read says paid; Go TestReceiptPDF checks paidAt/settledAt in GET /v1/invoices/{id}",
+          "2": "e2e: apps/web/e2e/pay.spec.ts 'has no serious or critical axe violations in the light/dark theme' runs axe on the open, confirming and settled (receipt) pay page: 0 serious or critical; 'fits a 390 px phone' covers the settled receipt without sideways scroll"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS after two fixes. paidAt/settledAt read in the single invoice query, settledAt from the unique settlement ledger entry booked in the same transaction as settled; no private data leaked; explorer links per chain via txLink; dashboard receipt link gated on paid like the API's 409; pay page has no Privy or new scripts, same-origin PDF links, axe 0 serious/critical on settled in both themes. FIXED: the receipt PDF listed late deposits held for the payer (D-26), now only confirmed non-late ones, TestReceiptPDF adds a late deposit (fails without the fix); a paid or settled pay page no longer shows the checkout countdown (e2e asserts it). Re-verified 8 checks.",
+          "at": "2026-10-10T21:44:08Z",
+          "filesHash": "d4f2df7f96cf76ab"
+        },
+        "commit": "c3860aa",
+        "doneAt": "2026-10-10T21:44:10Z"
+      },
+      "branch": "feat/f090-the-pay-page-shows-a-receipt-after-settl",
+      "baseCommit": "8d9a1ee5116c732b615593eda92029bfd9917ae6",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f090-the-pay-page-shows-a-receipt-after-settl",
+        "base": "main"
+      }
     },
     {
       "id": "F091",
@@ -11238,6 +11325,32 @@
         "branch": "fix/f109-the-signer-replaces-a-stuck-settle-with",
         "base": "main"
       }
+    },
+    {
+      "id": "F110",
+      "type": "fix",
+      "behavior": "Invoices, Activity and Transactions filter and search on the server, so a match on an older page shows without loading every page",
+      "acceptance": [
+        "GET /v1/profiles/{id}/invoices, /activity and /transactions take the page's filter (invoice status: open, paid, settled, expired; transaction direction: in, out) and a search text (invoice number, title, client name or email, amount, address, transaction hash) and return only matching rows with the same cursor paging; empty or too-long search is a 422; queries use indexes (EXPLAIN on a seeded DB recorded in the proof); openapi.yaml and api.md list the parameters; Go tests on real Postgres cover each filter, search, and paging through a filtered list",
+        "The web sends filter and search to the API (search waits about 300 ms after typing and cancels the older request) instead of filtering loaded rows; a match that sits beyond the first page shows on the first load; 'Show more' continues the filtered list; the URL keeps filter and search so reload and Back keep them; empty results say nothing matched and offer to clear; Playwright covers a match beyond the first page on each of the three pages"
+      ],
+      "dependsOn": [
+        "F100"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e",
+        "unit"
+      ],
+      "refs": [
+        "R-47"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

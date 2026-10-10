@@ -6,9 +6,11 @@ import {
   type Deposit,
   exactDigits,
   filterInvoices,
+  INVOICE_PDFS,
   type Invoice,
   invalidField,
   invoiceNumber,
+  invoicePdfUrl,
   invoiceProgress,
   invoiceStatus,
   parseTokenAmount,
@@ -78,6 +80,8 @@ const open: Invoice = {
   settlementStatus: "none",
   settlementTxHash: null,
   createdAt: "2026-10-10T10:00:00Z",
+  paidAt: null,
+  settledAt: null,
   deposits: [],
 };
 const deposit: Deposit = {
@@ -175,5 +179,16 @@ describe("filterInvoices", () => {
     expect(numbers("all", "brightline")).toEqual([18]);
     expect(numbers("open", "0007")).toEqual([7]);
     expect(numbers("settled", "0007")).toEqual([]);
+  });
+});
+
+describe("invoicePdfUrl", () => {
+  it("links each PDF through the same-origin API path", () => {
+    expect(invoicePdfUrl(open.invoiceId, INVOICE_PDFS.invoice)).toBe(
+      `/api/v1/invoices/${open.invoiceId}/invoice.pdf`,
+    );
+    expect(invoicePdfUrl(open.invoiceId, INVOICE_PDFS.receipt)).toBe(
+      `/api/v1/invoices/${open.invoiceId}/receipt.pdf`,
+    );
   });
 });

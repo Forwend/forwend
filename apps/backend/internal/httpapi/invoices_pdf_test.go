@@ -198,7 +198,8 @@ func TestInvoicePDFNotFound(t *testing.T) {
 }
 
 // The receipt answers 409 until the invoice is paid, then shows the paid time (the block time of the deposit that
-// completed it), the deposits' and the settlement's tx hashes.
+// completed it), the deposits' and the settlement's tx hashes. The public GET gives the same paid time and, once
+// settled, the time the ledger booked the settlement.
 func TestReceiptPDF(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
@@ -206,11 +207,18 @@ func TestReceiptPDF(t *testing.T) {
 		`{"chainId": 84532, "token": "`+usdc+`", "amount": "2000000"}`).body
 	id, receive := made["invoiceId"].(string), made["receiveAddress"].(string)
 	expires, _ := time.Parse(time.RFC3339, made["expiresAt"].(string))
+	times := func(when string, paid, settled any) {
+		t.Helper()
+		if b := e.get(t, id).body; b["paidAt"] != paid || b["settledAt"] != settled {
+			t.Fatalf("%s: paidAt %v, settledAt %v; want %v, %v", when, b["paidAt"], b["settledAt"], paid, settled)
+		}
+	}
 	notPaid := func(when string) {
 		t.Helper()
 		if r := e.pdf(t, id, "receipt.pdf", ""); r.status != http.StatusConflict || r.errorCode() != "invoice_not_paid" {
 			t.Fatalf("%s: got %d %s", when, r.status, r.body)
 		}
+		times(when, nil, nil)
 	}
 	notPaid("open")
 
@@ -250,16 +258,48 @@ func TestReceiptPDF(t *testing.T) {
 		"Paid\n"+paidAt.Format("2006-01-02 15:04")+" UTC", "Deposits\n"+first+"\n1.50 USDC", second+"\n0.50 USDC",
 		"Settlement\nPending", "Check this receipt at\n"+link)
 
+	paid := paidAt.Format(time.RFC3339)
+	times("paid", paid, nil)
+
+	// As the signer confirms it: the ledger, the intent and the invoice in one transaction.
 	settled := "0x" + strings.Repeat("0b", 32)
-	if _, err := e.pool.Exec(ctx, `
+	tx, err := e.pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(ctx)
+	if err := ledger.BookSettlement(ctx, tx, id, big.NewInt(2000000)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
 		WITH i AS (UPDATE settlement_intents SET status = 'confirmed', nonce = 0, tx_hash = $2, raw_tx = '\x00'
 		           WHERE invoice_id = $1)
 		UPDATE invoices SET settlement_status = 'settled' WHERE id = $1`, id, settled); err != nil {
 		t.Fatal(err)
 	}
+	var settledAt time.Time
+	if err := tx.QueryRow(ctx, "SELECT now()").Scan(&settledAt); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	times("settled", paid, settledAt.UTC().Format(time.RFC3339))
 	after := e.pdf(t, id, "receipt.pdf", r.header.Get("ETag"))
 	if after.status != http.StatusOK {
 		t.Fatalf("settled, with the paid receipt's ETag: %d", after.status)
 	}
 	mustContain(t, pdfText(t, after.body), "Settlement\nSettled", "Settlement tx\n"+settled)
+
+	// A deposit after the checkout closed is held for the payer (D-26), so the receipt leaves it out.
+	late := "0x" + strings.Repeat("0c", 32)
+	if _, err := e.pool.Exec(ctx, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id,
+		tx_hash, log_index, block_hash, block_number, block_time, from_address, to_address, amount, status)
+		VALUES (84532, 'evm', $1, $2, $3, 0, $3, 110, $4, $5, $5, 700000, 'confirmed')`,
+		usdc, id, late, expires.Unix()+60, receive); err != nil {
+		t.Fatal(err)
+	}
+	if text := pdfText(t, e.pdf(t, id, "receipt.pdf", "").body); strings.Contains(text, late) {
+		t.Fatalf("the receipt lists the late deposit %s:\n%s", late, text)
+	}
 }

@@ -82,6 +82,11 @@ export function payState(inv: Invoice, now: number) {
   };
 }
 
+/** The payments the receipt names: confirmed and before expiry. A late one is held for the payer, not part of it. */
+export function receiptDeposits(inv: Invoice) {
+  return inv.deposits.filter((d) => !d.late && d.status === API_DEPOSIT_STATUSES.confirmed);
+}
+
 const UNITS = [
   ["d", 86_400],
   ["h", 3_600],

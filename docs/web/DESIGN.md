@@ -97,6 +97,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   and status pill, before-you-pay notes, the network confirm button, the send panel with wallet and exchange tabs (QR
   beside the full address from small screens up), and the status timeline with each payment received (amount, status,
   transaction and explorer link). No image and no glass; it follows the system theme.
+- A secondary "Download invoice PDF" button sits under the heading in every state. Once settled, a Receipt panel
+  follows the amount panel: amount paid, paid and settled times, each payment's and the settlement's full hash (Geist
+  Mono) with the explorer named under it, and "Download receipt PDF". Before settlement there is no receipt. Once paid, the checkout close time is hidden.
+- PDFs open through the same-origin `/api` path. The invoice detail lists them under Documents: the invoice PDF
+  always, the receipt PDF once paid.
 - While a payment confirms, the timeline's step fills as blocks pass (a sweep until the first block passes) and the
   status line stays short: "Confirming · about 19 min left", the blocks left smaller beside it. The invoice detail uses
   the same timeline, line and payments, and no status pill: the timeline carries the status.

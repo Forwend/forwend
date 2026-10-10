@@ -1,21 +1,32 @@
 "use client";
 
-import { Button, COPY_STATUS, formatTokenAmount, Skeleton, useCopy } from "@forwend/ui-web";
+import {
+  Button,
+  buttonClasses,
+  COPY_STATUS,
+  formatTokenAmount,
+  Skeleton,
+  useCopy,
+} from "@forwend/ui-web";
 import { skipToken } from "@reduxjs/toolkit/query";
-import { Check, ChevronLeft, Copy } from "lucide-react";
+import { Check, ChevronLeft, Copy, FileDown } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useId } from "react";
+import { API_PAYMENT_STATUSES } from "@/features/activity/activity";
 import { InvoiceAmount } from "@/features/invoices/invoice-amount";
 import { InvoiceDeposits } from "@/features/invoices/invoice-deposits";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/invoice-progress";
 import {
   exactDigits,
   formatDueDate,
+  INVOICE_PDFS,
   INVOICE_STEPS,
   type Invoice,
+  type InvoicePdf,
   type InvoiceSummary,
   type InvoiceToken,
   invoiceNumber,
+  invoicePdfUrl,
   invoiceProgress,
   tokenKey,
 } from "@/features/invoices/invoices";
@@ -193,6 +204,14 @@ function Loaded({
               </Row>
             ) : null}
             <Row term={COPY.note}>{invoice.note ?? COPY.none}</Row>
+            <Row term={COPY.pdfs}>
+              <span className="flex flex-wrap gap-x-5 gap-y-1">
+                <PdfLink invoiceId={invoice.invoiceId} pdf={INVOICE_PDFS.invoice} />
+                {invoice.paymentStatus === API_PAYMENT_STATUSES.paid ? (
+                  <PdfLink invoiceId={invoice.invoiceId} pdf={INVOICE_PDFS.receipt} />
+                ) : null}
+              </span>
+            </Row>
           </dl>
         </section>
 
@@ -244,6 +263,18 @@ function Row({ term, children }: { term: string; children: ReactNode }) {
       <dt className="text-xs text-muted">{term}</dt>
       <dd className="mt-0.5 text-sm break-words whitespace-pre-line text-ink">{children}</dd>
     </div>
+  );
+}
+
+function PdfLink({ invoiceId, pdf }: { invoiceId: string; pdf: InvoicePdf }) {
+  return (
+    <a
+      href={invoicePdfUrl(invoiceId, pdf)}
+      className={`${buttonClasses({ variant: "link" })} gap-1.5 text-sm`}
+    >
+      <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
+      {COPY.pdf[pdf]}
+    </a>
   );
 }
 

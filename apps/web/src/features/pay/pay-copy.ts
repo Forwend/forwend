@@ -10,6 +10,7 @@ export const PAY_COPY = {
   requests: (name: string, amount: string) => `${name} requests ${amount}`,
   request: (number: string) => `Request ${number}`,
   noIssuer: "The sender gave no name or billing details for this invoice.",
+  invoicePdf: "Download invoice PDF",
   amountDue: "Amount due",
   amountPaid: "Amount paid",
   dueDate: "Due date",
@@ -70,6 +71,12 @@ export const PAY_COPY = {
     `You sent ${extra} more than the invoice. The extra is held for you; ask the sender to get it back.`,
   late: (late: string) =>
     `${late} arrived after the checkout closed. It is held for you, not paid to the sender; ask the sender to get it back.`,
+  receipt: "Receipt",
+  paidAt: "Paid",
+  settledAt: "Settled",
+  paymentTx: (count: number) => (count === 1 ? "Payment transaction" : "Payment transactions"),
+  settlementTx: "Settlement transaction",
+  receiptPdf: "Download receipt PDF",
   footer: "Payments by Forwend. You don't need an account to pay.",
 } as const;
 

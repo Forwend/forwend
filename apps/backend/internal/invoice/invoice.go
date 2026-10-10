@@ -103,6 +103,8 @@ type Invoice struct {
 	Network          string    // the chain's name; set by Get
 	// PaidAt is the block time of the deposit that completed the amount owed to the creator; set by Get once paid.
 	PaidAt time.Time
+	// SettledAt is when the settlement was booked as final, from the ledger; set by Get once settled.
+	SettledAt time.Time
 }
 
 // Deposit is a transfer to the receive address that is not reorged. Until its block is final, BlocksLeft and
