@@ -7794,7 +7794,7 @@
         "Tests sit beside their sources and the same tests run: lint, typecheck, unit (ui-unit), build, e2e (kit) pass."
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "passing",
       "verification": [
         "docs-check",
         "ui-unit"
@@ -7811,11 +7811,104 @@
         "pnpm-lock.yaml"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-09 review pass by reviewer: Public API unchanged: index.ts on main (incl. export type * files) and HEAD both export the same 66 value names and 57 type-only names, no kind changes. Pure move: the multiset of all non-import source lines in packages/ui-web (excluding index.ts) is identical between main and HEAD; 'use client' kept as first line in the same 18 files; merged constants are declared above their uses (button, panel, email-capture, activity-row, payment-timeline, use-copy, lib/tone). CAPTURE_STATUS/COPY_STATUS now live in 'use client' modules; their only app consumers (waitlist-form, kit components-showcase) are client components, so no server-side client-reference access. Ownership: family values sit in their family; hooks/use-copy, lib/tone, lib/cx and types/loader are used across families; no types/ui or types/payments files remain; internals use direct relative imports, none via the package index. Tests: same 7 files and 16 tests beside sources, vitest default discovery, tsconfig include drops test/. No changes under apps, design-tokens, contracts, package.json or lockfile. Ran: ui-web test 7 files/16 passed, ui-web typecheck ok, web typecheck exit 0."
+      ],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-09T23:55:57Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F075-20261009T235557Z-docs-check.log"
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F075-20261009T235557Z-ui-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F075-20261009T235557Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F075-20261009T235557Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F075-20261009T235557Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 27.0,
+            "log": "docs/runs/F075-20261009T235557Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.1,
+            "log": "docs/runs/F075-20261009T235557Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 39.5,
+            "log": "docs/runs/F075-20261009T235557Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F075-20261009T235557Z-keep.log"
+          }
+        ],
+        "taskHash": "83a5d6b0bcb98d31",
+        "filesHash": "454b1a7f4f82f8ab",
+        "proof": {
+          "1": "ui-unit: components/{buttons,forms,navigation,overlays,feedback,display,payments}; props in component files; family values in families (forms/field-classes, payments/payment-status, token-amount, short-address); cross-family only lib/cx, lib/tone, hooks/use-copy, hooks/use-theme, types/loader; types/ui and types/payments gone",
+          "2": "typecheck: index.ts regenerated from the old export map: same names, same value/type kinds; apps/web typechecks and builds unchanged",
+          "3": "e2e: tests beside sources (7 files, 16 tests, same as before); lint, unit, build, e2e incl. kit and live suite pass"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Public API unchanged: index.ts on main (incl. export type * files) and HEAD both export the same 66 value names and 57 type-only names, no kind changes. Pure move: the multiset of all non-import source lines in packages/ui-web (excluding index.ts) is identical between main and HEAD; 'use client' kept as first line in the same 18 files; merged constants are declared above their uses (button, panel, email-capture, activity-row, payment-timeline, use-copy, lib/tone). CAPTURE_STATUS/COPY_STATUS now live in 'use client' modules; their only app consumers (waitlist-form, kit components-showcase) are client components, so no server-side client-reference access. Ownership: family values sit in their family; hooks/use-copy, lib/tone, lib/cx and types/loader are used across families; no types/ui or types/payments files remain; internals use direct relative imports, none via the package index. Tests: same 7 files and 16 tests beside sources, vitest default discovery, tsconfig include drops test/. No changes under apps, design-tokens, contracts, package.json or lockfile. Ran: ui-web test 7 files/16 passed, ui-web typecheck ok, web typecheck exit 0.",
+          "at": "2026-10-09T23:59:35Z",
+          "filesHash": "454b1a7f4f82f8ab"
+        },
+        "commit": "3e99bfc",
+        "doneAt": "2026-10-10T00:00:12Z"
+      },
       "branch": "refactor/f075-ui-web-components-are-grouped-by-purpose",
-      "baseCommit": "72739c1d925e93f882cff133ad2bbe08a408da0f"
+      "baseCommit": "72739c1d925e93f882cff133ad2bbe08a408da0f",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f075-ui-web-components-are-grouped-by-purpose",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
