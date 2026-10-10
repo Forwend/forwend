@@ -1,4 +1,4 @@
-package main
+package balance
 
 import (
 	"context"
@@ -17,9 +17,9 @@ import (
 // dead chain is not dialed on every request.
 const RetryPick = 30 * time.Second
 
-// chainBalances reads wallet balances with each chain's second RPC (D-15), picked on first use like the worker does,
+// ChainReader reads wallet balances with each chain's second RPC (D-15), picked on first use like the worker does,
 // and picked again after a failed read. Each chain has its own lock, so a slow chain never holds up another.
-type chainBalances struct {
+type ChainReader struct {
 	specs map[uint64]chain.Spec
 	keys  []string
 
@@ -34,7 +34,13 @@ type chainRPCs struct {
 	failedAt time.Time
 }
 
-func (c *chainBalances) read(ctx context.Context, chainID uint64, token, holder string) (*big.Int, uint64, error) {
+// NewChainReader reads the chains in specs, dialing Infura with keys where a chain lists it.
+func NewChainReader(specs map[uint64]chain.Spec, keys []string) *ChainReader {
+	return &ChainReader{specs: specs, keys: keys, chains: map[uint64]*chainRPCs{}}
+}
+
+// Read is a ledger.BalanceOf: the holder's token balance at the second RPC's finalized block.
+func (c *ChainReader) Read(ctx context.Context, chainID uint64, token, holder string) (*big.Int, uint64, error) {
 	spec, ok := c.specs[chainID]
 	if !ok {
 		return nil, 0, fmt.Errorf("chain %d is not in the chain list", chainID)
@@ -90,7 +96,8 @@ func cancelled(ctx context.Context) bool {
 	return errors.Is(ctx.Err(), context.Canceled)
 }
 
-func (c *chainBalances) close() {
+// Close closes every picked chain's RPC clients.
+func (c *ChainReader) Close() {
 	for _, ch := range c.chains {
 		if ch.rpcs != nil {
 			ch.rpcs.Close()

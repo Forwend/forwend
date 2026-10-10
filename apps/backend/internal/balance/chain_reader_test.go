@@ -1,4 +1,4 @@
-package main
+package balance
 
 import (
 	"context"
@@ -42,12 +42,12 @@ func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 	anvil := chaintest.Start(t)
 	token := anvil.DeployToken()
 	h := hung(t)
-	c := &chainBalances{keys: nil, chains: map[uint64]*chainRPCs{}, specs: map[uint64]chain.Spec{
+	c := NewChainReader(map[uint64]chain.Spec{
 		chaintest.ChainID: {ChainID: chaintest.ChainID, Public: []string{anvil.URL, strings.Replace(anvil.URL, "127.0.0.1", "localhost", 1)}},
 		dead:              {ChainID: dead, Public: []string{h, strings.Replace(h, "127.0.0.1", "localhost", 1)}},
-	}}
+	}, nil)
 	ctx := context.Background()
-	if _, _, err := c.read(ctx, chaintest.ChainID, token, holder); err != nil {
+	if _, _, err := c.Read(ctx, chaintest.ChainID, token, holder); err != nil {
 		t.Fatal(err)
 	}
 
@@ -55,12 +55,12 @@ func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 	go func() {
 		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 		defer cancel()
-		_, _, err := c.read(ctx, dead, usdc, holder)
+		_, _, err := c.Read(ctx, dead, usdc, holder)
 		stuck <- err
 	}()
 	time.Sleep(200 * time.Millisecond) // the dead chain is being picked
 	start := time.Now()
-	if _, _, err := c.read(ctx, chaintest.ChainID, token, holder); err != nil || time.Since(start) > time.Second {
+	if _, _, err := c.Read(ctx, chaintest.ChainID, token, holder); err != nil || time.Since(start) > time.Second {
 		t.Fatalf("healthy chain while another hangs: %v after %v", err, time.Since(start))
 	}
 	if err := <-stuck; err == nil {
@@ -70,7 +70,7 @@ func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 	// A request that ends early keeps the shared clients.
 	cancelled, cancel := context.WithCancel(ctx)
 	cancel()
-	if _, _, err := c.read(cancelled, chaintest.ChainID, token, holder); err == nil {
+	if _, _, err := c.Read(cancelled, chaintest.ChainID, token, holder); err == nil {
 		t.Fatal("a cancelled read gave a balance")
 	}
 	if c.chains[chaintest.ChainID].rpcs == nil {
@@ -81,17 +81,17 @@ func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 // After a pick that failed or ran out of time, the chain answers at once with an error until RetryPick has passed.
 func TestFailedPickIsRemembered(t *testing.T) {
 	h := hung(t)
-	c := &chainBalances{chains: map[uint64]*chainRPCs{}, specs: map[uint64]chain.Spec{
+	c := NewChainReader(map[uint64]chain.Spec{
 		dead: {ChainID: dead, Public: []string{h, strings.Replace(h, "127.0.0.1", "localhost", 1)}},
-	}}
+	}, nil)
 	ctx := context.Background()
 	short, cancel := context.WithTimeout(ctx, 300*time.Millisecond)
 	defer cancel()
-	if _, _, err := c.read(short, dead, usdc, holder); err == nil {
+	if _, _, err := c.Read(short, dead, usdc, holder); err == nil {
 		t.Fatal("no error from a hung chain")
 	}
 	start := time.Now()
-	if _, _, err := c.read(ctx, dead, usdc, holder); err == nil || time.Since(start) > 50*time.Millisecond {
+	if _, _, err := c.Read(ctx, dead, usdc, holder); err == nil || time.Since(start) > 50*time.Millisecond {
 		t.Fatalf("second read: %v after %v; want a fast error", err, time.Since(start))
 	}
 }

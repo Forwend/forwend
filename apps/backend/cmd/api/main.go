@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/auth"
+	"github.com/ensp1re/forwend/apps/backend/internal/balance"
 	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ensp1re/forwend/apps/backend/internal/config"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
@@ -47,8 +48,8 @@ func run() error {
 		return err
 	}
 	defer pool.Close()
-	balances := &chainBalances{specs: specs, keys: cfg.InfuraKeys, chains: map[uint64]*chainRPCs{}}
-	defer balances.close()
+	balances := balance.NewChainReader(specs, cfg.InfuraKeys)
+	defer balances.Close()
 
 	verifier, err := auth.NewVerifier(ctx, cfg.PrivyAppID, cfg.PrivyJWKSURL, &http.Client{Timeout: 10 * time.Second})
 	if err != nil {
@@ -57,7 +58,7 @@ func run() error {
 	server := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewMux(pool, verifier, privy.NewClient(cfg.PrivyAppID, cfg.PrivyAppSecret, ""),
-			balances.read),
+			balances.Read),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

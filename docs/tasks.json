@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 76,
+  "nextId": 77,
   "tasks": [
     {
       "id": "F001",
@@ -7909,6 +7909,41 @@
         "branch": "refactor/f075-ui-web-components-are-grouped-by-purpose",
         "base": "main"
       }
+    },
+    {
+      "id": "F076",
+      "type": "refactor",
+      "behavior": "Backend code follows docs/backend/rules.md: cmd holds wiring only and domain packages are split into files by operation, with unchanged behavior",
+      "acceptance": [
+        "cmd/api holds only startup and wiring; the chain balance reader (second RPC pick, retry, per-chain locks) lives in internal/balance as ChainReader with its tests.",
+        "profile, invoice, ledger and settlement are split into files by operation (signup.go, create.go, list.go, wallet.go, get.go, process.go, book.go, settle.go, reconcile.go, signer.go) with the same code lines; tests follow their operation.",
+        "No behavior, SQL, API or money change: backend tests, backend e2e, lint, typecheck, unit, build and e2e pass."
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "docs-check",
+        "backend",
+        "backend-e2e"
+      ],
+      "refs": [
+        "R-37",
+        "D-19"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/*",
+        "*package.json",
+        "pnpm-lock.yaml",
+        "apps/backend/api/*",
+        "apps/backend/internal/database/migrations/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null,
+      "branch": "refactor/f076-backend-code-follows-docs-backend-rules",
+      "baseCommit": "9fc1b89acf3021c86f4f9ead9dae670e61f4066b"
     }
   ],
   "lastWrapup": {
