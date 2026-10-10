@@ -4,10 +4,15 @@ import { Button, Spinner } from "@forwend/ui-web";
 import { usePrivy } from "@privy-io/react-auth";
 import { skipToken } from "@reduxjs/toolkit/query";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { AUTH_COPY } from "@/features/auth/auth-copy";
 import { useGetBalancesQuery } from "@/features/balances/balances-api";
 import { type AppSession, AppSessionContext } from "@/features/profiles/app-session";
+import {
+  chosenProfile,
+  readChosenProfileId,
+  saveChosenProfileId,
+} from "@/features/profiles/chosen-profile";
 import { ProfileSheet } from "@/features/profiles/components/profile-sheet";
 import { useSignUpQuery } from "@/features/profiles/profiles-api";
 import { ReceiveSheet } from "@/features/receive/receive-sheet";
@@ -35,14 +40,24 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const pathname = usePathname();
   const me = useSignUpQuery(ready && authenticated ? undefined : skipToken);
   const profiles = me.currentData?.profiles ?? null;
-  const [activeId, setActiveId] = useState("");
+  const userId = user?.id;
+  // Read while the profiles load, so the remembered profile is the first one shown.
+  const savedId = useMemo(() => (userId ? readChosenProfileId(userId) : null), [userId]);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [receiving, setReceiving] = useState(false);
   const [searching, setSearching] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  // The chosen profile, or the first (personal) one until the user picks another.
-  const active = profiles?.find((p) => p.profileId === activeId) ?? profiles?.[0];
+  const active = profiles ? chosenProfile(profiles, activeId ?? savedId) : undefined;
   const balances = useGetBalancesQuery(active ? active.profileId : skipToken, LIVE_QUERY);
+
+  const switchProfile = useCallback(
+    (profileId: string) => {
+      setActiveId(profileId);
+      if (userId) saveChosenProfileId(userId, profileId);
+    },
+    [userId],
+  );
 
   useEffect(() => {
     if (ready && !authenticated) router.replace(APP_ROUTES.signIn);
@@ -72,12 +87,12 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
         ? {
             profile: active,
             profiles,
-            chooseProfile: setActiveId,
+            chooseProfile: switchProfile,
             openReceive: () => setReceiving(true),
             openProfiles: () => setChoosing(true),
           }
         : null,
-    [profiles, active],
+    [profiles, active, switchProfile],
   );
 
   // Signing out also gives the next user a fresh, empty store (StoreProvider).
@@ -116,7 +131,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
       <AppSidebar
         profiles={profiles}
         active={active}
-        onSwitch={setActiveId}
+        onSwitch={switchProfile}
         pathname={pathname}
         email={email}
         onSignOut={signOut}
@@ -142,7 +157,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
       <ProfileSheet
         profiles={profiles}
         active={active}
-        onSwitch={setActiveId}
+        onSwitch={switchProfile}
         open={choosing}
         onOpenChange={setChoosing}
       />
@@ -159,7 +174,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
         onOpenChange={setSearching}
         profiles={profiles}
         active={active}
-        onSwitch={setActiveId}
+        onSwitch={switchProfile}
         onReceive={() => setReceiving(true)}
       />
     </div>

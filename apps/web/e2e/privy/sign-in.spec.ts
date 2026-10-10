@@ -407,6 +407,21 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   await expect(page.getByRole("heading", { level: 1, name: "Invoices" })).toBeVisible();
   await expect(page.getByRole("table").or(page.getByText("No invoices yet"))).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
+  // The chosen profile survives a reload and opens in a new tab: switcher and merchant nav.
+  const isMerchant = async (p: Page) => {
+    const aside = p.locator("aside");
+    await expect(
+      aside.getByRole("button", { name: /^Switch profile: Merchant · E2E shop/ }),
+    ).toBeVisible();
+    await expect(aside.getByText("Checkout")).toBeVisible();
+    await expect(p.getByRole("heading", { level: 1, name: "Invoices" })).toBeAttached();
+  };
+  await page.reload();
+  await isMerchant(page);
+  const tab = await context.newPage();
+  await tab.goto("/app/invoices");
+  await isMerchant(tab);
+  await tab.close();
   await page.getByRole("link", { name: "New invoice" }).first().click();
 
   const title = `E2E ${Date.now()}`;
@@ -443,7 +458,8 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       "aria-current",
       "step",
     );
-    await expect(page.getByText("Waiting for payment").first()).toBeVisible();
+    // No status pill: the timeline carries the status, and no payment has come in yet.
+    await expect(amount.locator("[data-status]")).toHaveCount(0);
     const details = page.getByRole("region", { name: "Details" });
     await expect(details).toContainText("Due date");
     await expect(details).toContainText("Dec 1, 2026");
@@ -748,9 +764,15 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   await expect(main.getByRole("status").filter({ hasText: /./ })).toHaveText(
     "Confirming · about 6 min left 120 blocks",
   );
+  // The timeline carries the invoice's status, at its Confirming step; the one pill left is the payment's own.
+  const amountPanel = main.getByRole("region", { name: "Amount" });
+  await expect(amountPanel.locator("[data-status]")).toHaveCount(1);
   await expect(
-    main.getByRole("region", { name: "Amount" }).locator("[data-status=detected]"),
-  ).toBeVisible();
+    amountPanel
+      .getByRole("list", { name: "Payment progress" })
+      .getByRole("listitem")
+      .filter({ hasText: "Confirming" }),
+  ).toHaveAttribute("aria-current", "step");
   const payment = main.getByRole("link", { name: "View transaction on Basescan" });
   await expect(payment).toHaveAttribute("href", basescan(hash("d")));
   await expect(payment).toHaveAttribute("target", "_blank");
