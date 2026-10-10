@@ -9401,7 +9401,7 @@
       "dependsOn": [
         "F084"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
@@ -9503,11 +9503,18 @@
           "summary": "Pass. Address recompute is byte-exact with internal/address (ABI word layout, uint16 size+0x2d init code, CREATE2, [12:]); FACTORY/IMPLEMENTATION pinned and tested equal to the vectors file (= deployments.json); the shown address/QR is always the computed one, any parse error or mismatch shows none. Mutations (swap expiry/deadline, chainId->amount, right-padded address, size 0x2c, slice 26, trust API address) each fail the unit test; file restored byte-identical. Gate, refund rule, scam note, host, D-29 and polling are correct; pay route chunks contain no Privy; @noble/hashes 1.8.0 already locked, lockfile diff 3 lines. Fixed: the Expired pill condition (closed && waiting) could never be true; now state === closed. Doc: added the pay -> activity dependency to web/architecture.md. Re-verified, all 9 checks pass. Notes, not blocking: polling never stops after settled; a partial payment shows the timeline at Paid (shared invoiceProgress); exchange copy says another network 'loses' the money where D-33 says 'can be lost'.",
           "at": "2026-10-10T16:05:22Z",
           "filesHash": "64a735a97a9dc6e1"
-        }
+        },
+        "commit": "ba4ed08",
+        "doneAt": "2026-10-10T16:05:53Z"
       },
       "branch": "feat/f087-payers-open-pay-id-without-an-account-an",
       "baseCommit": "cc388f6dcf636d150dbfc07aa88095c7d664a933",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f087-payers-open-pay-id-without-an-account-an",
+        "base": "main"
+      }
     },
     {
       "id": "F088",
