@@ -9917,7 +9917,7 @@
         "F085",
         "F086"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e",
@@ -10017,11 +10017,18 @@
           "summary": "PASS. Go onboarding tests -race (once, skip, 8 concurrent calls end in 1 onboarding and 3 profiles/wallets, errors, route 201/200, other user's token) and migration up/down pass; FOR UPDATE on the user row; wallets via SignUp, a Privy failure is repaired on the next POST /v1/me; first run shows only when onboardedAt is null, after the spinner; checklist never marks a step done falsely; storage in try/catch; real checkboxes in a fieldset; axe 0. Fixed after review: checkbox names no longer read twice (aria-labelledby the title), no shadow on checked cards, a missing country focuses the select, docs/web/architecture.md lists the first-run screen and /app/billing-details; e2e no longer assumes the shared Privy test account has no passkey. Re-verified 9 checks.",
           "at": "2026-10-10T22:25:20Z",
           "filesHash": "67380e2296b35163"
-        }
+        },
+        "commit": "3c46fdf",
+        "doneAt": "2026-10-10T22:25:22Z"
       },
       "branch": "feat/f092-new-users-choose-what-they-want-to-do-on",
       "baseCommit": "2ca866205e20ecd05af91bd5de0ec2f84ab87c6d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f092-new-users-choose-what-they-want-to-do-on",
+        "base": "main"
+      }
     },
     {
       "id": "F093",
