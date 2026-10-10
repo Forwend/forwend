@@ -40,7 +40,7 @@ func run() error {
 	}
 	defer pool.Close()
 
-	w := worker.New(pool, specs, cfg.Chains.InfuraKeys)
+	w := worker.New(pool, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate)
 	defer w.Close()
 	slog.Info("worker ready", "every", cfg.Chains.PollInterval)
 	for {

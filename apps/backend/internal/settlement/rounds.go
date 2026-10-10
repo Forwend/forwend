@@ -15,20 +15,22 @@ type Rounds struct {
 	pool    *pgxpool.Pool
 	specs   map[uint64]chain.Spec
 	keys    []string
+	rate    float64
 	rpcs    map[uint64]chain.RPCs
 	clients map[uint64]*ethclient.Client
 	signer  *Signer
 }
 
-// NewRounds signs with key on the chains in specs, dialing Infura with keys where a chain lists it.
-func NewRounds(pool *pgxpool.Pool, key *ecdsa.PrivateKey, specs map[uint64]chain.Spec, keys []string) *Rounds {
+// NewRounds signs with key on the chains in specs, through their Infura keys (where a chain lists Infura) and public
+// RPCs, sending each at most rate calls per second.
+func NewRounds(pool *pgxpool.Pool, key *ecdsa.PrivateKey, specs map[uint64]chain.Spec, keys []string, rate float64) *Rounds {
 	clients := map[uint64]*ethclient.Client{}
-	return &Rounds{pool: pool, specs: specs, keys: keys, rpcs: map[uint64]chain.RPCs{}, clients: clients,
+	return &Rounds{pool: pool, specs: specs, keys: keys, rate: rate, rpcs: map[uint64]chain.RPCs{}, clients: clients,
 		signer: NewSigner(pool, key, clients)}
 }
 
-// Round serves the enabled chains, then settles what is due. After a failed run every chain's RPCs are picked again
-// next round.
+// Round serves the enabled chains, then settles what is due. A failing or rate-limited RPC is rested and its calls
+// move to the chain's next one (chain.NewRPCs).
 func (r *Rounds) Round(ctx context.Context) {
 	ids, err := chain.Enabled(ctx, r.pool)
 	if err != nil {
@@ -54,7 +56,7 @@ func (r *Rounds) Round(ctx context.Context) {
 			slog.Error("enabled chain is not in the chain list", "chain", id)
 			continue
 		}
-		rpcs, err := chain.Dial(ctx, spec, r.keys)
+		rpcs, err := chain.NewRPCs(spec, r.keys, r.rate)
 		if err != nil {
 			slog.Error("pick RPCs", "chain", id, "err", chain.Redact(err))
 			continue
@@ -63,7 +65,6 @@ func (r *Rounds) Round(ctx context.Context) {
 	}
 	if err := r.signer.Run(ctx); err != nil {
 		slog.Error("signer round", "err", chain.Redact(err))
-		r.Close() // pick RPCs again next round
 	}
 }
 

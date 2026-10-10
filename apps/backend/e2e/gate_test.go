@@ -49,18 +49,27 @@ func TestMoneyLoop(t *testing.T) {
 	bin := build(t)
 
 	chains := filepath.Join(t.TempDir(), "chains.json")
-	// Two host names for the one Anvil: the worker needs a second, independent RPC for balances (D-15).
+	// Public RPCs only, on three hosts. The first answers every third request with 429, so the binaries' calls must move
+	// to the next RPC; two host names for the one Anvil give the second, independent RPC for balances (D-15).
+	limited, requests := anvil.Proxy(), 0
+	limited.Fail(func(chaintest.Call) chaintest.Fault {
+		if requests++; requests%3 == 0 {
+			return chaintest.HTTP429
+		}
+		return chaintest.Forward
+	})
 	second := strings.Replace(anvil.URL, "127.0.0.1", "localhost", 1)
-	if err := os.WriteFile(chains, fmt.Appendf(nil, `{"anvil": {"chainId": %d, "infura": null, "public": [%q, %q]}}`,
-		chaintest.ChainID, anvil.URL, second), 0o600); err != nil {
+	if err := os.WriteFile(chains, fmt.Appendf(nil, `{"anvil": {"chainId": %d, "infura": null, "public": [%q, %q, %q]}}`,
+		chaintest.ChainID, limited.URL, anvil.URL, second), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	apiAddr := freeAddr(t)
 	common := []string{"DATABASE_URL=" + dbURL}
-	loop := append(common, "CHAINS_FILE="+chains, "INFURA_API_KEYS=none", "POLL_INTERVAL=200ms")
-	start(t, bin, "api", append(common, "API_ADDR="+apiAddr, "PRIVY_APP_ID="+appID, "PRIVY_JWKS_URL="+privy.JWKSURL,
-		"PRIVY_APP_SECRET=unused", // this test makes its profile in the database
-		"CHAINS_FILE="+chains, "INFURA_API_KEYS=none", "PUBLIC_WEB_URL=http://localhost:3000"))
+	rpcs := []string{"CHAINS_FILE=" + chains, "INFURA_API_KEYS=", "RPC_RATE_PER_SECOND=100"}
+	loop := append(append(common, rpcs...), "POLL_INTERVAL=200ms")
+	start(t, bin, "api", append(append(common, rpcs...), "API_ADDR="+apiAddr, "PRIVY_APP_ID="+appID,
+		"PRIVY_JWKS_URL="+privy.JWKSURL, "PRIVY_APP_SECRET=unused", // this test makes its profile in the database
+		"PUBLIC_WEB_URL=http://localhost:3000"))
 	api := "http://" + apiAddr
 	waitFor(t, "api healthy", func() bool {
 		res, err := http.Get(api + "/healthz")
@@ -129,6 +138,16 @@ func TestMoneyLoop(t *testing.T) {
 			"blocks left -> confirmed", seen, deposit)
 	}
 	t.Logf("invoice: %v; deposit (status/blocks left): %v", seen, deposit)
+	refused := 0
+	for _, c := range limited.Calls() {
+		if c.Fault == chaintest.HTTP429 {
+			refused++
+		}
+	}
+	if refused == 0 {
+		t.Fatal("the rate-limited RPC refused no request: the loop did not meet a 429")
+	}
+	t.Logf("the first RPC answered %d of %d requests with 429", refused, len(limited.Calls()))
 	// The API names the signer's settle transaction: a call to the receive address.
 	hash, _ := get(t, api+"/v1/invoices/"+id)["settlementTxHash"].(string)
 	settleTx, _, err := ethclient.NewClient(anvil.RPC).TransactionByHash(ctx, gethcommon.HexToHash(hash))

@@ -1,12 +1,12 @@
-// Package chain picks the RPCs for each chain from the shared chain list (packages/contracts/chains.json), the same
-// way script/rpc.mjs does: every Infura key, then the public RPCs, keeping only URLs whose eth_chainId matches (D-15).
+// Package chain reaches each chain through the RPCs of the shared chain list (packages/contracts/chains.json), in the
+// order script/rpc.mjs uses: every Infura key, then the public RPCs, using only URLs whose eth_chainId matches (D-15).
 package chain
 
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"regexp"
@@ -44,10 +44,12 @@ func Specs(path string) (map[uint64]Spec, error) {
 	return out, nil
 }
 
-// RPCs are the chain's clients on two different hosts: Primary for reading the chain and signing, Second for
-// balance checks (D-15).
+// RPCs are a chain's two clients over one pool of every Infura key and public RPC in the chain list: Primary reads
+// the chain and signs, Second checks balances (D-15). Each call goes to a working endpoint and moves to the next one
+// when an endpoint fails (pool.go), and the two roles always use different hosts.
 type RPCs struct {
 	Primary, Second *rpc.Client
+	pool            *pool
 }
 
 func (r RPCs) Close() {
@@ -55,41 +57,40 @@ func (r RPCs) Close() {
 	r.Second.Close()
 }
 
-// Dial returns the first two working RPCs on different hosts. A chain with fewer is not served: balances must be
+// NewRPCs makes a chain's clients over every Infura key (when the chain lists Infura), then the public RPCs. Each
+// endpoint is sent at most rate calls per second. A chain listing fewer than two hosts is refused: balances must be
 // confirmed by an independent provider before paid (D-15).
-func Dial(ctx context.Context, spec Spec, infuraKeys []string) (RPCs, error) {
+func NewRPCs(spec Spec, infuraKeys []string, rate float64) (RPCs, error) {
 	var urls []string
 	if spec.Infura != "" {
 		for _, k := range infuraKeys {
 			urls = append(urls, "https://"+spec.Infura+".infura.io/v3/"+k)
 		}
 	}
-	urls = append(urls, spec.Public...)
-
-	var picked RPCs
-	var firstHost string
-	for _, u := range urls {
+	p := &pool{chainID: spec.ChainID, perCall: time.Duration(float64(time.Second) / rate), timeout: AttemptTimeout}
+	hosts := map[string]bool{}
+	for i, u := range append(urls, spec.Public...) {
 		host := hostOf(u)
-		if picked.Primary != nil && host == firstHost {
-			continue
-		}
-		c, err := dial(ctx, u, spec.ChainID)
-		if err != nil {
-			continue // key without access, rate limited, or down; never log the URL: it may hold a key
-		}
-		if picked.Primary == nil {
-			picked.Primary, firstHost = c, host
-			continue
-		}
-		picked.Second = c
-		return picked, nil
+		hosts[host] = true
+		p.endpoints = append(p.endpoints, &endpoint{url: u, host: host, name: fmt.Sprintf("%s#%d", host, i+1)})
 	}
-	if picked.Primary == nil {
-		return RPCs{}, fmt.Errorf("no working RPC for chain %d", spec.ChainID)
+	if len(hosts) < 2 {
+		return RPCs{}, fmt.Errorf("chain %d lists %d RPC host(s); D-15 needs a second, independent one",
+			spec.ChainID, len(hosts))
 	}
-	picked.Primary.Close()
-	return RPCs{}, fmt.Errorf("chain %d has one working RPC host (%s); D-15 needs a second, independent one",
-		spec.ChainID, firstHost)
+	r := RPCs{pool: p}
+	var err error
+	// The URLs only name the role in errors: the transport sends each request to an endpoint.
+	if r.Primary, err = rpc.DialOptions(context.Background(), fmt.Sprintf("http://chain-%d-primary", spec.ChainID),
+		rpc.WithHTTPClient(&http.Client{Transport: role{p, false}})); err != nil {
+		return RPCs{}, err
+	}
+	if r.Second, err = rpc.DialOptions(context.Background(), fmt.Sprintf("http://chain-%d-second", spec.ChainID),
+		rpc.WithHTTPClient(&http.Client{Transport: role{p, true}})); err != nil {
+		r.Primary.Close()
+		return RPCs{}, err
+	}
+	return r, nil
 }
 
 var urlKey = regexp.MustCompile(`(/v3/)[A-Za-z0-9_-]+`)
@@ -98,26 +99,6 @@ var urlKey = regexp.MustCompile(`(/v3/)[A-Za-z0-9_-]+`)
 // into network errors. Use it for every RPC error that is logged.
 func Redact(err error) string {
 	return urlKey.ReplaceAllString(err.Error(), "${1}<key>")
-}
-
-func dial(ctx context.Context, u string, chainID uint64) (*rpc.Client, error) {
-	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
-	defer cancel()
-	c, err := rpc.DialContext(ctx, u)
-	if err != nil {
-		return nil, err
-	}
-	var id string
-	if err := c.CallContext(ctx, &id, "eth_chainId"); err != nil {
-		c.Close()
-		return nil, err
-	}
-	var got uint64
-	if _, err := fmt.Sscanf(id, "0x%x", &got); err != nil || got != chainID {
-		c.Close()
-		return nil, errors.New("wrong chain")
-	}
-	return c, nil
 }
 
 func hostOf(raw string) string {

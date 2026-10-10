@@ -21,21 +21,24 @@ type Worker struct {
 	pool     *pgxpool.Pool
 	specs    map[uint64]chain.Spec
 	keys     []string
+	rate     float64
 	rpcs     map[uint64]chain.RPCs
+	watchers map[uint64]*watcher.Chain
 	balances map[uint64]*ethclient.Client // the second RPC per chain, read by the ledger (D-15)
 	ledger   *ledger.Service
 }
 
-// New works on the chains in specs, dialing Infura with keys where a chain lists it.
-func New(pool *pgxpool.Pool, specs map[uint64]chain.Spec, keys []string) *Worker {
-	w := &Worker{pool: pool, specs: specs, keys: keys, rpcs: map[uint64]chain.RPCs{},
-		balances: map[uint64]*ethclient.Client{}}
+// New works on the chains in specs through their Infura keys (where a chain lists Infura) and public RPCs, sending each
+// at most rate calls per second.
+func New(pool *pgxpool.Pool, specs map[uint64]chain.Spec, keys []string, rate float64) *Worker {
+	w := &Worker{pool: pool, specs: specs, keys: keys, rate: rate, rpcs: map[uint64]chain.RPCs{},
+		watchers: map[uint64]*watcher.Chain{}, balances: map[uint64]*ethclient.Client{}}
 	w.ledger = ledger.NewService(pool, ledger.BalanceFrom(w.balances))
 	return w
 }
 
-// Round scans each enabled chain, then books and moves its invoices. A chain's RPCs are picked again after any
-// error, so a rate-limited or broken provider is skipped next round.
+// Round scans each enabled chain, then books and moves its invoices. A failing or rate-limited RPC is rested and its
+// calls move to the chain's next one (chain.NewRPCs); a chain that fails still gets its next round.
 func (w *Worker) Round(ctx context.Context) {
 	ids, err := chain.Enabled(ctx, w.pool)
 	if err != nil {
@@ -43,44 +46,37 @@ func (w *Worker) Round(ctx context.Context) {
 		return
 	}
 	for _, id := range ids {
-		r, ok := w.rpcs[id]
+		watch, ok := w.watchers[id]
 		if !ok {
 			spec, known := w.specs[id]
 			if !known {
 				slog.Error("enabled chain is not in the chain list", "chain", id)
 				continue
 			}
-			if r, err = chain.Dial(ctx, spec, w.keys); err != nil {
+			r, err := chain.NewRPCs(spec, w.keys, w.rate)
+			if err != nil {
 				slog.Error("pick RPCs", "chain", id, "err", chain.Redact(err))
 				continue
 			}
-			w.rpcs[id], w.balances[id] = r, ethclient.NewClient(r.Second)
+			watch = watcher.NewChain(w.pool, id, r.Primary)
+			w.rpcs[id], w.watchers[id], w.balances[id] = r, watch, ethclient.NewClient(r.Second)
 		}
 		// A hanging RPC must not stop the other chains.
 		chainCtx, cancel := context.WithTimeout(ctx, RoundTimeout)
-		err := watcher.NewChain(w.pool, id, r.Primary).Scan(chainCtx)
+		err := watch.Scan(chainCtx)
 		if err == nil {
 			err = w.ledger.ProcessChain(chainCtx, id)
 		}
 		cancel()
 		if err != nil {
 			slog.Error("worker round", "chain", id, "err", chain.Redact(err))
-			w.close(id)
 		}
-	}
-}
-
-func (w *Worker) close(id uint64) {
-	if r, ok := w.rpcs[id]; ok {
-		r.Close()
-		delete(w.rpcs, id)
-		delete(w.balances, id)
 	}
 }
 
 // Close closes every chain's RPC clients.
 func (w *Worker) Close() {
-	for id := range w.rpcs {
-		w.close(id)
+	for _, r := range w.rpcs {
+		r.Close()
 	}
 }

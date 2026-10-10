@@ -98,14 +98,22 @@ never holds the app's load.
 
 ## Running the loop
 
-`worker` and `signer` read the shared chain list (`CHAINS_FILE`, `packages/contracts/chains.json`) and
-`INFURA_API_KEYS`, and serve the chains enabled in the `chains` table. `internal/chain` picks RPCs like
-`script/rpc.mjs`: each Infura key, then public RPCs, only URLs whose `eth_chainId` matches. The first working one
-reads the chain; the next one on another host checks balances (D-15). A chain without two working hosts is not
-served (Tempo Moderato lists one RPC: add a second before enabling it). After any error the next round picks again,
-so a rate-limited key is skipped. Logged RPC errors are redacted: go-ethereum puts the URL, Infura key included, in
-network errors. Each chain's round has a 2-minute limit. Every `POLL_INTERVAL` the worker runs, per chain, a watcher scan then the ledger; the
-signer runs its due intents. The gate starts all three binaries against Postgres and Anvil, creates an invoice through
+`worker` and `signer` read the shared chain list (`CHAINS_FILE`, `packages/contracts/chains.json`),
+`INFURA_API_KEYS` and `RPC_RATE_PER_SECOND`, and serve the chains enabled in the `chains` table. `internal/chain` gives
+each chain one pool of endpoints in `script/rpc.mjs` order: every Infura key (all on one host), then the public RPCs;
+public RPCs only when `INFURA_API_KEYS` is empty. An endpoint is used only after its `eth_chainId` matches. The primary
+role (reading the chain, signing) uses the first host with an endpoint that is not resting; the second role (balances,
+D-15) the first other such host, so the two never share a host. A list with fewer than two hosts is refused: Tempo
+Moderato always, and Base Sepolia and Arbitrum Sepolia without Infura keys, list one public host each; Arc Testnet
+lists four. Every call, or batch, goes to its role's endpoint. No answer within 5 s, a connection error, an HTTP error
+status or a rate-limit JSON-RPC error (429, -32005, -32007, or a message saying so) rests that endpoint (1 s doubled
+per failure in a row, up to 5 min, half of it random) and sends the call to the next endpoint at once; when every
+endpoint of the role rests, the call waits for the first one back if that comes before its deadline, else fails. Any
+other answer, a revert or invalid params included, is the call's. Each endpoint gets at most `RPC_RATE_PER_SECOND`
+calls a second per process, a batch counting each call. Errors and logs name an endpoint by host and position, never
+by URL (an Infura URL holds the key). Each chain's round has a 2-minute limit. Every `POLL_INTERVAL` the worker runs, per chain, a watcher scan then the ledger; the
+signer runs its due intents. The gate starts all three binaries against Postgres and Anvil (public RPCs only, the first
+answering every third request with 429), creates an invoice through
 the API, pays it and waits for detected → paid → settled with the deposit going detected → confirmed.
 
 ## Watcher
@@ -113,7 +121,8 @@ the API, pays it and waits for detected → paid → settled with the deposit go
 `internal/watcher` (R-20), one `Chain` per chain; never two at once for one chain (they would race on the cursor).
 Each `Scan` reads `latest`, then `eth_getLogs` for `Transfer` from the invoices' tokens to their receive addresses,
 from 64 blocks below the last finalized block (or from the oldest `detected` row) to latest, in ranges of at most
-2,000 blocks. One JSON-RPC batch then reads `finalized` and the header of every block it judges, so they usually come
+2,000 blocks; a range the RPC refuses for its size or rate (after every endpoint was tried) is read again in half, down to
+50 blocks, and the range doubles back after each answer. One JSON-RPC batch then reads `finalized` and the header of every block it judges, so they usually come
 from one node. One transaction then:
 - marks a `detected` row `reorged` only when the chain shows another block hash at its height; a log merely missing
   from one answer (a lagging or overloaded node) proves nothing;

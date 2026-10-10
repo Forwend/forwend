@@ -37,7 +37,7 @@ func hung(t *testing.T) string {
 	return "http://" + l.Addr().String()
 }
 
-// A chain whose RPCs hang never slows or blanks another chain's balance, and is not dialed again on every request.
+// A chain whose RPCs hang never slows or blanks another chain's balance.
 func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 	anvil := chaintest.Start(t)
 	token := anvil.DeployToken()
@@ -45,7 +45,7 @@ func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 	c := NewChainReader(map[uint64]chain.Spec{
 		chaintest.ChainID: {ChainID: chaintest.ChainID, Public: []string{anvil.URL, strings.Replace(anvil.URL, "127.0.0.1", "localhost", 1)}},
 		dead:              {ChainID: dead, Public: []string{h, strings.Replace(h, "127.0.0.1", "localhost", 1)}},
-	}, nil)
+	}, nil, 1000)
 	ctx := context.Background()
 	if _, _, err := c.Read(ctx, chaintest.ChainID, token, holder); err != nil {
 		t.Fatal(err)
@@ -58,7 +58,7 @@ func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 		_, _, err := c.Read(ctx, dead, usdc, holder)
 		stuck <- err
 	}()
-	time.Sleep(200 * time.Millisecond) // the dead chain is being picked
+	time.Sleep(200 * time.Millisecond) // the dead chain is being read
 	start := time.Now()
 	if _, _, err := c.Read(ctx, chaintest.ChainID, token, holder); err != nil || time.Since(start) > time.Second {
 		t.Fatalf("healthy chain while another hangs: %v after %v", err, time.Since(start))
@@ -67,31 +67,52 @@ func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 		t.Fatal("the hung chain gave a balance")
 	}
 
-	// A request that ends early keeps the shared clients.
+	// A request that ends early says nothing about the RPC: the next read is answered at once.
 	cancelled, cancel := context.WithCancel(ctx)
 	cancel()
 	if _, _, err := c.Read(cancelled, chaintest.ChainID, token, holder); err == nil {
 		t.Fatal("a cancelled read gave a balance")
 	}
-	if c.chains[chaintest.ChainID].rpcs == nil {
-		t.Fatal("a cancelled request dropped the healthy chain's clients")
+	start = time.Now()
+	if _, _, err := c.Read(ctx, chaintest.ChainID, token, holder); err != nil || time.Since(start) > time.Second {
+		t.Fatalf("read after a cancelled one: %v after %v", err, time.Since(start))
 	}
 }
 
-// After a pick that failed or ran out of time, the chain answers at once with an error until RetryPick has passed.
-func TestFailedPickIsRemembered(t *testing.T) {
+// After a read that ran out of time the hung RPC rests, so a read whose deadline comes before the rest ends fails at
+// once instead of hanging on it again.
+func TestTimedOutRPCRests(t *testing.T) {
 	h := hung(t)
 	c := NewChainReader(map[uint64]chain.Spec{
 		dead: {ChainID: dead, Public: []string{h, strings.Replace(h, "127.0.0.1", "localhost", 1)}},
-	}, nil)
+	}, nil, 1000)
 	ctx := context.Background()
 	short, cancel := context.WithTimeout(ctx, 300*time.Millisecond)
 	defer cancel()
 	if _, _, err := c.Read(short, dead, usdc, holder); err == nil {
 		t.Fatal("no error from a hung chain")
 	}
+	again, cancel := context.WithTimeout(ctx, 300*time.Millisecond)
+	defer cancel()
 	start := time.Now()
-	if _, _, err := c.Read(ctx, dead, usdc, holder); err == nil || time.Since(start) > 50*time.Millisecond {
+	if _, _, err := c.Read(again, dead, usdc, holder); err == nil || time.Since(start) > 50*time.Millisecond {
 		t.Fatalf("second read: %v after %v; want a fast error", err, time.Since(start))
+	}
+}
+
+// A chain whose list has one host can't confirm balances (D-15): its reads fail, the other chains' don't.
+func TestChainWithOneHostIsRefused(t *testing.T) {
+	anvil := chaintest.Start(t)
+	token := anvil.DeployToken()
+	c := NewChainReader(map[uint64]chain.Spec{
+		chaintest.ChainID: {ChainID: chaintest.ChainID, Public: []string{anvil.URL, strings.Replace(anvil.URL, "127.0.0.1", "localhost", 1)}},
+		dead:              {ChainID: dead, Public: []string{anvil.URL}},
+	}, nil, 1000)
+	ctx := context.Background()
+	if _, _, err := c.Read(ctx, dead, usdc, holder); err == nil || !strings.Contains(err.Error(), "D-15") {
+		t.Fatalf("one-host chain: %v, want the D-15 error", err)
+	}
+	if _, _, err := c.Read(ctx, chaintest.ChainID, token, holder); err != nil {
+		t.Fatal(err)
 	}
 }
