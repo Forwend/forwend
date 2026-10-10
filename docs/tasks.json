@@ -10898,7 +10898,7 @@
       "dependsOn": [
         "F104"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -10996,11 +10996,18 @@
           "summary": "PASS after one fix. Balance cache: key covers chain, token, wallet and block; errors not kept; first caller's cancel does not fail waiters (WithoutCancel, deadline kept); memory bounded by keys per minute. Migrate strips only pool_ params. Web 429 backoff cannot loop; tests meaningful. Transport keeps dial/TLS timeouts. Load test compares like with like. FIXED: per-IP limit trusted the client's X-Forwarded-For (Next's rewrite does not set it), so honest payers shared one bucket and a forger was never limited; removed the per-IP limit and the one-implementation limiter interface, public routes are to be limited at the edge (api.md, D-72). Re-verified: verify F107 passed 9 checks.",
           "at": "2026-10-10T20:56:57Z",
           "filesHash": "7b5778039938e1a8"
-        }
+        },
+        "commit": "08faf32",
+        "doneAt": "2026-10-10T20:57:04Z"
       },
       "branch": "perf/f107-the-api-serves-10k-users-without-hammeri",
       "baseCommit": "d2971b51d34ac306382e8108f6e7b062a2296852",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "perf/f107-the-api-serves-10k-users-without-hammeri",
+        "base": "main"
+      }
     },
     {
       "id": "F108",
