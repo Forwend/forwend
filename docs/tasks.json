@@ -9162,7 +9162,7 @@
       "dependsOn": [
         "F084"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "docs-check"
@@ -9261,11 +9261,18 @@
           "summary": "00009 trigger keeps F084 numbering (same profiles UPDATE) and freezes all F084 fields plus issuer_*; Down restores 00008's function byte-for-byte, rollback test covers it. Issuer copied in the BEFORE INSERT trigger from one row, overriding any inserted values, so no partial or stale copy; replay reads the stored row. New table only has NOT NULLs, invoice issuer columns nullable: safe for existing rows. Country list matches tz iso3166.tab (249). Validation 422/400/401/404 shapes and both routes in the cross-user 403 list. openapi, api.md, architecture accurate. Backend tests pass on real Postgres. Minor, not blocking: whitespace-only name/address is accepted.",
           "at": "2026-10-10T14:54:58Z",
           "filesHash": "835c3f6de7838815"
-        }
+        },
+        "commit": "3d027cc",
+        "doneAt": "2026-10-10T14:55:15Z"
       },
       "branch": "feat/f085-a-profile-saves-its-billing-details-and",
       "baseCommit": "2e37978058d20677f9934867b657c677aeba02bf",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f085-a-profile-saves-its-billing-details-and",
+        "base": "main"
+      }
     },
     {
       "id": "F086",
