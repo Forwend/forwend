@@ -9037,7 +9037,7 @@
         "R-42: create stores title, note, due date (separate from expiresAt) and client name, email and address; GET /v1/profiles/{id}/invoices lists newest first with cursor pages and gives another user 403; a settled invoice returns its settlement tx hash; openapi.yaml and docs/backend/api.md describe the new fields and route"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "docs-check"
@@ -9136,11 +9136,18 @@
           "summary": "Pass. (1) BEFORE INSERT trigger numbering: the profile row lock is the first lock the insert takes, so creates for one profile take turns; any failed insert (CHECK, unique key, idempotency race) rolls the counter back with the statement, so no gaps. No deadlock path: only ensureWallet also locks profiles (FOR UPDATE, then profile_wallets), the worker/signer never lock profiles, FK checks take FOR KEY SHARE which does not conflict. No INSERT ... ON CONFLICT on invoices exists; a future one would burn a number when it skips a row. Backfill by (created_at, id) is tested; Down is covered by the existing DownTo(0) test. (2) Separate invoices_number trigger: fires after invoices_guard (name order), IS DISTINCT FROM covers number and all six detail columns, status transitions still pass (existing transition test runs on all migrations). (3) List: profile_id filter, owner-only route, limit 1-100 (422), bad cursor 422, number cursor is unique per profile so pages never skip or repeat. Validation, %q hash over new fields, public GET without client, owner create/list with client, settlementTxHash from the unique confirmed intent, activity txHash, openapi/api.md: correct. Old idempotency keys would 409 after the hash change; acceptable since nothing is deployed. Mutation check: replacing the counter with max(number)+1 makes TestCreateNumbersInvoicesAtOnce fail 3/3, so the concurrency test is meaningful. pnpm --filter @forwend/backend test passes. Follow-up (pre-existing, not F084): settlement.reconcile confirms a sent intent when the receiver is settled without checking that our tx did it, so settlementTxHash can name a reverted or never-mined settle if the refund authority settled after our late send; ledger amounts are unaffected, and api.md/openapi then overstate the null case.",
           "at": "2026-10-10T14:14:09Z",
           "filesHash": "55c9179ca7bbfc3d"
-        }
+        },
+        "commit": "6095305",
+        "doneAt": "2026-10-10T14:38:26Z"
       },
       "branch": "feat/f084-invoices-get-a-per-profile-number-inv-00",
       "baseCommit": "364470afadc781d4c295114b0ce1b87d683a0640",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f084-invoices-get-a-per-profile-number-inv-00",
+        "base": "main"
+      }
     },
     {
       "id": "F085",
