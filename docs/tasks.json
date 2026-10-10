@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 111,
+  "nextId": 112,
   "tasks": [
     {
       "id": "F001",
@@ -10518,7 +10518,7 @@
       "dependsOn": [
         "F086"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -10531,9 +10531,102 @@
         "packages/contracts/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-10 review pass by reviewer: PASS. Route behind profileScoped (401/403 before the query); the empty profile filter comes only from the public Get; malformed id 404 before the query, other profile's invoice 404; public GET still omits client; PK lookup. TestGetProfileInvoice fails without the profile filter. Web handles 404, other errors and loading; list hack fully removed; mocked e2e asserts the Client region; docs match. Live e2e passed after the owner restarted pnpm dev."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-10T23:29:35Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 48.5,
+            "log": "docs/runs/F100-20261010T232935Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 93.8,
+            "log": "docs/runs/F100-20261010T232935Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": "docs/runs/F100-20261010T232935Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F100-20261010T232935Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F100-20261010T232935Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F100-20261010T232935Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 48.3,
+            "log": "docs/runs/F100-20261010T232935Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.5,
+            "log": "docs/runs/F100-20261010T232935Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F100-20261010T232935Z-keep.log"
+          }
+        ],
+        "taskHash": "3294002711385d75",
+        "filesHash": "fb84c5181ad9beb9",
+        "proof": {
+          "1": "backend: TestGetProfileInvoice (owner gets the invoice with client and the public fields; another profile of the same user 404; missing/bad id 404; another user 403; no token 401), TestCreateInvoiceStoresDetails still checks the public GET has no client. e2e: mocked app-pages test serves the owner route and asserts the Client panel on the invoice detail; live sign-in test reads the client from the new route"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. Route behind profileScoped (401/403 before the query); the empty profile filter comes only from the public Get; malformed id 404 before the query, other profile's invoice 404; public GET still omits client; PK lookup. TestGetProfileInvoice fails without the profile filter. Web handles 404, other errors and loading; list hack fully removed; mocked e2e asserts the Client region; docs match. Live e2e passed after the owner restarted pnpm dev.",
+          "at": "2026-10-10T23:33:01Z",
+          "filesHash": "fb84c5181ad9beb9"
+        },
+        "commit": "02b1bda",
+        "doneAt": "2026-10-10T23:33:03Z"
+      },
+      "branch": "fix/f100-the-owner-reads-one-of-their-invoices-wi",
+      "baseCommit": "488cb02fe8e9f28b33b736eccd4e075aa6078a3d",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f100-the-owner-reads-one-of-their-invoices-wi",
+        "base": "main"
+      }
     },
     {
       "id": "F101",
@@ -11533,6 +11626,29 @@
       ],
       "refs": [
         "R-47"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F111",
+      "type": "feat",
+      "behavior": "A user with a linked passkey signs in with it from the sign-in page",
+      "acceptance": [
+        "/sign-in shows 'Sign in with passkey' next to Google and the email code (Privy useLoginWithPasskey); success lands in /app like the other methods; cancel or failure shows a short error and keeps the other methods usable; the checklist's passkey step no longer says passkey sign-in opens soon; Playwright covers the button and its error state (Privy passkey prompt mocked or cancelled); axe finds 0 serious or critical violations"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "unit"
+      ],
+      "refs": [
+        "R-34",
+        "R-50"
       ],
       "keep": [],
       "review": true,

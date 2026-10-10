@@ -3,7 +3,8 @@
 Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/me/onboarding`, `POST /v1/profiles`,
 `PUT /v1/profiles/{profileId}/billing-details`, `GET /v1/profiles/{profileId}/billing-details`,
 `POST /v1/profiles/{profileId}/invoices`,
-`GET /v1/profiles/{profileId}/invoices`, `GET /v1/profiles/{profileId}/balances`, `GET /v1/profiles/{profileId}/activity`,
+`GET /v1/profiles/{profileId}/invoices`, `GET /v1/profiles/{profileId}/invoices/{invoiceId}`,
+`GET /v1/profiles/{profileId}/balances`, `GET /v1/profiles/{profileId}/activity`,
 `GET /v1/profiles/{profileId}/transactions`, `GET /v1/profiles/{profileId}/balance-history`,
 `GET /v1/invoices/{invoiceId}`, `GET /v1/invoices/{invoiceId}/invoice.pdf`, `GET /v1/invoices/{invoiceId}/receipt.pdf`
 (the last three public).
@@ -76,14 +77,17 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - The number, these fields and `issuer` never change, like the terms: a database trigger rejects any update.
 - `settlementTxHash` is the signer's settle transaction once the invoice is settled; null before, and when the refund
   authority settled the receiver outside the signer. The activity's invoice items carry it as `txHash`.
-- An invoice read alone (the public GET, and create) also has `paidAt` and `settledAt`, null until reached. `paidAt`
+- An invoice read alone (either GET, and create) also has `paidAt` and `settledAt`, null until reached. `paidAt`
   is the receipt's paid time (below); `settledAt` is when the settlement was recorded as final: the `created_at` of
   the ledger's settlement transaction, written with `settlementStatus = settled`. List items have neither.
 - `GET /v1/profiles/{profileId}/invoices?limit=&cursor=`: the list format above, highest number (newest) first; items
   have no `deposits`. Owner only, like every `{profileId}` route.
+- `GET /v1/profiles/{profileId}/invoices/{invoiceId}`: the public GET plus `client`. Another profile's invoice is 404
+  (`invoice_not_found`), also when the same user owns both.
 - The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due date, `senderName` and
   `issuer` (who bills them; the issuer's own business details) but no `client`: the id is a bearer link, so it returns
-  only what the payer needs (OWASP API Security Top 10 2023, API3). Create and list, which only the owner calls, include `client`.
+  only what the payer needs (OWASP API Security Top 10 2023, API3). Create, list and the profile's GET, which only the
+  owner calls, include `client`.
 
 ## Invoice and receipt PDFs
 

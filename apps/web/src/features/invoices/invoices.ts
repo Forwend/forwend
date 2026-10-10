@@ -120,7 +120,7 @@ export interface InvoiceSummary {
   note: string | null;
   /** YYYY-MM-DD; shown only, payment closes at expiresAt. */
   dueDate: string | null;
-  /** Only in the owner's answers (create and list); the public GET leaves it out. */
+  /** Only in the owner's answers (create, list and the profile's read); the public GET leaves it out. */
   client?: InvoiceClient;
   issuer: InvoiceIssuer | null;
   /** The name the payer sees when there is no issuer, such as on a personal profile's request. */

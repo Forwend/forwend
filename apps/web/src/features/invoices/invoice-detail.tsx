@@ -8,7 +8,6 @@ import {
   Skeleton,
   useCopy,
 } from "@forwend/ui-web";
-import { skipToken } from "@reduxjs/toolkit/query";
 import { Check, ChevronLeft, Copy, FileDown } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useId } from "react";
@@ -47,10 +46,10 @@ const COUNTRY = new Intl.DisplayNames(undefined, { type: "region" });
 const PANEL = "rounded-md border border-line bg-surface";
 const PANEL_TITLE = "border-b border-line px-4 py-3 text-base font-semibold text-ink sm:px-5";
 
-// The public read gives the terms, statuses and deposits and is read again every REFRESH_MS; the profile's own list
-// gives the client once, and also tells whether this profile made the invoice. On desktop the header's breadcrumb leads
-// back; phones have no breadcrumb, so they get a back link. A personal profile's invoice is a request: it has no client
-// and no due date.
+// The public read gives the terms, statuses and deposits and is read again every REFRESH_MS; the profile's own read
+// gives the client once, and its 404 tells that this profile did not make the invoice. On desktop the header's
+// breadcrumb leads back; phones have no breadcrumb, so they get a back link. A personal profile's invoice is a request:
+// it has no client and no due date.
 export function InvoiceDetail({
   invoiceId,
   profileId,
@@ -63,10 +62,10 @@ export function InvoiceDetail({
   request?: boolean;
 }) {
   const invoice = useGetInvoiceQuery(invoiceId, LIVE_QUERY);
-  const number = invoice.data?.number;
-  const owned = useGetProfileInvoiceQuery(number ? { profileId, number } : skipToken);
-  const mine = owned.data?.invoiceId === invoiceId ? owned.data : null;
+  const owned = useGetProfileInvoiceQuery({ profileId, invoiceId });
+  const mine = owned.currentData ?? null;
   const failure = invoice.error as { status?: unknown } | undefined;
+  const notMine = (owned.error as { status?: unknown } | undefined)?.status === NOT_FOUND;
 
   return (
     <div className="flex flex-col gap-6">
@@ -78,7 +77,7 @@ export function InvoiceDetail({
         {request ? REQUESTS_COPY.invoices : COPY.back}
       </Link>
       {invoice.data ? (
-        owned.isSuccess && !mine ? (
+        notMine ? (
           <p className="text-muted">{COPY.otherProfile}</p>
         ) : (
           <Loaded

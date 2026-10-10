@@ -553,3 +553,42 @@ func TestListInvoices(t *testing.T) {
 		t.Fatalf("Bob: %d %v, want 403", r.status, r.body)
 	}
 }
+
+// The owner reads one invoice of the profile as the public GET does, with the client's details; an invoice of another
+// profile, even the user's own, is not found there, and another user's profile is forbidden.
+func TestGetProfileInvoice(t *testing.T) {
+	e := invoiceAPI(t)
+	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", detailsBody).body["invoiceId"].(string)
+	path := func(profile, invoice string) string { return "/v1/profiles/" + profile + "/invoices/" + invoice }
+
+	r := e.call(t, "GET", path(e.aliceProfile, id), "did:privy:alice", "", "")
+	if r.status != http.StatusOK {
+		t.Fatalf("owner: %d %v", r.status, r.body)
+	}
+	public := e.get(t, id)
+	for k, v := range public.body {
+		if !reflect.DeepEqual(r.body[k], v) {
+			t.Fatalf("%s = %v, public GET gives %v", k, r.body[k], v)
+		}
+	}
+	if want := map[string]any{"name": "Bob Ltd", "email": "bob@example.com", "address": "Main St 1\nBerlin"}; !reflect.DeepEqual(r.body["client"], want) {
+		t.Fatalf("client %v, want %v", r.body["client"], want)
+	}
+
+	for _, c := range []struct {
+		name, profile, invoice, user, code string
+		status                             int
+	}{
+		{"another profile of the user", e.walletless, id, "did:privy:alice", "invoice_not_found", http.StatusNotFound},
+		{"missing", e.aliceProfile, "0x" + strings.Repeat("ab", 32), "did:privy:alice", "invoice_not_found", http.StatusNotFound},
+		{"not an id", e.aliceProfile, "not-an-id", "did:privy:alice", "invoice_not_found", http.StatusNotFound},
+		{"another user", e.aliceProfile, id, "did:privy:bob", "forbidden", http.StatusForbidden},
+	} {
+		if r := e.call(t, "GET", path(c.profile, c.invoice), c.user, "", ""); r.status != c.status || errorCode(r) != c.code {
+			t.Fatalf("%s: %d %v, want %d %s", c.name, r.status, r.body, c.status, c.code)
+		}
+	}
+	if r := e.call(t, "GET", path(e.aliceProfile, id), "", "", ""); r.status != http.StatusUnauthorized {
+		t.Fatalf("without a token: %d", r.status)
+	}
+}
