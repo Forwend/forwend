@@ -10041,7 +10041,7 @@
       "dependsOn": [
         "F087"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "docs-check"
@@ -10138,11 +10138,18 @@
           "summary": "PASS after two fix rounds. Independence: only cmd/canary, internal/canary, internal/config (module-wide import test). predict(terms) encoding matches InvoiceTerms, proven against cast. Factory runtime code hash pins implementation and refund authority (immutables). Terms come from the DB (stdin), API terms must equal them, predict runs on DB terms on two RPCs with eth_chainId checks. Real pay page read in Chromium after the network gate: exactly one address == predict, and each tab's QR cells equal uqr's encoding of the shown address. Fails closed on API/RPC/script errors, timeouts, empty stdin. Remaining limits documented: create-time wrong recipient, no wallet link, evasive bundles.",
           "at": "2026-10-10T23:13:04Z",
           "filesHash": "6875a827dce9f87b"
-        }
+        },
+        "commit": "78afad6",
+        "doneAt": "2026-10-10T23:13:06Z"
       },
       "branch": "feat/f093-a-canary-built-apart-from-the-app-checks",
       "baseCommit": "d8e7a1506702632fcf98b4acbbb106b534bcc97c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f093-a-canary-built-apart-from-the-app-checks",
+        "base": "main"
+      }
     },
     {
       "id": "F094",
