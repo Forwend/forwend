@@ -39,8 +39,13 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   chain and token), and recent activity. Receive opens a sheet with the full address (`ReceiveAddress`), QR code and
   an exact network and token warning (the address never shows without it). `/app/balances` and `/app/activity` list
   everything; in activity only a payment carries "+". Money sent straight to the wallet shows in the balance once final, not in activity. Balances
-  and activity are read again every 15 s while the tab is visible; only the newest answer is used. `/app/profiles/new` creates a freelancer
+  and activity are read again every 15 s while the tab is visible and when it comes back. `/app/profiles/new` creates a freelancer
   or merchant profile with one idempotency key per visit (R-35).
+- API data lives in an RTK Query cache (D-47): one store per tab (`store/store.ts`, mounted by
+  `providers/store-provider.tsx` inside Privy), one `apiSlice` that adds the Privy access token, and endpoints
+  injected by each feature (`features/*/…-api.ts`). Query arguments carry the profile, so a profile never shows
+  another's data; a created profile joins the cached list without a refetch; sign-out clears the cache. Amounts stay
+  strings in the cache and become `bigint` only for display.
 - The browser calls the backend same-origin at `/api/v1/…`; `next.config.ts` forwards it to `API_URL`, so the api needs
   no CORS. The rewrite is fixed at `next build`, so `API_URL` must be set when building; Turbo hashes `.env*` and
   these variables for the web build. Request and response types are written by hand from `apps/backend/api/openapi.yaml`

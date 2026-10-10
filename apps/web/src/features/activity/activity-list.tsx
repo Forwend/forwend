@@ -10,12 +10,11 @@ import {
   ACTIVITY_PAGE_SIZE,
   activityStatus,
 } from "@/features/activity/activity";
-import { getActivity } from "@/features/activity/activity-api";
+import { useGetActivityQuery } from "@/features/activity/activity-api";
 import { ACTIVITY_COPY } from "@/features/activity/activity-copy";
 import { chainName } from "@/shared/chains/chains";
-import { REFRESH_MS } from "@/shared/config/refresh";
+import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { useLoad } from "@/shared/hooks/use-load";
 
 // Short enough for a phone row: "Oct 10, 12:50 AM".
 const TIME = new Intl.DateTimeFormat(undefined, {
@@ -29,26 +28,21 @@ const TIME = new Intl.DateTimeFormat(undefined, {
 // latest few and links to the Activity page; there, "Show more" asks for more rows in one request (up to the API's
 // 100), so a refresh reads the same rows again and never skips or repeats one. An invoice is a request, so its amount
 // has no sign; only a payment shows "+".
-export function ActivityList({
-  profileId,
-  token,
-  preview,
-}: {
+interface ActivityListProps {
   profileId: string;
-  token: () => Promise<string>;
   /** On the dashboard: this many rows and a "View all" link. */
   preview?: number;
-}) {
-  const [shown, setShown] = useState({ profileId, limit: ACTIVITY_PAGE_SIZE });
-  const limit = preview ?? (shown.profileId === profileId ? shown.limit : ACTIVITY_PAGE_SIZE);
-  const list = useLoad(
-    async () => getActivity(await token(), profileId, limit),
-    [profileId, limit],
-    {
-      refreshMs: REFRESH_MS,
-      resetKey: profileId,
-    },
-  );
+}
+
+// A new list per profile: the rows shown while more load are always this profile's.
+export function ActivityList(props: ActivityListProps) {
+  return <ProfileActivity key={props.profileId} {...props} />;
+}
+
+function ProfileActivity({ profileId, preview }: ActivityListProps) {
+  const [shownLimit, setShownLimit] = useState<number>(ACTIVITY_PAGE_SIZE);
+  const limit = preview ?? shownLimit;
+  const list = useGetActivityQuery({ profileId, limit }, LIVE_QUERY);
   const items = list.data?.items ?? [];
   const more = Boolean(list.data?.nextCursor);
   const Heading = preview ? "h2" : "h1";
@@ -56,7 +50,7 @@ export function ActivityList({
   return (
     <section
       aria-labelledby="activity-title"
-      aria-busy={!list.data && !list.failed}
+      aria-busy={!list.data && !list.isError}
       className={
         preview
           ? "flex flex-col gap-2 rounded-lg border border-line bg-surface p-6"
@@ -80,10 +74,10 @@ export function ActivityList({
           </Link>
         ) : null}
       </div>
-      {list.failed && !list.data ? (
+      {list.isError && !list.data ? (
         <div role="alert" className="flex flex-wrap items-center gap-4 text-muted">
           {ACTIVITY_COPY.activityFailed}
-          <Button size="sm" variant="secondary" onClick={list.reload}>
+          <Button size="sm" variant="secondary" onClick={list.refetch}>
             {ACTIVITY_COPY.retry}
           </Button>
         </div>
@@ -119,10 +113,8 @@ export function ActivityList({
             <Button
               variant="secondary"
               className="self-start"
-              loading={list.loading && items.length < limit}
-              onClick={() =>
-                setShown({ profileId, limit: Math.min(limit + ACTIVITY_PAGE_SIZE, ACTIVITY_MAX) })
-              }
+              loading={list.isFetching && items.length < limit}
+              onClick={() => setShownLimit(Math.min(limit + ACTIVITY_PAGE_SIZE, ACTIVITY_MAX))}
             >
               {ACTIVITY_COPY.loadMore}
             </Button>

@@ -3,14 +3,13 @@
 import { useEffect, useState } from "react";
 import { ActivityList } from "@/features/activity/activity-list";
 import { BalanceCard } from "@/features/balances/balance-card";
-import { getBalances } from "@/features/balances/balances-api";
+import { useGetBalancesQuery } from "@/features/balances/balances-api";
 import { NetworksCard } from "@/features/balances/networks-card";
 import { useAppSession } from "@/features/profiles/app-session";
 import { profileLabel } from "@/features/profiles/profile";
 import { RECEIVE_EVENT, RECEIVE_HASH } from "@/features/receive/receive-events";
 import { ReceiveSheet } from "@/features/receive/receive-sheet";
-import { REFRESH_MS } from "@/shared/config/refresh";
-import { useLoad } from "@/shared/hooks/use-load";
+import { LIVE_QUERY } from "@/shared/config/refresh";
 
 const DASHBOARD_COPY = {
   overview: "overview",
@@ -22,15 +21,8 @@ const RECENT = 5;
 // How much and where, what you can do with it, then what happened lately. Receive opens as a sheet, also from the
 // phone tab bar (an event here, #receive from another page).
 export function DashboardScreen() {
-  const { profile, token } = useAppSession();
-  const balances = useLoad(
-    async () => getBalances(await token(), profile.profileId),
-    [profile.profileId],
-    {
-      refreshMs: REFRESH_MS,
-      resetKey: profile.profileId,
-    },
-  );
+  const { profile } = useAppSession();
+  const balances = useGetBalancesQuery(profile.profileId, LIVE_QUERY);
   const [receiving, setReceiving] = useState(false);
 
   useEffect(() => {
@@ -50,22 +42,22 @@ export function DashboardScreen() {
       </h1>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] lg:items-start">
         <BalanceCard
-          balances={balances.data}
-          failed={balances.failed}
-          updatedAt={balances.updatedAt}
-          onRetry={balances.reload}
+          balances={balances.currentData ?? null}
+          failed={balances.isError}
+          updatedAt={balances.fulfilledTimeStamp ? new Date(balances.fulfilledTimeStamp) : null}
+          onRetry={balances.refetch}
           onReceive={() => setReceiving(true)}
         />
-        <NetworksCard balances={balances.data} />
+        <NetworksCard balances={balances.currentData ?? null} />
       </div>
-      <ActivityList profileId={profile.profileId} token={token} preview={RECENT} />
+      <ActivityList profileId={profile.profileId} preview={RECENT} />
       <ReceiveSheet
         open={receiving}
         onOpenChange={setReceiving}
         address={profile.walletAddress}
-        balances={balances.data}
-        failed={balances.failed}
-        onRetry={balances.reload}
+        balances={balances.currentData ?? null}
+        failed={balances.isError}
+        onRetry={balances.refetch}
       />
     </div>
   );

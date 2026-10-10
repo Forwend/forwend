@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 77,
+  "nextId": 78,
   "tasks": [
     {
       "id": "F001",
@@ -8045,6 +8045,36 @@
         "branch": "refactor/f076-backend-code-follows-docs-backend-rules",
         "base": "main"
       }
+    },
+    {
+      "id": "F077",
+      "type": "refactor",
+      "behavior": "The web app reads and writes API data through Redux Toolkit and RTK Query, with the same screens and refresh behavior",
+      "acceptance": [
+        "A per-tab store (store/store.ts makeStore, store/hooks.ts, providers/store-provider.tsx) holds only the RTK Query cache; shared/api/api-slice.ts sets the base URL and Privy token; profiles, balances and activity inject their endpoints from their features; useLoad and the hand-written fetch client are gone.",
+        "Balances and activity read again every 15 s while the tab is visible and when it comes back; query arguments include the profile, so another profile's data never shows; a new profile joins the cached list without a refetch; sign-out clears the cache; amounts stay exact strings.",
+        "Same screens and copy: lint, typecheck, unit, build, e2e and the live sign-in suite pass."
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [
+        "R-37",
+        "D-11"
+      ],
+      "keep": [
+        "apps/backend/*",
+        "packages/*",
+        "apps/web/e2e/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null,
+      "branch": "refactor/f077-the-web-app-reads-and-writes-api-data-th",
+      "baseCommit": "453c56e20a51435044a4fd00abe3a893afee6b94"
     }
   ],
   "lastWrapup": {
