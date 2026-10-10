@@ -11130,7 +11130,7 @@
       "dependsOn": [
         "F105"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -11226,11 +11226,18 @@
           "summary": "PASS. settlement tests -race x3 no flakes. Saved before send for settle and every replacement; replacement guarded by status='sent' AND tx_hash=old plus the advisory lock; confirm books once (FOR UPDATE, unique index) with the mined receipt's hash; a new nonce is signed only via retry when the nonce is spent; replaced_hashes cleared only then. Same nonce, gas, calldata; fee bump max(current, ceil(9x/8)) in big.Int. Booking still waits for finality and Settled at finalized (D-45). Ops SQL planned against migrated schema; 00012 down reverses up. Fixed after review: a revert at the deploy block no longer falls back to latest; stall wait documented as 2 min doubling; a describing comment removed. Re-verified 9 checks.",
           "at": "2026-10-10T21:27:45Z",
           "filesHash": "121edc51ea7c6137"
-        }
+        },
+        "commit": "fe7caea",
+        "doneAt": "2026-10-10T21:27:47Z"
       },
       "branch": "fix/f109-the-signer-replaces-a-stuck-settle-with",
       "baseCommit": "40fc4141f2ad6ce92ddea984ac21e98eac53375b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f109-the-signer-replaces-a-stuck-settle-with",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
