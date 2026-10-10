@@ -17,13 +17,21 @@ func TestAPI(t *testing.T) {
 	t.Setenv("PRIVY_APP_SECRET", "secret")
 	t.Setenv("CHAINS_FILE", "chains.json")
 	t.Setenv("INFURA_API_KEYS", "a, b,")
+	t.Setenv("PUBLIC_WEB_URL", "https://forwend.app/")
 	got, err := config.LoadAPI()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.DatabaseURL != "postgres://x" || got.Addr != ":9" || got.PrivyAppID != "app" || got.PrivyJWKSURL != "https://jwks" ||
-		got.PrivyAppSecret != "secret" || got.ChainsFile != "chains.json" || !slices.Equal(got.InfuraKeys, []string{"a", "b"}) {
+		got.PrivyAppSecret != "secret" || got.ChainsFile != "chains.json" || !slices.Equal(got.InfuraKeys, []string{"a", "b"}) ||
+		got.PublicWebURL != "https://forwend.app" {
 		t.Fatalf("got %+v", got)
+	}
+	for _, bad := range []string{"forwend.app", "ftp://forwend.app", "https://"} {
+		t.Setenv("PUBLIC_WEB_URL", bad)
+		if _, err := config.LoadAPI(); err == nil || !strings.Contains(err.Error(), "invalid environment variables PUBLIC_WEB_URL") {
+			t.Fatalf("PUBLIC_WEB_URL=%s: got %v", bad, err)
+		}
 	}
 }
 
@@ -35,9 +43,10 @@ func TestAPINamesEveryMissingVariable(t *testing.T) {
 	t.Setenv("PRIVY_APP_SECRET", "")
 	t.Setenv("CHAINS_FILE", "")
 	t.Setenv("INFURA_API_KEYS", "")
+	t.Setenv("PUBLIC_WEB_URL", "")
 	_, err := config.LoadAPI()
 	if err == nil || !strings.Contains(err.Error(),
-		"DATABASE_URL, API_ADDR, PRIVY_APP_ID, PRIVY_JWKS_URL, PRIVY_APP_SECRET, CHAINS_FILE, INFURA_API_KEYS") {
+		"DATABASE_URL, API_ADDR, PRIVY_APP_ID, PRIVY_JWKS_URL, PRIVY_APP_SECRET, CHAINS_FILE, INFURA_API_KEYS, PUBLIC_WEB_URL") {
 		t.Fatalf("got %v", err)
 	}
 }

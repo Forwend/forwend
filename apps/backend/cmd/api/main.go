@@ -58,7 +58,7 @@ func run() error {
 	server := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewMux(pool, verifier, privy.NewClient(cfg.PrivyAppID, cfg.PrivyAppSecret, ""),
-			balances.Read),
+			balances.Read, cfg.PublicWebURL),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

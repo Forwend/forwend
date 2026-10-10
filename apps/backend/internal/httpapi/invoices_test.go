@@ -28,6 +28,7 @@ const (
 	usdc        = "0x036cbd53842c5426634e7929541ec2318f3dcf7e"
 	aliceWallet = "0x1111111111111111111111111111111111111111"
 	uint256Max  = "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+	webURL      = "https://forwend.test"
 )
 
 type invoiceEnv struct {
@@ -76,7 +77,7 @@ func invoiceAPI(t *testing.T) invoiceEnv {
 	e.srv = httptest.NewServer(NewMux(pool, verifier, privy.NewClient(privytest.AppID, privytest.AppSecret, e.wallets.URL),
 		func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 			return big.NewInt(2500000), 100, nil
-		}))
+		}, webURL))
 	t.Cleanup(e.srv.Close)
 	return e
 }

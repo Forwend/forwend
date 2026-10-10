@@ -5,6 +5,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -22,6 +23,8 @@ type API struct {
 	// ChainsFile and InfuraKeys reach the chains for wallet balances, as in Chains.
 	ChainsFile string
 	InfuraKeys []string
+	// PublicWebURL is the web app's origin, such as https://forwend.app: PDFs link to its /pay/<invoiceId> page.
+	PublicWebURL string
 }
 
 // Worker is what cmd/worker needs.
@@ -48,7 +51,7 @@ func LoadAPI() (API, error) {
 	var r reader
 	c := API{DatabaseURL: r.get("DATABASE_URL"), Addr: r.get("API_ADDR"),
 		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyJWKSURL: r.get("PRIVY_JWKS_URL"), PrivyAppSecret: r.get("PRIVY_APP_SECRET"),
-		ChainsFile: r.get("CHAINS_FILE"), InfuraKeys: r.infuraKeys()}
+		ChainsFile: r.get("CHAINS_FILE"), InfuraKeys: r.infuraKeys(), PublicWebURL: r.origin("PUBLIC_WEB_URL")}
 	return c, r.err()
 }
 
@@ -81,6 +84,19 @@ func (r *reader) chains() Chains {
 		c.PollInterval = d
 	}
 	return c
+}
+
+func (r *reader) origin(name string) string {
+	raw := r.get(name)
+	if raw == "" {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		r.invalid = append(r.invalid, name+" (an origin such as https://forwend.app)")
+		return ""
+	}
+	return u.Scheme + "://" + u.Host
 }
 
 func (r *reader) infuraKeys() []string {

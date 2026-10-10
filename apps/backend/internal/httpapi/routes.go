@@ -14,8 +14,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// NewMux serves the API. balances reads wallet balances from each chain's second RPC (D-15).
-func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, balances ledger.BalanceOf) *http.ServeMux {
+// NewMux serves the API. balances reads wallet balances from each chain's second RPC (D-15); webURL is the web app's
+// origin, for the pay link in PDFs.
+func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, balances ledger.BalanceOf,
+	webURL string) *http.ServeMux {
 	owners, invoices, profiles := auth.NewService(pool), invoice.NewService(pool), profile.NewService(pool, wallets)
 	signedIn := func(h http.Handler) http.Handler { return requireUser(verifier, h) }
 	profileScoped := func(h http.Handler) http.Handler { return signedIn(requireProfileOwner(owners, h)) }
@@ -35,5 +37,7 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 	mux.Handle("GET /v1/profiles/{profileId}/activity", profileScoped(getActivity(activity.NewService(pool))))
 	mux.Handle("GET /v1/profiles/{profileId}/transactions", profileScoped(getTransactions(activity.NewService(pool))))
 	mux.Handle("GET /v1/invoices/{invoiceId}", getInvoice(invoices)) // public: checkout reads
+	mux.Handle("GET /v1/invoices/{invoiceId}/invoice.pdf", invoicePDF(invoices, webURL))
+	mux.Handle("GET /v1/invoices/{invoiceId}/receipt.pdf", receiptPDF(invoices, webURL))
 	return mux
 }
