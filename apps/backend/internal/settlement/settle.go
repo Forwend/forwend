@@ -11,12 +11,14 @@ import (
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/address"
+	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // ReceiptWait is how long one run waits for a sent transaction; an unmined one is reconciled on the next run.
@@ -30,8 +32,17 @@ const CodeWait = 10 * time.Second
 // settle used 122,832 gas paying a wallet with no tokens yet (logged by
 // TestSettleWaitsForTheReceiverCodeAndNeverUnderestimatesGas) and 105,732 paying one that has some. Real USDC behind
 // its proxy on a Base Sepolia fork used 135,632 (estimate 139,592) paying a wallet with none: the floor plus a fifth,
-// 150,000, covers it. On Arbitrum gas also counts the L1 data cost, which the floor does not cover.
+// 150,000, covers it. On Arbitrum gas also counts the L1 data cost, which the floor does not cover; the estimate at
+// the deploy's block does.
 const SettleGasFloor = 125_000
+
+// ReplaceAfter is how long a saved settle may stay unmined before it is signed again with the same nonce and a
+// higher fee, so the settles after it on the chain are not held up.
+const ReplaceAfter = 3 * time.Minute
+
+// MaxFeeFactor caps a replacement's fee cap at this many times the fee cap a new settle would get now, so repeated
+// bumps can't grow without end.
+const MaxFeeFactor = 2
 
 func (s *Signer) settle(ctx context.Context, id int64) error {
 	in, err := s.load(ctx, id)
@@ -85,7 +96,7 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 	if !st.Deployed {
 		data, _ := callData(deploySelector, terms)
 		factory := common.Address(address.Factory)
-		tx, err := s.sign(ctx, client, in.chainID, factory, data, 0, 0)
+		tx, err := s.sign(ctx, client, in.chainID, factory, data, 0, 0, nil)
 		if err != nil {
 			return err
 		}
@@ -103,7 +114,7 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 		return err
 	}
 
-	tx, err := s.sign(ctx, client, in.chainID, receive, settleSelector, after, SettleGasFloor)
+	tx, err := s.sign(ctx, client, in.chainID, receive, settleSelector, after, SettleGasFloor, deployed)
 	if err != nil {
 		return err
 	}
@@ -113,7 +124,8 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 	}
 	// Saved before it is sent: a crash after this point resends these bytes, never a new settle.
 	tag, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'sent', sender = $2, nonce = $3, tx_hash = $4,
-		raw_tx = $5, reason = NULL, attempts = attempts + 1, updated_at = now() WHERE id = $1 AND status = 'pending'`,
+		raw_tx = $5, signed_at = now(), reason = NULL, attempts = attempts + 1, updated_at = now()
+		WHERE id = $1 AND status = 'pending'`,
 		in.id, strings.ToLower(s.sender.Hex()), int64(tx.Nonce()), tx.Hash().Hex(), raw)
 	if err != nil {
 		return fmt.Errorf("save settle transaction: %w", err)
@@ -126,7 +138,7 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 		return errStopped
 	}
 	sender, nonce, hash := strings.ToLower(s.sender.Hex()), int64(tx.Nonce()), tx.Hash().Hex()
-	in.status, in.rawTx, in.sender, in.nonce, in.txHash = "sent", raw, &sender, &nonce, &hash
+	in.status, in.rawTx, in.sender, in.nonce, in.txHash, in.signedAt = "sent", raw, &sender, &nonce, &hash, time.Now()
 	return s.reconcile(ctx, client, in)
 }
 
@@ -154,11 +166,11 @@ func check(in intent) (address.Terms, string) {
 }
 
 // sign builds and signs a call from the executor, with the chain's own gas estimate (Tempo prices storage
-// differently, S-5/S-6) but at least minGas, plus a fifth. The nonce is the node's pending nonce, but never below
-// after or the nonce after the last settle saved for this chain and sender: a node that lags may not count our
-// latest transactions yet. One signer per key (Signer).
+// differently, S-5/S-6) but at least minGas, plus a fifth. The estimate is at block when given (a deploy's), else at
+// latest. The nonce is the node's pending nonce, but never below after or the nonce after the last settle saved for
+// this chain and sender: a node that lags may not count our latest transactions yet. One signer per key (Signer).
 func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uint64, to common.Address, data []byte,
-	after, minGas uint64) (*types.Transaction, error) {
+	after, minGas uint64, block *big.Int) (*types.Transaction, error) {
 	nonce, err := client.PendingNonceAt(ctx, s.sender)
 	if err != nil {
 		return nil, fmt.Errorf("read executor nonce: %w", err)
@@ -173,9 +185,23 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 		after = max(after, uint64(*saved)+1)
 	}
 	nonce = max(nonce, after)
-	gas, err := client.EstimateGas(ctx, ethereum.CallMsg{From: s.sender, To: &to, Data: data})
-	if err != nil {
-		return nil, fmt.Errorf("estimate gas: %w", err)
+	msg := ethereum.CallMsg{From: s.sender, To: &to, Data: data}
+	var gas uint64
+	if block != nil {
+		// At the deploy's block a node that answers has seen the receiver's code; on Arbitrum the estimate also counts
+		// the L1 data gas, which the floor does not.
+		gas, err = client.EstimateGasAtBlock(ctx, msg, block)
+		if rpcErr := rpc.Error(nil); errors.As(err, &rpcErr) && rpcErr.ErrorCode() == 3 { // a revert fails at latest too
+			return nil, fmt.Errorf("estimate gas at block %s: %w", block, err)
+		}
+		if err != nil {
+			slog.Warn("no gas estimate at the deploy block; estimating at latest", "block", block, "err", chain.Redact(err))
+		}
+	}
+	if block == nil || err != nil {
+		if gas, err = client.EstimateGas(ctx, msg); err != nil {
+			return nil, fmt.Errorf("estimate gas: %w", err)
+		}
 	}
 	gas = max(gas, minGas)
 	tip, feeCap, err := fees(ctx, client, chainID)
@@ -187,6 +213,56 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 		Gas: gas + gas/5, To: &to, Data: data,
 	})
 	return types.SignTx(tx, types.LatestSignerForChainID(new(big.Int).SetUint64(chainID)), s.key)
+}
+
+// replace signs the saved settle old again with its nonce and gas and a higher fee: at least an eighth more tip and
+// fee cap (geth wants a tenth) and at least what a new settle gets now. It saves the new version before it is sent,
+// keeping old's hash, since either may be mined. Over MaxFeeFactor it returns old, to be sent again as it is.
+func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in intent, old *types.Transaction) (*types.Transaction, error) {
+	tip, feeCap, err := fees(ctx, client, in.chainID)
+	if err != nil {
+		return nil, err
+	}
+	limit := new(big.Int).Mul(feeCap, big.NewInt(MaxFeeFactor))
+	bump := func(x *big.Int) *big.Int {
+		return new(big.Int).Div(new(big.Int).Add(new(big.Int).Mul(x, big.NewInt(9)), big.NewInt(7)), big.NewInt(8))
+	}
+	tip, feeCap = bigMax(tip, bump(old.GasTipCap())), bigMax(feeCap, bump(old.GasFeeCap()))
+	if feeCap.Cmp(limit) > 0 {
+		slog.Warn("stuck settle is at the max fee; sending it again", "invoice", in.invoiceID, "tx", old.Hash().Hex())
+		return old, nil
+	}
+	tx, err := types.SignTx(types.NewTx(&types.DynamicFeeTx{ChainID: old.ChainId(), Nonce: old.Nonce(), GasTipCap: tip,
+		GasFeeCap: feeCap, Gas: old.Gas(), To: old.To(), Data: old.Data()}), types.LatestSignerForChainID(old.ChainId()), s.key)
+	if err != nil {
+		return nil, fmt.Errorf("sign replacement settle: %w", err)
+	}
+	raw, err := tx.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("encode replacement settle: %w", err)
+	}
+	tag, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET tx_hash = $2, raw_tx = $3,
+		replaced_hashes = replaced_hashes || tx_hash, signed_at = now(), reason = NULL, updated_at = now()
+		WHERE id = $1 AND status = 'sent' AND tx_hash = $4`, in.id, tx.Hash().Hex(), raw, old.Hash().Hex())
+	if err != nil {
+		return nil, fmt.Errorf("save replacement settle: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return nil, fmt.Errorf("save replacement settle: intent %d moved on", in.id)
+	}
+	slog.Info("stuck settle replaced", "invoice", in.invoiceID, "old", old.Hash().Hex(), "tx", tx.Hash().Hex(),
+		"nonce", tx.Nonce(), "fee_cap", feeCap.String())
+	if s.stopAfter == "save" {
+		return nil, errStopped
+	}
+	return tx, nil
+}
+
+func bigMax(a, b *big.Int) *big.Int {
+	if a.Cmp(b) >= 0 {
+		return a
+	}
+	return b
 }
 
 // fees are the tip and fee cap the signer pays now: the node's suggested tip, and twice the base fee plus the tip.

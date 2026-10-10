@@ -11130,7 +11130,7 @@
       "dependsOn": [
         "F105"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend"
       ],
@@ -11142,9 +11142,95 @@
         "packages/contracts/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-10 review pass by reviewer: PASS. settlement tests -race x3 no flakes. Saved before send for settle and every replacement; replacement guarded by status='sent' AND tx_hash=old plus the advisory lock; confirm books once (FOR UPDATE, unique index) with the mined receipt's hash; a new nonce is signed only via retry when the nonce is spent; replaced_hashes cleared only then. Same nonce, gas, calldata; fee bump max(current, ceil(9x/8)) in big.Int. Booking still waits for finality and Settled at finalized (D-45). Ops SQL planned against migrated schema; 00012 down reverses up. Fixed after review: a revert at the deploy block no longer falls back to latest; stall wait documented as 2 min doubling; a describing comment removed. Re-verified 9 checks."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-10T21:24:45Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 48.5,
+            "log": "docs/runs/F109-20261010T212445Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F109-20261010T212445Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F109-20261010T212445Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F109-20261010T212445Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F109-20261010T212445Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 47.1,
+            "log": "docs/runs/F109-20261010T212445Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F109-20261010T212445Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 72.6,
+            "log": "docs/runs/F109-20261010T212445Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F109-20261010T212445Z-keep.log"
+          }
+        ],
+        "taskHash": "1280918ce819f50d",
+        "filesHash": "121edc51ea7c6137",
+        "proof": {
+          "1": "backend: TestStuckSettleIsReplacedWithAHigherFee (a settle sent, then dropped when the base fee rose above its fee cap and refused when resent, is re-signed with the same nonce and at least 1/8 more tip and fee cap; it and a later settle on the chain both mine; booked once with the replacement hash; fails on the old code with 'max fee per gas less than block base fee' and the later deploy blocked), TestReplacedSettleThatMinesIsBookedOnce (the replaced first version mines instead of the replacement: booked once with that hash), TestStuckSettleOverTheMaxFeeIsSentAgainAsItIs (a bump over MaxFeeFactor x the current fee cap is not signed; the saved bytes are resent), TestSettleGasIsEstimatedAtTheDeployBlock (settle gas comes from eth_estimateGas at the deploy receipt block, e.g. an Arbitrum-size 400k estimate is used over the floor; a node refusing the block falls back to latest with the F105 floor), TestStaleNotSettledReadKeepsOurSuccessfulSettle (no receipt, receiver settled and our nonce used at finalized: intent stays sent with a stored reason, a slower retry, and is listed by the ops query in docs/backend/architecture.md#unresolved-settles); all on real Anvil and Postgres"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. settlement tests -race x3 no flakes. Saved before send for settle and every replacement; replacement guarded by status='sent' AND tx_hash=old plus the advisory lock; confirm books once (FOR UPDATE, unique index) with the mined receipt's hash; a new nonce is signed only via retry when the nonce is spent; replaced_hashes cleared only then. Same nonce, gas, calldata; fee bump max(current, ceil(9x/8)) in big.Int. Booking still waits for finality and Settled at finalized (D-45). Ops SQL planned against migrated schema; 00012 down reverses up. Fixed after review: a revert at the deploy block no longer falls back to latest; stall wait documented as 2 min doubling; a describing comment removed. Re-verified 9 checks.",
+          "at": "2026-10-10T21:27:45Z",
+          "filesHash": "121edc51ea7c6137"
+        }
+      },
+      "branch": "fix/f109-the-signer-replaces-a-stuck-settle-with",
+      "baseCommit": "40fc4141f2ad6ce92ddea984ac21e98eac53375b",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

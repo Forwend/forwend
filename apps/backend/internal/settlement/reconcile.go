@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 	"github.com/ethereum/go-ethereum"
@@ -15,11 +16,11 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// reconcile finishes a sent settle. Our own receipt decides first: a settle that succeeded and logged the receiver's
-// Settled event is ours, keeps its hash and is booked once its block is final, whatever a lagging node says about
-// settled() meanwhile. Without a receipt, unmined decides. A settle that reverted is recorded without our hash when
-// the receiver is settled at the finalized block (another settler), waits while it is settled only at latest, and is
-// otherwise signed again.
+// reconcile finishes a sent settle. Our own receipt, for the saved settle or any version it replaced, decides first: a
+// settle that succeeded and logged the receiver's Settled event is ours, keeps its hash and is booked once its block
+// is final, whatever a lagging node says about settled() meanwhile. Without a receipt, unmined decides. A settle that
+// reverted is recorded without our hash when the receiver is settled at the finalized block (another settler), waits
+// while it is settled only at latest, and is otherwise signed again.
 func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in intent) error {
 	tx := new(types.Transaction)
 	hash := common.HexToHash(*in.txHash)
@@ -28,15 +29,27 @@ func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in int
 		!bytes.Equal(tx.Data(), settleSelector) || tx.ChainId().Uint64() != in.chainID {
 		return fmt.Errorf("saved transaction %s is not this receiver's settle on chain %d", *in.txHash, in.chainID)
 	}
-	r, err := client.TransactionReceipt(ctx, hash)
-	if errors.Is(err, ethereum.NotFound) {
+	var r *types.Receipt
+	for _, h := range append([]string{*in.txHash}, in.replaced...) { // one nonce: at most one of them is mined
+		got, err := client.TransactionReceipt(ctx, common.HexToHash(h))
+		if errors.Is(err, ethereum.NotFound) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("read settle receipt: %w", err)
+		}
+		r = got
+		break
+	}
+	var err error
+	if r == nil {
 		if r, err = s.unmined(ctx, client, in, tx); err != nil || r == nil {
 			return err
 		}
-	} else if err != nil {
-		return fmt.Errorf("read settle receipt: %w", err)
 	}
 	if settledBy(r, receive) {
+		mined := r.TxHash.Hex()
+		in.txHash = &mined
 		return s.confirmIfFinal(ctx, client, in, r)
 	}
 	final, err := receiverSettled(ctx, client, receive, finalized)
@@ -50,14 +63,15 @@ func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in int
 	if now, err := receiverSettled(ctx, client, receive, nil); err != nil || now {
 		return err
 	}
-	return s.retry(ctx, in, fmt.Sprintf("settle %s mined with status %d but the receiver is not settled", hash.Hex(), r.Status))
+	return s.retry(ctx, in, fmt.Sprintf("settle %s mined with status %d but the receiver is not settled", r.TxHash.Hex(), r.Status))
 }
 
 // unmined handles a saved settle without a receipt: not sent yet, waiting to be mined, dropped, or mined in a block
 // the answering node has not seen. Reads at one finalized block decide for good: the receiver settled there while our
 // nonce is still unused there is another settler's work (recorded without our hash); our nonce used there while the
 // receiver is not settled means ours can never mine (signed again). Otherwise the saved bytes are sent again while
-// their nonce is free and nobody settled, and the receipt is returned once mined. nil, nil ends this run's look.
+// their nonce is free and nobody settled, signed again with a higher fee (replace) once ReplaceAfter has passed since
+// they were signed, and the receipt is returned once mined. nil, nil ends this run's look.
 func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in intent, tx *types.Transaction) (*types.Receipt, error) {
 	sender, receive := common.HexToAddress(*in.sender), common.HexToAddress(in.receive)
 	head, err := client.HeaderByNumber(ctx, finalized)
@@ -79,8 +93,8 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 		return nil, s.confirm(ctx, in)
 	case final:
 		// Ours, with a node that lags on receipts, or our nonce went to another transaction: wait for the receipt.
-		slog.Warn("settlement waits for the receipt of its settle", "invoice", in.invoiceID, "tx", tx.Hash().Hex())
-		return nil, nil
+		return nil, s.stall(ctx, in, "no receipt for any of its settle's hashes, but the receiver is settled and "+
+			"the executor's nonce is used at the finalized block")
 	case taken:
 		return nil, s.retry(ctx, in, "the saved settle's nonce was used by another transaction")
 	}
@@ -91,6 +105,11 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 	settled, err := receiverSettled(ctx, client, receive, nil)
 	if err != nil || settled || int64(mined) > *in.nonce {
 		return nil, err // settled, or the nonce used, after the finalized block: decided once that is final
+	}
+	if sender == s.sender && time.Since(in.signedAt) >= s.replaceAfter {
+		if tx, err = s.replace(ctx, client, in, tx); err != nil {
+			return nil, err
+		}
 	}
 	if err := client.SendTransaction(ctx, tx); err != nil && !strings.Contains(strings.ToLower(err.Error()), "known") {
 		return nil, fmt.Errorf("send settle: %w", err)
@@ -149,15 +168,26 @@ func (s *Signer) confirm(ctx context.Context, in intent) error {
 	return tx.Commit(ctx)
 }
 
-// retry puts the intent back to pending for a temporary condition, with a growing wait (1 min doubling, at most
-// 1 h). A saved settle that can no longer mine is dropped so a new one is signed.
+// backoff is the growing wait between tries: 1 min doubling, at most 1 h.
+const backoff = "now() + least(interval '1 minute' * power(2, least(attempts, 6)), interval '1 hour')"
+
+// retry puts the intent back to pending for a temporary condition, with a growing wait. A saved settle that can no
+// longer mine is dropped, with every version of it, so a new one is signed.
 func (s *Signer) retry(ctx context.Context, in intent, reason string) error {
 	slog.Warn("settlement waits", "invoice", in.invoiceID, "reason", reason)
 	// Only from the status this attempt loaded: a stale attempt never moves an intent that went on.
 	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'pending', sender = NULL, nonce = NULL,
-		tx_hash = NULL, raw_tx = NULL, reason = $2, attempts = attempts + 1, updated_at = now(),
-		next_attempt_at = now() + least(interval '1 minute' * power(2, least(attempts, 6)), interval '1 hour')
-		WHERE id = $1 AND status = $3`, in.id, reason, in.status)
+		tx_hash = NULL, raw_tx = NULL, replaced_hashes = '{}', signed_at = NULL, reason = $2, attempts = attempts + 1,
+		updated_at = now(), next_attempt_at = `+backoff+` WHERE id = $1 AND status = $3`, in.id, reason, in.status)
+	return err
+}
+
+// stall keeps a sent settle the signer can't resolve yet: it stays sent, with a reason and a growing wait, and shows
+// in the operators' query (docs/backend/architecture.md#signer).
+func (s *Signer) stall(ctx context.Context, in intent, reason string) error {
+	slog.Warn("settlement unresolved", "invoice", in.invoiceID, "tx", *in.txHash, "reason", reason)
+	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET reason = $2, attempts = attempts + 1, updated_at = now(),
+		next_attempt_at = `+backoff+` WHERE id = $1 AND status = 'sent'`, in.id, reason)
 	return err
 }
 
