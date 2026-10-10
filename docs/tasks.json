@@ -10041,7 +10041,7 @@
       "dependsOn": [
         "F087"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "docs-check"
@@ -10053,9 +10053,103 @@
         "packages/contracts/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-10 review pass by reviewer: PASS after two fix rounds. Independence: only cmd/canary, internal/canary, internal/config (module-wide import test). predict(terms) encoding matches InvoiceTerms, proven against cast. Factory runtime code hash pins implementation and refund authority (immutables). Terms come from the DB (stdin), API terms must equal them, predict runs on DB terms on two RPCs with eth_chainId checks. Real pay page read in Chromium after the network gate: exactly one address == predict, and each tab's QR cells equal uqr's encoding of the shown address. Fails closed on API/RPC/script errors, timeouts, empty stdin. Remaining limits documented: create-time wrong recipient, no wallet link, evasive bundles."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-10T23:09:33Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 48.9,
+            "log": "docs/runs/F093-20261010T230933Z-backend.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F093-20261010T230933Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F093-20261010T230933Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F093-20261010T230933Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F093-20261010T230933Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 52.4,
+            "log": "docs/runs/F093-20261010T230933Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.9,
+            "log": "docs/runs/F093-20261010T230933Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 94.9,
+            "log": "docs/runs/F093-20261010T230933Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F093-20261010T230933Z-keep.log"
+          }
+        ],
+        "taskHash": "703ca709d909d2c3",
+        "filesHash": "6875a827dce9f87b",
+        "proof": {
+          "1": "backend: internal/canary TestCheck on two real Anvils with the deployed factory and the real page script (apps/web/scripts/canary-pay-page.ts in Chromium, address text and QR cells checked against uqr): matching terms, address and QR pass; api address, api recipient, api factory, page address, page QR for another address, page with no address, RPC disagreement, wrong factory code hash and an RPC on another chain id each alert. config.TestCanary covers CANARY_*. cmd/canary logs 'canary alert' and exits 1 on any alert or empty stdin (unless -allow-empty); the page script runs under a deadline. Live run over 113 open local invoices (DB terms via psql, local api, real pay page in Chromium, two Base Sepolia RPCs) passed, exit 0",
+          "2": "backend: TestCheck 'api address changed', 'page address changed' and 'page QR code for another address' fail the check; e2e pay.spec 'lets the canary read the shown address' proves the script reads the real pay page's address and QR (qrMatches true) and reports paid or mismatched pages; TestImportsNoAppCode allows only cmd/canary, internal/canary and internal/config from this repository; docs/backend/money-safety.md#canary says how to run it"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS after two fix rounds. Independence: only cmd/canary, internal/canary, internal/config (module-wide import test). predict(terms) encoding matches InvoiceTerms, proven against cast. Factory runtime code hash pins implementation and refund authority (immutables). Terms come from the DB (stdin), API terms must equal them, predict runs on DB terms on two RPCs with eth_chainId checks. Real pay page read in Chromium after the network gate: exactly one address == predict, and each tab's QR cells equal uqr's encoding of the shown address. Fails closed on API/RPC/script errors, timeouts, empty stdin. Remaining limits documented: create-time wrong recipient, no wallet link, evasive bundles.",
+          "at": "2026-10-10T23:13:04Z",
+          "filesHash": "6875a827dce9f87b"
+        },
+        "commit": "78afad6",
+        "doneAt": "2026-10-10T23:13:06Z"
+      },
+      "branch": "feat/f093-a-canary-built-apart-from-the-app-checks",
+      "baseCommit": "d8e7a1506702632fcf98b4acbbb106b534bcc97c",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f093-a-canary-built-apart-from-the-app-checks",
+        "base": "main"
+      }
     },
     {
       "id": "F094",

@@ -99,3 +99,34 @@ func TestWorkerAndSigner(t *testing.T) {
 		}
 	}
 }
+
+func TestCanary(t *testing.T) {
+	t.Setenv("CANARY_API_URL", "https://api.forwend.app")
+	t.Setenv("CANARY_WEB_URL", "https://forwend.app")
+	t.Setenv("CANARY_FACTORY", "0xECe745390524e4d0B05D26F56AF7F1D38FDb7546")
+	t.Setenv("CANARY_FACTORY_CODE_HASH", "0x"+strings.Repeat("Ab", 32))
+	t.Setenv("CANARY_RPC_URLS", `{"84532": ["https://a.example/v3/secret", "https://b.example"]}`)
+	t.Setenv("CANARY_PAGE_SCRIPT", "../web/scripts/canary-pay-page.ts")
+	got, err := config.LoadCanary()
+	if err != nil || got.APIURL != "https://api.forwend.app" || got.WebURL != "https://forwend.app" ||
+		got.Factory != "0xece745390524e4d0b05d26f56af7f1d38fdb7546" || got.FactoryCodeHash != "0x"+strings.Repeat("ab", 32) ||
+		got.RPCURLs[84532] != [2]string{"https://a.example/v3/secret", "https://b.example"} ||
+		got.PageScript != "../web/scripts/canary-pay-page.ts" {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+	// One RPC host twice is not a second opinion; a bad value is named, never shown.
+	for _, bad := range []string{`{"84532": ["https://a.example/v3/secret", "https://a.example/v3/other"]}`,
+		`{"84532": ["https://a.example/v3/secret"]}`, `{"84532": ["https://a.example/v3/secret", "b.example"]}`, `{}`, "a,b"} {
+		t.Setenv("CANARY_RPC_URLS", bad)
+		if _, err := config.LoadCanary(); err == nil || !strings.Contains(err.Error(), "invalid environment variables CANARY_RPC_URLS") ||
+			strings.Contains(err.Error(), "secret") {
+			t.Fatalf("CANARY_RPC_URLS=%s: got %v", bad, err)
+		}
+	}
+	t.Setenv("CANARY_FACTORY", "0x1234")
+	t.Setenv("CANARY_FACTORY_CODE_HASH", "")
+	if _, err := config.LoadCanary(); err == nil || !strings.Contains(err.Error(), "CANARY_FACTORY_CODE_HASH") ||
+		!strings.Contains(err.Error(), "invalid environment variables CANARY_FACTORY (") {
+		t.Fatalf("bad factory, missing hash: got %v", err)
+	}
+}

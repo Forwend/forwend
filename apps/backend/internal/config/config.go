@@ -4,11 +4,13 @@ package config
 
 import (
 	"crypto/ecdsa"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -54,6 +56,15 @@ type Signer struct {
 	ExecutorKey *ecdsa.PrivateKey
 }
 
+// Canary is what cmd/canary needs: its own factory, code hash and RPCs, never the api's (R-51).
+type Canary struct {
+	APIURL, WebURL  string               // the api's and the web app's public origins
+	Factory         string               // lowercase 0x address
+	FactoryCodeHash string               // keccak256 of the factory's runtime code, lowercase 0x hex
+	RPCURLs         map[uint64][2]string // two RPCs on different hosts per chain ID; may hold keys: never log
+	PageScript      string               // apps/web/scripts/canary-pay-page.ts, run with node
+}
+
 func LoadAPI() (API, error) {
 	var r reader
 	c := API{DatabaseURL: r.get("DATABASE_URL"), Addr: r.get("API_ADDR"),
@@ -80,6 +91,61 @@ func LoadSigner() (Signer, error) {
 	var r reader
 	c := Signer{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(), ExecutorKey: r.key("EXECUTOR_PRIVATE_KEY")}
 	return c, r.err()
+}
+
+func LoadCanary() (Canary, error) {
+	var r reader
+	c := Canary{APIURL: r.origin("CANARY_API_URL"), WebURL: r.origin("CANARY_WEB_URL"),
+		Factory: r.hex("CANARY_FACTORY", 20), FactoryCodeHash: r.hex("CANARY_FACTORY_CODE_HASH", 32),
+		RPCURLs: r.rpcPairs("CANARY_RPC_URLS"), PageScript: r.get("CANARY_PAGE_SCRIPT")}
+	return c, r.err()
+}
+
+func (r *reader) hex(name string, bytes int) string {
+	raw := r.get(name)
+	if raw == "" {
+		return ""
+	}
+	if !regexp.MustCompile(fmt.Sprintf("^0x[0-9a-fA-F]{%d}$", 2*bytes)).MatchString(raw) {
+		r.invalid = append(r.invalid, fmt.Sprintf("%s (0x and %d hex digits)", name, 2*bytes))
+	}
+	return strings.ToLower(raw)
+}
+
+// rpcPairs reads {"<chainId>": ["<url>", "<url>"], ...}. The URLs never go into an error: they may hold keys.
+func (r *reader) rpcPairs(name string) map[uint64][2]string {
+	raw := r.get(name)
+	if raw == "" {
+		return nil
+	}
+	var in map[uint64][]string
+	ok := json.Unmarshal([]byte(raw), &in) == nil && len(in) > 0
+	out := map[uint64][2]string{}
+	for chainID, urls := range in {
+		if len(urls) != 2 {
+			ok = false
+			break
+		}
+		a, b := webURL(urls[0]), webURL(urls[1])
+		if a == nil || b == nil || a.Host == b.Host {
+			ok = false
+			break
+		}
+		out[chainID] = [2]string(urls)
+	}
+	if !ok {
+		r.invalid = append(r.invalid, name+` (JSON such as {"84532": ["https://rpc-a", "https://rpc-b"]}: two URLs on `+
+			"different hosts per chain ID)")
+	}
+	return out
+}
+
+func webURL(raw string) *url.URL {
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return nil
+	}
+	return u
 }
 
 func (r *reader) chains() Chains {
