@@ -8,10 +8,8 @@ export interface AppSession {
   /** The profile chosen in the switcher. */
   profile: Profile;
   profiles: Profile[];
-  /** A fresh Privy access token for API calls. */
-  token: () => Promise<string>;
-  /** Adds a new profile and makes it the chosen one. */
-  addProfile: (profile: Profile) => void;
+  /** Makes a profile the chosen one, such as a profile just created. */
+  chooseProfile: (profileId: string) => void;
 }
 
 export const AppSessionContext = createContext<AppSession | null>(null);

@@ -2,7 +2,8 @@
 
 These are Forwend's placement and naming rules for new code and explicitly scoped refactors (D-11).
 Existing files may still use the old layout. Do not move unrelated code while delivering a feature.
-This document does not authorize installing Redux, adding services, or creating empty folders.
+Redux Toolkit with RTK Query is the request cache (D-47); this document does not authorize other state tools,
+adding services, or creating empty folders.
 Create only the parts a task needs. Behavior and design rules remain in [rules.md](rules.md).
 
 ## App ownership
@@ -111,7 +112,7 @@ Services can be plain functions. Do not add a service that only forwards a reque
 hook without additional behavior. Backend services remain responsible for authorization, transactions and
 money rules. Frontend validation does not replace backend validation.
 
-## Redux and request caching, when adopted
+## Redux and request caching
 
 Use established Redux terms: store, slice, reducer, selector, query and mutation. Use these filenames consistently:
 
@@ -122,8 +123,9 @@ Use established Redux terms: store, slice, reducer, selector, query and mutation
 - `providers/store-provider.tsx`: the client provider; mount it around the app routes that need Redux.
 - `features/<feature>/store/<feature>-slice.ts`: feature state and reducers. Keep selectors beside the slice;
   extract `<feature>-selectors.ts` only when their logic warrants a separate file.
-- `shared/api/api-slice.ts`: if using RTK Query, the shared `apiSlice` for our backend, with common request setup.
-  Define endpoints in `features/<feature>/api/<feature>-api.ts` using `injectEndpoints`. Do not collect all
+- `shared/api/api-slice.ts`: the shared RTK Query `apiSlice` for our backend, with common request setup.
+  Define endpoints in `features/<feature>/<feature>-api.ts` (in `api/` once a feature has several API files)
+  using `injectEndpoints`. Do not collect all
   feature endpoints in the shared file or create a separate `createApi` instance for every feature.
 - `shared/api/client.ts`: the plain request client if needed. Do not maintain duplicate fetch and RTK Query
   implementations for the same endpoint.

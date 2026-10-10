@@ -12,7 +12,7 @@ import {
   PROFILE_NAME_MAX,
   type ProfileKind,
 } from "@/features/profiles/profile";
-import { createProfile } from "@/features/profiles/profiles-api";
+import { useCreateProfileMutation } from "@/features/profiles/profiles-api";
 import { NEW_PROFILE_COPY as COPY } from "@/features/profiles/profiles-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -24,7 +24,8 @@ const KIND_ICONS = {
 // One idempotency key per filled-in form: a double click, or a retry of the same values after an error, makes one
 // profile (and the retry finishes its wallet); changed values are a new request with a new key, never a 409.
 export function NewProfileForm() {
-  const { token, addProfile } = useAppSession();
+  const { chooseProfile } = useAppSession();
+  const [createProfile] = useCreateProfileMutation();
   const router = useRouter();
   const keys = useRef(new Map<string, string>());
   const [kind, setKind] = useState<ProfileKind>(PROFILE_KINDS.freelancer);
@@ -44,7 +45,8 @@ export function NewProfileForm() {
       const values = JSON.stringify(body);
       const key = keys.current.get(values) ?? crypto.randomUUID();
       keys.current.set(values, key);
-      addProfile(await createProfile(await token(), key, body));
+      const profile = await createProfile({ idempotencyKey: key, body }).unwrap();
+      chooseProfile(profile.profileId);
       router.push(APP_ROUTES.home);
     } catch {
       setFormError(COPY.errors.failed);

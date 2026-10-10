@@ -2,17 +2,17 @@
 
 import { Button, Spinner } from "@forwend/ui-web";
 import { usePrivy } from "@privy-io/react-auth";
+import { skipToken } from "@reduxjs/toolkit/query";
 import { ArrowDownLeft, CircleUser, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { AccountMenu } from "@/features/auth/account-menu";
 import { AUTH_COPY } from "@/features/auth/auth-copy";
 import { type AppSession, AppSessionContext } from "@/features/profiles/app-session";
 import { ProfileSheet } from "@/features/profiles/components/profile-sheet";
 import { ProfileSwitcher } from "@/features/profiles/components/profile-switcher";
-import type { Profile } from "@/features/profiles/profile";
-import { signUp } from "@/features/profiles/profiles-api";
+import { useSignUpQuery } from "@/features/profiles/profiles-api";
 import { RECEIVE_COPY } from "@/features/receive/receive-copy";
 import { RECEIVE_EVENT, RECEIVE_HASH } from "@/features/receive/receive-events";
 import { APP_NAV } from "@/screens/app-shell/app-nav";
@@ -37,59 +37,30 @@ const TAB_ICON =
 // Signed out: go to sign-in. Signed in: POST /v1/me (signs up on the first visit), then the sidebar (profile switcher,
 // the profile type's pages, the account) on desktop or the tab bar on phones, and the page for the chosen profile.
 export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
-  const { ready, authenticated, getAccessToken, logout, user } = usePrivy();
+  const { ready, authenticated, logout, user } = usePrivy();
   const router = useRouter();
   const pathname = usePathname();
-  const [profiles, setProfiles] = useState<Profile[] | null>(null);
-  const [failed, setFailed] = useState(false);
+  const me = useSignUpQuery(ready && authenticated ? undefined : skipToken);
+  const profiles = me.currentData?.profiles ?? null;
+  const failed = me.isError;
   const [activeId, setActiveId] = useState("");
+  // The chosen profile, or the first (personal) one until the user picks another.
+  const active = profiles?.find((p) => p.profileId === activeId) ?? profiles?.[0];
 
   useEffect(() => {
     if (ready && !authenticated) router.replace(APP_ROUTES.signIn);
   }, [ready, authenticated, router]);
 
-  const load = useCallback(async () => {
-    setFailed(false);
-    try {
-      const token = await getAccessToken();
-      if (!token) throw new Error("no access token");
-      const me = await signUp(token);
-      setProfiles(me.profiles);
-      setActiveId((current) => current || (me.profiles[0]?.profileId ?? ""));
-    } catch {
-      setFailed(true);
-    }
-  }, [getAccessToken]);
+  const session = useMemo<AppSession | null>(
+    () => (profiles && active ? { profile: active, profiles, chooseProfile: setActiveId } : null),
+    [profiles, active],
+  );
 
-  useEffect(() => {
-    if (ready && authenticated) void load();
-  }, [ready, authenticated, load]);
-
-  const session = useMemo<AppSession | null>(() => {
-    const profile = profiles?.find((p) => p.profileId === activeId);
-    if (!profiles || !profile) return null;
-    return {
-      profile,
-      profiles,
-      token: async () => {
-        const token = await getAccessToken();
-        if (!token) throw new Error("signed out");
-        return token;
-      },
-      addProfile: (added) => {
-        setProfiles((list) =>
-          list?.some((p) => p.profileId === added.profileId) ? list : [...(list ?? []), added],
-        );
-        setActiveId(added.profileId);
-      },
-    };
-  }, [profiles, activeId, getAccessToken]);
-
+  // Signing out also gives the next user a fresh, empty store (StoreProvider).
   const signOut = async () => {
     await logout();
     router.replace(APP_ROUTES.signIn);
   };
-  const active = profiles?.find((p) => p.profileId === activeId);
   // Signed up users always have a personal profile; none means the answer is wrong, not that it is loading.
   if (failed || (profiles && !active)) {
     return (
@@ -97,7 +68,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
         <div role="alert" className="flex flex-col items-center gap-4 text-center">
           <p className="text-ink">{SHELL_COPY.loadFailed}</p>
           <div className="flex gap-2">
-            <Button onClick={() => void load()}>{SHELL_COPY.retry}</Button>
+            <Button onClick={() => void me.refetch()}>{SHELL_COPY.retry}</Button>
             <Button variant="ghost" onClick={signOut}>
               {AUTH_COPY.signOut}
             </Button>

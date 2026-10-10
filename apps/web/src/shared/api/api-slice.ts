@@ -1,0 +1,22 @@
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { API_BASE } from "@/shared/config/api";
+
+/** What the store gives each request: a fresh Privy access token, or null when signed out. */
+export interface ApiExtra {
+  getAccessToken: () => Promise<string | null>;
+}
+
+// One slice for our backend; each feature adds its endpoints with injectEndpoints. The browser calls the API
+// same-origin at /api/v1/…; next.config.ts forwards it to API_URL.
+export const apiSlice = createApi({
+  reducerPath: "api",
+  baseQuery: fetchBaseQuery({
+    baseUrl: API_BASE,
+    prepareHeaders: async (headers, { extra }) => {
+      const token = await (extra as ApiExtra).getAccessToken();
+      if (token) headers.set("Authorization", `Bearer ${token}`);
+      return headers;
+    },
+  }),
+  endpoints: () => ({}),
+});
