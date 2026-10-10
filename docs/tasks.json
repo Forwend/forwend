@@ -9285,7 +9285,7 @@
       "dependsOn": [
         "F084"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -9377,11 +9377,18 @@
           "summary": "R-44 met. Money exact: parseTokenAmount is bigint-only, rejects 0/negative/7 decimals/commas/junk; API gets base-unit strings; exactDigits keeps every non-zero digit. Idempotency key per JSON of form values (retry reuses, changed form gets new key; form keyed by profile). RTK Query injectEndpoints with profileId in args, Invoices tag invalidated by create, infinite query cursor correct. Labels, aria-invalid/aria-describedby, timeline list with aria-current, copy status, axe on all pages, 390px scroll checks. Structure follows structure.md; activity dependency named in architecture.md; TextAreaField on /kit with hint and error. Reviewer fix: the form now moves focus to the invalid field on a client or 422 error (flushSync + focus), e2e asserts it; verify re-run passed. Known follow-up F100 (one-item list read). Minor, not blocking: Party uses line text as React key; invoices screen fetches balances for a personal profile.",
           "at": "2026-10-10T15:37:51Z",
           "filesHash": "419dbae7347bf2f9"
-        }
+        },
+        "commit": "5680109",
+        "doneAt": "2026-10-10T15:38:19Z"
       },
       "branch": "feat/f086-freelancer-and-merchant-profiles-create",
       "baseCommit": "bf45dca5530e5a8434e0e7ddbe99a4348c98bf7b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f086-freelancer-and-merchant-profiles-create",
+        "base": "main"
+      }
     },
     {
       "id": "F087",
