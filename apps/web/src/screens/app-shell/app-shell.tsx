@@ -16,9 +16,7 @@ import { useSignUpQuery } from "@/features/profiles/profiles-api";
 import { RECEIVE_COPY } from "@/features/receive/receive-copy";
 import { RECEIVE_EVENT, RECEIVE_HASH } from "@/features/receive/receive-events";
 import { APP_NAV } from "@/screens/app-shell/app-nav";
-import { apiSlice } from "@/shared/api/api-slice";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { useAppDispatch } from "@/store/hooks";
 
 const SHELL_COPY = {
   loading: "Loading your profiles",
@@ -42,7 +40,6 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const { ready, authenticated, logout, user } = usePrivy();
   const router = useRouter();
   const pathname = usePathname();
-  const dispatch = useAppDispatch();
   const me = useSignUpQuery(ready && authenticated ? undefined : skipToken);
   const profiles = me.currentData?.profiles ?? null;
   const failed = me.isError;
@@ -59,10 +56,9 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     [profiles, active],
   );
 
-  // Signing out also drops every cached answer, so the next user never sees this one's money.
+  // Signing out also gives the next user a fresh, empty store (StoreProvider).
   const signOut = async () => {
     await logout();
-    dispatch(apiSlice.util.resetApiState());
     router.replace(APP_ROUTES.signIn);
   };
   // Signed up users always have a personal profile; none means the answer is wrong, not that it is loading.

@@ -44,7 +44,8 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
 - API data lives in an RTK Query cache (D-47): one store per tab (`store/store.ts`, mounted by
   `providers/store-provider.tsx` inside Privy), one `apiSlice` that adds the Privy access token, and endpoints
   injected by each feature (`features/*/…-api.ts`). Query arguments carry the profile, so a profile never shows
-  another's data; a created profile joins the cached list without a refetch; sign-out clears the cache. Amounts stay
+  another's data; a created profile joins the cached list without a refetch. A store belongs to one signed-in
+  user: when the user changes or the session ends, the next render gets a fresh, empty store. Amounts stay
   strings in the cache and become `bigint` only for display.
 - The browser calls the backend same-origin at `/api/v1/…`; `next.config.ts` forwards it to `API_URL`, so the api needs
   no CORS. The rewrite is fixed at `next build`, so `API_URL` must be set when building; Turbo hashes `.env*` and
