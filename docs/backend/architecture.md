@@ -206,9 +206,9 @@ never holds the app's load.
 each chain one pool of endpoints in `script/rpc.mjs` order: every Infura key (all on one host), then the public RPCs;
 public RPCs only when `INFURA_API_KEYS` is empty. An endpoint is used only after its `eth_chainId` matches. The primary
 role (reading the chain, signing) uses the first host with an endpoint that is not resting; the second role (balances,
-D-15) the first other such host, so the two never share a host. A list with fewer than two hosts is refused: Tempo
-Moderato always, and Base Sepolia and Arbitrum Sepolia without Infura keys, list one public host each; Arc Testnet
-lists four. Every call, or batch, goes to its role's endpoint. No answer within 5 s, a connection error, an HTTP error
+D-15) the first other such host, so the two never share a host. A list with fewer than two hosts is refused; every
+chain lists at least two public hosts from different operators (the chain's own RPC, then publicnode or dRPC), so it
+runs without Infura keys (`TestEveryChainListsTwoPublicHosts`). Every call, or batch, goes to its role's endpoint. No answer within 5 s, a connection error, an HTTP error
 status or a rate-limit JSON-RPC error (429, -32005, -32007, or a message saying so) rests that endpoint (1 s doubled
 per failure in a row, up to 5 min, half of it random) and sends the call to the next endpoint at once; when every
 endpoint of the role rests, the call waits for the first one back if that comes before its deadline, else fails. Any

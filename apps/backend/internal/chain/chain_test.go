@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -115,6 +116,27 @@ func TestRedactHidesInfuraKeys(t *testing.T) {
 	for _, e := range []error{callErr, infura} {
 		if got := Redact(e); strings.Contains(got, "SECRETKEY") || strings.Contains(got, "abc123def") {
 			t.Fatalf("key left in %q", got)
+		}
+	}
+}
+
+// Without Infura keys every chain still has two hosts, so D-15's second balance read has an independent provider.
+func TestEveryChainListsTwoPublicHosts(t *testing.T) {
+	specs, err := Specs("../../../../packages/contracts/chains.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id, s := range specs {
+		hosts := map[string]bool{}
+		for _, u := range s.Public {
+			parsed, err := url.Parse(u)
+			if err != nil {
+				t.Fatal(err)
+			}
+			hosts[parsed.Host] = true
+		}
+		if len(hosts) < 2 {
+			t.Errorf("chain %d lists %d public hosts, want at least 2", id, len(hosts))
 		}
 	}
 }
