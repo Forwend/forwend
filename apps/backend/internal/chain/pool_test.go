@@ -3,10 +3,16 @@ package chain
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -331,4 +337,41 @@ func answered(p *chaintest.Proxy) int {
 		}
 	}
 	return n
+}
+
+// Calls at once reuse their connections afterwards: 20 rounds of 10 calls at once open about 10 connections, not one per
+// call (net/http keeps only 2 per host by default).
+func TestCallsReuseConnections(t *testing.T) {
+	var conns atomic.Int32
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			ID json.RawMessage `json:"id"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		time.Sleep(5 * time.Millisecond) // calls overlap
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":"0x7a69"}`, req.ID)
+	}))
+	srv.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			conns.Add(1)
+		}
+	}
+	srv.Start()
+	defer srv.Close()
+	r := newRPCs(t, srv.URL, localhost(srv.URL))
+	ctx := context.Background()
+	for range 20 {
+		var wg sync.WaitGroup
+		for range 10 {
+			wg.Go(func() {
+				if _, err := tryNumber(ctx, r.Primary); err != nil {
+					t.Error(err)
+				}
+			})
+		}
+		wg.Wait()
+	}
+	if n := conns.Load(); n > 20 {
+		t.Fatalf("%d connections for 200 calls, want them reused", n)
+	}
 }

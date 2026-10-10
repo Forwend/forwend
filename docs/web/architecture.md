@@ -49,7 +49,9 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   the profile's list (cursor = number + 1, limit 1), which also tells whether the active profile made the invoice.
 - API data lives in an RTK Query cache (D-47): one store per tab (`store/store.ts`, mounted by
   `providers/store-provider.tsx` inside Privy), one `apiSlice` that adds the Privy access token, and endpoints
-  injected by each feature (`features/*/…-api.ts`). Query arguments carry the profile, so a profile never shows
+  injected by each feature (`features/*/…-api.ts`). On a 429 the slice waits `Retry-After` and sends the request once
+  more; if that is refused too, reads pause 15 s, doubling with each refusal up to 5 min, until an answer is not a
+  429 (`shared/api/rate-limit.ts`, [api rate limits](../backend/api.md#rate-limits)). Query arguments carry the profile, so a profile never shows
   another's data; a created profile joins the cached list without a refetch. A store belongs to one signed-in
   user: when the user changes or the session ends, the next render gets a fresh, empty store. Amounts stay
   strings in the cache and become `bigint` only for display.

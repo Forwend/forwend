@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { withRateLimit } from "@/shared/api/rate-limit";
 import { API_BASE } from "@/shared/config/api";
 
 /** What the store gives each request: a fresh Privy access token, or null when signed out. */
@@ -10,13 +11,15 @@ export interface ApiExtra {
 // same-origin at /api/v1/…; next.config.ts forwards it to API_URL.
 export const apiSlice = createApi({
   reducerPath: "api",
-  baseQuery: fetchBaseQuery({
-    baseUrl: API_BASE,
-    prepareHeaders: async (headers, { extra }) => {
-      const token = await (extra as ApiExtra).getAccessToken();
-      if (token) headers.set("Authorization", `Bearer ${token}`);
-      return headers;
-    },
-  }),
+  baseQuery: withRateLimit(
+    fetchBaseQuery({
+      baseUrl: API_BASE,
+      prepareHeaders: async (headers, { extra }) => {
+        const token = await (extra as ApiExtra).getAccessToken();
+        if (token) headers.set("Authorization", `Bearer ${token}`);
+        return headers;
+      },
+    }),
+  ),
   endpoints: () => ({}),
 });

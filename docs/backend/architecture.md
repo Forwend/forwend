@@ -9,7 +9,8 @@ Built: signup and profiles API, billing details, balances, activity, wallet tran
 ## Processes
 - `api`: public HTTP API + dashboard API. Verifies Privy tokens, authorizes the active profile,
   creates invoices, serves state. Reads profile wallet balances from each chain's second RPC at its finalized block
-  (D-15, D-45), picked from the chain list like the worker's. Holds **no** private keys.
+  (D-15, D-45), picked from the chain list like the worker's, through a short cache ([scaling](#scaling)). Holds **no**
+  private keys.
 - `worker`: chain watcher (block cursor per chain, `eth_getLogs` for allowlisted tokens filtered
   to active receiver addresses), confirmation/finality tracking, reorg handling, invoice state
   machine, outbox processing, webhook delivery, reconciliation.
@@ -50,6 +51,76 @@ Root `pnpm dev` (`apps/backend/scripts/dev.sh`) stops at once when `EXECUTOR_PRI
 `api listening` and `/healthz` answers 200, then starts the worker and signer, which need the api's migrations, and
 waits for their ready lines. Each process has 120 s. When one stops or is not ready in time, the script names it,
 stops the others and exits 1; the same when one stops later. Ctrl+C stops them all.
+
+## Scaling
+
+Deployment model (D-72): the api is stateless and runs as N replicas behind a load balancer; exactly one worker and
+one signer run beside it (more copies wait on their locks, [startup](#startup)). Each api replica keeps its own
+balance cache and rate-limit buckets in memory, so with N replicas the RPC reads and each caller's limit grow N times.
+Redis is the next step when more than a few replicas run: the cache sits behind the `cache` interface in
+`internal/balance`, with string keys and values so a Redis implementation can take its place; the limit buckets in
+`internal/httpapi` would move with it. Nothing else in the api keeps state between requests.
+
+- Balance reads (`balance.ChainReader`): a chain's finalized block is read once per 3 s (`finalizedTTL`) for every
+  request, then `balanceOf` once per chain, token, wallet and that block. Requests asking for the same key meanwhile
+  wait for the one read. A balance is always the one at the block it is returned with (`finalizedBlock`), at most
+  3 s behind the chain's. Values are kept 1 min (`balanceTTL`): a balance at a finalized block never changes, so this
+  only frees memory. A failed read is not kept: the requests waiting for it get the error and the next request reads
+  again. The read keeps the deadline of the request that started it but not its cancel, so one closed tab does not
+  fail the others. `/balance-history` reads through the same cache, so a dashboard poll of both routes costs one
+  `balanceOf` per token. The worker's paid check does not use it: it reads its own second-RPC balance.
+- The RPC pool keeps up to 100 idle connections per host. With net/http's default of 2, each call beyond 2 at once
+  opened a new connection (and TLS session), and under load the api ran out of local ports ([load test](#load-test)).
+- Postgres: `pool_max_conns` in `DATABASE_URL` sets each process's pool (without it pgxpool takes the larger of 4 and
+  the CPU count; `.env.example` sets 20). Keep the replicas' pools plus the worker's and signer's (each one more for
+  its lock) under Postgres `max_connections` (100 by default). `database.Migrate` parses the URL as the pool does,
+  so `pool_` parameters never reach Postgres as settings.
+- Rate limits per user; public routes are limited at the edge: [api.md](api.md#rate-limits). On 429 the web waits and backs off.
+
+## Load test
+
+`pnpm --filter @forwend/backend loadtest -users=10000 -duration=3m` (`e2e/load_test.go`; needs Postgres and Foundry,
+like the gate). It starts Anvil with two tokens, a JWKS stand-in for Privy and the api, then seeds per user a personal
+profile with a wallet, 5 paid invoices (one booked deposit each) and 10 wallet transfers. Every user then polls
+`/v1/me`, `/balances`, `/balance-history`, `/transactions` and `/activity` at once every 15 s, starting at a random
+moment in the first 15 s, while Anvil mines a block every `-block` (12 s; each block moves the finalized block). It
+prints p50/p95/p99 per route, errors, `/balances` tokens whose wallet balance was not read, and RPC calls per second
+counted at a proxy in front of Anvil. `RPC_RATE_PER_SECOND` is 100000, so the count is the api's demand, not the pace
+limit. `-api=<binary>` tests another build: the before runs used origin/main at d2971b5
+(`git archive d2971b5 apps/backend | tar -x -C <dir>`, then `go build ./cmd/api` there).
+
+Run 2026-10-10 on an Apple M4 Pro (14 cores, 24 GB, macOS), Postgres 17 in Docker (14 CPUs, 8 GB), with the load
+generator, api, proxy and Anvil on the same machine; default pool size (14 connections here). 10,000 users means
+50,000 invoices, 100,000 ledger entries and 100,000 wallet transfers. All routes together, and `/balances` alone:
+
+| Build | Users | Block every | p50 / p95 / p99, all | `/balances` p50 / p95 | Errors | Balances unread | RPC calls/s |
+|---|---|---|---|---|---|---|---|
+| before | 1,000 | 12 s | 3.4 / 11.8 / 16.4 ms | 6.7 / 14.1 ms | 0 | 0 | 533 |
+| after | 1,000 | 12 s | 3.7 / 9.4 / 12.4 ms | 5.0 / 10.6 ms | 0 | 0 | 134 |
+| before | 10,000 | 12 s | 40 / 73 / 80 s | 43 / 74 s | 170,918 of 211,410 | 6,305 of 12,842 | 145 got through of 5,333 asked |
+| after | 10,000 | 12 s | 1.1 / 2.4 / 3.7 ms | 1.5 / 2.6 ms | 0 | 0 | 1,333 |
+| after | 10,000 | 60 s | 1.0 / 2.1 / 3.6 ms | 1.3 / 2.3 ms | 0 | 0 | 334 |
+
+- Before, each `/balances` and `/balance-history` request read the finalized block and `balanceOf` for every token:
+  4 calls per user and token every 15 s, 5,333 calls/s at 10,000 users. The proxy and Anvil could not keep up: most
+  calls got no answer within the pool's 5 s per attempt, the pool's client opened a new connection for each call
+  beyond 2 at once until local ports ran out ("can't assign requested address"), and balance reads waited out their
+  10 s. Postgres was over its limit too: 1,333 balance sums a second at 21 ms each (below) is about 28 CPU-seconds a
+  second on 14 CPUs. Requests queued until the load generator's 60 s timeout; 6,305 of the 12,842 tokens answered
+  had no wallet balance.
+- After: one `balanceOf` per user and token per finalized block, and 60 finalized block reads in 3 minutes (one per
+  3 s). When the block moves faster than users poll (12 s against 15 s) that is 4 times fewer calls; when it stays
+  60 s, 16 times. RPC calls/s ≈ users × tokens ÷ max(15 s, how long a finalized block stays) + chains ÷ 3 s. The
+  finalized block of Base and Arbitrum moves in steps as Ethereum finalizes, so real numbers are nearer the 60 s run.
+  This demand has to fit `RPC_RATE_PER_SECOND` times the second role's endpoints; batching `balanceOf` calls
+  (Multicall) is the next step if it does not.
+- Postgres, `EXPLAIN ANALYZE` on the 10,000-user data: `/balances` took 21.5 ms, reading all 50,000
+  `ledger_transactions` rows 4 times per request (sequential scans; no index on `invoice_id`). With
+  `ledger_transactions_invoice` (migration 00011) it takes 0.37 ms. The other queries of these routes (activity,
+  transactions, history, invoices list, `/v1/me`, the owner check) already used indexes and took 0.13 ms or less, so
+  no other index was added.
+- Not covered: Anvil answers in under 1 ms where a hosted RPC takes tens of ms, so real `/balances` misses are slower;
+  one machine plays every part; the worker, the signer and Privy are not loaded.
 
 ## Data model
 

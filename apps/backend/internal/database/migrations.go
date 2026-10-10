@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"embed"
 	"errors"
 	"fmt"
@@ -10,7 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	_ "github.com/jackc/pgx/v5/stdlib" // register pgx for goose
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"github.com/pressly/goose/v3/lock"
 )
@@ -20,10 +19,12 @@ var migrations embed.FS
 
 // Migrate applies every pending migration. A session lock lets several processes start at once.
 func Migrate(ctx context.Context, url string) error {
-	conn, err := sql.Open("pgx", url)
+	// Parsed as the pool parses it, so its pool_ parameters (pool_max_conns) are not sent to Postgres as settings.
+	config, err := pgxpool.ParseConfig(url)
 	if err != nil {
 		return fmt.Errorf("open migration connection: %w", err)
 	}
+	conn := stdlib.OpenDB(*config.ConnConfig)
 	defer conn.Close()
 	files, err := fs.Sub(migrations, "migrations")
 	if err != nil {

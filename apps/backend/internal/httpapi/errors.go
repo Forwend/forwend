@@ -37,6 +37,8 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, invoice.ErrInvalid), errors.Is(err, profile.ErrInvalid), errors.Is(err, activity.ErrInvalid),
 		errors.Is(err, balance.ErrInvalid):
 		status, code, message = http.StatusUnprocessableEntity, "invalid_value", err.Error()
+	case errors.Is(err, errRateLimited):
+		status, code, message = http.StatusTooManyRequests, "rate_limited", "too many requests: wait Retry-After seconds"
 	default:
 		slog.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
 	}

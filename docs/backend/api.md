@@ -134,8 +134,26 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
 ## Errors
 
 - One shape: `{ "error": { "code": "invoice_not_found", "message": "…" } }`. Codes are snake_case and listed in the spec.
-- 400 malformed, 401 no or bad token, 403 not yours, 404 missing, 409 conflict, 422 invalid value, 500 anything else.
+- 400 malformed, 401 no or bad token, 403 not yours, 404 missing, 409 conflict, 422 invalid value, 429 too many
+  requests, 500 anything else.
 - A 500 never shows internal details. `httpapi` maps sentinel errors to codes in one place.
+
+## Rate limits
+
+`internal/httpapi/ratelimit.go`, constants there. Each caller has a token bucket: a request takes a token, tokens
+come back at a fixed rate up to the burst size. An empty bucket answers 429 `rate_limited` with `Retry-After` in whole
+seconds (when the next token is back) and runs nothing else.
+
+- Routes that need a token: per Privy user, after the token is checked; 2 requests a second, 60 at once. A dashboard
+  tab polls about six routes every 15 s and a page load sends about ten at once, so several tabs stay well under it.
+- Public routes (`GET /v1/invoices/{invoiceId}` and both PDFs) have no limit in the api. Next's `/api` rewrite does
+  not set `X-Forwarded-For`, so the api sees one address for every payer and cannot trust a client's header. Limit them
+  per IP at the load balancer or edge once hosting is chosen (Q-8), and keep the api reachable only through it.
+  `/healthz` has no limit.
+- The buckets live in each api process (D-72): with N replicas behind a load balancer a caller gets up to N times the
+  rate. Redis can hold the counts once more than a few replicas run.
+- The web waits `Retry-After` and sends the request once more; if that is refused too, its reads pause 15 s, doubling
+  with each refusal up to 5 min, until an answer is not a 429 (`apps/web/src/shared/api/rate-limit.ts`).
 
 ## Handlers and tests
 

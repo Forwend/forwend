@@ -31,6 +31,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Me" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
     get:
       operationId: getMe
@@ -43,6 +44,7 @@ paths:
               schema: { $ref: "#/components/schemas/Me" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotSignedUp" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles:
     post:
@@ -75,6 +77,7 @@ paths:
         "404": { $ref: "#/components/responses/NotSignedUp" }
         "409": { $ref: "#/components/responses/IdempotencyConflict" }
         "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/billing-details:
     get:
@@ -91,6 +94,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/BillingDetailsNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
     put:
       operationId: putBillingDetails
@@ -115,6 +119,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/invoices:
     get:
@@ -141,6 +146,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
     post:
       operationId: createInvoice
@@ -175,6 +181,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/IdempotencyConflict" }
         "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/balances:
     get:
@@ -193,6 +200,7 @@ paths:
               schema: { $ref: "#/components/schemas/Balances" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/activity:
     get:
@@ -218,6 +226,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/transactions:
     get:
@@ -247,6 +256,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/balance-history:
     get:
@@ -277,6 +287,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/invoices/{invoiceId}:
     get:
@@ -793,7 +804,7 @@ components:
             code:
               type: string
               enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found,
-                billing_details_not_found, idempotency_conflict, invoice_not_paid, invalid_value, internal]
+                billing_details_not_found, idempotency_conflict, invoice_not_paid, invalid_value, rate_limited, internal]
             message: { type: string }
   responses:
     MalformedRequest:
@@ -859,6 +870,17 @@ components:
       content:
         application/pdf:
           schema: { type: string, format: binary }
+    RateLimited:
+      description: |
+        Too many requests (rate_limited): per signed-in user on the routes that need a token, per client IP on the public
+        ones (docs/backend/api.md#rate-limits). Wait Retry-After seconds before the next request.
+      headers:
+        Retry-After:
+          description: Whole seconds until the next request is accepted.
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     Internal:
       description: Unexpected error, no details (internal)
       content:
