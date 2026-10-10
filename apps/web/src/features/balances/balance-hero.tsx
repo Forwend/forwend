@@ -30,6 +30,7 @@ export function BalanceHero({
   failed,
   onRetry,
   onReceive,
+  onRequest,
 }: {
   profileId: string;
   profile: ReactNode;
@@ -37,6 +38,7 @@ export function BalanceHero({
   failed: boolean;
   onRetry: () => void;
   onReceive: () => void;
+  onRequest: () => void;
 }) {
   const [range, setRange] = useState<HistoryRange>(DEFAULT_RANGE);
   const history = useGetBalanceHistoryQuery({ profileId, days: HISTORY_RANGES[range] }, LIVE_QUERY);
@@ -116,7 +118,7 @@ export function BalanceHero({
                 {series ? <Change series={series} rangeName={rangeName} /> : null}
               </div>
             </div>
-            <MoneyActions onReceive={onReceive} />
+            <MoneyActions onReceive={onReceive} onRequest={onRequest} />
           </div>
           <div className="hidden min-h-0 min-w-0 flex-col gap-3 lg:flex">
             <div className="flex justify-end">{rangeControl}</div>

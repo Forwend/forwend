@@ -22,7 +22,7 @@ func NewService(pool *pgxpool.Pool) *Service {
 // invoiceColumns reads FROM invoices (not aliased).
 const invoiceColumns = `id, number, coalesce(title, ''), coalesce(note, ''),
 	coalesce(to_char(due_date, 'YYYY-MM-DD'), ''), coalesce(client_name, ''), coalesce(client_email, ''),
-	coalesce(client_address, ''), issuer_name, coalesce(issuer_address, ''), coalesce(issuer_country, ''),
+	coalesce(client_address, ''), coalesce(sender_name, ''), issuer_name, coalesce(issuer_address, ''), coalesce(issuer_country, ''),
 	coalesce(issuer_tax_id, ''), coalesce(issuer_email, ''),
 	chain_id, token_contract, amount::text, recipient_address, factory_address, receive_address,
 	expires_at, settle_deadline, payment_status, settlement_status, refund_status,
@@ -36,7 +36,7 @@ func scanInvoice(row pgx.Row, before ...any) (Invoice, error) {
 	var issuerName *string
 	var issuer Issuer
 	dest := append(before, &inv.ID, &inv.Number, &inv.Title, &inv.Note, &inv.DueDate, &inv.ClientName,
-		&inv.ClientEmail, &inv.ClientAddress, &issuerName, &issuer.Address, &issuer.Country, &issuer.TaxID,
+		&inv.ClientEmail, &inv.ClientAddress, &inv.SenderName, &issuerName, &issuer.Address, &issuer.Country, &issuer.TaxID,
 		&issuer.Email, &inv.ChainID, &inv.Token, &amount, &inv.Recipient, &inv.Factory,
 		&inv.ReceiveAddress, &expiresAt, &settleDeadline, &inv.PaymentStatus, &inv.SettlementStatus, &inv.RefundStatus,
 		&inv.SettlementTxHash, &inv.CreatedAt)

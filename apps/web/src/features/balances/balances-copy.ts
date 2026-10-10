@@ -22,6 +22,7 @@ export const BALANCES_COPY = {
   noTokens: "No networks are enabled yet.",
   balancesFailed: "We could not load the balances.",
   actions: "Actions",
+  request: "Request",
   send: "Send",
   transfer: "Transfer",
   withdraw: "Withdraw",

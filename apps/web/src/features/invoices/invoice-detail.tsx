@@ -4,7 +4,7 @@ import { Button, COPY_STATUS, formatTokenAmount, Skeleton, useCopy } from "@forw
 import { skipToken } from "@reduxjs/toolkit/query";
 import { Check, ChevronLeft, Copy } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { InvoiceAmount } from "@/features/invoices/invoice-amount";
 import { InvoiceDeposits } from "@/features/invoices/invoice-deposits";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/invoice-progress";
@@ -20,7 +20,11 @@ import {
   tokenKey,
 } from "@/features/invoices/invoices";
 import { useGetInvoiceQuery, useGetProfileInvoiceQuery } from "@/features/invoices/invoices-api";
-import { INVOICE_COPY as COPY } from "@/features/invoices/invoices-copy";
+import {
+  INVOICE_COPY as COPY,
+  NEW_REQUEST_COPY,
+  REQUESTS_COPY,
+} from "@/features/invoices/invoices-copy";
 import { ExplorerLink } from "@/shared/chains/explorer-link";
 import { TokenMark } from "@/shared/chains/token-mark";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -34,15 +38,18 @@ const PANEL_TITLE = "border-b border-line px-4 py-3 text-base font-semibold text
 
 // The public read gives the terms, statuses and deposits and is read again every REFRESH_MS; the profile's own list
 // gives the client once, and also tells whether this profile made the invoice. On desktop the header's breadcrumb leads
-// back; phones have no breadcrumb, so they get a back link.
+// back; phones have no breadcrumb, so they get a back link. A personal profile's invoice is a request: it has no client
+// and no due date.
 export function InvoiceDetail({
   invoiceId,
   profileId,
   tokens,
+  request = false,
 }: {
   invoiceId: string;
   profileId: string;
   tokens: readonly InvoiceToken[] | null;
+  request?: boolean;
 }) {
   const invoice = useGetInvoiceQuery(invoiceId, LIVE_QUERY);
   const number = invoice.data?.number;
@@ -57,13 +64,19 @@ export function InvoiceDetail({
         className="-ml-1 inline-flex items-center gap-1 self-start rounded-sm px-1 text-sm text-muted hover:text-ink lg:hidden"
       >
         <ChevronLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
-        {COPY.back}
+        {request ? REQUESTS_COPY.invoices : COPY.back}
       </Link>
       {invoice.data ? (
         owned.isSuccess && !mine ? (
           <p className="text-muted">{COPY.otherProfile}</p>
         ) : (
-          <Loaded invoice={invoice.data} mine={mine} clientFailed={owned.isError} tokens={tokens} />
+          <Loaded
+            invoice={invoice.data}
+            mine={mine}
+            clientFailed={owned.isError}
+            tokens={tokens}
+            request={request}
+          />
         )
       ) : failure?.status === NOT_FOUND ? (
         <p className="text-muted">{COPY.notFound}</p>
@@ -86,11 +99,13 @@ function Loaded({
   mine,
   clientFailed,
   tokens,
+  request,
 }: {
   invoice: Invoice;
   mine: InvoiceSummary | null;
   clientFailed: boolean;
   tokens: readonly InvoiceToken[] | null;
+  request: boolean;
 }) {
   const { current, blocksLeft, secondsLeft } = invoiceProgress(invoice);
   const token = tokens?.find((t) => tokenKey(t) === tokenKey(invoice));
@@ -149,7 +164,10 @@ function Loaded({
         </div>
       </section>
 
-      <ShareLink invoiceId={invoice.invoiceId} />
+      <ShareLink
+        invoiceId={invoice.invoiceId}
+        hint={request ? NEW_REQUEST_COPY.shareHint : COPY.shareHint}
+      />
 
       <div className="grid items-start gap-4 lg:grid-cols-3">
         <section aria-labelledby="invoice-details" className={PANEL}>
@@ -157,9 +175,11 @@ function Loaded({
             {COPY.details}
           </h2>
           <dl className="divide-y divide-line">
-            <Row term={COPY.dueDate}>
-              {invoice.dueDate ? formatDueDate(invoice.dueDate) : COPY.none}
-            </Row>
+            {request ? null : (
+              <Row term={COPY.dueDate}>
+                {invoice.dueDate ? formatDueDate(invoice.dueDate) : COPY.none}
+              </Row>
+            )}
             <Row term={COPY.expires}>{TIME.format(new Date(invoice.expiresAt))}</Row>
             <Row term={COPY.created}>{TIME.format(new Date(invoice.createdAt))}</Row>
             {invoice.settlementTxHash ? (
@@ -176,20 +196,22 @@ function Loaded({
           </dl>
         </section>
 
-        <section aria-labelledby="invoice-client" className={PANEL}>
-          <h2 id="invoice-client" className={PANEL_TITLE}>
-            {COPY.client}
-          </h2>
-          {clientFailed ? (
-            <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.clientFailed}</p>
-          ) : !mine ? (
-            <Skeleton className="m-5 h-16" />
-          ) : client?.name || client?.email || client?.address ? (
-            <Party lines={[client.name, client.email, client.address]} />
-          ) : (
-            <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.noClient}</p>
-          )}
-        </section>
+        {request ? null : (
+          <section aria-labelledby="invoice-client" className={PANEL}>
+            <h2 id="invoice-client" className={PANEL_TITLE}>
+              {COPY.client}
+            </h2>
+            {clientFailed ? (
+              <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.clientFailed}</p>
+            ) : !mine ? (
+              <Skeleton className="m-5 h-16" />
+            ) : client?.name || client?.email || client?.address ? (
+              <Party lines={[client.name, client.email, client.address]} />
+            ) : (
+              <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.noClient}</p>
+            )}
+          </section>
+        )}
 
         <section aria-labelledby="invoice-issuer" className={PANEL}>
           <h2 id="invoice-issuer" className={PANEL_TITLE}>
@@ -205,6 +227,8 @@ function Loaded({
                 issuer.taxId ? `${COPY.taxId} ${issuer.taxId}` : null,
               ]}
             />
+          ) : invoice.senderName ? (
+            <Party lines={[invoice.senderName]} />
           ) : (
             <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.noIssuer}</p>
           )}
@@ -237,10 +261,13 @@ function Party({ lines }: { lines: (string | null)[] }) {
   );
 }
 
-function ShareLink({ invoiceId }: { invoiceId: string }) {
+/** The pay link with a copy button; the row stacks in a narrow container such as a sheet. */
+export function ShareLink({ invoiceId, hint }: { invoiceId: string; hint: string }) {
   // The app renders only in the browser, after sign-in.
   const link = `${window.location.origin}/pay/${invoiceId}`;
   const [status, copy] = useCopy(link);
+  // A request's sheet can show one over an invoice page that shows another.
+  const titleId = useId();
   const label =
     status === COPY_STATUS.copied
       ? COPY.copied
@@ -248,14 +275,17 @@ function ShareLink({ invoiceId }: { invoiceId: string }) {
         ? COPY.copyFailed
         : COPY.copy;
   return (
-    <section aria-labelledby="invoice-share" className={`${PANEL} flex flex-col gap-3 p-4 sm:p-5`}>
+    <section
+      aria-labelledby={titleId}
+      className={`${PANEL} @container flex flex-col gap-3 p-4 sm:p-5`}
+    >
       <div>
-        <h2 id="invoice-share" className="text-base font-semibold text-ink">
+        <h2 id={titleId} className="text-base font-semibold text-ink">
           {COPY.share}
         </h2>
-        <p className="mt-0.5 text-sm text-muted">{COPY.shareHint}</p>
+        <p className="mt-0.5 text-sm text-muted">{hint}</p>
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-2 @lg:flex-row @lg:items-center">
         <p className="min-w-0 flex-1 rounded-md border border-line bg-surface-2 px-3 py-2 font-mono text-sm break-all text-ink select-all">
           {link}
         </p>

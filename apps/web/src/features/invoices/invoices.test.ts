@@ -66,6 +66,7 @@ const open: Invoice = {
   note: null,
   dueDate: null,
   issuer: null,
+  senderName: null,
   chainId: 84532,
   token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
   amount: "5000000",
@@ -152,7 +153,7 @@ describe("filterInvoices", () => {
       title: "Brand site",
       client: { name: "Brightline", email: null, address: null },
     },
-    { ...open, number: 7, paymentStatus: "detected" },
+    { ...open, number: 7, note: "Lunch on Friday", paymentStatus: "detected" },
     { ...open, number: 3, paymentStatus: "paid", settlementStatus: "settled" },
     { ...open, number: 2, paymentStatus: "expired_partially_paid" },
   ];
@@ -167,8 +168,9 @@ describe("filterInvoices", () => {
     expect(numbers("expired")).toEqual([2]);
   });
 
-  it("searches the number, title and client in any letter case", () => {
+  it("searches the number, title, note and client in any letter case", () => {
     expect(numbers("all", "inv-0018")).toEqual([18]);
+    expect(numbers("all", "lunch")).toEqual([7]);
     expect(numbers("all", "BRAND")).toEqual([18]);
     expect(numbers("all", "brightline")).toEqual([18]);
     expect(numbers("open", "0007")).toEqual([7]);

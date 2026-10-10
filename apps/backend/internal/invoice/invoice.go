@@ -32,6 +32,7 @@ const (
 	MaxClientName    = 200
 	MaxClientEmail   = 254 // the longest address SMTP carries (RFC 5321)
 	MaxClientAddress = 500
+	MaxSenderName    = 100
 )
 
 var (
@@ -65,6 +66,7 @@ type Details struct {
 	ClientName    string
 	ClientEmail   string
 	ClientAddress string
+	SenderName    string // the name the payer sees when the invoice has no issuer, such as a personal request (D-52)
 }
 
 // Issuer is the copy of the profile's billing details the invoice took when it was made; "" means none.
@@ -153,6 +155,7 @@ func (d Details) check() error {
 	}{
 		{"title", d.Title, MaxTitle}, {"note", d.Note, MaxNote}, {"client.name", d.ClientName, MaxClientName},
 		{"client.email", d.ClientEmail, MaxClientEmail}, {"client.address", d.ClientAddress, MaxClientAddress},
+		{"senderName", d.SenderName, MaxSenderName},
 	} {
 		// Postgres text can't hold a NUL byte.
 		if !utf8.ValidString(f.value) || strings.ContainsRune(f.value, 0) || utf8.RuneCountInString(f.value) > f.max {
@@ -176,8 +179,9 @@ func (d Details) check() error {
 // requestHash fingerprints the canonical request, so the same values sent again match and the body is never stored.
 // %q keeps the texts apart whatever they contain.
 func requestHash(chainID uint64, token string, amount *big.Int, expiresIn time.Duration, d Details) []byte {
-	h := sha256.Sum256(fmt.Appendf(nil, "%d|%s|%s|%d|%q|%q|%q|%q|%q|%q", chainID, token, amount,
-		int64(expiresIn/time.Second), d.Title, d.Note, d.DueDate, d.ClientName, d.ClientEmail, d.ClientAddress))
+	h := sha256.Sum256(fmt.Appendf(nil, "%d|%s|%s|%d|%q|%q|%q|%q|%q|%q|%q", chainID, token, amount,
+		int64(expiresIn/time.Second), d.Title, d.Note, d.DueDate, d.ClientName, d.ClientEmail, d.ClientAddress,
+		d.SenderName))
 	return h[:]
 }
 

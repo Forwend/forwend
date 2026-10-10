@@ -39,6 +39,9 @@ const PANEL = "rounded-md border border-line bg-surface";
 const PANEL_TITLE = "border-b border-line px-4 py-3 text-base font-semibold text-ink sm:px-5";
 const ICON = "mt-0.5 size-[var(--fw-icon-md)] shrink-0";
 
+const formatMoney = (units: bigint, token: { symbol: string; decimals: number }) =>
+  `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`;
+
 // The public read, again every REFRESH_MS while the tab is visible: the payer sees the status move without a reload.
 export function PayInvoice({ invoiceId }: { invoiceId: string }) {
   const invoice = useGetInvoiceQuery(invoiceId, LIVE_QUERY);
@@ -68,19 +71,27 @@ function Loaded({ invoice }: { invoice: Invoice }) {
   const address = useMemo(() => checkedReceiveAddress(invoice), [invoice]);
   const token = payToken(invoice);
   const issuer = invoice.issuer?.name;
+  // Who asks: the issuer, else a request's sender, else the page names only the invoice.
+  const sender = issuer ? null : invoice.senderName;
+  const number = invoiceNumber(invoice.number);
 
   return (
     <>
       <header className="flex flex-col gap-1">
         <h1 className="font-display text-3xl break-words text-ink sm:text-4xl">
-          {issuer ?? COPY.invoice(invoiceNumber(invoice.number))}
+          {issuer ??
+            (sender
+              ? token
+                ? COPY.requests(sender, formatMoney(BigInt(invoice.amount), token))
+                : sender
+              : COPY.invoice(number))}
         </h1>
         <p className="break-words text-muted">
-          {[issuer ? COPY.invoice(invoiceNumber(invoice.number)) : null, invoice.title]
+          {[issuer ? COPY.invoice(number) : sender ? COPY.request(number) : null, invoice.title]
             .filter(Boolean)
             .join(" · ")}
         </p>
-        {issuer ? null : <p className="text-sm text-muted">{COPY.noIssuer}</p>}
+        {issuer || sender ? null : <p className="text-sm text-muted">{COPY.noIssuer}</p>}
       </header>
       {address && token ? (
         <Checkout invoice={invoice} address={address} token={token} now={now} />
@@ -116,8 +127,7 @@ function Checkout({
 
   const network = chainName(invoice.chainId);
   const amount = BigInt(invoice.amount);
-  const money = (units: bigint) =>
-    `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`;
+  const money = (units: bigint) => formatMoney(units, token);
   const pay = payState(invoice, now);
   const due = money(pay.remaining);
   const expiresAt = Date.parse(invoice.expiresAt);

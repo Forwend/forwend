@@ -14,7 +14,7 @@ import { LIVE_QUERY } from "@/shared/config/refresh";
 const RECENT = 6;
 
 export function PersonalOverview() {
-  const { profile, openReceive, openProfiles } = useAppSession();
+  const { profile, openReceive, openRequest, openProfiles } = useAppSession();
   const balances = useGetBalancesQuery(profile.profileId, LIVE_QUERY);
   return (
     <div className="flex flex-col gap-4">
@@ -26,6 +26,7 @@ export function PersonalOverview() {
         failed={balances.isError}
         onRetry={balances.refetch}
         onReceive={openReceive}
+        onRequest={openRequest}
       />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)] xl:items-start">
         <TransactionsTable

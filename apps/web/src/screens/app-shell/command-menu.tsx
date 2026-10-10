@@ -6,6 +6,7 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   CornerDownLeft,
+  HandCoins,
   type LucideIcon,
   Moon,
   Plus,
@@ -22,7 +23,8 @@ import {
   useState,
 } from "react";
 import { BALANCES_COPY } from "@/features/balances/balances-copy";
-import { type Profile, profileLabel } from "@/features/profiles/profile";
+import { NEW_REQUEST_COPY } from "@/features/invoices/invoices-copy";
+import { PROFILE_KINDS, type Profile, profileLabel } from "@/features/profiles/profile";
 import { PROFILES_COPY } from "@/features/profiles/profiles-copy";
 import { TRANSACTION_DIRECTIONS, transactionKey } from "@/features/transactions/transactions";
 import { useGetTransactionsQuery } from "@/features/transactions/transactions-api";
@@ -62,6 +64,7 @@ export function CommandMenu({
   active,
   onSwitch,
   onReceive,
+  onRequest,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -69,6 +72,7 @@ export function CommandMenu({
   active: Profile;
   onSwitch: (profileId: string) => void;
   onReceive: () => void;
+  onRequest: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const router = useRouter();
@@ -125,6 +129,20 @@ export function CommandMenu({
         onReceive();
       },
     },
+    ...(active.kind === PROFILE_KINDS.personal
+      ? [
+          {
+            id: "request",
+            group: COMMAND_COPY.actions,
+            label: NEW_REQUEST_COPY.title,
+            icon: HandCoins,
+            run: () => {
+              close();
+              onRequest();
+            },
+          },
+        ]
+      : []),
     {
       id: "new-profile",
       group: COMMAND_COPY.actions,

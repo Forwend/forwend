@@ -38,6 +38,19 @@ export const INVOICES_COPY = {
   baseUnits: (token: string) => `base units of ${token}`,
 } as const;
 
+/** A personal profile's invoices are requests (PRODUCT.md): the list's words where they differ. */
+export const REQUESTS_COPY = {
+  ...INVOICES_COPY,
+  invoices: "Requests",
+  newInvoice: "New request",
+  emptyTitle: "No requests yet",
+  emptyText: "Request money, then send the pay link to whoever pays you.",
+  failed: "We could not load the requests.",
+  search: "Search requests",
+  searchPlaceholder: "Search number or note",
+  noMatch: "No requests match this filter.",
+} as const;
+
 export const NEW_INVOICE_COPY = {
   title: "New invoice",
   intro: "The client pays the exact amount on the network you choose. You get a link to send them.",
@@ -81,9 +94,26 @@ export const NEW_INVOICE_COPY = {
     [INVOICE_FIELDS.clientName]: atMost(INVOICE_LIMITS.clientName),
     [INVOICE_FIELDS.clientEmail]: "Enter an email like name@example.com.",
     [INVOICE_FIELDS.clientAddress]: atMost(INVOICE_LIMITS.clientAddress),
+    [INVOICE_FIELDS.senderName]: atMost(INVOICE_LIMITS.senderName),
   },
   failed: "We could not create the invoice. Try again.",
   invalid: "We could not create the invoice with these values. Check them and try again.",
+} as const;
+
+export const NEW_REQUEST_COPY = {
+  ...NEW_INVOICE_COPY,
+  title: "Request money",
+  noTokens: "No networks are enabled yet, so there is nothing to request in.",
+  tokensFailed: "We could not load the networks and tokens you can request in.",
+  noteLabel: "Note to the payer (optional)",
+  senderLabel: "Your name (shown to the payer)",
+  senderMissing: "Enter the name the payer will see.",
+  create: "Create request",
+  failed: "We could not create the request. Try again.",
+  invalid: "We could not create the request with these values. Check them and try again.",
+  created: "Request created",
+  view: "View request",
+  shareHint: "Send this link to the payer. They pay without an account.",
 } as const;
 
 export const INVOICE_COPY = {
