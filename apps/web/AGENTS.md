@@ -5,7 +5,7 @@ Next.js app: landing page, private `/kit`, later dashboard and checkout.
 ## Commands
 
 - `pnpm dev` from the root starts the web app (http://localhost:3000) and the backend (Postgres in Docker, api,
-  worker, and the signer when `apps/backend/.env` sets its key).
+  worker and signer; it needs `EXECUTOR_PRIVATE_KEY` in `apps/backend/.env`).
   `/kit` works in dev; a production build needs `KIT_ENABLED=1`. Sign-in and `/app` need
   `apps/web/.env` (copy `.env.example`) and the backend api at `API_URL`.
 - `pnpm --filter @forwend/web test` (Vitest), `e2e` (Playwright), `lighthouse`.

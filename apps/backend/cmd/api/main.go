@@ -40,14 +40,18 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	if err := database.Migrate(ctx, cfg.DatabaseURL); err != nil {
-		return err
-	}
+	// Startup checks: each stops the api with a message naming what is wrong.
 	pool, err := database.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
 	}
 	defer pool.Close()
+	if err := database.Migrate(ctx, cfg.DatabaseURL); err != nil {
+		return err
+	}
+	if err := chain.CheckEnabled(ctx, pool, specs, cfg.InfuraKeys, cfg.RPCRate, nil); err != nil {
+		return err
+	}
 	balances := balance.NewChainReader(specs, cfg.InfuraKeys, cfg.RPCRate)
 	defer balances.Close()
 

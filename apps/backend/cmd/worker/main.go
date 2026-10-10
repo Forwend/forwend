@@ -34,16 +34,34 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	// Startup checks: each stops the worker with a message naming what is wrong.
 	pool, err := database.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
 	}
 	defer pool.Close()
+	lock, err := database.TakeLock(ctx, pool, worker.LockKey, "worker", cfg.Chains.PollInterval)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil // stopped while waiting
+		}
+		return err
+	}
+	defer lock.Close()
+	if err := database.CheckSchema(ctx, pool); err != nil {
+		return err
+	}
+	if err := chain.CheckEnabled(ctx, pool, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate, nil); err != nil {
+		return err
+	}
 
 	w := worker.New(pool, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate)
 	defer w.Close()
 	slog.Info("worker ready", "every", cfg.Chains.PollInterval)
 	for {
+		if err := lock.Held(ctx); err != nil {
+			return err
+		}
 		w.Round(ctx)
 		select {
 		case <-ctx.Done():

@@ -178,23 +178,31 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 		return nil, fmt.Errorf("estimate gas: %w", err)
 	}
 	gas = max(gas, minGas)
-	tip, err := client.SuggestGasTipCap(ctx)
+	tip, feeCap, err := fees(ctx, client, chainID)
 	if err != nil {
-		return nil, fmt.Errorf("read gas tip: %w", err)
+		return nil, err
 	}
-	head, err := client.HeaderByNumber(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("read base fee: %w", err)
-	}
-	if head.BaseFee == nil {
-		return nil, fmt.Errorf("chain %d has no base fee (EIP-1559)", chainID)
-	}
-	feeCap := new(big.Int).Add(new(big.Int).Mul(head.BaseFee, big.NewInt(2)), tip)
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID: new(big.Int).SetUint64(chainID), Nonce: nonce, GasTipCap: tip, GasFeeCap: feeCap,
 		Gas: gas + gas/5, To: &to, Data: data,
 	})
 	return types.SignTx(tx, types.LatestSignerForChainID(new(big.Int).SetUint64(chainID)), s.key)
+}
+
+// fees are the tip and fee cap the signer pays now: the node's suggested tip, and twice the base fee plus the tip.
+func fees(ctx context.Context, client *ethclient.Client, chainID uint64) (tip, feeCap *big.Int, err error) {
+	tip, err = client.SuggestGasTipCap(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read gas tip: %w", err)
+	}
+	head, err := client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read base fee: %w", err)
+	}
+	if head.BaseFee == nil {
+		return nil, nil, fmt.Errorf("chain %d has no base fee (EIP-1559)", chainID)
+	}
+	return tip, new(big.Int).Add(new(big.Int).Mul(head.BaseFee, big.NewInt(2)), tip), nil
 }
 
 // awaitCode waits up to codeWait for the RPC to show the receiver's code at block (the deploy's; nil: latest) or

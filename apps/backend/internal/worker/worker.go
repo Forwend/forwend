@@ -17,6 +17,10 @@ import (
 // RoundTimeout bounds one chain's scan and ledger run.
 const RoundTimeout = 2 * time.Minute
 
+// LockKey is the worker's Postgres advisory lock: one worker runs at a time, since two would race on the chain
+// cursors.
+const LockKey int64 = 0x666f7277656e6401 // "forwend" 1
+
 type Worker struct {
 	pool     *pgxpool.Pool
 	specs    map[uint64]chain.Spec

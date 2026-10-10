@@ -6,8 +6,9 @@ Go API, worker and signer (PLAN Phase 6). Requirements R-14…R-24 in `docs/PROJ
 
 - First time: `cp .env.example .env`, then `pnpm --filter @forwend/backend postgres:up` (Docker).
 - `pnpm --filter @forwend/backend test` (gofmt, vet, `go test -race` on real Postgres).
-- Root `pnpm dev` runs Postgres, the api and the worker beside the web app, and the signer when `.env` sets
-  `EXECUTOR_PRIVATE_KEY` (otherwise it prints that it skipped it). Alone: `pnpm --filter @forwend/backend api`
+- Root `pnpm dev` runs Postgres, the api, the worker and the signer beside the web app. It refuses to start without
+  `EXECUTOR_PRIVATE_KEY` in `.env`, waits until each process reports ready, and exits 1 when one stops or is not ready
+  in time ([startup](../../docs/backend/architecture.md#startup)). Alone: `pnpm --filter @forwend/backend api`
   (or `worker`, `signer`).
 - `sh scripts/with-env.sh go test -tags privylive ./internal/privy/`: opt-in test against the Privy test app
   (creates a throwaway user and wallet, then removes them).

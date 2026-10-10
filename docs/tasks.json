@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 109,
+  "nextId": 110,
   "tasks": [
     {
       "id": "F001",
@@ -10776,7 +10776,7 @@
       "dependsOn": [
         "F104"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -10789,9 +10789,103 @@
         "packages/contracts/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-10 review pass by reviewer: Pass. Read diff, check.go, lock.go, gas.go, mains, dev.sh, docs. Reran backend test (exit 0) and backend e2e (TestMoneyLoop on real binaries, exit 0). Mutation: lock.go taking the lock always makes TestLockRunsOneWorkerAtATime fail. dev.sh: sh -n and dash -n ok; dash stub runs: api dies before ready exit 1, worker dies after ready exit 1, TERM exit 130 with no leftover processes, commented key exit 1. Startup errors carry no secrets (pool errors name host#N, Redact on RPC error, bad key named without value, pgx errors carry no password). Only the api migrates; worker/signer CheckSchema is a single SELECT. D-15 check per enabled chain, 30 s each, DB ping 10 s. MinGas 342k x fee cap (2*base+tip) matches the signer's own fees(); comparison is wei vs wei so Arc (18-decimal native USDC balance) is consistent; Arbitrum L1 gap documented. Lock: session lock on a hijacked conn, pgxpool can still open conns, waiter takes over. Notes: Held is checked only between rounds, so a lost lock connection leaves at most one round (worker 2 min, signer up to 3 min per intent) overlapping a new holder; Tempo has no native gas coin, so CheckGas there would mean nothing if Tempo is ever enabled (it cannot pass D-15 today); 'Startup checks:' comment repeated in three mains is near the comments rule."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-10T19:37:28Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 38.4,
+            "log": "docs/runs/F106-20261010T193728Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 74.8,
+            "log": "docs/runs/F106-20261010T193728Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F106-20261010T193728Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F106-20261010T193728Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F106-20261010T193728Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": "docs/runs/F106-20261010T193728Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 38.7,
+            "log": "docs/runs/F106-20261010T193728Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.4,
+            "log": "docs/runs/F106-20261010T193728Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F106-20261010T193728Z-keep.log"
+          }
+        ],
+        "taskHash": "6b1fe7fc6182aa25",
+        "filesHash": "4b390c5dd5614b0f",
+        "proof": {
+          "1": "backend: startup check tests on real Postgres and Anvil, one per failing item: DB down (database TestOpenNamesAnUnreachableDatabase: 'connect to Postgres'), old schema (TestCheckSchemaRefusesAnOlderSchema: never migrated and one migration short, 'start the api first'), enabled chain not listed / listing one host / second host down ('chain 31337: 1 of 2 RPC hosts answered') and a working pair (chain TestCheckEnabled), unfunded executor one wei below MinGas at the current fee cap naming chain, address and balance (settlement TestCheckGas), bad EXECUTOR_PRIVATE_KEY named without its value (config TestWorkerAndSigner, which also keeps INFURA_API_KEYS empty valid). api/worker/signer main.go run these before their ready line and exit 1 with the message",
+          "2": "backend: TestLockRunsOneWorkerAtATime: two workers on one advisory lock, each with its own pool; the second logs 'another worker is running; waiting', runs no round while the first holds it, never overlaps, takes over after the first exits, and stops when its lock connection is terminated; e2e: the money loop passes with the checks and locks in the real api, worker and signer. dev.sh: sh -n and dash -n pass; stub dry runs: missing/empty/commented key exit 1, api/signer stopping before ready exit 1 naming it, worker stopping after ready exit 1, worker never ready exit 1 after 120 s, Ctrl+C exit 130, no processes left; real-binary dry run on a scratch DB and Anvil: ready, a second worker waits then takes over after Ctrl+C, unfunded executor and one-host chain stop dev with the named error. Docs: docs/backend/architecture.md#startup, apps/backend/AGENTS.md, D-71"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. Read diff, check.go, lock.go, gas.go, mains, dev.sh, docs. Reran backend test (exit 0) and backend e2e (TestMoneyLoop on real binaries, exit 0). Mutation: lock.go taking the lock always makes TestLockRunsOneWorkerAtATime fail. dev.sh: sh -n and dash -n ok; dash stub runs: api dies before ready exit 1, worker dies after ready exit 1, TERM exit 130 with no leftover processes, commented key exit 1. Startup errors carry no secrets (pool errors name host#N, Redact on RPC error, bad key named without value, pgx errors carry no password). Only the api migrates; worker/signer CheckSchema is a single SELECT. D-15 check per enabled chain, 30 s each, DB ping 10 s. MinGas 342k x fee cap (2*base+tip) matches the signer's own fees(); comparison is wei vs wei so Arc (18-decimal native USDC balance) is consistent; Arbitrum L1 gap documented. Lock: session lock on a hijacked conn, pgxpool can still open conns, waiter takes over. Notes: Held is checked only between rounds, so a lost lock connection leaves at most one round (worker 2 min, signer up to 3 min per intent) overlapping a new holder; Tempo has no native gas coin, so CheckGas there would mean nothing if Tempo is ever enabled (it cannot pass D-15 today); 'Startup checks:' comment repeated in three mains is near the comments rule.",
+          "at": "2026-10-10T19:45:38Z",
+          "filesHash": "4b390c5dd5614b0f"
+        },
+        "commit": "90cca28",
+        "doneAt": "2026-10-10T19:45:54Z"
+      },
+      "branch": "fix/f106-each-backend-process-refuses-to-start-wi",
+      "baseCommit": "859d13a32d29a65b59b6cfe3a6f6adaca366e7bc",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f106-each-backend-process-refuses-to-start-wi",
+        "base": "main"
+      }
     },
     {
       "id": "F107",
@@ -10841,6 +10935,32 @@
         "R-38"
       ],
       "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F109",
+      "type": "fix",
+      "behavior": "The signer replaces a stuck settle with a higher fee, estimates gas at the deploy block, and flags settles it cannot resolve",
+      "acceptance": [
+        "A sent settle not mined after a set time is re-signed with the same nonce and a higher fee (capped), so later settles on that chain are not blocked; settle gas is estimated at the deploy receipt block where the node supports it (Arbitrum L1 data gas covered); an intent that cannot be resolved (no receipt, receiver settled, our nonce used at finalized) gets a stored reason, slows its retries and shows in an ops query; Anvil tests cover a stuck low-fee settle being replaced and booked once"
+      ],
+      "dependsOn": [
+        "F105"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-22",
+        "R-30"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
       "review": true,
       "notes": [],
       "blockedReason": null,

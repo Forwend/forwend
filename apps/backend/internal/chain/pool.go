@@ -181,6 +181,20 @@ func (p *pool) done(e *endpoint, failure error) {
 	slog.Warn("RPC rests", "chain", p.chainID, "rpc", e.name, "for", rest.Round(time.Millisecond), "err", failure)
 }
 
+// answered counts the hosts with an endpoint that matched the chain ID and answered its last request, and all hosts.
+func (p *pool) answered() (ok, all int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	good, hosts := map[string]bool{}, map[string]bool{}
+	for _, e := range p.endpoints {
+		hosts[e.host] = true
+		if e.checked && !e.wrong && e.failures == 0 {
+			good[e.host] = true
+		}
+	}
+	return len(good), len(hosts)
+}
+
 func (p *pool) resting(e *endpoint) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()

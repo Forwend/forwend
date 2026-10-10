@@ -176,6 +176,7 @@ All D- IDs are defined here. The roadmap refers to these decisions.
 | D-68 | Payer data: the payer's email is optional and kept per invoice for the receipt and claim updates only; never used for marketing; deleted with the invoice record. | Owner default 2026-10-10. |
 | D-69 | Reminders need the client's consent: the client ticks "send me reminders" on the pay or work page; a freelancer cannot turn it on for them. | Owner default 2026-10-10. |
 | D-70 | Trademark: a free USPTO, EUIPO and WIPO search now; pay for a filing only before public launch or fundraising. | Owner default 2026-10-10. A filing costs money and needs approval. |
+| D-71 | Each backend process starts only when it can work properly: the database answers, the schema is current, every enabled chain has a working D-15 RPC pair, and for the signer the executor key is valid and funded for gas on every enabled chain. An enabled chain that fails stops the process; it is not skipped. A second worker or signer waits on a Postgres advisory lock instead of running beside the first. | Owner choice 2026-10-10: a process that starts half-working hides the fault; waiting suits rolling deploys. See [backend/architecture.md](backend/architecture.md#startup). |
 
 ## Assumptions
 
