@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function NotFound() {
   return (
-    <main className="relative isolate flex min-h-svh flex-col items-center px-4 pt-6 pb-16 text-center sm:px-8">
+    <main className="relative isolate grid min-h-svh grid-rows-[1fr_auto_1fr] justify-items-center gap-8 px-6 py-6 text-center sm:px-8">
       <Image
         src={NOT_FOUND_IMAGE.src}
         alt=""
@@ -26,15 +26,15 @@ export default function NotFound() {
         sizes="100vw"
         className="-z-20 object-cover object-[68%_70%] lg:object-[50%_70%] dark:brightness-50"
       />
-      {/* Light behind the text in both themes, and a fade into the page at the bottom. */}
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_55%_at_50%_35%,color-mix(in_oklab,var(--fw-bg)_82%,transparent),transparent)]" />
-      <Link href="/">
+      {/* Keep the centered message readable over the landscape in both themes. */}
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_90%_80%_at_50%_50%,color-mix(in_oklab,var(--fw-bg)_94%,transparent),transparent)]" />
+      <Link href="/" className="self-start">
         <Logo />
       </Link>
-      <div className="mt-32 sm:mt-40 flex max-w-2xl flex-col items-center">
-        <p className="font-mono text-sm text-muted">404</p>
-        <h1 className="mt-3 font-display text-section text-ink">{NOT_FOUND.title}</h1>
-        <p className="mt-4 text-lg text-muted">{NOT_FOUND.body}</p>
+      <div className="flex max-w-2xl flex-col items-center">
+        <p className="font-display text-error-code text-ink">404</p>
+        <h1 className="mt-6 font-display text-3xl text-ink sm:text-4xl">{NOT_FOUND.title}</h1>
+        <p className="mt-4 max-w-md text-base text-muted sm:text-lg">{NOT_FOUND.body}</p>
         <Link href="/" className={`mt-8 ${buttonClasses({ size: BUTTON_SIZES.lg })}`}>
           {NOT_FOUND.action}
         </Link>

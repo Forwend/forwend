@@ -57,7 +57,7 @@
   --ease-out: var(--fw-ease-out);
   --ease-in-out: var(--fw-ease-in-out);
 
-  /* Type scale: display never above 6rem. */
+  /* Heading scale: display never above 6rem. */
   --text-xs: 0.75rem;
   --text-xs--line-height: 1rem;
   --text-sm: 0.875rem;
@@ -86,6 +86,10 @@
   --text-section: clamp(2.25rem, 4.6vw, 3.75rem);
   --text-section--line-height: 1.06;
   --text-section--letter-spacing: -0.015em;
+  /* Oversized status numerals, separate from the heading scale. */
+  --text-error-code: clamp(7rem, 22vw, 15rem);
+  --text-error-code--line-height: 0.9;
+  --text-error-code--letter-spacing: -0.04em;
   --text-amount: clamp(1.625rem, 8vw, 1.875rem);
   --text-amount--line-height: 1.1;
   --text-amount-lg: clamp(1.75rem, 7.5vw, 2.25rem);

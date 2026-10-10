@@ -56,6 +56,7 @@ export const EASINGS = [
 export const TYPE_ROLES = [
   { token: "text-hero", className: "font-display text-hero", sample: "Get paid in stablecoins." },
   { token: "text-section", className: "font-display text-section", sample: "See every step." },
+  { token: "text-error-code", className: "font-display text-error-code", sample: "404" },
   {
     token: "text-amount-lg",
     className: "font-mono tabular-nums text-amount-lg",
