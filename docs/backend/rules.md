@@ -31,6 +31,7 @@ apps/backend/
     ledger/
     watcher/
     settlement/
+    worker/               the worker's round over the enabled chains: watcher scan, then ledger
     chain/                blockchain connection and RPC behavior
     privy/                Privy integration
     database/             connection pool and embedded migrations

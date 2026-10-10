@@ -16,7 +16,6 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/settlement"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 func main() {
@@ -48,60 +47,11 @@ func run() error {
 	}
 	defer pool.Close()
 
-	rpcs := map[uint64]chain.RPCs{}
-	clients := map[uint64]*ethclient.Client{}
-	signer := settlement.NewSigner(pool, key, clients)
-	defer func() {
-		for _, r := range rpcs {
-			r.Close()
-		}
-	}()
+	rounds := settlement.NewRounds(pool, key, specs, cfg.Chains.InfuraKeys)
+	defer rounds.Close()
 	slog.Info("signer ready", "executor", crypto.PubkeyToAddress(key.PublicKey).Hex(), "every", cfg.Chains.PollInterval)
 	for {
-		ids, err := chain.Enabled(ctx, pool)
-		if err != nil {
-			// Without the enabled list a disabled chain can't be told apart: send nothing this round.
-			slog.Error("signer round skipped", "err", chain.Redact(err))
-			if !wait(ctx, cfg.Chains.PollInterval) {
-				return nil
-			}
-			continue
-		}
-		enabled := map[uint64]bool{}
-		for _, id := range ids {
-			enabled[id] = true
-		}
-		for id, r := range rpcs { // a chain disabled in the database is no longer served
-			if !enabled[id] {
-				r.Close()
-				delete(rpcs, id)
-				delete(clients, id)
-			}
-		}
-		for _, id := range ids {
-			if _, ok := rpcs[id]; ok {
-				continue
-			}
-			spec, known := specs[id]
-			if !known {
-				slog.Error("enabled chain is not in the chain list", "chain", id)
-				continue
-			}
-			r, err := chain.Dial(ctx, spec, cfg.Chains.InfuraKeys)
-			if err != nil {
-				slog.Error("pick RPCs", "chain", id, "err", chain.Redact(err))
-				continue
-			}
-			rpcs[id], clients[id] = r, ethclient.NewClient(r.Primary)
-		}
-		if err := signer.Run(ctx); err != nil {
-			slog.Error("signer round", "err", chain.Redact(err))
-			for id, r := range rpcs { // pick RPCs again next round
-				r.Close()
-				delete(rpcs, id)
-				delete(clients, id)
-			}
-		}
+		rounds.Round(ctx)
 		if !wait(ctx, cfg.Chains.PollInterval) {
 			return nil
 		}

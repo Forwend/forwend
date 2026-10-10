@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 78,
+  "nextId": 79,
   "tasks": [
     {
       "id": "F001",
@@ -8163,6 +8163,40 @@
         "branch": "refactor/f077-the-web-app-reads-and-writes-api-data-th",
         "base": "main"
       }
+    },
+    {
+      "id": "F078",
+      "type": "refactor",
+      "behavior": "The worker and signer binaries hold only startup and their loop; per-round chain RPC upkeep lives in internal packages",
+      "acceptance": [
+        "cmd/worker/main.go and cmd/signer/main.go hold config, startup, the poll loop and shutdown only; the worker round (pick RPCs, scan, ledger, re-pick after errors) is internal/worker; the signer round (serve enabled chains, drop disabled ones, re-pick after a failed run) is settlement.Rounds.",
+        "Same behavior and logs: backend tests and the binary e2e gate pass; lint, typecheck, unit, build and e2e pass."
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "docs-check",
+        "backend",
+        "backend-e2e"
+      ],
+      "refs": [
+        "R-37",
+        "D-19"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/*",
+        "*package.json",
+        "pnpm-lock.yaml",
+        "apps/backend/api/*",
+        "apps/backend/internal/database/migrations/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null,
+      "branch": "refactor/f078-the-worker-and-signer-binaries-hold-only",
+      "baseCommit": "205a6a9c1f30c7f79e47710f10897709d8f33aa1"
     }
   ],
   "lastWrapup": {
