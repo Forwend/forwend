@@ -32,11 +32,12 @@ type Signer struct {
 	// stopAfter simulates a crash in tests: "save" stops after the signed settle is saved, "send" after it is sent.
 	stopAfter      string
 	attemptTimeout time.Duration
+	codeWait       time.Duration
 }
 
 func NewSigner(pool *pgxpool.Pool, key *ecdsa.PrivateKey, clients map[uint64]*ethclient.Client) *Signer {
 	return &Signer{pool: pool, key: key, sender: crypto.PubkeyToAddress(key.PublicKey), clients: clients,
-		attemptTimeout: AttemptTimeout}
+		attemptTimeout: AttemptTimeout, codeWait: CodeWait}
 }
 
 // intent is one settlement intent with its invoice's terms.

@@ -22,6 +22,17 @@ import (
 // ReceiptWait is how long one run waits for a sent transaction; an unmined one is reconciled on the next run.
 const ReceiptWait = time.Minute
 
+// CodeWait is how long one run waits for the RPC to show a receiver's code before it estimates settle gas.
+const CodeWait = 10 * time.Second
+
+// SettleGasFloor is the least gas a settle gets before the margin. A node that has not seen the receiver's deploy
+// estimates settle as a call to an address without code, 21,064 gas, which runs out. On Anvil with the test token a
+// settle used 122,832 gas paying a wallet with no tokens yet (logged by
+// TestSettleWaitsForTheReceiverCodeAndNeverUnderestimatesGas) and 105,732 paying one that has some. Real USDC behind
+// its proxy on a Base Sepolia fork used 135,632 (estimate 139,592) paying a wallet with none: the floor plus a fifth,
+// 150,000, covers it. On Arbitrum gas also counts the L1 data cost, which the floor does not cover.
+const SettleGasFloor = 125_000
+
 func (s *Signer) settle(ctx context.Context, id int64) error {
 	in, err := s.load(ctx, id)
 	if err != nil {
@@ -54,7 +65,7 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 	}
 	switch {
 	case st.Settled: // settled outside our signer (the refund authority): record it once it is final
-		return s.confirmIfFinal(ctx, client, in)
+		return s.confirmIfFinal(ctx, client, in, nil)
 	case !strings.EqualFold(st.Receiver.Hex(), in.receive):
 		return s.refuse(ctx, in, "factory.predict gives another address than the stored receive address")
 	case st.Settler != s.sender:
@@ -68,10 +79,13 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 		return s.retry(ctx, in, "factory.status says not settleable (paused?)")
 	}
 
+	receive := common.HexToAddress(in.receive)
+	var after uint64      // the executor's next nonce after a deploy sent in this attempt
+	var deployed *big.Int // that deploy's block
 	if !st.Deployed {
 		data, _ := callData(deploySelector, terms)
 		factory := common.Address(address.Factory)
-		tx, err := s.sign(ctx, client, in.chainID, factory, data)
+		tx, err := s.sign(ctx, client, in.chainID, factory, data, 0, 0)
 		if err != nil {
 			return err
 		}
@@ -79,12 +93,17 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 			return fmt.Errorf("send deploy: %w", err)
 		}
 		// deploy is idempotent: after a crash here the next run sees the receiver deployed, or deploys again.
-		if r, err := s.await(ctx, client, tx.Hash()); err != nil || r == nil || r.Status != types.ReceiptStatusSuccessful {
+		r, err := s.await(ctx, client, tx.Hash())
+		if err != nil || r == nil || r.Status != types.ReceiptStatusSuccessful {
 			return fmt.Errorf("deploy receiver %s: receipt %v, %w", in.receive, r, err)
 		}
+		after, deployed = tx.Nonce()+1, r.BlockNumber
+	}
+	if err := s.awaitCode(ctx, client, receive, deployed); err != nil {
+		return err
 	}
 
-	tx, err := s.sign(ctx, client, in.chainID, common.HexToAddress(in.receive), settleSelector)
+	tx, err := s.sign(ctx, client, in.chainID, receive, settleSelector, after, SettleGasFloor)
 	if err != nil {
 		return err
 	}
@@ -135,16 +154,30 @@ func check(in intent) (address.Terms, string) {
 }
 
 // sign builds and signs a call from the executor, with the chain's own gas estimate (Tempo prices storage
-// differently, S-5/S-6).
-func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uint64, to common.Address, data []byte) (*types.Transaction, error) {
+// differently, S-5/S-6) but at least minGas, plus a fifth. The nonce is the node's pending nonce, but never below
+// after or the nonce after the last settle saved for this chain and sender: a node that lags may not count our
+// latest transactions yet. One signer per key (Signer).
+func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uint64, to common.Address, data []byte,
+	after, minGas uint64) (*types.Transaction, error) {
 	nonce, err := client.PendingNonceAt(ctx, s.sender)
 	if err != nil {
 		return nil, fmt.Errorf("read executor nonce: %w", err)
 	}
+	var saved *int64
+	if err := s.pool.QueryRow(ctx, `SELECT max(si.nonce) FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
+		WHERE i.chain_id = $1 AND si.sender = $2 AND si.tx_hash IS NOT NULL`,
+		int64(chainID), strings.ToLower(s.sender.Hex())).Scan(&saved); err != nil {
+		return nil, fmt.Errorf("read the last saved settle nonce: %w", err)
+	}
+	if saved != nil {
+		after = max(after, uint64(*saved)+1)
+	}
+	nonce = max(nonce, after)
 	gas, err := client.EstimateGas(ctx, ethereum.CallMsg{From: s.sender, To: &to, Data: data})
 	if err != nil {
 		return nil, fmt.Errorf("estimate gas: %w", err)
 	}
+	gas = max(gas, minGas)
 	tip, err := client.SuggestGasTipCap(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("read gas tip: %w", err)
@@ -162,6 +195,30 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 		Gas: gas + gas/5, To: &to, Data: data,
 	})
 	return types.SignTx(tx, types.LatestSignerForChainID(new(big.Int).SetUint64(chainID)), s.key)
+}
+
+// awaitCode waits up to codeWait for the RPC to show the receiver's code at block (the deploy's; nil: latest) or
+// later. A node that has not seen the deploy estimates settle far too low; past the wait this attempt ends and the
+// intent is tried again later.
+func (s *Signer) awaitCode(ctx context.Context, client *ethclient.Client, receiver common.Address, block *big.Int) error {
+	deadline := time.Now().Add(s.codeWait)
+	for {
+		code, err := client.CodeAt(ctx, receiver, block)
+		if err == nil && len(code) > 0 {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			if err != nil {
+				return fmt.Errorf("read receiver %s code: %w", receiver.Hex(), err)
+			}
+			return fmt.Errorf("the RPC shows no code at receiver %s yet", receiver.Hex())
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
 }
 
 // await polls for a receipt up to ReceiptWait; nil means not mined yet.
