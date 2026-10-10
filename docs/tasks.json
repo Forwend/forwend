@@ -8405,7 +8405,7 @@
       "dependsOn": [
         "F072"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "unit"
@@ -8505,11 +8505,18 @@
           "summary": "Delta review (root pnpm dev starts the backend, one-row sidebar top with collapse in the header, Receive sheet redesign, balance hero with estimate info button, Coming soon tooltips, DESIGN.md). Checked: apps/backend internal/cmd/api and packages/contracts identical to origin/main; dev.sh has set -e, cd to its own dir (any cwd), trap 'kill 0' on INT/TERM runs once and stops both Go processes (tested with a stand-in script); Tooltip wraps ActionButton via Radix asChild (React 19 passes ref), the button stays focusable with aria-disabled and the reason in its accessible name (unit + e2e); EstimateHint button is named by the hint text, 24px target; ReceiveAddress shows the full address with a visible label and one primary copy button, live status kept; all new copy keys used; no cross-feature private imports. Fixed: (1) SOON_ACTION_CLASSES lived in features/balances/money-actions.tsx but only the app-shell header uses it after the round-actions change: moved into app-header.tsx (D-11). (2) DESIGN.md and design.json still said desktop money actions are pills; now round on desktop and phones, the dashed pill is only the header Send. (3) e2e comment still said the address shows in groups. Not fixed, minor: Radix tooltips do not open on touch and the soon actions no longer have an onClick, so tapping Send/Transfer/Withdraw on a phone shows nothing (owner chose no notice text; reason stays for screen readers); dev.sh needs apps/backend/.env and Docker, and if the api exits the worker keeps running until Ctrl+C. Ran: web test 27 passed, lint, typecheck, docs-check 0 errors, verify F079 passed (8 checks incl. e2e).",
           "at": "2026-10-10T12:14:11Z",
           "filesHash": "a89427f7630f9497"
-        }
+        },
+        "commit": "13c3123",
+        "doneAt": "2026-10-10T12:14:33Z"
       },
       "branch": "feat/f079-the-signed-in-app-is-a-working-money-das",
       "baseCommit": "098bd66c082145151b46fc0b75925acbd67c2e15",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f079-the-signed-in-app-is-a-working-money-das",
+        "base": "main"
+      }
     },
     {
       "id": "F080",
