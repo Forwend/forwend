@@ -8,6 +8,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react
 import { AUTH_COPY } from "@/features/auth/auth-copy";
 import { useGetBalancesQuery } from "@/features/balances/balances-api";
 import { RequestSheet } from "@/features/invoices/request-sheet";
+import { FirstRun } from "@/features/onboarding/first-run";
 import { type AppSession, AppSessionContext } from "@/features/profiles/app-session";
 import {
   chosenProfile,
@@ -125,6 +126,19 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
       <main className="grid min-h-dvh place-items-center bg-bg">
         <Spinner label={SHELL_COPY.loading} />
       </main>
+    );
+  }
+
+  // R-50: the first-run choice, once, before the shell.
+  if (me.currentData?.onboardedAt === null) {
+    return (
+      <FirstRun
+        profiles={profiles}
+        onDone={(profile) => {
+          switchProfile(profile.profileId);
+          router.replace(APP_ROUTES.home);
+        }}
+      />
     );
   }
 

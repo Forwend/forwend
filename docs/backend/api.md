@@ -1,6 +1,6 @@
 # Backend API rules
 
-Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/profiles`,
+Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/me/onboarding`, `POST /v1/profiles`,
 `PUT /v1/profiles/{profileId}/billing-details`, `GET /v1/profiles/{profileId}/billing-details`,
 `POST /v1/profiles/{profileId}/invoices`,
 `GET /v1/profiles/{profileId}/invoices`, `GET /v1/profiles/{profileId}/balances`, `GET /v1/profiles/{profileId}/activity`,
@@ -30,6 +30,20 @@ Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/profiles`,
 - Money: decimal string in base units (`"5000000"`) next to `chainId` and `token` (contract address), as in R-19.
 - Times: RFC 3339 in UTC. IDs and addresses: strings.
 - Lists: `?limit=` (max 100) and `?cursor=`; response `{ "items": [...], "nextCursor": "…" }`.
+
+## First run
+
+R-50 and D-53; the full schema is in openapi.yaml. `POST` and `GET /v1/me` return `onboardedAt`: null until the user
+makes or skips the first-run choice, and the web app shows the choice while it is null. Users who signed up before the
+column existed were set to their signup time (migration 00013), so they never see it.
+
+- `POST /v1/me/onboarding` with `{ "choices": [...] }`, any of `receive_and_send` (the personal profile every user
+  has), `get_paid_by_clients` (a freelancer profile), `accept_business_payments` and `build_integration` (one merchant
+  profile for either or both: an integration runs on a merchant profile). An empty list is Skip. A missing or unknown
+  choice is 422 `invalid_value`.
+- One transaction locks the user row, makes the profiles and sets `onboarded_at`, so concurrent calls make them once.
+  Then each new profile gets its wallet through the signup path (R-31, R-32). The first call answers 201; later calls,
+  with any choices, change nothing and answer 200 with the same `Me`. Later profiles come from `POST /v1/profiles`.
 
 ## Billing details
 
@@ -111,8 +125,8 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
 
 ## Idempotency
 
-- Every `POST` that creates something or moves money needs an `Idempotency-Key` header. Exception: `POST /v1/me`
-  (signup) happens once per user, so the user's token is the key.
+- Every `POST` that creates something or moves money needs an `Idempotency-Key` header. Exceptions: `POST /v1/me`
+  (signup) and `POST /v1/me/onboarding` happen once per user, so the user's token is the key.
 - First call: 201. Same key and body again: 200 with the same resource. Same key, other body: 409.
 - Keys are unique per profile (per user for `POST /v1/profiles`), 1–255 characters; a missing or longer key is 400. The server stores a SHA-256 of the
   normalized values, never the body, so field order, spacing and address letter case don't matter. A request that

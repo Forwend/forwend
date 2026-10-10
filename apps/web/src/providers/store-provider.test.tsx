@@ -31,7 +31,9 @@ describe("StoreProvider", () => {
         <Probe />
       </StoreProvider>,
     );
-    await seen?.dispatch(profilesApi.util.upsertQueryData("signUp", undefined, { profiles: [] }));
+    await seen?.dispatch(
+      profilesApi.util.upsertQueryData("signUp", undefined, { onboardedAt: null, profiles: [] }),
+    );
     expect(cachedProfiles()).toBeDefined();
 
     // A's session ends without the Sign out button, then B signs in.

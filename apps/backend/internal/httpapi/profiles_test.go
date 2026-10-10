@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -61,6 +62,82 @@ func TestSignUpAndMe(t *testing.T) {
 		if r := e.call(t, method, "/v1/me", "", "", ""); r.status != http.StatusUnauthorized {
 			t.Fatalf("%s /v1/me without a token: %d", method, r.status)
 		}
+	}
+}
+
+// The first-run choice makes its profiles once and sets onboardedAt, which GET and POST /v1/me return; a repeat, with
+// any choices, answers 200 with the same state. Another user's token onboards only that user.
+func TestOnboardingRoute(t *testing.T) {
+	e := invoiceAPI(t)
+	const carol, dave = "did:privy:carol", "did:privy:dave"
+	const path = "/v1/me/onboarding"
+	if r := e.call(t, "POST", path, carol, "", `{"choices": []}`); r.status != http.StatusNotFound || errorCode(r) != "not_signed_up" {
+		t.Fatalf("before signup: %d %v", r.status, r.body)
+	}
+	for _, u := range []string{carol, dave} {
+		if r := e.call(t, "POST", "/v1/me", u, "", ""); r.status != http.StatusCreated || r.body["onboardedAt"] != nil ||
+			!reflect.DeepEqual(e.call(t, "GET", "/v1/me", u, "", "").body, r.body) {
+			t.Fatalf("signup: %d %v; want onboardedAt null on POST and GET", r.status, r.body)
+		}
+	}
+
+	for _, c := range []struct {
+		body, code string
+		status     int
+	}{
+		{`{}`, "invalid_value", http.StatusUnprocessableEntity},
+		{`{"choices": null}`, "invalid_value", http.StatusUnprocessableEntity},
+		{`{"choices": ["freelancer"]}`, "invalid_value", http.StatusUnprocessableEntity},
+		{`{"choices": "get_paid_by_clients"}`, "malformed_request", http.StatusBadRequest},
+		{`{"choices": [], "kind": "merchant"}`, "malformed_request", http.StatusBadRequest},
+	} {
+		if r := e.call(t, "POST", path, carol, "", c.body); r.status != c.status || errorCode(r) != c.code {
+			t.Fatalf("body %s: %d %v, want %d %s", c.body, r.status, r.body, c.status, c.code)
+		}
+	}
+	if r := e.call(t, "POST", path, "", "", `{"choices": []}`); r.status != http.StatusUnauthorized {
+		t.Fatalf("without a token: %d", r.status)
+	}
+
+	first := e.call(t, "POST", path, carol, "", `{"choices": ["get_paid_by_clients", "build_integration"]}`)
+	var kinds []string
+	for _, p := range profilesOf(first) {
+		if !walletAddress.MatchString(fmt.Sprint(p["walletAddress"])) {
+			t.Fatalf("profile without a wallet: %v", p)
+		}
+		kinds = append(kinds, p["kind"].(string))
+	}
+	slices.Sort(kinds)
+	if first.status != http.StatusCreated || !slices.Equal(kinds, []string{"freelancer", "merchant", "personal"}) {
+		t.Fatalf("onboard: %d %v; want 201 with personal, freelancer and merchant", first.status, first.body)
+	}
+	if _, err := time.Parse(time.RFC3339, fmt.Sprint(first.body["onboardedAt"])); err != nil {
+		t.Fatalf("onboardedAt %v", first.body["onboardedAt"])
+	}
+	again := e.call(t, "POST", path, carol, "", `{"choices": ["accept_business_payments"]}`)
+	if again.status != http.StatusOK || !reflect.DeepEqual(again.body, first.body) {
+		t.Fatalf("again: %d %v; want 200 and the same state", again.status, again.body)
+	}
+	for _, method := range []string{"GET", "POST"} {
+		if me := e.call(t, method, "/v1/me", carol, "", ""); !reflect.DeepEqual(me.body, first.body) {
+			t.Fatalf("%s /v1/me: %v; want the onboarded state", method, me.body)
+		}
+	}
+
+	// Dave skips: no profile, his own onboardedAt; Carol's state stays as it was.
+	skip := e.call(t, "POST", path, dave, "", `{"choices": []}`)
+	if skip.status != http.StatusCreated || skip.body["onboardedAt"] == nil || len(profilesOf(skip)) != 1 {
+		t.Fatalf("skip: %d %v; want 201 with only the personal profile", skip.status, skip.body)
+	}
+	for _, p := range profilesOf(skip) {
+		for _, c := range profilesOf(first) {
+			if p["profileId"] == c["profileId"] {
+				t.Fatalf("Dave's answer lists Carol's profile %v", c)
+			}
+		}
+	}
+	if me := e.call(t, "GET", "/v1/me", carol, "", ""); !reflect.DeepEqual(me.body, first.body) {
+		t.Fatalf("Carol after Dave: %v", me.body)
 	}
 }
 

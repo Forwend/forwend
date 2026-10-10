@@ -46,6 +46,39 @@ paths:
         "404": { $ref: "#/components/responses/NotSignedUp" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/me/onboarding:
+    post:
+      operationId: onboard
+      summary: Make the first-run choice once; makes the chosen profiles and sets onboardedAt
+      description: |
+        R-50, D-53. Each choice needs a profile kind: receive_and_send the personal profile every user has,
+        get_paid_by_clients a freelancer profile, accept_business_payments and build_integration one merchant profile
+        (both together make one). The profiles and onboardedAt are written in one transaction, then each new profile
+        gets its Privy wallet as at signup (walletAddress null if Privy fails; the next POST /v1/me makes it). An empty
+        list is Skip: it only sets onboardedAt. The first call answers 201; every later call, with any choices, changes
+        nothing and answers 200 with the same state. No Idempotency-Key: onboardedAt is the key.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OnboardingRequest" }
+      responses:
+        "201":
+          description: Onboarded now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "200":
+          description: Onboarded before; nothing changed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotSignedUp" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles:
     post:
       operationId: createProfile
@@ -386,8 +419,12 @@ components:
       pattern: "^[0-9]+$"
     Me:
       type: object
-      required: [profiles]
+      required: [onboardedAt, profiles]
       properties:
+        onboardedAt:
+          type: [string, "null"]
+          format: date-time
+          description: When the user made or skipped the first-run choice; null until then (the app shows it).
         profiles:
           type: array
           items: { $ref: "#/components/schemas/Profile" }
@@ -408,6 +445,17 @@ components:
             - $ref: "#/components/schemas/Address"
             - type: "null"
         createdAt: { type: string, format: date-time }
+    OnboardingRequest:
+      type: object
+      additionalProperties: false
+      required: [choices]
+      properties:
+        choices:
+          type: array
+          description: Any number, repeats allowed; empty means Skip.
+          items:
+            type: string
+            enum: [receive_and_send, get_paid_by_clients, accept_business_payments, build_integration]
     CreateProfileRequest:
       type: object
       additionalProperties: false

@@ -27,8 +27,8 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
 
 - The landing waitlist is a mock that sends and stores nothing (D-8).
 - Users sign in on `/sign-in` with our own forms (email code with the `CodeInput` boxes, Google; D-21) on the Privy
-  React SDK's headless hooks; Privy's modal is not used. Passkey sign-in comes back once users can add a passkey to
-  their account. Privy loads only in the
+  React SDK's headless hooks; Privy's modal is not used. Users add a passkey from the
+  overview checklist (Privy's `useLinkWithPasskey`); passkey sign-in comes back on `/sign-in` later. Privy loads only in the
   `(app)` route group (`/sign-in`, `/app`), never on the landing page or checkout. `/app` sends signed-out visitors to
   `/sign-in` and calls `POST /v1/me` each time it loads, which makes the personal profile and its wallet once (R-34).
 - The app shell: on desktop a sidebar with the profile switcher on top (a menu to switch or add a profile), the
@@ -40,7 +40,8 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   an exact network and token warning (the address never shows without it). `/app/balances` and `/app/activity` list
   everything; in activity only a payment carries "+". Money sent straight to the wallet shows in the balance once final, not in activity. Balances
   and activity are read again every 15 s while the tab is visible and when it comes back. `/app/profiles/new` creates a freelancer
-  or merchant profile with one idempotency key per visit (R-35).
+  or merchant profile with one idempotency key per visit (R-35). While `onboardedAt` is empty, `/app` shows the first-run choice screen instead (R-50, D-73);
+  `/app/billing-details` edits the profile's billing details (R-43).
 - Invoices (freelancer and merchant profiles, R-44): `/app/invoices` lists them newest first with "Show more" cursor
   pages; `/app/invoices/new` asks for a network and token from the profile's enabled tokens (the balances list), turns
   the typed amount into exact base units without float, and sends one idempotency key per filled-in form;
