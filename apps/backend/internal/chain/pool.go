@@ -43,6 +43,7 @@ type pool struct {
 	chainID uint64
 	perCall time.Duration // 1 / the rate: the pause one call takes from an endpoint's pace
 	timeout time.Duration // per attempt
+	http    *http.Client
 
 	mu        sync.Mutex
 	endpoints []*endpoint // every Infura key, then the public RPCs, in list order
@@ -252,7 +253,7 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 		return nil, fmt.Errorf("%s: invalid URL", e.name)
 	}
 	req.Header = header.Clone()
-	res, err := http.DefaultClient.Do(req)
+	res, err := p.http.Do(req)
 	if err != nil {
 		return nil, p.unanswered(e, err)
 	}

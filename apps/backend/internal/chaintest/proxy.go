@@ -44,6 +44,7 @@ type Proxy struct {
 func (a *Anvil) Proxy() *Proxy {
 	p := &Proxy{}
 	stop := make(chan struct{})
+	anvil := &http.Client{Transport: &http.Transport{MaxIdleConnsPerHost: 100}} // keeps connections for load tests
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		var one struct {
@@ -89,7 +90,7 @@ func (a *Anvil) Proxy() *Proxy {
 			case <-stop:
 			}
 		default:
-			res, err := http.Post(a.URL, "application/json", bytes.NewReader(body))
+			res, err := anvil.Post(a.URL, "application/json", bytes.NewReader(body))
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadGateway)
 				return

@@ -67,7 +67,12 @@ func NewRPCs(spec Spec, infuraKeys []string, rate float64) (RPCs, error) {
 			urls = append(urls, "https://"+spec.Infura+".infura.io/v3/"+k)
 		}
 	}
-	p := &pool{chainID: spec.ChainID, perCall: time.Duration(float64(time.Second) / rate), timeout: AttemptTimeout}
+	// net/http keeps 2 idle connections per host by default: with more calls at once, each further call opened a
+	// connection (and TLS session) of its own, and a busy api ran out of local ports (architecture.md#load-test).
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.MaxIdleConnsPerHost = 100
+	p := &pool{chainID: spec.ChainID, perCall: time.Duration(float64(time.Second) / rate), timeout: AttemptTimeout,
+		http: &http.Client{Transport: transport}}
 	hosts := map[string]bool{}
 	for i, u := range append(urls, spec.Public...) {
 		host := hostOf(u)

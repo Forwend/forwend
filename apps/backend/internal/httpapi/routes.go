@@ -19,7 +19,8 @@ import (
 func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, balances ledger.BalanceOf,
 	webURL string) *http.ServeMux {
 	owners, invoices, profiles := auth.NewService(pool), invoice.NewService(pool), profile.NewService(pool, wallets)
-	signedIn := func(h http.Handler) http.Handler { return requireUser(verifier, h) }
+	users := newBuckets(userRate, userBurst)
+	signedIn := func(h http.Handler) http.Handler { return requireUser(verifier, limit(users, signedInUser, h)) }
 	profileScoped := func(h http.Handler) http.Handler { return signedIn(requireProfileOwner(owners, h)) }
 
 	mux := http.NewServeMux()
@@ -36,7 +37,7 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 		profileScoped(getBalanceHistory(balance.NewService(pool, balances))))
 	mux.Handle("GET /v1/profiles/{profileId}/activity", profileScoped(getActivity(activity.NewService(pool))))
 	mux.Handle("GET /v1/profiles/{profileId}/transactions", profileScoped(getTransactions(activity.NewService(pool))))
-	mux.Handle("GET /v1/invoices/{invoiceId}", getInvoice(invoices)) // public: checkout reads
+	mux.Handle("GET /v1/invoices/{invoiceId}", getInvoice(invoices)) // checkout reads
 	mux.Handle("GET /v1/invoices/{invoiceId}/invoice.pdf", invoicePDF(invoices, webURL))
 	mux.Handle("GET /v1/invoices/{invoiceId}/receipt.pdf", receiptPDF(invoices, webURL))
 	return mux

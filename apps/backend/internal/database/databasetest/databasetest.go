@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/config"
@@ -13,13 +14,27 @@ import (
 )
 
 // New creates an empty database next to DATABASE_URL and drops it when the test ends. Locally: pnpm postgres:up.
+// The URL it returns has none of DATABASE_URL's pool_ parameters (pool_max_conns), which only pgxpool reads: tests
+// also open plain connections, which would send them to Postgres as settings.
 func New(t *testing.T) string {
 	t.Helper()
 	ctx := context.Background()
-	admin, err := config.LoadDatabaseURL()
+	raw, err := config.LoadDatabaseURL()
 	if err != nil {
 		t.Fatal(err)
 	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := u.Query()
+	for k := range q {
+		if strings.HasPrefix(k, "pool_") {
+			q.Del(k)
+		}
+	}
+	u.RawQuery = q.Encode()
+	admin := u.String()
 	conn, err := pgx.Connect(ctx, admin)
 	if err != nil {
 		t.Fatalf("connect to Postgres (locally: pnpm --filter @forwend/backend postgres:up): %v", err)
@@ -44,10 +59,6 @@ func New(t *testing.T) string {
 		}
 	})
 
-	u, err := url.Parse(admin)
-	if err != nil {
-		t.Fatal(err)
-	}
 	u.Path = "/" + name
 	return u.String()
 }

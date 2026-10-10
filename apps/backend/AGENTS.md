@@ -14,6 +14,8 @@ Go API, worker and signer (PLAN Phase 6). Requirements R-14…R-24 in `docs/PROJ
   (creates a throwaway user and wallet, then removes them).
 - `pnpm --filter @forwend/backend e2e`: the money-loop gate with the real binaries on Postgres and Anvil (also in
   root `pnpm e2e` and CI).
+- `pnpm --filter @forwend/backend loadtest -users=1000 -duration=3m`: signed-in users polling the dashboard routes
+  against the api on Anvil; not in any check ([load test](../../docs/backend/architecture.md#load-test)).
 
 A paid invoice's money waits in its receive contract, shown as "on its way", until the signer settles it into the
 profile wallet. Locally that needs `EXECUTOR_PRIVATE_KEY` in `.env`: a funded executor key on the testnet (see

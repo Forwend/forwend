@@ -34,3 +34,21 @@ func TestOpenRetainsCancellationCause(t *testing.T) {
 		t.Fatalf("want connection context and cancellation, got %v", err)
 	}
 }
+
+// DATABASE_URL sizes the pool with pgxpool's pool_max_conns; the migrations' plain connection must not send it to
+// Postgres as a setting.
+func TestPoolSizeFromTheURL(t *testing.T) {
+	ctx := context.Background()
+	url := databasetest.New(t) + "&pool_max_conns=3"
+	if err := database.Migrate(ctx, url); err != nil {
+		t.Fatal(err)
+	}
+	pool, err := database.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if got := pool.Config().MaxConns; got != 3 {
+		t.Fatalf("pool of %d connections, want 3", got)
+	}
+}
