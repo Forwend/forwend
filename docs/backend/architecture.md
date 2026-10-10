@@ -3,7 +3,7 @@
 The Go backend in `apps/backend` (PLAN Phase 6). Code rules: [rules.md](rules.md).
 Requirements: R-14…R-24 in [PROJECT.md](../PROJECT.md). Whole system: [architecture.md](../architecture.md).
 
-Built: signup and profiles API, balances and activity API, invoice API, Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
+Built: signup and profiles API, balances, activity, wallet transactions and balance history API, invoice API, Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
 (`apps/backend/e2e`, R-23) runs the whole loop. Not built yet: refunds, webhooks, merchants.
 
 ## Processes
@@ -34,6 +34,9 @@ Built in `internal/database/migrations` (R-17); Postgres enforces the rules belo
   SHA-256 `request_hash` of the create request.
 - `chain_transfers`: `block_hash`, `block_number`, `block_time`, status `detected|confirmed|reorged`. A transfer must go to
   its invoice's receive address, for the invoice's token, on its chain (foreign key).
+- `wallet_transfers` (R-38): enabled-token `Transfer` logs from or to a profile wallet, one row per wallet and direction
+  (`in`|`out`) with the counterparty, so a transfer between two profile wallets is out for one and in for the other.
+  Block fields, statuses and identity rules as in `chain_transfers`, with the wallet and direction in each key.
 - `ledger_transactions` + `ledger_entries`: double-entry, append-only (below).
 - `settlement_intents` (unique per invoice), `refund_intents` (one per approved claim); nonce and tx hash tracked;
   reconcile before any retry.
@@ -112,6 +115,17 @@ from one node. One transaction then:
 - inserts each deposit whose block hash matches, `confirmed` when the block is at or below `finalized` (D-45), else
   `detected`; a `reorged` row whose block is canonical again comes back;
 - moves `chain_cursors`, never below the last finalized block.
+The same scan records profile-wallet transfers (R-38): `Transfer` logs of the chain's enabled tokens with any profile
+wallet as sender, then as receiver (two `eth_getLogs` per range), one row per wallet side, by the deposit rules above
+(detected, confirmed at or below `finalized`, reorged only when the chain shows another block at its height, a
+re-mined copy gets a new row, the oldest detected row holds the scan's start). A token disabled while one of its
+transfers is still detected stays in the scan until those rows confirm or are reorged, so they never hold the start;
+its new transfers are not recorded. Start rule: a wallet's transfers are
+recorded from the first scan that lists it, which reads from 64 blocks below the last finalized block. We make each
+wallet before anyone can know its address and the next scan follows within one poll interval, so that is its whole
+history; as for invoices, only a scan longer than 64 blocks could miss a transfer to a wallet made while it ran.
+Transfers older than that window are not looked for: those of wallets made before this table existed, or before a
+chain's first scan. Arc native-coin sends log no token `Transfer`, so they are not recorded.
 The 64-block rescan means one empty or lagging answer is never the last look at a final block. Only the invoice's own
 token counts, and the row stores the emitting contract, so the foreign key also rejects a look-alike. Block hashes and
 times come from the RPC, never computed in Go. Arc's native-coin `Transfer` logs are ignored (see money-safety). A

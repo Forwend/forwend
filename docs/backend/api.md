@@ -1,7 +1,9 @@
 # Backend API rules
 
 Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/profiles`, `POST /v1/profiles/{profileId}/invoices`,
-`GET /v1/profiles/{profileId}/balances`, `GET /v1/profiles/{profileId}/activity`, `GET /v1/invoices/{invoiceId}` (public).
+`GET /v1/profiles/{profileId}/balances`, `GET /v1/profiles/{profileId}/activity`,
+`GET /v1/profiles/{profileId}/transactions`, `GET /v1/profiles/{profileId}/balance-history`,
+`GET /v1/invoices/{invoiceId}` (public).
 
 ## Contract first
 
@@ -24,6 +26,23 @@ Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/profiles`, `POS
 - Money: decimal string in base units (`"5000000"`) next to `chainId` and `token` (contract address), as in R-19.
 - Times: RFC 3339 in UTC. IDs and addresses: strings.
 - Lists: `?limit=` (max 100) and `?cursor=`; response `{ "items": [...], "nextCursor": "…" }`.
+
+## Wallet transactions and balance history
+
+Both read the transfers the worker records for profile wallets (R-38); the full schema is in openapi.yaml.
+
+- `GET /v1/profiles/{profileId}/transactions?limit=&cursor=`: the list format above, newest block time first, reorged
+  transfers left out. An item: `chainId`, `token`, `symbol`, `decimals`, `direction` (`in` | `out`), `amount`,
+  `counterparty` (sender for in, receiver for out), `txHash`, `logIndex`, `blockNumber`, `at` (block time), `status`
+  (`detected` | `confirmed`, as for deposits).
+- `GET /v1/profiles/{profileId}/balance-history?days=N`: N is 1–365, default 30 (not a number: 400; out of range: 422).
+  One point per UTC day, today included, oldest first: `points[i]` is `{ at, estimatedUsd, receivedUsd, sentUsd }`,
+  and `tokens[j]` is `{ chainId, token, symbol, decimals, balances, received, sent }`, where each array holds one
+  base-unit string per point. `at` is the end of the day (00:00 UTC of the next day); the last point is now, and its
+  balance is the wallet balance `/balances` reads at the second RPC's finalized block. An earlier balance undoes the
+  final transfers after it (not reorged, at or below that block); `received` and `sent` sum them per day, today's
+  without an end. A missing wallet balance makes that token's arrays and every USD total null. Money moved without a
+  token `Transfer` log (Arc native-coin sends, fees paid in the token) is not undone; a balance below 0 shows 0.
 
 ## Idempotency
 

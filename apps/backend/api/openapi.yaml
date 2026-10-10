@@ -151,6 +151,65 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/InvalidValue" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/transactions:
+    get:
+      operationId: getTransactions
+      summary: The profile wallet's token transfers, newest first, in cursor pages
+      description: |
+        Every Transfer of an enabled token from or to the profile's wallet on an enabled chain, as the worker records
+        it (R-38), from the first scan that knows the wallet. A transfer between two profile wallets is out in one
+        profile's list and in in the other's. Reorged transfers are left out. Ordered by block time, newest first.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: limit
+          in: query
+          description: Items per page; default 50.
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - name: cursor
+          in: query
+          description: nextCursor from the previous page.
+          schema: { type: string }
+      responses:
+        "200":
+          description: One page; an empty list for a new profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Transactions" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/balance-history:
+    get:
+      operationId: getBalanceHistory
+      summary: The profile wallet's balance per UTC day, ending at the current balance
+      description: |
+        One point per UTC day for the last `days` days, today included, oldest first (R-38). A point's balance is the
+        wallet balance at the end of its day (00:00 UTC of the next day); the last point is now and equals the wallet
+        balance from /balances, read at the second RPC's finalized block. Each earlier balance undoes the recorded
+        wallet transfers after it that the current balance includes: not reorged, and at or below that finalized
+        block (final). received and sent are the sums of those transfers in and out during the point's day; today's
+        has no end, so it holds every such transfer since 00:00 UTC. Money that moves without a Transfer log of the
+        token (an Arc native-coin send, fees paid in the token) is not undone, so earlier balances can be off by it;
+        a balance that would go below 0 shows 0.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: days
+          in: query
+          description: Days to cover, today included; default 30.
+          schema: { type: integer, minimum: 1, maximum: 365 }
+      responses:
+        "200":
+          description: The history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BalanceHistory" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/invoices/{invoiceId}:
     get:
       operationId: getInvoice
@@ -320,6 +379,98 @@ components:
           type: string
           pattern: "^0x[0-9a-f]{64}$"
           description: Deposits only.
+    Transactions:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Transaction" }
+        nextCursor:
+          type: [string, "null"]
+          description: Pass as cursor for the next page; null on the last page.
+    Transaction:
+      type: object
+      required: [chainId, token, symbol, decimals, direction, amount, counterparty, txHash, logIndex, blockNumber, at,
+        status]
+      properties:
+        chainId: { type: integer }
+        token: { $ref: "#/components/schemas/Address" }
+        symbol:
+          type: string
+          description: The token's symbol, also for a token no longer enabled.
+        decimals: { type: integer, minimum: 0 }
+        direction:
+          type: string
+          enum: [in, out]
+          description: in when the wallet received the tokens, out when it sent them.
+        amount: { $ref: "#/components/schemas/Uint256" }
+        counterparty:
+          allOf: [{ $ref: "#/components/schemas/Address" }]
+          description: The sender for in, the receiver for out; the zero address for a mint or a burn.
+        txHash: { type: string, pattern: "^0x[0-9a-f]{64}$" }
+        logIndex: { type: integer, minimum: 0 }
+        blockNumber: { type: integer, minimum: 0 }
+        at:
+          type: string
+          format: date-time
+          description: The block's time.
+        status:
+          type: string
+          enum: [detected, confirmed]
+          description: confirmed once the block is at or below the chain's finalized block (D-45).
+    BalanceHistory:
+      type: object
+      required: [points, tokens]
+      properties:
+        points:
+          type: array
+          description: One per UTC day, oldest first; the last is today, at now.
+          items: { $ref: "#/components/schemas/BalanceHistoryPoint" }
+        tokens:
+          type: array
+          description: One per enabled chain and token, as in Balances.
+          items: { $ref: "#/components/schemas/TokenHistory" }
+    BalanceHistoryPoint:
+      type: object
+      required: [at, estimatedUsd, receivedUsd, sentUsd]
+      properties:
+        at:
+          type: string
+          format: date-time
+          description: The end of the point's UTC day (00:00 UTC of the next day); now for the last point.
+        estimatedUsd:
+          type: [string, "null"]
+          description: |
+            An estimate, not a quote: the point's balances counting each stablecoin as 1 USD, with 2 decimals (for
+            example "12.50"). null when any token's series is null.
+        receivedUsd:
+          type: [string, "null"]
+          description: The point's received amounts, counted like estimatedUsd.
+        sentUsd:
+          type: [string, "null"]
+          description: The point's sent amounts, counted like estimatedUsd.
+    TokenHistory:
+      type: object
+      required: [chainId, token, symbol, decimals, balances, received, sent]
+      properties:
+        chainId: { type: integer }
+        token: { $ref: "#/components/schemas/Address" }
+        symbol: { type: string }
+        decimals: { type: integer, minimum: 0 }
+        balances:
+          type: [array, "null"]
+          description: One per point, in base units; the wallet balance at the point's at. null when the current wallet
+            balance is missing (no wallet yet, or the chain could not be read); received and sent are then null too.
+          items: { type: string, pattern: "^[0-9]+$" }
+        received:
+          type: [array, "null"]
+          description: One per point, in base units; the sum of final transfers into the wallet during the point's day.
+          items: { type: string, pattern: "^[0-9]+$" }
+        sent:
+          type: [array, "null"]
+          description: One per point, in base units; the sum of final transfers out of the wallet during the point's day.
+          items: { type: string, pattern: "^[0-9]+$" }
     CreateInvoiceRequest:
       type: object
       additionalProperties: false
@@ -431,8 +582,8 @@ components:
     InvalidValue:
       description: |
         A value breaks a rule (invalid_value): amount, expiresIn, a token or chain that is not enabled, a profile with
-        no wallet for the chain, terms the contract would refuse to settle, a profile kind or name, or an activity
-        limit or cursor.
+        no wallet for the chain, terms the contract would refuse to settle, a profile kind or name, an activity or
+        transactions limit or cursor, or balance-history days.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

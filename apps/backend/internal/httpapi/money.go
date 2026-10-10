@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"fmt"
+	"math/big"
 	"net/http"
 	"strconv"
 	"time"
@@ -45,6 +46,48 @@ type activityItemJSON struct {
 	TxHash           string `json:"txHash,omitempty"`
 }
 
+type transactionsJSON struct {
+	Items      []transactionJSON `json:"items"`
+	NextCursor *string           `json:"nextCursor"`
+}
+
+type transactionJSON struct {
+	ChainID      uint64 `json:"chainId"`
+	Token        string `json:"token"`
+	Symbol       string `json:"symbol"`
+	Decimals     int    `json:"decimals"`
+	Direction    string `json:"direction"`
+	Amount       string `json:"amount"`
+	Counterparty string `json:"counterparty"`
+	TxHash       string `json:"txHash"`
+	LogIndex     uint64 `json:"logIndex"`
+	BlockNumber  uint64 `json:"blockNumber"`
+	At           string `json:"at"`
+	Status       string `json:"status"`
+}
+
+type balanceHistoryJSON struct {
+	Points []historyPointJSON `json:"points"`
+	Tokens []tokenHistoryJSON `json:"tokens"`
+}
+
+type historyPointJSON struct {
+	At           string  `json:"at"`
+	EstimatedUSD *string `json:"estimatedUsd"`
+	ReceivedUSD  *string `json:"receivedUsd"`
+	SentUSD      *string `json:"sentUsd"`
+}
+
+type tokenHistoryJSON struct {
+	ChainID  uint64   `json:"chainId"`
+	Token    string   `json:"token"`
+	Symbol   string   `json:"symbol"`
+	Decimals int      `json:"decimals"`
+	Balances []string `json:"balances"`
+	Received []string `json:"received"`
+	Sent     []string `json:"sent"`
+}
+
 // getBalances is GET /v1/profiles/{profileId}/balances.
 func getBalances(balances *balance.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -73,14 +116,10 @@ func getBalances(balances *balance.Service) http.HandlerFunc {
 // getActivity is GET /v1/profiles/{profileId}/activity?limit=&cursor=.
 func getActivity(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		limit := activity.DefaultLimit
-		if raw := r.URL.Query().Get("limit"); raw != "" {
-			n, err := strconv.Atoi(raw)
-			if err != nil {
-				writeError(w, r, fmt.Errorf("%w: limit must be a whole number", errMalformed))
-				return
-			}
-			limit = n
+		limit, err := intQuery(r, "limit", activity.DefaultLimit)
+		if err != nil {
+			writeError(w, r, err)
+			return
 		}
 		page, err := activities.List(r.Context(), r.PathValue("profileId"), r.URL.Query().Get("cursor"), limit)
 		if err != nil {
@@ -99,4 +138,88 @@ func getActivity(activities *activity.Service) http.HandlerFunc {
 		}
 		writeJSON(w, http.StatusOK, out)
 	}
+}
+
+// getTransactions is GET /v1/profiles/{profileId}/transactions?limit=&cursor=.
+func getTransactions(activities *activity.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		limit, err := intQuery(r, "limit", activity.DefaultLimit)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		page, err := activities.Transfers(r.Context(), r.PathValue("profileId"), r.URL.Query().Get("cursor"), limit)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		out := transactionsJSON{Items: []transactionJSON{}}
+		if page.NextCursor != "" {
+			out.NextCursor = &page.NextCursor
+		}
+		for _, t := range page.Items {
+			out.Items = append(out.Items, transactionJSON{ChainID: t.ChainID, Token: t.Token, Symbol: t.Symbol,
+				Decimals: t.Decimals, Direction: t.Direction, Amount: t.Amount.String(), Counterparty: t.Counterparty,
+				TxHash: t.TxHash, LogIndex: t.LogIndex, BlockNumber: t.BlockNumber, At: t.At.Format(time.RFC3339),
+				Status: t.Status})
+		}
+		writeJSON(w, http.StatusOK, out)
+	}
+}
+
+// getBalanceHistory is GET /v1/profiles/{profileId}/balance-history?days=.
+func getBalanceHistory(balances *balance.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		days, err := intQuery(r, "days", balance.DefaultDays)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		h, err := balances.History(r.Context(), r.PathValue("profileId"), days, time.Now())
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		out := balanceHistoryJSON{Points: []historyPointJSON{}, Tokens: []tokenHistoryJSON{}}
+		orNull := func(s string) *string {
+			if s == "" {
+				return nil
+			}
+			return &s
+		}
+		for _, p := range h.Points {
+			out.Points = append(out.Points, historyPointJSON{At: p.At.Format(time.RFC3339),
+				EstimatedUSD: orNull(p.EstimatedUSD), ReceivedUSD: orNull(p.ReceivedUSD), SentUSD: orNull(p.SentUSD)})
+		}
+		for _, t := range h.Tokens {
+			out.Tokens = append(out.Tokens, tokenHistoryJSON{ChainID: t.ChainID, Token: t.Token, Symbol: t.Symbol,
+				Decimals: t.Decimals, Balances: baseUnits(t.Balances), Received: baseUnits(t.Received), Sent: baseUnits(t.Sent)})
+		}
+		writeJSON(w, http.StatusOK, out)
+	}
+}
+
+// baseUnits writes amounts as decimal strings; nil stays nil (JSON null).
+func baseUnits(amounts []*big.Int) []string {
+	if amounts == nil {
+		return nil
+	}
+	out := make([]string, len(amounts))
+	for i, a := range amounts {
+		out[i] = a.String()
+	}
+	return out
+}
+
+// intQuery reads a whole-number query parameter, or def when it is absent.
+func intQuery(r *http.Request, name string, def int) (int, error) {
+	raw := r.URL.Query().Get(name)
+	if raw == "" {
+		return def, nil
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("%w: %s must be a whole number", errMalformed, name)
+	}
+	return n, nil
 }

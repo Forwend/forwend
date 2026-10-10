@@ -1,5 +1,6 @@
 // Package balance shows a profile's money per chain and token (R-33): the wallet's balance read at the second RPC's
-// finalized block (D-15, D-45), and apart from it what is on its way to the wallet and what is held for payers.
+// finalized block (D-15, D-45), and apart from it what is on its way to the wallet and what is held for payers. It
+// also rebuilds the wallet balance per day from the recorded wallet transfers (R-38).
 package balance
 
 import (

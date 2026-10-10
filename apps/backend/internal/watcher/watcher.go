@@ -1,6 +1,7 @@
 // Package watcher records deposits to receive addresses: Transfer logs of each invoice's own token, detected when
 // seen, confirmed once their block is at or below the chain's finalized block (D-45), reorged when the chain shows
-// another block at their height (R-20).
+// another block at their height (R-20). It records every enabled-token transfer from or to a profile wallet by the
+// same rules (R-38).
 package watcher
 
 import (
@@ -66,6 +67,12 @@ type deposit struct {
 	final                   bool
 }
 
+// logKey identifies a log on one chain.
+type logKey struct {
+	blockHash string
+	index     uint64
+}
+
 // pending is a detected row the chain may have dropped.
 type pending struct {
 	id          int64
@@ -74,8 +81,8 @@ type pending struct {
 	logIndex    uint64
 }
 
-// Scan reads the chain from RescanDepth blocks below the last finalized block (or from the oldest detected deposit)
-// to the latest block, and records the result in one transaction. Scanning the same range again changes nothing.
+// Scan reads the chain from RescanDepth blocks below the last finalized block (or from the oldest detected deposit or
+// wallet transfer) to the latest block, and records the result in one transaction. Scanning the same range again changes nothing.
 func (c *Chain) Scan(ctx context.Context) error {
 	latest, err := c.eth.BlockNumber(ctx)
 	if err != nil {
@@ -89,15 +96,31 @@ func (c *Chain) Scan(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	var logs []types.Log
-	for lo := from; lo <= latest && len(invoices) > 0; lo += MaxRange {
-		found, err := c.logs(ctx, lo, min(lo+MaxRange-1, latest), invoices)
+	wallets, err := c.wallets(ctx)
+	if err != nil {
+		return err
+	}
+	var logs, walletLogs []types.Log
+	for lo := from; lo <= latest; lo += MaxRange {
+		hi := min(lo+MaxRange-1, latest)
+		if len(invoices) > 0 {
+			found, err := c.logs(ctx, lo, hi, invoices)
+			if err != nil {
+				return err
+			}
+			logs = append(logs, found...)
+		}
+		found, err := c.walletLogs(ctx, lo, hi, wallets)
 		if err != nil {
 			return err
 		}
-		logs = append(logs, found...)
+		walletLogs = append(walletLogs, found...)
 	}
-	open, err := c.pending(ctx, from)
+	open, err := c.pending(ctx, "chain_transfers", from)
+	if err != nil {
+		return err
+	}
+	openWallet, err := c.pending(ctx, "wallet_transfers", from)
 	if err != nil {
 		return err
 	}
@@ -107,7 +130,13 @@ func (c *Chain) Scan(ctx context.Context) error {
 	for _, l := range logs {
 		numbers = append(numbers, l.BlockNumber)
 	}
+	for _, l := range walletLogs {
+		numbers = append(numbers, l.BlockNumber)
+	}
 	for _, p := range open {
+		numbers = append(numbers, p.blockNumber)
+	}
+	for _, p := range openWallet {
 		numbers = append(numbers, p.blockNumber)
 	}
 	final, headers, err := c.headers(ctx, numbers)
@@ -117,10 +146,6 @@ func (c *Chain) Scan(ctx context.Context) error {
 	finalized := uint64(final.Number)
 
 	var deposits []deposit
-	type logKey struct {
-		blockHash string
-		index     uint64
-	}
 	seen := map[logKey]bool{}
 	for _, l := range logs {
 		h, ok := headers[l.BlockNumber]
@@ -138,14 +163,18 @@ func (c *Chain) Scan(ctx context.Context) error {
 		deposits = append(deposits, d)
 		seen[logKey{d.blockHash, d.logIndex}] = true
 	}
+	transfers := wallets.transfers(walletLogs, openWallet, headers, finalized, seen)
 	// A detected row is reorged only when the chain shows another block at its height. A log that is merely
 	// missing from one answer proves nothing.
-	var reorged []int64
-	for _, p := range open {
-		h, ok := headers[p.blockNumber]
-		if !seen[logKey{p.blockHash, p.logIndex}] && ok && hexutil.Encode(h.Hash[:]) != p.blockHash {
-			reorged = append(reorged, p.id)
+	reorgedOf := func(open []pending) []int64 {
+		var reorged []int64
+		for _, p := range open {
+			h, ok := headers[p.blockNumber]
+			if !seen[logKey{p.blockHash, p.logIndex}] && ok && hexutil.Encode(h.Hash[:]) != p.blockHash {
+				reorged = append(reorged, p.id)
+			}
 		}
+		return reorged
 	}
 	// The cursor's finalized block never passes what this scan read: finalized was read after latest and may be
 	// higher, and blocks above latest were not scanned. Its time is that block's, for expiry and countdowns.
@@ -156,16 +185,19 @@ func (c *Chain) Scan(ctx context.Context) error {
 		}
 		final = h
 	}
-	return c.record(ctx, reorged, deposits, final, latest)
+	return c.record(ctx, reorgedOf(open), deposits, reorgedOf(openWallet), transfers, final, latest)
 }
 
-// start is where this scan begins. A new chain starts at its finalized block: deposits before the first scan are
-// not looked for. ponytail: add a start block to chains if a chain is enabled after invoices on it exist.
+// start is where this scan begins. A new chain starts at its finalized block: deposits and wallet transfers before
+// the first scan are not looked for. ponytail: add a start block to chains if a chain is enabled after invoices on it
+// exist.
 func (c *Chain) start(ctx context.Context) (uint64, error) {
 	var from int64
 	err := c.pool.QueryRow(ctx, `
 		SELECT least(greatest(cur.last_finalized_block + 1 - $2, 0),
 		             coalesce((SELECT min(block_number) FROM chain_transfers
+		                       WHERE chain_id = $1 AND status = 'detected'), cur.last_finalized_block + 1),
+		             coalesce((SELECT min(block_number) FROM wallet_transfers
 		                       WHERE chain_id = $1 AND status = 'detected'), cur.last_finalized_block + 1))
 		FROM chain_cursors cur WHERE cur.chain_id = $1`, c.chainID, RescanDepth).Scan(&from)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -230,19 +262,19 @@ func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Add
 	return out, nil
 }
 
-// pending returns the detected rows at or above from.
-func (c *Chain) pending(ctx context.Context, from uint64) ([]pending, error) {
-	rows, err := c.pool.Query(ctx, `SELECT id, block_number, block_hash, log_index FROM chain_transfers
+// pending returns the detected rows of table (chain_transfers or wallet_transfers) at or above from.
+func (c *Chain) pending(ctx context.Context, table string, from uint64) ([]pending, error) {
+	rows, err := c.pool.Query(ctx, `SELECT id, block_number, block_hash, log_index FROM `+table+`
 		WHERE chain_id = $1 AND status = 'detected' AND block_number >= $2`, c.chainID, from)
 	if err != nil {
-		return nil, fmt.Errorf("read chain %d detected deposits: %w", c.chainID, err)
+		return nil, fmt.Errorf("read chain %d detected %s: %w", c.chainID, table, err)
 	}
 	defer rows.Close()
 	var out []pending
 	for rows.Next() {
 		var p pending
 		if err := rows.Scan(&p.id, &p.blockNumber, &p.blockHash, &p.logIndex); err != nil {
-			return nil, fmt.Errorf("read chain %d detected deposits: %w", c.chainID, err)
+			return nil, fmt.Errorf("read chain %d detected %s: %w", c.chainID, table, err)
 		}
 		out = append(out, p)
 	}
@@ -288,9 +320,10 @@ func (c *Chain) headers(ctx context.Context, numbers []uint64) (header, map[uint
 	return *finalized, out, nil
 }
 
-// record writes one scan: reorged rows first (so a re-mined copy can be live), then each deposit is inserted or
-// brought back, then the cursor moves.
-func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit, finalized header, scanned uint64) error {
+// record writes one scan: reorged rows first (so a re-mined copy can be live), then each deposit and wallet transfer
+// is inserted or brought back, then the cursor moves.
+func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit, reorgedWallet []int64,
+	transfers []walletTransfer, finalized header, scanned uint64) error {
 	tx, err := c.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("record chain %d scan: %w", c.chainID, err)
@@ -300,6 +333,10 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 	if _, err = tx.Exec(ctx, "UPDATE chain_transfers SET status = 'reorged' WHERE id = ANY($1) AND status = 'detected'",
 		reorged); err != nil {
 		return fmt.Errorf("mark chain %d reorged deposits: %w", c.chainID, err)
+	}
+	if _, err = tx.Exec(ctx, "UPDATE wallet_transfers SET status = 'reorged' WHERE id = ANY($1) AND status = 'detected'",
+		reorgedWallet); err != nil {
+		return fmt.Errorf("mark chain %d reorged wallet transfers: %w", c.chainID, err)
 	}
 	for _, d := range deposits {
 		status := "detected"
@@ -317,6 +354,24 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 			d.from, d.to, d.amount.String(), status)
 		if err != nil {
 			return fmt.Errorf("record chain %d deposit %s/%d: %w", c.chainID, d.txHash, d.logIndex, err)
+		}
+	}
+	for _, t := range transfers {
+		status := "detected"
+		if t.final {
+			status = "confirmed"
+		}
+		// As for deposits: a confirmed row is final and never changes; a reorged one comes back.
+		_, err = tx.Exec(ctx, `
+			INSERT INTO wallet_transfers (chain_id, chain_family, token_contract, wallet_address, direction, counterparty,
+			    tx_hash, log_index, block_hash, block_number, block_time, amount, status)
+			VALUES ($1, 'evm', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			ON CONFLICT (chain_id, block_hash, log_index, wallet_address, direction) DO UPDATE SET status = excluded.status
+			WHERE wallet_transfers.status <> 'confirmed' AND wallet_transfers.status <> excluded.status`,
+			c.chainID, t.token, t.wallet, t.direction, t.counterparty, t.txHash, t.logIndex, t.blockHash, t.blockNumber,
+			t.blockTime, t.amount.String(), status)
+		if err != nil {
+			return fmt.Errorf("record chain %d wallet transfer %s/%d: %w", c.chainID, t.txHash, t.logIndex, err)
 		}
 	}
 	_, err = tx.Exec(ctx, `
