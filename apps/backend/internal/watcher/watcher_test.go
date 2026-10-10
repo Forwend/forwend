@@ -2,11 +2,16 @@ package watcher
 
 import (
 	"context"
+	"encoding/json"
+	"slices"
 	"testing"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -161,4 +166,102 @@ func TestReorgMarksTheDepositReorged(t *testing.T) {
 	if got, n := e.rows(t); n != 2 || got[tx][1] != "confirmed" {
 		t.Fatalf("after a restart: %v", got)
 	}
+}
+
+// A log query the RPC refuses for its size or rate is read again in half the range, down to MinRange, and the range
+// doubles back after each answer. The answered ranges still cover every block once, in order, and the deposit is found.
+func TestLogRangeHalvesAndGrowsBack(t *testing.T) {
+	for name, c := range map[string]struct {
+		refuse    func(blocks uint64, earlier int) chaintest.Fault
+		wantSizes []uint64 // the first ranges asked for
+		wantErr   bool
+	}{
+		"too many results over 700 blocks": {refuse: func(blocks uint64, _ int) chaintest.Fault {
+			if blocks > 700 {
+				return chaintest.TooManyResults
+			}
+			return chaintest.Forward
+		}, wantSizes: []uint64{2000, 1000, 500, 1000, 500}},
+		"HTTP 429 on the first query": {refuse: func(_ uint64, earlier int) chaintest.Fault {
+			if earlier == 0 {
+				return chaintest.HTTP429
+			}
+			return chaintest.Forward
+		}, wantSizes: []uint64{2000, 1000, 2000}},
+		"refused down to the floor": {refuse: func(uint64, int) chaintest.Fault { return chaintest.TooManyResults },
+			wantSizes: []uint64{2000, 1000, 500, 250, 125, 62, MinRange}, wantErr: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			e := setup(t)
+			e.anvil.Mine(1500)
+			tx := e.anvil.Transfer(e.token, receive, "5000000")
+			e.anvil.Mine(1500)
+			proxy := e.anvil.Proxy()
+			queries := 0
+			proxy.Fail(func(call chaintest.Call) chaintest.Fault {
+				if call.Method != "eth_getLogs" {
+					return chaintest.Forward
+				}
+				from, to := logRange(t, call)
+				queries++
+				return c.refuse(to-from+1, queries-1)
+			})
+			client, err := rpc.Dial(proxy.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer client.Close()
+			e.chain = NewChain(e.pool, chaintest.ChainID, client)
+			latest, err := ethclient.NewClient(e.anvil.RPC).BlockNumber(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = e.chain.Scan(context.Background())
+			var sizes []uint64
+			var answered [][2]uint64
+			for _, call := range proxy.Calls() {
+				if call.Method == "eth_getLogs" {
+					from, to := logRange(t, call)
+					sizes = append(sizes, to-from+1)
+					if call.Fault == chaintest.Forward {
+						answered = append(answered, [2]uint64{from, to})
+					}
+				}
+			}
+			if len(sizes) < len(c.wantSizes) || !slices.Equal(sizes[:len(c.wantSizes)], c.wantSizes) {
+				t.Fatalf("ranges asked %v, want them to start %v", sizes, c.wantSizes)
+			}
+			if c.wantErr {
+				if err == nil || len(sizes) != len(c.wantSizes) || e.chain.span != MinRange {
+					t.Fatalf("scan error %v after ranges %v; want an error once %d blocks are refused", err, sizes, MinRange)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			for i := 1; i < len(answered); i++ {
+				if answered[i][0] != answered[i-1][1]+1 {
+					t.Fatalf("answered ranges %v leave a gap or overlap", answered)
+				}
+			}
+			if answered[len(answered)-1][1] != latest {
+				t.Fatalf("answered ranges %v end before the latest block %d", answered, latest)
+			}
+			if got, n := e.rows(t); n != 1 || got[tx][0] != "confirmed" {
+				t.Fatalf("deposits %v, want the one deposit confirmed", got)
+			}
+		})
+	}
+}
+
+// logRange is an eth_getLogs call's block range. It may run in the proxy's goroutine, so it reports with Errorf.
+func logRange(t *testing.T, call chaintest.Call) (uint64, uint64) {
+	t.Helper()
+	var filter struct{ FromBlock, ToBlock hexutil.Uint64 }
+	if len(call.Params) != 1 || json.Unmarshal(call.Params[0], &filter) != nil {
+		t.Errorf("eth_getLogs params %s", call.Params)
+	}
+	return uint64(filter.FromBlock), uint64(filter.ToBlock)
 }

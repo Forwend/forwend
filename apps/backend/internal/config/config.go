@@ -5,8 +5,10 @@ package config
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -20,9 +22,10 @@ type API struct {
 	PrivyJWKSURL string
 	// PrivyAppSecret lets the api make profile wallets: never log it.
 	PrivyAppSecret string
-	// ChainsFile and InfuraKeys reach the chains for wallet balances, as in Chains.
+	// ChainsFile, InfuraKeys and RPCRate reach the chains for wallet balances, as in Chains.
 	ChainsFile string
 	InfuraKeys []string
+	RPCRate    float64
 	// PublicWebURL is the web app's origin, such as https://forwend.app: PDFs link to its /pay/<invoiceId> page.
 	PublicWebURL string
 }
@@ -36,7 +39,8 @@ type Worker struct {
 // Chains is how the worker and signer reach the chains.
 type Chains struct {
 	File         string        // the chain list, packages/contracts/chains.json in a checkout
-	InfuraKeys   []string      // tried in order before public RPCs
+	InfuraKeys   []string      // used before public RPCs; none: public RPCs only
+	RPCRate      float64       // most calls per second to each RPC endpoint (an Infura key or a public URL)
 	PollInterval time.Duration // time between rounds
 }
 
@@ -51,7 +55,8 @@ func LoadAPI() (API, error) {
 	var r reader
 	c := API{DatabaseURL: r.get("DATABASE_URL"), Addr: r.get("API_ADDR"),
 		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyJWKSURL: r.get("PRIVY_JWKS_URL"), PrivyAppSecret: r.get("PRIVY_APP_SECRET"),
-		ChainsFile: r.get("CHAINS_FILE"), InfuraKeys: r.infuraKeys(), PublicWebURL: r.origin("PUBLIC_WEB_URL")}
+		ChainsFile: r.get("CHAINS_FILE"), InfuraKeys: r.infuraKeys(), RPCRate: r.rate(),
+		PublicWebURL: r.origin("PUBLIC_WEB_URL")}
 	return c, r.err()
 }
 
@@ -75,7 +80,7 @@ func LoadSigner() (Signer, error) {
 }
 
 func (r *reader) chains() Chains {
-	c := Chains{File: r.get("CHAINS_FILE"), InfuraKeys: r.infuraKeys()}
+	c := Chains{File: r.get("CHAINS_FILE"), InfuraKeys: r.infuraKeys(), RPCRate: r.rate()}
 	if raw := r.get("POLL_INTERVAL"); raw != "" {
 		d, err := time.ParseDuration(raw)
 		if err != nil || d <= 0 {
@@ -99,9 +104,22 @@ func (r *reader) origin(name string) string {
 	return u.Scheme + "://" + u.Host
 }
 
+func (r *reader) rate() float64 {
+	raw := r.get("RPC_RATE_PER_SECOND")
+	if raw == "" {
+		return 0
+	}
+	v, err := strconv.ParseFloat(raw, 64)
+	if err != nil || !(v > 0) || math.IsInf(v, 1) {
+		r.invalid = append(r.invalid, "RPC_RATE_PER_SECOND (calls per second, such as 10)")
+	}
+	return v
+}
+
+// infuraKeys may be empty: the chains are then reached through public RPCs only.
 func (r *reader) infuraKeys() []string {
 	var keys []string
-	for _, k := range strings.Split(r.get("INFURA_API_KEYS"), ",") {
+	for _, k := range strings.Split(os.Getenv("INFURA_API_KEYS"), ",") {
 		if k = strings.TrimSpace(k); k != "" {
 			keys = append(keys, k)
 		}

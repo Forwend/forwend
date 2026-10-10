@@ -47,7 +47,7 @@ func run() error {
 	}
 	defer pool.Close()
 
-	rounds := settlement.NewRounds(pool, key, specs, cfg.Chains.InfuraKeys)
+	rounds := settlement.NewRounds(pool, key, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate)
 	defer rounds.Close()
 	slog.Info("signer ready", "executor", crypto.PubkeyToAddress(key.PublicKey).Hex(), "every", cfg.Chains.PollInterval)
 	for {

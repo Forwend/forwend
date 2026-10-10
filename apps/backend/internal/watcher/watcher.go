@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -27,6 +28,8 @@ var transferTopic = crypto.Keccak256Hash([]byte("Transfer(address,address,uint25
 const (
 	// MaxRange is the most blocks one eth_getLogs call covers; RPCs reject larger result sets (S-4).
 	MaxRange = 2000
+	// MinRange is the fewest: a range this small that the RPC still refuses fails the scan.
+	MinRange = 50
 	// RescanDepth finalized blocks are read again on every scan, so one lagging or empty eth_getLogs answer is never
 	// the last look at a block. Writes are idempotent, so rescanning is free of side effects.
 	// ponytail: a node that lags for RescanDepth blocks in a row still hides a deposit; F049's balance check catches it.
@@ -41,10 +44,13 @@ type Chain struct {
 	chainID uint64
 	rpc     *rpc.Client
 	eth     *ethclient.Client
+	// span is the blocks per eth_getLogs call: halved down to MinRange when the RPC refuses a range for its rate or
+	// size, doubled back up to MaxRange after each range it answers.
+	span uint64
 }
 
 func NewChain(pool *pgxpool.Pool, chainID uint64, client *rpc.Client) *Chain {
-	return &Chain{pool: pool, chainID: chainID, rpc: client, eth: ethclient.NewClient(client)}
+	return &Chain{pool: pool, chainID: chainID, rpc: client, eth: ethclient.NewClient(client), span: MaxRange}
 }
 
 // header is a block as the RPC reports it. The hash is never computed in Go: go-ethereum gets it wrong on Tempo (S-4).
@@ -101,20 +107,25 @@ func (c *Chain) Scan(ctx context.Context) error {
 		return err
 	}
 	var logs, walletLogs []types.Log
-	for lo := from; lo <= latest; lo += MaxRange {
-		hi := min(lo+MaxRange-1, latest)
+	for lo := from; lo <= latest; {
+		hi := min(lo+c.span-1, latest)
+		var found, foundWallet []types.Log
+		var err error
 		if len(invoices) > 0 {
-			found, err := c.logs(ctx, lo, hi, invoices)
-			if err != nil {
-				return err
-			}
-			logs = append(logs, found...)
+			found, err = c.logs(ctx, lo, hi, invoices)
 		}
-		found, err := c.walletLogs(ctx, lo, hi, wallets)
+		if err == nil {
+			foundWallet, err = c.walletLogs(ctx, lo, hi, wallets)
+		}
+		if err != nil && chain.Overloaded(err) && c.span > MinRange {
+			c.span = max(c.span/2, MinRange)
+			continue
+		}
 		if err != nil {
 			return err
 		}
-		walletLogs = append(walletLogs, found...)
+		logs, walletLogs = append(logs, found...), append(walletLogs, foundWallet...)
+		lo, c.span = hi+1, min(c.span*2, MaxRange)
 	}
 	open, err := c.pending(ctx, "chain_transfers", from)
 	if err != nil {

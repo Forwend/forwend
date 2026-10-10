@@ -48,7 +48,7 @@ func run() error {
 		return err
 	}
 	defer pool.Close()
-	balances := balance.NewChainReader(specs, cfg.InfuraKeys)
+	balances := balance.NewChainReader(specs, cfg.InfuraKeys, cfg.RPCRate)
 	defer balances.Close()
 
 	verifier, err := auth.NewVerifier(ctx, cfg.PrivyAppID, cfg.PrivyJWKSURL, &http.Client{Timeout: 10 * time.Second})

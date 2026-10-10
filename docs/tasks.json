@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 104,
+  "nextId": 109,
   "tasks": [
     {
       "id": "F001",
@@ -10520,6 +10520,230 @@
         "branch": "fix/f103-the-chosen-profile-survives-a-reload-the",
         "base": "main"
       }
+    },
+    {
+      "id": "F104",
+      "type": "fix",
+      "behavior": "Chain reads switch providers and slow down instead of failing the round",
+      "acceptance": [
+        "Each enabled chain has a pool of every Infura key plus the public RPCs (public only when INFURA_API_KEYS is empty); a call that gets 429, a 5xx, a rate-limit JSON-RPC error or a timeout moves to the next endpoint at once and rests the failing one with exponential backoff and jitter; the two independent hosts of D-15 are kept, a failed second host is replaced by another host; each endpoint is paced by a configurable request rate",
+        "eth_getLogs halves its block range on a 429 or a too-large error down to a floor and grows back after successes; a worker round survives an endpoint going 429 mid-round; tests use a fault-injecting JSON-RPC proxy in front of Anvil (429s, 5xx, timeouts, rate-limit errors) and show reads move to the next endpoint and recover, and a public-only pool works"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "D-15",
+        "D-45",
+        "R-38"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-10-10 review pass by reviewer: PASS after one small fix. Failover classification correct: only timeouts, connection errors, non-2xx and rate-limit JSON-RPC errors (429/-32005/-32007/message) fail over; reverts, invalid params, header-not-found and -32005 'more than 10000 results' are answers (TestOutageIsToldFromAnAnswer). Only non-idempotent call is eth_sendRawTransaction of already-signed bytes (settle saved before send; reconcile tolerates 'already known'; deploy resend is idempotent), so re-sending to another endpoint never signs a new nonce. Batches: a rate limit on any element re-sends the whole read-only batch. D-15: at each pick the second skips the primary's current host and waits/fails rather than share it. Gap (second may later hit a host that served the primary's logs) is acceptable: it already existed across rounds with the old re-pick-after-error Dial, needs an outage of an earlier-listed host the liar can't cause, and settle still needs the real on-chain balance; follow-up only if D-15 must hold per deposit (record the confirming host). Adaptive range: retries same lo with half span, both scans re-queried, no gap/overlap, floor 50 then error, one DB transaction after the loop so the cursor never moves on a partial scan. No URL in errors/logs (url.Error stripped, endpoint names host#pos). chainId checked before first use, wrong endpoints never used. RPC_RATE_PER_SECOND required in LoadAPI/worker/signer, INFURA_API_KEYS may be empty; .env.example and architecture.md match chains.json. FIXED (pool.go): requests queued on an endpoint's pace slot were still sent after it began resting, and each failure doubled the rest; a probe of 8 queued requests gave 8 failures and an 82 s rest from one 429 burst. Now a queued request re-picks when its endpoint rests, and a failure during an existing rest is not counted again. New TestQueuedRequestsSkipAnEndpointThatStartsToRest fails without the fix (5 failures, 5 refused) and passes 5x with -race. Re-verified: verify F104 passed 9 checks (backend -race, e2e gate public-only with 429 proxy)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-10T18:46:06Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 32.7,
+            "log": "docs/runs/F104-20261010T184606Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 77.6,
+            "log": "docs/runs/F104-20261010T184606Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F104-20261010T184606Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F104-20261010T184606Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F104-20261010T184606Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F104-20261010T184606Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 34.5,
+            "log": "docs/runs/F104-20261010T184606Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.3,
+            "log": "docs/runs/F104-20261010T184606Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F104-20261010T184606Z-keep.log"
+          }
+        ],
+        "taskHash": "10225432b45d134c",
+        "filesHash": "e91f79ec43d7e58c",
+        "proof": {
+          "1": "backend: internal/chain TestNewRPCsUsesEveryKeyThenThePublicRPCs (every Infura key then public RPCs, public-only when no keys, one host refused), TestFailingEndpointRestsThenComesBack (HTTP 429, HTTP 503, JSON-RPC -32005 and a timeout from a proxy in front of Anvil move the call to the next endpoint at once with the right answer; the endpoint rests and is used again after its backoff), TestRestDoublesUpToTheCapWithJitter, TestQueuedRequestsSkipAnEndpointThatStartsToRest (requests queued on an endpoint that starts to 429 move on unsent and the burst counts one failure), TestRolesStayOnDifferentHosts (a failed second host is replaced by another; the second fails rather than share the primary's host, D-15), TestFailedKeyMovesToTheNextKeyOnItsHost, TestEachEndpointIsPaced (RPC_RATE_PER_SECOND, a batch counts each call), TestOutageIsToldFromAnAnswer, TestURLsStayOutOfErrorsAndLogs; internal/config TestWorkerAndSigner (empty INFURA_API_KEYS allowed, RPC_RATE_PER_SECOND required and validated)",
+          "2": "backend: internal/watcher TestLogRangeHalvesAndGrowsBack (too-many-results and HTTP 429 halve the eth_getLogs range 2000->1000->500, it doubles back after answers, answered ranges cover every block once, floor 50 then error); internal/worker TestRoundSurvivesAnRPCGoing429MidRound (primary proxy goes 429 at eth_getLogs mid-round, one round still confirms the deposit and marks the invoice paid with the second on a third host); internal/balance TestTimedOutRPCRests; e2e: TestMoneyLoop runs api, worker and signer public-only (INFURA_API_KEYS empty) with a proxy answering every third request with 429 first in the chain list; invoice goes detected -> paid -> settled"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS after one small fix. Failover classification correct: only timeouts, connection errors, non-2xx and rate-limit JSON-RPC errors (429/-32005/-32007/message) fail over; reverts, invalid params, header-not-found and -32005 'more than 10000 results' are answers (TestOutageIsToldFromAnAnswer). Only non-idempotent call is eth_sendRawTransaction of already-signed bytes (settle saved before send; reconcile tolerates 'already known'; deploy resend is idempotent), so re-sending to another endpoint never signs a new nonce. Batches: a rate limit on any element re-sends the whole read-only batch. D-15: at each pick the second skips the primary's current host and waits/fails rather than share it. Gap (second may later hit a host that served the primary's logs) is acceptable: it already existed across rounds with the old re-pick-after-error Dial, needs an outage of an earlier-listed host the liar can't cause, and settle still needs the real on-chain balance; follow-up only if D-15 must hold per deposit (record the confirming host). Adaptive range: retries same lo with half span, both scans re-queried, no gap/overlap, floor 50 then error, one DB transaction after the loop so the cursor never moves on a partial scan. No URL in errors/logs (url.Error stripped, endpoint names host#pos). chainId checked before first use, wrong endpoints never used. RPC_RATE_PER_SECOND required in LoadAPI/worker/signer, INFURA_API_KEYS may be empty; .env.example and architecture.md match chains.json. FIXED (pool.go): requests queued on an endpoint's pace slot were still sent after it began resting, and each failure doubled the rest; a probe of 8 queued requests gave 8 failures and an 82 s rest from one 429 burst. Now a queued request re-picks when its endpoint rests, and a failure during an existing rest is not counted again. New TestQueuedRequestsSkipAnEndpointThatStartsToRest fails without the fix (5 failures, 5 refused) and passes 5x with -race. Re-verified: verify F104 passed 9 checks (backend -race, e2e gate public-only with 429 proxy).",
+          "at": "2026-10-10T18:48:45Z",
+          "filesHash": "e91f79ec43d7e58c"
+        }
+      },
+      "branch": "fix/f104-chain-reads-switch-providers-and-slow-do",
+      "baseCommit": "8768bc92dbb4f885423eb75da17c0db016fd668b",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F105",
+      "type": "fix",
+      "behavior": "Settlements estimate gas on a node that sees the receiver and never lose a successful settle",
+      "acceptance": [
+        "After a deploy the signer estimates settle gas only when the estimating node returns the receiver's code (waits briefly, else retries the round), keeps a safety margin, and takes the nonce consistently (the higher of the node's pending nonce and the signer's last used nonce); a settle whose receipt succeeded and emitted the receiver's settle event is confirmed with its hash and is never re-queued or cleared because a later read at latest says not settled; settled reads use the receipt block or finalized, not latest",
+        "Anvil tests with a stale-read proxy: a node that has not seen the deploy yet does not produce a low gas estimate; a mined successful settle followed by a stale not-settled read keeps its hash and is booked once; the F099 refund-authority case still records no hash"
+      ],
+      "dependsOn": [
+        "F104"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "R-22",
+        "R-30",
+        "D-45"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F106",
+      "type": "fix",
+      "behavior": "Each backend process refuses to start without what it needs, the worker and signer run as one copy, and pnpm dev checks everything is up",
+      "acceptance": [
+        "At startup the API, worker and signer check the database and migration version, a working RPC pair for every enabled chain (D-15), and for the signer a valid executor key holding enough native gas on every enabled chain that needs it; a missing or bad item stops the process with one clear message naming it; INFURA_API_KEYS may be empty (public only)",
+        "A Postgres advisory lock makes a second worker or signer wait instead of running in parallel (test); root pnpm dev fails when EXECUTOR_PRIVATE_KEY is missing and exits non-zero if the API, worker or signer stops or does not report ready; docs explain the checks"
+      ],
+      "dependsOn": [
+        "F104"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "R-30",
+        "R-23"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F107",
+      "type": "perf",
+      "behavior": "The API serves 10k users without hammering the chain or the database",
+      "acceptance": [
+        "Balance reads share one chain read per (chain, wallet, finalized block) with a short cache and request coalescing behind a small interface that a Redis implementation could replace later; balance-history reuses it; ledger_transactions gets an index on invoice_id; the DB pool size is configurable; per-user rate limits answer 429 with Retry-After; the web backs off on 429",
+        "A load test in the repo (no paid service) simulating many signed-in users polling every 15 s reports p50/p95 and RPC calls per second before and after; the numbers are recorded in docs/backend with the deployment model (stateless API replicas behind a load balancer, one worker and one signer)"
+      ],
+      "dependsOn": [
+        "F104"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "R-33",
+        "R-38"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F108",
+      "type": "fix",
+      "behavior": "Every enabled chain has at least two independent public RPC hosts, so it works without Infura keys",
+      "acceptance": [
+        "packages/contracts/chains.json lists at least two working public RPC hosts (different operators) for Base Sepolia, Arbitrum Sepolia, Arc and Tempo Moderato, each checked live with eth_chainId and a finalized-block read and taken from the chain's official docs or a well-known public provider; a backend test loads chains.json and asserts every chain has two hosts besides Infura; the public-only run (INFURA_API_KEYS empty) serves balances on Base Sepolia"
+      ],
+      "dependsOn": [
+        "F104"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "D-15",
+        "R-38"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
