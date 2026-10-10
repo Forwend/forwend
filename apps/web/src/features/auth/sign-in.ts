@@ -18,6 +18,7 @@ export const SIGN_IN_COPY = {
   sendCode: "Email me a code",
   or: "or",
   google: "Continue with Google",
+  passkey: "Sign in with passkey",
   codeTitle: "Check your email",
   codeSentTo: "Enter the 6-digit code we sent to",
   codeLabel: "Code",
@@ -31,6 +32,7 @@ export const SIGN_IN_COPY = {
     code: "Enter all 6 digits.",
     codeFailed: "Wrong or expired code. Try again.",
     google: "Google sign-in did not finish. Try again.",
+    passkey: "Passkey sign-in did not finish. Try again.",
   },
 } as const;
 

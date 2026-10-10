@@ -11641,7 +11641,7 @@
         "/sign-in shows 'Sign in with passkey' next to Google and the email code (Privy useLoginWithPasskey); success lands in /app like the other methods; cancel or failure shows a short error and keeps the other methods usable; the checklist's passkey step no longer says passkey sign-in opens soon; Playwright covers the button and its error state (Privy passkey prompt mocked or cancelled); axe finds 0 serious or critical violations"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "active",
       "verification": [
         "e2e",
         "unit"
@@ -11654,7 +11654,70 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "failed",
+        "at": "2026-10-10T23:40:03Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "failed",
+            "exit": 1,
+            "seconds": 22.4,
+            "log": "docs/runs/F111-20261010T234003Z-e2e.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 52.9,
+            "log": "docs/runs/F111-20261010T234003Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.8,
+            "log": "docs/runs/F111-20261010T234003Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F111-20261010T234003Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F111-20261010T234003Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F111-20261010T234003Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.3,
+            "log": "docs/runs/F111-20261010T234003Z-build.log"
+          }
+        ],
+        "taskHash": "bcad81eb7c11090d",
+        "filesHash": "cce354d2b3dd3f6c",
+        "proof": {
+          "1": "e2e: privy/sign-in.spec.ts 'a cancelled passkey prompt is named, and the other ways to sign in stay usable' at 320px: Privy's passkey init runs and the browser prompt (navigator.credentials.get, stubbed to reject NotAllowedError) is called exactly once; the alert 'Passkey sign-in did not finish. Try again.' shows on one line (<= 24px; the longer copy gave 40px and failed), the page stays on /sign-in, passkey, Google and email buttons stay enabled, axe 0 serious/critical; /sign-in axe tests (light, dark) pass; sign-in-form.tsx uses Privy useLoginWithPasskey and success lands in /app through the same Privy-ready redirect as the other methods; the checklist passkey hint no longer says sign-in opens soon (onboarding-copy.ts, PRODUCT.md, web architecture.md)"
+        }
+      },
+      "branch": "feat/f111-a-user-with-a-linked-passkey-signs-in-wi",
+      "baseCommit": "b5a964b99613cfef20b362fd3f3ea881236ba66b",
+      "failedVerifies": 1
     }
   ],
   "lastWrapup": {

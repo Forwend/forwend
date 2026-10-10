@@ -90,6 +90,39 @@ test("a wrong code is named on the code field, with no other error", async ({ pa
   expect(await blockingViolations(page)).toEqual([]);
 });
 
+test("a cancelled passkey prompt is named, and the other ways to sign in stay usable", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  // The browser's passkey prompt, cancelled by the user.
+  await page.addInitScript(() => {
+    const prompts = window as unknown as { passkeyPrompts: number };
+    prompts.passkeyPrompts = 0;
+    navigator.credentials.get = () => {
+      prompts.passkeyPrompts++;
+      return Promise.reject(new DOMException("The operation was cancelled.", "NotAllowedError"));
+    };
+  });
+  await page.goto("/sign-in");
+  await page.getByRole("button", { name: "Sign in with passkey" }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Passkey sign-in did not finish." }),
+  ).toBeVisible();
+  // The error came from the passkey prompt itself, not from Privy failing before it.
+  expect(
+    await page.evaluate(() => (window as unknown as { passkeyPrompts: number }).passkeyPrompts),
+  ).toBe(1);
+  await expect(page).toHaveURL("/sign-in");
+  // One line even on a narrow phone, so the message never moves the centered form.
+  expect(
+    (await page.getByRole("alert").filter({ hasText: /./ }).boundingBox())?.height,
+  ).toBeLessThanOrEqual(24);
+  await expect(page.getByRole("button", { name: "Sign in with passkey" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Email me a code" })).toBeEnabled();
+  expect(await blockingViolations(page)).toEqual([]);
+});
+
 test("a signed-out visit to /app goes to sign-in", async ({ page }) => {
   await page.goto("/app");
   await expect(page).toHaveURL("/sign-in");
