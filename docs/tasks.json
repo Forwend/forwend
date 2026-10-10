@@ -10231,7 +10231,7 @@
         "The dashboard invoice detail shows no status pill (the timeline carries the status); root pnpm dev also starts the signer when apps/backend/.env sets EXECUTOR_PRIVATE_KEY and says it skipped the signer otherwise; apps/backend/AGENTS.md explains that a paid invoice stays on its way until the signer settles it"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -10325,11 +10325,18 @@
           "summary": "Chosen profile keyed forwend:profile:<privy user id>, validated against the user's own profiles with personal fallback; storage reads/writes guarded; saved id read before profiles load so no wrong-profile flash; sidebar, sheet, command menu and new-profile form all route through switchProfile which saves. Invoice detail pill removed; e2e asserts no data-status in Amount and the timeline's current step, plus reload and new tab stay on merchant. dev.sh only greps for a non-empty value (checked empty, quoted-empty, commented, inline comment, set, export), never prints it, keeps trap, signer only with key. Reviewer fix: moved the backend AGENTS.md signer paragraph out of the middle of the Commands list; re-verified, all 8 checks passed.",
           "at": "2026-10-10T17:12:35Z",
           "filesHash": "799b03fa3bc934b0"
-        }
+        },
+        "commit": "7282f62",
+        "doneAt": "2026-10-10T17:12:52Z"
       },
       "branch": "fix/f103-the-chosen-profile-survives-a-reload-the",
       "baseCommit": "085b1ad56af69ce4c9aac6c69e55201fbc3e0455",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f103-the-chosen-profile-survives-a-reload-the",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
