@@ -4,9 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // register pgx for goose
 	"github.com/pressly/goose/v3"
 	"github.com/pressly/goose/v3/lock"
@@ -37,6 +40,38 @@ func Migrate(ctx context.Context, url string) error {
 	_, err = provider.Up(ctx)
 	if err != nil {
 		return fmt.Errorf("apply migrations: %w", err)
+	}
+	return nil
+}
+
+// CheckSchema returns an error unless every migration this binary embeds is applied. Only the api migrates: the worker
+// and signer call this at startup, so they never run against an older schema. It only reads.
+func CheckSchema(ctx context.Context, pool *pgxpool.Pool) error {
+	names, err := fs.Glob(migrations, "migrations/*.sql")
+	if err != nil {
+		return fmt.Errorf("read embedded migrations: %w", err)
+	}
+	versions := make([]int64, 0, len(names))
+	for _, name := range names {
+		v, err := goose.NumericComponent(name)
+		if err != nil {
+			return fmt.Errorf("read embedded migrations: %w", err)
+		}
+		versions = append(versions, v)
+	}
+	var applied int
+	err = pool.QueryRow(ctx, `SELECT count(DISTINCT version_id) FROM goose_db_version WHERE version_id = ANY($1)`,
+		versions).Scan(&applied)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "42P01" { // undefined_table: never migrated
+		err = nil
+	}
+	if err != nil {
+		return fmt.Errorf("read the database schema version: %w", err)
+	}
+	if applied < len(versions) {
+		return fmt.Errorf("the database schema is older than this binary (%d of %d migrations applied): "+
+			"start the api first, it applies them", applied, len(versions))
 	}
 	return nil
 }

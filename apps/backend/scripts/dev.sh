@@ -1,15 +1,71 @@
 #!/bin/sh
-# Root `pnpm dev` runs this beside the web app. Ctrl+C stops all Go processes.
+# Root `pnpm dev` runs this beside the web app: Postgres, then the api, then the worker and signer once the api answers
+# (it applies migrations, which they check). It stops everything and exits 1 when the executor key is missing, when a
+# process does not report ready within 120 s, or when one stops. Ctrl+C stops them all.
 set -e
 cd "$(dirname "$0")/.."
-docker compose --env-file .env -f ../../infra/docker-compose.yml up -d --wait
-trap 'kill 0' INT TERM
-sh scripts/with-env.sh go run ./cmd/api &
-sh scripts/with-env.sh go run ./cmd/worker &
-# The signer settles paid invoices and needs the executor key. Only its presence is checked; the value is never read here.
-if grep -Eq "^[[:space:]]*(export[[:space:]]+)?EXECUTOR_PRIVATE_KEY=[\"']?[^\"'[:space:]#]" .env 2>/dev/null; then
-  sh scripts/with-env.sh go run ./cmd/signer &
-else
-  echo "signer skipped: EXECUTOR_PRIVATE_KEY is not set in apps/backend/.env (paid invoices stay on their way until settled)"
+# Only the key's presence is checked; the value is never read here.
+if ! grep -Eq "^[[:space:]]*(export[[:space:]]+)?EXECUTOR_PRIVATE_KEY=[\"']?[^\"'[:space:]#]" .env 2>/dev/null; then
+  echo "dev: EXECUTOR_PRIVATE_KEY is missing or empty in apps/backend/.env: the signer needs the funded executor key" \
+    "(see .env.example)" >&2
+  exit 1
 fi
-wait
+docker compose --env-file .env -f ../../infra/docker-compose.yml up -d --wait
+
+tmp=$(mktemp -d)
+pids=
+stop() {
+  kill $pids 2>/dev/null || true
+  wait
+  rm -rf "$tmp"
+}
+fail() {
+  echo "dev: $1" >&2
+  trap - INT TERM
+  stop
+  exit 1
+}
+trap 'stop; exit 130' INT TERM
+
+go build -o "$tmp/" ./cmd/api ./cmd/worker ./cmd/signer || fail "go build failed"
+# start runs a binary with its output in $tmp/<name>.log, shown here too; $! is then the binary's PID.
+start() {
+  : >"$tmp/$1.log"
+  tail -f "$tmp/$1.log" &
+  pids="$pids $!"
+  sh scripts/with-env.sh "$tmp/$1" >"$tmp/$1.log" 2>&1 &
+  pids="$pids $!"
+}
+# ready waits until a check passes; it fails when the process stops first or after 120 s.
+ready() {
+  name=$1 pid=$2
+  shift 2
+  i=0
+  until "$@"; do
+    kill -0 "$pid" 2>/dev/null || fail "$name stopped before it was ready: its log is above"
+    i=$((i + 1))
+    [ "$i" -le 120 ] || fail "$name did not report ready within 120 s: its log is above"
+    sleep 1
+  done
+}
+api_up() {
+  grep -q "api listening" "$tmp/api.log" && curl -fs -o /dev/null "http://127.0.0.1:$port/healthz"
+}
+
+port=$(sed -n 's/^API_ADDR=.*:\([0-9]*\).*/\1/p' .env | tail -n 1)
+start api
+api=$!
+ready api "$api" api_up
+start worker
+worker=$!
+start signer
+signer=$!
+ready worker "$worker" grep -q "worker ready" "$tmp/worker.log"
+ready signer "$signer" grep -q "signer ready" "$tmp/signer.log"
+echo "dev: api, worker and signer are ready"
+while :; do
+  kill -0 "$api" 2>/dev/null || fail "api stopped: its log is above"
+  kill -0 "$worker" 2>/dev/null || fail "worker stopped: its log is above"
+  kill -0 "$signer" 2>/dev/null || fail "signer stopped: its log is above"
+  sleep 2
+done

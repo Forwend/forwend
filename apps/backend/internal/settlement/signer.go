@@ -20,6 +20,9 @@ import (
 // AttemptTimeout bounds one intent's work, so a provider that stops answering can't stall every other intent.
 const AttemptTimeout = 3 * time.Minute
 
+// LockKey is the signer's Postgres advisory lock: one signer runs at a time, since two would race for nonces.
+const LockKey int64 = 0x666f7277656e6402 // "forwend" 2
+
 // errStopped ends a run early in tests that simulate the signer being killed.
 var errStopped = errors.New("signer stopped")
 

@@ -3,6 +3,7 @@
 package config
 
 import (
+	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"math"
@@ -11,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // API is what cmd/api needs.
@@ -44,11 +47,11 @@ type Chains struct {
 	PollInterval time.Duration // time between rounds
 }
 
-// Signer is what cmd/signer needs. ExecutorKey is a hex private key: never log it.
+// Signer is what cmd/signer needs. ExecutorKey is read from a hex private key: never log it.
 type Signer struct {
 	DatabaseURL string
 	Chains      Chains
-	ExecutorKey string
+	ExecutorKey *ecdsa.PrivateKey
 }
 
 func LoadAPI() (API, error) {
@@ -75,7 +78,7 @@ func LoadDatabaseURL() (string, error) {
 
 func LoadSigner() (Signer, error) {
 	var r reader
-	c := Signer{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(), ExecutorKey: r.get("EXECUTOR_PRIVATE_KEY")}
+	c := Signer{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(), ExecutorKey: r.key("EXECUTOR_PRIVATE_KEY")}
 	return c, r.err()
 }
 
@@ -89,6 +92,19 @@ func (r *reader) chains() Chains {
 		c.PollInterval = d
 	}
 	return c
+}
+
+// key reads a hex secp256k1 private key. Its value never goes into an error.
+func (r *reader) key(name string) *ecdsa.PrivateKey {
+	raw := r.get(name)
+	if raw == "" {
+		return nil
+	}
+	k, err := crypto.HexToECDSA(strings.TrimPrefix(raw, "0x"))
+	if err != nil {
+		r.invalid = append(r.invalid, name+" (a hex secp256k1 private key)")
+	}
+	return k
 }
 
 func (r *reader) origin(name string) string {

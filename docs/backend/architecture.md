@@ -19,6 +19,38 @@ Built: signup and profiles API, billing details, balances, activity, wallet tran
   itself before signing. Caps amounts, allows only known contract methods, writes its own audit
   log. Separate DB role with read access plus its own intent tables.
 
+## Startup
+
+Each binary checks what it needs before it serves, and otherwise stops with one message naming the item (exit 1, D-71):
+- `DATABASE_URL` answers within 10 s. The api then applies migrations. The worker and signer only read that every
+  migration they embed is applied; if not, they stop and ask for the api to be started first (only the api migrates).
+- Every chain enabled in the `chains` table is in the chain list and answers through a primary and a second RPC on
+  different hosts (D-15), within 30 s per chain. A chain that can't is not skipped: the process stops, naming the chain
+  and how many of its hosts answered. Disable the chain in the database or give it a second host (with
+  `INFURA_API_KEYS` empty, only Arc Testnet lists two). The api checks too: it reads balances through the second RPC.
+- The signer: `EXECUTOR_PRIVATE_KEY` is a hex secp256k1 key (the error never shows it), and on every enabled chain the
+  executor holds `settlement.MinGas` at the fee cap it would sign with now (twice the base fee plus the tip). `MinGas`
+  is one receiver deploy (159,990 gas on Anvil) and one settle (at least `SettleGasFloor`), each plus a fifth: 342,000
+  gas, 0.001026 ETH on Anvil (1 gwei base fee and tip). Below it the node would refuse the next deploy and settle. The
+  message names the chain, the executor's address and its balance in whole coins. It is a floor derived from each
+  chain's own price, not a budget: Arbitrum's L1 data cost is not in it.
+
+Then each logs its ready line: `api listening`, `worker ready`, `signer ready`. The checks run once; an RPC failing
+later is handled by the pool as before.
+
+The worker and the signer each run as one copy. Before the checks each takes a Postgres session advisory lock
+(`worker.LockKey`, `settlement.LockKey`) on a connection of its own and holds it for its lifetime. A second copy logs
+`another worker is running; waiting` (or signer) every `POLL_INTERVAL` and takes over once the first exits: Postgres
+frees the lock when its connection ends, a crash included. Before each round the holder pings that connection; if it
+is gone, so is the lock, and the process stops rather than run beside the copy that takes over. Waiting instead of
+exiting suits rolling deploys: the new copy starts as soon as the old one stops.
+
+Root `pnpm dev` (`apps/backend/scripts/dev.sh`) stops at once when `EXECUTOR_PRIVATE_KEY` is missing or empty in
+`apps/backend/.env`. It starts Postgres and builds the three binaries, starts the api and waits until it logs
+`api listening` and `/healthz` answers 200, then starts the worker and signer, which need the api's migrations, and
+waits for their ready lines. Each process has 120 s. When one stops or is not ready in time, the script names it,
+stops the others and exits 1; the same when one stops later. Ctrl+C stops them all.
+
 ## Data model
 
 Built in `internal/database/migrations` (R-17); Postgres enforces the rules below, each with a test.
@@ -118,7 +150,8 @@ the API, pays it and waits for detected → paid → settled with the deposit go
 
 ## Watcher
 
-`internal/watcher` (R-20), one `Chain` per chain; never two at once for one chain (they would race on the cursor).
+`internal/watcher` (R-20), one `Chain` per chain; never two at once for one chain (they would race on the cursor; the
+worker's lock, [startup](#startup)).
 Each `Scan` reads `latest`, then `eth_getLogs` for `Transfer` from the invoices' tokens to their receive addresses,
 from 64 blocks below the last finalized block (or from the oldest `detected` row) to latest, in ranges of at most
 2,000 blocks; a range the RPC refuses for its size or rate (after every endpoint was tried) is read again in half, down to
@@ -148,7 +181,7 @@ nothing, so a restarted worker resumes from the cursor.
 
 ## Signer
 
-`internal/settlement` (R-22), one `Signer` per executor key. When the ledger marks an invoice `paid` it queues one
+`internal/settlement` (R-22), one `Signer` per executor key (the signer's lock, [startup](#startup)). When the ledger marks an invoice `paid` it queues one
 settlement intent (unique per invoice) in the same transaction. For each due intent the signer:
 1. If a settle is already saved (`sent`), finishes it first, whatever changed since. The saved bytes must decode to
    `settle()` on this receiver on this chain with the saved hash. Its receipt decides first: status 1 with the

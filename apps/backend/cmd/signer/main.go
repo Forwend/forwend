@@ -3,11 +3,9 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -16,6 +14,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/settlement"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 func main() {
@@ -33,24 +32,43 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	key, err := crypto.HexToECDSA(strings.TrimPrefix(cfg.ExecutorKey, "0x"))
-	if err != nil {
-		return fmt.Errorf("EXECUTOR_PRIVATE_KEY is not a hex secp256k1 key") // never echo the value
-	}
 	specs, err := chain.Specs(cfg.Chains.File)
 	if err != nil {
 		return err
 	}
+	// Startup checks: each stops the signer with a message naming what is wrong.
 	pool, err := database.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
 	}
 	defer pool.Close()
+	lock, err := database.TakeLock(ctx, pool, settlement.LockKey, "signer", cfg.Chains.PollInterval)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil // stopped while waiting
+		}
+		return err
+	}
+	defer lock.Close()
+	if err := database.CheckSchema(ctx, pool); err != nil {
+		return err
+	}
+	executor := crypto.PubkeyToAddress(cfg.ExecutorKey.PublicKey)
+	err = chain.CheckEnabled(ctx, pool, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate,
+		func(ctx context.Context, id uint64, r chain.RPCs) error {
+			return settlement.CheckGas(ctx, ethclient.NewClient(r.Primary), id, executor)
+		})
+	if err != nil {
+		return err
+	}
 
-	rounds := settlement.NewRounds(pool, key, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate)
+	rounds := settlement.NewRounds(pool, cfg.ExecutorKey, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate)
 	defer rounds.Close()
-	slog.Info("signer ready", "executor", crypto.PubkeyToAddress(key.PublicKey).Hex(), "every", cfg.Chains.PollInterval)
+	slog.Info("signer ready", "executor", executor.Hex(), "every", cfg.Chains.PollInterval)
 	for {
+		if err := lock.Held(ctx); err != nil {
+			return err
+		}
 		rounds.Round(ctx)
 		if !wait(ctx, cfg.Chains.PollInterval) {
 			return nil

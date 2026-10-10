@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
 	"github.com/ensp1re/forwend/apps/backend/internal/config"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 func TestAPI(t *testing.T) {
@@ -60,15 +62,22 @@ func TestWorkerAndSigner(t *testing.T) {
 	t.Setenv("INFURA_API_KEYS", "a, b,")
 	t.Setenv("RPC_RATE_PER_SECOND", "10")
 	t.Setenv("POLL_INTERVAL", "3s")
-	t.Setenv("EXECUTOR_PRIVATE_KEY", "key")
+	t.Setenv("EXECUTOR_PRIVATE_KEY", chaintest.Key)
 	w, err := config.LoadWorker()
 	if err != nil || w.Chains.File != "chains.json" || len(w.Chains.InfuraKeys) != 2 || w.Chains.InfuraKeys[1] != "b" ||
 		w.Chains.RPCRate != 10 || w.Chains.PollInterval != 3*time.Second {
 		t.Fatalf("worker: %+v, %v", w, err)
 	}
 	s, err := config.LoadSigner()
-	if err != nil || s.ExecutorKey != "key" || s.Chains.File != "chains.json" || s.Chains.RPCRate != 10 {
-		t.Fatalf("signer: %+v, %v", s, err)
+	if err != nil || !strings.EqualFold(crypto.PubkeyToAddress(s.ExecutorKey.PublicKey).Hex(), chaintest.Sender) ||
+		s.Chains.File != "chains.json" || s.Chains.RPCRate != 10 {
+		t.Fatalf("signer: %+v, %v", s.Chains, err)
+	}
+	// A bad key is named, never shown.
+	t.Setenv("EXECUTOR_PRIVATE_KEY", "0xnot-a-key")
+	if _, err := config.LoadSigner(); err == nil ||
+		!strings.Contains(err.Error(), "invalid environment variables EXECUTOR_PRIVATE_KEY") || strings.Contains(err.Error(), "not-a-key") {
+		t.Fatalf("bad key: got %v", err)
 	}
 
 	// No Infura keys: public RPCs only.
