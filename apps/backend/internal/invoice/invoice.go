@@ -67,9 +67,19 @@ type Details struct {
 	ClientAddress string
 }
 
+// Issuer is the copy of the profile's billing details the invoice took when it was made; "" means none.
+type Issuer struct {
+	Name    string
+	Address string
+	Country string
+	TaxID   string
+	Email   string
+}
+
 // Invoice is the stored invoice: its terms (InvoiceTerms in the contract), number, details and statuses.
 type Invoice struct {
 	Details
+	Issuer           *Issuer // nil when the profile had no billing details
 	ID               string
 	Number           int64 // per profile, from 1; shown as INV-0001
 	ChainID          uint64

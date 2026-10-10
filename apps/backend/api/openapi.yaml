@@ -76,6 +76,46 @@ paths:
         "409": { $ref: "#/components/responses/IdempotencyConflict" }
         "422": { $ref: "#/components/responses/InvalidValue" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/billing-details:
+    get:
+      operationId: getBillingDetails
+      summary: The profile's billing details
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: The billing details
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BillingDetails" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/BillingDetailsNotFound" }
+        "500": { $ref: "#/components/responses/Internal" }
+    put:
+      operationId: putBillingDetails
+      summary: Create or replace the profile's billing details
+      description: |
+        Replaces every field; only taxId is optional (left out or empty means none). Each new invoice keeps a copy as its issuer
+        (R-43); invoices made earlier keep the copy they took.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BillingDetailsRequest" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BillingDetails" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/invoices:
     get:
       operationId: listInvoices
@@ -109,7 +149,8 @@ paths:
         The recipient is the profile's wallet, never a request field. The receive address is computed from the terms
         (factory.predict). The same key with the same values returns the stored invoice with 200; with other values, 409.
         The invoice gets the profile's next number in the same transaction (D-50): no gaps, and a repeat returns the
-        same number. The number, title, note, due date and client never change after creation.
+        same number. The insert also copies the profile's billing details as issuer (null without them). The number,
+        title, note, due date, client and issuer never change after creation.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -243,8 +284,8 @@ paths:
       summary: Read an invoice's terms and statuses
       description: |
         Public, so checkout can show the invoice and recompute the receive address from the terms. Anyone with the id
-        can read it, so it leaves out the client's name, email and address; the payer sees the number, title, note
-        and due date.
+        can read it, so it leaves out the client's name, email and address; the payer sees the number, title, note,
+        due date and issuer (who bills them).
       security: []
       parameters:
         - name: invoiceId
@@ -327,6 +368,45 @@ components:
           type: string
           maxLength: 64
           description: Optional; empty means none. At most 64 characters.
+    BillingDetailsRequest:
+      type: object
+      additionalProperties: false
+      required: [name, address, country, email]
+      description: Lengths count characters; no NUL. Only taxId is optional; empty means none.
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        address:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Postal address; may have line breaks.
+        country:
+          type: string
+          pattern: "^[A-Z]{2}$"
+          description: An assigned ISO 3166-1 alpha-2 code in upper case, like DE.
+        taxId: { type: string, maxLength: 50 }
+        email:
+          type: string
+          minLength: 1
+          maxLength: 254
+          description: A plain contact address like name@example.com, without a display name.
+    Issuer:
+      type: object
+      required: [name, address, country, taxId, email]
+      description: Billing details; taxId is null when none was given.
+      properties:
+        name: { type: string }
+        address: { type: string }
+        country: { type: string, pattern: "^[A-Z]{2}$" }
+        taxId: { type: [string, "null"] }
+        email: { type: string }
+    BillingDetails:
+      allOf:
+        - $ref: "#/components/schemas/Issuer"
+        - type: object
+          required: [updatedAt]
+          properties:
+            updatedAt: { type: string, format: date-time }
     Balances:
       type: object
       required: [tokens, estimatedUsdTotal]
@@ -567,8 +647,9 @@ components:
               items: { $ref: "#/components/schemas/Deposit" }
     InvoiceSummary:
       type: object
-      required: [invoiceId, number, title, note, dueDate, chainId, token, amount, recipient, factory, receiveAddress,
-        expiresAt, settleDeadline, paymentStatus, settlementStatus, refundStatus, settlementTxHash, createdAt]
+      required: [invoiceId, number, title, note, dueDate, issuer, chainId, token, amount, recipient, factory,
+        receiveAddress, expiresAt, settleDeadline, paymentStatus, settlementStatus, refundStatus, settlementTxHash,
+        createdAt]
       properties:
         invoiceId: { $ref: "#/components/schemas/InvoiceId" }
         number:
@@ -590,6 +671,13 @@ components:
             name: { type: [string, "null"] }
             email: { type: [string, "null"] }
             address: { type: [string, "null"] }
+        issuer:
+          description: |
+            The profile's billing details as they were when the invoice was made; null when it had none. Editing the
+            details later does not change it. In every response, the public GET too.
+          oneOf:
+            - $ref: "#/components/schemas/Issuer"
+            - type: "null"
         chainId: { type: integer }
         token: { $ref: "#/components/schemas/Address" }
         amount: { $ref: "#/components/schemas/Uint256" }
@@ -655,7 +743,7 @@ components:
             code:
               type: string
               enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found,
-                idempotency_conflict, invalid_value, internal]
+                billing_details_not_found, idempotency_conflict, invalid_value, internal]
             message: { type: string }
   responses:
     MalformedRequest:
@@ -682,7 +770,7 @@ components:
       description: |
         A value breaks a rule (invalid_value): amount, expiresIn, a token or chain that is not enabled, a profile with
         no wallet for the chain, terms the contract would refuse to settle, an invoice title, note, due date or client
-        field, a profile kind or name, a list limit or cursor, or balance-history days.
+        field, a profile kind or name, a billing details field, a list limit or cursor, or balance-history days.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -693,6 +781,11 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     InvoiceNotFound:
       description: No invoice with this id (invoice_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    BillingDetailsNotFound:
+      description: The profile has not saved billing details yet (billing_details_not_found)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

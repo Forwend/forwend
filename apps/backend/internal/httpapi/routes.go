@@ -25,6 +25,8 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 	mux.Handle("POST /v1/me", signedIn(signUp(profiles)))
 	mux.Handle("GET /v1/me", signedIn(getMe(profiles)))
 	mux.Handle("POST /v1/profiles", signedIn(createProfile(profiles)))
+	mux.Handle("PUT /v1/profiles/{profileId}/billing-details", profileScoped(putBillingDetails(profiles)))
+	mux.Handle("GET /v1/profiles/{profileId}/billing-details", profileScoped(getBillingDetails(profiles)))
 	mux.Handle("POST /v1/profiles/{profileId}/invoices", profileScoped(createInvoice(invoices)))
 	mux.Handle("GET /v1/profiles/{profileId}/invoices", profileScoped(listInvoices(invoices)))
 	mux.Handle("GET /v1/profiles/{profileId}/balances", profileScoped(getBalances(balance.NewService(pool, balances))))

@@ -3,7 +3,7 @@
 The Go backend in `apps/backend` (PLAN Phase 6). Code rules: [rules.md](rules.md).
 Requirements: R-14…R-24 in [PROJECT.md](../PROJECT.md). Whole system: [architecture.md](../architecture.md).
 
-Built: signup and profiles API, balances, activity, wallet transactions and balance history API, invoice API, Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
+Built: signup and profiles API, billing details, balances, activity, wallet transactions and balance history API, invoice API, Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
 (`apps/backend/e2e`, R-23) runs the whole loop. Not built yet: refunds, webhooks, merchants.
 
 ## Processes
@@ -24,7 +24,8 @@ Built: signup and profiles API, balances, activity, wallet transactions and bala
 Built in `internal/database/migrations` (R-17); Postgres enforces the rules below, each with a test.
 
 - `users`, `profiles(kind: personal|freelancer|merchant, name, idempotency_key, invoice_seq)` (one personal per user, made at
-  signup without a key; other kinds once per user and key), `profile_wallets(provider, provider_wallet_id, address, chain_family)` (one per profile and family).
+  signup without a key; other kinds once per user and key), `profile_wallets(provider, provider_wallet_id, address, chain_family)` (one per profile and family),
+  `profile_billing_details(name, address, country, tax_id, contact_email, updated_at)` (at most one per profile, editable; R-43).
 - `merchants → stores(project_id, branding)`, `team_members(role, store scope)` (Phase 11).
 - `chains(chain_id, chain_family, enabled)`, `tokens(chain_id, contract, decimals, enabled)`. One confirm rule for all
   chains (D-45), so no per-chain rule columns.
@@ -33,7 +34,9 @@ Built in `internal/database/migrations` (R-17); Postgres enforces the rules belo
   separate **payment**, **settlement** and **refund** status columns, `idempotency_key` unique per profile with a
   SHA-256 `request_hash` of the create request. `number` is unique per profile, taken from `profiles.invoice_seq` by
   the insert trigger (D-50); it and the details (`title`, `note`, `due_date`, `client_name`, `client_email`,
-  `client_address`) never change.
+  `client_address`) never change. The insert trigger also copies the profile's billing details into `issuer_name`,
+  `issuer_address`, `issuer_country`, `issuer_tax_id` and `issuer_email` (all null without details), which never
+  change either.
 - `chain_transfers`: `block_hash`, `block_number`, `block_time`, status `detected|confirmed|reorged`. A transfer must go to
   its invoice's receive address, for the invoice's token, on its chain (foreign key).
 - `wallet_transfers` (R-38): enabled-token `Transfer` logs from or to a profile wallet, one row per wallet and direction

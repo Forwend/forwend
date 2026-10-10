@@ -1,6 +1,8 @@
 # Backend API rules
 
-Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/profiles`, `POST /v1/profiles/{profileId}/invoices`,
+Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/profiles`,
+`PUT /v1/profiles/{profileId}/billing-details`, `GET /v1/profiles/{profileId}/billing-details`,
+`POST /v1/profiles/{profileId}/invoices`,
 `GET /v1/profiles/{profileId}/invoices`, `GET /v1/profiles/{profileId}/balances`, `GET /v1/profiles/{profileId}/activity`,
 `GET /v1/profiles/{profileId}/transactions`, `GET /v1/profiles/{profileId}/balance-history`,
 `GET /v1/invoices/{invoiceId}` (public).
@@ -16,6 +18,7 @@ Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/profiles`, `POS
 - Prefix `/v1` (except `/healthz`). A breaking change means `/v2`.
 - Plural nouns, IDs in the path: `/v1/profiles/{profileId}/invoices`, `/v1/invoices/{invoiceId}`.
 - `GET` reads and never changes state. `POST` creates or runs an action (`POST /v1/invoices/{id}/cancel`).
+- `PUT` creates or replaces a whole editable resource (billing details).
 - Invoice terms and ledger entries are immutable. Transfer and invoice statuses change through validated worker
   transitions. Clients cannot edit money records with `PUT` or `DELETE`.
 
@@ -26,6 +29,21 @@ Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/profiles`, `POS
 - Money: decimal string in base units (`"5000000"`) next to `chainId` and `token` (contract address), as in R-19.
 - Times: RFC 3339 in UTC. IDs and addresses: strings.
 - Lists: `?limit=` (max 100) and `?cursor=`; response `{ "items": [...], "nextCursor": "…" }`.
+
+## Billing details
+
+R-43; the full schema is in openapi.yaml. Owner only, like every `{profileId}` route.
+
+- `PUT /v1/profiles/{profileId}/billing-details` creates or replaces them and answers 200 with what was saved. Body:
+  `name` (≤ 200 characters), `address` (≤ 500), `country` (an assigned ISO 3166-1 alpha-2 code in upper case, like
+  `DE`), `email` (≤ 254, a plain address) and optional `taxId` (≤ 50). All but `taxId` are required, so an invoice or
+  PDF always has a full issuer block; a `taxId` left out or empty means none and is returned as null. Every field is
+  replaced. Characters, not bytes; no NUL. A missing or broken field is 422 `invalid_value`. No Idempotency-Key: the
+  same body sent twice saves the same details.
+- `GET` returns the same fields plus `updatedAt`; 404 `billing_details_not_found` until the first `PUT`.
+- The invoice insert copies the details into the invoice as `issuer`, in the same statement that takes the number,
+  so the copy is the details at that moment. Editing them later changes no invoice. A profile without details gives
+  `issuer: null`.
 
 ## Invoices
 
@@ -39,14 +57,14 @@ R-19 and R-42; the full schema is in openapi.yaml.
   still closes at `expiresAt`) and `client` `{ name ≤ 200, email ≤ 254, address ≤ 500 }`. Empty means none and is
   returned as null. Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken rule is
   422 `invalid_value`; these fields are part of the idempotency hash.
-- The number and these fields never change, like the terms: a database trigger rejects any update.
+- The number, these fields and `issuer` never change, like the terms: a database trigger rejects any update.
 - `settlementTxHash` is the signer's settle transaction once the invoice is settled; null before, and when the refund
   authority settled the receiver outside the signer. The activity's invoice items carry it as `txHash`.
 - `GET /v1/profiles/{profileId}/invoices?limit=&cursor=`: the list format above, highest number (newest) first; items
   have no `deposits`. Owner only, like every `{profileId}` route.
-- The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note and due date but no `client`:
-  the id is a bearer link, so it returns only what the payer needs (OWASP API Security Top 10 2023, API3). Create
-  and list, which only the owner calls, include `client`.
+- The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due date and `issuer` (who bills
+  them; the issuer's own business details) but no `client`: the id is a bearer link, so it returns only what the
+  payer needs (OWASP API Security Top 10 2023, API3). Create and list, which only the owner calls, include `client`.
 
 ## Wallet transactions and balance history
 

@@ -242,6 +242,53 @@ func TestCreateInvoiceStoresDetails(t *testing.T) {
 	}
 }
 
+// An invoice keeps the billing details the profile had when it was made: editing them later changes no invoice, and a
+// profile without them gives invoices no issuer (R-43).
+func TestInvoiceKeepsItsIssuerCopy(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	none := e.post(t, alice, e.aliceProfile, "key-1", basicBody)
+	if v, ok := none.body["issuer"]; none.status != http.StatusCreated || !ok || v != nil {
+		t.Fatalf("no billing details: %d %v; want issuer null", none.status, none.body)
+	}
+
+	details := "/v1/profiles/" + e.aliceProfile + "/billing-details"
+	if r := e.call(t, "PUT", details, alice, "", billingBody); r.status != http.StatusOK {
+		t.Fatalf("PUT: %d %v", r.status, r.body)
+	}
+	old := map[string]any{"name": "Alice Design GmbH", "address": "Hauptstr. 1\n10115 Berlin", "country": "DE",
+		"taxId": "DE123456789", "email": "billing@alice.example"}
+	made := e.post(t, alice, e.aliceProfile, "key-2", basicBody)
+	if made.status != http.StatusCreated || !reflect.DeepEqual(made.body["issuer"], old) {
+		t.Fatalf("create: %d issuer %v, want %v", made.status, made.body["issuer"], old)
+	}
+	if r := e.call(t, "PUT", details, alice, "", `{"name": "Alice Studio", "address": "Rue 2, Paris", "country": "FR",
+		"email": "studio@alice.example"}`); r.status != http.StatusOK {
+		t.Fatalf("second PUT: %d %v", r.status, r.body)
+	}
+
+	id := made.body["invoiceId"].(string)
+	if public := e.get(t, id); public.status != http.StatusOK || !reflect.DeepEqual(public.body["issuer"], old) {
+		t.Fatalf("public GET after the edit: %d issuer %v, want %v", public.status, public.body["issuer"], old)
+	}
+	if again := e.post(t, alice, e.aliceProfile, "key-2", basicBody); again.status != http.StatusOK ||
+		again.body["invoiceId"] != id || !reflect.DeepEqual(again.body["issuer"], old) {
+		t.Fatalf("same key after the edit: %d %v; want the stored invoice with the old issuer", again.status, again.body)
+	}
+	items := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/invoices", alice, "", "").body["items"].([]any)
+	if got := items[0].(map[string]any)["issuer"]; !reflect.DeepEqual(got, old) {
+		t.Fatalf("list after the edit: issuer %v, want %v", got, old)
+	}
+	if got := items[1].(map[string]any)["issuer"]; got != nil {
+		t.Fatalf("list: the invoice made without details has issuer %v", got)
+	}
+	newer := e.post(t, alice, e.aliceProfile, "key-3", basicBody)
+	if want := map[string]any{"name": "Alice Studio", "address": "Rue 2, Paris", "country": "FR", "taxId": nil,
+		"email": "studio@alice.example"}; !reflect.DeepEqual(newer.body["issuer"], want) {
+		t.Fatalf("invoice after the edit: issuer %v, want %v", newer.body["issuer"], want)
+	}
+}
+
 func unhex(t *testing.T, s string) []byte {
 	t.Helper()
 	b, err := hex.DecodeString(strings.TrimPrefix(s, "0x"))
