@@ -9715,7 +9715,7 @@
         "F086",
         "F087"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "unit"
@@ -9805,11 +9805,18 @@
           "summary": "Pass. 00010 adds sender_name (CHECK 1-100, frozen by trigger); Down function identical to 00009 (diffed), down roundtrip test passes. Validation 1-100 runes + NUL + UTF-8, in idempotency hash, 422 and 409 tested; public GET exposes senderName only (no client). Request sheet reuses NewInvoiceForm (no duplicate parsing), requires trimmed name, prefills profile name, errors focus the field, outcome focused. Requests label consistent in sidebar, list, breadcrumb, back link, cmd-K; freelancer/merchant keep Invoices. Pay heading 'X requests amount' only without issuer. Note search, @lg container query, useId heading id correct. Reran: web test 56/56, backend test ok, lint, typecheck, pnpm e2e 28+13 passed; DB shows E2E Requester/E2E Phone requests from this run. Minor, not blocking: hash format change makes a pre-deploy key retried after deploy 409 (no prod data); personal /app/invoices/new still shows the old switch-profile text under a Requests crumb.",
           "at": "2026-10-10T18:10:45Z",
           "filesHash": "14dbcd6046eca397"
-        }
+        },
+        "commit": "c35fd80",
+        "doneAt": "2026-10-10T18:11:14Z"
       },
       "branch": "feat/f091-a-personal-profile-requests-money-with-a",
       "baseCommit": "47962c39053fcde7455fd585922cb678f9cef70a",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f091-a-personal-profile-requests-money-with-a",
+        "base": "main"
+      }
     },
     {
       "id": "F092",
