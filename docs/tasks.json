@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 101,
+  "nextId": 103,
   "tasks": [
     {
       "id": "F001",
@@ -10076,12 +10076,157 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F101",
+      "type": "fix",
+      "behavior": "Payment status reads clearly and links to the chain, app pages navigate from the header, and the desktop sidebar stays fixed",
+      "acceptance": [
+        "Pay page and invoice detail: a detected or confirming payment uses a neutral pending style with a spinner (never the info blue or a success color); the confirming step fills as blocks pass and status changes animate (reduced motion turns movement off); the status line is short (Confirming · about 19 min left; blocks shown small); each detected deposit shows its amount, sender and a block explorer link for its transaction",
+        "App pages: the header breadcrumb segments are links (profile, page, invoice), the invoice detail has no separate back link, and pages do not repeat the header's page title as a visible heading (actions stay in a toolbar); transaction hashes link to the block explorer in Transactions, Activity and the invoice detail; Activity invoice rows open the invoice; the Invoices list and Activity have status filters and search",
+        "The desktop sidebar stays fixed for the whole page height (expanded and collapsed) and pages have no large empty area below their content; Playwright covers breadcrumb navigation, row navigation, filters and search, explorer links and the fixed sidebar at 1440 and 390; axe finds 0 serious or critical violations"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-44",
+        "R-45",
+        "R-39",
+        "R-28"
+      ],
+      "keep": [
+        "packages/contracts/*",
+        "apps/backend/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-10-10 review pass by reviewer: Pass. Checked: detected/confirming neutral + spinner in PAYMENT_STATUSES and /kit; confirming fill uses max blocksLeft seen, sweep otherwise, reduced motion stops spin and hides sweep; explorer URLs per chain match docs (Tempo checked), txLink validates 0x+64 hex, links target _blank rel noopener noreferrer with accessible names; breadcrumb profile->/app, page, invoice number aria-current; phone back link; sr-only h1s; Activity row link is a stretched link with the explorer link as a sibling (no nested <a>); filters/search over loaded pages; SearchField in ui-web and /kit; sr-only table wrapper in ChartReadout covers balance and received charts; fixed sidebar pl-16/pl-64. Reviewer change: invoice detail status pill moved into the Amount card header (like pay page), title row uses lg:contents so no empty gap on desktop; e2e now scopes the detected pill to the Amount region. Minor, not blocking: Activity builds the invoice href inline instead of invoiceHref; breadcrumb Fragment key is the label. verify F101 passed again (8 checks, e2e incl. privy app-pages test)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-10T16:56:32Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 31.7,
+            "log": "docs/runs/F101-20261010T165632Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 71.3,
+            "log": "docs/runs/F101-20261010T165632Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": "docs/runs/F101-20261010T165632Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F101-20261010T165632Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F101-20261010T165632Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F101-20261010T165632Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.6,
+            "log": "docs/runs/F101-20261010T165632Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F101-20261010T165632Z-keep.log"
+          }
+        ],
+        "taskHash": "b272a6111231ab7d",
+        "filesHash": "8ea8d566e46868a2",
+        "proof": {
+          "1": "e2e: e2e/pay.spec.ts 'moves from waiting...' shows the Detected pill as pending (data-status detected, neutral), the short line 'Confirming · about 3 min left 12 blocks' then '6 blocks' after the next read, Confirming as the current step, and the payment row (1,250.00 USDC, Confirming) with 'View transaction on Basescan' linking https://sepolia.basescan.org/tx/<hash> in a new tab with rel noopener noreferrer; axe 0 serious/critical on the confirming state, light and dark, reduced motion; unit: ui-web payments.test.tsx (detected/confirming neutral with a turning icon; timeline fills 0.25, sweeps when unknown), invoices.test.ts confirmingProgress, chains.test.ts txLink",
+          "2": "e2e: e2e/privy/sign-in.spec.ts 'app pages navigate...' on mocked API data: breadcrumb links profile -> /app, Invoices -> /app/invoices, INV-0004 current page; no back link in main on desktop; page h1s are screen-reader only (Invoices, INV-0004, Activity, Transactions); Invoices and Activity status filters and search; Activity rows open their invoices; Basescan tx links in Transactions, Activity and the invoice detail; axe 0 serious/critical on each; unit: app-nav.test.ts breadcrumb, invoices.test.ts filterInvoices, activity.test.ts filterActivity",
+          "3": "e2e: the same test opens the business overview with the 1Y chart and scrolls to the bottom at 1440x900: sidebar box x0 y0 height 900 (width 256 open, 64 collapsed) and nothing below main (root cause was the chart's sr-only table running about 7300px below the page); at 390 the Invoices, Activity and Transactions pages and the invoice detail have scrollWidth 390 and axe 0 serious/critical"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. Checked: detected/confirming neutral + spinner in PAYMENT_STATUSES and /kit; confirming fill uses max blocksLeft seen, sweep otherwise, reduced motion stops spin and hides sweep; explorer URLs per chain match docs (Tempo checked), txLink validates 0x+64 hex, links target _blank rel noopener noreferrer with accessible names; breadcrumb profile->/app, page, invoice number aria-current; phone back link; sr-only h1s; Activity row link is a stretched link with the explorer link as a sibling (no nested <a>); filters/search over loaded pages; SearchField in ui-web and /kit; sr-only table wrapper in ChartReadout covers balance and received charts; fixed sidebar pl-16/pl-64. Reviewer change: invoice detail status pill moved into the Amount card header (like pay page), title row uses lg:contents so no empty gap on desktop; e2e now scopes the detected pill to the Amount region. Minor, not blocking: Activity builds the invoice href inline instead of invoiceHref; breadcrumb Fragment key is the label. verify F101 passed again (8 checks, e2e incl. privy app-pages test).",
+          "at": "2026-10-10T16:58:43Z",
+          "filesHash": "8ea8d566e46868a2"
+        },
+        "commit": "cd8cc59",
+        "doneAt": "2026-10-10T16:59:01Z"
+      },
+      "branch": "fix/f101-payment-status-reads-clearly-and-links-t",
+      "baseCommit": "baff77301294b774822571e12598e42a1a8e9745",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f101-payment-status-reads-clearly-and-links-t",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F102",
+      "type": "feat",
+      "behavior": "Each detected payment on an invoice shows who sent it and when",
+      "acceptance": [
+        "GET /v1/invoices/{id} deposits include the sender address and the block time (from the stored transfer), with backend tests; the pay page and the invoice detail show the short sender (full on hover) and the time next to the explorer link; openapi.yaml and api.md describe the fields"
+      ],
+      "dependsOn": [
+        "F101"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "R-45",
+        "R-42"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-10T14:11:16Z",
+    "at": "2026-10-10T16:07:40Z",
     "clean": true,
     "problems": [],
-    "note": "F098: approved light balance card styling; verification passed; commit and merge the task PR next."
+    "note": "Merged F084-F087, F099 today (PRs #85-#89). Next ready: F088 (open-in-wallet), F089 (PDFs), F091 (requests), F092 (onboarding), F093 (canary), F100 (owner invoice route). Owner's local API runs outside pnpm dev (PIDs 23264/23336) until pnpm dev restarts."
   }
 }

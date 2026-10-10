@@ -2,8 +2,10 @@ import { PAYMENT_STATUS } from "@forwend/ui-web";
 import { describe, expect, it } from "vitest";
 import {
   AMOUNT_ERRORS,
+  confirmingProgress,
   type Deposit,
   exactDigits,
+  filterInvoices,
   type Invoice,
   invalidField,
   invoiceNumber,
@@ -130,5 +132,46 @@ describe("invoiceProgress", () => {
     };
     expect(invoiceProgress(expired)).toMatchObject({ done: 0, current: null });
     expect(invoiceStatus(expired)).toBe(PAYMENT_STATUS.expired);
+  });
+});
+
+describe("confirmingProgress", () => {
+  it("fills as blocks pass against the most seen, and claims nothing before one passes", () => {
+    expect(confirmingProgress(544, 544)).toBeNull();
+    expect(confirmingProgress(408, 544)).toBe(0.25);
+    expect(confirmingProgress(0, 544)).toBe(1);
+    expect(confirmingProgress(0, 0)).toBeNull();
+  });
+});
+
+describe("filterInvoices", () => {
+  const items = [
+    {
+      ...open,
+      number: 18,
+      title: "Brand site",
+      client: { name: "Brightline", email: null, address: null },
+    },
+    { ...open, number: 7, paymentStatus: "detected" },
+    { ...open, number: 3, paymentStatus: "paid", settlementStatus: "settled" },
+    { ...open, number: 2, paymentStatus: "expired_partially_paid" },
+  ];
+  const numbers = (filter: Parameters<typeof filterInvoices>[1], search = "") =>
+    filterInvoices(items, filter, search).map((inv) => inv.number);
+
+  it("groups statuses: open covers payments on their way, expired covers partial ones", () => {
+    expect(numbers("all")).toEqual([18, 7, 3, 2]);
+    expect(numbers("open")).toEqual([18, 7]);
+    expect(numbers("paid")).toEqual([]);
+    expect(numbers("settled")).toEqual([3]);
+    expect(numbers("expired")).toEqual([2]);
+  });
+
+  it("searches the number, title and client in any letter case", () => {
+    expect(numbers("all", "inv-0018")).toEqual([18]);
+    expect(numbers("all", "BRAND")).toEqual([18]);
+    expect(numbers("all", "brightline")).toEqual([18]);
+    expect(numbers("open", "0007")).toEqual([7]);
+    expect(numbers("settled", "0007")).toEqual([]);
   });
 });

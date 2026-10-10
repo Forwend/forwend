@@ -1,4 +1,5 @@
-import { PAYMENT_STATUS, type PaymentStatus } from "@forwend/ui-web";
+import { formatTokenAmount, PAYMENT_STATUS, type PaymentStatus } from "@forwend/ui-web";
+import { chainName } from "@/shared/chains/chains";
 
 /** Invoice.paymentStatus values. */
 export const API_PAYMENT_STATUSES = {
@@ -33,6 +34,17 @@ export const ACTIVITY_KINDS = {
 
 /** Items per activity page. */
 export const ACTIVITY_PAGE_SIZE = 20;
+
+/** The status filter on Invoices and Activity. */
+export const STATUS_FILTERS = {
+  all: "all",
+  open: "open",
+  paid: "paid",
+  settled: "settled",
+  expired: "expired",
+} as const;
+
+export type StatusFilter = (typeof STATUS_FILTERS)[keyof typeof STATUS_FILTERS];
 
 export type ActivityKind = (typeof ACTIVITY_KINDS)[keyof typeof ACTIVITY_KINDS];
 
@@ -89,4 +101,50 @@ export function activityStatus(
   }
   if (item.settlementStatus === API_SETTLEMENT_STATUSES.settled) return PAYMENT_STATUS.settled;
   return INVOICE_STATUSES[item.status] ?? PAYMENT_STATUS.detected;
+}
+
+// The filter each status falls under: Open is everything still on its way, Paid is money that is final but not in the
+// wallet yet. Refunds show only under All.
+const STATUS_FILTER_OF: Readonly<Record<PaymentStatus, StatusFilter | null>> = {
+  [PAYMENT_STATUS.open]: STATUS_FILTERS.open,
+  [PAYMENT_STATUS.detected]: STATUS_FILTERS.open,
+  [PAYMENT_STATUS.confirming]: STATUS_FILTERS.open,
+  [PAYMENT_STATUS.partiallyPaid]: STATUS_FILTERS.open,
+  [PAYMENT_STATUS.confirmed]: STATUS_FILTERS.paid,
+  [PAYMENT_STATUS.paid]: STATUS_FILTERS.paid,
+  [PAYMENT_STATUS.overpaid]: STATUS_FILTERS.paid,
+  [PAYMENT_STATUS.settled]: STATUS_FILTERS.settled,
+  [PAYMENT_STATUS.expired]: STATUS_FILTERS.expired,
+  [PAYMENT_STATUS.expiredPartiallyPaid]: STATUS_FILTERS.expired,
+  [PAYMENT_STATUS.refundPending]: null,
+  [PAYMENT_STATUS.refunded]: null,
+};
+
+export function matchesStatus(status: PaymentStatus, filter: StatusFilter): boolean {
+  return filter === STATUS_FILTERS.all || STATUS_FILTER_OF[status] === filter;
+}
+
+/** A search as rows are matched: any letter case, and no thousands separators, so "1250" finds 1,250.00. */
+export function searchQuery(search: string): string {
+  return search.trim().toLowerCase().replaceAll(",", "");
+}
+
+/** Rows under the filter whose token, network, amount or transaction hash contains the search. */
+export function filterActivity(
+  items: readonly ActivityItem[],
+  filter: StatusFilter,
+  search: string,
+): ActivityItem[] {
+  const query = searchQuery(search);
+  return items.filter(
+    (item) =>
+      matchesStatus(activityStatus(item), filter) &&
+      (!query ||
+        [
+          item.symbol,
+          chainName(item.chainId),
+          item.txHash ?? "",
+          formatTokenAmount({ baseUnits: BigInt(item.amount), decimals: item.decimals }),
+        ].some((text) => searchQuery(text).includes(query))),
+  );
 }

@@ -16,7 +16,10 @@ export function NewInvoiceScreen() {
   return (
     <div className="flex max-w-2xl flex-col gap-8">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">{NEW_INVOICE_COPY.title}</h1>
+        {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
+        <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
+          {NEW_INVOICE_COPY.title}
+        </h1>
         <p className="text-muted">{NEW_INVOICE_COPY.intro}</p>
       </div>
       {profile.kind === PROFILE_KINDS.personal ? (

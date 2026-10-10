@@ -35,6 +35,8 @@ export type { CodeInputProps } from "./components/forms/code-input";
 export { CodeInput } from "./components/forms/code-input";
 export type { CaptureStatus, EmailCaptureProps } from "./components/forms/email-capture";
 export { CAPTURE_STATUS, EmailCapture } from "./components/forms/email-capture";
+export type { SearchFieldProps } from "./components/forms/search-field";
+export { SearchField } from "./components/forms/search-field";
 export type { SelectFieldProps, SelectOption } from "./components/forms/select-field";
 export { SelectField } from "./components/forms/select-field";
 export type { SwitchProps } from "./components/forms/switch";

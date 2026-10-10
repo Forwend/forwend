@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { ACTIVITY_COPY } from "@/features/activity/activity-copy";
 import { BALANCES_COPY } from "@/features/balances/balances-copy";
-import { INVOICES_COPY } from "@/features/invoices/invoices-copy";
+import { INVOICES_COPY, NEW_INVOICE_COPY } from "@/features/invoices/invoices-copy";
 import { PROFILE_KINDS, type ProfileKind } from "@/features/profiles/profile";
 import { TRANSACTIONS_COPY } from "@/features/transactions/transactions-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -69,10 +69,29 @@ export function isCurrentPage(pathname: string, href: string): boolean {
   return pathname === href || (href !== APP_ROUTES.home && pathname.startsWith(`${href}/`));
 }
 
-export function pageLabel(pathname: string): string {
-  if (pathname === APP_ROUTES.newProfile) return "New profile";
-  return (
-    Object.values(NAV).find((item) => item.href && isCurrentPage(pathname, item.href))?.label ??
-    NAV.overview.label
-  );
+export interface Crumb {
+  label: string;
+  href: string;
+}
+
+/**
+ * The header's trail after the profile: the page, then a form under it. On an invoice's page the trail ends at
+ * Invoices and gives the invoice's id, which the header names by its number once the invoice loads.
+ */
+export function breadcrumb(pathname: string): { trail: Crumb[]; invoiceId: string | null } {
+  if (pathname === APP_ROUTES.newProfile) {
+    return { trail: [{ label: "New profile", href: APP_ROUTES.newProfile }], invoiceId: null };
+  }
+  const page =
+    Object.values(NAV).find((item) => item.href && isCurrentPage(pathname, item.href)) ??
+    NAV.overview;
+  const crumb = { label: page.label, href: page.href ?? APP_ROUTES.home };
+  if (pathname === APP_ROUTES.newInvoice) {
+    return {
+      trail: [crumb, { label: NEW_INVOICE_COPY.title, href: APP_ROUTES.newInvoice }],
+      invoiceId: null,
+    };
+  }
+  const under = page === NAV.invoices ? pathname.slice(`${APP_ROUTES.invoices}/`.length) : "";
+  return { trail: [crumb], invoiceId: under && !under.includes("/") ? under : null };
 }

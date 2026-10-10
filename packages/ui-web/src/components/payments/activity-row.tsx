@@ -1,4 +1,5 @@
 import { ArrowDownLeft, ArrowUpRight, FileText } from "lucide-react";
+import type { ReactNode } from "react";
 import { Money, type MoneyProps } from "./money";
 import type { PaymentStatus } from "./payment-status";
 import { StatusPill } from "./status-pill";
@@ -13,14 +14,24 @@ export const ACTIVITY_DIRECTIONS = {
 export type ActivityDirection = (typeof ACTIVITY_DIRECTIONS)[keyof typeof ACTIVITY_DIRECTIONS];
 
 export interface ActivityRowProps {
-  title: string;
+  /** Text, or a link that the row opens. */
+  title: ReactNode;
   detail: string;
   direction: ActivityDirection;
   amount: MoneyProps;
   status: PaymentStatus;
+  /** A small control beside the status, such as a link to the transaction. */
+  action?: ReactNode;
 }
 
-export function ActivityRow({ title, detail, direction, amount, status }: ActivityRowProps) {
+export function ActivityRow({
+  title,
+  detail,
+  direction,
+  amount,
+  status,
+  action,
+}: ActivityRowProps) {
   const incoming = direction === ACTIVITY_DIRECTIONS.incoming;
   const request = direction === ACTIVITY_DIRECTIONS.request;
   const Icon = request ? FileText : incoming ? ArrowDownLeft : ArrowUpRight;
@@ -39,7 +50,10 @@ export function ActivityRow({ title, detail, direction, amount, status }: Activi
           {sign}
           <Money {...amount} />
         </span>
-        <StatusPill status={status} />
+        <span className="flex items-center gap-1">
+          {action}
+          <StatusPill status={status} />
+        </span>
       </span>
     </div>
   );

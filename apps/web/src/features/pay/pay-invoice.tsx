@@ -6,21 +6,20 @@ import {
   Money,
   NetworkWarning,
   PAYMENT_STATUS,
-  PaymentTimeline,
   QrCode,
   ReceiveAddress,
   Skeleton,
-  STEP_STATES,
   StatusPill,
   Tabs,
 } from "@forwend/ui-web";
 import { Check, Globe, Info, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { notFound } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { InvoiceDeposits } from "@/features/invoices/invoice-deposits";
+import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/invoice-progress";
 import {
   exactDigits,
   formatDueDate,
-  INVOICE_TIMELINE,
   type Invoice,
   invoiceNumber,
   invoiceProgress,
@@ -248,7 +247,7 @@ function Checkout({
         </section>
       ) : null}
 
-      <Status invoice={invoice} pay={pay} network={network} money={money} />
+      <Status invoice={invoice} pay={pay} network={network} money={money} token={token} />
     </>
   );
 }
@@ -258,42 +257,38 @@ function Status({
   pay,
   network,
   money,
+  token,
 }: {
   invoice: Invoice;
   pay: ReturnType<typeof payState>;
   network: string;
   money: (units: bigint) => string;
+  token: { symbol: string; decimals: number };
 }) {
-  const { done, current, blocksLeft, secondsLeft } = invoiceProgress(invoice);
+  const { blocksLeft, secondsLeft } = invoiceProgress(invoice);
   // A closed checkout waits for nothing more, even before the API marks it expired.
   const waiting = pay.state !== PAY_STATES.closed && pay.state !== PAY_STATES.closedPartial;
-  const steps = INVOICE_TIMELINE.map((step, i) => ({
-    label: COPY.steps[step],
-    state:
-      i < done
-        ? STEP_STATES.complete
-        : step === current && waiting
-          ? STEP_STATES.current
-          : STEP_STATES.upcoming,
-  }));
   return (
     <section aria-labelledby="pay-status" className={PANEL}>
       <h2 id="pay-status" className={PANEL_TITLE}>
         {COPY.status}
       </h2>
       <div className="flex flex-col gap-3 px-4 py-4 text-sm text-ink sm:px-5 sm:py-5">
-        <PaymentTimeline label={COPY.progress} steps={steps} />
+        <InvoiceTimeline invoice={invoice} label={COPY.progress} waiting={waiting} />
         <p role="status">
-          {COPY.states[pay.state]({
-            network,
-            blocks: blocksLeft,
-            seconds: secondsLeft,
-            received: money(pay.received),
-            remaining: money(pay.remaining),
-          })}
+          {pay.state === PAY_STATES.confirming ? (
+            <ConfirmingStatus blocks={blocksLeft} seconds={secondsLeft} />
+          ) : (
+            COPY.states[pay.state]({
+              network,
+              received: money(pay.received),
+              remaining: money(pay.remaining),
+            })
+          )}
         </p>
         {pay.extra > 0n ? <p className="text-warning">{COPY.extra(money(pay.extra))}</p> : null}
         {pay.late > 0n ? <p className="text-warning">{COPY.late(money(pay.late))}</p> : null}
+        <InvoiceDeposits invoice={invoice} token={token} />
       </div>
     </section>
   );

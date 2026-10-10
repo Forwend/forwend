@@ -1,6 +1,6 @@
 import { PAYMENT_STATUS } from "@forwend/ui-web";
 import { describe, expect, it } from "vitest";
-import { type ActivityItem, activityStatus } from "@/features/activity/activity";
+import { type ActivityItem, activityStatus, filterActivity } from "@/features/activity/activity";
 
 const base: ActivityItem = {
   kind: "invoice",
@@ -43,5 +43,30 @@ describe("activityStatus", () => {
 
   it("never claims money arrived for a status it does not know", () => {
     expect(activityStatus({ ...base, status: "something_new" })).toBe(PAYMENT_STATUS.detected);
+  });
+});
+
+describe("filterActivity", () => {
+  const items: ActivityItem[] = [
+    { ...base, amount: "1250000000" },
+    { ...base, kind: "deposit", status: "detected", txHash: `0x${"ab".repeat(32)}` },
+    { ...base, kind: "deposit", status: "confirmed", chainId: 421614 },
+    { ...base, status: "paid", settlementStatus: "settled" },
+  ];
+  const picked = (filter: Parameters<typeof filterActivity>[1], search = "") =>
+    filterActivity(items, filter, search).map((item) => items.indexOf(item));
+
+  it("puts confirming payments under open and confirmed ones under paid", () => {
+    expect(picked("open")).toEqual([0, 1]);
+    expect(picked("paid")).toEqual([2]);
+    expect(picked("settled")).toEqual([3]);
+    expect(picked("expired")).toEqual([]);
+  });
+
+  it("searches the amount without separators, the network and the transaction hash", () => {
+    expect(picked("all", "1250")).toEqual([0]);
+    expect(picked("all", "1,250.00")).toEqual([0]);
+    expect(picked("all", "arbitrum")).toEqual([2]);
+    expect(picked("all", "0xABAB")).toEqual([1]);
   });
 });

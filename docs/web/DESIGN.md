@@ -25,21 +25,27 @@ Use `/kit` for the implemented components. This file owns visual use; token sour
 - Text and primary buttons share the primary ink. River blue identifies links, focus, the current step and information.
   Completed steps use ink; upcoming steps use line color.
 - Success, warning and error use their matching text/background token pairs. Art colors never become UI colors.
+- Detected and confirming are pending: a neutral status pill with a turning icon, never the information blue or a
+  success color. Only confirmed, paid and settled look done.
 - Cool neutral surfaces, rounded controls and cards, pill navigation/buttons/chips. No hard offset shadows.
 
 ## App shell
 
 The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segmented control and switch are in `/kit`.
 
-- Desktop: a full-height sidebar on the surface color with a line divider. From top: one row with the logo mark,
-  a slash and the profile switcher (name only, no wallet address); page links in named groups for the profile
-  type (the current page on the second surface); the account menu at the bottom.
+- Desktop: a fixed full-height sidebar on the surface color with a line divider; it stays in view while the page
+  scrolls. From top: one row with the logo mark, a slash and the profile switcher (name only, no wallet address);
+  page links in named groups for the profile type (the current page on the second surface); the account menu at the
+  bottom.
   The collapse button sits at the start of the header. Collapsed, the sidebar is an icon rail with the profile tile on
   top and names as tooltips; the choice is remembered in the browser.
   Switching a profile keeps the current page.
-- Desktop header: a sticky bar across the content. Breadcrumb (profile, then page) on the left; on the right a search
-  field with the ⌘K hint, notifications, then Send and Receive. Content uses the header's side padding, with no
-  maximum width, so its edges line up with the header.
+- Desktop header: a sticky bar across the content. Breadcrumb of links (profile, page, then the invoice number or the
+  form under the page) on the left; on the right a search field with the ⌘K hint, notifications, then Send and
+  Receive. Content uses the header's side padding, with no maximum width, so its edges line up with the header.
+- On desktop a page does not repeat the breadcrumb's last step as a visible heading; its h1 is for screen readers
+  only. Phones have no breadcrumb, so they show the h1 (and a back link on an invoice). Page actions, status filters
+  and search sit in one slim toolbar row at the top.
 - ⌘K (or the search field) opens one command dialog: pages, actions, other profiles and recent transactions,
   filtered as you type. Arrow keys move, Enter opens, Escape closes.
 - The account menu holds the app's one theme control, a Dark mode switch item, on desktop and phones.
@@ -65,6 +71,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Charts: one ink line (or ink bars) with a faint wash, a few hairline grid lines, round tick values from zero.
   The river blue marks the latest or chosen point. Pointer or arrow keys show a readout; a hidden table gives screen
   readers every value. Range choice is a segmented control.
+- Invoices and Activity: a status filter (All, Open, Paid, Settled, Expired) and a search over the loaded rows; a row
+  opens its invoice. A transaction hash links to the chain's block explorer in a new tab (Transactions, Activity,
+  invoice detail, pay page).
 - Transactions table: ruled table from medium screens; the network has its own column only on the widest screens and
   sits under the counterparty otherwise. Phone rows show the network first and cut the time, never the network.
 - First run (planned, not built): one "What do you want to do?" screen with four choice cards (any number) and Skip,
@@ -82,8 +91,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - `/pay/<id>` is one centered column on every width: logo, the issuer name as the one display-serif heading over the
   invoice number and title, then solid hairline panels: the amount (Geist Mono, featured amount size) with token mark
   and status pill, before-you-pay notes, the network confirm button, the send panel with wallet and exchange tabs (QR
-  beside the full address from small screens up), and the status timeline. No image and no glass; it follows the
-  system theme.
+  beside the full address from small screens up), and the status timeline with each payment received (amount, status,
+  transaction and explorer link). No image and no glass; it follows the system theme.
+- While a payment confirms, the timeline's step fills as blocks pass (a sweep until the first block passes) and the
+  status line stays short: "Confirming · about 19 min left", the blocks left smaller beside it. The invoice detail uses
+  the same timeline, line and payments.
 
 ## Theme and behavior
 

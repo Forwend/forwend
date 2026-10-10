@@ -16,11 +16,12 @@ export const PAYMENT_STATUS = {
   refunded: "refunded",
 } as const;
 
-// The payment states users see (PROJECT D-29 and domain terms). Labels are final UI copy.
+// The payment states users see (PROJECT D-29 and domain terms). Labels are final UI copy. Detected and confirming are
+// still pending: neutral, never the info or success colors, so nobody reads them as done.
 export const PAYMENT_STATUSES = {
   open: { label: "Waiting for payment", tone: TONES.neutral },
-  detected: { label: "Detected", tone: TONES.info },
-  confirming: { label: "Confirming", tone: TONES.info },
+  detected: { label: "Detected", tone: TONES.neutral },
+  confirming: { label: "Confirming", tone: TONES.neutral },
   confirmed: { label: "Confirmed", tone: TONES.success },
   paid: { label: "Paid", tone: TONES.success },
   partiallyPaid: { label: "Partially paid", tone: TONES.warning },

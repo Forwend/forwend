@@ -1,4 +1,3 @@
-import { INVOICE_STEPS, type InvoiceStep } from "@/features/invoices/invoices";
 import { PAY_STATES, type PayState } from "@/features/pay/pay";
 
 /** Amounts arrive formatted with their symbol, like "1,250.00 USDC". */
@@ -47,17 +46,10 @@ export const PAY_COPY = {
   qr: "QR code of the address to pay",
   status: "Payment status",
   progress: "Payment progress",
-  steps: {
-    [INVOICE_STEPS.detected]: "Detected",
-    [INVOICE_STEPS.confirming]: "Confirming",
-    [INVOICE_STEPS.paid]: "Paid",
-    [INVOICE_STEPS.settled]: "Settled",
-  } satisfies Record<InvoiceStep, string>,
+  // Confirming has its own short line (ConfirmingStatus).
   states: {
     [PAY_STATES.waiting]: () =>
       "Waiting for your payment. This page updates by itself; you don't need to reload it.",
-    [PAY_STATES.confirming]: ({ network, blocks, seconds }) =>
-      `We see your payment. Confirming it on ${network}: ${blocks} ${blocks === 1 ? "block" : "blocks"} left, ${seconds < 60 ? "under a minute" : `about ${Math.ceil(seconds / 60)} min`}.`,
     [PAY_STATES.checking]: ({ network }) =>
       `Your payment is final on ${network}. We are checking it once more before the invoice is marked paid.`,
     [PAY_STATES.partial]: ({ received, remaining }) =>
@@ -70,7 +62,7 @@ export const PAY_COPY = {
       "The checkout has closed. Do not send money to this address; ask the sender for a new pay link.",
     [PAY_STATES.closedPartial]: ({ received }) =>
       `The checkout closed before the full amount arrived. Do not send more. The ${received} you sent is held for you; ask the sender to get it back.`,
-  } satisfies Record<PayState, (v: StateValues) => string>,
+  } satisfies Record<Exclude<PayState, typeof PAY_STATES.confirming>, (v: StateValues) => string>,
   extra: (extra: string) =>
     `You sent ${extra} more than the invoice. The extra is held for you; ask the sender to get it back.`,
   late: (late: string) =>
@@ -80,8 +72,6 @@ export const PAY_COPY = {
 
 interface StateValues {
   network: string;
-  blocks: number;
-  seconds: number;
   received: string;
   remaining: string;
 }
