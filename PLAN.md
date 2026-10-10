@@ -12,11 +12,12 @@ No phase grants permission to spend, publish, deploy or accept other people's mo
 | 5 | Receiver contracts and authority operations | Unit, fork, fuzz, invariant and symbolic checks; no open high/medium findings; same factory and matching real receiver on four testnets |
 | 6 | Go API, watcher, ledger and signer | R-14…R-24; local create → pay → confirmed → settled twice with one invoice and matching ledger |
 | 7 | Login, app shell and profile wallets | Sign in, create freelancer profile, switch profiles and see the correct wallet |
-| 8 | First payment through the UI on Base USDC | Local Anvil browser test in CI and Sasha's Base Sepolia run; then enable other planned pairs individually |
-| 9 | Freelancer work and payment exceptions | Partial → top-up → paid; overpay → claim → refund; expired partial → refund; late → held |
-| 10 | Merchant stores and developer tools | Sample merchant uses SDK, pays and verifies an invoice.settled webhook |
-| 11 | Send and bank withdrawal | Send works on a fork; withdrawal works in provider sandbox |
-| 12 | Security review and personal mainnet trials | Full testnet exception suite, then 20 tiny personal mainnet invoices with zero reconciliation difference |
+| 8 | First payment through the UI on Base USDC: invoice numbers, pay page, PDFs, personal requests, first-run onboarding | Local Anvil browser test in CI and Sasha's Base Sepolia run; then enable other planned pairs individually |
+| 9 | Payment exceptions, refunds and notifications | On Anvil: partial → top-up → paid; overpay → claim → refund; expired partial → refund; late → held |
+| 10 | Freelancer work | One freelancer runs deposit → delivery → acceptance → final invoice paid on testnet |
+| 11 | Merchant stores and developer tools | Sample merchant uses SDK, pays and verifies an invoice.settled webhook |
+| 12 | Account security, send, handles and bank withdrawal | Send works on a fork; withdrawal works in provider sandbox |
+| 13 | Security review and personal mainnet trials | Full testnet exception suite, then 20 tiny personal mainnet invoices with zero reconciliation difference |
 
 ## Phase 3: design and landing
 
@@ -65,59 +66,138 @@ Create `apps/backend/api/openapi.yaml` with the first business endpoint; generat
 - Sidebar, top bar, profile/theme switchers; create profile and its wallet.
 - Per-token/per-chain balance, clearly marked estimated total, pending and held amounts separately.
 - Receive address + QR + exact network/token warning; activity and empty states.
-- Sessions/devices and re-authentication for money actions; authorization tests across profiles.
+- Authorization tests across profiles. Sessions and re-authentication for money actions move to phase 12 (12.1).
 
 ## Phase 8: first payment
 
-- Dashboard invoice: amount, due date, separate checkout expiry, note.
-- `/pay/<invoice>`: no payer signup; name, invoice number, amount, network, gas note, address and QR.
-  Confirm network before copying; separate wallet and exchange instructions; live detected/confirming/paid/settled status.
-- Checkout address verification and independent canary follow the money-safety doc; no third-party scripts.
-- Recipient wallet receives settlement; activity shows transaction hash; shareable receipt and PDF invoice/receipt.
-- Review the complete money path. Add Arbitrum Sepolia, Arc and Tempo only after the Base slice passes.
+Base Sepolia + USDC. Requirements: R-42…R-52. From here on, one numbered bullet is one PR and "After" names the
+bullets it needs.
 
-## Phase 9: freelancer and exceptions
+- 8.1 Invoice fields: per-profile number `INV-0001` (D-50), title, note, due date (separate from checkout expiry),
+  client name, email and address copied into the invoice; `GET /v1/profiles/{id}/invoices` with cursor pages;
+  settlement tx hash on the invoice.
+- 8.2 Profile billing details (name, address, country, optional tax ID, contact email): GET/PUT; a copy goes into
+  each invoice at creation. After 8.1.
+- 8.3 Dashboard Invoices: create form, list, detail with status timeline, share link and copy. Replaces the "Soon"
+  item. After 8.1.
+- 8.4 Public `/pay/<id>`, no payer signup: issuer name, invoice number, amount, token, network and the host domain.
+  The browser recomputes the receive address from the terms; the payer confirms the network before copying.
+  Separate wallet and exchange tabs. Live detected → confirming → paid → settled with blocks or time left (R-28).
+  A short refund rule and a scam note before sending. No third-party scripts. After 8.1.
+- 8.5 Payer help: a "No USDC yet?" panel; an "Open in wallet" link and QR (EIP-681) on the wallet tab, a plain address
+  QR on the exchange tab; no wallet connection (D-59). After 8.4.
+- 8.6 PDFs: `invoice.pdf` and `receipt.pdf` (D-51), issuer and client blocks from the invoice's copies. After 8.2.
+- 8.7 Public receipt on `/pay/<id>` after settlement: tx hashes, times, PDF links; the dashboard detail links to
+  both PDFs. After 8.3, 8.4, 8.6.
+- 8.8 Personal "Request money": amount, note, expiry; link only (D-52). After 8.3, 8.4.
+- 8.9 First-run "What do you want to do?" screen and checklists for personal and freelancer profiles, computed
+  from data; passkey link step (D-53). After 8.2, 8.3.
+- 8.10 Independent canary per [money safety](docs/backend/money-safety.md). After 8.4.
+- 8.11 Anvil browser test in CI: create → pay → settled → receipt PDF 200 (409 before paid). After 8.4, 8.7.
+- 8.12 Review the complete money path, then Sasha's Base Sepolia run. This is the gate. After all of the above.
+- 8.13–8.15 Enable Arbitrum Sepolia, Arc and Tempo: one PR each, each after its own run. After 8.12.
+- Owner track, in parallel, no code: 5–10 interviews; register forwend.com; free USPTO, EUIPO and WIPO search in
+  finance and software classes; check social handles and app-store names; spoken spelling test with 5 people.
+  Results feed D-55, D-58 and Q-12. Interview questions:
+  1. Your last three cross-border client payments: who chose the method, which currency and route, which arrived?
+  2. USDC or USDT received for client work in the last 90 days: which network, exchange or wallet, and your net
+     amount after conversion and bank fees?
+  3. The last time an exchange or accountant asked where a payment came from, what did you show?
+  4. When did a client refuse or struggle to pay in crypto, and what did you use instead?
+  5. What do you pay today for invoicing, stablecoin receipt and cash-out? Would you pick free with a visible 1% fee,
+     a monthly plan, or your current method?
 
-- Saved clients, templates, line items; due date differs from checkout expiry. Deposit/milestone invoices link to a job.
-- Shared work/payment page: work states agreed/in progress/delivered/changes requested/approved stay separate from money states.
-  Delivery files require access control; forwarding a page link must not expose private files.
-- Action list: overdue, exceptions, funds available. Email reminders require client consent.
-- Show partial remainder/deadline, excess held, expired partials and late deposits. Claims need Q-9 evidence,
-  platform approval and separate multisig execution. Several payers may have separate approved claims (D-27).
-- Warn about wrong chains, bridged USDC.e and address poisoning. Wrong-network support requires a transaction hash.
-- Cancelling an unpaid invoice stops backend settlement; later deposits remain held.
+## Phase 9: payment exceptions, refunds and notifications
 
-## Phase 10: merchants and developers
+- 9.1 Pay page and dashboard states for partial (remainder and deadline), overpaid (excess held), expired, expired
+  partial and late, each with its next step. After 8.4.
+- 9.2 Warnings for wrong chain, bridged USDC.e and address poisoning (compare the first and last 6 characters).
+  Wrong-network help requires a tx hash (D-33).
+- 9.3 Payer claims on `/pay`: evidence per Q-9 (wallet signature for self-custody, otherwise a destination and
+  support evidence); `refund_claims` with states. After 9.1.
+- 9.4 Refund tool: an ops command (`cmd/ops`) lists claims, approves or rejects them with a reason (D-60) and prints
+  the `refund(to, amount)` call for the refund-authority Safe; one refund of everything held by default (D-57).
+  The watcher books the refund. No new hot key. After 9.3.
+- 9.5 Cancel an unpaid invoice: settlement stops; later deposits stay held (D-26).
+- 9.6 Email notifications through a provider adapter and the outbox (D-65, Q-13): paid, settled, exception, claim
+  opened and resolved; per-profile on/off. The in-app bell also shows invoice events. After 8.1.
+- 9.7 Payer receipt email: an optional email field on `/pay`, kept per invoice for the receipt and claim updates
+  only (D-68). After 9.6.
+- 9.8 Exception suite on Anvil (the gate). After 9.1–9.7.
 
-- Merchant stores: project IDs, branding and default checkout expiry; per-invoice override.
-- Admin across stores; Developer/Finance scoped to assigned stores. Reject other merchants' project IDs.
-- Secret API keys: shown once, hashed, scoped and revocable. Webhook signing secrets are separate.
-- Standard Webhooks signatures, backoff, replay and delivery logs. Events: `invoice.detected`, `invoice.confirmed`,
-  `invoice.paid`, `invoice.settled`, `invoice.partially_paid`, `invoice.expired`, `invoice.overpaid`, `refund.completed`.
-- API v1: idempotent create, get/list invoices, list events. Generated Node SDK plus webhook verification helper.
-- Brandable checkout components, developer quickstart and docs. Put the sample merchant in `apps/example-merchant`.
-- Review keys, scopes and webhook verification before the gate.
+## Phase 10: freelancer work
 
-## Phase 11: send and bank withdrawal
+Freelancer before merchant (D-55). Phase 9 comes first for both, so phases 10 and 11 can swap without rework.
 
-- Same-chain sends to own profiles, registered profiles or outside addresses. Saved contacts; confirm new addresses.
-- Review recipient, profile, chain, token, debit, fee and received amount; re-authenticate; show gas requirements.
-- Resolve Q-2/Q-5: provider coverage, fees, quote API, KYC responsibilities and wallet/treasury funding model.
-- One provider adapter. Precheck country, currency, rail and account-holder name.
-- Quote: stablecoin debit, fiat expected, exchange rate, every fee and expiry; user confirms once.
-- States: quoted, awaiting approval, processing, sent, paid, rejected, returned. Required identity checks precede funds.
+- 10.1 Saved clients (name, email, company, address, tax ID); an invoice picks a client and copies it.
+- 10.2 Line items, duplicate invoice, and an "Agreed value" in fiat that the user types (currency, amount and the
+  time; no exchange-rate API). After 10.1.
+- 10.3 Recurring retainers (D-58): a schedule (day of month, end date); each cycle the worker creates a new invoice
+  and emails the client, who pays by hand. After 9.6.
+- 10.4 Jobs: a job groups invoices; deposit and milestone invoices; a quote the client accepts creates the deposit
+  invoice. After 10.2.
+- 10.5 Shared work page `/w/<token>`: scope (deliverables, deadline, included revisions, how acceptance works);
+  work states agreed, in progress, delivered, changes requested and approved stay separate from payment states;
+  an append-only log of client acceptance and change requests (typed name, email, time). Delivery is links only
+  (D-66). After 10.4.
+- 10.6 Action list: overdue, exceptions, waiting for approval, money available. After 9.1.
+- 10.7 Reminders only after the client opts in (D-69); at most 3, before and after the due date. After 9.6.
+- 10.8 Records: transfers between your own profiles are labeled "own transfer"; a deposit without an invoice stays
+  "Unclassified" until the user labels it; CSV export with a classification column.
 
-## Phase 12: release safety
+## Phase 11: merchants and developers
 
-- Review system trust boundaries and the full money path; independent external contract audit before others' funds.
-- Q-6 key storage, stop-signing switch, unusual-signing alerts and ledger/chain reconciliation.
-- Drill signer crash, RPC outage, reorg and webhook outage. Run exact, partial, overpaid, expired, late and refund cases
-  on every enabled testnet before mainnet. Reconcile all to zero difference.
-- Only with explicit approval: Base mainnet deployment and Sasha-only $1–$5 trials; 20 invoices across exception cases.
-- Before outside users: jurisdiction, KYC/KYB, terms, privacy and other launch requirements resolved.
+- 11.1 Stores: project ID, logo, color, default checkout expiry; each invoice records its store; per-invoice
+  override (D-30).
+- 11.2 Team: email invites; Admin, Developer and Finance roles with assigned stores; a 403 test on every route; the
+  last Admin cannot leave. Only the owner moves money (D-61). After 11.1.
+- 11.3 Payment links `/l/<slug>` per store or freelancer, fixed or open amount: each visit creates its own invoice
+  and goes to `/pay/<id>` (D-54); rate limited; can be turned off. After 11.1.
+- 11.4 Secret API keys: shown once, hashed, scoped to a store, revocable; creating one needs a fresh sign-in (D-63).
+  After 12.1; build 12.1 first.
+- 11.5 Webhooks: Standard Webhooks signatures (D-42) with a separate signing secret, backoff, replay, delivery log,
+  "send test event". Events: `invoice.detected`, `invoice.confirmed`, `invoice.paid`, `invoice.settled`,
+  `invoice.partially_paid`, `invoice.expired`, `invoice.overpaid`, `refund.completed`.
+- 11.6 Public API v1 (idempotent create, get, list, events), OpenAPI, generated Node SDK, webhook verification
+  helper. After 11.4, 11.5.
+- 11.7 Merchant ops: attention list (exceptions, claims, failed webhooks), store filter, CSV. After 9.1.
+- 11.8 Merchant onboarding: business name and website, first store, branding preview, team invites, developer steps
+  (API key, webhook, test event, quickstart) and a KYB status row (D-64); the developer choice shows the developer
+  steps first. After 11.1.
+- 11.9 `apps/example-merchant`, quickstart and brandable checkout components. Review keys, scopes and webhook
+  verification before the gate.
+- Before outside merchants: Q-11.
+
+## Phase 12: account security, send and bank withdrawal
+
+- 12.1 Fresh sign-in for money actions (D-49, D-63): the API `reauth_required` check, the web email-code dialog,
+  `sessions_revoked_at` and "Sign out everywhere". Actions built earlier, such as billing details, get the check here.
+- 12.2 Security settings: login methods; email and passkey before the first money action (recovery); a recovery
+  explainer.
+- 12.3 Same-chain send to your own profiles and outside addresses. Review recipient, profile, chain, token, debit,
+  network fee and amount received; fresh sign-in; Privy client signing with sponsored gas (D-46). After 12.1.
+- 12.4 Handles (D-67) and saved contacts; new addresses are confirmed. After 12.3.
+- 12.5 Bank withdrawal after Q-2/Q-5: one provider adapter; check country, currency, rail and account-holder name;
+  verified tier required (D-64); a quote with stablecoin debit, expected fiat, rate, every fee and expiry, confirmed
+  once; states quoted, awaiting approval, processing, sent, paid, rejected, returned.
+- 12.6 Hold and review states: category, what is needed, case ID, last change, next update or "no date yet".
+
+## Phase 13: release safety
+
+- 13.1 Q-6 key storage, stop-signing switch, unusual-signing alerts and ledger/chain reconciliation.
+- 13.2 Drill signer crash, RPC outage, reorg and webhook outage. Run exact, partial, overpaid, expired, late and
+  refund cases on every enabled testnet; reconcile all to zero difference.
+- 13.3 Review system trust boundaries and the full money path; independent external contract audit before other
+  people's money.
+- 13.4 Only with explicit approval: Base mainnet deployment and Sasha-only $1–$5 trials; 20 invoices across
+  exception cases.
+- 13.5 Before outside users: jurisdiction, KYC/KYB policy (Q-12), terms, privacy, trademark filing (D-70), real
+  waitlist (D-8) and merchant wallet control (Q-11).
 
 ## Deferred beyond MVP
 
-Mobile; optional BNB and non-EVM networks; HD-wallet receive methods; cross-chain sends; recurring invoices/billing;
-accounting/CSV/Koinly export; opt-in escrow; bank/card on-ramp; public developer sandbox; custom checkout domains.
-Each new chain or receive method needs its own spike. Planned Base/Arbitrum/Arc/Tempo expansion stays gated by D-38.
+Mobile; optional BNB and non-EVM networks; HD-wallet receive methods; cross-chain sends; automatic wallet billing;
+full accounting page and Koinly export; opt-in escrow; bank/card on-ramp; public developer sandbox; custom checkout
+domains; platform fees and the business model (D-56, Q-10); external payout address (D-62); file delivery storage
+(D-66). Each new chain or receive method needs its own spike. Planned Base/Arbitrum/Arc/Tempo expansion stays gated
+by D-38.

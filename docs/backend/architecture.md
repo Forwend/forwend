@@ -25,7 +25,7 @@ Built in `internal/database/migrations` (R-17); Postgres enforces the rules belo
 
 - `users`, `profiles(kind: personal|freelancer|merchant, name, idempotency_key)` (one personal per user, made at
   signup without a key; other kinds once per user and key), `profile_wallets(provider, provider_wallet_id, address, chain_family)` (one per profile and family).
-- `merchants → stores(project_id, branding)`, `team_members(role, store scope)` (Phase 10).
+- `merchants → stores(project_id, branding)`, `team_members(role, store scope)` (Phase 11).
 - `chains(chain_id, chain_family, enabled)`, `tokens(chain_id, contract, decimals, enabled)`. One confirm rule for all
   chains (D-45), so no per-chain rule columns.
 - `invoices`: immutable terms (`id` = the on-chain invoice id, profile, chain, token, `amount`, `expires_at` and
@@ -42,7 +42,7 @@ Built in `internal/database/migrations` (R-17); Postgres enforces the rules belo
   reconcile before any retry.
 - `refund_claims`, `support_cases` (wrong chain, late).
 - `outbox_events` (written in the same transaction as the change, published at least once), `webhook_endpoints`,
-  `webhook_deliveries` (Phase 10).
+  `webhook_deliveries` (Phase 11).
 - `chain_cursors(chain_id, last_scanned_block, last_finalized_block)`.
 
 Rules:

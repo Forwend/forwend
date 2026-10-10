@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 83,
+  "nextId": 98,
   "tasks": [
     {
       "id": "F001",
@@ -8928,6 +8928,531 @@
         "branch": "fix/f082-usd-estimates-from-the-api-are-cut-to-ce",
         "base": "main"
       }
+    },
+    {
+      "id": "F083",
+      "type": "docs",
+      "behavior": "The plan covers onboarding, personal requests, payment exceptions, notifications and the owner's research, phase by phase",
+      "acceptance": [
+        "PLAN.md lists phases 8-13 with one-PR task bullets (first payment with invoice numbers, PDFs, pay page, personal requests and first-run onboarding; exceptions, refunds and notifications; freelancer work; merchant stores and developers; account security, send and withdrawal; release safety), the owner's 2026-10-10 decisions are PROJECT decision rows, the remaining research gaps are open questions, phase 8 has requirement rows, and the phase 8 tasks are queued in the harness"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/*",
+        "packages/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-10T13:51:29Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F083-20261010T135129Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": "docs/runs/F083-20261010T135129Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F083-20261010T135129Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F083-20261010T135129Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 30.1,
+            "log": "docs/runs/F083-20261010T135129Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F083-20261010T135129Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 50.4,
+            "log": "docs/runs/F083-20261010T135129Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F083-20261010T135129Z-keep.log"
+          }
+        ],
+        "taskHash": "6110a84449e5ed4d",
+        "filesHash": "3fddd12fe714dbe1",
+        "proof": {
+          "1": "docs-check: check-docs 0 errors; PLAN.md phases 8-13 with numbered one-PR bullets; PROJECT D-50..D-70, Q-10..Q-13, R-42..R-52; harness validate ok with F084-F097 queued"
+        },
+        "commit": "8e5df19",
+        "doneAt": "2026-10-10T13:52:59Z"
+      },
+      "branch": "docs/f083-the-plan-covers-onboarding-personal-requ",
+      "baseCommit": "86781458b626184db805183b6c37ac7e47d67536",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f083-the-plan-covers-onboarding-personal-requ",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F084",
+      "type": "feat",
+      "behavior": "Invoices get a per-profile number INV-0001, a title, note, due date and client details, and a profile can list its invoices",
+      "acceptance": [
+        "R-42: each profile numbers its invoices INV-0001, INV-0002, ... from a counter row taken in the invoice's transaction; Postgres tests show two concurrent creates get different numbers, a failed create leaves no gap, a repeat with the same Idempotency-Key returns the same number, and the number cannot be changed",
+        "R-42: create stores title, note, due date (separate from expiresAt) and client name, email and address; GET /v1/profiles/{id}/invoices lists newest first with cursor pages and gives another user 403; a settled invoice returns its settlement tx hash; openapi.yaml and docs/backend/api.md describe the new fields and route"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "docs-check"
+      ],
+      "refs": [
+        "R-42",
+        "D-50",
+        "R-19"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F085",
+      "type": "feat",
+      "behavior": "A profile saves its billing details, and each new invoice keeps a copy of them",
+      "acceptance": [
+        "R-43: PUT and GET /v1/profiles/{id}/billing-details save and return name, address, country, optional tax ID and contact email; another user gets 403; an invalid email or empty name gives 422",
+        "R-43: a test edits the details after creating an invoice and the invoice still returns the old copy; openapi.yaml and docs/backend/api.md describe the route"
+      ],
+      "dependsOn": [
+        "F084"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "docs-check"
+      ],
+      "refs": [
+        "R-43",
+        "D-51",
+        "D-53"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F086",
+      "type": "feat",
+      "behavior": "Freelancer and merchant profiles create, list and open invoices in the dashboard",
+      "acceptance": [
+        "R-44: the Invoices page creates an invoice (USDC amount, title, note, due date, checkout expiry, client name, email and address), lists number, client, amount, status and due date, and opens a detail page with a status timeline and the share link with a copy button; the sidebar item is no longer Soon",
+        "R-44: a unit test turns typed amounts (1, 0.000001, 1234.56) into exact base units without float and rejects 7 decimals and 0; Playwright covers create, list and detail on desktop and phone; axe finds 0 serious or critical violations"
+      ],
+      "dependsOn": [
+        "F084"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-44",
+        "R-42",
+        "D-6"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F087",
+      "type": "feat",
+      "behavior": "Payers open /pay/<id> without an account and pay the invoice while the status updates live",
+      "acceptance": [
+        "R-45: /pay/<id> shows issuer name, invoice number, amount, token, network and the site's host name; the address and QR appear only after the payer confirms the network; wallet and exchange instructions are separate tabs; the refund rule and the scam note show before the address; status moves detected, confirming (blocks and time left), paid, settled without a reload; the public GET /v1/invoices/{id} returns the issuer name and number, with backend tests",
+        "R-45: the browser recomputes the receive address from the terms; a unit test matches the R-15 vectors and a changed term shows no address and an error; Playwright checks that every script request is same-origin; axe finds 0 serious or critical violations"
+      ],
+      "dependsOn": [
+        "F084"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e",
+        "backend"
+      ],
+      "refs": [
+        "R-45",
+        "R-28",
+        "D-29",
+        "D-33"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F088",
+      "type": "feat",
+      "behavior": "The pay page helps payers with an Open in wallet link and a No USDC yet panel",
+      "acceptance": [
+        "R-46: the wallet tab shows an EIP-681 Open in wallet link and QR, the exchange tab a QR of the plain address only; a unit test checks the link for the exact token contract, chain ID, receive address and base-unit amount; nothing connects to or asks the payer's wallet to sign",
+        "R-46: a No USDC yet? panel explains buying USDC on an exchange and withdrawing on the network shown; Playwright checks both tabs and the panel; axe finds 0 serious or critical violations"
+      ],
+      "dependsOn": [
+        "F087"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-46",
+        "D-59",
+        "D-37"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-10-10 Before done: the owner opens the link in 3 mobile wallets (D-59); record which wallets worked in a note."
+      ],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F089",
+      "type": "feat",
+      "behavior": "The API serves invoice and receipt PDFs built on the server",
+      "acceptance": [
+        "R-47: public GET /v1/invoices/{id}/invoice.pdf returns 200 application/pdf with number, issuer and client blocks from the invoice's copies (no issuer block without billing details), amount, token, network, due date and pay link, from database data only; an unknown id gives 404",
+        "R-47: GET /v1/invoices/{id}/receipt.pdf answers 409 until the invoice is paid, then 200 with the paid time and tx hashes; tests read the PDF text; codeberg.org/go-pdf/fpdf v0.12.0 is the only new dependency; openapi.yaml and docs/backend/api.md describe both routes"
+      ],
+      "dependsOn": [
+        "F085"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "docs-check"
+      ],
+      "refs": [
+        "R-47",
+        "D-51",
+        "D-50"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F090",
+      "type": "feat",
+      "behavior": "The pay page shows a receipt after settlement, and the pay page and dashboard link to both PDFs",
+      "acceptance": [
+        "R-48: /pay/<id> links to the invoice PDF at any time; after settlement it shows amount, paid and settled times, deposit and settlement tx hashes with explorer links and the receipt PDF link; before settlement no receipt shows; the dashboard invoice detail links to both PDFs (the receipt once paid)",
+        "R-48: Playwright covers the page before and after settlement; axe finds 0 serious or critical violations"
+      ],
+      "dependsOn": [
+        "F086",
+        "F087",
+        "F089"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "unit"
+      ],
+      "refs": [
+        "R-48",
+        "R-47"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F091",
+      "type": "feat",
+      "behavior": "A personal profile requests money with a share link",
+      "acceptance": [
+        "R-49: on a personal profile, Request money takes amount, note and checkout expiry, creates an invoice through the same API and shows the share link with a copy button; /pay/<id> shows the profile name; Playwright covers it on desktop and phone; axe finds 0 serious or critical violations"
+      ],
+      "dependsOn": [
+        "F086",
+        "F087"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "unit"
+      ],
+      "refs": [
+        "R-49",
+        "D-52"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F092",
+      "type": "feat",
+      "behavior": "New users choose what they want to do once, then follow a checklist computed from their data",
+      "acceptance": [
+        "R-50: users.onboarded_at and POST /v1/me/onboarding with choices create the chosen profiles once (a second call creates none) and set onboarded_at; GET /v1/me returns it; backend tests cover repeats and another user's token",
+        "R-50: /app shows What do you want to do? with four choices and Skip only while onboarded_at is empty; personal and freelancer overviews show a checklist computed from data (passkey linked, billing details complete, first invoice sent, first invoice or request paid, first money received), not stored; the passkey step links a passkey through Privy; Playwright covers choose, skip and the checklist; axe finds 0 serious or critical violations"
+      ],
+      "dependsOn": [
+        "F085",
+        "F086"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e",
+        "unit"
+      ],
+      "refs": [
+        "R-50",
+        "D-53",
+        "R-32"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F093",
+      "type": "feat",
+      "behavior": "A canary built apart from the app checks each open invoice's receive address against the factory on two RPCs",
+      "acceptance": [
+        "R-51: the canary reads its own factory address, init-code hash and two RPC URLs from its own config, calls predict(terms) on both RPCs for each open invoice and compares the result with the address from the API and /pay/<id>; any difference exits non-zero and logs an alert",
+        "R-51: a test with a changed address fails; the canary imports no address code or constants from apps/web or the API's invoice packages; docs/backend/money-safety.md says how to run it"
+      ],
+      "dependsOn": [
+        "F087"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "docs-check"
+      ],
+      "refs": [
+        "R-51"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F094",
+      "type": "test",
+      "behavior": "An Anvil browser test pays an invoice end to end: create, pay, settled, receipt PDF",
+      "acceptance": [
+        "R-52: with Postgres, Anvil and the real contracts started by the test, Playwright creates an invoice in the dashboard, pays it with the mock token and sees /pay/<id> go detected, paid, settled with the receipt; receipt.pdf answers 409 before paid and 200 after",
+        "R-52: the test runs from a check in docs/config.json, so staging CI runs it; it fails when settlement does not arrive before its timeout"
+      ],
+      "dependsOn": [
+        "F087",
+        "F090"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "harness"
+      ],
+      "refs": [
+        "R-52",
+        "R-23"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F095",
+      "type": "feat",
+      "behavior": "Invoices can be paid and settled on Arbitrum Sepolia, enabled on its own after the Base Sepolia gate",
+      "acceptance": [
+        "D-38: Arbitrum Sepolia and its token 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d (USDC) are enabled in the chains and tokens data by a migration; the R-15 vectors cover its chain ID; the pay page and dashboard show its network name; backend tests pass with it enabled",
+        "D-38: the existing Base Sepolia invoices, pay page and Anvil browser test are unchanged; the e2e and backend checks pass"
+      ],
+      "dependsOn": [
+        "F088",
+        "F091",
+        "F092",
+        "F093",
+        "F094"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "D-38",
+        "D-36",
+        "R-16"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-10-10 Gate: start only after PLAN 8.12 (complete money-path review and Sasha's Base Sepolia run). Before done, Sasha runs create, pay, settled on this chain and the tx hashes go in a note."
+      ],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F096",
+      "type": "feat",
+      "behavior": "Invoices can be paid and settled on Arc testnet, enabled on its own after the Base Sepolia gate",
+      "acceptance": [
+        "D-38: Arc testnet and its token 0x3600000000000000000000000000000000000000 (USDC) are enabled in the chains and tokens data by a migration; the R-15 vectors cover its chain ID; the pay page and dashboard show its network name; backend tests pass with it enabled",
+        "D-38: the existing Base Sepolia invoices, pay page and Anvil browser test are unchanged; the e2e and backend checks pass"
+      ],
+      "dependsOn": [
+        "F088",
+        "F091",
+        "F092",
+        "F093",
+        "F094"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "D-38",
+        "D-36",
+        "R-16"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-10-10 Gate: start only after PLAN 8.12 (complete money-path review and Sasha's Base Sepolia run). Before done, Sasha runs create, pay, settled on this chain and the tx hashes go in a note."
+      ],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F097",
+      "type": "feat",
+      "behavior": "Invoices can be paid and settled on Tempo Moderato, enabled on its own after the Base Sepolia gate",
+      "acceptance": [
+        "D-38: Tempo Moderato and its token the TIP-20 test stablecoin from S-6 (no USDC there yet) are enabled in the chains and tokens data by a migration; the R-15 vectors cover its chain ID; the pay page and dashboard show its network name; backend tests pass with it enabled",
+        "D-38: the existing Base Sepolia invoices, pay page and Anvil browser test are unchanged; the e2e and backend checks pass"
+      ],
+      "dependsOn": [
+        "F088",
+        "F091",
+        "F092",
+        "F093",
+        "F094"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "D-38",
+        "D-36",
+        "R-16"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-10-10 Gate: start only after PLAN 8.12 (complete money-path review and Sasha's Base Sepolia run). Before done, Sasha runs create, pay, settled on this chain and the tx hashes go in a note."
+      ],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

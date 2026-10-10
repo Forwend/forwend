@@ -8,6 +8,11 @@ Product requirements and money policy live in [PROJECT](../PROJECT.md); future s
 - Separate work progress from payment status, due dates from checkout expiry, and available money from held money.
 - Partial, overpaid, expired, late and wrong-network payments need explicit next steps. Refunds follow approved claims;
   never promise automatic recovery or payment timing.
+- Pay page: show who is asking (issuer name and invoice number) and the site's host name. Before sending, show the
+  short refund rule and "Forwend never asks you to pay a different address or an extra fee." Offer "Open in wallet"
+  only as a link the payer's own wallet opens; never connect to it. Help payers with no USDC yet: buy it on an
+  exchange, then withdraw on the exact network shown.
+- Personal profiles can request money: amount, note, expiry and a private link. Call it a request, not an invoice.
 - Bank withdrawal is user-started: quote, fees, net amount and confirmation. Do not imply it is available before implemented.
 - Current public-facing material is pre-launch. No invented customers, testimonials, funding, insurance, regulation or volumes.
 - The waitlist is a local mock until real storage is built. Label demonstration invoices, addresses and amounts as Sample.
