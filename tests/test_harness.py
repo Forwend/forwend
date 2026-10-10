@@ -115,6 +115,47 @@ class HarnessTests(unittest.TestCase):
             outcome, _ = h.wait_for_checks(self.root, 1, {'wait': 0, 'register': 0, 'poll': 0})
         self.assertNotEqual(outcome, 'pass')
 
+    def test_explicit_local_policy_allows_absent_remote_checks(self):
+        response = subprocess.CompletedProcess([], 0, '[]', '')
+        with patch.object(h, 'gh', return_value=response):
+            outcome, checks = h.wait_for_checks(self.root, 1,
+                {'wait': 0, 'register': 0, 'poll': 0, 'requireRemoteChecks': False})
+        self.assertEqual(outcome, 'not-required')
+        self.assertEqual(checks, [])
+
+    def test_local_policy_does_not_ignore_reported_checks_or_errors(self):
+        settings = {'wait': 0, 'register': 0, 'poll': 0, 'requireRemoteChecks': False}
+        for bucket, expected in [('fail', 'fail'), ('cancel', 'fail'), ('skipping', 'fail'),
+                                 ('pending', 'pending'), ('pass', 'pass')]:
+            with self.subTest(bucket=bucket):
+                response = subprocess.CompletedProcess([], 0,
+                    json.dumps([{'name': 'checks', 'bucket': bucket}]), '')
+                with patch.object(h, 'gh', return_value=response):
+                    outcome, _ = h.wait_for_checks(self.root, 1, settings)
+                self.assertEqual(outcome, expected)
+        with patch.object(h, 'gh', return_value=subprocess.CompletedProcess([], 1, '', 'not logged in')):
+            outcome, _ = h.wait_for_checks(self.root, 1, settings)
+        self.assertEqual(outcome, 'error')
+
+    def test_remote_check_policy_is_explicit_and_boolean(self):
+        self.assertTrue(h.delivery(h.State(self.root))['requireRemoteChecks'])
+        self.config['delivery']['requireRemoteChecks'] = False
+        self.save()
+        self.assertFalse(h.delivery(h.State(self.root))['requireRemoteChecks'])
+        self.config['delivery']['requireRemoteChecks'] = 'false'
+        self.save()
+        with self.assertRaises(h.Refused):
+            h.delivery(h.State(self.root))
+
+    def test_local_policy_still_requires_successful_local_verification(self):
+        self.config['delivery']['requireRemoteChecks'] = False
+        self.config['checks'][0]['argv'] = [sys.executable, '-c', 'raise SystemExit(7)']
+        self.save()
+        self.assertEqual(self.verify(), 1)
+        with patch.object(h, 'deliver') as deliver:
+            self.assertEqual(self.run_cli('done', 'F001'), 1)
+        deliver.assert_not_called()
+
     def test_pending_delivery_rechecks_constraints(self):
         self.verify()
         state = h.State(self.root)
