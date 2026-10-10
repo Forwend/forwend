@@ -150,26 +150,36 @@ nothing, so a restarted worker resumes from the cursor.
 
 `internal/settlement` (R-22), one `Signer` per executor key. When the ledger marks an invoice `paid` it queues one
 settlement intent (unique per invoice) in the same transaction. For each due intent the signer:
-1. If a settle is already saved (`sent`), finishes it first, whatever changed since: the receiver's own `settled()`
-   decides. The saved bytes must decode to `settle()` on this receiver on this chain with the saved hash.
+1. If a settle is already saved (`sent`), finishes it first, whatever changed since. The saved bytes must decode to
+   `settle()` on this receiver on this chain with the saved hash. Its receipt decides first: status 1 with the
+   receiver's `Settled` log is our settle, which keeps its hash and is never signed again, whatever a lagging node
+   says about `settled()` at latest. Without a receipt, reads at one finalized block decide: the receiver settled
+   there while our nonce is unused there is another settler's work; settled there with our nonce used there waits
+   (logged) for our receipt; our nonce used there while the receiver is not settled means ours was dropped. Otherwise the saved bytes are sent again while their nonce is free and nobody
+   settled.
 2. Otherwise re-reads the terms and refuses for good (`refused` with a reason, nothing sent) unless the invoice is
    `paid`, the recipient is the profile's wallet, the factory is the compiled one and the terms recompute the stored
    receive address; also when `factory.status` predicts another address.
 3. Waits and retries (back to `pending` with a reason; 1 min doubling to 1 h) on temporary conditions: wrong chain,
-   balance below the amount, not settleable (paused), a mined settle that left the receiver unsettled, a saved
-   settle whose nonce another transaction took, or a settler other than this executor (the deadline passed: it sends
-   nothing and waits for the refund authority's settle).
-4. Deploys the receiver if needed (`deploy` is idempotent), signs `settle()` with the chain's own gas estimate, saves
-   sender, nonce, hash and signed bytes, then sends. After a crash it sends the same saved bytes again (same nonce, so
-   at most one settle can be mined). The contract's `AlreadySettled` is a last guard.
-5. Once `settled()` is true at the finalized block (D-45), in one transaction: intent `confirmed`, a `settlement`
-   ledger transaction (receiver and recipient_payable each −amount; one per invoice) and the invoice's
-   `settlement_status` `settled`. A settle a reorg drops before that is reconciled like an unsent one.
+   balance below the amount, not settleable (paused), a settle that reverted or was dropped while the receiver is
+   not settled at the finalized block, or a settler other than this executor (the deadline passed: it sends nothing
+   and waits for the refund authority's settle).
+4. Deploys the receiver if needed (`deploy` is idempotent), then waits up to 10 s for the RPC to show the receiver's
+   code at the deploy's block or later (else the attempt ends and is tried again): a node that has not seen the
+   deploy estimates settle as a call to an empty address, which runs out of gas. Signs `settle()` with the chain's
+   own gas estimate, at least `SettleGasFloor`, plus a fifth, at the node's pending nonce but never below the one
+   after the deploy it just sent or after the last settle saved for this chain (a lagging node may not count them).
+   Saves sender, nonce, hash and signed bytes, then sends. After a crash it sends the same saved bytes again (same
+   nonce, so at most one settle can be mined). The contract's `AlreadySettled` is a last guard.
+5. Once `settled()` is true at the finalized block (D-45), and for our settle once its receipt's block is final too,
+   in one transaction: intent `confirmed`, a `settlement` ledger transaction (receiver and recipient_payable each
+   −amount; one per invoice) and the invoice's `settlement_status` `settled`. A settle a reorg drops before that is
+   reconciled like an unsent one.
 Each intent's attempt has a 3-minute limit, so an RPC that stops answering can't stall the others.
 It signs only `factory.deploy(terms)` and `receiver.settle()`, and only for chains enabled in the database: a chain
 disabled there is dropped next round, and a round whose enabled list can't be read sends nothing. A receiver settled
 outside our signer (the refund authority after the deadline) still confirms its intent, with no tx hash: a saved
-settle keeps its hash only if its receipt succeeded. `retry` and `refuse` only change an intent still in the status
+settle keeps its hash only if its receipt succeeded with the `Settled` log. `retry` and `refuse` only change an intent still in the status
 the attempt loaded. Known limit: no fee bumping for a stuck transaction yet.
 
 ## Invoice states

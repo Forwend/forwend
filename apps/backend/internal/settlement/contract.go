@@ -8,6 +8,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/address"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -19,6 +20,9 @@ var (
 	statusSelector  = selector("status((bytes32,address,address,uint256,uint64,uint64,uint256))")
 	settleSelector  = selector("settle()")
 	settledSelector = selector("settled()")
+	// settledEvent is the topic of the receiver's Settled(bytes32 indexed invoiceId, address indexed recipient,
+	// uint256 amount), logged only by a successful settle.
+	settledEvent = crypto.Keccak256Hash([]byte("Settled(bytes32,address,uint256)"))
 )
 
 func selector(signature string) []byte {
@@ -75,4 +79,17 @@ func receiverSettled(ctx context.Context, client *ethclient.Client, receiver com
 		return false, fmt.Errorf("receiver.settled: %w", err)
 	}
 	return len(out) == 32 && out[31] == 1, nil
+}
+
+// settledBy reports whether a receipt is a successful settle of this receiver: status 1 and its Settled log.
+func settledBy(r *types.Receipt, receiver common.Address) bool {
+	if r.Status != types.ReceiptStatusSuccessful {
+		return false
+	}
+	for _, l := range r.Logs {
+		if l.Address == receiver && len(l.Topics) > 0 && l.Topics[0] == settledEvent {
+			return true
+		}
+	}
+	return false
 }

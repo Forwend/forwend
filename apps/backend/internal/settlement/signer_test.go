@@ -2,6 +2,7 @@ package settlement
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -94,22 +95,28 @@ func (e env) signer(t *testing.T) *Signer {
 // and ledger until it is paid with a settlement intent.
 func (e env) paidInvoice(t *testing.T) (id, receive string) {
 	t.Helper()
+	return e.pay(t, 7)
+}
+
+// pay is paidInvoice for the invoice with ID n.
+func (e env) pay(t *testing.T, n int) (id, receive string) {
+	t.Helper()
 	ctx := context.Background()
 	now := e.anvil.Now()
-	terms := address.Terms{InvoiceID: [32]byte(common.FromHex(fmt.Sprintf("0x%064x", 7))), Recipient: common.HexToAddress(wallet),
+	terms := address.Terms{InvoiceID: [32]byte(common.FromHex(fmt.Sprintf("0x%064x", n))), Recipient: common.HexToAddress(wallet),
 		Token: common.HexToAddress(e.token), Amount: big.NewInt(5000000), ExpiresAt: uint64(now + 3600),
 		SettleDeadline: uint64(now + 3600 + 86400), IntendedChainID: chaintest.ChainID}
 	addr, err := address.Receive(terms)
 	if err != nil {
 		t.Fatal(err)
 	}
-	id, receive = fmt.Sprintf("0x%064x", 7), strings.ToLower(common.Address(addr).Hex())
+	id, receive = fmt.Sprintf("0x%064x", n), strings.ToLower(common.Address(addr).Hex())
 	_, err = e.pool.Exec(ctx, `
 		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
 		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
-		SELECT $1, profile_id, $2, 'evm', $3, 5000000, $4, $5, $6, 'evm_create2', $7, $8, 'k', decode(repeat('00', 32), 'hex')
+		SELECT $1, profile_id, $2, 'evm', $3, 5000000, $4, $5, $6, 'evm_create2', $7, $8, $9, decode(repeat('00', 32), 'hex')
 		FROM profile_wallets`, id, chaintest.ChainID, e.token, terms.ExpiresAt, terms.SettleDeadline, wallet,
-		strings.ToLower(common.Address(address.Factory).Hex()), receive)
+		strings.ToLower(common.Address(address.Factory).Hex()), receive, fmt.Sprintf("k%d", n))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -365,6 +372,10 @@ func TestNonceTakenByAnotherTransaction(t *testing.T) {
 	if err := e.signer(t).Run(ctx); err != nil {
 		t.Fatal(err)
 	}
+	if status, _, _ := e.intent(t, id); status != "sent" {
+		t.Fatalf("nonce taken in a block that is not final: intent %s, want sent until it is", status)
+	}
+	e.final(t, e.signer(t))
 	if status, _, reason := e.intent(t, id); status != "pending" || reason == "" {
 		t.Fatalf("after its nonce was taken: intent %s (%s), want pending to sign again", status, reason)
 	}
@@ -639,5 +650,196 @@ func TestHangingRPCDoesNotStallTheSigner(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("Run is stuck on a hanging RPC")
+	}
+}
+
+// signerVia is a signer whose RPC is url, such as a proxy in front of Anvil.
+func (e env) signerVia(t *testing.T, url string) *Signer {
+	t.Helper()
+	client, err := ethclient.Dial(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(client.Close)
+	s := e.signer(t)
+	s.clients = map[uint64]*ethclient.Client{chaintest.ChainID: client}
+	return s
+}
+
+// param is a proxied call's i-th parameter as lowercase JSON.
+func param(c chaintest.Call, i int) string {
+	if i >= len(c.Params) {
+		return ""
+	}
+	return strings.ToLower(string(c.Params[i]))
+}
+
+func (e env) dueNow(t *testing.T) {
+	t.Helper()
+	if _, err := e.pool.Exec(context.Background(), "UPDATE settlement_intents SET next_attempt_at = now()"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A node that has not seen the new receiver shows no code there and estimates settle as a call to an empty address,
+// 21,064 gas, which runs out. The signer sends no settle until the node shows the receiver's code, and never gives
+// settle less than SettleGasFloor.
+func TestSettleWaitsForTheReceiverCodeAndNeverUnderestimatesGas(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, receive := e.paidInvoice(t)
+	proxy := e.anvil.Proxy()
+	lag := func(hidden int) { // the first hidden eth_getCode calls at the receiver say no code; every estimate is low
+		proxy.Stale(func(c chaintest.Call) json.RawMessage {
+			switch {
+			case c.Method == "eth_getCode" && strings.Contains(param(c, 0), receive) && hidden > 0:
+				hidden--
+				return json.RawMessage(`"0x"`)
+			case c.Method == "eth_estimateGas" && strings.Contains(param(c, 0), receive):
+				return json.RawMessage(`"0x5248"`)
+			}
+			return nil
+		})
+	}
+	lag(1 << 30)
+	before := e.nonce(t)
+	s := e.signerVia(t, proxy.URL)
+	s.codeWait = time.Second
+	if err := s.Run(ctx); err == nil {
+		t.Fatal("the signer went on while the RPC showed no code at the receiver")
+	}
+	if status, _, _ := e.intent(t, id); status != "pending" || e.nonce(t)-before != 1 || e.balance(t, wallet) != 0 {
+		t.Fatalf("intent %s, executor sent %d, recipient %d; want pending after the deploy alone", status,
+			e.nonce(t)-before, e.balance(t, wallet))
+	}
+
+	lag(2)
+	e.dueNow(t)
+	s = e.signerVia(t, proxy.URL)
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var saved string
+	if err := e.pool.QueryRow(ctx, "SELECT tx_hash FROM settlement_intents WHERE invoice_id = $1", id).Scan(&saved); err != nil {
+		t.Fatal(err)
+	}
+	settle, _, err := e.client.TransactionByHash(ctx, common.HexToHash(saved))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := e.client.TransactionReceipt(ctx, common.HexToHash(saved))
+	if err != nil || r.Status != types.ReceiptStatusSuccessful || settle.Gas() < SettleGasFloor {
+		t.Fatalf("settle with gas %d: receipt %v (%v); want success with at least %d", settle.Gas(), r, err, SettleGasFloor)
+	}
+	t.Logf("settle used %d gas, limit %d", r.GasUsed, settle.Gas())
+	e.final(t, s)
+	if status, _, _ := e.intent(t, id); status != "confirmed" || e.balance(t, wallet) != 5000000 {
+		t.Fatalf("intent %s, recipient %d", status, e.balance(t, wallet))
+	}
+}
+
+// Our settle succeeded, but a lagging node says the receiver is not settled at latest and has no receipt for it: the
+// intent keeps its hash, nothing is signed again, and it is booked once, with our hash, when final.
+func TestStaleNotSettledReadKeepsOurSuccessfulSettle(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, receive := e.paidInvoice(t)
+	proxy := e.anvil.Proxy()
+	s := e.signerVia(t, proxy.URL)
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var saved string
+	if err := e.pool.QueryRow(ctx, "SELECT tx_hash FROM settlement_intents WHERE invoice_id = $1", id).Scan(&saved); err != nil {
+		t.Fatal(err)
+	}
+	lag := func(receipt bool) {
+		proxy.Stale(func(c chaintest.Call) json.RawMessage {
+			switch {
+			case c.Method == "eth_call" && strings.Contains(param(c, 0), receive) &&
+				strings.Contains(param(c, 0), hexutil.Encode(settledSelector)) && param(c, 1) == `"latest"`:
+				return json.RawMessage(`"0x` + strings.Repeat("0", 64) + `"`)
+			case !receipt && c.Method == "eth_getTransactionReceipt" && strings.Contains(param(c, 0), saved):
+				return json.RawMessage("null")
+			}
+			return nil
+		})
+	}
+	before := e.nonce(t)
+	for _, step := range []struct {
+		name    string
+		receipt bool
+		final   bool
+		want    string
+	}{
+		{"not settled at latest, no receipt", false, false, "sent"},
+		{"not settled at latest, our receipt", true, false, "sent"},
+		{"final, no receipt", false, true, "sent"},
+		{"final, our receipt", true, false, "confirmed"},
+		{"again", true, false, "confirmed"},
+	} {
+		lag(step.receipt)
+		if step.final {
+			e.final(t, s)
+		} else if err := s.Run(ctx); err != nil {
+			t.Fatal(err)
+		}
+		var status string
+		var hash *string
+		if err := e.pool.QueryRow(ctx, "SELECT status, tx_hash FROM settlement_intents WHERE invoice_id = $1", id).
+			Scan(&status, &hash); err != nil {
+			t.Fatal(err)
+		}
+		if status != step.want || hash == nil || *hash != saved {
+			t.Fatalf("%s: intent %s with hash %v; want %s with our settle %s", step.name, status, hash, step.want, saved)
+		}
+	}
+	if e.nonce(t) != before {
+		t.Fatal("the executor signed again after its settle succeeded")
+	}
+	if hash := e.settlementTxHash(t, id); hash != saved {
+		t.Fatalf("settlementTxHash %q, want %s", hash, saved)
+	}
+	var booked int
+	if err := e.pool.QueryRow(ctx, "SELECT count(*) FROM ledger_transactions WHERE invoice_id = $1 AND kind = 'settlement'",
+		id).Scan(&booked); err != nil || booked != 1 || e.balance(t, wallet) != 5000000 {
+		t.Fatalf("settlement booked %d times (%v), recipient %d; want once and 5000000", booked, err, e.balance(t, wallet))
+	}
+}
+
+// A lagging node hands out an old pending nonce: the signer takes the one after its last saved settle instead, and
+// the one after a deploy it just sent.
+func TestStalePendingNonceUsesTheSavedNonce(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	first, _ := e.paidInvoice(t)
+	second, _ := e.pay(t, 8)
+	if _, err := e.pool.Exec(ctx, "UPDATE settlement_intents SET next_attempt_at = now() + interval '1 hour' WHERE invoice_id = $1",
+		second); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.signer(t).Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	e.dueNow(t)
+	proxy := e.anvil.Proxy()
+	proxy.Stale(func(c chaintest.Call) json.RawMessage {
+		if c.Method == "eth_getTransactionCount" && param(c, 1) == `"pending"` {
+			return json.RawMessage(`"0x0"`)
+		}
+		return nil
+	})
+	s := e.signerVia(t, proxy.URL)
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	e.final(t, s)
+	for _, id := range []string{first, second} {
+		if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" {
+			t.Fatalf("invoice %s: intent %s, settlement %s", id, status, settlement)
+		}
+	}
+	if got := e.balance(t, wallet); got != 10000000 {
+		t.Fatalf("recipient got %d, want 10000000", got)
 	}
 }

@@ -27,6 +27,7 @@ const (
 	RateLimited          // JSON-RPC error -32005 "project ID request rate exceeded", as Infura answers over its rate
 	TooManyResults       // JSON-RPC error -32005 "query returned more than 10000 results", as Infura answers a big log query
 	Hang                 // no answer until the client gives up
+	Stale                // answered with the result of the proxy's Stale rule, as a lagging node would
 )
 
 // Proxy is a JSON-RPC proxy in front of Anvil that answers each request with the fault its rule picks.
@@ -35,6 +36,7 @@ type Proxy struct {
 
 	mu    sync.Mutex
 	rule  func(Call) Fault
+	stale func(Call) json.RawMessage
 	calls []Call
 }
 
@@ -53,8 +55,14 @@ func (a *Anvil) Proxy() *Proxy {
 		if json.Unmarshal(body, &one) == nil {
 			c.Method, c.Params = one.Method, one.Params
 		}
+		var result json.RawMessage
 		p.mu.Lock()
-		if p.rule != nil {
+		if p.stale != nil && c.Method != "batch" {
+			if result = p.stale(c); result != nil {
+				c.Fault = Stale
+			}
+		}
+		if p.rule != nil && c.Fault == Forward {
 			c.Fault = p.rule(c)
 		}
 		p.calls = append(p.calls, c)
@@ -73,6 +81,8 @@ func (a *Anvil) Proxy() *Proxy {
 			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"error":{"code":-32005,"message":"project ID request rate exceeded"}}`, id)
 		case TooManyResults:
 			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"error":{"code":-32005,"message":"query returned more than 10000 results"}}`, id)
+		case Stale:
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":%s}`, id, result)
 		case Hang:
 			select {
 			case <-r.Context().Done():
@@ -99,6 +109,15 @@ func (p *Proxy) Fail(rule func(Call) Fault) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.rule = rule
+}
+
+// Stale answers each later single call for which rule returns a JSON result with that result instead of forwarding it,
+// as a node that lags behind the chain would (no code at a new contract, an old nonce); nil forwards it. Batches are
+// forwarded. nil stops it.
+func (p *Proxy) Stale(rule func(Call) json.RawMessage) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.stale = rule
 }
 
 // Calls returns every request received so far, in order.

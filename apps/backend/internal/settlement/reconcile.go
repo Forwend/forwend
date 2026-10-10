@@ -15,8 +15,11 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// reconcile finishes a sent settle. The receiver's own settled flag decides: confirmed once it is set. Otherwise
-// the saved bytes are sent again if their nonce is still free, or the intent goes back to pending.
+// reconcile finishes a sent settle. Our own receipt decides first: a settle that succeeded and logged the receiver's
+// Settled event is ours, keeps its hash and is booked once its block is final, whatever a lagging node says about
+// settled() meanwhile. Without a receipt, unmined decides. A settle that reverted is recorded without our hash when
+// the receiver is settled at the finalized block (another settler), waits while it is settled only at latest, and is
+// otherwise signed again.
 func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in intent) error {
 	tx := new(types.Transaction)
 	hash := common.HexToHash(*in.txHash)
@@ -25,63 +28,97 @@ func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in int
 		!bytes.Equal(tx.Data(), settleSelector) || tx.ChainId().Uint64() != in.chainID {
 		return fmt.Errorf("saved transaction %s is not this receiver's settle on chain %d", *in.txHash, in.chainID)
 	}
-	settled, err := receiverSettled(ctx, client, receive, nil)
-	if err != nil {
-		return err
-	}
-	if settled {
-		return s.confirmIfFinal(ctx, client, in)
-	}
-	if r, err := client.TransactionReceipt(ctx, hash); err == nil {
-		// Mined but the receiver isn't settled: it reverted (e.g. paused). Try again later with a new transaction.
-		return s.retry(ctx, in, fmt.Sprintf("settle %s mined with status %d but the receiver is not settled", hash.Hex(), r.Status))
-	} else if !errors.Is(err, ethereum.NotFound) {
+	r, err := client.TransactionReceipt(ctx, hash)
+	if errors.Is(err, ethereum.NotFound) {
+		if r, err = s.unmined(ctx, client, in, tx); err != nil || r == nil {
+			return err
+		}
+	} else if err != nil {
 		return fmt.Errorf("read settle receipt: %w", err)
 	}
-	mined, err := client.NonceAt(ctx, common.HexToAddress(*in.sender), nil)
-	if err != nil {
-		return fmt.Errorf("read executor nonce: %w", err)
+	if settledBy(r, receive) {
+		return s.confirmIfFinal(ctx, client, in, r)
 	}
-	if int64(mined) > *in.nonce {
-		// The nonce went to another transaction and ours can never mine: sign a new settle.
-		return s.retry(ctx, in, "the saved settle's nonce was used by another transaction")
-	}
-	if err := client.SendTransaction(ctx, tx); err != nil && !strings.Contains(strings.ToLower(err.Error()), "known") {
-		return fmt.Errorf("send settle: %w", err)
-	}
-	if s.stopAfter == "send" {
-		return errStopped
-	}
-	if r, err := s.await(ctx, client, hash); err != nil || r == nil {
-		return err // not mined yet: the next run reconciles again
-	}
-	settled, err = receiverSettled(ctx, client, receive, nil)
+	final, err := receiverSettled(ctx, client, receive, finalized)
 	if err != nil {
 		return err
 	}
-	if settled {
-		return s.confirmIfFinal(ctx, client, in)
+	if final {
+		in.txHash = nil
+		return s.confirm(ctx, in)
 	}
-	return s.retry(ctx, in, "settle "+hash.Hex()+" mined but the receiver is not settled")
+	if now, err := receiverSettled(ctx, client, receive, nil); err != nil || now {
+		return err
+	}
+	return s.retry(ctx, in, fmt.Sprintf("settle %s mined with status %d but the receiver is not settled", hash.Hex(), r.Status))
 }
 
-// confirmIfFinal records the settlement only once the receiver is settled at the finalized block (D-45). Until then
-// the intent stays as it is and the next run looks again; a reorg that drops the settle is reconciled as unsent.
-func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, in intent) error {
-	final, err := receiverSettled(ctx, client, common.HexToAddress(in.receive), finalized)
+// unmined handles a saved settle without a receipt: not sent yet, waiting to be mined, dropped, or mined in a block
+// the answering node has not seen. Reads at one finalized block decide for good: the receiver settled there while our
+// nonce is still unused there is another settler's work (recorded without our hash); our nonce used there while the
+// receiver is not settled means ours can never mine (signed again). Otherwise the saved bytes are sent again while
+// their nonce is free and nobody settled, and the receipt is returned once mined. nil, nil ends this run's look.
+func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in intent, tx *types.Transaction) (*types.Receipt, error) {
+	sender, receive := common.HexToAddress(*in.sender), common.HexToAddress(in.receive)
+	head, err := client.HeaderByNumber(ctx, finalized)
+	if err != nil {
+		return nil, fmt.Errorf("read finalized block: %w", err)
+	}
+	final, err := receiverSettled(ctx, client, receive, head.Number)
+	if err != nil {
+		return nil, err
+	}
+	used, err := client.NonceAt(ctx, sender, head.Number)
+	if err != nil {
+		return nil, fmt.Errorf("read executor nonce: %w", err)
+	}
+	taken := int64(used) > *in.nonce
+	switch {
+	case final && !taken:
+		in.txHash = nil
+		return nil, s.confirm(ctx, in)
+	case final:
+		// Ours, with a node that lags on receipts, or our nonce went to another transaction: wait for the receipt.
+		slog.Warn("settlement waits for the receipt of its settle", "invoice", in.invoiceID, "tx", tx.Hash().Hex())
+		return nil, nil
+	case taken:
+		return nil, s.retry(ctx, in, "the saved settle's nonce was used by another transaction")
+	}
+	mined, err := client.NonceAt(ctx, sender, nil)
+	if err != nil {
+		return nil, fmt.Errorf("read executor nonce: %w", err)
+	}
+	settled, err := receiverSettled(ctx, client, receive, nil)
+	if err != nil || settled || int64(mined) > *in.nonce {
+		return nil, err // settled, or the nonce used, after the finalized block: decided once that is final
+	}
+	if err := client.SendTransaction(ctx, tx); err != nil && !strings.Contains(strings.ToLower(err.Error()), "known") {
+		return nil, fmt.Errorf("send settle: %w", err)
+	}
+	if s.stopAfter == "send" {
+		return nil, errStopped
+	}
+	return s.await(ctx, client, tx.Hash())
+}
+
+// confirmIfFinal records the settlement once the receiver is settled at the finalized block (D-45) and, for our own
+// settle r, once r's block is final too, with our hash; without r the settlement has no hash of ours. Until then the
+// intent stays as it is and the next run looks again; a reorg that drops our settle before that leaves it without a
+// receipt, handled like an unsent one.
+func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, in intent, r *types.Receipt) error {
+	head, err := client.HeaderByNumber(ctx, finalized)
+	if err != nil {
+		return fmt.Errorf("read finalized block: %w", err)
+	}
+	if r != nil && r.BlockNumber.Cmp(head.Number) > 0 {
+		return nil
+	}
+	final, err := receiverSettled(ctx, client, common.HexToAddress(in.receive), head.Number)
 	if err != nil || !final {
 		return err
 	}
-	if in.txHash != nil {
-		// The receiver can be settled once; if our saved settle reverted or never mined, another settler (the refund
-		// authority after the deadline) did it, and the settlement has no hash of ours.
-		r, err := client.TransactionReceipt(ctx, common.HexToHash(*in.txHash))
-		if err != nil && !errors.Is(err, ethereum.NotFound) {
-			return fmt.Errorf("read settle receipt: %w", err)
-		}
-		if r == nil || r.Status != types.ReceiptStatusSuccessful {
-			in.txHash = nil
-		}
+	if r == nil {
+		in.txHash = nil
 	}
 	return s.confirm(ctx, in)
 }
