@@ -138,11 +138,11 @@ func (s *Service) History(ctx context.Context, profileID string, days int, now t
 	return h, nil
 }
 
-// usd sums one amount per token at 1 USD per token, with 2 decimals.
+// usd sums one amount per token at 1 USD per token, cut to cents.
 func usd(tokens []TokenHistory, amount func(TokenHistory) *big.Int) string {
 	sum := new(big.Rat)
 	for _, t := range tokens {
 		sum.Add(sum, new(big.Rat).SetFrac(amount(t), new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(t.Decimals)), nil)))
 	}
-	return sum.FloatString(2)
+	return usdString(sum)
 }
