@@ -8056,7 +8056,7 @@
         "Same screens and copy: lint, typecheck, unit, build, e2e and the live sign-in suite pass."
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "docs-check"
       ],
@@ -8071,84 +8071,85 @@
       ],
       "review": true,
       "notes": [
-        "2026-10-10 review fail by reviewer: Cross-user cache leak when the Privy session ends without the Sign out button. apps/web/src/screens/app-shell/app-shell.tsx:46 caches POST /v1/me under one key (undefined) for every user, and resetApiState runs only in signOut (app-shell.tsx:63-67). StoreProvider lives in app/(app)/layout.tsx, which also wraps /sign-in, so the store survives the redirect. Scenario: A's session expires or is revoked (Privy sets authenticated=false), the shell redirects to /sign-in, the signUp and balances entries stay for keepUnusedDataFor (60 s). B signs in in the same tab within 60 s: useSignUpQuery(undefined) finds a fulfilled entry and sends no request (no refetchOnMountOrArgChange), so B sees A's profiles and A's cached balances. signUp never polls, so A's list stays for B's whole session; failed balance polls keep A's amounts in currentData. Reproduced with RTK 2.12.0 core: initiate, unsubscribe, initiate again gives 1 request and A's data. The old code kept profiles in AppShell state, which reset on unmount. Fix: clear the cache whenever authenticated becomes false (e.g. an effect in StoreProvider or AppShell calling apiSlice.util.resetApiState), or key signUp by Privy user.id; add a test. Everything else checked OK: per-profile keys with currentData and the keyed ActivityList remount; 15 s polling with skipPollingIfUnfocused plus refetchOnFocus; token per request via prepareHeaders; idempotency key per form; the active profile falls back to profiles[0], so no error flash; per-tab store; amounts stay strings; layout follows structure.md. Non-blocking: A->B->A within 60 s shows A's cached balances (with their timestamp) for up to 15 s before the next poll; the window focus event adds a refetch the old code did not make; one poll can still fire right after the tab hides, because polling.ts:105 reads the focus state from when the poll was scheduled. typecheck and the 17 unit tests pass."
+        "2026-10-10 review fail by reviewer: Cross-user cache leak when the Privy session ends without the Sign out button. apps/web/src/screens/app-shell/app-shell.tsx:46 caches POST /v1/me under one key (undefined) for every user, and resetApiState runs only in signOut (app-shell.tsx:63-67). StoreProvider lives in app/(app)/layout.tsx, which also wraps /sign-in, so the store survives the redirect. Scenario: A's session expires or is revoked (Privy sets authenticated=false), the shell redirects to /sign-in, the signUp and balances entries stay for keepUnusedDataFor (60 s). B signs in in the same tab within 60 s: useSignUpQuery(undefined) finds a fulfilled entry and sends no request (no refetchOnMountOrArgChange), so B sees A's profiles and A's cached balances. signUp never polls, so A's list stays for B's whole session; failed balance polls keep A's amounts in currentData. Reproduced with RTK 2.12.0 core: initiate, unsubscribe, initiate again gives 1 request and A's data. The old code kept profiles in AppShell state, which reset on unmount. Fix: clear the cache whenever authenticated becomes false (e.g. an effect in StoreProvider or AppShell calling apiSlice.util.resetApiState), or key signUp by Privy user.id; add a test. Everything else checked OK: per-profile keys with currentData and the keyed ActivityList remount; 15 s polling with skipPollingIfUnfocused plus refetchOnFocus; token per request via prepareHeaders; idempotency key per form; the active profile falls back to profiles[0], so no error flash; per-tab store; amounts stay strings; layout follows structure.md. Non-blocking: A->B->A within 60 s shows A's cached balances (with their timestamp) for up to 15 s before the next poll; the window focus event adds a refetch the old code did not make; one poll can still fire right after the tab hides, because polling.ts:105 reads the focus state from when the poll was scheduled. typecheck and the 17 unit tests pass.",
+        "2026-10-10 review pass by reviewer: Fix holds. StoreProvider swaps the store with setState during render, guarded by owned.userId !== userId, so React re-runs StoreProvider before any child renders and no child reads the old store; no loop (the second pass matches). Privy (3.45.0 source) sets user and authenticated in the same batch on logout, token removal, login, session restore and cross-tab sync, so AppShell's signUp arg turns to skipToken in the same render as the swap. Scratch-copy probe under StrictMode (scratchpad only, repo untouched): load -> A gives 1 POST /v1/me with A's token and balances polling on the new store; logout gives 0 requests in 300 ms (old store's polling unsubscribed on unmount); B then gets a new POST /v1/me with B's token and B's data. Store count: 2 on mount (StrictMode init), +1 per user change. Null -> A while Privy loads is harmless: queries are skipped until ready, so nothing is lost and no extra request goes out. store-provider.test.tsx fails on the pre-fix provider (expected { profiles: [] } to be undefined) and passes with the fix. typecheck passes; 18 unit tests pass. Earlier points still hold: profileId in query args with currentData and the keyed ActivityList; LIVE_QUERY 15 s polling plus focus refetch; token read per request in prepareHeaders; one idempotency key per form; profiles[0] fallback, so no error flash. Non-blocking: (1) RTK's useQuerySubscription keeps the subscription lookup of the store it first mounted with. A direct A -> B change without passing through null leaves AppShell's signUp uninitialized (spinner until reload; no data leak). Privy always goes through null, so this cannot happen today. After the first swap the same lookup also adds one extra signUp subscription (no extra request). (2) D-47 in PROJECT.md says the cache reset on sign-out comes from the library; it now comes from the store swap. The profiles-api.test name 'forgets it all on sign-out' tests resetApiState, which app code no longer uses. (3) docs/web/structure.md still lists store/hooks.ts as an option ('as needed'), which is fine."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-10T00:21:41Z",
+        "at": "2026-10-10T00:27:14Z",
         "checks": [
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F077-20261010T002141Z-docs-check.log"
+            "log": "docs/runs/F077-20261010T002714Z-docs-check.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.6,
-            "log": "docs/runs/F077-20261010T002141Z-harness.log"
+            "log": "docs/runs/F077-20261010T002714Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F077-20261010T002141Z-lint.log"
+            "log": "docs/runs/F077-20261010T002714Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.3,
-            "log": "docs/runs/F077-20261010T002141Z-typecheck.log"
+            "seconds": 0.9,
+            "log": "docs/runs/F077-20261010T002714Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 26.4,
-            "log": "docs/runs/F077-20261010T002141Z-unit.log"
+            "seconds": 26.0,
+            "log": "docs/runs/F077-20261010T002714Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 6.7,
-            "log": "docs/runs/F077-20261010T002141Z-build.log"
+            "seconds": 4.2,
+            "log": "docs/runs/F077-20261010T002714Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 41.5,
-            "log": "docs/runs/F077-20261010T002141Z-e2e.log"
+            "seconds": 38.8,
+            "log": "docs/runs/F077-20261010T002714Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F077-20261010T002141Z-keep.log"
+            "log": "docs/runs/F077-20261010T002714Z-keep.log"
           }
         ],
-        "taskHash": "4923f884efb8344e",
-        "filesHash": "43382129e9a90599",
+        "taskHash": "7063dbba0c1a0e4d",
+        "filesHash": "745640662c524f57",
         "proof": {
-          "1": "build: store/store.ts (makeStore, RootState, AppDispatch), store/hooks.ts (useAppDispatch), providers/store-provider.tsx inside Privy, shared/api/api-slice.ts (base URL + token), profiles/balances/activity -api.ts with injectEndpoints; shared/hooks/use-load.ts and shared/api/client.ts removed",
-          "2": "unit: profiles-api.test.ts proves the Bearer token, Idempotency-Key, a created profile joining the cached signUp list with no refetch, and resetApiState clearing it (fails with the cache update removed); LIVE_QUERY polls every 15 s with skipPollingIfUnfocused and refetchOnFocus; balances use currentData per profileId; ActivityList keys its list by profile",
-          "3": "e2e: lint, typecheck, unit (4 files, 17 tests), build, main e2e and the live sign-in suite pass"
+          "1": "build: store/store.ts (makeStore, RootState, AppDispatch); providers/store-provider.tsx inside Privy makes a new store when the Privy user changes; shared/api/api-slice.ts (base URL + token); profiles/balances/activity -api.ts with injectEndpoints; shared/hooks/use-load.ts and shared/api/client.ts removed",
+          "2": "unit: profiles-api.test.ts proves the Bearer token, Idempotency-Key and a created profile joining the cached list with no refetch; store-provider.test.tsx proves user A's cached profiles are gone for user B after A's session ends without Sign out (failed before the fix); LIVE_QUERY polls every 15 s, skipped while hidden, refetch on focus; balances use currentData per profileId; ActivityList keys its list by profile",
+          "3": "e2e: lint, typecheck, unit (5 files, 18 tests), build, main e2e (21) and live sign-in suite (8) pass"
         },
         "review": {
-          "result": "fail",
+          "result": "pass",
           "by": "reviewer",
-          "summary": "Cross-user cache leak when the Privy session ends without the Sign out button. apps/web/src/screens/app-shell/app-shell.tsx:46 caches POST /v1/me under one key (undefined) for every user, and resetApiState runs only in signOut (app-shell.tsx:63-67). StoreProvider lives in app/(app)/layout.tsx, which also wraps /sign-in, so the store survives the redirect. Scenario: A's session expires or is revoked (Privy sets authenticated=false), the shell redirects to /sign-in, the signUp and balances entries stay for keepUnusedDataFor (60 s). B signs in in the same tab within 60 s: useSignUpQuery(undefined) finds a fulfilled entry and sends no request (no refetchOnMountOrArgChange), so B sees A's profiles and A's cached balances. signUp never polls, so A's list stays for B's whole session; failed balance polls keep A's amounts in currentData. Reproduced with RTK 2.12.0 core: initiate, unsubscribe, initiate again gives 1 request and A's data. The old code kept profiles in AppShell state, which reset on unmount. Fix: clear the cache whenever authenticated becomes false (e.g. an effect in StoreProvider or AppShell calling apiSlice.util.resetApiState), or key signUp by Privy user.id; add a test. Everything else checked OK: per-profile keys with currentData and the keyed ActivityList remount; 15 s polling with skipPollingIfUnfocused plus refetchOnFocus; token per request via prepareHeaders; idempotency key per form; the active profile falls back to profiles[0], so no error flash; per-tab store; amounts stay strings; layout follows structure.md. Non-blocking: A->B->A within 60 s shows A's cached balances (with their timestamp) for up to 15 s before the next poll; the window focus event adds a refetch the old code did not make; one poll can still fire right after the tab hides, because polling.ts:105 reads the focus state from when the poll was scheduled. typecheck and the 17 unit tests pass.",
-          "at": "2026-10-10T00:25:56Z",
-          "filesHash": "43382129e9a90599"
+          "summary": "Fix holds. StoreProvider swaps the store with setState during render, guarded by owned.userId !== userId, so React re-runs StoreProvider before any child renders and no child reads the old store; no loop (the second pass matches). Privy (3.45.0 source) sets user and authenticated in the same batch on logout, token removal, login, session restore and cross-tab sync, so AppShell's signUp arg turns to skipToken in the same render as the swap. Scratch-copy probe under StrictMode (scratchpad only, repo untouched): load -> A gives 1 POST /v1/me with A's token and balances polling on the new store; logout gives 0 requests in 300 ms (old store's polling unsubscribed on unmount); B then gets a new POST /v1/me with B's token and B's data. Store count: 2 on mount (StrictMode init), +1 per user change. Null -> A while Privy loads is harmless: queries are skipped until ready, so nothing is lost and no extra request goes out. store-provider.test.tsx fails on the pre-fix provider (expected { profiles: [] } to be undefined) and passes with the fix. typecheck passes; 18 unit tests pass. Earlier points still hold: profileId in query args with currentData and the keyed ActivityList; LIVE_QUERY 15 s polling plus focus refetch; token read per request in prepareHeaders; one idempotency key per form; profiles[0] fallback, so no error flash. Non-blocking: (1) RTK's useQuerySubscription keeps the subscription lookup of the store it first mounted with. A direct A -> B change without passing through null leaves AppShell's signUp uninitialized (spinner until reload; no data leak). Privy always goes through null, so this cannot happen today. After the first swap the same lookup also adds one extra signUp subscription (no extra request). (2) D-47 in PROJECT.md says the cache reset on sign-out comes from the library; it now comes from the store swap. The profiles-api.test name 'forgets it all on sign-out' tests resetApiState, which app code no longer uses. (3) docs/web/structure.md still lists store/hooks.ts as an option ('as needed'), which is fine.",
+          "at": "2026-10-10T00:31:53Z",
+          "filesHash": "745640662c524f57"
         }
       },
       "branch": "refactor/f077-the-web-app-reads-and-writes-api-data-th",

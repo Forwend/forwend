@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Me, Profile } from "@/features/profiles/profile";
 import { profilesApi } from "@/features/profiles/profiles-api";
-import { apiSlice } from "@/shared/api/api-slice";
 import { makeStore } from "@/store/store";
 
 const personal: Profile = {
@@ -31,7 +30,7 @@ function answer(body: unknown) {
 afterEach(() => vi.restoreAllMocks());
 
 describe("profiles API", () => {
-  it("sends the access token, adds a created profile to the cached list, and forgets it all on sign-out", async () => {
+  it("sends the access token and adds a created profile to the cached list", async () => {
     const fetch = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(answer({ profiles: [personal] } satisfies Me))
@@ -58,8 +57,5 @@ describe("profiles API", () => {
       merchant,
     ]);
     expect(fetch).toHaveBeenCalledTimes(2);
-
-    store.dispatch(apiSlice.util.resetApiState());
-    expect(profilesApi.endpoints.signUp.select()(store.getState()).data).toBeUndefined();
   });
 });
