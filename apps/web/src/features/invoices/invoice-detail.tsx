@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Button,
-  COPY_STATUS,
-  formatTokenAmount,
-  Skeleton,
-  StatusPill,
-  useCopy,
-} from "@forwend/ui-web";
+import { Button, COPY_STATUS, formatTokenAmount, Skeleton, useCopy } from "@forwend/ui-web";
 import { skipToken } from "@reduxjs/toolkit/query";
 import { Check, ChevronLeft, Copy } from "lucide-react";
 import Link from "next/link";
@@ -24,7 +17,6 @@ import {
   type InvoiceToken,
   invoiceNumber,
   invoiceProgress,
-  invoiceStatus,
   tokenKey,
 } from "@/features/invoices/invoices";
 import { useGetInvoiceQuery, useGetProfileInvoiceQuery } from "@/features/invoices/invoices-api";
@@ -122,12 +114,9 @@ function Loaded({
 
       <section aria-labelledby="invoice-amount" className={PANEL}>
         <div className="flex flex-col gap-3 border-b border-line px-4 py-4 sm:px-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 id="invoice-amount" className="text-sm text-muted">
-              {COPY.amount}
-            </h2>
-            <StatusPill status={invoiceStatus(invoice)} />
-          </div>
+          <h2 id="invoice-amount" className="text-sm text-muted">
+            {COPY.amount}
+          </h2>
           <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
             {token ? (
               <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-ink">

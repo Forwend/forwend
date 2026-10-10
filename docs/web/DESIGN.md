@@ -95,7 +95,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   transaction and explorer link). No image and no glass; it follows the system theme.
 - While a payment confirms, the timeline's step fills as blocks pass (a sweep until the first block passes) and the
   status line stays short: "Confirming · about 19 min left", the blocks left smaller beside it. The invoice detail uses
-  the same timeline, line and payments.
+  the same timeline, line and payments, and no status pill: the timeline carries the status.
 
 ## Theme and behavior
 
