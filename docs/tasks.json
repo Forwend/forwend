@@ -11019,7 +11019,7 @@
       "dependsOn": [
         "F104"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -11030,9 +11030,95 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-10 review pass by reviewer: PASS. Every new host answered live with the right eth_chainId and a finalized block; each chain's hosts are different operators; the test counts hosts by URL host like hostOf and the pool's role picking; rpc.mjs only gains fallbacks; no other code reads public[0] only; docs match."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-10T21:01:24Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 40.0,
+            "log": "docs/runs/F108-20261010T210124Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 73.8,
+            "log": "docs/runs/F108-20261010T210124Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F108-20261010T210124Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F108-20261010T210124Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F108-20261010T210124Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F108-20261010T210124Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 41.1,
+            "log": "docs/runs/F108-20261010T210124Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F108-20261010T210124Z-build.log"
+          }
+        ],
+        "taskHash": "7861012525b2510a",
+        "filesHash": "a7c0bff195106719",
+        "proof": {
+          "1": "backend: packages/contracts/chains.json now lists sepolia.base.org + base-sepolia-rpc.publicnode.com + base-sepolia.drpc.org (Base Sepolia), sepolia-rollup.arbitrum.io + arbitrum-sepolia-rpc.publicnode.com + arbitrum-sepolia.drpc.org (Arbitrum Sepolia), rpc.moderato.tempo.xyz + tempo-moderato-testnet.drpc.org (Tempo Moderato, both listed in Tempo's and dRPC's docs), Arc unchanged (drpc and blockdaemon answer; rpc.testnet.arc.io and quicknode give Cloudflare 1009 from here); each new host checked live 2026-10-10: eth_chainId matches and eth_getBlockByNumber finalized returns a block; internal/chain TestEveryChainListsTwoPublicHosts loads chains.json and asserts 2+ public hosts per chain (fails on the old list: 84532, 421614, 42431 list 1); live public-only run: chain.NewRPCs(Base Sepolia, no Infura keys) dials, and the Second role reads USDC balanceOf at the head block (47948810)"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. Every new host answered live with the right eth_chainId and a finalized block; each chain's hosts are different operators; the test counts hosts by URL host like hostOf and the pool's role picking; rpc.mjs only gains fallbacks; no other code reads public[0] only; docs match.",
+          "at": "2026-10-10T21:04:52Z",
+          "filesHash": "a7c0bff195106719"
+        },
+        "commit": "b64f0fb",
+        "doneAt": "2026-10-10T21:04:54Z"
+      },
+      "branch": "fix/f108-every-enabled-chain-has-at-least-two-ind",
+      "baseCommit": "f36264dff6dd1d0a2a7e6ab47bf0d39cc382231d",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f108-every-enabled-chain-has-at-least-two-ind",
+        "base": "main"
+      }
     },
     {
       "id": "F109",

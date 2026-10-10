@@ -2,12 +2,20 @@
   "base-sepolia": {
     "chainId": 84532,
     "infura": "base-sepolia",
-    "public": ["https://sepolia.base.org"]
+    "public": [
+      "https://sepolia.base.org",
+      "https://base-sepolia-rpc.publicnode.com",
+      "https://base-sepolia.drpc.org"
+    ]
   },
   "arbitrum-sepolia": {
     "chainId": 421614,
     "infura": "arbitrum-sepolia",
-    "public": ["https://sepolia-rollup.arbitrum.io/rpc"]
+    "public": [
+      "https://sepolia-rollup.arbitrum.io/rpc",
+      "https://arbitrum-sepolia-rpc.publicnode.com",
+      "https://arbitrum-sepolia.drpc.org"
+    ]
   },
   "arc-testnet": {
     "chainId": 5042002,
@@ -22,6 +30,6 @@
   "tempo-moderato": {
     "chainId": 42431,
     "infura": null,
-    "public": ["https://rpc.moderato.tempo.xyz"]
+    "public": ["https://rpc.moderato.tempo.xyz", "https://tempo-moderato-testnet.drpc.org"]
   }
 }
