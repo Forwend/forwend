@@ -9759,7 +9759,7 @@
       "dependsOn": [
         "F084"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -9855,11 +9855,18 @@
           "summary": "Pass. confirmIfFinal (all 3 confirm paths) keeps tx_hash only on a status-1 receipt; settle() reverts AlreadySettled, so status 1 proves ours settled; receiver-settled is read at finalized, so a later reorg can't change the settler. Booking/idempotency unchanged (FOR UPDATE status check). Non-NotFound RPC errors are wrapped and retried next round, consistent with reconcile. Known limit: single primary RPC; a lagging/pruned node returning NotFound for our mined settle stores a null hash (display-only, money unaffected). Backend tests pass; disabling the receipt check makes both new subtests fail.",
           "at": "2026-10-10T15:03:45Z",
           "filesHash": "ed9b88e97774bb6a"
-        }
+        },
+        "commit": "7c63c96",
+        "doneAt": "2026-10-10T15:04:00Z"
       },
       "branch": "fix/f099-a-settlement-s-transaction-hash-is-recor",
       "baseCommit": "ea0b984ce4be0816a427247518c16b82bfe16573",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f099-a-settlement-s-transaction-hash-is-recor",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
