@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 79,
+  "nextId": 80,
   "tasks": [
     {
       "id": "F001",
@@ -7513,15 +7513,15 @@
     {
       "id": "F072",
       "type": "feat",
-      "behavior": "The backend records every token transfer in and out of profile wallets, so the app shows true transactions and a balance-over-time chart",
+      "behavior": "The backend records every token transfer in and out of profile wallets and serves them as a transactions list and a balance history",
       "acceptance": [
         "The worker records every enabled-token transfer to or from each profile wallet on each enabled chain, with the same finality and reorg rules as deposits; GET /v1/profiles/{id}/transactions lists them newest first with cursor pages; GET /v1/profiles/{id}/balance-history returns points that end at the current finalized balance; tested on Anvil",
-        "The dashboard shows a smooth balance-over-time chart from that history and a Transactions page; openapi.yaml describes both routes; owner-only"
+        "openapi.yaml and docs/backend/api.md describe both routes; both are owner-only like the other profile routes; the dashboard chart and Transactions page are built in the app redesign task that follows"
       ],
       "dependsOn": [
         "F071"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "e2e",
         "unit",
@@ -7529,15 +7529,104 @@
       ],
       "refs": [
         "R-33",
-        "D-45"
+        "D-45",
+        "R-38"
       ],
       "keep": [
         "packages/contracts/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-10 review fail by reviewer: FAIL. (1) Not fixed, blocking: watcher/wallet.go:32 scans wallet transfers only in enabled tokens, but watcher.go start() holds the scan at the oldest detected wallet_transfers row of any token. If an operator disables a token while one of its wallet transfers is still detected (likely for any active token, since finality takes minutes to hours), that row is never confirmed or reorged, and the chain's scan start stays at its block forever. Every poll then rescans from that block to latest, a range that grows without bound and also slows deposits on that chain. Reproduced on Anvil: after the token was disabled and 80 blocks mined, the row stayed detected, start()=3 while last_finalized_block=81. Deposits do not have this problem because invoices are scanned whatever their token's enabled flag. Suggested fix: keep reading the tokens of detected rows until those rows settle (for a disabled token, update only rows that already exist), or settle such rows another way, then add an Anvil test. (2) Fixed: balance/history.go day buckets were (previous 00:00, 00:00], so a transfer at exactly 00:00:00 UTC counted in the previous day's received/sent and end balance. Changed both comparisons to >= so a day is [00:00, next 00:00). history_test now mints today's transfer at exactly 00:00 UTC via evm_setNextBlockTimestamp. It fails without the fix (balances [0 100000000 75000000 75000000], want [0 100000000 70000000 75000000]). (3) Process, not fixed: F072 acceptance 2 was narrowed to drop the dashboard chart and Transactions page 'to the app redesign task that follows', but no such task is queued. The owner should confirm and add it. (4) Minor: start() and pending() filter wallet_transfers by chain_id and status='detected' on every poll with no index, the same as chain_transfers, but this table grows with every wallet transfer. A partial index on (chain_id, block_number) WHERE status = 'detected' would keep these reads cheap. Checked and OK: reorg handling (rows marked reorged before inserts, a re-mined copy gets a new row, live unique index), confirmation only at or below the finalized block, the start rule and the 64-block window, wallet-to-wallet transfers recorded once per side, big.Int with no floats, cursor (block_time, id) stable with ties (tested at every page size), owner-only through profileScoped (both routes in profileRoutes), days/limit/cursor validation (400/422), no SQL injection (the table name is a constant), no N+1 queries, history bounded by days. The clamp of negative balances to 0 is a display rule, documented in openapi, api.md and a code comment, and justified by Arc gas and native sends that log no Transfer. File placement follows docs/backend/rules.md. Ran: pnpm --filter @forwend/backend test (pass before and after the fix); verify F072 passed all 9 checks.",
+        "2026-10-10 review pass by reviewer: PASS on re-review. All earlier findings are resolved. (1) Disabled token: wallets() now also reads tokens that still have detected rows on the chain, and transfers() counts a disabled token's log only when it matches an existing detected row (same block hash and log index). Checked: such a row confirms once final, and the scan start goes back to 64 blocks below finalized (TestDetectedTransferOfADisabledTokenStillConfirms). In a scratch Anvil test (deleted afterwards), a disabled token's detected row whose block was replaced is marked reorged; its re-mined copy is not recorded, as the docs say for new transfers of a disabled token; and the start went back to finalized+1-64 (67 vs 130). A token row cannot be removed while wallet_transfers rows reference it (FK, no ON DELETE), so that case cannot happen. The filter never applies to enabled tokens. For a disabled token it skips only rows that would be new (a re-mined copy, or a reorged row coming back), which matches the documented rule, so no update of an existing detected row is lost. (2) Partial index wallet_transfers_detected (chain_id, block_number) WHERE status = 'detected' was added. (3) F079 and R-39 now cover the dashboard chart and Transactions page; F079 depends on F072. (4) My earlier fix holds: history day buckets are [00:00, next 00:00), and history_test mints a transfer at exactly 00:00 UTC. Ran: pnpm --filter @forwend/backend test, all packages pass. Verify passed at 10:12:39Z (9 checks)."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-10T10:12:39Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 44.0,
+            "log": "docs/runs/F072-20261010T101239Z-e2e.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 26.2,
+            "log": "docs/runs/F072-20261010T101239Z-unit.log"
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 26.5,
+            "log": "docs/runs/F072-20261010T101239Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F072-20261010T101239Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F072-20261010T101239Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F072-20261010T101239Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F072-20261010T101239Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F072-20261010T101239Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F072-20261010T101239Z-keep.log"
+          }
+        ],
+        "taskHash": "ffe66a1783487d4c",
+        "filesHash": "7e761db27b084bf7",
+        "proof": {
+          "1": "backend: watcher TestWalletTransfersAreRecordedInAndOut (Anvil: in/out per wallet side, wallet-to-wallet once per profile, disabled token ignored, detected then confirmed), TestWalletTransferReorg (reorged, re-mined new row, confirmed) and TestDetectedTransferOfADisabledTokenStillConfirms (token disabled while a transfer is detected: the row still confirms, start() returns to RescanDepth below the finalized block, later transfers of the disabled token not recorded); activity TestTransfersNewestFirstInPages (newest first, every page size, reorged and other profiles left out); balance TestHistoryEndsAtTheCurrentBalance (Anvil + watcher: last point = /balances wallet balance, earlier days undo final transfers, received/sent per day, a transfer at exactly 00:00 UTC counts for the day it starts, non-final transfer excluded); httpapi TestGetTransactions, TestGetBalanceHistory",
+          "2": "docs-check: openapi.yaml adds getTransactions/getBalanceHistory with Transactions, Transaction, BalanceHistory, BalanceHistoryPoint, TokenHistory schemas (parsed, all refs resolve); docs/backend/api.md lists both routes and their shapes; R-38 added to PROJECT.md; owner-only proven by httpapi TestProfilesBelongToTheirUser with both routes in profileRoutes (other user 403)"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS on re-review. All earlier findings are resolved. (1) Disabled token: wallets() now also reads tokens that still have detected rows on the chain, and transfers() counts a disabled token's log only when it matches an existing detected row (same block hash and log index). Checked: such a row confirms once final, and the scan start goes back to 64 blocks below finalized (TestDetectedTransferOfADisabledTokenStillConfirms). In a scratch Anvil test (deleted afterwards), a disabled token's detected row whose block was replaced is marked reorged; its re-mined copy is not recorded, as the docs say for new transfers of a disabled token; and the start went back to finalized+1-64 (67 vs 130). A token row cannot be removed while wallet_transfers rows reference it (FK, no ON DELETE), so that case cannot happen. The filter never applies to enabled tokens. For a disabled token it skips only rows that would be new (a re-mined copy, or a reorged row coming back), which matches the documented rule, so no update of an existing detected row is lost. (2) Partial index wallet_transfers_detected (chain_id, block_number) WHERE status = 'detected' was added. (3) F079 and R-39 now cover the dashboard chart and Transactions page; F079 depends on F072. (4) My earlier fix holds: history day buckets are [00:00, next 00:00), and history_test mints a transfer at exactly 00:00 UTC. Ran: pnpm --filter @forwend/backend test, all packages pass. Verify passed at 10:12:39Z (9 checks).",
+          "at": "2026-10-10T10:15:33Z",
+          "filesHash": "7e761db27b084bf7"
+        }
+      },
+      "branch": "feat/f072-the-backend-records-every-token-transfer",
+      "baseCommit": "f5e2efb7ec3c28d97b46024ed8345c67c9a7b04e",
+      "failedVerifies": 0
     },
     {
       "id": "F073",
@@ -8296,6 +8385,38 @@
         "branch": "refactor/f078-the-worker-and-signer-binaries-hold-only",
         "base": "main"
       }
+    },
+    {
+      "id": "F079",
+      "type": "feat",
+      "behavior": "The signed-in app is a working money dashboard: header, grouped sidebar, personal balance chart, business overview, transactions page and a phone home",
+      "acceptance": [
+        "Desktop: grouped sidebar (profile switcher without the wallet address, pages by profile type, Soon items, one Dark mode switch, the account menu without theme radios) and a header with breadcrumb, ⌘K search (pages, profiles, transactions), notifications from received transfers, Receive and Send (disabled with reason); content uses a 24px gutter, not a narrow centered column. Phones: top bar (account, search, notifications), bottom tabs Home, Transactions, Balances, Profiles",
+        "Personal overview: total balance on the left and a balance-over-time line chart (GET balance-history, range tabs, crosshair tooltip, keyboard reachable) on the right over the Codex dawn/night banner (rows in docs/web/images.md), then recent transactions and balances by network; phone shows a centered balance with round actions and cards. Merchant and freelancer: a business overview with range tabs, KPI strip (balance, received, payments, pending), received-per-day bars, balance by network and a payments table with All/In/Out filter, search and CSV export",
+        "/app/transactions lists GET transactions with direction filter, search and Show more; Receive opens from any page; axe finds no serious or critical violation on desktop and phone in both themes; Playwright covers desktop and phone; built through Impeccable (direction contract, finish review, DESIGN.md) and an independent review"
+      ],
+      "dependsOn": [
+        "F072"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "unit"
+      ],
+      "refs": [
+        "R-39",
+        "R-34",
+        "R-35",
+        "R-38"
+      ],
+      "keep": [
+        "packages/contracts/*",
+        "apps/backend/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

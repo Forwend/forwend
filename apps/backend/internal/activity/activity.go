@@ -1,4 +1,5 @@
-// Package activity lists a profile's invoices and deposits, newest first, in cursor pages (R-33).
+// Package activity lists a profile's invoices and deposits (R-33) and its wallet's token transfers (R-38), newest
+// first, in cursor pages.
 package activity
 
 import (

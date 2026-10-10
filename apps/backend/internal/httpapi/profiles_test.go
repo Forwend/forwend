@@ -110,6 +110,8 @@ var profileRoutes = []struct{ method, path, body string }{
 	{"POST", "/v1/profiles/%s/invoices", basicBody},
 	{"GET", "/v1/profiles/%s/balances", ""},
 	{"GET", "/v1/profiles/%s/activity", ""},
+	{"GET", "/v1/profiles/%s/transactions", ""},
+	{"GET", "/v1/profiles/%s/balance-history", ""},
 }
 
 // Bob never sees Alice's profiles and gets 403 on every profile route for them; Alice passes the owner check.

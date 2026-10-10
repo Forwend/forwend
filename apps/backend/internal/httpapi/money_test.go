@@ -1,9 +1,12 @@
 package httpapi
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestGetBalances(t *testing.T) {
@@ -66,6 +69,110 @@ func TestGetActivity(t *testing.T) {
 		{"?limit=0", "invalid_value", http.StatusUnprocessableEntity},
 		{"?limit=101", "invalid_value", http.StatusUnprocessableEntity},
 		{"?cursor=nope", "invalid_value", http.StatusUnprocessableEntity},
+	} {
+		if r := e.call(t, "GET", path+c.query, "did:privy:alice", "", ""); r.status != c.status || errorCode(r) != c.code {
+			t.Fatalf("%s: %d %v, want %d %s", c.query, r.status, r.body, c.status, c.code)
+		}
+	}
+	if r := e.call(t, "GET", path, "", "", ""); r.status != http.StatusUnauthorized {
+		t.Fatalf("without a token: %d", r.status)
+	}
+}
+
+func TestGetTransactions(t *testing.T) {
+	e := invoiceAPI(t)
+	path := "/v1/profiles/" + e.aliceProfile + "/transactions"
+	empty := e.call(t, "GET", path, "did:privy:alice", "", "")
+	if empty.status != http.StatusOK || !reflect.DeepEqual(empty.body, map[string]any{"items": []any{}, "nextCursor": nil}) {
+		t.Fatalf("new profile: %d %v", empty.status, empty.body)
+	}
+	const counterparty = "0x5555555555555555555555555555555555555555"
+	hash := func(n int) string { return fmt.Sprintf("0x%064x", n) }
+	for _, row := range []struct {
+		n                 int
+		time              int64
+		direction, status string
+	}{{1, 1760000000, "in", "confirmed"}, {2, 1760000060, "out", "detected"}} {
+		if _, err := e.pool.Exec(context.Background(), `INSERT INTO wallet_transfers (chain_id, chain_family,
+			    token_contract, wallet_address, direction, counterparty, tx_hash, log_index, block_hash, block_number,
+			    block_time, amount, status)
+			VALUES (84532, 'evm', $1, $2, $3, $4, $5, 0, $5, $6, $7, 1000000, $8)`,
+			usdc, aliceWallet, row.direction, counterparty, hash(row.n), row.n, row.time, row.status); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	page := e.call(t, "GET", path+"?limit=1", "did:privy:alice", "", "")
+	items, _ := page.body["items"].([]any)
+	cursor, _ := page.body["nextCursor"].(string)
+	want := map[string]any{"chainId": float64(84532), "token": usdc, "symbol": "USDC", "decimals": float64(6),
+		"direction": "out", "amount": "1000000", "counterparty": counterparty, "txHash": hash(2), "logIndex": float64(0),
+		"blockNumber": float64(2), "at": "2025-10-09T08:54:20Z", "status": "detected"}
+	if page.status != http.StatusOK || len(items) != 1 || cursor == "" || !reflect.DeepEqual(items[0], want) {
+		t.Fatalf("page 1: %d %v\nwant item %v", page.status, page.body, want)
+	}
+	last := e.call(t, "GET", path+"?limit=1&cursor="+cursor, "did:privy:alice", "", "")
+	items, _ = last.body["items"].([]any)
+	if last.status != http.StatusOK || len(items) != 1 || items[0].(map[string]any)["txHash"] != hash(1) ||
+		items[0].(map[string]any)["direction"] != "in" || last.body["nextCursor"] != nil {
+		t.Fatalf("page 2: %d %v", last.status, last.body)
+	}
+
+	for _, c := range []struct {
+		query, code string
+		status      int
+	}{
+		{"?limit=x", "malformed_request", http.StatusBadRequest},
+		{"?limit=0", "invalid_value", http.StatusUnprocessableEntity},
+		{"?limit=101", "invalid_value", http.StatusUnprocessableEntity},
+		{"?cursor=nope", "invalid_value", http.StatusUnprocessableEntity},
+	} {
+		if r := e.call(t, "GET", path+c.query, "did:privy:alice", "", ""); r.status != c.status || errorCode(r) != c.code {
+			t.Fatalf("%s: %d %v, want %d %s", c.query, r.status, r.body, c.status, c.code)
+		}
+	}
+	if r := e.call(t, "GET", path, "", "", ""); r.status != http.StatusUnauthorized {
+		t.Fatalf("without a token: %d", r.status)
+	}
+}
+
+func TestGetBalanceHistory(t *testing.T) {
+	e := invoiceAPI(t)
+	path := "/v1/profiles/" + e.aliceProfile + "/balance-history"
+	r := e.call(t, "GET", path+"?days=2", "did:privy:alice", "", "")
+	points, _ := r.body["points"].([]any)
+	wantTokens := []any{map[string]any{"chainId": float64(84532), "token": usdc, "symbol": "USDC", "decimals": float64(6),
+		"balances": []any{"2500000", "2500000"}, "received": []any{"0", "0"}, "sent": []any{"0", "0"}}}
+	if r.status != http.StatusOK || len(points) != 2 || !reflect.DeepEqual(r.body["tokens"], wantTokens) {
+		t.Fatalf("got %d %v\nwant tokens %v", r.status, r.body, wantTokens)
+	}
+	first, now := points[0].(map[string]any), points[1].(map[string]any)
+	day, _ := time.Parse(time.RFC3339, first["at"].(string))
+	at, _ := time.Parse(time.RFC3339, now["at"].(string))
+	if !day.Equal(day.Truncate(24*time.Hour)) || time.Since(at) > time.Minute || at.Sub(day) > 24*time.Hour ||
+		now["estimatedUsd"] != "2.50" || now["receivedUsd"] != "0.00" || now["sentUsd"] != "0.00" {
+		t.Fatalf("points %v; want the end of yesterday (00:00 UTC), then now at 2.50 USD", points)
+	}
+
+	if r := e.call(t, "GET", path, "did:privy:alice", "", ""); r.status != http.StatusOK || len(r.body["points"].([]any)) != 30 {
+		t.Fatalf("default: %d %v; want 30 days", r.status, r.body)
+	}
+	// A profile without a wallet: null series and totals, never a made-up 0.
+	r = e.call(t, "GET", "/v1/profiles/"+e.walletless+"/balance-history?days=1", "did:privy:alice", "", "")
+	tokens, _ := r.body["tokens"].([]any)
+	points, _ = r.body["points"].([]any)
+	if r.status != http.StatusOK || len(tokens) != 1 || tokens[0].(map[string]any)["balances"] != nil ||
+		tokens[0].(map[string]any)["received"] != nil || len(points) != 1 || points[0].(map[string]any)["estimatedUsd"] != nil {
+		t.Fatalf("walletless: %d %v", r.status, r.body)
+	}
+
+	for _, c := range []struct {
+		query, code string
+		status      int
+	}{
+		{"?days=x", "malformed_request", http.StatusBadRequest},
+		{"?days=0", "invalid_value", http.StatusUnprocessableEntity},
+		{"?days=366", "invalid_value", http.StatusUnprocessableEntity},
 	} {
 		if r := e.call(t, "GET", path+c.query, "did:privy:alice", "", ""); r.status != c.status || errorCode(r) != c.code {
 			t.Fatalf("%s: %d %v, want %d %s", c.query, r.status, r.body, c.status, c.code)
