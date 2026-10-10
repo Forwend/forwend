@@ -79,7 +79,9 @@ const INVOICE_STATUSES: Readonly<Record<string, PaymentStatus>> = {
  * "Settled" once its money reached the wallet, otherwise its payment status. Unknown values show as "Detected" rather
  * than claiming money arrived.
  */
-export function activityStatus(item: ActivityItem): PaymentStatus {
+export function activityStatus(
+  item: Pick<ActivityItem, "kind" | "status" | "settlementStatus">,
+): PaymentStatus {
   if (item.kind === ACTIVITY_KINDS.deposit) {
     return item.status === API_DEPOSIT_STATUSES.confirmed
       ? PAYMENT_STATUS.confirmed

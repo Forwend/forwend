@@ -7,7 +7,7 @@ import { AccountInitial, AccountMenu } from "@/features/auth/account-menu";
 import { AUTH_COPY } from "@/features/auth/auth-copy";
 import { ProfileSwitcher } from "@/features/profiles/components/profile-switcher";
 import type { Profile } from "@/features/profiles/profile";
-import { APP_NAV } from "@/screens/app-shell/app-nav";
+import { APP_NAV, isCurrentPage } from "@/screens/app-shell/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const SIDEBAR_COPY = {
@@ -90,7 +90,7 @@ export function AppSidebar({
                         label,
                         <Link
                           href={href}
-                          aria-current={pathname === href ? "page" : undefined}
+                          aria-current={isCurrentPage(pathname, href) ? "page" : undefined}
                           className={`${ROW} text-muted transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 hover:text-ink aria-[current=page]:bg-surface-2 aria-[current=page]:font-medium aria-[current=page]:text-ink ${collapsed ? "w-8 justify-center px-0" : ""}`}
                         >
                           <Icon aria-hidden className="size-[var(--fw-icon-sm)] shrink-0" />

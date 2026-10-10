@@ -18,6 +18,7 @@ apps/web/src/
     balances/
     activity/
     transactions/
+    invoices/
     new-profile/
     sign-in/
     kit/                       /kit
@@ -29,6 +30,7 @@ apps/web/src/
     receive/
     activity/
     transactions/
+    invoices/
     waitlist/
   shared/                      code used by unrelated screens or features
     api/                       request client, API errors, optional RTK Query setup

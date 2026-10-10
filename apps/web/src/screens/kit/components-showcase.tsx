@@ -32,6 +32,7 @@ import {
   Skeleton,
   Switch,
   Tabs,
+  TextAreaField,
   TextField,
   TONES,
   Toast,
@@ -157,6 +158,14 @@ export function ComponentsShowcase() {
               { value: "arc", label: "Arc (planned)", disabled: true },
               { value: "tempo", label: "Tempo (planned)", disabled: true },
             ]}
+          />
+        </div>
+        <div className="grid w-full gap-6 md:grid-cols-3">
+          <TextAreaField label="Note to the client" hint="Shown on the pay page." />
+          <TextAreaField
+            label="Client address"
+            defaultValue={"Brightline Studio\n12 Harbour Road"}
+            error="Use at most 500 characters."
           />
         </div>
         <div className="grid w-full gap-6 md:grid-cols-3">
