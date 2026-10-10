@@ -10530,7 +10530,7 @@
         "eth_getLogs halves its block range on a 429 or a too-large error down to a floor and grows back after successes; a worker round survives an endpoint going 429 mid-round; tests use a fault-injecting JSON-RPC proxy in front of Anvil (429s, 5xx, timeouts, rate-limit errors) and show reads move to the next endpoint and recover, and a public-only pool works"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -10629,11 +10629,18 @@
           "summary": "PASS after one small fix. Failover classification correct: only timeouts, connection errors, non-2xx and rate-limit JSON-RPC errors (429/-32005/-32007/message) fail over; reverts, invalid params, header-not-found and -32005 'more than 10000 results' are answers (TestOutageIsToldFromAnAnswer). Only non-idempotent call is eth_sendRawTransaction of already-signed bytes (settle saved before send; reconcile tolerates 'already known'; deploy resend is idempotent), so re-sending to another endpoint never signs a new nonce. Batches: a rate limit on any element re-sends the whole read-only batch. D-15: at each pick the second skips the primary's current host and waits/fails rather than share it. Gap (second may later hit a host that served the primary's logs) is acceptable: it already existed across rounds with the old re-pick-after-error Dial, needs an outage of an earlier-listed host the liar can't cause, and settle still needs the real on-chain balance; follow-up only if D-15 must hold per deposit (record the confirming host). Adaptive range: retries same lo with half span, both scans re-queried, no gap/overlap, floor 50 then error, one DB transaction after the loop so the cursor never moves on a partial scan. No URL in errors/logs (url.Error stripped, endpoint names host#pos). chainId checked before first use, wrong endpoints never used. RPC_RATE_PER_SECOND required in LoadAPI/worker/signer, INFURA_API_KEYS may be empty; .env.example and architecture.md match chains.json. FIXED (pool.go): requests queued on an endpoint's pace slot were still sent after it began resting, and each failure doubled the rest; a probe of 8 queued requests gave 8 failures and an 82 s rest from one 429 burst. Now a queued request re-picks when its endpoint rests, and a failure during an existing rest is not counted again. New TestQueuedRequestsSkipAnEndpointThatStartsToRest fails without the fix (5 failures, 5 refused) and passes 5x with -race. Re-verified: verify F104 passed 9 checks (backend -race, e2e gate public-only with 429 proxy).",
           "at": "2026-10-10T18:48:45Z",
           "filesHash": "e91f79ec43d7e58c"
-        }
+        },
+        "commit": "f0fa061",
+        "doneAt": "2026-10-10T18:49:16Z"
       },
       "branch": "fix/f104-chain-reads-switch-providers-and-slow-do",
       "baseCommit": "8768bc92dbb4f885423eb75da17c0db016fd668b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f104-chain-reads-switch-providers-and-slow-do",
+        "base": "main"
+      }
     },
     {
       "id": "F105",
