@@ -7920,7 +7920,7 @@
         "No behavior, SQL, API or money change: backend tests, backend e2e, lint, typecheck, unit, build and e2e pass."
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "passing",
       "verification": [
         "docs-check",
         "backend",
@@ -7940,103 +7940,111 @@
       ],
       "review": true,
       "notes": [
-        "2026-10-10 review fail by reviewer: Pure move confirmed: per-package multiset of non-import lines identical main vs HEAD for profile, invoice, ledger, settlement (src and tests); every comment block still precedes the same line; gofmt clean; go build/vet pass; go test -race for profile, balance, invoice, ledger, settlement pass. ChainReader equals old chainBalances (only renames, NewChainReader builds the same struct, Read/Close bodies unchanged, locks/RetryPick/cancelled untouched); both tests kept with same cases; cmd/api only wires it; balance already imported ledger and chain, no cycle. One acceptance miss: accept 2 says tests follow their operation, but invoice/service_test.go holds only TestCreateLosesTheInsertRaceToTheSameKey while service.go is now the constructor; rename it to invoice/create_test.go. ledger/service_test.go may stay (shared chainEnv helpers used by expiry_test/property_test), or rename to process_test.go. Note, not blocking: invoice/service.go also keeps the shared row helpers invoiceColumns/scanInvoice/hexID used by create.go and get.go; acceptable, mention in proof."
+        "2026-10-10 review fail by reviewer: Pure move confirmed: per-package multiset of non-import lines identical main vs HEAD for profile, invoice, ledger, settlement (src and tests); every comment block still precedes the same line; gofmt clean; go build/vet pass; go test -race for profile, balance, invoice, ledger, settlement pass. ChainReader equals old chainBalances (only renames, NewChainReader builds the same struct, Read/Close bodies unchanged, locks/RetryPick/cancelled untouched); both tests kept with same cases; cmd/api only wires it; balance already imported ledger and chain, no cycle. One acceptance miss: accept 2 says tests follow their operation, but invoice/service_test.go holds only TestCreateLosesTheInsertRaceToTheSameKey while service.go is now the constructor; rename it to invoice/create_test.go. ledger/service_test.go may stay (shared chainEnv helpers used by expiry_test/property_test), or rename to process_test.go. Note, not blocking: invoice/service.go also keeps the shared row helpers invoiceColumns/scanInvoice/hexID used by create.go and get.go; acceptable, mention in proof.",
+        "2026-10-10 review pass by reviewer: Fix confirmed: af5ad5f is a pure R100 rename invoice/service_test.go -> create_test.go (TestCreateLosesTheInsertRaceToTheSameKey) plus docs/tasks.json; cebf83b..af5ad5f touches no other app/package file, so the earlier pure-move findings for profile, invoice, ledger, settlement and ChainReader in internal/balance still hold. No forbidden paths changed vs main. go build ./... and go vet ./... pass; pnpm --filter @forwend/backend test passes all packages incl. invoice with the renamed test. Note, not blocking: invoice/service.go keeps shared row helpers (invoiceColumns, scanInvoice, hexID); ledger/service_test.go keeps shared chainEnv helpers."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-10T00:06:55Z",
+        "at": "2026-10-10T00:10:33Z",
         "checks": [
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F076-20261010T000655Z-docs-check.log"
+            "log": "docs/runs/F076-20261010T001033Z-docs-check.log"
           },
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 26.1,
-            "log": "docs/runs/F076-20261010T000655Z-backend.log"
+            "seconds": 24.9,
+            "log": "docs/runs/F076-20261010T001033Z-backend.log"
           },
           {
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.9,
-            "log": "docs/runs/F076-20261010T000655Z-backend-e2e.log"
+            "seconds": 5.4,
+            "log": "docs/runs/F076-20261010T001033Z-backend-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.6,
-            "log": "docs/runs/F076-20261010T000655Z-harness.log"
+            "log": "docs/runs/F076-20261010T001033Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F076-20261010T000655Z-lint.log"
+            "log": "docs/runs/F076-20261010T001033Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F076-20261010T000655Z-typecheck.log"
+            "log": "docs/runs/F076-20261010T001033Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 26.0,
-            "log": "docs/runs/F076-20261010T000655Z-unit.log"
+            "seconds": 25.9,
+            "log": "docs/runs/F076-20261010T001033Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.3,
-            "log": "docs/runs/F076-20261010T000655Z-build.log"
+            "seconds": 2.4,
+            "log": "docs/runs/F076-20261010T001033Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 39.6,
-            "log": "docs/runs/F076-20261010T000655Z-e2e.log"
+            "seconds": 39.9,
+            "log": "docs/runs/F076-20261010T001033Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F076-20261010T000655Z-keep.log"
+            "log": "docs/runs/F076-20261010T001033Z-keep.log"
           }
         ],
         "taskHash": "38e73589b7876ab5",
-        "filesHash": "2179300acab31c9f",
+        "filesHash": "396bcf93965434e2",
         "proof": {
           "1": "backend: cmd/api/main.go wires balance.NewChainReader(specs, keys) and passes Read; balances.go and its test moved to internal/balance/chain_reader.go and chain_reader_test.go (both reader tests pass)",
-          "2": "backend: profile -> profile.go, service.go, signup.go, create.go, list.go, wallet.go (+ signup_test, create_test); invoice -> create.go, get.go; ledger -> process.go, book.go; settlement -> signer.go, settle.go, reconcile.go; a line-count check shows the same non-import code lines per package",
+          "2": "backend: profile -> profile.go, service.go, signup.go, create.go, list.go, wallet.go (+ signup_test, create_test); invoice -> create.go, get.go (+ create_test), service.go keeps the constructor and the row scan both share; ledger -> process.go, book.go; settlement -> signer.go, settle.go, reconcile.go; same non-import code lines per package",
           "3": "backend-e2e: go test (race) and the binary e2e gate pass; no SQL, migration, OpenAPI or web change"
         },
         "review": {
-          "result": "fail",
+          "result": "pass",
           "by": "reviewer",
-          "summary": "Pure move confirmed: per-package multiset of non-import lines identical main vs HEAD for profile, invoice, ledger, settlement (src and tests); every comment block still precedes the same line; gofmt clean; go build/vet pass; go test -race for profile, balance, invoice, ledger, settlement pass. ChainReader equals old chainBalances (only renames, NewChainReader builds the same struct, Read/Close bodies unchanged, locks/RetryPick/cancelled untouched); both tests kept with same cases; cmd/api only wires it; balance already imported ledger and chain, no cycle. One acceptance miss: accept 2 says tests follow their operation, but invoice/service_test.go holds only TestCreateLosesTheInsertRaceToTheSameKey while service.go is now the constructor; rename it to invoice/create_test.go. ledger/service_test.go may stay (shared chainEnv helpers used by expiry_test/property_test), or rename to process_test.go. Note, not blocking: invoice/service.go also keeps the shared row helpers invoiceColumns/scanInvoice/hexID used by create.go and get.go; acceptable, mention in proof.",
-          "at": "2026-10-10T00:10:20Z",
-          "filesHash": "2179300acab31c9f"
-        }
+          "summary": "Fix confirmed: af5ad5f is a pure R100 rename invoice/service_test.go -> create_test.go (TestCreateLosesTheInsertRaceToTheSameKey) plus docs/tasks.json; cebf83b..af5ad5f touches no other app/package file, so the earlier pure-move findings for profile, invoice, ledger, settlement and ChainReader in internal/balance still hold. No forbidden paths changed vs main. go build ./... and go vet ./... pass; pnpm --filter @forwend/backend test passes all packages incl. invoice with the renamed test. Note, not blocking: invoice/service.go keeps shared row helpers (invoiceColumns, scanInvoice, hexID); ledger/service_test.go keeps shared chainEnv helpers.",
+          "at": "2026-10-10T00:13:05Z",
+          "filesHash": "396bcf93965434e2"
+        },
+        "commit": "af5ad5f",
+        "doneAt": "2026-10-10T00:13:13Z"
       },
       "branch": "refactor/f076-backend-code-follows-docs-backend-rules",
       "baseCommit": "9fc1b89acf3021c86f4f9ead9dae670e61f4066b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f076-backend-code-follows-docs-backend-rules",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
