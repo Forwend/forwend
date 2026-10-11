@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 119,
+  "nextId": 120,
   "tasks": [
     {
       "id": "F095",
@@ -102,21 +102,19 @@
       "evidence": null
     },
     {
-      "id": "F118",
+      "id": "F119",
       "type": "docs",
-      "behavior": "The Anvil browser test of the money path waits for release QA in phase 13 instead of gating phase 8",
+      "behavior": "PLAN lists the checkout components and developer tools to decide and build under 11.9",
       "acceptance": [
-        "PLAN phase 8 gate no longer needs the Anvil browser test and item 8.11 moves to phase 13 as 13.6; R-52 names PLAN 13.6 and PROJECT's phase 8 range leaves it out; finished tasks are archived; docs-check and harness validate pass"
+        "PLAN 11.9 has numbered sub-items 11.9.1 onward for the hosted-or-embedded decision, a pay button, an embedded React package served from the Forwend origin, publishing and the example merchant; docs-check and harness validate pass"
       ],
       "dependsOn": [],
-      "state": "passing",
+      "state": "verified",
       "verification": [
         "docs-check",
         "harness"
       ],
-      "refs": [
-        "R-52"
-      ],
+      "refs": [],
       "keep": [],
       "review": false,
       "notes": [],
@@ -124,74 +122,67 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-11T12:52:15Z",
+        "at": "2026-10-11T13:02:26Z",
         "checks": [
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F118-20261011T125215Z-docs-check.log"
+            "log": "docs/runs/F119-20261011T130226Z-docs-check.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.2,
-            "log": "docs/runs/F118-20261011T125215Z-harness.log"
+            "seconds": 1.1,
+            "log": "docs/runs/F119-20261011T130226Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F118-20261011T125215Z-lint.log"
+            "log": "docs/runs/F119-20261011T130226Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F118-20261011T125215Z-typecheck.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F119-20261011T130226Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 47.9,
-            "log": "docs/runs/F118-20261011T125215Z-unit.log"
+            "seconds": 48.5,
+            "log": "docs/runs/F119-20261011T130226Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F118-20261011T125215Z-build.log"
+            "seconds": 0.7,
+            "log": "docs/runs/F119-20261011T130226Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 113.1,
-            "log": "docs/runs/F118-20261011T125215Z-e2e.log"
+            "seconds": 113.7,
+            "log": "docs/runs/F119-20261011T130226Z-e2e.log"
           }
         ],
-        "taskHash": "8b32f982d08bba00",
-        "filesHash": "4b050dc557aa57ed",
+        "taskHash": "5425aac7341bbde4",
+        "filesHash": "0fcdd4ff9660df23",
         "proof": {
-          "1": "docs-check: PLAN gate and 13.6 item, R-52 row and phase 8 range updated, links and IDs resolve; harness tests pass and validate is ok after archiving F094, F113 and F114"
-        },
-        "commit": "8aab322",
-        "doneAt": "2026-10-11T12:55:04Z"
+          "1": "docs-check: PLAN 11.9.1-11.9.5 added under 11.9 (decision, pay button, iframe React package, publishing, example merchant); links and IDs resolve; harness tests pass and validate is ok after archiving F118"
+        }
       },
-      "branch": "docs/f118-the-anvil-browser-test-of-the-money-path",
-      "baseCommit": "af61cd06a3e1a0dbf64cac37cdb01675a2b7760a",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "docs/f118-the-anvil-browser-test-of-the-money-path",
-        "base": "main"
-      }
+      "branch": "docs/f119-plan-lists-the-checkout-components-and-d",
+      "baseCommit": "9c24d72c9ef4759156b3d5fb14b34a86da8e2274",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
