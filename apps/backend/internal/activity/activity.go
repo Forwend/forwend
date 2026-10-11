@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/search"
 	"github.com/jackc/pgx/v5"
@@ -40,10 +41,7 @@ type Item struct {
 	Kind             string
 	At               time.Time
 	InvoiceID        string
-	ChainID          uint64
-	Token            string
-	Symbol           string // the token's symbol and decimals, also for a token no longer enabled
-	Decimals         int
+	chain.Asset      // symbol and decimals also for a token no longer enabled
 	Amount           *big.Int
 	Status           string
 	SettlementStatus string

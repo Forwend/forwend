@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ensp1re/forwend/apps/backend/internal/search"
 	"github.com/jackc/pgx/v5"
 )
@@ -16,10 +17,7 @@ import (
 // Transfer is an enabled-token transfer from or to the profile's wallet (R-38). Direction is "in" or "out"; Status is
 // detected or confirmed (reorged ones are left out); At is the block time.
 type Transfer struct {
-	ChainID      uint64
-	Token        string
-	Symbol       string
-	Decimals     int
+	chain.Asset
 	Direction    string
 	Amount       *big.Int
 	Counterparty string

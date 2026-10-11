@@ -24,14 +24,19 @@ const (
 // ErrNoBillingDetails means the profile has not saved billing details.
 var ErrNoBillingDetails = errors.New("no billing details")
 
-// BillingDetails is who bills on the profile's invoices, a full issuer block for invoices and PDFs (R-43). Only
-// TaxID is optional: "" means none.
+// Issuer is who bills on an invoice, a full issuer block for invoices and PDFs (R-43). Only TaxID is optional:
+// "" means none.
+type Issuer struct {
+	Name    string
+	Address string
+	Country string // ISO 3166-1 alpha-2, upper case
+	TaxID   string
+	Email   string
+}
+
+// BillingDetails is the issuer on the profile's invoices.
 type BillingDetails struct {
-	Name      string
-	Address   string
-	Country   string // ISO 3166-1 alpha-2, upper case
-	TaxID     string
-	Email     string
+	Issuer
 	UpdatedAt time.Time
 }
 

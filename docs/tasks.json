@@ -141,20 +141,108 @@
         "The token identity fields repeated across balance.Token, balance.TokenHistory, activity.Item, activity.Transfer, invoice.Invoice and the httpapi response structs come from one type in the owning package (embedded or reused) where the meaning matches; invoice.Issuer reuses profile.BillingDetails' fields if the meaning matches (a frozen copy stays a copy in the database); invoice.Deposit reuses finality.Progress for blocks and time left; no global types/models/common package; JSON field names, API responses (openapi.yaml) and money representation unchanged; Go tests stay beside their package; go test -list before and after shows every test"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend",
         "e2e"
       ],
-      "refs": [],
+      "refs": [
+        "D-19"
+      ],
       "keep": [
         "packages/contracts/*",
         "apps/backend/api/openapi.yaml"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-11 review pass by reviewer: Pass. chain.Asset (internal/chain/asset.go:4) is now the one token identity, embedded in balance.Token, balance.TokenHistory, activity.Item, activity.Transfer, invoice.Invoice; httpapi money.go response structs share tokenJSON via toTokenJSON. invoice.Invoice.Issuer is *profile.Issuer, embedded in profile.BillingDetails; invoices still copy billing details in SQL (create.go:56), scanInvoice unchanged except type. invoice.Deposit embeds finality.Progress (get.go:87 assigns it whole). invoiceJSON keeps its own chainId/token, correct since it has no symbol/decimals. No types/common package; chain and finality import no domain package; new invoice->profile edge is acyclic; no domain imports httpapi/cmd. JSON keys and order unchanged (encoding/json flattens the untagged embedded tokenJSON at its field position; checked with a scratch program for activityItemJSON and tokenBalanceJSON). openapi.yaml and packages/contracts unchanged; money stays *big.Int / decimal strings; no test files touched. go1.27.1, go build ./..., go vet -tags e2e,privylive,loadtest ./..., gofmt clean, pnpm --filter @forwend/backend test all ok. Non-blocking: balance/history.go:96 could be TokenHistory{Asset: t.Asset}; httpapi/money.go:16 comment only restates the type."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-11T12:25:14Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 53.7,
+            "log": "docs/runs/F113-20261011T122514Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 103.4,
+            "log": "docs/runs/F113-20261011T122514Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F113-20261011T122514Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F113-20261011T122514Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F113-20261011T122514Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F113-20261011T122514Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 47.1,
+            "log": "docs/runs/F113-20261011T122514Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.4,
+            "log": "docs/runs/F113-20261011T122514Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F113-20261011T122514Z-keep.log"
+          }
+        ],
+        "taskHash": "19945e7d91402720",
+        "filesHash": "2fabe6b64cf5da32",
+        "proof": {
+          "1": "backend: chain.Asset is embedded in balance.Token, balance.TokenHistory, activity.Item, activity.Transfer and invoice.Invoice, httpapi tokenJSON in the four money responses at the same key position, profile.Issuer is embedded in BillingDetails and used for invoice.Issuer, finality.Progress embedded in invoice.Deposit; httpapi, invoice, balance, activity and profile tests pass unchanged against real Postgres; openapi.yaml and migrations untouched; go test -list with e2e,privylive,loadtest tags shows the same 179 tests before and after"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. chain.Asset (internal/chain/asset.go:4) is now the one token identity, embedded in balance.Token, balance.TokenHistory, activity.Item, activity.Transfer, invoice.Invoice; httpapi money.go response structs share tokenJSON via toTokenJSON. invoice.Invoice.Issuer is *profile.Issuer, embedded in profile.BillingDetails; invoices still copy billing details in SQL (create.go:56), scanInvoice unchanged except type. invoice.Deposit embeds finality.Progress (get.go:87 assigns it whole). invoiceJSON keeps its own chainId/token, correct since it has no symbol/decimals. No types/common package; chain and finality import no domain package; new invoice->profile edge is acyclic; no domain imports httpapi/cmd. JSON keys and order unchanged (encoding/json flattens the untagged embedded tokenJSON at its field position; checked with a scratch program for activityItemJSON and tokenBalanceJSON). openapi.yaml and packages/contracts unchanged; money stays *big.Int / decimal strings; no test files touched. go1.27.1, go build ./..., go vet -tags e2e,privylive,loadtest ./..., gofmt clean, pnpm --filter @forwend/backend test all ok. Non-blocking: balance/history.go:96 could be TokenHistory{Asset: t.Asset}; httpapi/money.go:16 comment only restates the type.",
+          "at": "2026-10-11T12:31:28Z",
+          "filesHash": "2fabe6b64cf5da32"
+        }
+      },
+      "branch": "refactor/f113-go-packages-share-one-definition-for-eac",
+      "baseCommit": "3e921adb14c88bdf8fa6c0418122235bc552f916",
+      "failedVerifies": 0
     },
     {
       "id": "F114",
@@ -176,33 +264,6 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
-    },
-    {
-      "id": "F116",
-      "type": "chore",
-      "behavior": "The wallet link and wallet connection work leaves the plan until the owner brings it back",
-      "acceptance": [
-        "F088 and F115, R-46, D-59 and the PLAN 8.5 item are removed; D-37 keeps no wallet connection in the MVP; PRODUCT.md and money-safety.md no longer mention the wallet link or the No USDC yet panel; F095-F097 no longer wait on F088; harness validate and docs-check pass"
-      ],
-      "dependsOn": [],
-      "state": "active",
-      "verification": [
-        "docs-check",
-        "harness"
-      ],
-      "refs": [],
-      "keep": [],
-      "review": false,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "running",
-        "at": "2026-10-11T11:40:50Z",
-        "pid": 59275
-      },
-      "branch": "chore/f116-the-wallet-link-and-wallet-connection-wo",
-      "baseCommit": "5cf4d1eec6a3e4d12c3b396a724be814b7f4c3ef"
     }
   ],
   "lastWrapup": {

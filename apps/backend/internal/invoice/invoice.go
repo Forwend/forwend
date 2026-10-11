@@ -15,6 +15,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/address"
+	"github.com/ensp1re/forwend/apps/backend/internal/chain"
+	"github.com/ensp1re/forwend/apps/backend/internal/finality"
+	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
 
 // Expiry bounds and the settle window (D-18).
@@ -69,23 +72,14 @@ type Details struct {
 	SenderName    string // the name the payer sees when the invoice has no issuer, such as a personal request (D-52)
 }
 
-// Issuer is the copy of the profile's billing details the invoice took when it was made; "" means none.
-type Issuer struct {
-	Name    string
-	Address string
-	Country string
-	TaxID   string
-	Email   string
-}
-
 // Invoice is the stored invoice: its terms (InvoiceTerms in the contract), number, details and statuses.
 type Invoice struct {
 	Details
-	Issuer           *Issuer // nil when the profile had no billing details
+	// Issuer is the copy of the profile's billing details the invoice took when it was made; nil when it had none.
+	Issuer           *profile.Issuer
 	ID               string
 	Number           int64 // per profile, from 1; shown as INV-0001
-	ChainID          uint64
-	Token            string
+	chain.Asset            // Symbol and Decimals set by Get
 	Amount           *big.Int
 	Recipient        string
 	Factory          string
@@ -98,8 +92,6 @@ type Invoice struct {
 	SettlementTxHash string // the signer's settle transaction once settled
 	CreatedAt        time.Time
 	Deposits         []Deposit // set by Get
-	Symbol           string    // the token's; set by Get
-	Decimals         int       // the token's; set by Get
 	Network          string    // the chain's name; set by Get
 	// PaidAt is the block time of the deposit that completed the amount owed to the creator; set by Get once paid.
 	PaidAt time.Time
@@ -107,8 +99,8 @@ type Invoice struct {
 	SettledAt time.Time
 }
 
-// Deposit is a transfer to the receive address that is not reorged. Until its block is final, BlocksLeft and
-// TimeLeft say how far the chain's finalized block still has to go (R-28).
+// Deposit is a transfer to the receive address that is not reorged. Until its block is final, Progress says how far
+// the chain's finalized block still has to go (R-28).
 type Deposit struct {
 	TxHash      string
 	LogIndex    uint64
@@ -118,8 +110,7 @@ type Deposit struct {
 	BlockTime   time.Time
 	Status      string // detected or confirmed
 	Late        bool   // block time after expiresAt: held for the payer (D-26)
-	BlocksLeft  uint64
-	TimeLeft    time.Duration
+	finality.Progress
 }
 
 // normalize checks the request values that need no database and returns them in canonical form.
