@@ -1,12 +1,14 @@
-import { Money, StatusPill, shortAddress } from "@forwend/ui-web";
+import { Money, StatusPill, shortAddress, Tooltip } from "@forwend/ui-web";
 import { ACTIVITY_KINDS, activityStatus } from "@/features/activity/activity";
 import { exactDigits, type Invoice } from "@/features/invoices/invoices";
 import { INVOICE_COPY, INVOICES_COPY } from "@/features/invoices/invoices-copy";
 import { ExplorerLink } from "@/shared/chains/explorer-link";
 
+const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+
 /**
- * Each payment the chain shows for the invoice: amount, status, transaction and a link to it on the block explorer.
- * The API gives no sender or time for a deposit; the explorer shows both.
+ * Each payment the chain shows for the invoice: amount, status, sender, block time, transaction and a link to it on
+ * the block explorer.
  */
 export function InvoiceDeposits({
   invoice,
@@ -47,11 +49,27 @@ export function InvoiceDeposits({
                 status={activityStatus({ kind: ACTIVITY_KINDS.deposit, status: d.status })}
               />
               {d.late ? <span className="text-xs text-warning">{INVOICE_COPY.late}</span> : null}
-              <span className="ml-auto flex items-center gap-1">
-                <span className="font-mono text-xs text-muted" title={d.txHash}>
-                  {shortAddress(d.txHash)}
+              <span className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+                <span className="flex items-center gap-1.5 text-xs text-muted">
+                  {INVOICE_COPY.from}
+                  <Tooltip content={d.from}>
+                    <button
+                      type="button"
+                      aria-label={d.from}
+                      className="rounded-sm font-mono outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+                    >
+                      {shortAddress(d.from)}
+                    </button>
+                  </Tooltip>
+                  <span aria-hidden>·</span>
+                  <time dateTime={d.blockTime}>{TIME.format(Date.parse(d.blockTime))}</time>
                 </span>
-                <ExplorerLink chainId={invoice.chainId} txHash={d.txHash} named />
+                <span className="flex items-center gap-1">
+                  <span className="font-mono text-xs text-muted" title={d.txHash}>
+                    {shortAddress(d.txHash)}
+                  </span>
+                  <ExplorerLink chainId={invoice.chainId} txHash={d.txHash} named />
+                </span>
               </span>
             </li>
           );

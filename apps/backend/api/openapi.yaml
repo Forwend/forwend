@@ -854,12 +854,19 @@ components:
         createdAt: { type: string, format: date-time }
     Deposit:
       type: object
-      required: [txHash, logIndex, amount, blockNumber, status, late, blocksLeft, secondsLeft]
+      required: [txHash, logIndex, from, amount, blockNumber, blockTime, status, late, blocksLeft, secondsLeft]
       properties:
         txHash: { type: string, pattern: "^0x[0-9a-f]{64}$" }
         logIndex: { type: integer, minimum: 0 }
+        from:
+          allOf: [{ $ref: "#/components/schemas/Address" }]
+          description: The sender of the transfer, from its Transfer log.
         amount: { $ref: "#/components/schemas/Uint256" }
         blockNumber: { type: integer, minimum: 0 }
+        blockTime:
+          type: string
+          format: date-time
+          description: The time of the transfer's block, UTC.
         status:
           type: string
           enum: [detected, confirmed]

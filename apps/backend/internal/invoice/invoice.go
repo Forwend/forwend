@@ -112,8 +112,10 @@ type Invoice struct {
 type Deposit struct {
 	TxHash      string
 	LogIndex    uint64
+	From        string // sender, lowercase hex
 	Amount      *big.Int
 	BlockNumber uint64
+	BlockTime   time.Time
 	Status      string // detected or confirmed
 	Late        bool   // block time after expiresAt: held for the payer (D-26)
 	BlocksLeft  uint64

@@ -10756,7 +10756,7 @@
       "dependsOn": [
         "F101"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -10769,9 +10769,102 @@
         "packages/contracts/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-11 review pass by reviewer: PASS. from and blockTime are on-chain data the public tx hash already reveals; client stays owner-only. One query, ordering unchanged, NOT NULL columns match required openapi fields; owner route returns the same deposits (DeepEqual). Sender is a button in Tooltip like estimate-hint; the Radix scroll-close e2e workaround keeps the full-address check. Phone wraps under the amount; docs match."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-10T23:59:32Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 49.8,
+            "log": "docs/runs/F102-20261010T235932Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 96.7,
+            "log": "docs/runs/F102-20261010T235932Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F102-20261010T235932Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F102-20261010T235932Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F102-20261010T235932Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F102-20261010T235932Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 49.9,
+            "log": "docs/runs/F102-20261010T235932Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.2,
+            "log": "docs/runs/F102-20261010T235932Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F102-20261010T235932Z-keep.log"
+          }
+        ],
+        "taskHash": "43be46006fdda34b",
+        "filesHash": "7e88505d50dd1db7",
+        "proof": {
+          "1": "backend: TestGetInvoiceListsDepositsWithProgress checks from and blockTime on GET /v1/invoices/{id} and that the owner route returns the same deposits (real Postgres); e2e: pay.spec.ts checks the short sender, full-address name and tooltip and the time element in the payments list, sign-in.spec.ts checks them on the invoice detail; axe 0 serious/critical; 390 px phone no sideways scroll"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. from and blockTime are on-chain data the public tx hash already reveals; client stays owner-only. One query, ordering unchanged, NOT NULL columns match required openapi fields; owner route returns the same deposits (DeepEqual). Sender is a button in Tooltip like estimate-hint; the Radix scroll-close e2e workaround keeps the full-address check. Phone wraps under the amount; docs match.",
+          "at": "2026-10-11T00:04:08Z",
+          "filesHash": "7e88505d50dd1db7"
+        },
+        "commit": "f939d8d",
+        "doneAt": "2026-10-11T00:04:10Z"
+      },
+      "branch": "feat/f102-each-detected-payment-on-an-invoice-show",
+      "baseCommit": "60eccdea3688a627270803936718ab2f7ccca96a",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f102-each-detected-payment-on-an-invoice-show",
+        "base": "main"
+      }
     },
     {
       "id": "F103",

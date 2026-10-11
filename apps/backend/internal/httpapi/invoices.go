@@ -86,8 +86,10 @@ type invoicesJSON struct {
 type depositJSON struct {
 	TxHash      string `json:"txHash"`
 	LogIndex    uint64 `json:"logIndex"`
+	From        string `json:"from"`
 	Amount      string `json:"amount"`
 	BlockNumber uint64 `json:"blockNumber"`
+	BlockTime   string `json:"blockTime"`
 	Status      string `json:"status"`
 	Late        bool   `json:"late"`
 	BlocksLeft  uint64 `json:"blocksLeft"`
@@ -199,9 +201,9 @@ func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON
 	out := invoiceDetailJSON{invoiceJSON: toInvoiceJSON(inv, withClient), PaidAt: orNullTime(inv.PaidAt),
 		SettledAt: orNullTime(inv.SettledAt), Deposits: []depositJSON{}}
 	for _, d := range inv.Deposits {
-		out.Deposits = append(out.Deposits, depositJSON{TxHash: d.TxHash, LogIndex: d.LogIndex, Amount: d.Amount.String(),
-			BlockNumber: d.BlockNumber, Status: d.Status, Late: d.Late, BlocksLeft: d.BlocksLeft,
-			SecondsLeft: int64(d.TimeLeft / time.Second)})
+		out.Deposits = append(out.Deposits, depositJSON{TxHash: d.TxHash, LogIndex: d.LogIndex, From: d.From,
+			Amount: d.Amount.String(), BlockNumber: d.BlockNumber, BlockTime: d.BlockTime.Format(time.RFC3339),
+			Status: d.Status, Late: d.Late, BlocksLeft: d.BlocksLeft, SecondsLeft: int64(d.TimeLeft / time.Second)})
 	}
 	return out
 }

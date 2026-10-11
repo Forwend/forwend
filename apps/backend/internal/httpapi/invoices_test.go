@@ -433,21 +433,23 @@ func TestCreateInvoiceRefusesUnsettleableTerms(t *testing.T) {
 	}
 }
 
-// GET lists deposits that are not reorged; a detected one shows how far the finalized block still has to go.
+// GET lists deposits that are not reorged with their sender and block time; a detected one shows how far the
+// finalized block still has to go. The owner's route lists the same deposits.
 func TestGetInvoiceListsDepositsWithProgress(t *testing.T) {
 	e := invoiceAPI(t)
 	created := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody)
 	id, receive := created.body["invoiceId"].(string), created.body["receiveAddress"].(string)
 	expires, _ := time.Parse(time.RFC3339, created.body["expiresAt"].(string))
+	payer := "0x" + strings.Repeat("ab", 20)
 	_, err := e.pool.Exec(context.Background(), `
 		WITH cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block, last_finalized_time)
 		             VALUES (84532, 1000, 980, $4))
 		INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index, block_hash,
 		    block_number, block_time, from_address, to_address, amount, status)
-		VALUES (84532, 'evm', $1, $2, '0x' || repeat('01', 32), 0, '0x' || repeat('01', 32), 970, $4 - 20, $3, $3, 2000000, 'confirmed'),
+		VALUES (84532, 'evm', $1, $2, '0x' || repeat('01', 32), 0, '0x' || repeat('01', 32), 970, $4 - 20, $5, $3, 2000000, 'confirmed'),
 		       (84532, 'evm', $1, $2, '0x' || repeat('02', 32), 1, '0x' || repeat('02', 32), 1000, $4 + 40, $3, $3, 1000000, 'detected'),
 		       (84532, 'evm', $1, $2, '0x' || repeat('03', 32), 2, '0x' || repeat('03', 32), 999, $4 + 38, $3, $3, 7000000, 'reorged')`,
-		usdc, id, receive, expires.Unix()-100)
+		usdc, id, receive, expires.Unix()-100, payer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -458,12 +460,18 @@ func TestGetInvoiceListsDepositsWithProgress(t *testing.T) {
 	}
 	final, pending := deposits[0].(map[string]any), deposits[1].(map[string]any)
 	if final["status"] != "confirmed" || final["amount"] != "2000000" || final["blocksLeft"] != float64(0) ||
-		final["secondsLeft"] != float64(0) || final["late"] != false {
+		final["secondsLeft"] != float64(0) || final["late"] != false || final["from"] != payer ||
+		final["blockTime"] != time.Unix(expires.Unix()-120, 0).UTC().Format(time.RFC3339) {
 		t.Fatalf("final deposit %v", final)
 	}
 	if pending["status"] != "detected" || pending["blocksLeft"] != float64(20) || pending["secondsLeft"] != float64(40) ||
-		pending["txHash"] != "0x"+strings.Repeat("02", 32) || pending["late"] != false {
+		pending["txHash"] != "0x"+strings.Repeat("02", 32) || pending["late"] != false || pending["from"] != receive ||
+		pending["blockTime"] != time.Unix(expires.Unix()-60, 0).UTC().Format(time.RFC3339) {
 		t.Fatalf("pending deposit %v", pending)
+	}
+	owner := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/invoices/"+id, "did:privy:alice", "", "")
+	if !reflect.DeepEqual(owner.body["deposits"], r.body["deposits"]) {
+		t.Fatalf("owner deposits %v, public %v", owner.body["deposits"], r.body["deposits"])
 	}
 	if fresh := e.get(t, e.post(t, "did:privy:alice", e.aliceProfile, "key-2", basicBody).body["invoiceId"].(string)); !reflect.DeepEqual(fresh.body["deposits"], []any{}) {
 		t.Fatalf("no deposits should be [], got %v", fresh.body["deposits"])

@@ -784,8 +784,10 @@ const INVOICES = [
 const sampleDeposit = (inv: typeof CONFIRMING_INVOICE, status: string, blocksLeft: number) => ({
   txHash: hash(status === "detected" ? "d" : "e"),
   logIndex: 0,
+  from: `0x${"c".repeat(40)}`,
   amount: inv.amount,
   blockNumber: 1000,
+  blockTime: "2026-10-09T08:30:00Z",
   status,
   late: false,
   blocksLeft,
@@ -990,6 +992,13 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   const payment = main.getByRole("link", { name: "View transaction on Basescan" });
   await expect(payment).toHaveAttribute("href", basescan(hash("d")));
   await expect(payment).toHaveAttribute("target", "_blank");
+  const paymentRow = main
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("link", { name: "View transaction on Basescan" }) });
+  await expect(paymentRow.getByRole("button", { name: `0x${"c".repeat(40)}` })).toHaveText(
+    "0xcccc…cccc",
+  );
+  await expect(paymentRow.locator("time")).toHaveAttribute("datetime", "2026-10-09T08:30:00Z");
   expect(await blockingViolations(page)).toEqual([]);
   await crumbs.getByRole("link", { name: "Invoices" }).click();
   await expect(page).toHaveURL("/app/invoices");

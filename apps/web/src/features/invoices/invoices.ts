@@ -102,9 +102,11 @@ export interface InvoiceIssuer {
 export interface Deposit {
   txHash: string;
   logIndex: number;
+  from: string;
   /** Base units. */
   amount: string;
   blockNumber: number;
+  blockTime: string;
   status: ApiDepositStatus | (string & {});
   /** Paid after expiry: held for the payer, never the creator's. */
   late: boolean;
