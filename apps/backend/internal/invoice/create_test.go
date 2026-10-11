@@ -151,3 +151,21 @@ func TestOpenInvoicesPerProfileAreCapped(t *testing.T) {
 		t.Fatalf("over the open invoice cap: %v, want ErrInvalid", err)
 	}
 }
+
+func TestInvoicesPerProfilePerDayAreCapped(t *testing.T) {
+	ctx := context.Background()
+	pool, profile := open(t)
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+		SELECT '0x' || lpad(to_hex(n), 64, '0'), $1, 84532, 'evm', $2, 5000000, 1, 86401,
+		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
+		    '0x' || lpad(to_hex(n), 40, '0'), 'day-' || n, decode(repeat('00', 32), 'hex')
+		FROM generate_series(1, $3::int) n`, profile, usdc, MaxPerDay); err != nil {
+		t.Fatal(err)
+	}
+	req := Request{ChainID: 84532, Token: usdc, Amount: "5000000"}
+	if _, _, err := NewService(pool).Create(ctx, profile, "one-more", req); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("over the daily cap: %v, want ErrInvalid", err)
+	}
+}

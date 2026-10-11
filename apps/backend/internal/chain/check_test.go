@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -63,4 +64,14 @@ func TestCheckEnabled(t *testing.T) {
 			t.Log(err)
 		})
 	}
+
+	t.Run("a further check's error has no key", func(t *testing.T) {
+		specs := map[uint64]Spec{chaintest.ChainID: {ChainID: chaintest.ChainID, Public: []string{a.URL, localhost(a.URL)}}}
+		err := CheckEnabled(ctx, db, specs, nil, 1000, func(context.Context, uint64, RPCs) error {
+			return errors.New(`Post "https://base-sepolia.infura.io/v3/SECRETKEY": context deadline exceeded`)
+		})
+		if err == nil || strings.Contains(err.Error(), "SECRETKEY") {
+			t.Fatalf("got %v; want an error without the key", err)
+		}
+	})
 }

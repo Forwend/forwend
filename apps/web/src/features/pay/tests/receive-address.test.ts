@@ -137,6 +137,33 @@ describe("checkedReceiveAddress", () => {
     expect(checkedReceiveAddress(served, invoice.invoiceId)).toBeNull();
   });
 
+  it("gives none for terms the API would never create, even when they compute to the address", () => {
+    const broken: Partial<Invoice>[] = [
+      { amount: "0" },
+      { settleDeadline: "2026-10-18T10:00:01Z" },
+      { expiresAt: "2027-10-11T10:00:00Z", settleDeadline: "2027-10-12T10:00:00Z" },
+      { recipient: `0x${"0".repeat(40)}` },
+      { recipient: terms.token },
+      { recipient: `0x${FACTORY}` },
+    ];
+    for (const change of broken) {
+      const inv = { ...invoice, ...change };
+      const consistent = {
+        ...inv,
+        receiveAddress: receiveAddress({
+          invoiceId: inv.invoiceId,
+          recipient: inv.recipient,
+          token: inv.token,
+          amount: BigInt(inv.amount),
+          expiresAt: BigInt(Date.parse(inv.expiresAt) / 1000),
+          settleDeadline: BigInt(Date.parse(inv.settleDeadline) / 1000),
+          intendedChainId: BigInt(inv.chainId),
+        }),
+      };
+      expect(checkedReceiveAddress(consistent, inv.invoiceId), JSON.stringify(change)).toBeNull();
+    }
+  });
+
   it("gives none when a term can't be read", () => {
     for (const change of [
       { amount: "-1" },

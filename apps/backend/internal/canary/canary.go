@@ -35,8 +35,8 @@ var (
 // terms is one stdin line, as the database holds the invoice:
 // id chain_id recipient_address token_contract amount expires_at settle_deadline.
 type terms struct {
-	ID, Recipient, Token, Amount       string
-	ChainID, ExpiresAt, SettleDeadline uint64
+	ID, Recipient, Token, Amount, Symbol, Network string
+	ChainID, ExpiresAt, SettleDeadline            uint64
 }
 
 // apiInvoice is the part of GET /v1/invoices/{id} the canary compares.
@@ -46,10 +46,11 @@ type apiInvoice struct {
 }
 
 type payPage struct {
-	ID        string
-	Addresses []string
-	QRMatches bool
-	Error     string
+	ID         string
+	Addresses  []string
+	QRMatches  bool
+	AmountText string
+	Error      string
 }
 
 // Check returns one alert for each difference or failed read; none means every invoice's address matched.
@@ -162,6 +163,9 @@ func checkInvoice(ctx context.Context, c config.Canary, rpcs map[uint64][2]*rpc.
 		return fmt.Errorf("pay page shows %v, factory predicts %s", page.Addresses, got[0])
 	case !page.QRMatches:
 		return fmt.Errorf("pay page QR code does not encode the shown address %s", got[0])
+	case !strings.Contains(page.AmountText, t.Symbol) ||
+		!strings.Contains(strings.ReplaceAll(strings.ToLower(page.AmountText), " ", "-"), t.Network):
+		return fmt.Errorf("pay page amount reads %q, want %s on %s", page.AmountText, t.Symbol, t.Network)
 	}
 	return nil
 }
@@ -193,10 +197,11 @@ func sameTerms(c config.Canary, t terms, api apiInvoice) error {
 
 func parseTerms(line string) (terms, error) {
 	f := strings.Fields(line)
-	if len(f) != 7 {
-		return terms{}, errors.New("want: id chain_id recipient token amount expires_at settle_deadline")
+	if len(f) != 9 {
+		return terms{}, errors.New("want: id chain_id recipient token amount expires_at settle_deadline symbol network")
 	}
-	t := terms{ID: f[0], Recipient: strings.ToLower(f[2]), Token: strings.ToLower(f[3]), Amount: f[4]}
+	t := terms{ID: f[0], Recipient: strings.ToLower(f[2]), Token: strings.ToLower(f[3]), Amount: f[4], Symbol: f[7],
+		Network: f[8]}
 	var err1, err2, err3 error
 	t.ChainID, err1 = strconv.ParseUint(f[1], 10, 64)
 	t.ExpiresAt, err2 = strconv.ParseUint(f[5], 10, 64)
@@ -205,6 +210,11 @@ func parseTerms(line string) (terms, error) {
 	if !invoiceID.MatchString(t.ID) || !common.IsHexAddress(t.Recipient) || !common.IsHexAddress(t.Token) || !ok ||
 		amount.Sign() < 0 || amount.BitLen() > 256 || amount.String() != t.Amount || errors.Join(err1, err2, err3) != nil {
 		return terms{}, errors.New("a value is malformed")
+	}
+	// The rules create applies: terms that break them leave a payer's money refundable only.
+	switch zero := "0x0000000000000000000000000000000000000000"; {
+	case amount.Sign() == 0, t.SettleDeadline != t.ExpiresAt+86400, t.Recipient == zero, t.Recipient == t.Token:
+		return terms{}, errors.New("the terms break create's rules")
 	}
 	return t, nil
 }

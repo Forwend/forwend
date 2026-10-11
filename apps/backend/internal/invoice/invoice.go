@@ -38,8 +38,12 @@ const (
 	MaxSenderName    = 100
 )
 
-// MaxOpen bounds a profile's invoices still open for payment: each receive address is watched on every scan.
-const MaxOpen = 1000
+// MaxOpen and MaxPerDay bound a profile's watched receive addresses: each is in every scan until 30 days after its
+// settle deadline.
+const (
+	MaxOpen   = 1000
+	MaxPerDay = 500
+)
 
 var (
 	// ErrInvalid wraps a request value that breaks a rule; the message names it.

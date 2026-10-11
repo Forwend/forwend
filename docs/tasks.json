@@ -363,13 +363,14 @@
       "type": "fix",
       "behavior": "The pay page and the canary check the terms and the page text, and the api checks the factory on every enabled chain at startup",
       "acceptance": [
-        "R-45, R-51, D-71: before showing an address the pay page refuses amount 0, a settle deadline other than expiry + 24 h, expiry over 365 days and a recipient equal to zero, the token, the factory or the implementation; the canary compares the network, token and amount shown on /pay/<id> with its own data and checks the terms' rules; the api refuses to start when the factory has no code on an enabled chain; unit and backend tests cover each"
+        "R-45, R-51, D-71: before showing an address the pay page refuses amount 0, a settle deadline other than expiry + 24 h, expiry more than a year after creation and a recipient equal to zero, the token, the factory or the implementation; the canary refuses input terms that break create's rules and alerts when the pay page's amount panel does not name the token's symbol and the chain; the api refuses to start when the factory has no code on an enabled chain; a profile creates at most 500 invoices per day; unit and backend tests cover each; money-safety.md (incl. the canary query) and architecture.md match; the security review records are removed once their findings are fixed"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend",
-        "unit"
+        "unit",
+        "e2e"
       ],
       "refs": [
         "R-45",
@@ -377,9 +378,89 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-11 review fail by reviewer: Fail, one defect. apps/backend/internal/address/deployed.go:15 wraps the raw CodeAt error (%w) and cmd/api/main.go:27 logs it as 'api stopped' unredacted. go-ethereum puts the full RPC URL into network errors, and Infura URLs carry the key (/v3/<key>, internal/chain/chain.go:83). Reproduced with a fake key and a hanging RPC: 'chain 1: read the factory: Post \"http://127.0.0.1:63554/v3/FAKEKEY123\": context deadline exceeded'. This breaks AGENTS.md (never log keys) and chain.Redact's rule (chain.go:124-125, every logged RPC error); check.go:54 already redacts the eth_blockNumber failure in the same startup check. Fix: return chain.Redact(err) text (or redact in main) and add a test case. Everything else checked: pay-page rules match create (SettleWindow, MaxExpiresIn, recipient set in buildTerms invoice.go:213); amount panel names symbol and chain for all 4 testnets plus Anvil (TokenMark + PAY_TOKENS vs migrations 00015-00017); canary SQL joins tokens (chain_id, contract) PK and chains, column order matches parseTerms; gate test deploys the factory before the api, load test enables its chain after api start; MaxPerDay comment matches watcher.go:251; no link to docs/reviews left, check-docs 0 errors; vitest pay 13 passed, go test canary/address/invoice ok, lint clean; verify logs 16:42:56Z postdate all edits.",
+        "2026-10-11 review pass by reviewer: Pass on re-review. The earlier key leak is fixed at the shared point: internal/chain/check.go:58-60 returns errors.New(Redact(err)) for every further startup check, so neither the api factory check (address/deployed.go) nor the signer gas check can log an Infura /v3/ key; new subtest check_test.go 'a further check's error has no key' fails without it, and no cmd caller uses errors.Is/As on the result. Pay page allows 300 s of clock skew on the one-year rule (receive-address.ts CLOCK_SKEW_S), closing the API-vs-DB clock edge. Canary malformed-input test now covers a zero recipient and recipient == token. Earlier checks still hold: pay-page rules match create, amount panel names symbol and chain on all 4 testnets plus Anvil, canary SQL and column order correct, startup check breaks no deploy or test path, MaxPerDay docs accurate, check-docs 0 errors. Reran go test chain/canary/address/invoice ok, vitest pay 13 passed; verify logs 16:55:29Z postdate all edits and pass (unit, backend, e2e 31+20, lint, typecheck, build, docs, harness). Non-blocking: no migration seeds the Base Sepolia chains row, and the canary needs its name to be base-sepolia; the amount-panel symbol/network match is a substring check."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-11T16:55:29Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 94.5,
+            "log": "docs/runs/F125-20261011T165529Z-backend.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 96.1,
+            "log": "docs/runs/F125-20261011T165529Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 110.4,
+            "log": "docs/runs/F125-20261011T165529Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": "docs/runs/F125-20261011T165529Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F125-20261011T165529Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F125-20261011T165529Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F125-20261011T165529Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.0,
+            "log": "docs/runs/F125-20261011T165529Z-build.log"
+          }
+        ],
+        "taskHash": "5de8ddcefd2c5a64",
+        "filesHash": "3f3ac8f7a11058fa",
+        "proof": {
+          "1": "backend: address TestFactoryDeployed used by the api's startup check, and chain TestCheckEnabled shows a further check's error is logged without an Infura key (also covers the signer's gas check); canary TestCheck 'page names another network' and TestCheckRejectsMalformedInput (amount 0, wrong deadline, zero or token recipient); invoice TestInvoicesPerProfilePerDayAreCapped; unit: receive-address.test.ts refuses terms the API would never create even when they compute to the address, with 5 minutes of clock tolerance on the one-year expiry; e2e: pay.spec checks the canary script reads the amount panel naming USDC on Base Sepolia, and the live suites pass; money-safety.md (canary query), architecture.md and api.md match; docs/reviews removed"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass on re-review. The earlier key leak is fixed at the shared point: internal/chain/check.go:58-60 returns errors.New(Redact(err)) for every further startup check, so neither the api factory check (address/deployed.go) nor the signer gas check can log an Infura /v3/ key; new subtest check_test.go 'a further check's error has no key' fails without it, and no cmd caller uses errors.Is/As on the result. Pay page allows 300 s of clock skew on the one-year rule (receive-address.ts CLOCK_SKEW_S), closing the API-vs-DB clock edge. Canary malformed-input test now covers a zero recipient and recipient == token. Earlier checks still hold: pay-page rules match create, amount panel names symbol and chain on all 4 testnets plus Anvil, canary SQL and column order correct, startup check breaks no deploy or test path, MaxPerDay docs accurate, check-docs 0 errors. Reran go test chain/canary/address/invoice ok, vitest pay 13 passed; verify logs 16:55:29Z postdate all edits and pass (unit, backend, e2e 31+20, lint, typecheck, build, docs, harness). Non-blocking: no migration seeds the Base Sepolia chains row, and the canary needs its name to be base-sepolia; the amount-panel symbol/network match is a substring check.",
+          "at": "2026-10-11T17:01:23Z",
+          "filesHash": "3f3ac8f7a11058fa"
+        }
+      },
+      "branch": "fix/f125-the-pay-page-and-the-canary-check-the-te",
+      "baseCommit": "272aee2401cfb8bab366a9aa963b0d10d0d1e8aa",
+      "failedVerifies": 0
     },
     {
       "id": "F126",

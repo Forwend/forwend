@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/address"
 	"github.com/ensp1re/forwend/apps/backend/internal/auth"
 	"github.com/ensp1re/forwend/apps/backend/internal/balance"
 	"github.com/ensp1re/forwend/apps/backend/internal/chain"
@@ -19,6 +20,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/privy"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 func main() {
@@ -49,7 +51,10 @@ func run() error {
 	if err := database.Migrate(ctx, cfg.DatabaseURL); err != nil {
 		return err
 	}
-	if err := chain.CheckEnabled(ctx, pool, specs, cfg.InfuraKeys, cfg.RPCRate, nil); err != nil {
+	err = chain.CheckEnabled(ctx, pool, specs, cfg.InfuraKeys, cfg.RPCRate, func(ctx context.Context, id uint64, r chain.RPCs) error {
+		return address.FactoryDeployed(ctx, ethclient.NewClient(r.Primary), id)
+	})
+	if err != nil {
 		return err
 	}
 	balances := balance.NewChainReader(specs, cfg.InfuraKeys, cfg.RPCRate)
