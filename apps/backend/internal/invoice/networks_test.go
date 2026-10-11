@@ -31,6 +31,13 @@ func TestPlannedNetworksTakeInvoicesOnceEnabled(t *testing.T) {
 			if _, err := pool.Exec(ctx, `UPDATE tokens SET enabled = true WHERE chain_id = $1`, n.chainID); err != nil {
 				t.Fatal(err)
 			}
+			if _, _, err := s.Create(ctx, profile, "unwatched", req); !errors.Is(err, ErrNotWatched) {
+				t.Fatalf("before the worker scanned it: err = %v, want ErrNotWatched", err)
+			}
+			if _, err := pool.Exec(ctx, `INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block)
+				VALUES ($1, 0, 0)`, n.chainID); err != nil {
+				t.Fatal(err)
+			}
 			created, _, err := s.Create(ctx, profile, "on", req)
 			if err != nil {
 				t.Fatal(err)

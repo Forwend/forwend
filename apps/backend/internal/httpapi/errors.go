@@ -38,6 +38,8 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, invoice.ErrInvalid), errors.Is(err, profile.ErrInvalid), errors.Is(err, activity.ErrInvalid),
 		errors.Is(err, balance.ErrInvalid), errors.Is(err, search.ErrInvalid):
 		status, code, message = http.StatusUnprocessableEntity, "invalid_value", err.Error()
+	case errors.Is(err, invoice.ErrNotWatched):
+		status, code, message = http.StatusServiceUnavailable, "network_not_ready", "this network is starting: try again in a minute"
 	case errors.Is(err, errRateLimited):
 		status, code, message = http.StatusTooManyRequests, "rate_limited", "too many requests: wait Retry-After seconds"
 	default:

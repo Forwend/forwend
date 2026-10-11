@@ -61,7 +61,13 @@ func (s *Service) Onboard(ctx context.Context, privyUserID string, choices []str
 		if err := tx.QueryRow(ctx, "SELECT count(*) FROM profiles WHERE user_id = $1", userID).Scan(&count); err != nil {
 			return fmt.Errorf("count profiles: %w", err)
 		}
-		if count+len(kinds) > MaxProfiles {
+		added := 0
+		for _, kind := range []string{Freelancer, Merchant} {
+			if kinds[kind] {
+				added++
+			}
+		}
+		if count+added > MaxProfiles {
 			return fmt.Errorf("%w: a user has at most %d profiles", ErrInvalid, MaxProfiles)
 		}
 		for _, kind := range []string{Freelancer, Merchant} {

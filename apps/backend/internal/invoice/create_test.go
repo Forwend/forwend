@@ -2,6 +2,7 @@ package invoice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -33,7 +34,8 @@ func open(t *testing.T) (*pgxpool.Pool, string) {
 	t.Cleanup(pool.Close)
 	var profile string
 	err = pool.QueryRow(ctx, `
-		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true)),
+		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true) RETURNING chain_id),
+		     cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) SELECT chain_id, 0, 0 FROM c),
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		            VALUES (84532, 'evm', $1, 'USDC', 6, true)),
 		     u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:alice') RETURNING id),
@@ -129,5 +131,23 @@ func TestCreateNumbersInvoicesAtOnce(t *testing.T) {
 	again, created, err := s.Create(ctx, profile, "key-3", req)
 	if err != nil || created || again.Number != numbers[3] {
 		t.Fatalf("same key again: number %d, created %v, %v; want %d", again.Number, created, err, numbers[3])
+	}
+}
+
+func TestOpenInvoicesPerProfileAreCapped(t *testing.T) {
+	ctx := context.Background()
+	pool, profile := open(t)
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+		SELECT '0x' || lpad(to_hex(n), 64, '0'), $1, 84532, 'evm', $2, 5000000, 4000000000, 4000086400,
+		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
+		    '0x' || lpad(to_hex(n), 40, '0'), 'bulk-' || n, decode(repeat('00', 32), 'hex')
+		FROM generate_series(1, $3::int) n`, profile, usdc, MaxOpen); err != nil {
+		t.Fatal(err)
+	}
+	req := Request{ChainID: 84532, Token: usdc, Amount: "5000000"}
+	if _, _, err := NewService(pool).Create(ctx, profile, "one-more", req); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("over the open invoice cap: %v, want ErrInvalid", err)
 	}
 }

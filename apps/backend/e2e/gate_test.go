@@ -99,6 +99,10 @@ func TestMoneyLoop(t *testing.T) {
 	}
 	start(t, bin, "worker", loop)
 	start(t, bin, "signer", append(loop, "EXECUTOR_PRIVATE_KEY="+chaintest.Key))
+	waitFor(t, "the worker's first scan", func() bool {
+		var n int
+		return conn.QueryRow(ctx, "SELECT count(*) FROM chain_cursors").Scan(&n) == nil && n > 0
+	})
 
 	body := fmt.Sprintf(`{"chainId": %d, "token": %q, "amount": %q}`, chaintest.ChainID, token, amount)
 	status, created := post(t, api+"/v1/profiles/"+profile+"/invoices", privy, body)

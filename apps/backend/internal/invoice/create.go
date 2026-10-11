@@ -26,14 +26,27 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	}
 
 	var family string
+	var watched bool
 	err = s.pool.QueryRow(ctx, `
-		SELECT c.chain_family FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
-		WHERE c.chain_id = $1 AND c.enabled AND t.contract = $2 AND t.enabled`, r.ChainID, token).Scan(&family)
+		SELECT c.chain_family, EXISTS (SELECT 1 FROM chain_cursors cur WHERE cur.chain_id = c.chain_id)
+		FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
+		WHERE c.chain_id = $1 AND c.enabled AND t.contract = $2 AND t.enabled`, r.ChainID, token).Scan(&family, &watched)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Invoice{}, false, fmt.Errorf("%w: token is not enabled on this chain", ErrInvalid)
 	}
 	if err != nil {
 		return Invoice{}, false, fmt.Errorf("read chain and token: %w", err)
+	}
+	if !watched {
+		return Invoice{}, false, ErrNotWatched
+	}
+	var open int
+	if err := s.pool.QueryRow(ctx, "SELECT count(*) FROM invoices WHERE profile_id = $1 AND expires_at > $2",
+		profileID, s.now().Unix()).Scan(&open); err != nil {
+		return Invoice{}, false, fmt.Errorf("count open invoices: %w", err)
+	}
+	if open >= MaxOpen {
+		return Invoice{}, false, fmt.Errorf("%w: a profile has at most %d invoices open at once", ErrInvalid, MaxOpen)
 	}
 	var recipient string
 	err = s.pool.QueryRow(ctx, "SELECT address FROM profile_wallets WHERE profile_id = $1 AND chain_family = $2",

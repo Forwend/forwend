@@ -141,3 +141,19 @@ func TestOnboardKeepsTheProfileCap(t *testing.T) {
 		t.Fatalf("%d profiles, want %d", n, MaxProfiles-1)
 	}
 }
+
+func TestOnboardAtTheCapWithoutNewProfilesIsAllowed(t *testing.T) {
+	s, _, _ := newService(t)
+	ctx := context.Background()
+	if _, _, err := s.SignUp(ctx, alice); err != nil {
+		t.Fatal(err)
+	}
+	for i := range MaxProfiles - 1 {
+		if _, _, err := s.Create(ctx, alice, fmt.Sprintf("key-%d", i), Merchant, ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, _, _, err := s.Onboard(ctx, alice, []string{ReceiveAndSend}); err != nil {
+		t.Fatalf("onboarding that adds no profile at the cap: %v", err)
+	}
+}

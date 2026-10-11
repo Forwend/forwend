@@ -28,9 +28,10 @@ const (
 )
 
 type endpoint struct {
-	url  string // may hold an Infura key: never log it or put it in an error
-	host string
-	name string // host and list position, safe to log
+	url    string // may hold an Infura key: never log it or put it in an error
+	host   string
+	name   string // host and list position, safe to log
+	second bool   // serves the Second role only; the roles never share a host
 
 	checked   bool
 	wrong     bool // serves another chain: never used
@@ -114,18 +115,15 @@ func (p *pool) do(ctx context.Context, second bool, header http.Header, body []b
 	return nil, err
 }
 
-// pick returns the endpoint for a role's next request and when it may start. The primary uses the first host in list
-// order with an endpoint that is not resting, the second the first other such host, so the two roles are always on
-// different hosts (D-15). Within the host the endpoint free soonest is taken and the request's calls are added to its
-// pace. When every endpoint the role may use rests, ready is false and at is when the first one is back.
+// pick returns the endpoint for a role's next request and when it may start: the first host in list order of the
+// role's own hosts with an endpoint that is not resting. Within the host the endpoint free soonest is taken and the
+// request's calls are added to its pace. When every endpoint the role may use rests, ready is false and at is when the
+// first one is back.
 func (p *pool) pick(second bool, calls int) (e *endpoint, at time.Time, ready bool, err error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	now := time.Now()
-	e = p.best(now, "")
-	if e != nil && second {
-		e = p.best(now, e.host)
-	}
+	e = p.best(now, second)
 	if e == nil {
 		return nil, time.Time{}, false, fmt.Errorf("chain %d: no %s RPC host serves this chain; D-15 needs two",
 			p.chainID, roleName(second))
@@ -141,12 +139,12 @@ func (p *pool) pick(second bool, calls int) (e *endpoint, at time.Time, ready bo
 	return e, at, true, nil
 }
 
-func (p *pool) best(now time.Time, skip string) *endpoint {
+func (p *pool) best(now time.Time, second bool) *endpoint {
 	var host string
 	var free, back *endpoint
 	for _, e := range p.endpoints {
 		switch {
-		case e.wrong || e.host == skip:
+		case e.wrong || e.second != second:
 		case e.restUntil.After(now):
 			if back == nil || e.restUntil.Before(back.restUntil) {
 				back = e

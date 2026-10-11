@@ -38,12 +38,18 @@ const (
 	MaxSenderName    = 100
 )
 
+// MaxOpen bounds a profile's invoices still open for payment: each receive address is watched on every scan.
+const MaxOpen = 1000
+
 var (
 	// ErrInvalid wraps a request value that breaks a rule; the message names it.
 	ErrInvalid = errors.New("invalid invoice request")
 	// ErrConflict means the idempotency key was used with another request.
 	ErrConflict = errors.New("idempotency key reused with another request")
 	ErrNotFound = errors.New("invoice not found")
+	// ErrNotWatched: the worker has not scanned the chain yet, and its first scan starts at the finalized block, so a
+	// payment made before it would never be seen (SEC-02).
+	ErrNotWatched = errors.New("network not watched yet")
 )
 
 var (

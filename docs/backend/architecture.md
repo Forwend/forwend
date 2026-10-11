@@ -218,9 +218,11 @@ never holds the app's load.
 `worker` and `signer` read the shared chain list (`CHAINS_FILE`, `packages/contracts/chains.json`),
 `INFURA_API_KEYS` and `RPC_RATE_PER_SECOND`, and serve the chains enabled in the `chains` table. `internal/chain` gives
 each chain one pool of endpoints in `script/rpc.mjs` order: every Infura key (all on one host), then the public RPCs;
-public RPCs only when `INFURA_API_KEYS` is empty. An endpoint is used only after its `eth_chainId` matches. The primary
-role (reading the chain, signing) uses the first host with an endpoint that is not resting; the second role (balances,
-D-15) the first other such host, so the two never share a host. A list with fewer than two hosts is refused; every
+public RPCs only when `INFURA_API_KEYS` is empty. An endpoint is used only after its `eth_chainId` matches. Hosts
+alternate between the two roles in list order (first host primary, second host second, third primary, ...), and a role
+uses only its own hosts: the primary (reading the chain, signing) and the second (balances, D-15) never share a host,
+even after an outage, so one provider can't supply both a deposit and the balance that confirms it (SEC-01). When all
+of a role's hosts rest, that role waits; paid and settled wait with it. A list with fewer than two hosts is refused; every
 chain lists at least two public hosts from different operators (the chain's own RPC, then publicnode or dRPC), so it
 runs without Infura keys (`TestEveryChainListsTwoPublicHosts`). Every call, or batch, goes to its role's endpoint. No answer within 5 s, a connection error, an HTTP error
 status or a rate-limit JSON-RPC error (429, -32005, -32007, or a message saying so) rests that endpoint (1 s doubled
@@ -238,12 +240,17 @@ the API, pays it and waits for detected → paid → settled with the deposit go
 `internal/watcher` (R-20), one `Chain` per chain; never two at once for one chain (they would race on the cursor; the
 worker's lock, [startup](#startup)).
 Each `Scan` reads `latest`, then `eth_getLogs` for `Transfer` from the invoices' tokens to their receive addresses,
-from 64 blocks below the last finalized block (or from the oldest `detected` row) to latest, in ranges of at most
+from `RescanDepth` (2,000) blocks below the last finalized block (or from the oldest `detected` row) to latest, so a
+log one answer missed is read again for 15 minutes or more even where finalized is latest (Arc, Tempo), in ranges of at most
 2,000 blocks; a range the RPC refuses for its size or rate (after every endpoint was tried) is read again in half, down to
 50 blocks, and the range doubles back after each answer. One scan reads at most 40,000 blocks, so a long backlog (a
 worker down for days) is caught up over several rounds, each recorded, instead of needing one round longer than its
 timeout. Receive addresses and wallets go into topic lists of at most 1,000: go-ethereum nodes, Arbitrum's public RPC
-among them, refuse more with "exceed max topics". One JSON-RPC batch then reads `finalized` and the header of every block it judges, so they usually come
+among them, refuse more with "exceed max topics". Invoices leave the scan 30 days after their settle deadline (the
+contracts' `MAX_HOLD`), unless a deposit to them is still detected: later money is moved only by the refund authority, from the chain. A transfer already recorded
+under another block and then mined again is skipped with an `ALERT` log, so the chain's scan goes on.
+Invoices on a chain are created only once the worker has its cursor (`ErrNotWatched`, 503): a first scan starts at the
+finalized block and would never see a payment made before it (SEC-02). One JSON-RPC batch then reads `finalized` and the header of every block it judges, so they usually come
 from one node. One transaction then:
 - marks a `detected` row `reorged` only when the chain shows another block hash at its height; a log merely missing
   from one answer (a lagging or overloaded node) proves nothing;
@@ -256,12 +263,12 @@ wallet as sender, then as receiver (two `eth_getLogs` per range), one row per wa
 re-mined copy gets a new row, the oldest detected row holds the scan's start). A token disabled while one of its
 transfers is still detected stays in the scan until those rows confirm or are reorged, so they never hold the start;
 its new transfers are not recorded. Start rule: a wallet's transfers are
-recorded from the first scan that lists it, which reads from 64 blocks below the last finalized block. We make each
+recorded from the first scan that lists it, which reads from 2,000 blocks below the last finalized block. We make each
 wallet before anyone can know its address and the next scan follows within one poll interval, so that is its whole
-history; as for invoices, only a scan longer than 64 blocks could miss a transfer to a wallet made while it ran.
+history; as for invoices, only a scan longer than 2,000 blocks could miss a transfer to a wallet made while it ran.
 Transfers older than that window are not looked for: those of wallets made before this table existed, or before a
 chain's first scan. Arc native-coin sends log no token `Transfer`, so they are not recorded.
-The 64-block rescan means one empty or lagging answer is never the last look at a final block. Only the invoice's own
+The 2,000-block rescan means one empty or lagging answer is never the last look at a final block. Only the invoice's own
 token counts, and the row stores the emitting contract, so the foreign key also rejects a look-alike. Block hashes and
 times come from the RPC, never computed in Go. Arc's native-coin `Transfer` logs are ignored (see money-safety). A
 chain's first scan starts at its finalized block: deposits before it are not looked for. Scanning again changes

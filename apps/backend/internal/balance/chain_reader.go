@@ -2,6 +2,7 @@ package balance
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -74,6 +75,9 @@ func (c *ChainReader) Read(ctx context.Context, chainID uint64, token, holder st
 	raw, err := c.cache.get(ctx, fmt.Sprintf("balance/%d/%s/%s/%d", chainID, token, holder, block), balanceTTL,
 		func(ctx context.Context) (string, error) {
 			balance, err := ledger.BalanceAt(ctx, client, chainID, token, holder, block)
+			if errors.Is(err, ledger.ErrNoToken) {
+				balance, err = new(big.Int), nil // a token deployed after that block holds nothing there
+			}
 			if err != nil {
 				return "", err
 			}
