@@ -7,15 +7,15 @@
       "type": "feat",
       "behavior": "Invoices can be paid and settled on Arbitrum Sepolia, enabled on its own after the Base Sepolia gate",
       "acceptance": [
-        "D-38: Arbitrum Sepolia and its token 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d (USDC) are enabled in the chains and tokens data by a migration; the R-15 vectors cover its chain ID; the pay page and dashboard show its network name; backend tests pass with it enabled",
-        "D-38: the existing Base Sepolia invoices, pay page and Anvil browser test are unchanged; the e2e and backend checks pass"
+        "D-38: migration 00015 adds Arbitrum Sepolia and its token 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d (USDC, 6 decimals) switched off, so test and fresh databases need no Arbitrum RPC or gas; docs/backend/architecture.md gives the SQL that turns a chain on per database, and the local database has it on; the R-15 vectors cover its chain ID; the pay page and dashboard show its network name; a backend test proves invoices are refused while it is off and work with network name, symbol and decimals once it is on",
+        "D-38: the existing Base Sepolia invoices and pay page are unchanged; the e2e and backend checks pass"
       ],
       "dependsOn": [
         "F091",
         "F092",
         "F093"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -30,18 +30,113 @@
       ],
       "review": true,
       "notes": [
-        "2026-10-10 Gate: start only after PLAN 8.12 (complete money-path review and Sasha's Base Sepolia run). Before done, Sasha runs create, pay, settled on this chain and the tx hashes go in a note."
+        "2026-10-10 Gate: start only after PLAN 8.12 (complete money-path review and Sasha's Base Sepolia run). Before done, Sasha runs create, pay, settled on this chain and the tx hashes go in a note.",
+        "2026-10-11 decision: chains are added switched off by migration and turned on per database; a migration that enables a chain would make every test and fresh database fail the D-71 startup checks without that chain's RPCs and executor gas",
+        "2026-10-11 review pass by reviewer: Pass. Switched-off-by-migration is correct: chain.CheckEnabled (internal/chain/check.go:19) stops api, worker and signer when an enabled chain is missing from CHAINS_FILE or lacks two answering RPCs, and the signer adds executor gas (cmd/signer/main.go:57); e2e/gate_test.go:62 writes an Anvil-only chain list, so an enabling migration would break the gate and fresh dev databases. 00015: lowercase contract matches the tokens CHECK (00002_money.sql:25); token on chain is USDC, 6 decimals (cast call); ON CONFLICT DO NOTHING keeps a hand-inserted 421614 row unchanged; Down deletes token then chain, and the invoices FK blocks Down once invoices exist. Local forwend DB is at version 15 with 421614 chain and token enabled. vectors/receive-address.json covers 421614; web chains.ts:23 and pay.ts:19 already list Arbitrum USDC; packages/contracts unchanged. networks_test.go passes and fails without 00015 (copy of the backend with the file removed: 'token is not enabled on this chain'). architecture.md:137-141 enable SQL is correct. Verify logs 20261011T131648Z all pass. Note: architecture.md:137 'Migrations add each planned network' does not describe Base Sepolia, which is still only a hand-inserted row. The live Arbitrum create/pay/settle run with tx hashes from the task note is still due before done.",
+        "2026-10-11 owner said not to wait: merged with the chain off by default and on only in the local database; the owner's live Arbitrum Sepolia create, pay, settled run and its tx hashes are still owed"
       ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-11T13:16:48Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 53.4,
+            "log": "docs/runs/F095-20261011T131648Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 109.4,
+            "log": "docs/runs/F095-20261011T131648Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F095-20261011T131648Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F095-20261011T131648Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F095-20261011T131648Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F095-20261011T131648Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 51.7,
+            "log": "docs/runs/F095-20261011T131648Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F095-20261011T131648Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F095-20261011T131648Z-keep.log"
+          }
+        ],
+        "taskHash": "cac3585980de0db8",
+        "filesHash": "f0c546b4ac5e9892",
+        "proof": {
+          "1": "backend: migration 00015 adds Arbitrum Sepolia and its USDC switched off; invoice TestPlannedNetworksTakeInvoicesOnceEnabled proves create is refused while off and works with network arbitrum-sepolia, USDC, 6 decimals once on; vectors/receive-address.json already holds chain 421614 (R-15 test) and apps/web chains.ts names it; architecture.md gives the enable SQL; locally enabled, and the api, worker and signer passed their D-71 startup checks with it on",
+          "2": "e2e: Base Sepolia invoice, pay page and dashboard browser tests pass unchanged; backend check passes with the new migration"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. Switched-off-by-migration is correct: chain.CheckEnabled (internal/chain/check.go:19) stops api, worker and signer when an enabled chain is missing from CHAINS_FILE or lacks two answering RPCs, and the signer adds executor gas (cmd/signer/main.go:57); e2e/gate_test.go:62 writes an Anvil-only chain list, so an enabling migration would break the gate and fresh dev databases. 00015: lowercase contract matches the tokens CHECK (00002_money.sql:25); token on chain is USDC, 6 decimals (cast call); ON CONFLICT DO NOTHING keeps a hand-inserted 421614 row unchanged; Down deletes token then chain, and the invoices FK blocks Down once invoices exist. Local forwend DB is at version 15 with 421614 chain and token enabled. vectors/receive-address.json covers 421614; web chains.ts:23 and pay.ts:19 already list Arbitrum USDC; packages/contracts unchanged. networks_test.go passes and fails without 00015 (copy of the backend with the file removed: 'token is not enabled on this chain'). architecture.md:137-141 enable SQL is correct. Verify logs 20261011T131648Z all pass. Note: architecture.md:137 'Migrations add each planned network' does not describe Base Sepolia, which is still only a hand-inserted row. The live Arbitrum create/pay/settle run with tx hashes from the task note is still due before done.",
+          "at": "2026-10-11T13:21:53Z",
+          "filesHash": "f0c546b4ac5e9892"
+        },
+        "commit": "4ecd700",
+        "doneAt": "2026-10-11T13:22:25Z"
+      },
+      "branch": "feat/f095-invoices-can-be-paid-and-settled-on-arbi",
+      "baseCommit": "32dc800bf3f28a3a0067c59271774d6dab670477",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f095-invoices-can-be-paid-and-settled-on-arbi",
+        "base": "main"
+      }
     },
     {
       "id": "F096",
       "type": "feat",
       "behavior": "Invoices can be paid and settled on Arc testnet, enabled on its own after the Base Sepolia gate",
       "acceptance": [
-        "D-38: Arc testnet and its token 0x3600000000000000000000000000000000000000 (USDC) are enabled in the chains and tokens data by a migration; the R-15 vectors cover its chain ID; the pay page and dashboard show its network name; backend tests pass with it enabled",
-        "D-38: the existing Base Sepolia invoices, pay page and Anvil browser test are unchanged; the e2e and backend checks pass"
+        "D-38: a migration adds Arc testnet and its token 0x3600000000000000000000000000000000000000 (USDC, 6 decimals through the ERC-20 interface) switched off, and the local database has it on with the api, worker and signer passing their startup checks; the R-15 vectors cover its chain ID; the pay page and dashboard show its network name; the planned-networks backend test covers it",
+        "D-38: the existing Base Sepolia and Arbitrum Sepolia invoices and pay page are unchanged; the e2e and backend checks pass"
       ],
       "dependsOn": [
         "F091",
@@ -71,10 +166,10 @@
     {
       "id": "F097",
       "type": "feat",
-      "behavior": "Invoices can be paid and settled on Tempo Moderato, enabled on its own after the Base Sepolia gate",
+      "behavior": "Invoices can be paid and settled in OUSD on Tempo Moderato, enabled on its own after the Base Sepolia gate",
       "acceptance": [
-        "D-38: Tempo Moderato and its token the TIP-20 test stablecoin from S-6 (no USDC there yet) are enabled in the chains and tokens data by a migration; the R-15 vectors cover its chain ID; the pay page and dashboard show its network name; backend tests pass with it enabled",
-        "D-38: the existing Base Sepolia invoices, pay page and Anvil browser test are unchanged; the e2e and backend checks pass"
+        "D-38: a migration adds Tempo Moderato and OUSD (Open USD, Tempo's recommended stablecoin, TIP-20, 6 decimals) at 0x20c0000000000000000000006a37da5c996874be, the same address on testnet and mainnet (tempo.xyz/developers/docs/guide/ousd; checked on chain 42431: symbol OUSD, name OpenUSD) switched off, and the local database has it on with the api, worker and signer passing their startup checks; D-36 lists OUSD as Tempo's planned token; the pay page accepts OUSD on Tempo; the R-15 vectors cover its chain ID; the pay page and dashboard show its network name and token; the planned-networks backend test covers it",
+        "D-38: the existing Base Sepolia and Arbitrum Sepolia invoices and pay page are unchanged; the e2e and backend checks pass"
       ],
       "dependsOn": [
         "F091",
