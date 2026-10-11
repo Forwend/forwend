@@ -231,7 +231,12 @@ test.describe("pay page", () => {
       await page.close();
       return result;
     };
-    expect(await read(OPEN)).toEqual({ id: ID, addresses: [RECEIVE], qrMatches: true });
+    expect(await read(OPEN)).toEqual({
+      id: ID,
+      addresses: [RECEIVE],
+      qrMatches: true,
+      amountText: expect.stringMatching(/USDC[\s\S]*Base Sepolia/),
+    });
     expect(await read(PAID)).toEqual({
       id: ID,
       error: "no address shown: the invoice is not open for payment",

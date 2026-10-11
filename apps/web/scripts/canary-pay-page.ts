@@ -1,7 +1,8 @@
 // The canary's browser (R-51): `node canary-pay-page.ts <web origin>` reads invoice ids from stdin, opens each
-// /pay/<id> as a payer would, passes the network-confirm gate and prints one JSON line per id with every address the
-// send tabs show and whether each tab's QR code encodes the address shown, or why none is shown. It reads only the
-// DOM and imports nothing from src/: the canary must not share the page's code. Keep uqr at the version ui-web uses.
+// /pay/<id> as a payer would, passes the network-confirm gate and prints one JSON line per id with the amount panel's
+// text, every address the send tabs show and whether each tab's QR code encodes the address shown, or why none is
+// shown. It reads only the DOM and imports nothing from src/: the canary must not share the page's code. Keep uqr at
+// the version ui-web uses.
 import { text } from "node:stream/consumers";
 import { chromium, type Page } from "@playwright/test";
 import { encode } from "uqr";
@@ -9,7 +10,13 @@ import { encode } from "uqr";
 // The lookahead keeps a transaction hash from matching as an address.
 const ADDRESS = /0x[0-9a-fA-F]{40}(?![0-9a-fA-F])/g;
 
-export type PayPage = { id: string; addresses?: string[]; qrMatches?: boolean; error?: string };
+export type PayPage = {
+  id: string;
+  addresses?: string[];
+  qrMatches?: boolean;
+  amountText?: string;
+  error?: string;
+};
 
 const drawnCells = (path: string) =>
   new Set(Array.from(path.matchAll(/M(\d+) (\d+)/g), ([, x, y]) => `${x} ${y}`));
@@ -32,6 +39,7 @@ export async function readPayPage(page: Page, web: string, id: string): Promise<
   const gate = page.locator('section[aria-labelledby="pay-before"]');
   if (!(await gate.count()))
     return { id, error: "no address shown: the invoice is not open for payment" };
+  const amountText = await page.locator('section[aria-labelledby="pay-amount"]').innerText();
   await gate.getByRole("button").click();
   const send = page.locator('section[aria-labelledby="pay-send"]');
   const addresses = new Set<string>();
@@ -50,7 +58,7 @@ export async function readPayPage(page: Page, web: string, id: string): Promise<
       if (!shown.some((address) => encodes(path, address))) qrMatches = false;
     }
   }
-  return { id, addresses: [...addresses], qrMatches };
+  return { id, addresses: [...addresses], qrMatches, amountText };
 }
 
 if (import.meta.main) {

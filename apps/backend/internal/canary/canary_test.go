@@ -28,13 +28,14 @@ const (
 )
 
 // line is the invoice as the database lists it on the canary's stdin.
-var line = fmt.Sprintf("%s %d %s %s %s %d %d", id, chaintest.ChainID, recipient, token, amount, expiresAt, deadline)
+var line = fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil", id, chaintest.ChainID, recipient, token, amount, expiresAt,
+	deadline)
 
 // setup is what one case serves and configures.
 type setup struct {
-	rpc2, codeHash, pageAddress, qrAddress string
-	chainKey                               uint64
-	api                                    map[string]any
+	rpc2, codeHash, pageAddress, qrAddress, network string
+	chainKey                                        uint64
+	api                                             map[string]any
 }
 
 func TestCheck(t *testing.T) {
@@ -76,16 +77,19 @@ func TestCheck(t *testing.T) {
 		{name: "factory code changed", change: func(s *setup) { s.codeHash = "0x" + strings.Repeat("0", 64) },
 			alert: "factory code hash"},
 		{name: "rpc on another chain", change: func(s *setup) { s.chainKey = 84532 }, alert: "chain id 31337, want 84532"},
+		{name: "page names another network", change: func(s *setup) { s.network = "Base Sepolia" },
+			alert: "want USDC on anvil"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s := setup{rpc2: b.URL, codeHash: codeHash, pageAddress: want, qrAddress: want, chainKey: chaintest.ChainID,
+			s := setup{rpc2: b.URL, codeHash: codeHash, pageAddress: want, qrAddress: want, network: "Anvil (local)",
+				chainKey: chaintest.ChainID,
 				api: map[string]any{"invoiceId": id, "chainId": chaintest.ChainID, "token": token, "amount": amount,
 					"recipient": recipient, "factory": factory, "receiveAddress": want,
 					"expiresAt": "2030-01-01T00:00:00Z", "settleDeadline": "2030-01-02T00:00:00Z"}}
 			if tc.change != nil {
 				tc.change(&s)
 			}
-			origin := serve(t, maps.Clone(s.api), s.pageAddress, qrPath(t, s.qrAddress))
+			origin := serve(t, maps.Clone(s.api), s.pageAddress, qrPath(t, s.qrAddress), s.network)
 			cfg := config.Canary{APIURL: origin, WebURL: origin, Factory: factory, FactoryCodeHash: s.codeHash,
 				RPCURLs: map[uint64][2]string{s.chainKey: {a.URL, s.rpc2}}, PageScript: script}
 			alerts := canary.Check(context.Background(), cfg, []string{line})
@@ -100,7 +104,10 @@ func TestCheck(t *testing.T) {
 }
 
 func TestCheckRejectsMalformedInput(t *testing.T) {
-	for _, bad := range []string{id, strings.Replace(line, recipient, "0x11", 1), strings.Replace(line, amount, "-1", 1)} {
+	for _, bad := range []string{id, strings.Replace(line, recipient, "0x11", 1), strings.Replace(line, amount, "-1", 1),
+		strings.Replace(line, amount, "0", 1), strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(deadline+1), 1),
+		strings.Replace(line, recipient, "0x0000000000000000000000000000000000000000", 1),
+		strings.Replace(line, recipient, token, 1)} {
 		alerts := canary.Check(context.Background(), config.Canary{}, []string{bad})
 		if len(alerts) != 1 || !strings.Contains(alerts[0], "input line") {
 			t.Errorf("%q: got alerts %q", bad, alerts)
@@ -128,13 +135,14 @@ func TestImportsNoAppCode(t *testing.T) {
 // serve answers the api's GET /v1/invoices/<id> with api, and /pay/<id> with a page laid out like the real one that
 // shows address and a QR code drawn as qr after the network-confirm gate, or a closed invoice without the gate when
 // address is "".
-func serve(t *testing.T, api map[string]any, address, qr string) string {
+func serve(t *testing.T, api map[string]any, address, qr, network string) string {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/v1/invoices/" + id:
 			_ = json.NewEncoder(w).Encode(api)
 		case "/pay/" + id:
-			page := `<!doctype html><main><h2 id="pay-amount">Amount due</h2>`
+			page := `<!doctype html><main><section aria-labelledby="pay-amount"><h2 id="pay-amount">Amount due</h2>` +
+				`<p>2.50</p><p>USDC</p><p>` + network + `</p></section>`
 			if address != "" {
 				panel := func(n int) string {
 					return fmt.Sprintf(`<div role="tabpanel" aria-labelledby="tab%d"><svg role="img"><path d="%s"/></svg>`+

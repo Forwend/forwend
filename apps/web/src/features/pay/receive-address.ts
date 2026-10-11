@@ -19,6 +19,13 @@ export interface InvoiceTerms {
   intendedChainId: bigint;
 }
 
+// invoice.SettleWindow and the longest expiry the API accepts (internal/invoice).
+const SETTLE_WINDOW_S = 86_400n;
+const MAX_EXPIRY_S = 365n * 86_400n;
+// expiresAt comes from the API's clock and createdAt from the database's.
+const CLOCK_SKEW_S = 300n;
+const ZERO = "0".repeat(40);
+
 const UINT64_MAX = 2n ** 64n - 1n;
 const UINT256_MAX = 2n ** 256n - 1n;
 
@@ -45,14 +52,15 @@ export function receiveAddress(t: InvoiceTerms): string {
 }
 
 /**
- * The invoice's receive address when the answer is the invoice the link names and its own terms compute to it, or null.
- * Null means the page must not show it: the API answer was changed somewhere, or a term can't be read (a term that
- * can't be read can't prove the address).
+ * The invoice's receive address when the answer is the invoice the link names, its terms follow the rules the API
+ * creates them by (money sent to terms that break them can only be refunded), and they compute to it; or null. Null
+ * means the page must not show it: the API answer was changed somewhere, or a term can't be read (a term that can't
+ * be read can't prove the address).
  */
 export function checkedReceiveAddress(inv: Invoice, linkInvoiceId: string): string | null {
   if (inv.invoiceId.toLowerCase() !== linkInvoiceId.toLowerCase()) return null;
   try {
-    const address = receiveAddress({
+    const terms = {
       invoiceId: inv.invoiceId,
       recipient: inv.recipient,
       token: inv.token,
@@ -60,7 +68,17 @@ export function checkedReceiveAddress(inv: Invoice, linkInvoiceId: string): stri
       expiresAt: unixSeconds(inv.expiresAt),
       settleDeadline: unixSeconds(inv.settleDeadline),
       intendedChainId: BigInt(inv.chainId),
-    });
+    };
+    const recipient = terms.recipient.toLowerCase().replace(/^0x/, "");
+    const invalid =
+      terms.amount <= 0n ||
+      terms.settleDeadline !== terms.expiresAt + SETTLE_WINDOW_S ||
+      terms.expiresAt > unixSeconds(inv.createdAt) + MAX_EXPIRY_S + CLOCK_SKEW_S ||
+      [ZERO, terms.token.toLowerCase().replace(/^0x/, ""), FACTORY, IMPLEMENTATION].includes(
+        recipient,
+      );
+    if (invalid) return null;
+    const address = receiveAddress(terms);
     return address === inv.receiveAddress.toLowerCase() ? address : null;
   } catch {
     return null;

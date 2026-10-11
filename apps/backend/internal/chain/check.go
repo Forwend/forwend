@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -54,7 +55,9 @@ func (r RPCs) check(ctx context.Context, also func(context.Context, uint64, RPCs
 			"hosts: %s", r.pool.chainID, answered, hosts, Redact(err))
 	}
 	if also != nil {
-		return also(ctx, r.pool.chainID, r)
+		if err := also(ctx, r.pool.chainID, r); err != nil {
+			return errors.New(Redact(err)) // the process logs it as it stops
+		}
 	}
 	return nil
 }

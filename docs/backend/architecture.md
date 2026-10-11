@@ -33,7 +33,8 @@ Each binary checks what it needs before it serves, and otherwise stops with one 
 - Every chain enabled in the `chains` table is in the chain list and answers through a primary and a second RPC on
   different hosts (D-15), within 30 s per chain. A chain that can't is not skipped: the process stops, naming the chain
   and how many of its hosts answered. Disable the chain in the database or give it a second host (with
-  `INFURA_API_KEYS` empty, only Arc Testnet lists two). The api checks too: it reads balances through the second RPC.
+  `INFURA_API_KEYS` empty, only Arc Testnet lists two). The api checks too: it reads balances through the second RPC,
+  and it stops when the factory has no code on an enabled chain, since invoices there could never settle.
 - The signer: `EXECUTOR_PRIVATE_KEY` is a hex secp256k1 key (the error never shows it), and on every enabled chain the
   executor holds `settlement.MinGas` at the fee cap it would sign with now (twice the base fee plus the tip). `MinGas`
   is one receiver deploy (159,990 gas on Anvil) and one settle (at least `SettleGasFloor`), each plus a fifth: 342,000

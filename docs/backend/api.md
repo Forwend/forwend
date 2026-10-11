@@ -177,7 +177,7 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
 - One shape: `{ "error": { "code": "invoice_not_found", "message": "…" } }`. Codes are snake_case and listed in the spec.
 - 400 malformed, 401 no or bad token, 403 not yours, 404 missing, 409 conflict, 422 invalid value, 429 too many
   requests, 503 a network the worker has not scanned yet (`network_not_ready`, on invoice create), 500 anything else.
-  A profile has at most 1,000 invoices open for payment at once: 422 above.
+  A profile has at most 1,000 invoices open for payment at once and creates at most 500 a day: 422 above.
 - A 500 never shows internal details. `httpapi` maps sentinel errors to codes in one place.
 
 ## Rate limits

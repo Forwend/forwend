@@ -40,13 +40,17 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	if !watched {
 		return Invoice{}, false, ErrNotWatched
 	}
-	var open int
-	if err := s.pool.QueryRow(ctx, "SELECT count(*) FROM invoices WHERE profile_id = $1 AND expires_at > $2",
-		profileID, s.now().Unix()).Scan(&open); err != nil {
+	var open, today int
+	if err := s.pool.QueryRow(ctx, `SELECT count(*) FILTER (WHERE expires_at > $2),
+		count(*) FILTER (WHERE created_at > now() - interval '1 day') FROM invoices WHERE profile_id = $1`,
+		profileID, s.now().Unix()).Scan(&open, &today); err != nil {
 		return Invoice{}, false, fmt.Errorf("count open invoices: %w", err)
 	}
 	if open >= MaxOpen {
 		return Invoice{}, false, fmt.Errorf("%w: a profile has at most %d invoices open at once", ErrInvalid, MaxOpen)
+	}
+	if today >= MaxPerDay {
+		return Invoice{}, false, fmt.Errorf("%w: a profile creates at most %d invoices a day", ErrInvalid, MaxPerDay)
 	}
 	var recipient string
 	err = s.pool.QueryRow(ctx, "SELECT address FROM profile_wallets WHERE profile_id = $1 AND chain_family = $2",
