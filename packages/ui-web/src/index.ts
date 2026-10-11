@@ -27,8 +27,12 @@ export { Skeleton } from "./components/feedback/skeleton";
 export { Spinner } from "./components/feedback/spinner";
 export type { SuccessCheckProps } from "./components/feedback/success-check";
 export { SuccessCheck } from "./components/feedback/success-check";
-export type { ToastProps } from "./components/feedback/toast";
-export { Toast } from "./components/feedback/toast";
+export type {
+  ToastMessage,
+  ToastProps,
+  ToastProviderProps,
+} from "./components/feedback/toast";
+export { TOAST_MS, Toast, ToastProvider, useToast } from "./components/feedback/toast";
 export type { CheckboxProps } from "./components/forms/checkbox";
 export { Checkbox } from "./components/forms/checkbox";
 export type { CodeInputProps } from "./components/forms/code-input";

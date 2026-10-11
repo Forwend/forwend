@@ -1,10 +1,11 @@
 "use client";
 
-import { Button, Spinner } from "@forwend/ui-web";
+import { Button, Spinner, ToastProvider } from "@forwend/ui-web";
 import { usePrivy } from "@privy-io/react-auth";
 import { skipToken } from "@reduxjs/toolkit/query";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { PaymentToasts } from "@/features/activity/payment-toasts";
 import { AUTH_COPY } from "@/features/auth/auth-copy";
 import { useGetBalancesQuery } from "@/features/balances/balances-api";
 import { RequestSheet } from "@/features/invoices/components/request-sheet";
@@ -144,66 +145,70 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
 
   const email = user?.email?.address ?? user?.google?.email ?? AUTH_COPY.signedIn;
   return (
-    <div className="min-h-dvh bg-bg">
-      <AppSidebar
-        profiles={profiles}
-        active={active}
-        onSwitch={switchProfile}
-        pathname={pathname}
-        email={email}
-        onSignOut={signOut}
-        collapsed={collapsed}
-      />
-      {/* The sidebar is fixed on desktop; the content starts after it. */}
-      <div className={`min-w-0 ${collapsed ? "lg:pl-16" : "lg:pl-64"}`}>
-        <AppHeader
+    // Phones: toasts sit above the tab bar (h-16, its top border and the safe area).
+    <ToastProvider className="max-lg:bottom-[calc(4rem+1px+env(safe-area-inset-bottom)+1rem)]">
+      <div className="min-h-dvh bg-bg">
+        <PaymentToasts profileId={active.profileId} />
+        <AppSidebar
+          profiles={profiles}
           active={active}
+          onSwitch={switchProfile}
           pathname={pathname}
           email={email}
           onSignOut={signOut}
-          onSearch={() => setSearching(true)}
-          onReceive={() => setReceiving(true)}
           collapsed={collapsed}
-          onToggleCollapsed={toggleCollapsed}
         />
-        <main className="px-4 pt-4 pb-28 sm:px-6 sm:pt-6 lg:pb-10">
-          <AppSessionContext value={session}>{children}</AppSessionContext>
-        </main>
+        {/* The sidebar is fixed on desktop; the content starts after it. */}
+        <div className={`min-w-0 ${collapsed ? "lg:pl-16" : "lg:pl-64"}`}>
+          <AppHeader
+            active={active}
+            pathname={pathname}
+            email={email}
+            onSignOut={signOut}
+            onSearch={() => setSearching(true)}
+            onReceive={() => setReceiving(true)}
+            collapsed={collapsed}
+            onToggleCollapsed={toggleCollapsed}
+          />
+          <main className="px-4 pt-4 pb-28 sm:px-6 sm:pt-6 lg:pb-10">
+            <AppSessionContext value={session}>{children}</AppSessionContext>
+          </main>
+        </div>
+        <PhoneTabBar pathname={pathname} onProfiles={() => setChoosing(true)} />
+        <ProfileSheet
+          profiles={profiles}
+          active={active}
+          onSwitch={switchProfile}
+          open={choosing}
+          onOpenChange={setChoosing}
+        />
+        <ReceiveSheet
+          open={receiving}
+          onOpenChange={setReceiving}
+          address={active.walletAddress}
+          balances={balances.currentData ?? null}
+          failed={balances.isError}
+          onRetry={balances.refetch}
+        />
+        <RequestSheet
+          open={requesting}
+          onOpenChange={setRequesting}
+          profileId={active.profileId}
+          senderName={active.name ?? ""}
+          tokens={balances.currentData?.tokens ?? null}
+          failed={balances.isError}
+          onRetry={balances.refetch}
+        />
+        <CommandMenu
+          open={searching}
+          onOpenChange={setSearching}
+          profiles={profiles}
+          active={active}
+          onSwitch={switchProfile}
+          onReceive={() => setReceiving(true)}
+          onRequest={() => setRequesting(true)}
+        />
       </div>
-      <PhoneTabBar pathname={pathname} onProfiles={() => setChoosing(true)} />
-      <ProfileSheet
-        profiles={profiles}
-        active={active}
-        onSwitch={switchProfile}
-        open={choosing}
-        onOpenChange={setChoosing}
-      />
-      <ReceiveSheet
-        open={receiving}
-        onOpenChange={setReceiving}
-        address={active.walletAddress}
-        balances={balances.currentData ?? null}
-        failed={balances.isError}
-        onRetry={balances.refetch}
-      />
-      <RequestSheet
-        open={requesting}
-        onOpenChange={setRequesting}
-        profileId={active.profileId}
-        senderName={active.name ?? ""}
-        tokens={balances.currentData?.tokens ?? null}
-        failed={balances.isError}
-        onRetry={balances.refetch}
-      />
-      <CommandMenu
-        open={searching}
-        onOpenChange={setSearching}
-        profiles={profiles}
-        active={active}
-        onSwitch={switchProfile}
-        onReceive={() => setReceiving(true)}
-        onRequest={() => setRequesting(true)}
-      />
-    </div>
+    </ToastProvider>
   );
 }

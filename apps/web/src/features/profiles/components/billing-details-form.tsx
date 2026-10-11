@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, SelectField, TextAreaField, TextField } from "@forwend/ui-web";
+import { Button, SelectField, TextAreaField, TextField, TONES, useToast } from "@forwend/ui-web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useState } from "react";
@@ -28,6 +28,7 @@ export function BillingDetailsForm({
   saved: BillingDetails | null;
 }) {
   const [save] = useSaveBillingDetailsMutation();
+  const toast = useToast();
   const router = useRouter();
   const countries = useMemo(countryOptions, []);
   const [country, setCountry] = useState(saved?.country ?? "");
@@ -67,6 +68,7 @@ export function BillingDetailsForm({
     setBusy(true);
     try {
       await save({ profileId, body }).unwrap();
+      toast({ tone: TONES.success, title: COPY.saved });
       router.push(APP_ROUTES.home);
     } catch {
       setFormError(COPY.errors.failed);

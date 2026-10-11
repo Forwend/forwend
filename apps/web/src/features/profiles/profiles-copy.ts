@@ -26,6 +26,7 @@ export const NEW_PROFILE_COPY = {
 
 export const BILLING_DETAILS_COPY = {
   title: "Billing details",
+  saved: "Billing details saved",
   intro:
     "Your name and address as clients see them on each new invoice and its PDF. Invoices you already sent keep the details they had.",
   name: "Name or business name",

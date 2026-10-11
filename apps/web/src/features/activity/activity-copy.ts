@@ -20,4 +20,14 @@ export const ACTIVITY_COPY = {
   search: "Search activity",
   searchPlaceholder: "Search amount, token or hash",
   noMatch: "Nothing matches.",
+  toasts: {
+    detected: (amount: string, confirmed: boolean) => ({
+      title: "Payment detected",
+      description: `${amount} ${confirmed ? "is confirmed" : "is confirming"}.`,
+    }),
+    settled: (amount: string) => ({
+      title: "Payment settled",
+      description: `${amount} is in your wallet.`,
+    }),
+  },
 } as const;
