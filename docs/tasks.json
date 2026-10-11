@@ -181,7 +181,7 @@
         "archive moves completed tasks into docs/archive through a command, keeps unfinished and unmerged work in tasks.json, preserves full records and task IDs, and supports historical show/list and reopening without weakening dependency or verification checks"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness",
         "docs-check"
@@ -255,11 +255,18 @@
           "2": "harness: regression tests preserve constraints and complete history while bounding default notes",
           "3": "docs-check: workflow and staging links resolve; missing-reference guidance also has a harness regression test",
           "4": "harness: archive regression tests cover exact records, historical reads, dependency readiness, ID reuse, reopening, pending delivery and conflicting files"
-        }
+        },
+        "commit": "f8955d3",
+        "doneAt": "2026-10-11T12:06:11Z"
       },
       "branch": "fix/f117-keep-harness-resume-output-current-and-c",
       "baseCommit": "5cf4d1eec6a3e4d12c3b396a724be814b7f4c3ef",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f117-keep-harness-resume-output-current-and-c",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
