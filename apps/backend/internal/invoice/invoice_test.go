@@ -28,3 +28,19 @@ func TestBuildTermsRefusesWhatSettleRefuses(t *testing.T) {
 		t.Fatalf("ordinary wallet: %v", err)
 	}
 }
+
+func TestDetailsRefuseHiddenTextAndForwendNames(t *testing.T) {
+	for name, d := range map[string]Details{
+		"sender named Forwend":      {SenderName: "Forwеnd Support"},
+		"direction override":        {Title: "‮tnemyap"},
+		"zero-width in client name": {ClientName: "Ac​me"},
+		"line break in a title":     {Title: "Invoice\nPay now"},
+	} {
+		if err := d.check(); !errors.Is(err, ErrInvalid) {
+			t.Errorf("%s: got %v, want ErrInvalid", name, err)
+		}
+	}
+	if err := (Details{Note: "Thanks!\nSee you", ClientAddress: "1 Test Street\nBerlin"}).check(); err != nil {
+		t.Errorf("line breaks in a note and an address: %v", err)
+	}
+}

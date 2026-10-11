@@ -3,6 +3,7 @@ package profile
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -131,5 +132,31 @@ func TestCreateWithoutWalletThenSignUpRepairsIt(t *testing.T) {
 	}
 	if count(t, pool, "profiles") != 2 {
 		t.Fatal("more than one merchant profile")
+	}
+}
+
+func TestProfilesPerUserAreCapped(t *testing.T) {
+	s, f, pool := newService(t)
+	ctx := context.Background()
+	if _, _, err := s.SignUp(ctx, alice); err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	for i := range 2 * MaxProfiles {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _, _ = s.Create(ctx, alice, fmt.Sprintf("key-%d", i), Merchant, "")
+		}()
+	}
+	wg.Wait()
+	if n := count(t, pool, "profiles"); n != MaxProfiles || f.Wallets() != MaxProfiles {
+		t.Fatalf("%d profiles and %d wallets, want %d each", n, f.Wallets(), MaxProfiles)
+	}
+	if _, _, err := s.Create(ctx, alice, "one-more", Merchant, ""); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("over the cap: %v, want ErrInvalid", err)
+	}
+	if _, created, err := s.Create(ctx, alice, "key-0", Merchant, ""); err != nil && !errors.Is(err, ErrInvalid) || created {
+		t.Fatalf("a key used before the cap: created %v, %v", created, err)
 	}
 }

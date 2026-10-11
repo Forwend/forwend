@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net"
 	"net/url"
 	"os"
 	"regexp"
@@ -68,7 +69,7 @@ type Canary struct {
 func LoadAPI() (API, error) {
 	var r reader
 	c := API{DatabaseURL: r.get("DATABASE_URL"), Addr: r.get("API_ADDR"),
-		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyJWKSURL: r.get("PRIVY_JWKS_URL"), PrivyAppSecret: r.get("PRIVY_APP_SECRET"),
+		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyJWKSURL: r.keysURL("PRIVY_JWKS_URL"), PrivyAppSecret: r.get("PRIVY_APP_SECRET"),
 		ChainsFile: r.get("CHAINS_FILE"), InfuraKeys: r.infuraKeys(), RPCRate: r.rate(),
 		PublicWebURL: r.origin("PUBLIC_WEB_URL")}
 	return c, r.err()
@@ -184,6 +185,22 @@ func (r *reader) origin(name string) string {
 		return ""
 	}
 	return u.Scheme + "://" + u.Host
+}
+
+// keysURL must be https: anyone on the path of a plain-http key list could sign tokens for any user. Loopback http is
+// for tests.
+func (r *reader) keysURL(name string) string {
+	raw := r.get(name)
+	if raw == "" {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	loopback := err == nil && (u.Hostname() == "localhost" || net.ParseIP(u.Hostname()).IsLoopback())
+	if err != nil || u.Host == "" || !(u.Scheme == "https" || u.Scheme == "http" && loopback) {
+		r.invalid = append(r.invalid, name+" (an https URL)")
+		return ""
+	}
+	return raw
 }
 
 func (r *reader) rate() float64 {

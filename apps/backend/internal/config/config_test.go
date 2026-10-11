@@ -30,6 +30,14 @@ func TestAPI(t *testing.T) {
 		got.RPCRate != 2.5 || got.PublicWebURL != "https://forwend.app" {
 		t.Fatalf("got %+v", got)
 	}
+	t.Setenv("PRIVY_JWKS_URL", "http://jwks.example")
+	if _, err := config.LoadAPI(); err == nil || !strings.Contains(err.Error(), "PRIVY_JWKS_URL (an https URL)") {
+		t.Fatalf("plain-http PRIVY_JWKS_URL: got %v", err)
+	}
+	t.Setenv("PRIVY_JWKS_URL", "http://127.0.0.1:9/jwks")
+	if _, err := config.LoadAPI(); err != nil {
+		t.Fatalf("loopback PRIVY_JWKS_URL: %v", err)
+	}
 	for _, bad := range []string{"forwend.app", "ftp://forwend.app", "https://"} {
 		t.Setenv("PUBLIC_WEB_URL", bad)
 		if _, err := config.LoadAPI(); err == nil || !strings.Contains(err.Error(), "invalid environment variables PUBLIC_WEB_URL") {

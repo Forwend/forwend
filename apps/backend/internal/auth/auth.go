@@ -30,6 +30,9 @@ const RefetchInterval = time.Minute
 // withdrew (rotated or revoked) stops verifying.
 const MaxKeyAge = time.Hour
 
+// KeyGrace is how much longer the last list still verifies while Privy can't be reached; past it, nothing does (R-30).
+const KeyGrace = 10 * time.Minute
+
 // Verifier checks Privy access tokens with the app's published signing keys (R-29). Keys are loaded at startup and
 // fetched again when a token names an unknown kid (at most once per RefetchInterval) or the list is older than
 // MaxKeyAge (R-30).
@@ -69,9 +72,17 @@ func NewVerifier(ctx context.Context, appID, jwksURL string, client *http.Client
 	return v, nil
 }
 
+// accessClaims: Privy signs identity tokens for the app too; they have no sid and carry
+// linked_accounts, and must not work as bearer tokens.
+type accessClaims struct {
+	jwt.RegisteredClaims
+	SessionID      string          `json:"sid"`
+	LinkedAccounts json.RawMessage `json:"linked_accounts"`
+}
+
 // Verify returns the user's Privy DID (the token's subject).
 func (v *Verifier) Verify(ctx context.Context, token string) (string, error) {
-	var claims jwt.RegisteredClaims
+	var claims accessClaims
 	_, err := v.parser.ParseWithClaims(token, &claims, func(t *jwt.Token) (any, error) {
 		kid, _ := t.Header["kid"].(string)
 		return v.keysFor(ctx, kid)
@@ -81,6 +92,9 @@ func (v *Verifier) Verify(ctx context.Context, token string) (string, error) {
 	}
 	if claims.Subject == "" {
 		return "", fmt.Errorf("%w: no subject", ErrUnauthorized)
+	}
+	if claims.SessionID == "" || claims.LinkedAccounts != nil {
+		return "", fmt.Errorf("%w: not an access token", ErrUnauthorized)
 	}
 	return claims.Subject, nil
 }
@@ -92,17 +106,19 @@ func (v *Verifier) Verify(ctx context.Context, token string) (string, error) {
 func (v *Verifier) keysFor(ctx context.Context, kid string) (jwt.VerificationKeySet, error) {
 	v.mu.Lock()
 	cached, known := v.lookup(kid)
+	age := v.now().Sub(v.fetchedAt)
+	usable := known && age < MaxKeyAge+KeyGrace
 	switch {
-	case known && v.now().Sub(v.fetchedAt) < MaxKeyAge:
+	case known && age < MaxKeyAge:
 		v.mu.Unlock()
 		return cached, nil
 	case v.now().Sub(v.triedAt) < RefetchInterval:
 		// Tried recently: a failed attempt must not count as a fresh list, nor be retried on every request.
 		v.mu.Unlock()
-		if known {
+		if usable {
 			return cached, nil
 		}
-		return jwt.VerificationKeySet{}, fmt.Errorf("unknown key id %q", kid)
+		return jwt.VerificationKeySet{}, fmt.Errorf("unknown or stale key id %q", kid)
 	}
 	v.triedAt = v.now()
 	v.mu.Unlock()
@@ -110,8 +126,8 @@ func (v *Verifier) keysFor(ctx context.Context, kid string) (jwt.VerificationKey
 	// The fetch is shared: a caller that hangs up must not abort it and waste the slot. The client timeout bounds it.
 	keys, err := v.fetch(context.WithoutCancel(ctx))
 	if err != nil {
-		if known {
-			return cached, nil // Privy unreachable: keep signing in with the last list rather than lock users out
+		if usable {
+			return cached, nil
 		}
 		return jwt.VerificationKeySet{}, err
 	}

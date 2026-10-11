@@ -10,6 +10,7 @@ export const PAY_COPY = {
   requests: (name: string, amount: string) => `${name} requests ${amount}`,
   request: (number: string) => `Request ${number}`,
   noIssuer: "The sender gave no name or billing details for this invoice.",
+  unverifiedName: "The sender gave this name. Forwend doesn't check it.",
   invoicePdf: "Download invoice PDF",
   amountDue: "Amount due",
   amountPaid: "Amount paid",
