@@ -109,7 +109,7 @@
         "PLAN 11.9 has numbered sub-items 11.9.1 onward for the hosted-or-embedded decision, a pay button, an embedded React package served from the Forwend origin, publishing and the example merchant; docs-check and harness validate pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check",
         "harness"
@@ -178,11 +178,18 @@
         "filesHash": "0fcdd4ff9660df23",
         "proof": {
           "1": "docs-check: PLAN 11.9.1-11.9.5 added under 11.9 (decision, pay button, iframe React package, publishing, example merchant); links and IDs resolve; harness tests pass and validate is ok after archiving F118"
-        }
+        },
+        "commit": "235abec",
+        "doneAt": "2026-10-11T13:05:16Z"
       },
       "branch": "docs/f119-plan-lists-the-checkout-components-and-d",
       "baseCommit": "9c24d72c9ef4759156b3d5fb14b34a86da8e2274",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f119-plan-lists-the-checkout-components-and-d",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
