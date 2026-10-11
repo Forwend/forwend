@@ -1,7 +1,7 @@
 "use client";
 
 import { useGetBalancesQuery } from "@/features/balances/balances-api";
-import { InvoiceDetail } from "@/features/invoices/invoice-detail";
+import { InvoiceDetail } from "@/features/invoices/components/invoice-detail";
 import { useAppSession } from "@/features/profiles/app-session";
 import { PROFILE_KINDS } from "@/features/profiles/profile";
 import { LIVE_QUERY } from "@/shared/config/refresh";

@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { AUTH_COPY } from "@/features/auth/auth-copy";
 import { useGetBalancesQuery } from "@/features/balances/balances-api";
-import { RequestSheet } from "@/features/invoices/request-sheet";
+import { RequestSheet } from "@/features/invoices/components/request-sheet";
 import { FirstRun } from "@/features/onboarding/first-run";
 import { type AppSession, AppSessionContext } from "@/features/profiles/app-session";
 import {

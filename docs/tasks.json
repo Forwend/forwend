@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 112,
+  "nextId": 113,
   "tasks": [
     {
       "id": "F001",
@@ -11912,6 +11912,124 @@
       "delivery": {
         "mode": "pr",
         "branch": "feat/f111-a-user-with-a-linked-passkey-signs-in-wi",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F112",
+      "type": "refactor",
+      "behavior": "Web and shared UI files are grouped by responsibility, unit tests sit in tests/ folders beside their owner, and the rules say so",
+      "acceptance": [
+        "apps/web features/balances and features/invoices group UI under components/ and balance chart code under charts/ (folders only for real groups); web and ui-web unit tests move into tests/ folders within their owning feature, shared capability or component family (design-tokens test folder kept; browser tests stay in e2e/); packages/ui-web components/payments grouped where a real group exists with public exports unchanged; apps/web/e2e/privy/sign-in.spec.ts split by behavior with shared Privy setup beside it, order and isolation preserved; repeated definitions of one domain concept in touched code reuse the owning type; Go tests stay beside their package and Go types change only for real duplication",
+        "Behavior, routes, API contracts, money representation and public exports unchanged; no new dependencies; the discovered test list before and after is recorded and every test is still discovered and passes; docs/web/structure.md and the owning review guidance document tests/ placement and require checking growing folders and duplicate domain definitions, linking instead of copying"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend",
+        "e2e",
+        "unit"
+      ],
+      "refs": [],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-10-11 review pass by reviewer: PASS. Renames 99-100% similar; non-rename hunks are import paths plus three shape-preserving type reuses (InvoiceToken = Pick<TokenBalance>, PayToken, MoneyProps extends TokenAmountInput), no import cycle (type-only invoices -> balances). ui-web exports: same 131 names. Discovery re-run: web 62, ui-web 18, Privy 19 (18 old in order + setup), Go and public e2e unchanged; no test outside tests/. Privy split: bodies identical to the old file, setup project runs for single-file runs, workers 1 only in the Privy config, session file gitignored and cleared per run. Docs link instead of copy; no stale paths. Uncached typecheck, lint, unit and web build pass."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-11T00:57:46Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 47.6,
+            "log": "docs/runs/F112-20261011T005746Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 97.9,
+            "log": "docs/runs/F112-20261011T005746Z-e2e.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 48.4,
+            "log": "docs/runs/F112-20261011T005746Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F112-20261011T005746Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F112-20261011T005746Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F112-20261011T005746Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F112-20261011T005746Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.1,
+            "log": "docs/runs/F112-20261011T005746Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F112-20261011T005746Z-keep.log"
+          }
+        ],
+        "taskHash": "19b1980faff96ae4",
+        "filesHash": "674d8a61479463c7",
+        "proof": {
+          "1": "unit: web and ui-web unit tests moved into their owner's tests/ folder (features/*/tests, providers/tests, screens/app-shell/tests, shared/{api,chains,hooks}/tests; ui-web components/{buttons,feedback,navigation,payments}/tests, hooks/tests; design-tokens test/ kept). vitest list names before = after: web 62 (68 run, it.each), ui-web 18, design-tokens 4. balances UI in components/, chart code in charts/; invoices UI in components/; domain, api and copy files stay at the feature top. ui-web payments grouped as money/ (Money + formatTokenAmount), address/ (Address + shortAddress), status-pill/ (StatusPill + payment statuses); index.ts exports the same names. Types: InvoiceToken = Pick<TokenBalance,...>, MoneyProps extends TokenAmountInput, PayToken replaces 5 inline {symbol,decimals} copies. e2e: privy sign-in.spec.ts split into auth, balances, invoices, money-requests, navigation, onboarding specs with shared axe.ts, session.ts, sample-api.ts and a setup project (session.setup.ts) that signs in once; workers 1; playwright --list shows the same 18 names in the same order plus the setup entry; public config 30 unchanged. backend: no Go file changed; go test -list identical, 176 tests.",
+          "2": "e2e: public and live Privy browser tests pass on the moved code with routes and API calls unchanged; build and typecheck pass; no dependency added; packages/contracts untouched. docs-check: web/structure.md documents tests/ placement, the balances/invoices layout and deriving types from the owner; workflow.md Structure review now asks for growing folders, repeated domain definitions and test placement and links web/structure.md and backend/rules.md; web/architecture.md names the invoices->balances type use and the Privy setup project."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. Renames 99-100% similar; non-rename hunks are import paths plus three shape-preserving type reuses (InvoiceToken = Pick<TokenBalance>, PayToken, MoneyProps extends TokenAmountInput), no import cycle (type-only invoices -> balances). ui-web exports: same 131 names. Discovery re-run: web 62, ui-web 18, Privy 19 (18 old in order + setup), Go and public e2e unchanged; no test outside tests/. Privy split: bodies identical to the old file, setup project runs for single-file runs, workers 1 only in the Privy config, session file gitignored and cleared per run. Docs link instead of copy; no stale paths. Uncached typecheck, lint, unit and web build pass.",
+          "at": "2026-10-11T01:05:18Z",
+          "filesHash": "674d8a61479463c7"
+        },
+        "commit": "1de64bf",
+        "doneAt": "2026-10-11T01:05:20Z"
+      },
+      "branch": "refactor/f112-web-and-shared-ui-files-are-grouped-by-r",
+      "baseCommit": "86e608dc4799570b59b1d985bd67ad56cdc19134",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f112-web-and-shared-ui-files-are-grouped-by-r",
         "base": "main"
       }
     }

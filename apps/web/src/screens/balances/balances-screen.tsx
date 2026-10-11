@@ -2,7 +2,7 @@
 
 import { useGetBalancesQuery } from "@/features/balances/balances-api";
 import { BALANCES_COPY } from "@/features/balances/balances-copy";
-import { BalancesList } from "@/features/balances/balances-list";
+import { BalancesList } from "@/features/balances/components/balances-list";
 import { useAppSession } from "@/features/profiles/app-session";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 

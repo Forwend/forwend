@@ -14,10 +14,10 @@ import {
 import { formatUsd, USD, usdTotal } from "@/features/balances/balances";
 import { useGetBalanceHistoryQuery, useGetBalancesQuery } from "@/features/balances/balances-api";
 import { BALANCES_COPY } from "@/features/balances/balances-copy";
-import { EstimateHint } from "@/features/balances/estimate-hint";
-import { MoneyFlowCard } from "@/features/balances/money-flow-card";
-import { NetworksCard } from "@/features/balances/networks-card";
-import { ReceivedChart } from "@/features/balances/received-chart";
+import { ReceivedChart } from "@/features/balances/charts/received-chart";
+import { EstimateHint } from "@/features/balances/components/estimate-hint";
+import { MoneyFlowCard } from "@/features/balances/components/money-flow-card";
+import { NetworksCard } from "@/features/balances/components/networks-card";
 import { useAppSession } from "@/features/profiles/app-session";
 import { ProfilePill } from "@/features/profiles/components/profile-pill";
 import { PROFILE_KINDS, profileLabel } from "@/features/profiles/profile";

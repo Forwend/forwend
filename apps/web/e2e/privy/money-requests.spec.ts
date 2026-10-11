@@ -1,0 +1,158 @@
+import { expect, type Page, test } from "@playwright/test";
+import { blockingViolations } from "./axe";
+import { session } from "./session";
+
+// Opens Request money from the round actions on the personal overview and waits for the form; false when this database
+// has no enabled network: the sheet then says so.
+async function openRequest(page: Page) {
+  await page
+    .getByRole("region", { name: "Total balance" })
+    .getByRole("button", { name: "Request", exact: true })
+    .click();
+  const sheet = page.getByRole("dialog", { name: "Request money" });
+  const noNetworks = sheet.getByText("No networks are enabled yet");
+  await expect(
+    noNetworks.or(sheet.getByRole("combobox", { name: "Network and token" })),
+  ).toBeVisible();
+  if (await noNetworks.isVisible()) {
+    expect(await blockingViolations(page)).toEqual([]);
+    return false;
+  }
+  return true;
+}
+
+// Creates the filled-in request through the API and returns its id and number (INV-0001).
+async function createRequest(page: Page) {
+  const created = page.waitForResponse(
+    (r) => /\/api\/v1\/profiles\/[^/]+\/invoices$/.test(r.url()) && r.request().method() === "POST",
+  );
+  await page
+    .getByRole("dialog", { name: "Request money" })
+    .getByRole("button", { name: "Create request" })
+    .click();
+  const response = await created;
+  expect(response.status()).toBe(201);
+  const { invoiceId, number } = (await response.json()) as { invoiceId: string; number: number };
+  return { invoiceId, number: `INV-${String(number).padStart(4, "0")}` };
+}
+
+test("a personal profile requests money, sends the pay link and the payer sees who asks (R-49)", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    storageState: session,
+    permissions: ["clipboard-read", "clipboard-write"],
+  });
+  const page = await context.newPage();
+  await page.goto("/app");
+  const sidebar = page.locator("aside");
+  await expect(sidebar.getByRole("button", { name: /^Switch profile: Personal/ })).toBeVisible();
+  // ⌘K offers it as an action.
+  await page.keyboard.press("ControlOrMeta+k");
+  const search = page.getByRole("dialog", { name: "Search" });
+  await search.getByRole("combobox").fill("request");
+  await expect(search.getByRole("option", { name: /^Request money/ })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  if (await openRequest(page)) {
+    const sheet = page.getByRole("dialog", { name: "Request money" });
+    // The name the payer sees is required, and named on its field before anything is sent.
+    const name = sheet.getByRole("textbox", { name: "Your name (shown to the payer)" });
+    await name.fill("");
+    await sheet.getByRole("textbox", { name: "Amount" }).fill("3.25");
+    await sheet.getByRole("button", { name: "Create request" }).click();
+    await expect(
+      sheet.getByRole("alert").filter({ hasText: "Enter the name the payer will see." }),
+    ).toBeVisible();
+    await expect(name).toBeFocused();
+    await name.fill("E2E Requester");
+    const note = `E2E lunch ${Date.now()}`;
+    await sheet.getByRole("textbox", { name: "Note to the payer (optional)" }).fill(note);
+    await sheet.getByText("1 day", { exact: true }).click();
+    await expect(sheet.getByRole("radio", { name: "1 day" })).toBeChecked();
+    expect(await blockingViolations(page)).toEqual([]);
+    const request = await createRequest(page);
+
+    // The link to send, right away, and it copies whole.
+    await expect(sheet.getByText("Request created")).toBeVisible();
+    await expect(sheet).toContainText("3.25 USDC");
+    const link = `http://localhost:3000/pay/${request.invoiceId}`;
+    const share = sheet.getByRole("region", { name: "Pay link" });
+    await expect(share).toContainText(link);
+    await share.getByRole("button", { name: "Copy link" }).click();
+    await expect(share.getByRole("button", { name: "Link copied" })).toBeVisible();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
+    expect(await blockingViolations(page)).toEqual([]);
+
+    // Its detail sits under Requests and names who asks.
+    await sheet.getByRole("link", { name: "View request" }).click();
+    await expect(page).toHaveURL(`/app/invoices/${request.invoiceId}`);
+    await expect(sheet).toBeHidden();
+    await expect(
+      page
+        .getByRole("navigation", { name: "Breadcrumb" })
+        .getByRole("link", { name: "Requests", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("region", { name: "From" })).toContainText("E2E Requester");
+    await expect(page.getByRole("region", { name: "Client" })).toHaveCount(0);
+    expect(await blockingViolations(page)).toEqual([]);
+    await sidebar.getByRole("link", { name: "Requests" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeAttached();
+    await expect(page.getByRole("link", { name: new RegExp(`^${request.number}`) })).toContainText(
+      note,
+    );
+    expect(await blockingViolations(page)).toEqual([]);
+
+    // The payer, without an account, sees the name and the amount asked.
+    const payer = await browser.newContext({ reducedMotion: "reduce" });
+    const pay = await payer.newPage();
+    await pay.goto(`/pay/${request.invoiceId}`);
+    await expect(
+      pay.getByRole("heading", { level: 1, name: "E2E Requester requests 3.25 USDC" }),
+    ).toBeVisible();
+    await expect(pay.getByText(`Request ${request.number}`)).toBeVisible();
+    await expect(pay.getByText("The sender gave no name")).toHaveCount(0);
+    expect(await blockingViolations(pay)).toEqual([]);
+    await payer.close();
+  }
+  await context.close();
+});
+
+test("on a phone a personal profile requests money from the round actions without sideways scrolling", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    colorScheme: "dark",
+    storageState: session,
+  });
+  const page = await context.newPage();
+  const fits = async () =>
+    expect(await page.evaluate(() => document.scrollingElement?.scrollWidth)).toBe(390);
+  await page.goto("/app");
+  await fits();
+  if (await openRequest(page)) {
+    const sheet = page.getByRole("dialog", { name: "Request money" });
+    await sheet.getByRole("textbox", { name: "Amount" }).fill("1");
+    await sheet.getByRole("textbox", { name: "Your name (shown to the payer)" }).fill("E2E Phone");
+    const request = await createRequest(page);
+    await expect(sheet.getByRole("region", { name: "Pay link" })).toContainText(
+      `/pay/${request.invoiceId}`,
+    );
+    await fits();
+    expect(await blockingViolations(page)).toEqual([]);
+    await sheet.getByRole("link", { name: "View request" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: request.number })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Requests" })).toBeVisible();
+    await fits();
+
+    await page.goto(`/pay/${request.invoiceId}`);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "E2E Phone requests 1.00 USDC" }),
+    ).toBeVisible();
+    await fits();
+    expect(await blockingViolations(page)).toEqual([]);
+  }
+  await context.close();
+});
