@@ -141,7 +141,7 @@ All D- IDs are defined here. The roadmap refers to these decisions.
 | D-33 | Wrong-chain payments: checkout warns before sending that money sent on another network can be lost. A support request is reviewed case by case; on a chain where our factory exists, `recover()` can return it. Never promise recovery. | Product policy |
 | D-34 | Testing: local tests, fork tests and review first, then a full testnet deployment (Base Sepolia, Arbitrum Sepolia, Arc testnet, Tempo testnet) where the whole product runs end to end with Privy on testnets and faucet tokens, then personal mainnet trials with tiny amounts. Bank withdrawal is built last. A public developer sandbox is still deferred. | Product policy |
 | D-35 | KYC is deferred for the private prototype only. It must be resolved before other people use real money. | Product policy |
-| D-36 | Planned chains: Base, Arbitrum, Arc, Tempo (BNB optional). Planned tokens: USDC, USDT. Each chain/token pair is enabled only after its exact contract is verified. | Product policy |
+| D-36 | Planned chains: Base, Arbitrum, Arc, Tempo (BNB optional). Planned tokens: USDC, USDT; on Tempo, OUSD (Open USD), its recommended stablecoin. Each chain/token pair is enabled only after its exact contract is verified. | Product policy |
 | D-37 | No wallet connection (MetaMask, WalletConnect) in the MVP. Cross-chain send (until a bridge provider spike) and recurring wallet billing are later. | Product policy |
 | D-38 | Start with Base + USDC; enable Arbitrum, Arc, Tempo and other token pairs one at a time after their tests pass. | Product scope |
 | D-39 | Build the invoice engine and hosted checkout before the merchant developer API. Both use the same invoice service. | Product scope |

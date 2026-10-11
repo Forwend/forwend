@@ -2,7 +2,7 @@
 
 import * as RadixSelect from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
-import { useId } from "react";
+import { useCallback, useId, useState } from "react";
 import { cx } from "../../lib/cx";
 import { FIELD_CONTROL_CLASSES } from "./field-classes";
 
@@ -45,6 +45,12 @@ export function SelectField({
 }: SelectFieldProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
+  // Inside a modal <dialog> everything outside it is inert, so the list opens in the dialog, not at the end of <body>.
+  const [dialog, setDialog] = useState<HTMLDialogElement | null>(null);
+  const trigger = useCallback(
+    (el: HTMLButtonElement | null) => setDialog(el?.closest("dialog") ?? null),
+    [],
+  );
   return (
     <div className={cx("flex flex-col gap-1.5", className)}>
       {/* A <label for> does not name a button-based combobox, so link it with aria-labelledby. */}
@@ -63,6 +69,7 @@ export function SelectField({
         disabled={disabled}
       >
         <RadixSelect.Trigger
+          ref={trigger}
           id={fieldId}
           aria-labelledby={`${fieldId}-label`}
           aria-describedby={hint ? `${fieldId}-hint` : undefined}
@@ -79,7 +86,7 @@ export function SelectField({
             />
           </RadixSelect.Icon>
         </RadixSelect.Trigger>
-        <RadixSelect.Portal>
+        <RadixSelect.Portal container={dialog}>
           <RadixSelect.Content
             position="popper"
             sideOffset={6}

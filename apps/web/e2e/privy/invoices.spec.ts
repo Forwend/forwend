@@ -29,6 +29,9 @@ async function createInvoice(page: Page, fill: () => Promise<void>) {
     expect(await blockingViolations(page)).toEqual([]);
     return null;
   }
+  // The local database may have other networks on; the amounts below are Base Sepolia USDC.
+  await page.getByRole("combobox", { name: "Network and token" }).click();
+  await page.getByRole("option", { name: "USDC · Base Sepolia" }).click();
   await fill();
   const created = page.waitForResponse(
     (r) => /\/api\/v1\/profiles\/[^/]+\/invoices$/.test(r.url()) && r.request().method() === "POST",
