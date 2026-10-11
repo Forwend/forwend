@@ -24,10 +24,13 @@ type Rounds struct {
 
 // NewRounds signs with key on the chains in specs, through their Infura keys (where a chain lists Infura) and public
 // RPCs, sending each at most rate calls per second.
-func NewRounds(pool *pgxpool.Pool, key *ecdsa.PrivateKey, specs map[uint64]chain.Spec, keys []string, rate float64) *Rounds {
+func NewRounds(pool *pgxpool.Pool, key *ecdsa.PrivateKey, specs map[uint64]chain.Spec, keys []string, rate float64,
+	held func(context.Context) error) *Rounds {
 	clients, seconds := map[uint64]*ethclient.Client{}, map[uint64]*ethclient.Client{}
+	signer := NewSigner(pool, key, clients, seconds)
+	signer.held = held
 	return &Rounds{pool: pool, specs: specs, keys: keys, rate: rate, rpcs: map[uint64]chain.RPCs{}, clients: clients,
-		seconds: seconds, signer: NewSigner(pool, key, clients, seconds)}
+		seconds: seconds, signer: signer}
 }
 
 // Round serves the enabled chains, then settles what is due. A failing or rate-limited RPC is rested and its calls

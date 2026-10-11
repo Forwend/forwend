@@ -36,9 +36,16 @@ const CodeWait = 10 * time.Second
 // the deploy's block does.
 const SettleGasFloor = 125_000
 
+// TempoSettleGasFloor: Tempo prices storage far higher, and its testnet settle used 572,845 gas (deployments.json).
+const TempoSettleGasFloor = 580_000
+
 // ReplaceAfter is how long a saved settle may stay unmined before it is signed again with the same nonce and a
 // higher fee, so the settles after it on the chain are not held up.
 const ReplaceAfter = 3 * time.Minute
+
+// SponsoredPerDay bounds the settlements one user's invoices get from the executor's gas in 24 hours: tiny invoices
+// paid back and forth would otherwise drain it for everyone (SEC-03).
+const SponsoredPerDay = 50
 
 // MaxFeeFactor caps a replacement's fee cap at this many times the fee cap a new settle would get now, so repeated
 // bumps can't grow without end.
@@ -89,6 +96,18 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 	case !st.Settleable:
 		return s.retry(ctx, in, "factory.status says not settleable (paused?)")
 	}
+	var used int
+	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
+		JOIN profiles p ON p.id = i.profile_id
+		WHERE p.user_id = (SELECT p.user_id FROM invoices i JOIN profiles p ON p.id = i.profile_id WHERE i.id = $1)
+		  AND si.signed_at > now() - interval '24 hours'`, in.invoiceID).Scan(&used); err != nil {
+		return fmt.Errorf("count the user's settlements: %w", err)
+	}
+	if used >= SponsoredPerDay {
+		slog.Error("ALERT a user's settlements in 24 hours reached the sponsored limit", "invoice", in.invoiceID,
+			"limit", SponsoredPerDay)
+		return s.retry(ctx, in, "the user's sponsored settlements for 24 hours are used up")
+	}
 
 	receive := common.HexToAddress(in.receive)
 	var after uint64      // the executor's next nonce after a deploy sent in this attempt
@@ -98,6 +117,9 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 		factory := common.Address(address.Factory)
 		tx, err := s.sign(ctx, client, in.chainID, factory, data, 0, 0, nil)
 		if err != nil {
+			return err
+		}
+		if tx, err = s.overStuck(ctx, client, in.chainID, tx); err != nil {
 			return err
 		}
 		if err := client.SendTransaction(ctx, tx); err != nil {
@@ -114,7 +136,13 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 		return err
 	}
 
-	tx, err := s.sign(ctx, client, in.chainID, receive, settleSelector, after, SettleGasFloor, deployed)
+	floor := uint64(SettleGasFloor)
+	if token, err := feeToken(ctx, client, s.sender); err != nil {
+		return err
+	} else if token != (common.Address{}) {
+		floor = TempoSettleGasFloor
+	}
+	tx, err := s.sign(ctx, client, in.chainID, receive, settleSelector, after, floor, deployed)
 	if err != nil {
 		return err
 	}
@@ -215,7 +243,7 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 	return types.SignTx(tx, types.LatestSignerForChainID(new(big.Int).SetUint64(chainID)), s.key)
 }
 
-// replace signs the saved settle old again with its nonce and gas and a higher fee: at least an eighth more tip and
+// replace signs the saved settle old again with its nonce, a gas limit no lower, and a higher fee: at least an eighth more tip and
 // fee cap (geth wants a tenth) and at least what a new settle gets now. It saves the new version before it is sent,
 // keeping old's hash, since either may be mined. Over MaxFeeFactor it returns old, to be sent again as it is.
 func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in intent, old *types.Transaction) (*types.Transaction, error) {
@@ -232,8 +260,13 @@ func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in inten
 		slog.Warn("stuck settle is at the max fee; sending it again", "invoice", in.invoiceID, "tx", old.Hash().Hex())
 		return old, nil
 	}
+	// The limit may have to grow: on Arbitrum it counts L1 data cost, which rises with L1 prices.
+	gas := old.Gas()
+	if est, err := client.EstimateGas(ctx, ethereum.CallMsg{From: s.sender, To: old.To(), Data: old.Data()}); err == nil {
+		gas = max(gas, est+est/5)
+	}
 	tx, err := types.SignTx(types.NewTx(&types.DynamicFeeTx{ChainID: old.ChainId(), Nonce: old.Nonce(), GasTipCap: tip,
-		GasFeeCap: feeCap, Gas: old.Gas(), To: old.To(), Data: old.Data()}), types.LatestSignerForChainID(old.ChainId()), s.key)
+		GasFeeCap: feeCap, Gas: gas, To: old.To(), Data: old.Data()}), types.LatestSignerForChainID(old.ChainId()), s.key)
 	if err != nil {
 		return nil, fmt.Errorf("sign replacement settle: %w", err)
 	}
@@ -256,6 +289,31 @@ func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in inten
 		return nil, errStopped
 	}
 	return tx, nil
+}
+
+// overStuck moves a deploy onto the executor's next mined nonce when a transaction we never saved waits there: a
+// deploy from an earlier attempt that the fee left behind. Every later transaction on the chain would queue behind
+// it, and deploy is idempotent, so taking its place costs nothing. Twice today's fee outbids it.
+func (s *Signer) overStuck(ctx context.Context, client *ethclient.Client, chainID uint64, tx *types.Transaction) (*types.Transaction, error) {
+	mined, err := client.NonceAt(ctx, s.sender, nil)
+	if err != nil {
+		return nil, fmt.Errorf("read executor nonce: %w", err)
+	}
+	pending, err := client.PendingNonceAt(ctx, s.sender)
+	if err != nil || pending <= mined {
+		return tx, err
+	}
+	var saved bool
+	if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
+		WHERE i.chain_id = $1 AND si.sender = $2 AND si.nonce = $3 AND si.status = 'sent')`,
+		int64(chainID), strings.ToLower(s.sender.Hex()), int64(mined)).Scan(&saved); err != nil || saved {
+		return tx, err
+	}
+	two := big.NewInt(2)
+	slog.Warn("deploy replaces a stuck transaction", "chain", chainID, "nonce", mined)
+	return types.SignTx(types.NewTx(&types.DynamicFeeTx{ChainID: tx.ChainId(), Nonce: mined,
+		GasTipCap: new(big.Int).Mul(tx.GasTipCap(), two), GasFeeCap: new(big.Int).Mul(tx.GasFeeCap(), two),
+		Gas: tx.Gas(), To: tx.To(), Data: tx.Data()}), types.LatestSignerForChainID(tx.ChainId()), s.key)
 }
 
 func bigMax(a, b *big.Int) *big.Int {

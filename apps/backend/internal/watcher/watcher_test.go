@@ -342,17 +342,19 @@ func TestInvoiceLeavingTheScanWithADetectedDepositStaysUntilItConfirms(t *testin
 	if _, err := e.pool.Exec(ctx, `
 		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
 		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
-		SELECT '0x' || repeat('03', 32), profile_id, chain_id, chain_family, token_contract, amount, 1,
-		    extract(epoch FROM now())::bigint - 30 * 86400 + 3, recipient_address, receive_method, factory_address, $1,
-		    'key-closing', request_hash FROM invoices`, closing); err != nil {
+		SELECT '0x' || repeat('03', 32), profile_id, chain_id, chain_family, token_contract, amount, 1, 86401,
+		    recipient_address, receive_method, factory_address, $1, 'key-closing', request_hash FROM invoices`,
+		closing); err != nil {
 		t.Fatal(err)
 	}
+	defer func(window time.Duration) { watchedAfterDeadline = window }(watchedAfterDeadline)
+	watchedAfterDeadline = time.Since(time.Unix(86401, 0)) + time.Hour // still watched
 	late := e.anvil.Transfer(e.token, closing, "5000000")
 	e.scan(t)
 	if got, _ := e.rows(t); got[late][0] != "detected" {
 		t.Fatalf("rows %v", got)
 	}
-	time.Sleep(4 * time.Second) // the invoice passes settle deadline + 30 days while its deposit is not final
+	watchedAfterDeadline = 0 // the invoice leaves the window while its deposit is not final
 	e.anvil.Mine(2)
 	e.scan(t)
 	if got, _ := e.rows(t); got[late][0] != "confirmed" {
