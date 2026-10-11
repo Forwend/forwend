@@ -366,7 +366,7 @@
         "R-45, R-51, D-71: before showing an address the pay page refuses amount 0, a settle deadline other than expiry + 24 h, expiry more than a year after creation and a recipient equal to zero, the token, the factory or the implementation; the canary refuses input terms that break create's rules and alerts when the pay page's amount panel does not name the token's symbol and the chain; the api refuses to start when the factory has no code on an enabled chain; a profile creates at most 500 invoices per day; unit and backend tests cover each; money-safety.md (incl. the canary query) and architecture.md match; the security review records are removed once their findings are fixed"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "unit",
@@ -456,11 +456,18 @@
           "summary": "Pass on re-review. The earlier key leak is fixed at the shared point: internal/chain/check.go:58-60 returns errors.New(Redact(err)) for every further startup check, so neither the api factory check (address/deployed.go) nor the signer gas check can log an Infura /v3/ key; new subtest check_test.go 'a further check's error has no key' fails without it, and no cmd caller uses errors.Is/As on the result. Pay page allows 300 s of clock skew on the one-year rule (receive-address.ts CLOCK_SKEW_S), closing the API-vs-DB clock edge. Canary malformed-input test now covers a zero recipient and recipient == token. Earlier checks still hold: pay-page rules match create, amount panel names symbol and chain on all 4 testnets plus Anvil, canary SQL and column order correct, startup check breaks no deploy or test path, MaxPerDay docs accurate, check-docs 0 errors. Reran go test chain/canary/address/invoice ok, vitest pay 13 passed; verify logs 16:55:29Z postdate all edits and pass (unit, backend, e2e 31+20, lint, typecheck, build, docs, harness). Non-blocking: no migration seeds the Base Sepolia chains row, and the canary needs its name to be base-sepolia; the amount-panel symbol/network match is a substring check.",
           "at": "2026-10-11T17:01:23Z",
           "filesHash": "3f3ac8f7a11058fa"
-        }
+        },
+        "commit": "41b8d5a",
+        "doneAt": "2026-10-11T17:01:38Z"
       },
       "branch": "fix/f125-the-pay-page-and-the-canary-check-the-te",
       "baseCommit": "272aee2401cfb8bab366a9aa963b0d10d0d1e8aa",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f125-the-pay-page-and-the-canary-check-the-te",
+        "base": "main"
+      }
     },
     {
       "id": "F126",
