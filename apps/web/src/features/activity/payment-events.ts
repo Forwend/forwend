@@ -16,7 +16,6 @@ export interface PaymentEvent {
   item: ActivityItem;
 }
 
-// A deposit is one payment detected; an invoice whose settlement is booked is one payment settled.
 function eventOf(item: ActivityItem): { key: string; kind: PaymentEventKind } | null {
   if (item.kind === ACTIVITY_KINDS.deposit) {
     return { key: `deposit:${item.invoiceId}:${item.txHash}`, kind: PAYMENT_EVENTS.detected };
@@ -27,10 +26,7 @@ function eventOf(item: ActivityItem): { key: string; kind: PaymentEventKind } | 
   return null;
 }
 
-/**
- * The payment events in items that seen does not hold yet, and adds them to seen. With no seen set (the first load)
- * nothing is new: those payments happened before the app opened.
- */
+// No seen set means the first load: payments already there are not news.
 export function newPaymentEvents(seen: Set<string> | undefined, items: ActivityItem[]) {
   const known = seen ?? new Set<string>();
   const events: PaymentEvent[] = [];

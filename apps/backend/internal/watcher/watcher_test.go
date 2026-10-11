@@ -265,3 +265,34 @@ func logRange(t *testing.T, call chaintest.Call) (uint64, uint64) {
 	}
 	return uint64(filter.FromBlock), uint64(filter.ToBlock)
 }
+
+func TestLongBacklogIsCaughtUpOverSeveralScans(t *testing.T) {
+	e := setup(t)
+	defer func(limit uint64) { scanLimit = limit }(scanLimit)
+	scanLimit = 3 * RescanDepth
+	e.anvil.Mine(1000)
+	tx := e.anvil.Transfer(e.token, receive, "5000000")
+	e.anvil.Mine(2)
+	cursor := func() (block int64) {
+		t.Helper()
+		if err := e.pool.QueryRow(context.Background(), "SELECT last_finalized_block FROM chain_cursors").Scan(&block); err != nil {
+			t.Fatal(err)
+		}
+		return block
+	}
+	scans, last := 0, cursor()
+	for got, _ := e.rows(t); got[tx] == nil; got, _ = e.rows(t) {
+		if scans++; scans > 10 {
+			t.Fatalf("deposit not found after %d scans; cursor at %d", scans-1, last)
+		}
+		e.scan(t)
+		if now := cursor(); now <= last {
+			t.Fatalf("scan %d left the cursor at %d (was %d)", scans, now, last)
+		} else {
+			last = now
+		}
+	}
+	if scans < 2 {
+		t.Fatalf("found in %d scan; want the backlog read in parts", scans)
+	}
+}

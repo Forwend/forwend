@@ -8,15 +8,12 @@ import { ACTIVITY_COPY } from "@/features/activity/activity-copy";
 import { newPaymentEvents, PAYMENT_EVENTS } from "@/features/activity/payment-events";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
-// Toasts for payments to the active profile while the app is open, from its activity polled every REFRESH_MS (the
-// Activity page shares the request when it has no filter or search). ponytail: only the newest ACTIVITY_PAGE_SIZE
-// items are watched, so an invoice that settles after many newer items pushed it out of that page gets no toast; read
-// a settled-since API if that matters.
+// ponytail: only the newest page is watched; a settle pushed off it gets no toast. Needs a settled-since API to fix.
 export function PaymentToasts({ profileId }: { profileId: string }) {
   return <ProfileToasts key={profileId} profileId={profileId} />;
 }
 
-// One per profile visit: payments that arrived while another profile was open are old news on return.
+// Keyed by profile: payments that came while another profile was open are not news.
 function ProfileToasts({ profileId }: { profileId: string }) {
   const toast = useToast();
   const [openedAt] = useState(Date.now);
@@ -25,7 +22,7 @@ function ProfileToasts({ profileId }: { profileId: string }) {
     { ...LIVE_QUERY, refetchOnMountOrArgChange: true },
   );
   const seen = useRef<Set<string>>(undefined);
-  // The first answer read after the visit started is the baseline, not a cached one from an earlier visit.
+  // Never take the baseline from an earlier visit's cached answer.
   const fresh = (list.fulfilledTimeStamp ?? 0) >= openedAt;
   const items = fresh ? list.currentData?.items : undefined;
 

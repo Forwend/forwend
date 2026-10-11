@@ -58,7 +58,7 @@ const formatMoney = (units: bigint, token: PayToken) =>
 export function PayInvoice({ invoiceId }: { invoiceId: string }) {
   const invoice = useGetInvoiceQuery(invoiceId, LIVE_QUERY);
   const failure = invoice.error as { status?: unknown } | undefined;
-  if (invoice.data) return <Loaded invoice={invoice.data} />;
+  if (invoice.data) return <Loaded invoice={invoice.data} linkInvoiceId={invoiceId} />;
   if (failure?.status === NOT_FOUND) notFound();
   if (invoice.isError) {
     return (
@@ -78,9 +78,12 @@ export function PayInvoice({ invoiceId }: { invoiceId: string }) {
   );
 }
 
-function Loaded({ invoice }: { invoice: Invoice }) {
+function Loaded({ invoice, linkInvoiceId }: { invoice: Invoice; linkInvoiceId: string }) {
   const now = useNow();
-  const address = useMemo(() => checkedReceiveAddress(invoice), [invoice]);
+  const address = useMemo(
+    () => checkedReceiveAddress(invoice, linkInvoiceId),
+    [invoice, linkInvoiceId],
+  );
   const token = payToken(invoice);
   const issuer = invoice.issuer?.name;
   // Who asks: the issuer, else a request's sender, else the page names only the invoice.

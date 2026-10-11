@@ -92,8 +92,7 @@ export const BRAND_ICONS = {
     markup:
       '<path d="M931.47,640h-54.67l50.67-154.67h-64.8l14.13-45.33h180.53l-14.13,45.33h-61.33l-50.4,154.67Z"/>',
   },
-  // Source: Open Standard brand assets (joinopenstandard.com/brand/ousd-symbol.svg); its one maroon fill becomes
-  // currentColor so the mark stays visible in dark mode, like Arc and Tempo.
+  // Source: joinopenstandard.com/brand/ousd-symbol.svg; its maroon fill is currentColor so dark mode shows it.
   ousd: {
     title: "Open USD",
     viewBox: "0 0 45 45",

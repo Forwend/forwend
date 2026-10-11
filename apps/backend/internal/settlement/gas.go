@@ -19,8 +19,10 @@ import (
 // does not cover: it is a floor, not a budget.
 const MinGas = (160_000 + SettleGasFloor) * 6 / 5
 
-// Tempo has no native coin and eth_getBalance there returns a placeholder: fees come out of a USD TIP-20 token, the
-// fee payer's choice in the fee manager precompile or else PathUSD (tempo.xyz/developers/docs/protocol/fees/spec-fee).
+// Tempo's testnet flow (deployments.json) used 1,305,758 gas to deploy and 572,845 to settle.
+const TempoMinGas = (1_310_000 + 575_000) * 6 / 5
+
+// Tempo has no native coin (eth_getBalance is a placeholder): fees are paid in the payer's chosen TIP-20, else PathUSD.
 var (
 	tempoFeeManager = common.HexToAddress("0xfeec000000000000000000000000000000000000")
 	pathUSD         = common.HexToAddress("0x20c0000000000000000000000000000000000000")
@@ -34,14 +36,14 @@ func CheckGas(ctx context.Context, client *ethclient.Client, chainID uint64, exe
 	if err != nil {
 		return fmt.Errorf("chain %d: %w", chainID, err)
 	}
-	need := new(big.Int).Mul(feeCap, big.NewInt(MinGas))
 	token, err := feeToken(ctx, client, executor)
 	if err != nil {
 		return fmt.Errorf("chain %d: %w", chainID, err)
 	}
 	if token != (common.Address{}) {
-		return checkFeeToken(ctx, client, chainID, executor, token, need)
+		return checkFeeToken(ctx, client, chainID, executor, token, new(big.Int).Mul(feeCap, big.NewInt(TempoMinGas)))
 	}
+	need := new(big.Int).Mul(feeCap, big.NewInt(MinGas))
 	have, err := client.BalanceAt(ctx, executor, nil)
 	if err != nil {
 		return fmt.Errorf("chain %d: read the executor's balance: %w", chainID, err)
@@ -53,8 +55,6 @@ func CheckGas(ctx context.Context, client *ethclient.Client, chainID uint64, exe
 	return nil
 }
 
-// feeToken is the TIP-20 token the executor pays fees in on a chain with Tempo's fee manager, or the zero address on a
-// chain that charges gas in its native coin.
 func feeToken(ctx context.Context, client *ethclient.Client, executor common.Address) (common.Address, error) {
 	code, err := client.CodeAt(ctx, tempoFeeManager, nil)
 	if err != nil {
@@ -77,11 +77,9 @@ func feeToken(ctx context.Context, client *ethclient.Client, executor common.Add
 	return pathUSD, nil
 }
 
-// checkFeeToken is CheckGas in a fee token: gas prices are in attodollars and the token has 6 decimals, so the fee is
-// ceil(price × gas / 10^12) base units.
 func checkFeeToken(ctx context.Context, client *ethclient.Client, chainID uint64, executor, token common.Address,
 	attodollars *big.Int) error {
-	scale := big.NewInt(1e12)
+	scale := big.NewInt(1e12) // gas prices are attodollars; the token has 6 decimals
 	need := new(big.Int).Div(new(big.Int).Add(attodollars, new(big.Int).Sub(scale, big.NewInt(1))), scale)
 	block, err := client.BlockNumber(ctx)
 	if err != nil {
@@ -98,7 +96,6 @@ func checkFeeToken(ctx context.Context, client *ethclient.Client, chainID uint64
 	return nil
 }
 
-// usd writes 6-decimal base units in whole tokens, exactly.
 func usd(units *big.Int) string {
 	s := new(big.Rat).SetFrac(units, big.NewInt(1e6)).FloatString(6)
 	return strings.TrimSuffix(strings.TrimRight(s, "0"), ".")

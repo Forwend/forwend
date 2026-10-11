@@ -53,8 +53,6 @@ func TestCheckGas(t *testing.T) {
 	}
 }
 
-// On Tempo the fee comes out of a TIP-20 token, not the placeholder native balance: the one the executor chose in the
-// fee manager, else PathUSD. Anvil stands in with a fee manager that answers one token and a MockToken.
 func TestCheckGasInFeeToken(t *testing.T) {
 	ctx := context.Background()
 	a := chaintest.Start(t)
@@ -84,7 +82,7 @@ func TestCheckGasInFeeToken(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			// PUSH20 chosen, PUSH1 0, MSTORE, PUSH1 32, PUSH1 0, RETURN: every call answers the chosen token.
 			setCode(tempoFeeManager, append(append([]byte{0x73}, c.chosen.Bytes()...), 0x60, 0, 0x52, 0x60, 32, 0x60, 0, 0xf3))
-			// The balance goes straight into the token's storage: a mint would mine a block and move the base fee.
+			// Set in storage: a mint would mine a block and move the base fee.
 			hold := func(units *big.Int) {
 				t.Helper()
 				slot := crypto.Keccak256Hash(common.LeftPadBytes(executor.Bytes(), 32), make([]byte, 32)) // _balances, slot 0
@@ -96,7 +94,7 @@ func TestCheckGasInFeeToken(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			attodollars := new(big.Int).Mul(feeCap, big.NewInt(MinGas))
+			attodollars := new(big.Int).Mul(feeCap, big.NewInt(TempoMinGas))
 			need := new(big.Int).Div(new(big.Int).Add(attodollars, big.NewInt(1e12-1)), big.NewInt(1e12))
 			short := new(big.Int).Sub(need, big.NewInt(1))
 			hold(short)

@@ -31,7 +31,6 @@ vi.stubGlobal(
     }
   },
 );
-// What the API answers for each profile's activity right now.
 const activity: Record<string, ActivityItem[]> = { a: [], b: [] };
 vi.stubGlobal(
   "fetch",

@@ -39,8 +39,9 @@ Each binary checks what it needs before it serves, and otherwise stops with one 
   message names the chain, the executor's address and its balance in whole coins. It is a floor derived from each
   chain's own price, not a budget: Arbitrum's L1 data cost is not in it. Tempo has no native coin and its RPC reports
   a placeholder balance: where Tempo's fee manager precompile exists, the check reads the executor's fee token instead
-  (its choice in the fee manager, else PathUSD) and needs ceil(fee cap × `MinGas` / 10^12) of its 6-decimal units,
-  since Tempo prices gas in attodollars.
+  (its choice in the fee manager, else PathUSD) and needs ceil(fee cap × `TempoMinGas` / 10^12) of its 6-decimal
+  units, since Tempo prices gas in attodollars. `TempoMinGas` is 2,262,000: Tempo charges far more for creating
+  contracts and storage, and its testnet deploy and settle used 1,305,758 and 572,845 gas.
 
 Then each logs its ready line: `api listening`, `worker ready`, `signer ready`. The checks run once; an RPC failing
 later is handled by the pool as before.
@@ -237,7 +238,10 @@ worker's lock, [startup](#startup)).
 Each `Scan` reads `latest`, then `eth_getLogs` for `Transfer` from the invoices' tokens to their receive addresses,
 from 64 blocks below the last finalized block (or from the oldest `detected` row) to latest, in ranges of at most
 2,000 blocks; a range the RPC refuses for its size or rate (after every endpoint was tried) is read again in half, down to
-50 blocks, and the range doubles back after each answer. One JSON-RPC batch then reads `finalized` and the header of every block it judges, so they usually come
+50 blocks, and the range doubles back after each answer. One scan reads at most 40,000 blocks, so a long backlog (a
+worker down for days) is caught up over several rounds, each recorded, instead of needing one round longer than its
+timeout. Receive addresses and wallets go into topic lists of at most 1,000: go-ethereum nodes, Arbitrum's public RPC
+among them, refuse more with "exceed max topics". One JSON-RPC batch then reads `finalized` and the header of every block it judges, so they usually come
 from one node. One transaction then:
 - marks a `detected` row `reorged` only when the chain shows another block hash at its height; a log merely missing
   from one answer (a lagging or overloaded node) proves nothing;
@@ -296,7 +300,8 @@ settlement intent (unique per invoice) in the same transaction. For each due int
    Saves sender, nonce, hash and signed bytes, then sends. After a crash it sends the same saved bytes again (same
    nonce, so at most one settle can be mined). The contract's `AlreadySettled` is a last guard.
 5. Once `settled()` is true at the finalized block (D-45), and for our settle once its receipt's block is final too,
-   in one transaction: intent `confirmed`, a `settlement` ledger transaction (receiver and recipient_payable each
+   and the chain's second RPC also reads `settled()` true at its own finalized block (D-15, as for paid), in one
+   transaction: intent `confirmed`, a `settlement` ledger transaction (receiver and recipient_payable each
    −amount; one per invoice) and the invoice's `settlement_status` `settled`. A settle a reorg drops before that is
    reconciled like an unsent one.
 Each intent's attempt has a 3-minute limit, so an RPC that stops answering can't stall the others.

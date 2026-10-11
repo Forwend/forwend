@@ -3,9 +3,11 @@ package watcher
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -151,5 +153,45 @@ func TestDetectedTransferOfADisabledTokenStillConfirms(t *testing.T) {
 	}
 	if want := finalized + 1 - RescanDepth; from != want {
 		t.Fatalf("scan starts at %d, want %d (RescanDepth below the finalized block %d)", from, want, finalized)
+	}
+}
+
+func TestAddressListsAreSplitForTheNode(t *testing.T) {
+	e := setup(t)
+	addWallets(t, e.pool, chaintest.Sender, ours)
+	const second = "0x00000000000000000000000000000000000000ab"
+	if _, err := e.pool.Exec(context.Background(), `
+		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+		SELECT '0x' || repeat('02', 32), profile_id, chain_id, chain_family, token_contract, amount, expires_at,
+		    settle_deadline, recipient_address, receive_method, factory_address, $1, 'key-2', request_hash
+		FROM invoices`, second); err != nil {
+		t.Fatal(err)
+	}
+	defer func(limit int) { topicLimit = limit }(topicLimit)
+	topicLimit = 1
+	proxy := e.anvil.Proxy()
+	proxy.Fail(func(call chaintest.Call) chaintest.Fault {
+		if call.Method == "eth_getLogs" && strings.Count(string(call.Params[0]), "0x000000000000000000000000") > topicLimit {
+			return chaintest.TooManyTopics
+		}
+		return chaintest.Forward
+	})
+	client, err := rpc.Dial(proxy.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	e.chain = NewChain(e.pool, chaintest.ChainID, client)
+
+	first := e.anvil.Transfer(e.token, receive, "5000000")
+	next := e.anvil.Transfer(e.token, second, "5000000")
+	e.anvil.Transfer(e.token, ours, "2000000")
+	e.scan(t)
+	if got, n := e.rows(t); n != 2 || got[first] == nil || got[next] == nil {
+		t.Fatalf("deposits to two receive addresses: %v", got)
+	}
+	if got := e.walletRows(t); len(got) != 5 { // the mint to Sender, and per transfer one side for each wallet involved
+		t.Fatalf("wallet transfers: %q", got)
 	}
 }

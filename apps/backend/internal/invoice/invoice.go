@@ -75,7 +75,7 @@ type Details struct {
 // Invoice is the stored invoice: its terms (InvoiceTerms in the contract), number, details and statuses.
 type Invoice struct {
 	Details
-	// Issuer is the copy of the profile's billing details the invoice took when it was made; nil when it had none.
+	// A copy taken at creation; later billing changes don't reach it.
 	Issuer           *profile.Issuer
 	ID               string
 	Number           int64 // per profile, from 1; shown as INV-0001

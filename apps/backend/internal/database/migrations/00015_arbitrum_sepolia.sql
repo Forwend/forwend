@@ -1,5 +1,4 @@
--- Arbitrum Sepolia and its USDC (D-38), added switched off. A database turns a chain on by hand once its executor has
--- gas there, because every enabled chain must pass the startup checks (docs/backend/architecture.md#startup).
+-- Added switched off: an enabled chain must pass the startup checks (D-71).
 
 -- +goose Up
 INSERT INTO chains (chain_id, chain_family, name) VALUES (421614, 'evm', 'arbitrum-sepolia') ON CONFLICT DO NOTHING;

@@ -98,6 +98,7 @@ func (c *Chain) Scan(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	latest = min(latest, from+scanLimit-1)
 	invoices, err := c.invoices(ctx)
 	if err != nil {
 		return err
@@ -239,8 +240,21 @@ func (c *Chain) invoices(ctx context.Context) (map[common.Address]receiver, erro
 	return out, rows.Err()
 }
 
+// A round that times out records nothing, so a long backlog is caught up over several scans.
+var scanLimit uint64 = 20 * MaxRange
+
+// go-ethereum nodes refuse more with "exceed max topics"; a smaller block range doesn't help.
+var topicLimit = 1000
+
+func topicParts(addresses []common.Hash) [][]common.Hash {
+	var parts [][]common.Hash
+	for len(addresses) > topicLimit {
+		parts, addresses = append(parts, addresses[:topicLimit]), addresses[topicLimit:]
+	}
+	return append(parts, addresses)
+}
+
 // logs returns the Transfer logs in [lo, hi] that pay an invoice in its own token.
-// ponytail: one topic list with every receive address; split it when RPCs reject the size.
 func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Address]receiver) ([]types.Log, error) {
 	tokens := map[common.Address]bool{}
 	var receivers []common.Hash
@@ -252,12 +266,16 @@ func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Add
 	for t := range tokens {
 		tokenList = append(tokenList, t)
 	}
-	logs, err := c.eth.FilterLogs(ctx, ethereum.FilterQuery{
-		FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi),
-		Addresses: tokenList, Topics: [][]common.Hash{{transferTopic}, nil, receivers},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("read chain %d logs %d-%d: %w", c.chainID, lo, hi, err)
+	var logs []types.Log
+	for _, part := range topicParts(receivers) {
+		found, err := c.eth.FilterLogs(ctx, ethereum.FilterQuery{
+			FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi),
+			Addresses: tokenList, Topics: [][]common.Hash{{transferTopic}, nil, part},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("read chain %d logs %d-%d: %w", c.chainID, lo, hi, err)
+		}
+		logs = append(logs, found...)
 	}
 	var out []types.Log
 	for _, l := range logs {

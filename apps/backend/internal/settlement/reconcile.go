@@ -144,6 +144,23 @@ func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, i
 
 // confirm records the settlement once: the intent, the ledger and the invoice, in one transaction.
 func (s *Signer) confirm(ctx context.Context, in intent) error {
+	// D-15: like paid, settled needs the second RPC to agree.
+	second := s.seconds[in.chainID]
+	if second == nil {
+		return fmt.Errorf("chain %d: no second RPC to confirm the settlement of invoice %s", in.chainID, in.invoiceID)
+	}
+	head, err := second.HeaderByNumber(ctx, finalized)
+	if err != nil {
+		return fmt.Errorf("second RPC: read finalized block: %w", err)
+	}
+	agreed, err := receiverSettled(ctx, second, common.HexToAddress(in.receive), head.Number)
+	if err != nil {
+		return err
+	}
+	if !agreed {
+		slog.Warn("settlement waits for the second RPC", "invoice", in.invoiceID, "chain", in.chainID)
+		return nil
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("confirm settlement: %w", err)

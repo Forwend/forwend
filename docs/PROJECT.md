@@ -120,7 +120,7 @@ All D- IDs are defined here. The roadmap refers to these decisions.
 | D-12 | Backend in Go with the official Privy Go SDK wrapped in `apps/backend/internal/privy`; built from PLAN phase 6 | Learning goal; official SDK covers the REST API |
 | D-13 | Dawn Path marketing, Dusk Ledger product bands, Halftone Horizon texture. Libre Caslon Display, Hanken Grotesk and Geist Mono. | Q-1 remains open for owner review. |
 | D-14 | Lighthouse uses mobile devtools throttling locally; recheck simulated throttling on the deployed site. | Local rendering distorts simulated LCP. |
-| D-15 | Infura first for Base and Arbitrum; public RPC fallback only after chain-ID validation. A second independent provider confirms balances before paid. | Independent balance confirmation. |
+| D-15 | Infura first for Base and Arbitrum; public RPC fallback only after chain-ID validation. A second independent provider confirms balances before paid and the receiver's settled() before settled. | Independent balance confirmation. |
 | D-16 | Go net/http, pgx + sqlc, embedded goose migrations, go-ethereum; Postgres 17. | Explicit SQL and few dependencies. |
 | D-17 | Database and chain integration tests use real Postgres and Anvil, not SQL or chain mocks. | Prove constraints, transactions and reorg behavior. |
 | D-18 | Checkout expiry: default 1 h, the creator may set 15 min to 365 days; `settleDeadline` = `expiresAt` + 24 h | 15 min leaves time for confirmations; 365 days matches the contract rules |

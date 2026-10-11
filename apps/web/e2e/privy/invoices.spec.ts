@@ -29,7 +29,7 @@ async function createInvoice(page: Page, fill: () => Promise<void>) {
     expect(await blockingViolations(page)).toEqual([]);
     return null;
   }
-  // The local database may have other networks on; the amounts below are Base Sepolia USDC.
+  // Other networks may be on locally.
   await page.getByRole("combobox", { name: "Network and token" }).click();
   await page.getByRole("option", { name: "USDC · Base Sepolia" }).click();
   await fill();

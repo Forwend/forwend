@@ -19,7 +19,8 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 - Only `balanceOf` of the allowlisted token (chain ID + address) on an address we computed.
 - Ignore logs from every other address: anyone can deploy a look-alike token or clone that emits the same events.
-- A second, independent RPC confirms the balance before "paid" or a webhook.
+- A second, independent RPC confirms the balance before "paid" or a webhook, and the receiver's `settled()` before
+  "settled".
 - Arc: checkout builds an ERC-20 `transfer` on `0x3600…`, never a native send. Native USDC sends log `Transfer` from
   a system emitter (18 decimals) that the watcher ignores, so such a payment has no transfer row: decide from
   `balanceOf` (6 decimals) and hold or alert on balance without a matching transfer.
