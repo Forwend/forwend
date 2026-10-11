@@ -69,8 +69,9 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
 - Features depend on each other in three places: the receive sheet (`features/receive`) takes the `Balances` type from
   `features/balances` to show which networks and tokens the address takes, `features/invoices` takes the API
   status values and `activityStatus` from `features/activity`, so an invoice shows the same status everywhere, and
-  `features/pay` takes the `Invoice` type, the `getInvoice` query and the progress helpers from `features/invoices`
-  and the API status values from `features/activity`.
+  the `TokenBalance` type from `features/balances` for the tokens an invoice can use; `features/pay` takes the
+  `Invoice` type, the `getInvoice` query and the progress helpers from `features/invoices` and the API status values
+  from `features/activity`.
 - Checkout `/pay/<id>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed id is a 404;
   an id the API does not know shows the 404 page. It reads the public `GET /v1/invoices/{id}` every 15 s through a
   store whose requests carry no token (`providers/public-store-provider.tsx`). The browser recomputes the receive
@@ -87,5 +88,7 @@ Vitest for logic, Playwright for flows, axe for accessibility, Lighthouse for pe
 `pnpm e2e` also runs the live sign-in (`e2e/privy`, `playwright.privy.config.ts`) when `apps/web/.env` holds the Privy
 test account: the real Privy app and backend api, on `http://localhost:3000` (the only origin Privy allows) and
 `API_URL`; running servers there are reused, so a server already on port 3000 or the api port must be this checkout's
-(`pnpm dev`, `pnpm --filter @forwend/backend api`). CI has no test account and skips it. What is
+(`pnpm dev`, `pnpm --filter @forwend/backend api`). CI has no test account and skips it. Privy throttles repeated
+sign-ins, so a setup project (`e2e/privy/session.setup.ts`) signs in once and saves the session in the ignored
+`test-results/`; the spec files, one per behavior, reuse it and run in one worker in name order. What is
 worth a test: [rules.md](rules.md).

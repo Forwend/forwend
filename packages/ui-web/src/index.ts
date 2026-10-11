@@ -79,14 +79,15 @@ export type { TooltipProps } from "./components/overlays/tooltip";
 export { Tooltip } from "./components/overlays/tooltip";
 export type { ActivityDirection, ActivityRowProps } from "./components/payments/activity-row";
 export { ACTIVITY_DIRECTIONS, ActivityRow } from "./components/payments/activity-row";
-export type { AddressProps } from "./components/payments/address";
-export { Address } from "./components/payments/address";
-export type { MoneyProps } from "./components/payments/money";
-export { Money } from "./components/payments/money";
+export type { AddressProps } from "./components/payments/address/address";
+export { Address } from "./components/payments/address/address";
+export { shortAddress } from "./components/payments/address/short-address";
+export type { MoneyProps } from "./components/payments/money/money";
+export { Money } from "./components/payments/money/money";
+export type { TokenAmountInput } from "./components/payments/money/token-amount";
+export { formatTokenAmount } from "./components/payments/money/token-amount";
 export type { NetworkWarningProps } from "./components/payments/network-warning";
 export { NetworkWarning } from "./components/payments/network-warning";
-export type { PaymentStatus } from "./components/payments/payment-status";
-export { PAYMENT_STATUS, PAYMENT_STATUSES } from "./components/payments/payment-status";
 export type {
   PaymentTimelineProps,
   StepState,
@@ -97,11 +98,10 @@ export type { QrCodeProps } from "./components/payments/qr-code";
 export { QrCode } from "./components/payments/qr-code";
 export type { ReceiveAddressProps } from "./components/payments/receive-address";
 export { ReceiveAddress } from "./components/payments/receive-address";
-export { shortAddress } from "./components/payments/short-address";
-export type { StatusPillProps } from "./components/payments/status-pill";
-export { StatusPill } from "./components/payments/status-pill";
-export type { TokenAmountInput } from "./components/payments/token-amount";
-export { formatTokenAmount } from "./components/payments/token-amount";
+export type { PaymentStatus } from "./components/payments/status-pill/payment-status";
+export { PAYMENT_STATUS, PAYMENT_STATUSES } from "./components/payments/status-pill/payment-status";
+export type { StatusPillProps } from "./components/payments/status-pill/status-pill";
+export { StatusPill } from "./components/payments/status-pill/status-pill";
 export type { TokenChipProps } from "./components/payments/token-chip";
 export { TokenChip } from "./components/payments/token-chip";
 export type { CopyStatus } from "./hooks/use-copy";

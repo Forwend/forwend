@@ -1,8 +1,8 @@
 import { ArrowDownLeft, ArrowUpRight, FileText } from "lucide-react";
 import type { ReactNode } from "react";
-import { Money, type MoneyProps } from "./money";
-import type { PaymentStatus } from "./payment-status";
-import { StatusPill } from "./status-pill";
+import { Money, type MoneyProps } from "./money/money";
+import type { PaymentStatus } from "./status-pill/payment-status";
+import { StatusPill } from "./status-pill/status-pill";
 
 export const ACTIVITY_DIRECTIONS = {
   incoming: "incoming",

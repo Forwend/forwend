@@ -1,9 +1,9 @@
 "use client";
 
-import { BalanceHero } from "@/features/balances/balance-hero";
 import { useGetBalancesQuery } from "@/features/balances/balances-api";
-import { MoneyFlowCard } from "@/features/balances/money-flow-card";
-import { NetworksCard } from "@/features/balances/networks-card";
+import { BalanceHero } from "@/features/balances/components/balance-hero";
+import { MoneyFlowCard } from "@/features/balances/components/money-flow-card";
+import { NetworksCard } from "@/features/balances/components/networks-card";
 import { useAppSession } from "@/features/profiles/app-session";
 import { ProfilePill } from "@/features/profiles/components/profile-pill";
 import { profileLabel } from "@/features/profiles/profile";

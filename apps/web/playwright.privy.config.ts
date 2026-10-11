@@ -20,10 +20,15 @@ const apiURL = new URL(web.API_URL ?? "http://localhost:8080");
 export default defineConfig({
   testDir: "./e2e/privy",
   forbidOnly: !!process.env.CI,
+  // The files share one Privy test account: one worker runs them one at a time, in name order.
+  workers: 1,
   reporter: process.env.CI ? "github" : "list",
   timeout: 90_000,
   use: { baseURL: APP_URL, trace: "retain-on-failure" },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "setup", testMatch: /\.setup\.ts$/, use: { ...devices["Desktop Chrome"] } },
+    { name: "chromium", use: { ...devices["Desktop Chrome"] }, dependencies: ["setup"] },
+  ],
   webServer: [
     {
       // The backend's own .env (database, Privy app ID, JWKS URL and secret) on API_URL's port.

@@ -51,10 +51,15 @@ apps/web/src/
 - A route selects and configures a screen; a screen arranges feature components. Keep substantial feature logic
   out of `page.tsx` and `layout.tsx`. Use `screens/`, not a second Next.js `pages/` routing directory.
 - A feature owns its components, API requests, hooks, services, state, constants and types. Small features can
-  keep descriptive files directly in their folder. Add `components/`, `api/`, `hooks/`, `services/`, `store/`,
-  `types/` or `constants/` only when a real group of files needs it.
+  keep descriptive files directly in their folder. Add `components/`, `charts/`, `api/`, `hooks/`, `services/`,
+  `store/`, `types/` or `constants/` only when a real group of files needs it. `features/balances` and
+  `features/invoices` keep their domain types, constants, requests and copy at the top and their UI in
+  `components/` (balance charts in `charts/`).
 - Put component-only props beside the component, domain types beside their feature, and shared types beside
   the shared capability that owns them. Do not recreate global `types/app/` or mixed `types/ui/display.ts` files.
+- Define each domain concept once. When another type means the same thing, derive it from the owner (`Pick`,
+  `extends`, an indexed type) instead of copying its fields; `InvoiceToken` picks from `TokenBalance`. Keep HTTP
+  request and response types apart from internal types when their representations differ.
 - Keep section copy and demo data with their screen or section. Data genuinely used across screens, such as
   sample invoices on landing and kit, belongs in a named shared group such as `shared/examples/`.
 - Keep finite domain values in one owner-local constants file and derive unions from them. Use type-only imports.
@@ -174,8 +179,9 @@ packages/ui-web/src/
 ```
 
 - Start with `components/buttons/button.tsx`. When a component gains supporting files, use
-  `components/buttons/button/button.tsx`, `button.types.ts` and `button.test.tsx` as needed. Keep simple props
-  in the component file. Do not create a folder just to hold a single file.
+  `components/buttons/button/button.tsx` and `button.types.ts` as needed, as `payments/money/` holds `Money` and
+  its `formatTokenAmount`. Keep simple props in the component file. Do not create a folder just to hold a single
+  file.
 - Keep related compound parts together: `Menu`, `MenuItem` and `MenuTrigger` can share `overlays/menu.tsx`.
   Independently maintained components deserve separate files. Split by responsibility, not an arbitrary line limit.
 - Put family-only hooks, styles, types and constants in that family; promote them to package-wide folders only
@@ -197,8 +203,13 @@ packages/ui-web/src/
 - Use direct imports inside an owner. Do not add an `index.ts` in every directory. Keep a deliberate public entry
   point where there is a real package boundary. Keep server-only modules out of client import paths and preserve
   small client boundaries; see [Next.js server and client components](https://nextjs.org/docs/app/getting-started/server-and-client-components).
-- Put unit tests beside their source and flow tests in `e2e/`. When moving existing tests, update Vitest discovery
-  and prove the same tests still run. Update aliases, package exports, fixtures and docs with a move.
+- Put unit tests in a `tests/` folder inside their owner: the feature (`features/balances/tests/`), the shared
+  capability (`shared/api/tests/`), the screen, or the UI component family (`components/payments/tests/`,
+  `hooks/tests/`). No repository-wide folder for application tests. `packages/design-tokens` keeps its `test/`
+  folder. Flow and browser tests stay in `apps/web/e2e/`; the live Privy tests share their sign-in setup in
+  `e2e/privy/`. Go tests follow [backend rules](../backend/rules.md#layout).
+- When moving existing tests, update Vitest discovery and prove the same tests still run. Update aliases, package
+  exports, fixtures and docs with a move.
 - A structure refactor preserves routes, rendered behavior, API contracts and package exports. Run the existing
   relevant unit, type, build and browser checks through the harness. Do not install new state tools as part of a move.
 

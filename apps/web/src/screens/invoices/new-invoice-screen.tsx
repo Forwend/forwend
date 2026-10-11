@@ -2,8 +2,8 @@
 
 import { Button, Skeleton } from "@forwend/ui-web";
 import { useGetBalancesQuery } from "@/features/balances/balances-api";
+import { NewInvoiceForm } from "@/features/invoices/components/new-invoice-form";
 import { INVOICES_COPY, NEW_INVOICE_COPY } from "@/features/invoices/invoices-copy";
-import { NewInvoiceForm } from "@/features/invoices/new-invoice-form";
 import { useAppSession } from "@/features/profiles/app-session";
 import { PROFILE_KINDS } from "@/features/profiles/profile";
 import { LIVE_QUERY } from "@/shared/config/refresh";

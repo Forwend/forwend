@@ -9,6 +9,7 @@ import {
   type ApiSettlementStatus,
   activityStatus,
 } from "@/features/activity/activity";
+import type { TokenBalance } from "@/features/balances/balances";
 import { API_BASE } from "@/shared/config/api";
 
 export const INVOICES_PAGE_SIZE = 20;
@@ -74,12 +75,7 @@ export type InvoiceStep = (typeof INVOICE_STEPS)[keyof typeof INVOICE_STEPS];
 export type InvoicePdf = (typeof INVOICE_PDFS)[keyof typeof INVOICE_PDFS];
 
 /** An enabled token, as GET /v1/profiles/{id}/balances lists it. */
-export interface InvoiceToken {
-  chainId: number;
-  token: string;
-  symbol: string;
-  decimals: number;
-}
+export type InvoiceToken = Pick<TokenBalance, "chainId" | "token" | "symbol" | "decimals">;
 
 export interface InvoiceClient {
   name: string | null;

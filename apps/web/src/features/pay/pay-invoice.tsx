@@ -16,8 +16,8 @@ import {
 import { Check, FileDown, Globe, Info, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { notFound } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { InvoiceDeposits } from "@/features/invoices/invoice-deposits";
-import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/invoice-progress";
+import { InvoiceDeposits } from "@/features/invoices/components/invoice-deposits";
+import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
 import {
   exactDigits,
   formatDueDate,
@@ -29,7 +29,14 @@ import {
   invoiceStatus,
 } from "@/features/invoices/invoices";
 import { useGetInvoiceQuery } from "@/features/invoices/invoices-api";
-import { PAY_STATES, payState, payToken, receiptDeposits, shortDuration } from "@/features/pay/pay";
+import {
+  PAY_STATES,
+  type PayToken,
+  payState,
+  payToken,
+  receiptDeposits,
+  shortDuration,
+} from "@/features/pay/pay";
 import { PAY_COPY as COPY } from "@/features/pay/pay-copy";
 import { checkedReceiveAddress } from "@/features/pay/receive-address";
 import { chainName, isTestnet } from "@/shared/chains/chains";
@@ -44,7 +51,7 @@ const PANEL_TITLE = "border-b border-line px-4 py-3 text-base font-semibold text
 const ICON = "mt-0.5 size-[var(--fw-icon-md)] shrink-0";
 const PDF_LINK = `${buttonClasses({ variant: "secondary", size: "sm" })} self-start`;
 
-const formatMoney = (units: bigint, token: { symbol: string; decimals: number }) =>
+const formatMoney = (units: bigint, token: PayToken) =>
   `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`;
 
 // The public read, again every REFRESH_MS while the tab is visible: the payer sees the status move without a reload.
@@ -128,7 +135,7 @@ function Checkout({
 }: {
   invoice: Invoice;
   address: string;
-  token: { symbol: string; decimals: number };
+  token: PayToken;
   now: number;
 }) {
   const [confirmed, setConfirmed] = useState(false);
@@ -290,7 +297,7 @@ function Status({
   pay: ReturnType<typeof payState>;
   network: string;
   money: (units: bigint) => string;
-  token: { symbol: string; decimals: number };
+  token: PayToken;
 }) {
   const { blocksLeft, secondsLeft } = invoiceProgress(invoice);
   // A closed checkout waits for nothing more, even before the API marks it expired.
@@ -321,13 +328,7 @@ function Status({
   );
 }
 
-function Receipt({
-  invoice,
-  token,
-}: {
-  invoice: Invoice;
-  token: { symbol: string; decimals: number };
-}) {
+function Receipt({ invoice, token }: { invoice: Invoice; token: PayToken }) {
   const amount = BigInt(invoice.amount);
   const deposits = receiptDeposits(invoice);
   return (
