@@ -13,7 +13,6 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/search"
 )
 
-// tokenJSON is chain.Asset in a response.
 type tokenJSON struct {
 	ChainID  uint64 `json:"chainId"`
 	Token    string `json:"token"`

@@ -13,7 +13,6 @@ import {
 import { cx } from "../../lib/cx";
 import { TONE_DOT_CLASSES, TONES, type Tone } from "../../lib/tone";
 
-/** How long a toast stays while it is not hovered or focused, in ms. */
 export const TOAST_MS = 5_000;
 const MAX_TOASTS = 3;
 
@@ -21,7 +20,6 @@ export interface ToastProps {
   tone?: Tone;
   title: string;
   description?: string;
-  /** Shows a close button that calls it. */
   onClose?: () => void;
   closeLabel?: string;
 }
@@ -63,7 +61,6 @@ export type ToastMessage = Pick<ToastProps, "tone" | "title" | "description">;
 
 const ShowToast = createContext<((toast: ToastMessage) => void) | null>(null);
 
-/** Shows a toast in the nearest ToastProvider. */
 export function useToast() {
   const show = useContext(ShowToast);
   if (!show) throw new Error("useToast is used outside a ToastProvider");
@@ -72,14 +69,11 @@ export function useToast() {
 
 export interface ToastProviderProps {
   children: ReactNode;
-  /** The name of the region the toasts appear in. */
   label?: string;
   closeLabel?: string;
-  /** Placement on top of the default: top right from lg up, at the bottom below it. */
   className?: string;
 }
 
-// The newest three toasts in a polite live region, so screen readers announce each one without moving focus.
 export function ToastProvider({
   children,
   label = "Notifications",

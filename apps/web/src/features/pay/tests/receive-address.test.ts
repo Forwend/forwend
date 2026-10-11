@@ -89,12 +89,15 @@ describe("checkedReceiveAddress", () => {
   };
 
   it("gives the address when the terms compute to it, in any letter case", () => {
-    expect(checkedReceiveAddress(invoice)).toBe(invoice.receiveAddress);
+    expect(checkedReceiveAddress(invoice, invoice.invoiceId)).toBe(invoice.receiveAddress);
     expect(
-      checkedReceiveAddress({
-        ...invoice,
-        receiveAddress: invoice.receiveAddress.toUpperCase().replace("0X", "0x"),
-      }),
+      checkedReceiveAddress(
+        {
+          ...invoice,
+          receiveAddress: invoice.receiveAddress.toUpperCase().replace("0X", "0x"),
+        },
+        invoice.invoiceId,
+      ),
     ).toBe(invoice.receiveAddress);
   });
 
@@ -110,8 +113,28 @@ describe("checkedReceiveAddress", () => {
       { receiveAddress: `0x${"2".repeat(40)}` },
     ];
     for (const change of changed) {
-      expect(checkedReceiveAddress({ ...invoice, ...change }), JSON.stringify(change)).toBeNull();
+      expect(
+        checkedReceiveAddress({ ...invoice, ...change }, invoice.invoiceId),
+        JSON.stringify(change),
+      ).toBeNull();
     }
+  });
+
+  it("gives none for another invoice than the link names, even one whose terms are real", () => {
+    const other = { ...terms, invoiceId: `0x${"cd".repeat(32)}` };
+    const served: Invoice = {
+      ...invoice,
+      ...other,
+      receiveAddress: receiveAddress({
+        ...other,
+        amount: 1_250_000_000n,
+        expiresAt: BigInt(Date.parse(terms.expiresAt) / 1000),
+        settleDeadline: BigInt(Date.parse(terms.settleDeadline) / 1000),
+        intendedChainId: 84532n,
+      }),
+    };
+    expect(checkedReceiveAddress(served, served.invoiceId)).toBe(served.receiveAddress);
+    expect(checkedReceiveAddress(served, invoice.invoiceId)).toBeNull();
   });
 
   it("gives none when a term can't be read", () => {
@@ -122,7 +145,10 @@ describe("checkedReceiveAddress", () => {
       { expiresAt: "soon" },
       { expiresAt: "2026-10-17T10:00:00.500Z" },
     ]) {
-      expect(checkedReceiveAddress({ ...invoice, ...change }), JSON.stringify(change)).toBeNull();
+      expect(
+        checkedReceiveAddress({ ...invoice, ...change }, invoice.invoiceId),
+        JSON.stringify(change),
+      ).toBeNull();
     }
   });
 });

@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-// D-38: migrations add each planned network and token switched off; once a database turns them on, invoices use them.
 func TestPlannedNetworksTakeInvoicesOnceEnabled(t *testing.T) {
 	for _, n := range []struct {
 		chainID     uint64

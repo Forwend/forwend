@@ -19,7 +19,6 @@ test("a payment that arrives while the app is open shows one toast, announced to
     storageState: session,
   });
   const page = await context.newPage();
-  // Payments already there on the first load get no toast.
   const activity = [
     activityItem(SETTLED_INVOICE),
     activityItem(CONFIRMING_INVOICE, { txHash: hash("d"), status: "detected" }),
@@ -36,7 +35,7 @@ test("a payment that arrives while the app is open shows one toast, announced to
   await loaded;
   await expect(region.getByRole("listitem")).toHaveCount(0);
 
-  // A new payment to the open invoice: the next poll (here the tab coming back into focus) shows it.
+  // A focus event triggers the next poll.
   activity.unshift(activityItem(OPEN_INVOICE, { txHash: hash("1"), status: "detected" }));
   const polled = page.waitForResponse((r) => r.url().includes("/activity?"));
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
@@ -48,7 +47,6 @@ test("a payment that arrives while the app is open shows one toast, announced to
   await expect(region.locator("[aria-live='polite']")).toContainText("Payment detected");
   expect(await blockingViolations(page)).toEqual([]);
 
-  // The same payment on the next poll is not shown again; the close button removes the toast.
   const again = page.waitForResponse((r) => r.url().includes("/activity?"));
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await again;

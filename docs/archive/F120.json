@@ -1,0 +1,110 @@
+{
+  "id": "F120",
+  "type": "fix",
+  "behavior": "On Tempo the signer's startup gas check reads the executor's fee-token balance instead of the placeholder native balance",
+  "acceptance": [
+    "D-71: on a chain that charges fees in a TIP-20 stablecoin (Tempo), settlement.CheckGas compares MinGas at the current fee cap with the executor's balance in the fee token it pays with (PathUSD unless the executor set another through Tempo's fee manager), with the units converted, so an empty fee-token balance stops the signer with the chain, address and balance named; other chains keep the native-balance check; a test covers both, and docs/backend/architecture.md#startup says how Tempo is checked"
+  ],
+  "dependsOn": [
+    "F097"
+  ],
+  "state": "passing",
+  "verification": [
+    "backend"
+  ],
+  "refs": [
+    "D-71"
+  ],
+  "keep": [],
+  "review": true,
+  "notes": [
+    "2026-10-11 review pass by reviewer: Pass. gas.go:58-75 detects Tempo by code at 0xfeec (Moderato returns 0xef; Base/Arbitrum/Ethereum Sepolia return 0x; reaching that address without a precompile is impractical). Fee token order matches tempo crates/revm/src/fee_manager.rs resolve_fee_token for a plain EIP-1559 tx to the factory/receiver: userTokens, else DEFAULT_FEE_TOKEN (PathUSD); live userTokens(executor) = 0x0, so PathUSD. gas.go:82 ceil matches calc_gas_balance_spending (gas_limit x max_fee_per_gas).div_ceil(10^12). Native path unchanged except one extra eth_getCode. Test: MockToken _balances is slot 0 (forge inspect), covers chosen token and PathUSD, one unit short and exact; fails against the old code. TestCheckGas* pass locally; verify logs at 14:18Z postdate the edits. Non-blocking: gas.go:68-69 joins err != nil and len(out) != 32, so a non-32-byte answer with nil err prints %!w(<nil>); only reachable if something other than Tempo's precompile sits at 0xfeec.",
+    "2026-10-11 review pass by reviewer: Pass (re-review after gas.go change). gas.go:67-73 now returns 'read the executor's fee token: %w' only when CallContract errs and 'read the executor's fee token: N-byte answer' for a non-32-byte answer, so the earlier %!w(<nil>) note is fixed. Rest unchanged from the previous review: Tempo detected by code at 0xfeec (0xef on Moderato, none on Base/Arbitrum/Ethereum Sepolia); token order userTokens else PathUSD matches tempo resolve_fee_token for the signer's factory/receiver txs; gas.go ceil matches calc_gas_balance_spending div_ceil(10^12); native path unchanged; test covers chosen token and PathUSD with MockToken _balances at slot 0. go test -count=1 -run TestCheckGas ./internal/settlement/ ok, go vet clean; verify at 14:24:48Z postdates the edit (14:24:45Z)."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-11T14:24:48Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 56.8,
+        "log": "docs/runs/F120-20261011T142448Z-backend.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.5,
+        "log": "docs/runs/F120-20261011T142448Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F120-20261011T142448Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F120-20261011T142448Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F120-20261011T142448Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 54.6,
+        "log": "docs/runs/F120-20261011T142448Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.6,
+        "log": "docs/runs/F120-20261011T142448Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 125.5,
+        "log": "docs/runs/F120-20261011T142448Z-e2e.log"
+      }
+    ],
+    "taskHash": "ae2c5b7aa69cb91d",
+    "filesHash": "a5cb2660f17cc017",
+    "proof": {
+      "1": "backend: settlement.CheckGas detects Tempo's fee manager precompile (0xfeec…) and reads the executor's fee token via userTokens(address) (tempoxyz/tempo tip_fee_manager.rs), falling back to PathUSD; it needs ceil(feeCap × MinGas / 10^12) 6-decimal units (Tempo fee spec, attodollars); TestCheckGasInFeeToken covers a chosen token and the PathUSD fallback one unit short and funded with no native coin, and fails on the old code; TestCheckGas still covers the native path; against the real chains an empty address is refused on Tempo (0 of 0.000411 PathUSD) and on Base Sepolia (native), and the real executor passes; architecture.md#startup says how Tempo is checked"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Pass (re-review after gas.go change). gas.go:67-73 now returns 'read the executor's fee token: %w' only when CallContract errs and 'read the executor's fee token: N-byte answer' for a non-32-byte answer, so the earlier %!w(<nil>) note is fixed. Rest unchanged from the previous review: Tempo detected by code at 0xfeec (0xef on Moderato, none on Base/Arbitrum/Ethereum Sepolia); token order userTokens else PathUSD matches tempo resolve_fee_token for the signer's factory/receiver txs; gas.go ceil matches calc_gas_balance_spending div_ceil(10^12); native path unchanged; test covers chosen token and PathUSD with MockToken _balances at slot 0. go test -count=1 -run TestCheckGas ./internal/settlement/ ok, go vet clean; verify at 14:24:48Z postdates the edit (14:24:45Z).",
+      "at": "2026-10-11T14:29:09Z",
+      "filesHash": "a5cb2660f17cc017"
+    },
+    "commit": "7a12688",
+    "doneAt": "2026-10-11T14:29:22Z"
+  },
+  "branch": "fix/f120-on-tempo-the-signer-s-startup-gas-check",
+  "baseCommit": "98e39baa192337cb379d86dc47709914650d41c7",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f120-on-tempo-the-signer-s-startup-gas-check",
+    "base": "main"
+  }
+}

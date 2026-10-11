@@ -88,7 +88,8 @@ func (e env) signer(t *testing.T) *Signer {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return NewSigner(e.pool, key, map[uint64]*ethclient.Client{chaintest.ChainID: e.client})
+	clients := map[uint64]*ethclient.Client{chaintest.ChainID: e.client}
+	return NewSigner(e.pool, key, clients, clients)
 }
 
 // paidInvoice creates an invoice for 5 USDC with the address the API would compute, pays it 6 and runs the watcher
@@ -484,7 +485,7 @@ func TestSignerSkipsChainsItDoesNotServe(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := e.nonce(t)
-	if err := NewSigner(e.pool, key, map[uint64]*ethclient.Client{}).Run(ctx); err != nil {
+	if err := NewSigner(e.pool, key, map[uint64]*ethclient.Client{}, map[uint64]*ethclient.Client{}).Run(ctx); err != nil {
 		t.Fatalf("a chain it does not serve is not an error: %v", err)
 	}
 	if status, _, _ := e.intent(t, id); status != "pending" || e.nonce(t) != before {
@@ -639,7 +640,8 @@ func TestHangingRPCDoesNotStallTheSigner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := NewSigner(e.pool, key, map[uint64]*ethclient.Client{chaintest.ChainID: client})
+	clients := map[uint64]*ethclient.Client{chaintest.ChainID: client}
+	s := NewSigner(e.pool, key, clients, clients)
 	s.attemptTimeout = 300 * time.Millisecond
 	done := make(chan error, 1)
 	go func() { done <- s.Run(ctx) }()
@@ -1100,5 +1102,37 @@ func TestStuckSettleOverTheMaxFeeIsSentAgainAsItIs(t *testing.T) {
 	e.final(t, s)
 	if status, _, _ := e.intent(t, id); status != "confirmed" || e.settlementTxHash(t, id) != first {
 		t.Fatalf("intent %s with %s, want confirmed with the saved settle %s", status, e.settlementTxHash(t, id), first)
+	}
+}
+
+func TestSettlementIsBookedOnlyWhenTheSecondRPCAgrees(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, _ := e.paidInvoice(t)
+	if err := e.signer(t).Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	proxy := e.anvil.Proxy()
+	notSettled := json.RawMessage(`"0x` + strings.Repeat("0", 64) + `"`)
+	proxy.Stale(func(c chaintest.Call) json.RawMessage {
+		if c.Method == "eth_call" && strings.Contains(param(c, 0), hexutil.Encode(settledSelector)[2:]) {
+			return notSettled
+		}
+		return nil
+	})
+	second, err := ethclient.Dial(proxy.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(second.Close)
+	doubtful := e.signer(t)
+	doubtful.seconds = map[uint64]*ethclient.Client{chaintest.ChainID: second}
+	e.final(t, doubtful)
+	if status, settlement, _ := e.intent(t, id); status != "sent" || settlement != "pending" {
+		t.Fatalf("second RPC says not settled: intent %s, invoice settlement %s; want sent, pending", status, settlement)
+	}
+	e.final(t, e.signer(t))
+	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" {
+		t.Fatalf("both RPCs agree: intent %s, invoice settlement %s; want confirmed, settled", status, settlement)
 	}
 }

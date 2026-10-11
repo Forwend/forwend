@@ -45,10 +45,12 @@ export function receiveAddress(t: InvoiceTerms): string {
 }
 
 /**
- * The invoice's receive address when its own terms compute to it, or null. Null means the page must not show it: the
- * API answer was changed somewhere, or a term can't be read (a term that can't be read can't prove the address).
+ * The invoice's receive address when the answer is the invoice the link names and its own terms compute to it, or null.
+ * Null means the page must not show it: the API answer was changed somewhere, or a term can't be read (a term that
+ * can't be read can't prove the address).
  */
-export function checkedReceiveAddress(inv: Invoice): string | null {
+export function checkedReceiveAddress(inv: Invoice, linkInvoiceId: string): string | null {
+  if (inv.invoiceId.toLowerCase() !== linkInvoiceId.toLowerCase()) return null;
   try {
     const address = receiveAddress({
       invoiceId: inv.invoiceId,

@@ -18,15 +18,16 @@ type Rounds struct {
 	rate    float64
 	rpcs    map[uint64]chain.RPCs
 	clients map[uint64]*ethclient.Client
+	seconds map[uint64]*ethclient.Client
 	signer  *Signer
 }
 
 // NewRounds signs with key on the chains in specs, through their Infura keys (where a chain lists Infura) and public
 // RPCs, sending each at most rate calls per second.
 func NewRounds(pool *pgxpool.Pool, key *ecdsa.PrivateKey, specs map[uint64]chain.Spec, keys []string, rate float64) *Rounds {
-	clients := map[uint64]*ethclient.Client{}
+	clients, seconds := map[uint64]*ethclient.Client{}, map[uint64]*ethclient.Client{}
 	return &Rounds{pool: pool, specs: specs, keys: keys, rate: rate, rpcs: map[uint64]chain.RPCs{}, clients: clients,
-		signer: NewSigner(pool, key, clients)}
+		seconds: seconds, signer: NewSigner(pool, key, clients, seconds)}
 }
 
 // Round serves the enabled chains, then settles what is due. A failing or rate-limited RPC is rested and its calls
@@ -61,7 +62,7 @@ func (r *Rounds) Round(ctx context.Context) {
 			slog.Error("pick RPCs", "chain", id, "err", chain.Redact(err))
 			continue
 		}
-		r.rpcs[id], r.clients[id] = rpcs, ethclient.NewClient(rpcs.Primary)
+		r.rpcs[id], r.clients[id], r.seconds[id] = rpcs, ethclient.NewClient(rpcs.Primary), ethclient.NewClient(rpcs.Second)
 	}
 	if err := r.signer.Run(ctx); err != nil {
 		slog.Error("signer round", "err", chain.Redact(err))
@@ -72,6 +73,7 @@ func (r *Rounds) close(id uint64) {
 	r.rpcs[id].Close()
 	delete(r.rpcs, id)
 	delete(r.clients, id)
+	delete(r.seconds, id)
 }
 
 // Close closes every chain's RPC clients.

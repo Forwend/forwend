@@ -18,7 +18,7 @@ async function openRequest(page: Page) {
     expect(await blockingViolations(page)).toEqual([]);
     return false;
   }
-  // The local database may have other networks on; the amounts in these tests are Base Sepolia USDC.
+  // Other networks may be on locally.
   await sheet.getByRole("combobox", { name: "Network and token" }).click();
   await page.getByRole("option", { name: "USDC · Base Sepolia" }).click();
   return true;

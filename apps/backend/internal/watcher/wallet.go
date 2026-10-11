@@ -52,7 +52,6 @@ func (c *Chain) wallets(ctx context.Context) (wallets, error) {
 
 // walletLogs returns the Transfer logs in [lo, hi] of a token in w that a profile wallet sends or receives; a log
 // between two of our wallets comes once.
-// ponytail: one topic list with every wallet; split it when RPCs reject the size.
 func (c *Chain) walletLogs(ctx context.Context, lo, hi uint64, w wallets) ([]types.Log, error) {
 	if len(w.addresses) == 0 || len(w.tokens) == 0 {
 		return nil, nil
@@ -68,7 +67,11 @@ func (c *Chain) walletLogs(ctx context.Context, lo, hi uint64, w wallets) ([]typ
 	var out []types.Log
 	seen := map[logKey]bool{}
 	// One filter can't match a wallet as sender or receiver, so: sent, then received.
-	for _, topics := range [][][]common.Hash{{{transferTopic}, addresses}, {{transferTopic}, nil, addresses}} {
+	var filters [][][]common.Hash
+	for _, part := range topicParts(addresses) {
+		filters = append(filters, [][]common.Hash{{transferTopic}, part}, [][]common.Hash{{transferTopic}, nil, part})
+	}
+	for _, topics := range filters {
 		logs, err := c.eth.FilterLogs(ctx, ethereum.FilterQuery{
 			FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi), Addresses: tokens, Topics: topics,
 		})

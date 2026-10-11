@@ -1,117 +1,7 @@
 {
   "schemaVersion": 2,
-  "nextId": 122,
+  "nextId": 126,
   "tasks": [
-    {
-      "id": "F120",
-      "type": "fix",
-      "behavior": "On Tempo the signer's startup gas check reads the executor's fee-token balance instead of the placeholder native balance",
-      "acceptance": [
-        "D-71: on a chain that charges fees in a TIP-20 stablecoin (Tempo), settlement.CheckGas compares MinGas at the current fee cap with the executor's balance in the fee token it pays with (PathUSD unless the executor set another through Tempo's fee manager), with the units converted, so an empty fee-token balance stops the signer with the chain, address and balance named; other chains keep the native-balance check; a test covers both, and docs/backend/architecture.md#startup says how Tempo is checked"
-      ],
-      "dependsOn": [
-        "F097"
-      ],
-      "state": "passing",
-      "verification": [
-        "backend"
-      ],
-      "refs": [
-        "D-71"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-10-11 review pass by reviewer: Pass. gas.go:58-75 detects Tempo by code at 0xfeec (Moderato returns 0xef; Base/Arbitrum/Ethereum Sepolia return 0x; reaching that address without a precompile is impractical). Fee token order matches tempo crates/revm/src/fee_manager.rs resolve_fee_token for a plain EIP-1559 tx to the factory/receiver: userTokens, else DEFAULT_FEE_TOKEN (PathUSD); live userTokens(executor) = 0x0, so PathUSD. gas.go:82 ceil matches calc_gas_balance_spending (gas_limit x max_fee_per_gas).div_ceil(10^12). Native path unchanged except one extra eth_getCode. Test: MockToken _balances is slot 0 (forge inspect), covers chosen token and PathUSD, one unit short and exact; fails against the old code. TestCheckGas* pass locally; verify logs at 14:18Z postdate the edits. Non-blocking: gas.go:68-69 joins err != nil and len(out) != 32, so a non-32-byte answer with nil err prints %!w(<nil>); only reachable if something other than Tempo's precompile sits at 0xfeec.",
-        "2026-10-11 review pass by reviewer: Pass (re-review after gas.go change). gas.go:67-73 now returns 'read the executor's fee token: %w' only when CallContract errs and 'read the executor's fee token: N-byte answer' for a non-32-byte answer, so the earlier %!w(<nil>) note is fixed. Rest unchanged from the previous review: Tempo detected by code at 0xfeec (0xef on Moderato, none on Base/Arbitrum/Ethereum Sepolia); token order userTokens else PathUSD matches tempo resolve_fee_token for the signer's factory/receiver txs; gas.go ceil matches calc_gas_balance_spending div_ceil(10^12); native path unchanged; test covers chosen token and PathUSD with MockToken _balances at slot 0. go test -count=1 -run TestCheckGas ./internal/settlement/ ok, go vet clean; verify at 14:24:48Z postdates the edit (14:24:45Z)."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-11T14:24:48Z",
-        "checks": [
-          {
-            "id": "backend",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 56.8,
-            "log": "docs/runs/F120-20261011T142448Z-backend.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.5,
-            "log": "docs/runs/F120-20261011T142448Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F120-20261011T142448Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F120-20261011T142448Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F120-20261011T142448Z-typecheck.log"
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 54.6,
-            "log": "docs/runs/F120-20261011T142448Z-unit.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.6,
-            "log": "docs/runs/F120-20261011T142448Z-build.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 125.5,
-            "log": "docs/runs/F120-20261011T142448Z-e2e.log"
-          }
-        ],
-        "taskHash": "ae2c5b7aa69cb91d",
-        "filesHash": "a5cb2660f17cc017",
-        "proof": {
-          "1": "backend: settlement.CheckGas detects Tempo's fee manager precompile (0xfeec…) and reads the executor's fee token via userTokens(address) (tempoxyz/tempo tip_fee_manager.rs), falling back to PathUSD; it needs ceil(feeCap × MinGas / 10^12) 6-decimal units (Tempo fee spec, attodollars); TestCheckGasInFeeToken covers a chosen token and the PathUSD fallback one unit short and funded with no native coin, and fails on the old code; TestCheckGas still covers the native path; against the real chains an empty address is refused on Tempo (0 of 0.000411 PathUSD) and on Base Sepolia (native), and the real executor passes; architecture.md#startup says how Tempo is checked"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Pass (re-review after gas.go change). gas.go:67-73 now returns 'read the executor's fee token: %w' only when CallContract errs and 'read the executor's fee token: N-byte answer' for a non-32-byte answer, so the earlier %!w(<nil>) note is fixed. Rest unchanged from the previous review: Tempo detected by code at 0xfeec (0xef on Moderato, none on Base/Arbitrum/Ethereum Sepolia); token order userTokens else PathUSD matches tempo resolve_fee_token for the signer's factory/receiver txs; gas.go ceil matches calc_gas_balance_spending div_ceil(10^12); native path unchanged; test covers chosen token and PathUSD with MockToken _balances at slot 0. go test -count=1 -run TestCheckGas ./internal/settlement/ ok, go vet clean; verify at 14:24:48Z postdates the edit (14:24:45Z).",
-          "at": "2026-10-11T14:29:09Z",
-          "filesHash": "a5cb2660f17cc017"
-        },
-        "commit": "7a12688",
-        "doneAt": "2026-10-11T14:29:22Z"
-      },
-      "branch": "fix/f120-on-tempo-the-signer-s-startup-gas-check",
-      "baseCommit": "98e39baa192337cb379d86dc47709914650d41c7",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f120-on-tempo-the-signer-s-startup-gas-check",
-        "base": "main"
-      }
-    },
     {
       "id": "F121",
       "type": "chore",
@@ -122,13 +12,189 @@
       "dependsOn": [
         "F120"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "docs-check"
       ],
       "refs": [
         "R-23"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-11 review pass by subagent: All five fixes are correct; each test fails without its fix (reverted one at a time in a scratch copy: logs and wallet-logs split -> 'exceed max topics' in TestAddressListsAreSplitForTheNode; scan cap -> 'found in 1 scan' in TestLongBacklogIsCaughtUpOverSeveralScans; second-RPC check -> 'intent confirmed, invoice settlement settled' in TestSettlementIsBookedOnlyWhenTheSecondRPCAgrees; TempoMinGas -> 'one unit short: got <nil>' in TestCheckGasInFeeToken; the web 'another invoice' case can only pass with the id check). Re-ran after the comment pass: go test ./internal/watcher/ ./internal/settlement/ ok; vitest src/features/pay 12 passed; docs/runs/F121-20261011T145815Z-* all pass (e2e TestMoneyLoop runs the signer binary through NewRounds). Comment pass: the only code change is confirm() splitting the agreed check to log slog.Warn('settlement waits for the second RPC') before returning nil (reconcile.go:158-163), same behavior; the other edits are comments only, including migrations 00015-00017 (goose keeps no checksums). Safety reasons kept: D-15 on confirm, TempoMinGas source, the attodollar/6-decimal scale, the scan-cap and topic-limit reasons, the receive-address null rule. Checked: receive-address.ts:54 compares ids case-insensitively and the route validates the id; topicParts (watcher.go:250) never gets an empty list (callers guard), parts are disjoint, and wallet logs are deduplicated across parts by the shared seen map; the proxy rule refuses the unsplit 2-address lists. Scan cap (watcher.go:101): cursor uses headers[latest] when finalized>latest, rows above the cap are reorged only on a different hash, and expiry uses the scanned block's time. Every confirm() caller (reconcile.go:53/61/93, settle.go:79) leaves DB state unchanged on nil and retries; rounds.go:65,76 sets and deletes seconds with clients. TempoMinGas=2,262,000 matches live Tempo receipts (1,305,758/572,845 gas); at base fee 6e8 the floor is ~2,715 units ($0.0027). Base Sepolia pay hash in the record is a successful USDC transfer on chain. PROJECT.md D-15, architecture.md and money-safety.md match the code; F122-F125 match the record. Non-blocking: a detected row that never resolves would pin Scan at from+40,000 without an error (no current path found); scanLimit ignores span, so sustained overload at span 50 may exceed the 2-minute round; a disagreeing second RPC still gets no backoff or stored reason, only the log line; the UI-review items in the record are not queued.",
+        "2026-10-11 review pass by subagent: Re-recorded after the stray untracked security review file left the tree. Commit b278add (git diff HEAD~1 --stat: same 36 files and per-file counts as the change reviewed in the previous pass, including the comment pass and the confirm() warn log); only docs/tasks.json harness bookkeeping is modified in the tree. verify at 2026-10-11T15:04:32Z: all docs/runs/F121-20261011T150432Z-* logs pass, e2e TestMoneyLoop passes. Commit message has no AI attribution. Findings and non-blocking notes unchanged from the previous review pass by subagent (all five fixes correct, each test fails without its fix)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-11T15:04:32Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 51.0,
+            "log": "docs/runs/F121-20261011T150432Z-backend.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F121-20261011T150432Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": "docs/runs/F121-20261011T150432Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F121-20261011T150432Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F121-20261011T150432Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 54.4,
+            "log": "docs/runs/F121-20261011T150432Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F121-20261011T150432Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 113.4,
+            "log": "docs/runs/F121-20261011T150432Z-e2e.log"
+          }
+        ],
+        "taskHash": "7b9509b15ed3b28b",
+        "filesHash": "f12eaa44a6157d57",
+        "proof": {
+          "1": "backend: three independent reviewers covered invoice creation and the receive address, the watcher and ledger, and the signer on all four testnets; five findings fixed with tests that fail before the fix (pay page binds the link's invoice id, watcher topic lists of at most 1,000, settled needs the second RPC, scans capped at 40,000 blocks, TempoMinGas), the rest queued as F122-F125 with severity; docs/reviews/money-path-2026-10.md records scope, findings, verdicts and the owner's runs; architecture.md, money-safety.md and D-15 match; comments cut to the AGENTS.md rule; backend and e2e pass"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Re-recorded after the stray untracked security review file left the tree. Commit b278add (git diff HEAD~1 --stat: same 36 files and per-file counts as the change reviewed in the previous pass, including the comment pass and the confirm() warn log); only docs/tasks.json harness bookkeeping is modified in the tree. verify at 2026-10-11T15:04:32Z: all docs/runs/F121-20261011T150432Z-* logs pass, e2e TestMoneyLoop passes. Commit message has no AI attribution. Findings and non-blocking notes unchanged from the previous review pass by subagent (all five fixes correct, each test fails without its fix).",
+          "at": "2026-10-11T15:08:36Z",
+          "filesHash": "f12eaa44a6157d57"
+        },
+        "commit": "b278add",
+        "doneAt": "2026-10-11T15:08:46Z"
+      },
+      "branch": "chore/f121-the-complete-money-path-is-reviewed-befo",
+      "baseCommit": "d2131b03cee6b37e18335f89fd3de6941ce0f9cd",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f121-the-complete-money-path-is-reviewed-befo",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F122",
+      "type": "fix",
+      "behavior": "A deposit the watcher missed, or money that reached a receive address without a transfer log, is found and held or alerted instead of leaving the invoice open",
+      "acceptance": [
+        "R-20, D-27: when the second RPC's balance of a receive address is higher than what is booked (a log the RPC never returned, or Arc native USDC with no Transfer log), the worker rescans that address from the invoice's creation block, and money still unexplained is booked as payer_held and raises an operator alert, not only a log line; RescanDepth on chains whose finalized block equals latest (Arc, Tempo) covers at least 15 minutes; backend tests cover a missed log and an unlogged balance; money-safety.md matches the code"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-20",
+        "D-27"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F123",
+      "type": "fix",
+      "behavior": "Watcher edge cases: deposits book in chain order, an empty balanceOf answer is an error, and a re-mined log under a final block alerts instead of failing the scan",
+      "acceptance": [
+        "D-27: deposits of one invoice are booked in block and log order, never past an older detected one; ledger.BalanceAt treats an empty eth_call answer for an enabled token as an error; a unique-index conflict for one log alerts and skips that log so the chain's scan goes on; backend tests cover each"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "D-27",
+        "R-20"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F124",
+      "type": "fix",
+      "behavior": "The signer recovers from stuck deploys, nonce gaps and stale gas limits, and checks its lock before each settlement",
+      "acceptance": [
+        "R-22, R-30: a stuck deploy is replaced with a higher fee like a settle; a gap in the executor's nonces left by a settle that never went out is filled or reported to an operator; a replacement settle uses max(old gas limit, a fresh estimate × 1.2); the settle gas floor is per chain (Tempo about 600,000); the signer checks lock.Held before each intent; backend tests on Anvil cover each"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-22",
+        "R-30"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F125",
+      "type": "fix",
+      "behavior": "The pay page and the canary check the terms and the page text, and the api checks the factory on every enabled chain at startup",
+      "acceptance": [
+        "R-45, R-51, D-71: before showing an address the pay page refuses amount 0, a settle deadline other than expiry + 24 h, expiry over 365 days and a recipient equal to zero, the token, the factory or the implementation; the canary compares the network, token and amount shown on /pay/<id> with its own data and checks the terms' rules; the api refuses to start when the factory has no code on an enabled chain; unit and backend tests cover each"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "unit"
+      ],
+      "refs": [
+        "R-45",
+        "R-51"
       ],
       "keep": [],
       "review": true,

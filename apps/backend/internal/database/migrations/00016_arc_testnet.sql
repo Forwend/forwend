@@ -1,5 +1,4 @@
--- Arc testnet and its USDC (D-38), added switched off like 00015. Arc pays gas in USDC; 0x3600… is its ERC-20
--- interface, with 6 decimals.
+-- Added switched off like 00015. 0x3600… is the ERC-20 interface of Arc's native USDC, with 6 decimals.
 
 -- +goose Up
 INSERT INTO chains (chain_id, chain_family, name) VALUES (5042002, 'evm', 'arc-testnet') ON CONFLICT DO NOTHING;

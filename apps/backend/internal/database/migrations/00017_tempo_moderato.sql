@@ -1,5 +1,4 @@
--- Tempo Moderato and OUSD (D-36, D-38), added switched off like 00015. OUSD is a TIP-20 token at the same address on
--- testnet and mainnet (tempo.xyz/developers/docs/guide/ousd).
+-- Added switched off like 00015.
 
 -- +goose Up
 INSERT INTO chains (chain_id, chain_family, name) VALUES (42431, 'evm', 'tempo-moderato') ON CONFLICT DO NOTHING;
