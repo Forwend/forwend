@@ -34,5 +34,9 @@ Read only the task's requirement rows and the relevant package instructions.
   Each package lists its names in `.env.example`. Never print, log or commit keys, tokens or request bodies.
 - Every change uses a task branch and PR. No direct base-branch commits or pushes; no skipped hooks.
 - Follow the user's authorization for commits and publishing. Spending, deployments and provider accounts require explicit approval.
+- Before finishing a task, stop its temporary Anvil processes and remove the Anvil state files, temporary files and
+  disposable build/test caches it created. Use task-specific temporary directories and arrange cleanup on success,
+  failure and interruption. Verify cleanup and report anything left behind. Preserve files used by running processes,
+  shared caches, secrets and persistent data; never blanket-delete `~/.foundry`. Ask before removing pre-existing files.
 - Keep rules in their owning doc; link instead of copying. Update that doc when behavior changes.
 - No AI attribution in commits, PRs or comments.
