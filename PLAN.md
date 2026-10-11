@@ -165,6 +165,18 @@ Freelancer before merchant (D-55). Phase 9 comes first for both, so phases 10 an
   steps first. After 11.1.
 - 11.9 `apps/example-merchant`, quickstart and brandable checkout components. Review keys, scopes and webhook
   verification before the gate.
+  - 11.9.1 Decide hosted or embedded checkout for merchant sites (a PROJECT decision row): the payer must always
+    see the receive address and amount as Forwend shows them, never as merchant code renders them.
+  - 11.9.2 Pay button: a link or popup to `/pay/<id>` with a return URL and the store's branding (D-32). Works on
+    any site without a package. After 11.6.
+  - 11.9.3 If 11.9.1 picks embedded: a `@forwend/react` package (`PayButton`, `Checkout`) that renders the pay page
+    in an iframe from the Forwend origin, like Stripe Elements, so the merchant page cannot change it. Theme props
+    map to design tokens; events (`paid`, `settled`, `expired`) reach the merchant through `postMessage`, and the
+    server confirms them through webhooks. After 11.9.1, 11.6.
+  - 11.9.4 Publish the SDK and components: npm scope and account (owner approval), semver, changelog, the browsers
+    and React versions supported. After 11.9.3.
+  - 11.9.5 `apps/example-merchant` uses the button or component and verifies the webhook, with a browser test.
+    After 11.9.2 or 11.9.3.
 - Before outside merchants: Q-11.
 
 ## Phase 12: account security, send and bank withdrawal
