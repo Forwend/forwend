@@ -15,7 +15,7 @@
         "F092",
         "F093"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -117,11 +117,18 @@
           "summary": "Pass. OUSD checked on chain 42431 (cast: decimals 6, symbol OUSD, name OpenUSD). 00017_tempo_moderato.sql matches the 00015/00016 pattern (switched off, ON CONFLICT DO NOTHING, Down reverses); local DB is at version 17 with 42431 chain and OUSD on; networks_test.go:19 tempo-moderato passes (off -> ErrInvalid, on -> invoice with tempo-moderato/OUSD/6). pay.ts:21 key is lowercase chain:contract and pay.test.ts covers it and a wrong-chain miss. architecture.md#startup is accurate: Moderato eth_getBalance returns 4242...42 for any address and gas.go CheckGas compares native balance only, so the check is vacuous there; F120 is queued. select-field.tsx:48-53: the ref callback is stable (useCallback []), setDialog bails out on the same element so no render loop, React 19 sees no cleanup return, and outside a dialog closest() is null so Radix Portal falls back to body as before; fw-sheet-up has no fill-mode so the dialog has no transform after its 240ms open. Menu and Tooltip are not used inside any Sheet or Dialog. The e2e edits pick USDC on Base Sepolia explicitly, one inside the Request sheet and one on the New invoice page, so they now also cover the picker in and outside a modal; they passed in docs/runs/F097-20261011T134143Z-e2e.log with Tempo on. Comments give reasons only. packages/contracts unchanged. Re-ran pnpm lint, pnpm typecheck, ui-web tests (21), pay vitest (11), check-docs: all pass.",
           "at": "2026-10-11T13:48:31Z",
           "filesHash": "88fc67fc88736d5f"
-        }
+        },
+        "commit": "ea0cfd9",
+        "doneAt": "2026-10-11T13:48:54Z"
       },
       "branch": "feat/f097-invoices-can-be-paid-and-settled-in-ousd",
       "baseCommit": "cffb5a399d5e6a7a7ebfa460e9363d800336ae62",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f097-invoices-can-be-paid-and-settled-in-ousd",
+        "base": "main"
+      }
     },
     {
       "id": "F120",
