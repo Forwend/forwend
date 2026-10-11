@@ -15,7 +15,7 @@
         "F092",
         "F093"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -117,11 +117,18 @@
           "summary": "Pass. Switched-off-by-migration is correct: chain.CheckEnabled (internal/chain/check.go:19) stops api, worker and signer when an enabled chain is missing from CHAINS_FILE or lacks two answering RPCs, and the signer adds executor gas (cmd/signer/main.go:57); e2e/gate_test.go:62 writes an Anvil-only chain list, so an enabling migration would break the gate and fresh dev databases. 00015: lowercase contract matches the tokens CHECK (00002_money.sql:25); token on chain is USDC, 6 decimals (cast call); ON CONFLICT DO NOTHING keeps a hand-inserted 421614 row unchanged; Down deletes token then chain, and the invoices FK blocks Down once invoices exist. Local forwend DB is at version 15 with 421614 chain and token enabled. vectors/receive-address.json covers 421614; web chains.ts:23 and pay.ts:19 already list Arbitrum USDC; packages/contracts unchanged. networks_test.go passes and fails without 00015 (copy of the backend with the file removed: 'token is not enabled on this chain'). architecture.md:137-141 enable SQL is correct. Verify logs 20261011T131648Z all pass. Note: architecture.md:137 'Migrations add each planned network' does not describe Base Sepolia, which is still only a hand-inserted row. The live Arbitrum create/pay/settle run with tx hashes from the task note is still due before done.",
           "at": "2026-10-11T13:21:53Z",
           "filesHash": "f0c546b4ac5e9892"
-        }
+        },
+        "commit": "4ecd700",
+        "doneAt": "2026-10-11T13:22:25Z"
       },
       "branch": "feat/f095-invoices-can-be-paid-and-settled-on-arbi",
       "baseCommit": "32dc800bf3f28a3a0067c59271774d6dab670477",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f095-invoices-can-be-paid-and-settled-on-arbi",
+        "base": "main"
+      }
     },
     {
       "id": "F096",
