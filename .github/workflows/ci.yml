@@ -4,6 +4,9 @@ on:
   push:
     branches: [staging]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -30,14 +33,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
-      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1
         with:
           version: v1.5.1
       - uses: actions/setup-go@v6
         with:
           go-version-file: apps/backend/go.mod
           cache-dependency-path: apps/backend/go.sum
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc

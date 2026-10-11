@@ -28,6 +28,8 @@ Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/me/onboarding`,
 
 - JSON fields in camelCase. Unknown fields are rejected. Bodies go through `http.MaxBytesReader` (1 MB).
 - The server sets `ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout` and `IdleTimeout`.
+- Every answer carries `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`; the PDFs set their own cache
+  rule.
 - Money: decimal string in base units (`"5000000"`) next to `chainId` and `token` (contract address), as in R-19.
 - Times: RFC 3339 in UTC. IDs and addresses: strings.
 - Lists: `?limit=` (max 100) and `?cursor=`; response `{ "items": [...], "nextCursor": "…" }`.

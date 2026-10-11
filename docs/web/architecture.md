@@ -26,6 +26,9 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
 ## Data and trust
 
 - The landing waitlist is a mock that sends and stores nothing (D-8).
+- Every page sends Privy's recommended CSP, `frame-ancestors 'none'` and `X-Frame-Options: DENY` (no page, checkout
+  included, can be framed), `nosniff`, a referrer and a permissions policy, and HSTS (`next.config.ts`). Scripts allow
+  `'unsafe-inline'` because Next inlines its own; nonces would make every page dynamic.
 - Users sign in on `/sign-in` with our own forms (email code with the `CodeInput` boxes, Google, passkey; D-21) on the Privy
   React SDK's headless hooks; Privy's modal is not used. Users add a passkey from the
   overview checklist (Privy's `useLinkWithPasskey`) and sign in with it (`useLoginWithPasskey`). Privy loads only in the

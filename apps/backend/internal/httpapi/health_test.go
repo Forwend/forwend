@@ -32,6 +32,9 @@ func TestHealthz(t *testing.T) {
 	if res.StatusCode != http.StatusOK || string(body) != `{"status":"ok"}` {
 		t.Fatalf("got %d %q", res.StatusCode, body)
 	}
+	if res.Header.Get("Cache-Control") != "no-store" || res.Header.Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatalf("headers %v, want no-store and nosniff", res.Header)
+	}
 
 	pool.Close()
 	res, err = http.Get(server.URL + "/healthz")

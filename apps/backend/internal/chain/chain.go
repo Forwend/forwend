@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -39,9 +40,24 @@ func Specs(path string) (map[uint64]Spec, error) {
 		if _, dup := out[s.ChainID]; dup {
 			return nil, fmt.Errorf("read chain list %s: chain id %d listed twice (%s)", path, s.ChainID, name)
 		}
+		for _, raw := range s.Public {
+			if !secureRPC(raw) {
+				return nil, fmt.Errorf("read chain list %s: %s lists an RPC that is not https", path, name)
+			}
+		}
 		out[s.ChainID] = s
 	}
 	return out, nil
+}
+
+// secureRPC: a network attacker on a plain-http RPC could forge both the deposit and its balance check.
+func secureRPC(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	return u.Scheme == "https" || u.Scheme == "http" && (host == "localhost" || net.ParseIP(host).IsLoopback())
 }
 
 // RPCs are a chain's two clients over one pool of every Infura key and public RPC in the chain list: Primary reads

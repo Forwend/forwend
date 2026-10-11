@@ -375,3 +375,24 @@ func TestCallsReuseConnections(t *testing.T) {
 		t.Fatalf("%d connections for 200 calls, want them reused", n)
 	}
 }
+
+func TestOversizedAnswerIsAnOutage(t *testing.T) {
+	a := chaintest.Start(t)
+	want := number(t, context.Background(), a.RPC)
+	huge := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		chunk := bytes.Repeat([]byte(" "), 1<<20)
+		for range maxAnswer>>20 + 1 {
+			if _, err := w.Write(chunk); err != nil {
+				return
+			}
+		}
+	}))
+	defer huge.Close()
+	r := newRPCs(t, huge.URL, a.URL, localhost(a.URL))
+	if got := number(t, context.Background(), r.Primary); got != want {
+		t.Fatalf("block %d, want %d from the next endpoint", got, want)
+	}
+	if failures, _ := health(r, r.pool.endpoints[0]); failures != 1 {
+		t.Fatalf("oversized endpoint: %d failures, want 1", failures)
+	}
+}

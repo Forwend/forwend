@@ -10,7 +10,9 @@ Built: signup and profiles API, billing details, balances, activity, wallet tran
 - `api`: public HTTP API + dashboard API. Verifies Privy tokens, authorizes the active profile,
   creates invoices, serves state. Reads profile wallet balances from each chain's second RPC at its finalized block
   (D-15, D-45), picked from the chain list like the worker's, through a short cache ([scaling](#scaling)). Holds **no**
-  private keys.
+  private keys: each process gets only its own secrets (`scripts/with-env.sh` drops the executor key for the api and
+  worker). In production it listens on a private address behind the edge, never a public port, and every database
+  URL uses `sslmode=verify-full`.
 - `worker`: chain watcher (block cursor per chain, `eth_getLogs` for allowlisted tokens filtered
   to active receiver addresses), confirmation/finality tracking, reorg handling, invoice state
   machine, outbox processing, webhook delivery, reconciliation.
