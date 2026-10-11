@@ -67,9 +67,14 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	}
 	owed.Neg(owed) // credit balances are negative
 
+	// In chain order: a deposit waits while an earlier one is still detected, so the earliest payers are paid to the
+	// creator first and later ones held for refund (D-27).
 	rows, err := tx.Query(ctx, `
-		SELECT id, amount::text, block_time FROM chain_transfers
-		WHERE invoice_id = $1 AND status = 'confirmed' AND NOT booked ORDER BY block_number, log_index`, invoiceID)
+		SELECT id, amount::text, block_time FROM chain_transfers t
+		WHERE invoice_id = $1 AND status = 'confirmed' AND NOT booked
+		  AND NOT EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id = t.invoice_id AND d.status = 'detected'
+		                  AND (d.block_number, d.log_index) < (t.block_number, t.log_index))
+		ORDER BY block_number, log_index`, invoiceID)
 	if err != nil {
 		return fmt.Errorf("read invoice %s deposits: %w", invoiceID, err)
 	}
@@ -160,8 +165,14 @@ func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, cha
 	if err != nil || onChain == nil {
 		return false, err
 	}
-	if onChain.Cmp(booked) != 0 {
-		slog.Warn("receive address balance differs from the ledger; not expiring", "invoice", invoiceID,
+	if onChain.Cmp(booked) > 0 {
+		// A deposit the watcher never saw, or Arc USDC sent natively: an operator books it (money-safety.md).
+		slog.Error("ALERT receive address holds money with no booked transfer; not expiring", "invoice", invoiceID,
+			"booked", booked.String(), "onChain", onChain.String())
+		return false, nil
+	}
+	if onChain.Cmp(booked) < 0 {
+		slog.Warn("receive address holds less than booked; not expiring", "invoice", invoiceID,
 			"booked", booked.String(), "onChain", onChain.String())
 		return false, nil
 	}

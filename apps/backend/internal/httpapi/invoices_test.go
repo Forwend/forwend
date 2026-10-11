@@ -57,7 +57,9 @@ func invoiceAPI(t *testing.T) invoiceEnv {
 	t.Cleanup(pool.Close)
 	e := invoiceEnv{pool: pool, privyKey: privyKey, wallets: privytest.New(t)}
 	err = pool.QueryRow(ctx, `
-		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true)),
+		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true)
+		            RETURNING chain_id),
+		     cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) SELECT chain_id, 0, 0 FROM c),
 		     t1 AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		            VALUES (84532, 'evm', $1, 'USDC', 6, true)),
 		     t2 AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
@@ -442,8 +444,8 @@ func TestGetInvoiceListsDepositsWithProgress(t *testing.T) {
 	expires, _ := time.Parse(time.RFC3339, created.body["expiresAt"].(string))
 	payer := "0x" + strings.Repeat("ab", 20)
 	_, err := e.pool.Exec(context.Background(), `
-		WITH cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block, last_finalized_time)
-		             VALUES (84532, 1000, 980, $4))
+		WITH cur AS (UPDATE chain_cursors SET last_scanned_block = 1000, last_finalized_block = 980, last_finalized_time = $4
+		             WHERE chain_id = 84532)
 		INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index, block_hash,
 		    block_number, block_time, from_address, to_address, amount, status)
 		VALUES (84532, 'evm', $1, $2, '0x' || repeat('01', 32), 0, '0x' || repeat('01', 32), 970, $4 - 20, $5, $3, 2000000, 'confirmed'),

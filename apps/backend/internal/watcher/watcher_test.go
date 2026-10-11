@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
@@ -269,8 +270,8 @@ func logRange(t *testing.T, call chaintest.Call) (uint64, uint64) {
 func TestLongBacklogIsCaughtUpOverSeveralScans(t *testing.T) {
 	e := setup(t)
 	defer func(limit uint64) { scanLimit = limit }(scanLimit)
-	scanLimit = 3 * RescanDepth
-	e.anvil.Mine(1000)
+	scanLimit = RescanDepth + 300
+	e.anvil.Mine(3 * RescanDepth)
 	tx := e.anvil.Transfer(e.token, receive, "5000000")
 	e.anvil.Mine(2)
 	cursor := func() (block int64) {
@@ -282,7 +283,7 @@ func TestLongBacklogIsCaughtUpOverSeveralScans(t *testing.T) {
 	}
 	scans, last := 0, cursor()
 	for got, _ := e.rows(t); got[tx] == nil; got, _ = e.rows(t) {
-		if scans++; scans > 10 {
+		if scans++; scans > 40 {
 			t.Fatalf("deposit not found after %d scans; cursor at %d", scans-1, last)
 		}
 		e.scan(t)
@@ -294,5 +295,67 @@ func TestLongBacklogIsCaughtUpOverSeveralScans(t *testing.T) {
 	}
 	if scans < 2 {
 		t.Fatalf("found in %d scan; want the backlog read in parts", scans)
+	}
+}
+
+// A deposit already recorded under another final block, mined again, is skipped with an alert: the chain's scan goes on.
+func TestDepositMinedAgainUnderAFinalBlockIsSkipped(t *testing.T) {
+	e := setup(t)
+	tx := e.anvil.Transfer(e.token, receive, "5000000")
+	e.anvil.Mine(2)
+	e.scan(t)
+	if _, err := e.pool.Exec(context.Background(), `UPDATE chain_transfers SET block_hash = '0x' || repeat('ee', 32)
+		WHERE tx_hash = $1`, tx); err != nil {
+		t.Fatal(err)
+	}
+	e.scan(t)
+	if got, n := e.rows(t); n != 1 || got[tx][0] != "confirmed" {
+		t.Fatalf("rows %v", got)
+	}
+}
+
+// Invoices 30 days past their settle deadline leave the scan: the refund authority moves late money from the chain.
+func TestLongClosedInvoicesAreNotWatched(t *testing.T) {
+	e := setup(t)
+	const old = "0x00000000000000000000000000000000000000ad"
+	if _, err := e.pool.Exec(context.Background(), `
+		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+		SELECT '0x' || repeat('03', 32), profile_id, chain_id, chain_family, token_contract, amount, 1, 86401,
+		    recipient_address, receive_method, factory_address, $1, 'key-old', request_hash FROM invoices`, old); err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.Transfer(e.token, old, "5000000")
+	e.anvil.Mine(2)
+	e.scan(t)
+	if got, n := e.rows(t); n != 0 {
+		t.Fatalf("a long-closed invoice was scanned: %v", got)
+	}
+}
+
+// A deposit seen just before its invoice leaves the scan keeps the invoice watched until it confirms: a detected row
+// left behind would hold every later scan's start and stop the chain.
+func TestInvoiceLeavingTheScanWithADetectedDepositStaysUntilItConfirms(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	const closing = "0x00000000000000000000000000000000000000ad"
+	if _, err := e.pool.Exec(ctx, `
+		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+		SELECT '0x' || repeat('03', 32), profile_id, chain_id, chain_family, token_contract, amount, 1,
+		    extract(epoch FROM now())::bigint - 30 * 86400 + 3, recipient_address, receive_method, factory_address, $1,
+		    'key-closing', request_hash FROM invoices`, closing); err != nil {
+		t.Fatal(err)
+	}
+	late := e.anvil.Transfer(e.token, closing, "5000000")
+	e.scan(t)
+	if got, _ := e.rows(t); got[late][0] != "detected" {
+		t.Fatalf("rows %v", got)
+	}
+	time.Sleep(4 * time.Second) // the invoice passes settle deadline + 30 days while its deposit is not final
+	e.anvil.Mine(2)
+	e.scan(t)
+	if got, _ := e.rows(t); got[late][0] != "confirmed" {
+		t.Fatalf("the deposit of an invoice that left the scan: %v, want confirmed", got[late])
 	}
 }

@@ -153,7 +153,11 @@ func checkInvariants(t *testing.T, pool *pgxpool.Pool, seed uint64, id string, a
 	t.Helper()
 	var payment string
 	var receiver, owed, held, confirmed, onTime, unbooked int64
+	// Bookable: confirmed, and booked already or with no earlier transfer still detected (chain order, D-27).
 	err := pool.QueryRow(context.Background(), `
+		WITH bookable AS (SELECT * FROM chain_transfers t WHERE status = 'confirmed' AND (booked OR NOT EXISTS (
+		    SELECT 1 FROM chain_transfers d WHERE d.invoice_id = t.invoice_id AND d.status = 'detected'
+		    AND (d.block_number, d.log_index) < (t.block_number, t.log_index))))
 		SELECT i.payment_status,
 		       coalesce((SELECT sum(e.amount) FROM ledger_entries e JOIN ledger_transactions x ON x.id = e.transaction_id
 		                 WHERE x.invoice_id = i.id AND e.account = 'receiver'), 0)::bigint,
@@ -161,10 +165,9 @@ func checkInvariants(t *testing.T, pool *pgxpool.Pool, seed uint64, id string, a
 		                  WHERE x.invoice_id = i.id AND e.account = 'recipient_payable'), 0)::bigint,
 		       -coalesce((SELECT sum(e.amount) FROM ledger_entries e JOIN ledger_transactions x ON x.id = e.transaction_id
 		                  WHERE x.invoice_id = i.id AND e.account = 'payer_held'), 0)::bigint,
-		       coalesce((SELECT sum(amount) FROM chain_transfers WHERE invoice_id = i.id AND status = 'confirmed'), 0)::bigint,
-		       coalesce((SELECT sum(amount) FROM chain_transfers WHERE invoice_id = i.id AND status = 'confirmed'
-		                 AND block_time <= i.expires_at), 0)::bigint,
-		       (SELECT count(*) FROM chain_transfers WHERE invoice_id = i.id AND status = 'confirmed' AND NOT booked)
+		       coalesce((SELECT sum(amount) FROM bookable WHERE invoice_id = i.id), 0)::bigint,
+		       coalesce((SELECT sum(amount) FROM bookable WHERE invoice_id = i.id AND block_time <= i.expires_at), 0)::bigint,
+		       (SELECT count(*) FROM bookable WHERE invoice_id = i.id AND NOT booked)
 		FROM invoices i WHERE i.id = $1`, id).Scan(&payment, &receiver, &owed, &held, &confirmed, &onTime, &unbooked)
 	if err != nil {
 		t.Fatal(err)

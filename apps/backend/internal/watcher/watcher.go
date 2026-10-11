@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"strings"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -31,9 +33,8 @@ const (
 	// MinRange is the fewest: a range this small that the RPC still refuses fails the scan.
 	MinRange = 50
 	// RescanDepth finalized blocks are read again on every scan, so one lagging or empty eth_getLogs answer is never
-	// the last look at a block. Writes are idempotent, so rescanning is free of side effects.
-	// ponytail: a node that lags for RescanDepth blocks in a row still hides a deposit; F049's balance check catches it.
-	RescanDepth = 64
+	// the last look at a block. On Arc and Tempo finalized is latest, and 2,000 blocks are still 15 minutes or more.
+	RescanDepth = MaxRange
 	// MaxBatch is the most calls in one JSON-RPC batch.
 	MaxBatch = 100
 )
@@ -224,7 +225,12 @@ func (c *Chain) start(ctx context.Context) (uint64, error) {
 
 // invoices maps each receive address on this chain to its invoice and token.
 func (c *Chain) invoices(ctx context.Context) (map[common.Address]receiver, error) {
-	rows, err := c.pool.Query(ctx, "SELECT receive_address, id, token_contract FROM invoices WHERE chain_id = $1", c.chainID)
+	// Money reaching an invoice 30 days after its settle deadline (the contracts' MAX_HOLD) is moved only by the
+	// refund authority, from the chain: not watching those keeps each scan's topic lists bounded. One with a deposit
+	// still detected stays until it confirms or is reorged, or that row would hold every scan's start for good.
+	rows, err := c.pool.Query(ctx, `SELECT receive_address, id, token_contract FROM invoices i
+		WHERE chain_id = $1 AND (settle_deadline > extract(epoch FROM now())::bigint - 30 * 86400
+		    OR EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = i.id AND t.status = 'detected'))`, c.chainID)
 	if err != nil {
 		return nil, fmt.Errorf("read chain %d invoices: %w", c.chainID, err)
 	}
@@ -373,7 +379,11 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 			status = "confirmed"
 		}
 		// A confirmed row may be booked and never changes; a reorged one comes back if its block is canonical again.
-		_, err = tx.Exec(ctx, `
+		row, err := tx.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("record chain %d deposit %s/%d: %w", c.chainID, d.txHash, d.logIndex, err)
+		}
+		_, err = row.Exec(ctx, `
 			INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
 			    block_hash, block_number, block_time, from_address, to_address, amount, status)
 			VALUES ($1, 'evm', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
@@ -381,6 +391,18 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 			WHERE chain_transfers.status <> 'confirmed' AND chain_transfers.status <> excluded.status`,
 			c.chainID, d.token, d.invoiceID, d.txHash, d.logIndex, d.blockHash, d.blockNumber, d.blockTime,
 			d.from, d.to, d.amount.String(), status)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.ConstraintName == "chain_transfers_live_log" {
+			// The same transaction is already recorded under another block: one bad node must not stop the chain's
+			// scan, and an operator decides which block is real.
+			_ = row.Rollback(ctx)
+			slog.Error("ALERT deposit recorded under another block was mined again; skipped", "chain", c.chainID,
+				"tx", d.txHash, "log", d.logIndex, "block", d.blockHash)
+			continue
+		}
+		if err == nil {
+			err = row.Commit(ctx)
+		}
 		if err != nil {
 			return fmt.Errorf("record chain %d deposit %s/%d: %w", c.chainID, d.txHash, d.logIndex, err)
 		}

@@ -61,8 +61,8 @@ func secureRPC(raw string) bool {
 }
 
 // RPCs are a chain's two clients over one pool of every Infura key and public RPC in the chain list: Primary reads
-// the chain and signs, Second checks balances (D-15). Each call goes to a working endpoint and moves to the next one
-// when an endpoint fails (pool.go), and the two roles always use different hosts.
+// the chain and signs, Second checks balances (D-15). Each call goes to a working endpoint of its role and moves to the
+// next one when an endpoint fails (pool.go).
 type RPCs struct {
 	Primary, Second *rpc.Client
 	pool            *pool
@@ -89,11 +89,16 @@ func NewRPCs(spec Spec, infuraKeys []string, rate float64) (RPCs, error) {
 	transport.MaxIdleConnsPerHost = 100
 	p := &pool{chainID: spec.ChainID, perCall: time.Duration(float64(time.Second) / rate), timeout: AttemptTimeout,
 		http: &http.Client{Transport: transport}}
+	// Hosts alternate between the roles in list order and never fail over to the other role's: one provider must never
+	// answer both a deposit and the balance that confirms it, even after an outage moved the primary.
 	hosts := map[string]bool{}
 	for i, u := range append(urls, spec.Public...) {
 		host := hostOf(u)
-		hosts[host] = true
-		p.endpoints = append(p.endpoints, &endpoint{url: u, host: host, name: fmt.Sprintf("%s#%d", host, i+1)})
+		if _, seen := hosts[host]; !seen {
+			hosts[host] = len(hosts)%2 == 1
+		}
+		p.endpoints = append(p.endpoints, &endpoint{url: u, host: host, name: fmt.Sprintf("%s#%d", host, i+1),
+			second: hosts[host]})
 	}
 	if len(hosts) < 2 {
 		return RPCs{}, fmt.Errorf("chain %d lists %d RPC host(s); D-15 needs a second, independent one",

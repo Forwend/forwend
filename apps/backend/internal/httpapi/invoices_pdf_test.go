@@ -231,8 +231,8 @@ func TestReceiptPDF(t *testing.T) {
 	// Two final deposits; the ledger books them and checks the balance (2500000 at block 100) like the worker does.
 	first, second := "0x"+strings.Repeat("01", 32), "0x"+strings.Repeat("02", 32)
 	paidAt := time.Unix(expires.Unix()-100, 0).UTC()
-	if _, err := e.pool.Exec(ctx, `INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block,
-		last_finalized_time) VALUES (84532, 100, 100, $1)`, paidAt.Unix()); err != nil {
+	if _, err := e.pool.Exec(ctx, `UPDATE chain_cursors SET last_scanned_block = 100, last_finalized_block = 100,
+		last_finalized_time = $1 WHERE chain_id = 84532`, paidAt.Unix()); err != nil {
 		t.Fatal(err)
 	}
 	deposit := func(hash string, block int64, at time.Time, amount string) {

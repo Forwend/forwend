@@ -95,8 +95,8 @@ func TestQueuedRequestsSkipAnEndpointThatStartsToRest(t *testing.T) {
 	}
 }
 
-// The primary and the second always answer from different hosts (D-15): a failed second host is replaced by another
-// one, and when the primary has to take the only other working host, the second fails instead of sharing it.
+// The primary and the second answer only from their own hosts (D-15): a failed host is replaced by another of its
+// role, never by the other role's.
 func TestRolesStayOnDifferentHosts(t *testing.T) {
 	a := chaintest.Start(t)
 	hosts := []*chaintest.Proxy{a.Proxy(), a.Proxy(), a.Proxy()}
@@ -128,20 +128,21 @@ func TestRolesStayOnDifferentHosts(t *testing.T) {
 	down := func(chaintest.Call) chaintest.Fault { return chaintest.HTTP503 }
 
 	expect(0, 1)
+	// The second's only host is down: balances wait rather than move to a host the primary may use.
 	hosts[1].Fail(down)
-	expect(0, 2)
+	short, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+	defer cancel()
+	if got, err := served(short, r.Second); err == nil || got != -1 {
+		t.Fatalf("second served by host %d (%v) while its own host is down; want an error", got, err)
+	}
+	hosts[1].Fail(nil)
 
-	hosts[1].Fail(nil) // still resting
+	// SEC-01: the primary fails over within its own hosts, and once its first host is back, the second still never
+	// reads from the host that answered the primary meanwhile.
 	hosts[0].Fail(down)
 	if got, err := served(ctx, r.Primary); err != nil || got != 2 {
 		t.Fatalf("primary served by host %d (%v), want 2", got, err)
 	}
-	short, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
-	defer cancel()
-	if got, err := served(short, r.Second); err == nil || got != -1 {
-		t.Fatalf("second served by host %d (%v) while only the primary's host works; want an error", got, err)
-	}
-
 	hosts[0].Fail(nil)
 	for _, e := range r.pool.endpoints[:2] {
 		_, until := health(r, e)

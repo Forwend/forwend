@@ -3,6 +3,7 @@ package ledger
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -86,6 +87,10 @@ func BalanceFrom(clients map[uint64]*ethclient.Client) BalanceOf {
 	}
 }
 
+// ErrNoToken is an empty balanceOf answer: no token contract at that block. The ledger never reads it as 0 (an RPC
+// that answers empty must not let an invoice expire with money in it).
+var ErrNoToken = errors.New("no token contract at the block")
+
 func BalanceAt(ctx context.Context, client *ethclient.Client, chainID uint64, token, holder string,
 	block uint64) (*big.Int, error) {
 	to := common.HexToAddress(token)
@@ -95,8 +100,8 @@ func BalanceAt(ctx context.Context, client *ethclient.Client, chainID uint64, to
 		return nil, fmt.Errorf("balanceOf %s on chain %d: %w", holder, chainID, err)
 	}
 	switch len(out) {
-	case 0: // no token contract at that block yet (deployed after it): nothing was paid there
-		return new(big.Int), nil
+	case 0:
+		return nil, fmt.Errorf("balanceOf %s on chain %d: %w", holder, chainID, ErrNoToken)
 	case 32:
 		return new(big.Int).SetBytes(out), nil
 	}

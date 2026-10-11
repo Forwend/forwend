@@ -139,6 +139,7 @@ func TestBalancesOnAnvil(t *testing.T) {
 func TestHungChainLeavesTheOthers(t *testing.T) {
 	anvil := chaintest.Start(t)
 	token := anvil.DeployToken()
+	anvil.Mine(2) // the token exists at the finalized block the read uses
 	pool, profile, _ := setup(t, token)
 	if _, err := pool.Exec(context.Background(), `
 		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (1, 'evm', 'hung', true))

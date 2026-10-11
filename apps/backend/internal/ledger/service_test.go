@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -201,4 +202,51 @@ func TestLateFullPaymentIsHeldNotPaid(t *testing.T) {
 	e.anvil.Mine(2)
 	e.run(t)
 	want(t, "late full payment", e.state(t, id), state{payment: Expired, refund: "held", receiver: 5000000, held: 5000000})
+}
+
+// D-27: deposits are booked in chain order, so a later deposit confirmed first waits for an earlier one still
+// detected, and the excess is held for the later payer.
+func TestDepositsBookInChainOrder(t *testing.T) {
+	e := newChainEnv(t)
+	ctx := context.Background()
+	id, receive := e.invoice(t, 1, 5000000, e.anvil.Now()+3600)
+	first := e.anvil.Transfer(e.token, receive, "3000000")
+	later := e.anvil.Transfer(e.token, receive, "3000000")
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.pool.Exec(ctx, "UPDATE chain_transfers SET status = 'confirmed' WHERE tx_hash = $1", later); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.service.ProcessChain(ctx, chaintest.ChainID); err != nil {
+		t.Fatal(err)
+	}
+	want(t, "later one confirmed first", e.state(t, id), state{payment: Detected, refund: "none"})
+
+	if _, err := e.pool.Exec(ctx, "UPDATE chain_transfers SET status = 'confirmed' WHERE tx_hash = $1", first); err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.Mine(2)
+	e.run(t)
+	var held string
+	if err := e.pool.QueryRow(ctx, `SELECT ct.tx_hash FROM ledger_entries le JOIN ledger_transactions lt ON lt.id = le.transaction_id
+		JOIN chain_transfers ct ON ct.id = lt.chain_transfer_id WHERE le.account = 'payer_held'`).Scan(&held); err != nil || held != later {
+		t.Fatalf("held from %s (%v), want the later deposit %s", held, err, later)
+	}
+}
+
+// An empty balanceOf answer (no contract at that address and block) is an error, never a balance of 0 that could let
+// an invoice expire with money in it.
+func TestEmptyBalanceAnswerIsAnError(t *testing.T) {
+	e := newChainEnv(t)
+	client := ethclient.NewClient(e.anvil.RPC)
+	block, err := client.BlockNumber(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = BalanceAt(context.Background(), client, chaintest.ChainID, "0x00000000000000000000000000000000000000c0",
+		"0x1111111111111111111111111111111111111111", block)
+	if !errors.Is(err, ErrNoToken) {
+		t.Fatalf("got %v, want ErrNoToken", err)
+	}
 }
