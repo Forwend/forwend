@@ -1,135 +1,7 @@
 {
   "schemaVersion": 2,
-  "nextId": 121,
+  "nextId": 122,
   "tasks": [
-    {
-      "id": "F097",
-      "type": "feat",
-      "behavior": "Invoices can be paid and settled in OUSD on Tempo Moderato, enabled on its own after the Base Sepolia gate",
-      "acceptance": [
-        "D-38: a migration adds Tempo Moderato and OUSD (Open USD, Tempo's recommended stablecoin, TIP-20, 6 decimals) at 0x20c0000000000000000000006a37da5c996874be, the same address on testnet and mainnet (tempo.xyz/developers/docs/guide/ousd; checked on chain 42431: symbol OUSD, name OpenUSD) switched off, and the local database has it on with the api, worker and signer passing their startup checks; D-36 lists OUSD as Tempo's planned token; the pay page accepts OUSD on Tempo; the R-15 vectors cover its chain ID; the pay page and dashboard show its network name and token; the planned-networks backend test covers it",
-        "D-38: the existing Base Sepolia and Arbitrum Sepolia invoices and pay page are unchanged; the e2e and backend checks pass"
-      ],
-      "dependsOn": [
-        "F091",
-        "F092",
-        "F093"
-      ],
-      "state": "passing",
-      "verification": [
-        "backend",
-        "e2e"
-      ],
-      "refs": [
-        "D-38",
-        "D-36",
-        "R-16"
-      ],
-      "keep": [
-        "packages/contracts/*"
-      ],
-      "review": true,
-      "notes": [
-        "2026-10-10 Gate: start only after PLAN 8.12 (complete money-path review and Sasha's Base Sepolia run). Before done, Sasha runs create, pay, settled on this chain and the tx hashes go in a note.",
-        "2026-10-11 found with four networks on: the Request sheet's network picker opened its list outside the modal <dialog>, which the browser makes inert, so no network could be picked; SelectField now opens the list in the nearest dialog. The live invoice and request tests now pick USDC on Base Sepolia instead of relying on the first token",
-        "2026-10-11 review pass by reviewer: Pass. OUSD checked on chain 42431 (cast: decimals 6, symbol OUSD, name OpenUSD). 00017_tempo_moderato.sql matches the 00015/00016 pattern (switched off, ON CONFLICT DO NOTHING, Down reverses); local DB is at version 17 with 42431 chain and OUSD on; networks_test.go:19 tempo-moderato passes (off -> ErrInvalid, on -> invoice with tempo-moderato/OUSD/6). pay.ts:21 key is lowercase chain:contract and pay.test.ts covers it and a wrong-chain miss. architecture.md#startup is accurate: Moderato eth_getBalance returns 4242...42 for any address and gas.go CheckGas compares native balance only, so the check is vacuous there; F120 is queued. select-field.tsx:48-53: the ref callback is stable (useCallback []), setDialog bails out on the same element so no render loop, React 19 sees no cleanup return, and outside a dialog closest() is null so Radix Portal falls back to body as before; fw-sheet-up has no fill-mode so the dialog has no transform after its 240ms open. Menu and Tooltip are not used inside any Sheet or Dialog. The e2e edits pick USDC on Base Sepolia explicitly, one inside the Request sheet and one on the New invoice page, so they now also cover the picker in and outside a modal; they passed in docs/runs/F097-20261011T134143Z-e2e.log with Tempo on. Comments give reasons only. packages/contracts unchanged. Re-ran pnpm lint, pnpm typecheck, ui-web tests (21), pay vitest (11), check-docs: all pass.",
-        "2026-10-11 owner said not to wait: merged with the chain off by default and on only in the local database; the owner's live Tempo Moderato OUSD create, pay, settled run and its tx hashes are still owed"
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-11T13:41:43Z",
-        "checks": [
-          {
-            "id": "backend",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 49.3,
-            "log": "docs/runs/F097-20261011T134143Z-backend.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 114.6,
-            "log": "docs/runs/F097-20261011T134143Z-e2e.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.3,
-            "log": "docs/runs/F097-20261011T134143Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F097-20261011T134143Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F097-20261011T134143Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F097-20261011T134143Z-typecheck.log"
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 55.7,
-            "log": "docs/runs/F097-20261011T134143Z-unit.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 4.2,
-            "log": "docs/runs/F097-20261011T134143Z-build.log"
-          },
-          {
-            "id": "keep",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F097-20261011T134143Z-keep.log"
-          }
-        ],
-        "taskHash": "4c916b8797fbd6df",
-        "filesHash": "88fc67fc88736d5f",
-        "proof": {
-          "1": "backend: migration 00017 adds Tempo Moderato and OUSD 0x20c0…6a37da5c996874be (6 decimals, symbol OUSD, name OpenUSD read on chain 42431) switched off; TestPlannedNetworksTakeInvoicesOnceEnabled/tempo-moderato proves refusal while off and network, OUSD, 6 decimals once on; D-36 lists OUSD on Tempo; PAY_TOKENS accepts it (unit pay.test.ts payToken); vectors cover 42431; chains.ts names Tempo Moderato; locally enabled and the api, worker and signer passed startup and a full round with no errors; architecture.md notes the Tempo gas-check gap, queued as F120",
-          "2": "e2e: with four networks on locally, the live invoice and request tests pick Base Sepolia USDC and pass, including the Request sheet picker inside its modal dialog (SelectField now opens its list in the dialog; these tests failed before that fix); backend check passes"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Pass. OUSD checked on chain 42431 (cast: decimals 6, symbol OUSD, name OpenUSD). 00017_tempo_moderato.sql matches the 00015/00016 pattern (switched off, ON CONFLICT DO NOTHING, Down reverses); local DB is at version 17 with 42431 chain and OUSD on; networks_test.go:19 tempo-moderato passes (off -> ErrInvalid, on -> invoice with tempo-moderato/OUSD/6). pay.ts:21 key is lowercase chain:contract and pay.test.ts covers it and a wrong-chain miss. architecture.md#startup is accurate: Moderato eth_getBalance returns 4242...42 for any address and gas.go CheckGas compares native balance only, so the check is vacuous there; F120 is queued. select-field.tsx:48-53: the ref callback is stable (useCallback []), setDialog bails out on the same element so no render loop, React 19 sees no cleanup return, and outside a dialog closest() is null so Radix Portal falls back to body as before; fw-sheet-up has no fill-mode so the dialog has no transform after its 240ms open. Menu and Tooltip are not used inside any Sheet or Dialog. The e2e edits pick USDC on Base Sepolia explicitly, one inside the Request sheet and one on the New invoice page, so they now also cover the picker in and outside a modal; they passed in docs/runs/F097-20261011T134143Z-e2e.log with Tempo on. Comments give reasons only. packages/contracts unchanged. Re-ran pnpm lint, pnpm typecheck, ui-web tests (21), pay vitest (11), check-docs: all pass.",
-          "at": "2026-10-11T13:48:31Z",
-          "filesHash": "88fc67fc88736d5f"
-        },
-        "commit": "ea0cfd9",
-        "doneAt": "2026-10-11T13:48:54Z"
-      },
-      "branch": "feat/f097-invoices-can-be-paid-and-settled-in-ousd",
-      "baseCommit": "cffb5a399d5e6a7a7ebfa460e9363d800336ae62",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f097-invoices-can-be-paid-and-settled-in-ousd",
-        "base": "main"
-      }
-    },
     {
       "id": "F120",
       "type": "fix",
@@ -140,12 +12,116 @@
       "dependsOn": [
         "F097"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend"
       ],
       "refs": [
         "D-71"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-11 review pass by reviewer: Pass. gas.go:58-75 detects Tempo by code at 0xfeec (Moderato returns 0xef; Base/Arbitrum/Ethereum Sepolia return 0x; reaching that address without a precompile is impractical). Fee token order matches tempo crates/revm/src/fee_manager.rs resolve_fee_token for a plain EIP-1559 tx to the factory/receiver: userTokens, else DEFAULT_FEE_TOKEN (PathUSD); live userTokens(executor) = 0x0, so PathUSD. gas.go:82 ceil matches calc_gas_balance_spending (gas_limit x max_fee_per_gas).div_ceil(10^12). Native path unchanged except one extra eth_getCode. Test: MockToken _balances is slot 0 (forge inspect), covers chosen token and PathUSD, one unit short and exact; fails against the old code. TestCheckGas* pass locally; verify logs at 14:18Z postdate the edits. Non-blocking: gas.go:68-69 joins err != nil and len(out) != 32, so a non-32-byte answer with nil err prints %!w(<nil>); only reachable if something other than Tempo's precompile sits at 0xfeec.",
+        "2026-10-11 review pass by reviewer: Pass (re-review after gas.go change). gas.go:67-73 now returns 'read the executor's fee token: %w' only when CallContract errs and 'read the executor's fee token: N-byte answer' for a non-32-byte answer, so the earlier %!w(<nil>) note is fixed. Rest unchanged from the previous review: Tempo detected by code at 0xfeec (0xef on Moderato, none on Base/Arbitrum/Ethereum Sepolia); token order userTokens else PathUSD matches tempo resolve_fee_token for the signer's factory/receiver txs; gas.go ceil matches calc_gas_balance_spending div_ceil(10^12); native path unchanged; test covers chosen token and PathUSD with MockToken _balances at slot 0. go test -count=1 -run TestCheckGas ./internal/settlement/ ok, go vet clean; verify at 14:24:48Z postdates the edit (14:24:45Z)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-11T14:24:48Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 56.8,
+            "log": "docs/runs/F120-20261011T142448Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": "docs/runs/F120-20261011T142448Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F120-20261011T142448Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F120-20261011T142448Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F120-20261011T142448Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 54.6,
+            "log": "docs/runs/F120-20261011T142448Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F120-20261011T142448Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 125.5,
+            "log": "docs/runs/F120-20261011T142448Z-e2e.log"
+          }
+        ],
+        "taskHash": "ae2c5b7aa69cb91d",
+        "filesHash": "a5cb2660f17cc017",
+        "proof": {
+          "1": "backend: settlement.CheckGas detects Tempo's fee manager precompile (0xfeec…) and reads the executor's fee token via userTokens(address) (tempoxyz/tempo tip_fee_manager.rs), falling back to PathUSD; it needs ceil(feeCap × MinGas / 10^12) 6-decimal units (Tempo fee spec, attodollars); TestCheckGasInFeeToken covers a chosen token and the PathUSD fallback one unit short and funded with no native coin, and fails on the old code; TestCheckGas still covers the native path; against the real chains an empty address is refused on Tempo (0 of 0.000411 PathUSD) and on Base Sepolia (native), and the real executor passes; architecture.md#startup says how Tempo is checked"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass (re-review after gas.go change). gas.go:67-73 now returns 'read the executor's fee token: %w' only when CallContract errs and 'read the executor's fee token: N-byte answer' for a non-32-byte answer, so the earlier %!w(<nil>) note is fixed. Rest unchanged from the previous review: Tempo detected by code at 0xfeec (0xef on Moderato, none on Base/Arbitrum/Ethereum Sepolia); token order userTokens else PathUSD matches tempo resolve_fee_token for the signer's factory/receiver txs; gas.go ceil matches calc_gas_balance_spending div_ceil(10^12); native path unchanged; test covers chosen token and PathUSD with MockToken _balances at slot 0. go test -count=1 -run TestCheckGas ./internal/settlement/ ok, go vet clean; verify at 14:24:48Z postdates the edit (14:24:45Z).",
+          "at": "2026-10-11T14:29:09Z",
+          "filesHash": "a5cb2660f17cc017"
+        }
+      },
+      "branch": "fix/f120-on-tempo-the-signer-s-startup-gas-check",
+      "baseCommit": "98e39baa192337cb379d86dc47709914650d41c7",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F121",
+      "type": "chore",
+      "behavior": "The complete money path is reviewed before phase 9, and its findings are fixed or queued (PLAN 8.12)",
+      "acceptance": [
+        "PLAN 8.12: independent reviewers read invoice creation and the receive address (API, Go, pay page, canary), the watcher, finality, reorgs and the ledger, and the signer and settlement on all four enabled testnets; each finding is checked against the code and either fixed with a test in this task when small, or queued as its own task with severity; docs/reviews/money-path-2026-10.md records scope, findings, verdicts and the owner's live runs (Base Sepolia, Arc, Tempo); the backend and e2e checks pass"
+      ],
+      "dependsOn": [
+        "F120"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "docs-check"
+      ],
+      "refs": [
+        "R-23"
       ],
       "keep": [],
       "review": true,

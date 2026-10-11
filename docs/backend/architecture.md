@@ -37,9 +37,10 @@ Each binary checks what it needs before it serves, and otherwise stops with one 
   is one receiver deploy (159,990 gas on Anvil) and one settle (at least `SettleGasFloor`), each plus a fifth: 342,000
   gas, 0.001026 ETH on Anvil (1 gwei base fee and tip). Below it the node would refuse the next deploy and settle. The
   message names the chain, the executor's address and its balance in whole coins. It is a floor derived from each
-  chain's own price, not a budget: Arbitrum's L1 data cost is not in it. Tempo charges fees in a TIP-20 stablecoin
-  (PathUSD by default) and its RPC reports a placeholder native balance, so on Tempo this check passes whatever the
-  executor holds; keep PathUSD on the executor until F120 checks the fee token.
+  chain's own price, not a budget: Arbitrum's L1 data cost is not in it. Tempo has no native coin and its RPC reports
+  a placeholder balance: where Tempo's fee manager precompile exists, the check reads the executor's fee token instead
+  (its choice in the fee manager, else PathUSD) and needs ceil(fee cap × `MinGas` / 10^12) of its 6-decimal units,
+  since Tempo prices gas in attodollars.
 
 Then each logs its ready line: `api listening`, `worker ready`, `signer ready`. The checks run once; an RPC failing
 later is handled by the pool as before.
