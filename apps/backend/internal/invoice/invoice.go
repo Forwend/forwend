@@ -147,15 +147,19 @@ func (d Details) check() error {
 	for _, f := range []struct {
 		name, value string
 		max         int
+		lines       bool
 	}{
-		{"title", d.Title, MaxTitle}, {"note", d.Note, MaxNote}, {"client.name", d.ClientName, MaxClientName},
-		{"client.email", d.ClientEmail, MaxClientEmail}, {"client.address", d.ClientAddress, MaxClientAddress},
-		{"senderName", d.SenderName, MaxSenderName},
+		{"title", d.Title, MaxTitle, false}, {"note", d.Note, MaxNote, true},
+		{"client.name", d.ClientName, MaxClientName, false}, {"client.email", d.ClientEmail, MaxClientEmail, false},
+		{"client.address", d.ClientAddress, MaxClientAddress, true}, {"senderName", d.SenderName, MaxSenderName, false},
 	} {
 		// Postgres text can't hold a NUL byte.
-		if !utf8.ValidString(f.value) || strings.ContainsRune(f.value, 0) || utf8.RuneCountInString(f.value) > f.max {
-			return fmt.Errorf("%w: %s must be at most %d characters of text", ErrInvalid, f.name, f.max)
+		if !utf8.ValidString(f.value) || utf8.RuneCountInString(f.value) > f.max || !profile.PlainText(f.value, f.lines) {
+			return fmt.Errorf("%w: %s must be at most %d characters of plain text", ErrInvalid, f.name, f.max)
 		}
+	}
+	if profile.Impersonates(d.SenderName) {
+		return fmt.Errorf("%w: senderName can't name Forwend", ErrInvalid)
 	}
 	if d.ClientEmail != "" {
 		if a, err := mail.ParseAddress(d.ClientEmail); err != nil || a.Address != d.ClientEmail {

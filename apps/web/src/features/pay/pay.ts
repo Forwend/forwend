@@ -39,6 +39,15 @@ export function payToken(inv: Invoice) {
   return PAY_TOKENS[tokenKey(inv)] ?? null;
 }
 
+// A transfer started at the last moment lands after expiry and is held for the payer, not paid to the sender; the
+// browser clock may also run behind.
+const CLOSE_EARLY_MS = 5 * 60_000;
+
+/** When the checkout stops showing the address: before the invoice's expiry, which still books what arrives. */
+export function checkoutClosesAt(inv: Pick<Invoice, "expiresAt">): number {
+  return Date.parse(inv.expiresAt) - CLOSE_EARLY_MS;
+}
+
 /**
  * Where the payment stands for the payer. Received counts deposits made before expiry, confirmed or not; late ones are
  * held for the payer. Paid and settled come only from the API (D-29). The payer may send while the checkout is open and
@@ -51,7 +60,7 @@ export function payState(inv: Invoice, now: number) {
   const received = sum(false);
   const late = sum(true);
   const closed =
-    now >= Date.parse(inv.expiresAt) ||
+    now >= checkoutClosesAt(inv) ||
     inv.paymentStatus === API_PAYMENT_STATUSES.expired ||
     inv.paymentStatus === API_PAYMENT_STATUSES.expiredPartiallyPaid;
   const confirming = inv.deposits.some(

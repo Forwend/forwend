@@ -48,8 +48,12 @@ export function NewProfileForm() {
       const profile = await createProfile({ idempotencyKey: key, body }).unwrap();
       chooseProfile(profile.profileId);
       router.push(APP_ROUTES.home);
-    } catch {
-      setFormError(COPY.errors.failed);
+    } catch (error) {
+      const message =
+        (error as { data?: { error?: { message?: string } } }).data?.error?.message ?? "";
+      if (message.includes("profiles")) setFormError(COPY.errors.cap);
+      else if (message.includes("name")) setNameError(COPY.errors.name);
+      else setFormError(COPY.errors.failed);
       setBusy(false);
     }
   };

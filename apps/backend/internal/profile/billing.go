@@ -60,14 +60,18 @@ func (d BillingDetails) check() error {
 	for _, f := range []struct {
 		name, value string
 		max         int
+		lines       bool
 	}{
-		{"name", d.Name, MaxBillingName}, {"address", d.Address, MaxBillingAddress}, {"taxId", d.TaxID, MaxBillingTaxID},
-		{"email", d.Email, MaxBillingEmail},
+		{"name", d.Name, MaxBillingName, false}, {"address", d.Address, MaxBillingAddress, true},
+		{"taxId", d.TaxID, MaxBillingTaxID, false}, {"email", d.Email, MaxBillingEmail, false},
 	} {
 		// Postgres text can't hold a NUL byte.
-		if !utf8.ValidString(f.value) || strings.ContainsRune(f.value, 0) || utf8.RuneCountInString(f.value) > f.max {
-			return fmt.Errorf("%w: %s must be at most %d characters of text", ErrInvalid, f.name, f.max)
+		if !utf8.ValidString(f.value) || utf8.RuneCountInString(f.value) > f.max || !PlainText(f.value, f.lines) {
+			return fmt.Errorf("%w: %s must be at most %d characters of plain text", ErrInvalid, f.name, f.max)
 		}
+	}
+	if Impersonates(d.Name) {
+		return fmt.Errorf("%w: name can't name Forwend", ErrInvalid)
 	}
 	if !countryCode.MatchString(d.Country) || !strings.Contains(countries, d.Country) {
 		return fmt.Errorf("%w: country must be an ISO 3166-1 alpha-2 code like DE", ErrInvalid)

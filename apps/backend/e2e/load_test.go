@@ -146,7 +146,7 @@ func TestLoad(t *testing.T) {
 	var users sync.WaitGroup
 	for u := range *loadUsers {
 		users.Go(func() {
-			bearer := authtest.Sign(t, privy.Key("key-1"), "key-1", jwt.MapClaims{"sub": fmt.Sprintf("did:privy:load-%d", u),
+			bearer := authtest.Sign(t, privy.Key("key-1"), "key-1", jwt.MapClaims{"sid": "load", "sub": fmt.Sprintf("did:privy:load-%d", u),
 				"iss": "privy.io", "aud": appID, "iat": time.Now().Unix(), "exp": time.Now().Add(2 * time.Hour).Unix()})
 			// Users arrive spread over one interval, then poll every interval, as dashboard tabs do.
 			select {

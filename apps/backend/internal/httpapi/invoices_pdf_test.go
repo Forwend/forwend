@@ -116,6 +116,8 @@ func TestInvoicePDF(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	plain := e.post(t, alice, e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
+	request := e.post(t, alice, e.aliceProfile, "key-0", `{"chainId": 84532, "token": "`+usdc+`", "amount": "5000000",
+		"senderName": "Mara Ilić"}`).body["invoiceId"].(string)
 	if r := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/billing-details", alice, "", billingBody); r.status != http.StatusOK {
 		t.Fatalf("PUT billing details: %d %v", r.status, r.body)
 	}
@@ -128,7 +130,7 @@ func TestInvoicePDF(t *testing.T) {
 	if r.status != http.StatusOK || r.header.Get("Content-Type") != "application/pdf" || !bytes.HasPrefix(r.body, []byte("%PDF-")) {
 		t.Fatalf("got %d %s %.40q", r.status, r.header.Get("Content-Type"), r.body)
 	}
-	if got := r.header.Get("Content-Disposition"); got != `attachment; filename="forwend-INV-0002-invoice.pdf"` {
+	if got := r.header.Get("Content-Disposition"); got != `attachment; filename="forwend-INV-0003-invoice.pdf"` {
 		t.Fatalf("Content-Disposition %q", got)
 	}
 	if r.header.Get("Cache-Control") != "private, no-cache" || r.header.Get("ETag") == "" {
@@ -136,7 +138,7 @@ func TestInvoicePDF(t *testing.T) {
 	}
 	text := pdfText(t, r.body)
 	link := webURL + "/pay/" + id
-	mustContain(t, text, "Invoice", "INV-0002", "Logo design",
+	mustContain(t, text, "Invoice", "INV-0003", "Logo design",
 		"FROM", "Alice Design GmbH", "Hauptstr. 1\n10115 Berlin", "DE", "Tax ID DE123456789", "billing@alice.example",
 		"BILL TO", "Bob Ltd", "Main St 1\nBerlin",
 		"Amount\n5.00 USDC", "Network\nbase-sepolia (chain 84532)", "Due date\n2026-11-01",
@@ -159,6 +161,10 @@ func TestInvoicePDF(t *testing.T) {
 
 	text = pdfText(t, e.pdf(t, plain, "invoice.pdf", "").body)
 	mustContain(t, text, "INV-0001", "Amount\n5.00 USDC", webURL+"/pay/"+plain)
+
+	// A request without billing details names its sender, marked as not checked.
+	mustContain(t, pdfText(t, e.pdf(t, request, "invoice.pdf", "").body),
+		"FROM", "Mara Ilić", "Name not checked by Forwend")
 	for _, block := range []string{"FROM", "BILL TO", "Due date", "Note"} {
 		if strings.Contains(text, block) {
 			t.Fatalf("an invoice without billing details or client says %q:\n%s", block, text)

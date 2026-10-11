@@ -93,7 +93,7 @@ func start(inv invoice.Invoice, kind string, date time.Time) doc {
 	d.SetCellMargin(0)
 	d.AddUTF8FontFromBytes(font, "", regular)
 	d.AddUTF8FontFromBytes(font, "B", bold)
-	author := "Forwend"
+	author := bmp(inv.SenderName)
 	if inv.Issuer != nil {
 		author = bmp(inv.Issuer.Name)
 	}
@@ -126,6 +126,9 @@ func start(inv invoice.Invoice, kind string, date time.Time) doc {
 			tax = "Tax ID " + i.TaxID
 		}
 		bottom = max(bottom, d.party(x, top, "From", i.Name, i.Address, i.Country, tax, i.Email))
+		x += width / 2
+	} else if inv.SenderName != "" {
+		bottom = max(bottom, d.party(x, top, "From", inv.SenderName, "Name not checked by Forwend"))
 		x += width / 2
 	}
 	// Never the client's email: the PDF is public to anyone with the invoice id.

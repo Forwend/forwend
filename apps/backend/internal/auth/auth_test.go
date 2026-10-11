@@ -16,7 +16,7 @@ import (
 
 func claims() jwt.MapClaims {
 	now := time.Now()
-	return jwt.MapClaims{"sub": "did:privy:alice", "iss": "privy.io", "aud": "app",
+	return jwt.MapClaims{"sid": "session-1", "sub": "did:privy:alice", "iss": "privy.io", "aud": "app",
 		"iat": now.Unix(), "exp": now.Add(time.Hour).Unix()}
 }
 
@@ -185,15 +185,37 @@ func TestFailedRefreshDoesNotExtendKeyAge(t *testing.T) {
 	v.now = func() time.Time { return now }
 	token := authtest.Sign(t, p.Key("key-2"), "key-2", claims())
 
-	now = start.Add(MaxKeyAge + time.Second) // the list is old and Privy is down: keep the last list
+	now = start.Add(MaxKeyAge + time.Second) // the list is old and Privy is down: keep the last list for KeyGrace
 	down = true
 	if _, err := v.Verify(ctx, token); err != nil {
 		t.Fatalf("Privy down: %v", err)
+	}
+	now = start.Add(MaxKeyAge + KeyGrace)
+	if _, err := v.Verify(ctx, token); !errors.Is(err, ErrUnauthorized) {
+		t.Fatalf("Privy down past KeyGrace: got %v, want 401", err)
+	}
+	now = now.Add(RefetchInterval)
+	if _, err := v.Verify(ctx, token); !errors.Is(err, ErrUnauthorized) {
+		t.Fatalf("Privy still down after another try: got %v, want 401", err)
 	}
 	down = false // Privy is back, with key-2 withdrawn
 	p.RemoveKey("key-2")
 	now = now.Add(RefetchInterval)
 	if _, err := v.Verify(ctx, token); !errors.Is(err, ErrUnauthorized) {
 		t.Fatalf("after Privy is back without the key: got %v, want 401", err)
+	}
+}
+
+func TestOnlyAccessTokensAreAccepted(t *testing.T) {
+	p := authtest.NewPrivy(t)
+	v := newVerifier(t, p)
+	noSession := claims()
+	delete(noSession, "sid")
+	identity := claims()
+	identity["linked_accounts"] = `[{"type":"email"}]`
+	for name, c := range map[string]jwt.MapClaims{"no sid": noSession, "identity token": identity} {
+		if _, err := v.Verify(context.Background(), authtest.Sign(t, p.Key("key-1"), "key-1", c)); !errors.Is(err, ErrUnauthorized) {
+			t.Errorf("%s: got %v, want 401", name, err)
+		}
 	}
 }

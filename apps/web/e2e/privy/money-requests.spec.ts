@@ -115,6 +115,9 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     ).toBeVisible();
     await expect(pay.getByText(`Request ${request.number}`)).toBeVisible();
     await expect(pay.getByText("The sender gave no name")).toHaveCount(0);
+    await expect(
+      pay.getByText("The sender gave this name. Forwend doesn't check it."),
+    ).toBeVisible();
     expect(await blockingViolations(pay)).toEqual([]);
     await payer.close();
   }

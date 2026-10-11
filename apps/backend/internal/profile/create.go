@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
@@ -18,30 +17,16 @@ func (s *Service) Create(ctx context.Context, privyUserID, idempotencyKey, kind,
 	if kind != Freelancer && kind != Merchant {
 		return Profile{}, false, fmt.Errorf("%w: kind must be %s or %s", ErrInvalid, Freelancer, Merchant)
 	}
-	if !utf8.ValidString(name) || strings.ContainsRune(name, 0) || utf8.RuneCountInString(name) > MaxNameLength {
-		return Profile{}, false, fmt.Errorf("%w: name must be at most %d characters of text", ErrInvalid, MaxNameLength)
+	if !utf8.ValidString(name) || utf8.RuneCountInString(name) > MaxNameLength || !PlainText(name, false) {
+		return Profile{}, false, fmt.Errorf("%w: name must be at most %d characters of plain text", ErrInvalid, MaxNameLength)
+	}
+	if Impersonates(name) {
+		return Profile{}, false, fmt.Errorf("%w: name can't name Forwend", ErrInvalid)
 	}
 	hash := sha256.Sum256([]byte(kind + "\x00" + name))
-	var id string
-	err = s.pool.QueryRow(ctx, `
-		INSERT INTO profiles (user_id, kind, name, idempotency_key, request_hash)
-		SELECT id, $2, NULLIF($3, ''), $4, $5 FROM users WHERE privy_user_id = $1
-		ON CONFLICT (user_id, idempotency_key) DO NOTHING RETURNING id::text`,
-		privyUserID, kind, name, idempotencyKey, hash[:]).Scan(&id)
-	created = err == nil
-	if errors.Is(err, pgx.ErrNoRows) { // no such user, or this key was used before
-		var stored []byte
-		err = s.pool.QueryRow(ctx, `SELECT p.id::text, p.request_hash FROM profiles p JOIN users u ON u.id = p.user_id
-			WHERE u.privy_user_id = $1 AND p.idempotency_key = $2`, privyUserID, idempotencyKey).Scan(&id, &stored)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return Profile{}, false, ErrNotSignedUp
-		}
-		if err == nil && string(stored) != string(hash[:]) {
-			return Profile{}, false, ErrConflict
-		}
-	}
+	id, created, err := s.insert(ctx, privyUserID, idempotencyKey, kind, name, hash[:])
 	if err != nil {
-		return Profile{}, false, fmt.Errorf("insert profile: %w", err)
+		return Profile{}, false, err
 	}
 	// A wallet Privy fails to make now is made by the next signup call; the profile itself is created, so the user
 	// sees it (wallet not ready) and a retry with other values can't make a second one.
@@ -58,4 +43,47 @@ func (s *Service) Create(ctx context.Context, privyUserID, idempotencyKey, kind,
 		}
 	}
 	return Profile{}, false, fmt.Errorf("profile %s is not listed", id)
+}
+
+// insert adds the profile unless the key was used before, under a lock on the user so the cap holds against
+// concurrent requests. Each profile gets a Privy wallet the watcher scans forever.
+func (s *Service) insert(ctx context.Context, privyUserID, idempotencyKey, kind, name string, hash []byte) (string, bool, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return "", false, fmt.Errorf("insert profile: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	var userID string
+	err = tx.QueryRow(ctx, "SELECT id::text FROM users WHERE privy_user_id = $1 FOR UPDATE", privyUserID).Scan(&userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, ErrNotSignedUp
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("insert profile: %w", err)
+	}
+	// Counted after the lock, in its own statement, so it sees profiles other requests committed while we waited.
+	var count int
+	if err := tx.QueryRow(ctx, "SELECT count(*) FROM profiles WHERE user_id = $1", userID).Scan(&count); err != nil {
+		return "", false, fmt.Errorf("insert profile: %w", err)
+	}
+	var id string
+	var stored []byte
+	err = tx.QueryRow(ctx, "SELECT id::text, request_hash FROM profiles WHERE user_id = $1 AND idempotency_key = $2",
+		userID, idempotencyKey).Scan(&id, &stored)
+	switch {
+	case err == nil && string(stored) != string(hash):
+		return "", false, ErrConflict
+	case err == nil:
+		return id, false, nil
+	case !errors.Is(err, pgx.ErrNoRows):
+		return "", false, fmt.Errorf("insert profile: %w", err)
+	case count >= MaxProfiles:
+		return "", false, fmt.Errorf("%w: a user has at most %d profiles", ErrInvalid, MaxProfiles)
+	}
+	err = tx.QueryRow(ctx, `INSERT INTO profiles (user_id, kind, name, idempotency_key, request_hash)
+		VALUES ($1, $2, NULLIF($3, ''), $4, $5) RETURNING id::text`, userID, kind, name, idempotencyKey, hash).Scan(&id)
+	if err != nil {
+		return "", false, fmt.Errorf("insert profile: %w", err)
+	}
+	return id, true, tx.Commit(ctx)
 }

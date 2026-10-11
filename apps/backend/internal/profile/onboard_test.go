@@ -3,6 +3,7 @@ package profile
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"sync"
 	"testing"
@@ -119,5 +120,24 @@ func TestOnboardErrors(t *testing.T) {
 	}
 	if at, _ := s.OnboardedAt(ctx, alice); at != nil || count(t, pool, "profiles") != 1 {
 		t.Fatal("a refused request onboarded the user or made a profile")
+	}
+}
+
+func TestOnboardKeepsTheProfileCap(t *testing.T) {
+	s, _, pool := newService(t)
+	ctx := context.Background()
+	if _, _, err := s.SignUp(ctx, alice); err != nil {
+		t.Fatal(err)
+	}
+	for i := range MaxProfiles - 2 {
+		if _, _, err := s.Create(ctx, alice, fmt.Sprintf("key-%d", i), Merchant, ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, _, _, err := s.Onboard(ctx, alice, []string{GetPaidByClients, AcceptBusinessPayments}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("onboarding past the cap: %v, want ErrInvalid", err)
+	}
+	if n := count(t, pool, "profiles"); n != MaxProfiles-1 {
+		t.Fatalf("%d profiles, want %d", n, MaxProfiles-1)
 	}
 }

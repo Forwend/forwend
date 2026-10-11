@@ -45,6 +45,12 @@ describe("payState", () => {
   it("lets the payer send only while the checkout is open and money is still owed", () => {
     expect(payState(invoice, before)).toMatchObject({ state: PAY_STATES.waiting, canSend: true });
     expect(payState(invoice, after)).toMatchObject({ state: PAY_STATES.closed, canSend: false });
+    const fiveMinutesBefore = Date.parse(invoice.expiresAt) - 5 * 60_000;
+    expect(payState(invoice, fiveMinutesBefore - 1).canSend).toBe(true);
+    expect(payState(invoice, fiveMinutesBefore)).toMatchObject({
+      state: PAY_STATES.closed,
+      canSend: false,
+    });
     const partial = { ...invoice, paymentStatus: "partially_paid", deposits: [deposit("400")] };
     expect(payState(partial, before)).toMatchObject({
       state: PAY_STATES.partial,

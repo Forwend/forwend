@@ -30,6 +30,7 @@ import {
 } from "@/features/invoices/invoices";
 import { useGetInvoiceQuery } from "@/features/invoices/invoices-api";
 import {
+  checkoutClosesAt,
   PAY_STATES,
   type PayToken,
   payState,
@@ -106,7 +107,9 @@ function Loaded({ invoice, linkInvoiceId }: { invoice: Invoice; linkInvoiceId: s
             .filter(Boolean)
             .join(" · ")}
         </p>
-        {issuer || sender ? null : <p className="text-sm text-muted">{COPY.noIssuer}</p>}
+        <p className="text-sm text-muted">
+          {issuer || sender ? COPY.unverifiedName : COPY.noIssuer}
+        </p>
         <a
           href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.invoice)}
           className={`${PDF_LINK} mt-2`}
@@ -152,7 +155,7 @@ function Checkout({
   const money = (units: bigint) => formatMoney(units, token);
   const pay = payState(invoice, now);
   const due = money(pay.remaining);
-  const expiresAt = Date.parse(invoice.expiresAt);
+  const expiresAt = checkoutClosesAt(invoice);
   const status = pay.state === PAY_STATES.closed ? PAYMENT_STATUS.expired : invoiceStatus(invoice);
 
   return (

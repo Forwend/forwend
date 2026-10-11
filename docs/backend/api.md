@@ -55,7 +55,12 @@ column existed were set to their signup time (migration 00013), so they never se
   choice is 422 `invalid_value`.
 - One transaction locks the user row, makes the profiles and sets `onboarded_at`, so concurrent calls make them once.
   Then each new profile gets its wallet through the signup path (R-31, R-32). The first call answers 201; later calls,
-  with any choices, change nothing and answer 200 with the same `Me`. Later profiles come from `POST /v1/profiles`.
+  with any choices, change nothing and answer 200 with the same `Me`. Later profiles come from `POST /v1/profiles`;
+  a user has at most 10 profiles, the personal one included (each makes a Privy wallet the watcher scans): 422 above.
+- Names, titles, notes, client and billing fields refuse control and invisible format characters (line breaks only in
+  notes and addresses, zero-width joiners allowed), and sender, profile and billing names that read as Forwend: 422.
+  The pay page says the name is not checked, and so does the PDF of a request without billing details. Onboarding
+  counts toward the 10 profiles too.
 
 ## Billing details
 
@@ -156,10 +161,12 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
 - Profile-scoped routes check that the user owns the profile: 403 otherwise, also for an unknown or malformed
   profile ID, so callers can't probe which profiles exist.
 - `internal/auth` verifies the token locally: ES256 only, issuer `privy.io`, audience = app ID, `exp` required,
-  `sub` = the user's Privy DID. The key is the one named by the token's `kid` among those published at
+  `sub` = the user's Privy DID, and a `sid` with no `linked_accounts`: Privy signs identity tokens for the app too,
+  and they must not work as bearer tokens. The key is the one named by the token's `kid` among those published at
   `PRIVY_JWKS_URL` (Privy publishes more than one), loaded at startup (R-29). An unknown `kid` fetches the keys again at
   most once a minute; a known one makes no network call while the list is younger than an hour. An older list is
-  fetched again first, so a key Privy withdrew stops verifying (R-30); if Privy is unreachable, the last list is kept. The Privy Go SDK (D-12) has no local token check, so this
+  fetched again first, so a key Privy withdrew stops verifying (R-30); if Privy is unreachable, the last list verifies for
+  10 more minutes (`KeyGrace`), then nothing does. `PRIVY_JWKS_URL` must be https. The Privy Go SDK (D-12) has no local token check, so this
   uses `golang-jwt/jwt/v5` as in Privy's Go guide (https://docs.privy.io/authentication/user-authentication/access-tokens).
 - `httpapi.requireUser` and `requireProfileOwner` wrap the protected handlers. `/v1/me` and `POST /v1/profiles` act
   only for the token's user. Every `{profileId}` route is listed in `profileRoutes` in `profiles_test.go`, which checks

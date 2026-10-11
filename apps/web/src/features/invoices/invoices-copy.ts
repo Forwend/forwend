@@ -9,7 +9,8 @@ import {
   type InvoiceStep,
 } from "@/features/invoices/invoices";
 
-const atMost = (n: number) => `Use at most ${n.toLocaleString("en-US")} characters.`;
+const atMost = (n: number) =>
+  `Use at most ${n.toLocaleString("en-US")} characters, with no hidden characters.`;
 
 /** "about 19 min" or "under a minute": how long a payment has left to confirm. */
 export const timeLeft = (seconds: number) =>
@@ -96,7 +97,7 @@ export const NEW_INVOICE_COPY = {
     [INVOICE_FIELDS.clientName]: atMost(INVOICE_LIMITS.clientName),
     [INVOICE_FIELDS.clientEmail]: "Enter an email like name@example.com.",
     [INVOICE_FIELDS.clientAddress]: atMost(INVOICE_LIMITS.clientAddress),
-    [INVOICE_FIELDS.senderName]: atMost(INVOICE_LIMITS.senderName),
+    [INVOICE_FIELDS.senderName]: `${atMost(INVOICE_LIMITS.senderName)} The name can't be Forwend.`,
   },
   failed: "We could not create the invoice. Try again.",
   invalid: "We could not create the invoice with these values. Check them and try again.",

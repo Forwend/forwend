@@ -281,7 +281,7 @@ func getAs(t *testing.T, url, bearer string) map[string]any {
 func token(t *testing.T, privy *authtest.Privy) string {
 	t.Helper()
 	now := time.Now()
-	return authtest.Sign(t, privy.Key("key-1"), "key-1", jwt.MapClaims{"sub": "did:privy:gate", "iss": "privy.io",
+	return authtest.Sign(t, privy.Key("key-1"), "key-1", jwt.MapClaims{"sid": "gate", "sub": "did:privy:gate", "iss": "privy.io",
 		"aud": appID, "iat": now.Unix(), "exp": now.Add(time.Hour).Unix()})
 }
 

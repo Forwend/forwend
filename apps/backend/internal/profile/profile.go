@@ -15,6 +15,9 @@ const (
 
 const MaxNameLength = 64 // characters
 
+// MaxProfiles is per user, the personal profile included.
+const MaxProfiles = 10
+
 var (
 	// ErrInvalid wraps a request value that breaks a rule; the message names it.
 	ErrInvalid = errors.New("invalid profile request")

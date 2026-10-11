@@ -19,7 +19,8 @@ export const NEW_PROFILE_COPY = {
   create: "Create profile",
   cancel: "Cancel",
   errors: {
-    name: `Use at most ${PROFILE_NAME_MAX} characters.`,
+    name: `Use at most ${PROFILE_NAME_MAX} characters, with no hidden characters. The name can't be Forwend.`,
+    cap: "You have the most profiles an account can have.",
     failed: "We could not create the profile. Try again.",
   },
 } as const;
