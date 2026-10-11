@@ -15,7 +15,7 @@
         "F092",
         "F093"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -116,11 +116,18 @@
           "summary": "00016_arc_testnet.sql adds chain 5042002 arc-testnet and USDC 0x3600...0000 (6 decimals) switched off, same pattern as 00015, with a working Down. On chain via dRPC: chain id 5042002, decimals() 6, symbol() USDC; the comment matches docs/spikes/s5-s6-testnets.md:24. Local DB has chain and token enabled. networks_test.go:18 Arc row passes (go test -run TestPlannedNetworks: arbitrum-sepolia and arc-testnet PASS). vectors/receive-address.json covers 5042002; web chains.ts:29 and pay.ts:20 already list Arc USDC. architecture.md wording is accurate (no migration adds 84532). packages/contracts unchanged (keep log). Gas check (settlement/gas.go) compares native 18-decimal balance to feeCap*MinGas in wei, and balances use ERC-20 balanceOf in 6 decimals, so Arc units are consistent. Logs F096-20261011T132334Z-*: backend ok, e2e 30+20 passed, lint/typecheck/unit/build/docs-check/harness pass.",
           "at": "2026-10-11T13:28:18Z",
           "filesHash": "4027deaf96271e2b"
-        }
+        },
+        "commit": "0b33ba1",
+        "doneAt": "2026-10-11T13:28:33Z"
       },
       "branch": "feat/f096-invoices-can-be-paid-and-settled-on-arc",
       "baseCommit": "fb37294482204ce6d05f0ce08f6aa4bf034a8906",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f096-invoices-can-be-paid-and-settled-on-arc",
+        "base": "main"
+      }
     },
     {
       "id": "F097",
