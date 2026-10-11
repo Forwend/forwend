@@ -5,7 +5,11 @@ export interface TokenChipProps {
   network: string;
 }
 
-const TOKEN_LOGOS: Partial<Record<string, BrandIconName>> = { USDC: "usdc", USDT: "usdt" };
+const TOKEN_LOGOS: Partial<Record<string, BrandIconName>> = {
+  USDC: "usdc",
+  USDT: "usdt",
+  OUSD: "ousd",
+};
 
 const NETWORK_LOGOS: Partial<Record<string, BrandIconName>> = {
   Base: "base",

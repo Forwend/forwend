@@ -42,7 +42,11 @@ export const CHAINS: Readonly<
 };
 
 /** Token logos by symbol. */
-export const TOKEN_ICONS: Readonly<Record<string, BrandIconName>> = { USDC: "usdc", USDT: "usdt" };
+export const TOKEN_ICONS: Readonly<Record<string, BrandIconName>> = {
+  USDC: "usdc",
+  USDT: "usdt",
+  OUSD: "ousd",
+};
 
 /** The network's name, or its chain ID when this app does not know it. */
 export function chainName(chainId: number): string {
