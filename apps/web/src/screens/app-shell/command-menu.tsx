@@ -88,7 +88,8 @@ export function CommandMenu({
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey)) {
+      // Browser autofill sends keydown events with no key.
+      if (event.key?.toLowerCase() === "k" && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         onOpenChange(!ref.current?.open);
       }
