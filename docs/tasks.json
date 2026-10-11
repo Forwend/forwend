@@ -121,7 +121,7 @@
         "SEC-01, D-15: hosts alternate between the primary and second RPC roles and a role never fails over to the other's hosts, so one provider can't answer both a deposit and its balance check, also after an outage; SEC-02: invoices are created on a chain only once the worker has its cursor (503 network_not_ready), so the first scan can't skip a payment; F122/F123: RescanDepth is 2,000 blocks (15+ minutes on Arc and Tempo), money on a receive address with no booked transfer raises an ALERT and blocks expiry, deposits book in chain order, an empty balanceOf is an error for the ledger, a deposit mined again under a block called final is skipped with an ALERT; SEC-05/L-03: invoices leave the scan 30 days after their settle deadline and a profile has at most 1,000 open invoices; onboarding counts only the profiles it creates against the cap; backend tests cover each; architecture.md, money-safety.md, api.md and openapi.yaml match"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -211,11 +211,18 @@
           "summary": "PASS on re-review. The blocker is fixed. apps/backend/internal/watcher/watcher.go:231-233: invoices() also selects invoices that have a detected chain_transfers row (it uses the chain_transfers_invoice index), so the invoice stays watched until the deposit is confirmed or reorged, and start() is not held back. My -overlay repro now passes: the late deposit is confirmed, the later payment to a watched invoice is recorded, and the cursor reaches 5106. The new TestInvoiceLeavingTheScanWithADetectedDepositStaysUntilItConfirms fails when that rule is removed (watcher.go overlaid without the OR EXISTS: '[detected], want confirmed') and passes with it. The docs are fixed: architecture.md (wallet start and rescan at 2,000 blocks, 'unless a deposit to them is still detected', the re-mined ALERT text), PROJECT.md R-38 (2,000), and the pool_test.go comment. TestEmptyBalanceAnswerIsAnError covers ErrNoToken. Ran go test -count=1 for chain, watcher, ledger, invoice, balance and profile: ok. verify passed 16:06:50Z, and the F122-20261011T160650Z-* logs have no FAIL. Not blocking: (1) The new test has a 3 s window between inserting the invoice and its first scan, so a very slow CI could fail at the 'rows' check. (2) The accepted trade-offs remain: a single host for the second role on Tempo, and on Base or Arbitrum without Infura keys; the watched set grows with the creation rate, not with MaxOpen; the open-invoice cap has no lock; a log invented by a lying provider still holds an invoice. (3) A deposit that is reorged after its invoice left the window is not recorded again; the refund authority handles that money, as the docs say.",
           "at": "2026-10-11T16:12:58Z",
           "filesHash": "84e818c2eff64f40"
-        }
+        },
+        "commit": "2fd82b9",
+        "doneAt": "2026-10-11T16:13:22Z"
       },
       "branch": "fix/f122-deposits-and-balances-are-confirmed-by-t",
       "baseCommit": "ab6c306584117c2f8626994d387503dbde572b93",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f122-deposits-and-balances-are-confirmed-by-t",
+        "base": "main"
+      }
     },
     {
       "id": "F123",
