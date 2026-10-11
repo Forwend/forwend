@@ -96,6 +96,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - A feature that is not built yet keeps its place in the subtle text color, with "Soon" as plain text at the end:
   no badge, no link. A disabled action says why in its accessible name and shows "Coming soon" in a tooltip on
   hover or focus; no notice text is added to the page.
+- A toast is only for an event the user did not just do on that spot: a payment detected or settled while the app is
+  open, or a save that leaves the page (billing details). Errors and anything that needs an answer stay inline beside
+  their field or form. Toasts sit top right on desktop and above the tab bar on phones, as solid surface panels with
+  the float shadow; at most three, each gone after 5 s unless hovered or focused, with a close button. Screen
+  readers hear them through a polite live region.
 
 ## Checkout
 

@@ -37,7 +37,9 @@ import {
   TextField,
   TONES,
   Toast,
+  ToastProvider,
   Tooltip,
+  useToast,
 } from "@forwend/ui-web";
 import { ArrowDownLeft, ArrowUpRight, Landmark, Moon, Plus } from "lucide-react";
 import { useState } from "react";
@@ -51,6 +53,33 @@ const SAMPLE_CODE = `const invoice = await forwend.invoices.create({
   token: "USDC",
   network: "base",
 }, { idempotencyKey: "order-1042" });`;
+
+const SAMPLE_TOASTS = [
+  { title: "Payment detected", description: "250.00 USDC is confirming." },
+  {
+    tone: TONES.success,
+    title: "Payment settled",
+    description: "1,250.00 USDC is in your wallet.",
+  },
+  { tone: TONES.success, title: "Billing details saved" },
+] as const;
+
+function ToastDemo() {
+  const toast = useToast();
+  const [next, setNext] = useState(0);
+  return (
+    <Button
+      variant={BUTTON_VARIANTS.secondary}
+      onClick={() => {
+        const sample = SAMPLE_TOASTS[next % SAMPLE_TOASTS.length];
+        if (sample) toast(sample);
+        setNext(next + 1);
+      }}
+    >
+      Show toast
+    </Button>
+  );
+}
 
 export function ComponentsShowcase() {
   const [on, setOn] = useState(true);
@@ -307,6 +336,9 @@ export function ComponentsShowcase() {
           title="Payment settled"
           description="1,250.00 USDC is in your wallet."
         />
+        <ToastProvider>
+          <ToastDemo />
+        </ToastProvider>
       </KitGroup>
       <KitGroup title="Loading and empty">
         <div className="flex w-64 flex-col gap-2">
