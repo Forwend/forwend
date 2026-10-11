@@ -11924,7 +11924,7 @@
         "Behavior, routes, API contracts, money representation and public exports unchanged; no new dependencies; the discovered test list before and after is recorded and every test is still discovered and passes; docs/web/structure.md and the owning review guidance document tests/ placement and require checking growing folders and duplicate domain definitions, linking instead of copying"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e",
@@ -12020,11 +12020,18 @@
           "summary": "PASS. Renames 99-100% similar; non-rename hunks are import paths plus three shape-preserving type reuses (InvoiceToken = Pick<TokenBalance>, PayToken, MoneyProps extends TokenAmountInput), no import cycle (type-only invoices -> balances). ui-web exports: same 131 names. Discovery re-run: web 62, ui-web 18, Privy 19 (18 old in order + setup), Go and public e2e unchanged; no test outside tests/. Privy split: bodies identical to the old file, setup project runs for single-file runs, workers 1 only in the Privy config, session file gitignored and cleared per run. Docs link instead of copy; no stale paths. Uncached typecheck, lint, unit and web build pass.",
           "at": "2026-10-11T01:05:18Z",
           "filesHash": "674d8a61479463c7"
-        }
+        },
+        "commit": "1de64bf",
+        "doneAt": "2026-10-11T01:05:20Z"
       },
       "branch": "refactor/f112-web-and-shared-ui-files-are-grouped-by-r",
       "baseCommit": "86e608dc4799570b59b1d985bd67ad56cdc19134",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f112-web-and-shared-ui-files-are-grouped-by-r",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
