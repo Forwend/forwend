@@ -8,8 +8,8 @@ next-env.d.ts
 coverage/
 test-results/
 playwright-report/
-.env
-.env*.local
+.env*
+!.env.example
 .DS_Store
 apps/web/.impeccable/review/
 

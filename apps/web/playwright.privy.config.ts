@@ -13,7 +13,8 @@ const readEnv = (path: string) => {
   }
 };
 const web = readEnv(".env");
-const backend = readEnv("../backend/.env");
+// The api never holds the executor key.
+const { EXECUTOR_PRIVATE_KEY: _, ...backend } = readEnv("../backend/.env");
 const APP_URL = "http://localhost:3000";
 const apiURL = new URL(web.API_URL ?? "http://localhost:8080");
 

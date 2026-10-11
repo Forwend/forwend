@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -137,6 +139,21 @@ func TestEveryChainListsTwoPublicHosts(t *testing.T) {
 		}
 		if len(hosts) < 2 {
 			t.Errorf("chain %d lists %d public hosts, want at least 2", id, len(hosts))
+		}
+	}
+}
+
+func TestChainListRefusesPlainHTTP(t *testing.T) {
+	for list, ok := range map[string]bool{
+		`{"a": {"chainId": 1, "public": ["https://rpc.example", "http://127.0.0.1:8545", "http://localhost:8545"]}}`: true,
+		`{"a": {"chainId": 1, "public": ["https://rpc.example", "http://rpc.example"]}}`:                             false,
+	} {
+		path := filepath.Join(t.TempDir(), "chains.json")
+		if err := os.WriteFile(path, []byte(list), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Specs(path); (err == nil) != ok {
+			t.Errorf("%s: err %v", list, err)
 		}
 	}
 }

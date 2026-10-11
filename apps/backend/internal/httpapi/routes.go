@@ -17,7 +17,7 @@ import (
 // NewMux serves the API. balances reads wallet balances from each chain's second RPC (D-15); webURL is the web app's
 // origin, for the pay link in PDFs.
 func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, balances ledger.BalanceOf,
-	webURL string) *http.ServeMux {
+	webURL string) http.Handler {
 	owners, invoices, profiles := auth.NewService(pool), invoice.NewService(pool), profile.NewService(pool, wallets)
 	users := newBuckets(userRate, userBurst)
 	signedIn := func(h http.Handler) http.Handler { return requireUser(verifier, limit(users, signedInUser, h)) }
@@ -42,5 +42,14 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 	mux.Handle("GET /v1/invoices/{invoiceId}", getInvoice(invoices)) // checkout reads
 	mux.Handle("GET /v1/invoices/{invoiceId}/invoice.pdf", invoicePDF(invoices, webURL))
 	mux.Handle("GET /v1/invoices/{invoiceId}/receipt.pdf", receiptPDF(invoices, webURL))
-	return mux
+	return secureHeaders(mux)
+}
+
+// Answers hold profile and billing data: no shared or browser cache keeps them unless a handler says otherwise.
+func secureHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		next.ServeHTTP(w, r)
+	})
 }

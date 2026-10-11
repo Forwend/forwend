@@ -20,3 +20,16 @@ test("page titles use the 'Forwend | …' format", async ({ page }) => {
   await page.goto("/no-such-page");
   await expect(page).toHaveTitle("Forwend | Page not found");
 });
+
+test("pages can't be framed by another site and carry the security headers", async ({
+  request,
+}) => {
+  for (const path of ["/", "/sign-in", "/app", `/pay/0x${"1".repeat(64)}`]) {
+    const headers = (await request.get(path)).headers();
+    expect(headers["content-security-policy"], path).toContain("frame-ancestors 'none'");
+    expect(headers["x-frame-options"], path).toBe("DENY");
+    expect(headers["x-content-type-options"], path).toBe("nosniff");
+    expect(headers["referrer-policy"], path).toBe("strict-origin-when-cross-origin");
+    expect(headers["x-powered-by"], path).toBeUndefined();
+  }
+});

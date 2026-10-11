@@ -245,6 +245,9 @@ func (p *pool) check(ctx context.Context, e *endpoint, header http.Header) error
 	return nil
 }
 
+// maxAnswer bounds one RPC answer, far above a 2,000-block eth_getLogs, so a hostile host can't exhaust memory.
+const maxAnswer = 64 << 20
+
 func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body []byte) (*http.Response, error) {
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
@@ -257,10 +260,13 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 	if err != nil {
 		return nil, p.unanswered(e, err)
 	}
-	raw, err := io.ReadAll(res.Body)
+	raw, err := io.ReadAll(io.LimitReader(res.Body, maxAnswer+1))
 	res.Body.Close()
 	if err != nil {
 		return nil, p.unanswered(e, err)
+	}
+	if len(raw) > maxAnswer {
+		return nil, fmt.Errorf("%s: answer over %d bytes", e.name, maxAnswer)
 	}
 	res.Body = io.NopCloser(bytes.NewReader(raw))
 	if res.StatusCode/100 != 2 {

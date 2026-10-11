@@ -11,8 +11,8 @@ import (
 
 // A signed-in tab polls about six routes every 15 s and a page load sends about ten at once, so a user with several
 // tabs stays well under these, and a script that loops on the API does not. Public routes are limited per IP at the
-// edge (docs/backend/api.md#rate-limits): Next's /api rewrite does not set X-Forwarded-For, so the api cannot tell
-// payers apart.
+// edge (docs/backend/api.md#rate-limits): Next's /api rewrite passes the client's own X-Forwarded-For through, so the
+// api can't trust it to tell payers apart.
 const userRate, userBurst = 2, 60 // requests per second, and at once, per Privy user
 
 var errRateLimited = errors.New("rate limited")
