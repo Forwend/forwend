@@ -10,9 +10,8 @@ Product requirements and money policy live in [PROJECT](../PROJECT.md); future s
   never promise automatic recovery or payment timing.
 - Pay page: show who is asking (issuer name, or a request's sender name, and invoice number) and the site's host
   name. Before sending, show the short refund rule and "Forwend never asks you to pay a different address or an extra
-  fee." Offer "Open in wallet" only as a link the payer's own wallet opens; never connect to it. Help payers with no
-  USDC yet: buy it on an exchange, then withdraw on the exact network shown. The invoice PDF is linked at any time;
-  after settlement the page is the payer's receipt (R-48), with the receipt PDF.
+  fee." The invoice PDF is linked at any time; after settlement the page is the payer's receipt (R-48), with the receipt
+  PDF.
 - Personal profiles can request money: amount, note, expiry and a private link. Call it a request, not an invoice.
 - First run asks once what the user wants to do and says which profile each choice adds; the checklist names real next
   steps only. A passkey added there signs in from `/sign-in`.

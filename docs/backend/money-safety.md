@@ -83,7 +83,6 @@ Limits:
 
 - The canary trusts the database's terms. A wrong recipient written when the invoice was made is not caught; that
   needs the profile wallet read from Privy, which the canary does not hold.
-- The page has no EIP-681 or wallet link to check.
 - It catches tampering and drift that do not hide from it. A bundle written to evade it (spotting the headless
   browser, or drawing another QR over the checked one) is not caught.
 
