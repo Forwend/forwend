@@ -4,6 +4,7 @@ import copy
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -19,6 +20,10 @@ spec.loader.exec_module(h)
 
 class HarnessTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(patch.dict(os.environ))
+        # Commit hooks export repository paths that would override the disposable roots.
+        for name in subprocess.check_output(['git', 'rev-parse', '--local-env-vars'], text=True).splitlines():
+            os.environ.pop(name, None)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)

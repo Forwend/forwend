@@ -86,8 +86,6 @@ bullets it needs.
   The browser recomputes the receive address from the terms; the payer confirms the network before copying.
   Separate wallet and exchange tabs. Live detected → confirming → paid → settled with blocks or time left (R-28).
   A short refund rule and a scam note before sending. No third-party scripts. After 8.1.
-- 8.5 Payer help: a "No USDC yet?" panel; an "Open in wallet" link and QR (EIP-681) on the wallet tab, a plain address
-  QR on the exchange tab; no wallet connection (D-59). After 8.4.
 - 8.6 PDFs: `invoice.pdf` and `receipt.pdf` (D-51), issuer and client blocks from the invoice's copies. After 8.2.
 - 8.7 Public receipt on `/pay/<id>` after settlement: tx hashes, times, PDF links; the dashboard detail links to
   both PDFs. After 8.3, 8.4, 8.6.

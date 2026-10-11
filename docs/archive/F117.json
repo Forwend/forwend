@@ -1,0 +1,98 @@
+{
+  "id": "F117",
+  "type": "fix",
+  "behavior": "keep the harness queue small and resume instructions current",
+  "acceptance": [
+    "status shows current task state and one correct next action without historical handoff prose or duplicate acceptance and check details; live verification tells the reader to wait and interrupted verification tells them to rerun",
+    "show preserves full acceptance, checks and constraints, prints at most three short recent notes by default, and exposes complete notes and check history with --history",
+    "show tells the reader when requirement references are missing; workflow directs narrow reading and moves staging instructions into a linked owning document without changing delivery or verification rules",
+    "archive moves completed tasks into docs/archive through a command, keeps unfinished and unmerged work in tasks.json, preserves full records and task IDs, and supports historical show/list and reopening without weakening dependency or verification checks"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "harness",
+    "docs-check"
+  ],
+  "refs": [
+    "R-25"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-11T12:01:46Z",
+    "checks": [
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F117-20261011T120146Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F117-20261011T120146Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F117-20261011T120146Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F117-20261011T120146Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 45.7,
+        "log": "docs/runs/F117-20261011T120146Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.7,
+        "log": "docs/runs/F117-20261011T120146Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 114.3,
+        "log": "docs/runs/F117-20261011T120146Z-e2e.log"
+      }
+    ],
+    "taskHash": "03a525dd298585a9",
+    "filesHash": "49451d4b53f304e3",
+    "proof": {
+      "1": "harness: regression tests reject stale handoff text and duplicate details and distinguish running from interrupted verification",
+      "2": "harness: regression tests preserve constraints and complete history while bounding default notes",
+      "3": "docs-check: workflow and staging links resolve; missing-reference guidance also has a harness regression test",
+      "4": "harness: archive regression tests cover exact records, historical reads, dependency readiness, ID reuse, reopening, pending delivery and conflicting files"
+    },
+    "commit": "f8955d3",
+    "doneAt": "2026-10-11T12:06:11Z"
+  },
+  "branch": "fix/f117-keep-harness-resume-output-current-and-c",
+  "baseCommit": "5cf4d1eec6a3e4d12c3b396a724be814b7f4c3ef",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f117-keep-harness-resume-output-current-and-c",
+    "base": "main"
+  }
+}

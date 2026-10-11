@@ -3,40 +3,6 @@
   "nextId": 118,
   "tasks": [
     {
-      "id": "F088",
-      "type": "feat",
-      "behavior": "The pay page helps payers with an Open in wallet link and a No USDC yet panel",
-      "acceptance": [
-        "R-46: the wallet tab shows an EIP-681 Open in wallet link and QR, the exchange tab a QR of the plain address only; a unit test checks the link for the exact token contract, chain ID, receive address and base-unit amount; nothing connects to or asks the payer's wallet to sign",
-        "R-46: a No USDC yet? panel explains buying USDC on an exchange and withdrawing on the network shown; Playwright checks both tabs and the panel; axe finds 0 serious or critical violations"
-      ],
-      "dependsOn": [
-        "F087"
-      ],
-      "state": "blocked",
-      "verification": [
-        "unit",
-        "e2e"
-      ],
-      "refs": [
-        "R-46",
-        "D-59",
-        "D-37"
-      ],
-      "keep": [
-        "packages/contracts/*"
-      ],
-      "review": true,
-      "notes": [
-        "2026-10-10 Before done: the owner opens the link in 3 mobile wallets (D-59); record which wallets worked in a note.",
-        "2026-10-10 blocked: Moved to the end of the queue: done needs the owner to open the link in 3 mobile wallets (D-59); the other phase 8 tasks go first"
-      ],
-      "blockedReason": "Moved to the end of the queue: done needs the owner to open the link in 3 mobile wallets (D-59); the other phase 8 tasks go first",
-      "evidence": null,
-      "branch": "feat/f088-the-pay-page-helps-payers-with-an-open-i",
-      "baseCommit": "df8825c8709379963f79132de44eea3568852902"
-    },
-    {
       "id": "F094",
       "type": "test",
       "behavior": "An Anvil browser test pays an invoice end to end: create, pay, settled, receipt PDF",
@@ -74,7 +40,6 @@
         "D-38: the existing Base Sepolia invoices, pay page and Anvil browser test are unchanged; the e2e and backend checks pass"
       ],
       "dependsOn": [
-        "F088",
         "F091",
         "F092",
         "F093",
@@ -109,7 +74,6 @@
         "D-38: the existing Base Sepolia invoices, pay page and Anvil browser test are unchanged; the e2e and backend checks pass"
       ],
       "dependsOn": [
-        "F088",
         "F091",
         "F092",
         "F093",
@@ -144,7 +108,6 @@
         "D-38: the existing Base Sepolia invoices, pay page and Anvil browser test are unchanged; the e2e and backend checks pass"
       ],
       "dependsOn": [
-        "F088",
         "F091",
         "F092",
         "F093",
@@ -171,102 +134,75 @@
       "evidence": null
     },
     {
-      "id": "F117",
-      "type": "fix",
-      "behavior": "keep the harness queue small and resume instructions current",
+      "id": "F113",
+      "type": "refactor",
+      "behavior": "Go packages share one definition for each repeated money concept instead of copying its fields",
       "acceptance": [
-        "status shows current task state and one correct next action without historical handoff prose or duplicate acceptance and check details; live verification tells the reader to wait and interrupted verification tells them to rerun",
-        "show preserves full acceptance, checks and constraints, prints at most three short recent notes by default, and exposes complete notes and check history with --history",
-        "show tells the reader when requirement references are missing; workflow directs narrow reading and moves staging instructions into a linked owning document without changing delivery or verification rules",
-        "archive moves completed tasks into docs/archive through a command, keeps unfinished and unmerged work in tasks.json, preserves full records and task IDs, and supports historical show/list and reopening without weakening dependency or verification checks"
+        "The token identity fields repeated across balance.Token, balance.TokenHistory, activity.Item, activity.Transfer, invoice.Invoice and the httpapi response structs come from one type in the owning package (embedded or reused) where the meaning matches; invoice.Issuer reuses profile.BillingDetails' fields if the meaning matches (a frozen copy stays a copy in the database); invoice.Deposit reuses finality.Progress for blocks and time left; no global types/models/common package; JSON field names, API responses (openapi.yaml) and money representation unchanged; Go tests stay beside their package; go test -list before and after shows every test"
       ],
       "dependsOn": [],
-      "state": "passing",
+      "state": "not_started",
       "verification": [
-        "harness",
-        "docs-check"
+        "backend",
+        "e2e"
       ],
-      "refs": [
-        "R-25"
+      "refs": [],
+      "keep": [
+        "packages/contracts/*",
+        "apps/backend/api/openapi.yaml"
       ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F114",
+      "type": "feat",
+      "behavior": "The app shows short toasts in the corner for events that happen in the background",
+      "acceptance": [
+        "packages/ui-web gets a Toast (in /kit): top-right on desktop, above the tab bar on phones; solid surface panel with the float shadow; a polite live region so screen readers announce it; stays 5 s, paused while hovered or focused, closable, keyboard reachable; stacks up to 3; reduced motion removes the movement; no new dependency unless the existing Radix set already has it",
+        "apps/web uses it for background events only (form errors stay inline beside their field or form): a payment detected and a payment settled on the active profile while the app is open (from the data the app already polls; never twice for one payment, not for old payments on first load), and billing details saved; unit tests for the which-events-toast logic; Playwright checks a toast appears for a new payment and is announced; axe finds 0 serious or critical violations; DESIGN.md documents when to use a toast"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F116",
+      "type": "chore",
+      "behavior": "The wallet link and wallet connection work leaves the plan until the owner brings it back",
+      "acceptance": [
+        "F088 and F115, R-46, D-59 and the PLAN 8.5 item are removed; D-37 keeps no wallet connection in the MVP; PRODUCT.md and money-safety.md no longer mention the wallet link or the No USDC yet panel; F095-F097 no longer wait on F088; harness validate and docs-check pass"
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "docs-check",
+        "harness"
+      ],
+      "refs": [],
       "keep": [],
       "review": false,
       "notes": [],
       "blockedReason": null,
       "evidence": {
         "version": 3,
-        "status": "passed",
-        "at": "2026-10-11T12:01:46Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.0,
-            "log": "docs/runs/F117-20261011T120146Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F117-20261011T120146Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F117-20261011T120146Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F117-20261011T120146Z-typecheck.log"
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 45.7,
-            "log": "docs/runs/F117-20261011T120146Z-unit.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.7,
-            "log": "docs/runs/F117-20261011T120146Z-build.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 114.3,
-            "log": "docs/runs/F117-20261011T120146Z-e2e.log"
-          }
-        ],
-        "taskHash": "03a525dd298585a9",
-        "filesHash": "49451d4b53f304e3",
-        "proof": {
-          "1": "harness: regression tests reject stale handoff text and duplicate details and distinguish running from interrupted verification",
-          "2": "harness: regression tests preserve constraints and complete history while bounding default notes",
-          "3": "docs-check: workflow and staging links resolve; missing-reference guidance also has a harness regression test",
-          "4": "harness: archive regression tests cover exact records, historical reads, dependency readiness, ID reuse, reopening, pending delivery and conflicting files"
-        },
-        "commit": "f8955d3",
-        "doneAt": "2026-10-11T12:06:11Z"
+        "status": "running",
+        "at": "2026-10-11T11:40:50Z",
+        "pid": 59275
       },
-      "branch": "fix/f117-keep-harness-resume-output-current-and-c",
-      "baseCommit": "5cf4d1eec6a3e4d12c3b396a724be814b7f4c3ef",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f117-keep-harness-resume-output-current-and-c",
-        "base": "main"
-      }
+      "branch": "chore/f116-the-wallet-link-and-wallet-connection-wo",
+      "baseCommit": "5cf4d1eec6a3e4d12c3b396a724be814b7f4c3ef"
     }
   ],
   "lastWrapup": {
