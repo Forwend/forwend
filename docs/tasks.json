@@ -259,7 +259,7 @@
         "apps/web uses it for background events only (form errors stay inline beside their field or form): a payment detected and a payment settled on the active profile while the app is open (from the data the app already polls; never twice for one payment, not for old payments on first load), and billing details saved; unit tests for the which-events-toast logic; Playwright checks a toast appears for a new payment and is announced; axe finds 0 serious or critical violations; DESIGN.md documents when to use a toast"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -341,11 +341,18 @@
           "summary": "Pass. Earlier blocker fixed: payment-toasts.tsx:16 keys ProfileToasts by profileId, :25 refetchOnMountOrArgChange, :29-30 baseline only from data with fulfilledTimeStamp >= visit start. Checked against RTK source: a failed request keeps the old fulfilledTimeStamp, so no baseline until a fresh success; a cached answer from an earlier visit is never the baseline; strict-mode double effect is idempotent (seen ref kept, same items). tests/payment-toasts.test.tsx fails without the key fix and without the freshness check (cached [0x1] baseline then 0x2 would toast). Accept 1: toast.tsx region top right lg+, bottom above tab bar via app-shell.tsx:149 offset, z 60 over nav 40, bg-surface + shadow-lg, ol aria-live=polite always mounted, 5 s timer paused on hover/focus, close button, slice(-3), motion-safe animation, lucide already a dependency; on /kit. Accept 2: detected/settled toasts from polled activity, once per event key, none on first load; billing details saved toast; form errors stay inline; unit tests for payment-events and provider; toasts.spec.ts checks toast, live region, no repeat, close, axe. DESIGN.md and R-53 updated. Structure: new files in features/activity and its tests/, screen imports feature, ui-web feedback family. Ran: pnpm lint ok, pnpm typecheck ok, ui-web 21 tests pass, apps/web activity 8 tests pass; verify log F114-20261011T124525Z e2e 30+20 passed incl. toasts.spec.ts after the last edit. Non-blocking: region and header bell button both named Notifications (different roles, no axe issue; a distinct region name would read better); /kit shows the close button only through the demo; if an A request is still in flight when returning to A it is reused as the baseline, so a payment in that sub-second window could toast once; payment-events.ts:30 and some toast.tsx prop JSDoc describe what code does.",
           "at": "2026-10-11T12:51:10Z",
           "filesHash": "0cb985d4230911c9"
-        }
+        },
+        "commit": "5de48b8",
+        "doneAt": "2026-10-11T12:51:37Z"
       },
       "branch": "feat/f114-the-app-shows-short-toasts-in-the-corner",
       "baseCommit": "eb3f0f2ad19ac7c62e245fc2638fb43613b60663",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f114-the-app-shows-short-toasts-in-the-corner",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
