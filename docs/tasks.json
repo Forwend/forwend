@@ -11711,7 +11711,7 @@
       "dependsOn": [
         "F100"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e",
@@ -11800,11 +11800,18 @@
           "summary": "PASS after one fix. Go tests -race pass; dynamic SQL only joins constants and placeholders, LIKE escaping proven, numeric amount search cannot 500; keyset cursors with plain WHERE filters page filtered lists without gaps or repeats; status buckets identical to the removed web helpers; pg_trgm index expression equals searchText and the custom plan uses it; no stale answers shown; no ?search= left. FIXED: Back after a link changed ?q on the same page kept the later search and rewrote ?q (useListFilters now records outside changes as written; new unit test fails on the old code); intQuery doc comment restored; down migration keeps pg_trgm.",
           "at": "2026-10-11T00:38:53Z",
           "filesHash": "0543cd792429cbb0"
-        }
+        },
+        "commit": "d0a96ea",
+        "doneAt": "2026-10-11T00:38:55Z"
       },
       "branch": "fix/f110-invoices-activity-and-transactions-filte",
       "baseCommit": "5bd94d8b3aa4ab01ac4f640b289a3190bce0bcd5",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f110-invoices-activity-and-transactions-filte",
+        "base": "main"
+      }
     },
     {
       "id": "F111",
