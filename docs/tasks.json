@@ -12,7 +12,7 @@
       "dependsOn": [
         "F120"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "docs-check"
@@ -23,87 +23,95 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-10-11 review pass by subagent: All five fixes are correct; each test fails without its fix (reverted one at a time in a scratch copy: logs and wallet-logs split -> 'exceed max topics' in TestAddressListsAreSplitForTheNode; scan cap -> 'found in 1 scan' in TestLongBacklogIsCaughtUpOverSeveralScans; second-RPC check -> 'intent confirmed, invoice settlement settled' in TestSettlementIsBookedOnlyWhenTheSecondRPCAgrees; TempoMinGas -> 'one unit short: got <nil>' in TestCheckGasInFeeToken; the web 'another invoice' case can only pass with the id check). Re-ran after the comment pass: go test ./internal/watcher/ ./internal/settlement/ ok; vitest src/features/pay 12 passed; docs/runs/F121-20261011T145815Z-* all pass (e2e TestMoneyLoop runs the signer binary through NewRounds). Comment pass: the only code change is confirm() splitting the agreed check to log slog.Warn('settlement waits for the second RPC') before returning nil (reconcile.go:158-163), same behavior; the other edits are comments only, including migrations 00015-00017 (goose keeps no checksums). Safety reasons kept: D-15 on confirm, TempoMinGas source, the attodollar/6-decimal scale, the scan-cap and topic-limit reasons, the receive-address null rule. Checked: receive-address.ts:54 compares ids case-insensitively and the route validates the id; topicParts (watcher.go:250) never gets an empty list (callers guard), parts are disjoint, and wallet logs are deduplicated across parts by the shared seen map; the proxy rule refuses the unsplit 2-address lists. Scan cap (watcher.go:101): cursor uses headers[latest] when finalized>latest, rows above the cap are reorged only on a different hash, and expiry uses the scanned block's time. Every confirm() caller (reconcile.go:53/61/93, settle.go:79) leaves DB state unchanged on nil and retries; rounds.go:65,76 sets and deletes seconds with clients. TempoMinGas=2,262,000 matches live Tempo receipts (1,305,758/572,845 gas); at base fee 6e8 the floor is ~2,715 units ($0.0027). Base Sepolia pay hash in the record is a successful USDC transfer on chain. PROJECT.md D-15, architecture.md and money-safety.md match the code; F122-F125 match the record. Non-blocking: a detected row that never resolves would pin Scan at from+40,000 without an error (no current path found); scanLimit ignores span, so sustained overload at span 50 may exceed the 2-minute round; a disagreeing second RPC still gets no backoff or stored reason, only the log line; the UI-review items in the record are not queued."
+        "2026-10-11 review pass by subagent: All five fixes are correct; each test fails without its fix (reverted one at a time in a scratch copy: logs and wallet-logs split -> 'exceed max topics' in TestAddressListsAreSplitForTheNode; scan cap -> 'found in 1 scan' in TestLongBacklogIsCaughtUpOverSeveralScans; second-RPC check -> 'intent confirmed, invoice settlement settled' in TestSettlementIsBookedOnlyWhenTheSecondRPCAgrees; TempoMinGas -> 'one unit short: got <nil>' in TestCheckGasInFeeToken; the web 'another invoice' case can only pass with the id check). Re-ran after the comment pass: go test ./internal/watcher/ ./internal/settlement/ ok; vitest src/features/pay 12 passed; docs/runs/F121-20261011T145815Z-* all pass (e2e TestMoneyLoop runs the signer binary through NewRounds). Comment pass: the only code change is confirm() splitting the agreed check to log slog.Warn('settlement waits for the second RPC') before returning nil (reconcile.go:158-163), same behavior; the other edits are comments only, including migrations 00015-00017 (goose keeps no checksums). Safety reasons kept: D-15 on confirm, TempoMinGas source, the attodollar/6-decimal scale, the scan-cap and topic-limit reasons, the receive-address null rule. Checked: receive-address.ts:54 compares ids case-insensitively and the route validates the id; topicParts (watcher.go:250) never gets an empty list (callers guard), parts are disjoint, and wallet logs are deduplicated across parts by the shared seen map; the proxy rule refuses the unsplit 2-address lists. Scan cap (watcher.go:101): cursor uses headers[latest] when finalized>latest, rows above the cap are reorged only on a different hash, and expiry uses the scanned block's time. Every confirm() caller (reconcile.go:53/61/93, settle.go:79) leaves DB state unchanged on nil and retries; rounds.go:65,76 sets and deletes seconds with clients. TempoMinGas=2,262,000 matches live Tempo receipts (1,305,758/572,845 gas); at base fee 6e8 the floor is ~2,715 units ($0.0027). Base Sepolia pay hash in the record is a successful USDC transfer on chain. PROJECT.md D-15, architecture.md and money-safety.md match the code; F122-F125 match the record. Non-blocking: a detected row that never resolves would pin Scan at from+40,000 without an error (no current path found); scanLimit ignores span, so sustained overload at span 50 may exceed the 2-minute round; a disagreeing second RPC still gets no backoff or stored reason, only the log line; the UI-review items in the record are not queued.",
+        "2026-10-11 review pass by subagent: Re-recorded after the stray untracked security review file left the tree. Commit b278add (git diff HEAD~1 --stat: same 36 files and per-file counts as the change reviewed in the previous pass, including the comment pass and the confirm() warn log); only docs/tasks.json harness bookkeeping is modified in the tree. verify at 2026-10-11T15:04:32Z: all docs/runs/F121-20261011T150432Z-* logs pass, e2e TestMoneyLoop passes. Commit message has no AI attribution. Findings and non-blocking notes unchanged from the previous review pass by subagent (all five fixes correct, each test fails without its fix)."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-11T14:58:15Z",
+        "at": "2026-10-11T15:04:32Z",
         "checks": [
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 61.1,
-            "log": "docs/runs/F121-20261011T145815Z-backend.log"
+            "seconds": 51.0,
+            "log": "docs/runs/F121-20261011T150432Z-backend.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F121-20261011T145815Z-docs-check.log"
+            "log": "docs/runs/F121-20261011T150432Z-docs-check.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.2,
-            "log": "docs/runs/F121-20261011T145815Z-harness.log"
+            "seconds": 1.3,
+            "log": "docs/runs/F121-20261011T150432Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F121-20261011T145815Z-lint.log"
+            "log": "docs/runs/F121-20261011T150432Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F121-20261011T145815Z-typecheck.log"
+            "seconds": 0.2,
+            "log": "docs/runs/F121-20261011T150432Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 55.7,
-            "log": "docs/runs/F121-20261011T145815Z-unit.log"
+            "seconds": 54.4,
+            "log": "docs/runs/F121-20261011T150432Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.6,
-            "log": "docs/runs/F121-20261011T145815Z-build.log"
+            "seconds": 0.7,
+            "log": "docs/runs/F121-20261011T150432Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 114.0,
-            "log": "docs/runs/F121-20261011T145815Z-e2e.log"
+            "seconds": 113.4,
+            "log": "docs/runs/F121-20261011T150432Z-e2e.log"
           }
         ],
         "taskHash": "7b9509b15ed3b28b",
-        "filesHash": "4d10c090dc05e025",
+        "filesHash": "f12eaa44a6157d57",
         "proof": {
           "1": "backend: three independent reviewers covered invoice creation and the receive address, the watcher and ledger, and the signer on all four testnets; five findings fixed with tests that fail before the fix (pay page binds the link's invoice id, watcher topic lists of at most 1,000, settled needs the second RPC, scans capped at 40,000 blocks, TempoMinGas), the rest queued as F122-F125 with severity; docs/reviews/money-path-2026-10.md records scope, findings, verdicts and the owner's runs; architecture.md, money-safety.md and D-15 match; comments cut to the AGENTS.md rule; backend and e2e pass"
         },
         "review": {
           "result": "pass",
           "by": "subagent",
-          "summary": "All five fixes are correct; each test fails without its fix (reverted one at a time in a scratch copy: logs and wallet-logs split -> 'exceed max topics' in TestAddressListsAreSplitForTheNode; scan cap -> 'found in 1 scan' in TestLongBacklogIsCaughtUpOverSeveralScans; second-RPC check -> 'intent confirmed, invoice settlement settled' in TestSettlementIsBookedOnlyWhenTheSecondRPCAgrees; TempoMinGas -> 'one unit short: got <nil>' in TestCheckGasInFeeToken; the web 'another invoice' case can only pass with the id check). Re-ran after the comment pass: go test ./internal/watcher/ ./internal/settlement/ ok; vitest src/features/pay 12 passed; docs/runs/F121-20261011T145815Z-* all pass (e2e TestMoneyLoop runs the signer binary through NewRounds). Comment pass: the only code change is confirm() splitting the agreed check to log slog.Warn('settlement waits for the second RPC') before returning nil (reconcile.go:158-163), same behavior; the other edits are comments only, including migrations 00015-00017 (goose keeps no checksums). Safety reasons kept: D-15 on confirm, TempoMinGas source, the attodollar/6-decimal scale, the scan-cap and topic-limit reasons, the receive-address null rule. Checked: receive-address.ts:54 compares ids case-insensitively and the route validates the id; topicParts (watcher.go:250) never gets an empty list (callers guard), parts are disjoint, and wallet logs are deduplicated across parts by the shared seen map; the proxy rule refuses the unsplit 2-address lists. Scan cap (watcher.go:101): cursor uses headers[latest] when finalized>latest, rows above the cap are reorged only on a different hash, and expiry uses the scanned block's time. Every confirm() caller (reconcile.go:53/61/93, settle.go:79) leaves DB state unchanged on nil and retries; rounds.go:65,76 sets and deletes seconds with clients. TempoMinGas=2,262,000 matches live Tempo receipts (1,305,758/572,845 gas); at base fee 6e8 the floor is ~2,715 units ($0.0027). Base Sepolia pay hash in the record is a successful USDC transfer on chain. PROJECT.md D-15, architecture.md and money-safety.md match the code; F122-F125 match the record. Non-blocking: a detected row that never resolves would pin Scan at from+40,000 without an error (no current path found); scanLimit ignores span, so sustained overload at span 50 may exceed the 2-minute round; a disagreeing second RPC still gets no backoff or stored reason, only the log line; the UI-review items in the record are not queued.",
-          "at": "2026-10-11T15:03:51Z",
-          "filesHash": "4d10c090dc05e025"
-        }
+          "summary": "Re-recorded after the stray untracked security review file left the tree. Commit b278add (git diff HEAD~1 --stat: same 36 files and per-file counts as the change reviewed in the previous pass, including the comment pass and the confirm() warn log); only docs/tasks.json harness bookkeeping is modified in the tree. verify at 2026-10-11T15:04:32Z: all docs/runs/F121-20261011T150432Z-* logs pass, e2e TestMoneyLoop passes. Commit message has no AI attribution. Findings and non-blocking notes unchanged from the previous review pass by subagent (all five fixes correct, each test fails without its fix).",
+          "at": "2026-10-11T15:08:36Z",
+          "filesHash": "f12eaa44a6157d57"
+        },
+        "commit": "b278add",
+        "doneAt": "2026-10-11T15:08:46Z"
       },
       "branch": "chore/f121-the-complete-money-path-is-reviewed-befo",
       "baseCommit": "d2131b03cee6b37e18335f89fd3de6941ce0f9cd",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f121-the-complete-money-path-is-reviewed-befo",
+        "base": "main"
+      }
     },
     {
       "id": "F122",
