@@ -1,38 +1,7 @@
 {
   "schemaVersion": 2,
-  "nextId": 118,
+  "nextId": 119,
   "tasks": [
-    {
-      "id": "F094",
-      "type": "test",
-      "behavior": "An Anvil browser test pays an invoice end to end: create, pay, settled, receipt PDF",
-      "acceptance": [
-        "R-52: with Postgres, Anvil and the real contracts started by the test, Playwright creates an invoice in the dashboard, pays it with the mock token and sees /pay/<id> go detected, paid, settled with the receipt; receipt.pdf answers 409 before paid and 200 after",
-        "R-52: the test runs from a check in docs/config.json, so staging CI runs it; it fails when settlement does not arrive before its timeout"
-      ],
-      "dependsOn": [
-        "F087",
-        "F090"
-      ],
-      "state": "dropped",
-      "verification": [
-        "e2e",
-        "harness"
-      ],
-      "refs": [
-        "R-52",
-        "R-23"
-      ],
-      "keep": [
-        "packages/contracts/*"
-      ],
-      "review": false,
-      "notes": [
-        "2026-10-11 dropped: Owner decision 2026-10-11: the owner tested the flow by hand; automated browser tests of the full money path come with release QA (PLAN phase 13). backend-e2e already covers the money loop on Anvil."
-      ],
-      "blockedReason": null,
-      "evidence": null
-    },
     {
       "id": "F095",
       "type": "feat",
@@ -133,224 +102,94 @@
       "evidence": null
     },
     {
-      "id": "F113",
-      "type": "refactor",
-      "behavior": "Go packages share one definition for each repeated money concept instead of copying its fields",
+      "id": "F118",
+      "type": "docs",
+      "behavior": "The Anvil browser test of the money path waits for release QA in phase 13 instead of gating phase 8",
       "acceptance": [
-        "The token identity fields repeated across balance.Token, balance.TokenHistory, activity.Item, activity.Transfer, invoice.Invoice and the httpapi response structs come from one type in the owning package (embedded or reused) where the meaning matches; invoice.Issuer reuses profile.BillingDetails' fields if the meaning matches (a frozen copy stays a copy in the database); invoice.Deposit reuses finality.Progress for blocks and time left; no global types/models/common package; JSON field names, API responses (openapi.yaml) and money representation unchanged; Go tests stay beside their package; go test -list before and after shows every test"
+        "PLAN phase 8 gate no longer needs the Anvil browser test and item 8.11 moves to phase 13 as 13.6; R-52 names PLAN 13.6 and PROJECT's phase 8 range leaves it out; finished tasks are archived; docs-check and harness validate pass"
       ],
       "dependsOn": [],
       "state": "passing",
       "verification": [
-        "backend",
-        "e2e"
+        "docs-check",
+        "harness"
       ],
       "refs": [
-        "D-19"
+        "R-52"
       ],
-      "keep": [
-        "packages/contracts/*",
-        "apps/backend/api/openapi.yaml"
-      ],
-      "review": true,
-      "notes": [
-        "2026-10-11 review pass by reviewer: Pass. chain.Asset (internal/chain/asset.go:4) is now the one token identity, embedded in balance.Token, balance.TokenHistory, activity.Item, activity.Transfer, invoice.Invoice; httpapi money.go response structs share tokenJSON via toTokenJSON. invoice.Invoice.Issuer is *profile.Issuer, embedded in profile.BillingDetails; invoices still copy billing details in SQL (create.go:56), scanInvoice unchanged except type. invoice.Deposit embeds finality.Progress (get.go:87 assigns it whole). invoiceJSON keeps its own chainId/token, correct since it has no symbol/decimals. No types/common package; chain and finality import no domain package; new invoice->profile edge is acyclic; no domain imports httpapi/cmd. JSON keys and order unchanged (encoding/json flattens the untagged embedded tokenJSON at its field position; checked with a scratch program for activityItemJSON and tokenBalanceJSON). openapi.yaml and packages/contracts unchanged; money stays *big.Int / decimal strings; no test files touched. go1.27.1, go build ./..., go vet -tags e2e,privylive,loadtest ./..., gofmt clean, pnpm --filter @forwend/backend test all ok. Non-blocking: balance/history.go:96 could be TokenHistory{Asset: t.Asset}; httpapi/money.go:16 comment only restates the type."
-      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-11T12:25:14Z",
+        "at": "2026-10-11T12:52:15Z",
         "checks": [
           {
-            "id": "backend",
+            "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 53.7,
-            "log": "docs/runs/F113-20261011T122514Z-backend.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 103.4,
-            "log": "docs/runs/F113-20261011T122514Z-e2e.log"
+            "seconds": 0.0,
+            "log": "docs/runs/F118-20261011T125215Z-docs-check.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 1.2,
-            "log": "docs/runs/F113-20261011T122514Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F113-20261011T122514Z-docs-check.log"
+            "log": "docs/runs/F118-20261011T125215Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F113-20261011T122514Z-lint.log"
+            "log": "docs/runs/F118-20261011T125215Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F113-20261011T122514Z-typecheck.log"
+            "seconds": 0.2,
+            "log": "docs/runs/F118-20261011T125215Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 47.1,
-            "log": "docs/runs/F113-20261011T122514Z-unit.log"
+            "seconds": 47.9,
+            "log": "docs/runs/F118-20261011T125215Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.4,
-            "log": "docs/runs/F113-20261011T122514Z-build.log"
-          },
-          {
-            "id": "keep",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F113-20261011T122514Z-keep.log"
-          }
-        ],
-        "taskHash": "19945e7d91402720",
-        "filesHash": "2fabe6b64cf5da32",
-        "proof": {
-          "1": "backend: chain.Asset is embedded in balance.Token, balance.TokenHistory, activity.Item, activity.Transfer and invoice.Invoice, httpapi tokenJSON in the four money responses at the same key position, profile.Issuer is embedded in BillingDetails and used for invoice.Issuer, finality.Progress embedded in invoice.Deposit; httpapi, invoice, balance, activity and profile tests pass unchanged against real Postgres; openapi.yaml and migrations untouched; go test -list with e2e,privylive,loadtest tags shows the same 179 tests before and after"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Pass. chain.Asset (internal/chain/asset.go:4) is now the one token identity, embedded in balance.Token, balance.TokenHistory, activity.Item, activity.Transfer, invoice.Invoice; httpapi money.go response structs share tokenJSON via toTokenJSON. invoice.Invoice.Issuer is *profile.Issuer, embedded in profile.BillingDetails; invoices still copy billing details in SQL (create.go:56), scanInvoice unchanged except type. invoice.Deposit embeds finality.Progress (get.go:87 assigns it whole). invoiceJSON keeps its own chainId/token, correct since it has no symbol/decimals. No types/common package; chain and finality import no domain package; new invoice->profile edge is acyclic; no domain imports httpapi/cmd. JSON keys and order unchanged (encoding/json flattens the untagged embedded tokenJSON at its field position; checked with a scratch program for activityItemJSON and tokenBalanceJSON). openapi.yaml and packages/contracts unchanged; money stays *big.Int / decimal strings; no test files touched. go1.27.1, go build ./..., go vet -tags e2e,privylive,loadtest ./..., gofmt clean, pnpm --filter @forwend/backend test all ok. Non-blocking: balance/history.go:96 could be TokenHistory{Asset: t.Asset}; httpapi/money.go:16 comment only restates the type.",
-          "at": "2026-10-11T12:31:28Z",
-          "filesHash": "2fabe6b64cf5da32"
-        },
-        "commit": "d026237",
-        "doneAt": "2026-10-11T12:31:46Z"
-      },
-      "branch": "refactor/f113-go-packages-share-one-definition-for-eac",
-      "baseCommit": "3e921adb14c88bdf8fa6c0418122235bc552f916",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "refactor/f113-go-packages-share-one-definition-for-eac",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F114",
-      "type": "feat",
-      "behavior": "The app shows short toasts in the corner for events that happen in the background",
-      "acceptance": [
-        "packages/ui-web gets a Toast (in /kit): top-right on desktop, above the tab bar on phones; solid surface panel with the float shadow; a polite live region so screen readers announce it; stays 5 s, paused while hovered or focused, closable, keyboard reachable; stacks up to 3; reduced motion removes the movement; no new dependency unless the existing Radix set already has it",
-        "apps/web uses it for background events only (form errors stay inline beside their field or form): a payment detected and a payment settled on the active profile while the app is open (from the data the app already polls; never twice for one payment, not for old payments on first load), and billing details saved; unit tests for the which-events-toast logic; Playwright checks a toast appears for a new payment and is announced; axe finds 0 serious or critical violations; DESIGN.md documents when to use a toast"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "unit",
-        "e2e"
-      ],
-      "refs": [
-        "R-53"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-10-11 review fail by reviewer: Fail: one blocking defect. Checked: ui-web Toast meets accept 1 (top right lg+, bottom with max-lg offset above the tab bar, z 60 over nav 40; bg-surface + shadow-lg; ol aria-live=polite always mounted; 5 s timer keeps remaining time across hover/focus, cleared on unmount, onClose stable; close button; slice(-3); motion-safe animation; no package.json change, lucide already a dep). BillingDetailsForm renders only under /app layout inside AppShell's ToastProvider, and the shell stays mounted across router.push. Static Toast losing role=status breaks nothing (no test or page queried it). Unit tests, lint, typecheck pass here; verify e2e log shows toasts.spec passed with axe. BLOCKING (1): payment toasts after a profile switch. payment-toasts.tsx:17,23 keeps a seen set per profile in a Map that lives for the whole shell. Switch A -> B -> A: seen.get(A) is defined, so every deposit or settlement that reached A while B was active toasts on return, as if it just happened, with stale copy (a deposit long confirmed still says 'is confirming', plus a settled toast at once). R-53 and accept 2 say payments on the active profile while the app is open, and payments already there on load get none. Fix: start a fresh baseline when profileId changes. Careful: RTK may serve A's cached page as currentData first, so take the baseline from the first fetch that completes after the switch (e.g. wait for !isFetching, or compare fulfilledTimeStamp with the switch time), not from cached data. Add a test for the switch-back case. NON-BLOCKING: (2) payment-toasts.tsx:11-12 comment is wrong: the overview does not poll activity; only the Activity page uses this query (same cache key only with no filter or search), so this adds a 15 s activity poll on every other app page. Fix the comment. (3) payment-events.ts:22 a deposit first seen already confirmed still toasts 'is confirming'. (4) The 'Notifications' region and the header bell button share one name. (5) /kit shows the close-button state only through the demo button.",
-        "2026-10-11 review pass by reviewer: Pass. Earlier blocker fixed: payment-toasts.tsx:16 keys ProfileToasts by profileId, :25 refetchOnMountOrArgChange, :29-30 baseline only from data with fulfilledTimeStamp >= visit start. Checked against RTK source: a failed request keeps the old fulfilledTimeStamp, so no baseline until a fresh success; a cached answer from an earlier visit is never the baseline; strict-mode double effect is idempotent (seen ref kept, same items). tests/payment-toasts.test.tsx fails without the key fix and without the freshness check (cached [0x1] baseline then 0x2 would toast). Accept 1: toast.tsx region top right lg+, bottom above tab bar via app-shell.tsx:149 offset, z 60 over nav 40, bg-surface + shadow-lg, ol aria-live=polite always mounted, 5 s timer paused on hover/focus, close button, slice(-3), motion-safe animation, lucide already a dependency; on /kit. Accept 2: detected/settled toasts from polled activity, once per event key, none on first load; billing details saved toast; form errors stay inline; unit tests for payment-events and provider; toasts.spec.ts checks toast, live region, no repeat, close, axe. DESIGN.md and R-53 updated. Structure: new files in features/activity and its tests/, screen imports feature, ui-web feedback family. Ran: pnpm lint ok, pnpm typecheck ok, ui-web 21 tests pass, apps/web activity 8 tests pass; verify log F114-20261011T124525Z e2e 30+20 passed incl. toasts.spec.ts after the last edit. Non-blocking: region and header bell button both named Notifications (different roles, no axe issue; a distinct region name would read better); /kit shows the close button only through the demo; if an A request is still in flight when returning to A it is reused as the baseline, so a payment in that sub-second window could toast once; payment-events.ts:30 and some toast.tsx prop JSDoc describe what code does."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-11T12:45:25Z",
-        "checks": [
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 48.0,
-            "log": "docs/runs/F114-20261011T124525Z-unit.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F118-20261011T125215Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 119.1,
-            "log": "docs/runs/F114-20261011T124525Z-e2e.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.4,
-            "log": "docs/runs/F114-20261011T124525Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F114-20261011T124525Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F114-20261011T124525Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.1,
-            "log": "docs/runs/F114-20261011T124525Z-typecheck.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 4.1,
-            "log": "docs/runs/F114-20261011T124525Z-build.log"
+            "seconds": 113.1,
+            "log": "docs/runs/F118-20261011T125215Z-e2e.log"
           }
         ],
-        "taskHash": "5dfa6faa512143ba",
-        "filesHash": "0cb985d4230911c9",
+        "taskHash": "8b32f982d08bba00",
+        "filesHash": "4b050dc557aa57ed",
         "proof": {
-          "1": "unit: ui-web toast.test.tsx proves the polite live region, newest three kept, 5 s close paused while hovered or focused, and the close button; Toast, ToastProvider and useToast are exported and shown on /kit (static and a Show toast demo); placement is top right from lg and above the tab bar below it, solid surface with shadow-lg, motion-safe pop-in only; no new dependency",
-          "2": "e2e: e2e/privy/toasts.spec.ts shows no toast for payments there on load, one toast for a new deposit after the next poll, inside the polite live region, not repeated on the next poll, closable, and axe finds 0 serious or critical; unit payment-events.test.ts covers the which-events-toast rules and payment-toasts.test.tsx proves a payment that arrived while another profile was open gets no toast on return (fails on the earlier code); billing details save calls the toast; DESIGN.md says when to use a toast"
+          "1": "docs-check: PLAN gate and 13.6 item, R-52 row and phase 8 range updated, links and IDs resolve; harness tests pass and validate is ok after archiving F094, F113 and F114"
         },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Pass. Earlier blocker fixed: payment-toasts.tsx:16 keys ProfileToasts by profileId, :25 refetchOnMountOrArgChange, :29-30 baseline only from data with fulfilledTimeStamp >= visit start. Checked against RTK source: a failed request keeps the old fulfilledTimeStamp, so no baseline until a fresh success; a cached answer from an earlier visit is never the baseline; strict-mode double effect is idempotent (seen ref kept, same items). tests/payment-toasts.test.tsx fails without the key fix and without the freshness check (cached [0x1] baseline then 0x2 would toast). Accept 1: toast.tsx region top right lg+, bottom above tab bar via app-shell.tsx:149 offset, z 60 over nav 40, bg-surface + shadow-lg, ol aria-live=polite always mounted, 5 s timer paused on hover/focus, close button, slice(-3), motion-safe animation, lucide already a dependency; on /kit. Accept 2: detected/settled toasts from polled activity, once per event key, none on first load; billing details saved toast; form errors stay inline; unit tests for payment-events and provider; toasts.spec.ts checks toast, live region, no repeat, close, axe. DESIGN.md and R-53 updated. Structure: new files in features/activity and its tests/, screen imports feature, ui-web feedback family. Ran: pnpm lint ok, pnpm typecheck ok, ui-web 21 tests pass, apps/web activity 8 tests pass; verify log F114-20261011T124525Z e2e 30+20 passed incl. toasts.spec.ts after the last edit. Non-blocking: region and header bell button both named Notifications (different roles, no axe issue; a distinct region name would read better); /kit shows the close button only through the demo; if an A request is still in flight when returning to A it is reused as the baseline, so a payment in that sub-second window could toast once; payment-events.ts:30 and some toast.tsx prop JSDoc describe what code does.",
-          "at": "2026-10-11T12:51:10Z",
-          "filesHash": "0cb985d4230911c9"
-        },
-        "commit": "5de48b8",
-        "doneAt": "2026-10-11T12:51:37Z"
+        "commit": "8aab322",
+        "doneAt": "2026-10-11T12:55:04Z"
       },
-      "branch": "feat/f114-the-app-shows-short-toasts-in-the-corner",
-      "baseCommit": "eb3f0f2ad19ac7c62e245fc2638fb43613b60663",
+      "branch": "docs/f118-the-anvil-browser-test-of-the-money-path",
+      "baseCommit": "af61cd06a3e1a0dbf64cac37cdb01675a2b7760a",
       "failedVerifies": 0,
       "delivery": {
         "mode": "pr",
-        "branch": "feat/f114-the-app-shows-short-toasts-in-the-corner",
+        "branch": "docs/f118-the-anvil-browser-test-of-the-money-path",
         "base": "main"
       }
     }

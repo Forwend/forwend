@@ -1,0 +1,104 @@
+{
+  "id": "F114",
+  "type": "feat",
+  "behavior": "The app shows short toasts in the corner for events that happen in the background",
+  "acceptance": [
+    "packages/ui-web gets a Toast (in /kit): top-right on desktop, above the tab bar on phones; solid surface panel with the float shadow; a polite live region so screen readers announce it; stays 5 s, paused while hovered or focused, closable, keyboard reachable; stacks up to 3; reduced motion removes the movement; no new dependency unless the existing Radix set already has it",
+    "apps/web uses it for background events only (form errors stay inline beside their field or form): a payment detected and a payment settled on the active profile while the app is open (from the data the app already polls; never twice for one payment, not for old payments on first load), and billing details saved; unit tests for the which-events-toast logic; Playwright checks a toast appears for a new payment and is announced; axe finds 0 serious or critical violations; DESIGN.md documents when to use a toast"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "e2e"
+  ],
+  "refs": [
+    "R-53"
+  ],
+  "keep": [],
+  "review": true,
+  "notes": [
+    "2026-10-11 review fail by reviewer: Fail: one blocking defect. Checked: ui-web Toast meets accept 1 (top right lg+, bottom with max-lg offset above the tab bar, z 60 over nav 40; bg-surface + shadow-lg; ol aria-live=polite always mounted; 5 s timer keeps remaining time across hover/focus, cleared on unmount, onClose stable; close button; slice(-3); motion-safe animation; no package.json change, lucide already a dep). BillingDetailsForm renders only under /app layout inside AppShell's ToastProvider, and the shell stays mounted across router.push. Static Toast losing role=status breaks nothing (no test or page queried it). Unit tests, lint, typecheck pass here; verify e2e log shows toasts.spec passed with axe. BLOCKING (1): payment toasts after a profile switch. payment-toasts.tsx:17,23 keeps a seen set per profile in a Map that lives for the whole shell. Switch A -> B -> A: seen.get(A) is defined, so every deposit or settlement that reached A while B was active toasts on return, as if it just happened, with stale copy (a deposit long confirmed still says 'is confirming', plus a settled toast at once). R-53 and accept 2 say payments on the active profile while the app is open, and payments already there on load get none. Fix: start a fresh baseline when profileId changes. Careful: RTK may serve A's cached page as currentData first, so take the baseline from the first fetch that completes after the switch (e.g. wait for !isFetching, or compare fulfilledTimeStamp with the switch time), not from cached data. Add a test for the switch-back case. NON-BLOCKING: (2) payment-toasts.tsx:11-12 comment is wrong: the overview does not poll activity; only the Activity page uses this query (same cache key only with no filter or search), so this adds a 15 s activity poll on every other app page. Fix the comment. (3) payment-events.ts:22 a deposit first seen already confirmed still toasts 'is confirming'. (4) The 'Notifications' region and the header bell button share one name. (5) /kit shows the close-button state only through the demo button.",
+    "2026-10-11 review pass by reviewer: Pass. Earlier blocker fixed: payment-toasts.tsx:16 keys ProfileToasts by profileId, :25 refetchOnMountOrArgChange, :29-30 baseline only from data with fulfilledTimeStamp >= visit start. Checked against RTK source: a failed request keeps the old fulfilledTimeStamp, so no baseline until a fresh success; a cached answer from an earlier visit is never the baseline; strict-mode double effect is idempotent (seen ref kept, same items). tests/payment-toasts.test.tsx fails without the key fix and without the freshness check (cached [0x1] baseline then 0x2 would toast). Accept 1: toast.tsx region top right lg+, bottom above tab bar via app-shell.tsx:149 offset, z 60 over nav 40, bg-surface + shadow-lg, ol aria-live=polite always mounted, 5 s timer paused on hover/focus, close button, slice(-3), motion-safe animation, lucide already a dependency; on /kit. Accept 2: detected/settled toasts from polled activity, once per event key, none on first load; billing details saved toast; form errors stay inline; unit tests for payment-events and provider; toasts.spec.ts checks toast, live region, no repeat, close, axe. DESIGN.md and R-53 updated. Structure: new files in features/activity and its tests/, screen imports feature, ui-web feedback family. Ran: pnpm lint ok, pnpm typecheck ok, ui-web 21 tests pass, apps/web activity 8 tests pass; verify log F114-20261011T124525Z e2e 30+20 passed incl. toasts.spec.ts after the last edit. Non-blocking: region and header bell button both named Notifications (different roles, no axe issue; a distinct region name would read better); /kit shows the close button only through the demo; if an A request is still in flight when returning to A it is reused as the baseline, so a payment in that sub-second window could toast once; payment-events.ts:30 and some toast.tsx prop JSDoc describe what code does."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-11T12:45:25Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 48.0,
+        "log": "docs/runs/F114-20261011T124525Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 119.1,
+        "log": "docs/runs/F114-20261011T124525Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.4,
+        "log": "docs/runs/F114-20261011T124525Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F114-20261011T124525Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F114-20261011T124525Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.1,
+        "log": "docs/runs/F114-20261011T124525Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.1,
+        "log": "docs/runs/F114-20261011T124525Z-build.log"
+      }
+    ],
+    "taskHash": "5dfa6faa512143ba",
+    "filesHash": "0cb985d4230911c9",
+    "proof": {
+      "1": "unit: ui-web toast.test.tsx proves the polite live region, newest three kept, 5 s close paused while hovered or focused, and the close button; Toast, ToastProvider and useToast are exported and shown on /kit (static and a Show toast demo); placement is top right from lg and above the tab bar below it, solid surface with shadow-lg, motion-safe pop-in only; no new dependency",
+      "2": "e2e: e2e/privy/toasts.spec.ts shows no toast for payments there on load, one toast for a new deposit after the next poll, inside the polite live region, not repeated on the next poll, closable, and axe finds 0 serious or critical; unit payment-events.test.ts covers the which-events-toast rules and payment-toasts.test.tsx proves a payment that arrived while another profile was open gets no toast on return (fails on the earlier code); billing details save calls the toast; DESIGN.md says when to use a toast"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Pass. Earlier blocker fixed: payment-toasts.tsx:16 keys ProfileToasts by profileId, :25 refetchOnMountOrArgChange, :29-30 baseline only from data with fulfilledTimeStamp >= visit start. Checked against RTK source: a failed request keeps the old fulfilledTimeStamp, so no baseline until a fresh success; a cached answer from an earlier visit is never the baseline; strict-mode double effect is idempotent (seen ref kept, same items). tests/payment-toasts.test.tsx fails without the key fix and without the freshness check (cached [0x1] baseline then 0x2 would toast). Accept 1: toast.tsx region top right lg+, bottom above tab bar via app-shell.tsx:149 offset, z 60 over nav 40, bg-surface + shadow-lg, ol aria-live=polite always mounted, 5 s timer paused on hover/focus, close button, slice(-3), motion-safe animation, lucide already a dependency; on /kit. Accept 2: detected/settled toasts from polled activity, once per event key, none on first load; billing details saved toast; form errors stay inline; unit tests for payment-events and provider; toasts.spec.ts checks toast, live region, no repeat, close, axe. DESIGN.md and R-53 updated. Structure: new files in features/activity and its tests/, screen imports feature, ui-web feedback family. Ran: pnpm lint ok, pnpm typecheck ok, ui-web 21 tests pass, apps/web activity 8 tests pass; verify log F114-20261011T124525Z e2e 30+20 passed incl. toasts.spec.ts after the last edit. Non-blocking: region and header bell button both named Notifications (different roles, no axe issue; a distinct region name would read better); /kit shows the close button only through the demo; if an A request is still in flight when returning to A it is reused as the baseline, so a payment in that sub-second window could toast once; payment-events.ts:30 and some toast.tsx prop JSDoc describe what code does.",
+      "at": "2026-10-11T12:51:10Z",
+      "filesHash": "0cb985d4230911c9"
+    },
+    "commit": "5de48b8",
+    "doneAt": "2026-10-11T12:51:37Z"
+  },
+  "branch": "feat/f114-the-app-shows-short-toasts-in-the-corner",
+  "baseCommit": "eb3f0f2ad19ac7c62e245fc2638fb43613b60663",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f114-the-app-shows-short-toasts-in-the-corner",
+    "base": "main"
+  }
+}
