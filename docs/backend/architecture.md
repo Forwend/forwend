@@ -134,8 +134,9 @@ Built in `internal/database/migrations` (R-17); Postgres enforces the rules belo
   `profile_billing_details(name, address, country, tax_id, contact_email, updated_at)` (at most one per profile, editable; R-43).
 - `merchants → stores(project_id, branding)`, `team_members(role, store scope)` (Phase 11).
 - `chains(chain_id, chain_family, enabled)`, `tokens(chain_id, contract, decimals, enabled)`. One confirm rule for all
-  chains (D-45), so no per-chain rule columns. Migrations add each planned network and its token switched off
-  (Arbitrum Sepolia USDC in `00015`), so test and fresh databases never need its RPCs or gas. A database turns one on
+  chains (D-45), so no per-chain rule columns. From `00015` on, migrations add each planned network and its token
+  switched off (Arbitrum Sepolia USDC in `00015`, Arc testnet USDC in `00016`), so test and fresh databases never need
+  their RPCs or gas; Base Sepolia is still a row added by hand. A database turns one on
   (D-38) after the executor has gas there and the chain list has two working hosts for it:
   `UPDATE chains SET enabled = true WHERE chain_id = 421614; UPDATE tokens SET enabled = true WHERE chain_id = 421614;`
   Then restart the api, worker and signer so their startup checks cover it.
