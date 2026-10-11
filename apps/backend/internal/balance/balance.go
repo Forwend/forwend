@@ -23,10 +23,7 @@ var ReadTimeout = 10 * time.Second
 
 // Token is the profile's money in one enabled token.
 type Token struct {
-	ChainID  uint64
-	Token    string
-	Symbol   string
-	Decimals int
+	chain.Asset
 	// Wallet is the wallet's balance at Block, the second RPC's finalized block; nil when it could not be read or the
 	// profile has no wallet yet.
 	Wallet *big.Int

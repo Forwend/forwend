@@ -84,8 +84,7 @@ func (s *Service) deposits(ctx context.Context, inv Invoice) ([]Deposit, error) 
 		d.BlockTime = time.Unix(int64(blockTime), 0).UTC()
 		d.Late = int64(blockTime) > inv.ExpiresAt.Unix()
 		if d.Status != "confirmed" {
-			p := finality.ProgressOf(finality.Block{Number: d.BlockNumber, Time: blockTime}, head)
-			d.BlocksLeft, d.TimeLeft = p.BlocksLeft, p.TimeLeft
+			d.Progress = finality.ProgressOf(finality.Block{Number: d.BlockNumber, Time: blockTime}, head)
 		}
 		out = append(out, d)
 	}

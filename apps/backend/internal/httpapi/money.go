@@ -9,8 +9,21 @@ import (
 
 	"github.com/ensp1re/forwend/apps/backend/internal/activity"
 	"github.com/ensp1re/forwend/apps/backend/internal/balance"
+	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ensp1re/forwend/apps/backend/internal/search"
 )
+
+// tokenJSON is chain.Asset in a response.
+type tokenJSON struct {
+	ChainID  uint64 `json:"chainId"`
+	Token    string `json:"token"`
+	Symbol   string `json:"symbol"`
+	Decimals int    `json:"decimals"`
+}
+
+func toTokenJSON(a chain.Asset) tokenJSON {
+	return tokenJSON{ChainID: a.ChainID, Token: a.Token, Symbol: a.Symbol, Decimals: a.Decimals}
+}
 
 type balancesJSON struct {
 	Tokens            []tokenBalanceJSON `json:"tokens"`
@@ -18,10 +31,7 @@ type balancesJSON struct {
 }
 
 type tokenBalanceJSON struct {
-	ChainID        uint64  `json:"chainId"`
-	Token          string  `json:"token"`
-	Symbol         string  `json:"symbol"`
-	Decimals       int     `json:"decimals"`
+	tokenJSON
 	Wallet         *string `json:"wallet"`
 	FinalizedBlock *uint64 `json:"finalizedBlock"`
 	Pending        string  `json:"pending"`
@@ -34,13 +44,10 @@ type activityJSON struct {
 }
 
 type activityItemJSON struct {
-	Kind             string `json:"kind"`
-	At               string `json:"at"`
-	InvoiceID        string `json:"invoiceId"`
-	ChainID          uint64 `json:"chainId"`
-	Token            string `json:"token"`
-	Symbol           string `json:"symbol"`
-	Decimals         int    `json:"decimals"`
+	Kind      string `json:"kind"`
+	At        string `json:"at"`
+	InvoiceID string `json:"invoiceId"`
+	tokenJSON
 	Amount           string `json:"amount"`
 	Status           string `json:"status"`
 	SettlementStatus string `json:"settlementStatus,omitempty"`
@@ -53,10 +60,7 @@ type transactionsJSON struct {
 }
 
 type transactionJSON struct {
-	ChainID      uint64 `json:"chainId"`
-	Token        string `json:"token"`
-	Symbol       string `json:"symbol"`
-	Decimals     int    `json:"decimals"`
+	tokenJSON
 	Direction    string `json:"direction"`
 	Amount       string `json:"amount"`
 	Counterparty string `json:"counterparty"`
@@ -80,10 +84,7 @@ type historyPointJSON struct {
 }
 
 type tokenHistoryJSON struct {
-	ChainID  uint64   `json:"chainId"`
-	Token    string   `json:"token"`
-	Symbol   string   `json:"symbol"`
-	Decimals int      `json:"decimals"`
+	tokenJSON
 	Balances []string `json:"balances"`
 	Received []string `json:"received"`
 	Sent     []string `json:"sent"`
@@ -102,8 +103,7 @@ func getBalances(balances *balance.Service) http.HandlerFunc {
 			out.EstimatedUSDTotal = &b.EstimatedUSD
 		}
 		for _, t := range b.Tokens {
-			j := tokenBalanceJSON{ChainID: t.ChainID, Token: t.Token, Symbol: t.Symbol, Decimals: t.Decimals,
-				Pending: t.Pending.String(), Held: t.Held.String()}
+			j := tokenBalanceJSON{tokenJSON: toTokenJSON(t.Asset), Pending: t.Pending.String(), Held: t.Held.String()}
 			if t.Wallet != nil {
 				wallet, block := t.Wallet.String(), t.Block
 				j.Wallet, j.FinalizedBlock = &wallet, &block
@@ -139,8 +139,7 @@ func getActivity(activities *activity.Service) http.HandlerFunc {
 		}
 		for _, it := range page.Items {
 			out.Items = append(out.Items, activityItemJSON{Kind: it.Kind, At: it.At.UTC().Format(time.RFC3339Nano),
-				InvoiceID: it.InvoiceID, ChainID: it.ChainID, Token: it.Token, Symbol: it.Symbol, Decimals: it.Decimals,
-				Amount: it.Amount.String(),
+				InvoiceID: it.InvoiceID, tokenJSON: toTokenJSON(it.Asset), Amount: it.Amount.String(),
 				Status: it.Status, SettlementStatus: it.SettlementStatus, TxHash: it.TxHash})
 		}
 		writeJSON(w, http.StatusOK, out)
@@ -172,10 +171,9 @@ func getTransactions(activities *activity.Service) http.HandlerFunc {
 			out.NextCursor = &page.NextCursor
 		}
 		for _, t := range page.Items {
-			out.Items = append(out.Items, transactionJSON{ChainID: t.ChainID, Token: t.Token, Symbol: t.Symbol,
-				Decimals: t.Decimals, Direction: t.Direction, Amount: t.Amount.String(), Counterparty: t.Counterparty,
-				TxHash: t.TxHash, LogIndex: t.LogIndex, BlockNumber: t.BlockNumber, At: t.At.Format(time.RFC3339),
-				Status: t.Status})
+			out.Items = append(out.Items, transactionJSON{tokenJSON: toTokenJSON(t.Asset), Direction: t.Direction,
+				Amount: t.Amount.String(), Counterparty: t.Counterparty, TxHash: t.TxHash, LogIndex: t.LogIndex,
+				BlockNumber: t.BlockNumber, At: t.At.Format(time.RFC3339), Status: t.Status})
 		}
 		writeJSON(w, http.StatusOK, out)
 	}
@@ -200,8 +198,8 @@ func getBalanceHistory(balances *balance.Service) http.HandlerFunc {
 				EstimatedUSD: orNull(p.EstimatedUSD), ReceivedUSD: orNull(p.ReceivedUSD), SentUSD: orNull(p.SentUSD)})
 		}
 		for _, t := range h.Tokens {
-			out.Tokens = append(out.Tokens, tokenHistoryJSON{ChainID: t.ChainID, Token: t.Token, Symbol: t.Symbol,
-				Decimals: t.Decimals, Balances: baseUnits(t.Balances), Received: baseUnits(t.Received), Sent: baseUnits(t.Sent)})
+			out.Tokens = append(out.Tokens, tokenHistoryJSON{tokenJSON: toTokenJSON(t.Asset),
+				Balances: baseUnits(t.Balances), Received: baseUnits(t.Received), Sent: baseUnits(t.Sent)})
 		}
 		writeJSON(w, http.StatusOK, out)
 	}

@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -34,7 +35,7 @@ func scanInvoice(row pgx.Row, before ...any) (Invoice, error) {
 	var amount string
 	var expiresAt, settleDeadline int64
 	var issuerName *string
-	var issuer Issuer
+	var issuer profile.Issuer
 	dest := append(before, &inv.ID, &inv.Number, &inv.Title, &inv.Note, &inv.DueDate, &inv.ClientName,
 		&inv.ClientEmail, &inv.ClientAddress, &inv.SenderName, &issuerName, &issuer.Address, &issuer.Country, &issuer.TaxID,
 		&issuer.Email, &inv.ChainID, &inv.Token, &amount, &inv.Recipient, &inv.Factory,

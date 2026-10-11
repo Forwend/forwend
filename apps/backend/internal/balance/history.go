@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -32,10 +33,7 @@ type Point struct {
 // TokenHistory is one token's series, one value per point: the wallet balance at At, and the sum of final transfers
 // in and out during its bucket. All three are nil when the current wallet balance is missing.
 type TokenHistory struct {
-	ChainID                  uint64
-	Token                    string
-	Symbol                   string
-	Decimals                 int
+	chain.Asset
 	Balances, Received, Sent []*big.Int
 }
 
