@@ -12,7 +12,7 @@
       "dependsOn": [
         "F097"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -99,11 +99,18 @@
           "summary": "Pass (re-review after gas.go change). gas.go:67-73 now returns 'read the executor's fee token: %w' only when CallContract errs and 'read the executor's fee token: N-byte answer' for a non-32-byte answer, so the earlier %!w(<nil>) note is fixed. Rest unchanged from the previous review: Tempo detected by code at 0xfeec (0xef on Moderato, none on Base/Arbitrum/Ethereum Sepolia); token order userTokens else PathUSD matches tempo resolve_fee_token for the signer's factory/receiver txs; gas.go ceil matches calc_gas_balance_spending div_ceil(10^12); native path unchanged; test covers chosen token and PathUSD with MockToken _balances at slot 0. go test -count=1 -run TestCheckGas ./internal/settlement/ ok, go vet clean; verify at 14:24:48Z postdates the edit (14:24:45Z).",
           "at": "2026-10-11T14:29:09Z",
           "filesHash": "a5cb2660f17cc017"
-        }
+        },
+        "commit": "7a12688",
+        "doneAt": "2026-10-11T14:29:22Z"
       },
       "branch": "fix/f120-on-tempo-the-signer-s-startup-gas-check",
       "baseCommit": "98e39baa192337cb379d86dc47709914650d41c7",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f120-on-tempo-the-signer-s-startup-gas-check",
+        "base": "main"
+      }
     },
     {
       "id": "F121",
