@@ -9,6 +9,7 @@ import (
 
 	"github.com/ensp1re/forwend/apps/backend/internal/activity"
 	"github.com/ensp1re/forwend/apps/backend/internal/balance"
+	"github.com/ensp1re/forwend/apps/backend/internal/search"
 )
 
 type balancesJSON struct {
@@ -113,7 +114,7 @@ func getBalances(balances *balance.Service) http.HandlerFunc {
 	}
 }
 
-// getActivity is GET /v1/profiles/{profileId}/activity?limit=&cursor=.
+// getActivity is GET /v1/profiles/{profileId}/activity?limit=&cursor=&status=&q=.
 func getActivity(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		limit, err := intQuery(r, "limit", activity.DefaultLimit)
@@ -121,7 +122,13 @@ func getActivity(activities *activity.Service) http.HandlerFunc {
 			writeError(w, r, err)
 			return
 		}
-		page, err := activities.List(r.Context(), r.PathValue("profileId"), r.URL.Query().Get("cursor"), limit)
+		q, err := searchQuery(r)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		query := r.URL.Query()
+		page, err := activities.List(r.Context(), r.PathValue("profileId"), query.Get("cursor"), limit, query.Get("status"), q)
 		if err != nil {
 			writeError(w, r, err)
 			return
@@ -140,7 +147,7 @@ func getActivity(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
-// getTransactions is GET /v1/profiles/{profileId}/transactions?limit=&cursor=.
+// getTransactions is GET /v1/profiles/{profileId}/transactions?limit=&cursor=&direction=&q=.
 func getTransactions(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		limit, err := intQuery(r, "limit", activity.DefaultLimit)
@@ -148,7 +155,14 @@ func getTransactions(activities *activity.Service) http.HandlerFunc {
 			writeError(w, r, err)
 			return
 		}
-		page, err := activities.Transfers(r.Context(), r.PathValue("profileId"), r.URL.Query().Get("cursor"), limit)
+		q, err := searchQuery(r)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		query := r.URL.Query()
+		page, err := activities.Transfers(r.Context(), r.PathValue("profileId"), query.Get("cursor"), limit,
+			query.Get("direction"), q)
 		if err != nil {
 			writeError(w, r, err)
 			return
@@ -203,6 +217,14 @@ func baseUnits(amounts []*big.Int) []string {
 		out[i] = a.String()
 	}
 	return out
+}
+
+// searchQuery reads ?q=: absent is no search, present it must not be blank.
+func searchQuery(r *http.Request) (search.Query, error) {
+	if !r.URL.Query().Has("q") {
+		return search.Query{}, nil
+	}
+	return search.Parse(r.URL.Query().Get("q"))
 }
 
 // intQuery reads a whole-number query parameter, or def when it is absent.

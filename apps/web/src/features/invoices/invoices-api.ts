@@ -1,3 +1,4 @@
+import type { StatusFilter } from "@/features/activity/activity";
 import {
   type CreateInvoiceBody,
   INVOICES_PAGE_SIZE,
@@ -15,15 +16,26 @@ export const invoicesApi = apiSlice
   .enhanceEndpoints({ addTagTypes: [INVOICES_TAG] })
   .injectEndpoints({
     endpoints: (build) => ({
-      /** Newest first; "Show more" adds the next page, and a refresh reads every shown page again. */
-      getInvoices: build.infiniteQuery<InvoicesPage, string, string | null>({
+      /**
+       * Newest first, under the status filter and search (none when left out); "Show more" adds the next page of the
+       * same filtered list, and a refresh reads every shown page again.
+       */
+      getInvoices: build.infiniteQuery<
+        InvoicesPage,
+        { profileId: string; status?: StatusFilter; q?: string },
+        string | null
+      >({
         infiniteQueryOptions: {
           initialPageParam: null,
           getNextPageParam: (last) => last.nextCursor,
         },
-        query: ({ queryArg: profileId, pageParam }) => ({
+        query: ({ queryArg: { profileId, ...filters }, pageParam }) => ({
           url: profileInvoices(profileId),
-          params: { limit: INVOICES_PAGE_SIZE, ...(pageParam ? { cursor: pageParam } : {}) },
+          params: {
+            limit: INVOICES_PAGE_SIZE,
+            ...filters,
+            ...(pageParam ? { cursor: pageParam } : {}),
+          },
         }),
         providesTags: [INVOICES_TAG],
       }),

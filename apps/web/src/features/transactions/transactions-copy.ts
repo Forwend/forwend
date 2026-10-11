@@ -31,7 +31,7 @@ export const TRANSACTIONS_COPY = {
     amount: "Amount",
   },
   empty: "No transactions yet. Money sent to or from this profile's wallet shows here.",
-  noMatch: "No transactions match this filter.",
+  noMatch: "No transactions match.",
   failed: "We could not load the transactions.",
   loadMore: "Show more",
   latestOnly: "Showing the latest 100.",

@@ -25,7 +25,7 @@ export const INVOICES_COPY = {
   loadMore: "Show more",
   search: "Search invoices",
   searchPlaceholder: "Search number, client or title",
-  noMatch: "No invoices match this filter.",
+  noMatch: "No invoices match.",
   columns: {
     invoice: "Invoice",
     client: "Client",
@@ -50,7 +50,7 @@ export const REQUESTS_COPY = {
   failed: "We could not load the requests.",
   search: "Search requests",
   searchPlaceholder: "Search number or note",
-  noMatch: "No requests match this filter.",
+  noMatch: "No requests match.",
 } as const;
 
 export const NEW_INVOICE_COPY = {

@@ -1,12 +1,16 @@
-import type { TransactionsPage } from "@/features/transactions/transactions";
+import type { TransactionDirection, TransactionsPage } from "@/features/transactions/transactions";
 import { apiSlice } from "@/shared/api/api-slice";
 
 export const transactionsApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
-    getTransactions: build.query<TransactionsPage, { profileId: string; limit: number }>({
-      query: ({ profileId, limit }) => ({
+    /** In one direction and under the search when given. */
+    getTransactions: build.query<
+      TransactionsPage,
+      { profileId: string; limit: number; direction?: TransactionDirection; q?: string }
+    >({
+      query: ({ profileId, ...params }) => ({
         url: `/v1/profiles/${encodeURIComponent(profileId)}/transactions`,
-        params: { limit },
+        params,
       }),
     }),
   }),

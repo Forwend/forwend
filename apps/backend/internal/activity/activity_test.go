@@ -10,6 +10,7 @@ import (
 
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
+	"github.com/ensp1re/forwend/apps/backend/internal/search"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -81,7 +82,7 @@ func TestListNewestFirstInPages(t *testing.T) {
 	s := NewService(pool)
 	ctx := context.Background()
 
-	first, err := s.List(ctx, empty, "", DefaultLimit)
+	first, err := s.List(ctx, empty, "", DefaultLimit, "", search.Query{})
 	if err != nil || len(first.Items) != 0 || first.NextCursor != "" {
 		t.Fatalf("new profile: %+v, %v; want an empty list", first, err)
 	}
@@ -100,7 +101,7 @@ func TestListNewestFirstInPages(t *testing.T) {
 		var got []string
 		cursor := ""
 		for pages := 1; ; pages++ {
-			page, err := s.List(ctx, profile, cursor, limit)
+			page, err := s.List(ctx, profile, cursor, limit, "", search.Query{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -119,13 +120,13 @@ func TestListNewestFirstInPages(t *testing.T) {
 		}
 	}
 
-	top, _ := s.List(ctx, profile, "", 1)
+	top, _ := s.List(ctx, profile, "", 1, "", search.Query{})
 	d := top.Items[0]
 	if d.Status != "detected" || d.TxHash != fmt.Sprintf("0x%064x", 11) || d.Amount.Int64() != 1000000 || d.ChainID != 84532 ||
 		d.Symbol != "USDC" || d.Decimals != 6 {
 		t.Fatalf("deposit item %+v", d)
 	}
-	inv, _ := s.List(ctx, profile, "", 3)
+	inv, _ := s.List(ctx, profile, "", 3, "", search.Query{})
 	if i := inv.Items[2]; i.Status != "open" || i.SettlementStatus != "none" || i.Amount.Int64() != 5000000 || i.Token != usdc ||
 		i.TxHash != "" {
 		t.Fatalf("invoice item %+v", i)
@@ -135,7 +136,7 @@ func TestListNewestFirstInPages(t *testing.T) {
 	settle := fmt.Sprintf("0x%064x", 99)
 	exec(t, pool, `WITH i AS (INSERT INTO settlement_intents (invoice_id, status, tx_hash) VALUES ($1, 'confirmed', $2))
 		UPDATE invoices SET settlement_status = 'settled' WHERE id = $1`, a, settle)
-	all, _ := s.List(ctx, profile, "", DefaultLimit)
+	all, _ := s.List(ctx, profile, "", DefaultLimit, "", search.Query{})
 	if i := all.Items[4]; i.InvoiceID != a || i.SettlementStatus != "settled" || i.TxHash != settle {
 		t.Fatalf("settled invoice item %+v, want tx hash %s", i, settle)
 	}
@@ -149,7 +150,7 @@ func TestListRefusesBadInput(t *testing.T) {
 		cursor string
 		limit  int
 	}{{"", 0}, {"", MaxLimit + 1}, {"not base64!", 10}, {encode(time.Time{}, "payment", "x"), 10}, {"MTIz", 10}} {
-		if _, err := s.List(ctx, profile, c.cursor, c.limit); !errors.Is(err, ErrInvalid) {
+		if _, err := s.List(ctx, profile, c.cursor, c.limit, "", search.Query{}); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("cursor %q limit %d: %v, want ErrInvalid", c.cursor, c.limit, err)
 		}
 	}

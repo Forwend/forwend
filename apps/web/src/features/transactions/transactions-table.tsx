@@ -14,13 +14,11 @@ import { ArrowDownLeft, ArrowUpRight, ChevronRight, Download } from "lucide-reac
 import Link from "next/link";
 import { useState } from "react";
 import {
-  filterTransactions,
   TRANSACTION_DIRECTIONS,
   TRANSACTION_FILTERS,
   TRANSACTIONS_MAX,
   TRANSACTIONS_PAGE_SIZE,
   type Transaction,
-  type TransactionFilter,
   transactionKey,
   transactionStatus,
   transactionsCsv,
@@ -29,8 +27,10 @@ import { useGetTransactionsQuery } from "@/features/transactions/transactions-ap
 import { TRANSACTIONS_COPY } from "@/features/transactions/transactions-copy";
 import { chainName } from "@/shared/chains/chains";
 import { ExplorerLink } from "@/shared/chains/explorer-link";
+import { NoMatch } from "@/shared/components/no-match";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
 
 const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
 const DATE = new Intl.DateTimeFormat(undefined, {
@@ -45,7 +45,6 @@ interface TransactionsTableProps {
   title: string;
   pageHeading?: boolean;
   preview?: number;
-  initialSearch?: string;
 }
 
 // A new table per profile: rows shown while more load are always this profile's.
@@ -53,22 +52,26 @@ export function TransactionsTable(props: TransactionsTableProps) {
   return <ProfileTransactions key={props.profileId} {...props} />;
 }
 
-// "Show more" asks for more rows in one request (up to the API's 100), so a refresh never skips or repeats one.
-function ProfileTransactions({
-  profileId,
-  title,
-  pageHeading,
-  preview,
-  initialSearch = "",
-}: TransactionsTableProps) {
+// "Show more" asks for more rows in one request (up to the API's 100), so a refresh never skips or repeats one. The
+// API applies the direction and search, kept in the URL; a preview has neither.
+function ProfileTransactions({ profileId, title, pageHeading, preview }: TransactionsTableProps) {
   const [shownLimit, setShownLimit] = useState<number>(TRANSACTIONS_PAGE_SIZE);
-  const [filter, setFilter] = useState<TransactionFilter>(TRANSACTION_FILTERS.all);
-  const [search, setSearch] = useState(initialSearch);
+  const filters = useListFilters(
+    "direction",
+    Object.values(TRANSACTION_FILTERS),
+    TRANSACTION_FILTERS.all,
+  );
   const limit = preview ?? shownLimit;
-  const list = useGetTransactionsQuery({ profileId, limit }, LIVE_QUERY);
-  const items = list.data?.items ?? [];
-  const rows = preview ? items : filterTransactions(items, filter, search);
-  const more = Boolean(list.data?.nextCursor);
+  const list = useGetTransactionsQuery(
+    preview
+      ? { profileId, limit }
+      : { profileId, limit, direction: filters.apiFilter, q: filters.apiQuery },
+    LIVE_QUERY,
+  );
+  const data = useShownData(preview ? "" : filters.key, list.currentData, list.data);
+  const rows = data?.items ?? [];
+  const filtered = !preview && filters.filtered;
+  const more = Boolean(data?.nextCursor);
   const Heading = pageHeading ? "h1" : "h2";
 
   const exportCsv = () => {
@@ -84,7 +87,7 @@ function ProfileTransactions({
   return (
     <section
       aria-labelledby={`${profileId}-transactions`}
-      aria-busy={!list.data && !list.isError}
+      aria-busy={!data && !list.isError}
       className={
         pageHeading
           ? "flex flex-col gap-4"
@@ -106,7 +109,7 @@ function ProfileTransactions({
           {title}
         </Heading>
         {preview ? (
-          items.length > 0 ? (
+          rows.length > 0 ? (
             <Link
               href={APP_ROUTES.transactions}
               className="inline-flex h-9 items-center gap-1 rounded-sm px-2 text-sm text-muted hover:bg-surface-2 hover:text-ink"
@@ -119,8 +122,8 @@ function ProfileTransactions({
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <SegmentedControl
               label={TRANSACTIONS_COPY.filterLabel}
-              value={filter}
-              onValueChange={setFilter}
+              value={filters.filter}
+              onValueChange={filters.setFilter}
               options={Object.values(TRANSACTION_FILTERS).map((value) => ({
                 value,
                 label: TRANSACTIONS_COPY.filters[value],
@@ -128,8 +131,8 @@ function ProfileTransactions({
             />
             <SearchField
               label={TRANSACTIONS_COPY.search}
-              value={search}
-              onValueChange={setSearch}
+              value={filters.search}
+              onValueChange={filters.setSearch}
               placeholder={TRANSACTIONS_COPY.searchPlaceholder}
               className="flex-1 sm:w-64 sm:flex-none max-sm:order-last max-sm:basis-full"
             />
@@ -146,7 +149,7 @@ function ProfileTransactions({
         )}
       </div>
 
-      {list.isError && !list.data ? (
+      {list.isError && !data ? (
         <div
           role="alert"
           className="flex flex-wrap items-center gap-4 px-5 py-6 text-sm text-muted"
@@ -156,12 +159,16 @@ function ProfileTransactions({
             {TRANSACTIONS_COPY.retry}
           </Button>
         </div>
-      ) : !list.data ? (
+      ) : !data ? (
         <Skeleton className="m-5 h-24" />
-      ) : items.length === 0 ? (
+      ) : rows.length === 0 && !filtered ? (
         <p className="px-5 py-8 text-sm text-muted">{TRANSACTIONS_COPY.empty}</p>
       ) : rows.length === 0 ? (
-        <p className="px-5 py-8 text-sm text-muted">{TRANSACTIONS_COPY.noMatch}</p>
+        <NoMatch
+          text={TRANSACTIONS_COPY.noMatch}
+          onClear={filters.clear}
+          className={pageHeading ? "rounded-md border border-line bg-surface" : ""}
+        />
       ) : (
         <div className={pageHeading ? "rounded-md border border-line bg-surface" : ""}>
           {/* Wide screens: a ruled table, scrolled sideways rather than squeezed when its column is narrow. */}
@@ -237,12 +244,12 @@ function ProfileTransactions({
           </ul>
         </div>
       )}
-      {preview || !list.data ? null : more && limit < TRANSACTIONS_MAX ? (
+      {preview || !data ? null : more && limit < TRANSACTIONS_MAX ? (
         <Button
           variant="secondary"
           size="sm"
           className={pageHeading ? "self-start" : "m-4 self-start"}
-          loading={list.isFetching && items.length < limit}
+          loading={list.isFetching && rows.length < limit}
           onClick={() => setShownLimit(Math.min(limit + TRANSACTIONS_PAGE_SIZE, TRANSACTIONS_MAX))}
         >
           {TRANSACTIONS_COPY.loadMore}

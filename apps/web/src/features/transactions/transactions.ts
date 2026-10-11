@@ -22,8 +22,6 @@ export const TRANSACTIONS_MAX = 100;
 export type TransactionDirection =
   (typeof TRANSACTION_DIRECTIONS)[keyof typeof TRANSACTION_DIRECTIONS];
 
-export type TransactionFilter = (typeof TRANSACTION_FILTERS)[keyof typeof TRANSACTION_FILTERS];
-
 export interface Transaction {
   chainId: number;
   token: string;
@@ -57,23 +55,6 @@ export function transactionStatus(t: Transaction): PaymentStatus {
 /** One key per transfer: a transaction can move tokens several times, once per log. */
 export function transactionKey(t: Transaction): string {
   return `${t.chainId}:${t.txHash}:${t.logIndex}`;
-}
-
-/** Rows in one direction whose counterparty, hash or token contains the search, in any letter case. */
-export function filterTransactions(
-  items: readonly Transaction[],
-  filter: TransactionFilter,
-  search: string,
-): Transaction[] {
-  const query = search.trim().toLowerCase();
-  return items.filter(
-    (t) =>
-      (filter === TRANSACTION_FILTERS.all || t.direction === filter) &&
-      (!query ||
-        t.counterparty.toLowerCase().includes(query) ||
-        t.txHash.toLowerCase().includes(query) ||
-        t.symbol.toLowerCase().includes(query)),
-  );
 }
 
 const CSV_HEADER = [

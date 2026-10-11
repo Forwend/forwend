@@ -18,6 +18,6 @@ export const ACTIVITY_COPY = {
     [STATUS_FILTERS.expired]: "Expired",
   } satisfies Record<StatusFilter, string>,
   search: "Search activity",
-  searchPlaceholder: "Search amount, network or hash",
-  noMatch: "Nothing matches this filter.",
+  searchPlaceholder: "Search amount, token or hash",
+  noMatch: "Nothing matches.",
 } as const;

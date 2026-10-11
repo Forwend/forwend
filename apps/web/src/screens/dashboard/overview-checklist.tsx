@@ -39,7 +39,7 @@ export function OverviewChecklist() {
   const freelancer = kind === PROFILE_KINDS.freelancer;
   const open = !dismissal.closed;
   const billing = useGetBillingDetailsQuery(open && freelancer ? profileId : skipToken);
-  const invoices = useGetInvoicesInfiniteQuery(open ? profileId : skipToken, LIVE_QUERY);
+  const invoices = useGetInvoicesInfiniteQuery(open ? { profileId } : skipToken, LIVE_QUERY);
   const transactions = useGetTransactionsQuery(
     open ? { profileId, limit: TRANSACTIONS_PAGE_SIZE } : skipToken,
     LIVE_QUERY,

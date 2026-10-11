@@ -32,6 +32,7 @@ import { TRANSACTIONS_COPY } from "@/features/transactions/transactions-copy";
 import { APP_NAV } from "@/screens/app-shell/app-nav";
 import { chainName } from "@/shared/chains/chains";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { SEARCH_PARAM } from "@/shared/hooks/use-list-filters";
 
 const COMMAND_COPY = {
   title: "Search",
@@ -182,7 +183,7 @@ export function CommandMenu({
         detail: `${shortAddress(t.counterparty)} · ${chainName(t.chainId)} · ${shortAddress(t.txHash)}`,
         keywords: `${t.counterparty} ${t.txHash}`,
         icon: incoming ? ArrowDownLeft : ArrowUpRight,
-        run: go(`${APP_ROUTES.transactions}?search=${t.txHash}`),
+        run: go(`${APP_ROUTES.transactions}?${SEARCH_PARAM}=${t.txHash}`),
       };
     }),
   ];
