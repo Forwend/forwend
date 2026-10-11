@@ -14,7 +14,7 @@ reason; it joins the plan once the owner agrees.
 | 5 | Receiver contracts and authority operations | Unit, fork, fuzz, invariant and symbolic checks; no open high/medium findings; same factory and matching real receiver on four testnets |
 | 6 | Go API, watcher, ledger and signer | R-14…R-24; local create → pay → confirmed → settled twice with one invoice and matching ledger |
 | 7 | Login, app shell and profile wallets | Sign in, create freelancer profile, switch profiles and see the correct wallet |
-| 8 | First payment through the UI on Base USDC: invoice numbers, pay page, PDFs, personal requests, first-run onboarding | Local Anvil browser test in CI and Sasha's Base Sepolia run; then enable other planned pairs individually |
+| 8 | First payment through the UI on Base USDC: invoice numbers, pay page, PDFs, personal requests, first-run onboarding | Sasha's Base Sepolia run; then enable other planned pairs individually |
 | 9 | Payment exceptions, refunds and notifications | On Anvil: partial → top-up → paid; overpay → claim → refund; expired partial → refund; late → held |
 | 10 | Freelancer work | One freelancer runs deposit → delivery → acceptance → final invoice paid on testnet |
 | 11 | Merchant stores and developer tools | Sample merchant uses SDK, pays and verifies an invoice.settled webhook |
@@ -93,7 +93,6 @@ bullets it needs.
 - 8.9 First-run "What do you want to do?" screen and checklists for personal and freelancer profiles, computed
   from data; passkey link step (D-53). After 8.2, 8.3.
 - 8.10 Independent canary per [money safety](docs/backend/money-safety.md). After 8.4.
-- 8.11 Anvil browser test in CI: create → pay → settled → receipt PDF 200 (409 before paid). After 8.4, 8.7.
 - 8.12 Review the complete money path, then Sasha's Base Sepolia run. This is the gate. After all of the above.
 - 8.13–8.15 Enable Arbitrum Sepolia, Arc and Tempo: one PR each, each after its own run. After 8.12.
 - Owner track, in parallel, no code: 5–10 interviews; register forwend.com; free USPTO, EUIPO and WIPO search in
@@ -196,6 +195,8 @@ Freelancer before merchant (D-55). Phase 9 comes first for both, so phases 10 an
   exception cases.
 - 13.5 Before outside users: jurisdiction, KYC/KYB policy (Q-12), terms, privacy, trademark filing (D-70), real
   waitlist (D-8) and merchant wallet control (Q-11).
+- 13.6 Anvil browser test in CI: create → pay → settled → receipt PDF 200 (409 before paid) (R-52). Part of the QA
+  pass once the MVP works end to end; until then the owner tests this path by hand and backend-e2e covers the money loop.
 
 ## Deferred beyond MVP
 
