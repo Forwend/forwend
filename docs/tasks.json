@@ -141,7 +141,7 @@
         "The token identity fields repeated across balance.Token, balance.TokenHistory, activity.Item, activity.Transfer, invoice.Invoice and the httpapi response structs come from one type in the owning package (embedded or reused) where the meaning matches; invoice.Issuer reuses profile.BillingDetails' fields if the meaning matches (a frozen copy stays a copy in the database); invoice.Deposit reuses finality.Progress for blocks and time left; no global types/models/common package; JSON field names, API responses (openapi.yaml) and money representation unchanged; Go tests stay beside their package; go test -list before and after shows every test"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -238,11 +238,18 @@
           "summary": "Pass. chain.Asset (internal/chain/asset.go:4) is now the one token identity, embedded in balance.Token, balance.TokenHistory, activity.Item, activity.Transfer, invoice.Invoice; httpapi money.go response structs share tokenJSON via toTokenJSON. invoice.Invoice.Issuer is *profile.Issuer, embedded in profile.BillingDetails; invoices still copy billing details in SQL (create.go:56), scanInvoice unchanged except type. invoice.Deposit embeds finality.Progress (get.go:87 assigns it whole). invoiceJSON keeps its own chainId/token, correct since it has no symbol/decimals. No types/common package; chain and finality import no domain package; new invoice->profile edge is acyclic; no domain imports httpapi/cmd. JSON keys and order unchanged (encoding/json flattens the untagged embedded tokenJSON at its field position; checked with a scratch program for activityItemJSON and tokenBalanceJSON). openapi.yaml and packages/contracts unchanged; money stays *big.Int / decimal strings; no test files touched. go1.27.1, go build ./..., go vet -tags e2e,privylive,loadtest ./..., gofmt clean, pnpm --filter @forwend/backend test all ok. Non-blocking: balance/history.go:96 could be TokenHistory{Asset: t.Asset}; httpapi/money.go:16 comment only restates the type.",
           "at": "2026-10-11T12:31:28Z",
           "filesHash": "2fabe6b64cf5da32"
-        }
+        },
+        "commit": "d026237",
+        "doneAt": "2026-10-11T12:31:46Z"
       },
       "branch": "refactor/f113-go-packages-share-one-definition-for-eac",
       "baseCommit": "3e921adb14c88bdf8fa6c0418122235bc552f916",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f113-go-packages-share-one-definition-for-eac",
+        "base": "main"
+      }
     },
     {
       "id": "F114",
