@@ -15,6 +15,7 @@ func TestPlannedNetworksTakeInvoicesOnceEnabled(t *testing.T) {
 		decimals    int
 	}{
 		{421614, "arbitrum-sepolia", "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d", "USDC", 6},
+		{5042002, "arc-testnet", "0x3600000000000000000000000000000000000000", "USDC", 6},
 	} {
 		t.Run(n.name, func(t *testing.T) {
 			ctx := context.Background()
