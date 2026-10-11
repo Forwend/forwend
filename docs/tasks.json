@@ -109,7 +109,7 @@
         "PLAN phase 8 gate no longer needs the Anvil browser test and item 8.11 moves to phase 13 as 13.6; R-52 names PLAN 13.6 and PROJECT's phase 8 range leaves it out; finished tasks are archived; docs-check and harness validate pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check",
         "harness"
@@ -180,11 +180,18 @@
         "filesHash": "4b050dc557aa57ed",
         "proof": {
           "1": "docs-check: PLAN gate and 13.6 item, R-52 row and phase 8 range updated, links and IDs resolve; harness tests pass and validate is ok after archiving F094, F113 and F114"
-        }
+        },
+        "commit": "8aab322",
+        "doneAt": "2026-10-11T12:55:04Z"
       },
       "branch": "docs/f118-the-anvil-browser-test-of-the-money-path",
       "baseCommit": "af61cd06a3e1a0dbf64cac37cdb01675a2b7760a",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f118-the-anvil-browser-test-of-the-money-path",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
