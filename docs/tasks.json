@@ -323,7 +323,7 @@
         "R-18, R-30: a token without sid or with linked_accounts (a Privy identity token) gets 401; when Privy can't be reached the last key list verifies for at most MaxKeyAge + KeyGrace (10 min), then nothing does; PRIVY_JWKS_URL must be https (loopback http for tests); a user has at most 10 profiles, enforced under a lock against concurrent requests; names, titles, notes, client and billing fields refuse control and invisible format characters (line breaks only in notes and addresses), and sender, profile and billing names that read as Forwend are refused; the pay page and the PDF say the sender's name is not checked; the checkout hides the address before it closes; backend, unit and e2e tests cover each; R-30, api.md and PROJECT.md (payer privacy) match"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "unit",
@@ -413,11 +413,18 @@
           "summary": "PASS. The three earlier findings are fixed and checked again. (1) internal/profile/text.go: NFKD now runs before lowercasing, and capital look-alikes are mapped first. Probe: '𝐅𝐨𝐫𝐰𝐞𝐧𝐝', 'ℱorwend', 'FORWΕND', 'FORWEΝD' and fullwidth are refused. 'Forward End', Greek, Cyrillic and CJK names pass. PlainText now refuses U+2028/2029 and the blank fillers and keeps ZWNJ/ZWJ (Persian, emoji). (2) internal/profile/onboard.go:64 counts profiles under the user lock; an overlay test at 10 profiles refuses onboarding and leaves 10. (3) invoices_pdf_test.go checks a request without billing details prints FROM, the sender and 'Name not checked by Forwend'. Web copy now names hidden characters and the Forwend rule, the new-profile form shows the cap and name errors, and api.md matches. Checks I ran: go test on auth/config/profile/invoice/httpapi/document ok; vitest pay/profiles/invoices 25 passed; pnpm lint and typecheck ok. All logs of verify 2026-10-11T15:42:18Z pass; the e2e signs in with real Privy tokens (20 passed). Non-blocking: onboard.go:64 adds len(kinds) to the count, and that includes Personal, which onboarding never inserts. A user at 10 profiles is refused for receive_and_send alone, and a user at 9 for receive_and_send+get_paid_by_clients (reproduced). Only users who create profiles through the API before onboarding hit this, and skipping still works; count only freelancer and merchant. new-profile-form.tsx:54-55 picks the error by matching words in the message, the same pattern invalidField already uses.",
           "at": "2026-10-11T15:47:32Z",
           "filesHash": "73a6b62c69ac8e2e"
-        }
+        },
+        "commit": "0557701",
+        "doneAt": "2026-10-11T15:47:53Z"
       },
       "branch": "fix/f127-only-privy-access-tokens-with-a-fresh-ke",
       "baseCommit": "a806e5fecf45103ca78662958a1f2bd92be65fe7",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f127-only-privy-access-tokens-with-a-fresh-ke",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
