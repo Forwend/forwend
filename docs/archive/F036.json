@@ -1,0 +1,110 @@
+{
+  "id": "F036",
+  "type": "feat",
+  "behavior": "InvoiceReceiverFactory and InvoiceReceiver v1 implement every rule in packages/contracts/AGENTS.md, proven by unit, fuzz, invariant, cross-chain, fork and Halmos symbolic tests",
+  "acceptance": [
+    "packages/contracts/src has InvoiceTypes.sol, InvoiceReceiverFactory.sol and InvoiceReceiver.sol implementing the Terms, Factory and Receiver rules of packages/contracts/AGENTS.md",
+    "forge test passes: a unit test per rule, fuzz tests on amounts and time, five invariants (exact settlement, conservation, executor never paid, owed amount kept before settleDeadline, invoice token never recovered), the cross-chain CREATE2 test, and the Base Sepolia fork test with real USDC (CI uses the public RPC)",
+    "Halmos check_settle, check_refund and check_recoverNeverTakesInvoiceToken pass locally and in CI",
+    "Breaking a rule makes the tests fail: removing the owed-amount guard in refundable() and removing the settle caller check each fail forge tests, and the first also fails Halmos"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "contracts",
+    "lint"
+  ],
+  "refs": [],
+  "keep": [
+    "apps/*",
+    "packages/design-tokens/*",
+    "packages/ui-web/*"
+  ],
+  "review": true,
+  "notes": [
+    "2026-10-08 review pass by reviewer: No money or security issue found. forge test: 45 pass, 1 skipped (fork without RPC); fork test with real Base Sepolia USDC passes; Halmos 0.3.3: check_settle, check_refund, check_recoverNeverTakesInvoiceToken pass. Mutations checked in a scratch copy: removing the owed guard in refundable() fails 4 forge tests (unit, fuzz, invariant) and Halmos check_refund; removing the settle caller check fails 3 unit tests and Halmos check_settle. Invariant handler measured: settle succeeds in 184/257 runs, refund in 202 (195 after deadline), so invariants are not vacuous. Checked: executor can only pay recipient; refunds keep amount until settleDeadline (boundary <= / > consistent with settle); recover blocks invoice token by address and by balance-drop check (Arc native/USDC; only sub-1e12-wei dust above the 6-dec balance could leave, which is not owed money); CEI + nonReentrant; implementation reverts NotClone; predict/deploy share _address so validation and address match; salt = keccak(args); factory address commits to (authority, executor) via CREATE2 deployer; SafeERC20 covers no-return and false-return tokens; fee-on-transfer reverts RecipientMismatch. Non-blocking notes (tests missing for rules that hold in code, confirmed by throwaway PoCs): no test for nonReentrant on refund/recover; no USDT no-return-value mock (FeeToken stands in); no test that events are emitted; recipient == receiver rejection cannot be tested (hash fixed point); recover's to-address checks untested. invariant_invoiceTokenNeverRecovered is weak (attacker balance <= totalRefunded), but no recover of the invoice token succeeded in any run.",
+    "2026-10-08 review pass by reviewer: Re-review after 9f536d9 (tests only; no src changes, confirmed with git diff HEAD~1 HEAD -- packages/contracts/src). forge fmt --check and forge test: 50 passed, 1 skipped (fork test without RPC). The new tests are meaningful, checked by mutation in a scratch copy: removing nonReentrant from refund fails test_refundReentrancyBlocked; removing it from recover fails test_recoverReentrancyBlocked; removing recover's to-address check fails test_recoverRejectsBadDestination. NoReturnToken settle+refund passes through SafeERC20; the events test asserts emitter and args for ReceiverDeployed, Settled, Refunded, Recovered. Note: the reentrant call comes from the token, so without the guard it would still fail on Unauthorized; the tests catch the guard's removal through the error selector, which is the most a test can show here, since only the refund authority can call. Earlier findings stand: no money or security issue; Halmos and the fork test passed in the first review, and this commit changes neither."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-08T22:06:03Z",
+    "checks": [
+      {
+        "id": "contracts",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.2,
+        "log": "docs/runs/F036-20261008T220603Z-contracts.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F036-20261008T220603Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F036-20261008T220603Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.4,
+        "log": "docs/runs/F036-20261008T220603Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.6,
+        "log": "docs/runs/F036-20261008T220603Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 8.5,
+        "log": "docs/runs/F036-20261008T220603Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F036-20261008T220603Z-keep.log"
+      }
+    ],
+    "taskHash": "0b3be02d0726595e",
+    "filesHash": "12ff4bcc605775fc",
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Re-review after 9f536d9 (tests only; no src changes, confirmed with git diff HEAD~1 HEAD -- packages/contracts/src). forge fmt --check and forge test: 50 passed, 1 skipped (fork test without RPC). The new tests are meaningful, checked by mutation in a scratch copy: removing nonReentrant from refund fails test_refundReentrancyBlocked; removing it from recover fails test_recoverReentrancyBlocked; removing recover's to-address check fails test_recoverRejectsBadDestination. NoReturnToken settle+refund passes through SafeERC20; the events test asserts emitter and args for ReceiverDeployed, Settled, Refunded, Recovered. Note: the reentrant call comes from the token, so without the guard it would still fail on Unauthorized; the tests catch the guard's removal through the error selector, which is the most a test can show here, since only the refund authority can call. Earlier findings stand: no money or security issue; Halmos and the fork test passed in the first review, and this commit changes neither.",
+      "at": "2026-10-08T22:17:35Z",
+      "filesHash": "12ff4bcc605775fc"
+    },
+    "commit": "9f536d9",
+    "doneAt": "2026-10-08T22:17:49Z",
+    "proof": {
+      "1": "packages/contracts/src (security review passed twice)",
+      "2": "contracts check: 50 forge tests incl. fuzz, 5 invariants, CrossChain, Fork (public RPC in CI)",
+      "3": "Halmos 3 checks pass locally; CI step pipx run halmos==0.3.3",
+      "4": "mutation runs: refundable guard and settle caller check removed -> forge and Halmos fail"
+    }
+  },
+  "branch": "feat/f036-invoicereceiverfactory-and-invoicereceiv",
+  "baseCommit": "e8465bf736c0c6fa5116750ce517e53edb0f13c6",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f036-invoicereceiverfactory-and-invoicereceiv",
+    "base": "main"
+  }
+}

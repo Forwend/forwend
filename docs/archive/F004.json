@@ -1,0 +1,109 @@
+{
+  "id": "F004",
+  "type": "feat",
+  "behavior": "Design tokens for the chosen direction in light and dark themes, with fonts and a theme switch",
+  "acceptance": [
+    "Given packages/design-tokens, when the token unit test computes contrast, then every text/background pair listed in the test is >= 4.5:1 (body) or >= 3:1 (large text) in light and dark",
+    "Given /kit, when the theme switch is clicked, then <html> gets data-theme=dark and the computed body background changes; clicking again restores light"
+  ],
+  "dependsOn": [
+    "F003"
+  ],
+  "state": "passing",
+  "verification": [
+    "tokens-unit",
+    "kit-e2e"
+  ],
+  "refs": [
+    "R-2",
+    "R-3",
+    "D-4",
+    "Q-1"
+  ],
+  "keep": [],
+  "review": true,
+  "notes": [
+    "2026-10-08 review fail by subagent: Acceptance lines both met; one project-rule defect blocks. DEFECT: packages/ui-web/src/components/theme-switch.tsx:27 uses Tailwind default 'duration-150' (built CSS: transition-duration:.15s), a raw duration in a new reusable component, while AGENTS.md says to use tokens for every duration and tokens.css already has --fw-duration-fast (140ms). theme.css maps no duration tokens to utilities, so use duration-[var(--fw-duration-fast)] or add a mapping. Same line area: lucide size={18} (line 29) is a raw pixel value; fix it or list it as an accepted exception. VERIFIED OK: (1) contrast.test.ts reads src/tokens.css with readFileSync and parses the [data-theme=light] and [data-theme=dark] blocks; it covers ink/muted/subtle on grounds, on-primary/primary, on-accent/accent, status on soft and on surface, focus 3:1, in both themes. Mutation check on a scratch copy: dark muted #4a5a54 fails 3 cases, light warning #c08a20 fails 2, an rgb() value fails as missing. Small gaps, not blocking: info on surface, muted/subtle on sunken, subtle on surface-2. (2) e2e/kit.spec.ts:30-45 clicks the switch, checks html data-theme=dark, polls computed body background until it differs, clicks back and checks light plus the original background. Passed 3/3 with --repeat-each=3. (3) theme.css sets --color-*: initial and maps all 22 COLOR_TOKENS (tokens-sync.test.ts enforces this); built CSS has no --color-red/gray/white/black; grep finds no default color utilities in apps/web/src or packages/ui-web/src. (4) fonts.ts sets --fw-font-*-loaded on <html> and tokens.css :root reads them on the same element, so no precedence trap; the screenshots show Caslon, Hanken and Geist Mono. (5) base.css reduced-motion block uses !important; biome override is limited to that one file and the comment explains why. Checks run: design-tokens test 48/48 pass; kit e2e 12/12 pass.",
+    "2026-10-08 review pass by subagent: Previous defect fixed. theme-switch.tsx:27 now uses duration-[var(--fw-duration-fast)], and lines 30/32 use size-[var(--fw-icon-md)] instead of size={18}. tokens.css:100-103 defines --fw-icon-sm/md/lg (1rem/1.125rem/1.5rem). The built Next CSS has .duration-[var(--fw-duration-fast)]{transition-duration:var(--fw-duration-fast)} and .size-[var(--fw-icon-md)]{width/height:var(--fw-icon-md)}, so the @source scan of packages/ui-web picks them up. Grep for duration-N, delay-N, arbitrary px/ms/rem values, size={ and Npx/Nms in packages/ui-web/src, apps/web/src/components/kit and apps/web/src/app/kit/page.tsx: no matches. contrast.test.ts:50-53 adds muted/sunken, subtle/sunken, subtle/surface-2 and info/surface. It still reads src/tokens.css and parses the light and dark blocks (lines 4-13, 61). Token types moved to src/types/tokens/{colors,themes}.ts, the old types/themes.ts is deleted, and index.ts re-exports from the new paths. Checks run: design-tokens test 56/56 pass (3 files); kit e2e 4/4 pass, including the theme switch test (data-theme=dark, body background changes, then light and the original background come back); pnpm lint clean (74 files); pnpm typecheck --force 3/3 pass. Screenshots kit-light/kit-dark show token colors in both themes. Not blocking: kit/page.tsx:9 uses Tailwind's default backdrop-blur-md and tracking-[-0.01em] in kit-section.tsx:15 (blur and letter-spacing are not in the AGENTS.md token list). In kit-dark.png the switch shows the moon icon, so the screenshot was likely taken by setting the attribute directly; ThemeSwitch reads the attribute only on mount."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-08T12:50:02Z",
+    "checks": [
+      {
+        "id": "tokens-unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.5,
+        "log": "docs/runs/F004-20261008T125002Z-tokens-unit.log"
+      },
+      {
+        "id": "kit-e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 5.3,
+        "log": "docs/runs/F004-20261008T125002Z-kit-e2e.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F004-20261008T125002Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F004-20261008T125002Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.3,
+        "log": "docs/runs/F004-20261008T125002Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.0,
+        "log": "docs/runs/F004-20261008T125002Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 5.3,
+        "log": "docs/runs/F004-20261008T125002Z-e2e.log"
+      }
+    ],
+    "taskHash": "850c5f4896068154",
+    "filesHash": "827e41d88deaedf2",
+    "review": {
+      "result": "pass",
+      "by": "subagent",
+      "summary": "Previous defect fixed. theme-switch.tsx:27 now uses duration-[var(--fw-duration-fast)], and lines 30/32 use size-[var(--fw-icon-md)] instead of size={18}. tokens.css:100-103 defines --fw-icon-sm/md/lg (1rem/1.125rem/1.5rem). The built Next CSS has .duration-[var(--fw-duration-fast)]{transition-duration:var(--fw-duration-fast)} and .size-[var(--fw-icon-md)]{width/height:var(--fw-icon-md)}, so the @source scan of packages/ui-web picks them up. Grep for duration-N, delay-N, arbitrary px/ms/rem values, size={ and Npx/Nms in packages/ui-web/src, apps/web/src/components/kit and apps/web/src/app/kit/page.tsx: no matches. contrast.test.ts:50-53 adds muted/sunken, subtle/sunken, subtle/surface-2 and info/surface. It still reads src/tokens.css and parses the light and dark blocks (lines 4-13, 61). Token types moved to src/types/tokens/{colors,themes}.ts, the old types/themes.ts is deleted, and index.ts re-exports from the new paths. Checks run: design-tokens test 56/56 pass (3 files); kit e2e 4/4 pass, including the theme switch test (data-theme=dark, body background changes, then light and the original background come back); pnpm lint clean (74 files); pnpm typecheck --force 3/3 pass. Screenshots kit-light/kit-dark show token colors in both themes. Not blocking: kit/page.tsx:9 uses Tailwind's default backdrop-blur-md and tracking-[-0.01em] in kit-section.tsx:15 (blur and letter-spacing are not in the AGENTS.md token list). In kit-dark.png the switch shows the moon icon, so the screenshot was likely taken by setting the attribute directly; ThemeSwitch reads the attribute only on mount.",
+      "at": "2026-10-08T12:51:14Z",
+      "filesHash": "827e41d88deaedf2"
+    },
+    "commit": "4b36090",
+    "doneAt": "2026-10-08T12:51:32Z",
+    "proof": {
+      "1": "packages/design-tokens/test/contrast.test.ts parses tokens.css light and dark blocks and asserts each listed pair >= 4.5:1 (body) or >= 3:1 (large); 56 tests pass",
+      "2": "apps/web/e2e/kit.spec.ts '/kit theme switch' clicks the switch, asserts data-theme=dark and a changed computed body background, then back to light"
+    }
+  },
+  "branch": "feat/f004-design-tokens-for-the-chosen-direction-i",
+  "baseCommit": "fa1bc1bf47528718ae37b9579ee450bd089518a5",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f004-design-tokens-for-the-chosen-direction-i",
+    "base": "main"
+  }
+}

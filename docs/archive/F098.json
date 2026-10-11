@@ -1,0 +1,104 @@
+{
+  "id": "F098",
+  "type": "fix",
+  "behavior": "Improve balance card contrast in the light theme",
+  "acceptance": [
+    "R-39: the light balance card uses a muted landscape and pale wash so chart ticks and action labels remain readable on desktop and phone; the dark card retains its existing appearance"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "e2e"
+  ],
+  "refs": [
+    "R-39",
+    "R-2"
+  ],
+  "keep": [
+    "apps/backend/*",
+    "packages/contracts/*"
+  ],
+  "review": false,
+  "notes": [
+    "2026-10-10 F098: approved light balance card styling; verification passed; commit and merge the task PR next."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-10T14:09:45Z",
+    "checks": [
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 12.5,
+        "log": "docs/runs/F098-20261010T140945Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.8,
+        "log": "docs/runs/F098-20261010T140945Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F098-20261010T140945Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F098-20261010T140945Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F098-20261010T140945Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 24.6,
+        "log": "docs/runs/F098-20261010T140945Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.4,
+        "log": "docs/runs/F098-20261010T140945Z-build.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F098-20261010T140945Z-keep.log"
+      }
+    ],
+    "taskHash": "b58dab37c8cda4a4",
+    "filesHash": "d7e287b931adf31f",
+    "proof": {
+      "1": "e2e: browser suite passes; desktop and phone light previews reviewed and approved, with the existing dark image and wash preserved; styles remain scoped to the balance hero"
+    },
+    "commit": "34c2ede",
+    "doneAt": "2026-10-10T14:11:28Z"
+  },
+  "branch": "fix/f098-improve-balance-card-contrast-in-the-lig",
+  "baseCommit": "364470afadc781d4c295114b0ce1b87d683a0640",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f098-improve-balance-card-contrast-in-the-lig",
+    "base": "main"
+  }
+}

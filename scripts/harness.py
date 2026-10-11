@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 TASKS = 'docs/tasks.json'
+ARCHIVE = 'docs/archive'
 CONFIG = 'docs/config.json'
 RUNS = 'docs/runs'
 LOCK = 'docs/.harness.lock'
@@ -231,10 +232,28 @@ class State:
         self._files_hash = None
         self._base_states = {}
 
-    def task(self, task_id):
+    def archived_ids(self):
+        return {path.stem for path in (self.root / ARCHIVE).glob('F*.json') if TASK_ID.fullmatch(path.stem)}
+
+    def archived(self, task_id):
+        if not TASK_ID.fullmatch(str(task_id)):
+            return None
+        path = self.root / ARCHIVE / f'{task_id}.json'
+        if not path.exists():
+            return None
+        task = read_json(path)
+        if not isinstance(task, dict) or task.get('id') != task_id or task.get('state') not in ('passing', 'dropped'):
+            raise Refused(f'{path}: expected a completed record for {task_id}', 2)
+        return task
+
+    def task(self, task_id, include_archived=False):
         for task in self.tasks:
             if task.get('id') == task_id:
                 return task
+        if include_archived:
+            archived = self.archived(task_id)
+            if archived:
+                return archived
         raise Refused(f'no task {task_id}', 2)
 
     def checks(self):
@@ -259,10 +278,8 @@ class State:
         return sorted((task for task in self.tasks if task.get('state') in states), key=number)
 
     def satisfied(self, dependency):
-        if (self.root / 'docs/archive' / f'{dependency}.json').exists():
-            return True
-        return any(task.get('id') == dependency and task.get('state') == 'passing' and not stale_reason(self, task)
-                   and not unmerged(self, task) for task in self.tasks)
+        task = next((task for task in self.tasks if task.get('id') == dependency), None) or self.archived(dependency)
+        return bool(task and task.get('state') == 'passing' and not stale_reason(self, task) and not unmerged(self, task))
 
     def ready(self):
         return [task for task in self.with_state('not_started')
@@ -292,7 +309,7 @@ class State:
         digests = {}
         for name in sorted(set(names)):
             path = self.root / name
-            if name.startswith(BOOKKEEPING) or SKIP_DIRS.intersection(Path(name).parts):
+            if name.startswith(BOOKKEEPING + (ARCHIVE + '/',)) or SKIP_DIRS.intersection(Path(name).parts):
                 continue
             if path.is_file():
                 try:
@@ -403,16 +420,18 @@ def problems(state):
                 found.append(f'{task_id}: check {check_id!r} is not defined in {CONFIG}')
         if task.get('state') == 'blocked' and not task.get('blockedReason'):
             found.append(f'{task_id}: blocked without a reason')
+    archived_ids = state.archived_ids()
     for task in state.tasks:
         if task.get('state') == 'verified' and stale_reason(state, task):
             found.append(f'{task.get("id")}: {stale_reason(state, task)}; verify again')
         for dependency in task.get('dependsOn') or []:
-            if dependency not in seen and not state.satisfied(dependency):
+            if dependency not in seen and dependency not in archived_ids:
                 found.append(f'{task.get("id")}: depends on unknown task {dependency}')
     in_progress = state.with_state('active', 'verified')
     if len(in_progress) > 1:
         found.append('more than one task in progress (active or verified): ' + ', '.join(t['id'] for t in in_progress))
     numbers = [number(task) for task in state.tasks if TASK_ID.fullmatch(str(task.get('id', '')))]
+    numbers += [number({'id': task_id}) for task_id in archived_ids]
     if numbers and not (isinstance(state.data.get('nextId'), int) and state.data['nextId'] > max(numbers)):
         found.append(f'{TASKS}: nextId must be an integer greater than every task number')
     cycle = find_cycle(state.tasks)
@@ -530,6 +549,14 @@ def unmerged(state, task):
         return False
     base = info.get('base') or 'main'
     merged = state.base_states(base)
+    task_id = task.get('id')
+    if merged is not None and task_id not in merged:
+        text = git(state.root, 'show', f'refs/remotes/origin/{base}:{ARCHIVE}/{task_id}.json')
+        try:
+            archived = json.loads(text) if text else {}
+            merged[task_id] = archived.get('state') if archived.get('id') == task_id else None
+        except (ValueError, AttributeError):
+            merged[task_id] = None
     return merged is not None and merged.get(task.get('id')) != 'passing'
 
 
@@ -546,7 +573,8 @@ def branches_elsewhere(state):
     for ref in refs.split():
         name = ref[len('origin/'):] if ref.startswith('origin/') else ref
         match = re.fullmatch(rf'(?:{"|".join(TYPES)})/(f\d{{3,}})-.+', name)
-        if match and name != here and known.get(match.group(1).upper(), 'not_started') == 'not_started':
+        if match and name != here and known.get(match.group(1).upper(), 'not_started') == 'not_started' \
+                and not state.archived(match.group(1).upper()):
             found.add(name)
     return sorted(found)
 
@@ -644,11 +672,13 @@ def next_step(state, found):
     if active:
         task = active[0]
         evidence = task.get('evidence') or {}
-        if evidence.get('status') == 'running' and not pid_alive(evidence.get('pid')):
+        if evidence.get('status') == 'running':
+            if pid_alive(evidence.get('pid')):
+                return f'wait for `verify {task["id"]}` to finish, then `status`'
             return f'`verify {task["id"]}` again; the last run was interrupted'
         if evidence.get('status') == 'failed':
             return f'fix the failing check, then `verify {task["id"]}`'
-        return f'implement {task["id"]}, then `verify {task["id"]}`'
+        return f'read `show {task["id"]}`, implement it, then `verify {task["id"]}`'
     verified = state.with_state('verified')
     if verified:
         task = verified[0]
@@ -696,36 +726,19 @@ def cmd_status(root, args):
                       + '; the task was started there, so its queue is newer')
         elif settings['wanted'] == 'pr':
             print('delivery: local until a GitHub remote named origin exists')
-    last = state.data.get('lastWrapup')
-    if isinstance(last, dict):
-        print(f'last wrapup: {"clean" if last.get("clean") else "not clean"} at {last.get("at")}'
-              + ''.join(f'; {problem}' for problem in (last.get('problems') or [])[:3])
-              + (f'; note: {last["note"]}' if last.get('note') else ''))
-    checks = state.checks()
     for task in state.with_state('active', 'verified'):
-        print(f'{task["state"]}: {task["id"]} {task.get("behavior")}')
+        print(f'{task["state"]}: {task["id"]} {shorten(task.get("behavior"))}')
         if task.get('branch'):
             print(f'  branch: {task["branch"]}' + (f' (you are on {here}: `git switch {task["branch"]}`)'
                                                      if here and here != task['branch'] else ''))
-        for index, item in enumerate(task.get('acceptance') or [], 1):
-            print(f'  accept {index}: {item}')
-        for check_id in run_order(state, task):
-            argv = checks.get(check_id, {}).get('argv')
-            print(f'  check {check_id}: ' + (' '.join(argv) if argv else f'MISSING from {CONFIG}'))
-        if task.get('keep'):
-            print('  must not change: ' + '; '.join(task['keep']))
-        if task.get('refs'):
-            print('  refs: ' + ', '.join(task['refs']))
         reason = stale_reason(state, task)
         print('  last: ' + evidence_line(task) + (f' [stale: {reason}]' if reason else ''))
         if task.get('review'):
             review = (task.get('evidence') or {}).get('review')
-            print('  review: ' + (f'{review.get("result")} by {review.get("by")} at {review.get("at")}: {review.get("summary")}'
+            print('  review: ' + (f'{review.get("result")} by {review.get("by")} at {review.get("at")}: {shorten(review.get("summary"), 240)}'
                                  if review else 'required, not done yet'))
         if (task.get('failedVerifies') or 0) >= 2:
             print(f'  failed verifies in a row: {task["failedVerifies"]}')
-        for note in (task.get('notes') or [])[-3:]:
-            print(f'  note: {note}')
     for task in state.with_state('passing'):
         if unmerged(state, task):
             print(f'waiting for merge: {task["id"]} on {task["delivery"].get("branch")}; '
@@ -743,7 +756,8 @@ def cmd_status(root, args):
         print(f'blocked: {task["id"]} {task.get("blockedReason")}')
     dropped = {task['id'] for task in state.with_state('dropped')}
     for task in state.with_state('not_started', 'blocked'):
-        gone = [dep for dep in task.get('dependsOn') or [] if dep in dropped]
+        gone = [dep for dep in task.get('dependsOn') or []
+                if dep in dropped or (state.archived(dep) or {}).get('state') == 'dropped']
         if gone:
             print(f'attention: {task["id"]} depends on dropped {", ".join(gone)}; `edit {task["id"]} --after ...`')
     for task in state.with_state('passing'):
@@ -767,7 +781,8 @@ def cmd_status(root, args):
 def cmd_list(root, args):
     state = State(root)
     hidden = {}
-    for task in sorted(state.tasks, key=number):
+    archived = [state.archived(task_id) for task_id in state.archived_ids()] if args.all else []
+    for task in sorted(state.tasks + archived, key=number):
         if task.get('state') in ('passing', 'dropped') and not args.all:
             hidden[task['state']] = hidden.get(task['state'], 0) + 1
             continue
@@ -776,22 +791,28 @@ def cmd_list(root, args):
         if task.get('state') == 'blocked':
             extra = f' [{task.get("blockedReason")}]'
         refs = f' ({", ".join(task["refs"])})' if task.get('refs') else ''
+        if task in archived:
+            extra += ' [archived]'
         print(f'{task.get("id")} {task.get("state", "?"):<11} {shorten(task.get("behavior"), 80)}{refs}{extra}')
     if hidden:
         print('(' + ', '.join(f'{count} {name}' for name, count in hidden.items()) + ' hidden; `list --all` shows them)')
-    if not state.tasks:
+    if not state.tasks and not archived:
         print('no tasks')
     return 0
 
 
 def cmd_show(root, args):
     state = State(root)
-    task = state.task(args.id)
+    task = state.task(args.id, include_archived=True)
     checks = state.checks()
     print(f'{task["id"]} [{task.get("state")}] {task.get("type") or "feat"}: {task.get("behavior")}')
+    if task not in state.tasks:
+        print(f'archived: {ARCHIVE}/{task["id"]}.json')
     for key, label in (('dependsOn', 'depends on'), ('refs', 'refs')):
         if task.get(key):
             print(f'{label}: ' + ', '.join(task[key]))
+    if not task.get('refs') and task.get('state') not in ('passing', 'dropped'):
+        print(f'refs: none; add the relevant requirement or decision with `edit {task["id"]} --ref ID` before implementation')
     if task.get('keep'):
         print('must not change: ' + '; '.join(task['keep']))
     for key in ('branch', 'spec', 'plan', 'blockedReason', 'baseCommit'):
@@ -809,8 +830,9 @@ def cmd_show(root, args):
         print(f'check {check_id}: ' + (' '.join(argv) if argv else 'MISSING') + own)
     evidence = task.get('evidence') or {}
     print('last: ' + evidence_line(task))
-    for check in evidence.get('checks') or []:
-        print(f'  {check.get("id")}: {check.get("outcome")} exit {check.get("exit")} {check.get("seconds")}s {check.get("log")}')
+    if args.history:
+        for check in evidence.get('checks') or []:
+            print(f'  {check.get("id")}: {check.get("outcome")} exit {check.get("exit")} {check.get("seconds")}s {check.get("log")}')
     if evidence.get('changedDuringRun'):
         print('  checks changed files: ' + ', '.join(evidence['changedDuringRun']))
     if evidence.get('commit'):
@@ -820,8 +842,11 @@ def cmd_show(root, args):
     reason = stale_reason(state, task)
     if reason:
         print(f'stale: {reason}')
-    for note in task.get('notes') or []:
-        print(f'note: {note}')
+    notes = task.get('notes') or []
+    for note in notes if args.history else notes[-3:]:
+        print(f'note: {note if args.history else shorten(note, 240)}')
+    if not args.history and (evidence.get('checks') or len(notes) > 3 or any(len(note) > 240 for note in notes[-3:])):
+        print(f'history: `show {task["id"]} --history` shows complete notes and check results')
     return 0
 
 
@@ -834,7 +859,7 @@ def check_references(state, task_id, checks=None, deps=None):
     unknown = [check for check in checks or [] if check not in known]
     if unknown:
         raise Refused(f'unknown check {", ".join(unknown)}; defined in {CONFIG}: {", ".join(known) or "none yet"}', 2)
-    ids = {task.get('id') for task in state.tasks}
+    ids = {task.get('id') for task in state.tasks} | state.archived_ids()
     missing = [dep for dep in deps or [] if dep == task_id or (dep not in ids and not state.satisfied(dep))]
     if missing:
         raise Refused(f'invalid dependency {", ".join(missing)}', 2)
@@ -845,7 +870,8 @@ def cmd_add(root, args):
         state = State(root)
         check_references(state, None, args.check, args.after)
         next_id = state.data.get('nextId') if isinstance(state.data.get('nextId'), int) else 1
-        next_id = max([next_id] + [number(task) + 1 for task in state.tasks if number(task) < 10 ** 9])
+        next_id = max([next_id] + [number(task) + 1 for task in state.tasks if number(task) < 10 ** 9]
+                      + [number({'id': task_id}) + 1 for task_id in state.archived_ids()])
         task = {'id': f'F{next_id:03d}', 'type': args.type, 'behavior': args.behavior, 'acceptance': args.accept,
                 'dependsOn': args.after, 'state': 'not_started', 'verification': args.check,
                 'refs': args.ref, 'keep': args.keep, 'review': args.review, 'notes': [],
@@ -894,12 +920,17 @@ def cmd_edit(root, args):
     return 0
 
 
-def transition(root, task_id, change):
+def transition(root, task_id, change, restore_archived=False):
     with Lock(root):
         state = State(root)
-        task = state.task(task_id)
+        task = state.task(task_id, include_archived=restore_archived)
+        archived = task not in state.tasks
         message = change(state, task)
+        if archived:
+            state.tasks.append(task)
         state.save()
+        if archived:
+            (root / ARCHIVE / f'{task_id}.json').unlink()
     print(message)
     return 0
 
@@ -964,7 +995,7 @@ def cmd_reopen(root, args):
         task.setdefault('notes', []).append(f'{now()[:10]} reopened: {args.reason}')
         return '\n'.join([f'reopened {task["id"]}', *notes,
                           f'next: change what the reason requires, then `verify {task["id"]}`'])
-    return transition(root, args.id, change)
+    return transition(root, args.id, change, restore_archived=True)
 
 
 def cmd_note(root, args):
@@ -1089,7 +1120,7 @@ def cmd_done(root, args):
     resumed = merged = False
     with Lock(root):
         state = State(root)
-        task = state.task(args.id)
+        task = state.task(args.id, include_archived=True)
         settings = delivery(state)
         info = task.get('delivery') or {}
         if settings['mode'] == 'pr' and task.get('state') == 'passing' and info.get('mode') == 'pr':
@@ -1318,6 +1349,45 @@ def finish_merge(root, task_id, branch, base, url):
     return 0
 
 
+def cmd_archive(root, args):
+    with Lock(root):
+        state = State(root)
+        selected = [state.task(task_id) for task_id in dict.fromkeys(args.ids)] if args.ids \
+            else state.with_state('passing', 'dropped')
+        bases = {(task.get('delivery') or {}).get('base') or 'main' for task in selected
+                 if task.get('state') == 'passing' and (task.get('delivery') or {}).get('mode') == 'pr'}
+        if bases and delivery(state)['mode'] == 'pr':
+            git_or_refuse(root, 'fetch', '--quiet', 'origin', *sorted(bases))
+            state.forget_base()
+        completed = []
+        for task in selected:
+            if task.get('state') not in ('passing', 'dropped'):
+                raise Refused(f'{task["id"]} is unfinished; only completed or dropped tasks can be archived')
+            info = task.get('delivery') or {}
+            if task.get('state') == 'passing' and info.get('mode') == 'pr' \
+                    and (state.base_states(info.get('base') or 'main') is None or unmerged(state, task)):
+                if args.ids:
+                    raise Refused(f'{task["id"]} is not confirmed merged; finish delivery before archiving')
+                continue
+            reason = stale_reason(state, task)
+            if reason:
+                raise Refused(f'{task["id"]}: {reason}; resolve it before archiving')
+            path = root / ARCHIVE / f'{task["id"]}.json'
+            if path.exists() and read_json(path) != task:
+                raise Refused(f'{path} already contains a different record; nothing was archived')
+            completed.append(task)
+        if completed:
+            (root / ARCHIVE).mkdir(parents=True, exist_ok=True)
+            for task in completed:
+                path = root / ARCHIVE / f'{task["id"]}.json'
+                if not path.exists():
+                    write_json(path, task)
+            state.tasks[:] = [task for task in state.tasks if task not in completed]
+            state.save()
+    print(f'archived {len(completed)} tasks in {ARCHIVE}; {len(state.tasks)} tasks remain in {TASKS}')
+    return 0
+
+
 def cmd_validate(root, args):
     found = problems(State(root))
     for problem in found:
@@ -1481,7 +1551,10 @@ def parser():
     type_help = 'kind of change; names the branch and the pull request title'
     command('status', cmd_status, 'where things stand and the next step; start every session here')
     command('list', cmd_list, 'one line per open task', (['--all'], {'action': 'store_true', 'help': 'include passing and dropped tasks'}))
-    command('show', cmd_show, 'full detail, evidence and notes for one task', task_id)
+    command('show', cmd_show, 'task instructions, verification summary and recent notes', task_id,
+            (['--history'], {'action': 'store_true', 'help': 'include complete notes and per-check results'}))
+    command('archive', cmd_archive, 'move completed and dropped tasks to docs/archive; retain unfinished and unmerged work',
+            (['ids'], {'nargs': '*', 'help': 'task ids; omit to archive all completed tasks'}))
     command('add', cmd_add, 'queue a task',
             (['behavior'], {'help': 'observable outcome, one sentence'}),
             (['--type'], {'choices': TYPES, 'default': 'feat', 'help': type_help}),

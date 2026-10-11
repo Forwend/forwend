@@ -2,15 +2,23 @@
 
 Entry point: `python3 scripts/harness.py`. Add `-h` after any command for options.
 Check definitions live only in [config.json](config.json); staging CI runs the same registry.
-Task state lives in `tasks.json` (edit through the runner); logs in ignored `runs/`.
+Open task state lives in `tasks.json` (edit through the runner); completed records live in `archive/`;
+logs live in ignored `runs/`.
 Runner regression tests live in `tests/test_harness.py`. No installed skill is needed to use this workflow.
 
 ## One task at a time
 
-1. `status`, then `show ID`: read acceptance, refs, checks and must-not-change paths.
+1. `status` gives current state and the next action. `show ID` gives acceptance, refs, checks and must-not-change paths.
+   Read only the referenced PROJECT rows and owning package instructions. If refs are missing, add the relevant
+   requirement or decision with `edit ID --ref R-N` before implementation. Use `show ID --history` only to investigate
+   earlier notes or check results; dated notes are history, so confirm they still apply. Do not load all of tasks.json,
+   PROJECT.md or the runner source for ordinary task work.
 2. For new work, add a requirement in [PROJECT.md](PROJECT.md), then `add "behavior" --type fix --accept "..." --check CHECK --ref R-N --keep "path/*"`.
    Define unclear scope before coding. Split independent changes into tasks. Do not start unrelated queued product work.
 3. `start ID` creates the task branch from the latest base. Finish a pending PR before another task.
+   On the task branch, run `archive` to move merged and dropped tasks out of the queue; `archive ID ...` selects
+   specific tasks. Commit `tasks.json` and `archive/` together. Unfinished and unmerged tasks stay in the queue.
+   `show ID` reads archived records, `list --all` lists them, and `reopen ID --reason "..."` restores work to the queue.
 4. Before creating or moving files, read the owning structure rules: [web/UI](web/structure.md), [backend](backend/rules.md).
    Identify the owner, filename and allowed dependencies; search for existing code before adding another shared helper.
    Reproduce bugs first. Make the smallest fix and run its direct checks. Add tests for behavior, not formatting or copied prose.
@@ -18,31 +26,15 @@ Runner regression tests live in `tests/test_harness.py`. No installed skill is n
 6. If review is required, a fresh reviewer reads `show ID` and the diff, then runs `review ID --pass|--fail --summary "findings"`.
 7. With commit/push/merge authorization, commit the verified files and run `done ID`. It pushes, opens the PR,
    checks the configured delivery policy and merges. Main requires fresh local verification; reported GitHub
-   failures or pending checks still block delivery, but absent checks are expected under the policy below.
+   failures or pending checks still block delivery, but absent checks are allowed by the delivery policy below.
    Pending CI: repeat `done ID`. Failed CI: fix, verify, review and commit again. Approval or closed PR: ask the owner.
 8. Before stopping: `wrapup --note "result; next step"`. Resolve failures or report the exact remaining blocker.
 
-## Development and staging CI
+## Delivery policy
 
-- `main` is the development branch. Task branches still merge through PRs and must pass local `verify` and any
-  required review. Automatic GitHub Actions runs are disabled for PRs into main and pushes to main.
-- `staging` is the batch-validation branch. Its push event runs the full CI registry, including CI-only checks.
-  There is no additional PR-triggered run. Staging is not a deployment environment and this workflow deploys nothing.
-- `delivery.requireRemoteChecks: false` in [config.json](config.json) applies to normal task delivery into the
-  configured base, `main`. The default is true when omitted. It permits absent remote checks, never missing local
-  verification, failed/skipped checks, authentication errors or a stale verification record.
-- Keep staging free of independent commits. From a clean checkout, fetch origin, switch to staging, fast-forward
-  it to `origin/main` with `git merge --ff-only origin/main`, then push staging when a batch is ready. Each push
-  consumes one full CI run; promote deliberately, not after every task. Do not squash or delete staging.
-- A staging push happens before CI reports a result. Treat only a passing run for that exact commit as validated;
-  do not deploy or release an unverified batch. Fix failures on a task branch, merge into main, then promote again.
-- Bootstrap: merge the trigger and harness-policy changes into main before first publishing staging at that
-  updated main commit. Creating staging from the old workflow alone does not enable staging CI. The transition
-  PR may still receive a final run under the old trigger; no workflow-wide disable or skipped-check override is needed.
-
-GitHub's [branch filters](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)
-control which events start a workflow. This repo is private, so hosted runs consume the owner's included allowance
-under [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions).
+Main task PRs require fresh local verification and any required review. The explicit policy in
+[config.json](config.json) permits absent GitHub checks; reported failures and pending checks still block delivery.
+Read [staging.md](staging.md) only when promoting a batch to staging or changing the CI policy.
 
 ## Structure review
 

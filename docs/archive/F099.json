@@ -1,0 +1,119 @@
+{
+  "id": "F099",
+  "type": "fix",
+  "behavior": "A settlement's transaction hash is recorded only when our own settle transaction succeeded",
+  "acceptance": [
+    "When a sent settlement intent finds the receiver already settled (for example the refund authority settled after the deadline), the signer checks our transaction's receipt and keeps its tx_hash only if it succeeded, otherwise stores no hash; settlementTxHash and activity txHash are then null as openapi.yaml and api.md already say; a signer test on Anvil covers a sent intent that the refund authority settles"
+  ],
+  "dependsOn": [
+    "F084"
+  ],
+  "state": "passing",
+  "verification": [
+    "backend"
+  ],
+  "refs": [
+    "R-22",
+    "R-42"
+  ],
+  "keep": [
+    "packages/contracts/*"
+  ],
+  "review": true,
+  "notes": [
+    "2026-10-10 review pass by reviewer: Pass. confirmIfFinal (all 3 confirm paths) keeps tx_hash only on a status-1 receipt; settle() reverts AlreadySettled, so status 1 proves ours settled; receiver-settled is read at finalized, so a later reorg can't change the settler. Booking/idempotency unchanged (FOR UPDATE status check). Non-NotFound RPC errors are wrapped and retried next round, consistent with reconcile. Known limit: single primary RPC; a lagging/pruned node returning NotFound for our mined settle stores a null hash (display-only, money unaffected). Backend tests pass; disabling the receipt check makes both new subtests fail."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-10T15:00:08Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 30.6,
+        "log": "docs/runs/F099-20261010T150008Z-backend.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.7,
+        "log": "docs/runs/F099-20261010T150008Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F099-20261010T150008Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F099-20261010T150008Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F099-20261010T150008Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 30.1,
+        "log": "docs/runs/F099-20261010T150008Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.0,
+        "log": "docs/runs/F099-20261010T150008Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 47.6,
+        "log": "docs/runs/F099-20261010T150008Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F099-20261010T150008Z-keep.log"
+      }
+    ],
+    "taskHash": "39d89cf36649c5ec",
+    "filesHash": "ed9b88e97774bb6a",
+    "proof": {
+      "1": "backend: internal/settlement TestSettledByTheRefundAuthorityAfterOurSettleFailedHasNoTxHash (Anvil + Postgres; subtests reverted, never mined): our settle is saved, then after the deadline it reverts (receipt status 0) or is never sent, and the refund authority settles the receiver; the signer confirms the intent, the invoice is settled, the recipient gets 5000000, the settlement is booked once in ledger_transactions, and GET-invoice settlementTxHash (invoice.Service.Get, same tx_hash column activity reads) is null. TestSettlesAPaidInvoiceOnce now also asserts the normal path's settlementTxHash is our settle with a successful receipt. Both subtests failed before the fix (the failed hash was recorded)."
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Pass. confirmIfFinal (all 3 confirm paths) keeps tx_hash only on a status-1 receipt; settle() reverts AlreadySettled, so status 1 proves ours settled; receiver-settled is read at finalized, so a later reorg can't change the settler. Booking/idempotency unchanged (FOR UPDATE status check). Non-NotFound RPC errors are wrapped and retried next round, consistent with reconcile. Known limit: single primary RPC; a lagging/pruned node returning NotFound for our mined settle stores a null hash (display-only, money unaffected). Backend tests pass; disabling the receipt check makes both new subtests fail.",
+      "at": "2026-10-10T15:03:45Z",
+      "filesHash": "ed9b88e97774bb6a"
+    },
+    "commit": "7c63c96",
+    "doneAt": "2026-10-10T15:04:00Z"
+  },
+  "branch": "fix/f099-a-settlement-s-transaction-hash-is-recor",
+  "baseCommit": "ea0b984ce4be0816a427247518c16b82bfe16573",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f099-a-settlement-s-transaction-hash-is-recor",
+    "base": "main"
+  }
+}

@@ -1,0 +1,114 @@
+{
+  "id": "F067",
+  "type": "feat",
+  "behavior": "A visitor signs in with Privy and lands in the app shell",
+  "acceptance": [
+    "Privy sign-in (email code; Google and passkey enabled in the dashboard) leads to /app with sidebar, top bar, profile switcher and theme switcher; the first sign-in calls POST /v1/me and the personal profile exists",
+    "A signed-out visit to /app goes to sign-in; Playwright signs in with the Privy test account (credentials only in the ignored apps/web/.env)"
+  ],
+  "dependsOn": [
+    "F065"
+  ],
+  "state": "passing",
+  "verification": [
+    "e2e",
+    "unit"
+  ],
+  "refs": [
+    "R-34"
+  ],
+  "keep": [
+    "packages/contracts/*"
+  ],
+  "review": true,
+  "notes": [
+    "2026-10-09 review pass by reviewer: Independent review: sign-in, /app auth gate, same-origin /api/v1 rewrite and Privy scoping hold; error and empty states offer Retry and Sign out and the live spec proves it; turbo hashes .env* and API_URL; docs match the code. Open low: rejected logout() is not caught; proof 1's database claim is not checked by the spec."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-09T20:20:13Z",
+    "checks": [
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 25.5,
+        "log": "docs/runs/F067-20261009T202013Z-e2e.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 26.9,
+        "log": "docs/runs/F067-20261009T202013Z-unit.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.6,
+        "log": "docs/runs/F067-20261009T202013Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F067-20261009T202013Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F067-20261009T202013Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F067-20261009T202013Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 5.7,
+        "log": "docs/runs/F067-20261009T202013Z-build.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F067-20261009T202013Z-keep.log"
+      }
+    ],
+    "taskHash": "8cd2505ebbc53130",
+    "filesHash": "1113c1f1d2e26608",
+    "proof": {
+      "1": "e2e: e2e/privy/sign-in.spec.ts on localhost:3000 with the real Privy app and backend api: the test account signs in by email code, POST /api/v1/me answers 200 (201 on a first sign-in; first signup is covered by backend tests), and /app shows the App navigation, the Profile switcher with Personal, the wallet address, a working theme switch and sign out; a reload still lists one Personal profile; axe finds no serious or critical violation on the real /sign-in and on /app",
+      "2": "e2e: the live spec checks a signed-out visit to /app goes to /sign-in, also after sign out, and that a failing POST /v1/me shows an error with Sign out; the test account is read only from the ignored apps/web/.env (names in .env.example) and the live run is skipped without it, as in CI, where a11y.spec only audits the not-configured /sign-in"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Independent review: sign-in, /app auth gate, same-origin /api/v1 rewrite and Privy scoping hold; error and empty states offer Retry and Sign out and the live spec proves it; turbo hashes .env* and API_URL; docs match the code. Open low: rejected logout() is not caught; proof 1's database claim is not checked by the spec.",
+      "at": "2026-10-09T20:21:53Z",
+      "filesHash": "1113c1f1d2e26608"
+    },
+    "commit": "8f77bb6",
+    "doneAt": "2026-10-09T20:22:22Z"
+  },
+  "branch": "feat/f067-a-visitor-signs-in-with-privy-and-lands",
+  "baseCommit": "72dc06477153ea0e74d1c90c25de949d6bbbd5e6",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f067-a-visitor-signs-in-with-privy-and-lands",
+    "base": "main"
+  }
+}

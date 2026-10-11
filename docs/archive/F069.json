@@ -1,0 +1,103 @@
+{
+  "id": "F069",
+  "type": "docs",
+  "behavior": "Spike: what proves a recent Privy sign-in before money actions, and how sessions are listed and revoked",
+  "acceptance": [
+    "docs/spikes/s8-reauth.md records, with the Privy test app, which token claims or flows prove a recent sign-in, how sessions and devices are listed and revoked, and the rule the API will enforce before money actions"
+  ],
+  "dependsOn": [
+    "F067"
+  ],
+  "state": "passing",
+  "verification": [
+    "docs-check"
+  ],
+  "refs": [
+    "R-36"
+  ],
+  "keep": [
+    "apps/*",
+    "packages/*"
+  ],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-10T13:21:16Z",
+    "checks": [
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F069-20261010T132116Z-docs-check.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.8,
+        "log": "docs/runs/F069-20261010T132116Z-harness.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F069-20261010T132116Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F069-20261010T132116Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 28.4,
+        "log": "docs/runs/F069-20261010T132116Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.7,
+        "log": "docs/runs/F069-20261010T132116Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 49.2,
+        "log": "docs/runs/F069-20261010T132116Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F069-20261010T132116Z-keep.log"
+      }
+    ],
+    "taskHash": "11113140e1b13c34",
+    "filesHash": "2cd6bf62c3345f7c",
+    "proof": {
+      "1": "docs-check: docs/spikes/s8-reauth.md records live runs on the Privy test app (5 email-code sign-ins, refresh, re-proof while signed in, freeze/unfreeze): access token claims sid/iss/iat/aud/sub/exp only, a real refresh keeps sid and moves iat, the email account's latest_verified_at equals the sign-in token's iat and does not move on refresh, Privy has no session list API and freeze leaves locally verified tokens valid until exp; the rule is D-49 in PROJECT, linked from R-36; docs-check 0 errors"
+    },
+    "commit": "83b9606",
+    "doneAt": "2026-10-10T13:23:13Z"
+  },
+  "branch": "docs/f069-spike-what-proves-a-recent-privy-sign-in",
+  "baseCommit": "f68449f4d283fa84bb69cd6302f5f7880d254333",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "docs/f069-spike-what-proves-a-recent-privy-sign-in",
+    "base": "main"
+  }
+}

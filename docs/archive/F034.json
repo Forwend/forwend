@@ -1,0 +1,112 @@
+{
+  "id": "F034",
+  "type": "docs",
+  "behavior": "Contract security rules from the 2026-10-09 design review live in packages/contracts/AGENTS.md, and PLAN.md Phase 5, the S-5 spike and the diagrams match them (do this when contract work starts, before S-5)",
+  "acceptance": [
+    "packages/contracts/AGENTS.md exists and says: until the first mainnet deployment the contracts may be redesigned and patched freely; after it, deployed contracts never change and fixes ship as a new factory version",
+    "Terms carry only invoiceId (256-bit random), recipient, token, amount, expiresAt, settleDeadline, intendedChainId. refundAuthority is a factory constant (the Safe); executor is stored in the factory and only the Safe can change it",
+    "Deployment only through a CREATE2 deployer whose address commits to the code (CreateX without the chainId-guarded salt, or the standard CREATE2 deployer); the factory creates the implementation; no nonce-based fallback in S-5; a chain without such a deployer gets its own factory and no cross-chain recovery; the gate compares a real deployed receiver with predict on every testnet",
+    "Receiver rules: settle and refund require block.chainid == intendedChainId; recover never takes the invoice token on the intended chain; predict/deploy reject amount 0, recipient 0/receiver/factory/token, token 0, expiresAt 0, settleDeadline < expiresAt, chain id 0 (expiry in the past is checked by the backend only: late deposits deploy the receiver after expiry); on the intended chain recover never lowers the invoice-token balance (Arc: the native coin is the same balance as USDC); CEI + nonReentrant; no approve, no isValidSignature, no fallback/receive, no selfdestruct, no delegatecall; the implementation reverts when called directly; deploy returns the existing address; settle checks the recipient balance rose by exactly amount; settleDeadline >= p99 finality lag + margin (or >= 24h)",
+    "Safe rules: version >= 1.4.1, >= 3-of-5 hardware keys, deployed on every planned chain at once, owner changes applied on every chain; a Guard blocks delegatecall and allows only the factory and deployed receivers; a 24-48h Delay module on refund and recover (pause stays instant); refunds go to the deposit's sender by default, any other address needs written evidence; owners check the transaction hash with an independent tool",
+    "Backend rules: receive address computed locally from factory address and init-code hash compiled into the binary and recomputed on the checkout page; unique (chain_id, receive_address); watcher alerts on any mismatch; a second independent RPC confirms the balance before paid or a webhook; checkout has no third-party scripts and pinned dependencies, and a canary compares the live checkout address with the database",
+    "Phase 5 tests add halmos symbolic tests for settle, refund and recover, and a test for each rule above; security-keys.json no longer claims the signer check covers an API compromise",
+    "PLAN.md records the expiry rule: an invoice expires 1 hour after creation by default; the creator can change it per invoice, and a merchant can set its own default in settings (backend and UI, Phases 6-10)"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "lint"
+  ],
+  "refs": [],
+  "keep": [
+    "apps/*",
+    "packages/design-tokens/*",
+    "packages/ui-web/*"
+  ],
+  "review": true,
+  "notes": [
+    "2026-10-08 review fail by reviewer: Acceptance 1-8 are all present in the text and the 3 diagrams pass mapgrain validate. Fail because the Safe rules contradict each other and can freeze funds: (1) 'Guard allows only the factory and receivers as targets' blocks Safe self-calls, so addOwner/swapOwner/changeThreshold/setGuard/enableModule are impossible; this contradicts 'owner changes applied on every chain', and since refundAuthority is immutable in the factory, losing keys over time freezes all held funds (overpay, late, expired, missed settle) forever. (2) The same Guard blocks calls to the Delay module (queue and the cancel path target the Delay contract), and it lets owners call refund/recover directly on receivers, so the 24-48 h delay is not enforced. Safe 1.4.1 Guards do not check module transactions. Fix: Guard allows self-calls (or a named allowlist of Safe admin selectors) and the Delay module; it rejects direct refund/recover/settle-after-deadline selectors so they only run through the Delay; setPaused and setExecutor stay direct. (3) contracts-workflow refund and recover nodes say 'the same Safe transaction calls Factory.deploy first'; that needs MultiSend, which is a delegatecall the Guard blocks. Say two transactions, or allow MultiSendCallOnly by address. Cosmetic: PLAN.md line 520 and the contracts-workflow 'missed' node still say 'settle window'; the Phase 5 Gate line does not mention the real-receiver vs predict check (the Done-list does); state how the factory's first executor is set (constructor arg changes the CREATE2 address).",
+    "2026-10-08 review fail by reviewer: Re-review of 7d6498e. Fixed: owner rotation is possible, the Delay queue/cancel are reachable, deploy+refund goes through MultiSendCallOnly, the first executor is defined, settleDeadline wording is used, and the Gate checks predict. The 3 diagrams validate. Still fails: the rule 'refund, recover and post-deadline settle run only through the Delay module' is not true as written. The same 3 owners the delay should slow down can skip it instantly: (1) a direct MultiSendCallOnly batch whose inner call is receiver.refund(attacker): the Guard sees only to=MultiSendCallOnly, operation=delegatecall, unless it decodes the batch; (2) a direct self-call setGuard(0) or disableModule, then a direct refund; (3) a direct Delay.setTxCooldown(0) or setTxExpiration, since the Delay is an allowed target. This is the blind-signing case (signers tricked into one malicious transaction) that the delay and the hash check exist for. Fix in AGENTS.md, PLAN.md and the security-keys node: the Guard decodes MultiSendCallOnly batches and applies the same target and function rules to each inner call; Safe admin changes (owners, threshold, guard, modules, fallback handler) and Delay settings go through the Delay too (rotation still works, after 24-48 h); direct transactions are allowed only for setPaused, setExecutor (harmless: the executor can only pay the recipient), queueing on the Delay and cancel (setTxNonce). Cosmetic: PLAN.md lines 511-512 (unit test list) still say 'the window'.",
+    "2026-10-08 review fail by reviewer: Re-review of 60e3d6a. The Safe design now holds up: refund, recover, post-deadline settle, Safe admin changes and the Delay settings all go through the delay; direct transactions are only setPaused, setExecutor, queue and setTxNonce, with no delegatecall; delayed batches use MultiSendCallOnly; the limit against colluding owners is stated. PLAN.md Phase 5, the security-keys node and the unit test list match. The 3 diagrams validate. One contradiction left: packages/contracts/AGENTS.md line 35 (Factory) still says the factory 'records every receiver it deploys (the Safe Guard allows only these)'. That conflicts with line 64, where the Guard never allows a direct call to a receiver, and a builder who follows line 35 would let direct refunds skip the delay. Fix: delete the parenthetical, plus the 'records every receiver' rule if nothing else uses it, or give its real reason. Everything else is cosmetic.",
+    "2026-10-08 review pass by reviewer: Re-review of 0dd66b2. AGENTS.md line 35 no longer claims the Guard allows receivers; isReceiver is now for owners and monitoring to check refund targets. All 8 acceptance lines are met. AGENTS.md, PLAN.md (Phase 4 S-5, Phase 5 Design, Done-list and Gate, Phases 6, 8, 10) and the 3 diagrams agree. The Safe delay and Guard rules can be built on Safe 1.4.1 plus a Zodiac-style Delay, and no rule found lets anyone steal or freeze funds. All 3 diagrams pass mapgrain@0.2.5 validate. Cosmetic: a queued deploy-then-refund batch targets a receiver that is not deployed yet, so isReceiver is false at queue time; monitoring should also compare the target with predict(terms)."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-08T21:55:05Z",
+    "checks": [
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F034-20261008T215505Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F034-20261008T215505Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.5,
+        "log": "docs/runs/F034-20261008T215505Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.5,
+        "log": "docs/runs/F034-20261008T215505Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 8.6,
+        "log": "docs/runs/F034-20261008T215505Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F034-20261008T215505Z-keep.log"
+      }
+    ],
+    "taskHash": "7a80a196917b073c",
+    "filesHash": "ba075191555c9ff7",
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Re-review of 0dd66b2. AGENTS.md line 35 no longer claims the Guard allows receivers; isReceiver is now for owners and monitoring to check refund targets. All 8 acceptance lines are met. AGENTS.md, PLAN.md (Phase 4 S-5, Phase 5 Design, Done-list and Gate, Phases 6, 8, 10) and the 3 diagrams agree. The Safe delay and Guard rules can be built on Safe 1.4.1 plus a Zodiac-style Delay, and no rule found lets anyone steal or freeze funds. All 3 diagrams pass mapgrain@0.2.5 validate. Cosmetic: a queued deploy-then-refund batch targets a receiver that is not deployed yet, so isReceiver is false at queue time; monitoring should also compare the target with predict(terms).",
+      "at": "2026-10-08T21:55:28Z",
+      "filesHash": "ba075191555c9ff7"
+    },
+    "commit": "0dd66b2",
+    "doneAt": "2026-10-08T21:56:01Z",
+    "proof": {
+      "1": "packages/contracts/AGENTS.md Status section",
+      "2": "AGENTS.md Terms and Factory rules; PLAN Phase 5",
+      "3": "AGENTS.md Factory deploy rule; PLAN S-5 row and Phase 5 gate",
+      "4": "AGENTS.md Receiver rules",
+      "5": "AGENTS.md Safe rules (reviewed three times)",
+      "6": "AGENTS.md backend rules; PLAN Phase 6 and 8",
+      "7": "PLAN Phase 5 done-list (halmos, per-rule tests); security-keys api node",
+      "8": "PLAN Phase 6, 8, 10 expiry lines"
+    }
+  },
+  "branch": "docs/f034-contract-security-rules-from-the-2026-10",
+  "baseCommit": "5057eba453f4b1a9f8bc5c1359ac7839147f4747",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "docs/f034-contract-security-rules-from-the-2026-10",
+    "base": "main"
+  }
+}
