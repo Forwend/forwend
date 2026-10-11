@@ -11711,7 +11711,7 @@
       "dependsOn": [
         "F100"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend",
         "e2e",
@@ -11722,9 +11722,89 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-11 review pass by reviewer: PASS after one fix. Go tests -race pass; dynamic SQL only joins constants and placeholders, LIKE escaping proven, numeric amount search cannot 500; keyset cursors with plain WHERE filters page filtered lists without gaps or repeats; status buckets identical to the removed web helpers; pg_trgm index expression equals searchText and the custom plan uses it; no stale answers shown; no ?search= left. FIXED: Back after a link changed ?q on the same page kept the later search and rewrote ?q (useListFilters now records outside changes as written; new unit test fails on the old code); intQuery doc comment restored; down migration keeps pg_trgm."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-11T00:35:09Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 48.9,
+            "log": "docs/runs/F110-20261011T003509Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 107.7,
+            "log": "docs/runs/F110-20261011T003509Z-e2e.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 51.6,
+            "log": "docs/runs/F110-20261011T003509Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F110-20261011T003509Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F110-20261011T003509Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F110-20261011T003509Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F110-20261011T003509Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.1,
+            "log": "docs/runs/F110-20261011T003509Z-build.log"
+          }
+        ],
+        "taskHash": "6b71543c909a5e5d",
+        "filesHash": "0543cd792429cbb0",
+        "proof": {
+          "1": "backend: GET /invoices, /activity and /transactions take status (open|paid|settled|expired) or direction (in|out) and q, applied in SQL before the cursor (internal/invoice/list.go, internal/activity, internal/search). Tests on real Postgres (internal/httpapi/list_search_test.go, internal/search/search_test.go): every filter, search per field (number, title, note, client name and email, receive address, settle and deposit tx hash, counterparty, symbol, exact amount incl. 1,250.50 and too many decimals), filter+search together, each case paged one item per page through the filtered list, 422 for q blank/101 chars/unknown status or direction, 100 chars OK, Bob 403. Amount: a decimal q matches amount = q*10^decimals in Postgres numeric, exact. Index: migration 00014 adds pg_trgm GIN on the invoice search text. EXPLAIN ANALYZE on a scratch DB (120,000 invoices, 60,000 deposits, 120,000 transfers; one profile with 20,000 invoices and 20,000 transfers): invoice search matching nothing 45.3 ms before -> 0.02 ms after (Bitmap Index Scan on invoices_search, also in the generic plan), one old client 2.4 ms, common word 0.06 ms (ordered profile index), status filter 0.04-0.09 ms; a numeric q also compares amounts, no index: 38-41 ms at 20,000 invoices. Activity and transactions already read all of the profile's rows to sort them (no filter 35-94 ms and 8-14 ms); with filter/search 11-40 ms and 4-28 ms, so no index added there. openapi.yaml and docs/backend/api.md list status, direction and q.",
+          "2": "e2e: e2e/privy/sign-in.spec.ts 'Invoices, Activity and Transactions filter and search on the API' on a mocked API that honours status, direction, q and cursor with 45-row lists: INV-0003 (43rd), a payment (41st) and a transfer (41st) each show on the first load of the search; typing 'zephyr' sends one request after the last key; the URL keeps ?q= and ?status=/?direction= across reload and Back from an invoice; 'Show more' continues the searched list (20 -> 40); no match says so and 'Clear filter and search' restores the list; axe has no serious or critical violation on the no-match state. The existing app-pages test passes with the server-side filters. Web: useListFilters (shared/hooks) keeps filter and search in the URL with a 300 ms wait; the lists show only the answer for the current filter (RTK currentData, useShownData), so an older request's answer never shows; client filter helpers removed; unit tests for withParam and apiSearch.; unit: use-list-filters.test.ts 'follows Back to an earlier search after a link changed ?q, and never writes the later one again' (fails before the fix: field kept 0xhash and rewrote ?q)"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS after one fix. Go tests -race pass; dynamic SQL only joins constants and placeholders, LIKE escaping proven, numeric amount search cannot 500; keyset cursors with plain WHERE filters page filtered lists without gaps or repeats; status buckets identical to the removed web helpers; pg_trgm index expression equals searchText and the custom plan uses it; no stale answers shown; no ?search= left. FIXED: Back after a link changed ?q on the same page kept the later search and rewrote ?q (useListFilters now records outside changes as written; new unit test fails on the old code); intQuery doc comment restored; down migration keeps pg_trgm.",
+          "at": "2026-10-11T00:38:53Z",
+          "filesHash": "0543cd792429cbb0"
+        }
+      },
+      "branch": "fix/f110-invoices-activity-and-transactions-filte",
+      "baseCommit": "5bd94d8b3aa4ab01ac4f640b289a3190bce0bcd5",
+      "failedVerifies": 0
     },
     {
       "id": "F111",

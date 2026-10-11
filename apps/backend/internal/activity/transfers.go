@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/search"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -36,11 +37,20 @@ type TransferPage struct {
 	NextCursor string
 }
 
-// Transfers returns the page of the profile wallet's transfers after cursor ("" for the first), newest block time
-// first. The caller has checked that the user owns the profile.
-func (s *Service) Transfers(ctx context.Context, profileID, cursor string, limit int) (TransferPage, error) {
+// Transfers returns the page of the profile wallet's transfers in direction ("" for both) whose counterparty,
+// transaction hash, token symbol or amount matches q, after cursor ("" for the first), newest block time first. The
+// caller has checked that the user owns the profile.
+func (s *Service) Transfers(ctx context.Context, profileID, cursor string, limit int, direction string,
+	q search.Query) (TransferPage, error) {
 	if limit < 1 || limit > MaxLimit {
 		return TransferPage{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
+	}
+	var only *string
+	if direction != "" {
+		if direction != "in" && direction != "out" {
+			return TransferPage{}, fmt.Errorf("%w: direction must be in or out", ErrInvalid)
+		}
+		only = &direction
 	}
 	var afterTime, afterID *int64
 	if cursor != "" {
@@ -58,8 +68,10 @@ func (s *Service) Transfers(ctx context.Context, profileID, cursor string, limit
 		JOIN profile_wallets w ON w.chain_family = t.chain_family AND w.address = t.wallet_address
 		JOIN tokens tk ON tk.chain_id = t.chain_id AND tk.contract = t.token_contract
 		WHERE w.profile_id = $1 AND t.status <> 'reorged'
-		  AND ($2::bigint IS NULL OR (t.block_time, t.id) < ($2, $3))
-		ORDER BY t.block_time DESC, t.id DESC LIMIT $4`, profileID, afterTime, afterID, limit+1)
+		  AND ($2::bigint IS NULL OR (t.block_time, t.id) < ($2, $3)) AND ($5::text IS NULL OR t.direction = $5)
+		  AND ($6::text IS NULL OR t.counterparty ILIKE $6 OR t.tx_hash ILIKE $6 OR tk.symbol ILIKE $6
+		       OR t.amount = $7::numeric * 10::numeric ^ tk.decimals)
+		ORDER BY t.block_time DESC, t.id DESC LIMIT $4`, profileID, afterTime, afterID, limit+1, only, q.Like, q.Amount)
 	if err != nil {
 		return TransferPage{}, fmt.Errorf("read wallet transfers: %w", err)
 	}

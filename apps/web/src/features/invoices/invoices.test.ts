@@ -5,7 +5,6 @@ import {
   confirmingProgress,
   type Deposit,
   exactDigits,
-  filterInvoices,
   INVOICE_PDFS,
   type Invoice,
   invalidField,
@@ -148,39 +147,6 @@ describe("confirmingProgress", () => {
     expect(confirmingProgress(408, 544)).toBe(0.25);
     expect(confirmingProgress(0, 544)).toBe(1);
     expect(confirmingProgress(0, 0)).toBeNull();
-  });
-});
-
-describe("filterInvoices", () => {
-  const items = [
-    {
-      ...open,
-      number: 18,
-      title: "Brand site",
-      client: { name: "Brightline", email: null, address: null },
-    },
-    { ...open, number: 7, note: "Lunch on Friday", paymentStatus: "detected" },
-    { ...open, number: 3, paymentStatus: "paid", settlementStatus: "settled" },
-    { ...open, number: 2, paymentStatus: "expired_partially_paid" },
-  ];
-  const numbers = (filter: Parameters<typeof filterInvoices>[1], search = "") =>
-    filterInvoices(items, filter, search).map((inv) => inv.number);
-
-  it("groups statuses: open covers payments on their way, expired covers partial ones", () => {
-    expect(numbers("all")).toEqual([18, 7, 3, 2]);
-    expect(numbers("open")).toEqual([18, 7]);
-    expect(numbers("paid")).toEqual([]);
-    expect(numbers("settled")).toEqual([3]);
-    expect(numbers("expired")).toEqual([2]);
-  });
-
-  it("searches the number, title, note and client in any letter case", () => {
-    expect(numbers("all", "inv-0018")).toEqual([18]);
-    expect(numbers("all", "lunch")).toEqual([7]);
-    expect(numbers("all", "BRAND")).toEqual([18]);
-    expect(numbers("all", "brightline")).toEqual([18]);
-    expect(numbers("open", "0007")).toEqual([7]);
-    expect(numbers("settled", "0007")).toEqual([]);
   });
 });
 

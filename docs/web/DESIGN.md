@@ -71,8 +71,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Charts: one ink line (or ink bars) with a faint wash, a few hairline grid lines, round tick values from zero.
   The river blue marks the latest or chosen point. Pointer or arrow keys show a readout; a hidden table gives screen
   readers every value. Range choice is a segmented control.
-- Invoices and Activity: a status filter (All, Open, Paid, Settled, Expired) and a search over the loaded rows; a row
-  opens its invoice. A transaction hash links to the chain's block explorer in a new tab (Transactions, Activity,
+- Invoices and Activity: a status filter (All, Open, Paid, Settled, Expired) and a search; a row opens its invoice.
+  Transactions has a direction filter (All, In, Out) and a search. The API filters and searches the whole list, and the
+  URL keeps both. A filter or search with no rows says nothing matched, with a button to clear them. A transaction hash links to the chain's block explorer in a new tab (Transactions, Activity,
   invoice detail, pay page).
 - Transactions table: ruled table from medium screens; the network has its own column only on the widest screens and
   sits under the counterparty otherwise. Phone rows show the network first and cut the time, never the network.

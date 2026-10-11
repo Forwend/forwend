@@ -8,9 +8,6 @@ import {
   type ApiPaymentStatus,
   type ApiSettlementStatus,
   activityStatus,
-  matchesStatus,
-  type StatusFilter,
-  searchQuery,
 } from "@/features/activity/activity";
 import { API_BASE } from "@/shared/config/api";
 
@@ -251,23 +248,6 @@ export function invoiceProgress(inv: Invoice) {
  */
 export function confirmingProgress(blocksLeft: number, mostBlocksLeft: number): number | null {
   return blocksLeft < mostBlocksLeft ? 1 - blocksLeft / mostBlocksLeft : null;
-}
-
-/** Invoices under the filter whose number, title, note or client name or email contains the search. */
-export function filterInvoices(
-  items: readonly InvoiceSummary[],
-  filter: StatusFilter,
-  search: string,
-): InvoiceSummary[] {
-  const query = searchQuery(search);
-  return items.filter(
-    (inv) =>
-      matchesStatus(invoiceStatus(inv), filter) &&
-      (!query ||
-        [invoiceNumber(inv.number), inv.title, inv.note, inv.client?.name, inv.client?.email].some(
-          (text) => (text ? searchQuery(text).includes(query) : false),
-        )),
-  );
 }
 
 const DUE_DATE = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone: "UTC" });

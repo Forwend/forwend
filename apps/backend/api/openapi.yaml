@@ -158,7 +158,10 @@ paths:
     get:
       operationId: listInvoices
       summary: The profile's invoices, newest first (highest number first), in cursor pages
-      description: Each item is the invoice without its deposits; GET /v1/invoices/{invoiceId} adds them.
+      description: |
+        Each item is the invoice without its deposits; GET /v1/invoices/{invoiceId} adds them. status and q narrow the
+        list before paging, so a cursor continues the same filtered list. q looks in the number as shown (INV-0042),
+        title, note, client name and email, receive address and, when it is a number, the amount.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - name: limit
@@ -169,6 +172,8 @@ paths:
           in: query
           description: nextCursor from the previous page.
           schema: { type: string }
+        - $ref: "#/components/parameters/StatusFilter"
+        - $ref: "#/components/parameters/Search"
       responses:
         "200":
           description: One page; an empty list for a new profile
@@ -261,6 +266,11 @@ paths:
     get:
       operationId: getActivity
       summary: The profile's invoices and deposits, newest first, in cursor pages
+      description: |
+        status and q narrow the list before paging, so a cursor continues the same filtered list. Under status, an
+        invoice falls as in the invoice list; a deposit is open while detected and paid once confirmed. q looks in the
+        transaction hash (a deposit's, or a settled invoice's settle transaction), the token symbol and, when it is a
+        number, the amount.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - name: limit
@@ -271,6 +281,8 @@ paths:
           in: query
           description: nextCursor from the previous page.
           schema: { type: string }
+        - $ref: "#/components/parameters/StatusFilter"
+        - $ref: "#/components/parameters/Search"
       responses:
         "200":
           description: One page; an empty list for a new profile
@@ -291,6 +303,8 @@ paths:
         Every Transfer of an enabled token from or to the profile's wallet on an enabled chain, as the worker records
         it (R-38), from the first scan that knows the wallet. A transfer between two profile wallets is out in one
         profile's list and in in the other's. Reorged transfers are left out. Ordered by block time, newest first.
+        direction and q narrow the list before paging, so a cursor continues the same filtered list. q looks in the
+        counterparty, transaction hash, token symbol and, when it is a number, the amount.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - name: limit
@@ -301,6 +315,11 @@ paths:
           in: query
           description: nextCursor from the previous page.
           schema: { type: string }
+        - name: direction
+          in: query
+          description: Only transfers in or out of the wallet; absent for both. Another value is 422.
+          schema: { type: string, enum: [in, out] }
+        - $ref: "#/components/parameters/Search"
       responses:
         "200":
           description: One page; an empty list for a new profile
@@ -421,6 +440,23 @@ components:
       required: true
       description: A profile the signed-in user owns; any other value is 403.
       schema: { type: string, format: uuid }
+    StatusFilter:
+      name: status
+      in: query
+      description: |
+        Only invoices under this filter; absent for all. settled once settlementStatus is settled; otherwise by
+        paymentStatus: paid; expired or expired_partially_paid is expired; open, detected or partially_paid is open.
+        Another value is 422.
+      schema: { type: string, enum: [open, paid, settled, expired] }
+    Search:
+      name: q
+      in: query
+      description: |
+        Search text: 1 to 100 characters after trimming spaces; absent means no search, blank or longer is 422. A field
+        matches when it contains the text in any letter case. Text that is a decimal number (digits, one point,
+        thousands commas allowed) also matches an amount equal to it in whole tokens, exactly: "1,250.5" finds
+        1250500000 base units of a 6-decimals token, never 1250500001.
+      schema: { type: string, minLength: 1, maxLength: 100 }
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -920,7 +956,8 @@ components:
       description: |
         A value breaks a rule (invalid_value): amount, expiresIn, a token or chain that is not enabled, a profile with
         no wallet for the chain, terms the contract would refuse to settle, an invoice title, note, due date or client
-        field, a profile kind or name, a billing details field, a list limit or cursor, or balance-history days.
+        field, a profile kind or name, a billing details field, a list limit, cursor, status, direction or search (q),
+        or balance-history days.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

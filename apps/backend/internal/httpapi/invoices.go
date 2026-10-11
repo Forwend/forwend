@@ -127,7 +127,7 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// listInvoices is GET /v1/profiles/{profileId}/invoices?limit=&cursor=.
+// listInvoices is GET /v1/profiles/{profileId}/invoices?limit=&cursor=&status=&q=.
 func listInvoices(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		limit, err := intQuery(r, "limit", invoice.DefaultLimit)
@@ -135,7 +135,13 @@ func listInvoices(invoices *invoice.Service) http.HandlerFunc {
 			writeError(w, r, err)
 			return
 		}
-		page, err := invoices.List(r.Context(), r.PathValue("profileId"), r.URL.Query().Get("cursor"), limit)
+		q, err := searchQuery(r)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		query := r.URL.Query()
+		page, err := invoices.List(r.Context(), r.PathValue("profileId"), query.Get("cursor"), limit, query.Get("status"), q)
 		if err != nil {
 			writeError(w, r, err)
 			return

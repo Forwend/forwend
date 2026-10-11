@@ -31,6 +31,15 @@ Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/me/onboarding`,
 - Money: decimal string in base units (`"5000000"`) next to `chainId` and `token` (contract address), as in R-19.
 - Times: RFC 3339 in UTC. IDs and addresses: strings.
 - Lists: `?limit=` (max 100) and `?cursor=`; response `{ "items": [...], "nextCursor": "…" }`.
+- The owner's invoice, activity and transaction lists also take a filter (`?status=` open | paid | settled | expired
+  on invoices and activity, `?direction=` in | out on transactions) and `?q=`, a search of 1–100 characters (blank or
+  longer: 422). Both narrow the list before paging, so `nextCursor` continues the filtered list. A field matches when
+  it contains `q` in any letter case. When `q` is a decimal number (digits and one point; thousands commas are
+  dropped) it also matches an amount equal to it in whole tokens: `amount = q × 10^decimals` in Postgres `numeric`,
+  exact, never a float. `internal/search` parses it; the fields per list are in openapi.yaml.
+- The invoice search reads a trigram index on its fields (migration 00014, `pg_trgm`). A search that is a number
+  also compares amounts, which no index covers, so it reads the profile's invoices in number order until the page
+  fills; activity and transactions read all of the profile's rows to sort them, with or without a filter.
 
 ## First run
 
@@ -82,8 +91,8 @@ R-19 and R-42; the full schema is in openapi.yaml.
   the ledger's settlement transaction, written with `settlementStatus = settled`. List items have neither.
 - Each of its `deposits` has the sender `from` (lowercase hex, as stored) and `blockTime` (the block's time, RFC 3339
   UTC), from the stored transfer.
-- `GET /v1/profiles/{profileId}/invoices?limit=&cursor=`: the list format above, highest number (newest) first; items
-  have no `deposits`. Owner only, like every `{profileId}` route.
+- `GET /v1/profiles/{profileId}/invoices?limit=&cursor=&status=&q=`: the list format above, highest number (newest)
+  first; items have no `deposits`. Owner only, like every `{profileId}` route.
 - `GET /v1/profiles/{profileId}/invoices/{invoiceId}`: the public GET plus `client`. Another profile's invoice is 404
   (`invoice_not_found`), also when the same user owns both.
 - The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due date, `senderName` and
@@ -116,8 +125,8 @@ answer 404 `invoice_not_found` the same way.
 
 Both read the transfers the worker records for profile wallets (R-38); the full schema is in openapi.yaml.
 
-- `GET /v1/profiles/{profileId}/transactions?limit=&cursor=`: the list format above, newest block time first, reorged
-  transfers left out. An item: `chainId`, `token`, `symbol`, `decimals`, `direction` (`in` | `out`), `amount`,
+- `GET /v1/profiles/{profileId}/transactions?limit=&cursor=&direction=&q=`: the list format above, newest block
+  time first, reorged transfers left out. An item: `chainId`, `token`, `symbol`, `decimals`, `direction` (`in` | `out`), `amount`,
   `counterparty` (sender for in, receiver for out), `txHash`, `logIndex`, `blockNumber`, `at` (block time), `status`
   (`detected` | `confirmed`, as for deposits).
 - `GET /v1/profiles/{profileId}/balance-history?days=N`: N is 1–365, default 30 (not a number: 400; out of range: 422).

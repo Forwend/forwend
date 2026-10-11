@@ -48,6 +48,11 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   `/app/invoices/<id>` shows the status timeline, due date apart from checkout expiry, client, issuer and the
   `/pay/<id>` link with a copy button. The public `GET /v1/invoices/{id}` has no client, so the detail reads it from
   `GET /v1/profiles/{id}/invoices/{invoiceId}`, whose 404 also tells that the active profile did not make the invoice.
+- Invoices, Activity and Transactions (also the business overview's payments) send their filter and search to the API
+  (`?status=` or `?direction=`, `?q=`) and show only its answer for the current pair, so a match on an older page shows
+  at once and "Show more" continues the filtered list. `shared/hooks/use-list-filters.ts` keeps both in the page URL
+  (`history.replaceState`, so reload and Back keep them); the search reaches the URL and the request 300 ms after the
+  last key. ⌘K and notifications open a transaction as `/app/transactions?q=<hash>`.
 - API data lives in an RTK Query cache (D-47): one store per tab (`store/store.ts`, mounted by
   `providers/store-provider.tsx` inside Privy), one `apiSlice` that adds the Privy access token, and endpoints
   injected by each feature (`features/*/…-api.ts`). On a 429 the slice waits `Retry-After` and sends the request once

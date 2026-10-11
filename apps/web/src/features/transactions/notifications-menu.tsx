@@ -18,6 +18,7 @@ import { TRANSACTIONS_COPY } from "@/features/transactions/transactions-copy";
 import { chainName } from "@/shared/chains/chains";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { SEARCH_PARAM } from "@/shared/hooks/use-list-filters";
 
 const SHOWN = 6;
 const SEEN_KEY = "forwend:notifications-seen:";
@@ -86,7 +87,10 @@ export function NotificationsMenu({
         ) : (
           received.map((t) => (
             <MenuItem key={transactionKey(t)} asChild>
-              <Link href={`${APP_ROUTES.transactions}?search=${t.txHash}`} className="py-2">
+              <Link
+                href={`${APP_ROUTES.transactions}?${SEARCH_PARAM}=${t.txHash}`}
+                className="py-2"
+              >
                 <span className="grid size-8 shrink-0 place-items-center rounded-pill bg-success-soft text-success">
                   <ArrowDownLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
                 </span>

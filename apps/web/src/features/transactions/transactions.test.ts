@@ -1,7 +1,6 @@
 import { PAYMENT_STATUS } from "@forwend/ui-web";
 import { describe, expect, it } from "vitest";
 import {
-  filterTransactions,
   type Transaction,
   transactionStatus,
   transactionsCsv,
@@ -27,14 +26,6 @@ describe("transactions", () => {
     expect(transactionStatus(base)).toBe(PAYMENT_STATUS.confirmed);
     expect(transactionStatus({ ...base, status: "detected" })).toBe(PAYMENT_STATUS.confirming);
     expect(transactionStatus({ ...base, status: "new_value" })).toBe(PAYMENT_STATUS.confirming);
-  });
-
-  it("filters by direction and by counterparty, hash or token in any letter case", () => {
-    const out: Transaction = { ...base, direction: "out", counterparty: `0x${"2".repeat(40)}` };
-    expect(filterTransactions([base, out], "in", "")).toEqual([base]);
-    expect(filterTransactions([base, out], "all", "abcd")).toEqual([base]);
-    expect(filterTransactions([base, out], "all", " USDC ")).toEqual([base, out]);
-    expect(filterTransactions([base, out], "out", "abcd")).toEqual([]);
   });
 
   it("exports exact amounts without separators, and never a cell a spreadsheet would run", () => {

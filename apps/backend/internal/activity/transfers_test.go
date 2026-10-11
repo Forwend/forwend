@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/search"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -43,7 +44,7 @@ func TestTransfersNewestFirstInPages(t *testing.T) {
 	s := NewService(pool)
 	ctx := context.Background()
 
-	if first, err := s.Transfers(ctx, empty, "", DefaultLimit); err != nil || len(first.Items) != 0 || first.NextCursor != "" {
+	if first, err := s.Transfers(ctx, empty, "", DefaultLimit, "", search.Query{}); err != nil || len(first.Items) != 0 || first.NextCursor != "" {
 		t.Fatalf("new profile: %+v, %v; want an empty list", first, err)
 	}
 
@@ -62,7 +63,7 @@ func TestTransfersNewestFirstInPages(t *testing.T) {
 		var got []string
 		cursor := ""
 		for pages := 1; ; pages++ {
-			page, err := s.Transfers(ctx, profile, cursor, limit)
+			page, err := s.Transfers(ctx, profile, cursor, limit, "", search.Query{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -81,12 +82,12 @@ func TestTransfersNewestFirstInPages(t *testing.T) {
 		}
 	}
 
-	theirsPage, err := s.Transfers(ctx, other, "", DefaultLimit)
+	theirsPage, err := s.Transfers(ctx, other, "", DefaultLimit, "", search.Query{})
 	if err != nil || len(theirsPage.Items) != 2 || theirsPage.Items[0].Direction != "in" || theirsPage.Items[0].TxHash != d {
 		t.Fatalf("the other profile: %+v, %v; want the transfer between the wallets as in, then its own", theirsPage, err)
 	}
 
-	top, _ := s.Transfers(ctx, profile, "", 3)
+	top, _ := s.Transfers(ctx, profile, "", 3, "", search.Query{})
 	if it := top.Items[2]; it.Status != "detected" || it.Amount.Int64() != 1000000 || it.Counterparty != payer ||
 		it.ChainID != 84532 || it.Token != usdc || it.Symbol != "USDC" || it.Decimals != 6 || it.BlockNumber != 2 ||
 		it.LogIndex != 0 || !it.At.Equal(time.Unix(200, 0)) {
@@ -97,7 +98,7 @@ func TestTransfersNewestFirstInPages(t *testing.T) {
 		cursor string
 		limit  int
 	}{{"", 0}, {"", MaxLimit + 1}, {"not base64!", 10}, {"MTIz", 10}, {encode(time.Unix(1, 0), Invoice, "x"), 10}} {
-		if _, err := s.Transfers(ctx, profile, c.cursor, c.limit); !errors.Is(err, ErrInvalid) {
+		if _, err := s.Transfers(ctx, profile, c.cursor, c.limit, "", search.Query{}); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("cursor %q limit %d: %v, want ErrInvalid", c.cursor, c.limit, err)
 		}
 	}
