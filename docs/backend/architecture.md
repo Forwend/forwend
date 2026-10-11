@@ -37,7 +37,9 @@ Each binary checks what it needs before it serves, and otherwise stops with one 
   is one receiver deploy (159,990 gas on Anvil) and one settle (at least `SettleGasFloor`), each plus a fifth: 342,000
   gas, 0.001026 ETH on Anvil (1 gwei base fee and tip). Below it the node would refuse the next deploy and settle. The
   message names the chain, the executor's address and its balance in whole coins. It is a floor derived from each
-  chain's own price, not a budget: Arbitrum's L1 data cost is not in it.
+  chain's own price, not a budget: Arbitrum's L1 data cost is not in it. Tempo charges fees in a TIP-20 stablecoin
+  (PathUSD by default) and its RPC reports a placeholder native balance, so on Tempo this check passes whatever the
+  executor holds; keep PathUSD on the executor until F120 checks the fee token.
 
 Then each logs its ready line: `api listening`, `worker ready`, `signer ready`. The checks run once; an RPC failing
 later is handled by the pool as before.
@@ -135,9 +137,9 @@ Built in `internal/database/migrations` (R-17); Postgres enforces the rules belo
 - `merchants → stores(project_id, branding)`, `team_members(role, store scope)` (Phase 11).
 - `chains(chain_id, chain_family, enabled)`, `tokens(chain_id, contract, decimals, enabled)`. One confirm rule for all
   chains (D-45), so no per-chain rule columns. From `00015` on, migrations add each planned network and its token
-  switched off (Arbitrum Sepolia USDC in `00015`, Arc testnet USDC in `00016`), so test and fresh databases never need
-  their RPCs or gas; Base Sepolia is still a row added by hand. A database turns one on
-  (D-38) after the executor has gas there and the chain list has two working hosts for it:
+  switched off (Arbitrum Sepolia USDC in `00015`, Arc testnet USDC in `00016`, Tempo Moderato OUSD in `00017`), so
+  test and fresh databases never need their RPCs or gas; Base Sepolia is still a row added by hand. A database turns
+  one on (D-38) after the executor has gas there and the chain list has two working hosts for it:
   `UPDATE chains SET enabled = true WHERE chain_id = 421614; UPDATE tokens SET enabled = true WHERE chain_id = 421614;`
   Then restart the api, worker and signer so their startup checks cover it.
 - `invoices`: immutable terms (`id` = the on-chain invoice id, profile, chain, token, `amount`, `expires_at` and
