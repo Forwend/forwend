@@ -38,6 +38,9 @@ type Signer struct {
 	attemptTimeout time.Duration
 	codeWait       time.Duration
 	replaceAfter   time.Duration
+	// held reports whether this signer still holds its lock (D-71): checked before each intent, since a round can
+	// outlast a dropped lock connection.
+	held func(context.Context) error
 }
 
 func NewSigner(pool *pgxpool.Pool, key *ecdsa.PrivateKey, clients, seconds map[uint64]*ethclient.Client) *Signer {
@@ -83,6 +86,11 @@ func (s *Signer) Run(ctx context.Context) error {
 	}
 	var errs []error
 	for _, id := range ids {
+		if s.held != nil {
+			if err := s.held(ctx); err != nil {
+				return errors.Join(append(errs, err)...)
+			}
+		}
 		attempt, cancel := context.WithTimeout(ctx, s.attemptTimeout)
 		err := s.settle(attempt, id)
 		cancel()

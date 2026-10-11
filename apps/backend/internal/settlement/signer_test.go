@@ -19,6 +19,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 	"github.com/ensp1re/forwend/apps/backend/internal/watcher"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -1134,5 +1135,188 @@ func TestSettlementIsBookedOnlyWhenTheSecondRPCAgrees(t *testing.T) {
 	e.final(t, e.signer(t))
 	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" {
 		t.Fatalf("both RPCs agree: intent %s, invoice settlement %s; want confirmed, settled", status, settlement)
+	}
+}
+
+// SEC-03: a user's invoices get at most SponsoredPerDay settlements from the executor's gas in 24 hours; the next
+// one waits, unsent, with the reason.
+func TestSponsoredSettlementsPerUserAreCapped(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	if _, err := e.pool.Exec(ctx, `
+		WITH i AS (
+		    INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
+		        settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
+		        request_hash)
+		    SELECT '0x' || lpad(to_hex(1000 + n), 64, '0'), w.profile_id, $1, 'evm', $2, 1, 4000000000, 4000086400, $3,
+		        'evm_create2', '0x2222222222222222222222222222222222222222', '0x' || lpad(to_hex(1000 + n), 40, '0'),
+		        'used-' || n, decode(repeat('00', 32), 'hex')
+		    FROM generate_series(1, $4::int) n, profile_wallets w RETURNING id)
+		INSERT INTO settlement_intents (invoice_id, status, sender, nonce, tx_hash, raw_tx, signed_at)
+		SELECT id, 'confirmed', $5, row_number() OVER (), '0x' || repeat('ab', 32), '\x00', now() FROM i`,
+		chaintest.ChainID, e.token, wallet, SponsoredPerDay, strings.ToLower(chaintest.Sender)); err != nil {
+		t.Fatal(err)
+	}
+	id, _ := e.paidInvoice(t)
+	before := e.nonce(t)
+	if err := e.signer(t).Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if status, _, reason := e.intent(t, id); status != "pending" || !strings.Contains(reason, "sponsored") ||
+		e.nonce(t) != before {
+		t.Fatalf("over the budget: intent %s (%s), %d transactions sent; want pending and none", status, reason,
+			e.nonce(t)-before)
+	}
+}
+
+func TestSignerStopsWhenItLosesItsLock(t *testing.T) {
+	e := setup(t)
+	id, _ := e.paidInvoice(t)
+	s := e.signer(t)
+	s.held = func(context.Context) error { return errors.New("lock lost") }
+	before := e.nonce(t)
+	if err := s.Run(context.Background()); err == nil || e.nonce(t) != before {
+		t.Fatalf("without the lock: %v, %d transactions sent; want an error and none", err, e.nonce(t)-before)
+	}
+	if status, _, _ := e.intent(t, id); status != "pending" {
+		t.Fatalf("intent %s, want pending", status)
+	}
+}
+
+// A nonce nothing will ever use holds every later transaction: the signer fills it with a transfer to itself, unless
+// a saved settle holds it.
+func TestNonceGapIsFilled(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	s := e.signer(t)
+	before := e.nonce(t)
+	if err := s.fillGap(ctx, e.client, chaintest.ChainID, before); err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.Mine(1)
+	if got := e.nonce(t); got != before+1 {
+		t.Fatalf("executor nonce %d, want %d after the filler", got, before+1)
+	}
+	id, _ := e.paidInvoice(t) // pays from Anvil's account, the executor here
+	held := e.nonce(t)
+	if _, err := e.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'sent', sender = $2, nonce = $3,
+		tx_hash = '0x' || repeat('ab', 32), raw_tx = '\x00' WHERE invoice_id = $1`, id,
+		strings.ToLower(chaintest.Sender), int64(held)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.fillGap(ctx, e.client, chaintest.ChainID, held); err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.Mine(1)
+	if got := e.nonce(t); got != held {
+		t.Fatalf("a nonce held by a saved settle was filled: executor nonce %d", got)
+	}
+}
+
+// A transaction the fee left behind at the executor's next nonce is replaced by the next deploy at twice today's fee.
+func TestDeployReplacesAStuckTransaction(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	if err := e.anvil.RPC.Call(nil, "evm_setAutomine", false); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = e.anvil.RPC.Call(nil, "evm_setAutomine", true) }()
+	s := e.signer(t)
+	mined := e.nonce(t)
+	stuck, err := s.sign(ctx, e.client, chaintest.ChainID, s.sender, nil, 0, 21_000, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.client.SendTransaction(ctx, stuck); err != nil {
+		t.Fatal(err)
+	}
+	next, err := s.sign(ctx, e.client, chaintest.ChainID, s.sender, nil, 0, 21_000, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if next.Nonce() != mined+1 {
+		t.Fatalf("next signed at nonce %d, want %d behind the pending one", next.Nonce(), mined+1)
+	}
+	over, err := s.overStuck(ctx, e.client, chaintest.ChainID, next)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if over.Nonce() != mined || over.GasFeeCap().Cmp(new(big.Int).Mul(next.GasFeeCap(), big.NewInt(2))) != 0 {
+		t.Fatalf("replacement at nonce %d fee cap %s; want nonce %d at twice %s", over.Nonce(), over.GasFeeCap(), mined,
+			next.GasFeeCap())
+	}
+	if err := e.client.SendTransaction(ctx, over); err != nil {
+		t.Fatalf("the replacement is refused: %v", err)
+	}
+}
+
+// On Tempo (its fee manager has code) a settle gets at least TempoSettleGasFloor, plus a fifth.
+func TestTempoSettleGasFloor(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	if err := e.anvil.RPC.Call(nil, "anvil_setCode", tempoFeeManager, hexutil.Encode([]byte{0x60, 0, 0x60, 0, 0x52, 0x60, 32, 0x60, 0, 0xf3})); err != nil {
+		t.Fatal(err)
+	}
+	id, _ := e.paidInvoice(t)
+	if err := e.signer(t).Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var raw []byte
+	if err := e.pool.QueryRow(ctx, "SELECT raw_tx FROM settlement_intents WHERE invoice_id = $1", id).Scan(&raw); err != nil {
+		t.Fatal(err)
+	}
+	var tx types.Transaction
+	if err := tx.UnmarshalBinary(raw); err != nil {
+		t.Fatal(err)
+	}
+	if want := uint64(TempoSettleGasFloor) * 6 / 5; tx.Gas() < want {
+		t.Fatalf("settle gas %d, want at least %d", tx.Gas(), want)
+	}
+}
+
+// A replacement settle never keeps a gas limit below a fresh estimate plus a fifth: on Arbitrum the L1 data cost in it
+// grows with L1 prices.
+func TestReplacementSettleGetsAFreshGasLimit(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, receive := e.paidInvoice(t)
+	saving := e.signer(t)
+	saving.stopAfter = "save"
+	if err := saving.Run(ctx); !errors.Is(err, errStopped) {
+		t.Fatalf("got %v", err)
+	}
+	_, raw := e.saved(t, id)
+	saved := new(types.Transaction)
+	if err := saved.UnmarshalBinary(raw); err != nil {
+		t.Fatal(err)
+	}
+	s := e.signer(t)
+	low, err := types.SignTx(types.NewTx(&types.DynamicFeeTx{ChainID: saved.ChainId(), Nonce: saved.Nonce(),
+		GasTipCap: saved.GasTipCap(), GasFeeCap: saved.GasFeeCap(), Gas: 30_000, To: saved.To(), Data: saved.Data()}),
+		types.LatestSignerForChainID(saved.ChainId()), s.key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lowRaw, _ := low.MarshalBinary()
+	var intentID int64
+	if err := e.pool.QueryRow(ctx, `UPDATE settlement_intents SET tx_hash = $2, raw_tx = $3 WHERE invoice_id = $1
+		RETURNING id`, id, low.Hash().Hex(), lowRaw).Scan(&intentID); err != nil {
+		t.Fatal(err)
+	}
+	in, err := s.load(ctx, intentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	to := common.HexToAddress(receive)
+	est, err := e.client.EstimateGas(ctx, ethereum.CallMsg{From: s.sender, To: &to, Data: settleSelector})
+	if err != nil {
+		t.Fatal(err)
+	}
+	replaced, err := s.replace(ctx, e.client, in, low)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replaced.Gas() < est+est/5 {
+		t.Fatalf("replacement gas %d, want at least %d (estimate %d plus a fifth)", replaced.Gas(), est+est/5, est)
 	}
 }

@@ -62,7 +62,7 @@ func run() error {
 		return err
 	}
 
-	rounds := settlement.NewRounds(pool, cfg.ExecutorKey, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate)
+	rounds := settlement.NewRounds(pool, cfg.ExecutorKey, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate, lock.Held)
 	defer rounds.Close()
 	slog.Info("signer ready", "executor", executor.Hex(), "every", cfg.Chains.PollInterval)
 	for {

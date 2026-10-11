@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ethereum/go-ethereum"
@@ -229,8 +230,9 @@ func (c *Chain) invoices(ctx context.Context) (map[common.Address]receiver, erro
 	// refund authority, from the chain: not watching those keeps each scan's topic lists bounded. One with a deposit
 	// still detected stays until it confirms or is reorged, or that row would hold every scan's start for good.
 	rows, err := c.pool.Query(ctx, `SELECT receive_address, id, token_contract FROM invoices i
-		WHERE chain_id = $1 AND (settle_deadline > extract(epoch FROM now())::bigint - 30 * 86400
-		    OR EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = i.id AND t.status = 'detected'))`, c.chainID)
+		WHERE chain_id = $1 AND (settle_deadline > extract(epoch FROM now())::bigint - $2
+		    OR EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = i.id AND t.status = 'detected'))`,
+		c.chainID, int64(watchedAfterDeadline/time.Second))
 	if err != nil {
 		return nil, fmt.Errorf("read chain %d invoices: %w", c.chainID, err)
 	}
@@ -245,6 +247,8 @@ func (c *Chain) invoices(ctx context.Context) (map[common.Address]receiver, erro
 	}
 	return out, rows.Err()
 }
+
+var watchedAfterDeadline = 30 * 24 * time.Hour
 
 // A round that times out records nothing, so a long backlog is caught up over several scans.
 var scanLimit uint64 = 20 * MaxRange

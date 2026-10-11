@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"strings"
 	"time"
 
@@ -106,6 +107,11 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 	if err != nil || settled || int64(mined) > *in.nonce {
 		return nil, err // settled, or the nonce used, after the finalized block: decided once that is final
 	}
+	if sender == s.sender && int64(mined) < *in.nonce {
+		if err := s.fillGap(ctx, client, in.chainID, mined); err != nil {
+			return nil, err
+		}
+	}
 	if sender == s.sender && time.Since(in.signedAt) >= s.replaceAfter {
 		if tx, err = s.replace(ctx, client, in, tx); err != nil {
 			return nil, err
@@ -118,6 +124,37 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 		return nil, errStopped
 	}
 	return s.await(ctx, client, tx.Hash())
+}
+
+// fillGap sends a zero-value transfer to the executor itself at nonce when nothing is pending there and no saved
+// settle holds it: a nonce no transaction will ever use (a settle saved but never sent, settled meanwhile by the refund
+// authority) would hold every later transaction on the chain.
+func (s *Signer) fillGap(ctx context.Context, client *ethclient.Client, chainID uint64, nonce uint64) error {
+	pending, err := client.PendingNonceAt(ctx, s.sender)
+	if err != nil || pending > nonce {
+		return err
+	}
+	var saved bool
+	if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
+		WHERE i.chain_id = $1 AND si.sender = $2 AND si.nonce = $3 AND si.status = 'sent')`,
+		int64(chainID), strings.ToLower(s.sender.Hex()), int64(nonce)).Scan(&saved); err != nil || saved {
+		return err
+	}
+	tip, feeCap, err := fees(ctx, client, chainID)
+	if err != nil {
+		return err
+	}
+	tx, err := types.SignTx(types.NewTx(&types.DynamicFeeTx{ChainID: new(big.Int).SetUint64(chainID), Nonce: nonce,
+		GasTipCap: tip, GasFeeCap: feeCap, Gas: 21_000, To: &s.sender}),
+		types.LatestSignerForChainID(new(big.Int).SetUint64(chainID)), s.key)
+	if err != nil {
+		return fmt.Errorf("sign nonce filler: %w", err)
+	}
+	slog.Warn("filling a nonce gap", "chain", chainID, "nonce", nonce, "tx", tx.Hash().Hex())
+	if err := client.SendTransaction(ctx, tx); err != nil {
+		return fmt.Errorf("send nonce filler: %w", err)
+	}
+	return nil
 }
 
 // confirmIfFinal records the settlement once the receiver is settled at the finalized block (D-45) and, for our own
