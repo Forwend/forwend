@@ -210,7 +210,7 @@
         "Web responses carry a CSP (frame-ancestors none, object-src none, base-uri and form-action self, scripts, connections and frames limited to the app and Privy), X-Frame-Options DENY, nosniff, Referrer-Policy and Permissions-Policy, and no X-Powered-By; API JSON responses carry Cache-Control no-store and nosniff; Go is 1.27.2 and gorilla/websocket is patched; pnpm audit --prod reports no advisories; Postgres in compose binds to 127.0.0.1; .gitignore ignores every .env variant except .env.example; the root .env.example is gone; CI has read-only permissions and third-party actions pinned by commit; deploy.sh passes keys through the environment; docs say how to bind the api and require database TLS in production; Playwright checks the headers; the sign-in and app e2e tests pass with the CSP"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "lint",
         "typecheck",
@@ -302,11 +302,18 @@
           "summary": "Pass. Ran: pnpm lint, typecheck, build (exit 0); smoke e2e 4 passed incl. header test; go test ./internal/chain/ ./internal/httpapi/ ok; forge build --offline exit 0 with ETH_RPC_URL unset; pnpm audit --prod clean; F126-20261011T151813Z logs all pass, live Privy e2e 20 passed. CSP (apps/web/next.config.ts:6-21) equals Privy's documented raw policy plus script-src 'unsafe-inline' and dev-only 'unsafe-eval'; prod chunks have no eval/new Function; fonts are self-hosted next/font, all images local, Google OAuth is a top-level redirect and passkeys are WebAuthn, so no origin is missing. headers() source /:path* also covers /api rewrites. with-env.sh:11-15 matches go run ./cmd/X and dev.sh's $tmp/X; backend test, e2e, privylive and loadtest match no pattern and keep every key; signer and worker configs read neither dropped secret. foundry.toml alias is needed because forge script --fork-url has no env var; cast reads ETH_RPC_URL; cast --private-key has no env var in Foundry 1.5.1. The pinned SHAs match foundry-toolchain v1 and pnpm/action-setup v6 (tag dereferenced). decode-uri-component 0.5.0 is ESM-only and breaks query-string 7.1.3 parse() under require (reproduced: decodeComponent is not a function), but nothing imports query-string (the walletconnect/utils 2.21.0/2.21.1 dist never requires it), so there is no runtime path today. uuid 11.1.1 keeps the named exports MetaMask uses. 64 MiB cap (pool.go:248) is far above a topic-filtered 2,000-block eth_getLogs. Notes: deploy.sh:14-15,43-46 still pass private keys in cast arguments (no env option exists); HSTS includeSubDomains (next.config.ts:28) assumes every forwend.com subdomain serves HTTPS; ratelimit.go:14-15 comment fix is accurate (Next base-server sets x-forwarded-for with ??=).",
           "at": "2026-10-11T15:27:18Z",
           "filesHash": "0aa8e87bbef9dce8"
-        }
+        },
+        "commit": "16b49b7",
+        "doneAt": "2026-10-11T15:27:50Z"
       },
       "branch": "fix/f126-web-api-and-repo-settings-follow-securit",
       "baseCommit": "2e5cda2beba21144041cb5b8d9d109d91758e38b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f126-web-api-and-repo-settings-follow-securit",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
