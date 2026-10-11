@@ -137,6 +137,7 @@ export const INVOICE_COPY = {
     blocks === 1 ? "1 block" : `${blocks.toLocaleString("en-US")} blocks`,
   deposits: "Payments received",
   late: "After the checkout closed",
+  from: "From",
   share: "Pay link",
   shareHint: "Send this link to your client. They pay without an account.",
   copy: "Copy link",

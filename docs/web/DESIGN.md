@@ -103,7 +103,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   solid hairline panels: the amount (Geist Mono, featured amount size) with token mark
   and status pill, before-you-pay notes, the network confirm button, the send panel with wallet and exchange tabs (QR
   beside the full address from small screens up), and the status timeline with each payment received (amount, status,
-  transaction and explorer link). No image and no glass; it follows the system theme.
+  transaction and explorer link; beside the link the short sender in Geist Mono, full address in a tooltip on hover
+  or focus, and the block time like the page's other times; on phones they wrap under the amount). No image and no
+  glass; it follows the system theme.
 - A secondary "Download invoice PDF" button sits under the heading in every state. Once settled, a Receipt panel
   follows the amount panel: amount paid, paid and settled times, each payment's and the settlement's full hash (Geist
   Mono) with the explorer named under it, and "Download receipt PDF". Before settlement there is no receipt. Once paid, the checkout close time is hidden.

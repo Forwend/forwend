@@ -87,8 +87,10 @@ const open: Invoice = {
 const deposit: Deposit = {
   txHash: `0x${"3".repeat(64)}`,
   logIndex: 0,
+  from: `0x${"5".repeat(40)}`,
   amount: "5000000",
   blockNumber: 100,
+  blockTime: "2026-10-10T12:00:00Z",
   status: "detected",
   late: false,
   blocksLeft: 0,

@@ -66,7 +66,7 @@ func (s *Service) deposits(ctx context.Context, inv Invoice) ([]Deposit, error) 
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("read chain %d cursor: %w", inv.ChainID, err)
 	}
-	rows, err := s.pool.Query(ctx, `SELECT tx_hash, log_index, amount::text, block_number, block_time, status
+	rows, err := s.pool.Query(ctx, `SELECT tx_hash, log_index, from_address, amount::text, block_number, block_time, status
 		FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged' ORDER BY block_number, log_index`, inv.ID)
 	if err != nil {
 		return nil, fmt.Errorf("read invoice %s deposits: %w", inv.ID, err)
@@ -77,10 +77,11 @@ func (s *Service) deposits(ctx context.Context, inv Invoice) ([]Deposit, error) 
 		var d Deposit
 		var amount string
 		var blockTime uint64
-		if err := rows.Scan(&d.TxHash, &d.LogIndex, &amount, &d.BlockNumber, &blockTime, &d.Status); err != nil {
+		if err := rows.Scan(&d.TxHash, &d.LogIndex, &d.From, &amount, &d.BlockNumber, &blockTime, &d.Status); err != nil {
 			return nil, fmt.Errorf("read invoice %s deposits: %w", inv.ID, err)
 		}
 		d.Amount, _ = new(big.Int).SetString(amount, 10)
+		d.BlockTime = time.Unix(int64(blockTime), 0).UTC()
 		d.Late = int64(blockTime) > inv.ExpiresAt.Unix()
 		if d.Status != "confirmed" {
 			p := finality.ProgressOf(finality.Block{Number: d.BlockNumber, Time: blockTime}, head)

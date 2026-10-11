@@ -80,6 +80,8 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - An invoice read alone (either GET, and create) also has `paidAt` and `settledAt`, null until reached. `paidAt`
   is the receipt's paid time (below); `settledAt` is when the settlement was recorded as final: the `created_at` of
   the ledger's settlement transaction, written with `settlementStatus = settled`. List items have neither.
+- Each of its `deposits` has the sender `from` (lowercase hex, as stored) and `blockTime` (the block's time, RFC 3339
+  UTC), from the stored transfer.
 - `GET /v1/profiles/{profileId}/invoices?limit=&cursor=`: the list format above, highest number (newest) first; items
   have no `deposits`. Owner only, like every `{profileId}` route.
 - `GET /v1/profiles/{profileId}/invoices/{invoiceId}`: the public GET plus `client`. Another profile's invoice is 404

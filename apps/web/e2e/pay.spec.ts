@@ -40,11 +40,14 @@ const OPEN = {
   settledAt: null as string | null,
   deposits: [] as object[],
 };
+const SENDER = "0x8ba1f109551bd432803012645ac136ddd64dba72";
 const DEPOSIT = {
   txHash: `0x${"3".repeat(64)}`,
   logIndex: 0,
+  from: SENDER,
   amount: "1250000000",
   blockNumber: 100,
+  blockTime: "2026-10-10T12:04:00Z",
   status: "detected",
   late: false,
   blocksLeft: 12,
@@ -177,6 +180,16 @@ test.describe("pay page", () => {
     );
     await expect(explorer).toHaveAttribute("target", "_blank");
     await expect(explorer).toHaveAttribute("rel", "noopener noreferrer");
+    // Who sent it and when: the short sender, the full address as its name and in a tooltip on focus.
+    const sender = payment.getByRole("button", { name: SENDER });
+    await expect(sender).toHaveText("0x8ba1…ba72");
+    await expect(payment.locator("time")).toHaveAttribute("datetime", DEPOSIT.blockTime);
+    // Radix closes a tooltip on scroll, and the first focus may scroll the button into view: focus again.
+    await expect(async () => {
+      await sender.blur();
+      await sender.focus();
+      await expect(page.getByRole("tooltip")).toHaveText(SENDER, { timeout: 1000 });
+    }).toPass();
 
     await page.clock.runFor(POLL_MS);
     await expect(status).toHaveText("Confirming · about 2 min left 6 blocks");

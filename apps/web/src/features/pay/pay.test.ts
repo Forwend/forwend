@@ -28,8 +28,10 @@ const invoice: Invoice = {
 const deposit = (amount: string, extra: Partial<Deposit> = {}): Deposit => ({
   txHash: `0x${"3".repeat(64)}`,
   logIndex: 0,
+  from: `0x${"5".repeat(40)}`,
   amount,
   blockNumber: 100,
+  blockTime: "2026-10-10T12:00:00Z",
   status: "confirmed",
   late: false,
   blocksLeft: 0,
