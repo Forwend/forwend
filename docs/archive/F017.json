@@ -1,0 +1,94 @@
+{
+  "id": "F017",
+  "type": "feat",
+  "behavior": "Every clickable element shows a pointer, presses do not move, the scrollbar and select are custom, the accordion opens one item at a time with a smooth animation, the code block has syntax colors, and the site never mentions generated images",
+  "acceptance": [
+    "Given buttons, links, tabs, summary rows, selects and switches, then the cursor is a pointer (not-allowed when disabled) and pressing does not shift or scale them",
+    "Given the FAQ or any Accordion, when one item opens, then the open one closes, and items open and close with a height animation (instant under reduced motion)",
+    "Given SelectField, then it is a custom listbox styled with tokens (keyboard and screen-reader friendly), not the native select; the page scrollbar uses token colors and a slim custom style",
+    "Given CodeBlock, then code shows token-colored syntax highlighting in both themes; no page text says images are generated"
+  ],
+  "dependsOn": [
+    "F016"
+  ],
+  "state": "passing",
+  "verification": [
+    "build",
+    "e2e"
+  ],
+  "refs": [],
+  "keep": [],
+  "review": true,
+  "notes": [
+    "2026-10-08 review fail by subagent: One defect against accept 1 ('not-allowed when disabled'): packages/ui-web/src/components/button.tsx:12 still has disabled:pointer-events-none in BASE, so the new base.css :disabled{cursor:not-allowed} rule never shows for a disabled Button. Evidence: Playwright on /kit, computed cursor of button:disabled is not-allowed but pointer-events is none, and document.elementFromPoint at the button centre hits the element behind it (cursor auto). Fix: drop disabled:pointer-events-none (a disabled <button> already ignores clicks); also transform can come out of the transition list now that active:translate-y-px is gone. Everything else passes: pointer cursor on all 24 visible buttons/links on /, tabs, switch, checkbox, combobox and enabled options (disabled options not-allowed); no transform/scale/translate while a Join button is pressed; FAQ: clicking item 1 then item 2 leaves only item 2 aria-expanded=true, open region runs fw-accordion-down 0.24s, and with reducedMotion=reduce the duration is 1e-05s (instant); SelectField is a Radix combobox named 'Network' (aria-labelledby), no visible native select, Enter opens the listbox, ArrowDown moves the highlight, Escape closes and focus returns to the trigger, clicking the label opens it; screenshots f017-select/faq/code look right in both themes; sugar-high escapes input (<img onerror> and </code><script> come out as &lt;...&gt; text inside spans), so dangerouslySetInnerHTML is safe; page scrollbar is thin with token colors; grep 'generat' in apps/web/src finds only code comments, and the rendered / and /kit/directions HTML have no such text. Checks: ui-web unit 14/14 passed, pnpm lint clean, pnpm typecheck passed, e2e 17/17 passed after next build, and a11y.spec --repeat-each 4 passed 16/16 (the earlier dark /kit flake; the in-progress a11y.spec.ts change that uses colorScheme in a new context is a real fix, not a weaker test).",
+    "2026-10-08 review pass by subagent: Previous defect fixed. button.tsx:12 BASE no longer has disabled:pointer-events-none, and transform is out of the transition list (now background-color,color,box-shadow). Playwright on http://localhost:3000/kit: disabled Button 'Disabled' has pointer-events auto, document.elementFromPoint at its centre is the button itself with cursor not-allowed; clicking it sends 0 click events to it and the URL is unchanged. All buttons on /kit: 24 enabled = pointer, 2 disabled = not-allowed, 2 loading (aria-busy) = progress by design (button.tsx:56). Pressing (mouse down 250ms) primary, secondary and ghost 'Join waitlist' and the theme toggle: bounding box unchanged, transform/scale/translate all none. a11y.spec.ts /kit test now opens a context with colorScheme + reducedMotion and asserts html data-theme before axe; real fix, not weaker. Checks: ui-web unit 14/14 passed; next build ok; playwright e2e 17/17 passed (both /kit theme tests); pnpm lint clean; pnpm typecheck passed. git status shows the same 14 files as before; no new changes outside the fix."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-08T15:56:03Z",
+    "checks": [
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.9,
+        "log": "docs/runs/F017-20261008T155603Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 8.2,
+        "log": "docs/runs/F017-20261008T155603Z-e2e.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F017-20261008T155603Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.1,
+        "log": "docs/runs/F017-20261008T155603Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.4,
+        "log": "docs/runs/F017-20261008T155603Z-unit.log"
+      }
+    ],
+    "taskHash": "ea30dcebc6bbb601",
+    "filesHash": "f3984804b8f3cfc9",
+    "review": {
+      "result": "pass",
+      "by": "subagent",
+      "summary": "Previous defect fixed. button.tsx:12 BASE no longer has disabled:pointer-events-none, and transform is out of the transition list (now background-color,color,box-shadow). Playwright on http://localhost:3000/kit: disabled Button 'Disabled' has pointer-events auto, document.elementFromPoint at its centre is the button itself with cursor not-allowed; clicking it sends 0 click events to it and the URL is unchanged. All buttons on /kit: 24 enabled = pointer, 2 disabled = not-allowed, 2 loading (aria-busy) = progress by design (button.tsx:56). Pressing (mouse down 250ms) primary, secondary and ghost 'Join waitlist' and the theme toggle: bounding box unchanged, transform/scale/translate all none. a11y.spec.ts /kit test now opens a context with colorScheme + reducedMotion and asserts html data-theme before axe; real fix, not weaker. Checks: ui-web unit 14/14 passed; next build ok; playwright e2e 17/17 passed (both /kit theme tests); pnpm lint clean; pnpm typecheck passed. git status shows the same 14 files as before; no new changes outside the fix.",
+      "at": "2026-10-08T15:57:18Z",
+      "filesHash": "f3984804b8f3cfc9"
+    },
+    "commit": "3fed5cb",
+    "doneAt": "2026-10-08T15:58:12Z",
+    "proof": {
+      "1": "review: pointer on all enabled buttons/links/tabs/summary/select/options, not-allowed on disabled (elementFromPoint), no transform on press",
+      "2": "review: opening a second FAQ item closes the first; fw-accordion-down 0.24s, instant under reduced motion",
+      "3": "review: SelectField is a Radix combobox named Network, keyboard Enter/Arrow/Escape; scrollbar thin token colors (f017-select.png)",
+      "4": "review: sugar-high highlighting with escaped HTML (f017-code.png); no 'generated' in served HTML"
+    }
+  },
+  "branch": "feat/f017-every-clickable-element-shows-a-pointer",
+  "baseCommit": "05183672f502cb5dbd0e6a1688071ad11212817e",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f017-every-clickable-element-shows-a-pointer",
+    "base": "main"
+  }
+}

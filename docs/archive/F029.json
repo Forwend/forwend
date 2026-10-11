@@ -1,0 +1,109 @@
+{
+  "id": "F029",
+  "type": "docs",
+  "behavior": "The repo has mapgrain diagrams of the full invoice receiver contract workflow and the invoice states, checked against PLAN.md Phase 5 and the Phase 6 state machine",
+  "acceptance": [
+    "docs/diagrams/contracts-workflow.json and docs/diagrams/invoice-lifecycle.json pass mapgrain@0.2.5 validate, and each has a committed .html viewer built from it",
+    "The workflow covers: one-time factory deploy at the same address on every testnet, predict, plain transfer, detection, expiry and late checks, partial top-up, finalized wait, lazy deploy, settle to the fixed recipient, held funds, claim, platform approval, EIP-712 refund, wrong-network or wrong-token recover, and the unsupported-network case",
+    "Every money rule shown matches PLAN.md D-03..D-08, C-03, C-04 and Phase 5 design; no step lets the executor send funds anywhere but the recipient"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "diagrams"
+  ],
+  "refs": [
+    "D-03",
+    "C-03",
+    "C-04"
+  ],
+  "keep": [
+    "apps/*",
+    "packages/*"
+  ],
+  "review": true,
+  "notes": [
+    "2026-10-08 review pass by reviewer: Both JSON files pass mapgrain@0.2.5 validate; committed .html viewers are byte-identical to a fresh 'mapgrain view' build. Accept 2: every case present (setup, predict, send, detect, intime/expiry, partial->send top-up w14, final, deployed/deploy lazy, settle, held, claim, approve, refundsig/refund, support/supported/recoversig/recover, lost). Accept 3: settle only after finalized (w12->final->intent), executor-only settle to fixed recipient with min(balance, amount-settled); late deposit (w11) and expired partial (w15/w16) go to held, never settled; overpay excess held (w25); refund/recover signed by refundAuthority, one refund, never touches settled funds; no auto-refund to exchange sender; no reopen of expired in lifecycle; D-14 recovery never promised. Cosmetic notes, not blocking: (1) lifecycle l2 detected->open on reorg should return to partial when a top-up is reorged; (2) lifecycle 'settled' and 'expired' carry marker final but have outgoing edges l10/l11; (3) node labels refund/recover omit nonce, deadline from the PLAN signatures (refundsig description has them); (4) 'supported' decision merges network support and admin approval, no 'supported but rejected' outcome; (5) 'where' decision sits in the payer lane though it is a fact checked by support; (6) setup description lists all four testnets while C-01 adds Arc/Tempo after spikes."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-08T18:58:22Z",
+    "checks": [
+      {
+        "id": "diagrams",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.9,
+        "log": "docs/runs/F029-20261008T185822Z-diagrams.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F029-20261008T185822Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F029-20261008T185822Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F029-20261008T185822Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F029-20261008T185822Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 8.3,
+        "log": "docs/runs/F029-20261008T185822Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F029-20261008T185822Z-keep.log"
+      }
+    ],
+    "taskHash": "cddf5160b81c68c0",
+    "filesHash": "702f6acccc4fb2ee",
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Both JSON files pass mapgrain@0.2.5 validate; committed .html viewers are byte-identical to a fresh 'mapgrain view' build. Accept 2: every case present (setup, predict, send, detect, intime/expiry, partial->send top-up w14, final, deployed/deploy lazy, settle, held, claim, approve, refundsig/refund, support/supported/recoversig/recover, lost). Accept 3: settle only after finalized (w12->final->intent), executor-only settle to fixed recipient with min(balance, amount-settled); late deposit (w11) and expired partial (w15/w16) go to held, never settled; overpay excess held (w25); refund/recover signed by refundAuthority, one refund, never touches settled funds; no auto-refund to exchange sender; no reopen of expired in lifecycle; D-14 recovery never promised. Cosmetic notes, not blocking: (1) lifecycle l2 detected->open on reorg should return to partial when a top-up is reorged; (2) lifecycle 'settled' and 'expired' carry marker final but have outgoing edges l10/l11; (3) node labels refund/recover omit nonce, deadline from the PLAN signatures (refundsig description has them); (4) 'supported' decision merges network support and admin approval, no 'supported but rejected' outcome; (5) 'where' decision sits in the payer lane though it is a fact checked by support; (6) setup description lists all four testnets while C-01 adds Arc/Tempo after spikes.",
+      "at": "2026-10-08T18:59:47Z",
+      "filesHash": "702f6acccc4fb2ee"
+    },
+    "commit": "b806151",
+    "doneAt": "2026-10-08T19:00:09Z",
+    "proof": {
+      "1": "diagrams check (mapgrain@0.2.5 validate on both files); viewers committed",
+      "2": "independent review mapped each case to node ids",
+      "3": "independent review checked D-03..D-08, C-03, C-04, Phase 5"
+    }
+  },
+  "branch": "docs/f029-the-repo-has-mapgrain-diagrams-of-the-fu",
+  "baseCommit": "fb08c3ee343b36bbb724835b263dab7bcdb192f0",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "docs/f029-the-repo-has-mapgrain-diagrams-of-the-fu",
+    "base": "main"
+  }
+}

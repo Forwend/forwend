@@ -1,0 +1,99 @@
+{
+  "id": "F083",
+  "type": "docs",
+  "behavior": "The plan covers onboarding, personal requests, payment exceptions, notifications and the owner's research, phase by phase",
+  "acceptance": [
+    "PLAN.md lists phases 8-13 with one-PR task bullets (first payment with invoice numbers, PDFs, pay page, personal requests and first-run onboarding; exceptions, refunds and notifications; freelancer work; merchant stores and developers; account security, send and withdrawal; release safety), the owner's 2026-10-10 decisions are PROJECT decision rows, the remaining research gaps are open questions, phase 8 has requirement rows, and the phase 8 tasks are queued in the harness"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "docs-check"
+  ],
+  "refs": [],
+  "keep": [
+    "apps/*",
+    "packages/*"
+  ],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-10T13:51:29Z",
+    "checks": [
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F083-20261010T135129Z-docs-check.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.9,
+        "log": "docs/runs/F083-20261010T135129Z-harness.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F083-20261010T135129Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F083-20261010T135129Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 30.1,
+        "log": "docs/runs/F083-20261010T135129Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.7,
+        "log": "docs/runs/F083-20261010T135129Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 50.4,
+        "log": "docs/runs/F083-20261010T135129Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F083-20261010T135129Z-keep.log"
+      }
+    ],
+    "taskHash": "6110a84449e5ed4d",
+    "filesHash": "3fddd12fe714dbe1",
+    "proof": {
+      "1": "docs-check: check-docs 0 errors; PLAN.md phases 8-13 with numbered one-PR bullets; PROJECT D-50..D-70, Q-10..Q-13, R-42..R-52; harness validate ok with F084-F097 queued"
+    },
+    "commit": "8e5df19",
+    "doneAt": "2026-10-10T13:52:59Z"
+  },
+  "branch": "docs/f083-the-plan-covers-onboarding-personal-requ",
+  "baseCommit": "86781458b626184db805183b6c37ac7e47d67536",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "docs/f083-the-plan-covers-onboarding-personal-requ",
+    "base": "main"
+  }
+}

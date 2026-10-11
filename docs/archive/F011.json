@@ -1,0 +1,118 @@
+{
+  "id": "F011",
+  "type": "feat",
+  "behavior": "The landing hero and checkout section use the Codex-generated images, with the river marks on the painted water",
+  "acceptance": [
+    "Given /, when it loads, then the hero background and the checkout section background are the generated images served through next/image (AVIF or WebP), and every file is recorded in docs/images.md",
+    "Given widths 360 and 390, then all four river marks are visible and none overlaps the email field, the hero note or the invoice panel; given 1440, the four marks sit on the painted river (manual: design review)",
+    "Given a production build, when Lighthouse runs on / (mobile preset), then Performance >= 90, Accessibility >= 95 and LCP < 2.5 s"
+  ],
+  "dependsOn": [
+    "F010"
+  ],
+  "state": "passing",
+  "verification": [
+    "landing-e2e",
+    "images-check",
+    "lighthouse"
+  ],
+  "refs": [
+    "R-6",
+    "R-9",
+    "R-11",
+    "D-9"
+  ],
+  "keep": [],
+  "review": true,
+  "notes": [
+    "2026-10-08 review pass by subagent: Pass. Code: hero-journey.tsx and checkout-preview.tsx render HERO_IMAGE/CHECKOUT_IMAGE (constants/landing-images.ts) via next/image (hero priority, sizes=100vw); river.ts coords are in 1672x941 image space matching the webp; smoothPath (lib/art.ts) is Catmull-Rom to cubic, covered by test/art.test.ts; cubicPoint/RIVER_PATH fully removed. DawnLandscape/DuskLandscape stay in use by components/directions/*-comp.tsx, so not dead. grep candidates in apps/web/src: only hero-c (directions.ts:31), which still exists on disk; docs/images.md rows match hero-dawn.webp and checkout-dusk.webp; check-images: 3 images, all recorded. Screens (taken 17:32, after last source edit): at 1440 all four marks on painted water (zoomed crop), line crosses only water between marks; at 768/390/360 compact marks on water, mark 4 sits at the left-bank edge but sampled image pixels around (830,748) are bright water (mean rgb 237,229,213); no mark overlaps form, note or panel; tx line fits one line at 360. Contrast measured from pixels: hero headline ~10.9:1, subhead 6.0-6.5:1, note worst-case bg at 1440 5.5:1; checkout h1 at 360 over the sun ~4.0:1 at p90 bg (large text, >3:1), subhead 7.5:1+. Checkout image crops well at 1440/768/360, no overflow. Ran: playwright landing+a11y+kit+smoke 27 passed; vitest 15 passed; check-images exit 0; Lighthouse log perf 99, a11y 100, LCP 1714 ms. Minor, non-blocking: the drawn line zigzags bank to bank rather than following the river centerline; reads as a route, acceptable."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-08T14:32:53Z",
+    "checks": [
+      {
+        "id": "landing-e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 7.7,
+        "log": "docs/runs/F011-20261008T143253Z-landing-e2e.log"
+      },
+      {
+        "id": "images-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F011-20261008T143253Z-images-check.log"
+      },
+      {
+        "id": "lighthouse",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 25.4,
+        "log": "docs/runs/F011-20261008T143253Z-lighthouse.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F011-20261008T143253Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.8,
+        "log": "docs/runs/F011-20261008T143253Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.7,
+        "log": "docs/runs/F011-20261008T143253Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.5,
+        "log": "docs/runs/F011-20261008T143253Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 8.7,
+        "log": "docs/runs/F011-20261008T143253Z-e2e.log"
+      }
+    ],
+    "taskHash": "1b24108d287b856f",
+    "filesHash": "0a115841d333d9a1",
+    "review": {
+      "result": "pass",
+      "by": "subagent",
+      "summary": "Pass. Code: hero-journey.tsx and checkout-preview.tsx render HERO_IMAGE/CHECKOUT_IMAGE (constants/landing-images.ts) via next/image (hero priority, sizes=100vw); river.ts coords are in 1672x941 image space matching the webp; smoothPath (lib/art.ts) is Catmull-Rom to cubic, covered by test/art.test.ts; cubicPoint/RIVER_PATH fully removed. DawnLandscape/DuskLandscape stay in use by components/directions/*-comp.tsx, so not dead. grep candidates in apps/web/src: only hero-c (directions.ts:31), which still exists on disk; docs/images.md rows match hero-dawn.webp and checkout-dusk.webp; check-images: 3 images, all recorded. Screens (taken 17:32, after last source edit): at 1440 all four marks on painted water (zoomed crop), line crosses only water between marks; at 768/390/360 compact marks on water, mark 4 sits at the left-bank edge but sampled image pixels around (830,748) are bright water (mean rgb 237,229,213); no mark overlaps form, note or panel; tx line fits one line at 360. Contrast measured from pixels: hero headline ~10.9:1, subhead 6.0-6.5:1, note worst-case bg at 1440 5.5:1; checkout h1 at 360 over the sun ~4.0:1 at p90 bg (large text, >3:1), subhead 7.5:1+. Checkout image crops well at 1440/768/360, no overflow. Ran: playwright landing+a11y+kit+smoke 27 passed; vitest 15 passed; check-images exit 0; Lighthouse log perf 99, a11y 100, LCP 1714 ms. Minor, non-blocking: the drawn line zigzags bank to bank rather than following the river centerline; reads as a route, acceptable.",
+      "at": "2026-10-08T14:36:16Z",
+      "filesHash": "0a115841d333d9a1"
+    },
+    "commit": "52c7f34",
+    "doneAt": "2026-10-08T14:36:32Z",
+    "proof": {
+      "1": "e2e/landing.spec.ts 'uses the generated hero and checkout images' (/_next/image?url=%2Fimages%2Fhero-dawn.webp and checkout-dusk.webp); images-check: 3 images recorded",
+      "2": "e2e/landing.spec.ts open-water tests at 360/390; independent review of 1440/768/390/360 screenshots: marks on painted water",
+      "3": "lighthouse check: performance 99, accessibility 100, LCP 1714 ms"
+    }
+  },
+  "branch": "feat/f011-the-landing-hero-and-checkout-section-us",
+  "baseCommit": "ab1d6d9188c0b3b45739aa9a8b688668758d3927",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f011-the-landing-hero-and-checkout-section-us",
+    "base": "main"
+  }
+}

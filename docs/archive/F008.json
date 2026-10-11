@@ -1,0 +1,98 @@
+{
+  "id": "F008",
+  "type": "feat",
+  "behavior": "Search metadata, sitemap and a fast production landing page",
+  "acceptance": [
+    "Given /, when it loads, then it has a title, a meta description and an og:image of 1200x630; /sitemap.xml lists / and not /kit; /robots.txt exists",
+    "Given a production build, when Lighthouse runs on / (mobile preset), then Performance >= 90, Accessibility >= 95 and LCP < 2.5 s"
+  ],
+  "dependsOn": [
+    "F006"
+  ],
+  "state": "passing",
+  "verification": [
+    "seo-e2e",
+    "lighthouse"
+  ],
+  "refs": [
+    "R-11",
+    "R-12",
+    "A-3"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-08T13:43:39Z",
+    "checks": [
+      {
+        "id": "seo-e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.4,
+        "log": "docs/runs/F008-20261008T134339Z-seo-e2e.log"
+      },
+      {
+        "id": "lighthouse",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 24.8,
+        "log": "docs/runs/F008-20261008T134339Z-lighthouse.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F008-20261008T134339Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.7,
+        "log": "docs/runs/F008-20261008T134339Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.4,
+        "log": "docs/runs/F008-20261008T134339Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.2,
+        "log": "docs/runs/F008-20261008T134339Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 7.9,
+        "log": "docs/runs/F008-20261008T134339Z-e2e.log"
+      }
+    ],
+    "taskHash": "f4e6d324881849ea",
+    "filesHash": "7cfc42ba928c36db",
+    "commit": "c5c69b1",
+    "doneAt": "2026-10-08T13:44:21Z",
+    "proof": {
+      "1": "e2e/seo.spec.ts: title, meta description, og:image with og:image:width 1200 / height 630 and a fetched PNG of 1200x630; sitemap lists / and not /kit; robots.txt exists",
+      "2": "lighthouse check (apps/web/scripts/lighthouse.mjs, mobile preset, devtools throttling): performance 100, accessibility 100, LCP 1541 ms"
+    }
+  },
+  "branch": "feat/f008-search-metadata-sitemap-and-a-fast-produ",
+  "baseCommit": "d3d74e524129ee6c7a03fd124436b5adb0a0141f",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f008-search-metadata-sitemap-and-a-fast-produ",
+    "base": "main"
+  }
+}

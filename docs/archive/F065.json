@@ -1,0 +1,121 @@
+{
+  "id": "F065",
+  "type": "feat",
+  "behavior": "A user signs up once and owns their profiles: POST/GET /v1/me and POST /v1/profiles",
+  "acceptance": [
+    "POST /v1/me with a valid token for a new user creates the user, a personal profile and its wallet; calling it again changes nothing; GET /v1/me lists profiles with kind, name and wallet address",
+    "POST /v1/profiles with an Idempotency-Key creates a freelancer or merchant profile with its own wallet; another user's token gets 403 on every profile route (tested across users); openapi.yaml describes the routes"
+  ],
+  "dependsOn": [
+    "F064"
+  ],
+  "state": "passing",
+  "verification": [
+    "backend"
+  ],
+  "refs": [
+    "R-32"
+  ],
+  "keep": [
+    "apps/web/*",
+    "packages/*"
+  ],
+  "review": true,
+  "notes": [
+    "2026-10-09 review pass by reviewer: Independent review: ownership, idempotency (per-user keys, concurrent same key), signup once, 403 across users and error mapping verified by reading code and running go test -race. Four low findings fixed and rechecked: NUL in name now 422 (tested), ProfileWallet bounded by privy.Timeout 20s (tested), api.md names the POST /v1/me key exception, signup user+personal insert in one transaction. No blocking issues."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-09T19:21:00Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 25.0,
+        "log": "docs/runs/F065-20261009T192100Z-backend.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.6,
+        "log": "docs/runs/F065-20261009T192100Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F065-20261009T192100Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F065-20261009T192100Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F065-20261009T192100Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 25.3,
+        "log": "docs/runs/F065-20261009T192100Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.7,
+        "log": "docs/runs/F065-20261009T192100Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 8.7,
+        "log": "docs/runs/F065-20261009T192100Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F065-20261009T192100Z-keep.log"
+      }
+    ],
+    "taskHash": "a65169eaeb1e895a",
+    "filesHash": "6482c1003ad2e221",
+    "proof": {
+      "1": "backend: profile tests TestSignUpOnce, TestSignUpConcurrently, TestSignUpRetriesAFailedWallet and httpapi TestSignUpAndMe: POST /v1/me makes the user, personal profile and wallet once (201 then 200, same body), GET /v1/me lists kind, name, walletAddress",
+      "2": "backend: TestCreateProfile, TestCreateProfileSameKeyConcurrently, TestCreateProfileRoute (201/200/409/400/422/404) and TestProfilesBelongToTheirUser (Bob gets 403 on every route in profileRoutes for each of Alice's profiles, never sees them in /v1/me); openapi.yaml validated with redocly lint"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Independent review: ownership, idempotency (per-user keys, concurrent same key), signup once, 403 across users and error mapping verified by reading code and running go test -race. Four low findings fixed and rechecked: NUL in name now 422 (tested), ProfileWallet bounded by privy.Timeout 20s (tested), api.md names the POST /v1/me key exception, signup user+personal insert in one transaction. No blocking issues.",
+      "at": "2026-10-09T19:22:25Z",
+      "filesHash": "6482c1003ad2e221"
+    },
+    "commit": "da56146",
+    "doneAt": "2026-10-09T19:22:45Z"
+  },
+  "branch": "feat/f065-a-user-signs-up-once-and-owns-their-prof",
+  "baseCommit": "b80c68291bca81547462abf4e3d0a84616b9bf30",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f065-a-user-signs-up-once-and-owns-their-prof",
+    "base": "main"
+  }
+}

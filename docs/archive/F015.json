@@ -1,0 +1,114 @@
+{
+  "id": "F015",
+  "type": "fix",
+  "behavior": "Small polish from the F014 review: accurate DESIGN.md disabled fields, token grid column, visible checkout band edge in dark, theme switch label right before hydration, role type sizes on /kit",
+  "acceptance": [
+    "Given the dark theme, then the checkout band has a visible edge against the page; the theme switch's accessible name matches the current theme from the first render (CSS-driven label)",
+    "Given /kit, then the Typography section shows the role tokens text-hero, text-section, text-amount and text-amount-lg; given DESIGN.md, then disabled fields are described with their token colors; no raw grid column widths remain in landing components"
+  ],
+  "dependsOn": [
+    "F014"
+  ],
+  "state": "passing",
+  "verification": [
+    "landing-e2e",
+    "kit-e2e",
+    "a11y-e2e"
+  ],
+  "refs": [
+    "R-4",
+    "R-10"
+  ],
+  "keep": [],
+  "review": true,
+  "notes": [
+    "2026-10-08 review pass by subagent: All five fixes correct. (1) DESIGN.md disabled fields text matches fields.tsx:14 (disabled:border-line/bg-surface-2/text-subtle/cursor-not-allowed = Frost Line/Meadow Wash/Lichen Subtle). (2) money-rules.tsx:13,21 md:grid-cols-[--spacing(64)_1fr] compiles to grid-template-columns:calc(var(--spacing) * 64) 1fr; computed 256px 792px at 1440 (same as old 16rem); remaining landing grid-cols are fr/minmax/auto ratios, no raw widths. (3) checkout-preview.tsx:25 border-y border-line: dark computed border rgb(37,50,45) vs band/body bg rgb(13,20,18); desktop-dark.png crop shows the bottom rule clearly; top edge sits on the image start. (4) ThemeSwitch: compiled .dark\\:hidden{display:none} / .dark\\:inline{display:inline} under :where([data-theme=dark],[data-theme=dark] *); Chromium CDP AX tree with JS on and off, light and dark, shows exactly one button name and one StaticText (light: Switch to dark theme; dark: Switch to light theme), flips after click; switch is not inside the forced-dark checkout band. With JS off the head theme script cannot run so the page is light, as expected. (5) /kit Typography shows text-hero, text-section, text-amount-lg, text-amount, text-2xs rows in kit-light.png and kit-dark.png. Checks: playwright landing+kit+a11y 46 passed; ui-web 14 passed; pnpm lint clean; pnpm typecheck 3/3. Nits (no fail): unit test no longer asserts the name (covered by the new e2e test); DESIGN.md layout paragraph does not mention the new checkout band rules.\""
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-08T15:34:21Z",
+    "checks": [
+      {
+        "id": "landing-e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 15.7,
+        "log": "docs/runs/F015-20261008T153421Z-landing-e2e.log"
+      },
+      {
+        "id": "kit-e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 6.3,
+        "log": "docs/runs/F015-20261008T153421Z-kit-e2e.log"
+      },
+      {
+        "id": "a11y-e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 7.2,
+        "log": "docs/runs/F015-20261008T153421Z-a11y-e2e.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F015-20261008T153421Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F015-20261008T153421Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.2,
+        "log": "docs/runs/F015-20261008T153421Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.5,
+        "log": "docs/runs/F015-20261008T153421Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 16.7,
+        "log": "docs/runs/F015-20261008T153421Z-e2e.log"
+      }
+    ],
+    "taskHash": "ae189d7c5e907084",
+    "filesHash": "c176958293c4f4eb",
+    "review": {
+      "result": "pass",
+      "by": "subagent",
+      "summary": "All five fixes correct. (1) DESIGN.md disabled fields text matches fields.tsx:14 (disabled:border-line/bg-surface-2/text-subtle/cursor-not-allowed = Frost Line/Meadow Wash/Lichen Subtle). (2) money-rules.tsx:13,21 md:grid-cols-[--spacing(64)_1fr] compiles to grid-template-columns:calc(var(--spacing) * 64) 1fr; computed 256px 792px at 1440 (same as old 16rem); remaining landing grid-cols are fr/minmax/auto ratios, no raw widths. (3) checkout-preview.tsx:25 border-y border-line: dark computed border rgb(37,50,45) vs band/body bg rgb(13,20,18); desktop-dark.png crop shows the bottom rule clearly; top edge sits on the image start. (4) ThemeSwitch: compiled .dark\\:hidden{display:none} / .dark\\:inline{display:inline} under :where([data-theme=dark],[data-theme=dark] *); Chromium CDP AX tree with JS on and off, light and dark, shows exactly one button name and one StaticText (light: Switch to dark theme; dark: Switch to light theme), flips after click; switch is not inside the forced-dark checkout band. With JS off the head theme script cannot run so the page is light, as expected. (5) /kit Typography shows text-hero, text-section, text-amount-lg, text-amount, text-2xs rows in kit-light.png and kit-dark.png. Checks: playwright landing+kit+a11y 46 passed; ui-web 14 passed; pnpm lint clean; pnpm typecheck 3/3. Nits (no fail): unit test no longer asserts the name (covered by the new e2e test); DESIGN.md layout paragraph does not mention the new checkout band rules.\"",
+      "at": "2026-10-08T15:37:13Z",
+      "filesHash": "c176958293c4f4eb"
+    },
+    "commit": "0e2d560",
+    "doneAt": "2026-10-08T15:37:32Z",
+    "proof": {
+      "1": "e2e/landing.spec.ts 'the checkout band has a visible edge against the page in dark' and 'the theme switch is named for the current theme without any page script'",
+      "2": "e2e/kit.spec.ts '/kit typography shows the role type tokens'; DESIGN.md Inputs/Fields disabled line; money-rules uses --spacing(64)"
+    }
+  },
+  "branch": "fix/f015-small-polish-from-the-f014-review-accura",
+  "baseCommit": "fb7400ea0ddfedef39b0295139e6ff0b8f62fd40",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f015-small-polish-from-the-f014-review-accura",
+    "base": "main"
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "id": "F082",
+  "type": "fix",
+  "behavior": "USD estimates from the API are cut to cents, never rounded up",
+  "acceptance": [
+    "estimatedUsdTotal in GET balances and estimatedUsd/receivedUsd/sentUsd in GET balance-history cut to cents (apps/backend/internal/balance/balance.go:127 and history.go:142 use big.Rat.FloatString(2), which rounds); a test with 0.009 USD gives 0.00 and 1.999 gives 1.99; the hero total and the chart's last point then always agree"
+  ],
+  "dependsOn": [
+    "F079"
+  ],
+  "state": "passing",
+  "verification": [
+    "backend"
+  ],
+  "refs": [
+    "R-33",
+    "R-38"
+  ],
+  "keep": [
+    "packages/contracts/*"
+  ],
+  "review": true,
+  "notes": [
+    "2026-10-10 review pass by reviewer: usdString truncates Num*100/Denom with big.Int Quo, correct for zero, sub-cent, large and multi-token sums (cut once after big.Rat sum). Inputs never negative: wallet is ERC20 balanceOf, history balances clamped to 0, wallet_transfers.amount CHECK > 0. Test covers 0.009->0.00 and 1.999999->1.99 via usd(); FloatString would give 0.01/2.00 so it failed before. Backend tests pass."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-10T12:15:31Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 43.0,
+        "log": "docs/runs/F082-20261010T121531Z-backend.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.8,
+        "log": "docs/runs/F082-20261010T121531Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F082-20261010T121531Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F082-20261010T121531Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F082-20261010T121531Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 29.8,
+        "log": "docs/runs/F082-20261010T121531Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.7,
+        "log": "docs/runs/F082-20261010T121531Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 50.3,
+        "log": "docs/runs/F082-20261010T121531Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F082-20261010T121531Z-keep.log"
+      }
+    ],
+    "taskHash": "b7b86863cf490669",
+    "filesHash": "5a04a8e284e30908",
+    "proof": {
+      "1": "backend: internal/balance/usd_test.go TestUSDIsCutToCentsNeverRoundedUp failed before the fix (0.009 → \"0.01\", 1.999999 → \"2.00\", 12345.678901 → \"12345.68\") and passes after; balance.go (GET balances estimatedUsdTotal) and history.go (estimatedUsd/receivedUsd/sentUsd) both use usdString, which cuts to cents; the existing balance tests still pass; openapi.yaml states cut, never rounded up"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "usdString truncates Num*100/Denom with big.Int Quo, correct for zero, sub-cent, large and multi-token sums (cut once after big.Rat sum). Inputs never negative: wallet is ERC20 balanceOf, history balances clamped to 0, wallet_transfers.amount CHECK > 0. Test covers 0.009->0.00 and 1.999999->1.99 via usd(); FloatString would give 0.01/2.00 so it failed before. Backend tests pass.",
+      "at": "2026-10-10T12:18:34Z",
+      "filesHash": "5a04a8e284e30908"
+    },
+    "commit": "825e0b5",
+    "doneAt": "2026-10-10T12:18:48Z"
+  },
+  "branch": "fix/f082-usd-estimates-from-the-api-are-cut-to-ce",
+  "baseCommit": "41522630d0836de2ad5a8a4b2c51e4484c0c156a",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f082-usd-estimates-from-the-api-are-cut-to-ce",
+    "base": "main"
+  }
+}

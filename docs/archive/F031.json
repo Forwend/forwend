@@ -1,0 +1,90 @@
+{
+  "id": "F031",
+  "type": "docs",
+  "behavior": "PLAN.md describes contract v1 with the agreed fixes (multisig refund authority, settle window, several refunds, native-coin recover, pause, versioned factories) and plans Tron, Solana and Bitcoin with a backend that does not assume EVM",
+  "acceptance": [
+    "PLAN.md Phase 5 design, done-list and invariants match the agreed v1 contract: Safe multisig refund authority calls refund/recover directly (no EIP-712), settle refused after expiresAt + settle window except by the multisig, refunds may repeat while the total stays within the refundable amount, recover covers native coins, a multisig pause stops settle only, new factory per release",
+    "PLAN.md D-08, D-14, the glossary and Phase 9 claim line match these rules",
+    "PLAN.md says the contract receiver is v1 and the backend keeps the receive-address method per chain family so unique wallets per invoice can replace it; Later lists Tron, Solana and Bitcoin with the method each needs"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "lint"
+  ],
+  "refs": [],
+  "keep": [
+    "apps/*",
+    "packages/*",
+    "docs/diagrams/*"
+  ],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-08T20:59:42Z",
+    "checks": [
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F031-20261008T205942Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F031-20261008T205942Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F031-20261008T205942Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F031-20261008T205942Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 8.5,
+        "log": "docs/runs/F031-20261008T205942Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F031-20261008T205942Z-keep.log"
+      }
+    ],
+    "taskHash": "1df1256c040d13b2",
+    "filesHash": "7fc727225c3d4570",
+    "commit": "d1bae19",
+    "doneAt": "2026-10-08T20:59:53Z",
+    "proof": {
+      "1": "PLAN.md Phase 5 design, done-list, invariants (git diff)",
+      "2": "PLAN.md D-08, D-14, glossary, Phase 9 claim line (git diff)",
+      "3": "PLAN.md C-10 and Later section (git diff); lint passed"
+    }
+  },
+  "branch": "docs/f031-plan-md-describes-contract-v1-with-the-a",
+  "baseCommit": "8171a3d72bd125fba286acf8e9e04d4e15f685c8",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "docs/f031-plan-md-describes-contract-v1-with-the-a",
+    "base": "main"
+  }
+}

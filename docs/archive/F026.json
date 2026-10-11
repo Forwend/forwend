@@ -1,0 +1,91 @@
+{
+  "id": "F026",
+  "type": "fix",
+  "behavior": "The logo mark is optically centered with the wordmark, the kit shows the logo in all variants, and page titles use the 'Forwend | …' format",
+  "acceptance": [
+    "Given the nav and footer, then the mark's visible shape is vertically centered on the wordmark's letters (within 1px) in both themes",
+    "Given /kit, then a Logo section shows the mark alone, the mark with the wordmark, several sizes, the app-icon tile and the favicon sizes, each on light and dark grounds",
+    "Given / , /kit and the 404 page, then the document title starts with 'Forwend | '"
+  ],
+  "dependsOn": [
+    "F025"
+  ],
+  "state": "passing",
+  "verification": [
+    "build",
+    "e2e"
+  ],
+  "refs": [],
+  "keep": [],
+  "review": true,
+  "notes": [
+    "2026-10-08 review pass by subagent: Nav/footer centering measured on localhost:3000 at 1280px (4x DPR, pixel ink analysis), light and dark: mark area centroid vs 'Forwend' ink center = +0.48px header, +0.23px footer (within 1px; mark bbox mid now 1.4px below, as intended by centroid centering). f026-nav-zoom.png looks centered. icon-512.png tile: mark centered visually, sits slightly low by bbox as expected. Titles via curl: / 'Forwend | Get paid in stablecoins, see every step', /kit and /kit/directions 'Forwend | Kit', unknown URL 'Forwend | Page not found'; no old ':'/'·' titles left in src. /kit Logo section is first: Logo at two sizes and LogoMark at 4 sizes on local light and dark grounds; app icon, maskable icon, 16/32/48 favicon sizes; all 13 images have alt/aria-label; no horizontal scroll at 375px. Minor notes, not blocking: the app icon and favicon row follow the page theme (light or dark via toggle) instead of being shown side by side on both grounds; the favicon sizes are icon-192.png scaled down by the browser, not the real favicon.ico. Checks: playwright 19/19 passed, pnpm lint clean (160 files), pnpm typecheck 3/3 successful."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-08T18:25:14Z",
+    "checks": [
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 3.2,
+        "log": "docs/runs/F026-20261008T182514Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 8.6,
+        "log": "docs/runs/F026-20261008T182514Z-e2e.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F026-20261008T182514Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F026-20261008T182514Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.4,
+        "log": "docs/runs/F026-20261008T182514Z-unit.log"
+      }
+    ],
+    "taskHash": "4bb6b8fe8591e7c0",
+    "filesHash": "1deed81cca3b7f1c",
+    "review": {
+      "result": "pass",
+      "by": "subagent",
+      "summary": "Nav/footer centering measured on localhost:3000 at 1280px (4x DPR, pixel ink analysis), light and dark: mark area centroid vs 'Forwend' ink center = +0.48px header, +0.23px footer (within 1px; mark bbox mid now 1.4px below, as intended by centroid centering). f026-nav-zoom.png looks centered. icon-512.png tile: mark centered visually, sits slightly low by bbox as expected. Titles via curl: / 'Forwend | Get paid in stablecoins, see every step', /kit and /kit/directions 'Forwend | Kit', unknown URL 'Forwend | Page not found'; no old ':'/'·' titles left in src. /kit Logo section is first: Logo at two sizes and LogoMark at 4 sizes on local light and dark grounds; app icon, maskable icon, 16/32/48 favicon sizes; all 13 images have alt/aria-label; no horizontal scroll at 375px. Minor notes, not blocking: the app icon and favicon row follow the page theme (light or dark via toggle) instead of being shown side by side on both grounds; the favicon sizes are icon-192.png scaled down by the browser, not the real favicon.ico. Checks: playwright 19/19 passed, pnpm lint clean (160 files), pnpm typecheck 3/3 successful.",
+      "at": "2026-10-08T18:27:34Z",
+      "filesHash": "1deed81cca3b7f1c"
+    },
+    "commit": "f7ba87b",
+    "doneAt": "2026-10-08T18:27:53Z",
+    "proof": {
+      "1": "review measurement: mark centroid 0.48px (nav) and 0.23px (footer) from the letters' center, both themes (f026-nav-zoom.png)",
+      "2": "/kit Logo section: mark and wordmark, 4 mark sizes, light and dark grounds, app icon, maskable, favicons (f026-kit-logo.png)",
+      "3": "e2e/smoke.spec.ts 'page titles use the Forwend | format'; curl: / , /kit, 404 titles start with 'Forwend | '"
+    }
+  },
+  "branch": "fix/f026-the-logo-mark-is-optically-centered-with",
+  "baseCommit": "f4a14af5cdd7697e3d5da517b5aa85b778e7861d",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f026-the-logo-mark-is-optically-centered-with",
+    "base": "main"
+  }
+}

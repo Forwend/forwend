@@ -1,0 +1,134 @@
+{
+  "id": "F056",
+  "type": "fix",
+  "behavior": "make repository instructions concise and verification trustworthy",
+  "acceptance": [
+    "One workflow and check registry serves local work and CI; docs have unique decisions, valid links and explicit current versus planned scope",
+    "Regression tests reject changed inputs, stale task constraints, unknown proof checks, missing scripts and missing CI; historical task records stay readable",
+    "Roadmap and design docs keep product and safety decisions while removing duplicated values, history and procedural text"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "harness",
+    "docs-check",
+    "images-check",
+    "diagrams"
+  ],
+  "refs": [
+    "R-25"
+  ],
+  "keep": [
+    "apps/backend/internal/*",
+    "apps/backend/cmd/*",
+    "packages/*/src/*",
+    "apps/web/src/*"
+  ],
+  "review": true,
+  "notes": [
+    "2026-10-09 review pass by independent-review: Documentation comparison preserves product policy, money safeguards, release gates and accessibility. Harness review confirmed duplicate checks and stale pending delivery are rejected. Fifteen harness regressions and all ten verification checks pass.",
+    "2026-10-09 Local verification and independent reviews passed; PR #46 CI pending. After merge, execute only F057 (API lifecycle) and F058 (shared UI files), both authorized for commit and PR delivery. User requested full repo cleanup, not pending product features."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-09T11:10:09Z",
+    "checks": [
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.6,
+        "log": "docs/runs/F056-20261009T111009Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F056-20261009T111009Z-docs-check.log"
+      },
+      {
+        "id": "images-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F056-20261009T111009Z-images-check.log"
+      },
+      {
+        "id": "diagrams",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 3.5,
+        "log": "docs/runs/F056-20261009T111009Z-diagrams.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F056-20261009T111009Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.7,
+        "log": "docs/runs/F056-20261009T111009Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 3.3,
+        "log": "docs/runs/F056-20261009T111009Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 3.4,
+        "log": "docs/runs/F056-20261009T111009Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 8.9,
+        "log": "docs/runs/F056-20261009T111009Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F056-20261009T111009Z-keep.log"
+      }
+    ],
+    "taskHash": "c582312473ce97a0",
+    "filesHash": "53199ec0ecdde05b",
+    "proof": {
+      "1": "docs-check: canonical links and decision ownership; shared CI registry reviewed",
+      "2": "harness: executable regressions for false success and legacy evidence",
+      "3": "docs-check: valid shortened docs; independent comparison against previous product and safety rules"
+    },
+    "review": {
+      "result": "pass",
+      "by": "independent-review",
+      "summary": "Documentation comparison preserves product policy, money safeguards, release gates and accessibility. Harness review confirmed duplicate checks and stale pending delivery are rejected. Fifteen harness regressions and all ten verification checks pass.",
+      "at": "2026-10-09T11:11:39Z",
+      "filesHash": "53199ec0ecdde05b"
+    },
+    "commit": "3c763d8",
+    "doneAt": "2026-10-09T11:11:45Z"
+  },
+  "branch": "fix/f056-make-repository-instructions-concise-and",
+  "baseCommit": "3e690870517540e730cc1035f249fe30f3b08a37",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f056-make-repository-instructions-concise-and",
+    "base": "main"
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "id": "F079",
+  "type": "feat",
+  "behavior": "The signed-in app is a working money dashboard: header, grouped sidebar, personal balance chart, business overview, transactions page and a phone home",
+  "acceptance": [
+    "Desktop: grouped sidebar (profile switcher without the wallet address, pages by profile type, Soon items, the account menu, which holds the app's one Dark mode switch on desktop and phones) and a header with breadcrumb, ⌘K search (pages, profiles, transactions), notifications from received transfers, Receive and Send (disabled with reason); content edges line up with the header (same side padding, no centered maximum width). Phones: top bar (account, search, notifications), bottom tabs Home, Transactions, Balances, Profiles",
+    "Totals across tokens show in USD (each stablecoin counted as 1 USD, marked as an estimate). Personal overview: total balance on the left and a balance-over-time line chart (GET balance-history, range tabs, crosshair tooltip, keyboard reachable) on the right over the Codex dawn/night banner (rows in docs/web/images.md), then recent transactions and balances by network; phone shows a centered balance with round actions and cards. Merchant and freelancer: a business overview with range tabs, KPI strip (balance, received, payments, pending), received-per-day bars, balance by network and a payments table with All/In/Out filter, search and CSV export",
+    "/app/transactions lists GET transactions with direction filter, search and Show more; Receive opens from any page; axe finds no serious or critical violation on desktop and phone in both themes; Playwright covers desktop and phone; built through Impeccable (direction contract, finish review, DESIGN.md) and an independent review; /kit opens in `next dev` without KIT_ENABLED and stays 404 in a production build without it; AGENTS.md says to write comments only where the code cannot say it; root `pnpm dev` also starts Postgres, the api and the worker, and Ctrl+C stops them all; the Receive sheet shows the token and network, a large QR code, the full address in one labeled box with its start and end marked, and one copy button"
+  ],
+  "dependsOn": [
+    "F072"
+  ],
+  "state": "passing",
+  "verification": [
+    "e2e",
+    "unit"
+  ],
+  "refs": [
+    "R-39",
+    "R-34",
+    "R-35",
+    "R-38"
+  ],
+  "keep": [
+    "packages/contracts/*",
+    "apps/backend/internal/*",
+    "apps/backend/cmd/*",
+    "apps/backend/api/*"
+  ],
+  "review": true,
+  "notes": [
+    "2026-10-10 review pass by reviewer: Checked: money (bigint for all shown amounts in balance-history, tokenTotal, CSV, business totals, hero Change; floats only in chart geometry and axis ticks; cents cut, never rounded up; USD estimates marked; no made-up 0; UTC day labels correct), query args carry profileId, polling, loading/error/empty states, payments 100+ logic (correct), command menu combobox/listbox with native dialog Escape and focus return, native radio SegmentedControl, chart keyboard + live region + hidden table, collapsed sidebar names, one theme control per viewport, disabled actions announce the reason, hidden phone/desktop twins are display:none, structure (no cross-feature private imports, ui-web additions on /kit), CSV guard, no innerHTML. Fixed: (1) BusinessOverview and NotificationsMenu showed the previous profile's figures and notifications after a switch between business profiles (RTK data keeps the last args' result): BusinessOverview keyed by profileId in dashboard-screen.tsx, notifications use currentData. (2) Payments-in count used a rolling days*24h window while Received uses UTC days with today included: since now starts at 00:00 UTC of the first history day. (3) CSV guard also covers leading tab and CR (OWASP), with a test. (4) Removed BALANCES_COPY.updated and .networks, left unused by this change. (5) Acceptance 3 asks for axe in both themes but the app was only checked in light: e2e now runs axe after the desktop and phone theme toggles; passes. Proof 3 text updated to match. Not fixed, minor: during a range change the hero Change and the Received figure show the old range's amount beside the new range name until the history loads; notification 'new' compares block time to the local open time, so a transfer recorded after opening with an earlier block time is never marked new (follow-up: remember seen keys); BALANCES_COPY.readAt and PROFILES_COPY.profileLabel were unused before this change. Ran: web test 28 passed, lint, typecheck, pnpm e2e (21 + 8 passed), verify F079 passed.",
+    "2026-10-10 F072 merged (PR #77). F079 app redesign verified and review passed, uncommitted on its branch for the owner's review; next: owner reviews, then commit + done F079",
+    "2026-10-10 review pass by reviewer: Delta review (theme in account menu, shell padding, USD totals, comment cleanup, /kit in dev, tasks.json merge). Checked: apps/backend identical to origin/main; tasks.json F080/F081 equal to main, validate ok; ui-web Switch unchanged vs main (only MenuCheckboxItem added); one theme control (account menu, desktop and phone), sidebar has no switch; header and main both px-4 sm:px-6, no max width; usdTotal bigint at finest decimals, cut once to cents; series in USD cents from the API *Usd fields; no token-unit total left (symbols only on per-token rows); no made-up 0 (null -> dash or skeleton); removed comments were descriptive only, the money rules stay (cut once, no made-up 0, payments 100+ window, UTC day labels); e2e strengthened, not weakened; /kit 404 without KIT_ENABLED in a production build (kit.spec passes), NODE_ENV=development opens it in next dev. Fixed: (1) business overview USD figures had no estimate mark (acceptance 2, DESIGN.md): one muted line under the figure strip; (2) design.json: Menu Checkbox Item said dark mode on phones only, and the sidebar css kept an unused .ds-side-toggle rule. Not fixed: backend usd() uses big.Rat.FloatString(2), which rounds half up, so chart, Received and Change cents can be up to half a cent above the cut value and the chart's last point can differ by 1 cent from the hero total (backend is out of scope for F079; follow-up). Ran: web test 27 passed, lint, typecheck, docs-check 0 errors, pnpm e2e 21 + 8 passed, validate ok, verify F079 passed (8 checks).",
+    "2026-10-10 review pass by reviewer: Delta review (root pnpm dev starts the backend, one-row sidebar top with collapse in the header, Receive sheet redesign, balance hero with estimate info button, Coming soon tooltips, DESIGN.md). Checked: apps/backend internal/cmd/api and packages/contracts identical to origin/main; dev.sh has set -e, cd to its own dir (any cwd), trap 'kill 0' on INT/TERM runs once and stops both Go processes (tested with a stand-in script); Tooltip wraps ActionButton via Radix asChild (React 19 passes ref), the button stays focusable with aria-disabled and the reason in its accessible name (unit + e2e); EstimateHint button is named by the hint text, 24px target; ReceiveAddress shows the full address with a visible label and one primary copy button, live status kept; all new copy keys used; no cross-feature private imports. Fixed: (1) SOON_ACTION_CLASSES lived in features/balances/money-actions.tsx but only the app-shell header uses it after the round-actions change: moved into app-header.tsx (D-11). (2) DESIGN.md and design.json still said desktop money actions are pills; now round on desktop and phones, the dashed pill is only the header Send. (3) e2e comment still said the address shows in groups. Not fixed, minor: Radix tooltips do not open on touch and the soon actions no longer have an onClick, so tapping Send/Transfer/Withdraw on a phone shows nothing (owner chose no notice text; reason stays for screen readers); dev.sh needs apps/backend/.env and Docker, and if the api exits the worker keeps running until Ctrl+C. Ran: web test 27 passed, lint, typecheck, docs-check 0 errors, verify F079 passed (8 checks incl. e2e)."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-10T12:12:45Z",
+    "checks": [
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 45.3,
+        "log": "docs/runs/F079-20261010T121245Z-e2e.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 26.6,
+        "log": "docs/runs/F079-20261010T121245Z-unit.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.8,
+        "log": "docs/runs/F079-20261010T121245Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F079-20261010T121245Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F079-20261010T121245Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F079-20261010T121245Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.2,
+        "log": "docs/runs/F079-20261010T121245Z-build.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F079-20261010T121245Z-keep.log"
+      }
+    ],
+    "taskHash": "d6042e82ed6abf74",
+    "filesHash": "a89427f7630f9497",
+    "proof": {
+      "1": "e2e: e2e/privy/sign-in.spec.ts (live Privy + real API): sidebar groups with no theme switch, Overview current, Analytics as Soon text, header breadcrumb/notifications/disabled Send, ⌘K opens Balances via Enter, the account menu's Dark mode item flips data-theme on desktop and phones and axe passes in that theme; phone: Home tab, round Receive, Profiles sheet, no sideways scroll at 390px; content edges match the header (screenshot r5); disabled money actions show a 'Coming soon' tooltip on hover or focus (screenshot r11) and keep the reason in their accessible name (unit test)",
+      "2": "unit: balances.test.ts (usdTotal in USD cents across tokens, cut once), balance-history.test.ts (USD series, no made-up 0), balance-figure.test.tsx (total shown in USD and marked estimated, money actions), transactions.test.ts (status, filter, CSV); e2e: live chart region with ranges, Balances by network, Recent transactions, merchant Received and Payments regions; hero: estimate marked by an info button after USD (unit + e2e), figure sized by container units, chart fills the card (also at 0), 4:1 card with one padding on all sides (screenshots r9 at 390, 1280, 1680)",
+      "3": "e2e: /app/transactions heading and Direction filter, axe 0 serious/critical across the live test; kit.spec keeps /kit 404 in a production build without KIT_ENABLED (and next dev served /kit 200 without it, checked by curl); AGENTS.md comment rule; Impeccable contract, detector, finish review and DESIGN.md updated; pnpm dev checked end to end: api /healthz 200, web 200, web→api /api/v1/me 401, SIGINT to the process group exits 0 with no api/worker/next process or port left; Receive sheet: live test reads the full address from the sheet (0x + 40 hex), its QR code and the network note, axe passes with the sheet open; screenshots r7 (dark desktop, light phone)"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Delta review (root pnpm dev starts the backend, one-row sidebar top with collapse in the header, Receive sheet redesign, balance hero with estimate info button, Coming soon tooltips, DESIGN.md). Checked: apps/backend internal/cmd/api and packages/contracts identical to origin/main; dev.sh has set -e, cd to its own dir (any cwd), trap 'kill 0' on INT/TERM runs once and stops both Go processes (tested with a stand-in script); Tooltip wraps ActionButton via Radix asChild (React 19 passes ref), the button stays focusable with aria-disabled and the reason in its accessible name (unit + e2e); EstimateHint button is named by the hint text, 24px target; ReceiveAddress shows the full address with a visible label and one primary copy button, live status kept; all new copy keys used; no cross-feature private imports. Fixed: (1) SOON_ACTION_CLASSES lived in features/balances/money-actions.tsx but only the app-shell header uses it after the round-actions change: moved into app-header.tsx (D-11). (2) DESIGN.md and design.json still said desktop money actions are pills; now round on desktop and phones, the dashed pill is only the header Send. (3) e2e comment still said the address shows in groups. Not fixed, minor: Radix tooltips do not open on touch and the soon actions no longer have an onClick, so tapping Send/Transfer/Withdraw on a phone shows nothing (owner chose no notice text; reason stays for screen readers); dev.sh needs apps/backend/.env and Docker, and if the api exits the worker keeps running until Ctrl+C. Ran: web test 27 passed, lint, typecheck, docs-check 0 errors, verify F079 passed (8 checks incl. e2e).",
+      "at": "2026-10-10T12:14:11Z",
+      "filesHash": "a89427f7630f9497"
+    },
+    "commit": "13c3123",
+    "doneAt": "2026-10-10T12:14:33Z"
+  },
+  "branch": "feat/f079-the-signed-in-app-is-a-working-money-das",
+  "baseCommit": "098bd66c082145151b46fc0b75925acbd67c2e15",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f079-the-signed-in-app-is-a-working-money-das",
+    "base": "main"
+  }
+}

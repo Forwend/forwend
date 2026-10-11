@@ -1,0 +1,121 @@
+{
+  "id": "F104",
+  "type": "fix",
+  "behavior": "Chain reads switch providers and slow down instead of failing the round",
+  "acceptance": [
+    "Each enabled chain has a pool of every Infura key plus the public RPCs (public only when INFURA_API_KEYS is empty); a call that gets 429, a 5xx, a rate-limit JSON-RPC error or a timeout moves to the next endpoint at once and rests the failing one with exponential backoff and jitter; the two independent hosts of D-15 are kept, a failed second host is replaced by another host; each endpoint is paced by a configurable request rate",
+    "eth_getLogs halves its block range on a 429 or a too-large error down to a floor and grows back after successes; a worker round survives an endpoint going 429 mid-round; tests use a fault-injecting JSON-RPC proxy in front of Anvil (429s, 5xx, timeouts, rate-limit errors) and show reads move to the next endpoint and recover, and a public-only pool works"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "backend",
+    "e2e"
+  ],
+  "refs": [
+    "D-15",
+    "D-45",
+    "R-38"
+  ],
+  "keep": [
+    "packages/contracts/*"
+  ],
+  "review": true,
+  "notes": [
+    "2026-10-10 review pass by reviewer: PASS after one small fix. Failover classification correct: only timeouts, connection errors, non-2xx and rate-limit JSON-RPC errors (429/-32005/-32007/message) fail over; reverts, invalid params, header-not-found and -32005 'more than 10000 results' are answers (TestOutageIsToldFromAnAnswer). Only non-idempotent call is eth_sendRawTransaction of already-signed bytes (settle saved before send; reconcile tolerates 'already known'; deploy resend is idempotent), so re-sending to another endpoint never signs a new nonce. Batches: a rate limit on any element re-sends the whole read-only batch. D-15: at each pick the second skips the primary's current host and waits/fails rather than share it. Gap (second may later hit a host that served the primary's logs) is acceptable: it already existed across rounds with the old re-pick-after-error Dial, needs an outage of an earlier-listed host the liar can't cause, and settle still needs the real on-chain balance; follow-up only if D-15 must hold per deposit (record the confirming host). Adaptive range: retries same lo with half span, both scans re-queried, no gap/overlap, floor 50 then error, one DB transaction after the loop so the cursor never moves on a partial scan. No URL in errors/logs (url.Error stripped, endpoint names host#pos). chainId checked before first use, wrong endpoints never used. RPC_RATE_PER_SECOND required in LoadAPI/worker/signer, INFURA_API_KEYS may be empty; .env.example and architecture.md match chains.json. FIXED (pool.go): requests queued on an endpoint's pace slot were still sent after it began resting, and each failure doubled the rest; a probe of 8 queued requests gave 8 failures and an 82 s rest from one 429 burst. Now a queued request re-picks when its endpoint rests, and a failure during an existing rest is not counted again. New TestQueuedRequestsSkipAnEndpointThatStartsToRest fails without the fix (5 failures, 5 refused) and passes 5x with -race. Re-verified: verify F104 passed 9 checks (backend -race, e2e gate public-only with 429 proxy)."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-10T18:46:06Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 32.7,
+        "log": "docs/runs/F104-20261010T184606Z-backend.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 77.6,
+        "log": "docs/runs/F104-20261010T184606Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.7,
+        "log": "docs/runs/F104-20261010T184606Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F104-20261010T184606Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F104-20261010T184606Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F104-20261010T184606Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 34.5,
+        "log": "docs/runs/F104-20261010T184606Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.3,
+        "log": "docs/runs/F104-20261010T184606Z-build.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F104-20261010T184606Z-keep.log"
+      }
+    ],
+    "taskHash": "10225432b45d134c",
+    "filesHash": "e91f79ec43d7e58c",
+    "proof": {
+      "1": "backend: internal/chain TestNewRPCsUsesEveryKeyThenThePublicRPCs (every Infura key then public RPCs, public-only when no keys, one host refused), TestFailingEndpointRestsThenComesBack (HTTP 429, HTTP 503, JSON-RPC -32005 and a timeout from a proxy in front of Anvil move the call to the next endpoint at once with the right answer; the endpoint rests and is used again after its backoff), TestRestDoublesUpToTheCapWithJitter, TestQueuedRequestsSkipAnEndpointThatStartsToRest (requests queued on an endpoint that starts to 429 move on unsent and the burst counts one failure), TestRolesStayOnDifferentHosts (a failed second host is replaced by another; the second fails rather than share the primary's host, D-15), TestFailedKeyMovesToTheNextKeyOnItsHost, TestEachEndpointIsPaced (RPC_RATE_PER_SECOND, a batch counts each call), TestOutageIsToldFromAnAnswer, TestURLsStayOutOfErrorsAndLogs; internal/config TestWorkerAndSigner (empty INFURA_API_KEYS allowed, RPC_RATE_PER_SECOND required and validated)",
+      "2": "backend: internal/watcher TestLogRangeHalvesAndGrowsBack (too-many-results and HTTP 429 halve the eth_getLogs range 2000->1000->500, it doubles back after answers, answered ranges cover every block once, floor 50 then error); internal/worker TestRoundSurvivesAnRPCGoing429MidRound (primary proxy goes 429 at eth_getLogs mid-round, one round still confirms the deposit and marks the invoice paid with the second on a third host); internal/balance TestTimedOutRPCRests; e2e: TestMoneyLoop runs api, worker and signer public-only (INFURA_API_KEYS empty) with a proxy answering every third request with 429 first in the chain list; invoice goes detected -> paid -> settled"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "PASS after one small fix. Failover classification correct: only timeouts, connection errors, non-2xx and rate-limit JSON-RPC errors (429/-32005/-32007/message) fail over; reverts, invalid params, header-not-found and -32005 'more than 10000 results' are answers (TestOutageIsToldFromAnAnswer). Only non-idempotent call is eth_sendRawTransaction of already-signed bytes (settle saved before send; reconcile tolerates 'already known'; deploy resend is idempotent), so re-sending to another endpoint never signs a new nonce. Batches: a rate limit on any element re-sends the whole read-only batch. D-15: at each pick the second skips the primary's current host and waits/fails rather than share it. Gap (second may later hit a host that served the primary's logs) is acceptable: it already existed across rounds with the old re-pick-after-error Dial, needs an outage of an earlier-listed host the liar can't cause, and settle still needs the real on-chain balance; follow-up only if D-15 must hold per deposit (record the confirming host). Adaptive range: retries same lo with half span, both scans re-queried, no gap/overlap, floor 50 then error, one DB transaction after the loop so the cursor never moves on a partial scan. No URL in errors/logs (url.Error stripped, endpoint names host#pos). chainId checked before first use, wrong endpoints never used. RPC_RATE_PER_SECOND required in LoadAPI/worker/signer, INFURA_API_KEYS may be empty; .env.example and architecture.md match chains.json. FIXED (pool.go): requests queued on an endpoint's pace slot were still sent after it began resting, and each failure doubled the rest; a probe of 8 queued requests gave 8 failures and an 82 s rest from one 429 burst. Now a queued request re-picks when its endpoint rests, and a failure during an existing rest is not counted again. New TestQueuedRequestsSkipAnEndpointThatStartsToRest fails without the fix (5 failures, 5 refused) and passes 5x with -race. Re-verified: verify F104 passed 9 checks (backend -race, e2e gate public-only with 429 proxy).",
+      "at": "2026-10-10T18:48:45Z",
+      "filesHash": "e91f79ec43d7e58c"
+    },
+    "commit": "f0fa061",
+    "doneAt": "2026-10-10T18:49:16Z"
+  },
+  "branch": "fix/f104-chain-reads-switch-providers-and-slow-do",
+  "baseCommit": "8768bc92dbb4f885423eb75da17c0db016fd668b",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f104-chain-reads-switch-providers-and-slow-do",
+    "base": "main"
+  }
+}

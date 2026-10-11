@@ -48,6 +48,14 @@
   },
   "overrides": [
     {
+      "includes": ["docs/archive/**"],
+      "json": {
+        "formatter": {
+          "expand": "always"
+        }
+      }
+    },
+    {
       "includes": ["packages/design-tokens/src/base.css"],
       "linter": {
         "rules": {

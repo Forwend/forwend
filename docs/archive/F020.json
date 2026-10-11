@@ -1,0 +1,87 @@
+{
+  "id": "F020",
+  "type": "feat",
+  "behavior": "A custom 404 page in the site's style with its own illustration and a way back home",
+  "acceptance": [
+    "Given an unknown URL, then the response is 404 and the page shows the custom illustration, a short message and a link back to the home page, in both themes"
+  ],
+  "dependsOn": [
+    "F019"
+  ],
+  "state": "passing",
+  "verification": [
+    "build",
+    "e2e"
+  ],
+  "refs": [],
+  "keep": [],
+  "review": true,
+  "notes": [
+    "2026-10-08 review pass by subagent: Pass. Evidence: playwright 18/18 passed incl. smoke 'unknown URL returns 404 with a way back home' and kit 404 tests; check-images: 5 images all recorded; pnpm lint clean (151 files); pnpm typecheck passed. Manual prod server on :3110: /no-such-page, /kit, /kit/directions all return HTTP 404, title 'Page not found · Forwend', meta robots noindex,nofollow, and /kit body renders the custom page (title, not-found.webp, Back to Forwend). Image alt=\"\" (decorative), both links href=\"/\". Screenshots: text readable in light (radial bg veil) and dark (brightness-50); mobile 390 shows the waterfall; uses font-display text-section, text-ink/text-muted tokens and shared buttonClasses lg, matching the landing. No generation mention in UI copy. Nits, not blocking: not-found.tsx:25 comment says 'a fade into the page at the bottom' but the gradient is only a radial veil, no bottom fade; the 404 inherits canonical '/' from layout.tsx (harmless with noindex); Next also adds its own robots noindex meta, so two robots tags appear."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-08T16:27:02Z",
+    "checks": [
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 3.7,
+        "log": "docs/runs/F020-20261008T162702Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 8.9,
+        "log": "docs/runs/F020-20261008T162702Z-e2e.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F020-20261008T162702Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.7,
+        "log": "docs/runs/F020-20261008T162702Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.7,
+        "log": "docs/runs/F020-20261008T162702Z-unit.log"
+      }
+    ],
+    "taskHash": "645c2bb95f9a9204",
+    "filesHash": "b9a690b0834d6650",
+    "review": {
+      "result": "pass",
+      "by": "subagent",
+      "summary": "Pass. Evidence: playwright 18/18 passed incl. smoke 'unknown URL returns 404 with a way back home' and kit 404 tests; check-images: 5 images all recorded; pnpm lint clean (151 files); pnpm typecheck passed. Manual prod server on :3110: /no-such-page, /kit, /kit/directions all return HTTP 404, title 'Page not found · Forwend', meta robots noindex,nofollow, and /kit body renders the custom page (title, not-found.webp, Back to Forwend). Image alt=\"\" (decorative), both links href=\"/\". Screenshots: text readable in light (radial bg veil) and dark (brightness-50); mobile 390 shows the waterfall; uses font-display text-section, text-ink/text-muted tokens and shared buttonClasses lg, matching the landing. No generation mention in UI copy. Nits, not blocking: not-found.tsx:25 comment says 'a fade into the page at the bottom' but the gradient is only a radial veil, no bottom fade; the 404 inherits canonical '/' from layout.tsx (harmless with noindex); Next also adds its own robots noindex meta, so two robots tags appear.",
+      "at": "2026-10-08T16:28:12Z",
+      "filesHash": "b9a690b0834d6650"
+    },
+    "commit": "8055878",
+    "doneAt": "2026-10-08T16:28:36Z",
+    "proof": {
+      "1": "e2e/smoke.spec.ts 'an unknown URL returns 404 with a way back home'; review: both themes and mobile (f020-404-*.png), noindex, decorative image"
+    }
+  },
+  "branch": "feat/f020-a-custom-404-page-in-the-site-s-style-wi",
+  "baseCommit": "d322ab12c9b9ab99853cce0e06f611c7e870c8a0",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f020-a-custom-404-page-in-the-site-s-style-wi",
+    "base": "main"
+  }
+}

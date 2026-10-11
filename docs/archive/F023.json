@@ -1,0 +1,77 @@
+{
+  "id": "F023",
+  "type": "feat",
+  "behavior": "The networks strip shows only the logos, spread across the full content width, without the planned note",
+  "acceptance": [
+    "Given /, then the networks strip has no 'Planned…' note and its six logos spread across the full content width on wide screens and wrap evenly on phones"
+  ],
+  "dependsOn": [
+    "F022"
+  ],
+  "state": "passing",
+  "verification": [
+    "build"
+  ],
+  "refs": [],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-08T17:31:41Z",
+    "checks": [
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 3.3,
+        "log": "docs/runs/F023-20261008T173141Z-build.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F023-20261008T173141Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F023-20261008T173141Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.7,
+        "log": "docs/runs/F023-20261008T173141Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 8.5,
+        "log": "docs/runs/F023-20261008T173141Z-e2e.log"
+      }
+    ],
+    "taskHash": "2bc6418bd7571aad",
+    "filesHash": "130a9b75cbd9692e",
+    "commit": "b944201",
+    "doneAt": "2026-10-08T17:31:55Z",
+    "proof": {
+      "1": "screenshots at 1440 (light, dark), 768 and 390: no note, logos span the content width and wrap evenly on phones"
+    }
+  },
+  "branch": "feat/f023-the-networks-strip-shows-only-the-logos",
+  "baseCommit": "77c4d9a04f1de5575d955b165615a36bcade4d6d",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f023-the-networks-strip-shows-only-the-logos",
+    "base": "main"
+  }
+}

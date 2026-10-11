@@ -1,0 +1,100 @@
+{
+  "id": "F035",
+  "type": "chore",
+  "behavior": "A Foundry workspace in packages/contracts builds and tests, and a chain config plus RPC picker returns a working RPC per testnet: each Infura key in turn, then public RPCs",
+  "acceptance": [
+    "forge build and forge test pass in packages/contracts with OpenZeppelin 5.x pinned, and CI runs them on pull requests; the package is a pnpm workspace package run by Turborepo, and PLAN.md/AGENTS.md place contracts in packages/contracts and the Go backend in apps/backend",
+    "packages/contracts/chains.json lists Base Sepolia 84532, Arbitrum Sepolia 421614, Arc testnet 5042002, Tempo Moderato 42431 with Infura network names where Infura serves them and public RPCs; node packages/contracts/script/rpc.mjs <chain> prints the first URL whose eth_chainId matches, trying every key in INFURA_API_KEYS before public RPCs",
+    ".env is git-ignored, .env.example lists INFURA_API_KEYS, DEPLOYER_PRIVATE_KEY and REFUND_AUTHORITY_PRIVATE_KEY without values",
+    "docs/spikes/s5-s6-testnets.md records per testnet: chain id, RPC results, CreateX, CREATE2 deployer and Safe factory presence, test token contracts and decimals, with sources and date"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "contracts",
+    "lint"
+  ],
+  "refs": [],
+  "keep": [
+    "apps/*",
+    "packages/design-tokens/*",
+    "packages/ui-web/*"
+  ],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-08T21:40:04Z",
+    "checks": [
+      {
+        "id": "contracts",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F035-20261008T214004Z-contracts.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F035-20261008T214004Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F035-20261008T214004Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.5,
+        "log": "docs/runs/F035-20261008T214004Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.5,
+        "log": "docs/runs/F035-20261008T214004Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 8.3,
+        "log": "docs/runs/F035-20261008T214004Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F035-20261008T214004Z-keep.log"
+      }
+    ],
+    "taskHash": "f592a1fdb91e190d",
+    "filesHash": "66d69cf1c5dd633d",
+    "commit": "8bc8b2c",
+    "doneAt": "2026-10-08T21:40:25Z",
+    "proof": {
+      "1": "contracts check (forge build/test) passed; CI installs Foundry and submodules",
+      "2": "rpc.mjs run per chain: Infura for Base/Arbitrum/Arc, public for Tempo; skips keys without access",
+      "3": "git check-ignore .env; .env.example committed without values",
+      "4": "docs/spikes/s5-s6-testnets.md"
+    }
+  },
+  "branch": "chore/f035-a-foundry-workspace-in-contracts-builds",
+  "baseCommit": "2263dde07ff408a229c2681f6be731ee2ef91955",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "chore/f035-a-foundry-workspace-in-contracts-builds",
+    "base": "main"
+  }
+}

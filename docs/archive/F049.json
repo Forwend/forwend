@@ -1,0 +1,136 @@
+{
+  "id": "F049",
+  "type": "feat",
+  "behavior": "Invoice states follow confirmed money and block time, with a second RPC check before paid",
+  "acceptance": [
+    "Confirmed sums below amount -> partially_paid; at or above -> paid (excess held); deposit with block time after expiresAt -> late and held; expiry passes -> expired or expired_partially_paid",
+    "paid is set only after a second RPC's balanceOf agrees; the database rejects any other transition",
+    "A property test over random deposit sequences keeps ledger totals equal to the receiver balance",
+    "GET /v1/invoices/{id} lists each received deposit with blocksLeft and secondsLeft from the finality progress (F059) until it is final"
+  ],
+  "dependsOn": [
+    "F048",
+    "F059"
+  ],
+  "state": "passing",
+  "verification": [
+    "backend"
+  ],
+  "refs": [
+    "R-21",
+    "R-28"
+  ],
+  "keep": [
+    "apps/web/*",
+    "packages/design-tokens/*",
+    "packages/ui-web/*"
+  ],
+  "review": true,
+  "notes": [
+    "2026-10-09 From F045 review: booking a transfer that is already booked raises P0001 even with ON CONFLICT DO NOTHING, so treat that error as 'already booked'. Deposit entries are not tied to chain_transfers.amount, and a reversed deposit's transfer can't be booked again, so enforce receiver entry = transfer amount when booking. Invoice terms can still be UPDATEd; lock them if F049 adds a terms guard.",
+    "2026-10-09 From F045 review: book with the default deferred constraints; SET CONSTRAINTS ALL IMMEDIATE makes a normal booking fail (the booked-flag check runs before the ledger row exists).",
+    "2026-10-09 From F048 review: an Arc payment sent as native coin (not ERC-20 transfer on 0x3600...) creates no chain_transfers row; decide paid from balanceOf and hold or alert on a balance with no matching transfer. The watcher may also miss a deposit if a node lags for 64+ blocks in a row; the balanceOf check is the backstop.",
+    "2026-10-09 review fail by reviewer: FAIL: an invoice paid in full and on time can end up expired, and the expired state is final. (1) internal/ledger/ledger.go:50-54 and service.go:103-109: when owed >= amount but the second RPC reports less (lag of one block, or a different backend), funded=false, and in the same run as finalized time > expires_at, status() falls through to expired_partially_paid. An expiry ledger transaction moves the creator's full amount to payer_held. Reproduced: a confirmed on-time 5/5 deposit, balanceOf returns 0 once, then 5 -> expired_partially_paid, refund held. This is likely on Arc/Tempo, where finalized == latest. (2) service.go:109 expires on cursor time alone, but the watcher keeps a detected row as detected when one getLogs answer misses its log (watcher.go:137-144, RescanDepth comment). So the cursor can pass expiry while an on-time deposit is still detected or not seen yet. Process then sets expired, and the next scan books the on-time deposit to payer_held. Reproduced: detected on-time 5/5, cursor time 1001 > 1000 -> expired, confirm -> stays expired, refund held. docs/backend/architecture.md:98 says 'by then every on-time deposit is final', which this breaks. The F048 note asked F049 to use balanceOf as the backstop for missed deposits; balanceOf is read only when owed >= amount. Fix both: never pick an expired status while owed >= amount (stay non-final, warn, retry), and before expiring read balanceOf; if it is above booked, do not expire and alert (this also covers Arc native-coin payments). Wait RescanDepth blocks past expiry, or require no detected on-time rows. Add tests for both cases. The property test misses them: balance always agrees (property_test.go:531) and there is no 'on-time sum >= amount => paid' invariant. Non-blocking: ProcessChain stops at the first error (service.go:37), so one bad balance RPC stops expiry and booking for every later invoice on the chain; log and continue. balanceOf reads at latest, not finalized (ledger.go:73). The RPC call holds the row lock with no timeout. Nothing logs onChain > booked. The worker does not wire watcher, ledger or second RPC yet, so provider independence is not enforced. The DB does not enforce receiver entry = transfer amount (F045 note). INSERT can set any payment_status. OK: big.Int only, booking once (index + trigger), expiry txn has 2 balanced entries and one per invoice, trigger transitions match what status() can produce, the terms guard leaves settlement/refund columns free, row lock serializes Process, watcher cursor time = capped block's time, API deposits match openapi and leak nothing sensitive. pnpm --filter @forwend/backend test exit 0; go test -count=3 -race ./internal/ledger ok.",
+    "2026-10-09 review fail by reviewer: FAIL (narrow; both earlier blockers are fixed). Re-ran my repros on a5652dd: a lagging second RPC at expiry now gives paid, and a late-confirmed on-time deposit now gives paid. ProcessChain continues past a failing invoice. Remaining defect: expiry still trusts a second RPC that is behind the watcher's finalized block. service.go mayExpire calls balanced(), which compares booked with balanceOf at latest (ledger.go:73). If the watcher missed an on-time log (nothing pending, booked 0) and the second RPC has not reached that block yet, onChain == booked == 0 and the invoice expires. That is final, and the on-time payment is later booked to payer_held. The task's own property test shows it: with seeds 1..1500 instead of 1..40, seed 906 fails 'an invoice paid in full on time never expires' (status expired, held 12798033, amount 7071457). With the lag disabled, the same seed passes. This is likely on Arc/Tempo: finalized == latest, a second provider one block behind is normal, and the watcher's design (RescanDepth) expects missed getLogs answers. The window is a deposit in the last block or two before expiry. Fix: make a lagging second RPC unable to answer low. Either pin balanceOf to the cursor's last_finalized_block (Process already joins chain_cursors), so a node without that block returns an error and Process retries; or first check that the second RPC's block number is >= the cursor's finalized block. Pinning also removes the latest-block note for paid: at latest, unfinalized money can satisfy funded(). In the property test, model lag as an error or as a stale-but-pinned answer, and run more seeds (1500 seeds took ~22s). Non-blocking: an unexplained balance (Arc native coin) or a stream of small transfers blocks expiry for as long as it lasts; it warns on every run, the money stays in the receiver, and owed cannot grow from late deposits. Low impact; consider one alert instead of a warning every run. Still open from before: the DB does not check receiver entry = transfer amount; worker and provider wiring is in F051. OK: status() never expires an invoice owed in full; expiry needs no detected rows and balance == booked; the insert guard requires open; 10 s balance timeout; new expiry tests cover each fix. pnpm --filter @forwend/backend test exit 0; go test -count=3 -race ./internal/ledger ok.",
+    "2026-10-09 review pass by reviewer: PASS on 1e1830f. Last blocker fixed: BalanceFrom reads BlockNumber, then balanceOf at that block, and returns the block. compare() (service.go) decides nothing when that block < the cursor's last_finalized_block, so a lagging second RPC can no longer make a missed on-time payment look like 0 and expire the invoice. A load-balanced node that lacks the head block returns an error, not a stale answer, and Process retries. Reading at the head is the right call: non-archive nodes can't serve state at Base/Arbitrum finalized depth. Re-ran in a scratch copy: my three repros (second RPC lag at expiry -> paid; on-time deposit confirmed one scan late -> paid; ProcessChain reports the RPC error and continues) and the property test with 1500 seeds (the earlier seed-906 failure): all pass, 58s. TestSecondRPCBehindFinalizedNeverDecides covers the case. Every acceptance line has a test: states and excess/late/expiry on Anvil plus the expiry sims; paid only with the second RPC agreeing, transitions/terms/insert guards in the DB; property test over on-time/late, detected/confirmed/reorged/missed deposits with a lagging RPC and the invariant 'paid in full on time never expires'; GET deposits with blocksLeft/secondsLeft. Non-blocking: an unexplained balance (Arc native coin, a stream of small transfers) keeps an invoice from expiring, with a warning on every run; the money stays in the receiver and late money is never owed. Prefer one alert to a warning per run. The DB does not check receiver entry = transfer amount (the code and the property test do). Worker and second-provider wiring is in F051. No must-not-change paths touched. pnpm --filter @forwend/backend test exit 0; go test -count=3 -race ./internal/ledger ok (30s).",
+    "2026-10-09 checks failed on https://github.com/ensp1re/forwend/pull/58: checks (https://github.com/ensp1re/forwend/actions/runs/37953279154/job/113897282130)",
+    "2026-10-09 Merged this session: F043-F049, F059-F061 (PRs #49-#58). Money loop: address, API, auth, watcher, ledger/states done; next F050 signer (settle once), then F051 worker wiring + gate. F052 Privy spikes can start (Q-4 answered).",
+    "2026-10-09 review pass by reviewer: PASS on 1fee8c4. The only change since my last pass is test-only: since 1e1830f, the only file changed under apps/ is apps/backend/internal/chaintest/chaintest.go. SendRaw now polls eth_getTransactionReceipt every 20 ms, up to 100 times (about 2 s), and fails the test with the tx hash if the transaction is never mined. That removes the race where TestReorgMarksTheDepositReorged scanned before Anvil mined the re-sent transaction. SendRaw's only caller is watcher_test.go:149, and no product code changed. pnpm --filter @forwend/backend test exit 0; go test -count=40 -run TestReorgMarksTheDepositReorged ./internal/watcher ok. My earlier pass for the ledger, expiry and second-RPC changes still holds, with the same non-blocking notes: an unexplained balance gets a warning on every run, not one alert; the DB does not check receiver entry = transfer amount; worker and second-provider wiring is in F051."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-09T15:44:27Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 14.0,
+        "log": "docs/runs/F049-20261009T154427Z-backend.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.6,
+        "log": "docs/runs/F049-20261009T154427Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F049-20261009T154427Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F049-20261009T154427Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F049-20261009T154427Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 14.3,
+        "log": "docs/runs/F049-20261009T154427Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.9,
+        "log": "docs/runs/F049-20261009T154427Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 9.0,
+        "log": "docs/runs/F049-20261009T154427Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F049-20261009T154427Z-keep.log"
+      }
+    ],
+    "taskHash": "f6eb1dfa96d01936",
+    "filesHash": "5967fb220cf2746d",
+    "proof": {
+      "1": "backend: TestDepositsMoveThePaymentStatus, TestExpiryHoldsPartialAndLatePayments, TestLateFullPaymentIsHeldNotPaid, TestOnTimeDepositPaysAfterExpiryFinalizes (Anvil); TestPendingOnTimeDepositDelaysExpiry and TestUnexplainedBalanceDelaysExpiry",
+      "2": "backend: TestPaidNeedsTheSecondRPCToAgree, TestLaggingSecondRPCNeverExpiresAPaidInvoice and TestSecondRPCBehindFinalizedNeverDecides; TestInvoiceStatusTransitionsAndTerms and TestInvoiceStartsOpen; TestProcessChainContinuesAfterAnError",
+      "3": "backend: TestLedgerMatchesTheReceiverBalance: 300 seeded random sequences (passed 1500 once) with on-time/late, detected/confirmed/reorged and watcher-missed deposits, forward-moving chain time and a second RPC randomly behind the finalized block; ledger invariants hold after every step and the ledger equals the balance once all are final",
+      "4": "backend: TestGetInvoiceListsDepositsWithProgress: GET lists non-reorged deposits with blocksLeft/secondsLeft from the cursor's finalized block and time; openapi.yaml documents deposits"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "PASS on 1fee8c4. The only change since my last pass is test-only: since 1e1830f, the only file changed under apps/ is apps/backend/internal/chaintest/chaintest.go. SendRaw now polls eth_getTransactionReceipt every 20 ms, up to 100 times (about 2 s), and fails the test with the tx hash if the transaction is never mined. That removes the race where TestReorgMarksTheDepositReorged scanned before Anvil mined the re-sent transaction. SendRaw's only caller is watcher_test.go:149, and no product code changed. pnpm --filter @forwend/backend test exit 0; go test -count=40 -run TestReorgMarksTheDepositReorged ./internal/watcher ok. My earlier pass for the ledger, expiry and second-RPC changes still holds, with the same non-blocking notes: an unexplained balance gets a warning on every run, not one alert; the DB does not check receiver entry = transfer amount; worker and second-provider wiring is in F051.",
+      "at": "2026-10-09T15:45:55Z",
+      "filesHash": "5967fb220cf2746d"
+    },
+    "commit": "1fee8c4",
+    "doneAt": "2026-10-09T15:46:03Z"
+  },
+  "branch": "feat/f049-invoice-states-follow-confirmed-money-an",
+  "baseCommit": "67ab334578a049734b2caa426f4fabea74b839ef",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f049-invoice-states-follow-confirmed-money-an",
+    "base": "main"
+  }
+}

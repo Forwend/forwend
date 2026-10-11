@@ -1,0 +1,107 @@
+{
+  "id": "F054",
+  "type": "docs",
+  "behavior": "apps/backend/AGENTS.md defines the Go layout, naming and code rules, and the code follows them: one internal/config package reads every environment variable",
+  "acceptance": [
+    "apps/backend/AGENTS.md (with CLAUDE.md -> @AGENTS.md) states the layout (cmd wiring only, internal/<feature> with types/service/tests, SQL in one sqlc package internal/database/queries, httpapi transport), the naming rules from go.dev/blog/package-names, the code rules (config, errors, interfaces, money, logs, dependencies) and test rules, citing go.dev/doc/modules/layout",
+    "internal/config loads DATABASE_URL and API_ADDR from the environment and fails with a clear error when one is missing; config_test covers present and missing values; the binaries use it and nothing else reads os.Getenv",
+    "go test runs with -race in the backend check; docs/PROJECT.md has a D- row for the backend layout"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "backend"
+  ],
+  "refs": [],
+  "keep": [
+    "apps/web/*",
+    "packages/*"
+  ],
+  "review": true,
+  "notes": [
+    "2026-10-09 review fail by reviewer: Code side passes: backend check green (go test -race, uncached), internal/config is the only os.Getenv reader, missing-variable error names every variable, tests cover present/missing, D-19 present. Must fix in apps/backend/AGENTS.md: line 36 puts sqlc generated code inside the feature package, and line 58 (with line 48) makes the service constructor invoice.New. sqlc always emits func New(db DBTX) *Queries (plus Queries, DBTX, and table structs in models.go) in its output package, so the first agent that follows both rules gets a duplicate New compile error. Pick one: generate sqlc into its own package (e.g. internal/<feature>/<feature>db or one internal/database/queries), or name the constructor invoice.NewService (also closer to go.dev/blog/package-names, where pkg.New returns pkg.Pkg). Suggestions, not blocking: say api/openapi.yaml is at the repo root (PLAN.md); make 'timeouts through the server' concrete (ReadHeaderTimeout/ReadTimeout/WriteTimeout/IdleTimeout); the blog names util/common/misc/api/types/interfaces, models and base are project additions; signer and databasetest reuse LoadWorker although line 56 says one loader per binary; if sqlc stays per feature set omit_unused_structs.",
+    "2026-10-09 review fail by reviewer: AGENTS.md fixes are correct: sqlc in one shared internal/database/queries package removes the New collision, NewService matches the Go blog constructor rule, the repo-root openapi path, the four server timeouts (set in cmd/api/main.go), our-additions labels and the loader rule are all fine. Tests pass with -race -count=1, gofmt is clean, os.Getenv only in internal/config. One stale contradiction left: docs/PROJECT.md:91 (D-19) still says 'one package per feature (types, service, SQL, tests)', and acceptance 1 still says 'internal/<feature> with types/service/queries/tests'. Both now say the opposite of apps/backend/AGENTS.md:24,39 (SQL in internal/database/queries), so an agent following D-19 brings the duplicate New back. Fix: D-19 -> 'one package per feature (types, service, tests), SQL in one sqlc package internal/database/queries'; harness edit acceptance 1 the same way. Nit, not blocking: apps/backend/AGENTS.md:61 and :63 run past the file's line width.",
+    "2026-10-09 review pass by reviewer: All three acceptance lines met. AGENTS.md rules match go.dev/doc/modules/layout and go.dev/blog/package-names; sqlc in one shared internal/database/queries package plus NewService constructors removes the New collision; D-19 and acceptance 1 now agree with AGENTS.md. internal/config is the only os.Getenv reader, the error names every missing variable, tests cover present and missing values. go test -race -count=1 passes, gofmt clean, api sets all four server timeouts. Cosmetic only: AGENTS.md:63 is still longer than the other lines, and D-19 sits before D-18 in the table."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-09T10:39:52Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.5,
+        "log": "docs/runs/F054-20261009T103952Z-backend.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F054-20261009T103952Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F054-20261009T103952Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.8,
+        "log": "docs/runs/F054-20261009T103952Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.8,
+        "log": "docs/runs/F054-20261009T103952Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 8.7,
+        "log": "docs/runs/F054-20261009T103952Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F054-20261009T103952Z-keep.log"
+      }
+    ],
+    "taskHash": "1f41ceac234d0695",
+    "filesHash": "381f177dd652b18b",
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "All three acceptance lines met. AGENTS.md rules match go.dev/doc/modules/layout and go.dev/blog/package-names; sqlc in one shared internal/database/queries package plus NewService constructors removes the New collision; D-19 and acceptance 1 now agree with AGENTS.md. internal/config is the only os.Getenv reader, the error names every missing variable, tests cover present and missing values. go test -race -count=1 passes, gofmt clean, api sets all four server timeouts. Cosmetic only: AGENTS.md:63 is still longer than the other lines, and D-19 sits before D-18 in the table.",
+      "at": "2026-10-09T10:40:34Z",
+      "filesHash": "381f177dd652b18b"
+    },
+    "commit": "799c72f",
+    "doneAt": "2026-10-09T10:40:47Z",
+    "proof": {
+      "1": "apps/backend/AGENTS.md + CLAUDE.md; independent review pass",
+      "2": "backend: internal/config TestAPI, TestAPINamesEveryMissingVariable, TestWorkerNeedsOnlyTheDatabase; grep shows os.Getenv only in internal/config",
+      "3": "backend check runs go test -race; docs/PROJECT.md D-19"
+    }
+  },
+  "branch": "docs/f054-apps-backend-agents-md-defines-the-go-la",
+  "baseCommit": "e6c0696110895ef17354513021b8fb133fd4720c",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "docs/f054-apps-backend-agents-md-defines-the-go-la",
+    "base": "main"
+  }
+}

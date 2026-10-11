@@ -1,0 +1,91 @@
+{
+  "id": "F007",
+  "type": "feat",
+  "behavior": "The mock waitlist form confirms a valid email without sending or storing anything",
+  "acceptance": [
+    "Given the hero form, when name@example.com is submitted, then You're on the list appears and no network request starts after the click",
+    "Given abc, when submitted, then an error message appears and the success text does not"
+  ],
+  "dependsOn": [
+    "F006"
+  ],
+  "state": "passing",
+  "verification": [
+    "waitlist-e2e"
+  ],
+  "refs": [
+    "R-8",
+    "D-8"
+  ],
+  "keep": [
+    "the waitlist submit sends no network request and stores nothing (mock until PLAN C-09)"
+  ],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-08T13:33:31Z",
+    "checks": [
+      {
+        "id": "waitlist-e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 6.2,
+        "log": "docs/runs/F007-20261008T133331Z-waitlist-e2e.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F007-20261008T133331Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F007-20261008T133331Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.6,
+        "log": "docs/runs/F007-20261008T133331Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.0,
+        "log": "docs/runs/F007-20261008T133331Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 7.6,
+        "log": "docs/runs/F007-20261008T133331Z-e2e.log"
+      }
+    ],
+    "taskHash": "c1398e6f1364f50f",
+    "filesHash": "bc8076df3d28cc6e",
+    "commit": "166074f",
+    "doneAt": "2026-10-08T13:33:49Z",
+    "proof": {
+      "1": "e2e/waitlist.spec.ts 'confirms a valid email without starting any network request' (records page requests after load; asserts empty list)",
+      "2": "e2e/waitlist.spec.ts 'shows an error for an invalid email and no success'; test/waitlist.test.ts isEmail cases"
+    }
+  },
+  "branch": "feat/f007-the-mock-waitlist-form-confirms-a-valid",
+  "baseCommit": "3374cd78b67e0a14999f3377a8c4ec993e9414bc",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f007-the-mock-waitlist-form-confirms-a-valid",
+    "base": "main"
+  }
+}

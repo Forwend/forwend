@@ -1,0 +1,109 @@
+{
+  "id": "F080",
+  "type": "ci",
+  "behavior": "run GitHub CI only on staging pushes",
+  "acceptance": [
+    "Only pushes to staging start GitHub CI; PR events and pushes to main do not, and all existing CI jobs stay enabled.",
+    "Main PR delivery requires fresh local verification and blocks reported failed or pending remote checks, while explicitly allowing absent remote checks.",
+    "Workflow guidance explains development on main, deliberate fast-forward promotion to staging, and validation of the exact staging commit."
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "harness",
+    "docs-check"
+  ],
+  "refs": [
+    "R-40",
+    "D-48"
+  ],
+  "keep": [
+    "apps/*",
+    "packages/*"
+  ],
+  "review": false,
+  "notes": [
+    "2026-10-10 F080 verified: GitHub CI triggers only on staging pushes. PR delivery keeps local verification and blocks reported remote failures. Ready for the authorized commit and PR delivery, then create remote staging at the merged main commit. Work was isolated from F079."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-10T10:24:22Z",
+    "checks": [
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.6,
+        "log": "docs/runs/F080-20261010T102422Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F080-20261010T102422Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.2,
+        "log": "docs/runs/F080-20261010T102422Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.1,
+        "log": "docs/runs/F080-20261010T102422Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 26.0,
+        "log": "docs/runs/F080-20261010T102422Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 8.7,
+        "log": "docs/runs/F080-20261010T102422Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 13.1,
+        "log": "docs/runs/F080-20261010T102422Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F080-20261010T102422Z-keep.log"
+      }
+    ],
+    "taskHash": "c9d8bcbecf5e8970",
+    "filesHash": "edc4ede291e61fdd",
+    "proof": {
+      "1": "docs-check: Workflow parsed with Ruby YAML; the only event is push with branches [staging]. Reviewed the diff: all CI jobs are unchanged.",
+      "2": "harness: 19 runner regression tests pass, including absent remote checks, reported failures and pending checks, authentication errors, strict default policy, and failed local verification.",
+      "3": "docs-check: Workflow guidance and R-40/D-48 describe fast-forward staging promotion and exact-commit validation; documentation links and decision IDs pass."
+    },
+    "commit": "dd06d22",
+    "doneAt": "2026-10-10T10:26:21Z"
+  },
+  "branch": "ci/f080-run-github-ci-only-on-staging-pushes",
+  "baseCommit": "098bd66c082145151b46fc0b75925acbd67c2e15",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "ci/f080-run-github-ci-only-on-staging-pushes",
+    "base": "main"
+  }
+}

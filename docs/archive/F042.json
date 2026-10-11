@@ -1,0 +1,99 @@
+{
+  "id": "F042",
+  "type": "feat",
+  "behavior": "The Go backend builds, tests and starts: api, worker and signer binaries, healthz, Postgres in compose, migrations",
+  "acceptance": [
+    "pnpm --filter @forwend/backend test runs gofmt -l (prints nothing), go vet and go test ./... and exits 0; CI installs Go and runs it",
+    "With Postgres from infra/docker-compose.yml, api serves GET /healthz -> 200 {\"status\":\"ok\"}; worker and signer build",
+    "Migrations (goose, embedded) run twice on an empty database and both runs exit 0"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "backend"
+  ],
+  "refs": [
+    "R-14"
+  ],
+  "keep": [
+    "apps/web/*",
+    "packages/design-tokens/*",
+    "packages/ui-web/*"
+  ],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-09T10:31:08Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.6,
+        "log": "docs/runs/F042-20261009T103108Z-backend.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F042-20261009T103108Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F042-20261009T103108Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 3.4,
+        "log": "docs/runs/F042-20261009T103108Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.8,
+        "log": "docs/runs/F042-20261009T103108Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 10.3,
+        "log": "docs/runs/F042-20261009T103108Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F042-20261009T103108Z-keep.log"
+      }
+    ],
+    "taskHash": "bc4b2af34644d08e",
+    "filesHash": "4e279542d9393e9b",
+    "commit": "3f67cdb",
+    "doneAt": "2026-10-09T10:31:31Z",
+    "proof": {
+      "1": "backend check: gofmt, go vet, go test ./... pass; CI installs Go and runs them in pnpm test",
+      "2": "backend: internal/httpapi TestHealthz (200 ok, 503 when the database is closed); api binary smoke run returned {\"status\":\"ok\"} 200",
+      "3": "backend: internal/database TestMigrateTwiceOnEmptyDatabase"
+    }
+  },
+  "branch": "feat/f042-the-go-backend-builds-tests-and-starts-a",
+  "baseCommit": "04557e9c6ebd6a678c67dfc259b125a04692a8b2",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f042-the-go-backend-builds-tests-and-starts-a",
+    "base": "main"
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "id": "F027",
+  "type": "fix",
+  "behavior": "The logo in the nav sits on the nav's vertical center, level with the links and the button",
+  "acceptance": [
+    "Given the nav at 1280 and 390 px in both themes, then the logo's center is within 1px of the links' and the button's text center"
+  ],
+  "dependsOn": [
+    "F026"
+  ],
+  "state": "passing",
+  "verification": [
+    "build"
+  ],
+  "refs": [],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 2,
+    "status": "passed",
+    "at": "2026-10-08T18:32:45Z",
+    "checks": [
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 3.1,
+        "log": "docs/runs/F027-20261008T183245Z-build.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F027-20261008T183245Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F027-20261008T183245Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.4,
+        "log": "docs/runs/F027-20261008T183245Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 8.9,
+        "log": "docs/runs/F027-20261008T183245Z-e2e.log"
+      }
+    ],
+    "taskHash": "5cd4acccca59065f",
+    "filesHash": "163d87f9d7b871d3",
+    "commit": "cf764c2",
+    "doneAt": "2026-10-08T18:33:00Z",
+    "proof": {
+      "1": "measured at 1280 (dark, light) and 390: nav, logo and button centers all equal (51/51/51 and 47/47/47); f027-nav.png"
+    }
+  },
+  "branch": "fix/f027-the-logo-in-the-nav-sits-on-the-nav-s-ve",
+  "baseCommit": "f017b26e43e9b89f80cfedbed955d36617b49f53",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f027-the-logo-in-the-nav-sits-on-the-nav-s-ve",
+    "base": "main"
+  }
+}

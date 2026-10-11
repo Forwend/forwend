@@ -50,6 +50,177 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(state.task('F001')['state'], 'verified')
         self.assertIsNone(h.stale_reason(state, state.task('F001')))
 
+    def test_running_verify_has_a_wait_next_step(self):
+        self.task['evidence'] = {'status': 'running', 'pid': 123}
+        self.save()
+        state = h.State(self.root)
+        with patch.object(h, 'pid_alive', return_value=True):
+            self.assertEqual(h.next_step(state, []), 'wait for `verify F001` to finish, then `status`')
+        with patch.object(h, 'pid_alive', return_value=False):
+            self.assertEqual(h.next_step(state, []), '`verify F001` again; the last run was interrupted')
+
+    def test_status_does_not_repeat_task_details_or_old_handoff(self):
+        self.task['notes'] = ['old task handoff']
+        self.save()
+        state = h.State(self.root)
+        state.data['lastWrapup'] = {'at': '2020-01-01', 'clean': True, 'note': 'start obsolete F099'}
+        state.save()
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(h.main(['--root', str(self.root), 'status']), 0)
+        text = output.getvalue()
+        self.assertIn('active: F001', text)
+        self.assertIn('last: no verify yet', text)
+        self.assertIn('next:', text)
+        for omitted in ('obsolete F099', 'old task handoff', 'accept 1:', 'check unit:'):
+            self.assertNotIn(omitted, text)
+
+    def test_show_keeps_constraints_and_bounds_recent_notes(self):
+        self.task.update(refs=['R-25'], keep=['protected/*'],
+                         notes=['old note', *[f'recent note {i} ' + 'x' * 1000 for i in range(3)]])
+        self.save()
+        self.verify()
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(h.main(['--root', str(self.root), 'show', 'F001']), 0)
+        text = output.getvalue()
+        self.assertIn('accept 1: value is one', text)
+        self.assertIn('check unit:', text)
+        self.assertIn('must not change: protected/*', text)
+        self.assertIn('refs: R-25', text)
+        self.assertNotIn('old note', text)
+        notes = [line for line in text.splitlines() if line.startswith('note: ')]
+        self.assertEqual(len(notes), 3)
+        self.assertTrue(all(len(line) <= 246 for line in notes))
+        self.assertNotIn('exit 0', text)
+        self.assertIn('show F001 --history', text)
+
+    def test_show_history_preserves_complete_notes_and_check_results(self):
+        notes = ['old note', *[f'long note {i} ' + 'x' * 1000 for i in range(3)]]
+        self.task['notes'] = notes
+        self.save()
+        self.verify()
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(h.main(['--root', str(self.root), 'show', 'F001', '--history']), 0)
+        text = output.getvalue()
+        for note in notes:
+            self.assertIn('note: ' + note, text)
+        self.assertIn('unit: passed exit 0', text)
+        self.assertEqual(h.State(self.root).task('F001')['notes'], notes)
+
+    def test_show_missing_refs_gives_a_narrow_reading_instruction(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(h.main(['--root', str(self.root), 'show', 'F001']), 0)
+        self.assertIn('edit F001 --ref', output.getvalue())
+        self.assertIn('requirement or decision', output.getvalue())
+
+    def test_archive_preserves_records_reading_and_dependency_readiness(self):
+        self.verify()
+        self.assertEqual(self.run_cli('done', 'F001'), 0)
+        state = h.State(self.root)
+        completed = copy.deepcopy(state.task('F001'))
+        dependent = dict(self.task, id='F002', state='not_started', dependsOn=['F001'])
+        state.tasks.append(dependent)
+        state.data['nextId'] = 3
+        state.save()
+        self.assertEqual(self.run_cli('archive'), 0)
+        state = h.State(self.root)
+        self.assertEqual([t['id'] for t in state.tasks], ['F002'])
+        self.assertEqual(h.read_json(self.root / 'docs/archive/F001.json'), completed)
+        self.assertEqual([t['id'] for t in state.ready()], ['F002'])
+        self.assertEqual(self.run_cli('validate'), 0)
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(h.main(['--root', str(self.root), 'show', 'F001', '--history']), 0)
+            self.assertEqual(h.main(['--root', str(self.root), 'list', '--all']), 0)
+        self.assertIn('F001 [passing]', output.getvalue())
+        self.assertIn('archived', output.getvalue())
+
+    def test_archive_refuses_unfinished_stale_and_unmerged_tasks(self):
+        for state_name in ('not_started', 'active', 'blocked', 'verified'):
+            with self.subTest(state=state_name):
+                self.task['state'] = state_name
+                self.save()
+                self.assertEqual(self.run_cli('archive', 'F001'), 1)
+                self.assertFalse((self.root / 'docs/archive/F001.json').exists())
+        self.task.update(state='passing', delivery={'mode': 'pr', 'base': 'main'})
+        self.save()
+        self.assertEqual(self.run_cli('archive', 'F001'), 1)
+        self.assertEqual(self.run_cli('archive'), 0)
+        self.assertEqual(len(h.State(self.root).tasks), 1)
+        self.task.pop('delivery')
+        self.task['evidence'] = {'version': 3, 'taskHash': 'stale'}
+        self.save()
+        self.assertEqual(self.run_cli('archive', 'F001'), 1)
+        self.assertFalse((self.root / 'docs/archive/F001.json').exists())
+
+    def test_archived_dropped_task_does_not_satisfy_dependency(self):
+        self.task['state'] = 'dropped'
+        self.save()
+        self.assertEqual(self.run_cli('archive'), 0)
+        state = h.State(self.root)
+        state.tasks.append(dict(self.task, id='F002', state='not_started', dependsOn=['F001']))
+        state.data['nextId'] = 3
+        state.save()
+        state = h.State(self.root)
+        self.assertFalse(state.satisfied('F001'))
+        self.assertEqual(state.ready(), [])
+        self.assertEqual(self.run_cli('validate'), 0)
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            h.main(['--root', str(self.root), 'status'])
+        self.assertIn('depends on dropped F001', output.getvalue())
+
+    def test_archiving_does_not_stale_verified_work(self):
+        self.verify()
+        state = h.State(self.root)
+        state.tasks.append(dict(self.task, id='F002', state='passing'))
+        state.data['nextId'] = 3
+        state.save()
+        self.assertEqual(self.run_cli('archive'), 0)
+        state = h.State(self.root)
+        self.assertIsNone(h.stale_reason(state, state.task('F001')))
+
+    def test_archived_task_can_be_reopened_and_ids_are_not_reused(self):
+        self.task.update(id='F009', state='passing')
+        self.save()
+        self.assertEqual(self.run_cli('archive'), 0)
+        self.assertEqual(self.run_cli('add', 'next task', '--accept', 'value is one', '--check', 'unit'), 0)
+        self.assertEqual([t['id'] for t in h.State(self.root).tasks], ['F010'])
+        self.assertEqual(self.run_cli('reopen', 'F009', '--reason', 'repeat work'), 0)
+        state = h.State(self.root)
+        self.assertEqual(state.task('F009')['state'], 'active')
+        self.assertEqual(state.task('F009')['acceptance'], self.task['acceptance'])
+        self.assertFalse((self.root / 'docs/archive/F009.json').exists())
+
+    def test_archive_does_not_overwrite_a_conflicting_record(self):
+        self.task['state'] = 'passing'
+        self.save()
+        path = self.root / 'docs/archive/F001.json'
+        path.parent.mkdir()
+        previous = dict(self.task, behavior='different behavior')
+        h.write_json(path, previous)
+        self.assertEqual(self.run_cli('archive', 'F001'), 1)
+        self.assertEqual(h.read_json(path), previous)
+        self.assertEqual(len(h.State(self.root).tasks), 1)
+
+    def test_archived_remote_task_is_recognized_as_merged(self):
+        self.task.update(state='passing', delivery={'mode': 'pr', 'base': 'main'})
+        self.save()
+        state = h.State(self.root)
+        with patch.object(h, 'git', side_effect=[json.dumps({'tasks': []}), json.dumps(self.task)]):
+            self.assertFalse(h.unmerged(state, self.task))
+
+    def test_archived_task_branch_is_not_reported_as_unknown_work(self):
+        self.task['state'] = 'passing'
+        self.save()
+        self.assertEqual(self.run_cli('archive'), 0)
+        with patch.object(h, 'current_branch', return_value='main'), \
+                patch.object(h, 'git', return_value='fix/f001-value-is-one'):
+            self.assertEqual(h.branches_elsewhere(h.State(self.root)), [])
+
     def test_mutation_during_checks_cannot_verify(self):
         (self.root / 'value.py').write_text('value = 1\n')
         self.config['checks'][0]['argv'] = [sys.executable, '-c',
