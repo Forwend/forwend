@@ -1724,7 +1724,7 @@
         "F134",
         "F133"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "e2e"
       ],
@@ -1735,7 +1735,70 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T16:36:16Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 127.7,
+            "log": "docs/runs/F138-20261013T163616Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": "docs/runs/F138-20261013T163616Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F138-20261013T163616Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F138-20261013T163616Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F138-20261013T163616Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 93.5,
+            "log": "docs/runs/F138-20261013T163616Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.3,
+            "log": "docs/runs/F138-20261013T163616Z-build.log"
+          }
+        ],
+        "taskHash": "b8053d37af07d0f7",
+        "filesHash": "b6dd01538fdc6f34",
+        "proof": {
+          "1": "e2e: pay.spec checks the logo link to /, the Payments by Forwend footer link in a new tab and no filler text, Back to shop.example once paid in Check status's place, Confirming (0/12) and (6/12) in the flow test, and a payment that goes from waiting to paid in one read showing Confirming, Paid and Settled 600 ms apart while the status panel stays in place"
+        }
+      },
+      "branch": "feat/f138-the-pay-page-is-calm-and-never-leaves-th",
+      "baseCommit": "350dda94b72678b10c819c25333f254a417cbcc5",
+      "failedVerifies": 0
     },
     {
       "id": "F139",

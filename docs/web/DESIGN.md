@@ -126,7 +126,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Change; steps not reached show only their muted title. Focus moves to the step that opens. No motion between steps.
   Then the status timeline with each payment received (amount, status,
   transaction and explorer link; beside the link the short sender in Geist Mono, full address in a tooltip on hover
-  or focus, and the block time like the page's other times; on phones they wrap under the amount). No image and no
+  or focus, and the block time like the page's other times; on phones they wrap under the amount). When one read
+  jumps several states (a fast chain), the timeline still passes each step, 600 ms apart. Once paid, a primary "Back to
+  <host>" link to the invoice's return link takes Check status's place. The logo links to the landing page; the
+  footer is one quiet line, "Payments by" with the mark and Forwend, opening the site in a new tab. No image and no
   glass; it follows the system theme. When a refresh fails the page keeps the last read and says it may be out of
   date.
 - A secondary "Download invoice PDF" button sits under the heading in every state. Once settled, a Receipt panel

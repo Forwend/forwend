@@ -41,6 +41,7 @@ import {
   invoicePdfUrl,
   invoiceProgress,
   invoiceStatus,
+  isReturnLink,
 } from "@/features/invoices/invoices";
 import { useGetInvoiceQuery } from "@/features/invoices/invoices-api";
 import { type Choice, OptionPicker } from "@/features/pay/option-picker";
@@ -471,8 +472,18 @@ function Status({
         {pay.extra > 0n ? <p className="text-warning">{COPY.extra(money(pay.extra))}</p> : null}
         {pay.late > 0n ? <p className="text-warning">{COPY.late(money(pay.late))}</p> : null}
         <InvoiceDeposits invoice={invoice} token={token} />
-        {/* Paid or settled, nothing is left for the payer to look for. */}
-        {pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled ? null : (
+        {/* Paid or settled, nothing is left for the payer to look for: the way back takes Check status's place. */}
+        {pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled ? (
+          invoice.returnUrl && isReturnLink(invoice.returnUrl) ? (
+            <a
+              href={invoice.returnUrl}
+              rel="noopener noreferrer"
+              className={`${buttonClasses({ variant: "primary" })} self-start`}
+            >
+              {COPY.backTo(new URL(invoice.returnUrl).host)}
+            </a>
+          ) : null
+        ) : (
           <CheckStatus invoiceId={invoice.invoiceId} network={network} money={money} />
         )}
       </div>

@@ -311,6 +311,51 @@ test.describe("pay page", () => {
     await expect(page.getByText("The only way to pay this invoice")).toBeVisible();
   });
 
+  test("links the logo home and the footer to Forwend, and offers the way back once paid (R-62)", async ({
+    page,
+  }) => {
+    await openPay(
+      page,
+      { ...OPEN, returnUrl: "https://shop.example/thanks" },
+      {
+        ...PAID,
+        returnUrl: "https://shop.example/thanks",
+      },
+    );
+    await expect(page.getByRole("link", { name: "Forwend", exact: true })).toHaveAttribute(
+      "href",
+      "/",
+    );
+    const footer = page.getByRole("link", { name: "Payments by Forwend (opens in a new tab)" });
+    await expect(footer).toHaveAttribute("href", "/");
+    await expect(footer).toHaveAttribute("target", "_blank");
+    await expect(page.getByText("You don't need an account")).toHaveCount(0);
+    const back = page.getByRole("link", { name: "Back to shop.example" });
+    await expect(back).toHaveCount(0);
+    await page.clock.runFor(POLL_MS);
+    await expect(back).toHaveAttribute("href", "https://shop.example/thanks");
+    await expect(page.getByRole("button", { name: "Check status" })).toHaveCount(0);
+  });
+
+  test("shows each step of a payment that confirms within one read, without moving the status panel", async ({
+    page,
+  }) => {
+    await openPay(page, OPEN, PAID);
+    const progress = page.getByRole("list", { name: "Payment progress" });
+    const current = progress.locator("[aria-current=step]");
+    await expect(current).toHaveText("Detected");
+    await page.clock.runFor(POLL_MS);
+    await expect(page.getByRole("status").filter({ hasText: /^Paid\./ })).toBeVisible();
+    const panel = page.getByRole("region", { name: "Payment status" });
+    const top = (await panel.boundingBox())?.y;
+    // The read jumped from waiting to paid; the timeline still passes Confirming and Paid on its way.
+    for (const step of ["Confirming", "Paid", "Settled"]) {
+      await page.clock.runFor(600);
+      await expect(current).toHaveText(step);
+      expect((await panel.boundingBox())?.y).toBe(top);
+    }
+  });
+
   test("shows a fixed invoice's one option as chosen", async ({ page }) => {
     await openPay(page, OPEN);
     await expect(page.getByRole("group", { name: "Network" })).toHaveCount(0);
