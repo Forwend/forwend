@@ -2650,7 +2650,7 @@
       "dependsOn": [
         "F146"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "unit"
@@ -2720,12 +2720,19 @@
         "taskHash": "25e2b0b6cd680cdf",
         "filesHash": "27d5f2275c469c91",
         "proof": {
-          "1": "e2e: privy navigation.spec 'each state once': confirming says Confirming (0/120) once with no pill in the payment row; partly paid shows the Paid step as a warning-tinted Partially paid with Received 1.00 USDC of 2.00 USDC and no separate line; paid and settling makes Settled the moving step and hides Check status; axe clean; unit: kit timeline toned label test"
-        }
+          "1": "e2e: confirming, partly paid and settling states shown once with the moving step; kit toned label test"
+        },
+        "commit": "156ae85",
+        "doneAt": "2026-10-13T19:10:42Z"
       },
       "branch": "feat/f147-the-owner-s-invoice-page-shows-one-statu",
       "baseCommit": "b078e54e73b7f5086ad0547da9e4448657781bfe",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f147-the-owner-s-invoice-page-shows-one-statu",
+        "base": "main"
+      }
     },
     {
       "id": "F148",
