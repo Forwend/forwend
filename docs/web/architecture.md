@@ -39,8 +39,10 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   switcher (a bottom sheet) and a tab bar (Overview, Balances, Receive in the center, Activity, Account). `/app` is the
   dashboard: the total balance (one token in its unit, several as a USD estimate) with Send, Receive, Transfer and
   Withdraw (only Receive works; the others say why when pressed), pending and held only when not zero, Networks (each
-  chain and token), and recent activity. Receive opens a sheet with the full address (`ReceiveAddress`), QR code and
-  an exact network and token warning (the address never shows without it). `/app/balances` and `/app/activity` list
+  chain and token), and recent activity. Receive opens a sheet where the user picks the token, then the network
+  (`features/receive/receive-choice.ts`, keyed by chain family so non-EVM families fit later); the choice folds into
+  one row with Change, over the full address (`ReceiveAddress`), QR code and an exact network and token warning (the
+  address never shows without it). `/app/balances` and `/app/activity` list
   everything; in activity only a payment carries "+". Money sent straight to the wallet shows in the balance once final, not in activity. Balances
   and activity are read again every 15 s while the tab is visible and when it comes back. `/app/profiles/new` creates a freelancer
   or merchant profile with one idempotency key per visit (R-35). While `onboardedAt` is empty, `/app` shows the first-run choice screen instead (R-50, D-73);
