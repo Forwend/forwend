@@ -1,0 +1,101 @@
+{
+  "id": "F148",
+  "type": "feat",
+  "behavior": "Payer-chooses invoices read in USD with Any network, and the invoice and receipt PDFs look professional",
+  "acceptance": [
+    "R-70: lists show USD and Any network for payer-chooses invoices; backend tests check the PDF text: Any with the accepted tokens and networks, the dates block, line table, total due, footer with number and page"
+  ],
+  "dependsOn": [
+    "F146"
+  ],
+  "state": "passing",
+  "verification": [
+    "backend",
+    "e2e"
+  ],
+  "refs": [
+    "R-70"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-13T19:13:38Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 94.1,
+        "log": "docs/runs/F148-20261013T191338Z-backend.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 141.1,
+        "log": "docs/runs/F148-20261013T191338Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.5,
+        "log": "docs/runs/F148-20261013T191338Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F148-20261013T191338Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F148-20261013T191338Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F148-20261013T191338Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 94.5,
+        "log": "docs/runs/F148-20261013T191338Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 5.3,
+        "log": "docs/runs/F148-20261013T191338Z-build.log"
+      }
+    ],
+    "taskHash": "16f3fcc7dd0ae1e5",
+    "filesHash": "c73a7fbd5cf26a29",
+    "proof": {
+      "1": "backend: PDF text for Any, Pay with list, Total due, footer and grouped amounts; e2e: list shows USD and Any network"
+    },
+    "commit": "52939e6",
+    "doneAt": "2026-10-13T19:19:28Z"
+  },
+  "branch": "feat/f148-payer-chooses-invoices-read-in-usd-with",
+  "baseCommit": "3491835bd421b2c9a610bdc5a1469165df804b0b",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f148-payer-chooses-invoices-read-in-usd-with",
+    "base": "main"
+  }
+}

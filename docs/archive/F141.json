@@ -1,0 +1,94 @@
+{
+  "id": "F141",
+  "type": "feat",
+  "behavior": "The Receive sheet asks for the token and network before showing the address",
+  "acceptance": [
+    "R-65: e2e picks a token and network, sees the address and QR, changes the choice and sees the new address; unit tests show the choice model is not EVM-specific"
+  ],
+  "dependsOn": [
+    "F128"
+  ],
+  "state": "passing",
+  "verification": [
+    "e2e",
+    "unit"
+  ],
+  "refs": [
+    "R-65"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-13T15:00:01Z",
+    "checks": [
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 126.0,
+        "log": "docs/runs/F141-20261013T150001Z-e2e.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 87.5,
+        "log": "docs/runs/F141-20261013T150001Z-unit.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.2,
+        "log": "docs/runs/F141-20261013T150001Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F141-20261013T150001Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F141-20261013T150001Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.1,
+        "log": "docs/runs/F141-20261013T150001Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.0,
+        "log": "docs/runs/F141-20261013T150001Z-build.log"
+      }
+    ],
+    "taskHash": "44187f5e3c6597d1",
+    "filesHash": "a6bd160d4a1bb63a",
+    "proof": {
+      "1": "e2e: privy balances picks token then network, Change shows the new network's address; unit: receive-choice with a solana option"
+    },
+    "commit": "30b0cc4",
+    "doneAt": "2026-10-13T15:03:54Z"
+  },
+  "branch": "feat/f141-the-receive-sheet-asks-for-the-token-and",
+  "baseCommit": "f72d12b0e057990cb32f29cc7f33122bdf4e5a19",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f141-the-receive-sheet-asks-for-the-token-and",
+    "base": "main"
+  }
+}

@@ -149,7 +149,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   amount ("Received X of Y" under it when partly paid) with the timeline, where the Paid step reads "Partially paid"
   as a warning-tinted label when partly paid, the status line (only the confirming count or why settling waits; the
   state itself is the pill's), the payments (amount, sender, time and hash, no status pill of their own) and Check
-  status until paid; beside it the details (empty ones left out), Billed to, and From (or "None on this invoice" with a link to add
+  status only while the checkout can take money; beside it the details (empty ones left out), Billed to, and From (or "None on this invoice" with a link to add
   billing details).
 
 ## Theme and behavior

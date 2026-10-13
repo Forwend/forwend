@@ -1,0 +1,114 @@
+{
+  "id": "F146",
+  "type": "feat",
+  "behavior": "The pay page is one short screen: who asks, the amount, Pay with selects, the QR and one status line",
+  "acceptance": [
+    "R-68: e2e covers a fixed invoice, a payer-chooses invoice picked with the Network and Token selects, the choice kept after a reload, Waiting, Payment received confirming (n/m), Paid with Back to the site and no Settled, Partly paid with what is left, and Closed; no sideways scroll at 390 px; axe 0 serious or critical",
+    "R-55: Check status allows one check per invoice every 5 minutes and the page shows when the next one is allowed, also after a reload; backend test covers the spacing and nextCheckAt"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "e2e",
+    "unit",
+    "backend"
+  ],
+  "refs": [
+    "R-68",
+    "R-55"
+  ],
+  "keep": [],
+  "review": true,
+  "notes": [
+    "2026-10-13 review fail by reviewer: Money safety holds: the address shows only for the option checkedReceiveAddress passed and only after Show address for that same option id (sessionStorage is keyed per invoice and compared with the shown option, so a stale id never reveals a new pick); no address before a pick; a locked option wins over ?option=; Send only names the shown token and network; nextCheckAt matches the recheck spacing. Backend, unit, tsc and pay e2e pass. Must fix: (1) docs/PROJECT.md R-48 still says a settled /pay shows a receipt with settled time and settlement hash, and R-57 still describes Continue and Change; both contradict R-68 and the shipped page; update them (R-52 also says /pay shows settled). (2) Focus is lost after Show address: the focused button unmounts and nothing receives focus (the old page focused the send heading); move focus to the pay-send heading. (3) CheckStatus no longer handles 429: a check refused as too soon (another tab or the owner page within the poll gap) reads 'Can't reach the network' and the button stays enabled; show the wait from Retry-After or the 429 instead. Should fix: openapi Invoice.nextCheckAt is always sent but not in required; stale 30 s comments in invoices-api.ts:52 and options_test.go:134; PAY_COPY.change is now unused; CheckStatus useNow keeps the stale mount time for up to 1 s after a press (briefly wrong 'Next check in') and keeps ticking after the wait ends, and its role=status changes every second in the last minute; canary does not read the Send only line (the amount section still names symbol and network, so not required).",
+    "2026-10-13 review fail by reviewer: Fixes 1 and 2 hold: R-45, R-48, R-52 and R-57 now match the page, and Show address moves focus to the revealed address heading (e2e asserts it). OpenAPI required, the 30 s comments, PAY_COPY.change and the countdown outside the live region are done. Backend, unit (95), tsc and pay e2e (13) pass. Must fix: the new too-soon path leaves Check status disabled for good. In check-status.tsx, resting = left > 0 || (tooSoon && !nextCheckAt), and tooSoon stays true because the mutation's 429 is never cleared. Once the wait ends, the invoice read sends nextCheckAt null again (get.go returns it only inside the 5-minute window), so resting turns true again and the button never comes back until a reload, on both the pay page and the owner's invoice page. Reproduced with a throwaway Playwright spec: 429, then the read gives nextCheckAt +120 s (Next check in 2 min shows), then null after the wait; the button stays disabled and 'Checked recently.' stays. Fix: rest on the 429's own time (Retry-After, or the time it arrived plus the wait) instead of on nextCheckAt being null, and add an e2e step that the button comes back after the wait.",
+    "2026-10-13 review pass by reviewer: Money safety holds: the address shows only for the option checkedReceiveAddress passed and only after Show address for that same option id (the stored id is per invoice and compared with the shown option); no address before a pick; a locked option wins over ?option=; Send only names the shown token and network; nextCheckAt uses the same key and interval as the recheck limit; the canary still presses Show address and checks address, QR, symbol and network. Earlier findings are fixed: R-45, R-48, R-52 and R-57 match the page; focus moves to the revealed address heading; a 429 reads Checked recently, rests 30 s or until the read's nextCheckAt, then the button comes back (confirmed with a throwaway spec: read +120 s, then null after the wait, then a second refused press); OpenAPI required, stale 30 s comments, unused copy and the live-region countdown are done. Backend, unit (95), tsc and pay e2e (13) pass. Minor, not blocking: 'Checked recently.' stays on screen after the button is enabled again."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-13T18:51:55Z",
+    "checks": [
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 128.5,
+        "log": "docs/runs/F146-20261013T185155Z-e2e.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 89.9,
+        "log": "docs/runs/F146-20261013T185155Z-unit.log"
+      },
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 93.0,
+        "log": "docs/runs/F146-20261013T185155Z-backend.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.3,
+        "log": "docs/runs/F146-20261013T185155Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F146-20261013T185155Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F146-20261013T185155Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F146-20261013T185155Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.0,
+        "log": "docs/runs/F146-20261013T185155Z-build.log"
+      }
+    ],
+    "taskHash": "096bafdd94c51168",
+    "filesHash": "3e39e341e5a11385",
+    "proof": {
+      "1": "e2e: new pay page states, selects, reload keeps the pick, no Settled, axe clean, 390 px",
+      "2": "backend: 5-minute Check status spacing with nextCheckAt; e2e: the button rests and comes back"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Money safety holds: the address shows only for the option checkedReceiveAddress passed and only after Show address for that same option id (the stored id is per invoice and compared with the shown option); no address before a pick; a locked option wins over ?option=; Send only names the shown token and network; nextCheckAt uses the same key and interval as the recheck limit; the canary still presses Show address and checks address, QR, symbol and network. Earlier findings are fixed: R-45, R-48, R-52 and R-57 match the page; focus moves to the revealed address heading; a 429 reads Checked recently, rests 30 s or until the read's nextCheckAt, then the button comes back (confirmed with a throwaway spec: read +120 s, then null after the wait, then a second refused press); OpenAPI required, stale 30 s comments, unused copy and the live-region countdown are done. Backend, unit (95), tsc and pay e2e (13) pass. Minor, not blocking: 'Checked recently.' stays on screen after the button is enabled again.",
+      "at": "2026-10-13T18:58:37Z",
+      "filesHash": "3e39e341e5a11385"
+    },
+    "commit": "b3a2b2b",
+    "doneAt": "2026-10-13T18:58:51Z"
+  },
+  "branch": "feat/f146-the-pay-page-is-one-short-screen-who-ask",
+  "baseCommit": "a758f51a6b857bfa3745ac884240efa7a83c470b",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f146-the-pay-page-is-one-short-screen-who-ask",
+    "base": "main"
+  }
+}

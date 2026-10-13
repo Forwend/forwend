@@ -241,16 +241,15 @@ function Loaded({
                   title={COPY.heldOn(o.symbol, chainName(o.chainId))}
                 />
               ))}
-            {/* Paid has nothing left to look for. */}
-            {invoice.paymentStatus === API_PAYMENT_STATUSES.paid ||
-            invoice.settlementStatus === API_SETTLEMENT_STATUSES.settled ? null : (
+            {/* Only while the checkout can take money: paid, settled or expired has nothing left to look for. */}
+            {payable ? (
               <CheckStatus
                 invoiceId={invoice.invoiceId}
                 network={chainName(invoice.chainId)}
                 money={money}
                 nextCheckAt={invoice.nextCheckAt}
               />
-            )}
+            ) : null}
           </div>
         </section>
 

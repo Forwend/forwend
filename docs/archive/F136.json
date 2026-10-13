@@ -1,0 +1,29 @@
+{
+  "id": "F136",
+  "type": "fix",
+  "behavior": "The timeline marks Detected and every payment shows its transaction hash and explorer link",
+  "acceptance": [
+    "R-67: the reported case is reproduced in a failing test first, then fixed; unit and e2e cover a detected, unconfirmed payment"
+  ],
+  "dependsOn": [
+    "F128"
+  ],
+  "state": "dropped",
+  "verification": [
+    "unit",
+    "e2e"
+  ],
+  "refs": [
+    "R-67"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [
+    "2026-10-13 blocked: Owner's tx hash report not reproducible: recorded Tempo hashes match the chain and explorer links resolve; Detected step, Detected pill and per-payment hash + explorer link already pass in e2e/pay.spec.ts. Need the owner's example (invoice and what looked wrong) before writing the failing test.",
+    "2026-10-13 dropped: Owner confirmed it is fixed (2026-10-13)"
+  ],
+  "blockedReason": null,
+  "evidence": null,
+  "branch": "fix/f136-the-timeline-marks-detected-and-every-pa",
+  "baseCommit": "c26fe34649f4806a6f81706b55f50c52d57be013"
+}

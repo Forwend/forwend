@@ -1,0 +1,93 @@
+{
+  "id": "F153",
+  "type": "feat",
+  "behavior": "Once money is seen the pay box shows Detected, Confirming and Paid with what arrived",
+  "acceptance": [
+    "R-68: e2e checks the send section shows the QR beside the amount and the address under them; once money is seen the pay box keeps its place with Detected, Confirming and Paid steps, the amount received, a short hash with explorer link and the confirming count; the address stays while partly paid; axe clean at 390 and 1440 px"
+  ],
+  "dependsOn": [
+    "F152"
+  ],
+  "state": "passing",
+  "verification": [
+    "e2e"
+  ],
+  "refs": [
+    "R-68"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-13T20:01:53Z",
+    "checks": [
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 138.1,
+        "log": "docs/runs/F153-20261013T200153Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.4,
+        "log": "docs/runs/F153-20261013T200153Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F153-20261013T200153Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F153-20261013T200153Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F153-20261013T200153Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 89.7,
+        "log": "docs/runs/F153-20261013T200153Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.3,
+        "log": "docs/runs/F153-20261013T200153Z-build.log"
+      }
+    ],
+    "taskHash": "5ad4e5dea5336c1c",
+    "filesHash": "1b0e97529c83b681",
+    "proof": {
+      "1": "e2e: pay box keeps its place with steps, count and payment rows; QR beside amount, address under"
+    },
+    "commit": "a89aa5d",
+    "doneAt": "2026-10-13T20:05:55Z"
+  },
+  "branch": "feat/f153-once-money-is-seen-the-pay-box-shows-det",
+  "baseCommit": "9dad78952df897ff581cc68d098bf318627b7b58",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f153-once-money-is-seen-the-pay-box-shows-det",
+    "base": "main"
+  }
+}
