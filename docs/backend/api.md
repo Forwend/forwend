@@ -120,14 +120,19 @@ answer 404 `invoice_not_found` the same way.
 - `internal/document` draws them with `codeberg.org/go-pdf/fpdf` in a fixed layout, from `invoice.Get` only: no
   templates, network or file reads. The font is Noto Sans, embedded (`internal/document/fonts`, SIL OFL 1.1). Long
   texts wrap and are cut with "…"; characters above U+FFFF (emoji) print as "?".
-- `invoice.pdf`: number (`INV-0001`), title, issuer block from the invoice's copy (left out without one), "Bill to"
-  with the client's name and address but never the email (the id is a bearer link), the exact amount with the token's
-  symbol and decimals, network (chain name and id), due date, checkout expiry, created time, note, invoice id and the
-  pay link `PUBLIC_WEB_URL/pay/<invoiceId>`.
+- Both look like the product (R-61): the Forwend mark (`internal/document/logo.path`, a copy of
+  `packages/ui-web/src/icons/logo-data.ts`) and the light theme's colors, the kind and number (`INV-0001`), the
+  issuer block from the invoice's copy (left out without one) and "Bill to" with the client's name and address but
+  never the email (the id is a bearer link), a row of dates, then a line table: the title (or "Payment"), the network
+  (name and chain id) and the exact amount with the token's symbol and decimals, never cut. Network names and
+  explorers are a copy of `apps/web/src/shared/chains/chains.ts`; a test fails when either copy changes alone.
+- `invoice.pdf`: created time, due date and checkout expiry, the note, and a box with the pay link
+  `PUBLIC_WEB_URL/pay/<invoiceId>` and its QR code (drawn as vector modules), then the invoice id.
 - `receipt.pdf`: 409 `invoice_not_paid` until `paymentStatus` is `paid` (it stays paid once settled). Adds the paid
-  time, the confirmed deposits' tx hashes and amounts, the settlement status and `settlementTxHash`, and says to
-  check the receipt at the pay link, since a PDF can be edited. The paid time is the block time of the last deposit
-  the ledger booked to `recipient_payable`: the one that completed the amount.
+  and settled times; under Payments each confirmed deposit's amount, block time, full tx hash and "View on
+  <explorer>" link; under Settlement its status and `settlementTxHash` the same way; and the pay link with its QR code,
+  since a PDF can be edited. The paid time is the block time of the last deposit the ledger booked to
+  `recipient_payable`: the one that completed the amount.
 - The same data gives the same bytes (creation date = created or paid time, sorted catalog), so the `ETag` is a hash of
   the file. `Cache-Control: private, no-cache`: a client revalidates and gets 304 while the file is unchanged; a late
   deposit or the settlement changes the receipt. `Content-Disposition: attachment;

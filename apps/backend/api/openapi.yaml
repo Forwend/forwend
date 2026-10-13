@@ -434,10 +434,11 @@ paths:
       operationId: getInvoicePdf
       summary: Download the invoice as a PDF
       description: |
-        Public like GET /v1/invoices/{invoiceId} (R-47, D-51). Built on the server from the stored invoice only: number,
-        title, issuer (left out when the profile had no billing details), bill-to with the client's name and address
-        (never the email), amount with the token's symbol, network, due date, checkout expiry, created time, note, the
-        pay link and the invoice id. The same invoice always gives the same bytes.
+        Public like GET /v1/invoices/{invoiceId} (R-47, R-61, D-51). Built on the server from the stored invoice only:
+        the Forwend mark, number, issuer (left out when the profile had no billing details), bill-to with the client's
+        name and address (never the email), created time, due date, checkout expiry, a line with the title, network and
+        amount with the token's symbol, note, the pay link with its QR code and the invoice id. The same invoice always
+        gives the same bytes.
       security: []
       parameters:
         - name: invoiceId
@@ -455,9 +456,9 @@ paths:
       summary: Download the receipt of a paid invoice as a PDF
       description: |
         Public like the invoice PDF. 409 until paymentStatus is paid; a paid invoice stays paid, also once settled.
-        Shows the invoice's parties and amount, the paid time (block time of the deposit that completed the amount),
-        the confirmed deposits' tx hashes, the settlement status and settlementTxHash, and a line saying to check the
-        receipt at the pay link, since a PDF can be edited.
+        Shows the invoice's parties and line, the paid time (block time of the deposit that completed the amount) and
+        settled time, each confirmed deposit and the settlement with its full tx hash and a link to the network's
+        explorer, and the pay link with its QR code to check the receipt, since a PDF can be edited.
       security: []
       parameters:
         - name: invoiceId

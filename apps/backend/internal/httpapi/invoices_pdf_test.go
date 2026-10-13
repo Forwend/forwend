@@ -50,7 +50,8 @@ func (r pdfReply) errorCode() string {
 }
 
 // pdfText returns the strings the PDF's page streams draw, one per line. fpdf deflates each stream and writes text as
-// (UTF-16BE)Tj with \, ( and ) escaped and \r as \r.
+// (UTF-16BE)Tj with \, ( and ) escaped and \r as \r; text in the Courier core font (hashes and IDs) is one byte per
+// character, told apart by having only printable ASCII bytes, which no UTF-16BE text the tests draw has.
 func pdfText(t *testing.T, pdf []byte) string {
 	t.Helper()
 	var lines []string
@@ -88,6 +89,10 @@ func pdfText(t *testing.T, pdf []byte) string {
 			if !bytes.HasPrefix(content[i+1:], []byte("Tj")) {
 				continue
 			}
+			if !bytes.ContainsFunc(s, func(r rune) bool { return r < 0x20 || r > 0x7e }) {
+				lines = append(lines, string(s))
+				continue
+			}
 			units := make([]uint16, len(s)/2)
 			for j := range units {
 				units[j] = uint16(s[2*j])<<8 | uint16(s[2*j+1])
@@ -110,8 +115,9 @@ func mustContain(t *testing.T, text string, want ...string) {
 	}
 }
 
-// The invoice PDF is public and says who bills whom from the invoice's copies, the exact amount, network, due date and
-// pay link, never the client's email. Without billing details it has no issuer block.
+// The invoice PDF is public: the logo, who bills whom from the invoice's copies, the dates, a line with the exact
+// amount, token and network, and the pay link with its QR code; never the client's email. Without billing details it
+// has no issuer block.
 func TestInvoicePDF(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -138,12 +144,19 @@ func TestInvoicePDF(t *testing.T) {
 	}
 	text := pdfText(t, r.body)
 	link := webURL + "/pay/" + id
-	mustContain(t, text, "Invoice", "INV-0003", "Logo design",
-		"FROM", "Alice Design GmbH", "Hauptstr. 1\n10115 Berlin", "DE", "Tax ID DE123456789", "billing@alice.example",
-		"BILL TO", "Bob Ltd", "Main St 1\nBerlin",
-		"Amount\n5.00 USDC", "Network\nbase-sepolia (chain 84532)", "Due date\n2026-11-01",
-		"Checkout closes\n"+expires.Format("2006-01-02 15:04")+" UTC", "Issued\n"+created.Format("2006-01-02 15:04")+" UTC",
-		"Thanks!\nPay within 14 days.", "Invoice ID\n"+id, link)
+	mustContain(t, text, "Forwend\nInvoice\nINV-0003",
+		"FROM\nAlice Design GmbH\nHauptstr. 1\n10115 Berlin\nDE\nTax ID DE123456789\nbilling@alice.example",
+		"BILL TO\nBob Ltd\nMain St 1\nBerlin",
+		"Issued\n"+created.Format("2006-01-02 15:04")+" UTC\nDue date\n2026-11-01\nCheckout closes\n"+
+			expires.Format("2006-01-02 15:04")+" UTC",
+		"Description\nNetwork\nAmount\nLogo design\nBase Sepolia\nChain 84532\n5.00 USDC\nTotal\n5.00 USDC",
+		"NOTE\nThanks!\nPay within 14 days.",
+		"Pay this invoice\nScan the code or open the link. Send only USDC on Base Sepolia.\n"+webURL+"/pay/",
+		"Invoice ID\n"+id)
+	mustContain(t, strings.ReplaceAll(text, "\n", ""), link) // wrapped to fit
+	if !qrDrawn(t, r.body) {
+		t.Fatalf("the invoice has no QR code")
+	}
 	if strings.Contains(text, "bob@example.com") {
 		t.Fatalf("the public PDF shows the client's email:\n%s", text)
 	}
@@ -160,12 +173,13 @@ func TestInvoicePDF(t *testing.T) {
 	}
 
 	text = pdfText(t, e.pdf(t, plain, "invoice.pdf", "").body)
-	mustContain(t, text, "INV-0001", "Amount\n5.00 USDC", webURL+"/pay/"+plain)
+	mustContain(t, text, "INV-0001", "Description\nNetwork\nAmount\nPayment\nBase Sepolia")
+	mustContain(t, strings.ReplaceAll(text, "\n", ""), webURL+"/pay/"+plain)
 
 	// A request without billing details names its sender, marked as not checked.
 	mustContain(t, pdfText(t, e.pdf(t, request, "invoice.pdf", "").body),
 		"FROM", "Mara Ilić", "Name not checked by Forwend")
-	for _, block := range []string{"FROM", "BILL TO", "Due date", "Note"} {
+	for _, block := range []string{"FROM", "BILL TO", "Due date", "NOTE"} {
 		if strings.Contains(text, block) {
 			t.Fatalf("an invoice without billing details or client says %q:\n%s", block, text)
 		}
@@ -176,7 +190,7 @@ func TestInvoicePDF(t *testing.T) {
 func TestInvoicePDFFitsLongTexts(t *testing.T) {
 	e := invoiceAPI(t)
 	r := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", `{"chainId": 84532, "token": "`+usdc+`", "amount": "`+
-		uint256Max+`", "title": "`+strings.Repeat("é", 200)+`", "note": "`+strings.Repeat("n", 2000)+`", "client": {"name": "Bob 🙂`+
+		uint256Max+`", "title": "`+strings.Repeat("é", 200)+`", "note": "`+strings.Repeat("n\\n", 1000)+`", "client": {"name": "Bob 🙂`+
 		strings.Repeat("c", 190)+`", "address": "`+strings.Repeat("a\\n", 250)+`"}}`)
 	if r.status != http.StatusCreated {
 		t.Fatalf("create: %d %v", r.status, r.body)
@@ -186,10 +200,10 @@ func TestInvoicePDFFitsLongTexts(t *testing.T) {
 		t.Fatalf("got %d %s", pdf.status, pdf.body)
 	}
 	text := pdfText(t, pdf.body)
-	mustContain(t, text, "ééé…", "Bob\n?ccc", "a\na\na\na\na\na\na\na…", "nnn…")
-	// A number too wide for its column wraps inside it.
-	mustContain(t, strings.ReplaceAll(text, "\n", ""),
-		"Amount115792089237316195423570985008687907853269984665640564039457584007913129.639935 USDCNetwork")
+	mustContain(t, text, "ééé…", "Bob\n?ccc", "a\na\na\na\na\na\na\na…", "n\nn\nn…")
+	// An amount too wide for its column wraps inside it and is never cut.
+	full := "115792089237316195423570985008687907853269984665640564039457584007913129.639935USDC"
+	mustContain(t, strings.NewReplacer("\n", "", " ", "").Replace(text), "Chain84532"+full+"Total"+full)
 }
 
 func TestInvoicePDFNotFound(t *testing.T) {
@@ -204,8 +218,8 @@ func TestInvoicePDFNotFound(t *testing.T) {
 }
 
 // The receipt answers 409 until the invoice is paid, then shows the paid time (the block time of the deposit that
-// completed it), the deposits' and the settlement's tx hashes. The public GET gives the same paid time and, once
-// settled, the time the ledger booked the settlement.
+// completed it), each payment and the settlement with its full tx hash and explorer link, and the pay link with its QR
+// code. The public GET gives the same paid time and, once settled, the time the ledger booked the settlement.
 func TestReceiptPDF(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
@@ -260,9 +274,20 @@ func TestReceiptPDF(t *testing.T) {
 		t.Fatalf("paid: %d %v %s", r.status, r.header, r.body)
 	}
 	link := webURL + "/pay/" + id
-	mustContain(t, pdfText(t, r.body), "Receipt", "INV-0001", "Amount paid\n2.00 USDC",
-		"Paid\n"+paidAt.Format("2006-01-02 15:04")+" UTC", "Deposits\n"+first+"\n1.50 USDC", second+"\n0.50 USDC",
-		"Settlement\nPending", "Check this receipt at\n"+link)
+	stamp := func(at time.Time) string { return at.UTC().Format("2006-01-02 15:04") + " UTC" }
+	text := pdfText(t, r.body)
+	mustContain(t, text, "Forwend\nReceipt\nINV-0001", "Paid\n"+stamp(paidAt),
+		"Base Sepolia\nChain 84532\n2.00 USDC\nAmount paid\n2.00 USDC",
+		"PAYMENTS\n1.50 USDC · "+stamp(paidAt.Add(-time.Minute))+"\n"+first+"\nView on Basescan\n0.50 USDC · "+
+			stamp(paidAt)+"\n"+second+"\nView on Basescan",
+		"SETTLEMENT\nPending: on its way to the creator's wallet\nCheck this receipt")
+	mustContain(t, strings.ReplaceAll(text, "\n", ""), link)
+	if strings.Contains(text, "Settled") {
+		t.Fatalf("a receipt before settlement says settled:\n%s", text)
+	}
+	if !bytes.Contains(r.body, []byte("/URI (https://sepolia.basescan.org/tx/"+first+")")) || !qrDrawn(t, r.body) {
+		t.Fatalf("the receipt's explorer link or QR code is missing")
+	}
 
 	paid := paidAt.Format(time.RFC3339)
 	times("paid", paid, nil)
@@ -295,7 +320,13 @@ func TestReceiptPDF(t *testing.T) {
 	if after.status != http.StatusOK {
 		t.Fatalf("settled, with the paid receipt's ETag: %d", after.status)
 	}
-	mustContain(t, pdfText(t, after.body), "Settlement\nSettled", "Settlement tx\n"+settled)
+	mustContain(t, pdfText(t, after.body), "Paid\n"+stamp(paidAt)+"\nSettled\n"+stamp(settledAt),
+		"SETTLEMENT\nSettled: in the creator's wallet\n"+settled+"\nView on Basescan")
+	if !bytes.Contains(after.body, []byte("/URI (https://sepolia.basescan.org/tx/"+settled+")")) {
+		t.Fatalf("the settlement has no explorer link")
+	}
+	// The invoice itself still renders once settled.
+	mustContain(t, strings.ReplaceAll(pdfText(t, e.pdf(t, id, "invoice.pdf", "").body), "\n", ""), "InvoiceINV-0001", link)
 
 	// A deposit after the checkout closed is held for the payer (D-26), so the receipt leaves it out.
 	late := "0x" + strings.Repeat("0c", 32)
@@ -307,5 +338,27 @@ func TestReceiptPDF(t *testing.T) {
 	}
 	if text := pdfText(t, e.pdf(t, id, "receipt.pdf", "").body); strings.Contains(text, late) {
 		t.Fatalf("the receipt lists the late deposit %s:\n%s", late, text)
+	}
+}
+
+// qrDrawn tells whether a page draws the many filled module runs a QR code is made of.
+func qrDrawn(t *testing.T, pdf []byte) bool {
+	t.Helper()
+	for rest := pdf; ; {
+		start := bytes.Index(rest, []byte("stream\n"))
+		if start < 0 {
+			return false
+		}
+		rest = rest[start+len("stream\n"):]
+		end := bytes.Index(rest, []byte("\nendstream"))
+		zr, err := zlib.NewReader(bytes.NewReader(rest[:end]))
+		rest = rest[end:]
+		if err != nil {
+			continue
+		}
+		content, _ := io.ReadAll(zr)
+		if bytes.Count(content, []byte(" re f")) > 200 {
+			return true
+		}
 	}
 }

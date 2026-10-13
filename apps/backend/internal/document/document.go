@@ -1,5 +1,5 @@
-// Package document renders an invoice and its receipt as PDF files with a fixed layout (R-47, D-51). Only the stored
-// invoice goes in, nothing is read from the network or disk, and the same invoice always gives the same bytes.
+// Package document renders an invoice and its receipt as PDF files with a fixed layout (R-47, R-61, D-51). Only the
+// stored invoice goes in, nothing is read from the network or disk, and the same invoice always gives the same bytes.
 package document
 
 import (
@@ -8,10 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 	"time"
 
 	"codeberg.org/go-pdf/fpdf"
+	"github.com/boombuler/barcode/qr"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
@@ -25,6 +27,9 @@ var (
 	regular []byte
 	//go:embed fonts/NotoSans-Bold.ttf
 	bold []byte
+	// The Forwend mark, a copy of packages/ui-web/src/icons/logo-data.ts (a test keeps them equal).
+	//go:embed logo.path
+	logoPath string
 )
 
 // A4 in mm.
@@ -32,30 +37,52 @@ const (
 	pageHeight = 297.0
 	margin     = 20.0
 	width      = 170.0 // between the margins
-	labelWidth = 38.0
-	valueWidth = width - labelWidth
 	lineHeight = 5.0
 	font       = "Noto"
+	mono       = "Courier" // a core font: hashes and addresses are ASCII
 )
+
+// The product's light theme (packages/design-tokens/src/tokens.css).
+var (
+	ink     = [3]int{0x0f, 0x22, 0x19}
+	muted   = [3]int{0x3a, 0x50, 0x47}
+	subtle  = [3]int{0x56, 0x6a, 0x62}
+	line    = [3]int{0xd3, 0xe0, 0xdc}
+	surface = [3]int{0xea, 0xf2, 0xf0}
+	accent  = [3]int{0x1f, 0x6a, 0x8c}
+)
+
+// network is a chain's name and block explorer, as apps/web/src/shared/chains/chains.ts has them (a test keeps them
+// equal). Transactions are at <url>/tx/<hash>.
+type network struct{ name, explorer, url string }
+
+var networks = map[uint64]network{
+	84532:   {"Base Sepolia", "Basescan", "https://sepolia.basescan.org"},
+	421614:  {"Arbitrum Sepolia", "Arbiscan", "https://sepolia.arbiscan.io"},
+	5042002: {"Arc Testnet", "ArcScan", "https://testnet.arcscan.app"},
+	42431:   {"Tempo Moderato", "Tempo Explorer", "https://explore.testnet.tempo.xyz"},
+}
+
+func networkOf(inv invoice.Invoice) network {
+	if n, ok := networks[inv.ChainID]; ok {
+		return n
+	}
+	return network{name: inv.Network}
+}
 
 func Number(n int64) string {
 	return fmt.Sprintf("INV-%04d", n)
 }
 
 func Invoice(inv invoice.Invoice, payLink string) ([]byte, error) {
-	d := start(inv, "Invoice", inv.CreatedAt)
-	d.row("Amount", amount(inv.Amount, inv.Decimals, inv.Symbol), 3)
-	d.row("Network", fmt.Sprintf("%s (chain %d)", inv.Network, inv.ChainID), 2)
-	d.row("Due date", inv.DueDate, 1)
-	d.row("Checkout closes", stamp(inv.ExpiresAt), 1)
-	d.row("Issued", stamp(inv.CreatedAt), 1)
-	d.row("Invoice ID", inv.ID, 2)
-	if inv.Note != "" {
-		d.Ln(lineHeight)
-		d.row("Note", inv.Note, 30)
-	}
-	d.Ln(lineHeight)
-	d.link("Pay this invoice at", payLink)
+	d := start(inv, "Invoice")
+	d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Due date", inv.DueDate},
+		[2]string{"Checkout closes", stamp(inv.ExpiresAt)})
+	d.lines(inv, "Total")
+	d.note(inv.Note)
+	net := networkOf(inv)
+	d.code(payLink, "Pay this invoice", "Scan the code or open the link. Send only "+inv.Symbol+" on "+net.name+".")
+	d.footer(inv)
 	return d.output()
 }
 
@@ -63,30 +90,38 @@ func Receipt(inv invoice.Invoice, payLink string) ([]byte, error) {
 	if inv.PaymentStatus != ledger.Paid {
 		return nil, ErrNotPaid
 	}
-	d := start(inv, "Receipt", inv.PaidAt)
-	d.row("Amount paid", amount(inv.Amount, inv.Decimals, inv.Symbol), 3)
-	d.row("Network", fmt.Sprintf("%s (chain %d)", inv.Network, inv.ChainID), 2)
-	d.row("Paid", stamp(inv.PaidAt), 1)
-	label := "Deposits"
+	d := start(inv, "Receipt")
+	settled := ""
+	if !inv.SettledAt.IsZero() {
+		settled = stamp(inv.SettledAt)
+	}
+	d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Paid", stamp(inv.PaidAt)},
+		[2]string{"Settled", settled})
+	d.lines(inv, "Amount paid")
+
+	net := networkOf(inv)
+	d.heading("Payments")
 	for _, dep := range inv.Deposits {
 		if dep.Status == "confirmed" && !dep.Late { // late money is held for the payer, not paid (D-26)
-			d.row(label, dep.TxHash+"\n"+amount(dep.Amount, inv.Decimals, inv.Symbol), 4)
-			label = ""
+			d.transaction(net, amount(dep.Amount, inv.Decimals, inv.Symbol)+" · "+stamp(dep.BlockTime), dep.TxHash)
 		}
 	}
-	d.row("Settlement", settlement[inv.SettlementStatus], 1)
-	d.row("Settlement tx", inv.SettlementTxHash, 2)
-	d.row("Invoice ID", inv.ID, 2)
-	d.Ln(lineHeight)
-	d.link("A PDF can be edited. Check this receipt at", payLink)
+	d.heading("Settlement")
+	d.transaction(net, settlement[inv.SettlementStatus], inv.SettlementTxHash)
+	d.code(payLink, "Check this receipt", "A PDF can be edited. The pay page shows what the chain recorded.")
+	d.footer(inv)
 	return d.output()
 }
 
-var settlement = map[string]string{"none": "Not started", "pending": "Pending", "settled": "Settled"}
+var settlement = map[string]string{
+	"none":    "Not started",
+	"pending": "Pending: on its way to the creator's wallet",
+	"settled": "Settled: in the creator's wallet",
+}
 
 type doc struct{ *fpdf.Fpdf }
 
-func start(inv invoice.Invoice, kind string, date time.Time) doc {
+func start(inv invoice.Invoice, kind string) doc {
 	d := doc{fpdf.New("P", "mm", "A4", "")}
 	d.SetMargins(margin, margin, margin)
 	d.SetAutoPageBreak(true, margin)
@@ -97,6 +132,10 @@ func start(inv invoice.Invoice, kind string, date time.Time) doc {
 	if inv.Issuer != nil {
 		author = bmp(inv.Issuer.Name)
 	}
+	date := inv.CreatedAt
+	if kind == "Receipt" {
+		date = inv.PaidAt
+	}
 	d.SetTitle(kind+" "+Number(inv.Number), true)
 	d.SetAuthor(author, true)
 	d.SetCreator("Forwend", true)
@@ -106,17 +145,21 @@ func start(inv invoice.Invoice, kind string, date time.Time) doc {
 	d.SetCatalogSort(true)
 	d.AddPage()
 
-	d.SetFont(font, "B", 22)
-	d.CellFormat(width/2, 10, kind, "", 0, "L", false, 0, "")
-	d.SetFont(font, "", 12)
-	d.CellFormat(width/2, 10, Number(inv.Number), "", 1, "R", false, 0, "")
-	if inv.Title != "" {
-		d.SetFont(font, "B", 13)
-		for _, l := range d.fit(inv.Title, width, 3) {
-			d.CellFormat(width, 6.5, l, "", 1, "L", false, 0, "")
-		}
-	}
-	d.Ln(lineHeight)
+	// The mark and name on the left, the document's kind and number on the right.
+	d.color(ink)
+	d.logo(margin, margin, 8)
+	d.SetXY(margin+10.5, margin)
+	d.SetFont(font, "B", 14)
+	d.CellFormat(40, 8, "Forwend", "", 0, "L", false, 0, "")
+	d.SetXY(margin+width/2, margin-1)
+	d.SetFont(font, "B", 20)
+	d.CellFormat(width/2, 9, kind, "", 2, "R", false, 0, "")
+	d.SetFont(font, "", 10)
+	d.text(subtle)
+	d.CellFormat(width/2, lineHeight, Number(inv.Number), "", 1, "R", false, 0, "")
+	d.Ln(4)
+	d.rule()
+	d.Ln(6)
 
 	// Side by side. Each block is cut to fit, so neither reaches the end of the page.
 	top, bottom, x := d.GetY(), d.GetY(), margin
@@ -135,58 +178,279 @@ func start(inv invoice.Invoice, kind string, date time.Time) doc {
 	if inv.ClientName != "" || inv.ClientAddress != "" {
 		bottom = max(bottom, d.party(x, top, "Bill to", inv.ClientName, inv.ClientAddress))
 	}
-	d.SetY(bottom + lineHeight)
+	d.SetXY(margin, bottom+6)
 	return d
+}
+
+func (d doc) color(c [3]int) { d.SetFillColor(c[0], c[1], c[2]) }
+func (d doc) text(c [3]int)  { d.SetTextColor(c[0], c[1], c[2]) }
+
+func (d doc) rule() {
+	d.SetDrawColor(line[0], line[1], line[2])
+	d.SetLineWidth(0.3)
+	d.Line(margin, d.GetY(), margin+width, d.GetY())
+}
+
+// logo draws the mark, size mm square, from its SVG path (only M and C commands, absolute).
+func (d doc) logo(x, y, size float64) {
+	const minX, minY, box = 117.2, 11.5, 1812.6
+	f := strings.FieldsFunc(logoPath, func(r rune) bool { return r == ' ' || r == ',' || r == '\n' })
+	num := func(i int) float64 { v, _ := strconv.ParseFloat(f[i], 64); return v }
+	px := func(i int) (float64, float64) {
+		return x + (num(i)-minX)*size/box, y + (num(i+1)-minY)*size/box
+	}
+	for i := 0; i < len(f); {
+		switch f[i] {
+		case "M":
+			if i > 0 {
+				d.ClosePath()
+			}
+			d.MoveTo(px(i + 1))
+			i += 3
+		case "C":
+			i++
+			for i+5 < len(f) && f[i] != "M" && f[i] != "C" {
+				x1, y1 := px(i)
+				x2, y2 := px(i + 2)
+				x3, y3 := px(i + 4)
+				d.CurveBezierCubicTo(x1, y1, x2, y2, x3, y3)
+				i += 6
+			}
+		default:
+			i++
+		}
+	}
+	d.ClosePath()
+	d.DrawPath("F")
 }
 
 func (d doc) party(x, y float64, heading, name string, details ...string) float64 {
 	w := width/2 - 5
 	d.SetXY(x, y)
-	d.SetTextColor(110, 110, 110)
+	d.text(subtle)
 	d.SetFont(font, "B", 8)
 	d.CellFormat(w, lineHeight, strings.ToUpper(heading), "", 2, "L", false, 0, "")
-	d.SetTextColor(0, 0, 0)
+	d.text(ink)
 	d.SetFont(font, "B", 10)
 	for _, l := range d.fit(name, w, 4) {
 		d.CellFormat(w, lineHeight, l, "", 2, "L", false, 0, "")
 	}
 	d.SetFont(font, "", 10)
+	d.text(muted)
 	for _, text := range details {
 		for _, l := range d.fit(text, w, 8) {
 			d.CellFormat(w, lineHeight, l, "", 2, "L", false, 0, "")
 		}
 	}
+	d.text(ink)
 	return d.GetY()
 }
 
-func (d doc) row(label, value string, maxLines int) {
-	if value == "" {
-		return
+// facts writes up to four label and value pairs in one row; an empty value leaves its pair out.
+func (d doc) facts(pairs ...[2]string) {
+	y, x, w := d.GetY(), margin, width/4
+	for _, p := range pairs {
+		if p[1] == "" {
+			continue
+		}
+		d.SetXY(x, y)
+		d.text(subtle)
+		d.SetFont(font, "", 8.5)
+		d.CellFormat(w, lineHeight, p[0], "", 2, "L", false, 0, "")
+		d.text(ink)
+		d.SetFont(font, "", 10)
+		d.CellFormat(w, lineHeight, p[1], "", 2, "L", false, 0, "")
+		x += w
 	}
-	d.SetFont(font, "", 9.5)
-	lines := d.fit(value, valueWidth, maxLines)
-	if d.GetY()+float64(len(lines))*lineHeight > pageHeight-margin {
-		d.AddPage() // the label stays with its value
-	}
-	d.SetTextColor(110, 110, 110)
-	d.CellFormat(labelWidth, lineHeight, label, "", 0, "L", false, 0, "")
-	d.SetTextColor(0, 0, 0)
-	for _, l := range lines {
-		d.SetX(margin + labelWidth)
-		d.CellFormat(valueWidth, lineHeight, l, "", 1, "L", false, 0, "")
-	}
-	d.Ln(1.5)
+	d.SetXY(margin, y+2*lineHeight+6)
 }
 
-func (d doc) link(text, url string) {
-	d.SetFont(font, "", 9.5)
-	d.CellFormat(width, lineHeight, text, "", 1, "L", false, 0, "")
-	d.SetFont(font, "", 9)
-	d.SetTextColor(20, 80, 200)
-	for _, l := range d.fit(url, width, 3) {
-		d.CellFormat(width, lineHeight, l, "", 1, "L", false, 0, url)
+// lines is the invoice's one line: what it is for, the network and the amount in its token, then the total.
+func (d doc) lines(inv invoice.Invoice, total string) {
+	cols := [3]float64{88, 42, 40}
+	const pad = 3.0
+	d.color(surface)
+	d.text(muted)
+	d.SetFont(font, "B", 8.5)
+	y := d.GetY()
+	d.Rect(margin, y, width, 7, "F")
+	x := margin
+	for i, h := range []string{"Description", "Network", "Amount"} {
+		align := "L"
+		if i == 2 {
+			align = "R"
+		}
+		d.SetXY(x+pad, y+1)
+		d.CellFormat(cols[i]-2*pad, lineHeight, h, "", 0, align, false, 0, "")
+		x += cols[i]
 	}
-	d.SetTextColor(0, 0, 0)
+	d.SetY(y + 7 + 2)
+
+	net := networkOf(inv)
+	title := inv.Title
+	if title == "" {
+		title = "Payment"
+	}
+	d.SetFont(font, "", 10)
+	cells := [3][]string{
+		d.fit(title, cols[0]-2*pad, 3),
+		append(d.fit(net.name, cols[1]-2*pad, 2), "Chain "+strconv.FormatUint(inv.ChainID, 10)),
+		d.fit(amount(inv.Amount, inv.Decimals, inv.Symbol), cols[2]-2*pad, 12),
+	}
+	y, x = d.GetY(), margin
+	rows := 0
+	for i, c := range cells {
+		align := "L"
+		if i == 2 {
+			align = "R"
+		}
+		for j, l := range c {
+			d.text(ink)
+			d.SetFont(font, "", 10)
+			if i == 1 && j == len(c)-1 {
+				d.text(subtle)
+				d.SetFont(font, "", 8.5)
+			}
+			d.SetXY(x+pad, y+float64(j)*lineHeight)
+			d.CellFormat(cols[i]-2*pad, lineHeight, l, "", 0, align, false, 0, "")
+		}
+		rows = max(rows, len(c))
+		x += cols[i]
+	}
+	d.SetY(y + float64(rows)*lineHeight + 2)
+	d.rule()
+	d.Ln(2)
+
+	d.SetFont(font, "B", 11)
+	d.text(ink)
+	y = d.GetY()
+	d.SetXY(margin+cols[0]+pad, y)
+	d.CellFormat(cols[1]-2*pad, 6, total, "", 0, "L", false, 0, "")
+	for _, l := range d.fit(amount(inv.Amount, inv.Decimals, inv.Symbol), cols[2]-2*pad, 12) { // never cut
+		d.SetX(margin + cols[0] + cols[1] + pad)
+		d.CellFormat(cols[2]-2*pad, 6, l, "", 1, "R", false, 0, "")
+	}
+	d.Ln(6)
+}
+
+func (d doc) heading(text string) {
+	d.pageFor(3 * lineHeight)
+	d.text(subtle)
+	d.SetFont(font, "B", 8)
+	d.CellFormat(width, lineHeight, strings.ToUpper(text), "", 1, "L", false, 0, "")
+	d.text(ink)
+	d.Ln(1)
+}
+
+func (d doc) note(text string) {
+	if text == "" {
+		return
+	}
+	d.heading("Note")
+	d.SetFont(font, "", 10)
+	d.text(muted)
+	for _, l := range d.fit(text, width, 30) {
+		d.pageFor(lineHeight)
+		d.CellFormat(width, lineHeight, l, "", 1, "L", false, 0, "")
+	}
+	d.text(ink)
+	d.Ln(6)
+}
+
+// transaction writes what happened, then the full hash and a link to it on the network's explorer.
+func (d doc) transaction(net network, what, hash string) {
+	d.pageFor(3 * lineHeight)
+	d.SetFont(font, "", 10)
+	d.CellFormat(width, lineHeight, what, "", 1, "L", false, 0, "")
+	if hash != "" {
+		d.SetFont(mono, "", 8.5)
+		d.text(muted)
+		d.CellFormat(width, lineHeight, hash, "", 1, "L", false, 0, "")
+		if net.explorer != "" {
+			d.SetFont(font, "", 9)
+			d.text(accent)
+			d.CellFormat(width, lineHeight, "View on "+net.explorer, "", 1, "L", false, 0, net.url+"/tx/"+hash)
+		}
+		d.text(ink)
+	}
+	d.Ln(3)
+}
+
+// code draws the link's QR code beside a heading, a line of help and the link itself.
+func (d doc) code(link, title, help string) {
+	const size, gap = 30.0, 6.0
+	d.Ln(2)
+	d.pageFor(size + 4)
+	y := d.GetY()
+	d.SetDrawColor(line[0], line[1], line[2])
+	d.SetLineWidth(0.3)
+	d.Rect(margin, y, width, size+8, "D")
+	d.qr(link, margin+4, y+4, size)
+	x, w := margin+4+size+gap, width-size-gap-8
+	d.SetXY(x, y+5)
+	d.SetFont(font, "B", 11)
+	d.CellFormat(w, 6, title, "", 2, "L", false, 0, "")
+	d.SetFont(font, "", 9.5)
+	d.text(muted)
+	for _, l := range d.fit(help, w, 2) {
+		d.CellFormat(w, lineHeight, l, "", 2, "L", false, 0, "")
+	}
+	d.SetXY(x, d.GetY()+1)
+	d.SetFont(font, "", 9)
+	d.text(accent)
+	for _, l := range d.fit(link, w, 3) {
+		d.CellFormat(w, lineHeight, l, "", 2, "L", false, 0, link)
+	}
+	d.text(ink)
+	d.SetXY(margin, y+size+8+6)
+}
+
+// qr draws the code's dark modules as filled runs; a scanner reads dark on light, so it is always ink on white.
+func (d doc) qr(text string, x, y, size float64) {
+	code, err := qr.Encode(text, qr.M, qr.Auto)
+	if err != nil {
+		d.SetError(fmt.Errorf("QR code: %w", err)) // output returns it
+		return
+	}
+	n := code.Bounds().Dx()
+	m := size / float64(n)
+	d.color(ink)
+	for row := range n {
+		for col := 0; col < n; {
+			if r, _, _, _ := code.At(col, row).RGBA(); r != 0 {
+				col++
+				continue
+			}
+			run := col
+			for run < n {
+				if r, _, _, _ := code.At(run, row).RGBA(); r != 0 {
+					break
+				}
+				run++
+			}
+			d.Rect(x+float64(col)*m, y+float64(row)*m, float64(run-col)*m, m, "F")
+			col = run
+		}
+	}
+}
+
+func (d doc) footer(inv invoice.Invoice) {
+	d.pageFor(2 * lineHeight)
+	d.rule()
+	d.Ln(3)
+	d.SetFont(font, "", 8.5)
+	d.text(subtle)
+	d.CellFormat(22, lineHeight, "Invoice ID", "", 0, "L", false, 0, "")
+	d.SetFont(mono, "", 8)
+	d.CellFormat(width-22, lineHeight, inv.ID, "", 1, "L", false, 0, "")
+	d.text(ink)
+}
+
+// pageFor starts a new page when h mm would not fit, so a block stays together.
+func (d doc) pageFor(h float64) {
+	if d.GetY()+h > pageHeight-margin {
+		d.AddPage()
+	}
 }
 
 func (d doc) fit(text string, w float64, maxLines int) []string {
