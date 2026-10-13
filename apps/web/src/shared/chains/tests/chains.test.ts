@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { txLink } from "@/shared/chains/chains";
+import { addressLink, txLink } from "@/shared/chains/chains";
 
 const HASH = `0x${"ab".repeat(32)}`;
 
@@ -16,5 +16,19 @@ describe("txLink", () => {
     expect(txLink(31337, HASH)).toBeNull();
     expect(txLink(1, HASH)).toBeNull();
     expect(txLink(84532, "0x12/../evil")).toBeNull();
+  });
+});
+
+describe("addressLink", () => {
+  it("links an address to its page on the chain's explorer", () => {
+    const address = `0x${"ab".repeat(20)}`;
+    expect(addressLink(84532, address)).toEqual({
+      name: "Basescan",
+      href: `https://sepolia.basescan.org/address/${address}`,
+    });
+  });
+  it("gives nothing for a chain without an explorer or a value that is not an address", () => {
+    expect(addressLink(1, `0x${"ab".repeat(20)}`)).toBeNull();
+    expect(addressLink(84532, "0x1234")).toBeNull();
   });
 });

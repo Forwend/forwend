@@ -4,6 +4,7 @@ import {
   Button,
   buttonClasses,
   EmptyState,
+  ROW_INTERACTIVE_CLASSES,
   SearchField,
   SegmentedControl,
   StatusPill,
@@ -22,7 +23,7 @@ import {
 } from "@/features/invoices/invoices";
 import { useGetInvoicesInfiniteQuery } from "@/features/invoices/invoices-api";
 import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/invoices-copy";
-import { chainName } from "@/shared/chains/chains";
+import { NetworkName } from "@/shared/chains/network-name";
 import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -156,10 +157,7 @@ export function InvoicesTable({
               <tbody className="divide-y divide-line">
                 {rows.map((inv) => (
                   // The number's link covers the row, so the whole row opens the invoice.
-                  <tr
-                    key={inv.invoiceId}
-                    className="relative hover:bg-[color-mix(in_oklab,var(--fw-surface-2)_50%,transparent)]"
-                  >
+                  <tr key={inv.invoiceId} className={`relative ${ROW_INTERACTIVE_CLASSES}`}>
                     <td className="max-w-56 px-5 py-3">
                       <Link
                         href={invoiceHref(inv)}
@@ -191,7 +189,9 @@ export function InvoicesTable({
                     </td>
                     <td className="px-5 py-3 text-right whitespace-nowrap">
                       <InvoiceAmount invoice={inv} tokens={tokens} className="flex-nowrap" />
-                      <span className="block text-xs text-muted">{chainName(inv.chainId)}</span>
+                      <span className="flex justify-end text-xs text-muted">
+                        <NetworkName chainId={inv.chainId} />
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -203,7 +203,7 @@ export function InvoicesTable({
               <li key={inv.invoiceId}>
                 <Link
                   href={invoiceHref(inv)}
-                  className="flex items-center gap-3 px-4 py-3 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+                  className={`flex items-center gap-3 px-4 py-3 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${ROW_INTERACTIVE_CLASSES}`}
                 >
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-ink">
@@ -213,9 +213,13 @@ export function InvoicesTable({
                       ) : null}
                     </span>
                     {/* The network first: a narrow row cuts the due date, never the network. */}
-                    <span className="block truncate text-xs text-muted">
-                      {chainName(inv.chainId)}
-                      {inv.dueDate ? ` · ${COPY.due(formatDueDate(inv.dueDate))}` : null}
+                    <span className="flex min-w-0 items-center gap-1 text-xs text-muted">
+                      <span className="shrink-0">
+                        <NetworkName chainId={inv.chainId} />
+                      </span>
+                      {inv.dueDate ? (
+                        <span className="truncate">· {COPY.due(formatDueDate(inv.dueDate))}</span>
+                      ) : null}
                     </span>
                   </span>
                   <span className="ml-auto flex shrink-0 flex-col items-end gap-1">
