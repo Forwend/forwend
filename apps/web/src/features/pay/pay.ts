@@ -21,11 +21,11 @@ export const PAY_TOKENS: Readonly<Record<string, PayToken>> = {
   "42431:0x20c0000000000000000000006a37da5c996874be": { symbol: "OUSD", decimals: 6 },
 };
 
-/** What the status panel says, in the order the checks run. */
 /** How the payer sends: the instructions differ, the address and amount do not. */
 export const PAY_METHODS = { wallet: "wallet", exchange: "exchange" } as const;
 export type PayMethod = (typeof PAY_METHODS)[keyof typeof PAY_METHODS];
 
+/** What the status panel says, in the order the checks run. */
 export const PAY_STATES = {
   settled: "settled",
   paid: "paid",
