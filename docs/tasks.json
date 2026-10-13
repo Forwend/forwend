@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 155,
+  "nextId": 160,
   "tasks": [
     {
       "id": "F121",
@@ -1595,7 +1595,7 @@
       "dependsOn": [
         "F128"
       ],
-      "state": "blocked",
+      "state": "dropped",
       "verification": [
         "unit",
         "e2e"
@@ -1606,9 +1606,10 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-13 blocked: Owner's tx hash report not reproducible: recorded Tempo hashes match the chain and explorer links resolve; Detected step, Detected pill and per-payment hash + explorer link already pass in e2e/pay.spec.ts. Need the owner's example (invoice and what looked wrong) before writing the failing test."
+        "2026-10-13 blocked: Owner's tx hash report not reproducible: recorded Tempo hashes match the chain and explorer links resolve; Detected step, Detected pill and per-payment hash + explorer link already pass in e2e/pay.spec.ts. Need the owner's example (invoice and what looked wrong) before writing the failing test.",
+        "2026-10-13 dropped: Owner confirmed it is fixed (2026-10-13)"
       ],
-      "blockedReason": "Owner's tx hash report not reproducible: recorded Tempo hashes match the chain and explorer links resolve; Detected step, Detected pill and per-payment hash + explorer link already pass in e2e/pay.spec.ts. Need the owner's example (invoice and what looked wrong) before writing the failing test.",
+      "blockedReason": null,
       "evidence": null,
       "branch": "fix/f136-the-timeline-marks-detected-and-every-pa",
       "baseCommit": "c26fe34649f4806a6f81706b55f50c52d57be013"
@@ -3397,6 +3398,172 @@
         "branch": "feat/f154-the-owner-s-invoice-page-starts-at-waiti",
         "base": "main"
       }
+    },
+    {
+      "id": "F155",
+      "type": "docs",
+      "behavior": "The repo rules ask every fix to cover all places, and the plan keeps overpaid handling for after wallet Connect",
+      "acceptance": [
+        "AGENTS.md has the cross-check rule; PLAN.md has 11.10 wallet Connect and 11.10.1 overpaid handling and 9.1 no longer lists overpaid; docs-check passes"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T20:42:27Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F155-20261013T204227Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": "docs/runs/F155-20261013T204227Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F155-20261013T204227Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F155-20261013T204227Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 98.0,
+            "log": "docs/runs/F155-20261013T204227Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F155-20261013T204227Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 141.0,
+            "log": "docs/runs/F155-20261013T204227Z-e2e.log"
+          }
+        ],
+        "taskHash": "cde83370fb93b3f0",
+        "filesHash": "c8b2820a12a44257",
+        "proof": {
+          "1": "docs-check: AGENTS.md shared rules add the cross-check rule; PLAN.md adds 11.10 wallet Connect and 11.10.1 overpaid handling after it, and 9.1 points overpaid there; rows R-68, R-69, R-70 updated for the queued tasks"
+        }
+      },
+      "branch": "docs/f155-the-repo-rules-ask-every-fix-to-cover-al",
+      "baseCommit": "2a2b2d2d8707e39316c83a18aad4dd217dfb7a44",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F156",
+      "type": "fix",
+      "behavior": "Activity shows client-chooses invoices in USD with Any network",
+      "acceptance": [
+        "R-70: backend test checks activity invoice items carry optionCount; e2e checks an Activity row of a client-chooses invoice shows USD and Any network"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "R-70"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F157",
+      "type": "feat",
+      "behavior": "The Confirming step carries its count and time, and reads Confirmed once done",
+      "acceptance": [
+        "R-68, R-69: ui-unit checks a step hint shows a clock icon with its text; e2e checks the pay and owner pages show Confirming (n/m) on the step with the time behind the icon, no separate confirming line, and Confirmed once done"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-68",
+        "R-69"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F158",
+      "type": "feat",
+      "behavior": "The pay page shows status only after the address, guards a change of network, and keeps help in the footer",
+      "acceptance": [
+        "R-68: e2e checks no status or Check status before Show address; a picked option folds into one row with Change, then Confirm, then the selects again; Need help opens a dialog from the footer; no copy says the sender; no overpaid line; axe clean"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-68"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F159",
+      "type": "fix",
+      "behavior": "Switching profile on an invoice's page opens the new profile's list instead of a dead end",
+      "acceptance": [
+        "e2e checks switching profile on an invoice's page opens the new profile's invoice list, and on other pages keeps the page"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

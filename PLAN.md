@@ -108,8 +108,8 @@ bullets it needs.
 
 ## Phase 9: payment exceptions, refunds and notifications
 
-- 9.1 Pay page and dashboard states for partial (remainder and deadline), overpaid (excess held), expired, expired
-  partial and late, each with its next step. After 8.4.
+- 9.1 Pay page and dashboard states for partial (remainder and deadline), expired, expired partial and late, each
+  with its next step. After 8.4. Overpaid waits for 11.10.1.
 - 9.2 Warnings for wrong chain, bridged USDC.e and address poisoning (compare the first and last 6 characters).
   Wrong-network help requires a tx hash (D-33).
 - 9.3 Payer claims on `/pay`: evidence per Q-9 (wallet signature for self-custody, otherwise a destination and
@@ -177,6 +177,12 @@ Freelancer before merchant (D-55). Phase 9 comes first for both, so phases 10 an
     and React versions supported. After 11.9.3.
   - 11.9.5 `apps/example-merchant` uses the button or component and verifies the webhook, with a browser test.
     After 11.9.2 or 11.9.3.
+- 11.10 Pay with a connected wallet on `/pay` and the merchant checkout (lifts D-37's MVP limit): the payer connects
+  a wallet and the page sends the exact amount. After phase 10 and 11.1–11.9 (full freelancer and merchant features
+  and the developer kit).
+  - 11.10.1 Overpaid handling: the pay page and the owner's invoice page show money sent above the amount (held for
+    the payer, D-26) with its next step and a way to return it. Until then neither page shows an overpaid line.
+    After 11.10.
 - Before outside merchants: Q-11.
 
 ## Phase 12: account security, send and bank withdrawal
