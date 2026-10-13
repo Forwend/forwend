@@ -3029,7 +3029,7 @@
         "R-74: e2e shrinks /app from 1440 to 390 px and checks the page does not scroll sideways and the chart is as wide as its panel"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -3098,12 +3098,19 @@
         "taskHash": "b4dd483aa766f87f",
         "filesHash": "8909eb3c829a887d",
         "proof": {
-          "1": "e2e: privy navigation.spec shrinks /app from 1440 to 1024, 768 and 390 px; scrollWidth equals the window each time and the chart is narrower than its panel; without the fix it fails with scrollWidth 738 at 390"
-        }
+          "1": "e2e: /app shrinks from 1440 to 390 px without sideways scroll"
+        },
+        "commit": "65afcef",
+        "doneAt": "2026-10-13T19:47:49Z"
       },
       "branch": "fix/f151-the-overview-charts-shrink-with-the-wind",
       "baseCommit": "dbf3e1e29c2dc7cfa28c81ffa18d2f6bbee0ea8f",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f151-the-overview-charts-shrink-with-the-wind",
+        "base": "main"
+      }
     },
     {
       "id": "F152",
