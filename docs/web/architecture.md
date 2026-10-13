@@ -73,9 +73,13 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   strings in the cache and become `bigint` only for display.
 - The browser calls the backend same-origin at `/api/v1/…`; `next.config.ts` forwards it to `API_URL`, so the api needs
   no CORS. The rewrite is fixed at `next build`, so `API_URL` must be set when building; Turbo hashes `.env*` and
-  these variables for the web build. Request and response types are written by hand from `apps/backend/api/openapi.yaml`
-  and belong to their feature (`features/profiles/types/profile.ts`, `features/balances/types/balances.ts`,
-  `features/activity/types/activity.ts`): `openapi-typescript` needs the TypeScript compiler API, which TypeScript 7 does not have.
+  these variables for the web build. Requests and responses are Zod schemas written from `apps/backend/api/openapi.yaml`
+  in their feature's `schemas/` (`features/invoices/schemas/invoices.ts`), on shared blocks in `shared/schemas/api.ts`
+  (base units, addresses, hashes, times); the types in `types/` are inferred from them (F170). Every RTK Query endpoint
+  checks its response (`responseSchema`) and its request body (`argSchema`): a response that breaks its schema is a
+  failed request, shown like any other failure, and logged by endpoint and field, never by value; a body that breaks
+  its schema is never sent. `openapi-typescript` is not used: it needs the TypeScript compiler API, which TypeScript 7
+  does not have.
 - Features depend on each other in three places: the receive sheet (`features/receive`) takes the `Balances` type from
   `features/balances` to show which networks and tokens the address takes, `features/invoices` takes the API
   status values and `activityStatus` from `features/activity`, so an invoice shows the same status everywhere, and

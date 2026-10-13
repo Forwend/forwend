@@ -1,31 +1,20 @@
+import type { z } from "zod";
 import type {
   GROUPINGS,
   HISTORY_FIELDS,
   HISTORY_RANGES,
 } from "@/features/balances/constants/balance-history";
+import type {
+  balanceHistoryPointSchema,
+  balanceHistorySchema,
+  tokenHistorySchema,
+} from "@/features/balances/schemas/balances";
 
-/** GET /v1/profiles/{id}/balance-history, BalanceHistoryPoint: the end of one UTC day; the last point is now. */
-export interface BalanceHistoryPoint {
-  at: string;
-  estimatedUsd: string | null;
-  receivedUsd: string | null;
-  sentUsd: string | null;
-}
+export type BalanceHistoryPoint = z.infer<typeof balanceHistoryPointSchema>;
 
-export interface TokenHistory {
-  chainId: number;
-  token: string;
-  symbol: string;
-  decimals: number;
-  balances: string[] | null;
-  received: string[] | null;
-  sent: string[] | null;
-}
+export type TokenHistory = z.infer<typeof tokenHistorySchema>;
 
-export interface BalanceHistory {
-  points: BalanceHistoryPoint[];
-  tokens: TokenHistory[];
-}
+export type BalanceHistory = z.infer<typeof balanceHistorySchema>;
 
 export type HistoryRange = keyof typeof HISTORY_RANGES;
 

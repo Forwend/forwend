@@ -1,3 +1,4 @@
+import { transactionsPageSchema } from "@/features/transactions/schemas/transactions";
 import type {
   TransactionDirection,
   TransactionsPage,
@@ -15,6 +16,7 @@ export const transactionsApi = apiSlice.injectEndpoints({
         url: `/v1/profiles/${encodeURIComponent(profileId)}/transactions`,
         params,
       }),
+      responseSchema: transactionsPageSchema,
     }),
   }),
 });

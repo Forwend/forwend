@@ -23,6 +23,7 @@ const MAIN_OPTION = {
   decimals: 6,
   amount: "1250000000",
   receiveAddress: RECEIVE,
+  deposits: [] as object[],
 };
 
 const OPEN = {
@@ -30,6 +31,9 @@ const OPEN = {
   optionId: ID,
   optionLocked: false,
   optionCount: 1,
+  confirming: false,
+  senderName: null as string | null,
+  returnUrl: null as string | null,
   nextCheckAt: null,
   options: [MAIN_OPTION],
   number: 1,
@@ -89,7 +93,7 @@ const DEPOSIT = {
   blocksTotal: 12,
   secondsLeft: 150,
 };
-const DETECTED = { ...OPEN, paymentStatus: "detected", deposits: [DEPOSIT] };
+const DETECTED = { ...OPEN, paymentStatus: "detected", confirming: true, deposits: [DEPOSIT] };
 // The next read: half the blocks have passed.
 const CONFIRMING = {
   ...DETECTED,

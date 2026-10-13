@@ -1,12 +1,8 @@
-/** GET /v1/profiles/{profileId}/billing-details; the PUT body has the same fields without updatedAt. */
-export interface BillingDetails {
-  name: string;
-  address: string;
-  /** ISO 3166-1 alpha-2, upper case. */
-  country: string;
-  taxId: string | null;
-  email: string;
-  updatedAt: string;
-}
+import type { z } from "zod";
+import type {
+  billingDetailsBodySchema,
+  billingDetailsSchema,
+} from "@/features/profiles/schemas/profiles";
+export type BillingDetails = z.infer<typeof billingDetailsSchema>;
 
-export type BillingDetailsBody = Omit<BillingDetails, "updatedAt">;
+export type BillingDetailsBody = z.infer<typeof billingDetailsBodySchema>;

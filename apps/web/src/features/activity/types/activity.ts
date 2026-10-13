@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import type {
   ACTIVITY_KINDS,
   API_DEPOSIT_STATUSES,
@@ -5,6 +6,7 @@ import type {
   API_SETTLEMENT_STATUSES,
   STATUS_FILTERS,
 } from "@/features/activity/constants/activity";
+import type { activityItemSchema, activityPageSchema } from "@/features/activity/schemas/activity";
 
 export type StatusFilter = (typeof STATUS_FILTERS)[keyof typeof STATUS_FILTERS];
 
@@ -17,25 +19,6 @@ export type ApiSettlementStatus =
 
 export type ApiDepositStatus = (typeof API_DEPOSIT_STATUSES)[keyof typeof API_DEPOSIT_STATUSES];
 
-/** GET /v1/profiles/{id}/activity, ActivityItem. */
-export interface ActivityItem {
-  kind: ActivityKind;
-  at: string;
-  invoiceId: string;
-  chainId: number;
-  token: string;
-  symbol: string;
-  decimals: number;
-  amount: string;
-  /** An invoice's payment status or a deposit's status; other values may come from a newer API. */
-  status: ApiPaymentStatus | ApiDepositStatus | (string & {});
-  settlementStatus?: ApiSettlementStatus | (string & {});
-  txHash?: string;
-  /** Above 1 the client chooses: the invoice reads in USD, not in the token given here (its first option). */
-  optionCount: number;
-}
+export type ActivityItem = z.infer<typeof activityItemSchema>;
 
-export interface ActivityPage {
-  items: ActivityItem[];
-  nextCursor: string | null;
-}
+export type ActivityPage = z.infer<typeof activityPageSchema>;

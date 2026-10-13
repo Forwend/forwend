@@ -12,9 +12,9 @@ import { makeStore } from "@/store/store";
 const deposit = (txHash: string): ActivityItem => ({
   kind: "deposit",
   at: "2026-10-11T10:00:00Z",
-  invoiceId: "0xinv",
+  invoiceId: `0x${"a".repeat(64)}`,
   chainId: 84532,
-  token: "0xtoken",
+  token: `0x${"b".repeat(40)}`,
   symbol: "USDC",
   decimals: 6,
   amount: "2000000",
@@ -59,7 +59,7 @@ describe("PaymentToasts", () => {
 
     const { rerender } = render(shell("a"));
     await settle();
-    activity.a = [deposit("0x1")];
+    activity.a = [deposit(`0x${"1".repeat(64)}`)];
     await act(() => store.dispatch(activityRefetch("a")));
     await settle();
     expect(toasts()).toEqual(["Payment detected2.00 USDC is confirming."]);
@@ -67,7 +67,7 @@ describe("PaymentToasts", () => {
     // A payment reaches A while B is open: back on A it is not news.
     rerender(shell("b"));
     await settle();
-    activity.a = [deposit("0x2"), deposit("0x1")];
+    activity.a = [deposit(`0x${"2".repeat(64)}`), deposit(`0x${"1".repeat(64)}`)];
     rerender(shell("a"));
     await settle();
     await act(() => store.dispatch(activityRefetch("a")));

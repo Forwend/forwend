@@ -1,30 +1,13 @@
+import type { z } from "zod";
+import type { TRANSACTION_DIRECTIONS } from "@/features/transactions/constants/transactions";
 import type {
-  TRANSACTION_DIRECTIONS,
-  TRANSACTION_STATUSES,
-} from "@/features/transactions/constants/transactions";
+  transactionSchema,
+  transactionsPageSchema,
+} from "@/features/transactions/schemas/transactions";
 
 export type TransactionDirection =
   (typeof TRANSACTION_DIRECTIONS)[keyof typeof TRANSACTION_DIRECTIONS];
 
-export interface Transaction {
-  chainId: number;
-  token: string;
-  symbol: string;
-  decimals: number;
-  direction: TransactionDirection;
-  /** Base units. */
-  amount: string;
-  /** The sender for in, the receiver for out; the zero address for a mint or a burn. */
-  counterparty: string;
-  txHash: string;
-  logIndex: number;
-  blockNumber: number;
-  at: string;
-  /** Other values may come from a newer API. */
-  status: (typeof TRANSACTION_STATUSES)[keyof typeof TRANSACTION_STATUSES] | (string & {});
-}
+export type Transaction = z.infer<typeof transactionSchema>;
 
-export interface TransactionsPage {
-  items: Transaction[];
-  nextCursor: string | null;
-}
+export type TransactionsPage = z.infer<typeof transactionsPageSchema>;
