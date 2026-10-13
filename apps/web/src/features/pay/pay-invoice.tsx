@@ -283,6 +283,7 @@ function PayBox({
   }, [invoice.invoiceId]);
   // The pressed button goes away: focus moves to the address it revealed.
   const sendHeading = useRef<HTMLHeadingElement>(null);
+  const beforeHeading = useRef<HTMLHeadingElement>(null);
   const [presses, setPresses] = useState(0);
   useEffect(() => {
     if (presses > 0) sendHeading.current?.focus();
@@ -295,6 +296,17 @@ function PayBox({
     } catch {
       // Storage may be off: the choice lasts until the page closes.
     }
+  };
+  // Back to the selects, with no address shown; focus stays in the box.
+  const startOver = () => {
+    setShown(null);
+    try {
+      sessionStorage.removeItem(shownKey(invoice.invoiceId));
+    } catch {
+      // Storage may be off: nothing was kept.
+    }
+    choice?.onPick(undefined);
+    beforeHeading.current?.focus();
   };
   const money = (units: bigint) => formatMoney(units, token);
   const done = pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled;
@@ -314,10 +326,21 @@ function PayBox({
           <>
             {pay.canSend || seen ? (
               <section aria-labelledby="pay-before" className="flex flex-col gap-4 p-4 sm:p-5">
-                <h2 id="pay-before" className="text-sm font-medium text-ink">
+                <h2
+                  id="pay-before"
+                  ref={beforeHeading}
+                  tabIndex={-1}
+                  className="text-sm font-medium text-ink outline-none"
+                >
                   {pay.canSend ? COPY.payWith : COPY.payingWith}
                 </h2>
-                {choice ? (
+                {choice && sending ? (
+                  <PickedOption
+                    chainId={invoice.chainId}
+                    symbol={token.symbol}
+                    onStartOver={startOver}
+                  />
+                ) : choice ? (
                   <OptionPicker {...choice} />
                 ) : (
                   <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
@@ -359,7 +382,8 @@ function PayBox({
             ) : null}
             {seen ? (
               <Received invoice={invoice} pay={pay} token={token} money={money} network={network} />
-            ) : (
+            ) : pay.state === PAY_STATES.waiting && !sending ? null : (
+              // Waiting means something only once there is an address to pay.
               <StatusLine
                 invoice={invoice}
                 pay={pay}
@@ -371,12 +395,9 @@ function PayBox({
           </>
         )}
       </div>
-      {pay.extra > 0n ? (
-        <p className="text-sm text-warning">{COPY.extra(money(pay.extra))}</p>
-      ) : null}
-      {pay.late > 0n ? <p className="text-sm text-warning">{COPY.late(money(pay.late))}</p> : null}
-      {pay.canSend ? (
-        <NeedHelp named={Boolean(invoice.issuer?.name ?? invoice.senderName)} />
+      {/* Overpaid gets its own handling later (PLAN 11.10.1); late money is held for the payer now. */}
+      {pay.late > 0n ? (
+        <p className="text-sm text-warning">{COPY.late(money(pay.late), payeeOf(invoice))}</p>
       ) : null}
     </div>
   );
@@ -422,11 +443,43 @@ function StatusLine({
   );
 }
 
+const payeeOf = (invoice: Invoice) => invoice.issuer?.name ?? invoice.senderName ?? COPY.creator;
+
 const values = (invoice: Invoice, pay: Pay, money: (units: bigint) => string) => ({
   received: money(pay.received),
   remaining: money(pay.remaining),
   total: money(BigInt(invoice.amount)),
+  payee: payeeOf(invoice),
 });
+
+// A picked network and token, folded once the address shows. Changing takes two presses, so a payer who already sent
+// money does not switch by accident and pay again on another network (R-68). Leaving the button cancels.
+function PickedOption({
+  chainId,
+  symbol,
+  onStartOver,
+}: {
+  chainId: number;
+  symbol: string;
+  onStartOver: () => void;
+}) {
+  const [asking, setAsking] = useState(false);
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <TokenMark chainId={chainId} symbol={symbol} />
+      {/* One button whose label changes keeps focus between the two presses. */}
+      <Button
+        size="sm"
+        variant={asking ? "secondary" : "ghost"}
+        aria-label={asking ? undefined : COPY.changeLabel}
+        onBlur={() => setAsking(false)}
+        onClick={() => (asking ? onStartOver() : setAsking(true))}
+      >
+        {asking ? COPY.confirmChange : COPY.change}
+      </Button>
+    </div>
+  );
+}
 
 // Money seen: the steps to Paid, where they stand, and each payment with its transaction on the explorer.
 function Received({
@@ -550,26 +603,6 @@ function Paid({ invoice, token }: { invoice: Invoice; token: PayToken }) {
         </a>
       ) : null}
     </div>
-  );
-}
-
-// The rules a careful payer may want, out of the way of everyone else.
-function NeedHelp({ named }: { named: boolean }) {
-  return (
-    <details className="text-sm text-muted">
-      <summary className="w-fit cursor-pointer rounded-sm outline-none select-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
-        {COPY.help}
-      </summary>
-      <ul className="mt-3 flex flex-col gap-2">
-        <li>
-          {COPY.host} <strong className="font-medium text-ink">{window.location.host}</strong>.{" "}
-          {COPY.hostHint}
-        </li>
-        {named ? <li>{COPY.unverifiedName}</li> : null}
-        <li>{COPY.refund}</li>
-        <li>{COPY.scam}</li>
-      </ul>
-    </details>
   );
 }
 

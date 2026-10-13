@@ -3687,7 +3687,7 @@
         "R-68: e2e checks no status or Check status before Show address; a picked option folds into one row with Change, then Confirm, then the selects again; Need help opens a dialog from the footer; no copy says the sender; no overpaid line; axe clean"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "e2e"
       ],
@@ -3698,7 +3698,70 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T21:09:07Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 143.9,
+            "log": "docs/runs/F158-20261013T210907Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": "docs/runs/F158-20261013T210907Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F158-20261013T210907Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F158-20261013T210907Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": "docs/runs/F158-20261013T210907Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 93.1,
+            "log": "docs/runs/F158-20261013T210907Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.2,
+            "log": "docs/runs/F158-20261013T210907Z-build.log"
+          }
+        ],
+        "taskHash": "0d1f61c200a8c96c",
+        "filesHash": "1c10013db24453df",
+        "proof": {
+          "1": "e2e: pay.spec checks no Waiting for payment and no Check status before Show address, both after it; a picked option folds into one row whose Change becomes a focused Confirm change, Tab cancels, the second press shows the selects again with the address gone and focus on Pay with; Need help opens a dialog from the footer with the host and the rules; no text says sender; the closed line names Alice Design GmbH and the mismatch alert says the invoice's creator; no overpaid line; axe clean in both themes; privy money-requests.spec opens Need help from the footer"
+        }
+      },
+      "branch": "feat/f158-the-pay-page-shows-status-only-after-the",
+      "baseCommit": "acc8bd2e910332e961d7d7aeaa0173fff8a4142e",
+      "failedVerifies": 0
     },
     {
       "id": "F159",

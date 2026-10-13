@@ -37,9 +37,10 @@ export const PAY_COPY = {
     `Paying from an exchange? Make sure ${amount} arrives after its fee.`,
   closingSoon: "Less than 30 minutes left.",
   qr: "QR code of the address to pay",
-  mismatch: "This payment page does not match the invoice. Do not pay; contact the sender.",
+  mismatch:
+    "This payment page does not match the invoice. Do not pay; contact the invoice's creator.",
   unknownToken:
-    "This page does not support the token this invoice asks for. Do not pay; contact the sender.",
+    "This page does not support the token this invoice asks for. Do not pay; contact the invoice's creator.",
   // One status line (R-68); confirming adds its block count (ConfirmingStatus).
   states: {
     [PAY_STATES.waiting]: () => "Waiting for payment…",
@@ -50,10 +51,10 @@ export const PAY_COPY = {
       `${received} of ${total} received. Send the remaining ${remaining}.`,
     [PAY_STATES.paid]: () => "Paid",
     [PAY_STATES.settled]: () => "Paid",
-    [PAY_STATES.closed]: () =>
-      "This invoice is closed. If you already sent money, it is not lost: contact the sender.",
-    [PAY_STATES.closedPartial]: ({ received }) =>
-      `Closed before the full amount arrived. The ${received} you sent is held for you; ask the sender to get it back.`,
+    [PAY_STATES.closed]: ({ payee }) =>
+      `This invoice is closed. If you already sent money, it is not lost: contact ${payee}.`,
+    [PAY_STATES.closedPartial]: ({ received, payee }) =>
+      `Closed before the full amount arrived. The ${received} you sent is held for you; ask ${payee} to get it back.`,
   } satisfies Record<PayState, (v: StateValues) => string>,
   paidTo: (amount: string, name: string | null, at: string) =>
     name ? `${amount} to ${name} · ${at}` : `${amount} · ${at}`,
@@ -62,16 +63,20 @@ export const PAY_COPY = {
   viewTx: "View transaction",
   receiptPdf: "Download receipt",
   backTo: (host: string) => `Back to ${host}`,
-  extra: (extra: string) =>
-    `You sent ${extra} more. The extra is held for you; ask the sender to get it back.`,
-  late: (late: string) =>
-    `${late} arrived after the checkout closed. It is held for you; ask the sender to get it back.`,
+  // Who asked for the money: the name on the invoice, never "the sender", who could be read as the payer.
+  creator: "the invoice's creator",
+  late: (late: string, payee: string) =>
+    `${late} arrived after the checkout closed. It is held for you; ask ${payee} to get it back.`,
+  change: "Change",
+  confirmChange: "Confirm change",
+  changeLabel: "Change network and token",
+  close: "Close",
   help: "Need help?",
   host: "You are on",
-  hostHint: "Check that this is the site the sender's link opened.",
-  unverifiedName: "The name is what the sender gave; Forwend doesn't check it.",
+  hostHint: "Check that this is the site your link opened.",
+  unverifiedName: "The name is what the invoice's creator gave; Forwend doesn't check it.",
   refund:
-    "If you send more, or pay after the checkout closes, the extra is held for you, not paid to the sender. Ask the sender to get it back.",
+    "If you send more, or pay after the checkout closes, the extra is held for you and not paid out. Ask the invoice's creator to get it back.",
   scam: "Forwend never asks you to pay a different address or an extra fee.",
   paymentsBy: "Payments by",
   forwend: "Forwend",
@@ -82,4 +87,5 @@ interface StateValues {
   received: string;
   remaining: string;
   total: string;
+  payee: string;
 }

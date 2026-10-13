@@ -119,15 +119,19 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   "Closes in …" and the note. Right: one panel. While money is due it holds Pay with (the one option as a token mark,
   or Network and Token selects, which scale to many chains and tokens), a Show address button, then the QR beside the
   exact amount with Copy, the address with Copy under them, one warning line "Send only USDC on Base Sepolia." and one
-  exchange-fee hint. Under it "Waiting for payment…" with a pulsing dot and Check status, which says when the next
-  check is allowed. Once money is seen the panel keeps its place ("Paying with" while nothing more is due): the steps
+  exchange-fee hint. Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
+  into "Confirm change" and only a second press starts over (leaving the button cancels), so a payer who already sent
+  does not switch by accident. Under the address "Waiting for payment…" with a pulsing dot and Check status, which says
+  when the next check is allowed; nothing waits before the address shows. Once money is seen the panel keeps its place ("Paying with" while nothing more is due): the steps
   Detected, Confirming and Paid fade in, the waiting one moving (Partially paid tinted on Paid), one line for what the
   steps cannot say ("Final check", or what is left to pay), and each payment with its amount, time,
   short hash and explorer link. The address stays only while money is still due. Closed says so in one line. Paid
   replaces the panel with a check that scales in, "Paid", the amount, payee and time, View transaction, Download
-  receipt and Back to <host> when the invoice has a return link. The payer never sees Settled, status pills or
-  testnet notes. The rules (where you are, refunds, scams, the unverified name) sit behind "Need help?". The
-  footer is one quiet line, "Payments by" with the mark and Forwend, opening the site in a new tab.
+  receipt and Back to <host> when the invoice has a return link. The payer never sees Settled, status pills,
+  testnet notes or an overpaid line (PLAN 11.10.1). Copy names the payee, or "the invoice's creator", never "the
+  sender". The footer is one quiet line: "Payments by" with the mark and Forwend, opening the site in a new tab, and
+  "Need help?", which opens a dialog with the rules (where you are, refunds, scams, the unverified name), so the pay
+  box never grows.
 - No image and no glass; it follows the system theme. When a refresh fails the page keeps the last read and says it
   may be out of date. The invoice PDF link stays in every state; the receipt link appears once paid.
 - PDFs open through the same-origin `/api` path. The invoice detail lists them under Documents: the invoice PDF

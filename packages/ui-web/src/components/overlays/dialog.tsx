@@ -2,20 +2,34 @@
 
 import { X } from "lucide-react";
 import { type ReactNode, useRef } from "react";
-import { BUTTON_VARIANTS, Button } from "../buttons/button";
+import { BUTTON_VARIANTS, Button, type ButtonVariant } from "../buttons/button";
 
 export interface DialogProps {
   triggerLabel: string;
   title: string;
   children: ReactNode;
   closeLabel?: string;
+  /** How the trigger looks: a quiet link in a footer, a button elsewhere. */
+  triggerVariant?: ButtonVariant;
+  triggerClassName?: string;
 }
 
-export function Dialog({ triggerLabel, title, children, closeLabel = "Close" }: DialogProps) {
+export function Dialog({
+  triggerLabel,
+  title,
+  children,
+  closeLabel = "Close",
+  triggerVariant = BUTTON_VARIANTS.secondary,
+  triggerClassName,
+}: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   return (
     <>
-      <Button variant={BUTTON_VARIANTS.secondary} onClick={() => ref.current?.showModal()}>
+      <Button
+        variant={triggerVariant}
+        className={triggerClassName}
+        onClick={() => ref.current?.showModal()}
+      >
         {triggerLabel}
       </Button>
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: the click only catches the backdrop; Escape is the keyboard way out */}
