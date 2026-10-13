@@ -29,6 +29,7 @@ const OPEN = {
   invoiceId: ID,
   optionId: ID,
   optionLocked: false,
+  optionCount: 1,
   options: [MAIN_OPTION],
   number: 1,
   title: "Logo design",
@@ -60,6 +61,7 @@ const OPEN = {
 };
 const CHOOSING = {
   ...OPEN,
+  optionCount: 2,
   options: [
     MAIN_OPTION,
     {

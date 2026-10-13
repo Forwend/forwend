@@ -37,6 +37,7 @@ func TestPayerChoosesInvoice(t *testing.T) {
 		t.Fatalf("the options share an id or address: %v", options)
 	}
 	if made.body["optionId"] != id || first["optionId"] != id || made.body["optionLocked"] != false ||
+		made.body["optionCount"] != float64(2) ||
 		made.body["receiveAddress"] != first["receiveAddress"] || made.body["amount"] != "1250" {
 		t.Fatalf("the invoice shows %v, want its first option", made.body)
 	}

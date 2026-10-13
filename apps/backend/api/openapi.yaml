@@ -932,7 +932,7 @@ components:
                     secondsLeft: { type: [integer, "null"], minimum: 0 }
     InvoiceSummary:
       type: object
-      required: [invoiceId, optionId, optionLocked, number, title, note, dueDate, senderName, returnUrl, issuer, chainId,
+      required: [invoiceId, optionId, optionLocked, optionCount, number, title, note, dueDate, senderName, returnUrl, issuer, chainId,
         token, amount, recipient, factory, receiveAddress, expiresAt, settleDeadline, paymentStatus, settlementStatus,
         refundStatus, settlementTxHash, createdAt]
       description: |
@@ -945,6 +945,10 @@ components:
         optionId:
           allOf: [{ $ref: "#/components/schemas/InvoiceId" }]
           description: The on-chain id in the terms below; invoiceId for a fixed invoice.
+        optionCount:
+          type: integer
+          minimum: 1
+          description: How many tokens and networks the invoice accepts; 1 for a fixed invoice.
         optionLocked:
           type: boolean
           description: |

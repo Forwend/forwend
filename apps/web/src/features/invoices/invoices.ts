@@ -127,6 +127,8 @@ export interface InvoiceSummary {
   optionId: string;
   /** An option received money, so the payer can't pick another (R-56). */
   optionLocked: boolean;
+  /** How many tokens and networks it accepts; 1 for a fixed invoice. */
+  optionCount: number;
   number: number;
   title: string | null;
   note: string | null;

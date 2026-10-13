@@ -83,7 +83,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   URL keeps both. A confirmed transfer shows its status as plain text; only one still confirming gets a pill. A filter or search with no rows says nothing matched, with a button to clear them. A transaction hash links to the chain's block explorer in a new tab (Transactions, Activity,
   invoice detail, pay page).
 - Transactions table: ruled table from medium screens; the network has its own column only on the widest screens and
-  sits under the counterparty otherwise. Phone rows show the network first and cut the time, never the network.
+  sits under the counterparty otherwise. Phone rows show the network and the time on lines of their own, so neither is cut.
 - First run: while `/v1/me` has no `onboardedAt`, `/app` shows one standalone screen instead of the shell: the logo,
   "What do you want to do?" in the display serif, four choice cards (checkboxes, any number; two columns from small
   screens up) with an icon, a hint and the profile each one adds, then Continue and Skip for now. Continue with nothing

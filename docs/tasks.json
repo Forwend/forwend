@@ -2109,7 +2109,7 @@
         "F141",
         "F138"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "e2e",
         "a11y-e2e"
@@ -2120,10 +2120,81 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-10-13 Lists (invoices, requests, overview payments) show a payer-chooses invoice's amount in its first option's token because list items carry no options; show USD there until an option has money."
+        "2026-10-13 Lists (invoices, requests, overview payments) show a payer-chooses invoice's amount in its first option's token because list items carry no options; show USD there until an option has money.",
+        "2026-10-13 Reviewed 60 screenshots (overview, invoices, invoice, new invoice, transactions, balances, activity, billing details on a merchant profile; overview and requests on a personal profile; each at 1440, 768 and 390 px in light and dark, sample data). Fixed: phone transaction rows cut the time (now the network and the time each have a line); lists showed a payer-chooses invoice in its first token (now USD via optionCount until an option has money). Everything else held: no sideways scroll, panel headers, spacing and type per DESIGN.md."
       ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T17:19:27Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 129.8,
+            "log": "docs/runs/F142-20261013T171927Z-e2e.log"
+          },
+          {
+            "id": "a11y-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 17.0,
+            "log": "docs/runs/F142-20261013T171927Z-a11y-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": "docs/runs/F142-20261013T171927Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F142-20261013T171927Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F142-20261013T171927Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F142-20261013T171927Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 92.9,
+            "log": "docs/runs/F142-20261013T171927Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.6,
+            "log": "docs/runs/F142-20261013T171927Z-build.log"
+          }
+        ],
+        "taskHash": "deffdfbcb233b5f2",
+        "filesHash": "764c246b4e7b356a",
+        "proof": {
+          "1": "e2e: phone tests check scrollWidth 390 on overview, invoices, requests and transactions, and every e2e axe check finds 0 serious or critical; a11y-e2e passes; screenshots of every app page at 390, 768 and 1440 px in both themes reviewed (task note)"
+        }
+      },
+      "branch": "chore/f142-every-app-page-is-polished-spacing-align",
+      "baseCommit": "f6ed677456932cffefabc778d340e19f39297bb8",
+      "failedVerifies": 0
     },
     {
       "id": "F143",
