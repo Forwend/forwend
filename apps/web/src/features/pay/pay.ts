@@ -59,7 +59,7 @@ export function payToken(inv: Invoice) {
   return PAY_TOKENS[tokenKey(inv)] ?? null;
 }
 
-// A transfer started at the last moment lands after expiry and is held for the payer, not paid to the sender; the
+// A transfer started at the last moment lands after expiry and is held for the payer, not paid out; the
 // browser clock may also run behind.
 const CLOSE_EARLY_MS = 5 * 60_000;
 
@@ -109,7 +109,6 @@ export function payState(inv: Invoice, now: number) {
       !closed && received < amount && state !== PAY_STATES.paid && state !== PAY_STATES.settled,
     received,
     remaining: received < amount ? amount - received : 0n,
-    extra: received > amount ? received - amount : 0n,
     late,
   };
 }

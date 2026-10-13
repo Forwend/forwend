@@ -131,10 +131,12 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     await expect(pay.getByRole("heading", { level: 1, name: "E2E Requester" })).toBeVisible();
     await expect(pay.locator("[data-money]")).toHaveText("3.25 USDC");
     await expect(pay.getByText(`Request ${request.number}`)).toBeVisible();
-    // Who asks is the name the sender gave; Need help says Forwend doesn't check it.
-    await pay.getByText("Need help?").click();
+    // Who asks is the name its creator gave; Need help, in the footer, says Forwend doesn't check it.
+    await pay.getByRole("contentinfo").getByRole("button", { name: "Need help?" }).click();
     await expect(
-      pay.getByText("The name is what the sender gave; Forwend doesn't check it."),
+      pay
+        .getByRole("dialog", { name: "Need help?" })
+        .getByText("The name is what the invoice's creator gave; Forwend doesn't check it."),
     ).toBeVisible();
     expect(await blockingViolations(pay)).toEqual([]);
     await payer.close();

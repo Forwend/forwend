@@ -93,13 +93,13 @@ describe("payState", () => {
     ).toBe(PAY_STATES.settled);
   });
 
-  it("holds what was sent too much or too late", () => {
+  it("holds what was sent too late", () => {
     const over = {
       ...invoice,
       paymentStatus: "paid",
       deposits: [deposit("1000"), deposit("250", { logIndex: 1 }), deposit("70", { late: true })],
     };
-    expect(payState(over, after)).toMatchObject({ received: 1250n, extra: 250n, late: 70n });
+    expect(payState(over, after)).toMatchObject({ received: 1250n, late: 70n });
   });
 });
 

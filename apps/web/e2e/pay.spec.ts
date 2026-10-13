@@ -164,20 +164,28 @@ test.describe("pay page", () => {
       "href",
       pdfPath("invoice.pdf"),
     );
-    await expect(status(page)).toHaveText("Waiting for payment…");
-    // No filler: no testnet notice, no steps, no timeline; the rules wait behind Need help.
+    // Nothing to wait for before there is an address: no status and no Check status yet (R-68).
+    await expect(page.getByText("Waiting for payment…")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Check status" })).toHaveCount(0);
+    // No filler: no testnet notice, no steps; the rules open from the footer in a dialog, so the box never grows.
     await expect(page.getByText(/test network/)).toHaveCount(0);
     await expect(page.getByRole("list", { name: "Payment progress" })).toHaveCount(0);
+    const scam = page.getByText(
+      "Forwend never asks you to pay a different address or an extra fee.",
+    );
+    await expect(scam).toBeHidden();
+    await page.getByRole("contentinfo").getByRole("button", { name: "Need help?" }).click();
+    const help = page.getByRole("dialog", { name: "Need help?" });
     await expect(
-      page.getByText("Forwend never asks you to pay a different address or an extra fee."),
-    ).toBeHidden();
-    await page.getByText("Need help?").click();
-    await expect(
-      page.getByText("Forwend never asks you to pay a different address or an extra fee."),
+      help.getByText("Forwend never asks you to pay a different address or an extra fee."),
     ).toBeVisible();
     await expect(
-      page.locator("li", { hasText: `You are on ${new URL(PUBLIC_URL).host}.` }),
+      help.locator("li", { hasText: `You are on ${new URL(PUBLIC_URL).host}.` }),
     ).toBeVisible();
+    // Nobody is called "the sender": the payer could read it as themselves.
+    await expect(page.getByText(/\bsender\b/)).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(help).toBeHidden();
 
     await expect(page.getByText(RECEIVE)).toHaveCount(0);
     await expect(page.getByRole("img", { name: /QR code/ })).toHaveCount(0);
@@ -186,6 +194,8 @@ test.describe("pay page", () => {
     await expect(page.getByText(RECEIVE)).toBeVisible();
     await expect(page.getByRole("img", { name: "QR code of the address to pay" })).toBeVisible();
     await expect(page.getByRole("note")).toHaveText("Send only USDC on Base Sepolia.");
+    await expect(status(page)).toHaveText("Waiting for payment…");
+    await expect(page.getByRole("button", { name: "Check status" })).toBeVisible();
     // A reload in the same tab keeps the address shown.
     await page.reload();
     await expect(page.getByText(RECEIVE)).toBeVisible();
@@ -198,6 +208,7 @@ test.describe("pay page", () => {
   // reload.
   test("Check status says what it found and when the next check is allowed", async ({ page }) => {
     await openPay(page, OPEN);
+    await showAddress(page).click();
     let calls = 0;
     await page.route(`**/api/v1/invoices/${ID}/recheck`, (route) => {
       calls++;
@@ -233,6 +244,7 @@ test.describe("pay page", () => {
     page,
   }) => {
     await openPay(page, OPEN);
+    await showAddress(page).click();
     await page.route(`**/api/v1/invoices/${ID}/recheck`, (route) =>
       route.fulfill({
         status: 429,
@@ -268,8 +280,8 @@ test.describe("pay page", () => {
     await page.evaluate(() => {
       (window as unknown as { stayed: boolean }).stayed = true;
     });
-    await expect(status(page)).toHaveText("Waiting for payment…");
     await showAddress(page).click();
+    await expect(status(page)).toHaveText("Waiting for payment…");
 
     // The full amount is on its way: no address invites a second payment. The box keeps its place and follows it:
     // Detected, Confirming and Paid, the count, and the payment with its transaction (R-68).
@@ -337,7 +349,7 @@ test.describe("pay page", () => {
     ]);
     await page.clock.runFor(POLL_MS);
     await expect(status(page)).toHaveText(
-      "This invoice is closed. If you already sent money, it is not lost: contact the sender.",
+      "This invoice is closed. If you already sent money, it is not lost: contact Alice Design GmbH.",
     );
     await expect(showAddress(page)).toHaveCount(0);
   });
@@ -363,9 +375,24 @@ test.describe("pay page", () => {
     await expect(page.getByText(OPTION_RECEIVE)).toBeVisible();
     await expect(page.getByRole("note")).toHaveText("Send only USDC on Arbitrum Sepolia.");
 
-    // A reload keeps the pick and the shown address.
+    // A reload keeps the pick and the shown address; the pick folds into one row.
     await page.reload();
     await expect(page.getByText(OPTION_RECEIVE)).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Network" })).toHaveCount(0);
+
+    // Changing takes two presses, so a payer who already sent does not switch by accident; leaving the button cancels.
+    const change = page.getByRole("button", { name: "Change network and token" });
+    await change.click();
+    const confirm = page.getByRole("button", { name: "Confirm change" });
+    await expect(confirm).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(change).toBeVisible();
+    await expect(page.getByText(OPTION_RECEIVE)).toBeVisible();
+    await change.click();
+    await confirm.click();
+    await expect(page.getByRole("heading", { name: "Pay with" })).toBeFocused();
+    await expect(page.getByText(OPTION_RECEIVE)).toHaveCount(0);
+    await expect(page.locator("[data-money]")).toHaveText("1,250.00 USD");
 
     // Before any money the pick can change, and the address follows it.
     await page.getByRole("combobox", { name: "Network" }).click();
@@ -408,7 +435,8 @@ test.describe("pay page", () => {
     await openPay(page, { ...OPEN, amount: "1250000001" });
     await expect(
       page.getByRole("alert").filter({
-        hasText: "This payment page does not match the invoice. Do not pay; contact the sender.",
+        hasText:
+          "This payment page does not match the invoice. Do not pay; contact the invoice's creator.",
       }),
     ).toBeVisible();
     await expect(showAddress(page)).toHaveCount(0);

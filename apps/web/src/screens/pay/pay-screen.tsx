@@ -1,5 +1,6 @@
 import { Logo, LogoMark } from "@forwend/ui-web";
 import Link from "next/link";
+import { NeedHelp } from "@/features/pay/need-help";
 import { PAY_COPY } from "@/features/pay/pay-copy";
 import { PayInvoice } from "@/features/pay/pay-invoice";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -17,7 +18,7 @@ export function PayScreen({ invoiceId, option }: { invoiceId: string; option?: s
         <PayInvoice invoiceId={invoiceId} option={option} />
       </main>
       {/* A new tab: the payer keeps the checkout open. */}
-      <p className="mt-auto text-center text-xs text-subtle">
+      <footer className="mt-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-subtle">
         <a
           href={APP_ROUTES.site}
           target="_blank"
@@ -29,7 +30,9 @@ export function PayScreen({ invoiceId, option }: { invoiceId: string; option?: s
           {PAY_COPY.forwend}
           <span className="sr-only">{PAY_COPY.newTab}</span>
         </a>
-      </p>
+        <span aria-hidden>·</span>
+        <NeedHelp />
+      </footer>
     </div>
   );
 }
