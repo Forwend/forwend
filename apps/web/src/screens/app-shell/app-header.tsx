@@ -1,6 +1,6 @@
 "use client";
 
-import { buttonClasses, Skeleton, Tooltip } from "@forwend/ui-web";
+import { Button, IconButton, Skeleton, Tooltip } from "@forwend/ui-web";
 import { skipToken } from "@reduxjs/toolkit/query";
 import {
   ArrowDownLeft,
@@ -26,9 +26,6 @@ import { APP_ROUTES } from "@/shared/config/routes";
 
 const CRUMB =
   "block truncate rounded-sm text-muted outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus aria-[current=page]:font-medium aria-[current=page]:text-ink";
-
-const SOON_ACTION_CLASSES =
-  "inline-flex h-8 cursor-not-allowed items-center gap-2 rounded-pill border border-dashed border-line-strong px-3.5 text-sm font-medium whitespace-nowrap text-subtle outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
 export const HEADER_COPY = {
   breadcrumb: "Breadcrumb",
@@ -66,13 +63,9 @@ export function AppHeader({
           onSignOut={onSignOut}
           side="bottom"
           trigger={
-            <button
-              type="button"
-              aria-label={`${AUTH_COPY.account}: ${email}`}
-              className="relative grid size-10 place-items-center rounded-pill outline-none after:absolute after:-inset-0.5 focus-visible:outline-2 focus-visible:outline-focus"
-            >
+            <IconButton label={`${AUTH_COPY.account}: ${email}`} size="md">
               <AccountInitial email={email} />
-            </button>
+            </IconButton>
           }
         />
       </div>
@@ -85,15 +78,15 @@ export function AppHeader({
         {HEADER_COPY.search}
       </button>
 
-      <button
-        type="button"
-        aria-label={collapsed ? HEADER_COPY.expand : HEADER_COPY.collapse}
-        aria-expanded={!collapsed}
-        onClick={onToggleCollapsed}
-        className="-ml-2 hidden size-8 place-items-center rounded-sm text-muted outline-none hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-focus lg:grid"
-      >
-        <CollapseIcon aria-hidden className="size-[var(--fw-icon-md)]" />
-      </button>
+      <div className="-ml-2 hidden lg:block">
+        <IconButton
+          label={collapsed ? HEADER_COPY.expand : HEADER_COPY.collapse}
+          aria-expanded={!collapsed}
+          onClick={onToggleCollapsed}
+        >
+          <CollapseIcon aria-hidden className="size-[var(--fw-icon-md)]" />
+        </IconButton>
+      </div>
       <Breadcrumb active={active} pathname={pathname} />
       <button
         type="button"
@@ -111,20 +104,16 @@ export function AppHeader({
 
       <div className="hidden items-center gap-2 border-l border-line pl-3 lg:flex">
         <Tooltip content={BALANCES_COPY.comingSoon} side="bottom">
-          <button type="button" aria-disabled className={SOON_ACTION_CLASSES}>
+          <Button variant="soon" size="sm" aria-disabled>
             <ArrowUpRight aria-hidden className="size-[var(--fw-icon-sm)]" />
             {BALANCES_COPY.send}
             <span className="sr-only">: {BALANCES_COPY.sendSoon}</span>
-          </button>
+          </Button>
         </Tooltip>
-        <button
-          type="button"
-          onClick={onReceive}
-          className={`${buttonClasses({ size: "sm" })} outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus`}
-        >
+        <Button size="sm" onClick={onReceive}>
           <ArrowDownLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
           {BALANCES_COPY.receive}
-        </button>
+        </Button>
       </div>
     </header>
   );

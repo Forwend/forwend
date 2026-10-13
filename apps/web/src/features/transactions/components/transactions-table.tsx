@@ -2,7 +2,6 @@
 
 import {
   Button,
-  buttonClasses,
   EmptyState,
   Money,
   PAYMENT_STATUS,
@@ -147,15 +146,16 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
               placeholder={TRANSACTIONS_COPY.searchPlaceholder}
               className="flex-1 sm:w-64 sm:flex-none max-sm:order-last max-sm:basis-full"
             />
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={exportCsv}
               disabled={rows.length === 0}
-              className={`${buttonClasses({ variant: "secondary", size: "sm" })} ml-auto`}
+              className="ml-auto"
             >
               <Download aria-hidden className="size-[var(--fw-icon-sm)]" />
               {TRANSACTIONS_COPY.exportCsv}
-            </button>
+            </Button>
           </div>
         )}
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { LogoMark, Tooltip } from "@forwend/ui-web";
+import { IconButton, LogoMark, Tooltip } from "@forwend/ui-web";
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { AccountInitial, AccountMenu } from "@/features/auth/components/account-menu";
@@ -128,13 +128,9 @@ export function AppSidebar({
             onSignOut={onSignOut}
             side="right"
             trigger={
-              <button
-                type="button"
-                aria-label={`${AUTH_COPY.account}: ${email}`}
-                className="grid size-10 place-items-center rounded-pill outline-none focus-visible:outline-2 focus-visible:outline-focus"
-              >
+              <IconButton label={`${AUTH_COPY.account}: ${email}`} size="md">
                 <AccountInitial email={email} />
-              </button>
+              </IconButton>
             }
           />
         ) : (

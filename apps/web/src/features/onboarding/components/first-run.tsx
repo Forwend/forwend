@@ -1,7 +1,7 @@
 "use client";
 
-import { Button, FreelancerIcon, Logo, MerchantIcon } from "@forwend/ui-web";
-import { ArrowLeftRight, Check, Code } from "lucide-react";
+import { Button, ChoiceCard, Form, FreelancerIcon, Logo, MerchantIcon } from "@forwend/ui-web";
+import { ArrowLeftRight, Code } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useCompleteOnboardingMutation } from "@/features/onboarding/api/onboarding-api";
 import { ONBOARDING_CHOICES } from "@/features/onboarding/constants/onboarding";
@@ -63,43 +63,29 @@ export function FirstRun({
           <h1 className="font-display text-3xl text-balance text-ink sm:text-4xl">{COPY.title}</h1>
           <p className="max-w-xl text-pretty text-muted">{COPY.intro}</p>
         </div>
-        <form noValidate onSubmit={submit} className="flex flex-col gap-6">
+        <Form onSubmit={submit}>
           <fieldset>
             <legend className="sr-only">{COPY.legend}</legend>
             <div className="grid gap-3 sm:grid-cols-2">
               {CHOICES.map((choice) => {
-                const Icon = ICONS[choice];
                 const text = COPY.choices[choice];
                 return (
-                  <label
+                  <ChoiceCard
                     key={choice}
-                    className="group relative flex cursor-pointer border-line-strong flex-col items-start gap-1 rounded-md border bg-surface p-4 text-ink transition-[border-color,background-color] duration-[var(--fw-duration-fast)] hover:bg-surface-2 has-checked:border-ink has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus sm:p-5"
-                  >
-                    <input
-                      type="checkbox"
-                      name="choices"
-                      value={choice}
-                      checked={picked.includes(choice)}
-                      onChange={() => toggle(choice)}
-                      aria-labelledby={`${choice}-title`}
-                      aria-describedby={`${choice}-hint`}
-                      className="sr-only"
-                    />
-                    <span
-                      aria-hidden
-                      className="absolute top-4 right-4 grid size-5 place-items-center rounded-sm border border-line-strong text-on-primary transition-colors duration-[var(--fw-duration-fast)] group-has-checked:border-primary group-has-checked:bg-primary sm:top-5 sm:right-5"
-                    >
-                      <Check className="size-3.5 opacity-0 group-has-checked:opacity-100" />
-                    </span>
-                    <Icon aria-hidden className="mb-2 size-[var(--fw-icon-lg)] text-accent" />
-                    <span id={`${choice}-title`} className="pr-8 font-medium">
-                      {text.title}
-                    </span>
-                    <span id={`${choice}-hint`} className="flex flex-col gap-2 text-sm text-muted">
-                      {text.hint}
-                      <span className="text-xs font-medium">{text.result}</span>
-                    </span>
-                  </label>
+                    type="checkbox"
+                    name="choices"
+                    value={choice}
+                    checked={picked.includes(choice)}
+                    onChange={() => toggle(choice)}
+                    icon={ICONS[choice]}
+                    title={text.title}
+                    hint={
+                      <>
+                        {text.hint}
+                        <span className="text-xs font-medium">{text.result}</span>
+                      </>
+                    }
+                  />
                 );
               })}
             </div>
@@ -120,7 +106,7 @@ export function FirstRun({
           <p role="alert" className="min-h-5 text-sm text-danger">
             {failed ? COPY.failed : ""}
           </p>
-        </form>
+        </Form>
       </main>
     </div>
   );

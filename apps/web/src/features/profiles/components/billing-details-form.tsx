@@ -1,6 +1,14 @@
 "use client";
 
-import { Button, SelectField, TextAreaField, TextField, TONES, useToast } from "@forwend/ui-web";
+import {
+  Button,
+  Form,
+  SelectField,
+  TextAreaField,
+  TextField,
+  TONES,
+  useToast,
+} from "@forwend/ui-web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useState } from "react";
@@ -71,7 +79,7 @@ export function BillingDetailsForm({
   };
 
   return (
-    <form noValidate onSubmit={submit} className="flex flex-col gap-5">
+    <Form onSubmit={submit} gap="md">
       <TextField
         label={COPY.name}
         name="name"
@@ -129,6 +137,6 @@ export function BillingDetailsForm({
       <p role="alert" className="min-h-5 text-sm text-danger">
         {formError}
       </p>
-    </form>
+    </Form>
   );
 }

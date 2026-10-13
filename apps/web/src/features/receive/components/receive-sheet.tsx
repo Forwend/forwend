@@ -6,6 +6,7 @@ import {
   NetworkWarning,
   QrCode,
   ReceiveAddress,
+  RowButton,
   Sheet,
   Skeleton,
 } from "@forwend/ui-web";
@@ -172,16 +173,12 @@ function Choice({
 }) {
   return (
     <li>
-      <button
-        type="button"
-        onClick={onClick}
-        className="flex min-h-14 w-full items-center gap-3 rounded-md px-2 text-left text-ink outline-none hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-focus"
-      >
+      <RowButton onClick={onClick}>
         <span className="shrink-0">{icon}</span>
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
         {note ? <span className="text-xs text-muted">{note}</span> : null}
         <ChevronRight aria-hidden className="size-[var(--fw-icon-sm)] text-muted" />
-      </button>
+      </RowButton>
     </li>
   );
 }
