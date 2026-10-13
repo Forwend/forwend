@@ -3221,7 +3221,7 @@
       "dependsOn": [
         "F152"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -3290,12 +3290,19 @@
         "taskHash": "5ad4e5dea5336c1c",
         "filesHash": "1b0e97529c83b681",
         "proof": {
-          "1": "e2e: pay.spec shows the QR beside the amount and the address with Copy under them; once money is seen the box keeps its place with Paying with, the Detected/Confirming/Paid steps at Confirming, Confirming (0/12) then (6/12), and the payment row with 1,250.00 USDC, 0x3333…3333 and its Basescan link; partly paid keeps Show address and tints Partially paid on the Paid step; axe clean in light and dark, 390 px phone fits"
-        }
+          "1": "e2e: pay box keeps its place with steps, count and payment rows; QR beside amount, address under"
+        },
+        "commit": "a89aa5d",
+        "doneAt": "2026-10-13T20:05:55Z"
       },
       "branch": "feat/f153-once-money-is-seen-the-pay-box-shows-det",
       "baseCommit": "9dad78952df897ff581cc68d098bf318627b7b58",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f153-once-money-is-seen-the-pay-box-shows-det",
+        "base": "main"
+      }
     },
     {
       "id": "F154",
