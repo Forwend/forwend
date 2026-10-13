@@ -463,7 +463,7 @@
         "internal/httpapi is split into a server with the global router and middleware/ plus one package per module (profiles, invoices, money, health), each registering its own routes; backend tests pass unchanged in count; docs/backend/rules.md shows the layout"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -473,7 +473,84 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T23:33:37Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 84.3,
+            "log": "docs/runs/F171-20261013T233337Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 172.4,
+            "log": "docs/runs/F171-20261013T233337Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.6,
+            "log": "docs/runs/F171-20261013T233337Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F171-20261013T233337Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F171-20261013T233337Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F171-20261013T233337Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 92.9,
+            "log": "docs/runs/F171-20261013T233337Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.1,
+            "log": "docs/runs/F171-20261013T233337Z-build.log"
+          }
+        ],
+        "taskHash": "b8aa3eeb6cf9fd69",
+        "filesHash": "47056a6ebb3c2e1a",
+        "proof": {
+          "1": "backend: all packages pass, 42 HTTP tests kept"
+        },
+        "commit": "30f742a",
+        "doneAt": "2026-10-13T23:39:44Z"
+      },
+      "branch": "refactor/f171-the-backend-http-layer-has-one-package-p",
+      "baseCommit": "8c13b39c1c5a7837c104fbe99bb31db4b2d10855",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f171-the-backend-http-layer-has-one-package-p",
+        "base": "main"
+      }
     },
     {
       "id": "F172",

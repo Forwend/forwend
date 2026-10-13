@@ -1,10 +1,12 @@
-package httpapi
+package tests
 
 import (
 	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
 )
 
 // send makes a GET as user ("" = no token) and returns the status, error code and Retry-After header.
@@ -32,7 +34,7 @@ func (e invoiceEnv) send(t *testing.T, path, user string) (status int, code, ret
 func TestUserRateLimit(t *testing.T) {
 	e := invoiceAPI(t)
 	const carol, dave = "did:privy:carol", "did:privy:dave"
-	for i := range userBurst {
+	for i := range mid.UserBurst {
 		if status, _, _ := e.send(t, "/v1/me", carol); status != http.StatusNotFound { // not signed up yet
 			t.Fatalf("request %d: %d, want 404", i+1, status)
 		}

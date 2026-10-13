@@ -69,7 +69,7 @@ one signer run beside it (more copies wait on their locks, [startup](#startup)).
 balance cache and rate-limit buckets in memory, so with N replicas the RPC reads and each caller's limit grow N times.
 Redis is the next step when more than a few replicas run: the cache sits behind the `cache` interface in
 `internal/balance`, with string keys and values so a Redis implementation can take its place; the limit buckets in
-`internal/httpapi` would move with it. Nothing else in the api keeps state between requests.
+`internal/httpapi/mid` would move with it. Nothing else in the api keeps state between requests.
 
 - Balance reads (`balance.ChainReader`): a chain's finalized block is read once per 3 s (`finalizedTTL`) for every
   request, then `balanceOf` once per chain, token, wallet and that block. Requests asking for the same key meanwhile

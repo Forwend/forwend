@@ -1,4 +1,4 @@
-package httpapi
+package tests
 
 import (
 	"context"
@@ -17,6 +17,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/auth/authtest"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
+	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -59,7 +60,7 @@ func authServer(t *testing.T) (srv *httptest.Server, privyKey *ecdsa.PrivateKey,
 
 	mux := http.NewServeMux()
 	probe := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
-	mux.Handle("GET /v1/profiles/{profileId}/probe", requireUser(verifier, requireProfileOwner(auth.NewService(pool), probe)))
+	mux.Handle("GET /v1/profiles/{profileId}/probe", mid.RequireUser(verifier, mid.RequireProfileOwner(auth.NewService(pool), probe)))
 	srv = httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv, privyKey, aliceProfile
@@ -182,7 +183,7 @@ func TestOnlyTheOwnerActsForAProfile(t *testing.T) {
 func TestOwnerCheckNeedsASignedInUser(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/profiles/x/probe", nil)
-	requireProfileOwner(nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	mid.RequireProfileOwner(nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Fatal("handler ran without a user")
 	})).ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {

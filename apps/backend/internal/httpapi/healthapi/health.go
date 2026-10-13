@@ -1,8 +1,9 @@
-package httpapi
+package healthapi
 
 import (
-	"github.com/jackc/pgx/v5/pgxpool"
 	"net/http"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // health answers 200 when the database answers, 503 otherwise.

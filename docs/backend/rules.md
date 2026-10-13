@@ -15,11 +15,16 @@ apps/backend/
   api/openapi.yaml         HTTP request and response contract
   internal/
     config/               environment loading and validation
-    httpapi/              routes, middleware, JSON, HTTP error mapping
-      routes.go
-      profiles.go
-      invoices.go
-      profiles_test.go
+    httpapi/              the HTTP layer
+      router.go           NewMux: shared middleware, then every module's Routes; the one place modules are mounted
+      server.go           Serve: drain and shut down
+      mid/                middleware: sign-in, profile ownership (Guards), rate limits, security headers
+      httpio/             JSON in and out, the error shape and its codes, query parsing
+      invoiceapi/         one package per module: routes.go (its routes), model.go (its JSON), handler files
+      profileapi/
+      moneyapi/
+      healthapi/
+      tests/              API tests through the whole router, one file per module
     profile/              profile domain and operations
       profile.go          domain types, constants and rules
       service.go          service dependencies and constructor
@@ -57,8 +62,15 @@ to create them all. Keep the current Go backend; do not copy frontend folders or
 - HTTP handlers parse and validate the request shape, apply route authorization, call a feature operation, and map
   the result to HTTP. Domain services own business decisions and transactions. Keep HTTP request/response structs
   at the HTTP boundary and domain types with their domain; do not force transport types into services.
-- `httpapi/routes.go` registers routes. Keep handlers in domain-named files; split a growing handler family into
-  files such as `invoices_create.go` and `invoices_get.go` before introducing new handler packages.
+- A new API area is a module: `internal/httpapi/<name>api/` with `routes.go` (`func Routes(mux, guards, deps...)`
+  listing its routes and the guard each needs), `model.go` (request and response JSON) and handler files named for
+  what they do; then one line in `router.go`. A module imports `mid`, `httpio` and its domain packages, never another
+  module. Middleware is `func(http.Handler) http.Handler` in `mid`; route-specific limits stay in their module. This
+  follows the HTTP layer of [Ardan Labs' service](https://github.com/ardanlabs/service) (`app/domain/<x>app/route.go`,
+  `app/sdk/mid`) and [Mat Ryer's handler style](https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/)
+  (handler makers that take their dependencies).
+- Unit tests stay beside their package: Go tests read the package's unexported names. API tests, which go through
+  `httpapi.NewMux` like a client, live in `internal/httpapi/tests/`.
 - Dependencies flow from `cmd` to HTTP/worker orchestration, then domain operations and integrations. Domain
   packages never import `httpapi` or `cmd`; database infrastructure never imports domains. Explicit dependencies
   between domain packages must remain acyclic. Integrations must not call back into HTTP handlers.

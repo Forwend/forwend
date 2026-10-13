@@ -1,4 +1,4 @@
-package httpapi
+package tests
 
 import (
 	"context"
@@ -9,6 +9,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ensp1re/forwend/apps/backend/internal/httpapi"
+	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/invoiceapi"
 )
 
 func (e invoiceEnv) recheck(t *testing.T, srv *httptest.Server, id string) reply {
@@ -83,7 +86,7 @@ func TestRecheckInvoice(t *testing.T) {
 // A chain that can't be read answers 503 without the RPC URL's key; the global limit stops a burst over many invoices.
 func TestRecheckLimitsAndChainErrors(t *testing.T) {
 	e := invoiceAPI(t)
-	failing := httptest.NewServer(NewMux(e.pool, nil, nil,
+	failing := httptest.NewServer(httpapi.NewMux(e.pool, nil, nil,
 		func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 			return nil, 0, errors.New(`Post "https://base-sepolia.infura.io/v3/sekretkey123": dial tcp: refused`)
 		}, webURL))
@@ -96,13 +99,13 @@ func TestRecheckLimitsAndChainErrors(t *testing.T) {
 	}
 
 	var limited int
-	for i := range recheckBurst + 2 {
+	for i := range invoiceapi.RecheckBurst + 2 {
 		id := e.post(t, "did:privy:alice", e.aliceProfile, "burst-"+string(rune('a'+i)), basicBody).body["invoiceId"].(string)
 		if e.recheck(t, e.srv, id).status == http.StatusTooManyRequests {
 			limited++
 		}
 	}
 	if limited == 0 {
-		t.Fatalf("%d checks of different invoices at once: none limited", recheckBurst+2)
+		t.Fatalf("%d checks of different invoices at once: none limited", invoiceapi.RecheckBurst+2)
 	}
 }

@@ -12,8 +12,9 @@ Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/me/onboarding`,
 ## Contract first
 
 - `apps/backend/api/openapi.yaml` (OpenAPI 3.1) describes every route; change it before code.
-- Go request and response types are written by hand in `internal/httpapi` until a generator is added (oapi-codegen
-  for Go); the web app's are in its features (`apps/web/src/features/*/`, see docs/web/architecture.md). Keep them equal to the spec.
+- Go request and response types are written by hand in each module's `model.go` (`internal/httpapi/invoiceapi/model.go`)
+  until a generator is added (oapi-codegen for Go); the web app's are Zod schemas in its features
+  (`apps/web/src/features/*/schemas/`, see docs/web/architecture.md). Keep them equal to the spec.
 
 ## Routes
 
@@ -199,8 +200,9 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   fetched again first, so a key Privy withdrew stops verifying (R-30); if Privy is unreachable, the last list verifies for
   10 more minutes (`KeyGrace`), then nothing does. `PRIVY_JWKS_URL` must be https. The Privy Go SDK (D-12) has no local token check, so this
   uses `golang-jwt/jwt/v5` as in Privy's Go guide (https://docs.privy.io/authentication/user-authentication/access-tokens).
-- `httpapi.requireUser` and `requireProfileOwner` wrap the protected handlers. `/v1/me` and `POST /v1/profiles` act
-  only for the token's user. Every `{profileId}` route is listed in `profileRoutes` in `profiles_test.go`, which checks
+- `mid.RequireUser` and `mid.RequireProfileOwner` wrap the protected handlers, through `mid.Guards` (`SignedIn`,
+  `ProfileScoped`) that each module's `routes.go` applies. `/v1/me` and `POST /v1/profiles` act
+  only for the token's user. Every `{profileId}` route is listed in `profileRoutes` in `internal/httpapi/tests/profiles_test.go`, which checks
   that another user gets 403 on each.
 
 ## Errors
@@ -209,11 +211,11 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
 - 400 malformed, 401 no or bad token, 403 not yours, 404 missing, 409 conflict, 422 invalid value, 429 too many
   requests, 503 a network the worker has not scanned yet (`network_not_ready`, on invoice create), 500 anything else.
   A profile has at most 1,000 invoices open for payment at once and creates at most 500 a day: 422 above.
-- A 500 never shows internal details. `httpapi` maps sentinel errors to codes in one place.
+- A 500 never shows internal details. `httpio.WriteError` maps sentinel errors to codes in one place.
 
 ## Rate limits
 
-`internal/httpapi/ratelimit.go`, constants there. Each caller has a token bucket: a request takes a token, tokens
+`internal/httpapi/mid/ratelimit.go`, constants there (Check status's in `invoiceapi/routes.go`). Each caller has a token bucket: a request takes a token, tokens
 come back at a fixed rate up to the burst size. An empty bucket answers 429 `rate_limited` with `Retry-After` in whole
 seconds (when the next token is back) and runs nothing else.
 
@@ -239,5 +241,7 @@ seconds (when the next token is back) and runs nothing else.
 
 ## Handlers and tests
 
-- One file per feature in `internal/httpapi`: parse, call the service, write JSON. No SQL, no business rules.
+- One package per module under `internal/httpapi` (`<module>api/`): `routes.go`, `model.go` and handler files that
+  parse, call the service and write JSON. No SQL, no business rules. API tests go through the whole router in
+  `internal/httpapi/tests/`, one file per module.
 - Each route has a test for success and for every error code it can return, on real Postgres.
