@@ -1,0 +1,91 @@
+{
+  "id": "F165",
+  "type": "fix",
+  "behavior": "Switching profile opens the new profile's overview",
+  "acceptance": [
+    "R-76: e2e checks switching profile from Balances and from an invoice opens /app, and the phone overview has no profile pill"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "e2e"
+  ],
+  "refs": [
+    "R-76"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-13T22:13:57Z",
+    "checks": [
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 159.5,
+        "log": "docs/runs/F165-20261013T221357Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.5,
+        "log": "docs/runs/F165-20261013T221357Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F165-20261013T221357Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F165-20261013T221357Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.1,
+        "log": "docs/runs/F165-20261013T221357Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 90.2,
+        "log": "docs/runs/F165-20261013T221357Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.2,
+        "log": "docs/runs/F165-20261013T221357Z-build.log"
+      }
+    ],
+    "taskHash": "d38af1b2d5cbcf34",
+    "filesHash": "ce69cccc2ac792c8",
+    "proof": {
+      "1": "e2e: switch lands on /app; no phone pill"
+    },
+    "commit": "32bba1c",
+    "doneAt": "2026-10-13T22:18:21Z"
+  },
+  "branch": "fix/f165-switching-profile-opens-the-new-profile",
+  "baseCommit": "7930926ac7701300f598746cd79b164e76173e46",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f165-switching-profile-opens-the-new-profile",
+    "base": "main"
+  }
+}

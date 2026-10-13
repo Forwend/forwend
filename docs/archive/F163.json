@@ -1,0 +1,98 @@
+{
+  "id": "F163",
+  "type": "fix",
+  "behavior": "The receipt PDF leaves out the settlement",
+  "acceptance": [
+    "R-61: backend test checks receipt.pdf has the payments and no Settled date, Settlement heading or settlement hash"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "backend"
+  ],
+  "refs": [
+    "R-61"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-13T21:58:15Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 94.5,
+        "log": "docs/runs/F163-20261013T215815Z-backend.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.3,
+        "log": "docs/runs/F163-20261013T215815Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F163-20261013T215815Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F163-20261013T215815Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F163-20261013T215815Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 92.2,
+        "log": "docs/runs/F163-20261013T215815Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.6,
+        "log": "docs/runs/F163-20261013T215815Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 152.0,
+        "log": "docs/runs/F163-20261013T215815Z-e2e.log"
+      }
+    ],
+    "taskHash": "8a6e01c148a892dc",
+    "filesHash": "e6940a377863fe00",
+    "proof": {
+      "1": "backend: receipt text has no settlement; ETag unchanged after settling"
+    },
+    "commit": "967df50",
+    "doneAt": "2026-10-13T22:04:07Z"
+  },
+  "branch": "fix/f163-the-receipt-pdf-leaves-out-the-settlemen",
+  "baseCommit": "3b375f162da12ba1c0c7dcc8acd589d8693f94ea",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f163-the-receipt-pdf-leaves-out-the-settlemen",
+    "base": "main"
+  }
+}
