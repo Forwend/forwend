@@ -103,7 +103,10 @@ export const PAY_COPY = {
   paymentTx: (count: number) => (count === 1 ? "Payment transaction" : "Payment transactions"),
   settlementTx: "Settlement transaction",
   receiptPdf: "Download receipt PDF",
-  footer: "Payments by Forwend. You don't need an account to pay.",
+  paymentsBy: "Payments by",
+  forwend: "Forwend",
+  newTab: " (opens in a new tab)",
+  backTo: (host: string) => `Back to ${host}`,
 } as const;
 
 interface StateValues {

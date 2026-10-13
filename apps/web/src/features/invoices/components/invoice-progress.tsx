@@ -1,7 +1,7 @@
 "use client";
 
 import { PaymentTimeline, STEP_STATES } from "@forwend/ui-web";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   confirmingProgress,
   INVOICE_STEPS,
@@ -24,8 +24,10 @@ export function InvoiceTimeline({
   label: string;
   waiting?: boolean;
 }) {
-  const { done, current, blocksLeft } = invoiceProgress(invoice);
-  const confirming = current === INVOICE_STEPS.confirming;
+  const { done: reached, current, blocksLeft } = invoiceProgress(invoice);
+  // A fast chain can go from nothing to paid in one read: the steps still show one after another (R-62).
+  const done = useStepped(reached);
+  const confirming = current === INVOICE_STEPS.confirming && done === reached;
   // Remembered across reads; a new payment starts counting again.
   const [most, setMost] = useState(0);
   const next = confirming ? Math.max(most, blocksLeft) : 0;
@@ -36,15 +38,30 @@ export function InvoiceTimeline({
     state:
       i < done
         ? STEP_STATES.complete
-        : step === current && waiting
+        : i === done && (done < reached || (step === current && waiting))
           ? STEP_STATES.current
           : STEP_STATES.upcoming,
-    // A current step that is not confirming has not started filling: a full bar would read as done.
-    ...(step === current
+    // A current step that is not confirming has not started filling: a full bar would read as done. A step passed
+    // through on the way shows full.
+    ...(i === done && done === reached && step === current
       ? { progress: confirming ? confirmingProgress(blocksLeft, next) : 0 }
       : {}),
   }));
   return <PaymentTimeline label={label} steps={steps} />;
+}
+
+const STEP_MS = 600;
+
+/** Follows `reached` one step per STEP_MS going forward, and at once going back (a reorg). */
+function useStepped(reached: number): number {
+  const [shown, setShown] = useState(reached);
+  useEffect(() => {
+    if (shown >= reached) return;
+    const timer = setTimeout(() => setShown((s) => s + 1), STEP_MS);
+    return () => clearTimeout(timer);
+  }, [shown, reached]);
+  if (shown > reached) setShown(reached);
+  return Math.min(shown, reached);
 }
 
 /**
