@@ -116,7 +116,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   invoice number and title (a request without an issuer: "Name requests 12.50 USDC" over "Request INV-0001"), then
   solid hairline panels: the amount (Geist Mono, featured amount size) with token mark
   and status pill (partly paid: "Left to pay" with the rest as the figure, the invoice total and received in rows), then three numbered steps, one open at a time: 1. Network and token (the
-  invoice's one option as a selected card, the before-you-pay notes, the network warning and the confirm button),
+  invoice's one option as a selected card, or for payer chooses a Network group of radio cards with logos, then a
+  Token group when that network carries more than one; until both are picked the amount reads in USD with no token
+  mark and the confirm button says "Choose a network and token" and stays off; the before-you-pay notes, the network warning and the confirm button),
   2. How you pay (two choice cards, From a wallet and From an exchange), 3. Send the payment (that choice's
   instructions, QR beside the full address from small screens up; on phones Copy comes before the QR; above them the exact amount with
   its own Copy, which copies the plain decimal; for an exchange payer under 30 minutes before close, a warning that the withdrawal

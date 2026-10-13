@@ -274,6 +274,50 @@ test.describe("pay page", () => {
     );
   });
 
+  test("lets the payer pick the network, then the token, change it before paying, and locks it once money arrives", async ({
+    page,
+  }) => {
+    await openPay(page, CHOOSING, CHOOSING, { ...CHOOSING, optionLocked: true });
+    // Nothing picked: the amount is in USD, no network is named and Continue stays off (R-57).
+    await expect(page.locator("[data-money]")).toHaveText("1,250.00 USD");
+    const network = page.getByRole("group", { name: "Network" });
+    await expect(network.getByRole("radio")).toHaveCount(2);
+    const next = page.getByRole("button", { name: "Choose a network and token" });
+    await expect(next).toBeDisabled();
+    const serious = (await new AxeBuilder({ page }).analyze()).violations.filter(
+      (v) => v.impact === "serious" || v.impact === "critical",
+    );
+    expect(serious.map((v) => v.id)).toEqual([]);
+
+    // Arbitrum carries one token, so picking the network picks it.
+    await network.getByText("Arbitrum Sepolia").click();
+    await expect(page.locator("[data-money]")).toHaveText("1,250.00 USDC");
+    await page.getByRole("button", { name: "I will send USDC on Arbitrum Sepolia" }).click();
+    await method(page, "From a wallet").click();
+    await expect(page.getByText(OPTION_RECEIVE)).toBeVisible();
+    await expect(page.getByText(RECEIVE)).toHaveCount(0);
+
+    // Before any money, Change opens the choice again and the address follows it.
+    await page.getByRole("button", { name: "Change network and token" }).click();
+    await network.getByText("Base Sepolia").click();
+    await confirmButton(page).click();
+    await expect(page.getByText(RECEIVE)).toBeVisible();
+    await expect(page.getByText(OPTION_RECEIVE)).toHaveCount(0);
+
+    // Money arrived on the Base option: the choice is the invoice's now, with no picker.
+    await page.clock.runFor(POLL_MS * 2);
+    await page.getByRole("button", { name: "Change network and token" }).click();
+    await expect(page.getByRole("group", { name: "Network" })).toHaveCount(0);
+    await expect(page.getByText("The only way to pay this invoice")).toBeVisible();
+  });
+
+  test("shows a fixed invoice's one option as chosen", async ({ page }) => {
+    await openPay(page, OPEN);
+    await expect(page.getByRole("group", { name: "Network" })).toHaveCount(0);
+    await expect(page.getByText("The only way to pay this invoice")).toBeVisible();
+    await expect(confirmButton(page)).toBeEnabled();
+  });
+
   test("shows no address and warns the payer when a term does not match the address", async ({
     page,
   }) => {
