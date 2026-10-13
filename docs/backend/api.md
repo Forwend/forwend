@@ -117,7 +117,8 @@ R-19 and R-42; the full schema is in openapi.yaml.
   receive address, so the watcher, ledger and signer treat it as any invoice; the first row is the invoice (its id is the pay
   link, its number and details are the invoice's). Each option counts toward the profile's open and daily limits.
   Reads add `optionId` (the on-chain id in the shown terms), `optionLocked` and, on a read alone, `options` (each
-  `{optionId, chainId, network, token, symbol, decimals, amount, receiveAddress}`). Until an option has money the
+  `{optionId, chainId, network, token, symbol, decimals, amount, receiveAddress, deposits}`; deposits on an option
+  other than the shown one are held for the payer). Until an option has money the
   terms shown are the first option's; the first option the ledger sees money on becomes the invoice's for good
   (`chosen_id`), and money on any other is booked to `payer_held`. A GET with an option's id answers its invoice.
   Lists, activity and search show each invoice once, with the current option (`invoices_current` view).

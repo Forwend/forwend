@@ -145,6 +145,7 @@ describe("withOption", () => {
     symbol: "USDC",
     decimals: 6,
     amount: "1000",
+    deposits: [],
   };
   const choosing: Invoice = {
     ...invoice,

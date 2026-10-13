@@ -2135,7 +2135,7 @@
       "dependsOn": [
         "F133"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend",
         "e2e",
@@ -2148,7 +2148,77 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T16:43:54Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 93.9,
+            "log": "docs/runs/F143-20261013T164354Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 135.7,
+            "log": "docs/runs/F143-20261013T164354Z-e2e.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 100.7,
+            "log": "docs/runs/F143-20261013T164354Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": "docs/runs/F143-20261013T164354Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F143-20261013T164354Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F143-20261013T164354Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F143-20261013T164354Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.2,
+            "log": "docs/runs/F143-20261013T164354Z-build.log"
+          }
+        ],
+        "taskHash": "0b873cf726d44aa9",
+        "filesHash": "b3bafe4d622ea0fb",
+        "proof": {
+          "1": "backend: settlement TestSettlesTheOptionPaidFirst reads the invoice after USDT was chosen and USDC was paid too: the USDC option lists the held 5000000 deposit, the invoice's deposits only the USDT one; e2e: privy invoices.spec shows 'Held for the payer · USDC on Arbitrum Sepolia' with 2.00 USDC and the Arbiscan link for a deposit on a second option, axe clean"
+        }
+      },
+      "branch": "feat/f143-the-invoice-page-shows-money-held-on-pay",
+      "baseCommit": "6fe3127d7f5ff184eddd5841cdfa04e251fadcdb",
+      "failedVerifies": 0
     },
     {
       "id": "F144",

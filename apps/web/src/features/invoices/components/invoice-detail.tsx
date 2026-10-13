@@ -225,6 +225,17 @@ function Loaded({
               )}
             </p>
             <InvoiceDeposits invoice={invoice} token={token ?? null} />
+            {/* Money sent to an option the client did not end up paying with is the payer's (D-76). */}
+            {invoice.options
+              .filter((o) => o.optionId !== invoice.optionId)
+              .map((o) => (
+                <InvoiceDeposits
+                  key={o.optionId}
+                  invoice={o}
+                  token={o}
+                  title={COPY.heldOn(o.symbol, chainName(o.chainId))}
+                />
+              ))}
             {invoice.settlementStatus === API_SETTLEMENT_STATUSES.settled ? null : (
               <CheckStatus
                 invoiceId={invoice.invoiceId}
