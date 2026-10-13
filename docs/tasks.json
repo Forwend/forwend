@@ -200,7 +200,7 @@
         "R-69: e2e checks the owner page's Transactions list shows the payments and the settlement with its hash and explorer link, and Details no longer has a Settlement row"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -269,12 +269,19 @@
         "taskHash": "c5c13054759058f8",
         "filesHash": "0657229a4213b676",
         "proof": {
-          "1": "e2e: privy navigation.spec checks a settled invoice shows one Transactions list with a Payment row and a Settlement row of 2.00 USDC linking its hash on Basescan, and Details has no Settlement; axe clean"
-        }
+          "1": "e2e: Transactions list with payment and settlement rows"
+        },
+        "commit": "e5a94dd",
+        "doneAt": "2026-10-13T21:57:19Z"
       },
       "branch": "feat/f162-the-owner-s-invoice-page-lists-every-tra",
       "baseCommit": "1fffd6b1d9312bc8993366c9ce3123504d51d93f",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f162-the-owner-s-invoice-page-lists-every-tra",
+        "base": "main"
+      }
     },
     {
       "id": "F163",
