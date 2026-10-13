@@ -471,7 +471,10 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(main.getByRole("status").filter({ hasText: /^Confirming/ })).toHaveText(
     "Confirming (0/120) · about 6 min left",
   );
-  await expect(current).toHaveText("Confirming");
+  // The step carries the count with the time behind its clock; the line under it only reads it out (R-69).
+  await expect(current).toHaveText("Confirming (0/120)");
+  await expect(current.getByRole("button", { name: "About 6 min left" })).toBeVisible();
+  await expect(main.getByRole("status").filter({ hasText: /^Confirming/ })).toHaveClass(/sr-only/);
   await expect(payments.locator("[data-status]")).toHaveCount(0);
   await expect(main.getByText(/test network|no real value/i)).toHaveCount(0); // R-72
   expect(await blockingViolations(page)).toEqual([]);
@@ -510,6 +513,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   };
   await page.reload();
   await expect(current).toHaveText("Settled");
+  await expect(progress.getByRole("listitem").nth(2)).toHaveText(/^Confirmed/);
   await expect(current.locator("[class*='fw-progress']")).toHaveCount(1);
   await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
   // Paid takes no more money: the pay link is gone.

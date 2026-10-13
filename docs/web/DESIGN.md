@@ -121,8 +121,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   exact amount with Copy, the address with Copy under them, one warning line "Send only USDC on Base Sepolia." and one
   exchange-fee hint. Under it "Waiting for payment…" with a pulsing dot and Check status, which says when the next
   check is allowed. Once money is seen the panel keeps its place ("Paying with" while nothing more is due): the steps
-  Detected, Confirming and Paid fade in, the waiting one moving (R-73 count, Partially paid tinted on Paid), one line
-  ("Confirming (n/m) · about X left", "Final check", or what is left to pay), and each payment with its amount, time,
+  Detected, Confirming and Paid fade in, the waiting one moving (Partially paid tinted on Paid), one line for what the
+  steps cannot say ("Final check", or what is left to pay), and each payment with its amount, time,
   short hash and explorer link. The address stays only while money is still due. Closed says so in one line. Paid
   replaces the panel with a check that scales in, "Paid", the amount, payee and time, View transaction, Download
   receipt and Back to <host> when the invoice has a return link. The payer never sees Settled, status pills or
@@ -132,9 +132,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   may be out of date. The invoice PDF link stays in every state; the receipt link appears once paid.
 - PDFs open through the same-origin `/api` path. The invoice detail lists them under Documents: the invoice PDF
   always, the receipt PDF once paid.
-- While a payment confirms, the timeline's step fills as blocks pass (a sweep until the first block passes) and the
-  status line stays short: "Confirming (4/12) · about 19 min left", blocks passed of those the payment had to wait when first
-  seen, from the API, so a reload keeps the count (R-73).
+- While a payment confirms, the Confirming step itself reads "Confirming (4/12)" with a small clock icon whose tooltip
+  says "About 19 min left", and its bar fills as blocks pass (a sweep until the first block passes); done, it reads
+  "Confirmed". The count is blocks passed of those the payment had to wait when first seen, from the API, so a reload
+  keeps it (R-73). No visible line repeats it; a screen-reader-only live line reads it out.
   The owner's steps are Waiting, Detected, Confirming, Paid and Settled. The step that waits always moves, so it never
   reads as stuck: a sweep on Waiting before any money and on Settled while the money is on its way to the wallet, a
   fill by the share received when partly paid (R-69).

@@ -452,7 +452,11 @@ function Received({
         {COPY.progress}
       </h2>
       <InvoiceTimeline invoice={invoice} label={COPY.progress} steps={PAYER_STEPS} />
-      <p role="status" className="text-sm text-ink">
+      {/* While confirming the step shows the count, so this line only reads it out. */}
+      <p
+        role="status"
+        className={pay.state === PAY_STATES.confirming ? "sr-only" : "text-sm text-ink"}
+      >
         {pay.state === PAY_STATES.confirming ? (
           <ConfirmingStatus blocks={blocksLeft} total={blocksTotal} seconds={secondsLeft} />
         ) : (
