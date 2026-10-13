@@ -131,7 +131,31 @@ func TestRecheckWithOneNetworkDown(t *testing.T) {
 	if _, err := pool.Exec(ctx, "UPDATE invoice_rechecks SET checked_at = now() - interval '1 minute'"); err != nil {
 		t.Fatal(err)
 	}
-	down[84532] = true
+	again := func() { // past the 30-second spacing
+		t.Helper()
+		if _, err := pool.Exec(ctx, "UPDATE invoice_rechecks SET checked_at = now() - interval '1 minute'"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The shown option (Base Sepolia) down: another option's empty read must not answer for it.
+	down = map[uint64]bool{84532: true}
+	if _, err := s.Recheck(ctx, inv.ID, balanceOf); !errors.Is(err, ErrChainUnavailable) {
+		t.Fatalf("shown option down: err = %v, want ErrChainUnavailable", err)
+	}
+	// Unless the other option holds money not recorded yet: that is worth saying, and it is rescanned.
+	again()
+	money := func(_ context.Context, chainID uint64, _, _ string) (*big.Int, uint64, error) {
+		if chainID == 84532 {
+			return nil, 0, errors.New("no answer")
+		}
+		return big.NewInt(1000000), 1, nil
+	}
+	r, err = s.Recheck(ctx, inv.ID, money)
+	if err != nil || r.OnChain.Int64() != 1000000 || !r.Rescanning || len(r.Unreadable) != 1 || r.Unreadable[0] != 84532 {
+		t.Fatalf("money on the other option: %+v, %v", r, err)
+	}
+	again()
+	down = map[uint64]bool{84532: true, 421614: true}
 	if _, err := s.Recheck(ctx, inv.ID, balanceOf); !errors.Is(err, ErrChainUnavailable) {
 		t.Fatalf("all down: err = %v, want ErrChainUnavailable", err)
 	}

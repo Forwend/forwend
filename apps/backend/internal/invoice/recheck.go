@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"time"
 
@@ -72,14 +73,16 @@ func (s *Service) Recheck(ctx context.Context, id string, balanceOf ledger.Balan
 		r, err := s.recheckOption(ctx, o, balanceOf)
 		if errors.Is(err, ErrChainUnavailable) {
 			// One network down must not hide what the others show.
+			slog.Warn("check status skipped an option", "invoice", inv.ID, "option", o.ID, "err", err)
 			unreadable, lastErr = append(unreadable, o.ChainID), err
 			continue
 		}
 		if err != nil {
 			return Recheck{}, err
 		}
-		// What the page shows: an option holding more than recorded, else the current option, else any read.
-		if found.OnChain == nil || (o.ID == inv.OptionID && found.OnChain.Cmp(found.Recorded) <= 0) ||
+		// What the page shows: an option holding more than recorded, else the current option. Another option's empty
+		// read never stands in for the current one: the page names the current option's network.
+		if (o.ID == inv.OptionID && (found.OnChain == nil || found.OnChain.Cmp(found.Recorded) <= 0)) ||
 			r.OnChain.Cmp(r.Recorded) > 0 {
 			found = r
 		}
