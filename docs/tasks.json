@@ -3595,7 +3595,7 @@
         "R-68, R-69: ui-unit checks a step hint shows a clock icon with its text; e2e checks the pay and owner pages show Confirming (n/m) on the step with the time behind the icon, no separate confirming line, and Confirmed once done"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -3665,12 +3665,19 @@
         "taskHash": "e6962c6176cf0077",
         "filesHash": "617643bfa563825d",
         "proof": {
-          "1": "e2e: pay.spec checks the current step reads Confirming (0/12) with a clock button named About 3 min left and the confirming line is screen-reader only, and a partly paid box reads Detected, Confirmed, Partially paid; privy navigation.spec checks the owner step reads Confirming (0/120) with About 6 min left, the line is screen-reader only, and Confirmed once paid; unit: ui-web payments.test checks a step hint is a button named by its text"
-        }
+          "1": "e2e: step count with time hint, no repeated line, Confirmed when done"
+        },
+        "commit": "b8134f2",
+        "doneAt": "2026-10-13T21:03:12Z"
       },
       "branch": "feat/f157-the-confirming-step-carries-its-count-an",
       "baseCommit": "4fea528236c82a1898abcb31c0ced99eaf5e4960",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f157-the-confirming-step-carries-its-count-an",
+        "base": "main"
+      }
     },
     {
       "id": "F158",
