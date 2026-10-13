@@ -701,7 +701,7 @@
         "Every required check, ui-unit, tokens-unit and e2e (public and signed-in) pass on the branch's current UI changes; DESIGN.md, PROJECT R-45 and .impeccable/design.json match the shipped behavior"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
@@ -790,7 +790,7 @@
         "taskHash": "e97c2f60bb2f1036",
         "filesHash": "5fa99058c2e17a18",
         "proof": {
-          "1": "e2e: public e2e and the signed-in suite pass on the UI changes; unit, ui-unit and tokens-unit pass; DESIGN.md, PROJECT R-45 and .impeccable/design.json were updated in the same change"
+          "1": "e2e: verify F128 passed all 9 checks (public e2e and signed-in suite, unit, ui-unit, tokens-unit, lint, typecheck, build, docs, harness); independent review passed"
         },
         "review": {
           "result": "pass",
@@ -798,11 +798,18 @@
           "summary": "Pass (re-review after the re-verify at 13:04:40Z). The new delta is one line: in apps/web/src/features/pay/pay.ts:28 the 'What the status panel says' doc comment is back above PAY_STATES, and PAY_METHODS (pay.ts:24-26) keeps its own comment. That fixes earlier note 1 and is a comment move only. The two npm lockfiles are left out through .git/info/exclude (/package-lock.json, /apps/backend/package-lock.json); they are not in the index or in HEAD. HEAD 8a0d41b (parent main a9621f8) holds 103 files, 2253+/612-. That is the 102 files reviewed before (1792+/611-) plus docs/tasks.json (461+/1-), so the reviewed source is unchanged. The only uncommitted changes are pay.ts and docs/tasks.json (new evidence paths). The new verify logs (docs/runs/F128-20261013T130440Z-*.log, 9 files) show every check passed, with no failures or flaky tests in the e2e log; the canary reader test passed (e2e log line 52). The earlier findings and non-blocking notes 2-4 still hold: no tests for Left to pay, Copy amount, the stale banner or Change network re-hiding the address; the confirmed-as-text markup is repeated; pay-invoice.tsx is 675 lines.",
           "at": "2026-10-13T13:09:40Z",
           "filesHash": "5fa99058c2e17a18"
-        }
+        },
+        "commit": "60ee557",
+        "doneAt": "2026-10-13T13:09:52Z"
       },
       "branch": "refactor/f128-the-ui-audit-from-2026-10-11-13-lands-as",
       "baseCommit": "a9621f8c69ace1be659c6d9e3ce482abc75e2a7a",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f128-the-ui-audit-from-2026-10-11-13-lands-as",
+        "base": "main"
+      }
     },
     {
       "id": "F129",
