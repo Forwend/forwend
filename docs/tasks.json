@@ -2845,7 +2845,7 @@
       "dependsOn": [
         "F146"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -2914,12 +2914,19 @@
         "taskHash": "be425ef883b69297",
         "filesHash": "245d7c81fc018e67",
         "proof": {
-          "1": "e2e: privy money-requests.spec opens Request money from the overview at /app/invoices/new with no dialog, the breadcrumb says Request money, creating it lands on /app/invoices/<id> with the pay link that copies whole; phone variant fits 390px; onboarding.spec's Request step opens the page"
-        }
+          "1": "e2e: Request money opens /app/invoices/new without a dialog and lands on the new request with its pay link"
+        },
+        "commit": "af83b66",
+        "doneAt": "2026-10-13T19:26:43Z"
       },
       "branch": "feat/f149-request-money-opens-its-own-page-instead",
       "baseCommit": "d64018d2e0d84ce1f5d5e12af30171eb83f23068",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f149-request-money-opens-its-own-page-instead",
+        "base": "main"
+      }
     },
     {
       "id": "F150",
