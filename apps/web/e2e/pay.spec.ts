@@ -236,6 +236,9 @@ test.describe("pay page", () => {
       "Checked recently.",
     );
     await expect(check).toBeDisabled();
+    // It comes back once the wait is over.
+    await page.clock.runFor(31_000);
+    await expect(check).toBeEnabled();
   });
 
   test("follows the payment from waiting to paid without a reload, and never shows Settled", async ({

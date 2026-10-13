@@ -2548,76 +2548,77 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-10-13 review fail by reviewer: Money safety holds: the address shows only for the option checkedReceiveAddress passed and only after Show address for that same option id (sessionStorage is keyed per invoice and compared with the shown option, so a stale id never reveals a new pick); no address before a pick; a locked option wins over ?option=; Send only names the shown token and network; nextCheckAt matches the recheck spacing. Backend, unit, tsc and pay e2e pass. Must fix: (1) docs/PROJECT.md R-48 still says a settled /pay shows a receipt with settled time and settlement hash, and R-57 still describes Continue and Change; both contradict R-68 and the shipped page; update them (R-52 also says /pay shows settled). (2) Focus is lost after Show address: the focused button unmounts and nothing receives focus (the old page focused the send heading); move focus to the pay-send heading. (3) CheckStatus no longer handles 429: a check refused as too soon (another tab or the owner page within the poll gap) reads 'Can't reach the network' and the button stays enabled; show the wait from Retry-After or the 429 instead. Should fix: openapi Invoice.nextCheckAt is always sent but not in required; stale 30 s comments in invoices-api.ts:52 and options_test.go:134; PAY_COPY.change is now unused; CheckStatus useNow keeps the stale mount time for up to 1 s after a press (briefly wrong 'Next check in') and keeps ticking after the wait ends, and its role=status changes every second in the last minute; canary does not read the Send only line (the amount section still names symbol and network, so not required)."
+        "2026-10-13 review fail by reviewer: Money safety holds: the address shows only for the option checkedReceiveAddress passed and only after Show address for that same option id (sessionStorage is keyed per invoice and compared with the shown option, so a stale id never reveals a new pick); no address before a pick; a locked option wins over ?option=; Send only names the shown token and network; nextCheckAt matches the recheck spacing. Backend, unit, tsc and pay e2e pass. Must fix: (1) docs/PROJECT.md R-48 still says a settled /pay shows a receipt with settled time and settlement hash, and R-57 still describes Continue and Change; both contradict R-68 and the shipped page; update them (R-52 also says /pay shows settled). (2) Focus is lost after Show address: the focused button unmounts and nothing receives focus (the old page focused the send heading); move focus to the pay-send heading. (3) CheckStatus no longer handles 429: a check refused as too soon (another tab or the owner page within the poll gap) reads 'Can't reach the network' and the button stays enabled; show the wait from Retry-After or the 429 instead. Should fix: openapi Invoice.nextCheckAt is always sent but not in required; stale 30 s comments in invoices-api.ts:52 and options_test.go:134; PAY_COPY.change is now unused; CheckStatus useNow keeps the stale mount time for up to 1 s after a press (briefly wrong 'Next check in') and keeps ticking after the wait ends, and its role=status changes every second in the last minute; canary does not read the Send only line (the amount section still names symbol and network, so not required).",
+        "2026-10-13 review fail by reviewer: Fixes 1 and 2 hold: R-45, R-48, R-52 and R-57 now match the page, and Show address moves focus to the revealed address heading (e2e asserts it). OpenAPI required, the 30 s comments, PAY_COPY.change and the countdown outside the live region are done. Backend, unit (95), tsc and pay e2e (13) pass. Must fix: the new too-soon path leaves Check status disabled for good. In check-status.tsx, resting = left > 0 || (tooSoon && !nextCheckAt), and tooSoon stays true because the mutation's 429 is never cleared. Once the wait ends, the invoice read sends nextCheckAt null again (get.go returns it only inside the 5-minute window), so resting turns true again and the button never comes back until a reload, on both the pay page and the owner's invoice page. Reproduced with a throwaway Playwright spec: 429, then the read gives nextCheckAt +120 s (Next check in 2 min shows), then null after the wait; the button stays disabled and 'Checked recently.' stays. Fix: rest on the 429's own time (Retry-After, or the time it arrived plus the wait) instead of on nextCheckAt being null, and add an e2e step that the button comes back after the wait."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-13T18:43:08Z",
+        "at": "2026-10-13T18:51:55Z",
         "checks": [
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 129.9,
-            "log": "docs/runs/F146-20261013T184308Z-e2e.log"
+            "seconds": 128.5,
+            "log": "docs/runs/F146-20261013T185155Z-e2e.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 92.4,
-            "log": "docs/runs/F146-20261013T184308Z-unit.log"
+            "seconds": 89.9,
+            "log": "docs/runs/F146-20261013T185155Z-unit.log"
           },
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 90.0,
-            "log": "docs/runs/F146-20261013T184308Z-backend.log"
+            "seconds": 93.0,
+            "log": "docs/runs/F146-20261013T185155Z-backend.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.4,
-            "log": "docs/runs/F146-20261013T184308Z-harness.log"
+            "seconds": 1.3,
+            "log": "docs/runs/F146-20261013T185155Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F146-20261013T184308Z-docs-check.log"
+            "log": "docs/runs/F146-20261013T185155Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F146-20261013T184308Z-lint.log"
+            "seconds": 0.4,
+            "log": "docs/runs/F146-20261013T185155Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 1.0,
-            "log": "docs/runs/F146-20261013T184308Z-typecheck.log"
+            "log": "docs/runs/F146-20261013T185155Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.7,
-            "log": "docs/runs/F146-20261013T184308Z-build.log"
+            "seconds": 4.0,
+            "log": "docs/runs/F146-20261013T185155Z-build.log"
           }
         ],
         "taskHash": "096bafdd94c51168",
-        "filesHash": "e02913e8be20c505",
+        "filesHash": "3e39e341e5a11385",
         "proof": {
           "1": "e2e: pay.spec covers a fixed invoice (Show address moves focus to the address, Send only line, reload keeps it), payer-chooses with Network and Token selects (USD before picking, ?option= after, reload keeps pick and address, locked once money arrives), Waiting, Payment received Confirming (0/12) and (6/12), Paid with View transaction, receipt and Back to shop.example and never Settled, Partly paid with what is left, Closed; 390 px without sideways scroll; axe 0 in both themes; canary reads the address; unit: onlyOptionOn, recheck messages",
-          "2": "backend: invoices_recheck_test checks 5-minute spacing (429 within it) and the read's nextCheckAt; e2e: Next check in 5 min after a check, 4 min after a reload, and a 429 reads Checked recently with the button resting; unit: rate limiter hands a 429 back for Check status"
+          "2": "backend: invoices_recheck_test checks 5-minute spacing (429 within it) and the read's nextCheckAt; e2e: Next check in 5 min after a check, 4 min after a reload, and a 429 reads Checked recently, rests and the button comes back after 30 s; unit: rate limiter hands a 429 back for Check status"
         }
       },
       "branch": "feat/f146-the-pay-page-is-one-short-screen-who-ask",

@@ -7,6 +7,9 @@ import { INVOICE_COPY as COPY } from "@/features/invoices/invoices-copy";
 import { chainName } from "@/shared/chains/chains";
 
 const TOO_MANY_REQUESTS = 429;
+// After a "too soon" answer the button rests at least this long; the read (polled every 15 s) then gives the exact
+// time.
+const TOO_SOON_REST_MS = 30_000;
 
 /**
  * Check status (R-55): asks Forwend to read the invoice's address on chain again and says what it found. It rests
@@ -24,11 +27,20 @@ export function CheckStatus({
   nextCheckAt: string | null;
 }) {
   const [recheck, { data, isLoading, error }] = useRecheckInvoiceMutation();
-  // Asked too soon (another tab, or before the read caught up): rest until the read says when.
+  // Asked too soon (another tab, or before the read caught up): rest, then the button comes back.
   const tooSoon = (error as { status?: unknown } | undefined)?.status === TOO_MANY_REQUESTS;
-  const next = Date.parse(data?.nextCheckAt ?? nextCheckAt ?? "") || 0;
+  const [restUntil, setRestUntil] = useState(0);
+  // Each refused press is a new error object, so each one rests again.
+  useEffect(() => {
+    if ((error as { status?: unknown } | undefined)?.status === TOO_MANY_REQUESTS)
+      setRestUntil(Date.now() + TOO_SOON_REST_MS);
+  }, [error]);
+  const next = Math.max(
+    Date.parse(data?.nextCheckAt ?? nextCheckAt ?? "") || 0,
+    tooSoon ? restUntil : 0,
+  );
   const left = useLeft(next);
-  const resting = left > 0 || (tooSoon && !nextCheckAt);
+  const resting = left > 0;
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
