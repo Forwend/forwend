@@ -3314,7 +3314,7 @@
       "dependsOn": [
         "F152"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -3384,12 +3384,19 @@
         "taskHash": "3fec70d76cdc2e83",
         "filesHash": "18913065c26882b0",
         "proof": {
-          "1": "e2e: privy navigation.spec checks the owner timeline lists Waiting, Detected, Confirming, Paid, Settled with Waiting current and sweeping before money, the header holds the Pay link region with the whole link, Copy link and Open the pay page, and the pay link is gone once paid; invoices.spec checks a new invoice opens at Waiting; axe clean"
-        }
+          "1": "e2e: Waiting step first and moving; pay link in the header, gone once paid"
+        },
+        "commit": "56a6498",
+        "doneAt": "2026-10-13T20:15:37Z"
       },
       "branch": "feat/f154-the-owner-s-invoice-page-starts-at-waiti",
       "baseCommit": "e0796c7ad2c72d3fb62bab5a90b0e5d039ca3fef",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f154-the-owner-s-invoice-page-starts-at-waiti",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
