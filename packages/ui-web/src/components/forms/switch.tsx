@@ -17,7 +17,7 @@ export function Switch({ label, checked, onCheckedChange, disabled }: SwitchProp
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onCheckedChange(!checked)}
-      className="group inline-flex items-center gap-3 text-sm disabled:cursor-not-allowed disabled:text-subtle"
+      className="group inline-flex min-h-11 items-center gap-3 text-sm disabled:cursor-not-allowed disabled:text-subtle"
     >
       <span
         className={cx(
@@ -27,8 +27,8 @@ export function Switch({ label, checked, onCheckedChange, disabled }: SwitchProp
       >
         <span
           className={cx(
-            "absolute top-0.5 size-4.5 rounded-pill bg-surface shadow-sm transition-transform duration-[var(--fw-duration-base)] ease-out",
-            checked ? "translate-x-5.5" : "translate-x-0.5",
+            "absolute top-0.5 size-4.5 rounded-pill shadow-sm transition-[translate,background-color] duration-[var(--fw-duration-base)] ease-out",
+            checked ? "translate-x-5.5 bg-surface" : "translate-x-0.5 bg-subtle",
           )}
         />
       </span>

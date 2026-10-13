@@ -35,16 +35,27 @@ export function PaymentsShowcase() {
         />
         <Money baseUnits={1234560000n} decimals={6} token="USDC" className="text-amount" />
         <Money baseUnits={980000n} decimals={6} token="USDT" />
+        <Money baseUnits={0n} decimals={6} token="USDC" />
+        <Money baseUnits={-5000000n} decimals={6} token="USDC" />
+        <div className="w-40">
+          <Money baseUnits={123456789012123456n} decimals={6} token="USDC" />
+        </div>
+        <Money baseUnits={1234567890123456789n} decimals={18} token="OUSD" />
       </KitGroup>
       <KitGroup title="Token and network">
         <TokenChip token="USDC" network="Base" />
         <TokenChip token="USDT" network="Arbitrum" />
+        <TokenChip token="PYUSD" network="Base" />
+        <div className="w-48">
+          <TokenChip token="USDC" network="Arbitrum Sepolia Testnet" />
+        </div>
       </KitGroup>
       <KitGroup title="Address">
         <Address
           address={SAMPLE_ADDRESS}
           explorerHref={`https://basescan.org/address/${SAMPLE_ADDRESS}`}
         />
+        <Address address={SAMPLE_ADDRESS} />
       </KitGroup>
       <KitGroup title="Receive address: full, start and end marked, with copy">
         <div className="w-full max-w-xs">
@@ -98,6 +109,29 @@ export function PaymentsShowcase() {
               { label: "Confirming", state: STEP_STATES.complete },
               { label: "Paid", state: STEP_STATES.complete },
               { label: "Settled", state: STEP_STATES.current, detail: "0x8f3a…c21d" },
+            ]}
+          />
+          <PaymentTimeline
+            label="Payment progress, not started"
+            steps={[
+              { label: "Detected", state: STEP_STATES.upcoming },
+              { label: "Confirming", state: STEP_STATES.upcoming },
+              { label: "Paid", state: STEP_STATES.upcoming },
+              { label: "Settled", state: STEP_STATES.upcoming },
+            ]}
+          />
+          <PaymentTimeline
+            label="Payment progress, confirming from zero"
+            steps={[
+              { label: "Detected", state: STEP_STATES.complete, detail: SAMPLE_ADDRESS },
+              {
+                label: "Confirming",
+                state: STEP_STATES.current,
+                detail: "0 of 12",
+                progress: 0,
+              },
+              { label: "Paid", state: STEP_STATES.upcoming },
+              { label: "Settled", state: STEP_STATES.upcoming },
             ]}
           />
         </div>
@@ -161,6 +195,36 @@ export function PaymentsShowcase() {
             direction={ACTIVITY_DIRECTIONS.outgoing}
             amount={{ baseUnits: 500000000n, decimals: 6, token: "USDC" }}
             status="confirming"
+          />
+        </div>
+        <div className="w-full max-w-sm divide-y divide-line rounded-lg border border-line bg-surface px-4">
+          <ActivityRow
+            title="Aleksandra Wiśniewska-Kowalczyk Design Studio"
+            detail="Invoice FW-0044 · Arbitrum Sepolia Testnet · 2 payments"
+            direction={ACTIVITY_DIRECTIONS.incoming}
+            amount={{ baseUnits: 123456789012123456n, decimals: 6, token: "USDC" }}
+            status="expiredPartiallyPaid"
+          />
+          <ActivityRow
+            title="Northwind Industries Holdings"
+            detail="Invoice FW-0045 · Base"
+            direction={ACTIVITY_DIRECTIONS.incoming}
+            amount={{ baseUnits: 4999999n, decimals: 6, token: "USDC" }}
+            status="detected"
+          />
+          <ActivityRow
+            title="Refund to Jo"
+            detail="Excess on FW-0039 · Base"
+            direction={ACTIVITY_DIRECTIONS.outgoing}
+            amount={{ baseUnits: -25000000n, decimals: 6, token: "USDC" }}
+            status="refunded"
+          />
+          <ActivityRow
+            title="Deposit"
+            detail="Base"
+            direction={ACTIVITY_DIRECTIONS.incoming}
+            amount={{ baseUnits: 1500000000000000000n, decimals: 18, token: "OUSD" }}
+            status="confirmed"
           />
         </div>
       </KitGroup>

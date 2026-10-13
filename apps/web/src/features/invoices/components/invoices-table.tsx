@@ -6,7 +6,6 @@ import {
   EmptyState,
   SearchField,
   SegmentedControl,
-  Skeleton,
   StatusPill,
 } from "@forwend/ui-web";
 import { Plus } from "lucide-react";
@@ -25,6 +24,7 @@ import { useGetInvoicesInfiniteQuery } from "@/features/invoices/invoices-api";
 import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/invoices-copy";
 import { chainName } from "@/shared/chains/chains";
 import { NoMatch } from "@/shared/components/no-match";
+import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { useListFilters } from "@/shared/hooks/use-list-filters";
@@ -119,7 +119,7 @@ export function InvoicesTable({
           </Button>
         </div>
       ) : !list.currentData ? (
-        <Skeleton className="h-24" />
+        <RowsSkeleton count={SKELETON_ROWS} className="rounded-md border border-line bg-surface" />
       ) : noInvoices ? (
         <EmptyState
           title={COPY.emptyTitle}
@@ -168,10 +168,15 @@ export function InvoicesTable({
                         {invoiceNumber(inv.number)}
                       </Link>
                       {inv.title ? (
-                        <span className="block truncate text-xs text-muted">{inv.title}</span>
+                        <span title={inv.title} className="block truncate text-xs text-muted">
+                          {inv.title}
+                        </span>
                       ) : null}
                     </td>
-                    <td className="max-w-48 truncate px-3 py-3">
+                    <td
+                      title={clientName(inv) ?? undefined}
+                      className="max-w-48 truncate px-3 py-3"
+                    >
                       {clientName(inv) ?? <span className="text-subtle">{COPY.noClient}</span>}
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap text-muted">

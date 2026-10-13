@@ -48,7 +48,7 @@ export function Toast({
           type="button"
           aria-label={closeLabel}
           onClick={onClose}
-          className="-my-2 -mr-2 grid size-9 shrink-0 place-items-center rounded-pill text-muted outline-none hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+          className="relative -my-2 -mr-2 grid size-9 shrink-0 place-items-center rounded-pill text-muted outline-none before:absolute before:-inset-1 hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
         >
           <X aria-hidden className="size-[var(--fw-icon-sm)]" />
         </button>
@@ -125,27 +125,40 @@ function TimedToast({
 }) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [closing, setClosing] = useState(false);
   const left = useRef(TOAST_MS);
 
+  // A toast must not run out while the tab is in the background and nobody can read it.
   useEffect(() => {
-    if (hovered || focused) return;
+    const onVisibility = () => setHidden(document.hidden);
+    onVisibility();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (hovered || focused || hidden || closing) return;
     const started = Date.now();
-    const timer = setTimeout(() => onClose(id), left.current);
+    const timer = setTimeout(() => setClosing(true), left.current);
     return () => {
       clearTimeout(timer);
       left.current -= Date.now() - started;
     };
-  }, [hovered, focused, id, onClose]);
+  }, [hovered, focused, hidden, closing]);
 
+  // The exit is a keyframe so animationend always fires; the reduced-motion rule shortens it to an instant.
   return (
     <li
+      data-closing={closing || undefined}
+      onAnimationEnd={closing ? () => onClose(id) : undefined}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
-      className="pointer-events-auto motion-safe:animate-[fw-pop-in_var(--fw-duration-base)_var(--fw-ease-out)]"
+      className="pointer-events-auto motion-safe:animate-[fw-pop-in_var(--fw-duration-base)_var(--fw-ease-out)] data-closing:animate-[fw-pop-out_var(--fw-duration-fast)_var(--fw-ease-out)_forwards] lg:[--fw-pop-y:-4px]"
     >
-      <Toast {...toast} onClose={() => onClose(id)} closeLabel={closeLabel} />
+      <Toast {...toast} onClose={() => setClosing(true)} closeLabel={closeLabel} />
     </li>
   );
 }

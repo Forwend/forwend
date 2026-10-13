@@ -50,6 +50,12 @@ export function NewInvoiceForm({
   const token = tokens.find((t) => tokenKey(t) === picked) ?? tokens[0];
   if (!token) return null;
   const network = chainName(token.chainId);
+  const amountError = (value: string) => {
+    const units = parseTokenAmount(value, token.decimals);
+    if (typeof units !== "string") return undefined;
+    const error = COPY.amountErrors[units];
+    return typeof error === "function" ? error(token.symbol, token.decimals) : error;
+  };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -63,12 +69,8 @@ export function NewInvoiceForm({
     const units = parseTokenAmount(amount, token.decimals);
     const missingName = request && !text("senderName");
     if (typeof units === "string" || missingName) {
-      const amountError = typeof units === "string" ? COPY.amountErrors[units] : undefined;
       showErrors({
-        [INVOICE_FIELDS.amount]:
-          typeof amountError === "function"
-            ? amountError(token.symbol, token.decimals)
-            : amountError,
+        [INVOICE_FIELDS.amount]: amountError(amount),
         [INVOICE_FIELDS.senderName]: missingName ? NEW_REQUEST_COPY.senderMissing : undefined,
       });
       return;
@@ -149,6 +151,11 @@ export function NewInvoiceForm({
           setAmount(event.target.value);
           setErrors((shown) => ({ ...shown, [INVOICE_FIELDS.amount]: undefined }));
         }}
+        // Too many decimals or a comma shows when the field is left, not only on Create; empty waits for submit.
+        onBlur={() =>
+          amount.trim() &&
+          setErrors((shown) => ({ ...shown, [INVOICE_FIELDS.amount]: amountError(amount) }))
+        }
         hint={COPY.amountHint(token.symbol, network, token.decimals)}
         error={errors[INVOICE_FIELDS.amount]}
       />
@@ -184,6 +191,7 @@ export function NewInvoiceForm({
           <div className="grid gap-5 sm:grid-cols-2">
             <TextField
               type="date"
+              min={new Date().toLocaleDateString("en-CA")}
               label={COPY.dueLabel}
               name="dueDate"
               hint={COPY.dueHint}
@@ -229,7 +237,7 @@ export function NewInvoiceForm({
         {request ? null : (
           <Link
             href={APP_ROUTES.invoices}
-            className="rounded-pill px-3 py-2 text-sm text-muted hover:text-ink"
+            className="inline-flex h-11 items-center rounded-pill px-3 text-sm text-muted hover:text-ink"
           >
             {COPY.cancel}
           </Link>

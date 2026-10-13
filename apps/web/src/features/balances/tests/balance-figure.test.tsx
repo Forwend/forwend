@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { TooltipProvider } from "@forwend/ui-web";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Balances, TokenBalance } from "@/features/balances/balances";
@@ -17,7 +18,9 @@ const usdc: TokenBalance = {
 };
 
 function show(balances: Balances | null, { failed = false } = {}) {
-  return render(<BalanceFigure balances={balances} failed={failed} onRetry={() => {}} />);
+  return render(<BalanceFigure balances={balances} failed={failed} onRetry={() => {}} />, {
+    wrapper: TooltipProvider,
+  });
 }
 
 describe("BalanceFigure", () => {
@@ -83,7 +86,9 @@ describe("MoneyActions", () => {
   it("Receive and Request work; Send, Transfer and Withdraw say why in their name and do nothing", () => {
     const onReceive = vi.fn();
     const onRequest = vi.fn();
-    render(<MoneyActions onReceive={onReceive} onRequest={onRequest} />);
+    render(<MoneyActions onReceive={onReceive} onRequest={onRequest} />, {
+      wrapper: TooltipProvider,
+    });
     fireEvent.click(screen.getByRole("button", { name: "Receive" }));
     expect(onReceive).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button", { name: "Request" }));

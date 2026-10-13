@@ -14,6 +14,7 @@ Use `/kit` for the implemented components. This file owns visual use; token sour
 - Step sequences form one connected path, horizontal on wide screens and vertical on phones.
 - Light/dark hero images share their composition. Footer ridges and halftone dots use art tokens; paper grain is light-only.
 - Glass sits over landscape art; floating navigation is the exception. Elsewhere use solid panels and soft shadows.
+- On phones the floating navigation keeps its section links behind a menu button (a native popover).
 
 ## Type and color
 
@@ -53,8 +54,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   opens the profile sheet); icon over label, the current tab's icon on the second surface. Pages show the active
   profile as a pill that opens the same sheet.
 - A choice opened from the sidebar is a menu; the same choice on a phone is a bottom sheet, which becomes a centered
-  panel from small screens up. Both are solid surface panels with the float shadow and rise from the edge they open
-  on; reduced motion removes the movement.
+  panel from small screens up. Both are solid surface panels with the float shadow. Menus rise from the edge they
+  open on and the phone sheet slides up from the screen edge; the centered panel appears without motion. Reduced
+  motion removes the movement. Behind a modal the page darkens with the `scrim` token in both themes.
 - Panels are solid surface with a hairline border, medium corners and no shadow; a panel's header row is ruled off.
   Figure strips and tables use hairline rules between cells and rows, not separate cards.
 - Totals across tokens (the total balance, its chart, the business figures, money in and out) are in USD, each
@@ -67,13 +69,16 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   bottom left, and the chart fills the right side. The total scales with its column (container units). Phones center
   the total and put the chart in its own panel below. The card has one padding on all sides.
 - Business overview (merchant, freelancer): title and range control, a ruled figure strip, received-per-day bars,
-  networks and money flow, then the payments table with direction filter, search and CSV export.
+  networks and money flow, then the latest payments with View all; filters, search and CSV export live on Transactions.
+  A range with nothing received says so in place of an empty chart.
 - Charts: one ink line (or ink bars) with a faint wash, a few hairline grid lines, round tick values from zero.
-  The river blue marks the latest or chosen point. Pointer or arrow keys show a readout; a hidden table gives screen
-  readers every value. Range choice is a segmented control.
+  The river blue marks the latest or chosen point. Pointer, tap or arrow keys show a readout; only keyboard moves are
+  announced, and a hidden table gives screen readers every value. Range choice is a segmented control. Received bars
+  group into weeks or months when a day would be too thin to see or touch. On phones the balance chart keeps its top
+  tick and its first and last dates. A failed figure shows "—" with Try again, never an endless skeleton.
 - Invoices and Activity: a status filter (All, Open, Paid, Settled, Expired) and a search; a row opens its invoice.
   Transactions has a direction filter (All, In, Out) and a search. The API filters and searches the whole list, and the
-  URL keeps both. A filter or search with no rows says nothing matched, with a button to clear them. A transaction hash links to the chain's block explorer in a new tab (Transactions, Activity,
+  URL keeps both. A confirmed transfer shows its status as plain text; only one still confirming gets a pill. A filter or search with no rows says nothing matched, with a button to clear them. A transaction hash links to the chain's block explorer in a new tab (Transactions, Activity,
   invoice detail, pay page).
 - Transactions table: ruled table from medium screens; the network has its own column only on the widest screens and
   sits under the counterparty otherwise. Phone rows show the network first and cut the time, never the network.
@@ -84,7 +89,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   the personal one (D-73).
 - Onboarding checklist: a "Get started" panel on the personal overview (under the balance card) and the freelancer
   overview (above the figure strip), with "n of m done" and a close button in its ruled header. Each step is a row
-  with a round mark (filled ink with a check when done), title and hint; a step not done has its action (secondary
+  with a round mark (filled ink with a check when done), title and hint (a done step shows its title only); a step not done has its action (secondary
   button or link) and Skip. Steps come from data: passkey linked, billing details (freelancer), first invoice or
   request, first paid in full, first final money in. Skipped steps and the closed card are remembered per profile in
   the browser; the card hides when closed or when every step left is done.
@@ -95,23 +100,31 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   with Copy and View request. A personal profile's invoices are Requests in the sidebar, list and breadcrumb.
 - A feature that is not built yet keeps its place in the subtle text color, with "Soon" as plain text at the end:
   no badge, no link. A disabled action says why in its accessible name and shows "Coming soon" in a tooltip on
-  hover or focus; no notice text is added to the page.
+  hover, focus or tap; no notice text is added to the page.
 - A toast is only for an event the user did not just do on that spot: a payment detected or settled while the app is
   open, or a save that leaves the page (billing details). Errors and anything that needs an answer stay inline beside
   their field or form. Toasts sit top right on desktop and above the tab bar on phones, as solid surface panels with
-  the float shadow; at most three, each gone after 5 s unless hovered or focused, with a close button. Screen
-  readers hear them through a polite live region.
+  the float shadow; at most three, each gone after 5 s unless hovered, focused or the tab is hidden, with a close
+  button. They enter from the edge they sit on and leave faster than they came. Screen readers hear them through a
+  polite live region.
 
 ## Checkout
 
 - `/pay/<id>` is one centered column on every width: logo, the issuer name as the one display-serif heading over the
   invoice number and title (a request without an issuer: "Name requests 12.50 USDC" over "Request INV-0001"), then
   solid hairline panels: the amount (Geist Mono, featured amount size) with token mark
-  and status pill, before-you-pay notes, the network confirm button, the send panel with wallet and exchange tabs (QR
-  beside the full address from small screens up), and the status timeline with each payment received (amount, status,
+  and status pill (partly paid: "Left to pay" with the rest as the figure, the invoice total and received in rows), then three numbered steps, one open at a time: 1. Network and token (the
+  invoice's one option as a selected card, the before-you-pay notes, the network warning and the confirm button),
+  2. How you pay (two choice cards, From a wallet and From an exchange), 3. Send the payment (that choice's
+  instructions, QR beside the full address from small screens up; on phones Copy comes before the QR; above them the exact amount with
+  its own Copy, which copies the plain decimal; for an exchange payer under 30 minutes before close, a warning that the withdrawal
+  can take longer). A finished step folds into one row: a filled check, its title, its choice under the title and
+  Change; steps not reached show only their muted title. Focus moves to the step that opens. No motion between steps.
+  Then the status timeline with each payment received (amount, status,
   transaction and explorer link; beside the link the short sender in Geist Mono, full address in a tooltip on hover
   or focus, and the block time like the page's other times; on phones they wrap under the amount). No image and no
-  glass; it follows the system theme.
+  glass; it follows the system theme. When a refresh fails the page keeps the last read and says it may be out of
+  date.
 - A secondary "Download invoice PDF" button sits under the heading in every state. Once settled, a Receipt panel
   follows the amount panel: amount paid, paid and settled times, each payment's and the settlement's full hash (Geist
   Mono) with the explorer named under it, and "Download receipt PDF". Before settlement there is no receipt. Once paid, the checkout close time is hidden.
@@ -119,7 +132,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   always, the receipt PDF once paid.
 - While a payment confirms, the timeline's step fills as blocks pass (a sweep until the first block passes) and the
   status line stays short: "Confirming · about 19 min left", the blocks left smaller beside it. The invoice detail uses
-  the same timeline, line and payments, and no status pill: the timeline carries the status.
+  the same timeline, line and payments, and no status pill: the timeline and the line carry the status (the line
+  names it in every state, such as Expired or Partially paid). The pay link shows only while the checkout can take
+  money. A current step that is not confirming shows an empty bar, never a full one.
 
 ## Theme and behavior
 
@@ -127,7 +142,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Product sections can force dark with their own `data-theme="dark"`. Use the theme variant for theme-only differences.
 - A loading button shows only a centered spinner, at its own size and colors, and keeps its accessible name.
 - Status changes keep row geometry stable. Labels accompany status colors. Mark all demonstration data as Sample.
-- Use motion tokens; respect reduced motion. No scroll hijacking or layout jumps during state changes.
+- Use motion tokens; respect reduced motion. No scroll hijacking or layout jumps during state changes. Loading
+  spinners (`data-motion="essential"`) keep turning under reduced motion; everything else stops. Buttons do not
+  shrink on press. The ⌘K dialog opens with no animation: it is opened by keyboard many times a day.
+- Touch targets are at least 44px on touch screens; small controls keep their look and grow only their hit area.
 - Target WCAG 2.2 AA, including text contrast, keyboard access and accessible status announcements.
 - Keyboard focus stays visible. Errors identify the field and explain the correction; loading and success states are
   accessible to screen readers. Copy controls confirm successful copying and handle unavailable clipboard access.

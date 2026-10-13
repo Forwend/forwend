@@ -41,7 +41,7 @@ export function ReceiveAddress({
           <span className="font-medium text-ink">{tail}</span>
         </p>
       </div>
-      <Button onClick={copy} className="h-11">
+      <Button onClick={copy} className="h-auto min-h-11 whitespace-normal py-2 text-center">
         {status === COPY_STATUS.copied ? (
           <Check aria-hidden className="size-[var(--fw-icon-md)]" />
         ) : (

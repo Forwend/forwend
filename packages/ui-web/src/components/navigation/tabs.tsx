@@ -27,7 +27,7 @@ export function Tabs({ items, label, defaultValue }: TabsProps) {
           <RadixTabs.Trigger
             key={item.value}
             value={item.value}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-pill px-4 py-2 text-sm font-medium text-muted transition-colors duration-[var(--fw-duration-fast)] ease-out hover:text-ink data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-sm"
+            className="relative inline-flex shrink-0 items-center justify-center gap-2 rounded-pill px-4 py-2 text-sm font-medium text-muted transition-colors duration-[var(--fw-duration-fast)] ease-out before:absolute before:inset-x-0 before:-inset-y-1 hover:text-ink data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-sm"
           >
             {item.icon}
             {item.label}
@@ -35,11 +35,7 @@ export function Tabs({ items, label, defaultValue }: TabsProps) {
         ))}
       </RadixTabs.List>
       {items.map((item) => (
-        <RadixTabs.Content
-          key={item.value}
-          value={item.value}
-          className="mt-6 focus-visible:outline-none"
-        >
+        <RadixTabs.Content key={item.value} value={item.value} className="mt-6">
           {item.content}
         </RadixTabs.Content>
       ))}

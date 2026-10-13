@@ -5,40 +5,38 @@
 
 @source "../../../../packages/ui-web/src";
 
-/* Hero signature: the river path draws forward as the sample payment settles. */
-@keyframes fw-draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
+/* Hero signature: the river line draws to each mark as the sample payment reaches that step. */
 .fw-river-path {
   fill: none;
   stroke: var(--fw-on-accent);
   stroke-width: 5;
   stroke-linecap: round;
   stroke-dasharray: 1;
-  stroke-dashoffset: 1;
   opacity: 0.85;
-  animation: fw-draw calc(var(--fw-duration-slower) * 4) var(--fw-ease-out) 0.5s forwards;
+  /* Same speed and curve as the marks, so the line arrives as its mark lights. */
+  transition: stroke-dashoffset var(--fw-duration-slow) var(--fw-ease-out);
 }
 
 .fw-river-mark {
-  /* Unlit marks need a dark ring: the painted water is bright near the sun. */
+  /* Unlit marks need a dark ring: the painted water is bright near the sun. The thicker unlit ring keeps
+     the ring the same width on screen while the mark is scaled down. */
   fill: var(--fw-glass);
   stroke: var(--fw-accent);
-  stroke-width: 3;
+  stroke-width: 4.5;
+  transform: scale(0.667);
+  transform-box: fill-box;
+  transform-origin: center;
   transition:
-    r var(--fw-duration-slow) var(--fw-ease-out),
+    transform var(--fw-duration-slow) var(--fw-ease-out),
+    stroke-width var(--fw-duration-slow) var(--fw-ease-out),
     fill var(--fw-duration-slow) var(--fw-ease-out);
 }
 
 .fw-river-mark-lit {
   fill: var(--fw-accent);
   stroke: var(--fw-on-accent);
+  stroke-width: 3;
+  transform: none;
 }
 
 /* At night the water is dark, so the route and the lit rings switch to light ink. */

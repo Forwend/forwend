@@ -28,20 +28,33 @@ export function BalancesList({
   }
   if (!balances) return <Skeleton className="h-40" />;
   if (balances.tokens.length === 0) return <p className="text-muted">{BALANCES_COPY.noTokens}</p>;
+  const columns = "md:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))]";
   return (
-    <ul className="flex flex-col gap-4">
-      {balances.tokens.map((t) => (
-        <li
-          key={`${t.chainId}:${t.token}`}
-          className="grid gap-4 rounded-md border border-line bg-surface p-5 sm:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))] sm:items-center"
-        >
-          <TokenMark chainId={t.chainId} symbol={t.symbol} />
-          <Amount label={BALANCES_COPY.inWallet} t={t} value={t.wallet} strong />
-          <Amount label={BALANCES_COPY.pendingLabel} t={t} value={t.pending} />
-          <Amount label={BALANCES_COPY.heldLabel} t={t} value={t.held} />
-        </li>
-      ))}
-    </ul>
+    <div className="rounded-md border border-line bg-surface">
+      {/* Each amount keeps its own label for screen readers; this row only shows them once on wide screens. */}
+      <div
+        aria-hidden
+        className={`hidden gap-4 border-b border-line px-5 py-2.5 text-right text-xs text-muted md:grid ${columns}`}
+      >
+        <span />
+        <span>{BALANCES_COPY.inWallet}</span>
+        <span>{BALANCES_COPY.pendingLabel}</span>
+        <span>{BALANCES_COPY.heldLabel}</span>
+      </div>
+      <ul className="divide-y divide-line">
+        {balances.tokens.map((t) => (
+          <li
+            key={`${t.chainId}:${t.token}`}
+            className={`grid gap-4 p-5 md:items-center md:py-4 ${columns}`}
+          >
+            <TokenMark chainId={t.chainId} symbol={t.symbol} />
+            <Amount label={BALANCES_COPY.inWallet} t={t} value={t.wallet} strong />
+            <Amount label={BALANCES_COPY.pendingLabel} t={t} value={t.pending} />
+            <Amount label={BALANCES_COPY.heldLabel} t={t} value={t.held} />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -57,8 +70,8 @@ function Amount({
   strong?: boolean;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 sm:flex-col sm:items-end sm:gap-1">
-      <span className="text-sm text-muted">{label}</span>
+    <div className="flex items-baseline justify-between gap-4 md:justify-end">
+      <span className="text-sm text-muted md:sr-only">{label}</span>
       {value === null ? (
         <span className="text-sm text-subtle">{BALANCES_COPY.unavailable}</span>
       ) : (

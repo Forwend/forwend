@@ -82,3 +82,38 @@ export function seriesTotal(series: HistorySeries): bigint {
 export function seriesChange(series: HistorySeries): bigint {
   return (series.values.at(-1) ?? 0n) - (series.values[0] ?? 0n);
 }
+
+export const GROUPINGS = {
+  week: "week",
+  month: "month",
+} as const;
+
+export type Grouping = (typeof GROUPINGS)[keyof typeof GROUPINGS];
+
+/**
+ * Daily amounts added up per week (from Monday) or month, in UTC; each date is the group's first day. A point belongs
+ * to the day it closes (00:00 of the next day), the last one, now, to today.
+ */
+export function groupSeries(series: HistorySeries, by: Grouping): HistorySeries {
+  const dates: Date[] = [];
+  const values: bigint[] = [];
+  series.dates.forEach((date, i) => {
+    const day = new Date(date.getTime() - 1);
+    const start =
+      by === GROUPINGS.month
+        ? Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), 1)
+        : Date.UTC(
+            day.getUTCFullYear(),
+            day.getUTCMonth(),
+            day.getUTCDate() - ((day.getUTCDay() + 6) % 7),
+          );
+    const value = series.values[i] ?? 0n;
+    const last = dates.length - 1;
+    if (dates[last]?.getTime() === start) values[last] = (values[last] ?? 0n) + value;
+    else {
+      dates.push(new Date(start));
+      values.push(value);
+    }
+  });
+  return { dates, values };
+}

@@ -24,11 +24,11 @@ export function Accordion({ items }: AccordionProps) {
       {items.map((item) => (
         <RadixAccordion.Item key={item.question} value={item.question}>
           <RadixAccordion.Header>
-            <RadixAccordion.Trigger className="group flex w-full items-center justify-between gap-6 py-5 text-left text-lg font-medium text-ink transition-colors duration-[var(--fw-duration-fast)] hover:text-accent">
+            <RadixAccordion.Trigger className="group flex w-full items-start justify-between gap-6 py-5 text-left text-lg font-medium text-ink transition-colors duration-[var(--fw-duration-fast)] hover:text-accent">
               {item.question}
               <ChevronDown
                 aria-hidden
-                className="size-[var(--fw-icon-md)] shrink-0 text-subtle transition-transform duration-[var(--fw-duration-base)] ease-out group-data-[state=open]:rotate-180"
+                className="mt-[calc((1lh_-_var(--fw-icon-md))/2)] size-[var(--fw-icon-md)] shrink-0 text-subtle transition-transform duration-[var(--fw-duration-base)] ease-out group-data-[state=open]:rotate-180"
               />
             </RadixAccordion.Trigger>
           </RadixAccordion.Header>

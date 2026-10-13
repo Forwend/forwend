@@ -39,7 +39,10 @@ export function InvoiceTimeline({
         : step === current && waiting
           ? STEP_STATES.current
           : STEP_STATES.upcoming,
-    ...(step === current && confirming ? { progress: confirmingProgress(blocksLeft, next) } : {}),
+    // A current step that is not confirming has not started filling: a full bar would read as done.
+    ...(step === current
+      ? { progress: confirming ? confirmingProgress(blocksLeft, next) : 0 }
+      : {}),
   }));
   return <PaymentTimeline label={label} steps={steps} />;
 }
@@ -52,7 +55,8 @@ export function ConfirmingStatus({ blocks, seconds }: { blocks: number; seconds:
       {blocks > 0 ? (
         <>
           {" "}
-          <span className="ml-1 font-mono text-xs text-muted tabular-nums">
+          {/* Changes on every poll; screen readers hear only the time left. */}
+          <span aria-hidden className="ml-1 font-mono text-xs text-muted tabular-nums">
             {COPY.blocks(blocks)}
           </span>
         </>

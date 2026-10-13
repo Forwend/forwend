@@ -1,4 +1,4 @@
-import { PAY_STATES, type PayState } from "@/features/pay/pay";
+import { PAY_METHODS, PAY_STATES, type PayState } from "@/features/pay/pay";
 
 /** Amounts arrive formatted with their symbol, like "1,250.00 USDC". */
 export const PAY_COPY = {
@@ -14,6 +14,17 @@ export const PAY_COPY = {
   invoicePdf: "Download invoice PDF",
   amountDue: "Amount due",
   amountPaid: "Amount paid",
+  leftToPay: "Left to pay",
+  invoiceTotal: "Invoice total",
+  receivedSoFar: "Received",
+  stale: "We can't reach Forwend right now, so this page may be out of date. It keeps retrying.",
+  loading: "Loading invoice",
+  exactAmount: "Exact amount",
+  copyAmount: "Copy amount",
+  amountCopied: "Amount copied",
+  copyAmountFailed: "Copy failed: type the amount instead",
+  closingSoon:
+    "Less than 30 minutes left. An exchange withdrawal can take longer; money that arrives after the checkout closes is held for you, not paid to the sender.",
   dueDate: "Due date",
   closes: "Checkout closes",
   closesIn: (left: string) => `in ${left}`,
@@ -24,19 +35,29 @@ export const PAY_COPY = {
   mismatch: "This payment page does not match the invoice. Do not pay; contact the sender.",
   unknownToken:
     "This page does not support the token this invoice asks for. Do not pay; contact the sender.",
-  beforeYouPay: "Before you pay",
+  stepNetwork: "Network and token",
+  stepDone: ", done",
+  pair: (symbol: string, network: string) => `${symbol} on ${network}`,
+  onlyOption: "The only way to pay this invoice",
+  change: "Change",
+  changeNetwork: "Change network and token",
+  changeMethod: "Change how you pay",
+  methods: {
+    [PAY_METHODS.wallet]: { label: "From a wallet", hint: "Send from a wallet app you control." },
+    [PAY_METHODS.exchange]: {
+      label: "From an exchange",
+      hint: "Withdraw from your exchange account.",
+    },
+  },
   host: "You are on",
   hostHint: "Check that this is the site the sender's link opened.",
-  refund: (amount: string) =>
-    `Send exactly ${amount}. If you send more, or pay after the checkout closes, the extra is held for you and not paid to the sender. Ask the sender to get it back; each refund is checked first.`,
+  refund:
+    "If you send more, or pay after the checkout closes, the extra is held for you and not paid to the sender. Ask the sender to get it back; each refund is checked first.",
   scam: "Forwend never asks you to pay a different address or an extra fee.",
   confirm: (symbol: string, network: string) => `I will send ${symbol} on ${network}`,
   confirmHint: "The address appears after you confirm the network.",
-  confirmed: (symbol: string, network: string) => `You will send ${symbol} on ${network}`,
   send: "Send the payment",
   how: "How you pay",
-  wallet: "From a wallet",
-  exchange: "From an exchange",
   walletSteps: (amount: string, network: string) => [
     `Open your wallet and choose the ${network} network.`,
     `Send exactly ${amount} to the address below. Scan the code or copy the address.`,

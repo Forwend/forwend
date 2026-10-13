@@ -21,18 +21,19 @@ export function SearchField({
   return (
     <label
       className={cx(
-        "flex h-9 min-w-0 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm focus-within:outline-2 focus-within:outline-focus",
+        "relative flex h-9 min-w-0 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm before:absolute before:inset-x-0 before:-inset-y-1 focus-within:outline-2 focus-within:outline-focus",
         className,
       )}
     >
       <Search aria-hidden className="size-[var(--fw-icon-sm)] shrink-0 text-muted" />
       <span className="sr-only">{label}</span>
+      {/* relative lifts the input above the label's hit-area pseudo, so a click still places the caret. */}
       <input
         type="search"
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
         placeholder={placeholder}
-        className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-subtle"
+        className="relative min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-subtle sm:text-sm"
       />
     </label>
   );

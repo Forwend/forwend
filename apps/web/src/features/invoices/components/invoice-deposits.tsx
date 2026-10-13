@@ -1,4 +1,11 @@
-import { Money, StatusPill, shortAddress, Tooltip } from "@forwend/ui-web";
+import {
+  Money,
+  PAYMENT_STATUS,
+  PAYMENT_STATUSES,
+  StatusPill,
+  shortAddress,
+  Tooltip,
+} from "@forwend/ui-web";
 import { ACTIVITY_KINDS, activityStatus } from "@/features/activity/activity";
 import { exactDigits, type Invoice, type InvoiceToken } from "@/features/invoices/invoices";
 import { INVOICE_COPY, INVOICES_COPY } from "@/features/invoices/invoices-copy";
@@ -24,6 +31,7 @@ export function InvoiceDeposits({
       <ul className="divide-y divide-line rounded-md border border-line">
         {invoice.deposits.map((d) => {
           const amount = BigInt(d.amount);
+          const status = activityStatus({ kind: ACTIVITY_KINDS.deposit, status: d.status });
           return (
             <li
               key={`${d.txHash}:${d.logIndex}`}
@@ -45,9 +53,14 @@ export function InvoiceDeposits({
                   </span>
                 </span>
               )}
-              <StatusPill
-                status={activityStatus({ kind: ACTIVITY_KINDS.deposit, status: d.status })}
-              />
+              {status === PAYMENT_STATUS.confirmed ? (
+                // Pill-sized, so the row keeps its height when a deposit confirms.
+                <span className="inline-flex shrink-0 items-center rounded-pill border border-transparent px-2.5 py-1 text-xs whitespace-nowrap text-muted">
+                  {PAYMENT_STATUSES[status].label}
+                </span>
+              ) : (
+                <StatusPill status={status} />
+              )}
               {d.late ? <span className="text-xs text-warning">{INVOICE_COPY.late}</span> : null}
               <span className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
                 <span className="flex items-center gap-1.5 text-xs text-muted">

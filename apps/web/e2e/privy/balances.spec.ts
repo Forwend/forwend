@@ -130,8 +130,9 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
   // The switcher opens as a bottom sheet with the profiles to choose from, from the tab bar.
   await tabs.getByRole("button", { name: "Profiles" }).click();
   const profilesSheet = page.getByRole("dialog", { name: "Profiles" });
+  // The current profile is the one choice made, not an on/off toggle.
   await expect(profilesSheet.getByRole("button", { name: "Personal" })).toHaveAttribute(
-    "aria-pressed",
+    "aria-current",
     "true",
   );
   await expect(profilesSheet.getByRole("link", { name: "New profile" })).toBeVisible();

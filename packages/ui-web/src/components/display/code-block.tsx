@@ -9,11 +9,20 @@ export interface CodeBlockProps {
   code: string;
   language: string;
   copyLabel?: string;
+  copiedLabel?: string;
+  failedLabel?: string;
 }
 
-export function CodeBlock({ code, language, copyLabel = "Copy code" }: CodeBlockProps) {
+export function CodeBlock({
+  code,
+  language,
+  copyLabel = "Copy code",
+  copiedLabel = "Copied",
+  failedLabel = "Copy failed",
+}: CodeBlockProps) {
   const [status, copy] = useCopy(code);
   const copied = status === COPY_STATUS.copied;
+  const failed = status === COPY_STATUS.failed;
   const html = useMemo(() => highlight(code), [code]);
   return (
     <div
@@ -25,21 +34,42 @@ export function CodeBlock({ code, language, copyLabel = "Copy code" }: CodeBlock
         <button
           type="button"
           onClick={copy}
-          aria-label={copied ? "Copied" : copyLabel}
-          className="inline-flex items-center gap-1.5 rounded-sm px-1.5 py-1 hover:text-ink"
+          className="relative inline-flex items-center gap-1.5 rounded-sm px-1.5 py-1 before:absolute before:-inset-2 hover:text-ink"
         >
           {copied ? (
             <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
           ) : (
             <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
           )}
-          {copied ? "Copied" : status === COPY_STATUS.failed ? "Copy failed" : "Copy"}
+          {copied ? (
+            copiedLabel
+          ) : failed ? (
+            failedLabel
+          ) : (
+            // Shows the original short "Copy"; screen readers hear what it copies.
+            <>
+              <span aria-hidden>Copy</span>
+              <span className="sr-only">{copyLabel}</span>
+            </>
+          )}
         </button>
+        <span role="status" className="sr-only">
+          {copied ? copiedLabel : failed ? failedLabel : ""}
+        </span>
       </div>
-      <pre className="fw-code overflow-x-auto p-4 font-mono text-sm leading-relaxed">
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: sugar-high escapes the code text and only adds its own span markup */}
-        <code dangerouslySetInnerHTML={{ __html: html }} />
-      </pre>
+      {/* biome-ignore lint/a11y/useSemanticElements: a fieldset groups form controls; this names a scroll area */}
+      <div
+        role="group"
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users scroll long lines sideways
+        tabIndex={0}
+        aria-label={`${language} code`}
+        className="overflow-x-auto focus-visible:-outline-offset-2"
+      >
+        <pre className="fw-code p-4 font-mono text-sm leading-relaxed">
+          {/* biome-ignore lint/security/noDangerouslySetInnerHtml: sugar-high escapes the code text and only adds its own span markup */}
+          <code dangerouslySetInnerHTML={{ __html: html }} />
+        </pre>
+      </div>
     </div>
   );
 }

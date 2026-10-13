@@ -33,7 +33,7 @@ export function ActionButton({
     >
       <span
         className={cx(
-          "grid size-12 place-items-center rounded-pill border shadow-sm transition-colors duration-[var(--fw-duration-fast)] group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-focus",
+          "grid size-12 place-items-center rounded-pill border shadow-sm transition-[background-color,border-color,color,opacity] duration-[var(--fw-duration-fast)] ease-out group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-focus",
           primary && !disabled
             ? "border-primary bg-primary text-on-primary group-hover:opacity-90"
             : "border-line bg-surface group-hover:bg-surface-2 group-aria-disabled:bg-surface-2 group-aria-disabled:shadow-none",

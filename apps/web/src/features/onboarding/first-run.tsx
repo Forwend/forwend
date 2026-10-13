@@ -75,7 +75,7 @@ export function FirstRun({
                 return (
                   <label
                     key={choice}
-                    className="group relative flex cursor-pointer border-line-strong flex-col items-start gap-1 rounded-md border bg-surface p-4 text-ink transition-colors duration-[var(--fw-duration-fast)] hover:border-ink has-checked:border-ink has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus sm:p-5"
+                    className="group relative flex cursor-pointer border-line-strong flex-col items-start gap-1 rounded-md border bg-surface p-4 text-ink transition-[border-color,background-color] duration-[var(--fw-duration-fast)] hover:bg-surface-2 has-checked:border-ink has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus sm:p-5"
                   >
                     <input
                       type="checkbox"

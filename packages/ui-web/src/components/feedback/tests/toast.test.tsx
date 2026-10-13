@@ -19,6 +19,11 @@ function ShowButton() {
   );
 }
 
+// jsdom has no AnimationEvent, so React listens for the prefixed name there.
+function endAnimation(element: Element) {
+  fireEvent(element, new Event("webkitAnimationEnd", { bubbles: true }));
+}
+
 function setup() {
   render(
     <ToastProvider>
@@ -61,13 +66,35 @@ describe("ToastProvider", () => {
     expect(screen.queryByRole("listitem")).toBeTruthy();
     fireEvent.blur(screen.getByRole("button", { name: "Close notification" }));
     act(() => vi.advanceTimersByTime(TOAST_MS));
+    endAnimation(item);
     expect(screen.queryByRole("listitem")).toBeNull();
+  });
+
+  it("does not run out while the tab is hidden", () => {
+    const { show } = setup();
+    show();
+    const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    act(() => vi.advanceTimersByTime(TOAST_MS * 2));
+    expect(screen.getByRole("listitem").dataset.closing).toBeUndefined();
+    hidden.mockReturnValue(false);
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    act(() => vi.advanceTimersByTime(TOAST_MS));
+    expect(screen.getByRole("listitem").dataset.closing).toBe("true");
+    hidden.mockRestore();
   });
 
   it("closes from its close button", () => {
     const { show } = setup();
     show();
     fireEvent.click(screen.getByRole("button", { name: "Close notification" }));
+    const item = screen.getByRole("listitem");
+    expect(item.dataset.closing).toBe("true");
+    endAnimation(item);
     expect(screen.queryByRole("listitem")).toBeNull();
   });
 });

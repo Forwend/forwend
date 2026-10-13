@@ -79,8 +79,8 @@ export {
 } from "./components/overlays/menu";
 export type { SheetProps } from "./components/overlays/sheet";
 export { Sheet } from "./components/overlays/sheet";
-export type { TooltipProps } from "./components/overlays/tooltip";
-export { Tooltip } from "./components/overlays/tooltip";
+export type { TooltipProps, TooltipProviderProps } from "./components/overlays/tooltip";
+export { Tooltip, TooltipProvider } from "./components/overlays/tooltip";
 export type { ActivityDirection, ActivityRowProps } from "./components/payments/activity-row";
 export { ACTIVITY_DIRECTIONS, ActivityRow } from "./components/payments/activity-row";
 export type { AddressProps } from "./components/payments/address/address";

@@ -2,7 +2,7 @@
 
 import { STEP_STATES, type StepState } from "@forwend/ui-web";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   FINAL_STEP_STATES,
   HERO_STEP_DELAYS_MS,
@@ -15,8 +15,17 @@ import {
   RIVER_SOURCE,
   RIVER_VIEWBOX,
 } from "@/screens/landing/sections/hero/river";
-import { smoothPath } from "@/shared/art/art-paths";
+import { smoothPath, smoothPathShares } from "@/shared/art/art-paths";
 import { HERO_IMAGE, HERO_NIGHT_IMAGE } from "@/shared/assets/images";
+
+const RIVERS = [
+  { marks: RIVER_MARKS_COMPACT, className: "lg:hidden" },
+  { marks: RIVER_MARKS, className: "hidden lg:inline" },
+].map((river) => ({
+  ...river,
+  d: smoothPath([RIVER_SOURCE, ...river.marks]),
+  shares: smoothPathShares([RIVER_SOURCE, ...river.marks]),
+}));
 
 function statesAt(reached: number): StepState[] {
   return HERO_STEPS.map((_, i) =>
@@ -26,20 +35,36 @@ function statesAt(reached: number): StepState[] {
 
 // The signature moment: each payment step lights a mark on the river while the path draws forward.
 export function HeroJourney() {
-  const [states, setStates] = useState<readonly StepState[]>(statesAt(0));
+  // Starts with nothing lit, so the first step draws the line from the source too.
+  const [states, setStates] = useState<readonly StepState[]>(statesAt(-1));
+  const reached = states.filter((state) => state !== STEP_STATES.upcoming).length;
+  const payment = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setStates(FINAL_STEP_STATES);
       return;
     }
-    const timers = HERO_STEP_DELAYS_MS.map((delay, i) =>
-      setTimeout(
-        () => setStates(i === HERO_STEPS.length - 1 ? FINAL_STEP_STATES : statesAt(i)),
-        delay,
-      ),
+    let timers: ReturnType<typeof setTimeout>[] = [];
+    // On phones the river and the sample invoice sit below the fold: play once they are in view, not unseen.
+    const seen = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        seen.disconnect();
+        timers = HERO_STEP_DELAYS_MS.map((delay, i) =>
+          setTimeout(
+            () => setStates(i === HERO_STEPS.length - 1 ? FINAL_STEP_STATES : statesAt(i)),
+            delay,
+          ),
+        );
+      },
+      { threshold: 0.5 },
     );
-    return () => timers.forEach(clearTimeout);
+    if (payment.current) seen.observe(payment.current);
+    return () => {
+      seen.disconnect();
+      timers.forEach(clearTimeout);
+    };
   }, []);
 
   return (
@@ -50,7 +75,7 @@ export function HeroJourney() {
           src={HERO_IMAGE.src}
           alt=""
           fill
-          priority
+          preload
           sizes="100vw"
           className="object-cover object-center dark:hidden"
         />
@@ -76,40 +101,33 @@ export function HeroJourney() {
           focusable="false"
           className="absolute inset-0 h-full w-full"
         >
-          {[
-            { marks: RIVER_MARKS_COMPACT, className: "lg:hidden" },
-            { marks: RIVER_MARKS, className: "hidden lg:inline" },
-          ].map(({ marks, className }) => (
+          {RIVERS.map(({ d, shares, className }) => (
             <path
               key={`path-${className}`}
-              d={smoothPath([RIVER_SOURCE, ...marks])}
+              d={d}
               pathLength={1}
+              // The line ends at the last lit mark, so it moves on the same clock as the marks.
+              style={{ strokeDashoffset: 1 - (shares[reached - 1] ?? 0) }}
               className={`fw-river-path ${className}`}
             />
           ))}
-          {[
-            { marks: RIVER_MARKS_COMPACT, className: "lg:hidden" },
-            { marks: RIVER_MARKS, className: "hidden lg:inline" },
-          ].map(({ marks, className }) => (
+          {RIVERS.map(({ marks, className }) => (
             <g key={className} className={className}>
-              {marks.map(([cx, cy], i) => {
-                const lit = states[i] !== STEP_STATES.upcoming;
-                return (
-                  <circle
-                    key={`${cx}-${cy}`}
-                    data-river-mark={i}
-                    cx={cx}
-                    cy={cy}
-                    r={lit ? 9 : 6}
-                    className={lit ? "fw-river-mark fw-river-mark-lit" : "fw-river-mark"}
-                  />
-                );
-              })}
+              {marks.map(([cx, cy], i) => (
+                <circle
+                  key={`${cx}-${cy}`}
+                  data-river-mark={i}
+                  cx={cx}
+                  cy={cy}
+                  r={9}
+                  className={i < reached ? "fw-river-mark fw-river-mark-lit" : "fw-river-mark"}
+                />
+              ))}
             </g>
           ))}
         </svg>
       </div>
-      <div className="mt-auto flex justify-center pt-12 lg:justify-end lg:pr-20">
+      <div ref={payment} className="mt-auto flex justify-center pt-12 lg:justify-end lg:pr-20">
         <HeroPayment states={states} />
       </div>
     </>

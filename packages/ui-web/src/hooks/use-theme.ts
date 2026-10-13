@@ -21,6 +21,17 @@ function saved(): Theme | null {
   }
 }
 
+// Without this, every element with a color transition fades on its own timing and the page changes in pieces. The
+// forced style recalc applies the new theme while transitions are off, so removing the style starts none.
+function applyTheme(theme: Theme) {
+  const style = document.createElement("style");
+  style.textContent = "*,*::before,*::after{transition:none!important}";
+  document.head.append(style);
+  document.documentElement.setAttribute(THEME_ATTRIBUTE, theme);
+  void getComputedStyle(document.documentElement).color;
+  style.remove();
+}
+
 // One source of truth: the data-theme attribute on <html>. Every user of the hook reads it and re-renders when it
 // changes, so two switches on one page always agree. With no saved choice the attribute follows the system.
 function subscribe(onChange: () => void): () => void {
@@ -31,11 +42,7 @@ function subscribe(onChange: () => void): () => void {
   });
   const media = window.matchMedia(DARK_QUERY);
   const onSystem = () => {
-    if (!saved())
-      document.documentElement.setAttribute(
-        THEME_ATTRIBUTE,
-        media.matches ? THEMES.dark : THEMES.light,
-      );
+    if (!saved()) applyTheme(media.matches ? THEMES.dark : THEMES.light);
   };
   media.addEventListener("change", onSystem);
   return () => {
@@ -52,7 +59,7 @@ export function useTheme(): [Theme, (theme: Theme | ((current: Theme) => Theme))
   const theme = useSyncExternalStore(subscribe, readTheme, () => THEMES.light);
   const setTheme = (choice: Theme | ((current: Theme) => Theme)) => {
     const next = typeof choice === "function" ? choice(readTheme()) : choice;
-    document.documentElement.setAttribute(THEME_ATTRIBUTE, next);
+    applyTheme(next);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, next);
     } catch {

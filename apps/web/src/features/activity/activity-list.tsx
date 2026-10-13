@@ -6,7 +6,6 @@ import {
   Button,
   SearchField,
   SegmentedControl,
-  Skeleton,
 } from "@forwend/ui-web";
 import Link from "next/link";
 import { useState } from "react";
@@ -22,6 +21,7 @@ import { ACTIVITY_COPY } from "@/features/activity/activity-copy";
 import { chainName } from "@/shared/chains/chains";
 import { ExplorerLink } from "@/shared/chains/explorer-link";
 import { NoMatch } from "@/shared/components/no-match";
+import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
@@ -58,6 +58,9 @@ function ProfileActivity({ profileId }: ActivityListProps) {
   const rows = data?.items ?? [];
   const noActivity = !filters.filtered && data && rows.length === 0;
   const more = Boolean(data?.nextCursor);
+  // A new filter or search loads in place of as many rows as were shown.
+  const [skeletonRows, setSkeletonRows] = useState(SKELETON_ROWS);
+  if (rows.length > 0 && rows.length !== skeletonRows) setSkeletonRows(rows.length);
 
   return (
     <section
@@ -99,7 +102,10 @@ function ProfileActivity({ profileId }: ActivityListProps) {
           </Button>
         </div>
       ) : !data ? (
-        <Skeleton className="h-24" />
+        <RowsSkeleton
+          count={skeletonRows}
+          className="overflow-hidden rounded-md border border-line bg-surface"
+        />
       ) : noActivity ? (
         <p className="py-2 text-muted">{ACTIVITY_COPY.emptyActivity}</p>
       ) : (
@@ -115,7 +121,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
                     // The same transaction can pay two invoices, and one invoice can get two payments in it.
                     // biome-ignore lint/suspicious/noArrayIndexKey: the position completes the key
                     key={`${item.kind}:${item.invoiceId}:${item.txHash ?? ""}:${i}`}
-                    className="relative px-4 hover:bg-[color-mix(in_oklab,var(--fw-surface-2)_50%,transparent)]"
+                    className="relative px-4 hover:bg-[color-mix(in_oklab,var(--fw-surface-2)_50%,transparent)] active:bg-surface-2"
                   >
                     <ActivityRow
                       // The title's link covers the row, so the whole row opens the invoice.
@@ -127,7 +133,8 @@ function ProfileActivity({ profileId }: ActivityListProps) {
                           {deposit ? ACTIVITY_COPY.deposit : ACTIVITY_COPY.invoice}
                         </Link>
                       }
-                      detail={`${TIME.format(new Date(item.at))} · ${chainName(item.chainId)}`}
+                      // The network first: a narrow row cuts the time, never the network.
+                      detail={`${chainName(item.chainId)} · ${TIME.format(new Date(item.at))}`}
                       direction={
                         deposit ? ACTIVITY_DIRECTIONS.incoming : ACTIVITY_DIRECTIONS.request
                       }

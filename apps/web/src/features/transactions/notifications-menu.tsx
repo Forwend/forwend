@@ -8,6 +8,7 @@ import {
   MenuSeparator,
   MenuTrigger,
   Money,
+  Skeleton,
 } from "@forwend/ui-web";
 import { ArrowDownLeft, Bell } from "lucide-react";
 import Link from "next/link";
@@ -73,7 +74,7 @@ export function NotificationsMenu({
             ? `${TRANSACTIONS_COPY.notifications}, ${TRANSACTIONS_COPY.newCount(fresh)}`
             : TRANSACTIONS_COPY.notifications
         }
-        className={`relative grid size-9 place-items-center rounded-md text-muted outline-none hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-focus data-[state=open]:bg-surface-2 data-[state=open]:text-ink ${className ?? ""}`}
+        className={`relative grid size-11 place-items-center rounded-md text-muted lg:size-9 outline-none hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-focus data-[state=open]:bg-surface-2 data-[state=open]:text-ink ${className ?? ""}`}
       >
         <Bell aria-hidden className="size-[var(--fw-icon-md)]" />
         {fresh ? (
@@ -82,7 +83,24 @@ export function NotificationsMenu({
       </MenuTrigger>
       <MenuContent align="end" className="w-80">
         <MenuLabel>{TRANSACTIONS_COPY.notifications}</MenuLabel>
-        {received.length === 0 ? (
+        {!list.currentData && list.isError ? (
+          <>
+            <p className="px-3 pb-1 text-sm text-muted">{TRANSACTIONS_COPY.failed}</p>
+            <MenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                list.refetch();
+              }}
+            >
+              {TRANSACTIONS_COPY.retry}
+            </MenuItem>
+          </>
+        ) : !list.currentData ? (
+          <div className="flex flex-col gap-2 px-3 pb-3">
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+          </div>
+        ) : received.length === 0 ? (
           <p className="px-3 pb-3 text-sm text-muted">{TRANSACTIONS_COPY.noNotifications}</p>
         ) : (
           received.map((t) => (
@@ -100,7 +118,7 @@ export function NotificationsMenu({
                     <Money baseUnits={BigInt(t.amount)} decimals={t.decimals} token={t.symbol} />
                   </span>
                   <span className="block truncate text-xs text-muted">
-                    {TIME.format(new Date(t.at))} · {chainName(t.chainId)}
+                    {chainName(t.chainId)} · {TIME.format(new Date(t.at))}
                   </span>
                 </span>
               </Link>

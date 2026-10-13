@@ -7,8 +7,15 @@ import { BALANCES_COPY } from "@/features/balances/balances-copy";
 import { niceTop, toNumber, useChart } from "@/features/balances/charts/use-chart";
 
 // Points are the ends of UTC days (00:00 of the next day); a point is labeled with the day it closes. The last is now.
-const DAY = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
-const COMPACT = new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 });
+export const DAY = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+export const COMPACT = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
 const DAY_MS = 86_400_000;
 
 export function dayLabel(series: HistorySeries, index: number): string {
@@ -22,7 +29,8 @@ export function amountLabel(series: HistorySeries, index: number): string {
 }
 
 const PAD = { top: 12, right: 8, bottom: 28, left: 52 } as const;
-const PAD_COMPACT = { top: 6, right: 6, bottom: 6, left: 6 } as const;
+// Phones: the top tick sits above its line inside the plot, the first and last dates under it.
+const PAD_COMPACT = { top: 18, right: 6, bottom: 20, left: 6 } as const;
 
 export function BalanceChart({
   series,
@@ -40,7 +48,7 @@ export function BalanceChart({
   const count = series.values.length;
   const x = (i: number, width: number) =>
     pad.left + (count < 2 ? 0 : (i / (count - 1)) * (width - pad.left - pad.right));
-  const chart = useChart(count, x);
+  const chart = useChart((width) => series.values.map((_, i) => x(i, width)));
   const { width, height, active } = chart;
 
   const numbers = series.values.map((v) => toNumber(v, USD_DECIMALS));
@@ -52,7 +60,8 @@ export function BalanceChart({
   const base = (height - pad.bottom).toFixed(1);
   const area = `${line}L${x(count - 1, width).toFixed(1)},${base}L${x(0, width).toFixed(1)},${base}Z`;
   const ticks = [0, top / 2, top];
-  const dates = count > 2 ? [0, Math.floor((count - 1) / 2), count - 1] : [0, count - 1];
+  const dates =
+    count > 2 && !compact ? [0, Math.floor((count - 1) / 2), count - 1] : [0, count - 1];
   const point = active ?? null;
   const pointX = point === null ? 0 : x(point, width);
 
@@ -66,7 +75,7 @@ export function BalanceChart({
           tabIndex={0}
           role="img"
           aria-label={`${label}. ${BALANCES_COPY.chartKeys}`}
-          className="block rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
+          className="block touch-pan-y rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
           {...chart.handlers}
         >
           <defs>
@@ -75,52 +84,48 @@ export function BalanceChart({
               <stop offset="100%" stopColor="var(--fw-ink)" stopOpacity="0" />
             </linearGradient>
           </defs>
-          {compact
-            ? null
-            : ticks.map((t) => (
-                <g key={t}>
-                  <line
-                    x1={pad.left}
-                    x2={width - pad.right}
-                    y1={y(t)}
-                    y2={y(t)}
-                    stroke="var(--fw-line-strong)"
-                    strokeOpacity="0.45"
-                  />
-                  <text
-                    x={pad.left - 10}
-                    y={y(t)}
-                    dy="0.32em"
-                    textAnchor="end"
-                    stroke="var(--fw-surface)"
-                    strokeWidth="2"
-                    strokeLinejoin="round"
-                    strokeOpacity="0.8"
-                    paintOrder="stroke"
-                    className="fill-muted font-mono text-2xs tabular-nums"
-                  >
-                    {COMPACT.format(t)}
-                  </text>
-                </g>
-              ))}
-          {compact
-            ? null
-            : dates.map((i, n) => (
-                <text
-                  key={i}
-                  x={x(i, width)}
-                  y={height - 8}
-                  textAnchor={n === 0 ? "start" : n === dates.length - 1 ? "end" : "middle"}
-                  stroke="var(--fw-surface)"
-                  strokeWidth="2"
-                  strokeLinejoin="round"
-                  strokeOpacity="0.8"
-                  paintOrder="stroke"
-                  className="fill-muted text-2xs"
-                >
-                  {dayLabel(series, i)}
-                </text>
-              ))}
+          {(compact ? [top] : ticks).map((t) => (
+            <g key={t}>
+              <line
+                x1={pad.left}
+                x2={width - pad.right}
+                y1={y(t)}
+                y2={y(t)}
+                stroke="var(--fw-line-strong)"
+                strokeOpacity="0.45"
+              />
+              <text
+                x={compact ? pad.left : pad.left - 10}
+                y={y(t)}
+                dy={compact ? "-0.4em" : "0.32em"}
+                textAnchor={compact ? "start" : "end"}
+                stroke="var(--fw-surface)"
+                strokeWidth="2"
+                strokeLinejoin="round"
+                strokeOpacity="0.8"
+                paintOrder="stroke"
+                className="fill-muted font-mono text-2xs tabular-nums"
+              >
+                {COMPACT.format(t)}
+              </text>
+            </g>
+          ))}
+          {dates.map((i, n) => (
+            <text
+              key={i}
+              x={x(i, width)}
+              y={height - (compact ? 4 : 8)}
+              textAnchor={n === 0 ? "start" : n === dates.length - 1 ? "end" : "middle"}
+              stroke="var(--fw-surface)"
+              strokeWidth="2"
+              strokeLinejoin="round"
+              strokeOpacity="0.8"
+              paintOrder="stroke"
+              className="fill-muted text-2xs"
+            >
+              {dayLabel(series, i)}
+            </text>
+          ))}
           <path d={area} fill={`url(#${id}-wash)`} />
           <path
             d={line}
@@ -161,7 +166,14 @@ export function BalanceChart({
           )}
         </svg>
       ) : null}
-      <ChartReadout series={series} label={label} active={point} left={pointX} width={width} />
+      <ChartReadout
+        series={series}
+        label={label}
+        active={point}
+        announce={chart.announce}
+        left={pointX}
+        width={width}
+      />
     </div>
   );
 }
@@ -170,31 +182,38 @@ export function ChartReadout({
   series,
   label,
   active,
+  announce,
   left,
   width,
+  dateLabel = (i) => dayLabel(series, i),
 }: {
   series: HistorySeries;
   label: string;
   active: number | null;
+  announce: boolean;
   left: number;
   width: number;
+  dateLabel?: (index: number) => string;
 }) {
   return (
     <>
       {active === null ? null : (
         <div
           aria-hidden
-          className="pointer-events-none absolute top-0 z-10 flex flex-col gap-0.5 rounded-md border border-line bg-surface px-3 py-2 shadow-md"
-          style={{ left: Math.min(Math.max(left, 80), width - 80), transform: "translateX(-50%)" }}
+          className="pointer-events-none absolute top-0 left-0 z-10 flex flex-col gap-0.5 rounded-md border border-line bg-surface px-3 py-2 shadow-md"
+          // Centered on the point but kept inside the chart; the percentages are the readout's own width.
+          style={{
+            transform: `translateX(clamp(0px, calc(${left}px - 50%), calc(${width}px - 100%)))`,
+          }}
         >
           <span className="font-mono text-sm font-medium whitespace-nowrap text-ink tabular-nums">
             {amountLabel(series, active)}
           </span>
-          <span className="text-xs text-muted">{dayLabel(series, active)}</span>
+          <span className="text-xs text-muted">{dateLabel(active)}</span>
         </div>
       )}
       <p aria-live="polite" className="sr-only">
-        {active === null ? "" : `${dayLabel(series, active)}: ${amountLabel(series, active)}`}
+        {active === null || !announce ? "" : `${dateLabel(active)}: ${amountLabel(series, active)}`}
       </p>
       {/* sr-only on the table itself does not hold: a table grows to its rows, and a year of rows ran far below the
           page, leaving an empty area to scroll through. A block wrapper clips it. */}
@@ -204,7 +223,7 @@ export function ChartReadout({
           <tbody>
             {series.values.map((_, i) => (
               <tr key={series.dates[i]?.toISOString() ?? i}>
-                <th scope="row">{dayLabel(series, i)}</th>
+                <th scope="row">{dateLabel(i)}</th>
                 <td>{amountLabel(series, i)}</td>
               </tr>
             ))}

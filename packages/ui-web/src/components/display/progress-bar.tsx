@@ -8,11 +8,11 @@ export function ProgressBar({ label = "Working", className }: LoaderProps) {
       role="progressbar"
       aria-label={label}
       className={cx(
-        "relative block h-1.5 w-full overflow-hidden rounded-pill bg-surface-2",
+        "relative block h-1.5 w-full overflow-hidden rounded-pill bg-surface-2 motion-reduce:bg-[color-mix(in_oklab,var(--fw-accent)_30%,var(--fw-line))]",
         className,
       )}
     >
-      <span className="absolute inset-y-0 left-0 w-2/5 rounded-pill bg-accent animate-[fw-progress_calc(var(--fw-duration-slower)*1.4)_var(--fw-ease-in-out)_infinite]" />
+      <span className="absolute inset-y-0 left-0 w-2/5 rounded-pill bg-accent animate-[fw-progress_calc(var(--fw-duration-slower)*1.4)_var(--fw-ease-in-out)_infinite] motion-reduce:hidden" />
     </span>
   );
 }

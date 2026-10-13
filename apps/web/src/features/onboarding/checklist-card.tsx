@@ -58,7 +58,7 @@ export function ChecklistCard({
           type="button"
           aria-label={COPY.close}
           onClick={onClose}
-          className="ml-auto grid size-9 place-items-center rounded-sm text-muted hover:bg-surface-2 hover:text-ink"
+          className="ml-auto grid size-11 place-items-center rounded-sm sm:size-9 text-muted hover:bg-surface-2 hover:text-ink"
         >
           <X aria-hidden className="size-[var(--fw-icon-sm)]" />
         </button>
@@ -70,7 +70,7 @@ export function ChecklistCard({
           return (
             <li
               key={step.id}
-              className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3 sm:flex-nowrap sm:px-5"
+              className={`flex flex-wrap items-center gap-x-4 gap-y-3 px-4 sm:flex-nowrap sm:px-5 ${step.done ? "py-2" : "py-3"}`}
             >
               <span
                 className={`grid size-6 shrink-0 place-items-center rounded-pill border ${
@@ -84,20 +84,22 @@ export function ChecklistCard({
                 <span className={`font-medium ${step.done ? "text-muted" : "text-ink"}`}>
                   {text.title}
                 </span>
-                <span className="text-sm text-muted">{text.hint}</span>
+                {/* A finished step keeps only its title, so the steps left stand out. */}
+                {step.done ? null : <span className="text-sm text-muted">{text.hint}</span>}
               </div>
               {step.done ? null : (
                 <div className="flex w-full items-center gap-1 pl-10 sm:w-auto sm:shrink-0 sm:pl-0">
                   {"href" in action ? (
                     <Link
                       href={action.href}
-                      className={buttonClasses({ variant: "secondary", size: "sm" })}
+                      className={`${buttonClasses({ variant: "secondary", size: "sm" })} max-sm:h-11`}
                     >
                       {text.action}
                     </Link>
                   ) : (
                     <Button
                       size="sm"
+                      className="max-sm:h-11"
                       variant="secondary"
                       loading={action.busy}
                       onClick={action.onClick}
@@ -107,6 +109,7 @@ export function ChecklistCard({
                   )}
                   <Button
                     size="sm"
+                    className="max-sm:h-11"
                     variant="ghost"
                     aria-label={COPY.skipStep(text.title)}
                     onClick={() => onSkip(step.id)}

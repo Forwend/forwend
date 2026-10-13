@@ -239,12 +239,14 @@ export async function mockApi(page: Page, lists: SampleLists = SAMPLE_LISTS) {
       // A point per day: a year of them is what once ran the chart's hidden table far below the page.
       const days = Number(url.searchParams.get("days"));
       const zeros = Array.from({ length: days }, () => "0");
+      // 25 USDC in every 7th day: a range with nothing received shows a sentence, not the chart.
+      const weekly = (i: number) => (i % 7 === 0 ? 25 : 0);
       return route.fulfill({
         json: {
           points: zeros.map((_, i) => ({
             at: new Date(NOW - (days - 1 - i) * 86_400_000).toISOString(),
             estimatedUsd: "18420.35",
-            receivedUsd: "0.00",
+            receivedUsd: `${weekly(i)}.00`,
             sentUsd: "0.00",
           })),
           tokens: [
@@ -254,7 +256,7 @@ export async function mockApi(page: Page, lists: SampleLists = SAMPLE_LISTS) {
               symbol: "USDC",
               decimals: 6,
               balances: zeros.map(() => "18420350000"),
-              received: zeros,
+              received: zeros.map((_, i) => String(weekly(i) * 1_000_000)),
               sent: zeros,
             },
           ],

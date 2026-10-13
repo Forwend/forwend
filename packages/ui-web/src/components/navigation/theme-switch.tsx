@@ -19,7 +19,7 @@ export function ThemeSwitch({ className }: ThemeSwitchProps) {
       type="button"
       onClick={() => setTheme((current) => (current === THEMES.dark ? THEMES.light : THEMES.dark))}
       className={cx(
-        "inline-flex size-10 shrink-0 items-center justify-center rounded-pill border border-line bg-surface text-ink shadow-sm transition-colors duration-[var(--fw-duration-fast)] ease-out hover:bg-surface-2",
+        "relative inline-flex size-10 shrink-0 items-center justify-center rounded-pill border border-line bg-surface text-ink shadow-sm transition-colors duration-[var(--fw-duration-fast)] ease-out before:absolute before:-inset-0.5 hover:bg-surface-2",
         className,
       )}
     >

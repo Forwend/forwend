@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  GROUPINGS,
+  groupSeries,
   historySeries,
   seriesChange,
   seriesTotal,
@@ -47,5 +49,39 @@ describe("historySeries", () => {
     if (!received || !balances) throw new Error("no series");
     expect(seriesTotal(received)).toBe(10005n);
     expect(seriesChange(balances)).toBe(7005n);
+  });
+});
+
+describe("groupSeries", () => {
+  // Ends of the UTC days Sun Aug 30 to Thu Sep 3 2026, then now on Fri Sep 4.
+  const series = {
+    dates: [
+      "2026-08-31T00:00:00Z",
+      "2026-09-01T00:00:00Z",
+      "2026-09-02T00:00:00Z",
+      "2026-09-03T00:00:00Z",
+      "2026-09-04T00:00:00Z",
+      "2026-09-04T09:30:00Z",
+    ].map((at) => new Date(at)),
+    values: [100n, 200n, 1n, 2n, 3n, 4n],
+  };
+
+  it("adds days up per week from Monday, each point on the day it closes", () => {
+    const weeks = groupSeries(series, GROUPINGS.week);
+    expect(weeks.dates.map((d) => d.toISOString().slice(0, 10))).toEqual([
+      "2026-08-24",
+      "2026-08-31",
+    ]);
+    expect(weeks.values).toEqual([100n, 210n]);
+  });
+
+  it("adds days up per month, keeping every cent", () => {
+    const months = groupSeries(series, GROUPINGS.month);
+    expect(months.dates.map((d) => d.toISOString().slice(0, 10))).toEqual([
+      "2026-08-01",
+      "2026-09-01",
+    ]);
+    expect(months.values).toEqual([300n, 10n]);
+    expect(seriesTotal(months)).toBe(seriesTotal(series));
   });
 });

@@ -53,16 +53,13 @@ export function BillingDetailsForm({
     }
     if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email))
       shown.email = COPY.errors.email;
-    // The select has no error state of its own: a missing country is named in the form's alert.
+    if (!country) shown.country = COPY.errors.country;
     flushSync(() => {
       setErrors(shown);
-      setFormError(country ? "" : COPY.errors.country);
+      setFormError("");
     });
-    if (Object.keys(shown).length > 0 || !country) {
-      (
-        form.querySelector<HTMLElement>('[aria-invalid="true"]') ??
-        document.getElementById(COUNTRY_ID)
-      )?.focus();
+    if (Object.keys(shown).length > 0) {
+      form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
       return;
     }
     setBusy(true);
@@ -100,7 +97,11 @@ export function BillingDetailsForm({
         placeholder={COPY.countryPlaceholder}
         options={countries}
         value={country}
-        onValueChange={setCountry}
+        onValueChange={(value) => {
+          setCountry(value);
+          setErrors((current) => ({ ...current, country: undefined }));
+        }}
+        error={errors.country}
       />
       <TextField
         label={COPY.taxId}
@@ -123,7 +124,7 @@ export function BillingDetailsForm({
         </Button>
         <Link
           href={APP_ROUTES.home}
-          className="rounded-pill px-3 py-2 text-sm text-muted hover:text-ink"
+          className="inline-flex h-11 items-center rounded-pill px-3 text-sm text-muted hover:text-ink"
         >
           {COPY.cancel}
         </Link>

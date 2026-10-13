@@ -60,20 +60,55 @@ export function seeded(seed: number): () => number {
 
 type Point = readonly [number, number];
 
-/** Smooth path through the points (Catmull-Rom converted to cubic Béziers). */
-export function smoothPath(points: readonly Point[]): string {
-  const [first, ...rest] = points;
-  if (!first) return "";
-  let d = `M${first[0]} ${first[1]}`;
-  for (let i = 0; i < rest.length; i++) {
+type Cubic = readonly [Point, Point, Point, Point];
+
+// Catmull-Rom through the points, as one cubic Bézier per pair of neighbours.
+function smoothSegments(points: readonly Point[]): Cubic[] {
+  const segments: Cubic[] = [];
+  for (let i = 0; i < points.length - 1; i++) {
     const p0 = points[i - 1] ?? points[i];
     const p1 = points[i];
     const p2 = points[i + 1];
     const p3 = points[i + 2] ?? p2;
     if (!p0 || !p1 || !p2 || !p3) continue;
-    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
-    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    const c1: Point = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2: Point = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    segments.push([p1, c1, c2, p2]);
+  }
+  return segments;
+}
+
+/** Smooth path through the points (Catmull-Rom converted to cubic Béziers). */
+export function smoothPath(points: readonly Point[]): string {
+  const [first] = points;
+  if (!first) return "";
+  let d = `M${first[0]} ${first[1]}`;
+  for (const [, c1, c2, p2] of smoothSegments(points)) {
     d += ` C${c1.map((v) => v.toFixed(1)).join(" ")} ${c2.map((v) => v.toFixed(1)).join(" ")} ${p2[0]} ${p2[1]}`;
   }
   return d;
+}
+
+/** For each point after the first, the share of smoothPath's length drawn when the line reaches it. */
+export function smoothPathShares(points: readonly Point[]): number[] {
+  const lengths = smoothSegments(points).map(([p1, c1, c2, p2]) => {
+    let length = 0;
+    let prev = p1;
+    for (let i = 1; i <= 32; i++) {
+      const t = i / 32;
+      const u = 1 - t;
+      const at = (k: 0 | 1) =>
+        u * u * u * p1[k] + 3 * u * u * t * c1[k] + 3 * u * t * t * c2[k] + t * t * t * p2[k];
+      const next: Point = [at(0), at(1)];
+      length += Math.hypot(next[0] - prev[0], next[1] - prev[1]);
+      prev = next;
+    }
+    return length;
+  });
+  const total = lengths.reduce((a, b) => a + b, 0);
+  let drawn = 0;
+  return lengths.map((length) => {
+    drawn += length;
+    return drawn / total;
+  });
 }

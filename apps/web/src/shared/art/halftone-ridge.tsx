@@ -11,7 +11,13 @@ const C = ART.halftone;
 // The ridge rises left to right, so the dot field reads as a line moving forward.
 const edge = (x: number) => 820 - x * 0.3 - 46 * Math.sin(x / 150) - 22 * Math.sin(x / 47 + 1.3);
 
-const DOTS = halftoneDots({ width: W, height: H, cell: 16, edge, ramp: 6 });
+// One path of two-arc circles instead of thousands of <circle> nodes: the same dots, far less DOM.
+const DOTS = halftoneDots({ width: W, height: H, cell: 16, edge, ramp: 6 })
+  .map(
+    ({ cx, cy, r }) =>
+      `M${(cx - r).toFixed(2)} ${cy}a${r} ${r} 0 1 0 ${(2 * r).toFixed(2)} 0a${r} ${r} 0 1 0 ${(-2 * r).toFixed(2)} 0`,
+  )
+  .join("");
 
 export function HalftoneRidge({ className, soft = false }: HalftoneRidgeProps) {
   return (
@@ -23,11 +29,7 @@ export function HalftoneRidge({ className, soft = false }: HalftoneRidgeProps) {
       focusable="false"
     >
       {soft ? null : <rect width={W} height={H} fill={C.ground} />}
-      <g fill={soft ? "var(--fw-art-dot)" : C.dot}>
-        {DOTS.map((d) => (
-          <circle key={`${d.cx}-${d.cy}`} cx={d.cx} cy={d.cy} r={d.r} />
-        ))}
-      </g>
+      <path d={DOTS} fill={soft ? "var(--fw-art-dot)" : C.dot} />
     </svg>
   );
 }

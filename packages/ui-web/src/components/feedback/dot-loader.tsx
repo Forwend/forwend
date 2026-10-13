@@ -13,6 +13,7 @@ export function DotLoader({ label = "Waiting for the network", className }: Load
         <span
           key={i}
           aria-hidden
+          data-motion="essential"
           className="size-2 rounded-pill bg-accent animate-[fw-dot_var(--fw-duration-slower)_var(--fw-ease-in-out)_infinite]"
           style={{ animationDelay: `calc(var(--fw-duration-fast) * ${i})` }}
         />

@@ -18,10 +18,14 @@ export function Dialog({ triggerLabel, title, children, closeLabel = "Close" }: 
       <Button variant={BUTTON_VARIANTS.secondary} onClick={() => ref.current?.showModal()}>
         {triggerLabel}
       </Button>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: the click only catches the backdrop; Escape is the keyboard way out */}
       <dialog
         ref={ref}
         aria-label={title}
-        className="m-auto w-[calc(100vw-(--spacing(8)))] max-w-lg rounded-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[color-mix(in_oklab,var(--fw-ink)_40%,transparent)] backdrop:backdrop-blur-glass"
+        onClick={(event) => {
+          if (event.target === ref.current) ref.current.close(); // a click on the backdrop
+        }}
+        className="m-auto w-[calc(100vw-(--spacing(8)))] max-w-lg rounded-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)] backdrop:backdrop-blur-glass"
       >
         <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
           <h2 className="text-lg font-semibold">{title}</h2>
@@ -29,7 +33,7 @@ export function Dialog({ triggerLabel, title, children, closeLabel = "Close" }: 
             type="button"
             aria-label={closeLabel}
             onClick={() => ref.current?.close()}
-            className="rounded-pill p-1 text-muted hover:bg-surface-2 hover:text-ink"
+            className="relative rounded-pill p-1 text-muted before:absolute before:-inset-2.5 hover:bg-surface-2 hover:text-ink"
           >
             <X aria-hidden className="size-[var(--fw-icon-md)]" />
           </button>
