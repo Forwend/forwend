@@ -2744,7 +2744,7 @@
       "dependsOn": [
         "F146"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -2821,12 +2821,19 @@
         "taskHash": "16f3fcc7dd0ae1e5",
         "filesHash": "c73a7fbd5cf26a29",
         "proof": {
-          "1": "backend: invoices_options_test checks a payer-chooses invoice.pdf says Payment, Any, 12.50 USD, Total due and the Pay with list (EURC on Base Sepolia, USDC on Base Sepolia, send only on these networks); invoices_pdf_test checks the footer Invoice INV-0003 Page 1 of 1, Total due and grouped amounts; document_test checks 1,250.00 grouping; e2e: privy navigation.spec shows a client-chooses invoice in the list as 9.00 USD with Any network and a fixed one with USDC and Base Sepolia"
-        }
+          "1": "backend: PDF text for Any, Pay with list, Total due, footer and grouped amounts; e2e: list shows USD and Any network"
+        },
+        "commit": "52939e6",
+        "doneAt": "2026-10-13T19:19:28Z"
       },
       "branch": "feat/f148-payer-chooses-invoices-read-in-usd-with",
       "baseCommit": "3491835bd421b2c9a610bdc5a1469165df804b0b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f148-payer-chooses-invoices-read-in-usd-with",
+        "base": "main"
+      }
     },
     {
       "id": "F149",
