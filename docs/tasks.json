@@ -821,7 +821,7 @@
       "dependsOn": [
         "F128"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "unit",
@@ -912,7 +912,7 @@
         "taskHash": "5fa1bdb6671b5c99",
         "filesHash": "9ecb5e95621f09ae",
         "proof": {
-          "1": "backend: TestPaidWhileTheWorkerWasDownSettlesAfterARestart (never seen / seen, not final; fails when the watcher skips the downtime) and TestOwnerSeesWhyAPaidInvoiceWaits (every wait kind, a passed wait, public read without it); the signer stores wait retry/cap/unresolved (TestPausedFactoryIsRetried, TestSponsoredSettlementsPerUserAreCapped); unit covers each wait line and e2e shows it on the invoice page"
+          "1": "backend: TestPaidWhileTheWorkerWasDownSettlesAfterARestart and TestOwnerSeesWhyAPaidInvoiceWaits pass; verify F129 passed all checks (backend, unit, e2e and required); independent review passed"
         },
         "review": {
           "result": "pass",
@@ -920,11 +920,18 @@
           "summary": "Re-review of the delta after the first pass. (1) get.go:95,97: a stored cap/retry/unresolved wait counts only while next_attempt_at is in the future. A passed one reads as the status: sent is finalizing, pending is signing. This fixes the stale retrying text with a past until after a resolved stall. The signer still never reads wait, so no money decision changes. invoices_test.go now uses a future next time and adds a passed unresolved case that expects finalizing (invoices_test.go:615-621). (2) invoice-detail.tsx:200-214: the status line joins the untold label (for example Overpaid) and the wait text with ' · ', so an overpaid paid invoice shows its wait. When both are missing the line is empty, as before (empty:sr-only); confirming is unchanged. (3) get.go:66: settlementWait runs only on the owner's read (profileID set). The public GET runs no intent query and still has no settlementWait (asserted). Create returns an open invoice, so null is correct there. Re-ran: go test ./internal/invoice/ ./internal/httpapi/ ok; web vitest 82 passed; no Anvil left running. docs/runs/F129-20261013T133517Z-* show every check passed, including e2e. No blockers.",
           "at": "2026-10-13T13:40:42Z",
           "filesHash": "9ecb5e95621f09ae"
-        }
+        },
+        "commit": "9d3eca9",
+        "doneAt": "2026-10-13T13:40:58Z"
       },
       "branch": "fix/f129-a-paid-invoice-settles-after-the-worker",
       "baseCommit": "3311d2c1e372f93238de4e4d545b3547f3e18034",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f129-a-paid-invoice-settles-after-the-worker",
+        "base": "main"
+      }
     },
     {
       "id": "F130",
