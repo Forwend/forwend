@@ -194,6 +194,7 @@ export const INVOICE_COPY = {
   },
   recheckFailed: "Can't reach the network. Try again in a moment.",
   recheckUnreadable: (networks: string) => `${networks} did not answer.`,
+  recheckTooSoon: "Checked recently.",
   nextCheck: (left: string) => `Next check in ${left}`,
   deposits: "Payments received",
   late: "After the checkout closed",

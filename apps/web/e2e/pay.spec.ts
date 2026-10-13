@@ -172,6 +172,7 @@ test.describe("pay page", () => {
     await expect(page.getByText(RECEIVE)).toHaveCount(0);
     await expect(page.getByRole("img", { name: /QR code/ })).toHaveCount(0);
     await showAddress(page).click();
+    await expect(page.getByRole("heading", { name: "Send USDC on Base Sepolia to" })).toBeFocused();
     await expect(page.getByText(RECEIVE)).toBeVisible();
     await expect(page.getByRole("img", { name: "QR code of the address to pay" })).toBeVisible();
     await expect(page.getByRole("note")).toHaveText("Send only USDC on Base Sepolia.");
@@ -203,8 +204,9 @@ test.describe("pay page", () => {
     const check = page.getByRole("button", { name: "Check status" });
     await check.click();
     await expect(page.getByRole("status").filter({ hasText: /^Found/ })).toHaveText(
-      "Found 1,250.00 USDC. Recording it now. · Arbitrum Sepolia did not answer. · Next check in 5 min",
+      "Found 1,250.00 USDC. Recording it now. · Arbitrum Sepolia did not answer.",
     );
+    await expect(page.getByText(/· Next check in 5 min$/)).toBeVisible();
     await expect(check).toBeDisabled();
     expect(calls).toBe(1);
     // The read says the same after a reload.
@@ -214,9 +216,26 @@ test.describe("pay page", () => {
     });
     await page.reload();
     await expect(check).toBeDisabled();
-    await expect(page.getByRole("status").filter({ hasText: /^Next check/ })).toHaveText(
-      "Next check in 4 min",
+    await expect(page.getByText("Next check in 4 min", { exact: true })).toBeVisible();
+  });
+
+  test("Check status asked too soon rests instead of reporting a network failure", async ({
+    page,
+  }) => {
+    await openPay(page, OPEN);
+    await page.route(`**/api/v1/invoices/${ID}/recheck`, (route) =>
+      route.fulfill({
+        status: 429,
+        headers: { "Retry-After": "120" },
+        json: { error: { code: "rate_limited", message: "checked recently" } },
+      }),
     );
+    const check = page.getByRole("button", { name: "Check status" });
+    await check.click();
+    await expect(page.getByRole("status").filter({ hasText: /^Checked/ })).toHaveText(
+      "Checked recently.",
+    );
+    await expect(check).toBeDisabled();
   });
 
   test("follows the payment from waiting to paid without a reload, and never shows Settled", async ({

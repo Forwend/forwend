@@ -6,6 +6,8 @@ import { useRecheckInvoiceMutation } from "@/features/invoices/invoices-api";
 import { INVOICE_COPY as COPY } from "@/features/invoices/invoices-copy";
 import { chainName } from "@/shared/chains/chains";
 
+const TOO_MANY_REQUESTS = 429;
+
 /**
  * Check status (R-55): asks Forwend to read the invoice's address on chain again and says what it found. It rests
  * until the next check the api allows, which the invoice read also gives, so a reload never asks again early.
@@ -22,9 +24,11 @@ export function CheckStatus({
   nextCheckAt: string | null;
 }) {
   const [recheck, { data, isLoading, error }] = useRecheckInvoiceMutation();
+  // Asked too soon (another tab, or before the read caught up): rest until the read says when.
+  const tooSoon = (error as { status?: unknown } | undefined)?.status === TOO_MANY_REQUESTS;
   const next = Date.parse(data?.nextCheckAt ?? nextCheckAt ?? "") || 0;
-  const now = useNow(next);
-  const left = next - now;
+  const left = useLeft(next);
+  const resting = left > 0 || (tooSoon && !nextCheckAt);
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -32,22 +36,30 @@ export function CheckStatus({
         size="sm"
         variant="secondary"
         loading={isLoading}
-        disabled={left > 0}
+        disabled={resting}
         onClick={() => void recheck(invoiceId)}
       >
         {COPY.checkStatus}
       </Button>
-      <p role="status" className="text-sm text-muted empty:hidden">
-        {[
-          error && !data ? COPY.recheckFailed : null,
-          data ? COPY.recheck(data, network, money) : null,
-          data && data.unreadable.length > 0
-            ? COPY.recheckUnreadable(data.unreadable.map(chainName).join(", "))
-            : null,
-          left > 0 ? COPY.nextCheck(roughly(left)) : null,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
+      <p className="text-sm text-muted">
+        <span role="status">
+          {[
+            tooSoon ? COPY.recheckTooSoon : error ? COPY.recheckFailed : null,
+            data ? COPY.recheck(data, network, money) : null,
+            data && data.unreadable.length > 0
+              ? COPY.recheckUnreadable(data.unreadable.map(chainName).join(", "))
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
+        {/* The countdown sits outside the live region, so screen readers are not told each second. */}
+        {left > 0 ? (
+          <span>
+            {data || tooSoon || error ? " · " : null}
+            {COPY.nextCheck(roughly(left))}
+          </span>
+        ) : null}
       </p>
     </div>
   );
@@ -58,13 +70,14 @@ function roughly(ms: number): string {
   return ms >= 60_000 ? `${Math.ceil(ms / 60_000)} min` : `${Math.ceil(ms / 1000)} s`;
 }
 
-// The time now, once a second while a wait runs out.
-function useNow(until: number): number {
-  const [now, setNow] = useState(Date.now);
+// Milliseconds until `until`, again each second while there are any.
+function useLeft(until: number): number {
+  const [, tick] = useState(0);
+  const left = until - Date.now();
   useEffect(() => {
-    if (until <= Date.now()) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [until]);
-  return now;
+    if (left <= 0) return;
+    const timer = setTimeout(() => tick((n) => n + 1), Math.min(left, 1000));
+    return () => clearTimeout(timer);
+  });
+  return left;
 }

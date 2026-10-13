@@ -870,7 +870,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/InvoiceSummary"
         - type: object
-          required: [paidAt, settledAt, deposits]
+          required: [paidAt, settledAt, deposits, options, nextCheckAt]
           properties:
             paidAt:
               type: [string, "null"]

@@ -13,7 +13,7 @@ import {
 } from "@forwend/ui-web";
 import { Check, Copy, FileDown, ShieldAlert } from "lucide-react";
 import { notFound, usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckStatus } from "@/features/invoices/components/check-status";
 import { ConfirmingStatus } from "@/features/invoices/components/invoice-progress";
 import {
@@ -276,8 +276,15 @@ function PayBox({
       // Storage may be off: the payer asks again.
     }
   }, [invoice.invoiceId]);
+  // The pressed button goes away: focus moves to the address it revealed.
+  const sendHeading = useRef<HTMLHeadingElement>(null);
+  const [presses, setPresses] = useState(0);
+  useEffect(() => {
+    if (presses > 0) sendHeading.current?.focus();
+  }, [presses]);
   const show = () => {
     setShown(optionId);
+    setPresses((n) => n + 1);
     try {
       sessionStorage.setItem(shownKey(invoice.invoiceId), optionId);
     } catch {
@@ -315,7 +322,7 @@ function PayBox({
                 aria-labelledby="pay-send"
                 className="flex flex-col gap-4 border-t border-line p-4 sm:p-5"
               >
-                <h2 id="pay-send" className="sr-only">
+                <h2 id="pay-send" ref={sendHeading} tabIndex={-1} className="sr-only">
                   {COPY.sendTo(token.symbol, network)}
                 </h2>
                 <div className="grid gap-4 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start">

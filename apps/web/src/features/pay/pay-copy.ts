@@ -25,7 +25,6 @@ export const PAY_COPY = {
   chooseNetwork: "Choose a network",
   chooseToken: "Choose a token",
   showAddress: "Show address",
-  change: "Change",
   sendOnly: (symbol: string, network: string) => `Send only ${symbol} on ${network}.`,
   sendTo: (symbol: string, network: string) => `Send ${symbol} on ${network} to`,
   exactAmount: "Amount",

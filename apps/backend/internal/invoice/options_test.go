@@ -131,7 +131,7 @@ func TestRecheckWithOneNetworkDown(t *testing.T) {
 	if _, err := pool.Exec(ctx, "UPDATE invoice_rechecks SET checked_at = now() - interval '10 minutes'"); err != nil {
 		t.Fatal(err)
 	}
-	again := func() { // past the 30-second spacing
+	again := func() { // past the 5-minute spacing
 		t.Helper()
 		if _, err := pool.Exec(ctx, "UPDATE invoice_rechecks SET checked_at = now() - interval '10 minutes'"); err != nil {
 			t.Fatal(err)
