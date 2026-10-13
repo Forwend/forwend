@@ -11,14 +11,14 @@ async function openRequest(page: Page) {
     .click();
   const sheet = page.getByRole("dialog", { name: "Request money" });
   const noNetworks = sheet.getByText("No networks are enabled yet");
-  await expect(
-    noNetworks.or(sheet.getByRole("combobox", { name: "Network and token" })),
-  ).toBeVisible();
+  await expect(noNetworks.or(sheet.getByRole("button", { name: "Create request" }))).toBeVisible();
   if (await noNetworks.isVisible()) {
     expect(await blockingViolations(page)).toEqual([]);
     return false;
   }
-  // Other networks may be on locally.
+  // One token and network, when there is more than one to choose from; other networks may be on locally.
+  if (await sheet.getByRole("radio", { name: "One token" }).count())
+    await sheet.getByText("One token", { exact: true }).click();
   await sheet.getByRole("combobox", { name: "Network and token" }).click();
   await page.getByRole("option", { name: "USDC · Base Sepolia" }).click();
   return true;
@@ -35,8 +35,12 @@ async function createRequest(page: Page) {
     .click();
   const response = await created;
   expect(response.status()).toBe(201);
-  const { invoiceId, number } = (await response.json()) as { invoiceId: string; number: number };
-  return { invoiceId, number: `INV-${String(number).padStart(4, "0")}` };
+  const { invoiceId, number, expiresAt } = (await response.json()) as {
+    invoiceId: string;
+    number: number;
+    expiresAt: string;
+  };
+  return { invoiceId, expiresAt, number: `INV-${String(number).padStart(4, "0")}` };
 }
 
 test("a personal profile requests money, sends the pay link and the payer sees who asks (R-49)", async ({
@@ -71,10 +75,27 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     await name.fill("E2E Requester");
     const note = `E2E lunch ${Date.now()}`;
     await sheet.getByRole("textbox", { name: "Note to the payer (optional)" }).fill(note);
-    await sheet.getByText("1 day", { exact: true }).click();
-    await expect(sheet.getByRole("radio", { name: "1 day" })).toBeChecked();
+    // Custom: a date from the kit calendar and a time; a time too soon is named on the field (R-58).
+    await sheet.getByText("Custom", { exact: true }).click();
+    await sheet.getByRole("button", { name: /^Closes on/ }).click();
+    await page.keyboard.press("Enter"); // today
+    const time = sheet.getByLabel("At", { exact: true });
+    await time.fill("00:00");
+    await sheet.getByRole("button", { name: "Create request" }).click();
+    await expect(
+      sheet.getByRole("alert").filter({ hasText: "from 15 minutes to 365 days" }),
+    ).toBeVisible();
+    await sheet.getByRole("button", { name: /^Closes on/ }).click();
+    await page.keyboard.press("ArrowRight"); // tomorrow
+    await page.keyboard.press("Enter");
+    await time.fill("17:00");
     expect(await blockingViolations(page)).toEqual([]);
     const request = await createRequest(page);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(17, 0, 0, 0);
+    // The API takes seconds from now, so the close lands within a minute of the time picked.
+    expect(Math.abs(Date.parse(request.expiresAt) - tomorrow.getTime())).toBeLessThan(60_000);
 
     // The link to send, right away, and it copies whole.
     await expect(sheet.getByText("Request created")).toBeVisible();

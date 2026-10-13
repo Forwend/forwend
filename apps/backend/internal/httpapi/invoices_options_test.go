@@ -2,7 +2,9 @@ package httpapi
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -55,5 +57,27 @@ func TestPayerChoosesInvoice(t *testing.T) {
 	if r := e.post(t, "did:privy:alice", e.aliceProfile, "key-3",
 		`{"amountUsd": "1", "chainId": 84532, "token": "`+usdc+`", "amount": "1000000"}`); r.status != http.StatusUnprocessableEntity {
 		t.Fatalf("both forms: %d %v", r.status, r.body)
+	}
+}
+
+// A return link (R-58) is an https link set at creation; the public read gives it to the pay page.
+func TestInvoiceReturnURL(t *testing.T) {
+	e := invoiceAPI(t)
+	made := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", `{"amountUsd": "5", "returnUrl": "https://shop.example/thanks?order=7"}`)
+	if made.status != http.StatusCreated {
+		t.Fatalf("create: %d %v", made.status, made.body)
+	}
+	if got := e.get(t, made.body["invoiceId"].(string)).body["returnUrl"]; got != "https://shop.example/thanks?order=7" {
+		t.Fatalf("public read returnUrl %v", got)
+	}
+	if got := e.post(t, "did:privy:alice", e.aliceProfile, "key-2", `{"amountUsd": "5"}`).body["returnUrl"]; got != nil {
+		t.Fatalf("no link: returnUrl %v, want null", got)
+	}
+	for i, bad := range []string{"http://shop.example", "https://", "javascript:alert(1)", "https://user:pass@shop.example",
+		"shop.example"} {
+		r := e.post(t, "did:privy:alice", e.aliceProfile, fmt.Sprintf("bad-%d", i), `{"amountUsd": "5", "returnUrl": "`+bad+`"}`)
+		if r.status != http.StatusUnprocessableEntity || !strings.Contains(fmt.Sprint(r.body), "returnUrl") {
+			t.Fatalf("%q: %d %v", bad, r.status, r.body)
+		}
 	}
 }

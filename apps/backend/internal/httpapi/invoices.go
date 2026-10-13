@@ -25,6 +25,7 @@ type createInvoiceBody struct {
 	Note       string `json:"note"`
 	DueDate    string `json:"dueDate"`
 	SenderName string `json:"senderName"`
+	ReturnURL  string `json:"returnUrl"`
 	Client     struct {
 		Name    string `json:"name"`
 		Email   string `json:"email"`
@@ -43,6 +44,7 @@ type invoiceJSON struct {
 	Client           *clientJSON `json:"client,omitempty"` // owner routes only
 	Issuer           *issuerJSON `json:"issuer"`
 	SenderName       *string     `json:"senderName"`
+	ReturnURL        *string     `json:"returnUrl"`
 	ChainID          uint64      `json:"chainId"`
 	Token            string      `json:"token"`
 	Amount           string      `json:"amount"`
@@ -143,7 +145,7 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 			ExpiresInSeconds: body.ExpiresIn,
 			Details: invoice.Details{Title: body.Title, Note: body.Note, DueDate: body.DueDate,
 				ClientName: body.Client.Name, ClientEmail: body.Client.Email, ClientAddress: body.Client.Address,
-				SenderName: body.SenderName},
+				SenderName: body.SenderName, ReturnURL: body.ReturnURL},
 		})
 		if err != nil {
 			writeError(w, r, err)
@@ -216,7 +218,7 @@ func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
 func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 	out := invoiceJSON{
 		InvoiceID: inv.ID, OptionID: inv.OptionID, OptionLocked: inv.OptionLocked, Number: inv.Number, Title: orNull(inv.Title), Note: orNull(inv.Note),
-		DueDate: orNull(inv.DueDate), SenderName: orNull(inv.SenderName), ChainID: inv.ChainID, Token: inv.Token, Amount: inv.Amount.String(),
+		DueDate: orNull(inv.DueDate), SenderName: orNull(inv.SenderName), ReturnURL: orNull(inv.ReturnURL), ChainID: inv.ChainID, Token: inv.Token, Amount: inv.Amount.String(),
 		Recipient: inv.Recipient, Factory: inv.Factory, ReceiveAddress: inv.ReceiveAddress,
 		ExpiresAt: inv.ExpiresAt.Format(time.RFC3339), SettleDeadline: inv.SettleDeadline.Format(time.RFC3339),
 		PaymentStatus: inv.PaymentStatus, SettlementStatus: inv.SettlementStatus, RefundStatus: inv.RefundStatus,

@@ -24,6 +24,14 @@ export const EXPIRY_CHOICES = {
 
 export const DEFAULT_EXPIRY: ExpiryChoice = "week";
 
+/** Checkout closes at a date and time the creator picks, within the API's bounds (R-58). */
+export const CUSTOM_EXPIRY = "custom";
+export const EXPIRY_BOUNDS_S = { min: 900, max: 31_536_000 } as const;
+
+/** How the payer pays (R-56): any enabled stablecoin and network, or one the creator fixes. */
+export const PAY_WITH = { any: "any", fixed: "fixed" } as const;
+export type PayWith = (typeof PAY_WITH)[keyof typeof PAY_WITH];
+
 /** The API's text limits in characters (openapi.yaml, CreateInvoiceRequest). */
 export const INVOICE_LIMITS = {
   title: 200,
@@ -32,6 +40,7 @@ export const INVOICE_LIMITS = {
   clientEmail: 254,
   clientAddress: 500,
   senderName: 100,
+  returnUrl: 2000,
 } as const;
 
 /** Form fields as the API names them in a 422 message. */
@@ -44,6 +53,9 @@ export const INVOICE_FIELDS = {
   clientEmail: "client.email",
   clientAddress: "client.address",
   senderName: "senderName",
+  amountUsd: "amountUsd",
+  expiresIn: "expiresIn",
+  returnUrl: "returnUrl",
 } as const;
 
 export const AMOUNT_ERRORS = {
@@ -125,6 +137,8 @@ export interface InvoiceSummary {
   issuer: InvoiceIssuer | null;
   /** The name the payer sees when there is no issuer, such as on a personal profile's request. */
   senderName: string | null;
+  /** The creator's https link, offered to the payer once paid (R-58). */
+  returnUrl: string | null;
   chainId: number;
   token: string;
   /** Base units. */
@@ -198,10 +212,13 @@ export interface InvoicesPage {
   nextCursor: string | null;
 }
 
+/** Fixed: chainId, token and amount; payer chooses: amountUsd alone (R-56). */
 export interface CreateInvoiceBody {
-  chainId: number;
-  token: string;
-  amount: string;
+  chainId?: number;
+  token?: string;
+  amount?: string;
+  amountUsd?: string;
+  returnUrl: string;
   expiresIn: number;
   title: string;
   note: string;
@@ -249,6 +266,34 @@ export function parseTokenAmount(text: string, decimals: number): bigint | Amoun
   if (fraction.length > decimals) return AMOUNT_ERRORS.decimals;
   const units = BigInt(whole + fraction.padEnd(decimals, "0"));
   return units === 0n ? AMOUNT_ERRORS.zero : units;
+}
+
+/** Units with `decimals` as a plain decimal, as the API reads amountUsd: 12500000 at 6 is "12.5". */
+export function decimalText(units: bigint, decimals: number): string {
+  const scale = 10n ** BigInt(decimals);
+  const fraction = (units % scale).toString().padStart(decimals, "0").replace(/0+$/, "");
+  return fraction ? `${units / scale}.${fraction}` : `${units / scale}`;
+}
+
+/**
+ * Seconds from now to a local date (YYYY-MM-DD) and time (HH:MM), or null when either is missing or the result is
+ * outside the API's 15 minutes to 365 days.
+ */
+export function customExpiresIn(date: string, time: string, now: number): number | null {
+  const at = Date.parse(`${date}T${time}`);
+  if (!date || !time || Number.isNaN(at)) return null;
+  const seconds = Math.round((at - now) / 1000);
+  return seconds >= EXPIRY_BOUNDS_S.min && seconds <= EXPIRY_BOUNDS_S.max ? seconds : null;
+}
+
+/** An https link with a host and no user or password, as the API accepts for returnUrl. */
+export function isReturnLink(text: string): boolean {
+  try {
+    const url = new URL(text);
+    return url.protocol === "https:" && url.host !== "" && !url.username && !url.password;
+  } catch {
+    return false;
+  }
 }
 
 // The API's 422 names the field only in its message: "invalid invoice request: client.email must be …".

@@ -93,12 +93,14 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		_, err = tx.Exec(ctx, `
 			INSERT INTO invoices (id, main_id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
 			    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
-			    request_hash, title, note, due_date, client_name, client_email, client_address, sender_name)
+			    request_hash, title, note, due_date, client_name, client_email, client_address, sender_name, return_url)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'evm_create2', $11, $12, $13, $14, NULLIF($15, ''),
-			    NULLIF($16, ''), NULLIF($17, '')::date, NULLIF($18, ''), NULLIF($19, ''), NULLIF($20, ''), NULLIF($21, ''))`,
+			    NULLIF($16, ''), NULLIF($17, '')::date, NULLIF($18, ''), NULLIF($19, ''), NULLIF($20, ''), NULLIF($21, ''),
+			    NULLIF($22, ''))`,
 			hexID(id), mainID, profileID, o.chainID, o.family, o.token, o.amount.String(), expiresAt.Unix(),
 			settleDeadline.Unix(), recipient, hexAddress(address.Factory), receive, idempotencyKey, hash, details.Title,
-			details.Note, details.DueDate, details.ClientName, details.ClientEmail, details.ClientAddress, details.SenderName)
+			details.Note, details.DueDate, details.ClientName, details.ClientEmail, details.ClientAddress, details.SenderName,
+			details.ReturnURL)
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.ConstraintName == "invoices_profile_idempotency_key" {
 			// A concurrent request with the same key won the insert.

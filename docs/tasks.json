@@ -1399,7 +1399,7 @@
         "F131",
         "F132"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "e2e",
         "ui-unit"
@@ -1409,9 +1409,81 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-13 Invoice and request lists still show a payer-chooses invoice's amount in its first option's token: list items carry no options; F142 should show USD there."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T16:29:15Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 133.8,
+            "log": "docs/runs/F134-20261013T162915Z-e2e.log"
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": "docs/runs/F134-20261013T162915Z-ui-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": "docs/runs/F134-20261013T162915Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F134-20261013T162915Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F134-20261013T162915Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F134-20261013T162915Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 102.9,
+            "log": "docs/runs/F134-20261013T162915Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.9,
+            "log": "docs/runs/F134-20261013T162915Z-build.log"
+          }
+        ],
+        "taskHash": "000df4d6074bf68b",
+        "filesHash": "e231a07c14a30ffd",
+        "proof": {
+          "1": "e2e: privy invoices.spec creates a fixed invoice (One token) with errors beside the amount and return link fields, a due date from the kit calendar and a return link, and on a phone a Client chooses invoice shown in USD; money-requests.spec creates a request with a Custom expiry (too-soon time named on the field, then tomorrow 17:00 within a minute); axe 0 serious or critical on each form; backend TestInvoiceReturnURL; unit: decimalText, customExpiresIn, isReturnLink"
+        }
+      },
+      "branch": "feat/f134-the-invoice-and-request-form-groups-its",
+      "baseCommit": "28876f3de90693c966e1fb8c098f721229c9bb8e",
+      "failedVerifies": 0
     },
     {
       "id": "F135",
@@ -1970,7 +2042,9 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-13 Lists (invoices, requests, overview payments) show a payer-chooses invoice's amount in its first option's token because list items carry no options; show USD there until an option has money."
+      ],
       "blockedReason": null,
       "evidence": null
     },

@@ -829,6 +829,12 @@ components:
           description: |
             Optional name the payer sees, for an invoice without billing details such as a personal profile's request
             (D-52); empty means none.
+        returnUrl:
+          type: string
+          maxLength: 2000
+          description: |
+            Optional https link to the creator's site, offered to the payer once paid (R-58, R-62); empty means none.
+            No user or password in it.
         client:
           type: object
           additionalProperties: false
@@ -914,8 +920,8 @@ components:
                     secondsLeft: { type: [integer, "null"], minimum: 0 }
     InvoiceSummary:
       type: object
-      required: [invoiceId, optionId, optionLocked, number, title, note, dueDate, senderName, issuer, chainId, token,
-        amount, recipient, factory, receiveAddress, expiresAt, settleDeadline, paymentStatus, settlementStatus,
+      required: [invoiceId, optionId, optionLocked, number, title, note, dueDate, senderName, returnUrl, issuer, chainId,
+        token, amount, recipient, factory, receiveAddress, expiresAt, settleDeadline, paymentStatus, settlementStatus,
         refundStatus, settlementTxHash, createdAt]
       description: |
         With several options (payer chooses), the terms and statuses are the current option's: the one that received
@@ -946,6 +952,9 @@ components:
         senderName:
           type: [string, "null"]
           description: The name the payer sees when there is no issuer. In every response, the public GET too.
+        returnUrl:
+          type: [string, "null"]
+          description: The creator's https link for the payer once paid. In every response, the public GET too.
         client:
           type: object
           required: [name, email, address]
