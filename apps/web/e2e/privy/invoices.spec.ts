@@ -123,13 +123,22 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(details).toContainText("Due date");
     await expect(details).toContainText("Dec 1, 2026");
     await expect(details).toContainText("Checkout closes");
-    const client = page.getByRole("region", { name: "Client" });
+    // R-60: one status at once, with when the checkout closes, above the two columns.
+    await expect(page.getByRole("main").locator("header [data-status]")).toHaveText(
+      "Waiting for payment",
+    );
+    await expect(page.getByRole("main").locator("header")).toContainText("Checkout closes");
+    const client = page.getByRole("region", { name: "Billed to" });
     await expect(client).toContainText("E2E client");
     await expect(client).toContainText("client@example.com");
     // The pay link copies whole.
     const link = `http://localhost:3000/pay/${invoice.invoiceId}`;
     const share = page.getByRole("region", { name: "Pay link" });
-    await expect(share).toContainText(link);
+    // The row shows the host and a short id; the whole link is its title, Copy and Open.
+    await expect(share.locator("p[title]")).toHaveAttribute("title", link);
+    await expect(
+      share.getByRole("link", { name: "Open the pay page in a new tab" }),
+    ).toHaveAttribute("href", link);
     await share.getByRole("button", { name: "Copy link" }).click();
     await expect(share.getByRole("button", { name: "Link copied" })).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);

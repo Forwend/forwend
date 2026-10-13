@@ -47,20 +47,13 @@ export function InvoiceTimeline({
   return <PaymentTimeline label={label} steps={steps} />;
 }
 
-/** "Confirming · about 19 min left", then the blocks left, smaller. */
+/**
+ * "Confirming (4/12) · about 19 min left": blocks passed of the most left seen on this page, as the timeline's bar
+ * counts them (the API gives no starting count).
+ */
 export function ConfirmingStatus({ blocks, seconds }: { blocks: number; seconds: number }) {
-  return (
-    <>
-      {COPY.confirming(seconds)}
-      {blocks > 0 ? (
-        <>
-          {" "}
-          {/* Changes on every poll; screen readers hear only the time left. */}
-          <span aria-hidden className="ml-1 font-mono text-xs text-muted tabular-nums">
-            {COPY.blocks(blocks)}
-          </span>
-        </>
-      ) : null}
-    </>
-  );
+  const [most, setMost] = useState(blocks);
+  if (blocks > most) setMost(blocks);
+  const total = Math.max(most, blocks);
+  return <>{COPY.confirming(total - blocks, total, seconds)}</>;
 }

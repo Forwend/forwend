@@ -8,10 +8,11 @@ import {
   PAYMENT_STATUS,
   PAYMENT_STATUSES,
   Skeleton,
+  StatusPill,
   shortAddress,
   useCopy,
 } from "@forwend/ui-web";
-import { Check, ChevronLeft, Copy, FileDown } from "lucide-react";
+import { Check, ChevronLeft, Copy, ExternalLink, FileDown } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useId } from "react";
 import { API_PAYMENT_STATUSES, API_SETTLEMENT_STATUSES } from "@/features/activity/activity";
@@ -36,11 +37,7 @@ import {
   tokenKey,
 } from "@/features/invoices/invoices";
 import { useGetInvoiceQuery, useGetProfileInvoiceQuery } from "@/features/invoices/invoices-api";
-import {
-  INVOICE_COPY as COPY,
-  NEW_REQUEST_COPY,
-  REQUESTS_COPY,
-} from "@/features/invoices/invoices-copy";
+import { INVOICE_COPY as COPY, REQUESTS_COPY } from "@/features/invoices/invoices-copy";
 import { chainName } from "@/shared/chains/chains";
 import { ExplorerLink } from "@/shared/chains/explorer-link";
 import { TokenMark } from "@/shared/chains/token-mark";
@@ -155,126 +152,121 @@ function Loaded({
 
   return (
     <>
-      {/* The number is the breadcrumb's last step on desktop, so the heading shows only on phones. */}
-      <div className="flex flex-col gap-1 lg:contents">
+      {/* One status, said at once: open with its close time, closed, partly paid, paid or settled (R-60). */}
+      <header className="flex flex-col gap-2">
+        {/* The number is the breadcrumb's last step on desktop, so the heading shows only on phones. */}
         <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
           {invoiceNumber(invoice.number)}
         </h1>
         {invoice.title ? (
-          <p className="break-words text-muted lg:text-lg lg:font-medium lg:text-ink">
-            {invoice.title}
-          </p>
+          <p className="text-lg font-medium break-words text-ink">{invoice.title}</p>
         ) : null}
-      </div>
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+          <StatusPill status={status} />
+          {when(invoice) ? <span>{when(invoice)}</span> : null}
+        </p>
+      </header>
 
-      <section aria-labelledby="invoice-amount" className={PANEL}>
-        <div className="flex flex-col gap-3 border-b border-line px-4 py-4 sm:px-5">
-          <h2 id="invoice-amount" className="text-sm text-muted">
-            {COPY.amount}
-          </h2>
-          <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-            {token ? (
-              <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-ink">
-                <span className="text-3xl font-semibold tracking-tight break-all sm:text-4xl">
-                  {formatTokenAmount({
-                    baseUnits: amount,
-                    decimals: token.decimals,
-                    fractionDigits: exactDigits(amount, token.decimals),
-                  })}
-                </span>{" "}
-                <span className="text-lg font-medium text-muted">{token.symbol}</span>
-              </p>
-            ) : (
-              <p className="min-w-0 text-ink">
-                <InvoiceAmount invoice={invoice} tokens={tokens} />
-              </p>
-            )}
-            {token ? <TokenMark chainId={invoice.chainId} symbol={token.symbol} /> : null}
+      {/* minmax(0, 1fr): a long value never widens the column past the screen. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]">
+        <section aria-labelledby="invoice-amount" className={PANEL}>
+          <div className="flex flex-col gap-3 border-b border-line px-4 py-4 sm:px-5">
+            <h2 id="invoice-amount" className="text-sm text-muted">
+              {COPY.amount}
+            </h2>
+            <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+              {token ? (
+                <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-ink">
+                  <span className="text-3xl font-semibold tracking-tight break-all sm:text-4xl">
+                    {formatTokenAmount({
+                      baseUnits: amount,
+                      decimals: token.decimals,
+                      fractionDigits: exactDigits(amount, token.decimals),
+                    })}
+                  </span>{" "}
+                  <span className="text-lg font-medium text-muted">{token.symbol}</span>
+                </p>
+              ) : (
+                <p className="min-w-0 text-ink">
+                  <InvoiceAmount invoice={invoice} tokens={tokens} />
+                </p>
+              )}
+              {token ? <TokenMark chainId={invoice.chainId} symbol={token.symbol} /> : null}
+            </div>
           </div>
-        </div>
-        <div className="flex flex-col gap-3 px-4 py-5 sm:px-5">
-          {/* No details under the steps: a phone leaves each column too little room for them. */}
-          <InvoiceTimeline invoice={invoice} label={COPY.progress} />
-          <p role="status" className="text-sm text-ink empty:sr-only">
-            {/* The page has no status pill: the timeline cannot say expired or partial, so this line does. */}
-            {current === INVOICE_STEPS.confirming ? (
-              <ConfirmingStatus blocks={blocksLeft} seconds={secondsLeft} />
-            ) : (
-              // An overpaid invoice is paid too, so its label and its settlement wait share the line.
-              [
-                untold ? PAYMENT_STATUSES[status].label : null,
-                wait
-                  ? COPY.settling[wait.kind](
-                      chainName(invoice.chainId),
-                      wait.secondsLeft ?? 0,
-                      wait.until ? CLOCK.format(new Date(wait.until)) : "",
-                    )
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")
+          <div className="flex flex-col gap-3 px-4 py-5 sm:px-5">
+            {/* No details under the steps: a phone leaves each column too little room for them. */}
+            <InvoiceTimeline invoice={invoice} label={COPY.progress} />
+            <p role="status" className="text-sm text-ink empty:sr-only">
+              {current === INVOICE_STEPS.confirming ? (
+                <ConfirmingStatus blocks={blocksLeft} seconds={secondsLeft} />
+              ) : (
+                // An overpaid invoice is paid too, so its label and its settlement wait share the line.
+                [
+                  untold ? PAYMENT_STATUSES[status].label : null,
+                  wait
+                    ? COPY.settling[wait.kind](
+                        chainName(invoice.chainId),
+                        wait.secondsLeft ?? 0,
+                        wait.until ? CLOCK.format(new Date(wait.until)) : "",
+                      )
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              )}
+            </p>
+            <InvoiceDeposits invoice={invoice} token={token ?? null} />
+            {invoice.settlementStatus === API_SETTLEMENT_STATUSES.settled ? null : (
+              <CheckStatus
+                invoiceId={invoice.invoiceId}
+                network={chainName(invoice.chainId)}
+                money={(units) =>
+                  token
+                    ? `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`
+                    : units.toString()
+                }
+              />
             )}
-          </p>
-          <InvoiceDeposits invoice={invoice} token={token ?? null} />
-          {invoice.settlementStatus === API_SETTLEMENT_STATUSES.settled ? null : (
-            <CheckStatus
-              invoiceId={invoice.invoiceId}
-              network={chainName(invoice.chainId)}
-              money={(units) =>
-                token
-                  ? `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`
-                  : units.toString()
-              }
-            />
-          )}
-        </div>
-      </section>
-
-      {payable ? (
-        <ShareLink
-          invoiceId={invoice.invoiceId}
-          hint={request ? NEW_REQUEST_COPY.shareHint : COPY.shareHint}
-        />
-      ) : null}
-
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        <section aria-labelledby="invoice-details" className={PANEL}>
-          <h2 id="invoice-details" className={PANEL_TITLE}>
-            {COPY.details}
-          </h2>
-          <dl className="divide-y divide-line">
-            {request ? null : (
-              <Row term={COPY.dueDate}>
-                {invoice.dueDate ? formatDueDate(invoice.dueDate) : COPY.none}
-              </Row>
-            )}
-            <Row term={COPY.expires}>{TIME.format(new Date(invoice.expiresAt))}</Row>
-            <Row term={COPY.created}>{TIME.format(new Date(invoice.createdAt))}</Row>
-            {invoice.settlementTxHash ? (
-              <Row term={COPY.settlement}>
-                <span className="font-mono" title={invoice.settlementTxHash}>
-                  {shortAddress(invoice.settlementTxHash)}
-                </span>{" "}
-                <ExplorerLink
-                  chainId={invoice.chainId}
-                  txHash={invoice.settlementTxHash}
-                  className="align-middle"
-                />
-              </Row>
-            ) : null}
-            <Row term={COPY.note}>{invoice.note ?? COPY.none}</Row>
-            <Row term={COPY.pdfs}>
-              <span className="flex flex-wrap gap-x-5 gap-y-1">
-                <PdfLink invoiceId={invoice.invoiceId} pdf={INVOICE_PDFS.invoice} />
-                {invoice.paymentStatus === API_PAYMENT_STATUSES.paid ? (
-                  <PdfLink invoiceId={invoice.invoiceId} pdf={INVOICE_PDFS.receipt} />
-                ) : null}
-              </span>
-            </Row>
-          </dl>
+          </div>
         </section>
 
         <div className="flex flex-col gap-4">
+          {payable ? <ShareLink invoiceId={invoice.invoiceId} /> : null}
+          <section aria-labelledby="invoice-details" className={PANEL}>
+            <h2 id="invoice-details" className={PANEL_TITLE}>
+              {COPY.details}
+            </h2>
+            <dl className="divide-y divide-line">
+              {invoice.dueDate ? (
+                <Row term={COPY.dueDate}>{formatDueDate(invoice.dueDate)}</Row>
+              ) : null}
+              <Row term={COPY.expires}>{TIME.format(new Date(invoice.expiresAt))}</Row>
+              <Row term={COPY.created}>{TIME.format(new Date(invoice.createdAt))}</Row>
+              {invoice.settlementTxHash ? (
+                <Row term={COPY.settlement}>
+                  <span className="font-mono" title={invoice.settlementTxHash}>
+                    {shortAddress(invoice.settlementTxHash)}
+                  </span>{" "}
+                  <ExplorerLink
+                    chainId={invoice.chainId}
+                    txHash={invoice.settlementTxHash}
+                    className="align-middle"
+                  />
+                </Row>
+              ) : null}
+              {invoice.note ? <Row term={COPY.note}>{invoice.note}</Row> : null}
+              <Row term={COPY.pdfs}>
+                <span className="flex flex-wrap gap-x-5 gap-y-1">
+                  <PdfLink invoiceId={invoice.invoiceId} pdf={INVOICE_PDFS.invoice} />
+                  {invoice.paymentStatus === API_PAYMENT_STATUSES.paid ? (
+                    <PdfLink invoiceId={invoice.invoiceId} pdf={INVOICE_PDFS.receipt} />
+                  ) : null}
+                </span>
+              </Row>
+            </dl>
+          </section>
+
           {request ? null : (
             <section aria-labelledby="invoice-client" className={PANEL}>
               <h2 id="invoice-client" className={PANEL_TITLE}>
@@ -309,13 +301,33 @@ function Loaded({
             ) : invoice.senderName ? (
               <Party lines={[invoice.senderName]} />
             ) : (
-              <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.noIssuer}</p>
+              <p className="px-4 py-3 text-sm text-muted sm:px-5">
+                {COPY.noIssuer}{" "}
+                <Link href={APP_ROUTES.billingDetails} className="text-accent hover:underline">
+                  {COPY.addBillingDetails}
+                </Link>
+              </p>
             )}
           </section>
         </div>
       </div>
     </>
   );
+}
+
+/**
+ * When the invoice's status last changed or will: settled, paid, closed, or when its checkout closes. A paid invoice
+ * never shows its checkout's close time, which would read as still open.
+ */
+function when(invoice: Invoice): string | null {
+  if (invoice.settlementStatus === API_SETTLEMENT_STATUSES.settled)
+    return invoice.settledAt ? COPY.settledOn(TIME.format(new Date(invoice.settledAt))) : null;
+  if (invoice.paymentStatus === API_PAYMENT_STATUSES.paid)
+    return invoice.paidAt ? COPY.paidOn(TIME.format(new Date(invoice.paidAt))) : null;
+  const closes = TIME.format(new Date(invoice.expiresAt));
+  return Date.parse(invoice.expiresAt) <= Date.now()
+    ? COPY.closedOn(closes)
+    : COPY.closesOn(closes);
 }
 
 function Row({ term, children }: { term: string; children: ReactNode }) {
@@ -353,8 +365,8 @@ function Party({ lines }: { lines: (string | null)[] }) {
   );
 }
 
-/** The pay link with a copy button; the row stacks in a narrow container such as a sheet. */
-export function ShareLink({ invoiceId, hint }: { invoiceId: string; hint: string }) {
+/** The pay link in one row: the link (cut to fit, whole on hover and when copied), Copy and Open in a new tab. */
+export function ShareLink({ invoiceId }: { invoiceId: string }) {
   // The app renders only in the browser, after sign-in.
   const link = `${window.location.origin}/pay/${invoiceId}`;
   const [status, copy] = useCopy(link);
@@ -367,21 +379,19 @@ export function ShareLink({ invoiceId, hint }: { invoiceId: string; hint: string
         ? COPY.copyFailed
         : COPY.copy;
   return (
-    <section
-      aria-labelledby={titleId}
-      className={`${PANEL} @container flex flex-col gap-3 p-4 sm:p-5`}
-    >
-      <div>
-        <h2 id={titleId} className="text-base font-semibold text-ink">
-          {COPY.share}
-        </h2>
-        <p className="mt-0.5 text-sm text-muted">{hint}</p>
-      </div>
-      <div className="flex flex-col gap-2 @lg:flex-row @lg:items-center">
-        <p className="min-w-0 flex-1 rounded-md border border-line bg-surface-2 px-3 py-2 font-mono text-sm break-all text-ink select-all">
-          {link}
+    <section aria-labelledby={titleId} className={`${PANEL} flex flex-col gap-2 p-4 sm:p-5`}>
+      <h2 id={titleId} className="text-sm font-semibold text-ink">
+        {COPY.share}
+      </h2>
+      <div className="flex items-center gap-2">
+        {/* The host and a short id fit the row; Copy and Open use the whole link. */}
+        <p
+          title={link}
+          className="min-w-0 flex-1 truncate rounded-md border border-line bg-surface-2 px-3 py-1.5 font-mono text-sm text-ink"
+        >
+          {`${window.location.host}/pay/${shortAddress(invoiceId)}`}
         </p>
-        <Button variant="secondary" onClick={copy} className="shrink-0">
+        <Button variant="secondary" size="sm" onClick={copy} className="shrink-0">
           {status === COPY_STATUS.copied ? (
             <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
           ) : (
@@ -389,6 +399,16 @@ export function ShareLink({ invoiceId, hint }: { invoiceId: string; hint: string
           )}
           {label}
         </Button>
+        <a
+          href={link}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={COPY.openPayPage}
+          title={COPY.openPayPage}
+          className={`${buttonClasses({ variant: "secondary", size: "sm" })} shrink-0 px-2.5`}
+        >
+          <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
+        </a>
       </div>
       <p role="status" className="sr-only">
         {status === COPY_STATUS.idle ? "" : label}

@@ -67,10 +67,10 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   );
   await hiddenHeading("INV-0004");
   await expect(main.getByRole("link", { name: "Invoices" })).toHaveCount(0);
-  await expect(main.getByRole("region", { name: "Client" })).toContainText("Brightline Studio");
+  await expect(main.getByRole("region", { name: "Billed to" })).toContainText("Brightline Studio");
   // A payment on its way: pending, a short line, and its transaction on Basescan.
   await expect(main.getByRole("status").filter({ hasText: /./ })).toHaveText(
-    "Confirming · about 6 min left 120 blocks",
+    "Confirming (0/120) · about 6 min left",
   );
   // The timeline carries the invoice's status, at its Confirming step; the one pill left is the payment's own.
   const amountPanel = main.getByRole("region", { name: "Amount" });

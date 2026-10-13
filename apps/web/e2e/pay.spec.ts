@@ -200,7 +200,7 @@ test.describe("pay page", () => {
 
     // A short line, the blocks apart; the pill and the step show a payment on its way, not done.
     await page.clock.runFor(POLL_MS);
-    await expect(status).toHaveText("Confirming · about 3 min left 12 blocks");
+    await expect(status).toHaveText("Confirming (0/12) · about 3 min left");
     await expect(pill).toHaveText("Detected");
     await expect(pill).toHaveAttribute("data-status", "detected");
     await expect(progress.locator("[aria-current=step]")).toHaveText("Confirming");
@@ -229,7 +229,7 @@ test.describe("pay page", () => {
     }).toPass();
 
     await page.clock.runFor(POLL_MS);
-    await expect(status).toHaveText("Confirming · about 2 min left 6 blocks");
+    await expect(status).toHaveText("Confirming (6/12) · about 2 min left");
 
     await page.clock.runFor(POLL_MS);
     await expect(status).toHaveText(/^Paid\. Forwend is now sending the money/);
