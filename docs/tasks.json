@@ -1259,7 +1259,7 @@
       "dependsOn": [
         "F128"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -1328,12 +1328,19 @@
         "taskHash": "7e75d64fe509dba7",
         "filesHash": "e43a4b7677124106",
         "proof": {
-          "1": "e2e: invoices.spec checks the header status pill and close time, Billed to, the pay link row's title, Copy and Open in a new tab; navigation.spec checks Confirming (0/120) and Billed to; pay.spec checks Confirming (0/12) and (6/12); screenshots at 390 and 1440 px show no sideways scroll after the grid fix"
-        }
+          "1": "e2e: verify F135 passed all checks; invoice, navigation, money-request and pay e2e cover the new layout"
+        },
+        "commit": "bab5fb0",
+        "doneAt": "2026-10-13T14:47:02Z"
       },
       "branch": "feat/f135-the-invoice-page-shows-its-state-at-once",
       "baseCommit": "b2c14bfc2c21fc649d217979574f16793f5f5e1e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f135-the-invoice-page-shows-its-state-at-once",
+        "base": "main"
+      }
     },
     {
       "id": "F136",
