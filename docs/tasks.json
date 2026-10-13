@@ -1724,7 +1724,7 @@
         "F134",
         "F133"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -1793,12 +1793,19 @@
         "taskHash": "b8053d37af07d0f7",
         "filesHash": "b6dd01538fdc6f34",
         "proof": {
-          "1": "e2e: pay.spec checks the logo link to /, the Payments by Forwend footer link in a new tab and no filler text, Back to shop.example once paid in Check status's place, Confirming (0/12) and (6/12) in the flow test, and a payment that goes from waiting to paid in one read showing Confirming, Paid and Settled 600 ms apart while the status panel stays in place"
-        }
+          "1": "e2e: logo link, footer, Back to site, Confirming (n/m), stepped timeline without moving the status panel"
+        },
+        "commit": "ff28495",
+        "doneAt": "2026-10-13T16:40:10Z"
       },
       "branch": "feat/f138-the-pay-page-is-calm-and-never-leaves-th",
       "baseCommit": "350dda94b72678b10c819c25333f254a417cbcc5",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f138-the-pay-page-is-calm-and-never-leaves-th",
+        "base": "main"
+      }
     },
     {
       "id": "F139",
