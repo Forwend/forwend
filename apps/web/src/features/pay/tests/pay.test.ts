@@ -20,6 +20,7 @@ const invoice: Invoice = {
   dueDate: null,
   issuer: null,
   senderName: null,
+  returnUrl: null,
   chainId: 84532,
   token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
   amount: "1000",

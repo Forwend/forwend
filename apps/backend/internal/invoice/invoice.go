@@ -9,6 +9,7 @@ import (
 	"math"
 	"math/big"
 	"net/mail"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -36,6 +37,7 @@ const (
 	MaxClientEmail   = 254 // the longest address SMTP carries (RFC 5321)
 	MaxClientAddress = 500
 	MaxSenderName    = 100
+	MaxReturnURL     = 2000
 )
 
 // MaxOpen and MaxPerDay bound a profile's watched receive addresses: each is in every scan until 30 days after its
@@ -84,6 +86,7 @@ type Details struct {
 	ClientEmail   string
 	ClientAddress string
 	SenderName    string // the name the payer sees when the invoice has no issuer, such as a personal request (D-52)
+	ReturnURL     string // an https link to the creator's site, offered to the payer once paid (R-58)
 }
 
 // Invoice is the stored invoice: its terms (InvoiceTerms in the contract), number, details and statuses. With
@@ -234,6 +237,13 @@ func (d Details) check() error {
 			return fmt.Errorf("%w: client.email must be an email address like name@example.com", ErrInvalid)
 		}
 	}
+	if d.ReturnURL != "" {
+		u, err := url.Parse(d.ReturnURL)
+		if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || len(d.ReturnURL) > MaxReturnURL ||
+			!profile.PlainText(d.ReturnURL, false) {
+			return fmt.Errorf("%w: returnUrl must be an https link of at most %d characters", ErrInvalid, MaxReturnURL)
+		}
+	}
 	if d.DueDate != "" {
 		// Postgres has no year 0.
 		if day, err := time.Parse(time.DateOnly, d.DueDate); err != nil || day.Year() < 1 {
@@ -246,9 +256,13 @@ func (d Details) check() error {
 // requestHash fingerprints the canonical request, so the same values sent again match and the body is never stored.
 // %q keeps the texts apart whatever they contain.
 func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn time.Duration, d Details) []byte {
-	h := sha256.Sum256(fmt.Appendf(nil, "%d|%s|%s|%d|%q|%q|%q|%q|%q|%q|%q", chainID, token, amount,
+	b := fmt.Appendf(nil, "%d|%s|%s|%d|%q|%q|%q|%q|%q|%q|%q", chainID, token, amount,
 		int64(expiresIn/time.Second), d.Title, d.Note, d.DueDate, d.ClientName, d.ClientEmail, d.ClientAddress,
-		d.SenderName))
+		d.SenderName)
+	if d.ReturnURL != "" { // added only when set, so requests made before it hash as they did
+		b = fmt.Appendf(b, "|%q", d.ReturnURL)
+	}
+	h := sha256.Sum256(b)
 	return h[:]
 }
 

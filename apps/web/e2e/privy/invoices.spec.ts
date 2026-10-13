@@ -17,21 +17,16 @@ async function chooseMerchant(page: Page, open: () => Promise<void>) {
   await expect(page).toHaveURL("/app");
 }
 
-// Creates an invoice and returns its number, or null when this database has no enabled network: the page then says so
-// instead of showing the form.
+// Creates an invoice and returns its number and the API's answer, or null when this database has no enabled network: the
+// page then says so instead of showing the form.
 async function createInvoice(page: Page, fill: () => Promise<void>) {
   await expect(page.getByRole("heading", { level: 1, name: "New invoice" })).toBeVisible();
   const noNetworks = page.getByText("No networks are enabled yet");
-  await expect(
-    noNetworks.or(page.getByRole("combobox", { name: "Network and token" })),
-  ).toBeVisible();
+  await expect(noNetworks.or(page.getByRole("button", { name: "Create invoice" }))).toBeVisible();
   if (await noNetworks.isVisible()) {
     expect(await blockingViolations(page)).toEqual([]);
     return null;
   }
-  // Other networks may be on locally.
-  await page.getByRole("combobox", { name: "Network and token" }).click();
-  await page.getByRole("option", { name: "USDC · Base Sepolia" }).click();
   await fill();
   const created = page.waitForResponse(
     (r) => /\/api\/v1\/profiles\/[^/]+\/invoices$/.test(r.url()) && r.request().method() === "POST",
@@ -39,9 +34,22 @@ async function createInvoice(page: Page, fill: () => Promise<void>) {
   await page.getByRole("button", { name: "Create invoice" }).click();
   const response = await created;
   expect(response.status()).toBe(201);
-  const { invoiceId, number } = (await response.json()) as { invoiceId: string; number: number };
-  await expect(page).toHaveURL(`/app/invoices/${invoiceId}`);
-  return { invoiceId, number: `INV-${String(number).padStart(4, "0")}` };
+  const body = (await response.json()) as {
+    invoiceId: string;
+    number: number;
+    returnUrl: string | null;
+    options: object[];
+  };
+  await expect(page).toHaveURL(`/app/invoices/${body.invoiceId}`);
+  return { ...body, number: `INV-${String(body.number).padStart(4, "0")}` };
+}
+
+// One token and network, when the database has more than one to choose from (R-56); other networks may be on locally.
+async function fixUsdcOnBase(page: Page) {
+  const fixed = page.getByRole("radio", { name: "One token" });
+  if (await fixed.count()) await page.getByText("One token", { exact: true }).click();
+  await page.getByRole("combobox", { name: "Network and token" }).click();
+  await page.getByRole("option", { name: "USDC · Base Sepolia" }).click();
 }
 
 test("a merchant creates an invoice, finds it in the list and opens its detail with the pay link", async ({
@@ -84,19 +92,32 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   await page.getByRole("link", { name: "New invoice" }).first().click();
 
   const title = `E2E ${Date.now()}`;
+  let due = "";
   const invoice = await createInvoice(page, async () => {
-    // An amount the token can't hold is named on the field before anything is sent.
+    await fixUsdcOnBase(page);
+    // An amount the token can't hold and a link that is not https are named on their fields before anything is sent;
+    // focus goes to the first.
     const amount = page.getByRole("textbox", { name: "Amount" });
+    const link = page.getByRole("textbox", { name: "Return link (optional)" });
     await amount.fill("1.1234567");
+    await link.fill("http://shop.example/thanks");
     await page.getByRole("button", { name: "Create invoice" }).click();
     await expect(page.getByRole("alert").filter({ hasText: /has 6 decimals/ })).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "Enter an https link" })).toBeVisible();
     await expect(amount).toHaveAttribute("aria-invalid", "true");
+    await expect(link).toHaveAttribute("aria-invalid", "true");
     await expect(amount).toBeFocused();
     expect(await blockingViolations(page)).toEqual([]);
     await amount.fill("12.5");
+    await link.fill("https://shop.example/thanks");
     await page.getByRole("textbox", { name: "Title (optional)" }).fill(title);
     await page.getByRole("textbox", { name: "Note to the client (optional)" }).fill("Thank you");
-    await page.getByLabel("Due date (optional)").fill("2026-12-01");
+    // The due date comes from the kit calendar (R-59): a month from today.
+    await page.getByRole("button", { name: /^Due date \(optional\)/ }).click();
+    await page.keyboard.press("PageDown");
+    await page.keyboard.press("Enter");
+    due = await page.locator('input[name="dueDate"]').inputValue();
+    expect(due).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     await page.getByText("1 day", { exact: true }).click();
     await expect(page.getByRole("radio", { name: "1 day" })).toBeChecked();
     await page.getByRole("textbox", { name: "Name", exact: true }).fill("E2E client");
@@ -104,6 +125,12 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await page.getByRole("textbox", { name: "Address" }).fill("1 Test Street\nBerlin");
   });
   if (invoice) {
+    expect(invoice.returnUrl).toBe("https://shop.example/thanks");
+    expect(invoice.options).toHaveLength(1);
+    const dueText = new Intl.DateTimeFormat("en-US", {
+      dateStyle: "medium",
+      timeZone: "UTC",
+    }).format(new Date(`${due}T00:00:00Z`));
     // The detail: number, amount in the token, the timeline, due date apart from the checkout's close, the client.
     // Nothing paid yet: the first step is the current one.
     await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
@@ -121,7 +148,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(amount.locator("[data-status]")).toHaveCount(0);
     const details = page.getByRole("region", { name: "Details" });
     await expect(details).toContainText("Due date");
-    await expect(details).toContainText("Dec 1, 2026");
+    await expect(details).toContainText(dueText);
     await expect(details).toContainText("Checkout closes");
     // R-60: one status at once, with when the checkout closes, above the two columns.
     await expect(page.getByRole("main").locator("header [data-status]")).toHaveText(
@@ -167,7 +194,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     const row = page.getByRole("row").filter({ hasText: invoice.number });
     await expect(row).toContainText(title);
     await expect(row).toContainText("E2E client");
-    await expect(row).toContainText("Dec 1, 2026");
+    await expect(row).toContainText(dueText);
     await expect(row).toContainText("12.50 USDC");
     await expect(row).toContainText("Waiting for payment");
     await row.getByRole("link", { name: invoice.number }).click();
@@ -202,14 +229,24 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
   await expect(page.getByRole("heading", { level: 1, name: "Invoices" })).toBeVisible();
   await fits();
   await page.getByRole("link", { name: "New invoice" }).first().click();
+  // Payer chooses is the default (R-56): the amount is in USD.
+  let choosing = false;
   const invoice = await createInvoice(page, async () => {
     await fits();
-    await page.getByRole("textbox", { name: "Amount" }).fill("1");
+    choosing = (await page.getByRole("radio", { name: "Client chooses" }).count()) > 0;
+    if (choosing) await expect(page.getByRole("radio", { name: "Client chooses" })).toBeChecked();
+    await page.getByRole("textbox", { name: choosing ? "Amount in USD" : "Amount" }).fill("1");
     await page.getByRole("textbox", { name: "Name", exact: true }).fill("E2E phone client");
+    expect(await blockingViolations(page)).toEqual([]);
   });
   if (invoice) {
     await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Amount" })).toContainText("1.00 USDC");
+    const amount = page.getByRole("region", { name: "Amount" });
+    await expect(amount).toContainText(choosing ? "1.00 USD" : "1.00 USDC");
+    if (choosing) {
+      expect(invoice.options.length).toBeGreaterThan(1);
+      await expect(amount).toContainText(`The client picks one of ${invoice.options.length}`);
+    }
     await fits();
     expect(await blockingViolations(page)).toEqual([]);
     await page.getByRole("link", { name: "Invoices" }).click();

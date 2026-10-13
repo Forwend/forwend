@@ -1,5 +1,6 @@
 import {
   AMOUNT_ERRORS,
+  type CUSTOM_EXPIRY,
   type EXPIRY_CHOICES,
   INVOICE_FIELDS,
   INVOICE_LIMITS,
@@ -7,6 +8,7 @@ import {
   INVOICE_STEPS,
   type InvoicePdf,
   type InvoiceStep,
+  type PayWith,
   type Recheck,
   SETTLEMENT_WAITS,
   type SettlementWaitKind,
@@ -20,6 +22,7 @@ export const timeLeft = (seconds: number) =>
   seconds < 60 ? "under a minute" : `about ${Math.ceil(seconds / 60)} min`;
 
 export const INVOICES_COPY = {
+  usd: "USD",
   invoices: "Invoices",
   newInvoice: "New invoice",
   emptyTitle: "No invoices yet",
@@ -59,12 +62,18 @@ export const REQUESTS_COPY = {
 
 export const NEW_INVOICE_COPY = {
   title: "New invoice",
-  intro: "The client pays the exact amount on the network you choose. You get a link to send them.",
+  intro: "The client pays the exact amount. You get a link to send them.",
   noTokens:
     "No networks are enabled yet, so there is nothing to bill in. You can't create an invoice yet.",
   tokensFailed: "We could not load the networks and tokens you can bill in.",
+  amountGroup: "Amount",
+  payWithLabel: "How the client pays",
+  payWith: { any: "Client chooses", fixed: "One token" } satisfies Record<PayWith, string>,
+  payWithAnyHint: (symbols: string, networks: number) =>
+    `The client pays it in ${symbols}, on any of ${networks} networks, 1 USD each.`,
   tokenLabel: "Network and token",
   amountLabel: "Amount",
+  amountUsdLabel: "Amount in USD",
   amountHint: (symbol: string, network: string, decimals: number) =>
     `In ${symbol} on ${network}, up to ${decimals} decimals.`,
   amountErrors: {
@@ -76,8 +85,14 @@ export const NEW_INVOICE_COPY = {
   titleLabel: "Title (optional)",
   titlePlaceholder: "Website, October",
   noteLabel: "Note to the client (optional)",
+  detailsGroup: "Details",
+  returnLabel: "Return link (optional)",
+  returnHint: "Your site's https link. The client sees Back to it after paying.",
+  returnError: "Enter an https link, like https://example.com/thanks.",
+  datesGroup: "Dates",
   dueLabel: "Due date (optional)",
   dueHint: "Shown to the client. Payment stays open until the checkout closes.",
+  dueClear: "Clear due date",
   expiryLabel: "Checkout closes after",
   expiryHint: "After this the pay link takes no more payments.",
   expiry: {
@@ -85,7 +100,11 @@ export const NEW_INVOICE_COPY = {
     day: "1 day",
     week: "7 days",
     month: "30 days",
-  } satisfies Record<keyof typeof EXPIRY_CHOICES, string>,
+    custom: "Custom",
+  } satisfies Record<keyof typeof EXPIRY_CHOICES | typeof CUSTOM_EXPIRY, string>,
+  closesOn: "Closes on",
+  closesAt: "At",
+  customError: "Pick a time from 15 minutes to 365 days from now.",
   client: "Client (optional)",
   clientName: "Name",
   clientEmail: "Email",
@@ -101,6 +120,9 @@ export const NEW_INVOICE_COPY = {
     [INVOICE_FIELDS.clientEmail]: "Enter an email like name@example.com.",
     [INVOICE_FIELDS.clientAddress]: atMost(INVOICE_LIMITS.clientAddress),
     [INVOICE_FIELDS.senderName]: `${atMost(INVOICE_LIMITS.senderName)} The name can't be Forwend.`,
+    [INVOICE_FIELDS.amountUsd]: "Enter an amount above 0 that every accepted token can hold.",
+    [INVOICE_FIELDS.expiresIn]: "Pick a time from 15 minutes to 365 days from now.",
+    [INVOICE_FIELDS.returnUrl]: "Enter an https link, like https://example.com/thanks.",
   },
   failed: "We could not create the invoice. Try again.",
   invalid: "We could not create the invoice with these values. Check them and try again.",
@@ -112,6 +134,11 @@ export const NEW_REQUEST_COPY = {
   noTokens: "No networks are enabled yet, so there is nothing to request in.",
   tokensFailed: "We could not load the networks and tokens you can request in.",
   noteLabel: "Note to the payer (optional)",
+  payWithLabel: "How the payer pays",
+  payWith: { any: "Payer chooses", fixed: "One token" } satisfies Record<PayWith, string>,
+  payWithAnyHint: (symbols: string, networks: number) =>
+    `The payer pays it in ${symbols}, on any of ${networks} networks, 1 USD each.`,
+  returnHint: "Your site's https link. The payer sees Back to it after paying.",
   senderLabel: "Your name (shown to the payer)",
   senderMissing: "Enter the name the payer will see.",
   create: "Create request",
@@ -123,6 +150,8 @@ export const NEW_REQUEST_COPY = {
 
 export const INVOICE_COPY = {
   back: "Invoices",
+  usd: "USD",
+  clientChooses: (n: number) => `The client picks one of ${n} tokens and networks`,
   notFound: "No invoice has this link.",
   failed: "We could not load this invoice.",
   otherProfile: "This invoice belongs to another profile. Switch to that profile to see it.",

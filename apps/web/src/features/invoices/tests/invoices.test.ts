@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   AMOUNT_ERRORS,
   confirmingProgress,
+  customExpiresIn,
   type Deposit,
+  decimalText,
   exactDigits,
   INVOICE_PDFS,
   type Invoice,
@@ -12,6 +14,7 @@ import {
   invoicePdfUrl,
   invoiceProgress,
   invoiceStatus,
+  isReturnLink,
   parseTokenAmount,
   SETTLEMENT_WAITS,
 } from "@/features/invoices/invoices";
@@ -73,6 +76,7 @@ const open: Invoice = {
   dueDate: null,
   issuer: null,
   senderName: null,
+  returnUrl: null,
   chainId: 84532,
   token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
   amount: "5000000",
@@ -211,5 +215,37 @@ describe("check status message", () => {
     expect(say("5000000", "5000000", false)).toBe(
       "Up to date: every payment at the address is recorded.",
     );
+  });
+});
+
+describe("form values (R-58)", () => {
+  it("writes units as the plain decimal the API reads as amountUsd", () => {
+    expect(decimalText(12_500_000n, 6)).toBe("12.5");
+    expect(decimalText(12_000_000n, 6)).toBe("12");
+    expect(decimalText(1n, 6)).toBe("0.000001");
+    expect(decimalText(1250n, 2)).toBe("12.5");
+  });
+
+  it("turns a custom date and time into seconds from now within 15 minutes to 365 days", () => {
+    const now = Date.parse("2026-10-13T12:00:00");
+    expect(customExpiresIn("2026-10-14", "12:00", now)).toBe(86_400);
+    expect(customExpiresIn("2026-10-13", "12:15", now)).toBe(900);
+    expect(customExpiresIn("2026-10-13", "12:14", now)).toBeNull();
+    expect(customExpiresIn("2027-10-13", "12:00", now)).toBe(31_536_000);
+    expect(customExpiresIn("2027-10-13", "12:01", now)).toBeNull();
+    expect(customExpiresIn("", "12:00", now)).toBeNull();
+    expect(customExpiresIn("2026-10-14", "", now)).toBeNull();
+  });
+
+  it("takes only https return links with a host and no user or password", () => {
+    expect(isReturnLink("https://shop.example/thanks?order=7")).toBe(true);
+    for (const bad of [
+      "http://shop.example",
+      "shop.example",
+      "javascript:alert(1)",
+      "https://user:pass@shop.example",
+      "https://",
+    ])
+      expect(isReturnLink(bad), bad).toBe(false);
   });
 });

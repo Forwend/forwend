@@ -132,6 +132,8 @@ function Loaded({
   const client = mine?.client;
   const issuer = invoice.issuer;
   const status = invoiceStatus(invoice);
+  // Payer chooses with no money yet: the amount is USD in any accepted option (R-56, D-75).
+  const choosing = invoice.options.length > 1 && !invoice.optionLocked;
   // The pay link takes money only while these last; sharing it later only creates money held for a refund.
   const payable = (
     [
@@ -184,14 +186,20 @@ function Loaded({
                       fractionDigits: exactDigits(amount, token.decimals),
                     })}
                   </span>{" "}
-                  <span className="text-lg font-medium text-muted">{token.symbol}</span>
+                  <span className="text-lg font-medium text-muted">
+                    {choosing ? COPY.usd : token.symbol}
+                  </span>
                 </p>
               ) : (
                 <p className="min-w-0 text-ink">
                   <InvoiceAmount invoice={invoice} tokens={tokens} />
                 </p>
               )}
-              {token ? <TokenMark chainId={invoice.chainId} symbol={token.symbol} /> : null}
+              {choosing ? (
+                <p className="text-sm text-muted">{COPY.clientChooses(invoice.options.length)}</p>
+              ) : token ? (
+                <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
+              ) : null}
             </div>
           </div>
           <div className="flex flex-col gap-3 px-4 py-5 sm:px-5">

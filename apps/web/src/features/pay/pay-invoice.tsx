@@ -152,7 +152,13 @@ function Loaded({
           {issuer ??
             (sender
               ? token
-                ? COPY.requests(sender, formatMoney(BigInt(invoice.amount), token))
+                ? COPY.requests(
+                    sender,
+                    formatMoney(
+                      BigInt(invoice.amount),
+                      choosing && !picked ? { ...token, symbol: COPY.usd } : token,
+                    ),
+                  )
                 : sender
               : COPY.invoice(number))}
         </h1>

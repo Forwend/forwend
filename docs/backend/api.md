@@ -87,7 +87,9 @@ R-19 and R-42; the full schema is in openapi.yaml.
   stored one.
 - Optional create fields: `title` (≤ 200 characters), `note` (≤ 2000), `dueDate` (`YYYY-MM-DD`, shown only; payment
   still closes at `expiresAt`), `senderName` (≤ 100; the name the payer sees on a request from a profile without
-  billing details, D-52) and `client` `{ name ≤ 200, email ≤ 254, address ≤ 500 }`. Empty means none and is
+  billing details, D-52), `returnUrl` (an `https` link of ≤ 2000 characters with a host and no user or password, which
+  the pay page offers once paid, R-58; part of the idempotency hash only when set, so older requests hash as before)
+  and `client` `{ name ≤ 200, email ≤ 254, address ≤ 500 }`. Empty means none and is
   returned as null. Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken rule is
   422 `invalid_value`; these fields are part of the idempotency hash.
 - The number, these fields and `issuer` never change, like the terms: a database trigger rejects any update.
