@@ -214,6 +214,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
             status: "confirmed",
             late: false,
             blocksLeft: 0,
+            blocksTotal: 0,
             secondsLeft: 0,
           },
         ],

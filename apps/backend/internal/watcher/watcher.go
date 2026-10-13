@@ -73,6 +73,7 @@ type deposit struct {
 	blockTime               uint64
 	amount                  *big.Int
 	final                   bool
+	finalized               uint64 // the chain's finalized block in the scan that saw it
 }
 
 // logKey identifies a log on one chain.
@@ -203,6 +204,7 @@ func depositsOf(logs []types.Log, headers map[uint64]header, invoices map[common
 			blockHash: hexutil.Encode(l.BlockHash[:]), from: hexutil.Encode(l.Topics[1][12:]),
 			to: hexutil.Encode(l.Topics[2][12:]), logIndex: uint64(l.Index), blockNumber: l.BlockNumber,
 			blockTime: uint64(h.Timestamp), amount: new(big.Int).SetBytes(l.Data), final: l.BlockNumber <= finalized,
+			finalized: finalized,
 		}
 		deposits = append(deposits, d)
 		seen[logKey{d.blockHash, d.logIndex}] = true
@@ -246,12 +248,12 @@ func (c *Chain) insertDeposits(ctx context.Context, tx pgx.Tx, deposits []deposi
 		}
 		_, err = row.Exec(ctx, `
 			INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
-			    block_hash, block_number, block_time, from_address, to_address, amount, status)
-			VALUES ($1, 'evm', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			    block_hash, block_number, block_time, from_address, to_address, amount, status, detected_finalized_block)
+			VALUES ($1, 'evm', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 			ON CONFLICT (chain_id, block_hash, log_index) DO UPDATE SET status = excluded.status
 			WHERE chain_transfers.status <> 'confirmed' AND chain_transfers.status <> excluded.status`,
 			c.chainID, d.token, d.invoiceID, d.txHash, d.logIndex, d.blockHash, d.blockNumber, d.blockTime,
-			d.from, d.to, d.amount.String(), status)
+			d.from, d.to, d.amount.String(), status, d.finalized)
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.ConstraintName == "chain_transfers_live_log" {
 			// The same transaction is already recorded under another block: one bad node must not stop the chain's

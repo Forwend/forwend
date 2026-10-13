@@ -385,7 +385,7 @@ function StatusLine({
   network: string;
   bordered: boolean;
 }) {
-  const { blocksLeft, secondsLeft } = invoiceProgress(invoice);
+  const { blocksLeft, blocksTotal, secondsLeft } = invoiceProgress(invoice);
   const pending =
     pay.state === PAY_STATES.waiting ||
     pay.state === PAY_STATES.partial ||
@@ -408,7 +408,7 @@ function StatusLine({
         <span>
           {COPY.states[pay.state](values)}
           {pay.state === PAY_STATES.confirming ? (
-            <ConfirmingStatus blocks={blocksLeft} seconds={secondsLeft} />
+            <ConfirmingStatus blocks={blocksLeft} total={blocksTotal} seconds={secondsLeft} />
           ) : null}
         </span>
       </p>

@@ -128,6 +128,7 @@ type depositJSON struct {
 	Status      string `json:"status"`
 	Late        bool   `json:"late"`
 	BlocksLeft  uint64 `json:"blocksLeft"`
+	BlocksTotal uint64 `json:"blocksTotal"`
 	SecondsLeft int64  `json:"secondsLeft"`
 }
 
@@ -257,7 +258,7 @@ func toDepositsJSON(deposits []invoice.Deposit) []depositJSON {
 	for _, d := range deposits {
 		out = append(out, depositJSON{TxHash: d.TxHash, LogIndex: d.LogIndex, From: d.From,
 			Amount: d.Amount.String(), BlockNumber: d.BlockNumber, BlockTime: d.BlockTime.Format(time.RFC3339),
-			Status: d.Status, Late: d.Late, BlocksLeft: d.BlocksLeft, SecondsLeft: int64(d.TimeLeft / time.Second)})
+			Status: d.Status, Late: d.Late, BlocksLeft: d.BlocksLeft, BlocksTotal: d.BlocksTotal, SecondsLeft: int64(d.TimeLeft / time.Second)})
 	}
 	return out
 }

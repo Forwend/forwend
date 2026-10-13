@@ -13,8 +13,8 @@ import {
 import { INVOICE_COPY as COPY } from "@/features/invoices/invoices-copy";
 
 /**
- * The status timeline. While a payment confirms, its bar fills as blocks pass, measured from the most blocks left seen
- * on this page; until one passes it shows a sweep. `waiting` false shows no step in progress (a closed checkout).
+ * The status timeline. While a payment confirms, its bar fills as blocks pass of those it had to wait (R-73); until one
+ * passes it shows a sweep. `waiting` false shows no step in progress (a closed checkout).
  */
 export function InvoiceTimeline({
   invoice,
@@ -25,14 +25,10 @@ export function InvoiceTimeline({
   label: string;
   waiting?: boolean;
 }) {
-  const { done: reached, current, blocksLeft } = invoiceProgress(invoice);
+  const { done: reached, current, blocksLeft, blocksTotal } = invoiceProgress(invoice);
   // A fast chain can go from nothing to paid in one read: the steps still show one after another (R-62).
   const done = useStepped(reached);
   const confirming = current === INVOICE_STEPS.confirming && done === reached;
-  // Remembered across reads; a new payment starts counting again.
-  const [most, setMost] = useState(0);
-  const next = confirming ? Math.max(most, blocksLeft) : 0;
-  if (next !== most) setMost(next);
 
   // Partly paid shows on the Paid step itself, as a tinted label, filled by the share received (R-69).
   const partly =
@@ -57,7 +53,11 @@ export function InvoiceTimeline({
       // anything else sweeps (paid out while settling included). A step passed through on the way shows full.
       ...(i === done && done === reached && step === current
         ? {
-            progress: confirming ? confirmingProgress(blocksLeft, next) : partlyPaid ? share : null,
+            progress: confirming
+              ? confirmingProgress(blocksLeft, blocksTotal)
+              : partlyPaid
+                ? share
+                : null,
           }
         : {}),
     };
@@ -79,13 +79,15 @@ function useStepped(reached: number): number {
   return Math.min(shown, reached);
 }
 
-/**
- * "Confirming (4/12) · about 19 min left": blocks passed of the most left seen on this page, as the timeline's bar
- * counts them (the API gives no starting count).
- */
-export function ConfirmingStatus({ blocks, seconds }: { blocks: number; seconds: number }) {
-  const [most, setMost] = useState(blocks);
-  if (blocks > most) setMost(blocks);
-  const total = Math.max(most, blocks);
-  return <>{COPY.confirming(total - blocks, total, seconds)}</>;
+/** "Confirming (4/12) · about 19 min left": blocks passed of those to wait, as the timeline's bar counts them. */
+export function ConfirmingStatus({
+  blocks,
+  total,
+  seconds,
+}: {
+  blocks: number;
+  total: number;
+  seconds: number;
+}) {
+  return <>{COPY.confirming(Math.max(0, total - blocks), Math.max(total, blocks), seconds)}</>;
 }

@@ -125,7 +125,7 @@ function Loaded({
   tokens: readonly InvoiceToken[] | null;
   request: boolean;
 }) {
-  const { current, blocksLeft, secondsLeft } = invoiceProgress(invoice);
+  const { current, blocksLeft, blocksTotal, secondsLeft } = invoiceProgress(invoice);
   const token = tokens?.find((t) => tokenKey(t) === tokenKey(invoice));
   const amount = BigInt(invoice.amount);
   const client = mine?.client;
@@ -209,7 +209,7 @@ function Loaded({
             <InvoiceTimeline invoice={invoice} label={COPY.progress} />
             <p role="status" className="text-sm text-ink empty:sr-only">
               {current === INVOICE_STEPS.confirming ? (
-                <ConfirmingStatus blocks={blocksLeft} seconds={secondsLeft} />
+                <ConfirmingStatus blocks={blocksLeft} total={blocksTotal} seconds={secondsLeft} />
               ) : // The badge and the timeline say the state; this line says only why money still waits.
               wait ? (
                 COPY.settling[wait.kind](

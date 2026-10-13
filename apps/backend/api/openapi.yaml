@@ -1023,7 +1023,7 @@ components:
         createdAt: { type: string, format: date-time }
     Deposit:
       type: object
-      required: [txHash, logIndex, from, amount, blockNumber, blockTime, status, late, blocksLeft, secondsLeft]
+      required: [txHash, logIndex, from, amount, blockNumber, blockTime, status, late, blocksLeft, blocksTotal, secondsLeft]
       properties:
         txHash: { type: string, pattern: "^0x[0-9a-f]{64}$" }
         logIndex: { type: integer, minimum: 0 }
@@ -1047,6 +1047,12 @@ components:
           type: integer
           minimum: 0
           description: Blocks until the deposit's block is final; 0 when confirmed.
+        blocksTotal:
+          type: integer
+          minimum: 0
+          description: >-
+            Blocks the deposit had to wait when first seen, at least blocksLeft; fixed across reads, so blocksTotal -
+            blocksLeft is how many passed. 0 when confirmed.
         secondsLeft:
           type: integer
           minimum: 0

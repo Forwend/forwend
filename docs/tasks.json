@@ -3120,7 +3120,7 @@
         "R-73: backend test checks a detected deposit reports blocksTotal from the finalized block at detection, unchanged as the head moves; e2e reloads a confirming invoice and the count keeps its total"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend",
         "e2e"
@@ -3132,7 +3132,77 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T19:51:43Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 94.7,
+            "log": "docs/runs/F152-20261013T195143Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 141.3,
+            "log": "docs/runs/F152-20261013T195143Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": "docs/runs/F152-20261013T195143Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F152-20261013T195143Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F152-20261013T195143Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F152-20261013T195143Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 94.0,
+            "log": "docs/runs/F152-20261013T195143Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.6,
+            "log": "docs/runs/F152-20261013T195143Z-build.log"
+          }
+        ],
+        "taskHash": "c63fea42a814591e",
+        "filesHash": "d3e3933f115ee981",
+        "proof": {
+          "1": "backend: invoices_test TestGetInvoiceKeepsTheConfirmingTotal checks blocksTotal 100 with blocksLeft 20, then 100 with 10 after the finalized head moves, and a row without the kept block counts from what is left; watcher_test checks detected_finalized_block keeps 2 blocks to wait across scans; e2e: pay.spec opens and reloads a confirming page and reads Confirming (6/12) both times; privy navigation.spec reloads the owner page at Confirming (60/120)"
+        }
+      },
+      "branch": "fix/f152-confirming-n-m-keeps-its-count-across-re",
+      "baseCommit": "3151bab1be911fd0126cf90bbd826fa1500968d7",
+      "failedVerifies": 0
     },
     {
       "id": "F153",

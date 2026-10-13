@@ -131,7 +131,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - PDFs open through the same-origin `/api` path. The invoice detail lists them under Documents: the invoice PDF
   always, the receipt PDF once paid.
 - While a payment confirms, the timeline's step fills as blocks pass (a sweep until the first block passes) and the
-  status line stays short: "Confirming (4/12) · about 19 min left", blocks passed of the most left seen on the page.
+  status line stays short: "Confirming (4/12) · about 19 min left", blocks passed of those the payment had to wait when first
+  seen, from the API, so a reload keeps the count (R-73).
   The step that waits always moves, so it never reads as stuck: a sweep while waiting for payment or while the money
   is on its way to the wallet (Settled), a fill by the share received when partly paid (R-69).
 - The invoice page (R-60) says its state at once: a header with the title, one status pill and when it closes, closed,

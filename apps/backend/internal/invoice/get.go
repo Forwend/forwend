@@ -134,7 +134,8 @@ func (s *Service) deposits(ctx context.Context, id string, chainID uint64, expir
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.pool.Query(ctx, `SELECT tx_hash, log_index, from_address, amount::text, block_number, block_time, status
+	rows, err := s.pool.Query(ctx, `SELECT tx_hash, log_index, from_address, amount::text, block_number, block_time, status,
+		       coalesce(detected_finalized_block, 0)
 		FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged' ORDER BY block_number, log_index`, id)
 	if err != nil {
 		return nil, fmt.Errorf("read invoice %s deposits: %w", id, err)
@@ -144,8 +145,9 @@ func (s *Service) deposits(ctx context.Context, id string, chainID uint64, expir
 	for rows.Next() {
 		var d Deposit
 		var amount string
-		var blockTime uint64
-		if err := rows.Scan(&d.TxHash, &d.LogIndex, &d.From, &amount, &d.BlockNumber, &blockTime, &d.Status); err != nil {
+		var blockTime, seenFinalized uint64
+		if err := rows.Scan(&d.TxHash, &d.LogIndex, &d.From, &amount, &d.BlockNumber, &blockTime, &d.Status,
+			&seenFinalized); err != nil {
 			return nil, fmt.Errorf("read invoice %s deposits: %w", id, err)
 		}
 		d.Amount, _ = new(big.Int).SetString(amount, 10)
@@ -153,6 +155,10 @@ func (s *Service) deposits(ctx context.Context, id string, chainID uint64, expir
 		d.Late = int64(blockTime) > expiresAt.Unix()
 		if d.Status != "confirmed" {
 			d.Progress = finality.ProgressOf(finality.Block{Number: d.BlockNumber, Time: blockTime}, head)
+			d.BlocksTotal = d.BlocksLeft
+			if seenFinalized > 0 && seenFinalized < d.BlockNumber {
+				d.BlocksTotal = max(d.BlocksLeft, d.BlockNumber-seenFinalized)
+			}
 		}
 		out = append(out, d)
 	}

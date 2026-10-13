@@ -102,10 +102,25 @@ func TestDepositIsDetectedThenConfirmed(t *testing.T) {
 	if err != nil || amount != "5000000" || from != chaintest.Sender || blockTime == 0 {
 		t.Fatalf("row: amount %s from %s time %d err %v", amount, from, blockTime, err)
 	}
+	// The finalized block of the scan that saw it is kept: the deposit had 2 blocks to wait (R-73).
+	wait := func() (n int64) {
+		err := e.pool.QueryRow(context.Background(),
+			"SELECT block_number - detected_finalized_block FROM chain_transfers").Scan(&n)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	if got := wait(); got != 2 {
+		t.Fatalf("blocks to wait when seen: %d", got)
+	}
 	e.anvil.Mine(1) // finalized is now one block short of the deposit
 	e.scan(t)
 	if got, _ := e.rows(t); got[tx][0] != "detected" {
 		t.Fatalf("one block later: %v", got)
+	}
+	if got := wait(); got != 2 {
+		t.Fatalf("a later scan changed the blocks to wait: %d", got)
 	}
 	e.anvil.Mine(1) // the deposit's block is finalized
 	e.scan(t)

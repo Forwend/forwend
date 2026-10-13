@@ -48,6 +48,7 @@ const deposit = (amount: string, extra: Partial<Deposit> = {}): Deposit => ({
   status: "confirmed",
   late: false,
   blocksLeft: 0,
+  blocksTotal: 0,
   secondsLeft: 0,
   ...extra,
 });

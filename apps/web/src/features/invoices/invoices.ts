@@ -116,6 +116,8 @@ export interface Deposit {
   /** Paid after expiry: held for the payer, never the creator's. */
   late: boolean;
   blocksLeft: number;
+  /** The blocks it had to wait when first seen, fixed across reads: blocksTotal - blocksLeft have passed (R-73). */
+  blocksTotal: number;
   secondsLeft: number;
 }
 
@@ -335,17 +337,23 @@ export function invoiceProgress(inv: Invoice) {
   return {
     done,
     current: ended ? null : (INVOICE_TIMELINE[done] ?? null),
-    blocksLeft: Math.max(0, ...confirming.map((d) => d.blocksLeft)),
+    ...slowest(confirming),
     secondsLeft: Math.max(0, ...confirming.map((d) => d.secondsLeft)),
   };
 }
 
-/**
- * How far confirming got, 0 to 1, against the most blocks left seen while watching: the API gives no starting count.
- * Null until a block passes, so the bar never shows progress nobody saw.
- */
-export function confirmingProgress(blocksLeft: number, mostBlocksLeft: number): number | null {
-  return blocksLeft < mostBlocksLeft ? 1 - blocksLeft / mostBlocksLeft : null;
+/** The blocks left and the blocks to wait of the deposit furthest from final. */
+function slowest(deposits: readonly Deposit[]) {
+  const last = deposits.reduce<Deposit | null>(
+    (most, d) => (most && most.blocksLeft >= d.blocksLeft ? most : d),
+    null,
+  );
+  return { blocksLeft: last?.blocksLeft ?? 0, blocksTotal: last?.blocksTotal ?? 0 };
+}
+
+/** How far confirming got, 0 to 1. Null until a block passes, so the bar never shows progress nobody saw. */
+export function confirmingProgress(blocksLeft: number, blocksTotal: number): number | null {
+  return blocksLeft < blocksTotal ? 1 - blocksLeft / blocksTotal : null;
 }
 
 const DUE_DATE = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone: "UTC" });

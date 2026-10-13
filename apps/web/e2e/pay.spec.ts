@@ -86,6 +86,7 @@ const DEPOSIT = {
   status: "detected",
   late: false,
   blocksLeft: 12,
+  blocksTotal: 12,
   secondsLeft: 150,
 };
 const DETECTED = { ...OPEN, paymentStatus: "detected", deposits: [DEPOSIT] };
@@ -94,7 +95,9 @@ const CONFIRMING = {
   ...DETECTED,
   deposits: [{ ...DEPOSIT, blocksLeft: 6, secondsLeft: 75 }],
 };
-const CONFIRMED = [{ ...DEPOSIT, status: "confirmed", blocksLeft: 0, secondsLeft: 0 }];
+const CONFIRMED = [
+  { ...DEPOSIT, status: "confirmed", blocksLeft: 0, blocksTotal: 0, secondsLeft: 0 },
+];
 const PAID = {
   ...OPEN,
   paymentStatus: "paid",
@@ -130,7 +133,14 @@ const PARTIAL = {
   ...OPEN,
   paymentStatus: "partially_paid",
   deposits: [
-    { ...DEPOSIT, amount: "250000000", status: "confirmed", blocksLeft: 0, secondsLeft: 0 },
+    {
+      ...DEPOSIT,
+      amount: "250000000",
+      status: "confirmed",
+      blocksLeft: 0,
+      blocksTotal: 0,
+      secondsLeft: 0,
+    },
   ],
 };
 const CLOSED = { ...OPEN, paymentStatus: "expired" };
@@ -239,6 +249,20 @@ test.describe("pay page", () => {
     // It comes back once the wait is over.
     await page.clock.runFor(31_000);
     await expect(check).toBeEnabled();
+  });
+
+  // R-73: the count comes from the API, so a page opened halfway through says how far it got.
+  test("a page opened while a payment confirms counts the blocks already passed", async ({
+    page,
+  }) => {
+    await openPay(page, CONFIRMING);
+    await expect(status(page)).toHaveText(
+      "Payment received · Confirming (6/12) · about 2 min left",
+    );
+    await page.reload();
+    await expect(status(page)).toHaveText(
+      "Payment received · Confirming (6/12) · about 2 min left",
+    );
   });
 
   test("follows the payment from waiting to paid without a reload, and never shows Settled", async ({
