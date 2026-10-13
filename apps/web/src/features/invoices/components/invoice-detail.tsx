@@ -6,7 +6,6 @@ import {
   COPY_STATUS,
   formatTokenAmount,
   PAYMENT_STATUS,
-  PAYMENT_STATUSES,
   Skeleton,
   StatusPill,
   shortAddress,
@@ -132,6 +131,13 @@ function Loaded({
   const client = mine?.client;
   const issuer = invoice.issuer;
   const status = invoiceStatus(invoice);
+  const received = invoice.deposits
+    .filter((d) => !d.late)
+    .reduce((sum, d) => sum + BigInt(d.amount), 0n);
+  const money = (units: bigint) =>
+    token
+      ? `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`
+      : units.toString();
   // Payer chooses with no money yet: the amount is USD in any accepted option (R-56, D-75).
   const choosing = invoice.options.length > 1 && !invoice.optionLocked;
   // The pay link takes money only while these last; sharing it later only creates money held for a refund.
@@ -143,15 +149,6 @@ function Loaded({
       PAYMENT_STATUS.confirming,
     ] as string[]
   ).includes(status);
-  const untold = (
-    [
-      PAYMENT_STATUS.expired,
-      PAYMENT_STATUS.expiredPartiallyPaid,
-      PAYMENT_STATUS.partiallyPaid,
-      PAYMENT_STATUS.overpaid,
-    ] as string[]
-  ).includes(status);
-
   return (
     <>
       {/* One status, said at once: open with its close time, closed, partly paid, paid or settled (R-60). */}
@@ -195,6 +192,11 @@ function Loaded({
                   <InvoiceAmount invoice={invoice} tokens={tokens} />
                 </p>
               )}
+              {received > 0n && received < amount && token ? (
+                <p className="w-full text-sm text-muted sm:order-last">
+                  {COPY.receivedOf(money(received), money(amount))}
+                </p>
+              ) : null}
               {choosing ? (
                 <p className="text-sm text-muted">{COPY.clientChooses(invoice.options.length)}</p>
               ) : token ? (
@@ -208,21 +210,14 @@ function Loaded({
             <p role="status" className="text-sm text-ink empty:sr-only">
               {current === INVOICE_STEPS.confirming ? (
                 <ConfirmingStatus blocks={blocksLeft} seconds={secondsLeft} />
-              ) : (
-                // An overpaid invoice is paid too, so its label and its settlement wait share the line.
-                [
-                  untold ? PAYMENT_STATUSES[status].label : null,
-                  wait
-                    ? COPY.settling[wait.kind](
-                        chainName(invoice.chainId),
-                        wait.secondsLeft ?? 0,
-                        wait.until ? CLOCK.format(new Date(wait.until)) : "",
-                      )
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")
-              )}
+              ) : // The badge and the timeline say the state; this line says only why money still waits.
+              wait ? (
+                COPY.settling[wait.kind](
+                  chainName(invoice.chainId),
+                  wait.secondsLeft ?? 0,
+                  wait.until ? CLOCK.format(new Date(wait.until)) : "",
+                )
+              ) : null}
             </p>
             <InvoiceDeposits invoice={invoice} token={token ?? null} />
             {/* Money sent to an option the client did not end up paying with is the payer's (D-76). */}
@@ -236,15 +231,13 @@ function Loaded({
                   title={COPY.heldOn(o.symbol, chainName(o.chainId))}
                 />
               ))}
-            {invoice.settlementStatus === API_SETTLEMENT_STATUSES.settled ? null : (
+            {/* Paid has nothing left to look for. */}
+            {invoice.paymentStatus === API_PAYMENT_STATUSES.paid ||
+            invoice.settlementStatus === API_SETTLEMENT_STATUSES.settled ? null : (
               <CheckStatus
                 invoiceId={invoice.invoiceId}
                 network={chainName(invoice.chainId)}
-                money={(units) =>
-                  token
-                    ? `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`
-                    : units.toString()
-                }
+                money={money}
                 nextCheckAt={invoice.nextCheckAt}
               />
             )}

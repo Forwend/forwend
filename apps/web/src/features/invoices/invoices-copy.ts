@@ -153,6 +153,8 @@ export const INVOICE_COPY = {
   usd: "USD",
   clientChooses: (n: number) => `The client picks one of ${n} tokens and networks`,
   heldOn: (symbol: string, network: string) => `Held for the payer · ${symbol} on ${network}`,
+  partlyPaid: "Partially paid",
+  receivedOf: (received: string, total: string) => `Received ${received} of ${total}`,
   notFound: "No invoice has this link.",
   failed: "We could not load this invoice.",
   otherProfile: "This invoice belongs to another profile. Switch to that profile to see it.",

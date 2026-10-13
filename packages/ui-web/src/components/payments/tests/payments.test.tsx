@@ -122,4 +122,16 @@ describe("PaymentTimeline", () => {
     const plain = render(<PaymentTimeline label="Plain" steps={steps()} />);
     expect(bars(plain.container)).toEqual(["scaleX(1)", "scaleX(1)", "scaleX(0)"]);
   });
+
+  it("shows a toned step's label as a tinted badge", () => {
+    const { getByText } = render(
+      <PaymentTimeline
+        label="Toned"
+        steps={[
+          { label: "Partly paid", state: STEP_STATES.current, progress: 0.5, tone: "warning" },
+        ]}
+      />,
+    );
+    expect(getByText("Partly paid").getAttribute("class")).toContain("bg-warning-soft");
+  });
 });
