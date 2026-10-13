@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 151,
+  "nextId": 155,
   "tasks": [
     {
       "id": "F121",
@@ -3020,6 +3020,166 @@
         "branch": "chore/f150-copy-says-only-what-is-needed-no-testnet",
         "base": "main"
       }
+    },
+    {
+      "id": "F151",
+      "type": "fix",
+      "behavior": "The overview charts shrink with the window and never push the page sideways",
+      "acceptance": [
+        "R-74: e2e shrinks /app from 1440 to 390 px and checks the page does not scroll sideways and the chart is as wide as its panel"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-74"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T19:43:39Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 142.8,
+            "log": "docs/runs/F151-20261013T194339Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": "docs/runs/F151-20261013T194339Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F151-20261013T194339Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F151-20261013T194339Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": "docs/runs/F151-20261013T194339Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 92.8,
+            "log": "docs/runs/F151-20261013T194339Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.8,
+            "log": "docs/runs/F151-20261013T194339Z-build.log"
+          }
+        ],
+        "taskHash": "b4dd483aa766f87f",
+        "filesHash": "8909eb3c829a887d",
+        "proof": {
+          "1": "e2e: /app shrinks from 1440 to 390 px without sideways scroll"
+        },
+        "commit": "65afcef",
+        "doneAt": "2026-10-13T19:47:49Z"
+      },
+      "branch": "fix/f151-the-overview-charts-shrink-with-the-wind",
+      "baseCommit": "dbf3e1e29c2dc7cfa28c81ffa18d2f6bbee0ea8f",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f151-the-overview-charts-shrink-with-the-wind",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F152",
+      "type": "fix",
+      "behavior": "Confirming (n/m) keeps its count across reloads",
+      "acceptance": [
+        "R-73: backend test checks a detected deposit reports blocksTotal from the finalized block at detection, unchanged as the head moves; e2e reloads a confirming invoice and the count keeps its total"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "R-73"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F153",
+      "type": "feat",
+      "behavior": "Once money is seen the pay box shows Detected, Confirming and Paid with what arrived",
+      "acceptance": [
+        "R-68: e2e checks the send section shows the QR beside the amount and the address under them; once money is seen the pay box keeps its place with Detected, Confirming and Paid steps, the amount received, a short hash with explorer link and the confirming count; the address stays while partly paid; axe clean at 390 and 1440 px"
+      ],
+      "dependsOn": [
+        "F152"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-68"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F154",
+      "type": "feat",
+      "behavior": "The owner's invoice page starts at Waiting and keeps the pay link in its header",
+      "acceptance": [
+        "R-69, R-60: e2e checks the owner timeline starts at a moving Waiting step before money, and the pay link sits in the header with Copy and Open while it takes money and is gone once paid"
+      ],
+      "dependsOn": [
+        "F152"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-69",
+        "R-60"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
