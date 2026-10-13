@@ -2938,7 +2938,7 @@
       "dependsOn": [
         "F146"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -3007,12 +3007,19 @@
         "taskHash": "c71ba632f44ac9e3",
         "filesHash": "5d2dbd2d70fd8e18",
         "proof": {
-          "1": "e2e: privy balances.spec checks the Receive sheet has no test network note on Base Sepolia and Arbitrum Sepolia; navigation.spec checks the owner invoice page has none; pay.spec checks the pay page has none; unit: balance-figure.test checks the line reads exactly '1.00 USDC on its way'; Up to date shipped in F146"
-        }
+          "1": "e2e: no testnet notes on Receive, invoice and pay pages; unit: exact on its way line"
+        },
+        "commit": "a3d6c11",
+        "doneAt": "2026-10-13T19:33:29Z"
       },
       "branch": "chore/f150-copy-says-only-what-is-needed-no-testnet",
       "baseCommit": "e00d9bbeac2514468c61febccd1a200f2f1cd522",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f150-copy-says-only-what-is-needed-no-testnet",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
