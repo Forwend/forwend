@@ -3778,7 +3778,7 @@
         "e2e checks switching profile on an invoice's page opens the new profile's invoice list, and on other pages keeps the page"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -3845,12 +3845,19 @@
         "taskHash": "59d9c75ae1fcaec6",
         "filesHash": "f74d3f974a485515",
         "proof": {
-          "1": "e2e: privy navigation.spec switches Personal to Merchant on /app/balances and stays there, then from a personal request's page lands on /app/invoices with the Invoices heading; without the fix it fails staying on /app/invoices/0xd147…"
-        }
+          "1": "e2e: page kept on switch; invoice page goes to the new list"
+        },
+        "commit": "e55f4c7",
+        "doneAt": "2026-10-13T21:24:36Z"
       },
       "branch": "fix/f159-switching-profile-on-an-invoice-s-page-o",
       "baseCommit": "9cf8076caf380359b94da83848bb14d61c3c7f66",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f159-switching-profile-on-an-invoice-s-page-o",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
