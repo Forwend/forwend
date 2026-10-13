@@ -101,7 +101,7 @@
         "R-69: backend test checks the invoice list and read say confirming for a partly paid invoice with a detected deposit; e2e checks the owner page and list show the confirming pill, the Confirming step and no Partially paid badge until it confirms"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -178,12 +178,19 @@
         "taskHash": "86574ac53022c3af",
         "filesHash": "2045493ebbfb1041",
         "proof": {
-          "1": "backend: invoices_test checks the public read, the owner read and the owner list say confirming true for an invoice with a detected payment before expiry and false with none; e2e: privy navigation.spec checks a partly paid invoice with a second payment confirming shows the Detected pill, the Confirming (60/120) step and no Partially paid badge, and its list row shows Detected; unit: invoiceStatus reads partly paid plus confirming as detected"
-        }
+          "1": "backend: confirming flag; e2e: Detected pill and Confirming step, no Partially paid badge"
+        },
+        "commit": "1c640e1",
+        "doneAt": "2026-10-13T21:49:35Z"
       },
       "branch": "fix/f161-a-partly-paid-invoice-with-a-payment-sti",
       "baseCommit": "d82fbbecd6f7cc77c3ab14f9c3f090fef264415f",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f161-a-partly-paid-invoice-with-a-payment-sti",
+        "base": "main"
+      }
     },
     {
       "id": "F162",
