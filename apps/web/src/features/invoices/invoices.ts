@@ -65,6 +65,7 @@ export const AMOUNT_ERRORS = {
 } as const;
 
 export const INVOICE_STEPS = {
+  waiting: "waiting",
   detected: "detected",
   confirming: "confirming",
   paid: "paid",
@@ -321,14 +322,15 @@ export function invoiceProgress(inv: Invoice) {
   const deposits = inv.deposits.filter((d) => !d.late);
   const confirming = deposits.filter((d) => d.status !== API_DEPOSIT_STATUSES.confirmed);
   const settled = inv.settlementStatus === API_SETTLEMENT_STATUSES.settled;
+  // Waiting is done once money is seen, and Detected with it: a seen payment is already confirming.
   const done = settled
-    ? 4
+    ? 5
     : inv.paymentStatus === API_PAYMENT_STATUSES.paid
-      ? 3
+      ? 4
       : confirming.length > 0
-        ? 1
+        ? 2
         : deposits.length > 0
-          ? 2
+          ? 3
           : 0;
   const ended =
     settled ||

@@ -440,13 +440,34 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   const current = progress.locator("[aria-current=step]");
   const payments = main.locator("ul").filter({ hasText: "From" });
 
+  // Before any money: Waiting is the moving step, and the pay link sits in the header with Copy and Open (R-69, R-60).
+  body = { ...OPEN_INVOICE, deposits: [] };
+  await page.goto(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
+  await expect(progress.getByRole("listitem")).toHaveText([
+    /^Waiting/,
+    /^Detected/,
+    /^Confirming/,
+    /^Paid/,
+    /^Settled/,
+  ]);
+  await expect(current).toHaveText("Waiting");
+  await expect(current.locator("[class*='fw-progress']")).toHaveCount(1);
+  const payLink = main.locator("header").getByRole("region", { name: "Pay link" });
+  await expect(payLink.locator("p[title]")).toHaveAttribute(
+    "title",
+    `http://localhost:3000/pay/${OPEN_INVOICE.invoiceId}`,
+  );
+  await expect(payLink.getByRole("button", { name: "Copy link" })).toBeVisible();
+  await expect(payLink.getByRole("link", { name: /Open the pay page/ })).toBeVisible();
+  expect(await blockingViolations(page)).toEqual([]);
+
   // Confirming: the count says it once; the payment row has no status pill of its own.
   body = {
     ...OPEN_INVOICE,
     paymentStatus: "detected",
     deposits: [deposit("detected", OPEN_INVOICE.amount, 120)],
   };
-  await page.goto(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
+  await page.reload();
   await expect(main.getByRole("status").filter({ hasText: /^Confirming/ })).toHaveText(
     "Confirming (0/120) · about 6 min left",
   );
@@ -491,6 +512,8 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(current).toHaveText("Settled");
   await expect(current.locator("[class*='fw-progress']")).toHaveCount(1);
   await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
+  // Paid takes no more money: the pay link is gone.
+  await expect(main.getByRole("region", { name: "Pay link" })).toHaveCount(0);
   await context.close();
 });
 

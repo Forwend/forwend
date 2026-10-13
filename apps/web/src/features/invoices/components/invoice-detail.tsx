@@ -152,18 +152,22 @@ function Loaded({
   return (
     <>
       {/* One status, said at once: open with its close time, closed, partly paid, paid or settled (R-60). */}
-      <header className="flex flex-col gap-2">
-        {/* The number is the breadcrumb's last step on desktop, so the heading shows only on phones. */}
-        <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
-          {invoiceNumber(invoice.number)}
-        </h1>
-        {invoice.title ? (
-          <p className="text-lg font-medium break-words text-ink">{invoice.title}</p>
-        ) : null}
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-          <StatusPill status={status} />
-          {when(invoice) ? <span>{when(invoice)}</span> : null}
-        </p>
+      {/* The pay link is the page's action, so it sits with the status, while it can still take money (R-60). */}
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex min-w-0 flex-col gap-2">
+          {/* The number is the breadcrumb's last step on desktop, so the heading shows only on phones. */}
+          <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
+            {invoiceNumber(invoice.number)}
+          </h1>
+          {invoice.title ? (
+            <p className="text-lg font-medium break-words text-ink">{invoice.title}</p>
+          ) : null}
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+            <StatusPill status={status} />
+            {when(invoice) ? <span>{when(invoice)}</span> : null}
+          </p>
+        </div>
+        {payable ? <ShareLink invoiceId={invoice.invoiceId} /> : null}
       </header>
 
       {/* minmax(0, 1fr): a long value never widens the column past the screen. */}
@@ -245,7 +249,6 @@ function Loaded({
         </section>
 
         <div className="flex flex-col gap-4">
-          {payable ? <ShareLink invoiceId={invoice.invoiceId} /> : null}
           <section aria-labelledby="invoice-details" className={PANEL}>
             <h2 id="invoice-details" className={PANEL_TITLE}>
               {COPY.details}
@@ -383,7 +386,6 @@ function ShareLink({ invoiceId }: { invoiceId: string }) {
   // The app renders only in the browser, after sign-in.
   const link = `${window.location.origin}/pay/${invoiceId}`;
   const [status, copy] = useCopy(link);
-  // A request's sheet can show one over an invoice page that shows another.
   const titleId = useId();
   const label =
     status === COPY_STATUS.copied
@@ -392,8 +394,8 @@ function ShareLink({ invoiceId }: { invoiceId: string }) {
         ? COPY.copyFailed
         : COPY.copy;
   return (
-    <section aria-labelledby={titleId} className={`${PANEL} flex flex-col gap-2 p-4 sm:p-5`}>
-      <h2 id={titleId} className="text-sm font-semibold text-ink">
+    <section aria-labelledby={titleId} className="min-w-0 lg:w-[26rem] lg:shrink-0">
+      <h2 id={titleId} className="sr-only">
         {COPY.share}
       </h2>
       <div className="flex items-center gap-2">

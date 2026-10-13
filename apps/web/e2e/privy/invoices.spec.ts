@@ -138,9 +138,9 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     const amount = page.getByRole("region", { name: "Amount" });
     await expect(amount).toContainText("12.50 USDC");
     await expect(amount.getByRole("list", { name: "Payment progress" })).toContainText(
-      /Detected.*Confirming.*Paid.*Settled/,
+      /Waiting.*Detected.*Confirming.*Paid.*Settled/,
     );
-    await expect(amount.getByRole("listitem").filter({ hasText: "Detected" })).toHaveAttribute(
+    await expect(amount.getByRole("listitem").filter({ hasText: "Waiting" })).toHaveAttribute(
       "aria-current",
       "step",
     );

@@ -135,15 +135,16 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - While a payment confirms, the timeline's step fills as blocks pass (a sweep until the first block passes) and the
   status line stays short: "Confirming (4/12) · about 19 min left", blocks passed of those the payment had to wait when first
   seen, from the API, so a reload keeps the count (R-73).
-  The step that waits always moves, so it never reads as stuck: a sweep while waiting for payment or while the money
-  is on its way to the wallet (Settled), a fill by the share received when partly paid (R-69).
+  The owner's steps are Waiting, Detected, Confirming, Paid and Settled. The step that waits always moves, so it never
+  reads as stuck: a sweep on Waiting before any money and on Settled while the money is on its way to the wallet, a
+  fill by the share received when partly paid (R-69).
 - The invoice page (R-60) says its state at once: a header with the title, one status pill and when it closes, closed,
-  was paid or settled (a paid invoice never shows its close time). Below, two columns from large screens up: the
+  was paid or settled (a paid invoice never shows its close time), and on its right the pay link as one row (host and
+  short id, Copy link, Open in a new tab) while the checkout can take money. Below, two columns from large screens up: the
   amount ("Received X of Y" under it when partly paid) with the timeline, where the Paid step reads "Partially paid"
   as a warning-tinted label when partly paid, the status line (only the confirming count or why settling waits; the
   state itself is the pill's), the payments (amount, sender, time and hash, no status pill of their own) and Check
-  status until paid; beside it the pay link as one row (host and short id, Copy, Open in a new tab; only while the checkout can
-  take money), the details (empty ones left out), Billed to, and From (or "None on this invoice" with a link to add
+  status until paid; beside it the details (empty ones left out), Billed to, and From (or "None on this invoice" with a link to add
   billing details).
 
 ## Theme and behavior
