@@ -14,6 +14,7 @@ const option = (optionId: string, chainId: number, symbol: string): InvoiceOptio
   decimals: 6,
   amount: "1000000",
   receiveAddress: `0x${"2".repeat(40)}`,
+  deposits: [],
 });
 const OPTIONS = [
   option("base-usdc", 84532, "USDC"),

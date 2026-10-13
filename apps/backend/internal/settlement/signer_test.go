@@ -1460,4 +1460,11 @@ func TestSettlesTheOptionPaidFirst(t *testing.T) {
 		t.Fatalf("invoice shows option %s locked %v settlement %s (%v)", got.OptionID, got.OptionLocked,
 			got.SettlementStatus, err)
 	}
+	// The read lists the held USDC payment under its own option, and only the USDT one as the invoice's (F143).
+	if len(got.Deposits) != 1 || len(got.Options[1].Deposits) != 1 || got.Options[1].ID != usdtOption.ID {
+		t.Fatalf("invoice deposits %+v, options %+v", got.Deposits, got.Options)
+	}
+	if held := got.Options[0].Deposits; len(held) != 1 || held[0].Amount.Int64() != 5000000 || held[0].Status != "confirmed" {
+		t.Fatalf("USDC option deposits %+v, want the held 5000000", held)
+	}
 }

@@ -189,6 +189,51 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(pdf("Receipt PDF")).toHaveAttribute("href", pdfPath("receipt.pdf"));
     await page.unroute(`**${read}`);
 
+    // A payment to an option the client did not end up paying with is listed apart, as held for the payer (F143).
+    const heldTx = `0x${"4".repeat(64)}`;
+    await page.route(`**/api/v1/**/invoices/${invoice.invoiceId}`, async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      const held = {
+        optionId: `0x${"5".repeat(64)}`,
+        chainId: 421614,
+        network: "arbitrum-sepolia",
+        token: "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d",
+        symbol: "USDC",
+        decimals: 6,
+        amount: body.amount,
+        receiveAddress: `0x${"6".repeat(40)}`,
+        deposits: [
+          {
+            txHash: heldTx,
+            logIndex: 0,
+            from: `0x${"7".repeat(40)}`,
+            amount: "2000000",
+            blockNumber: 1,
+            blockTime: body.createdAt,
+            status: "confirmed",
+            late: false,
+            blocksLeft: 0,
+            secondsLeft: 0,
+          },
+        ],
+      };
+      await route.fulfill({
+        response,
+        json: { ...body, optionLocked: true, options: [...body.options, held] },
+      });
+    });
+    await page.reload();
+    const held = page.getByText("Held for the payer · USDC on Arbitrum Sepolia");
+    await expect(held).toBeVisible();
+    const heldList = held.locator("xpath=following-sibling::ul");
+    await expect(heldList).toContainText("2.00 USDC");
+    await expect(
+      heldList.getByRole("link", { name: "View transaction on Arbiscan" }),
+    ).toHaveAttribute("href", `https://sepolia.arbiscan.io/tx/${heldTx}`);
+    expect(await blockingViolations(page)).toEqual([]);
+    await page.unroute(`**/api/v1/**/invoices/${invoice.invoiceId}`);
+
     // Back in the list, newest first.
     await page.getByRole("link", { name: "Invoices" }).first().click();
     const row = page.getByRole("row").filter({ hasText: invoice.number });

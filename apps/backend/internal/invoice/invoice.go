@@ -148,6 +148,7 @@ type Option struct {
 	Network        string
 	Amount         *big.Int
 	ReceiveAddress string
+	Deposits       []Deposit // set by Get
 }
 
 // Deposit is a transfer to the receive address that is not reorged. Until its block is final, Progress says how far

@@ -58,17 +58,22 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 	if settledAt != nil {
 		inv.SettledAt = settledAt.UTC()
 	}
-	var head finality.Block
-	err = s.pool.QueryRow(ctx, "SELECT last_finalized_block, last_finalized_time FROM chain_cursors WHERE chain_id = $1",
-		inv.ChainID).Scan(&head.Number, &head.Time)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return Invoice{}, fmt.Errorf("read chain %d cursor: %w", inv.ChainID, err)
-	}
-	if inv.Deposits, err = s.deposits(ctx, inv, head); err != nil {
-		return Invoice{}, err
+	// Each option's own deposits: on an option that was not chosen they are held for the payer (D-76).
+	for i, o := range inv.Options {
+		if inv.Options[i].Deposits, err = s.deposits(ctx, o.ID, o.ChainID, inv.ExpiresAt); err != nil {
+			return Invoice{}, err
+		}
+		if o.ID == inv.OptionID {
+			inv.Deposits = inv.Options[i].Deposits
+		}
 	}
 	if profileID != "" { // the owner's read only; the public one leaves it out
+		head, err := s.head(ctx, inv.ChainID)
+		if err != nil {
+			return Invoice{}, err
+		}
 		inv.SettlementWait, err = s.settlementWait(ctx, inv, head)
+		return inv, err
 	}
 	return inv, err
 }
@@ -114,11 +119,15 @@ func (s *Service) settlementWait(ctx context.Context, inv Invoice, head finality
 }
 
 // deposits lists the invoice's transfers that are not reorged, with progress toward the chain's finalized block head.
-func (s *Service) deposits(ctx context.Context, inv Invoice, head finality.Block) ([]Deposit, error) {
-	rows, err := s.pool.Query(ctx, `SELECT tx_hash, log_index, from_address, amount::text, block_number, block_time, status
-		FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged' ORDER BY block_number, log_index`, inv.OptionID)
+func (s *Service) deposits(ctx context.Context, id string, chainID uint64, expiresAt time.Time) ([]Deposit, error) {
+	head, err := s.head(ctx, chainID)
 	if err != nil {
-		return nil, fmt.Errorf("read invoice %s deposits: %w", inv.ID, err)
+		return nil, err
+	}
+	rows, err := s.pool.Query(ctx, `SELECT tx_hash, log_index, from_address, amount::text, block_number, block_time, status
+		FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged' ORDER BY block_number, log_index`, id)
+	if err != nil {
+		return nil, fmt.Errorf("read invoice %s deposits: %w", id, err)
 	}
 	defer rows.Close()
 	out := []Deposit{}
@@ -127,17 +136,28 @@ func (s *Service) deposits(ctx context.Context, inv Invoice, head finality.Block
 		var amount string
 		var blockTime uint64
 		if err := rows.Scan(&d.TxHash, &d.LogIndex, &d.From, &amount, &d.BlockNumber, &blockTime, &d.Status); err != nil {
-			return nil, fmt.Errorf("read invoice %s deposits: %w", inv.ID, err)
+			return nil, fmt.Errorf("read invoice %s deposits: %w", id, err)
 		}
 		d.Amount, _ = new(big.Int).SetString(amount, 10)
 		d.BlockTime = time.Unix(int64(blockTime), 0).UTC()
-		d.Late = int64(blockTime) > inv.ExpiresAt.Unix()
+		d.Late = int64(blockTime) > expiresAt.Unix()
 		if d.Status != "confirmed" {
 			d.Progress = finality.ProgressOf(finality.Block{Number: d.BlockNumber, Time: blockTime}, head)
 		}
 		out = append(out, d)
 	}
 	return out, rows.Err()
+}
+
+// head is the chain's finalized block as the worker last read it; zero before its first scan.
+func (s *Service) head(ctx context.Context, chainID uint64) (finality.Block, error) {
+	var head finality.Block
+	err := s.pool.QueryRow(ctx, "SELECT last_finalized_block, last_finalized_time FROM chain_cursors WHERE chain_id = $1",
+		chainID).Scan(&head.Number, &head.Time)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return finality.Block{}, fmt.Errorf("read chain %d cursor: %w", chainID, err)
+	}
+	return head, nil
 }
 
 // options lists the invoice's accepted options, ordered by chain and symbol: one for a fixed invoice.

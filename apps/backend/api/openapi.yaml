@@ -892,7 +892,7 @@ components:
                 expiresAt and settleDeadline are the invoice's.
               items:
                 type: object
-                required: [optionId, chainId, network, token, symbol, decimals, amount, receiveAddress]
+                required: [optionId, chainId, network, token, symbol, decimals, amount, receiveAddress, deposits]
                 properties:
                   optionId: { $ref: "#/components/schemas/InvoiceId" }
                   chainId: { type: integer }
@@ -902,6 +902,12 @@ components:
                   decimals: { type: integer, minimum: 0 }
                   amount: { $ref: "#/components/schemas/Uint256" }
                   receiveAddress: { $ref: "#/components/schemas/Address" }
+                  deposits:
+                    type: array
+                    description: |
+                      Transfers to this option's address that are not reorged, in chain order. On an option other than
+                      the shown one they are held for the payer (D-76).
+                    items: { $ref: "#/components/schemas/Deposit" }
             settlementWait:
               description: |
                 Only in the owner's responses (create and the profile's GET); the public GET leaves it out. Why a paid

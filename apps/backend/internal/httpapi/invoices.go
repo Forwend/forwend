@@ -86,14 +86,15 @@ type invoiceDetailJSON struct {
 
 // optionJSON is one token and network the invoice accepts, with the terms that differ per option.
 type optionJSON struct {
-	OptionID       string `json:"optionId"`
-	ChainID        uint64 `json:"chainId"`
-	Network        string `json:"network"`
-	Token          string `json:"token"`
-	Symbol         string `json:"symbol"`
-	Decimals       int    `json:"decimals"`
-	Amount         string `json:"amount"`
-	ReceiveAddress string `json:"receiveAddress"`
+	OptionID       string        `json:"optionId"`
+	ChainID        uint64        `json:"chainId"`
+	Network        string        `json:"network"`
+	Token          string        `json:"token"`
+	Symbol         string        `json:"symbol"`
+	Decimals       int           `json:"decimals"`
+	Amount         string        `json:"amount"`
+	ReceiveAddress string        `json:"receiveAddress"`
+	Deposits       []depositJSON `json:"deposits"`
 }
 
 // ownerInvoiceJSON is an invoice read by its owner: the detail plus why a paid invoice's money has not reached the
@@ -241,10 +242,16 @@ func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON
 	for _, o := range inv.Options {
 		out.Options = append(out.Options, optionJSON{OptionID: o.ID, ChainID: o.ChainID, Network: o.Network,
 			Token: o.Token, Symbol: o.Symbol, Decimals: o.Decimals, Amount: o.Amount.String(),
-			ReceiveAddress: o.ReceiveAddress})
+			ReceiveAddress: o.ReceiveAddress, Deposits: toDepositsJSON(o.Deposits)})
 	}
-	for _, d := range inv.Deposits {
-		out.Deposits = append(out.Deposits, depositJSON{TxHash: d.TxHash, LogIndex: d.LogIndex, From: d.From,
+	out.Deposits = toDepositsJSON(inv.Deposits)
+	return out
+}
+
+func toDepositsJSON(deposits []invoice.Deposit) []depositJSON {
+	out := []depositJSON{}
+	for _, d := range deposits {
+		out = append(out, depositJSON{TxHash: d.TxHash, LogIndex: d.LogIndex, From: d.From,
 			Amount: d.Amount.String(), BlockNumber: d.BlockNumber, BlockTime: d.BlockTime.Format(time.RFC3339),
 			Status: d.Status, Late: d.Late, BlocksLeft: d.BlocksLeft, SecondsLeft: int64(d.TimeLeft / time.Second)})
 	}

@@ -184,6 +184,8 @@ export interface InvoiceOption {
   /** Base units. */
   amount: string;
   receiveAddress: string;
+  /** On an option other than the shown one, these are held for the payer (D-76). */
+  deposits: Deposit[];
 }
 
 /** An invoice read alone or just created. */

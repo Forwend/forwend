@@ -20,14 +20,16 @@ const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle
 export function InvoiceDeposits({
   invoice,
   token,
+  title = INVOICE_COPY.deposits,
 }: {
-  invoice: Invoice;
+  invoice: Pick<Invoice, "chainId" | "token" | "deposits">;
   token: Pick<InvoiceToken, "symbol" | "decimals"> | null;
+  title?: string;
 }) {
   if (invoice.deposits.length === 0) return null;
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="text-xs text-muted">{INVOICE_COPY.deposits}</h3>
+      <h3 className="text-xs text-muted">{title}</h3>
       <ul className="divide-y divide-line rounded-md border border-line">
         {invoice.deposits.map((d) => {
           const amount = BigInt(d.amount);
