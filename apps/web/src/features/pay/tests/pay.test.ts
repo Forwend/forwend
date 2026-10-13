@@ -14,6 +14,7 @@ const invoice: Invoice = {
   optionId: `0x${"1".repeat(64)}`,
   optionLocked: false,
   optionCount: 1,
+  nextCheckAt: null,
   options: [],
   number: 1,
   title: null,

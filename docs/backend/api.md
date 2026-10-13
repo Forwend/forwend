@@ -216,7 +216,7 @@ seconds (when the next token is back) and runs nothing else.
 - Routes that need a token: per Privy user, after the token is checked; 2 requests a second, 60 at once. A dashboard
   tab polls about six routes every 15 s and a page load sends about ten at once, so several tabs stay well under it.
 - `POST /v1/invoices/{invoiceId}/recheck` (Check status, R-55) reads a chain RPC, so it is limited in the api: one
-  check per invoice every 30 s, kept in Postgres so every replica agrees (`invoice_rechecks.checked_at`), and a
+  check per invoice every 5 minutes (the invoice read gives `nextCheckAt`, so a reloaded page still waits), kept in Postgres so every replica agrees (`invoice_rechecks.checked_at`), and a
   per-process bucket of 1 a second, 10 at once, for everyone together. Both answer 429 with `Retry-After`. A chain that
   can't be read answers 503 `network_unavailable`. Until an option has money it checks every option's address (the
   payer may have paid any); the answer is an option holding more than recorded, else the shown one. An option whose

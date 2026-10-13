@@ -157,8 +157,8 @@ func TestImportsNoAppCode(t *testing.T) {
 }
 
 // serve answers the api's GET /v1/invoices/<pay> with api, and /pay/<pay> with a page laid out like the real one that
-// shows address and a QR code drawn as qr after the network-confirm gate and a choice of how to pay (Change opens the
-// choices again), or a closed invoice without the gate when address is "". An option's page must be asked for by
+// shows address and a QR code drawn as qr once Show address is pressed, or a closed invoice without it when address
+// is "". An option's page must be asked for by
 // ?option=<id>.
 func serve(t *testing.T, pay string, api map[string]any, address, qr, network string) string {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -174,21 +174,11 @@ func serve(t *testing.T, pay string, api map[string]any, address, qr, network st
 				`<p>2.50</p><p>USDC</p><p>` + network + `</p></section>`
 			if address != "" {
 				panel := fmt.Sprintf(`<svg role="img"><path d="%s"/></svg><p>Send to</p><p>%s</p>`, qr, address)
-				page += `<section aria-labelledby="pay-before"><button>I will send USDC</button></section>` +
-					`<section aria-labelledby="pay-method"></section><section aria-labelledby="pay-send"></section><script>
-const method = document.querySelector('[aria-labelledby="pay-method"]');
-const send = document.querySelector('[aria-labelledby="pay-send"]');
-const choose = () => {
-  method.innerHTML = '<button data-change>Change</button>';
-  send.innerHTML = '` + panel + `';
-  method.querySelector("[data-change]").onclick = pick;
+				page += `<section aria-labelledby="pay-before"><button>Show address</button></section>` +
+					`<section aria-labelledby="pay-send"></section><script>
+document.querySelector('[aria-labelledby="pay-before"] button').onclick = () => {
+  document.querySelector('[aria-labelledby="pay-send"]').innerHTML = '` + panel + `';
 };
-const pick = () => {
-  send.innerHTML = "";
-  method.innerHTML = '<button data-method>Wallet</button><button data-method>Exchange</button>';
-  for (const b of method.querySelectorAll("[data-method]")) b.onclick = choose;
-};
-document.querySelector('[aria-labelledby="pay-before"] button').onclick = pick;
 </script>`
 			}
 			fmt.Fprint(w, page+"</main>")

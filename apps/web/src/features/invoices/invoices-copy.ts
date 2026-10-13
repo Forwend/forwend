@@ -185,19 +185,16 @@ export const INVOICE_COPY = {
   // What Check status found (R-55); `money` formats base units with the token's symbol.
   recheck: (r: Recheck, network: string, money: (units: bigint) => string) => {
     const missing = BigInt(r.onChain) - BigInt(r.recorded);
-    if (r.rescanning && missing > 0n)
-      return `Found ${money(missing)} that is not recorded yet. Recording it now; this page updates by itself.`;
-    if (r.rescanning) return `Looking at ${network} again; this page updates by itself.`;
+    if (r.rescanning && missing > 0n) return `Found ${money(missing)}. Recording it now.`;
+    if (r.rescanning) return `Looking on ${network} again.`;
     // A full look ran minutes ago and found no transfer for it, such as Arc's native USDC.
-    if (missing > 0n)
-      return `${money(missing)} at the address has no recorded transfer. A full check ran a few minutes ago; check again later.`;
-    if (BigInt(r.onChain) === 0n && BigInt(r.recorded) === 0n)
-      return `Nothing has arrived on ${network} yet. A payment shows once the network finalizes it.`;
-    return "Up to date: every payment at the address is recorded.";
+    if (missing > 0n) return `${money(missing)} has no recorded transfer yet.`;
+    if (BigInt(r.onChain) === 0n && BigInt(r.recorded) === 0n) return `Nothing on ${network} yet.`;
+    return "Up to date";
   },
-  recheckFailed: "We could not reach the network. Try again in a moment.",
-  recheckUnreadable: (networks: string) => `${networks} did not answer; check again in a moment.`,
-  recheckTooSoon: "This invoice was just checked. Try again in a few seconds.",
+  recheckFailed: "Can't reach the network. Try again in a moment.",
+  recheckUnreadable: (networks: string) => `${networks} did not answer.`,
+  nextCheck: (left: string) => `Next check in ${left}`,
   deposits: "Payments received",
   late: "After the checkout closed",
   from: "From",

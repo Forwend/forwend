@@ -83,6 +83,8 @@ type invoiceDetailJSON struct {
 	SettledAt *string       `json:"settledAt"`
 	Deposits  []depositJSON `json:"deposits"`
 	Options   []optionJSON  `json:"options"`
+	// When Check status may run again; null when it may now (R-55).
+	NextCheckAt *string `json:"nextCheckAt"`
 }
 
 // optionJSON is one token and network the invoice accepts, with the terms that differ per option.
@@ -239,7 +241,8 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 
 func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON {
 	out := invoiceDetailJSON{invoiceJSON: toInvoiceJSON(inv, withClient), PaidAt: orNullTime(inv.PaidAt),
-		SettledAt: orNullTime(inv.SettledAt), Deposits: []depositJSON{}, Options: []optionJSON{}}
+		SettledAt: orNullTime(inv.SettledAt), Deposits: []depositJSON{}, Options: []optionJSON{},
+		NextCheckAt: orNullTime(inv.NextCheckAt)}
 	for _, o := range inv.Options {
 		out.Options = append(out.Options, optionJSON{OptionID: o.ID, ChainID: o.ChainID, Network: o.Network,
 			Token: o.Token, Symbol: o.Symbol, Decimals: o.Decimals, Amount: o.Amount.String(),

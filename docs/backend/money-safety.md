@@ -70,7 +70,7 @@ token) is an alert. The canary then:
    `receiveAddress`.
 4. Runs the script once for all ids, with a deadline that grows with their number. It opens `<web>/pay/<id>` (for an
    option `<web>/pay/<pay_id>?option=<id>`, which shows that option while none has money) in
-   Chromium as a payer would, passes the network-confirm gate and reads each send tab's text and QR code. The text
+   Chromium as a payer would, presses Show address and reads the send box's text and QR code. The text
    must show that one address, each QR code must draw what `uqr` encodes for it, as `QrCode` in
    `packages/ui-web` does, and the amount panel must name the token's symbol and the chain (`Base Sepolia` for
    `base-sepolia`). A page that shows no address (the invoice is no longer open, or the page refused the

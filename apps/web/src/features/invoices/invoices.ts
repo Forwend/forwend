@@ -199,6 +199,8 @@ export interface Invoice extends InvoiceSummary {
   /** Once settled: when the settlement was recorded as final. */
   settledAt: string | null;
   deposits: Deposit[];
+  /** When Check status may run again; null when it may now (R-55). */
+  nextCheckAt: string | null;
   /** Only in the owner's reads: null while not paid or once settled. */
   settlementWait?: SettlementWait | null;
 }

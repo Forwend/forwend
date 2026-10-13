@@ -245,6 +245,7 @@ function Loaded({
                     ? `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`
                     : units.toString()
                 }
+                nextCheckAt={invoice.nextCheckAt}
               />
             )}
           </div>

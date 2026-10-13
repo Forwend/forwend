@@ -6,32 +6,25 @@ import { useRecheckInvoiceMutation } from "@/features/invoices/invoices-api";
 import { INVOICE_COPY as COPY } from "@/features/invoices/invoices-copy";
 import { chainName } from "@/shared/chains/chains";
 
-const TOO_MANY_REQUESTS = 429;
-
 /**
- * Check status (R-55): asks Forwend to read the invoice's address on chain again and says what it found. The button
- * rests until the next check the api allows, so presses never pile up.
+ * Check status (R-55): asks Forwend to read the invoice's address on chain again and says what it found. It rests
+ * until the next check the api allows, which the invoice read also gives, so a reload never asks again early.
  */
 export function CheckStatus({
   invoiceId,
   network,
   money,
+  nextCheckAt,
 }: {
   invoiceId: string;
   network: string;
   money: (units: bigint) => string;
+  nextCheckAt: string | null;
 }) {
   const [recheck, { data, isLoading, error }] = useRecheckInvoiceMutation();
-  const tooSoon = (error as { status?: unknown } | undefined)?.status === TOO_MANY_REQUESTS;
-  const [resting, setResting] = useState(false);
-  useEffect(() => {
-    if (!data) return;
-    const wait = Date.parse(data.nextCheckAt) - Date.now();
-    if (wait <= 0) return;
-    setResting(true);
-    const timer = setTimeout(() => setResting(false), wait);
-    return () => clearTimeout(timer);
-  }, [data]);
+  const next = Date.parse(data?.nextCheckAt ?? nextCheckAt ?? "") || 0;
+  const now = useNow(next);
+  const left = next - now;
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -39,27 +32,39 @@ export function CheckStatus({
         size="sm"
         variant="secondary"
         loading={isLoading}
-        disabled={resting}
+        disabled={left > 0}
         onClick={() => void recheck(invoiceId)}
       >
         {COPY.checkStatus}
       </Button>
       <p role="status" className="text-sm text-muted empty:hidden">
-        {tooSoon
-          ? COPY.recheckTooSoon
-          : error
-            ? COPY.recheckFailed
-            : data
-              ? [
-                  COPY.recheck(data, network, money),
-                  data.unreadable.length > 0
-                    ? COPY.recheckUnreadable(data.unreadable.map(chainName).join(", "))
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(" ")
-              : ""}
+        {[
+          error && !data ? COPY.recheckFailed : null,
+          data ? COPY.recheck(data, network, money) : null,
+          data && data.unreadable.length > 0
+            ? COPY.recheckUnreadable(data.unreadable.map(chainName).join(", "))
+            : null,
+          left > 0 ? COPY.nextCheck(roughly(left)) : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
       </p>
     </div>
   );
+}
+
+// Whole minutes are enough for a wait this long; seconds only in the last minute.
+function roughly(ms: number): string {
+  return ms >= 60_000 ? `${Math.ceil(ms / 60_000)} min` : `${Math.ceil(ms / 1000)} s`;
+}
+
+// The time now, once a second while a wait runs out.
+function useNow(until: number): number {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (until <= Date.now()) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [until]);
+  return now;
 }

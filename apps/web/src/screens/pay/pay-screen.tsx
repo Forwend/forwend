@@ -1,5 +1,4 @@
 import { Logo, LogoMark } from "@forwend/ui-web";
-import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { PAY_COPY } from "@/features/pay/pay-copy";
 import { PayInvoice } from "@/features/pay/pay-invoice";
@@ -7,16 +6,18 @@ import { APP_ROUTES } from "@/shared/config/routes";
 
 const LINK = "rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-focus";
 
-/** The public checkout: one calm column on every screen size, no sign-in. */
+/** The public checkout: the invoice beside how to pay it on wide screens, one column on phones (R-68). */
 export function PayScreen({ invoiceId, option }: { invoiceId: string; option?: string }) {
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-xl flex-col gap-5 px-4 py-6 sm:px-6 sm:py-10">
-      <Link href={APP_ROUTES.site} className={`${LINK} mb-3 self-start`}>
+    <div className="mx-auto flex min-h-svh w-full max-w-5xl flex-col gap-8 px-4 py-6 sm:px-6 lg:py-10">
+      <Link href={APP_ROUTES.site} className={`${LINK} self-start`}>
         <Logo />
       </Link>
-      <PayInvoice invoiceId={invoiceId} option={option} />
+      <main className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:gap-16">
+        <PayInvoice invoiceId={invoiceId} option={option} />
+      </main>
       {/* A new tab: the payer keeps the checkout open. */}
-      <p className="mt-auto pt-6 text-center text-xs text-subtle">
+      <p className="mt-auto text-center text-xs text-subtle">
         <a
           href={APP_ROUTES.site}
           target="_blank"
@@ -26,10 +27,9 @@ export function PayScreen({ invoiceId, option }: { invoiceId: string; option?: s
           {PAY_COPY.paymentsBy}
           <LogoMark className="size-3.5" />
           {PAY_COPY.forwend}
-          <ExternalLink aria-hidden className="size-3" />
           <span className="sr-only">{PAY_COPY.newTab}</span>
         </a>
       </p>
-    </main>
+    </div>
   );
 }

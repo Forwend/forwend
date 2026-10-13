@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 146,
+  "nextId": 151,
   "tasks": [
     {
       "id": "F121",
@@ -2525,6 +2525,196 @@
         "branch": "fix/f145-an-invoice-paid-in-full-never-shows-as-p",
         "base": "main"
       }
+    },
+    {
+      "id": "F146",
+      "type": "feat",
+      "behavior": "The pay page is one short screen: who asks, the amount, Pay with selects, the QR and one status line",
+      "acceptance": [
+        "R-68: e2e covers a fixed invoice, a payer-chooses invoice picked with the Network and Token selects, the choice kept after a reload, Waiting, Payment received confirming (n/m), Paid with Back to the site and no Settled, Partly paid with what is left, and Closed; no sideways scroll at 390 px; axe 0 serious or critical",
+        "R-55: Check status allows one check per invoice every 5 minutes and the page shows when the next one is allowed, also after a reload; backend test covers the spacing and nextCheckAt"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "e2e",
+        "unit",
+        "backend"
+      ],
+      "refs": [
+        "R-68",
+        "R-55"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T18:30:59Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 132.6,
+            "log": "docs/runs/F146-20261013T183059Z-e2e.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 99.0,
+            "log": "docs/runs/F146-20261013T183059Z-unit.log"
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 88.1,
+            "log": "docs/runs/F146-20261013T183059Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": "docs/runs/F146-20261013T183059Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F146-20261013T183059Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F146-20261013T183059Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F146-20261013T183059Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.1,
+            "log": "docs/runs/F146-20261013T183059Z-build.log"
+          }
+        ],
+        "taskHash": "096bafdd94c51168",
+        "filesHash": "4242b3e3246b8eb6",
+        "proof": {
+          "1": "e2e: pay.spec covers a fixed invoice (Show address, Send only line, reload keeps it), payer-chooses with Network and Token selects (USD before picking, ?option= after, reload keeps the pick and address, locked once money arrives), Waiting, Payment received Confirming (0/12) and (6/12), Paid with View transaction, receipt and Back to shop.example and never Settled, Partly paid with what is left, Closed; 390 px without sideways scroll; axe 0 in both themes; canary reads the address; unit: onlyOptionOn, recheck messages",
+          "2": "backend: invoices_recheck_test checks 5-minute spacing (429 within it) and that the invoice read gives the same nextCheckAt after a reload; e2e: Check status shows Next check in 5 min after a check and 4 min after a reload"
+        }
+      },
+      "branch": "feat/f146-the-pay-page-is-one-short-screen-who-ask",
+      "baseCommit": "a758f51a6b857bfa3745ac884240efa7a83c470b",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F147",
+      "type": "feat",
+      "behavior": "The owner's invoice page shows one status badge, received X of Y, a moving current step and each payment once",
+      "acceptance": [
+        "R-69: e2e covers an open, a confirming, a partly paid and a settling invoice: one tinted badge, received X of Y when partly paid, the waiting step animated, no repeated status"
+      ],
+      "dependsOn": [
+        "F146"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "unit"
+      ],
+      "refs": [
+        "R-69"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F148",
+      "type": "feat",
+      "behavior": "Payer-chooses invoices read in USD with Any network, and the invoice and receipt PDFs look professional",
+      "acceptance": [
+        "R-70: lists show USD and Any network for payer-chooses invoices; backend tests check the PDF text: Any with the accepted tokens and networks, the dates block, line table, total due, footer with number and page"
+      ],
+      "dependsOn": [
+        "F146"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "R-70"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F149",
+      "type": "feat",
+      "behavior": "Request money opens its own page instead of a modal",
+      "acceptance": [
+        "R-71: e2e opens Request money from the overview and the tab bar, lands on /app/requests/new, creates a request and sees its pay link"
+      ],
+      "dependsOn": [
+        "F146"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-71"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F150",
+      "type": "chore",
+      "behavior": "Copy says only what is needed: no testnet notes, short on its way and Up to date",
+      "acceptance": [
+        "R-72: e2e checks the personal overview line, the Receive sheet and the invoice page have no testnet note, and Check status says Up to date"
+      ],
+      "dependsOn": [
+        "F146"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-72"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

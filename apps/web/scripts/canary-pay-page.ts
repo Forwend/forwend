@@ -1,7 +1,7 @@
 // The canary's browser (R-51): `node canary-pay-page.ts <web origin>` reads ids from stdin (an invoice id, or
-// `<id>?option=<option id>` for one option of a payer-chooses invoice), opens each /pay/<id> as a payer would, passes
-// the network-confirm gate, picks each way to pay in turn and prints one JSON line per id with the amount panel's
-// text, every address the send step shows and whether each QR code encodes the address shown, or why none is shown.
+// `<id>?option=<option id>` for one option of a payer-chooses invoice), opens each /pay/<id> as a payer would, asks
+// for the address and prints one JSON line per id with the amount panel's text, every address the send box shows and
+// whether each QR code encodes the address shown, or why none is shown.
 // It reads only the DOM and imports nothing from src/: the canary must not share the page's code. Keep uqr at the
 // version ui-web uses.
 import { text } from "node:stream/consumers";
@@ -42,26 +42,15 @@ export async function readPayPage(page: Page, web: string, id: string): Promise<
     return { id, error: "no address shown: the invoice is not open for payment" };
   const amountText = await page.locator('section[aria-labelledby="pay-amount"]').innerText();
   await gate.getByRole("button").click();
-  const method = page.locator('section[aria-labelledby="pay-method"]');
-  const choices = method.locator("[data-method]");
-  await choices.first().waitFor();
   const send = page.locator('section[aria-labelledby="pay-send"]');
-  const addresses = new Set<string>();
-  let qrMatches = true;
-  const count = await choices.count();
-  for (let i = 0; i < count; i++) {
-    // A chosen way folds into its step; Change opens the choices again.
-    if (i > 0) await method.locator("[data-change]").click();
-    await choices.nth(i).click();
-    await send.locator("svg[role=img]").first().waitFor();
-    const shown = Array.from((await send.innerText()).matchAll(ADDRESS), ([address]) => address);
-    for (const address of shown) addresses.add(address.toLowerCase());
-    const codes = await send.locator("svg[role=img] path").all();
-    if (!codes.length) qrMatches = false;
-    for (const code of codes) {
-      const path = (await code.getAttribute("d")) ?? "";
-      if (!shown.some((address) => encodes(path, address))) qrMatches = false;
-    }
+  await send.locator("svg[role=img]").first().waitFor();
+  const shown = Array.from((await send.innerText()).matchAll(ADDRESS), ([address]) => address);
+  const addresses = new Set(shown.map((address) => address.toLowerCase()));
+  const codes = await send.locator("svg[role=img] path").all();
+  let qrMatches = codes.length > 0;
+  for (const code of codes) {
+    const path = (await code.getAttribute("d")) ?? "";
+    if (!shown.some((address) => encodes(path, address))) qrMatches = false;
   }
   return { id, addresses: [...addresses], qrMatches, amountText };
 }
