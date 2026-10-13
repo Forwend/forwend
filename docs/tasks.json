@@ -1065,7 +1065,7 @@
       "dependsOn": [
         "F128"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "ui-unit",
         "kit-e2e",
@@ -1157,12 +1157,19 @@
         "taskHash": "c3cec89d372ac2f8",
         "filesHash": "a5278516afb45dd1",
         "proof": {
-          "1": "ui-unit: date-picker tests cover ISO helpers (month-end clamp, leap year, invalid dates, Monday weeks), every Calendar key (arrows, Home/End, Page Up/Down, Enter), min/max and disabled days, the picker's open/Escape/choose/clear/hidden ISO input and error link; /kit shows Dates in both themes and a11y-e2e runs axe with the picker open and walks the keyboard path in light and dark"
-        }
+          "1": "ui-unit: date-picker unit tests pass; verify F131 passed all checks including kit-e2e and a11y-e2e with the picker open"
+        },
+        "commit": "6c9843b",
+        "doneAt": "2026-10-13T14:17:15Z"
       },
       "branch": "feat/f131-the-kit-has-a-calendar-and-datepicker-wi",
       "baseCommit": "cf50b1f83582f48c7bf722cdfd2aba749d762041",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f131-the-kit-has-a-calendar-and-datepicker-wi",
+        "base": "main"
+      }
     },
     {
       "id": "F132",
