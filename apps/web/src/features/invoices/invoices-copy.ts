@@ -41,7 +41,6 @@ export const INVOICES_COPY = {
     status: "Status",
     amount: "Amount",
   },
-  personal: "Invoices are for freelancer and merchant profiles. Switch to one to bill a client.",
   noClient: "No client",
   noDueDate: "No due date",
   due: (date: string) => `Due ${date}`,
@@ -132,6 +131,7 @@ export const NEW_INVOICE_COPY = {
 export const NEW_REQUEST_COPY = {
   ...NEW_INVOICE_COPY,
   title: "Request money",
+  intro: "The payer pays the exact amount. You get a link to send them.",
   noTokens: "No networks are enabled yet, so there is nothing to request in.",
   tokensFailed: "We could not load the networks and tokens you can request in.",
   noteLabel: "Note to the payer (optional)",
@@ -145,8 +145,6 @@ export const NEW_REQUEST_COPY = {
   create: "Create request",
   failed: "We could not create the request. Try again.",
   invalid: "We could not create the request with these values. Check them and try again.",
-  created: "Request created",
-  view: "View request",
 } as const;
 
 export const INVOICE_COPY = {

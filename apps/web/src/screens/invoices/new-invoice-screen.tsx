@@ -1,32 +1,38 @@
 "use client";
 
 import { Button, Skeleton } from "@forwend/ui-web";
+import { useRouter } from "next/navigation";
 import { useGetBalancesQuery } from "@/features/balances/balances-api";
 import { NewInvoiceForm } from "@/features/invoices/components/new-invoice-form";
-import { INVOICES_COPY, NEW_INVOICE_COPY } from "@/features/invoices/invoices-copy";
+import {
+  INVOICES_COPY,
+  NEW_INVOICE_COPY,
+  NEW_REQUEST_COPY,
+} from "@/features/invoices/invoices-copy";
 import { useAppSession } from "@/features/profiles/app-session";
 import { PROFILE_KINDS } from "@/features/profiles/profile";
 import { LIVE_QUERY } from "@/shared/config/refresh";
+import { APP_ROUTES } from "@/shared/config/routes";
 
-// The enabled tokens (from the balances) are the networks and tokens an invoice can ask for.
+// The enabled tokens (from the balances) are the networks and tokens an invoice can ask for. A personal profile makes
+// a request here instead (D-52, R-71), then lands on it with its pay link.
 export function NewInvoiceScreen() {
   const { profile } = useAppSession();
+  const router = useRouter();
   const balances = useGetBalancesQuery(profile.profileId, LIVE_QUERY);
   const tokens = balances.currentData?.tokens;
+  const request = profile.kind === PROFILE_KINDS.personal;
+  const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
   return (
     <div className="flex max-w-2xl flex-col gap-8">
       <div className="flex flex-col gap-2">
         {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
-        <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
-          {NEW_INVOICE_COPY.title}
-        </h1>
-        <p className="text-muted">{NEW_INVOICE_COPY.intro}</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">{COPY.title}</h1>
+        <p className="text-muted">{COPY.intro}</p>
       </div>
-      {profile.kind === PROFILE_KINDS.personal ? (
-        <p className="text-muted">{INVOICES_COPY.personal}</p>
-      ) : !tokens && balances.isError ? (
+      {!tokens && balances.isError ? (
         <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
-          {NEW_INVOICE_COPY.tokensFailed}
+          {COPY.tokensFailed}
           <Button size="sm" variant="secondary" onClick={() => void balances.refetch()}>
             {INVOICES_COPY.retry}
           </Button>
@@ -34,9 +40,22 @@ export function NewInvoiceScreen() {
       ) : !tokens ? (
         <Skeleton className="h-96" />
       ) : tokens.length === 0 ? (
-        <p className="text-muted">{NEW_INVOICE_COPY.noTokens}</p>
+        <p className="text-muted">{COPY.noTokens}</p>
       ) : (
-        <NewInvoiceForm key={profile.profileId} profileId={profile.profileId} tokens={tokens} />
+        <NewInvoiceForm
+          key={profile.profileId}
+          profileId={profile.profileId}
+          tokens={tokens}
+          request={
+            request
+              ? {
+                  senderName: profile.name ?? "",
+                  onCreated: (invoice) =>
+                    router.push(`${APP_ROUTES.invoices}/${invoice.invoiceId}`),
+                }
+              : undefined
+          }
+        />
       )}
     </div>
   );

@@ -8,7 +8,6 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react
 import { PaymentToasts } from "@/features/activity/payment-toasts";
 import { AUTH_COPY } from "@/features/auth/auth-copy";
 import { useGetBalancesQuery } from "@/features/balances/balances-api";
-import { RequestSheet } from "@/features/invoices/components/request-sheet";
 import { FirstRun } from "@/features/onboarding/first-run";
 import { type AppSession, AppSessionContext } from "@/features/profiles/app-session";
 import {
@@ -48,7 +47,6 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const savedId = useMemo(() => (userId ? readChosenProfileId(userId) : null), [userId]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [receiving, setReceiving] = useState(false);
-  const [requesting, setRequesting] = useState(false);
   const [searching, setSearching] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -93,11 +91,12 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             profiles,
             chooseProfile: switchProfile,
             openReceive: () => setReceiving(true),
-            openRequest: () => setRequesting(true),
+            // A request is a form of its own, on a page (R-71).
+            openRequest: () => router.push(APP_ROUTES.newInvoice),
             openProfiles: () => setChoosing(true),
           }
         : null,
-    [profiles, active, switchProfile],
+    [profiles, active, switchProfile, router],
   );
 
   // Signing out also gives the next user a fresh, empty store (StoreProvider).
@@ -190,15 +189,6 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
           failed={balances.isError}
           onRetry={balances.refetch}
         />
-        <RequestSheet
-          open={requesting}
-          onOpenChange={setRequesting}
-          profileId={active.profileId}
-          senderName={active.name ?? ""}
-          tokens={balances.currentData?.tokens ?? null}
-          failed={balances.isError}
-          onRetry={balances.refetch}
-        />
         <CommandMenu
           open={searching}
           onOpenChange={setSearching}
@@ -206,7 +196,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
           active={active}
           onSwitch={switchProfile}
           onReceive={() => setReceiving(true)}
-          onRequest={() => setRequesting(true)}
+          onRequest={() => router.push(APP_ROUTES.newInvoice)}
         />
       </div>
     </ToastProvider>

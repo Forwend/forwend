@@ -48,7 +48,7 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   or merchant profile with one idempotency key per visit (R-35). While `onboardedAt` is empty, `/app` shows the first-run choice screen instead (R-50, D-73);
   `/app/billing-details` edits the profile's billing details (R-43).
 - Invoices (freelancer and merchant profiles, R-44): `/app/invoices` lists them newest first with "Show more" cursor
-  pages; `/app/invoices/new` (and the request sheet, R-58) groups the form into Amount, Details, Dates and Client.
+  pages; `/app/invoices/new` (Request money for a personal profile, R-58, R-71) groups the form into Amount, Details, Dates and Client.
   The client chooses by default (`amountUsd`, at most the fewest decimals among the enabled tokens); One token asks for
   a network and token from the profile's enabled tokens (the balances list). The due date uses the kit DatePicker;
   Checkout closes after offers 1 hour to 30 days or Custom (a date and a time, sent as seconds from now, checked

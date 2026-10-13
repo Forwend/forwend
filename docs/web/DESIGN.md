@@ -98,8 +98,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Money actions are round icon buttons with the label underneath, on desktop and phones; only working actions are
   filled with the primary ink. In the header, Send is a dashed outline pill in the subtle color until it is built.
 - Personal overview actions: Receive, Request, Send, Transfer, Withdraw, in one row with a narrow gap on phones.
-  Request (also in ⌘K) opens a sheet with amount, note, checkout expiry and the name the payer sees, then the pay link
-  with Copy and View request. A personal profile's invoices are Requests in the sidebar, list and breadcrumb.
+  Request (also in ⌘K) opens the Request money page (R-71) with amount, note, checkout expiry and the name the payer
+  sees, then opens the new request with its pay link. A personal profile's invoices are Requests in the sidebar, list
+  and breadcrumb.
 - A feature that is not built yet keeps its place in the subtle text color, with "Soon" as plain text at the end:
   no badge, no link. A disabled action says why in its accessible name and shows "Coming soon" in a tooltip on
   hover, focus or tap; no notice text is added to the page.
