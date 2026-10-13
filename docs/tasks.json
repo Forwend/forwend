@@ -372,7 +372,7 @@
         "zod is installed; every RTK Query endpoint declares a Zod schema for its response (and request body), types are inferred from the schemas, and a unit test proves a malformed response is reported as a schema error rather than used"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -441,12 +441,19 @@
         "taskHash": "0fcc0d25d660d349",
         "filesHash": "6ccf5f9835918602",
         "proof": {
-          "1": "e2e: the full browser suite passes with every response checked by its schema; the pay and sample API mocks gained the fields the real API sends (confirming, senderName, returnUrl, option deposits, onboardedAt, paidAt) once the schemas refused them; unit: shared/api/tests/schema-validation.test.ts checks a valid response is used, a float where base units belong becomes a CUSTOM_ERROR with no data and a log naming getBalances and tokens.0.wallet without the value, and a body that breaks createInvoice's schema is never sent"
-        }
+          "1": "e2e: suite passes with schema-checked responses"
+        },
+        "commit": "c9ba092",
+        "doneAt": "2026-10-13T23:27:31Z"
       },
       "branch": "feat/f170-web-api-requests-and-responses-are-typed",
       "baseCommit": "57a70072e3cfb7330d11b2863b57d5944e226a5c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f170-web-api-requests-and-responses-are-typed",
+        "base": "main"
+      }
     },
     {
       "id": "F171",
