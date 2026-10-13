@@ -9,6 +9,7 @@ import {
   MenuLabel,
   MenuSeparator,
   MenuTrigger,
+  RowButton,
   useTheme,
 } from "@forwend/ui-web";
 import { ChevronsUpDown, LogOut, Moon, Settings } from "lucide-react";
@@ -32,18 +33,14 @@ export function AccountMenu({
     <Menu>
       <MenuTrigger asChild>
         {trigger ?? (
-          <button
-            type="button"
-            aria-label={`${AUTH_COPY.account}: ${email}`}
-            className="flex w-full min-w-0 items-center gap-2.5 rounded-md p-1.5 text-left outline-none transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-focus data-[state=open]:bg-surface-2"
-          >
+          <RowButton size="md" aria-label={`${AUTH_COPY.account}: ${email}`}>
             <AccountInitial email={email} />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium text-ink">{email}</span>
               <span className="block text-xs text-muted">{AUTH_COPY.signedIn}</span>
             </span>
             <ChevronsUpDown aria-hidden className="size-[var(--fw-icon-md)] shrink-0 text-muted" />
-          </button>
+          </RowButton>
         )}
       </MenuTrigger>
       <MenuContent side={side} className="w-64">

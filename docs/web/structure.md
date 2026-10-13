@@ -58,8 +58,14 @@ features/invoices/
   props inline. No `I` prefix (`Props`, not `IProps`): TypeScript's own style names interfaces by what they describe.
 - Let TypeScript infer a component's return type; annotate the return type of exported non-component functions.
 - Prefer `interface` for object shapes and `type` for unions, mapped types and aliases.
-- Use the shared kit (`@forwend/ui-web`) for buttons, fields and other controls; a raw element only where the kit
-  has no such control, named in this document.
+- Use the shared kit (`@forwend/ui-web`) for every control: `Button` (variants primary, secondary, ghost, link and
+  soon), `IconButton` (icon-only, with a required label), `RowButton` (a full-width choice or menu trigger), `Form`,
+  `ChoiceCard`, the fields, `TruncatedAddress` and the rest. A link that looks like a button uses `buttonClasses`.
+  Raw controls remain only where the kit has no such control and the element is used once:
+  - `screens/app-shell/command-menu.tsx`: the search box is an ARIA combobox inside its own dialog.
+  - `screens/app-shell/app-header.tsx`: the two search triggers that look like a field and open the command menu.
+  - `screens/app-shell/phone-tab-bar.tsx`: the Profiles tab is a button styled exactly like its sibling tab links.
+  Add a kit component instead the second time any of these is needed.
 
 ## Landing sections
 

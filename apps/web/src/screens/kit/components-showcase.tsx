@@ -10,12 +10,15 @@ import {
   CAPTURE_STATUS,
   Calendar,
   Checkbox,
+  ChoiceCard,
   CodeBlock,
   CodeInput,
   DatePicker,
   Dialog,
   EmailCapture,
   EmptyState,
+  Form,
+  IconButton,
   Menu,
   MenuCheckboxItem,
   MenuContent,
@@ -28,6 +31,7 @@ import {
   NavPill,
   PANEL_TONES,
   Panel,
+  RowButton,
   SearchField,
   SegmentedControl,
   SelectField,
@@ -43,7 +47,7 @@ import {
   Tooltip,
   useToast,
 } from "@forwend/ui-web";
-import { ArrowDownLeft, ArrowUpRight, Landmark, Moon, Plus } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Info, Landmark, Moon, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { CTA } from "@/features/waitlist/constants/waitlist";
 import { KitGroup } from "@/screens/kit/kit-section";
@@ -92,6 +96,7 @@ export function ComponentsShowcase() {
   const [on, setOn] = useState(true);
   const [weekly, setWeekly] = useState(false);
   const [menuChoice, setMenuChoice] = useState("personal");
+  const [cardChoice, setCardChoice] = useState("merchant");
   const [menuDark, setMenuDark] = useState(false);
   const [range, setRange] = useState("1M");
   const [search, setSearch] = useState("");
@@ -127,6 +132,54 @@ export function ComponentsShowcase() {
           label="Withdraw"
           disabledReason="Coming soon: withdraw to your bank account."
         />
+      </KitGroup>
+      <KitGroup title="Icon buttons: inline hint, toolbar, avatar; Soon">
+        <Tooltip content="An estimate in USD">
+          <IconButton label="An estimate in USD" size="xs">
+            <Info aria-hidden className="size-[var(--fw-icon-sm)]" />
+          </IconButton>
+        </Tooltip>
+        <IconButton label="Close">
+          <X aria-hidden className="size-[var(--fw-icon-sm)]" />
+        </IconButton>
+        <IconButton label="Account" size="md">
+          <Moon aria-hidden className="size-[var(--fw-icon-md)]" />
+        </IconButton>
+        <Button variant="soon" size="sm" aria-disabled>
+          <ArrowUpRight aria-hidden className="size-[var(--fw-icon-sm)]" />
+          Send
+        </Button>
+      </KitGroup>
+      <KitGroup title="Row button: a choice in a sheet">
+        <div className="w-72">
+          <RowButton aria-current>
+            <Moon aria-hidden className="size-[var(--fw-icon-md)]" />
+            <span className="min-w-0 flex-1 truncate">Personal</span>
+          </RowButton>
+          <RowButton>
+            <Landmark aria-hidden className="size-[var(--fw-icon-md)]" />
+            <span className="min-w-0 flex-1 truncate">Merchant · Sample shop</span>
+          </RowButton>
+        </div>
+      </KitGroup>
+      <KitGroup title="Choice cards: one of several, or any number">
+        <Form className="w-full max-w-xl" onSubmit={(event) => event.preventDefault()}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {["freelancer", "merchant"].map((value) => (
+              <ChoiceCard
+                key={value}
+                type="radio"
+                name="kit-kind"
+                value={value}
+                checked={cardChoice === value}
+                onChange={() => setCardChoice(value)}
+                icon={value === "merchant" ? Landmark : Moon}
+                title={value === "merchant" ? "Merchant" : "Freelancer"}
+                hint="Shown on invoices and receipts."
+              />
+            ))}
+          </div>
+        </Form>
       </KitGroup>
       <KitGroup title="Segmented control: a chart range or a table filter">
         <SegmentedControl

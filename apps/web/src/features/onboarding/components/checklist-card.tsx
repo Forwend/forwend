@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, buttonClasses } from "@forwend/ui-web";
+import { Button, buttonClasses, IconButton } from "@forwend/ui-web";
 import { Check, X } from "lucide-react";
 import Link from "next/link";
 import { CHECKLIST_STEPS } from "@/features/onboarding/constants/onboarding";
@@ -51,14 +51,9 @@ export function ChecklistCard({
           {COPY.title}
         </h2>
         <span className="text-sm text-muted">{COPY.progress(done, steps.length)}</span>
-        <button
-          type="button"
-          aria-label={COPY.close}
-          onClick={onClose}
-          className="ml-auto grid size-11 place-items-center rounded-sm sm:size-9 text-muted hover:bg-surface-2 hover:text-ink"
-        >
+        <IconButton label={COPY.close} onClick={onClose} className="ml-auto">
           <X aria-hidden className="size-[var(--fw-icon-sm)]" />
-        </button>
+        </IconButton>
       </div>
       <ol className="divide-y divide-line">
         {steps.map((step) => {

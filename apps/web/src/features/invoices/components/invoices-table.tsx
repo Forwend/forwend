@@ -36,10 +36,10 @@ function NewInvoiceLink({
   const classes = `${buttonClasses({ size: "sm" })} ${className}`;
   const icon = <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />;
   return onRequest ? (
-    <button type="button" onClick={onRequest} className={classes}>
+    <Button size="sm" onClick={onRequest} className={className}>
       {icon}
       {REQUESTS_COPY.newInvoice}
-    </button>
+    </Button>
   ) : (
     <Link href={APP_ROUTES.newInvoice} className={classes}>
       {icon}

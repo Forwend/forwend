@@ -1,5 +1,6 @@
 "use client";
 
+import { IconButton } from "@forwend/ui-web";
 import { Menu, X } from "lucide-react";
 import { NAV_LINKS, NAV_MENU } from "@/screens/landing/constants/landing-content";
 
@@ -8,11 +9,10 @@ import { NAV_LINKS, NAV_MENU } from "@/screens/landing/constants/landing-content
 export function SiteMenu() {
   return (
     <>
-      <button
-        type="button"
+      <IconButton
         popoverTarget="site-menu"
-        aria-label={NAV_MENU}
-        className="group relative grid size-8 place-items-center rounded-pill text-ink after:absolute after:-inset-x-0.75 after:-inset-y-1.5 hover:bg-surface-2 md:hidden [&:has(+:popover-open)]:bg-surface-2"
+        label={NAV_MENU}
+        className="group text-ink md:hidden [&:has(+:popover-open)]:bg-surface-2"
       >
         <Menu
           aria-hidden
@@ -22,7 +22,7 @@ export function SiteMenu() {
           aria-hidden
           className="hidden size-[var(--fw-icon-sm)] group-[&:has(+:popover-open)]:block"
         />
-      </button>
+      </IconButton>
       <div
         id="site-menu"
         popover="auto"

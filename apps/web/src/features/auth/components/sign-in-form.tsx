@@ -1,6 +1,6 @@
 "use client";
 
-import { BrandIcon, Button, CodeInput, TextField } from "@forwend/ui-web";
+import { BrandIcon, Button, CodeInput, Form, TextField } from "@forwend/ui-web";
 import { useLoginWithEmail, useLoginWithOAuth, useLoginWithPasskey } from "@privy-io/react-auth";
 import { Fingerprint } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
@@ -79,9 +79,8 @@ export function SignInForm() {
 
   if (step === SIGN_IN_STEPS.code) {
     return (
-      <form
-        noValidate
-        className="flex flex-col gap-5"
+      <Form
+        gap="md"
         onSubmit={(event) => {
           event.preventDefault();
           if (code.length !== CODE_LENGTH) return setFieldError(SIGN_IN_COPY.errors.code);
@@ -140,7 +139,7 @@ export function SignInForm() {
           </Button>
         </div>
         <Messages error={formError} notice={notice} />
-      </form>
+      </Form>
     );
   }
 
@@ -152,7 +151,7 @@ export function SignInForm() {
         </h1>
         <p className="text-balance text-muted">{SIGN_IN_COPY.intro}</p>
       </div>
-      <form noValidate className="flex flex-col gap-2" onSubmit={submitEmail}>
+      <Form onSubmit={submitEmail} gap="sm">
         <TextField
           label={SIGN_IN_COPY.emailLabel}
           type="email"
@@ -170,7 +169,7 @@ export function SignInForm() {
         <Button type="submit" loading={busy === "send"} disabled={googleBusy || busy === "passkey"}>
           {SIGN_IN_COPY.sendCode}
         </Button>
-      </form>
+      </Form>
       <div className="flex items-center gap-3 text-sm text-subtle" aria-hidden>
         <span className="h-px flex-1 bg-line" />
         {SIGN_IN_COPY.or}

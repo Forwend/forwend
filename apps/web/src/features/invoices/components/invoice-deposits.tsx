@@ -1,4 +1,4 @@
-import { Money, shortAddress, Tooltip } from "@forwend/ui-web";
+import { Money, shortAddress, TruncatedAddress } from "@forwend/ui-web";
 import type { ReactNode } from "react";
 import { INVOICE_COPY, INVOICES_COPY } from "@/features/invoices/constants/invoices-copy";
 import { exactDigits } from "@/features/invoices/lib/invoices";
@@ -112,15 +112,7 @@ function Transaction({
       </span>
       <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted [grid-area:who]">
         {side}
-        <Tooltip content={address}>
-          <button
-            type="button"
-            aria-label={address}
-            className="rounded-sm font-mono outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
-          >
-            {shortAddress(address)}
-          </button>
-        </Tooltip>
+        <TruncatedAddress address={address} />
       </span>
       {at ? (
         <time

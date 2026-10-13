@@ -439,6 +439,9 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   const progress = main.getByRole("list", { name: "Payment progress" });
   const current = progress.locator("[aria-current=step]");
   const payments = main.locator("ul").filter({ hasText: "From" });
+  // A reload signs in again and redraws the shell: under the full suite's load that can take longer than one check
+  // waits, so each state waits for the page itself first.
+  const shown = () => expect(progress).toBeVisible({ timeout: 15_000 });
 
   // Before any money: Waiting is the moving step, and the pay link sits in the header with Copy and Open (R-69, R-60).
   body = { ...OPEN_INVOICE, deposits: [] };
@@ -469,6 +472,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
     deposits: [deposit("detected", OPEN_INVOICE.amount, 120)],
   };
   await page.reload();
+  await shown();
   await expect(main.getByRole("status").filter({ hasText: /^Confirming/ })).toHaveText(
     "Confirming (0/120) · about 6 min left",
   );
@@ -486,6 +490,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
     deposits: [deposit("detected", OPEN_INVOICE.amount, 60)],
   };
   await page.reload();
+  await shown();
   await expect(main.getByRole("status").filter({ hasText: /^Confirming/ })).toHaveText(
     "Confirming (60/120) · about 3 min left",
   );
@@ -497,6 +502,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
     deposits: [deposit("confirmed", "1000000", 0)],
   };
   await page.reload();
+  await shown();
   await expect(current).toContainText("Partially paid");
   await expect(progress.getByText("Partially paid")).toHaveClass(/bg-warning-soft/);
   await expect(main.getByText("Received 1.00 USDC of 2.00 USDC")).toBeVisible();
@@ -515,6 +521,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
     ],
   };
   await page.reload();
+  await shown();
   await expect(main.locator("header [data-status]")).toHaveText("Detected");
   await expect(current).toHaveText("Confirming (60/120)");
   await expect(progress.getByText("Partially paid")).toHaveCount(0);
@@ -528,6 +535,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
     deposits: [deposit("confirmed", OPEN_INVOICE.amount, 0)],
   };
   await page.reload();
+  await shown();
   await expect(current).toHaveText("Settled");
   await expect(progress.getByRole("listitem").nth(2)).toHaveText(/^Confirmed/);
   await expect(current.locator("[class*='fw-progress']")).toHaveCount(1);
@@ -547,6 +555,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
     deposits: [deposit("confirmed", OPEN_INVOICE.amount, 0)],
   };
   await page.reload();
+  await shown();
   const transactions = main.locator("ul").filter({ hasText: "Settlement" });
   await expect(main.getByText("Transactions", { exact: true })).toBeVisible();
   await expect(transactions.getByRole("listitem")).toHaveText([/^Payment/, /^Settlement/]);
@@ -562,6 +571,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   // Closed takes no more money either: nothing to check (R-69).
   body = { ...OPEN_INVOICE, paymentStatus: "expired", deposits: [] };
   await page.reload();
+  await shown();
   await expect(main.locator("header [data-status]")).toHaveText("Expired");
   await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
   await context.close();

@@ -190,7 +190,7 @@
         "No raw <button>, <input>, <select> or <textarea> in apps/web/src outside the kit showcase unless the kit has no such control, and each such exception is named in docs/web/structure.md; e2e and unit pass unchanged"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "e2e"
       ],
@@ -201,7 +201,70 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T22:56:43Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 163.9,
+            "log": "docs/runs/F168-20261013T225643Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": "docs/runs/F168-20261013T225643Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F168-20261013T225643Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F168-20261013T225643Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F168-20261013T225643Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 95.2,
+            "log": "docs/runs/F168-20261013T225643Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.2,
+            "log": "docs/runs/F168-20261013T225643Z-build.log"
+          }
+        ],
+        "taskHash": "406fb954b4e1e297",
+        "filesHash": "7cac2f6a672e2021",
+        "proof": {
+          "1": "e2e: the full browser suite passes with the kit controls; grep finds raw button/input/form only in the kit itself, the kit showcase and the three named exceptions in docs/web/structure.md (command-menu combobox, header search triggers, phone tab bar Profiles tab); unit: app 101 and kit 38 tests pass"
+        }
+      },
+      "branch": "refactor/f168-app-controls-use-the-shared-kit-componen",
+      "baseCommit": "5a8cb50b6ae95a25e18a2fec858cb91a0538205e",
+      "failedVerifies": 0
     },
     {
       "id": "F169",

@@ -3,6 +3,7 @@
 import {
   Button,
   DatePicker,
+  Form,
   SegmentedControl,
   SelectField,
   TextAreaField,
@@ -219,7 +220,7 @@ export function NewInvoiceForm({
   );
 
   return (
-    <form noValidate onSubmit={submit} className="flex flex-col gap-6">
+    <Form onSubmit={submit}>
       <Group title={COPY.amountGroup}>
         {tokens.length > 1 ? (
           <div className="flex flex-col gap-1.5">
@@ -369,7 +370,7 @@ export function NewInvoiceForm({
       <p role="alert" className="min-h-5 text-sm text-danger">
         {formError}
       </p>
-    </form>
+    </Form>
   );
 }
 

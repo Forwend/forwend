@@ -1,6 +1,7 @@
 import { Clock } from "lucide-react";
 import { cx } from "../../lib/cx";
 import { TONE_CLASSES, type Tone } from "../../lib/tone";
+import { IconButton } from "../buttons/icon-button";
 import { Tooltip } from "../overlays/tooltip";
 
 export const STEP_STATES = {
@@ -107,13 +108,9 @@ export function PaymentTimeline({
               </span>
               {step.hint ? (
                 <Tooltip content={step.hint}>
-                  <button
-                    type="button"
-                    aria-label={step.hint}
-                    className="grid size-5 place-items-center rounded-pill text-muted outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
-                  >
+                  <IconButton label={step.hint} size="xs">
                     <Clock aria-hidden className="size-3.5" />
-                  </button>
+                  </IconButton>
                 </Tooltip>
               ) : null}
             </span>
