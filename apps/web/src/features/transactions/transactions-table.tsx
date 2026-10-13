@@ -238,17 +238,17 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
           <ul className="divide-y divide-line md:hidden">
             {rows.map((t) => (
               <li key={transactionKey(t)} className="flex items-center gap-3 px-4 py-3">
-                {/* The network first: a narrow row cuts the time, never the network. */}
+                {/* The network and the time each get their own line: a phone row is too narrow for both. */}
                 <Party
                   t={t}
                   short
+                  detailClassName="flex-wrap"
                   detail={
                     <>
-                      {/* The network never shrinks; the time is what a narrow row cuts. */}
-                      <span className="shrink-0">
-                        <NetworkName chainId={t.chainId} />
-                      </span>
-                      <span className="truncate">· {DATE.format(new Date(t.at))}</span>
+                      <NetworkName chainId={t.chainId} />
+                      <time dateTime={t.at} className="basis-full whitespace-nowrap">
+                        {DATE.format(new Date(t.at))}
+                      </time>
                     </>
                   }
                 />

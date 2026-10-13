@@ -21,7 +21,8 @@ func NewService(pool *pgxpool.Pool) *Service {
 }
 
 // invoiceColumns reads FROM invoicesCurrent: the main row's number and details with the current option's terms.
-const invoiceColumns = `id, option_id, chosen_id IS NOT NULL, number, coalesce(title, ''), coalesce(note, ''),
+const invoiceColumns = `id, option_id, chosen_id IS NOT NULL,
+	(SELECT count(*) FROM invoices o WHERE o.id = invoices.id OR o.main_id = invoices.id), number, coalesce(title, ''), coalesce(note, ''),
 	coalesce(to_char(due_date, 'YYYY-MM-DD'), ''), coalesce(client_name, ''), coalesce(client_email, ''),
 	coalesce(client_address, ''), coalesce(sender_name, ''), issuer_name, coalesce(issuer_address, ''), coalesce(issuer_country, ''),
 	coalesce(issuer_tax_id, ''), coalesce(issuer_email, ''), coalesce(return_url, ''),
@@ -40,7 +41,7 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 	var expiresAt, settleDeadline int64
 	var issuerName *string
 	var issuer profile.Issuer
-	dest := []any{&inv.ID, &inv.OptionID, &inv.OptionLocked, &inv.Number, &inv.Title, &inv.Note, &inv.DueDate, &inv.ClientName,
+	dest := []any{&inv.ID, &inv.OptionID, &inv.OptionLocked, &inv.OptionCount, &inv.Number, &inv.Title, &inv.Note, &inv.DueDate, &inv.ClientName,
 		&inv.ClientEmail, &inv.ClientAddress, &inv.SenderName, &issuerName, &issuer.Address, &issuer.Country, &issuer.TaxID,
 		&issuer.Email, &inv.ReturnURL, &inv.ChainID, &inv.Token, &amount, &inv.Recipient, &inv.Factory,
 		&inv.ReceiveAddress, &expiresAt, &settleDeadline, &inv.PaymentStatus, &inv.SettlementStatus, &inv.RefundStatus,

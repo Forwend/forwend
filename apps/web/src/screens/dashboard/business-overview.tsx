@@ -221,7 +221,7 @@ function Figure({
             <Skeleton className="h-[1.25em] w-28 max-w-full" />
           ))}
       </dd>
-      <dd className="truncate text-xs text-subtle">{note}</dd>
+      <dd className="text-xs text-subtle">{note}</dd>
     </div>
   );
 }

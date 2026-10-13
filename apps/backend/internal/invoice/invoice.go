@@ -98,6 +98,7 @@ type Invoice struct {
 	ID               string   // the pay link's id: the main row's
 	OptionID         string   // the on-chain id of the terms below; ID for a fixed invoice
 	OptionLocked     bool     // an option received money, so the payer can't pick another
+	OptionCount      int      // accepted options: 1 for a fixed invoice
 	Options          []Option // every accepted option, the current one included; set by Get
 	Number           int64    // per profile, from 1; shown as INV-0001
 	chain.Asset               // Symbol and Decimals set by Get
