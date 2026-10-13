@@ -720,3 +720,65 @@ test("empty and filtered-out lists say so in one centered block with an icon", a
   await expect(main.getByText("No transactions yet", { exact: true })).toBeVisible();
   await context.close();
 });
+
+// R-69: on a phone each transaction is two lines: what and when, then who and the transaction.
+test("the invoice's transactions read in two lines on a phone", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page);
+  const deposit = {
+    txHash: hash("9"),
+    logIndex: 0,
+    from: `0x${"c".repeat(40)}`,
+    amount: OPEN_INVOICE.amount,
+    blockNumber: 1000,
+    blockTime: "2026-10-09T08:30:00Z",
+    status: "confirmed",
+    late: false,
+    blocksLeft: 0,
+    blocksTotal: 0,
+    secondsLeft: 0,
+  };
+  await page.route(
+    (url) =>
+      url.pathname.startsWith("/api/") &&
+      url.pathname.endsWith(`/invoices/${OPEN_INVOICE.invoiceId}`),
+    (route) =>
+      route.fulfill({
+        json: {
+          ...OPEN_INVOICE,
+          paymentStatus: "paid",
+          settlementStatus: "settled",
+          paidAt: "2026-10-09T08:31:00Z",
+          settledAt: "2026-10-09T08:40:00Z",
+          settlementTxHash: hash("5"),
+          deposits: [deposit],
+        },
+      }),
+  );
+  await page.goto(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
+  const rows = page
+    .getByRole("main")
+    .locator("ul")
+    .filter({ hasText: "Settlement" })
+    .getByRole("listitem");
+  await expect(rows).toHaveCount(2);
+  for (const row of await rows.all()) {
+    const box = await row.boundingBox();
+    // Kind and amount take two text lines, the side and transaction one more: never four or five wrapped lines.
+    expect(box && box.height < 96).toBe(true);
+    const [time, link] = await Promise.all([
+      row.locator("time").boundingBox(),
+      row.getByRole("link", { name: /Basescan/ }).boundingBox(),
+    ]);
+    // The time sits at the top right, the explorer link at the bottom right.
+    expect(time && box && time.y - box.y < 20).toBe(true);
+    expect(link && time && link.y > time.y).toBe(true);
+  }
+  expect(await page.evaluate(() => document.scrollingElement?.scrollWidth)).toBe(390);
+  expect(await blockingViolations(page)).toEqual([]);
+  await context.close();
+});

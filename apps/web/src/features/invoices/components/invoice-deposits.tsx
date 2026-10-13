@@ -100,37 +100,40 @@ function Transaction({
   txHash: string;
 }) {
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2.5 text-sm">
-      <span className="flex flex-col">
-        <span className="text-xs text-muted">{kind}</span>
+    // Phones: what it was and when on one line, who and the transaction under it. Wider: all four in one row.
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 px-3 py-2.5 text-sm [grid-template-areas:'what_when''who_tx'] md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:[grid-template-areas:'what_who_when_tx']">
+      <span className="flex flex-col [grid-area:what]">
+        <span className="text-xs text-muted">
+          {kind}
+          {note ? <span className="text-warning"> · {note}</span> : null}
+        </span>
         {amount}
       </span>
-      {note ? <span className="text-xs text-warning">{note}</span> : null}
-      <span className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
-        <span className="flex items-center gap-1.5 text-xs text-muted">
-          {side}
-          <Tooltip content={address}>
-            <button
-              type="button"
-              aria-label={address}
-              className="rounded-sm font-mono outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
-            >
-              {shortAddress(address)}
-            </button>
-          </Tooltip>
-          {at ? (
-            <>
-              <span aria-hidden>·</span>
-              <time dateTime={at}>{TIME.format(Date.parse(at))}</time>
-            </>
-          ) : null}
+      <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted [grid-area:who]">
+        {side}
+        <Tooltip content={address}>
+          <button
+            type="button"
+            aria-label={address}
+            className="rounded-sm font-mono outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+          >
+            {shortAddress(address)}
+          </button>
+        </Tooltip>
+      </span>
+      {at ? (
+        <time
+          dateTime={at}
+          className="justify-self-end self-start text-xs text-muted [grid-area:when] md:self-center"
+        >
+          {TIME.format(Date.parse(at))}
+        </time>
+      ) : null}
+      <span className="flex items-center justify-self-end gap-1 [grid-area:tx]">
+        <span className="font-mono text-xs text-muted" title={txHash}>
+          {shortAddress(txHash)}
         </span>
-        <span className="flex items-center gap-1">
-          <span className="font-mono text-xs text-muted" title={txHash}>
-            {shortAddress(txHash)}
-          </span>
-          <ExplorerLink chainId={chainId} txHash={txHash} named />
-        </span>
+        <ExplorerLink chainId={chainId} txHash={txHash} named />
       </span>
     </li>
   );
