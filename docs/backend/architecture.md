@@ -275,6 +275,15 @@ times come from the RPC, never computed in Go. Arc's native-coin `Transfer` logs
 chain's first scan starts at its finalized block: deposits before it are not looked for. Scanning again changes
 nothing, so a restarted worker resumes from the cursor.
 
+Check status (R-55) asks for a rescan of one invoice in `invoice_rechecks`. After each scan the worker takes up to
+`watcher.RescanLimit` (5) asked invoices of the chain and reads their address's logs from the invoice's creation block
+(found by a binary search over block times, a minute early for clock differences), at most `5 × MaxRange` blocks per
+invoice per round, saving where it stopped, within its own 30 s (`worker.RescanTimeout`) so the ledger keeps its time.
+What it finds is recorded like a scan, then booked by the ledger in the same round. A rescan never moves the chain's
+cursor: that would let the regular scan skip blocks for the other invoices. An invoice outside the regular scan's watch
+window (30 days after its settle deadline) is not rescanned: the request is dropped, since that money is the refund
+authority's. One invoice's failing rescan does not hold up the others.
+
 ## Signer
 
 `internal/settlement` (R-22), one `Signer` per executor key (the signer's lock, [startup](#startup)). When the ledger marks an invoice `paid` it queues one

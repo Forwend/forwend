@@ -938,12 +938,12 @@
       "type": "feat",
       "behavior": "Check status on the pay page and the invoice page rechecks an invoice on chain without risk to money or RPCs",
       "acceptance": [
-        "R-55, D-77: POST /v1/invoices/{id}/recheck books a deposit the worker missed (backend test with a deposit made while the worker was stopped), never signs, allows one run per invoice every 30 s with 429 and Retry-After, and has per-IP and global limits under test; the pay page and the invoice page show Check status with its state"
+        "R-55, D-77: POST /v1/invoices/{id}/recheck compares the receive address's finalized on-chain balance with what is recorded and, when more is on chain, asks the worker to rescan that invoice from its creation block; it never signs; one recheck per invoice every 30 s across replicas (429 with Retry-After), a per-process global limit, per-IP at the edge (Q-8); a backend test books a deposit the regular scan missed only after a recheck; the pay page and the invoice page show Check status and its result (unit and e2e)"
       ],
       "dependsOn": [
         "F129"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -956,9 +956,104 @@
         "packages/contracts/src/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-13 review fail by subagent: FAIL, 2 blockers + 1 acceptance gap. Re-ran: go test -count=1 ./internal/watcher/ ./internal/worker/ ./internal/invoice/ ./internal/httpapi/ all ok; verify logs F130-20261013T134818Z-* passed. (1) Rescans ignore the scan's watch window, so the ledger books money it otherwise never books. watcher.go:280-282 (invoices) drops invoices 30 days after settle_deadline unless a deposit is detected; architecture.md:250 says later money is moved only by the refund authority, from the chain. rescan.go:23-27 and recheck.go:72 have no such filter. Money sent to an aged-out invoice gets recorded and booked by ProcessChain as payer_held, with refund_status=held (process.go:93,131). Once the refund authority moves that money on chain, the held booking never clears. This is also a cheap abuse path: dust sent to old invoices plus Check status re-queues a rescan from creation (34+ rounds x 20 eth_getLogs on Base) and can keep all RescanLimit slots busy. Fix: apply the same filter in Recheck or in the Rescans query. (2) Rescans block the ledger. worker.go:69-76 runs Rescans on the same 2-minute chainCtx before ProcessChain. A rescan step saves nothing until it has read all of its up-to-40,000-block range (rescan.go:76-100), and logsIn's span starts again at MaxRange on every call (rescan.go:106). So with 5 asked invoices (up to ~100 eth_getLogs plus blockAt's ~2*log2(latest) calls each) on a slow or range-capped RPC, the deadline can run out. ProcessChain then fails for every invoice on the chain, and the next round repeats the same work. Fix: run ProcessChain before Rescans, or give Rescans its own shorter deadline. (3) Acceptance says the pay page and the invoice page show Check status (unit and e2e). Only the pay page has an e2e (pay.spec.ts:163); invoice-detail.tsx:219-229 (hidden when settled) has no test. Verified OK: depositsOf/insertDeposits are a pure move and Scan is unchanged (watcher.go:142-211); rescans record only the invoice's own token to its address, decide final vs detected by the finalized block from the same header batch (rescan.go:84-88), use the same insert path and never write chain_cursors; detected rows are revisited by start() and invoices() EXISTS detected; the per-invoice cooldown is atomic across replicas (recheck.go:42-45); the global bucket runs before any DB or RPC work (routes.go:104); RPC errors are redacted (recheck.go:60, worker.go:74); the API matches openapi.yaml and api.md; the TestRecheckBooksADepositTheScanMissed path holds. Non-blocking: Rescans returns on the first error, so one failing invoice holds up those behind it (rescan.go:47-53); an Arc native payment keeps onChain > recorded forever, so every Check status after a rescan finishes starts a new full rescan; a 429 shows the 'could not reach the network' text (check-status.tsx:44).",
+        "2026-10-13 review pass by subagent: PASS on the delta after the first failed review. Re-ran: go test -count=1 ./internal/watcher/ ./internal/worker/ ./internal/invoice/ ./internal/httpapi/ all ok; verify logs F130-20261013T140140Z-* all passed (e2e pay.spec.ts:163 and privy/navigation.spec.ts:316 both pass). (1) Watch window fixed: rescan.go:27-33 drops every request for an invoice past settle_deadline + watchedAfterDeadline before any RPC work, the same rule as Chain.invoices (watcher.go:280-282). TestRecheckLeavesInvoicesPastTheWatchWindow (worker_test.go) asserts 0 chain_transfers and no pending request, and fails without the drop. (2) Ledger starvation fixed: worker.go runs Rescans under its own RescanTimeout (30 s) context, and ProcessChain keeps the round's context. rescanStep is 5*MaxRange (rescan.go:20); logsIn starts at the chain's c.span (rescan.go:131); Rescans joins per-invoice errors so one failure no longer holds up the rest (rescan.go:55-62). (3) The invoice page has an e2e for open (Check status, result, button disabled) and settled (no button). Arc repeat: recheck.go:71-78 asks for a new rescan only when none finished within RescanAgainAfter (10 min); tested in TestRecheckInvoice (invoices_recheck_test.go:61-71). A 429 now shows recheckTooSoon (check-status.tsx:47). Earlier checks still hold: the money path is the same as Scan's, the cursor is never written, the cooldown is atomic, the global bucket runs first, errors are redacted, and the API matches the docs. Non-blocking: for an invoice past the watch window, the api still answers rescanning=true ('Recording it now') and the worker then drops the request, so the message is wrong once (recheck.go:78 does not know the window); and a rescan step that times out loses its blockAt result, so it is computed again the next round.",
+        "2026-10-13 follow-up (non-blocking review notes): Recheck answers rescanning once for an invoice past the 30-day watch window before the worker drops it; a rescan step that times out loses the creation block it found and searches again next round"
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T14:01:40Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 86.1,
+            "log": "docs/runs/F130-20261013T140140Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 123.3,
+            "log": "docs/runs/F130-20261013T140140Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": "docs/runs/F130-20261013T140140Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F130-20261013T140140Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F130-20261013T140140Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F130-20261013T140140Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 86.6,
+            "log": "docs/runs/F130-20261013T140140Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.2,
+            "log": "docs/runs/F130-20261013T140140Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F130-20261013T140140Z-keep.log"
+          }
+        ],
+        "taskHash": "b4699f25d228c449",
+        "filesHash": "0fdcf04b41bf2402",
+        "proof": {
+          "1": "backend: TestRecheckBooksADepositTheScanMissed, TestRecheckLeavesInvoicesPastTheWatchWindow, TestRecheckInvoice and TestRecheckLimitsAndChainErrors pass; verify F130 passed all checks; independent review passed"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "PASS on the delta after the first failed review. Re-ran: go test -count=1 ./internal/watcher/ ./internal/worker/ ./internal/invoice/ ./internal/httpapi/ all ok; verify logs F130-20261013T140140Z-* all passed (e2e pay.spec.ts:163 and privy/navigation.spec.ts:316 both pass). (1) Watch window fixed: rescan.go:27-33 drops every request for an invoice past settle_deadline + watchedAfterDeadline before any RPC work, the same rule as Chain.invoices (watcher.go:280-282). TestRecheckLeavesInvoicesPastTheWatchWindow (worker_test.go) asserts 0 chain_transfers and no pending request, and fails without the drop. (2) Ledger starvation fixed: worker.go runs Rescans under its own RescanTimeout (30 s) context, and ProcessChain keeps the round's context. rescanStep is 5*MaxRange (rescan.go:20); logsIn starts at the chain's c.span (rescan.go:131); Rescans joins per-invoice errors so one failure no longer holds up the rest (rescan.go:55-62). (3) The invoice page has an e2e for open (Check status, result, button disabled) and settled (no button). Arc repeat: recheck.go:71-78 asks for a new rescan only when none finished within RescanAgainAfter (10 min); tested in TestRecheckInvoice (invoices_recheck_test.go:61-71). A 429 now shows recheckTooSoon (check-status.tsx:47). Earlier checks still hold: the money path is the same as Scan's, the cursor is never written, the cooldown is atomic, the global bucket runs first, errors are redacted, and the API matches the docs. Non-blocking: for an invoice past the watch window, the api still answers rescanning=true ('Recording it now') and the worker then drops the request, so the message is wrong once (recheck.go:78 does not know the window); and a rescan step that times out loses its blockAt result, so it is computed again the next round.",
+          "at": "2026-10-13T14:08:13Z",
+          "filesHash": "0fdcf04b41bf2402"
+        },
+        "commit": "a1bedd1",
+        "doneAt": "2026-10-13T14:08:33Z"
+      },
+      "branch": "feat/f130-check-status-on-the-pay-page-and-the-inv",
+      "baseCommit": "3254ebcac7f2118b4997e32f4e23bf108c9bd3ea",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f130-check-status-on-the-pay-page-and-the-inv",
+        "base": "main"
+      }
     },
     {
       "id": "F131",

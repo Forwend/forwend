@@ -4,6 +4,7 @@ import {
   INVOICES_PAGE_SIZE,
   type Invoice,
   type InvoicesPage,
+  type Recheck,
 } from "@/features/invoices/invoices";
 import { apiSlice } from "@/shared/api/api-slice";
 
@@ -48,6 +49,13 @@ export const invoicesApi = apiSlice
         query: ({ profileId, invoiceId }) =>
           `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}`,
       }),
+      /** Check status: public, like the checkout read; the api allows one per invoice every 30 s. */
+      recheckInvoice: build.mutation<Recheck, string>({
+        query: (invoiceId) => ({
+          url: `/v1/invoices/${encodeURIComponent(invoiceId)}/recheck`,
+          method: "POST",
+        }),
+      }),
       /** One invoice per idempotency key, so a retried request never makes two. */
       createInvoice: build.mutation<
         Invoice,
@@ -69,4 +77,5 @@ export const {
   useGetInvoiceQuery,
   useGetProfileInvoiceQuery,
   useCreateInvoiceMutation,
+  useRecheckInvoiceMutation,
 } = invoicesApi;

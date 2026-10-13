@@ -1,0 +1,103 @@
+package httpapi
+
+import (
+	"context"
+	"errors"
+	"math/big"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+)
+
+func (e invoiceEnv) recheck(t *testing.T, srv *httptest.Server, id string) reply {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/v1/invoices/"+id+"/recheck", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return e.do(t, req)
+}
+
+// R-55: Check status compares the address's finalized balance (2500000 in this env) with the recorded transfers, asks
+// the worker to rescan when more is on chain, and runs once per invoice every 30 s.
+func TestRecheckInvoice(t *testing.T) {
+	e := invoiceAPI(t)
+	ctx := context.Background()
+	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
+
+	r := e.recheck(t, e.srv, id)
+	next, _ := time.Parse(time.RFC3339, r.body["nextCheckAt"].(string))
+	if r.status != http.StatusOK || r.body["onChain"] != "2500000" || r.body["recorded"] != "0" ||
+		r.body["rescanning"] != true || time.Until(next) < 25*time.Second || time.Until(next) > 31*time.Second {
+		t.Fatalf("first check: %d %v", r.status, r.body)
+	}
+	var asked bool
+	if err := e.pool.QueryRow(ctx, "SELECT rescan_requested_at IS NOT NULL FROM invoice_rechecks WHERE invoice_id = $1",
+		id).Scan(&asked); err != nil || !asked {
+		t.Fatalf("rescan asked: %v (%v)", asked, err)
+	}
+
+	again := e.recheck(t, e.srv, id)
+	if again.status != http.StatusTooManyRequests || errorCode(again) != "rate_limited" {
+		t.Fatalf("within 30 s: %d %v", again.status, again.body)
+	}
+
+	// After the wait, with the deposit recorded and the rescan done, nothing more is asked.
+	if _, err := e.pool.Exec(ctx, `
+		WITH r AS (UPDATE invoice_rechecks SET checked_at = now() - interval '31 seconds', rescan_requested_at = NULL
+		           WHERE invoice_id = $1)
+		INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index, block_hash,
+		    block_number, block_time, from_address, to_address, amount, status)
+		SELECT 84532, 'evm', token_contract, id, '0x' || repeat('01', 32), 0, '0x' || repeat('01', 32), 90, 1, $2,
+		    receive_address, 2500000, 'confirmed' FROM invoices WHERE id = $1`, id, aliceWallet); err != nil {
+		t.Fatal(err)
+	}
+	if r := e.recheck(t, e.srv, id); r.status != http.StatusOK || r.body["recorded"] != "2500000" || r.body["rescanning"] != false {
+		t.Fatalf("up to date: %d %v", r.status, r.body)
+	}
+
+	// A rescan that finished minutes ago is not started again, even when the address still holds more than recorded
+	// (money no log explains, such as Arc native USDC).
+	if _, err := e.pool.Exec(ctx, `
+		WITH t AS (DELETE FROM chain_transfers WHERE invoice_id = $1)
+		UPDATE invoice_rechecks SET checked_at = now() - interval '31 seconds', rescanned_at = now() - interval '1 minute'
+		WHERE invoice_id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	if r := e.recheck(t, e.srv, id); r.status != http.StatusOK || r.body["recorded"] != "0" || r.body["rescanning"] != false {
+		t.Fatalf("after a recent rescan: %d %v, want no new rescan", r.status, r.body)
+	}
+
+	if r := e.recheck(t, e.srv, "0x"+strings.Repeat("ab", 32)); r.status != http.StatusNotFound || errorCode(r) != "invoice_not_found" {
+		t.Fatalf("unknown invoice: %d %v", r.status, r.body)
+	}
+}
+
+// A chain that can't be read answers 503 without the RPC URL's key; the global limit stops a burst over many invoices.
+func TestRecheckLimitsAndChainErrors(t *testing.T) {
+	e := invoiceAPI(t)
+	failing := httptest.NewServer(NewMux(e.pool, nil, nil,
+		func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
+			return nil, 0, errors.New(`Post "https://base-sepolia.infura.io/v3/sekretkey123": dial tcp: refused`)
+		}, webURL))
+	t.Cleanup(failing.Close)
+	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-0", basicBody).body["invoiceId"].(string)
+	r := e.recheck(t, failing, id)
+	if r.status != http.StatusServiceUnavailable || errorCode(r) != "network_unavailable" ||
+		strings.Contains(r.body["error"].(map[string]any)["message"].(string), "sekretkey123") {
+		t.Fatalf("chain error: %d %v", r.status, r.body)
+	}
+
+	var limited int
+	for i := range recheckBurst + 2 {
+		id := e.post(t, "did:privy:alice", e.aliceProfile, "burst-"+string(rune('a'+i)), basicBody).body["invoiceId"].(string)
+		if e.recheck(t, e.srv, id).status == http.StatusTooManyRequests {
+			limited++
+		}
+	}
+	if limited == 0 {
+		t.Fatalf("%d checks of different invoices at once: none limited", recheckBurst+2)
+	}
+}

@@ -6,8 +6,8 @@ Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/me/onboarding`,
 `GET /v1/profiles/{profileId}/invoices`, `GET /v1/profiles/{profileId}/invoices/{invoiceId}`,
 `GET /v1/profiles/{profileId}/balances`, `GET /v1/profiles/{profileId}/activity`,
 `GET /v1/profiles/{profileId}/transactions`, `GET /v1/profiles/{profileId}/balance-history`,
-`GET /v1/invoices/{invoiceId}`, `GET /v1/invoices/{invoiceId}/invoice.pdf`, `GET /v1/invoices/{invoiceId}/receipt.pdf`
-(the last three public).
+`GET /v1/invoices/{invoiceId}`, `POST /v1/invoices/{invoiceId}/recheck`, `GET /v1/invoices/{invoiceId}/invoice.pdf`,
+`GET /v1/invoices/{invoiceId}/receipt.pdf` (the last four public).
 
 ## Contract first
 
@@ -193,7 +193,13 @@ seconds (when the next token is back) and runs nothing else.
 
 - Routes that need a token: per Privy user, after the token is checked; 2 requests a second, 60 at once. A dashboard
   tab polls about six routes every 15 s and a page load sends about ten at once, so several tabs stay well under it.
-- Public routes (`GET /v1/invoices/{invoiceId}` and both PDFs) have no limit in the api. Next's `/api` rewrite does
+- `POST /v1/invoices/{invoiceId}/recheck` (Check status, R-55) reads a chain RPC, so it is limited in the api: one
+  check per invoice every 30 s, kept in Postgres so every replica agrees (`invoice_rechecks.checked_at`), and a
+  per-process bucket of 1 a second, 10 at once, for everyone together. Both answer 429 with `Retry-After`. A chain that
+  can't be read answers 503 `network_unavailable`. A rescan is asked only when the address holds more than is
+  recorded and no rescan finished in the last 10 minutes, so money no log explains (Arc native USDC) doesn't start a
+  full rescan on every press.
+- The other public routes (`GET /v1/invoices/{invoiceId}` and both PDFs) have no limit in the api. Next's `/api` rewrite does
   not set `X-Forwarded-For`, so the api sees one address for every payer and cannot trust a client's header. Limit them
   per IP at the load balancer or edge once hosting is chosen (Q-8), and keep the api reachable only through it.
   `/healthz` has no limit.

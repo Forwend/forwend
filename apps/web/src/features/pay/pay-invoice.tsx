@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { notFound } from "next/navigation";
 import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { CheckStatus } from "@/features/invoices/components/check-status";
 import { InvoiceDeposits } from "@/features/invoices/components/invoice-deposits";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
 import {
@@ -422,6 +423,10 @@ function Status({
         {pay.extra > 0n ? <p className="text-warning">{COPY.extra(money(pay.extra))}</p> : null}
         {pay.late > 0n ? <p className="text-warning">{COPY.late(money(pay.late))}</p> : null}
         <InvoiceDeposits invoice={invoice} token={token} />
+        {/* Paid or settled, nothing is left for the payer to look for. */}
+        {pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled ? null : (
+          <CheckStatus invoiceId={invoice.invoiceId} network={network} money={money} />
+        )}
       </div>
     </section>
   );

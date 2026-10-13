@@ -40,6 +40,9 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusUnprocessableEntity, "invalid_value", err.Error()
 	case errors.Is(err, invoice.ErrNotWatched):
 		status, code, message = http.StatusServiceUnavailable, "network_not_ready", "this network is starting: try again in a minute"
+	case errors.Is(err, invoice.ErrChainUnavailable):
+		slog.Warn("recheck could not read the chain", "err", err)
+		status, code, message = http.StatusServiceUnavailable, "network_unavailable", "could not read the network: try again shortly"
 	case errors.Is(err, errRateLimited):
 		status, code, message = http.StatusTooManyRequests, "rate_limited", "too many requests: wait Retry-After seconds"
 	default:
