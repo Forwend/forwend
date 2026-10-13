@@ -2650,7 +2650,7 @@
       "dependsOn": [
         "F146"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "e2e",
         "unit"
@@ -2662,7 +2662,70 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T19:06:32Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 136.4,
+            "log": "docs/runs/F147-20261013T190632Z-e2e.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 100.2,
+            "log": "docs/runs/F147-20261013T190632Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": "docs/runs/F147-20261013T190632Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F147-20261013T190632Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F147-20261013T190632Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F147-20261013T190632Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.1,
+            "log": "docs/runs/F147-20261013T190632Z-build.log"
+          }
+        ],
+        "taskHash": "25e2b0b6cd680cdf",
+        "filesHash": "27d5f2275c469c91",
+        "proof": {
+          "1": "e2e: privy navigation.spec 'each state once': confirming says Confirming (0/120) once with no pill in the payment row; partly paid shows the Paid step as a warning-tinted Partially paid with Received 1.00 USDC of 2.00 USDC and no separate line; paid and settling makes Settled the moving step and hides Check status; axe clean; unit: kit timeline toned label test"
+        }
+      },
+      "branch": "feat/f147-the-owner-s-invoice-page-shows-one-statu",
+      "baseCommit": "b078e54e73b7f5086ad0547da9e4448657781bfe",
+      "failedVerifies": 0
     },
     {
       "id": "F148",

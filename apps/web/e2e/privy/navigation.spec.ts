@@ -72,9 +72,9 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   await expect(main.getByRole("status").filter({ hasText: /./ })).toHaveText(
     "Confirming (0/120) · about 6 min left",
   );
-  // The timeline carries the invoice's status, at its Confirming step; the one pill left is the payment's own.
+  // The timeline carries the invoice's status, at its Confirming step; the payment repeats no pill of its own (R-69).
   const amountPanel = main.getByRole("region", { name: "Amount" });
-  await expect(amountPanel.locator("[data-status]")).toHaveCount(1);
+  await expect(amountPanel.locator("[data-status]")).toHaveCount(0);
   await expect(
     amountPanel
       .getByRole("list", { name: "Payment progress" })
@@ -401,5 +401,83 @@ test("money tables share row hover, show network logos, keep Export at the right
     /^https:\/\/sepolia\.basescan\.org\/address\/0x[0-9a-f]{40}$/,
   );
   await expect(counterparty).toHaveAttribute("target", "_blank");
+  await context.close();
+});
+
+// R-69: the owner's invoice page says its state once: a tinted badge, a moving current step, payments without
+// repeated statuses, and received X of Y when partly paid.
+test("the owner's invoice page shows each state once, with the waiting step moving", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page);
+  let body: object = OPEN_INVOICE;
+  await page.route(
+    (url) =>
+      url.pathname.startsWith("/api/") &&
+      url.pathname.endsWith(`/invoices/${OPEN_INVOICE.invoiceId}`),
+    (route) => route.fulfill({ json: body }),
+  );
+  const deposit = (status: string, amount: string, blocksLeft: number) => ({
+    txHash: hash("9"),
+    logIndex: 0,
+    from: `0x${"c".repeat(40)}`,
+    amount,
+    blockNumber: 1000,
+    blockTime: "2026-10-09T08:30:00Z",
+    status,
+    late: false,
+    blocksLeft,
+    secondsLeft: blocksLeft * 3,
+  });
+  const main = page.getByRole("main");
+  const progress = main.getByRole("list", { name: "Payment progress" });
+  const current = progress.locator("[aria-current=step]");
+  const payments = main.locator("ul").filter({ hasText: "From" });
+
+  // Confirming: the count says it once; the payment row has no status pill of its own.
+  body = {
+    ...OPEN_INVOICE,
+    paymentStatus: "detected",
+    deposits: [deposit("detected", OPEN_INVOICE.amount, 120)],
+  };
+  await page.goto(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
+  await expect(main.getByRole("status").filter({ hasText: /^Confirming/ })).toHaveText(
+    "Confirming (0/120) · about 6 min left",
+  );
+  await expect(current).toHaveText("Confirming");
+  await expect(payments.locator("[data-status]")).toHaveCount(0);
+  expect(await blockingViolations(page)).toEqual([]);
+
+  // Partly paid: the Paid step itself says so, tinted and half full, and the amount says what came in.
+  body = {
+    ...OPEN_INVOICE,
+    paymentStatus: "partially_paid",
+    deposits: [deposit("confirmed", "1000000", 0)],
+  };
+  await page.reload();
+  await expect(current).toContainText("Partially paid");
+  await expect(progress.getByText("Partially paid")).toHaveClass(/bg-warning-soft/);
+  await expect(main.getByText("Received 1.00 USDC of 2.00 USDC")).toBeVisible();
+  // No separate line repeats it under the steps.
+  await expect(main.getByRole("status").filter({ hasText: "Partially paid" })).toHaveCount(0);
+  expect(await blockingViolations(page)).toEqual([]);
+
+  // Paid and on its way to the wallet: Paid out (Settled) is the moving step, not an empty one.
+  body = {
+    ...OPEN_INVOICE,
+    paymentStatus: "paid",
+    settlementStatus: "pending",
+    paidAt: "2026-10-09T08:31:00Z",
+    deposits: [deposit("confirmed", OPEN_INVOICE.amount, 0)],
+  };
+  await page.reload();
+  await expect(current).toHaveText("Settled");
+  await expect(current.locator("[class*='fw-progress']")).toHaveCount(1);
+  await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
   await context.close();
 });

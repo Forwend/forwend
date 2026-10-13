@@ -1,7 +1,8 @@
 "use client";
 
-import { PaymentTimeline, STEP_STATES } from "@forwend/ui-web";
+import { PaymentTimeline, STEP_STATES, TONES } from "@forwend/ui-web";
 import { useEffect, useState } from "react";
+import { API_PAYMENT_STATUSES } from "@/features/activity/activity";
 import {
   confirmingProgress,
   INVOICE_STEPS,
@@ -33,20 +34,34 @@ export function InvoiceTimeline({
   const next = confirming ? Math.max(most, blocksLeft) : 0;
   if (next !== most) setMost(next);
 
-  const steps = INVOICE_TIMELINE.map((step, i) => ({
-    label: COPY.steps[step],
-    state:
-      i < done
-        ? STEP_STATES.complete
-        : i === done && (done < reached || (step === current && waiting))
-          ? STEP_STATES.current
-          : STEP_STATES.upcoming,
-    // A current step that is not confirming has not started filling: a full bar would read as done. A step passed
-    // through on the way shows full.
-    ...(i === done && done === reached && step === current
-      ? { progress: confirming ? confirmingProgress(blocksLeft, next) : 0 }
-      : {}),
-  }));
+  // Partly paid shows on the Paid step itself, as a tinted label, filled by the share received (R-69).
+  const partly =
+    invoice.paymentStatus === API_PAYMENT_STATUSES.partiallyPaid ||
+    invoice.paymentStatus === API_PAYMENT_STATUSES.expiredPartiallyPaid;
+  const received = invoice.deposits
+    .filter((d) => !d.late)
+    .reduce((sum, d) => sum + BigInt(d.amount), 0n);
+  const share = Number((received * 1000n) / BigInt(invoice.amount)) / 1000;
+  const steps = INVOICE_TIMELINE.map((step, i) => {
+    const partlyPaid = partly && step === INVOICE_STEPS.paid;
+    return {
+      label: partlyPaid ? COPY.partlyPaid : COPY.steps[step],
+      tone: partlyPaid ? TONES.warning : undefined,
+      state:
+        i < done
+          ? STEP_STATES.complete
+          : i === done && (done < reached || (step === current && waiting))
+            ? STEP_STATES.current
+            : STEP_STATES.upcoming,
+      // The waiting step moves, so it never reads as stuck: confirming fills by blocks, partly paid by the share,
+      // anything else sweeps (paid out while settling included). A step passed through on the way shows full.
+      ...(i === done && done === reached && step === current
+        ? {
+            progress: confirming ? confirmingProgress(blocksLeft, next) : partlyPaid ? share : null,
+          }
+        : {}),
+    };
+  });
   return <PaymentTimeline label={label} steps={steps} />;
 }
 

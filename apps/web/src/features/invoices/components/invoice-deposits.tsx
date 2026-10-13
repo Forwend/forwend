@@ -1,12 +1,4 @@
-import {
-  Money,
-  PAYMENT_STATUS,
-  PAYMENT_STATUSES,
-  StatusPill,
-  shortAddress,
-  Tooltip,
-} from "@forwend/ui-web";
-import { ACTIVITY_KINDS, activityStatus } from "@/features/activity/activity";
+import { Money, shortAddress, Tooltip } from "@forwend/ui-web";
 import { exactDigits, type Invoice, type InvoiceToken } from "@/features/invoices/invoices";
 import { INVOICE_COPY, INVOICES_COPY } from "@/features/invoices/invoices-copy";
 import { ExplorerLink } from "@/shared/chains/explorer-link";
@@ -14,7 +6,7 @@ import { ExplorerLink } from "@/shared/chains/explorer-link";
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 
 /**
- * Each payment the chain shows for the invoice: amount, status, sender, block time, transaction and a link to it on
+ * Each payment the chain shows for the invoice: amount, sender, block time, transaction and a link to it on
  * the block explorer.
  */
 export function InvoiceDeposits({
@@ -33,7 +25,6 @@ export function InvoiceDeposits({
       <ul className="divide-y divide-line rounded-md border border-line">
         {invoice.deposits.map((d) => {
           const amount = BigInt(d.amount);
-          const status = activityStatus({ kind: ACTIVITY_KINDS.deposit, status: d.status });
           return (
             <li
               key={`${d.txHash}:${d.logIndex}`}
@@ -54,14 +45,6 @@ export function InvoiceDeposits({
                     {INVOICES_COPY.baseUnits(shortAddress(invoice.token))}
                   </span>
                 </span>
-              )}
-              {status === PAYMENT_STATUS.confirmed ? (
-                // Pill-sized, so the row keeps its height when a deposit confirms.
-                <span className="inline-flex shrink-0 items-center rounded-pill border border-transparent px-2.5 py-1 text-xs whitespace-nowrap text-muted">
-                  {PAYMENT_STATUSES[status].label}
-                </span>
-              ) : (
-                <StatusPill status={status} />
               )}
               {d.late ? <span className="text-xs text-warning">{INVOICE_COPY.late}</span> : null}
               <span className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1">

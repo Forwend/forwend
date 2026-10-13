@@ -1,4 +1,5 @@
 import { cx } from "../../lib/cx";
+import { TONE_CLASSES, type Tone } from "../../lib/tone";
 
 export const STEP_STATES = {
   complete: "complete",
@@ -17,6 +18,8 @@ export interface TimelineStep {
    * moves along the bar. Left out, the current step's bar is full.
    */
   progress?: number | null;
+  /** Shows the label as a tinted badge, for a step that ended in a state worth noticing (partly paid). */
+  tone?: Tone;
 }
 
 export interface PaymentTimelineProps {
@@ -78,7 +81,14 @@ export function PaymentTimeline({
             <span
               className={cx(
                 "text-xs",
-                step.state === STEP_STATES.upcoming ? "text-subtle" : "font-medium text-ink",
+                step.tone
+                  ? cx(
+                      "self-start rounded-pill border px-2 py-0.5 font-medium",
+                      TONE_CLASSES[step.tone],
+                    )
+                  : step.state === STEP_STATES.upcoming
+                    ? "text-subtle"
+                    : "font-medium text-ink",
               )}
             >
               {step.label}
