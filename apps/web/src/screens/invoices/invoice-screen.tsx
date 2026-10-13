@@ -1,9 +1,9 @@
 "use client";
 
-import { useGetBalancesQuery } from "@/features/balances/balances-api";
+import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
 import { InvoiceDetail } from "@/features/invoices/components/invoice-detail";
-import { useAppSession } from "@/features/profiles/app-session";
-import { PROFILE_KINDS } from "@/features/profiles/profile";
+import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
+import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
 export function InvoiceScreen({ invoiceId }: { invoiceId: string }) {

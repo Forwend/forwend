@@ -6,8 +6,8 @@ import {
   SPACING_STEPS,
   TYPE_ROLES,
   TYPE_SCALE,
-} from "@/screens/kit/kit-content";
-import { KIT_ICONS } from "@/screens/kit/kit-icons";
+} from "@/screens/kit/constants/kit-content";
+import { KIT_ICONS } from "@/screens/kit/constants/kit-icons";
 
 export function TypographySamples() {
   return (

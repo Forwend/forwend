@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isEmail } from "@/features/waitlist/waitlist";
+import { isEmail } from "@/features/waitlist/lib/waitlist";
 
 describe("isEmail", () => {
   it.each(["name@example.com", "  first.last+tag@sub.domain.io  "])("accepts %s", (value) => {

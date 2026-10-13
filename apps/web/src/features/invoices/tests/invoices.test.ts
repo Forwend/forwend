@@ -2,13 +2,15 @@ import { PAYMENT_STATUS } from "@forwend/ui-web";
 import { describe, expect, it } from "vitest";
 import {
   AMOUNT_ERRORS,
+  INVOICE_PDFS,
+  SETTLEMENT_WAITS,
+} from "@/features/invoices/constants/invoices";
+import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
+import {
   confirmingProgress,
   customExpiresIn,
-  type Deposit,
   decimalText,
   exactDigits,
-  INVOICE_PDFS,
-  type Invoice,
   invalidField,
   invoiceNumber,
   invoicePdfUrl,
@@ -16,9 +18,8 @@ import {
   invoiceStatus,
   isReturnLink,
   parseTokenAmount,
-  SETTLEMENT_WAITS,
-} from "@/features/invoices/invoices";
-import { INVOICE_COPY } from "@/features/invoices/invoices-copy";
+} from "@/features/invoices/lib/invoices";
+import type { Deposit, Invoice } from "@/features/invoices/types/invoices";
 
 describe("parseTokenAmount", () => {
   it("turns typed USDC amounts into exact base units", () => {

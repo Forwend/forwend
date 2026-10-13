@@ -1,5 +1,5 @@
 import { NewProfileForm } from "@/features/profiles/components/new-profile-form";
-import { NEW_PROFILE_COPY } from "@/features/profiles/profiles-copy";
+import { NEW_PROFILE_COPY } from "@/features/profiles/constants/profiles-copy";
 
 export function NewProfileScreen() {
   return (

@@ -2,7 +2,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { useStore } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { profilesApi } from "@/features/profiles/profiles-api";
+import { profilesApi } from "@/features/profiles/api/profiles-api";
 import { StoreProvider } from "@/providers/store-provider";
 import type { AppStore } from "@/store/store";
 

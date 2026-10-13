@@ -1,8 +1,9 @@
 import { Money, shortAddress, Tooltip } from "@forwend/ui-web";
 import type { ReactNode } from "react";
-import { exactDigits, type Invoice, type InvoiceToken } from "@/features/invoices/invoices";
-import { INVOICE_COPY, INVOICES_COPY } from "@/features/invoices/invoices-copy";
-import { ExplorerLink } from "@/shared/chains/explorer-link";
+import { INVOICE_COPY, INVOICES_COPY } from "@/features/invoices/constants/invoices-copy";
+import { exactDigits } from "@/features/invoices/lib/invoices";
+import type { Invoice, InvoiceToken } from "@/features/invoices/types/invoices";
+import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 

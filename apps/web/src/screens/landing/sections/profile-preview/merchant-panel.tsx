@@ -1,7 +1,7 @@
 import { ActivityRow } from "@forwend/ui-web";
+import { PROFILE_TABS } from "@/screens/landing/sections/profile-preview/constants/profile-preview-content";
+import { SAMPLE_STORE_ACTIVITY } from "@/screens/landing/sections/profile-preview/constants/profile-preview-samples";
 import { PanelLayout } from "@/screens/landing/sections/profile-preview/panel-layout";
-import { PROFILE_TABS } from "@/screens/landing/sections/profile-preview/profile-preview-content";
-import { SAMPLE_STORE_ACTIVITY } from "@/screens/landing/sections/profile-preview/profile-preview-samples";
 
 export function MerchantPanel() {
   return (

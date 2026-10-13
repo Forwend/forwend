@@ -1,11 +1,7 @@
 import { Money, Skeleton, shortAddress } from "@forwend/ui-web";
-import {
-  exactDigits,
-  type InvoiceSummary,
-  type InvoiceToken,
-  tokenKey,
-} from "@/features/invoices/invoices";
-import { INVOICES_COPY } from "@/features/invoices/invoices-copy";
+import { INVOICES_COPY } from "@/features/invoices/constants/invoices-copy";
+import { exactDigits, tokenKey } from "@/features/invoices/lib/invoices";
+import type { InvoiceSummary, InvoiceToken } from "@/features/invoices/types/invoices";
 
 /**
  * The exact amount in the invoice's token; a token no longer enabled has no known decimals, so it shows base units.

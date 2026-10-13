@@ -12,30 +12,34 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, type ReactNode, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { useCreateInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import {
-  type CreateInvoiceBody,
   CUSTOM_EXPIRY,
-  customExpiresIn,
   DEFAULT_EXPIRY,
-  decimalText,
   EXPIRY_CHOICES,
-  type ExpiryChoice,
   INVOICE_FIELDS,
   INVOICE_LIMITS,
-  type Invoice,
-  type InvoiceField,
-  type InvoiceToken,
+  PAY_WITH,
+} from "@/features/invoices/constants/invoices";
+import { NEW_INVOICE_COPY, NEW_REQUEST_COPY } from "@/features/invoices/constants/invoices-copy";
+import {
+  customExpiresIn,
+  decimalText,
   invalidField,
   isReturnLink,
-  PAY_WITH,
-  type PayWith,
   parseTokenAmount,
   tokenKey,
-} from "@/features/invoices/invoices";
-import { useCreateInvoiceMutation } from "@/features/invoices/invoices-api";
-import { NEW_INVOICE_COPY, NEW_REQUEST_COPY } from "@/features/invoices/invoices-copy";
-import { chainName } from "@/shared/chains/chains";
+} from "@/features/invoices/lib/invoices";
+import type {
+  CreateInvoiceBody,
+  ExpiryChoice,
+  Invoice,
+  InvoiceField,
+  InvoiceToken,
+  PayWith,
+} from "@/features/invoices/types/invoices";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { chainName } from "@/shared/lib/chains";
 
 const INVALID_VALUE = 422;
 const DAY_MS = 86_400_000;

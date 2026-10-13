@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { chosenProfile } from "@/features/profiles/chosen-profile";
-import type { Profile } from "@/features/profiles/profile";
+import { chosenProfile } from "@/features/profiles/lib/chosen-profile";
+import type { Profile } from "@/features/profiles/types/profile";
 
 const personal: Profile = {
   profileId: "p-1",

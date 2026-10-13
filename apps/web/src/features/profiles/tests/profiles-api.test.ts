@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Me, Profile } from "@/features/profiles/profile";
-import { profilesApi } from "@/features/profiles/profiles-api";
+import { profilesApi } from "@/features/profiles/api/profiles-api";
+import type { Me, Profile } from "@/features/profiles/types/profile";
 import { makeStore } from "@/store/store";
 
 const personal: Profile = {

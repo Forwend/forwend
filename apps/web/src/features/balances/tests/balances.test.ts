@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { type TokenBalance, usdTotal } from "@/features/balances/balances";
+import { usdTotal } from "@/features/balances/lib/balances";
+import type { TokenBalance } from "@/features/balances/types/balances";
 
 const usdc: TokenBalance = {
   chainId: 84532,

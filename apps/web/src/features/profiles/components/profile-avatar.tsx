@@ -1,6 +1,7 @@
 import { FreelancerIcon, MerchantIcon } from "@forwend/ui-web";
 import { User } from "lucide-react";
-import { PROFILE_KINDS, type ProfileKind } from "@/features/profiles/profile";
+import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
+import type { ProfileKind } from "@/features/profiles/types/profile";
 
 const ICONS = {
   [PROFILE_KINDS.personal]: User,

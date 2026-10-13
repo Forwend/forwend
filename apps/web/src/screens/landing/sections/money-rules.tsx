@@ -1,6 +1,6 @@
 import { StatusPill } from "@forwend/ui-web";
 import { AlertTriangle } from "lucide-react";
-import { LANDING_SECTIONS, RULES } from "@/screens/landing/landing-content";
+import { LANDING_SECTIONS, RULES } from "@/screens/landing/constants/landing-content";
 import { Section } from "@/screens/landing/layout/section";
 
 export function MoneyRules() {

@@ -1,10 +1,10 @@
 import { ActivityRow, Money, StatTile } from "@forwend/ui-web";
-import { PanelLayout } from "@/screens/landing/sections/profile-preview/panel-layout";
-import { PROFILE_TABS } from "@/screens/landing/sections/profile-preview/profile-preview-content";
+import { PROFILE_TABS } from "@/screens/landing/sections/profile-preview/constants/profile-preview-content";
 import {
   SAMPLE_BALANCES,
   SAMPLE_PERSONAL_ACTIVITY,
-} from "@/screens/landing/sections/profile-preview/profile-preview-samples";
+} from "@/screens/landing/sections/profile-preview/constants/profile-preview-samples";
+import { PanelLayout } from "@/screens/landing/sections/profile-preview/panel-layout";
 
 export function PersonalPanel() {
   return (

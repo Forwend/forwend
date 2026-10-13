@@ -2,16 +2,11 @@
 
 import { PaymentTimeline, STEP_STATES, TONES } from "@forwend/ui-web";
 import { useEffect, useState } from "react";
-import { API_PAYMENT_STATUSES } from "@/features/activity/activity";
-import {
-  confirmingProgress,
-  INVOICE_STEPS,
-  INVOICE_TIMELINE,
-  type Invoice,
-  type InvoiceStep,
-  invoiceProgress,
-} from "@/features/invoices/invoices";
-import { INVOICE_COPY as COPY } from "@/features/invoices/invoices-copy";
+import { API_PAYMENT_STATUSES } from "@/features/activity/constants/activity";
+import { INVOICE_STEPS, INVOICE_TIMELINE } from "@/features/invoices/constants/invoices";
+import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
+import { confirmingProgress, invoiceProgress } from "@/features/invoices/lib/invoices";
+import type { Invoice, InvoiceStep } from "@/features/invoices/types/invoices";
 
 /**
  * The status timeline. While a payment confirms, its bar fills as blocks pass of those it had to wait (R-73); until one

@@ -1,12 +1,13 @@
 "use client";
 
 import { Skeleton } from "@forwend/ui-web";
-import { formatUsd, USD, usdTotal } from "@/features/balances/balances";
-import { useGetBalancesQuery } from "@/features/balances/balances-api";
-import { BALANCES_COPY } from "@/features/balances/balances-copy";
+import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
 import { BalancesList } from "@/features/balances/components/balances-list";
 import { EstimateHint } from "@/features/balances/components/estimate-hint";
-import { useAppSession } from "@/features/profiles/app-session";
+import { USD } from "@/features/balances/constants/balances";
+import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { formatUsd, usdTotal } from "@/features/balances/lib/balances";
+import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
 export function BalancesScreen() {

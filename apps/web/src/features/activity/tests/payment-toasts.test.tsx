@@ -3,9 +3,10 @@ import { ToastProvider } from "@forwend/ui-web";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ACTIVITY_PAGE_SIZE, type ActivityItem } from "@/features/activity/activity";
-import { activityApi } from "@/features/activity/activity-api";
-import { PaymentToasts } from "@/features/activity/payment-toasts";
+import { activityApi } from "@/features/activity/api/activity-api";
+import { PaymentToasts } from "@/features/activity/components/payment-toasts";
+import { ACTIVITY_PAGE_SIZE } from "@/features/activity/constants/activity";
+import type { ActivityItem } from "@/features/activity/types/activity";
 import { makeStore } from "@/store/store";
 
 const deposit = (txHash: string): ActivityItem => ({

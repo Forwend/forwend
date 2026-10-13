@@ -3,11 +3,12 @@
 import { LogoMark, Tooltip } from "@forwend/ui-web";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { AccountInitial, AccountMenu } from "@/features/auth/account-menu";
-import { AUTH_COPY } from "@/features/auth/auth-copy";
+import { AccountInitial, AccountMenu } from "@/features/auth/components/account-menu";
+import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { ProfileSwitcher } from "@/features/profiles/components/profile-switcher";
-import type { Profile } from "@/features/profiles/profile";
-import { APP_NAV, isCurrentPage } from "@/screens/app-shell/app-nav";
+import type { Profile } from "@/features/profiles/types/profile";
+import { APP_NAV } from "@/screens/app-shell/constants/app-nav";
+import { isCurrentPage } from "@/screens/app-shell/lib/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const SIDEBAR_COPY = {

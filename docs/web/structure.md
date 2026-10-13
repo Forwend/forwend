@@ -10,97 +10,74 @@ Create only the parts a task needs. Behavior and design rules remain in [rules.m
 
 ```text
 apps/web/src/
-  app/                         Next.js routes, layouts, metadata, loading and error boundaries
-  screens/                     full screens that assemble features
-    landing/
-    app-shell/                 signed-in frame: sidebar, phone header and tab bar
-    dashboard/
-    balances/
-    activity/
-    transactions/
-    invoices/
-    new-profile/
-    pay/                       public checkout /pay/<id>
-    sign-in/
-    kit/                       /kit
-    kit-directions/            /kit/directions
-  features/                    product behavior, grouped by domain
-    auth/
-    profiles/
-    balances/
-    receive/
-    activity/
-    transactions/
-    invoices/
-    pay/                       checkout: address recompute, payer steps and status
-    waitlist/
-  shared/                      code used by unrelated screens or features
-    api/                       request client, API errors, optional RTK Query setup
-    hooks/                     domain-independent React hooks
-    config/                    shared application configuration
-    assets/                    shared image references; actual images stay in public/
-    chains/                    supported networks, their names and token marks
-    art/                       code-drawn illustrations used by landing and kit
-    examples/                  sample data shown on more than one screen
-    formatting/                shared formatting functions
-    components/                app-wide composition that does not belong in ui-web
-  store/                       optional Redux store assembly and typed hooks
+  app/                         Next.js routes, layouts, metadata, loading and error boundaries (framework files)
+  screens/                     full screens that assemble features; one folder per screen
+  features/                    product behavior, one folder per domain, every one laid out the same way
+  shared/                      code with a concrete purpose and unrelated consumers, laid out like a feature
+  store/                       Redux store assembly and typed hooks
   providers/                   application provider composition
 ```
 
-- A route selects and configures a screen; a screen arranges feature components. Keep substantial feature logic
-  out of `page.tsx` and `layout.tsx`. Use `screens/`, not a second Next.js `pages/` routing directory.
-- A feature owns its components, API requests, hooks, services, state, constants and types. Small features can
-  keep descriptive files directly in their folder. Add `components/`, `charts/`, `api/`, `hooks/`, `services/`,
-  `store/`, `types/` or `constants/` only when a real group of files needs it. `features/balances` and
-  `features/invoices` keep their domain types, constants, requests and copy at the top and their UI in
-  `components/` (balance charts in `charts/`).
-- Put component-only props beside the component, domain types beside their feature, and shared types beside
-  the shared capability that owns them. Do not recreate global `types/app/` or mixed `types/ui/display.ts` files.
-- Define each domain concept once. When another type means the same thing, derive it from the owner (`Pick`,
-  `extends`, an indexed type) instead of copying its fields; `InvoiceToken` picks from `TokenBalance`. Keep HTTP
-  request and response types apart from internal types when their representations differ.
-- Keep section copy and demo data with their screen or section. Data genuinely used across screens, such as
-  sample invoices on landing and kit, belongs in a named shared group such as `shared/examples/`.
-- Keep finite domain values in one owner-local constants file and derive unions from them. Use type-only imports.
-- Do not use `shared/`, `lib/`, `utils/` or `services/` as a destination for code whose owner is unclear. Identify
-  the feature first. Shared code needs a concrete purpose and actual unrelated consumers.
+## One layout everywhere
+
+A folder holds one kind of code, so where a thing lives follows from what it is (F169). A feature, `shared/` and a
+screen with supporting code use the same kind folders, created only when the first file of that kind exists:
+
+```text
+features/invoices/
+  api/          invoices-api.ts         RTK Query endpoints (injectEndpoints) and their generated hooks
+  schemas/      invoices.ts             Zod schemas for requests and responses (F170); types are inferred from them
+  types/        invoices.ts             interfaces and type aliases; unions derived from constants/ with `typeof`
+  constants/    invoices.ts             finite values and limits (`as const`); invoices-copy.ts: the feature's text
+  lib/          invoices.ts             pure functions: no React, no requests
+  hooks/        use-chart.ts            one hook per file, named after it; a React context lives with its hook
+  components/   invoice-detail.tsx      React components, and nothing else is .tsx
+  tests/        invoices.test.ts        unit tests of this owner
+```
+
+- No `.ts` and `.tsx` side by side, and no files at a feature root: only the kind folders. Next.js `app/` keeps the
+  framework's file names (`page.tsx`, `robots.ts`).
+- A file in `types/`, `constants/` or `lib/` is named after its owner or topic (`invoices.ts`, `receive-address.ts`);
+  the folder says the kind. A private helper stays in the file of the only code that uses it.
+- `shared/` uses the same folders at its top: `shared/components/chains/token-mark.tsx`, `shared/lib/chains.ts`,
+  `shared/constants/chains.ts`, plus `api/` (the RTK Query base), `config/`, `assets/`, `examples/` and `hooks/`.
+- A screen folder holds its `.tsx` screen and section components; supporting code goes in the same kind folders
+  beside them (`screens/app-shell/lib/app-nav.ts`, `screens/landing/sections/hero/constants/hero-content.ts`).
+- A feature owns its components, requests, hooks, state, constants and types. Do not use `shared/` for code whose
+  owner is unclear: identify the feature first.
+- Put component-only props beside the component, domain types in the feature's `types/`, and shared types in
+  `shared/types/`. Define each domain concept once; derive related types from the owner (`Pick`, `extends`, an indexed
+  type) instead of copying fields. Keep HTTP request and response shapes apart from internal types when they differ.
+- Keep finite domain values in `constants/` and derive unions from them. Use type-only imports.
+
+## TypeScript and React conventions
+
+- A component is a function declaration with its props typed on the parameter: `export function TokenMark({ chainId }:
+  TokenMarkProps)`. No `React.FC`: it adds nothing on a declaration and hides generics.
+- Props of an exported component are an `interface <Component>Props` beside it; a private component may type its
+  props inline. No `I` prefix (`Props`, not `IProps`): TypeScript's own style names interfaces by what they describe.
+- Let TypeScript infer a component's return type; annotate the return type of exported non-component functions.
+- Prefer `interface` for object shapes and `type` for unions, mapped types and aliases.
+- Use the shared kit (`@forwend/ui-web`) for buttons, fields and other controls; a raw element only where the kit
+  has no such control, named in this document.
 
 ## Landing sections
 
 ```text
 screens/landing/
   landing-screen.tsx
-  layout/
-    site-nav.tsx
-    site-footer.tsx
-    section.tsx
+  constants/landing-content.ts       remaining page-level copy
+  types/landing-content.ts
+  layout/                            site-nav.tsx, site-footer.tsx, section.tsx
   sections/
-    hero/
-      hero.tsx
-      hero-journey.tsx
-      hero-payment.tsx
-      use-hero-journey.ts
-      hero-content.ts
-      hero-motion.ts
-      river.ts
-    profile-preview/
-      profile-preview.tsx
-      panel-layout.tsx
-      personal-panel.tsx
-      freelancer-panel.tsx
-      merchant-panel.tsx
-      developers-panel.tsx
-      profile-preview-content.ts
-      profile-preview-samples.ts
-    checkout-preview/
-      checkout-preview.tsx
-      checkout-preview-content.ts
-    faq.tsx
-    fees.tsx
-    networks.tsx
-    ...                        other simple sections can remain single files
-  landing-content.ts           remaining page-level copy
+    hero/                            hero.tsx, hero-journey.tsx, hero-payment.tsx
+      constants/                     hero-content.ts, hero-motion.ts, river.ts
+    profile-preview/                 profile-preview.tsx and one panel per profile
+      constants/                     profile-preview-content.ts, profile-preview-samples.ts
+      types/
+    checkout-preview/                checkout-preview.tsx
+      constants/checkout-preview-content.ts
+    faq.tsx, fees.tsx, networks.tsx  simple sections stay single files
 ```
 
 Group the hero's rendering, animation and supporting data together. Keep independent profile demos in named
@@ -114,12 +91,12 @@ An image also used by sign-in is shared branding, not landing-only data.
 | Kind | Job | Example |
 |---|---|---|
 | API file | Request definitions, response mapping and request-cache rules | `features/profiles/api/profiles-api.ts` |
-| Service | A meaningful operation independent of React | `features/invoices/services/prepare-invoice-draft.ts` when that behavior exists |
+| Logic | A meaningful operation independent of React | `features/invoices/lib/invoices.ts` |
 | Hook | React state, lifecycle or interaction coordination | `features/profiles/hooks/use-create-profile.ts` |
 | Component | Rendering and simple event handling | `features/profiles/components/new-profile-form.tsx` |
 | Slice | A feature's shared client state and updates | `features/profiles/store/profiles-slice.ts` if Redux is adopted |
 
-Services can be plain functions. Do not add a service that only forwards a request, or wrap a generated query
+Logic is plain functions in `lib/`. Do not add a service that only forwards a request, or wrap a generated query
 hook without additional behavior. Backend services remain responsible for authorization, transactions and
 money rules. Frontend validation does not replace backend validation.
 
@@ -135,8 +112,7 @@ Use established Redux terms: store, slice, reducer, selector, query and mutation
 - `features/<feature>/store/<feature>-slice.ts`: feature state and reducers. Keep selectors beside the slice;
   extract `<feature>-selectors.ts` only when their logic warrants a separate file.
 - `shared/api/api-slice.ts`: the shared RTK Query `apiSlice` for our backend, with common request setup.
-  Define endpoints in `features/<feature>/<feature>-api.ts` (in `api/` once a feature has several API files)
-  using `injectEndpoints`. Do not collect all
+  Define endpoints in `features/<feature>/api/<feature>-api.ts` using `injectEndpoints`. Do not collect all
   feature endpoints in the shared file or create a separate `createApi` instance for every feature.
 - `shared/api/client.ts`: the plain request client if needed. Do not maintain duplicate fetch and RTK Query
   implementations for the same endpoint.

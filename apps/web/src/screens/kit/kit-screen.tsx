@@ -2,6 +2,7 @@ import { ThemeSwitch } from "@forwend/ui-web";
 import Link from "next/link";
 import { ColorSwatches } from "@/screens/kit/color-swatches";
 import { ComponentsShowcase } from "@/screens/kit/components-showcase";
+import { KIT_SECTIONS } from "@/screens/kit/constants/kit-content";
 import {
   IconSet,
   MotionSamples,
@@ -10,7 +11,6 @@ import {
   SpacingScale,
   TypographySamples,
 } from "@/screens/kit/foundations";
-import { KIT_SECTIONS } from "@/screens/kit/kit-content";
 import { KitSection } from "@/screens/kit/kit-section";
 import { LogoShowcase } from "@/screens/kit/logo-showcase";
 import { MotionShowcase } from "@/screens/kit/motion-showcase";

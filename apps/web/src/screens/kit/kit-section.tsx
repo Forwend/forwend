@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { KitSectionTitle } from "@/screens/kit/kit-content";
+import type { KitSectionTitle } from "@/screens/kit/types/kit-content";
 
 interface KitSectionProps {
   title: KitSectionTitle;

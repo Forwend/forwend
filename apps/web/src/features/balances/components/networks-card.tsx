@@ -1,9 +1,9 @@
 import { Money, Skeleton } from "@forwend/ui-web";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import type { Balances } from "@/features/balances/balances";
-import { BALANCES_COPY } from "@/features/balances/balances-copy";
-import { TokenMark } from "@/shared/chains/token-mark";
+import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import type { Balances } from "@/features/balances/types/balances";
+import { TokenMark } from "@/shared/components/chains/token-mark";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 // Where the money is: each enabled token on each network, with what the wallet holds there.

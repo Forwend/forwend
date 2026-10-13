@@ -1,16 +1,15 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
+import { CHECKLIST_STEPS } from "@/features/onboarding/constants/onboarding";
 import {
-  CHECKLIST_STEPS,
-  type ChecklistFacts,
-  type ChecklistStep,
   checklistSteps,
   landingProfile,
   readDismissal,
   saveDismissal,
   visibleSteps,
-} from "@/features/onboarding/onboarding";
-import type { Profile } from "@/features/profiles/profile";
+} from "@/features/onboarding/lib/onboarding";
+import type { ChecklistFacts, ChecklistStep } from "@/features/onboarding/types/onboarding";
+import type { Profile } from "@/features/profiles/types/profile";
 
 const nothing: ChecklistFacts = {
   passkeyLinked: false,

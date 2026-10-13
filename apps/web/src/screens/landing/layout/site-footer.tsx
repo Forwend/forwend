@@ -1,6 +1,6 @@
 import { BrandIcon, Logo } from "@forwend/ui-web";
-import { FOOTER, LANDING_SECTIONS, NAV_LINKS } from "@/screens/landing/landing-content";
-import { FooterRidges } from "@/shared/art/footer-ridges";
+import { FOOTER, LANDING_SECTIONS, NAV_LINKS } from "@/screens/landing/constants/landing-content";
+import { FooterRidges } from "@/shared/components/art/footer-ridges";
 import { SITE } from "@/shared/config/site";
 
 export function SiteFooter() {

@@ -11,19 +11,14 @@ import {
 } from "@forwend/ui-web";
 import { FileText, Plus } from "lucide-react";
 import Link from "next/link";
-import { STATUS_FILTERS } from "@/features/activity/activity";
-import { ACTIVITY_COPY } from "@/features/activity/activity-copy";
+import { STATUS_FILTERS } from "@/features/activity/constants/activity";
+import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
+import { useGetInvoicesInfiniteQuery } from "@/features/invoices/api/invoices-api";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
-import {
-  formatDueDate,
-  type InvoiceSummary,
-  type InvoiceToken,
-  invoiceNumber,
-  invoiceStatus,
-} from "@/features/invoices/invoices";
-import { useGetInvoicesInfiniteQuery } from "@/features/invoices/invoices-api";
-import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/invoices-copy";
-import { NetworkName } from "@/shared/chains/network-name";
+import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
+import { formatDueDate, invoiceNumber, invoiceStatus } from "@/features/invoices/lib/invoices";
+import type { InvoiceSummary, InvoiceToken } from "@/features/invoices/types/invoices";
+import { NetworkName } from "@/shared/components/chains/network-name";
 import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";

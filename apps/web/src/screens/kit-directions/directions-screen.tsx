@@ -1,12 +1,13 @@
 import Image from "next/image";
 import type { ComponentType } from "react";
+import { directionFontVars } from "@/screens/kit-directions/constants/direction-fonts";
+import { DIRECTION_IDS, DIRECTIONS } from "@/screens/kit-directions/constants/directions";
+import { IMAGE_DIRECTIONS } from "@/screens/kit-directions/constants/image-directions";
 import { DawnPathComp } from "@/screens/kit-directions/dawn-path-comp";
-import { directionFontVars } from "@/screens/kit-directions/direction-fonts";
-import { DIRECTION_IDS, DIRECTIONS, type DirectionId } from "@/screens/kit-directions/directions";
 import { DuskLedgerComp } from "@/screens/kit-directions/dusk-ledger-comp";
 import { HalftoneHorizonComp } from "@/screens/kit-directions/halftone-horizon-comp";
 import { ImageComp } from "@/screens/kit-directions/image-comp";
-import { IMAGE_DIRECTIONS } from "@/screens/kit-directions/image-directions";
+import type { DirectionId } from "@/screens/kit-directions/types/directions";
 
 const COMPS: Record<DirectionId, ComponentType> = {
   [DIRECTION_IDS.dawnPath]: DawnPathComp,

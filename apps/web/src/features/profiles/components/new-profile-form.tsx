@@ -5,16 +5,16 @@ import { Check } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
-import { useAppSession } from "@/features/profiles/app-session";
+import { useCreateProfileMutation } from "@/features/profiles/api/profiles-api";
 import {
   NEW_PROFILE_KINDS,
   PROFILE_KIND_LABELS,
   PROFILE_KINDS,
   PROFILE_NAME_MAX,
-  type ProfileKind,
-} from "@/features/profiles/profile";
-import { useCreateProfileMutation } from "@/features/profiles/profiles-api";
-import { NEW_PROFILE_COPY as COPY } from "@/features/profiles/profiles-copy";
+} from "@/features/profiles/constants/profile";
+import { NEW_PROFILE_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
+import { useAppSession } from "@/features/profiles/hooks/use-app-session";
+import type { ProfileKind } from "@/features/profiles/types/profile";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const KIND_ICONS = {

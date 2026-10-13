@@ -1,6 +1,6 @@
-import { WaitlistForm } from "@/features/waitlist/waitlist-form";
-import { LANDING_SECTIONS } from "@/screens/landing/landing-content";
-import { HERO } from "@/screens/landing/sections/hero/hero-content";
+import { WaitlistForm } from "@/features/waitlist/components/waitlist-form";
+import { LANDING_SECTIONS } from "@/screens/landing/constants/landing-content";
+import { HERO } from "@/screens/landing/sections/hero/constants/hero-content";
 import { HeroJourney } from "@/screens/landing/sections/hero/hero-journey";
 
 export function Hero() {

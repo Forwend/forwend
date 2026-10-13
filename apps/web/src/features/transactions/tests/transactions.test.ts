@@ -1,10 +1,7 @@
 import { PAYMENT_STATUS } from "@forwend/ui-web";
 import { describe, expect, it } from "vitest";
-import {
-  type Transaction,
-  transactionStatus,
-  transactionsCsv,
-} from "@/features/transactions/transactions";
+import { transactionStatus, transactionsCsv } from "@/features/transactions/lib/transactions";
+import type { Transaction } from "@/features/transactions/types/transactions";
 
 const base: Transaction = {
   chainId: 84532,

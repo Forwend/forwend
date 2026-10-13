@@ -2,7 +2,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Profile } from "@/features/profiles/profile";
+import type { Profile } from "@/features/profiles/types/profile";
 import { CommandMenu } from "@/screens/app-shell/command-menu";
 import { makeStore } from "@/store/store";
 

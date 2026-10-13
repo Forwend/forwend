@@ -14,33 +14,40 @@ import {
 import { Check, ChevronLeft, Copy, ExternalLink, FileDown } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useId } from "react";
-import { API_PAYMENT_STATUSES, API_SETTLEMENT_STATUSES } from "@/features/activity/activity";
+import {
+  API_PAYMENT_STATUSES,
+  API_SETTLEMENT_STATUSES,
+} from "@/features/activity/constants/activity";
+import {
+  useGetInvoiceQuery,
+  useGetProfileInvoiceQuery,
+} from "@/features/invoices/api/invoices-api";
 import { CheckStatus } from "@/features/invoices/components/check-status";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { InvoiceDeposits } from "@/features/invoices/components/invoice-deposits";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
+import { INVOICE_PDFS, INVOICE_STEPS } from "@/features/invoices/constants/invoices";
+import { INVOICE_COPY as COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
 import {
   exactDigits,
   formatDueDate,
-  INVOICE_PDFS,
-  INVOICE_STEPS,
-  type Invoice,
-  type InvoicePdf,
-  type InvoiceSummary,
-  type InvoiceToken,
   invoiceNumber,
   invoicePdfUrl,
   invoiceProgress,
   invoiceStatus,
-  type SettlementWait,
   tokenKey,
-} from "@/features/invoices/invoices";
-import { useGetInvoiceQuery, useGetProfileInvoiceQuery } from "@/features/invoices/invoices-api";
-import { INVOICE_COPY as COPY, REQUESTS_COPY } from "@/features/invoices/invoices-copy";
-import { chainName } from "@/shared/chains/chains";
-import { TokenMark } from "@/shared/chains/token-mark";
+} from "@/features/invoices/lib/invoices";
+import type {
+  Invoice,
+  InvoicePdf,
+  InvoiceSummary,
+  InvoiceToken,
+  SettlementWait,
+} from "@/features/invoices/types/invoices";
+import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { chainName } from "@/shared/lib/chains";
 
 const NOT_FOUND = 404;
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });

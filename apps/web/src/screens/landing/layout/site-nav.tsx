@@ -1,6 +1,6 @@
 import { BUTTON_SIZES, buttonClasses, Logo, NavPill, ThemeSwitch } from "@forwend/ui-web";
-import { CTA } from "@/features/waitlist/waitlist";
-import { LANDING_SECTIONS, NAV_LINKS } from "@/screens/landing/landing-content";
+import { CTA } from "@/features/waitlist/constants/waitlist";
+import { LANDING_SECTIONS, NAV_LINKS } from "@/screens/landing/constants/landing-content";
 import { SiteMenu } from "@/screens/landing/layout/site-menu";
 
 export function SiteNav() {

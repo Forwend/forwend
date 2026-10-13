@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { breadcrumb } from "@/screens/app-shell/app-nav";
+import { breadcrumb } from "@/screens/app-shell/lib/app-nav";
 
 const ID = `0x${"a".repeat(64)}`;
 

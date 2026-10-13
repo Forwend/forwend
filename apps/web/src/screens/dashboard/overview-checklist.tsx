@@ -3,23 +3,22 @@
 import { useLinkWithPasskey, usePrivy } from "@privy-io/react-auth";
 import { skipToken } from "@reduxjs/toolkit/query";
 import { useState } from "react";
-import { useGetInvoicesInfiniteQuery } from "@/features/invoices/invoices-api";
-import { ChecklistCard } from "@/features/onboarding/checklist-card";
+import { useGetInvoicesInfiniteQuery } from "@/features/invoices/api/invoices-api";
+import { ChecklistCard } from "@/features/onboarding/components/checklist-card";
+import { CHECKLIST_STEPS } from "@/features/onboarding/constants/onboarding";
+import { CHECKLIST_COPY } from "@/features/onboarding/constants/onboarding-copy";
 import {
-  CHECKLIST_STEPS,
-  type ChecklistDismissal,
-  type ChecklistStepId,
   checklistSteps,
   readDismissal,
   saveDismissal,
   visibleSteps,
-} from "@/features/onboarding/onboarding";
-import { CHECKLIST_COPY } from "@/features/onboarding/onboarding-copy";
-import { useAppSession } from "@/features/profiles/app-session";
-import { PROFILE_KINDS } from "@/features/profiles/profile";
-import { useGetBillingDetailsQuery } from "@/features/profiles/profiles-api";
-import { TRANSACTIONS_PAGE_SIZE } from "@/features/transactions/transactions";
-import { useGetTransactionsQuery } from "@/features/transactions/transactions-api";
+} from "@/features/onboarding/lib/onboarding";
+import type { ChecklistDismissal, ChecklistStepId } from "@/features/onboarding/types/onboarding";
+import { useGetBillingDetailsQuery } from "@/features/profiles/api/profiles-api";
+import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
+import { useAppSession } from "@/features/profiles/hooks/use-app-session";
+import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
+import { TRANSACTIONS_PAGE_SIZE } from "@/features/transactions/constants/transactions";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 

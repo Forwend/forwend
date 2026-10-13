@@ -1,13 +1,13 @@
 "use client";
 
-import { useGetBalancesQuery } from "@/features/balances/balances-api";
+import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
 import { BalanceHero } from "@/features/balances/components/balance-hero";
 import { MoneyFlowCard } from "@/features/balances/components/money-flow-card";
 import { NetworksCard } from "@/features/balances/components/networks-card";
-import { useAppSession } from "@/features/profiles/app-session";
-import { profileLabel } from "@/features/profiles/profile";
-import { TRANSACTIONS_COPY } from "@/features/transactions/transactions-copy";
-import { TransactionsTable } from "@/features/transactions/transactions-table";
+import { useAppSession } from "@/features/profiles/hooks/use-app-session";
+import { profileLabel } from "@/features/profiles/lib/profile";
+import { TransactionsTable } from "@/features/transactions/components/transactions-table";
+import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
 import { OverviewChecklist } from "@/screens/dashboard/overview-checklist";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 

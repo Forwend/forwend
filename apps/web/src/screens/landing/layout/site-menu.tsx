@@ -1,7 +1,7 @@
 "use client";
 
 import { Menu, X } from "lucide-react";
-import { NAV_LINKS, NAV_MENU } from "@/screens/landing/landing-content";
+import { NAV_LINKS, NAV_MENU } from "@/screens/landing/constants/landing-content";
 
 // Phones only: the nav pill has no room for the section links. A native popover keeps the landing page free of a
 // menu library; it closes on Escape, on a tap outside and after a link is chosen.

@@ -3,26 +3,33 @@
 import { Button, SegmentedControl, Skeleton } from "@forwend/ui-web";
 import { type ReactNode, useState } from "react";
 import {
+  useGetBalanceHistoryQuery,
+  useGetBalancesQuery,
+} from "@/features/balances/api/balances-api";
+import { ReceivedChart } from "@/features/balances/components/charts/received-chart";
+import { EstimateHint } from "@/features/balances/components/estimate-hint";
+import { NetworksCard } from "@/features/balances/components/networks-card";
+import {
   DEFAULT_RANGE,
   HISTORY_FIELDS,
   HISTORY_RANGES,
-  type HistoryRange,
-  historySeries,
   RANGE_OPTIONS,
-  seriesTotal,
-} from "@/features/balances/balance-history";
-import { formatUsd, USD, usdTotal } from "@/features/balances/balances";
-import { useGetBalanceHistoryQuery, useGetBalancesQuery } from "@/features/balances/balances-api";
-import { BALANCES_COPY } from "@/features/balances/balances-copy";
-import { ReceivedChart } from "@/features/balances/charts/received-chart";
-import { EstimateHint } from "@/features/balances/components/estimate-hint";
-import { NetworksCard } from "@/features/balances/components/networks-card";
-import { useAppSession } from "@/features/profiles/app-session";
-import { PROFILE_KINDS, profileLabel } from "@/features/profiles/profile";
-import { TRANSACTION_DIRECTIONS, TRANSACTIONS_MAX } from "@/features/transactions/transactions";
-import { useGetTransactionsQuery } from "@/features/transactions/transactions-api";
-import { TRANSACTIONS_COPY } from "@/features/transactions/transactions-copy";
-import { TransactionsTable } from "@/features/transactions/transactions-table";
+} from "@/features/balances/constants/balance-history";
+import { USD } from "@/features/balances/constants/balances";
+import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { historySeries, seriesTotal } from "@/features/balances/lib/balance-history";
+import { formatUsd, usdTotal } from "@/features/balances/lib/balances";
+import type { HistoryRange } from "@/features/balances/types/balance-history";
+import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
+import { useAppSession } from "@/features/profiles/hooks/use-app-session";
+import { profileLabel } from "@/features/profiles/lib/profile";
+import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
+import { TransactionsTable } from "@/features/transactions/components/transactions-table";
+import {
+  TRANSACTION_DIRECTIONS,
+  TRANSACTIONS_MAX,
+} from "@/features/transactions/constants/transactions";
+import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
 import { OverviewChecklist } from "@/screens/dashboard/overview-checklist";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 

@@ -6,8 +6,8 @@ import {
   StatusPill,
   TokenChip,
 } from "@forwend/ui-web";
+import { PROFILE_TABS } from "@/screens/landing/sections/profile-preview/constants/profile-preview-content";
 import { PanelLayout } from "@/screens/landing/sections/profile-preview/panel-layout";
-import { PROFILE_TABS } from "@/screens/landing/sections/profile-preview/profile-preview-content";
 import { SAMPLE_INVOICE, SAMPLE_STEPS } from "@/shared/examples/sample-invoice";
 
 export function FreelancerPanel() {

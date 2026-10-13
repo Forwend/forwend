@@ -5,19 +5,20 @@ import { usePrivy } from "@privy-io/react-auth";
 import { skipToken } from "@reduxjs/toolkit/query";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import { PaymentToasts } from "@/features/activity/payment-toasts";
-import { AUTH_COPY } from "@/features/auth/auth-copy";
-import { useGetBalancesQuery } from "@/features/balances/balances-api";
-import { FirstRun } from "@/features/onboarding/first-run";
-import { type AppSession, AppSessionContext } from "@/features/profiles/app-session";
+import { PaymentToasts } from "@/features/activity/components/payment-toasts";
+import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
+import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
+import { FirstRun } from "@/features/onboarding/components/first-run";
+import { useSignUpQuery } from "@/features/profiles/api/profiles-api";
+import { ProfileSheet } from "@/features/profiles/components/profile-sheet";
+import { AppSessionContext } from "@/features/profiles/hooks/use-app-session";
 import {
   chosenProfile,
   readChosenProfileId,
   saveChosenProfileId,
-} from "@/features/profiles/chosen-profile";
-import { ProfileSheet } from "@/features/profiles/components/profile-sheet";
-import { useSignUpQuery } from "@/features/profiles/profiles-api";
-import { ReceiveSheet } from "@/features/receive/receive-sheet";
+} from "@/features/profiles/lib/chosen-profile";
+import type { AppSession } from "@/features/profiles/types/app-session";
+import { ReceiveSheet } from "@/features/receive/components/receive-sheet";
 import { AppHeader } from "@/screens/app-shell/app-header";
 import { AppSidebar } from "@/screens/app-shell/app-sidebar";
 import { CommandMenu } from "@/screens/app-shell/command-menu";

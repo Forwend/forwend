@@ -143,7 +143,7 @@ answer 404 `invoice_not_found` the same way.
   issuer block from the invoice's copy (left out without one) and "Bill to" with the client's name and address but
   never the email (the id is a bearer link), a row of dates, then a line table: the title (or "Payment"), the network
   (name and chain id) and the exact amount with the token's symbol and decimals, never cut. Network names and
-  explorers are a copy of `apps/web/src/shared/chains/chains.ts`; a test fails when either copy changes alone.
+  explorers are a copy of `apps/web/src/shared/constants/chains.ts`; a test fails when either copy changes alone.
 - `invoice.pdf`: created time, due date and checkout expiry, the note, and a box with the pay link
   `PUBLIC_WEB_URL/pay/<invoiceId>` and its QR code (drawn as vector modules), then the invoice id. A
   payer-chooses invoice names the network "Any" with the amount and total due in USD, then lists under Pay with each

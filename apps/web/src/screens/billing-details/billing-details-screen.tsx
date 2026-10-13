@@ -1,10 +1,10 @@
 "use client";
 
 import { Button, Skeleton } from "@forwend/ui-web";
-import { useAppSession } from "@/features/profiles/app-session";
+import { useGetBillingDetailsQuery } from "@/features/profiles/api/profiles-api";
 import { BillingDetailsForm } from "@/features/profiles/components/billing-details-form";
-import { useGetBillingDetailsQuery } from "@/features/profiles/profiles-api";
-import { BILLING_DETAILS_COPY as COPY } from "@/features/profiles/profiles-copy";
+import { BILLING_DETAILS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
+import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 
 export function BillingDetailsScreen() {
   const { profile } = useAppSession();

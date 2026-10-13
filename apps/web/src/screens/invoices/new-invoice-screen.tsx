@@ -2,15 +2,15 @@
 
 import { Button, Skeleton } from "@forwend/ui-web";
 import { useRouter } from "next/navigation";
-import { useGetBalancesQuery } from "@/features/balances/balances-api";
+import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
 import { NewInvoiceForm } from "@/features/invoices/components/new-invoice-form";
 import {
   INVOICES_COPY,
   NEW_INVOICE_COPY,
   NEW_REQUEST_COPY,
-} from "@/features/invoices/invoices-copy";
-import { useAppSession } from "@/features/profiles/app-session";
-import { PROFILE_KINDS } from "@/features/profiles/profile";
+} from "@/features/invoices/constants/invoices-copy";
+import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
+import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
