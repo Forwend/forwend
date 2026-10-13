@@ -109,7 +109,12 @@ export interface Deposit {
 
 /** openapi.yaml, InvoiceSummary. */
 export interface InvoiceSummary {
+  /** The pay link's id. */
   invoiceId: string;
+  /** The on-chain id in the terms below: invoiceId, or the chosen or first option's of a payer-chooses invoice. */
+  optionId: string;
+  /** An option received money, so the payer can't pick another (R-56). */
+  optionLocked: boolean;
   number: number;
   title: string | null;
   note: string | null;
@@ -154,7 +159,23 @@ export interface SettlementWait {
 }
 
 /** An invoice read alone or just created. */
+/** One token and network the invoice accepts, with its own on-chain id, amount and address (R-56). */
+export interface InvoiceOption {
+  optionId: string;
+  chainId: number;
+  /** The API's chain name, such as base-sepolia. */
+  network: string;
+  token: string;
+  symbol: string;
+  decimals: number;
+  /** Base units. */
+  amount: string;
+  receiveAddress: string;
+}
+
 export interface Invoice extends InvoiceSummary {
+  /** Every accepted option, the shown one included: one for a fixed invoice. */
+  options: InvoiceOption[];
   /** Once paid: the block time of the deposit that completed the amount. */
   paidAt: string | null;
   /** Once settled: when the settlement was recorded as final. */

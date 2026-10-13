@@ -53,6 +53,7 @@ import {
   payToken,
   receiptDeposits,
   shortDuration,
+  withOption,
 } from "@/features/pay/pay";
 import { PAY_COPY as COPY } from "@/features/pay/pay-copy";
 import { checkedReceiveAddress } from "@/features/pay/receive-address";
@@ -74,7 +75,7 @@ const formatMoney = (units: bigint, token: PayToken) =>
   `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`;
 
 // The public read, again every REFRESH_MS while the tab is visible: the payer sees the status move without a reload.
-export function PayInvoice({ invoiceId }: { invoiceId: string }) {
+export function PayInvoice({ invoiceId, option }: { invoiceId: string; option?: string }) {
   const invoice = useGetInvoiceQuery(invoiceId, LIVE_QUERY);
   const failure = invoice.error as { status?: unknown } | undefined;
   if (invoice.data) {
@@ -92,7 +93,7 @@ export function PayInvoice({ invoiceId }: { invoiceId: string }) {
             </Button>
           </p>
         ) : null}
-        <Loaded invoice={invoice.data} linkInvoiceId={invoiceId} />
+        <Loaded invoice={invoice.data} linkInvoiceId={invoiceId} option={option} />
       </>
     );
   }
@@ -118,8 +119,17 @@ export function PayInvoice({ invoiceId }: { invoiceId: string }) {
   );
 }
 
-function Loaded({ invoice, linkInvoiceId }: { invoice: Invoice; linkInvoiceId: string }) {
+function Loaded({
+  invoice: answer,
+  linkInvoiceId,
+  option,
+}: {
+  invoice: Invoice;
+  linkInvoiceId: string;
+  option?: string;
+}) {
   const now = useNow();
+  const invoice = useMemo(() => withOption(answer, option), [answer, option]);
   const address = useMemo(
     () => checkedReceiveAddress(invoice, linkInvoiceId),
     [invoice, linkInvoiceId],

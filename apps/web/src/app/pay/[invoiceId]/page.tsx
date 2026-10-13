@@ -11,12 +11,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function PayPage({ params }: PageProps<"/pay/[invoiceId]">) {
+export default async function PayPage({ params, searchParams }: PageProps<"/pay/[invoiceId]">) {
   const { invoiceId } = await params;
   if (!INVOICE_ID_PATTERN.test(invoiceId)) notFound();
+  // One option of a payer-chooses invoice (R-56); the canary opens each this way.
+  const { option } = await searchParams;
   return (
     <PublicStoreProvider>
-      <PayScreen invoiceId={invoiceId} />
+      <PayScreen invoiceId={invoiceId} option={typeof option === "string" ? option : undefined} />
     </PublicStoreProvider>
   );
 }

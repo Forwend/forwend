@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/address"
@@ -13,32 +14,33 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+// accepted is one token and network an invoice takes, before it has an id.
+type accepted struct {
+	chainID       uint64
+	family, token string
+	amount        *big.Int
+}
+
 // Create makes the invoice once per (profile, idempotency key). created is false when the same request was already
 // made: the stored invoice is returned. The caller has checked that the user owns the profile.
 func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, r Request) (inv Invoice, created bool, err error) {
-	token, amount, expiresIn, err := r.normalize()
+	token, amount, usd, expiresIn, err := r.normalize()
 	if err != nil {
 		return Invoice{}, false, err
 	}
-	hash := requestHash(r.ChainID, token, amount, expiresIn, r.Details)
+	var hash []byte
+	if usd != nil {
+		hash = requestHash(0, "usd", usd, expiresIn, r.Details)
+	} else {
+		hash = requestHash(r.ChainID, token, amount, expiresIn, r.Details)
+	}
 	if inv, err := s.replay(ctx, profileID, idempotencyKey, hash); !errors.Is(err, ErrNotFound) {
 		return inv, false, err
 	}
 
-	var family string
-	var watched bool
-	err = s.pool.QueryRow(ctx, `
-		SELECT c.chain_family, EXISTS (SELECT 1 FROM chain_cursors cur WHERE cur.chain_id = c.chain_id)
-		FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
-		WHERE c.chain_id = $1 AND c.enabled AND t.contract = $2 AND t.enabled`, r.ChainID, token).Scan(&family, &watched)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Invoice{}, false, fmt.Errorf("%w: token is not enabled on this chain", ErrInvalid)
-	}
+	options, err := s.accepted(ctx, r.ChainID, token, amount, usd)
 	if err != nil {
-		return Invoice{}, false, fmt.Errorf("read chain and token: %w", err)
-	}
-	if !watched {
-		return Invoice{}, false, ErrNotWatched
+		return Invoice{}, false, err
 	}
 	var open, today int
 	if err := s.pool.QueryRow(ctx, `SELECT count(*) FILTER (WHERE expires_at > $2),
@@ -46,15 +48,16 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		profileID, s.now().Unix()).Scan(&open, &today); err != nil {
 		return Invoice{}, false, fmt.Errorf("count open invoices: %w", err)
 	}
-	if open >= MaxOpen {
-		return Invoice{}, false, fmt.Errorf("%w: a profile has at most %d invoices open at once", ErrInvalid, MaxOpen)
+	// Each option is a watched receive address, so it counts.
+	if open+len(options) > MaxOpen {
+		return Invoice{}, false, fmt.Errorf("%w: a profile has at most %d receive addresses open at once", ErrInvalid, MaxOpen)
 	}
-	if today >= MaxPerDay {
-		return Invoice{}, false, fmt.Errorf("%w: a profile creates at most %d invoices a day", ErrInvalid, MaxPerDay)
+	if today+len(options) > MaxPerDay {
+		return Invoice{}, false, fmt.Errorf("%w: a profile creates at most %d receive addresses a day", ErrInvalid, MaxPerDay)
 	}
 	var recipient string
 	err = s.pool.QueryRow(ctx, "SELECT address FROM profile_wallets WHERE profile_id = $1 AND chain_family = $2",
-		profileID, family).Scan(&recipient)
+		profileID, options[0].family).Scan(&recipient)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Invoice{}, false, fmt.Errorf("%w: the profile has no wallet for this chain", ErrInvalid)
 	}
@@ -62,46 +65,127 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		return Invoice{}, false, fmt.Errorf("read profile wallet: %w", err)
 	}
 
-	var id [32]byte
-	_, _ = rand.Read(id[:])
 	expiresAt := s.now().UTC().Truncate(time.Second).Add(expiresIn)
 	settleDeadline := expiresAt.Add(SettleWindow)
-	_, receive, err := buildTerms(id, r.ChainID, token, recipient, amount, expiresAt, settleDeadline)
-	if err != nil {
-		return Invoice{}, false, err
-	}
-	// The insert takes the profile's next number and copies its billing details (migrations 00008 and 00009).
-	inv, err = scanInvoice(s.pool.QueryRow(ctx, `
-		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
-		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash,
-		    title, note, due_date, client_name, client_email, client_address, sender_name)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'evm_create2', $10, $11, $12, $13, NULLIF($14, ''), NULLIF($15, ''),
-		    NULLIF($16, '')::date, NULLIF($17, ''), NULLIF($18, ''), NULLIF($19, ''), NULLIF($20, '')) RETURNING `+invoiceColumns,
-		hexID(id), profileID, r.ChainID, family, token, amount.String(), expiresAt.Unix(), settleDeadline.Unix(),
-		recipient, hexAddress(address.Factory), receive, idempotencyKey, hash, r.Title, r.Note, r.DueDate, r.ClientName,
-		r.ClientEmail, r.ClientAddress, r.SenderName))
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.ConstraintName == "invoices_profile_id_idempotency_key_key" {
-		// A concurrent request with the same key won the insert.
-		inv, err := s.replay(ctx, profileID, idempotencyKey, hash)
-		return inv, false, err
-	}
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return Invoice{}, false, fmt.Errorf("insert invoice: %w", err)
 	}
-	return inv, true, nil
+	defer tx.Rollback(ctx)
+	var mainID *string
+	for _, o := range options {
+		var id [32]byte
+		_, _ = rand.Read(id[:])
+		_, receive, err := buildTerms(id, o.chainID, o.token, recipient, o.amount, expiresAt, settleDeadline)
+		if err != nil {
+			return Invoice{}, false, err
+		}
+		// The main row takes the profile's next number and copies its billing details; an option takes the main
+		// row's number (migrations 00008, 00009 and 00020).
+		details := r.Details
+		if mainID != nil {
+			details = Details{}
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO invoices (id, main_id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
+			    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
+			    request_hash, title, note, due_date, client_name, client_email, client_address, sender_name)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'evm_create2', $11, $12, $13, $14, NULLIF($15, ''),
+			    NULLIF($16, ''), NULLIF($17, '')::date, NULLIF($18, ''), NULLIF($19, ''), NULLIF($20, ''), NULLIF($21, ''))`,
+			hexID(id), mainID, profileID, o.chainID, o.family, o.token, o.amount.String(), expiresAt.Unix(),
+			settleDeadline.Unix(), recipient, hexAddress(address.Factory), receive, idempotencyKey, hash, details.Title,
+			details.Note, details.DueDate, details.ClientName, details.ClientEmail, details.ClientAddress, details.SenderName)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.ConstraintName == "invoices_profile_idempotency_key" {
+			// A concurrent request with the same key won the insert.
+			tx.Rollback(ctx)
+			inv, err := s.replay(ctx, profileID, idempotencyKey, hash)
+			return inv, false, err
+		}
+		if err != nil {
+			return Invoice{}, false, fmt.Errorf("insert invoice: %w", err)
+		}
+		if mainID == nil {
+			mainID = new(string)
+			*mainID = hexID(id)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Invoice{}, false, fmt.Errorf("insert invoice: %w", err)
+	}
+	inv, err = s.get(ctx, profileID, *mainID)
+	return inv, err == nil, err
+}
+
+// accepted lists what the invoice takes: the one token named, or for payer chooses every enabled token on a watched
+// chain, ordered by chain and symbol, each with the amount in its own decimals.
+func (s *Service) accepted(ctx context.Context, chainID uint64, token string, amount *big.Int, usd *big.Rat) ([]accepted, error) {
+	if usd == nil {
+		var family string
+		var watched bool
+		err := s.pool.QueryRow(ctx, `
+			SELECT c.chain_family, EXISTS (SELECT 1 FROM chain_cursors cur WHERE cur.chain_id = c.chain_id)
+			FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
+			WHERE c.chain_id = $1 AND c.enabled AND t.contract = $2 AND t.enabled`, chainID, token).Scan(&family, &watched)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%w: token is not enabled on this chain", ErrInvalid)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("read chain and token: %w", err)
+		}
+		if !watched {
+			return nil, ErrNotWatched
+		}
+		return []accepted{{chainID, family, token, amount}}, nil
+	}
+	// A chain the worker has not scanned yet is left out: a payment there before its first scan would never be seen
+	// (SEC-02). Only EVM chains for now: one recipient wallet serves them all.
+	rows, err := s.pool.Query(ctx, `
+		SELECT c.chain_id, c.chain_family, t.contract, t.symbol, t.decimals
+		FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
+		WHERE c.enabled AND t.enabled AND c.chain_family = 'evm'
+		  AND EXISTS (SELECT 1 FROM chain_cursors cur WHERE cur.chain_id = c.chain_id)
+		ORDER BY c.chain_id, t.symbol, t.contract`)
+	if err != nil {
+		return nil, fmt.Errorf("read enabled tokens: %w", err)
+	}
+	defer rows.Close()
+	var out []accepted
+	for rows.Next() {
+		var a accepted
+		var symbol string
+		var decimals int
+		if err := rows.Scan(&a.chainID, &a.family, &a.token, &symbol, &decimals); err != nil {
+			return nil, fmt.Errorf("read enabled tokens: %w", err)
+		}
+		if a.amount = usdUnits(usd, decimals); a.amount == nil {
+			return nil, fmt.Errorf("%w: amountUsd has more decimals than %s (%d) can hold", ErrInvalid, symbol, decimals)
+		}
+		out = append(out, a)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read enabled tokens: %w", err)
+	}
+	if len(out) == 0 {
+		return nil, ErrNotWatched
+	}
+	return out, nil
 }
 
 // replay returns the invoice made earlier with this key: ErrNotFound if none, ErrConflict if the request differed.
 func (s *Service) replay(ctx context.Context, profileID, idempotencyKey string, hash []byte) (Invoice, error) {
+	var id string
 	var stored []byte
-	inv, err := scanInvoice(s.pool.QueryRow(ctx, "SELECT request_hash, "+invoiceColumns+
-		" FROM invoices WHERE profile_id = $1 AND idempotency_key = $2", profileID, idempotencyKey), &stored)
+	err := s.pool.QueryRow(ctx, `SELECT id, request_hash FROM invoices
+		WHERE profile_id = $1 AND idempotency_key = $2 AND main_id IS NULL`, profileID, idempotencyKey).Scan(&id, &stored)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Invoice{}, ErrNotFound
+	}
 	if err != nil {
-		return Invoice{}, err
+		return Invoice{}, fmt.Errorf("read invoice: %w", err)
 	}
 	if !bytes.Equal(stored, hash) {
 		return Invoice{}, ErrConflict
 	}
-	return inv, nil
+	return s.get(ctx, profileID, id)
 }

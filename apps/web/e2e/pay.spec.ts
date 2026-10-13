@@ -7,11 +7,29 @@ import { PUBLIC_URL } from "./servers";
 // the computation against the R-15 vectors), so the page shows it only while every term is unchanged.
 const ID = "0x7f3a9c1e5b2d4086a1c3e5f7092b4d6f8a0c2e4f6a8b0d2f4e6c8a0b2d4f6e81";
 const RECEIVE = "0x586134f74b654f5835860ca198ae725344670078";
+// A second option of a payer-chooses invoice (R-56): USDC on Arbitrum Sepolia, its own id and the address predict
+// gives for the same terms with that id, token and chain.
+const OPTION_ID = "0x2b4d6f8a0c2e4f6a8b0d2f4e6c8a0b2d4f6e817f3a9c1e5b2d4086a1c3e5f709";
+const OPTION_RECEIVE = "0x4d80defc4cddd9f1c4d010642eaef1fc3853e5ae";
 const NOW = new Date("2026-10-10T12:00:00Z");
 const POLL_MS = 15_000;
 
+const MAIN_OPTION = {
+  optionId: ID,
+  chainId: 84532,
+  network: "base-sepolia",
+  token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+  symbol: "USDC",
+  decimals: 6,
+  amount: "1250000000",
+  receiveAddress: RECEIVE,
+};
+
 const OPEN = {
   invoiceId: ID,
+  optionId: ID,
+  optionLocked: false,
+  options: [MAIN_OPTION],
   number: 1,
   title: "Logo design",
   note: "Thanks for the work together.",
@@ -39,6 +57,20 @@ const OPEN = {
   paidAt: null as string | null,
   settledAt: null as string | null,
   deposits: [] as object[],
+};
+const CHOOSING = {
+  ...OPEN,
+  options: [
+    MAIN_OPTION,
+    {
+      ...MAIN_OPTION,
+      optionId: OPTION_ID,
+      chainId: 421614,
+      network: "arbitrum-sepolia",
+      token: "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d",
+      receiveAddress: OPTION_RECEIVE,
+    },
+  ],
 };
 const SENDER = "0x8ba1f109551bd432803012645ac136ddd64dba72";
 const DEPOSIT = {
@@ -257,11 +289,11 @@ test.describe("pay page", () => {
   });
 
   test("lets the canary read the shown address, or why there is none", async ({ browser }) => {
-    const read = async (body: object) => {
+    const read = async (body: object, id = ID) => {
       const page = await browser.newPage();
       await page.clock.install({ time: NOW });
       await mockInvoice(page, body);
-      const result = await readPayPage(page, PUBLIC_URL, ID);
+      const result = await readPayPage(page, PUBLIC_URL, id);
       await page.close();
       return result;
     };
@@ -278,6 +310,24 @@ test.describe("pay page", () => {
     expect((await read({ ...OPEN, amount: "1250000001" })).error).toMatch(
       /^page alert: This payment page does not match/,
     );
+
+    // Each option of a payer-chooses invoice opens by ?option=, checked against its own terms (R-56).
+    const option = `${ID}?option=${OPTION_ID}`;
+    expect(await read(CHOOSING, option)).toEqual({
+      id: option,
+      addresses: [OPTION_RECEIVE],
+      qrMatches: true,
+      amountText: expect.stringMatching(/USDC[\s\S]*Arbitrum Sepolia/),
+    });
+    const tampered = {
+      ...CHOOSING,
+      options: [MAIN_OPTION, { ...CHOOSING.options[1], amount: "1250000001" }],
+    };
+    expect((await read(tampered, option)).error).toMatch(
+      /^page alert: This payment page does not match/,
+    );
+    // Once an option has money, the page shows that one whatever the link asks for.
+    expect((await read({ ...CHOOSING, optionLocked: true }, option)).addresses).toEqual([RECEIVE]);
   });
 
   test("answers 404 for a malformed id and shows the 404 page for an unknown one", async ({

@@ -14,6 +14,20 @@ export const sampleInvoice = (
   client: string | null,
 ) => ({
   invoiceId: `0x${String(number).padStart(4, "0")}${"a".repeat(60)}`,
+  optionId: `0x${String(number).padStart(4, "0")}${"a".repeat(60)}`,
+  optionLocked: paymentStatus !== "open",
+  options: [
+    {
+      optionId: `0x${String(number).padStart(4, "0")}${"a".repeat(60)}`,
+      chainId: 84532,
+      network: "base-sepolia",
+      token: USDC,
+      symbol: "USDC",
+      decimals: 6,
+      amount: `${number}000000`,
+      receiveAddress: `0x${"c".repeat(40)}`,
+    },
+  ],
   number,
   title,
   note: null,

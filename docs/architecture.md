@@ -37,6 +37,8 @@ Diagram: [who can move money](diagrams/security-keys.json).
 
 1. A creator makes an invoice. The API writes immutable terms (random 256-bit `invoiceId`, recipient = the profile
    wallet, token, amount, expiry, settle deadline, chain) and computes the receive address. Nothing is deployed.
+   When the payer chooses, each accepted token and network gets such terms and an address of its own; the first one
+   paid becomes the invoice's, and money sent to another is held for the payer.
 2. The payer sends an ordinary token transfer to that address, from a wallet or an exchange.
 3. The worker sees the transfer, waits for the confirm rule, and moves the invoice through detected → partially paid
    or paid. Deposits after expiry are late and held.

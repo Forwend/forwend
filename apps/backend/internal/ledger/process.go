@@ -47,18 +47,43 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	defer tx.Rollback(ctx)
 
 	var (
-		amountText, current, refund, token, receive string
-		chainID, finalizedBlock                     uint64
-		expiresAt, finalizedTime                    int64
+		amountText, current, refund, token, receive, group string
+		chainID, finalizedBlock                            uint64
+		expiresAt, finalizedTime                           int64
+		options                                            bool
 	)
 	err = tx.QueryRow(ctx, `
 		SELECT i.amount::text, i.payment_status, i.refund_status, i.token_contract, i.receive_address, i.chain_id,
-		       i.expires_at, coalesce(c.last_finalized_time, 0), coalesce(c.last_finalized_block, 0)
+		       i.expires_at, coalesce(c.last_finalized_time, 0), coalesce(c.last_finalized_block, 0),
+		       coalesce(i.main_id, i.id), i.main_id IS NOT NULL OR EXISTS (SELECT 1 FROM invoices o WHERE o.main_id = i.id)
 		FROM invoices i LEFT JOIN chain_cursors c ON c.chain_id = i.chain_id WHERE i.id = $1 FOR UPDATE OF i`,
 		invoiceID).Scan(&amountText, &current, &refund, &token, &receive, &chainID, &expiresAt, &finalizedTime,
-		&finalizedBlock)
+		&finalizedBlock, &group, &options)
 	if err != nil {
 		return fmt.Errorf("read invoice %s: %w", invoiceID, err)
+	}
+
+	var anyTransfer, anyPending bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged'),
+		EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1 AND status = 'detected')`,
+		invoiceID).Scan(&anyTransfer, &anyPending); err != nil {
+		return fmt.Errorf("read invoice %s transfers: %w", invoiceID, err)
+	}
+	// Payer chooses (R-56, D-76): the first option seen with money becomes the invoice's, under the main row's lock so
+	// two options can't both win; money on any other option is held for the payer.
+	superseded := false
+	if options {
+		var chosen *string
+		if err := tx.QueryRow(ctx, "SELECT chosen_id FROM invoices WHERE id = $1 FOR UPDATE", group).Scan(&chosen); err != nil {
+			return fmt.Errorf("read invoice %s chosen option: %w", group, err)
+		}
+		if chosen == nil && anyTransfer {
+			if _, err := tx.Exec(ctx, "UPDATE invoices SET chosen_id = $2 WHERE id = $1", group, invoiceID); err != nil {
+				return fmt.Errorf("choose invoice %s option %s: %w", group, invoiceID, err)
+			}
+			chosen = &invoiceID
+		}
+		superseded = chosen != nil && *chosen != invoiceID
 	}
 	amount, _ := new(big.Int).SetString(amountText, 10)
 	owed, err := accountBalance(ctx, tx, invoiceID, "recipient_payable")
@@ -90,19 +115,13 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	final := current == Paid || current == Expired || current == ExpiredPartiallyPaid
 	for _, d := range deposits {
 		value, _ := new(big.Int).SetString(d.Amount, 10)
-		toCreator, toHeld := split(amount, owed, value, d.BlockTime > expiresAt, final)
+		toCreator, toHeld := split(amount, owed, value, d.BlockTime > expiresAt, final || superseded)
 		if err := book(ctx, tx, invoiceID, "deposit", &d.ID, value, toCreator, toHeld); err != nil {
 			return err
 		}
 		owed.Add(owed, toCreator)
 	}
 
-	var anyTransfer, anyPending bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged'),
-		EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1 AND status = 'detected')`,
-		invoiceID).Scan(&anyTransfer, &anyPending); err != nil {
-		return fmt.Errorf("read invoice %s transfers: %w", invoiceID, err)
-	}
 	funded, mayExpire := false, false
 	switch {
 	case final:

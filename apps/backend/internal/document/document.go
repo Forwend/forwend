@@ -70,6 +70,11 @@ func networkOf(inv invoice.Invoice) network {
 	return network{name: inv.Network}
 }
 
+// choosing: the payer may still pick among several tokens and networks (R-56).
+func choosing(inv invoice.Invoice) bool {
+	return len(inv.Options) > 1 && !inv.OptionLocked
+}
+
 func Number(n int64) string {
 	return fmt.Sprintf("INV-%04d", n)
 }
@@ -80,8 +85,11 @@ func Invoice(inv invoice.Invoice, payLink string) ([]byte, error) {
 		[2]string{"Checkout closes", stamp(inv.ExpiresAt)})
 	d.lines(inv, "Total")
 	d.note(inv.Note)
-	net := networkOf(inv)
-	d.code(payLink, "Pay this invoice", "Scan the code or open the link. Send only "+inv.Symbol+" on "+net.name+".")
+	help := "Scan the code or open the link. Send only " + inv.Symbol + " on " + networkOf(inv).name + "."
+	if choosing(inv) {
+		help = "Scan the code or open the link, then pick the token and network to pay with."
+	}
+	d.code(payLink, "Pay this invoice", help)
 	d.footer(inv)
 	return d.output()
 }
@@ -286,16 +294,23 @@ func (d doc) lines(inv invoice.Invoice, total string) {
 	}
 	d.SetY(y + 7 + 2)
 
+	d.SetFont(font, "", 10)
 	net := networkOf(inv)
+	network := append(d.fit(net.name, cols[1]-2*pad, 2), "Chain "+strconv.FormatUint(inv.ChainID, 10))
+	price := amount(inv.Amount, inv.Decimals, inv.Symbol)
+	if choosing(inv) {
+		// Every option is the same USD amount at 1 USD per stablecoin (D-75).
+		network = []string{"Payer chooses", fmt.Sprintf("%d tokens and networks", len(inv.Options))}
+		price = amount(inv.Amount, inv.Decimals, "USD")
+	}
 	title := inv.Title
 	if title == "" {
 		title = "Payment"
 	}
-	d.SetFont(font, "", 10)
 	cells := [3][]string{
 		d.fit(title, cols[0]-2*pad, 3),
-		append(d.fit(net.name, cols[1]-2*pad, 2), "Chain "+strconv.FormatUint(inv.ChainID, 10)),
-		d.fit(amount(inv.Amount, inv.Decimals, inv.Symbol), cols[2]-2*pad, 12),
+		network,
+		d.fit(price, cols[2]-2*pad, 12),
 	}
 	y, x = d.GetY(), margin
 	rows := 0
@@ -326,7 +341,7 @@ func (d doc) lines(inv invoice.Invoice, total string) {
 	y = d.GetY()
 	d.SetXY(margin+cols[0]+pad, y)
 	d.CellFormat(cols[1]-2*pad, 6, total, "", 0, "L", false, 0, "")
-	for _, l := range d.fit(amount(inv.Amount, inv.Decimals, inv.Symbol), cols[2]-2*pad, 12) { // never cut
+	for _, l := range d.fit(price, cols[2]-2*pad, 12) { // never cut
 		d.SetX(margin + cols[0] + cols[1] + pad)
 		d.CellFormat(cols[2]-2*pad, 6, l, "", 1, "R", false, 0, "")
 	}

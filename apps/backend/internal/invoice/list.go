@@ -24,10 +24,11 @@ const StatusFilterSQL = `CASE WHEN settlement_status = 'settled' THEN 'settled' 
 	WHEN payment_status IN ('expired', 'expired_partially_paid') THEN 'expired' ELSE 'open' END`
 
 // searchText is what a search looks in: the number as shown (INV-0042), title, note, client name and email and
-// receive address. It must stay the expression of the invoices_search trigram index (migration 00014).
+// the main row's receive address. Read through invoicesCurrent, it must stay the expression of the invoices_search
+// trigram index (migration 00014) on the main row's columns.
 const searchText = `('INV-' || lpad(number::text, greatest(length(number::text), 4), '0') || ' ' || coalesce(title, '')
 	|| ' ' || coalesce(note, '') || ' ' || coalesce(client_name, '') || ' ' || coalesce(client_email, '') || ' '
-	|| receive_address)`
+	|| main_receive_address)`
 
 // Page is one page of invoices without deposits; NextCursor is "" on the last one.
 type Page struct {
@@ -69,7 +70,7 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 		}
 		where += " AND (" + match + ")"
 	}
-	rows, err := s.pool.Query(ctx, "SELECT "+invoiceColumns+" FROM invoices WHERE "+where+
+	rows, err := s.pool.Query(ctx, "SELECT "+invoiceColumns+" FROM "+invoicesCurrent+" WHERE "+where+
 		" ORDER BY number DESC LIMIT $3", args...)
 	if err != nil {
 		return Page{}, fmt.Errorf("list invoices: %w", err)

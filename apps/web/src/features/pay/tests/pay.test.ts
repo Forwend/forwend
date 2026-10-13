@@ -1,9 +1,19 @@
 import { describe, expect, it } from "vitest";
 import type { Deposit, Invoice } from "@/features/invoices/invoices";
-import { PAY_STATES, payState, payToken, receiptDeposits, shortDuration } from "@/features/pay/pay";
+import {
+  PAY_STATES,
+  payState,
+  payToken,
+  receiptDeposits,
+  shortDuration,
+  withOption,
+} from "@/features/pay/pay";
 
 const invoice: Invoice = {
   invoiceId: `0x${"1".repeat(64)}`,
+  optionId: `0x${"1".repeat(64)}`,
+  optionLocked: false,
+  options: [],
   number: 1,
   title: null,
   note: null,
@@ -124,5 +134,50 @@ describe("payToken", () => {
     };
     expect(payToken(tempo)).toEqual({ symbol: "OUSD", decimals: 6 });
     expect(payToken({ ...tempo, chainId: 84532 })).toBeNull();
+  });
+});
+
+describe("withOption", () => {
+  const base = {
+    network: "arbitrum-sepolia",
+    token: "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d",
+    symbol: "USDC",
+    decimals: 6,
+    amount: "1000",
+  };
+  const choosing: Invoice = {
+    ...invoice,
+    options: [
+      {
+        ...base,
+        optionId: invoice.invoiceId,
+        chainId: 84532,
+        receiveAddress: invoice.receiveAddress,
+      },
+      {
+        ...base,
+        optionId: `0x${"9".repeat(64)}`,
+        chainId: 421614,
+        receiveAddress: `0x${"8".repeat(40)}`,
+      },
+    ],
+  };
+
+  it("shows the option the link asks for while none has money", () => {
+    expect(withOption(choosing, `0x${"9".repeat(64)}`)).toMatchObject({
+      invoiceId: invoice.invoiceId,
+      optionId: `0x${"9".repeat(64)}`,
+      chainId: 421614,
+      token: base.token,
+      receiveAddress: `0x${"8".repeat(40)}`,
+    });
+  });
+
+  it("keeps the API's option once one has money, or for an id it does not list", () => {
+    expect(withOption({ ...choosing, optionLocked: true }, `0x${"9".repeat(64)}`).chainId).toBe(
+      84532,
+    );
+    expect(withOption(choosing, `0x${"7".repeat(64)}`)).toBe(choosing);
+    expect(withOption(choosing, undefined)).toBe(choosing);
   });
 });

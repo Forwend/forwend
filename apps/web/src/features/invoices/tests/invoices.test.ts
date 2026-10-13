@@ -64,6 +64,9 @@ describe("invoice display", () => {
 
 const open: Invoice = {
   invoiceId: `0x${"1".repeat(64)}`,
+  optionId: `0x${"1".repeat(64)}`,
+  optionLocked: false,
+  options: [],
   number: 1,
   title: null,
   note: null,

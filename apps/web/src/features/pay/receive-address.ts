@@ -52,7 +52,8 @@ export function receiveAddress(t: InvoiceTerms): string {
 }
 
 /**
- * The invoice's receive address when the answer is the invoice the link names, its terms follow the rules the API
+ * The invoice's receive address when the answer is the invoice the link names, its terms (the shown option's, with
+ * that option's on-chain id) follow the rules the API
  * creates them by (money sent to terms that break them can only be refunded), and they compute to it; or null. Null
  * means the page must not show it: the API answer was changed somewhere, or a term can't be read (a term that can't
  * be read can't prove the address).
@@ -61,7 +62,7 @@ export function checkedReceiveAddress(inv: Invoice, linkInvoiceId: string): stri
   if (inv.invoiceId.toLowerCase() !== linkInvoiceId.toLowerCase()) return null;
   try {
     const terms = {
-      invoiceId: inv.invoiceId,
+      invoiceId: inv.optionId,
       recipient: inv.recipient,
       token: inv.token,
       amount: BigInt(inv.amount),

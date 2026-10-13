@@ -51,8 +51,9 @@ DOM and imports nothing from `src/`. It reads only its own `CANARY_*` variables 
 `apps/backend/.env.example`): the api and web origins, the factory address, the factory's code hash, two RPCs on
 different hosts per chain ID and the script path.
 
-Stdin holds one open invoice per line, its terms as the database stores them, then its token's symbol and its chain's
-name: `id chain_id recipient_address token_contract amount expires_at settle_deadline symbol network`. A line whose
+Stdin holds one open invoice or accepted option per line, its terms as the database stores them, then its token's
+symbol, its chain's name and, for an option of a payer-chooses invoice (R-56), the invoice's id:
+`id chain_id recipient_address token_contract amount expires_at settle_deadline symbol network [pay_id]`. A line whose
 terms break create's rules (amount 0, a settle deadline other than expiry + 24 h, a recipient that is zero or the
 token) is an alert. The canary then:
 
@@ -60,11 +61,13 @@ token) is an alert. The canary then:
    factory's code to equal `CANARY_FACTORY_CODE_HASH`. A receiver's init-code hash differs per invoice (its init
    code holds the terms), so the canary pins the factory's runtime code instead: with its immutables it fixes
    `predict`, the receiver implementation and the refund authority.
-2. Reads `GET <api>/v1/invoices/<id>` and requires its terms and `factory` to equal the database's terms and
+2. Reads `GET <api>/v1/invoices/<pay_id>` and requires the listed option with this `id` (its `optionId`, chain,
+   token, amount and address) and the invoice's shared terms and `factory` to equal the database's terms and
    `CANARY_FACTORY`.
 3. Calls `predict` with the database's terms on both RPCs and requires both to agree and to equal the api's
    `receiveAddress`.
-4. Runs the script once for all ids, with a deadline that grows with their number. It opens `<web>/pay/<id>` in
+4. Runs the script once for all ids, with a deadline that grows with their number. It opens `<web>/pay/<id>` (for an
+   option `<web>/pay/<pay_id>?option=<id>`, which shows that option while none has money) in
    Chromium as a payer would, passes the network-confirm gate and reads each send tab's text and QR code. The text
    must show that one address, each QR code must draw what `uqr` encodes for it, as `QrCode` in
    `packages/ui-web` does, and the amount panel must name the token's symbol and the chain (`Base Sepolia` for
@@ -79,15 +82,18 @@ check on the last `canary passed`):
 
 ```sh
 psql "$READONLY_DATABASE_URL" -At -F ' ' -c "SELECT i.id, i.chain_id, i.recipient_address, i.token_contract,
-  i.amount, i.expires_at, i.settle_deadline, t.symbol, c.name FROM invoices i
+  i.amount, i.expires_at, i.settle_deadline, t.symbol, c.name, m.id FROM invoices i
+  JOIN invoices m ON m.id = coalesce(i.main_id, i.id)
   JOIN tokens t ON t.chain_id = i.chain_id AND t.contract = i.token_contract JOIN chains c ON c.chain_id = i.chain_id
-  WHERE i.payment_status IN ('open', 'partially_paid') AND i.expires_at > extract(epoch FROM now()) + 60" |
+  WHERE i.payment_status IN ('open', 'partially_paid') AND i.expires_at > extract(epoch FROM now()) + 60
+    AND (m.chosen_id IS NULL OR m.chosen_id = i.id)" |
   pnpm --silent --filter @forwend/backend canary
 ```
 
 The terms come from stdin, not a database connection, so the canary holds no database credentials; a read-only role
 lists them. `detected` invoices are left out: a deposit that may cover the amount is on its way, and the page then
-stops showing the address. An invoice paid between the query and the page read alerts once; the next run passes.
+stops showing the address. So are the other options of an invoice whose option was chosen: the page no longer shows
+them. An invoice paid between the query and the page read alerts once; the next run passes.
 
 Limits:
 

@@ -1399,3 +1399,65 @@ func TestReplacementSettleGetsAFreshGasLimit(t *testing.T) {
 		t.Fatalf("replacement gas %d, want at least %d (estimate %d plus a fifth)", replaced.Gas(), est+est/5, est)
 	}
 }
+
+// Payer chooses (R-56, D-76): the signer settles the option that received money first, built by the API like any
+// invoice, and money sent to another option stays at its address, held for the payer.
+func TestSettlesTheOptionPaidFirst(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	usdt := e.anvil.DeployToken()
+	e.anvil.Mint(usdt, "1000000000")
+	var profile string
+	if err := e.pool.QueryRow(ctx, `WITH t AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals,
+		enabled) VALUES ($1, 'evm', $2, 'USDT', 6, true)) SELECT profile_id::text FROM profile_wallets`,
+		chaintest.ChainID, usdt).Scan(&profile); err != nil {
+		t.Fatal(err)
+	}
+	inv, _, err := invoice.NewService(e.pool).Create(ctx, profile, "k", invoice.Request{AmountUSD: "5"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(inv.Options) != 2 || inv.Options[0].Symbol != "USDC" || inv.Options[1].Symbol != "USDT" {
+		t.Fatalf("options %+v, want USDC and USDT", inv.Options)
+	}
+	usdcOption, usdtOption := inv.Options[0], inv.Options[1]
+	round := func() {
+		t.Helper()
+		if err := e.watch.Scan(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if err := e.ledger.ProcessChain(ctx, chaintest.ChainID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	e.anvil.Transfer(usdt, usdtOption.ReceiveAddress, "5000000")
+	round()
+	e.anvil.Transfer(e.token, usdcOption.ReceiveAddress, "5000000") // too late: USDT was chosen
+	e.anvil.Mine(2)
+	round()
+
+	s := e.signer(t)
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	e.final(t, s)
+	if status, settlement, _ := e.intent(t, usdtOption.ID); status != "confirmed" || settlement != "settled" {
+		t.Fatalf("USDT option: intent %s, settlement %s", status, settlement)
+	}
+	balanceOf := ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: e.client})
+	if got, _, err := balanceOf(ctx, chaintest.ChainID, usdt, wallet); err != nil || got.Int64() != 5000000 {
+		t.Fatalf("recipient holds %v USDT (%v), want 5000000", got, err)
+	}
+	if got := e.balance(t, usdcOption.ReceiveAddress); got != 5000000 {
+		t.Fatalf("the USDC option's address holds %d, want the 5000000 held for the payer", got)
+	}
+	var intents int
+	if err := e.pool.QueryRow(ctx, "SELECT count(*) FROM settlement_intents").Scan(&intents); err != nil || intents != 1 {
+		t.Fatalf("%d settlement intents (%v), want 1", intents, err)
+	}
+	got, err := invoice.NewService(e.pool).Get(ctx, inv.ID)
+	if err != nil || got.OptionID != usdtOption.ID || !got.OptionLocked || got.SettlementStatus != "settled" {
+		t.Fatalf("invoice shows option %s locked %v settlement %s (%v)", got.OptionID, got.OptionLocked,
+			got.SettlementStatus, err)
+	}
+}

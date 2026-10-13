@@ -39,6 +39,26 @@ export const PAY_STATES = {
 
 export type PayState = (typeof PAY_STATES)[keyof typeof PAY_STATES];
 
+/**
+ * The invoice with the terms of the option the link asks for (`?option=`), while no option has money yet; otherwise
+ * as the API shows it: the chosen option, or the first (R-56).
+ */
+export function withOption(inv: Invoice, optionId: string | undefined): Invoice {
+  const o = inv.optionLocked
+    ? undefined
+    : inv.options.find((x) => x.optionId === optionId?.toLowerCase());
+  return o
+    ? {
+        ...inv,
+        optionId: o.optionId,
+        chainId: o.chainId,
+        token: o.token,
+        amount: o.amount,
+        receiveAddress: o.receiveAddress,
+      }
+    : inv;
+}
+
 export function payToken(inv: Invoice) {
   return PAY_TOKENS[tokenKey(inv)] ?? null;
 }

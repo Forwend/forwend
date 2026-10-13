@@ -1181,7 +1181,7 @@
       "dependsOn": [
         "F128"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend",
         "unit",
@@ -1198,7 +1198,84 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T15:44:04Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 94.2,
+            "log": "docs/runs/F132-20261013T154404Z-backend.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 89.2,
+            "log": "docs/runs/F132-20261013T154404Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 131.2,
+            "log": "docs/runs/F132-20261013T154404Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": "docs/runs/F132-20261013T154404Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F132-20261013T154404Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F132-20261013T154404Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F132-20261013T154404Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F132-20261013T154404Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F132-20261013T154404Z-keep.log"
+          }
+        ],
+        "taskHash": "2c6ed6c722a67777",
+        "filesHash": "4eaa6dd34e1c2cde",
+        "proof": {
+          "1": "backend: invoice/options_test (one option per enabled watched token, USD converted, own id and address, replay, conflict, inexact rejected), database TestInvoiceOptions (shared terms, number, chosen once), ledger TestFirstOptionPaidWinsAndOthersAreHeld (lock and held money), settlement TestSettlesTheOptionPaidFirst (settles the chosen option with real addresses), httpapi TestPayerChoosesInvoice (options, get by option id, PDF), canary tests (option lines, ?option= page); unit: receive-address and withOption tests; e2e: pay.spec canary reads an option via ?option=, tampered option refused, locked invoice keeps the chosen option"
+        }
+      },
+      "branch": "feat/f132-the-creator-chooses-payer-chooses-defaul",
+      "baseCommit": "c26fe34649f4806a6f81706b55f50c52d57be013",
+      "failedVerifies": 0
     },
     {
       "id": "F133",
@@ -1352,7 +1429,7 @@
       "dependsOn": [
         "F128"
       ],
-      "state": "not_started",
+      "state": "blocked",
       "verification": [
         "unit",
         "e2e"
@@ -1362,9 +1439,13 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": null
+      "notes": [
+        "2026-10-13 blocked: Owner's tx hash report not reproducible: recorded Tempo hashes match the chain and explorer links resolve; Detected step, Detected pill and per-payment hash + explorer link already pass in e2e/pay.spec.ts. Need the owner's example (invoice and what looked wrong) before writing the failing test."
+      ],
+      "blockedReason": "Owner's tx hash report not reproducible: recorded Tempo hashes match the chain and explorer links resolve; Detected step, Detected pill and per-payment hash + explorer link already pass in e2e/pay.spec.ts. Need the owner's example (invoice and what looked wrong) before writing the failing test.",
+      "evidence": null,
+      "branch": "fix/f136-the-timeline-marks-detected-and-every-pa",
+      "baseCommit": "c26fe34649f4806a6f81706b55f50c52d57be013"
     },
     {
       "id": "F137",
