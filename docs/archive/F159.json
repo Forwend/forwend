@@ -1,0 +1,89 @@
+{
+  "id": "F159",
+  "type": "fix",
+  "behavior": "Switching profile on an invoice's page opens the new profile's list instead of a dead end",
+  "acceptance": [
+    "e2e checks switching profile on an invoice's page opens the new profile's invoice list, and on other pages keeps the page"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "e2e"
+  ],
+  "refs": [],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-13T21:20:20Z",
+    "checks": [
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 149.0,
+        "log": "docs/runs/F159-20261013T212020Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.5,
+        "log": "docs/runs/F159-20261013T212020Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F159-20261013T212020Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F159-20261013T212020Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F159-20261013T212020Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 93.7,
+        "log": "docs/runs/F159-20261013T212020Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.2,
+        "log": "docs/runs/F159-20261013T212020Z-build.log"
+      }
+    ],
+    "taskHash": "59d9c75ae1fcaec6",
+    "filesHash": "f74d3f974a485515",
+    "proof": {
+      "1": "e2e: page kept on switch; invoice page goes to the new list"
+    },
+    "commit": "e55f4c7",
+    "doneAt": "2026-10-13T21:24:36Z"
+  },
+  "branch": "fix/f159-switching-profile-on-an-invoice-s-page-o",
+  "baseCommit": "9cf8076caf380359b94da83848bb14d61c3c7f66",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f159-switching-profile-on-an-invoice-s-page-o",
+    "base": "main"
+  }
+}

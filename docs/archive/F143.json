@@ -1,0 +1,102 @@
+{
+  "id": "F143",
+  "type": "feat",
+  "behavior": "The invoice page shows money held on payer-chooses options that were not chosen, with its network, transaction and refund status",
+  "acceptance": [
+    "R-56: an owner sees each held deposit on another option (amount, network, tx hash and explorer link) and that it is held for the payer; backend and e2e cover a deposit on a second option"
+  ],
+  "dependsOn": [
+    "F133"
+  ],
+  "state": "passing",
+  "verification": [
+    "backend",
+    "e2e",
+    "unit"
+  ],
+  "refs": [
+    "R-56"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-13T16:43:54Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 93.9,
+        "log": "docs/runs/F143-20261013T164354Z-backend.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 135.7,
+        "log": "docs/runs/F143-20261013T164354Z-e2e.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 100.7,
+        "log": "docs/runs/F143-20261013T164354Z-unit.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.5,
+        "log": "docs/runs/F143-20261013T164354Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F143-20261013T164354Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F143-20261013T164354Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.1,
+        "log": "docs/runs/F143-20261013T164354Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 5.2,
+        "log": "docs/runs/F143-20261013T164354Z-build.log"
+      }
+    ],
+    "taskHash": "0b873cf726d44aa9",
+    "filesHash": "b3bafe4d622ea0fb",
+    "proof": {
+      "1": "backend: option deposits in the read; e2e: held deposit on a second option shown with its explorer link"
+    },
+    "commit": "e02db3d",
+    "doneAt": "2026-10-13T16:49:42Z"
+  },
+  "branch": "feat/f143-the-invoice-page-shows-money-held-on-pay",
+  "baseCommit": "6fe3127d7f5ff184eddd5841cdfa04e251fadcdb",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f143-the-invoice-page-shows-money-held-on-pay",
+    "base": "main"
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "id": "F124",
+  "type": "fix",
+  "behavior": "The signer recovers from stuck deploys and nonce gaps, sizes gas per chain, checks its lock before each settlement, and caps the gas one user's invoices can spend",
+  "acceptance": [
+    "R-22, R-30: a deploy takes over a stuck unsaved transaction at the executor's next mined nonce at twice today's fee; a nonce gap with nothing pending and no saved settle is filled with a zero-value self-transfer; a replacement settle uses max(old gas limit, a fresh estimate x 1.2); Tempo settles get at least TempoSettleGasFloor (580,000); the signer checks lock.Held before each intent; SEC-03: a user's invoices get at most SponsoredPerDay (50) signed settlements in 24 hours, then intents wait with a reason and an ALERT; backend tests on Anvil cover each; architecture.md matches"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "backend",
+    "e2e"
+  ],
+  "refs": [
+    "R-22",
+    "R-30"
+  ],
+  "keep": [],
+  "review": true,
+  "notes": [
+    "2026-10-11 review fail by reviewer: FAIL: acceptance says backend tests on Anvil cover each change, but the replacement gas limit has no test. settle.go:263-267 (gas = max(old.Gas(), est+est/5)) can be removed and the full settlement package still passes (mutation run). TestStuckSettleIsReplacedWithAHigherFee (signer_test.go:889) cannot see it, because the old limit already equals the fresh estimate x 1.2. Fix: add an Anvil test where the saved settle's limit is below a fresh estimate x 1.2 (or the estimate grows) and assert the replacement's Gas() >= est*6/5, and that it equals old.Gas() when the estimate reverts. Everything else checks out. Mutations fail their tests for cap, lock, fillGap no-op, fillGap saved check, overStuck and the Tempo floor. go test settlement+watcher pass; backend e2e passes; verify logs 20261011T161538Z are newer than all edits. overStuck and fillGap only displace unsaved deploys or fillers: the queries are scoped to chain and sender and check status 'sent', which is the only status that holds an unmined nonce, since retry only runs after the nonce is used. retry clears signed_at; confirm keeps it; the cap counts across all of a user's profiles and runs before deploy. Non-blocking: (1) the tests call overStuck and fillGap directly, so their call sites (settle.go:122, reconcile.go:110-114) are not covered. (2) overStuck pays 2x today's tip. If the stuck tx is an earlier overStuck deploy and the tip has not risen 10%, geth refuses the replacement (underpriced) until base fee falls. Deploys on that chain fail every 30 s until then; it recovers on its own. (3) On testnets the deployer key is the executor key (packages/contracts/.env.example), so overStuck can drop a forge deploy.sh tx sent while the signer runs. (4) Without the cap, TestSponsoredSettlementsPerUserAreCapped fails only after a 60 s deploy timeout: the fixture's nonces 1..50 raise sign()'s nonce floor. (5) feeToken adds an eth_getCode per settle, plus an eth_call on Tempo. (6) The cap query's cost grows with a user's lifetime invoices (indexed joins, no signed_at index). (7) Retried intents stop counting toward the cap even when a reverted settle spent gas.",
+    "2026-10-11 review pass by reviewer: PASS. The earlier blocking finding is fixed: TestReplacementSettleGetsAFreshGasLimit (signer_test.go:1281-1322) saves a real settle, re-signs it with a 30,000 gas limit, calls replace and checks Gas() >= a fresh estimate + a fifth. With settle.go:266 (gas = max(gas, est+est/5)) removed it fails: 'replacement gas 30000, want at least 151906 (estimate 126589 plus a fifth)' (mutation run in a scratch copy); with it, it passes. The revert case (estimate reverts, old gas kept) has no test; it is a plain err == nil guard, so this is acceptable. Mutations also fail their tests for the cap, lock check, fillGap no-op, fillGap saved check, overStuck and the Tempo floor. go test ./internal/settlement ./internal/watcher pass; verify logs 20261011T163102Z all pass and are newer than the last edit. Non-blocking, unchanged: (1) the tests call overStuck and fillGap directly, so their call sites (settle.go:122, reconcile.go:110-114) are not covered. (2) overStuck pays 2x today's tip; if the stuck tx is an earlier overStuck deploy and the tip has not risen 10%, geth refuses the replacement until base fee falls (it recovers on its own). (3) On testnets the deployer key is the executor key, so overStuck can drop a deploy.sh tx sent while the signer runs. (4) Without the cap, TestSponsoredSettlementsPerUserAreCapped fails only after a 60 s deploy timeout. (5) feeToken adds an eth_getCode per settle (plus an eth_call on Tempo). (6) The cap query's cost grows with a user's lifetime invoices. (7) Retried intents stop counting toward the cap even when a reverted settle spent gas."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-11T16:31:02Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 82.7,
+        "log": "docs/runs/F124-20261011T163102Z-backend.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 116.3,
+        "log": "docs/runs/F124-20261011T163102Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.5,
+        "log": "docs/runs/F124-20261011T163102Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F124-20261011T163102Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F124-20261011T163102Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F124-20261011T163102Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 80.6,
+        "log": "docs/runs/F124-20261011T163102Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.4,
+        "log": "docs/runs/F124-20261011T163102Z-build.log"
+      }
+    ],
+    "taskHash": "2706990710a5b706",
+    "filesHash": "a5641ef69e67dde0",
+    "proof": {
+      "1": "backend: TestDeployReplacesAStuckTransaction, TestNonceGapIsFilled, TestTempoSettleGasFloor, TestSignerStopsWhenItLosesItsLock, TestSponsoredSettlementsPerUserAreCapped, and TestReplacementSettleGetsAFreshGasLimit (a saved settle with a 30,000 limit is replaced at >= a fresh estimate x 1.2; fails without the change); all existing settlement tests and the backend-e2e gate pass; the watcher window test no longer sleeps; architecture.md updated"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "PASS. The earlier blocking finding is fixed: TestReplacementSettleGetsAFreshGasLimit (signer_test.go:1281-1322) saves a real settle, re-signs it with a 30,000 gas limit, calls replace and checks Gas() >= a fresh estimate + a fifth. With settle.go:266 (gas = max(gas, est+est/5)) removed it fails: 'replacement gas 30000, want at least 151906 (estimate 126589 plus a fifth)' (mutation run in a scratch copy); with it, it passes. The revert case (estimate reverts, old gas kept) has no test; it is a plain err == nil guard, so this is acceptable. Mutations also fail their tests for the cap, lock check, fillGap no-op, fillGap saved check, overStuck and the Tempo floor. go test ./internal/settlement ./internal/watcher pass; verify logs 20261011T163102Z all pass and are newer than the last edit. Non-blocking, unchanged: (1) the tests call overStuck and fillGap directly, so their call sites (settle.go:122, reconcile.go:110-114) are not covered. (2) overStuck pays 2x today's tip; if the stuck tx is an earlier overStuck deploy and the tip has not risen 10%, geth refuses the replacement until base fee falls (it recovers on its own). (3) On testnets the deployer key is the executor key, so overStuck can drop a deploy.sh tx sent while the signer runs. (4) Without the cap, TestSponsoredSettlementsPerUserAreCapped fails only after a 60 s deploy timeout. (5) feeToken adds an eth_getCode per settle (plus an eth_call on Tempo). (6) The cap query's cost grows with a user's lifetime invoices. (7) Retried intents stop counting toward the cap even when a reverted settle spent gas.",
+      "at": "2026-10-11T16:37:37Z",
+      "filesHash": "a5641ef69e67dde0"
+    },
+    "commit": "3bdcaa8",
+    "doneAt": "2026-10-11T16:37:53Z"
+  },
+  "branch": "fix/f124-the-signer-recovers-from-stuck-deploys-a",
+  "baseCommit": "c491e126f85d8e3f9baa4434919aa11c1a73f4c1",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f124-the-signer-recovers-from-stuck-deploys-a",
+    "base": "main"
+  }
+}

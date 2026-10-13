@@ -1,0 +1,101 @@
+{
+  "id": "F139",
+  "type": "feat",
+  "behavior": "The merchant and freelancer overview is rebuilt on one grid like a modern finance app",
+  "acceptance": [
+    "R-63: e2e checks the layout at 390, 768, 1024 and 1440 px in both themes without sideways scroll; axe finds 0 serious or critical violations"
+  ],
+  "dependsOn": [
+    "F128"
+  ],
+  "state": "passing",
+  "verification": [
+    "e2e",
+    "a11y-e2e"
+  ],
+  "refs": [
+    "R-63"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-13T14:50:18Z",
+    "checks": [
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 139.0,
+        "log": "docs/runs/F139-20261013T145018Z-e2e.log"
+      },
+      {
+        "id": "a11y-e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 17.4,
+        "log": "docs/runs/F139-20261013T145018Z-a11y-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.3,
+        "log": "docs/runs/F139-20261013T145018Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F139-20261013T145018Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F139-20261013T145018Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F139-20261013T145018Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 90.8,
+        "log": "docs/runs/F139-20261013T145018Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.1,
+        "log": "docs/runs/F139-20261013T145018Z-build.log"
+      }
+    ],
+    "taskHash": "208b0ed7a91ee8d8",
+    "filesHash": "bf94046d6cc827c4",
+    "proof": {
+      "1": "e2e: verify F139 passed all checks including a11y-e2e"
+    },
+    "commit": "6900e4e",
+    "doneAt": "2026-10-13T14:54:40Z"
+  },
+  "branch": "feat/f139-the-merchant-and-freelancer-overview-is",
+  "baseCommit": "a0681cd9ed038317d603bbd8cb4ebd2eac27624c",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f139-the-merchant-and-freelancer-overview-is",
+    "base": "main"
+  }
+}

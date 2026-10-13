@@ -459,6 +459,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   );
   await expect(payLink.getByRole("button", { name: "Copy link" })).toBeVisible();
   await expect(payLink.getByRole("link", { name: /Open the pay page/ })).toBeVisible();
+  await expect(main.getByRole("button", { name: "Check status" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
 
   // Confirming: the count says it once; the payment row has no status pill of its own.
@@ -518,6 +519,12 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
   // Paid takes no more money: the pay link is gone.
   await expect(main.getByRole("region", { name: "Pay link" })).toHaveCount(0);
+
+  // Closed takes no more money either: nothing to check (R-69).
+  body = { ...OPEN_INVOICE, paymentStatus: "expired", deposits: [] };
+  await page.reload();
+  await expect(main.locator("header [data-status]")).toHaveText("Expired");
+  await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
   await context.close();
 });
 

@@ -1,0 +1,123 @@
+{
+  "id": "F132",
+  "type": "feat",
+  "behavior": "The creator chooses Payer chooses (default) or one fixed stablecoin and network, with a receive address per accepted option",
+  "acceptance": [
+    "R-56, D-75, D-76: the API creates one option per accepted token and network with its own address and terms; the first option paid becomes the invoice's option and money on another is held for the payer; backend tests cover creation, the lock, held money and settlement; the pay page's address check and the canary cover every option"
+  ],
+  "dependsOn": [
+    "F128"
+  ],
+  "state": "passing",
+  "verification": [
+    "backend",
+    "unit",
+    "e2e"
+  ],
+  "refs": [
+    "R-56",
+    "D-75",
+    "D-76"
+  ],
+  "keep": [
+    "packages/contracts/src/*"
+  ],
+  "review": true,
+  "notes": [
+    "2026-10-13 review pass by reviewer: Checked the diff c26fe34..a6bb349 for money safety. Ledger: the option row is locked first, then the main row, and chosen_id is set in the same transaction before any booking, so only the chosen option can book to recipient_payable, reach paid or get a settlement intent; deposits on any other option go to payer_held. No lock cycle: Process locks at most its own row then the main row, the main row's own run locks only itself, and the worker runs watcher and ledger in sequence. Triggers: options must share profile, recipient, factory, expiry, settle deadline, key and request hash with a main row that has no choice yet; no option of an option; chosen_id is set once, only on a main row, only to its own options; terms stay fixed by invoices_guard. Reads: every FROM/JOIN invoices in internal/ was checked; get, list, search, activity, recheck, PDFs and settlement wait use invoices_current or the option id; balance, watcher, signer and rescan work per row as intended. Idempotency: rational USD hash is canonical (12.5 = 12.50), partial unique indexes, the constraint name in Create matches the new index. Limits count each option. Canary: fixed invoices still match id, terms, predict on both RPCs and the page; the docs query matches the 10-field parser. Non-blocking: held money on a non-chosen option is not shown on the invoice page or its refund status (only balance and activity); a reorged first transfer keeps the choice (documented); the pay page check now binds the address to optionId from the API, not to the link id; recheck fails with 503 if any one option's chain RPC is down; the invoices_options trigger would let an option be added to a fixed invoice that already has money (no app path does this); a misplaced JSDoc line above InvoiceOption in invoices.ts and an unfinished sentence in canary_test.go. Ran: go test for invoice, ledger, database, canary, httpapi, settlement, activity, document, watcher, balance (all ok); vitest src/features/pay and src/features/invoices (31 passed); check-docs (0 errors).",
+    "2026-10-13 review pass by reviewer: Follow-up d1a2e89 (diff a6bb349..d1a2e89). Further options now get id keccak256(abi.encode(first id, chain id, token)); the first stays random. Go (address.OptionID: id, chain id as a big-endian uint256 word, token left-padded to 32 bytes) and TS (optionIdOf: fixedBytes 32, uint, fixedBytes 20 left-padded, lowercased) encode the same 96 bytes, and both tests check the same vector. Another invoice cannot pass under a link: a derived id commits to the link id, so matching would need a keccak collision, and the server picks the random first id. Ids stay unique per invoice because (chain, token) is unique. The pay page accepts optionId only when it equals the link id or derives from it, so fixed invoices keep the old tie. Nothing else changed in behavior: the ledger, triggers, reads and canary logic are untouched; the e2e fixture, api.md and money-safety.md match; the three comment fixes are correct. Note: options made by a6bb349 with random ids would now fail the page check, but that commit was never merged, so no such rows exist outside local data. Earlier non-blocking notes still apply (held money on a non-chosen option is not shown on the invoice page; recheck fails if one option's chain RPC is down; the trigger would allow an option on a fixed invoice that already has money). Ran: go test ./internal/address/ ./internal/invoice/ ./internal/canary/ (ok); vitest src/features/pay (17 passed)."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-13T15:58:18Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 91.2,
+        "log": "docs/runs/F132-20261013T155818Z-backend.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 96.5,
+        "log": "docs/runs/F132-20261013T155818Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 127.8,
+        "log": "docs/runs/F132-20261013T155818Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.4,
+        "log": "docs/runs/F132-20261013T155818Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F132-20261013T155818Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F132-20261013T155818Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F132-20261013T155818Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.7,
+        "log": "docs/runs/F132-20261013T155818Z-build.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F132-20261013T155818Z-keep.log"
+      }
+    ],
+    "taskHash": "2c6ed6c722a67777",
+    "filesHash": "516b441c0b9ad34a",
+    "proof": {
+      "1": "backend: options per token with derived ids, first-paid lock, held money, settlement of the chosen option; unit: option id derivation and check; e2e: canary reads an option via ?option="
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Follow-up d1a2e89 (diff a6bb349..d1a2e89). Further options now get id keccak256(abi.encode(first id, chain id, token)); the first stays random. Go (address.OptionID: id, chain id as a big-endian uint256 word, token left-padded to 32 bytes) and TS (optionIdOf: fixedBytes 32, uint, fixedBytes 20 left-padded, lowercased) encode the same 96 bytes, and both tests check the same vector. Another invoice cannot pass under a link: a derived id commits to the link id, so matching would need a keccak collision, and the server picks the random first id. Ids stay unique per invoice because (chain, token) is unique. The pay page accepts optionId only when it equals the link id or derives from it, so fixed invoices keep the old tie. Nothing else changed in behavior: the ledger, triggers, reads and canary logic are untouched; the e2e fixture, api.md and money-safety.md match; the three comment fixes are correct. Note: options made by a6bb349 with random ids would now fail the page check, but that commit was never merged, so no such rows exist outside local data. Earlier non-blocking notes still apply (held money on a non-chosen option is not shown on the invoice page; recheck fails if one option's chain RPC is down; the trigger would allow an option on a fixed invoice that already has money). Ran: go test ./internal/address/ ./internal/invoice/ ./internal/canary/ (ok); vitest src/features/pay (17 passed).",
+      "at": "2026-10-13T16:04:46Z",
+      "filesHash": "516b441c0b9ad34a"
+    },
+    "commit": "d1a2e89",
+    "doneAt": "2026-10-13T16:05:02Z"
+  },
+  "branch": "feat/f132-the-creator-chooses-payer-chooses-defaul",
+  "baseCommit": "c26fe34649f4806a6f81706b55f50c52d57be013",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f132-the-creator-chooses-payer-chooses-defaul",
+    "base": "main"
+  }
+}
