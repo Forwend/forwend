@@ -2436,7 +2436,7 @@
         "R-21: a failing ledger test first: the full amount booked while the second RPC's finalized block lags leaves the invoice detected, not partially_paid; then paid once the second RPC agrees; a real partial payment still shows partially_paid"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -2512,12 +2512,19 @@
         "taskHash": "d2b1b032bad0a09e",
         "filesHash": "8f5f4a30c0e681cb",
         "proof": {
-          "1": "backend: ledger TestPaidNeedsTheSecondRPCToAgree failed first (got partially_paid), now detected while the second RPC lags and paid once it agrees; TestLaggingSecondRPCNeverExpiresAPaidInvoice still never expires it; TestDepositsMoveThePaymentStatus keeps a real partial payment partially_paid"
-        }
+          "1": "backend: ledger test reproduced partially_paid, now detected then paid; real partial payments unchanged"
+        },
+        "commit": "b93193c",
+        "doneAt": "2026-10-13T18:06:53Z"
       },
       "branch": "fix/f145-an-invoice-paid-in-full-never-shows-as-p",
       "baseCommit": "f3eba8ae363642c7bf9b58f341386b9df529b8ba",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f145-an-invoice-paid-in-full-never-shows-as-p",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
