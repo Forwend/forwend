@@ -1,7 +1,11 @@
 package document
 
 import (
+	"fmt"
 	"math/big"
+	"os"
+	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -24,6 +28,29 @@ func TestAmount(t *testing.T) {
 		n, _ := new(big.Int).SetString(c.units, 10)
 		if got := amount(n, c.decimals, "USDC"); got != c.want {
 			t.Errorf("amount(%s, %d) = %q, want %q", c.units, c.decimals, got, c.want)
+		}
+	}
+}
+
+// The logo and the networks are copies of the web's; these fail when either side changes alone.
+func TestCopiesMatchTheWeb(t *testing.T) {
+	logo, err := os.ReadFile("../../../../packages/ui-web/src/icons/logo-data.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(logo), `viewBox: "117.2 11.5 1812.6 1812.6"`) ||
+		!strings.Contains(string(logo), `d: "`+strings.TrimSpace(logoPath)+`"`) {
+		t.Fatal("logo.path differs from packages/ui-web/src/icons/logo-data.ts")
+	}
+	chains, err := os.ReadFile("../../../web/src/shared/chains/chains.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id, n := range networks {
+		entry := regexp.MustCompile(fmt.Sprintf(`(?s)\b%d: \{\s*name: "%s",.*?explorer: \{ name: "%s", url: "%s" \}`,
+			id, regexp.QuoteMeta(n.name), regexp.QuoteMeta(n.explorer), regexp.QuoteMeta(n.url)))
+		if !entry.Match(chains) {
+			t.Errorf("chain %d %+v differs from apps/web/src/shared/chains/chains.ts", id, n)
 		}
 	}
 }
