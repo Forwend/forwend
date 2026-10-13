@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"math/big"
 	"testing"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/address"
@@ -97,5 +98,41 @@ func TestCreatePayerChooses(t *testing.T) {
 	}
 	if _, _, err := s.Create(ctx, profile, "key-3", Request{AmountUSD: "1"}); !errors.Is(err, ErrNotWatched) {
 		t.Fatalf("no chain watched: err = %v, want ErrNotWatched", err)
+	}
+}
+
+// Check status (F144): one option's network not answering leaves the others checked and names it; only when none
+// answers is the whole check unavailable.
+func TestRecheckWithOneNetworkDown(t *testing.T) {
+	ctx := context.Background()
+	pool, profile := open(t)
+	if _, err := pool.Exec(ctx, `
+		UPDATE chains SET enabled = true WHERE chain_id = 421614;
+		UPDATE tokens SET enabled = true WHERE chain_id = 421614;
+		INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) VALUES (421614, 0, 0)`); err != nil {
+		t.Fatal(err)
+	}
+	s := NewService(pool)
+	inv, _, err := s.Create(ctx, profile, "key-1", Request{AmountUSD: "1"})
+	if err != nil || len(inv.Options) != 2 {
+		t.Fatalf("create: %v, %d options", err, len(inv.Options))
+	}
+	down := map[uint64]bool{421614: true}
+	balanceOf := func(_ context.Context, chainID uint64, _, _ string) (*big.Int, uint64, error) {
+		if down[chainID] {
+			return nil, 0, errors.New("no answer")
+		}
+		return big.NewInt(0), 1, nil
+	}
+	r, err := s.Recheck(ctx, inv.ID, balanceOf)
+	if err != nil || r.OnChain.Sign() != 0 || len(r.Unreadable) != 1 || r.Unreadable[0] != 421614 {
+		t.Fatalf("one down: %+v, %v", r, err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE invoice_rechecks SET checked_at = now() - interval '1 minute'"); err != nil {
+		t.Fatal(err)
+	}
+	down[84532] = true
+	if _, err := s.Recheck(ctx, inv.ID, balanceOf); !errors.Is(err, ErrChainUnavailable) {
+		t.Fatalf("all down: err = %v, want ErrChainUnavailable", err)
 	}
 }

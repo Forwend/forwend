@@ -12,10 +12,11 @@ import (
 )
 
 type recheckJSON struct {
-	OnChain     string `json:"onChain"`
-	Recorded    string `json:"recorded"`
-	Rescanning  bool   `json:"rescanning"`
-	NextCheckAt string `json:"nextCheckAt"`
+	OnChain     string   `json:"onChain"`
+	Recorded    string   `json:"recorded"`
+	Rescanning  bool     `json:"rescanning"`
+	NextCheckAt string   `json:"nextCheckAt"`
+	Unreadable  []uint64 `json:"unreadable"`
 }
 
 // recheckInvoice is POST /v1/invoices/{invoiceId}/recheck (R-55): public like the checkout read, since the payer
@@ -34,6 +35,7 @@ func recheckInvoice(invoices *invoice.Service, balances ledger.BalanceOf) http.H
 			return
 		}
 		writeJSON(w, http.StatusOK, recheckJSON{OnChain: found.OnChain.String(), Recorded: found.Recorded.String(),
-			Rescanning: found.Rescanning, NextCheckAt: found.NextAt.Format(time.RFC3339)})
+			Rescanning: found.Rescanning, NextCheckAt: found.NextAt.Format(time.RFC3339),
+			Unreadable: append([]uint64{}, found.Unreadable...)})
 	}
 }

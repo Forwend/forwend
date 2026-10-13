@@ -2237,7 +2237,7 @@
       "dependsOn": [
         "F133"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend"
       ],
@@ -2249,7 +2249,77 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T16:58:12Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 89.7,
+            "log": "docs/runs/F144-20261013T165812Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F144-20261013T165812Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F144-20261013T165812Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F144-20261013T165812Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F144-20261013T165812Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 96.9,
+            "log": "docs/runs/F144-20261013T165812Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.2,
+            "log": "docs/runs/F144-20261013T165812Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 126.7,
+            "log": "docs/runs/F144-20261013T165812Z-e2e.log"
+          }
+        ],
+        "taskHash": "85630a8bbb8317b2",
+        "filesHash": "56db2013e5ae6885",
+        "proof": {
+          "1": "backend: invoice TestRecheckWithOneNetworkDown (Arbitrum down: Base still checked, unreadable [421614]; all down: ErrChainUnavailable), database TestInvoiceOptions refuses an option for an invoice with a transfer and for an expired one, migrations roll back and reapply; e2e: pay.spec names the network that did not answer"
+        }
+      },
+      "branch": "fix/f144-check-status-still-answers-when-one-opti",
+      "baseCommit": "f228a3a1f19cb32b8851bed3498019cd0df0b87d",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

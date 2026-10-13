@@ -4,6 +4,7 @@ import { Button } from "@forwend/ui-web";
 import { useEffect, useState } from "react";
 import { useRecheckInvoiceMutation } from "@/features/invoices/invoices-api";
 import { INVOICE_COPY as COPY } from "@/features/invoices/invoices-copy";
+import { chainName } from "@/shared/chains/chains";
 
 const TOO_MANY_REQUESTS = 429;
 
@@ -49,7 +50,14 @@ export function CheckStatus({
           : error
             ? COPY.recheckFailed
             : data
-              ? COPY.recheck(data, network, money)
+              ? [
+                  COPY.recheck(data, network, money),
+                  data.unreadable.length > 0
+                    ? COPY.recheckUnreadable(data.unreadable.map(chainName).join(", "))
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" ")
               : ""}
       </p>
     </div>

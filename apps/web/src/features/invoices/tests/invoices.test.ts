@@ -197,7 +197,7 @@ describe("check status message", () => {
   const money = (units: bigint) => `${units} units`;
   const say = (onChain: string, recorded: string, rescanning: boolean) =>
     INVOICE_COPY.recheck(
-      { onChain, recorded, rescanning, nextCheckAt: "2026-10-13T12:00:30Z" },
+      { onChain, recorded, rescanning, nextCheckAt: "2026-10-13T12:00:30Z", unreadable: [] },
       "Base Sepolia",
       money,
     );

@@ -439,12 +439,31 @@ func TestInvoiceOptions(t *testing.T) {
 	wantCode(t, err, codeRaise, "leaving the group")
 	must(t, choose(3, 3))
 
+	// An option joins only an open invoice with no money (F144).
+	must(t, insertInvoice(conn, profile, 5, hex20(105), "key-5", "5000000"))
+	_, err = insertTransfer(conn, 5, hex20(105), 50, 50, 0)
+	must(t, err)
+	opt := func(id, main int, key string) error {
+		_, err := conn.Exec(ctx, `
+			INSERT INTO invoices (id, main_id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
+			    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
+			    request_hash)
+			VALUES ($1, $2, $3, 84532, 'evm', $4, 5000000, 1800000000, 1800086400, $5, 'evm_create2', $6, $7, $8, $9)`,
+			hex32(id), hex32(main), profile, token, hex20(1), hex20(2), hex20(id+100), key, make([]byte, 32))
+		return err
+	}
+	wantCode(t, opt(6, 5, "key-5"), codeRaise, "an option for an invoice that has money")
+	must(t, insertInvoice(conn, profile, 7, hex20(107), "key-7", "5000000"))
+	_, err = conn.Exec(ctx, "UPDATE invoices SET payment_status = 'expired' WHERE id = $1", hex32(7))
+	must(t, err)
+	wantCode(t, opt(8, 7, "key-7"), codeRaise, "an option for an expired invoice")
+
 	// The view shows each invoice once, with the chosen option's terms.
 	var current string
 	var count int
 	must(t, conn.QueryRow(ctx, `SELECT (SELECT option_id FROM invoices_current WHERE id = $1),
 		(SELECT count(*) FROM invoices_current)`, hex32(1)).Scan(&current, &count))
-	if current != hex32(2) || count != 2 {
-		t.Fatalf("invoices_current: invoice 1 shows option %s of %d rows, want %s of 2", current, count, hex32(2))
+	if current != hex32(2) || count != 4 {
+		t.Fatalf("invoices_current: invoice 1 shows option %s of %d rows, want %s of 4", current, count, hex32(2))
 	}
 }

@@ -33,6 +33,8 @@ type Recheck struct {
 	OnChain, Recorded *big.Int
 	Rescanning        bool
 	NextAt            time.Time
+	// Unreadable lists the chains of options whose RPC did not answer; the others were still checked.
+	Unreadable []uint64
 }
 
 // Recheck reads the invoice's receive addresses on chain (every option's until one has money) and, for each that holds
@@ -61,20 +63,31 @@ func (s *Service) Recheck(ctx context.Context, id string, balanceOf ledger.Balan
 	}
 	// Before an option has money the payer may have paid any of them; after, only the chosen one takes payments.
 	var found Recheck
+	var unreadable []uint64
+	var lastErr error
 	for _, o := range inv.Options {
 		if inv.OptionLocked && o.ID != inv.OptionID {
 			continue
 		}
 		r, err := s.recheckOption(ctx, o, balanceOf)
+		if errors.Is(err, ErrChainUnavailable) {
+			// One network down must not hide what the others show.
+			unreadable, lastErr = append(unreadable, o.ChainID), err
+			continue
+		}
 		if err != nil {
 			return Recheck{}, err
 		}
-		// What the page shows: an option holding more than recorded, else the current option.
-		if (o.ID == inv.OptionID && found.OnChain == nil) || r.OnChain.Cmp(r.Recorded) > 0 {
+		// What the page shows: an option holding more than recorded, else the current option, else any read.
+		if found.OnChain == nil || (o.ID == inv.OptionID && found.OnChain.Cmp(found.Recorded) <= 0) ||
+			r.OnChain.Cmp(r.Recorded) > 0 {
 			found = r
 		}
 	}
-	found.NextAt = checked.Add(RecheckEvery).UTC()
+	if found.OnChain == nil {
+		return Recheck{}, lastErr
+	}
+	found.NextAt, found.Unreadable = checked.Add(RecheckEvery).UTC(), unreadable
 	return found, nil
 }
 
