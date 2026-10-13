@@ -329,6 +329,7 @@ test("an open invoice's page offers Check status and a settled one does not", as
         recorded: "0",
         rescanning: false,
         nextCheckAt: new Date(Date.now() + 30_000).toISOString(),
+        unreadable: [],
       },
     }),
   );

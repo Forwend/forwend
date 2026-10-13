@@ -207,6 +207,8 @@ export interface Recheck {
   recorded: string;
   rescanning: boolean;
   nextCheckAt: string;
+  /** Chains of options whose network did not answer; the others were checked (F144). */
+  unreadable: number[];
 }
 
 export interface InvoicesPage {

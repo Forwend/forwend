@@ -203,13 +203,15 @@ test.describe("pay page", () => {
           recorded: "0",
           rescanning: true,
           nextCheckAt: new Date(NOW.getTime() + 30_000).toISOString(),
+          unreadable: [421614],
         },
       });
     });
     const check = page.getByRole("button", { name: "Check status" });
     await check.click();
+    // A network that did not answer is named; the others were still checked (F144).
     await expect(page.getByRole("status").filter({ hasText: /^Found/ })).toHaveText(
-      "Found 1,250.00 USDC that is not recorded yet. Recording it now; this page updates by itself.",
+      "Found 1,250.00 USDC that is not recorded yet. Recording it now; this page updates by itself. Arbitrum Sepolia did not answer; check again in a moment.",
     );
     await expect(check).toBeDisabled();
     expect(calls).toBe(1);

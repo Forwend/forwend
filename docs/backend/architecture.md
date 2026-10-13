@@ -157,8 +157,8 @@ Built in `internal/database/migrations` (R-17); Postgres enforces the rules belo
   change either. Payer chooses (R-56, migration 00020): each further accepted option is a row with `main_id` = the
   invoice's first row, which must share its profile, recipient, factory, expiry, settle deadline and request; it takes
   the main row's number, no details and no issuer, and moves no counter (number and idempotency key are unique among
-  main rows only). The main row's `chosen_id` names the option that received money first: set once, to one of its
-  own options. The `invoices_current` view gives one row per invoice with the main row's number and details and the
+  main rows only), and only while the main row is open with no transfer (migration 00022). The main row's
+  `chosen_id` names the option that received money first: set once, to one of its own options. The `invoices_current` view gives one row per invoice with the main row's number and details and the
   current option's terms and statuses.
 - `chain_transfers`: `block_hash`, `block_number`, `block_time`, status `detected|confirmed|reorged`. A transfer must go to
   its invoice's receive address, for the invoice's token, on its chain (foreign key).

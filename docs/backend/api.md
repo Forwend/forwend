@@ -219,7 +219,9 @@ seconds (when the next token is back) and runs nothing else.
   check per invoice every 30 s, kept in Postgres so every replica agrees (`invoice_rechecks.checked_at`), and a
   per-process bucket of 1 a second, 10 at once, for everyone together. Both answer 429 with `Retry-After`. A chain that
   can't be read answers 503 `network_unavailable`. Until an option has money it checks every option's address (the
-  payer may have paid any); the answer is an option holding more than recorded, else the shown one. A rescan is asked only when the address holds more than is
+  payer may have paid any); the answer is an option holding more than recorded, else the shown one. An option whose
+  network does not answer is listed in `unreadable` and the others are still checked. When the shown option can't be
+  read and no other holds unrecorded money, it is 503: another option's empty read never answers for it. A rescan is asked only when the address holds more than is
   recorded and no rescan finished in the last 10 minutes, so money no log explains (Arc native USDC) doesn't start a
   full rescan on every press.
 - The other public routes (`GET /v1/invoices/{invoiceId}` and both PDFs) have no limit in the api. Next's `/api` rewrite does
