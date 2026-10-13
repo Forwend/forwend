@@ -128,13 +128,9 @@ func Receipt(inv invoice.Invoice, payLink string) ([]byte, error) {
 	if inv.PaymentStatus != ledger.Paid {
 		return nil, ErrNotPaid
 	}
+	// The payer's proof of payment: when and how they paid. Settling is the creator's business (R-61).
 	d := start(inv, "Receipt")
-	settled := ""
-	if !inv.SettledAt.IsZero() {
-		settled = stamp(inv.SettledAt)
-	}
-	d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Paid", stamp(inv.PaidAt)},
-		[2]string{"Settled", settled})
+	d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Paid", stamp(inv.PaidAt)})
 	d.lines(inv, "Amount paid", false)
 
 	net := networkOf(inv)
@@ -144,17 +140,9 @@ func Receipt(inv invoice.Invoice, payLink string) ([]byte, error) {
 			d.transaction(net, amount(dep.Amount, inv.Decimals, inv.Symbol)+" · "+stamp(dep.BlockTime), dep.TxHash)
 		}
 	}
-	d.heading("Settlement")
-	d.transaction(net, settlement[inv.SettlementStatus], inv.SettlementTxHash)
 	d.code(payLink, "Check this receipt", "A PDF can be edited. The pay page shows what the chain recorded.")
 	d.footer(inv)
 	return d.output()
-}
-
-var settlement = map[string]string{
-	"none":    "Not started",
-	"pending": "Pending: on its way to the creator's wallet",
-	"settled": "Settled: in the creator's wallet",
 }
 
 type doc struct{ *fpdf.Fpdf }
