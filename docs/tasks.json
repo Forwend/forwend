@@ -190,7 +190,7 @@
         "No raw <button>, <input>, <select> or <textarea> in apps/web/src outside the kit showcase unless the kit has no such control, and each such exception is named in docs/web/structure.md; e2e and unit pass unchanged"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -259,12 +259,19 @@
         "taskHash": "406fb954b4e1e297",
         "filesHash": "7cac2f6a672e2021",
         "proof": {
-          "1": "e2e: the full browser suite passes with the kit controls; grep finds raw button/input/form only in the kit itself, the kit showcase and the three named exceptions in docs/web/structure.md (command-menu combobox, header search triggers, phone tab bar Profiles tab); unit: app 101 and kit 38 tests pass"
-        }
+          "1": "e2e: suite passes with kit controls"
+        },
+        "commit": "2f74b14",
+        "doneAt": "2026-10-13T23:01:16Z"
       },
       "branch": "refactor/f168-app-controls-use-the-shared-kit-componen",
       "baseCommit": "5a8cb50b6ae95a25e18a2fec858cb91a0538205e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f168-app-controls-use-the-shared-kit-componen",
+        "base": "main"
+      }
     },
     {
       "id": "F169",
