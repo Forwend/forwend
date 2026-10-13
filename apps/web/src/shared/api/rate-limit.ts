@@ -6,11 +6,16 @@ import type {
 } from "@reduxjs/toolkit/query";
 import { REFRESH_MS } from "@/shared/config/refresh";
 
+/** `answerFirst`: a 429 is the answer itself (Check status asked too soon), not something to wait out. */
+export interface RateLimitOptions {
+  answerFirst?: boolean;
+}
+
 type BaseQuery = BaseQueryFn<
   string | FetchArgs,
   unknown,
   FetchBaseQueryError,
-  object,
+  RateLimitOptions,
   FetchBaseQueryMeta
 >;
 
@@ -49,6 +54,7 @@ export function withRateLimit(base: BaseQuery): BaseQuery {
   return async (args, api, extra) => {
     if (api.type === "query") await sleep(pausedUntil - Date.now(), api.signal);
     let result = await base(args, api, extra);
+    if (result.error?.status === 429 && extra?.answerFirst) return result;
     if (result.error?.status === 429) {
       await sleep(retryAfterMs(result.meta?.response?.headers.get("Retry-After")), api.signal);
       result = await base(args, api, extra);

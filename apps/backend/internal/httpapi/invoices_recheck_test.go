@@ -21,7 +21,8 @@ func (e invoiceEnv) recheck(t *testing.T, srv *httptest.Server, id string) reply
 }
 
 // R-55: Check status compares the address's finalized balance (2500000 in this env) with the recorded transfers, asks
-// the worker to rescan when more is on chain, and runs once per invoice every 30 s.
+// the worker to rescan when more is on chain, and runs once per invoice every 5 minutes; the invoice read says when
+// the next check is allowed.
 func TestRecheckInvoice(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
@@ -30,7 +31,7 @@ func TestRecheckInvoice(t *testing.T) {
 	r := e.recheck(t, e.srv, id)
 	next, _ := time.Parse(time.RFC3339, r.body["nextCheckAt"].(string))
 	if r.status != http.StatusOK || r.body["onChain"] != "2500000" || r.body["recorded"] != "0" ||
-		r.body["rescanning"] != true || time.Until(next) < 25*time.Second || time.Until(next) > 31*time.Second {
+		r.body["rescanning"] != true || time.Until(next) < 295*time.Second || time.Until(next) > 301*time.Second {
 		t.Fatalf("first check: %d %v", r.status, r.body)
 	}
 	var asked bool
@@ -41,12 +42,16 @@ func TestRecheckInvoice(t *testing.T) {
 
 	again := e.recheck(t, e.srv, id)
 	if again.status != http.StatusTooManyRequests || errorCode(again) != "rate_limited" {
-		t.Fatalf("within 30 s: %d %v", again.status, again.body)
+		t.Fatalf("within 5 minutes: %d %v", again.status, again.body)
+	}
+	// A reload knows it too: the read gives the same next check time.
+	if got := e.get(t, id).body["nextCheckAt"]; got != r.body["nextCheckAt"] {
+		t.Fatalf("read nextCheckAt %v, want %v", got, r.body["nextCheckAt"])
 	}
 
 	// After the wait, with the deposit recorded and the rescan done, nothing more is asked.
 	if _, err := e.pool.Exec(ctx, `
-		WITH r AS (UPDATE invoice_rechecks SET checked_at = now() - interval '31 seconds', rescan_requested_at = NULL
+		WITH r AS (UPDATE invoice_rechecks SET checked_at = now() - interval '301 seconds', rescan_requested_at = NULL
 		           WHERE invoice_id = $1)
 		INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index, block_hash,
 		    block_number, block_time, from_address, to_address, amount, status)
@@ -62,7 +67,7 @@ func TestRecheckInvoice(t *testing.T) {
 	// (money no log explains, such as Arc native USDC).
 	if _, err := e.pool.Exec(ctx, `
 		WITH t AS (DELETE FROM chain_transfers WHERE invoice_id = $1)
-		UPDATE invoice_rechecks SET checked_at = now() - interval '31 seconds', rescanned_at = now() - interval '1 minute'
+		UPDATE invoice_rechecks SET checked_at = now() - interval '301 seconds', rescanned_at = now() - interval '1 minute'
 		WHERE invoice_id = $1`, id); err != nil {
 		t.Fatal(err)
 	}

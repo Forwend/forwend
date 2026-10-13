@@ -341,9 +341,7 @@ test("an open invoice's page offers Check status and a settled one does not", as
       .getByRole("main")
       .getByRole("status")
       .filter({ hasText: /^Nothing/ }),
-  ).toHaveText(
-    "Nothing has arrived on Base Sepolia yet. A payment shows once the network finalizes it.",
-  );
+  ).toHaveText("Nothing on Base Sepolia yet.");
   await expect(check).toBeDisabled();
   await page.goto(`/app/invoices/${SETTLED_INVOICE.invoiceId}`);
   await expect(page.getByRole("main").getByText("October retainer")).toBeVisible();

@@ -14,7 +14,7 @@ import (
 )
 
 // RecheckEvery spaces the checks of one invoice, across api replicas (R-55).
-const RecheckEvery = 30 * time.Second
+const RecheckEvery = 5 * time.Minute
 
 // RescanAgainAfter is how long a finished rescan stands before a check may ask for another: money that no log explains
 // (Arc native USDC, docs/backend/money-safety.md) must not start a full rescan on every press.

@@ -398,7 +398,7 @@ paths:
         Public like GET /v1/invoices/{invoiceId}: the payer presses Check status (R-55, D-77). Reads the receive
         address's token balance at the chain's finalized block and compares it with the recorded transfers. When more
         is on chain, the worker rescans the address from the invoice's creation block in bounded steps and books what
-        it finds. Never signs. One check per invoice every 30 s across api replicas; a per-process limit bounds the
+        it finds. Never signs. One check per invoice every 5 minutes across api replicas; a per-process limit bounds the
         RPC reads; per-IP limits belong to the edge (Q-8).
       security: []
       parameters:
@@ -870,7 +870,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/InvoiceSummary"
         - type: object
-          required: [paidAt, settledAt, deposits]
+          required: [paidAt, settledAt, deposits, options, nextCheckAt]
           properties:
             paidAt:
               type: [string, "null"]
@@ -890,6 +890,10 @@ components:
                 Transfers to the receive address (the shown option's) that are not reorged, in chain order. Empty on
                 create.
               items: { $ref: "#/components/schemas/Deposit" }
+            nextCheckAt:
+              type: [string, "null"]
+              format: date-time
+              description: When Check status may run again (R-55); null when it may now.
             options:
               type: array
               description: |

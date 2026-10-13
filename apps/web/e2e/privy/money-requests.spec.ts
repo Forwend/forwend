@@ -131,13 +131,13 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     const payer = await browser.newContext({ reducedMotion: "reduce" });
     const pay = await payer.newPage();
     await pay.goto(`/pay/${request.invoiceId}`);
-    await expect(
-      pay.getByRole("heading", { level: 1, name: "E2E Requester requests 3.25 USDC" }),
-    ).toBeVisible();
+    await expect(pay.getByRole("heading", { level: 1, name: "E2E Requester" })).toBeVisible();
+    await expect(pay.locator("[data-money]")).toHaveText("3.25 USDC");
     await expect(pay.getByText(`Request ${request.number}`)).toBeVisible();
-    await expect(pay.getByText("The sender gave no name")).toHaveCount(0);
+    // Who asks is the name the sender gave; Need help says Forwend doesn't check it.
+    await pay.getByText("Need help?").click();
     await expect(
-      pay.getByText("The sender gave this name. Forwend doesn't check it."),
+      pay.getByText("The name is what the sender gave; Forwend doesn't check it."),
     ).toBeVisible();
     expect(await blockingViolations(pay)).toEqual([]);
     await payer.close();
@@ -175,9 +175,8 @@ test("on a phone a personal profile requests money from the round actions withou
     await fits();
 
     await page.goto(`/pay/${request.invoiceId}`);
-    await expect(
-      page.getByRole("heading", { level: 1, name: "E2E Phone requests 1.00 USDC" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "E2E Phone" })).toBeVisible();
+    await expect(page.locator("[data-money]")).toHaveText("1.00 USDC");
     await fits();
     expect(await blockingViolations(page)).toEqual([]);
   }

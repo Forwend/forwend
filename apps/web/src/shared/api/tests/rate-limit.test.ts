@@ -48,6 +48,15 @@ describe("withRateLimit", () => {
     expect(base).toHaveBeenCalledTimes(2);
   });
 
+  it("hands a 429 straight back when the caller takes it as the answer", async () => {
+    const base = vi.fn().mockResolvedValue(answer(429, "300"));
+    const result = await withRateLimit(base)("/v1/invoices/x/recheck", api("mutation"), {
+      answerFirst: true,
+    });
+    expect(result.error?.status).toBe(429);
+    expect(base).toHaveBeenCalledTimes(1);
+  });
+
   it("holds later reads for a pause that doubles while the retries are refused; a success ends it", async () => {
     const base = vi.fn().mockResolvedValue(answer(429, "1"));
     const query = withRateLimit(base);

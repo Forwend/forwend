@@ -128,12 +128,12 @@ func TestRecheckWithOneNetworkDown(t *testing.T) {
 	if err != nil || r.OnChain.Sign() != 0 || len(r.Unreadable) != 1 || r.Unreadable[0] != 421614 {
 		t.Fatalf("one down: %+v, %v", r, err)
 	}
-	if _, err := pool.Exec(ctx, "UPDATE invoice_rechecks SET checked_at = now() - interval '1 minute'"); err != nil {
+	if _, err := pool.Exec(ctx, "UPDATE invoice_rechecks SET checked_at = now() - interval '10 minutes'"); err != nil {
 		t.Fatal(err)
 	}
-	again := func() { // past the 30-second spacing
+	again := func() { // past the 5-minute spacing
 		t.Helper()
-		if _, err := pool.Exec(ctx, "UPDATE invoice_rechecks SET checked_at = now() - interval '1 minute'"); err != nil {
+		if _, err := pool.Exec(ctx, "UPDATE invoice_rechecks SET checked_at = now() - interval '10 minutes'"); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -58,6 +58,16 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 	if settledAt != nil {
 		inv.SettledAt = settledAt.UTC()
 	}
+	// The page shows when Check status may run again, also after a reload (R-55).
+	var next *time.Time
+	if err := s.pool.QueryRow(ctx, `SELECT max(checked_at) + make_interval(secs => $2) FROM invoice_rechecks
+		WHERE invoice_id = $1 AND checked_at > now() - make_interval(secs => $2)`, inv.ID,
+		RecheckEvery.Seconds()).Scan(&next); err != nil {
+		return Invoice{}, fmt.Errorf("read invoice %s last check: %w", inv.ID, err)
+	}
+	if next != nil {
+		inv.NextCheckAt = next.UTC()
+	}
 	// Each option's own deposits: on an option that was not chosen they are held for the payer (D-76).
 	for i, o := range inv.Options {
 		if inv.Options[i].Deposits, err = s.deposits(ctx, o.ID, o.ChainID, inv.ExpiresAt); err != nil {

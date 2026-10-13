@@ -49,8 +49,10 @@ export const invoicesApi = apiSlice
         query: ({ profileId, invoiceId }) =>
           `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}`,
       }),
-      /** Check status: public, like the checkout read; the api allows one per invoice every 30 s. */
+      /** Check status: public, like the checkout read; the api allows one per invoice every 5 minutes. */
       recheckInvoice: build.mutation<Recheck, string>({
+        // Asked too soon is the answer: the page rests until the next check, it does not wait and ask again.
+        extraOptions: { answerFirst: true },
         query: (invoiceId) => ({
           url: `/v1/invoices/${encodeURIComponent(invoiceId)}/recheck`,
           method: "POST",

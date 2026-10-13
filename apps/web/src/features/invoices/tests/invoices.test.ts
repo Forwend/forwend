@@ -70,6 +70,7 @@ const open: Invoice = {
   optionId: `0x${"1".repeat(64)}`,
   optionLocked: false,
   optionCount: 1,
+  nextCheckAt: null,
   options: [],
   number: 1,
   title: null,
@@ -203,19 +204,13 @@ describe("check status message", () => {
       money,
     );
   it("names what is on chain but not recorded while the worker looks again", () => {
-    expect(say("5000000", "1000000", true)).toBe(
-      "Found 4000000 units that is not recorded yet. Recording it now; this page updates by itself.",
-    );
-    expect(say("0", "0", true)).toBe("Looking at Base Sepolia again; this page updates by itself.");
-    expect(say("5000000", "0", false)).toBe(
-      "5000000 units at the address has no recorded transfer. A full check ran a few minutes ago; check again later.",
-    );
+    expect(say("5000000", "1000000", true)).toBe("Found 4000000 units. Recording it now.");
+    expect(say("0", "0", true)).toBe("Looking on Base Sepolia again.");
+    expect(say("5000000", "0", false)).toBe("5000000 units has no recorded transfer yet.");
   });
   it("says nothing arrived, or that everything is recorded", () => {
-    expect(say("0", "0", false)).toMatch(/^Nothing has arrived on Base Sepolia yet\./);
-    expect(say("5000000", "5000000", false)).toBe(
-      "Up to date: every payment at the address is recorded.",
-    );
+    expect(say("0", "0", false)).toBe("Nothing on Base Sepolia yet.");
+    expect(say("5000000", "5000000", false)).toBe("Up to date");
   });
 });
 

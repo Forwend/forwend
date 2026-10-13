@@ -87,10 +87,11 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   address from the terms with the factory and implementation built into the page (`features/pay/receive-address.ts`,
   keccak256 from `@noble/hashes`, tested against the R-15 vectors) and shows no address on a mismatch. Token symbol and
   decimals come from `PAY_TOKENS` in the build, never the API; another token is refused, so enabling a token in the
-  API also needs an entry there. The refund rule, the scam note and the network warning come first; the address and
-  QR show only after the payer confirms the network. A payer-chooses invoice (R-57) lists its `options`: until one has
-  money the payer picks the network, then a token on it (`features/pay/option-picker.tsx`), and the page checks that
-  option's terms with its own id, which must derive from the link's; `?option=<id>` starts with one picked. Paid and settled come only from the API (D-29). It loads no
+  API also needs an entry there. The address and QR show only after the payer picks the network and presses Show
+  address, with one line naming the exact token and network. A payer-chooses invoice (R-57) lists its `options`: until
+  one has money the payer picks the network, then a token on it, with selects (`features/pay/option-picker.tsx`), and
+  the page checks that option's terms with its own id, which must derive from the link's; the pick goes into
+  `?option=<id>` and the shown address into session storage, so a reload keeps both (R-68). Paid and settled come only from the API (D-29). It loads no
   third-party scripts ([money-safety.md](../backend/money-safety.md)).
 
 ## Tests

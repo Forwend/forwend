@@ -30,6 +30,7 @@ const OPEN = {
   optionId: ID,
   optionLocked: false,
   optionCount: 1,
+  nextCheckAt: null,
   options: [MAIN_OPTION],
   number: 1,
   title: "Logo design",
@@ -122,20 +123,21 @@ async function openPay(page: Page, ...bodies: object[]) {
   await page.goto(`/pay/${ID}`);
 }
 
-const confirmButton = (page: Page) =>
-  page.getByRole("button", { name: "I will send USDC on Base Sepolia" });
-const method = (page: Page, name: "From a wallet" | "From an exchange") =>
-  page.getByRole("button", { name: new RegExp(`^${name}`) });
-// Steps 1 and 2: confirm the network, then pay from a wallet.
-const startPaying = async (page: Page) => {
-  await confirmButton(page).click();
-  await method(page, "From a wallet").click();
-};
-const receipt = (page: Page) => page.getByRole("region", { name: "Receipt" });
+const showAddress = (page: Page) => page.getByRole("button", { name: "Show address" });
+const status = (page: Page) => page.getByRole("status").filter({ hasText: /./ }).first();
 const pdfPath = (file: string) => `/api/v1/invoices/${ID}/${file}`;
+const PARTIAL = {
+  ...OPEN,
+  paymentStatus: "partially_paid",
+  deposits: [
+    { ...DEPOSIT, amount: "250000000", status: "confirmed", blocksLeft: 0, secondsLeft: 0 },
+  ],
+};
+const CLOSED = { ...OPEN, paymentStatus: "expired" };
 
+// R-68: one short screen: who asks, the amount, Pay with, the address on request, one status line.
 test.describe("pay page", () => {
-  test("shows who asks and the rules, then the address only after the payer confirms the network", async ({
+  test("shows who asks and the amount, then the address once the payer asks for it", async ({
     page,
   }) => {
     const scripts: string[] = [];
@@ -145,56 +147,46 @@ test.describe("pay page", () => {
     await openPay(page, OPEN);
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Alice Design GmbH");
-    await expect(
-      page.getByText("The sender gave this name. Forwend doesn't check it."),
-    ).toBeVisible();
     await expect(page.getByText("Invoice INV-0001 · Logo design")).toBeVisible();
     await expect(page.locator("[data-money]")).toHaveText("1,250.00 USDC");
-    await expect(page.getByText("Base Sepolia", { exact: true }).first()).toBeVisible();
-    await expect(
-      page.locator("li", { hasText: `You are on ${new URL(PUBLIC_URL).host}.` }),
-    ).toBeVisible();
-    await expect(
-      page.getByText(/^If you send more, or pay after the checkout closes/),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Forwend never asks you to pay a different address or an extra fee."),
-    ).toBeVisible();
-    await expect(page.getByText(/is a test network/)).toBeVisible();
+    await expect(page.getByText("on Base Sepolia", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Download invoice PDF" })).toHaveAttribute(
       "href",
       pdfPath("invoice.pdf"),
     );
-    await expect(receipt(page)).toHaveCount(0);
+    await expect(status(page)).toHaveText("Waiting for payment…");
+    // No filler: no testnet notice, no steps, no timeline; the rules wait behind Need help.
+    await expect(page.getByText(/test network/)).toHaveCount(0);
+    await expect(page.getByRole("list", { name: "Payment progress" })).toHaveCount(0);
+    await expect(
+      page.getByText("Forwend never asks you to pay a different address or an extra fee."),
+    ).toBeHidden();
+    await page.getByText("Need help?").click();
+    await expect(
+      page.getByText("Forwend never asks you to pay a different address or an extra fee."),
+    ).toBeVisible();
+    await expect(
+      page.locator("li", { hasText: `You are on ${new URL(PUBLIC_URL).host}.` }),
+    ).toBeVisible();
+
     await expect(page.getByText(RECEIVE)).toHaveCount(0);
     await expect(page.getByRole("img", { name: /QR code/ })).toHaveCount(0);
-
-    // One step at a time: the network first, then how to pay, and only then the address.
-    await confirmButton(page).click();
-    await expect(page.getByRole("heading", { name: "How you pay" })).toBeFocused();
-    await expect(page.getByText(RECEIVE)).toHaveCount(0);
-    await method(page, "From a wallet").click();
-    await expect(page.getByRole("heading", { name: "Send the payment" })).toBeFocused();
+    await showAddress(page).click();
+    await expect(page.getByRole("heading", { name: "Send USDC on Base Sepolia to" })).toBeFocused();
     await expect(page.getByText(RECEIVE)).toBeVisible();
     await expect(page.getByRole("img", { name: "QR code of the address to pay" })).toBeVisible();
-    await expect(
-      page.getByText("Open your wallet and choose the Base Sepolia network."),
-    ).toBeVisible();
-
-    await page.getByRole("button", { name: "Change how you pay" }).click();
-    await method(page, "From an exchange").click();
-    await expect(
-      page.getByText(/^Choose Withdraw, then USDC, then the Base Sepolia network/),
-    ).toBeVisible();
-    await expect(page.getByText(/withdrawal fee/)).toBeVisible();
+    await expect(page.getByRole("note")).toHaveText("Send only USDC on Base Sepolia.");
+    // A reload in the same tab keeps the address shown.
+    await page.reload();
     await expect(page.getByText(RECEIVE)).toBeVisible();
 
     expect(scripts.length).toBeGreaterThan(0);
     for (const url of scripts) expect(new URL(url).origin, url).toBe(new URL(PUBLIC_URL).origin);
   });
 
-  // R-55: Check status asks Forwend to look at the address again, says what it found and rests until the next check.
-  test("Check status asks Forwend to look again and says what it found", async ({ page }) => {
+  // R-55: Check status asks Forwend to look again, says what it found and rests until the next check, also after a
+  // reload.
+  test("Check status says what it found and when the next check is allowed", async ({ page }) => {
     await openPay(page, OPEN);
     let calls = 0;
     await page.route(`**/api/v1/invoices/${ID}/recheck`, (route) => {
@@ -204,115 +196,147 @@ test.describe("pay page", () => {
           onChain: "1250000000",
           recorded: "0",
           rescanning: true,
-          nextCheckAt: new Date(NOW.getTime() + 30_000).toISOString(),
+          nextCheckAt: new Date(NOW.getTime() + 300_000).toISOString(),
           unreadable: [421614],
         },
       });
     });
     const check = page.getByRole("button", { name: "Check status" });
     await check.click();
-    // A network that did not answer is named; the others were still checked (F144).
     await expect(page.getByRole("status").filter({ hasText: /^Found/ })).toHaveText(
-      "Found 1,250.00 USDC that is not recorded yet. Recording it now; this page updates by itself. Arbitrum Sepolia did not answer; check again in a moment.",
+      "Found 1,250.00 USDC. Recording it now. · Arbitrum Sepolia did not answer.",
     );
+    await expect(page.getByText(/· Next check in 5 min$/)).toBeVisible();
     await expect(check).toBeDisabled();
     expect(calls).toBe(1);
+    // The read says the same after a reload.
+    await mockInvoice(page, {
+      ...OPEN,
+      nextCheckAt: new Date(NOW.getTime() + 240_000).toISOString(),
+    });
+    await page.reload();
+    await expect(check).toBeDisabled();
+    await expect(page.getByText("Next check in 4 min", { exact: true })).toBeVisible();
   });
 
-  test("moves from waiting to detected, confirming, paid and settled without a reload", async ({
+  test("Check status asked too soon rests instead of reporting a network failure", async ({
+    page,
+  }) => {
+    await openPay(page, OPEN);
+    await page.route(`**/api/v1/invoices/${ID}/recheck`, (route) =>
+      route.fulfill({
+        status: 429,
+        headers: { "Retry-After": "120" },
+        json: { error: { code: "rate_limited", message: "checked recently" } },
+      }),
+    );
+    const check = page.getByRole("button", { name: "Check status" });
+    await check.click();
+    await expect(page.getByRole("status").filter({ hasText: /^Checked/ })).toHaveText(
+      "Checked recently.",
+    );
+    await expect(check).toBeDisabled();
+    // It comes back once the wait is over.
+    await page.clock.runFor(31_000);
+    await expect(check).toBeEnabled();
+  });
+
+  test("follows the payment from waiting to paid without a reload, and never shows Settled", async ({
     page,
   }) => {
     await openPay(page, OPEN, DETECTED, CONFIRMING, PAID, SETTLED);
     await page.evaluate(() => {
       (window as unknown as { stayed: boolean }).stayed = true;
     });
-    const status = page.getByRole("status").filter({ hasText: /./ });
-    // The amount panel's pill; each payment below has its own.
-    const pill = page.locator("[data-status]").first();
-    const progress = page.getByRole("list", { name: "Payment progress" });
+    await expect(status(page)).toHaveText("Waiting for payment…");
+    await showAddress(page).click();
 
-    await expect(status).toHaveText(/^Waiting for your payment/);
-    await expect(pill).toHaveText("Waiting for payment");
-
-    // A short line, the blocks apart; the pill and the step show a payment on its way, not done.
+    // The full amount is on its way: no address invites a second payment; one status, no pills.
     await page.clock.runFor(POLL_MS);
-    await expect(status).toHaveText("Confirming (0/12) · about 3 min left");
-    await expect(pill).toHaveText("Detected");
-    await expect(pill).toHaveAttribute("data-status", "detected");
-    await expect(progress.locator("[aria-current=step]")).toHaveText("Confirming");
-    // The full amount is on its way: no address invites a second payment.
-    await expect(confirmButton(page)).toHaveCount(0);
+    await expect(status(page)).toHaveText(
+      "Payment received · Confirming (0/12) · about 3 min left",
+    );
+    await expect(page.getByText(RECEIVE)).toHaveCount(0);
+    await expect(page.locator("[data-status]")).toHaveCount(0);
 
-    // What arrived, with proof on the chain's explorer.
-    const explorer = page.getByRole("link", { name: "View transaction on Basescan" });
-    const payment = page.getByRole("listitem").filter({ has: explorer });
-    await expect(payment).toContainText(/1,250\.00\s*USDC\s*Confirming/);
+    await page.clock.runFor(POLL_MS);
+    await expect(status(page)).toHaveText(
+      "Payment received · Confirming (6/12) · about 2 min left",
+    );
+
+    await page.clock.runFor(POLL_MS);
+    await expect(page.getByRole("status").filter({ hasText: /^Paid$/ })).toBeVisible();
+    const explorer = page.getByRole("link", { name: "View transaction" });
     await expect(explorer).toHaveAttribute(
       "href",
       `https://sepolia.basescan.org/tx/${DEPOSIT.txHash}`,
     );
     await expect(explorer).toHaveAttribute("target", "_blank");
-    await expect(explorer).toHaveAttribute("rel", "noopener noreferrer");
-    // Who sent it and when: the short sender, the full address as its name and in a tooltip on focus.
-    const sender = payment.getByRole("button", { name: SENDER });
-    await expect(sender).toHaveText("0x8ba1…ba72");
-    await expect(payment.locator("time")).toHaveAttribute("datetime", DEPOSIT.blockTime);
-    // Radix closes a tooltip on scroll, and the first focus may scroll the button into view: focus again.
-    await expect(async () => {
-      await sender.blur();
-      await sender.focus();
-      await expect(page.getByRole("tooltip")).toHaveText(SENDER, { timeout: 1000 });
-    }).toPass();
+    await expect(page.getByRole("link", { name: "Download receipt" })).toHaveAttribute(
+      "href",
+      pdfPath("receipt.pdf"),
+    );
 
+    // Settled is the sender's business: the payer still sees Paid, with no settlement details.
     await page.clock.runFor(POLL_MS);
-    await expect(status).toHaveText("Confirming (6/12) · about 2 min left");
-
-    await page.clock.runFor(POLL_MS);
-    await expect(status).toHaveText(/^Paid\. Forwend is now sending the money/);
-
-    await page.clock.runFor(POLL_MS);
-    await expect(status).toHaveText(/^Settled\. The sender has received the money/);
-    await expect(pill).toHaveText("Settled");
+    await expect(page.getByRole("status").filter({ hasText: /^Paid$/ })).toBeVisible();
+    await expect(page.getByText(/[Ss]ettle/)).toHaveCount(0);
     expect(await page.evaluate(() => (window as unknown as { stayed?: boolean }).stayed)).toBe(
       true,
     );
   });
 
-  test("lets the payer pick the network, then the token, change it before paying, and locks it once money arrives", async ({
+  test("says what is left when partly paid, and that a closed invoice takes no more", async ({
     page,
   }) => {
-    await openPay(page, CHOOSING, CHOOSING, { ...CHOOSING, optionLocked: true });
-    // Nothing picked: the amount is in USD, no network is named and Continue stays off (R-57).
+    await openPay(page, PARTIAL, CLOSED);
+    await expect(status(page)).toHaveText(
+      "250.00 USDC of 1,250.00 USDC received. Send the remaining 1,000.00 USDC.",
+    );
+    await expect(page.locator("[data-money]").first()).toHaveText("1,000.00 USDC");
+    await page.clock.runFor(POLL_MS);
+    await expect(status(page)).toHaveText(
+      "This invoice is closed. If you already sent money, it is not lost: contact the sender.",
+    );
+    await expect(showAddress(page)).toHaveCount(0);
+  });
+
+  test("lets the payer pick the network and token with selects, keeps the pick after a reload, and locks it once money arrives", async ({
+    page,
+  }) => {
+    await openPay(page, CHOOSING, CHOOSING, CHOOSING, { ...CHOOSING, optionLocked: true });
+    // Nothing picked: the amount is in USD and no address can show.
     await expect(page.locator("[data-money]")).toHaveText("1,250.00 USD");
-    const network = page.getByRole("group", { name: "Network" });
-    await expect(network.getByRole("radio")).toHaveCount(2);
-    const next = page.getByRole("button", { name: "Choose a network and token" });
-    await expect(next).toBeDisabled();
+    await expect(showAddress(page)).toHaveCount(0);
     const serious = (await new AxeBuilder({ page }).analyze()).violations.filter(
       (v) => v.impact === "serious" || v.impact === "critical",
     );
     expect(serious.map((v) => v.id)).toEqual([]);
 
     // Arbitrum carries one token, so picking the network picks it.
-    await network.getByText("Arbitrum Sepolia").click();
-    await expect(page.locator("[data-money]")).toHaveText("1,250.00 USDC");
-    await page.getByRole("button", { name: "I will send USDC on Arbitrum Sepolia" }).click();
-    await method(page, "From a wallet").click();
+    await page.getByRole("combobox", { name: "Network" }).click();
+    await page.getByRole("option", { name: "Arbitrum Sepolia" }).click();
+    await expect(page.getByRole("combobox", { name: "Token" })).toHaveText(/USDC/);
+    await expect(page).toHaveURL(new RegExp(`\\?option=${OPTION_ID}$`));
+    await showAddress(page).click();
     await expect(page.getByText(OPTION_RECEIVE)).toBeVisible();
-    await expect(page.getByText(RECEIVE)).toHaveCount(0);
+    await expect(page.getByRole("note")).toHaveText("Send only USDC on Arbitrum Sepolia.");
 
-    // Before any money, Change opens the choice again and the address follows it.
-    await page.getByRole("button", { name: "Change network and token" }).click();
-    await network.getByText("Base Sepolia").click();
-    await confirmButton(page).click();
+    // A reload keeps the pick and the shown address.
+    await page.reload();
+    await expect(page.getByText(OPTION_RECEIVE)).toBeVisible();
+
+    // Before any money the pick can change, and the address follows it.
+    await page.getByRole("combobox", { name: "Network" }).click();
+    await page.getByRole("option", { name: "Base Sepolia" }).click();
+    await showAddress(page).click();
     await expect(page.getByText(RECEIVE)).toBeVisible();
     await expect(page.getByText(OPTION_RECEIVE)).toHaveCount(0);
 
-    // Money arrived on the Base option: the choice is the invoice's now, with no picker.
+    // Money arrived on the Base option: it is the invoice's now, with no selects.
     await page.clock.runFor(POLL_MS * 2);
-    await page.getByRole("button", { name: "Change network and token" }).click();
-    await expect(page.getByRole("group", { name: "Network" })).toHaveCount(0);
-    await expect(page.getByText("The only way to pay this invoice")).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Network" })).toHaveCount(0);
+    await expect(page.getByText("on Base Sepolia", { exact: true })).toBeVisible();
   });
 
   test("links the logo home and the footer to Forwend, and offers the way back once paid (R-62)", async ({
@@ -321,10 +345,7 @@ test.describe("pay page", () => {
     await openPay(
       page,
       { ...OPEN, returnUrl: "https://shop.example/thanks" },
-      {
-        ...PAID,
-        returnUrl: "https://shop.example/thanks",
-      },
+      { ...PAID, returnUrl: "https://shop.example/thanks" },
     );
     await expect(page.getByRole("link", { name: "Forwend", exact: true })).toHaveAttribute(
       "href",
@@ -333,38 +354,11 @@ test.describe("pay page", () => {
     const footer = page.getByRole("link", { name: "Payments by Forwend (opens in a new tab)" });
     await expect(footer).toHaveAttribute("href", "/");
     await expect(footer).toHaveAttribute("target", "_blank");
-    await expect(page.getByText("You don't need an account")).toHaveCount(0);
     const back = page.getByRole("link", { name: "Back to shop.example" });
     await expect(back).toHaveCount(0);
     await page.clock.runFor(POLL_MS);
     await expect(back).toHaveAttribute("href", "https://shop.example/thanks");
     await expect(page.getByRole("button", { name: "Check status" })).toHaveCount(0);
-  });
-
-  test("shows each step of a payment that confirms within one read, without moving the status panel", async ({
-    page,
-  }) => {
-    await openPay(page, OPEN, PAID);
-    const progress = page.getByRole("list", { name: "Payment progress" });
-    const current = progress.locator("[aria-current=step]");
-    await expect(current).toHaveText("Detected");
-    await page.clock.runFor(POLL_MS);
-    await expect(page.getByRole("status").filter({ hasText: /^Paid\./ })).toBeVisible();
-    const panel = page.getByRole("region", { name: "Payment status" });
-    const top = (await panel.boundingBox())?.y;
-    // The read jumped from waiting to paid; the timeline still passes Confirming and Paid on its way.
-    for (const step of ["Confirming", "Paid", "Settled"]) {
-      await page.clock.runFor(600);
-      await expect(current).toHaveText(step);
-      expect((await panel.boundingBox())?.y).toBe(top);
-    }
-  });
-
-  test("shows a fixed invoice's one option as chosen", async ({ page }) => {
-    await openPay(page, OPEN);
-    await expect(page.getByRole("group", { name: "Network" })).toHaveCount(0);
-    await expect(page.getByText("The only way to pay this invoice")).toBeVisible();
-    await expect(confirmButton(page)).toBeEnabled();
   });
 
   test("shows no address and warns the payer when a term does not match the address", async ({
@@ -376,7 +370,7 @@ test.describe("pay page", () => {
         hasText: "This payment page does not match the invoice. Do not pay; contact the sender.",
       }),
     ).toBeVisible();
-    await expect(confirmButton(page)).toHaveCount(0);
+    await expect(showAddress(page)).toHaveCount(0);
     await expect(page.getByText(RECEIVE)).toHaveCount(0);
     await expect(page.getByRole("img", { name: /QR code/ })).toHaveCount(0);
   });
@@ -437,18 +431,17 @@ test.describe("pay page", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("This path ends here.");
   });
 
-  test("fits a 390 px phone without sideways scrolling", async ({ page }) => {
+  test("fits a 390 px phone in one column without sideways scrolling", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openPay(page, OPEN);
-    await startPaying(page);
+    await showAddress(page).click();
     await expect(page.getByText(RECEIVE)).toBeVisible();
     const overflow = () =>
       page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(await overflow()).toBeLessThanOrEqual(0);
-    // The receipt's full transaction hashes wrap.
-    await mockInvoice(page, SETTLED);
+    await mockInvoice(page, PAID);
     await page.reload();
-    await expect(receipt(page)).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: /^Paid$/ })).toBeVisible();
     expect(await overflow()).toBeLessThanOrEqual(0);
   });
 
@@ -463,59 +456,17 @@ test.describe("pay page", () => {
           .filter((v) => v.impact === "serious" || v.impact === "critical")
           .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
       await openPay(page, OPEN, CONFIRMING);
-      await startPaying(page);
+      await showAddress(page).click();
       await expect(page.getByText(RECEIVE)).toBeVisible();
       expect(await blocking()).toEqual([]);
-      // A payment on its way: the pending pills, the filling step and the payment with its explorer link.
       await page.clock.runFor(POLL_MS);
-      await expect(page.getByRole("link", { name: "View transaction on Basescan" })).toBeVisible();
+      await expect(status(page)).toHaveText(/^Payment received/);
       expect(await blocking()).toEqual([]);
-      // Settled: the receipt with its hashes, explorer links and PDF link.
-      await mockInvoice(page, SETTLED);
+      await mockInvoice(page, PAID);
       await page.reload();
-      await expect(receipt(page)).toBeVisible();
+      await expect(page.getByRole("status").filter({ hasText: /^Paid$/ })).toBeVisible();
       expect(await blocking()).toEqual([]);
       await context.close();
     });
   }
-});
-
-test.describe("pay page receipt", () => {
-  test.use({ timezoneId: "UTC", locale: "en-US" });
-
-  test("shows no receipt while paid, then the receipt once settled, beside the invoice PDF", async ({
-    page,
-  }) => {
-    await openPay(page, PAID, SETTLED);
-    const invoicePdf = page.getByRole("link", { name: "Download invoice PDF" });
-    await expect(page.getByRole("status").filter({ hasText: /./ })).toHaveText(/^Paid\./);
-    await expect(invoicePdf).toHaveAttribute("href", pdfPath("invoice.pdf"));
-    await expect(receipt(page)).toHaveCount(0);
-    await expect(page.getByText("Checkout closes")).toHaveCount(0);
-
-    await page.clock.runFor(POLL_MS);
-    const panel = receipt(page);
-    await expect(panel).toContainText(/Amount paid\s*1,250\.00\s*USDC/);
-    await expect(panel).toContainText(/Paid\s*Oct 10, 2026, 12:05\sPM/);
-    await expect(panel).toContainText(/Settled\s*Oct 10, 2026, 12:20\sPM/);
-    const explorer = panel.getByRole("link", { name: "View transaction on Basescan" });
-    await expect(explorer).toHaveCount(2);
-    for (const [i, [term, hash]] of [
-      ["Payment transaction", DEPOSIT.txHash],
-      ["Settlement transaction", SETTLED.settlementTxHash],
-    ].entries()) {
-      await expect(panel).toContainText(`${term}${hash}`);
-      await expect(explorer.nth(i)).toHaveAttribute(
-        "href",
-        `https://sepolia.basescan.org/tx/${hash}`,
-      );
-      await expect(explorer.nth(i)).toHaveAttribute("target", "_blank");
-      await expect(explorer.nth(i)).toHaveAttribute("rel", "noopener noreferrer");
-    }
-    await expect(panel.getByRole("link", { name: "Download receipt PDF" })).toHaveAttribute(
-      "href",
-      pdfPath("receipt.pdf"),
-    );
-    await expect(invoicePdf).toBeVisible();
-  });
 });

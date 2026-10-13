@@ -112,29 +112,21 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 
 ## Checkout
 
-- `/pay/<id>` is one centered column on every width: logo, the issuer name as the one display-serif heading over the
-  invoice number and title (a request without an issuer: "Name requests 12.50 USDC" over "Request INV-0001"), then
-  solid hairline panels: the amount (Geist Mono, featured amount size) with token mark
-  and status pill (partly paid: "Left to pay" with the rest as the figure, the invoice total and received in rows), then three numbered steps, one open at a time: 1. Network and token (the
-  invoice's one option as a selected card, or for payer chooses a Network group of radio cards with logos, then a
-  Token group when that network carries more than one; until both are picked the amount reads in USD with no token
-  mark and the confirm button says "Choose a network and token" and stays off; the before-you-pay notes, the network warning and the confirm button),
-  2. How you pay (two choice cards, From a wallet and From an exchange), 3. Send the payment (that choice's
-  instructions, QR beside the full address from small screens up; on phones Copy comes before the QR; above them the exact amount with
-  its own Copy, which copies the plain decimal; for an exchange payer under 30 minutes before close, a warning that the withdrawal
-  can take longer). A finished step folds into one row: a filled check, its title, its choice under the title and
-  Change; steps not reached show only their muted title. Focus moves to the step that opens. No motion between steps.
-  Then the status timeline with each payment received (amount, status,
-  transaction and explorer link; beside the link the short sender in Geist Mono, full address in a tooltip on hover
-  or focus, and the block time like the page's other times; on phones they wrap under the amount). When one read
-  jumps several states (a fast chain), the timeline still passes each step, 600 ms apart. Once paid, a primary "Back to
-  <host>" link to the invoice's return link takes Check status's place. The logo links to the landing page; the
-  footer is one quiet line, "Payments by" with the mark and Forwend, opening the site in a new tab. No image and no
-  glass; it follows the system theme. When a refresh fails the page keeps the last read and says it may be out of
-  date.
-- A secondary "Download invoice PDF" button sits under the heading in every state. Once settled, a Receipt panel
-  follows the amount panel: amount paid, paid and settled times, each payment's and the settlement's full hash (Geist
-  Mono) with the explorer named under it, and "Download receipt PDF". Before settlement there is no receipt. Once paid, the checkout close time is hidden.
+- `/pay/<id>` (R-68) is one short screen: the logo (links home), then on wide screens the invoice on the left and how
+  to pay on the right, one column on phones. Left: the payee name (no display serif), "Invoice INV-0001 · title" with
+  a small PDF link, the amount (Geist Mono, featured size; USD until the payer picks), "on <network>", the due date,
+  "Closes in …" and the note. Right: one panel. While money is due it holds Pay with (the one option as a token mark,
+  or Network and Token selects, which scale to many chains and tokens), a Show address button, then the QR beside the
+  address and the exact amount, each with Copy (on phones Copy comes before the QR), one warning line "Send only USDC
+  on Base Sepolia." and one exchange-fee hint. Under it one status line with a pulsing dot while pending: "Waiting for
+  payment…", "Payment received · Confirming (n/m) · about X left", "Payment received · final check", partly paid with
+  what is left, or closed; Check status sits under the waiting line and says when the next check is allowed. Paid
+  replaces the panel with a check that scales in, "Paid", the amount, payee and time, View transaction, Download
+  receipt and Back to <host> when the invoice has a return link. The payer never sees Settled, a timeline, status
+  pills or testnet notes. The rules (where you are, refunds, scams, the unverified name) sit behind "Need help?". The
+  footer is one quiet line, "Payments by" with the mark and Forwend, opening the site in a new tab.
+- No image and no glass; it follows the system theme. When a refresh fails the page keeps the last read and says it
+  may be out of date. The invoice PDF link stays in every state; the receipt link appears once paid.
 - PDFs open through the same-origin `/api` path. The invoice detail lists them under Documents: the invoice PDF
   always, the receipt PDF once paid.
 - While a payment confirms, the timeline's step fills as blocks pass (a sweep until the first block passes) and the

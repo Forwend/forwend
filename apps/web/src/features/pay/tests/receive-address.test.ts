@@ -70,6 +70,7 @@ describe("checkedReceiveAddress", () => {
     optionId: terms.invoiceId,
     optionLocked: false,
     optionCount: 1,
+    nextCheckAt: null,
     options: [],
     receiveAddress: receiveAddress({
       ...terms,

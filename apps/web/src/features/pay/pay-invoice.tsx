@@ -6,32 +6,16 @@ import {
   COPY_STATUS,
   formatTokenAmount,
   Money,
-  NetworkWarning,
-  PAYMENT_STATUS,
   QrCode,
   ReceiveAddress,
   Skeleton,
-  StatusPill,
   useCopy,
 } from "@forwend/ui-web";
-import {
-  Check,
-  Clock,
-  Copy,
-  FileDown,
-  Globe,
-  Info,
-  Landmark,
-  RotateCcw,
-  ShieldAlert,
-  ShieldCheck,
-  Wallet,
-} from "lucide-react";
-import { notFound } from "next/navigation";
-import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { Check, Copy, FileDown, ShieldAlert } from "lucide-react";
+import { notFound, usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckStatus } from "@/features/invoices/components/check-status";
-import { InvoiceDeposits } from "@/features/invoices/components/invoice-deposits";
-import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
+import { ConfirmingStatus } from "@/features/invoices/components/invoice-progress";
 import {
   exactDigits,
   formatDueDate,
@@ -40,16 +24,13 @@ import {
   invoiceNumber,
   invoicePdfUrl,
   invoiceProgress,
-  invoiceStatus,
   isReturnLink,
 } from "@/features/invoices/invoices";
 import { useGetInvoiceQuery } from "@/features/invoices/invoices-api";
 import { type Choice, OptionPicker } from "@/features/pay/option-picker";
 import {
   checkoutClosesAt,
-  PAY_METHODS,
   PAY_STATES,
-  type PayMethod,
   type PayToken,
   payState,
   payToken,
@@ -59,19 +40,17 @@ import {
 } from "@/features/pay/pay";
 import { PAY_COPY as COPY } from "@/features/pay/pay-copy";
 import { checkedReceiveAddress } from "@/features/pay/receive-address";
-import { chainName, isTestnet } from "@/shared/chains/chains";
-import { ExplorerLink } from "@/shared/chains/explorer-link";
+import { chainName, txLink } from "@/shared/chains/chains";
 import { TokenMark } from "@/shared/chains/token-mark";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
 const NOT_FOUND = 404;
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
-const PANEL = "rounded-md border border-line bg-surface";
-const PANEL_TITLE = "border-b border-line px-4 py-3 text-base font-semibold text-ink sm:px-5";
-const ICON = "mt-0.5 size-[var(--fw-icon-md)] shrink-0";
-// Exchange withdrawals often take this long; money after the close is held for the payer, not paid.
+const PANEL = "rounded-lg border border-line bg-surface";
+const ICON = "size-[var(--fw-icon-md)] shrink-0";
+const LINK =
+  "inline-flex items-center gap-1 rounded-sm text-accent outline-none hover:underline focus-visible:outline-2 focus-visible:outline-focus";
 const CLOSING_SOON_MS = 30 * 60_000;
-const PDF_LINK = `${buttonClasses({ variant: "secondary", size: "sm" })} self-start`;
 
 const formatMoney = (units: bigint, token: PayToken) =>
   `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`;
@@ -87,7 +66,7 @@ export function PayInvoice({ invoiceId, option }: { invoiceId: string; option?: 
         {invoice.isError ? (
           <p
             role="status"
-            className="flex flex-wrap items-center gap-3 rounded-md bg-warning-soft px-4 py-3 text-sm text-warning"
+            className="flex flex-wrap items-center gap-3 rounded-md bg-warning-soft px-4 py-3 text-sm text-warning lg:col-span-2"
           >
             {COPY.stale}
             <Button size="sm" variant="secondary" onClick={invoice.refetch}>
@@ -111,7 +90,7 @@ export function PayInvoice({ invoiceId, option }: { invoiceId: string; option?: 
     );
   }
   return (
-    <div aria-busy="true" className="flex flex-col gap-4">
+    <div aria-busy="true" className="flex flex-col gap-4 lg:col-span-2">
       <span role="status" className="sr-only">
         {COPY.loading}
       </span>
@@ -120,6 +99,9 @@ export function PayInvoice({ invoiceId, option }: { invoiceId: string; option?: 
     </div>
   );
 }
+
+// The option whose address the payer asked to see, kept for the tab's life so a reload does not ask again (R-68).
+const shownKey = (invoiceId: string) => `forwend:pay:${invoiceId}`;
 
 function Loaded({
   invoice: answer,
@@ -131,8 +113,10 @@ function Loaded({
   option?: string;
 }) {
   const now = useNow();
-  // Payer chooses (R-57): until an option has money, the payer picks the network, then the token; the link's
-  // ?option= starts with that one picked.
+  const router = useRouter();
+  const path = usePathname();
+  // Payer chooses (R-57): until an option has money, the payer picks the network, then the token; the link keeps the
+  // pick (?option=), so a reload shows the same.
   const choosing = !answer.optionLocked && answer.options.length > 1;
   const [picked, setPicked] = useState(option?.toLowerCase());
   const invoice = useMemo(() => withOption(answer, picked), [answer, picked]);
@@ -141,520 +125,368 @@ function Loaded({
     [invoice, linkInvoiceId],
   );
   const token = payToken(invoice);
-  const issuer = invoice.issuer?.name;
-  // Who asks: the issuer, else a request's sender, else the page names only the invoice.
-  const sender = issuer ? null : invoice.senderName;
-  const number = invoiceNumber(invoice.number);
-
-  return (
-    <>
-      <header className="flex flex-col gap-1">
-        <h1 className="font-display text-3xl break-words text-ink sm:text-4xl">
-          {issuer ??
-            (sender
-              ? token
-                ? COPY.requests(
-                    sender,
-                    formatMoney(
-                      BigInt(invoice.amount),
-                      choosing && !picked ? { ...token, symbol: COPY.usd } : token,
-                    ),
-                  )
-                : sender
-              : COPY.invoice(number))}
-        </h1>
-        <p className="break-words text-muted">
-          {[issuer ? COPY.invoice(number) : sender ? COPY.request(number) : null, invoice.title]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
-        <p className="text-sm text-muted">
-          {issuer || sender ? COPY.unverifiedName : COPY.noIssuer}
-        </p>
-        <a
-          href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.invoice)}
-          className={`${PDF_LINK} mt-2`}
-        >
-          <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
-          {COPY.invoicePdf}
-        </a>
-      </header>
-      {address && token ? (
-        <Checkout
-          invoice={invoice}
-          address={address}
-          token={token}
-          now={now}
-          choice={
-            choosing
-              ? {
-                  options: answer.options,
-                  picked: answer.options.find((o) => o.optionId === picked)?.optionId,
-                  onPick: setPicked,
-                }
-              : null
-          }
-        />
-      ) : (
-        <p
-          role="alert"
-          className="flex items-start gap-3 rounded-md bg-danger-soft px-4 py-3 text-danger"
-        >
-          <ShieldAlert aria-hidden className={ICON} />
-          {address ? COPY.unknownToken : COPY.mismatch}
-        </p>
-      )}
-    </>
-  );
-}
-
-function Checkout({
-  invoice,
-  address,
-  token,
-  now,
-  choice,
-}: {
-  invoice: Invoice;
-  address: string;
-  token: PayToken;
-  now: number;
-  choice: Choice | null;
-}) {
+  const pickedOption = choosing ? answer.options.find((o) => o.optionId === picked) : undefined;
+  const choice: Choice | null = choosing
+    ? {
+        options: answer.options,
+        picked: pickedOption?.optionId,
+        onPick: (id) => {
+          setPicked(id);
+          router.replace(id ? `${path}?option=${id}` : path, { scroll: false });
+        },
+      }
+    : null;
   // Before a pick the amount is the same in every option: USD at 1 per stablecoin (D-75), with no network yet.
   const picking = choice !== null && !choice.picked;
-  const [confirmed, setConfirmed] = useState(false);
-  const [method, setMethod] = useState<PayMethod | null>(null);
-  const networkHeading = useRef<HTMLHeadingElement>(null);
-  const methodHeading = useRef<HTMLHeadingElement>(null);
-  const sendHeading = useRef<HTMLHeadingElement>(null);
-  const mounted = useRef(false);
-  // Focus follows the step that just opened, so keyboard and screen-reader users land on it; not on page load.
-  useEffect(() => {
-    if (mounted.current)
-      (confirmed ? (method ? sendHeading : methodHeading) : networkHeading).current?.focus();
-    mounted.current = true;
-  }, [confirmed, method]);
 
-  const network = chainName(invoice.chainId);
-  const amount = BigInt(invoice.amount);
-  const money = (units: bigint) => formatMoney(units, token);
+  if (!address || !token) {
+    return (
+      <p
+        role="alert"
+        className="flex items-start gap-3 rounded-md bg-danger-soft px-4 py-3 text-danger lg:col-span-2"
+      >
+        <ShieldAlert aria-hidden className={ICON} />
+        {address ? COPY.unknownToken : COPY.mismatch}
+      </p>
+    );
+  }
   const pay = payState(invoice, now);
-  const due = money(pay.remaining);
-  const expiresAt = checkoutClosesAt(invoice);
-  const status =
-    pay.state === PAY_STATES.closed
-      ? PAYMENT_STATUS.expired
-      : pay.state === PAY_STATES.closedPartial
-        ? PAYMENT_STATUS.expiredPartiallyPaid
-        : invoiceStatus(invoice);
-  // Partly paid: the big figure is what is left, the one a payer copies; the total moves to a row.
-  const partial = pay.canSend && pay.received > 0n;
-  const shown = partial ? pay.remaining : amount;
-  const closingSoon = expiresAt - now < CLOSING_SOON_MS;
-
   return (
     <>
-      <section aria-labelledby="pay-amount" className={PANEL}>
-        <div className="flex flex-col gap-3 border-b border-line px-4 py-4 sm:px-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 id="pay-amount" className="text-sm text-muted">
-              {pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled
-                ? COPY.amountPaid
-                : partial
-                  ? COPY.leftToPay
-                  : pay.canSend
-                    ? COPY.amountDue
-                    : COPY.invoiceTotal}
-            </h2>
-            <StatusPill status={status} />
-          </div>
-          <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-            <Money
-              baseUnits={shown}
-              decimals={token.decimals}
-              fractionDigits={exactDigits(shown, token.decimals)}
-              token={picking ? COPY.usd : token.symbol}
-              className="min-w-0 text-amount-lg text-ink"
-            />
-            {picking ? null : <TokenMark chainId={invoice.chainId} symbol={token.symbol} />}
-          </div>
-        </div>
-        <dl className="divide-y divide-line">
-          {partial ? (
-            <>
-              <Row term={COPY.invoiceTotal}>{money(amount)}</Row>
-              <Row term={COPY.receivedSoFar}>{money(pay.received)}</Row>
-            </>
-          ) : null}
-          {invoice.dueDate ? <Row term={COPY.dueDate}>{formatDueDate(invoice.dueDate)}</Row> : null}
-          {/* Once paid the checkout no longer matters to the payer; a countdown would read as still open. */}
-          {pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled ? null : (
-            <Row term={COPY.closes}>
-              {TIME.format(expiresAt)}
-              <span className="text-muted">
-                {" · "}
-                {pay.closed ? COPY.closedNow : COPY.closesIn(shortDuration(expiresAt - now))}
-              </span>
-            </Row>
-          )}
-          {invoice.note ? (
-            <Row term={COPY.note} stacked>
-              {invoice.note}
-            </Row>
-          ) : null}
-        </dl>
-      </section>
-
-      {pay.state === PAY_STATES.settled ? <Receipt invoice={invoice} token={token} /> : null}
-
-      {!picking && isTestnet(invoice.chainId) ? (
-        <p
-          role="note"
-          className="flex items-start gap-3 rounded-md bg-info-soft px-4 py-3 text-sm text-info"
-        >
-          <Info aria-hidden className={ICON} />
-          {COPY.testnet(network, token.symbol)}
-        </p>
-      ) : null}
-
-      {/* One step at a time, like a checkout: confirm the network, pick how to pay, then the address. The address
-          appears only after the network is confirmed (R-45); a finished step folds into its choice with Change. */}
-      {pay.canSend ? (
-        <>
-          <Step
-            id="pay-before"
-            number={1}
-            title={COPY.stepNetwork}
-            state={confirmed ? STEP.done : STEP.current}
-            summary={COPY.pair(token.symbol, network)}
-            headingRef={networkHeading}
-            changeLabel={COPY.changeNetwork}
-            onChange={() => setConfirmed(false)}
-          >
-            {choice ? (
-              <OptionPicker {...choice} />
-            ) : (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-ink px-4 py-3">
-                <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
-                <span className="text-xs text-muted">{COPY.onlyOption}</span>
-              </div>
-            )}
-            <ul className="-mx-4 my-4 divide-y divide-line border-y border-line text-sm text-ink sm:-mx-5">
-              <Item icon={<Globe aria-hidden className={ICON} />}>
-                {COPY.host} <strong className="font-semibold">{window.location.host}</strong>.{" "}
-                <span className="text-muted">{COPY.hostHint}</span>
-              </Item>
-              <Item icon={<RotateCcw aria-hidden className={ICON} />}>{COPY.refund}</Item>
-              <Item icon={<ShieldCheck aria-hidden className={ICON} />}>{COPY.scam}</Item>
-            </ul>
-            <div className="flex flex-col gap-4">
-              {picking ? null : <NetworkWarning token={token.symbol} network={network} />}
-              <div className="flex flex-col gap-2">
-                <Button
-                  size="lg"
-                  className="w-full"
-                  disabled={picking}
-                  onClick={() => setConfirmed(true)}
-                >
-                  {picking ? COPY.chooseFirst : COPY.confirm(token.symbol, network)}
-                </Button>
-                <p className="text-center text-xs text-muted">{COPY.confirmHint}</p>
-              </div>
-            </div>
-          </Step>
-          <Step
-            id="pay-method"
-            number={2}
-            title={COPY.how}
-            headingRef={methodHeading}
-            state={!confirmed ? STEP.upcoming : method ? STEP.done : STEP.current}
-            summary={method ? COPY.methods[method].label : ""}
-            changeLabel={COPY.changeMethod}
-            onChange={() => setMethod(null)}
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              {Object.values(PAY_METHODS).map((m) => {
-                const Icon = METHOD_ICONS[m];
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    data-method={m}
-                    onClick={() => setMethod(m)}
-                    className="flex items-start gap-3 rounded-md border border-line-strong bg-surface p-4 text-left transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-focus"
-                  >
-                    <Icon aria-hidden className={`${ICON} text-muted`} />
-                    <span className="flex flex-col gap-0.5">
-                      <span className="font-medium text-ink">{COPY.methods[m].label}</span>
-                      <span className="text-sm text-muted">{COPY.methods[m].hint}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </Step>
-          <Step
-            id="pay-send"
-            number={3}
-            title={COPY.send}
-            headingRef={sendHeading}
-            state={confirmed && method ? STEP.current : STEP.upcoming}
-          >
-            {method ? (
-              <div className="flex flex-col gap-4">
-                {/* Only an exchange withdrawal can outlast the checkout; a wallet transfer is seconds. */}
-                {closingSoon && method === PAY_METHODS.exchange ? (
-                  <p
-                    role="note"
-                    className="flex items-start gap-3 rounded-md bg-warning-soft px-4 py-3 text-sm text-warning"
-                  >
-                    <Clock aria-hidden className={ICON} />
-                    {COPY.closingSoon}
-                  </p>
-                ) : null}
-                <SendTo
-                  amount={pay.remaining}
-                  token={token}
-                  steps={
-                    method === PAY_METHODS.wallet
-                      ? COPY.walletSteps(due, network)
-                      : COPY.exchangeSteps(due, token.symbol, network)
-                  }
-                  address={address}
-                  label={COPY.address(token.symbol, network)}
-                />
-              </div>
-            ) : null}
-          </Step>
-        </>
-      ) : null}
-
-      <Status invoice={invoice} pay={pay} network={network} money={money} token={token} />
+      <Summary invoice={invoice} token={token} pay={pay} now={now} picking={picking} />
+      <PayBox
+        invoice={invoice}
+        address={address}
+        token={token}
+        pay={pay}
+        now={now}
+        choice={choice}
+        picking={picking}
+      />
     </>
   );
 }
 
-function Status({
+type Pay = ReturnType<typeof payState>;
+
+// Who asks and how much, in the reading order of an invoice: payee, number, amount, then its terms.
+function Summary({
   invoice,
-  pay,
-  network,
-  money,
   token,
+  pay,
+  now,
+  picking,
 }: {
   invoice: Invoice;
-  pay: ReturnType<typeof payState>;
-  network: string;
-  money: (units: bigint) => string;
   token: PayToken;
+  pay: Pay;
+  now: number;
+  picking: boolean;
 }) {
-  const { blocksLeft, secondsLeft } = invoiceProgress(invoice);
-  // A closed checkout waits for nothing more, even before the API marks it expired.
-  const waiting = pay.state !== PAY_STATES.closed && pay.state !== PAY_STATES.closedPartial;
+  const payee = invoice.issuer?.name ?? invoice.senderName;
+  const number = invoiceNumber(invoice.number);
+  const amount = BigInt(invoice.amount);
+  const done = pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled;
+  const partial = pay.canSend && pay.received > 0n;
+  const shown = partial ? pay.remaining : amount;
+  const closesAt = checkoutClosesAt(invoice);
   return (
-    <section aria-labelledby="pay-status" className={PANEL}>
-      <h2 id="pay-status" className={PANEL_TITLE}>
-        {COPY.status}
-      </h2>
-      <div className="flex flex-col gap-3 px-4 py-4 text-sm text-ink sm:px-5 sm:py-5">
-        <InvoiceTimeline invoice={invoice} label={COPY.progress} waiting={waiting} />
-        <p role="status">
-          {pay.state === PAY_STATES.confirming ? (
-            <ConfirmingStatus blocks={blocksLeft} seconds={secondsLeft} />
-          ) : (
-            COPY.states[pay.state]({
-              network,
-              received: money(pay.received),
-              remaining: money(pay.remaining),
-            })
-          )}
+    <section aria-labelledby="pay-amount" className="flex min-w-0 flex-col gap-5">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-lg font-semibold break-words text-ink">{payee ?? COPY.noIssuer}</h1>
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+          <span className="break-words">
+            {[invoice.issuer ? COPY.invoice(number) : COPY.request(number), invoice.title]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+          <a
+            href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.invoice)}
+            aria-label={COPY.pdfLabel}
+            className={LINK}
+          >
+            <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
+            {COPY.pdf}
+          </a>
         </p>
-        {pay.extra > 0n ? <p className="text-warning">{COPY.extra(money(pay.extra))}</p> : null}
-        {pay.late > 0n ? <p className="text-warning">{COPY.late(money(pay.late))}</p> : null}
-        <InvoiceDeposits invoice={invoice} token={token} />
-        {/* Paid or settled, nothing is left for the payer to look for: the way back takes Check status's place. */}
-        {pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled ? (
-          invoice.returnUrl && isReturnLink(invoice.returnUrl) ? (
-            <a
-              href={invoice.returnUrl}
-              rel="noopener noreferrer"
-              className={`${buttonClasses({ variant: "primary" })} self-start`}
-            >
-              {COPY.backTo(new URL(invoice.returnUrl).host)}
-            </a>
-          ) : null
-        ) : (
-          <CheckStatus invoiceId={invoice.invoiceId} network={network} money={money} />
+      </div>
+      <div className="flex flex-col gap-1">
+        <h2 id="pay-amount" className="text-sm text-muted">
+          {done ? COPY.amountPaid : partial ? COPY.leftToPay : COPY.amountDue}
+        </h2>
+        <Money
+          baseUnits={shown}
+          decimals={token.decimals}
+          fractionDigits={exactDigits(shown, token.decimals)}
+          token={picking ? COPY.usd : token.symbol}
+          className="min-w-0 text-amount-lg text-ink"
+        />
+        {picking ? null : (
+          <p className="text-sm text-muted">{COPY.on(chainName(invoice.chainId))}</p>
         )}
       </div>
+      {invoice.dueDate || pay.canSend ? (
+        <ul className="flex flex-col gap-1 text-sm text-muted">
+          {invoice.dueDate ? <li>{COPY.due(formatDueDate(invoice.dueDate))}</li> : null}
+          {/* Once paid or closed the countdown no longer matters to the payer. */}
+          {pay.canSend ? (
+            <li>
+              <time dateTime={new Date(closesAt).toISOString()} title={TIME.format(closesAt)}>
+                {COPY.closesIn(shortDuration(closesAt - now))}
+              </time>
+            </li>
+          ) : null}
+        </ul>
+      ) : null}
+      {invoice.note ? (
+        <p className="border-l-2 border-line pl-3 text-sm break-words whitespace-pre-line text-ink">
+          {invoice.note}
+        </p>
+      ) : null}
     </section>
   );
 }
 
-function Receipt({ invoice, token }: { invoice: Invoice; token: PayToken }) {
-  const amount = BigInt(invoice.amount);
-  const deposits = receiptDeposits(invoice);
+// The payer's side: how to pay while money is due, then one line on where the payment stands (R-68).
+function PayBox({
+  invoice,
+  address,
+  token,
+  pay,
+  now,
+  choice,
+  picking,
+}: {
+  invoice: Invoice;
+  address: string;
+  token: PayToken;
+  pay: Pay;
+  now: number;
+  choice: Choice | null;
+  picking: boolean;
+}) {
+  const network = chainName(invoice.chainId);
+  const optionId = invoice.optionId;
+  // The address shows once the payer asked for it for this option; a reload in the same tab keeps it.
+  const [shown, setShown] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      setShown(sessionStorage.getItem(shownKey(invoice.invoiceId)));
+    } catch {
+      // Storage may be off: the payer asks again.
+    }
+  }, [invoice.invoiceId]);
+  // The pressed button goes away: focus moves to the address it revealed.
+  const sendHeading = useRef<HTMLHeadingElement>(null);
+  const [presses, setPresses] = useState(0);
+  useEffect(() => {
+    if (presses > 0) sendHeading.current?.focus();
+  }, [presses]);
+  const show = () => {
+    setShown(optionId);
+    setPresses((n) => n + 1);
+    try {
+      sessionStorage.setItem(shownKey(invoice.invoiceId), optionId);
+    } catch {
+      // Storage may be off: the choice lasts until the page closes.
+    }
+  };
+  const money = (units: bigint) => formatMoney(units, token);
+  const done = pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled;
+  const sending = shown === optionId && !picking;
+
   return (
-    <section aria-labelledby="pay-receipt" className={PANEL}>
-      <h2 id="pay-receipt" className={PANEL_TITLE}>
-        {COPY.receipt}
-      </h2>
-      <dl className="divide-y divide-line">
-        <Row term={COPY.amountPaid}>
-          <Money
-            baseUnits={amount}
-            decimals={token.decimals}
-            fractionDigits={exactDigits(amount, token.decimals)}
-            token={token.symbol}
+    <div className="flex min-w-0 flex-col gap-4">
+      <div className={PANEL}>
+        {done ? (
+          <Paid invoice={invoice} token={token} />
+        ) : pay.canSend ? (
+          <>
+            <section aria-labelledby="pay-before" className="flex flex-col gap-4 p-4 sm:p-5">
+              <h2 id="pay-before" className="text-sm font-medium text-ink">
+                {COPY.payWith}
+              </h2>
+              {choice ? (
+                <OptionPicker {...choice} />
+              ) : (
+                <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
+              )}
+              {sending || picking ? null : (
+                <Button className="w-full" onClick={show}>
+                  {COPY.showAddress}
+                </Button>
+              )}
+            </section>
+            {sending ? (
+              <section
+                aria-labelledby="pay-send"
+                className="flex flex-col gap-4 border-t border-line p-4 sm:p-5"
+              >
+                <h2 id="pay-send" ref={sendHeading} tabIndex={-1} className="sr-only">
+                  {COPY.sendTo(token.symbol, network)}
+                </h2>
+                <div className="grid gap-4 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start">
+                  {/* A payer on this phone cannot scan its own screen: Copy comes first there. */}
+                  <QrCode
+                    value={address}
+                    label={COPY.qr}
+                    className="w-36 justify-self-center border border-line max-sm:order-last"
+                  />
+                  <div className="flex min-w-0 flex-col gap-3">
+                    <ReceiveAddress address={address} label={COPY.sendTo(token.symbol, network)} />
+                    <ExactAmount amount={pay.remaining} token={token} />
+                  </div>
+                </div>
+                <p role="note" className="text-sm font-medium text-warning">
+                  {COPY.sendOnly(token.symbol, network)}
+                </p>
+                <p className="text-xs text-muted">
+                  {checkoutClosesAt(invoice) - now < CLOSING_SOON_MS
+                    ? `${COPY.closingSoon} `
+                    : null}
+                  {COPY.exchange(money(pay.remaining))}
+                </p>
+              </section>
+            ) : null}
+          </>
+        ) : null}
+        {done ? null : (
+          <StatusLine
+            invoice={invoice}
+            pay={pay}
+            money={money}
+            network={network}
+            bordered={pay.canSend}
           />
-        </Row>
-        {invoice.paidAt ? (
-          <Row term={COPY.paidAt}>{TIME.format(Date.parse(invoice.paidAt))}</Row>
+        )}
+      </div>
+      {pay.extra > 0n ? (
+        <p className="text-sm text-warning">{COPY.extra(money(pay.extra))}</p>
+      ) : null}
+      {pay.late > 0n ? <p className="text-sm text-warning">{COPY.late(money(pay.late))}</p> : null}
+      {pay.canSend ? (
+        <NeedHelp named={Boolean(invoice.issuer?.name ?? invoice.senderName)} />
+      ) : null}
+    </div>
+  );
+}
+
+// Where the payment stands, in one line that updates by itself; a pending state moves so it never reads as stuck.
+function StatusLine({
+  invoice,
+  pay,
+  money,
+  network,
+  bordered,
+}: {
+  invoice: Invoice;
+  pay: Pay;
+  money: (units: bigint) => string;
+  network: string;
+  bordered: boolean;
+}) {
+  const { blocksLeft, secondsLeft } = invoiceProgress(invoice);
+  const pending =
+    pay.state === PAY_STATES.waiting ||
+    pay.state === PAY_STATES.partial ||
+    pay.state === PAY_STATES.confirming ||
+    pay.state === PAY_STATES.checking;
+  const values = {
+    received: money(pay.received),
+    remaining: money(pay.remaining),
+    total: money(BigInt(invoice.amount)),
+  };
+  return (
+    <div className={`flex flex-col gap-3 p-4 sm:p-5 ${bordered ? "border-t border-line" : ""}`}>
+      <p role="status" className="flex items-start gap-2.5 text-sm text-ink">
+        {pending ? (
+          <span aria-hidden className="relative mt-1.5 flex size-2 shrink-0">
+            <span className="absolute inset-0 rounded-pill bg-accent opacity-60 motion-safe:animate-ping" />
+            <span className="relative size-2 rounded-pill bg-accent" />
+          </span>
         ) : null}
-        {invoice.settledAt ? (
-          <Row term={COPY.settledAt}>{TIME.format(Date.parse(invoice.settledAt))}</Row>
+        <span>
+          {COPY.states[pay.state](values)}
+          {pay.state === PAY_STATES.confirming ? (
+            <ConfirmingStatus blocks={blocksLeft} seconds={secondsLeft} />
+          ) : null}
+        </span>
+      </p>
+      {/* Money not seen yet may be a missed log: the payer can ask once in a while (R-55). */}
+      {pay.state === PAY_STATES.waiting || pay.state === PAY_STATES.partial ? (
+        <CheckStatus
+          invoiceId={invoice.invoiceId}
+          network={network}
+          money={money}
+          nextCheckAt={invoice.nextCheckAt}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+// Done for the payer: paid is the end. Whether the money already reached the sender is the sender's business (R-68).
+function Paid({ invoice, token }: { invoice: Invoice; token: PayToken }) {
+  const amount = BigInt(invoice.amount);
+  const last = receiptDeposits(invoice).at(-1);
+  const tx = last ? txLink(invoice.chainId, last.txHash) : null;
+  const name = invoice.issuer?.name ?? invoice.senderName;
+  const back = invoice.returnUrl && isReturnLink(invoice.returnUrl) ? invoice.returnUrl : null;
+  return (
+    <div className="flex flex-col items-start gap-4 p-5 sm:p-6">
+      <span className="grid size-10 place-items-center rounded-pill bg-success-soft text-success transition-[opacity,transform] duration-[var(--fw-duration-base)] ease-out starting:scale-90 starting:opacity-0">
+        <Check aria-hidden className="size-5" />
+      </span>
+      <div className="flex flex-col gap-1">
+        <p role="status" className="text-xl font-semibold text-ink">
+          {COPY.paid}
+        </p>
+        <p className="text-sm text-muted">
+          {COPY.paidTo(
+            formatMoney(amount, token),
+            name,
+            invoice.paidAt ? TIME.format(Date.parse(invoice.paidAt)) : "",
+          )}
+        </p>
+        <p className="text-sm text-muted">{COPY.closeHint}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+        {tx ? (
+          <a href={tx.href} target="_blank" rel="noopener noreferrer" className={LINK}>
+            {COPY.viewTx}
+          </a>
         ) : null}
-        {deposits.length > 0 ? (
-          <Row term={COPY.paymentTx(deposits.length)} stacked>
-            {deposits.map((d) => (
-              <TxHash key={`${d.txHash}:${d.logIndex}`} chainId={invoice.chainId} hash={d.txHash} />
-            ))}
-          </Row>
-        ) : null}
-        {invoice.settlementTxHash ? (
-          <Row term={COPY.settlementTx} stacked>
-            <TxHash chainId={invoice.chainId} hash={invoice.settlementTxHash} />
-          </Row>
-        ) : null}
-      </dl>
-      <div className="flex border-t border-line px-4 py-4 sm:px-5">
-        <a href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.receipt)} className={PDF_LINK}>
+        <a href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.receipt)} className={LINK}>
           <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
           {COPY.receiptPdf}
         </a>
       </div>
-    </section>
-  );
-}
-
-function TxHash({ chainId, hash }: { chainId: number; hash: string }) {
-  return (
-    <span className="flex flex-col items-start">
-      <span className="font-mono text-xs break-all">{hash}</span>
-      <ExplorerLink chainId={chainId} txHash={hash} named className="-ml-1" />
-    </span>
-  );
-}
-
-const STEP = { current: "current", done: "done", upcoming: "upcoming" } as const;
-type StepState = (typeof STEP)[keyof typeof STEP];
-
-const METHOD_ICONS: Record<PayMethod, typeof Wallet> = {
-  [PAY_METHODS.wallet]: Wallet,
-  [PAY_METHODS.exchange]: Landmark,
-};
-
-// A numbered checkout step: open while current, folded to its choice with Change once done, a muted title before.
-function Step({
-  id,
-  number,
-  title,
-  state,
-  summary,
-  changeLabel,
-  onChange,
-  headingRef,
-  children,
-}: {
-  id: string;
-  number: number;
-  title: string;
-  state: StepState;
-  summary?: string;
-  changeLabel?: string;
-  onChange?: () => void;
-  headingRef?: RefObject<HTMLHeadingElement | null>;
-  children: ReactNode;
-}) {
-  return (
-    <section aria-labelledby={id} className={PANEL}>
-      <div className="flex items-center gap-3 px-4 py-3 sm:px-5">
-        <span
-          aria-hidden
-          className={`grid size-6 shrink-0 place-items-center rounded-pill text-xs font-medium ${
-            state === STEP.done
-              ? "bg-primary text-on-primary"
-              : state === STEP.current
-                ? "border-2 border-accent text-accent"
-                : "border border-line-strong text-subtle"
-          }`}
-        >
-          {state === STEP.done ? <Check className="size-[var(--fw-icon-sm)]" /> : number}
-        </span>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <h2
-            id={id}
-            ref={headingRef}
-            tabIndex={-1}
-            className={`text-base font-semibold focus-visible:outline-none ${state === STEP.upcoming ? "text-subtle" : "text-ink"}`}
-          >
-            {title}
-            {state === STEP.done ? <span className="sr-only">{COPY.stepDone}</span> : null}
-          </h2>
-          {/* The choice sits under the title, so a phone never cuts it. */}
-          {state === STEP.done ? <p className="truncate text-sm text-muted">{summary}</p> : null}
-        </div>
-        {state === STEP.done ? (
-          <button
-            type="button"
-            data-change
-            aria-label={changeLabel}
-            onClick={onChange}
-            className="-mr-2 inline-flex h-11 shrink-0 items-center rounded-sm px-2 text-sm text-accent hover:underline focus-visible:outline-2 focus-visible:outline-focus"
-          >
-            {COPY.change}
-          </button>
-        ) : null}
-      </div>
-      {state === STEP.current ? (
-        <div className="border-t border-line px-4 py-4 sm:px-5 sm:py-5">{children}</div>
+      {back ? (
+        <a href={back} rel="noopener noreferrer" className={buttonClasses({ variant: "primary" })}>
+          {COPY.backTo(new URL(back).host)}
+        </a>
       ) : null}
-    </section>
+    </div>
   );
 }
 
-function SendTo({
-  amount,
-  token,
-  steps,
-  address,
-  label,
-}: {
-  amount: bigint;
-  token: PayToken;
-  steps: readonly string[];
-  address: string;
-  label: string;
-}) {
+// The rules a careful payer may want, out of the way of everyone else.
+function NeedHelp({ named }: { named: boolean }) {
   return (
-    <div className="flex flex-col gap-5">
-      {/* Plain numbers: circled ones would read as more checkout steps inside step 3. */}
-      <ol className="flex list-decimal flex-col gap-2 pl-5 text-sm text-ink marker:text-muted">
-        {steps.map((step) => (
-          <li key={step}>{step}</li>
-        ))}
-      </ol>
-      <ExactAmount amount={amount} token={token} />
-      <div className="grid gap-4 sm:grid-cols-[auto_1fr] sm:items-start">
-        {/* A payer on this phone cannot scan its own screen: Copy comes first there. */}
-        <QrCode
-          value={address}
-          label={COPY.qr}
-          className="w-40 justify-self-center border border-line max-sm:order-last"
-        />
-        <ReceiveAddress address={address} label={label} />
-      </div>
-    </div>
+    <details className="text-sm text-muted">
+      <summary className="w-fit cursor-pointer rounded-sm outline-none select-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus">
+        {COPY.help}
+      </summary>
+      <ul className="mt-3 flex flex-col gap-2">
+        <li>
+          {COPY.host} <strong className="font-medium text-ink">{window.location.host}</strong>.{" "}
+          {COPY.hostHint}
+        </li>
+        {named ? <li>{COPY.unverifiedName}</li> : null}
+        <li>{COPY.refund}</li>
+        <li>{COPY.scam}</li>
+      </ul>
+    </details>
   );
 }
 
@@ -674,7 +506,7 @@ function ExactAmount({ amount, token }: { amount: bigint; token: PayToken }) {
         ? COPY.copyAmountFailed
         : COPY.copyAmount;
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-line px-3 py-2.5">
       <span className="flex flex-col gap-0.5">
         <span className="text-xs text-muted">{COPY.exactAmount}</span>
         <Money
@@ -697,34 +529,6 @@ function ExactAmount({ amount, token }: { amount: bigint; token: PayToken }) {
         {status === COPY_STATUS.idle ? "" : label}
       </span>
     </div>
-  );
-}
-
-function Row({
-  term,
-  stacked = false,
-  children,
-}: {
-  term: string;
-  stacked?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className={`flex gap-x-4 gap-y-0.5 px-4 py-3 text-sm sm:px-5 ${stacked ? "flex-col" : "flex-wrap justify-between"}`}
-    >
-      <dt className="text-muted">{term}</dt>
-      <dd className="break-words whitespace-pre-line text-ink">{children}</dd>
-    </div>
-  );
-}
-
-function Item({ icon, children }: { icon: ReactNode; children: ReactNode }) {
-  return (
-    <li className="flex items-start gap-3 px-4 py-3 sm:px-5">
-      <span className="text-muted">{icon}</span>
-      <p>{children}</p>
-    </li>
   );
 }
 
