@@ -132,6 +132,8 @@ export interface InvoiceSummary {
   optionLocked: boolean;
   /** How many tokens and networks it accepts; 1 for a fixed invoice. */
   optionCount: number;
+  /** A payment before expiry is seen and not final: a partly paid invoice reads as confirming meanwhile (R-69). */
+  confirming: boolean;
   number: number;
   title: string | null;
   note: string | null;
@@ -257,11 +259,16 @@ export function tokenKey(t: { chainId: number; token: string }): string {
   return `${t.chainId}:${t.token.toLowerCase()}`;
 }
 
-/** The status pill: settled once the money reached the wallet, otherwise the payment status. */
+/**
+ * The status pill: settled once the money reached the wallet, otherwise the payment status. A partly paid invoice
+ * whose next payment still confirms reads as detected, like a full payment confirming: one state at a time (R-69).
+ */
 export function invoiceStatus(inv: InvoiceSummary): PaymentStatus {
+  const partlyConfirming =
+    inv.confirming && inv.paymentStatus === API_PAYMENT_STATUSES.partiallyPaid;
   return activityStatus({
     kind: ACTIVITY_KINDS.invoice,
-    status: inv.paymentStatus,
+    status: partlyConfirming ? API_PAYMENT_STATUSES.detected : inv.paymentStatus,
     settlementStatus: inv.settlementStatus,
   });
 }

@@ -504,6 +504,21 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(main.getByRole("status").filter({ hasText: "Partially paid" })).toHaveCount(0);
   expect(await blockingViolations(page)).toEqual([]);
 
+  // Partly paid with the next payment still confirming: one state at a time, the confirming one (R-69).
+  body = {
+    ...OPEN_INVOICE,
+    paymentStatus: "partially_paid",
+    confirming: true,
+    deposits: [
+      deposit("confirmed", "1000000", 0),
+      { ...deposit("detected", "1000000", 60), logIndex: 1 },
+    ],
+  };
+  await page.reload();
+  await expect(main.locator("header [data-status]")).toHaveText("Detected");
+  await expect(current).toHaveText("Confirming (60/120)");
+  await expect(progress.getByText("Partially paid")).toHaveCount(0);
+
   // Paid and on its way to the wallet: Paid out (Settled) is the moving step, not an empty one.
   body = {
     ...OPEN_INVOICE,
@@ -541,8 +556,13 @@ test("the invoice list and activity show a client-chooses invoice in USD with An
     ...sampleInvoice(9, "paid", "pending", "Any network work", "Kettle & Co."),
     optionCount: 4,
   };
+  // Partly paid with the next payment confirming reads as confirming in the list too (R-69).
+  const partlyConfirming = {
+    ...sampleInvoice(7, "partially_paid", "none", "Second half on its way", "Kettle & Co."),
+    confirming: true,
+  };
   await mockApi(page, {
-    invoices: [any, OPEN_INVOICE],
+    invoices: [any, OPEN_INVOICE, partlyConfirming],
     activity: [activityItem(any), activityItem(OPEN_INVOICE)],
     transfers: [],
   });
@@ -551,6 +571,9 @@ test("the invoice list and activity show a client-chooses invoice in USD with An
   await expect(row).toContainText("Any network");
   await expect(row).toContainText("9.00 USD");
   await expect(row).not.toContainText("USDC");
+  await expect(
+    page.getByRole("row").filter({ hasText: "INV-0007" }).locator("[data-status]"),
+  ).toHaveText("Detected");
   const fixed = page.getByRole("row").filter({ hasText: "INV-0002" });
   await expect(fixed).toContainText("USDC");
   await expect(fixed).toContainText("Base Sepolia");

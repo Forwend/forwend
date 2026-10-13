@@ -70,6 +70,7 @@ const open: Invoice = {
   optionId: `0x${"1".repeat(64)}`,
   optionLocked: false,
   optionCount: 1,
+  confirming: false,
   nextCheckAt: null,
   options: [],
   number: 1,
@@ -126,6 +127,15 @@ describe("invoiceProgress", () => {
       blocksTotal: 12,
       secondsLeft: 110,
     });
+  });
+
+  it("reads a partly paid invoice as detected while its next payment confirms", () => {
+    const partly = { ...open, paymentStatus: "partially_paid" };
+    expect(invoiceStatus(partly)).toBe(PAYMENT_STATUS.partiallyPaid);
+    expect(invoiceStatus({ ...partly, confirming: true })).toBe(PAYMENT_STATUS.detected);
+    expect(invoiceStatus({ ...open, paymentStatus: "paid", confirming: true })).toBe(
+      PAYMENT_STATUS.paid,
+    );
   });
 
   it("is paid only on the API's word, and done once settled", () => {

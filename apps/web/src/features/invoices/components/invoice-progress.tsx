@@ -34,10 +34,12 @@ export function InvoiceTimeline({
   const done = useStepped(reached);
   const confirming = current === INVOICE_STEPS.confirming && done === reached;
 
-  // Partly paid shows on the Paid step itself, as a tinted label, filled by the share received (R-69).
+  // Partly paid shows on the Paid step itself, as a tinted label, filled by the share received (R-69); not while
+  // the next payment still confirms: that step is the one in progress.
   const partly =
-    invoice.paymentStatus === API_PAYMENT_STATUSES.partiallyPaid ||
-    invoice.paymentStatus === API_PAYMENT_STATUSES.expiredPartiallyPaid;
+    current !== INVOICE_STEPS.confirming &&
+    (invoice.paymentStatus === API_PAYMENT_STATUSES.partiallyPaid ||
+      invoice.paymentStatus === API_PAYMENT_STATUSES.expiredPartiallyPaid);
   const received = invoice.deposits
     .filter((d) => !d.late)
     .reduce((sum, d) => sum + BigInt(d.amount), 0n);

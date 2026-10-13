@@ -512,8 +512,17 @@ func TestGetInvoiceListsDepositsWithProgress(t *testing.T) {
 	if !reflect.DeepEqual(owner.body["deposits"], r.body["deposits"]) {
 		t.Fatalf("owner deposits %v, public %v", owner.body["deposits"], r.body["deposits"])
 	}
+	// A detected payment before expiry: the read and the owner's list say it is confirming (R-69).
+	list := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/invoices", "did:privy:alice", "", "")
+	items, _ := list.body["items"].([]any)
+	if r.body["confirming"] != true || owner.body["confirming"] != true || len(items) != 1 ||
+		items[0].(map[string]any)["confirming"] != true {
+		t.Fatalf("confirming: read %v, owner %v, list %v", r.body["confirming"], owner.body["confirming"], list.body)
+	}
 	if fresh := e.get(t, e.post(t, "did:privy:alice", e.aliceProfile, "key-2", basicBody).body["invoiceId"].(string)); !reflect.DeepEqual(fresh.body["deposits"], []any{}) {
 		t.Fatalf("no deposits should be [], got %v", fresh.body["deposits"])
+	} else if fresh.body["confirming"] != false {
+		t.Fatalf("an invoice with no payment is not confirming: %v", fresh.body["confirming"])
 	}
 }
 
