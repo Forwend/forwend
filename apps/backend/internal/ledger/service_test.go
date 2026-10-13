@@ -148,8 +148,9 @@ func TestPaidNeedsTheSecondRPCToAgree(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.run(t)
+	// Owed in full but not yet confirmed by the second RPC: money seen, not a partial payment (F145).
 	want(t, "booked on the primary's word, not final on the second RPC", e.state(t, id),
-		state{payment: PartiallyPaid, refund: "none", receiver: 5000000, owed: 5000000})
+		state{payment: Detected, refund: "none", receiver: 5000000, owed: 5000000})
 
 	e.anvil.Mine(2)
 	e.run(t)

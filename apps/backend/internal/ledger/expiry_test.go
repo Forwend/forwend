@@ -132,8 +132,8 @@ func TestLaggingSecondRPCNeverExpiresAPaidInvoice(t *testing.T) {
 	s.finalizedAt(simExpires + 1)
 	s.answer[receive] = new(big.Int) // lags: reports nothing yet
 	s.process(id)
-	if payment, _ := s.payment(id); payment != PartiallyPaid {
-		t.Fatalf("while the second RPC lags: %s, want partially_paid (not final)", payment)
+	if payment, _ := s.payment(id); payment != Detected {
+		t.Fatalf("while the second RPC lags: %s, want detected (not final, not a partial payment)", payment)
 	}
 	s.answer[receive] = big.NewInt(5000000)
 	s.process(id)

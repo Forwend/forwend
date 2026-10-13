@@ -52,8 +52,12 @@ func status(current string, amount, owed *big.Int, anyTransfer, mayExpire, funde
 		return current
 	case owed.Cmp(amount) >= 0 && funded:
 		return Paid
-	case owed.Cmp(amount) >= 0: // paid in full and on time: never expires, waits for the second RPC
-		return PartiallyPaid
+	case owed.Cmp(amount) >= 0 && current == PartiallyPaid:
+		return PartiallyPaid // the database allows no way back to detected
+	case owed.Cmp(amount) >= 0:
+		// Paid in full and on time, waiting for the second RPC to agree: money seen, not a partial payment. It never
+		// expires.
+		return Detected
 	case mayExpire && owed.Sign() > 0:
 		return ExpiredPartiallyPaid
 	case mayExpire:
