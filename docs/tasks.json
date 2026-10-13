@@ -101,7 +101,7 @@
         "R-69: backend test checks the invoice list and read say confirming for a partly paid invoice with a detected deposit; e2e checks the owner page and list show the confirming pill, the Confirming step and no Partially paid badge until it confirms"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -113,7 +113,84 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T21:43:41Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 90.4,
+            "log": "docs/runs/F161-20261013T214341Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 153.4,
+            "log": "docs/runs/F161-20261013T214341Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": "docs/runs/F161-20261013T214341Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F161-20261013T214341Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F161-20261013T214341Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F161-20261013T214341Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 93.4,
+            "log": "docs/runs/F161-20261013T214341Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.0,
+            "log": "docs/runs/F161-20261013T214341Z-build.log"
+          }
+        ],
+        "taskHash": "86574ac53022c3af",
+        "filesHash": "2045493ebbfb1041",
+        "proof": {
+          "1": "backend: confirming flag; e2e: Detected pill and Confirming step, no Partially paid badge"
+        },
+        "commit": "1c640e1",
+        "doneAt": "2026-10-13T21:49:35Z"
+      },
+      "branch": "fix/f161-a-partly-paid-invoice-with-a-payment-sti",
+      "baseCommit": "d82fbbecd6f7cc77c3ab14f9c3f090fef264415f",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f161-a-partly-paid-invoice-with-a-payment-sti",
+        "base": "main"
+      }
     },
     {
       "id": "F162",

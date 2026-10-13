@@ -942,7 +942,7 @@ components:
                     secondsLeft: { type: [integer, "null"], minimum: 0 }
     InvoiceSummary:
       type: object
-      required: [invoiceId, optionId, optionLocked, optionCount, number, title, note, dueDate, senderName, returnUrl, issuer, chainId,
+      required: [invoiceId, optionId, optionLocked, optionCount, confirming, number, title, note, dueDate, senderName, returnUrl, issuer, chainId,
         token, amount, recipient, factory, receiveAddress, expiresAt, settleDeadline, paymentStatus, settlementStatus,
         refundStatus, settlementTxHash, createdAt]
       description: |
@@ -959,6 +959,11 @@ components:
           type: integer
           minimum: 1
           description: How many tokens and networks the invoice accepts; 1 for a fixed invoice.
+        confirming:
+          type: boolean
+          description: >-
+            A payment made before expiry is seen and not final yet. A partially_paid invoice keeps that status while the
+            rest confirms, so show it as confirming.
         optionLocked:
           type: boolean
           description: |

@@ -17,6 +17,7 @@ export const sampleInvoice = (
   optionId: `0x${String(number).padStart(4, "0")}${"a".repeat(60)}`,
   optionLocked: paymentStatus !== "open",
   optionCount: 1,
+  confirming: paymentStatus === "detected",
   options: [
     {
       optionId: `0x${String(number).padStart(4, "0")}${"a".repeat(60)}`,

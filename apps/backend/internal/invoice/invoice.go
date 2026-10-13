@@ -94,11 +94,14 @@ type Details struct {
 type Invoice struct {
 	Details
 	// A copy taken at creation; later billing changes don't reach it.
-	Issuer           *profile.Issuer
-	ID               string    // the pay link's id: the main row's
-	OptionID         string    // the on-chain id of the terms below; ID for a fixed invoice
-	OptionLocked     bool      // an option received money, so the payer can't pick another
-	OptionCount      int       // accepted options: 1 for a fixed invoice
+	Issuer       *profile.Issuer
+	ID           string // the pay link's id: the main row's
+	OptionID     string // the on-chain id of the terms below; ID for a fixed invoice
+	OptionLocked bool   // an option received money, so the payer can't pick another
+	OptionCount  int    // accepted options: 1 for a fixed invoice
+	// Confirming: a payment before expiry is seen and not final yet. A partly paid invoice keeps that status while the
+	// rest confirms (the database allows no way back to detected), so readers show it as confirming (R-69).
+	Confirming       bool
 	NextCheckAt      time.Time // when Check status may run again; zero when it may now. Set by Get
 	Options          []Option  // every accepted option, the current one included; set by Get
 	Number           int64     // per profile, from 1; shown as INV-0001
