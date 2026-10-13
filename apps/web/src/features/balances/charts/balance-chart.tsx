@@ -75,7 +75,7 @@ export function BalanceChart({
           tabIndex={0}
           role="img"
           aria-label={`${label}. ${BALANCES_COPY.chartKeys}`}
-          className="block touch-pan-y rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
+          className="absolute inset-0 block touch-pan-y rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
           {...chart.handlers}
         >
           <defs>

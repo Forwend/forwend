@@ -507,3 +507,28 @@ test("the invoice list shows a client-chooses invoice in USD with Any network", 
   await expect(fixed).toContainText("Base Sepolia");
   await context.close();
 });
+
+// R-74: a chart follows its panel as the window shrinks; it never holds the page at its old width.
+test("the overview chart shrinks with the window and the page never scrolls sideways", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page);
+  await page.goto("/app");
+  const panel = page.getByRole("region", { name: "Received" });
+  const chart = panel.getByRole("img");
+  await expect(chart).toBeVisible();
+  for (const width of [1024, 768, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect
+      .poll(() => page.evaluate(() => document.scrollingElement?.scrollWidth))
+      .toBe(width);
+    const [inner, outer] = await Promise.all([chart.boundingBox(), panel.boundingBox()]);
+    expect(inner && outer && inner.width < outer.width).toBe(true);
+  }
+  await context.close();
+});
