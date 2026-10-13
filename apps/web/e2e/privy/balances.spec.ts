@@ -58,6 +58,8 @@ test("a profile shows its balance, networks, receive address and activity; a new
     await expect(sheet.getByText(`Your ${network} address`)).toBeVisible();
     await expect(address).toHaveText(/^0x([0-9a-f]{4}){10}$/);
     await expect(sheet.getByRole("note")).toContainText(`Send only USDC on ${network}.`);
+    // The network's name says it is a test network; no note repeats it (R-72).
+    await expect(sheet.getByText(/test network|no real value/i)).toHaveCount(0);
   };
   const readAddress = async () => {
     // The header's Receive works on every profile and page.

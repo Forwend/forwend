@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Badge,
   BrandIcon,
   Button,
   NetworkWarning,
@@ -9,14 +8,13 @@ import {
   ReceiveAddress,
   Sheet,
   Skeleton,
-  TONES,
 } from "@forwend/ui-web";
 import { ChevronRight } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import type { Balances } from "@/features/balances/balances";
 import { addressFor, CHAIN_FAMILIES, receiveChoice } from "@/features/receive/receive-choice";
 import { RECEIVE_COPY } from "@/features/receive/receive-copy";
-import { CHAINS, chainName, isTestnet, TOKEN_ICONS } from "@/shared/chains/chains";
+import { CHAINS, chainName, TOKEN_ICONS } from "@/shared/chains/chains";
 import { TokenMark } from "@/shared/chains/token-mark";
 
 // Receive, in a sheet over the dashboard. The user picks the token, then the network; the address never shows without
@@ -107,7 +105,6 @@ export function ReceiveSheet({
                     )
                   }
                   label={chainName(o.chainId)}
-                  note={isTestnet(o.chainId) ? RECEIVE_COPY.testnet : null}
                   onClick={() => setNetwork(o.network)}
                 />
               );
@@ -127,9 +124,6 @@ export function ReceiveSheet({
             }
           >
             <TokenMark chainId={chosen.chainId} symbol={chosen.symbol} />
-            {isTestnet(chosen.chainId) ? (
-              <Badge tone={TONES.info}>{RECEIVE_COPY.testnet}</Badge>
-            ) : null}
           </Summary>
           <NetworkWarning token={chosen.symbol} network={chainName(chosen.chainId)} />
           {shown ? (
@@ -147,12 +141,7 @@ export function ReceiveSheet({
               />
             </>
           ) : null}
-          <p className="text-xs text-muted">
-            {isTestnet(chosen.chainId)
-              ? `${chainName(chosen.chainId)} ${RECEIVE_COPY.testnetNote} `
-              : null}
-            {RECEIVE_COPY.receiveNote}
-          </p>
+          <p className="text-xs text-muted">{RECEIVE_COPY.receiveNote}</p>
         </div>
       )}
     </Sheet>
@@ -176,7 +165,7 @@ function Choice({
 }: {
   icon: ReactNode;
   label: string;
-  note: string | null;
+  note?: string;
   onClick: () => void;
 }) {
   return (

@@ -48,7 +48,8 @@ describe("BalanceFigure", () => {
         onRetry={() => {}}
       />,
     );
-    expect(screen.getByText(/on its way/).textContent).toContain("1.00");
+    // Just the amount and "on its way", no explanation after it (R-72).
+    expect(screen.getByText(/on its way/).textContent).toMatch(/^1\.00\s*USDC on its way$/);
     expect(screen.getByText(/held for payers/).textContent).toContain("0.25");
   });
 
