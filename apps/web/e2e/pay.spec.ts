@@ -159,6 +159,30 @@ test.describe("pay page", () => {
     for (const url of scripts) expect(new URL(url).origin, url).toBe(new URL(PUBLIC_URL).origin);
   });
 
+  // R-55: Check status asks Forwend to look at the address again, says what it found and rests until the next check.
+  test("Check status asks Forwend to look again and says what it found", async ({ page }) => {
+    await openPay(page, OPEN);
+    let calls = 0;
+    await page.route(`**/api/v1/invoices/${ID}/recheck`, (route) => {
+      calls++;
+      return route.fulfill({
+        json: {
+          onChain: "1250000000",
+          recorded: "0",
+          rescanning: true,
+          nextCheckAt: new Date(NOW.getTime() + 30_000).toISOString(),
+        },
+      });
+    });
+    const check = page.getByRole("button", { name: "Check status" });
+    await check.click();
+    await expect(page.getByRole("status").filter({ hasText: /^Found/ })).toHaveText(
+      "Found 1,250.00 USDC that is not recorded yet. Recording it now; this page updates by itself.",
+    );
+    await expect(check).toBeDisabled();
+    expect(calls).toBe(1);
+  });
+
   test("moves from waiting to detected, confirming, paid and settled without a reload", async ({
     page,
   }) => {

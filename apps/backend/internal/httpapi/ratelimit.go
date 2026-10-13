@@ -15,6 +15,13 @@ import (
 // api can't trust it to tell payers apart.
 const userRate, userBurst = 2, 60 // requests per second, and at once, per Privy user
 
+// Check status reads a chain RPC per call: this bounds those reads per api process, whoever asks (R-55). Each invoice
+// is also limited to one check every invoice.RecheckEvery, across replicas.
+const recheckRate, recheckBurst = 1, 10
+
+// everyone is the one key of a limit shared by all callers.
+func everyone(*http.Request) string { return "all" }
+
 var errRateLimited = errors.New("rate limited")
 
 // buckets live in each api process, so each replica counts on its own (docs/backend/architecture.md#scaling).

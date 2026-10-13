@@ -311,3 +311,41 @@ test("a paid invoice that is still settling says why its money waits", async ({ 
   expect(await blockingViolations(page)).toEqual([]);
   await context.close();
 });
+
+// R-55: the owner can press Check status on an open invoice's page; a settled invoice has nothing left to check.
+test("an open invoice's page offers Check status and a settled one does not", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page);
+  await page.route(`/api/v1/invoices/${OPEN_INVOICE.invoiceId}/recheck`, (route) =>
+    route.fulfill({
+      json: {
+        onChain: "0",
+        recorded: "0",
+        rescanning: false,
+        nextCheckAt: new Date(Date.now() + 30_000).toISOString(),
+      },
+    }),
+  );
+  await page.goto(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
+  const check = page.getByRole("button", { name: "Check status" });
+  await check.click();
+  await expect(
+    page
+      .getByRole("main")
+      .getByRole("status")
+      .filter({ hasText: /^Nothing/ }),
+  ).toHaveText(
+    "Nothing has arrived on Base Sepolia yet. A payment shows once the network finalizes it.",
+  );
+  await expect(check).toBeDisabled();
+  await page.goto(`/app/invoices/${SETTLED_INVOICE.invoiceId}`);
+  await expect(page.getByRole("main").getByText("October retainer")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Check status" })).toHaveCount(0);
+  await context.close();
+});

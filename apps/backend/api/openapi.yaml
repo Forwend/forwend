@@ -386,6 +386,49 @@ paths:
               schema: { $ref: "#/components/schemas/Invoice" }
         "404": { $ref: "#/components/responses/InvoiceNotFound" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/invoices/{invoiceId}/recheck:
+    post:
+      operationId: recheckInvoice
+      summary: Check an invoice on chain again (Check status)
+      description: |
+        Public like GET /v1/invoices/{invoiceId}: the payer presses Check status (R-55, D-77). Reads the receive
+        address's token balance at the chain's finalized block and compares it with the recorded transfers. When more
+        is on chain, the worker rescans the address from the invoice's creation block in bounded steps and books what
+        it finds. Never signs. One check per invoice every 30 s across api replicas; a per-process limit bounds the
+        RPC reads; per-IP limits belong to the edge (Q-8).
+      security: []
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+      responses:
+        "200":
+          description: What the check found
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [onChain, recorded, rescanning, nextCheckAt]
+                properties:
+                  onChain:
+                    allOf: [{ $ref: "#/components/schemas/Uint256" }]
+                    description: The receive address's balance at the chain's finalized block, in base units.
+                  recorded:
+                    allOf: [{ $ref: "#/components/schemas/Uint256" }]
+                    description: The sum of the recorded transfers to it that are not reorged.
+                  rescanning:
+                    type: boolean
+                    description: The worker is rescanning the address for the difference.
+                  nextCheckAt: { type: string, format: date-time }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503":
+          description: The chain's RPC could not be read (network_unavailable); try again shortly.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/invoices/{invoiceId}/invoice.pdf:
     get:
       operationId: getInvoicePdf

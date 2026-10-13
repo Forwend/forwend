@@ -14,6 +14,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// RescanTimeout bounds one chain's Check status rescans within its round.
+const RescanTimeout = 30 * time.Second
+
 // RoundTimeout bounds one chain's scan and ledger run.
 const RoundTimeout = 2 * time.Minute
 
@@ -69,6 +72,13 @@ func (w *Worker) Round(ctx context.Context) {
 		chainCtx, cancel := context.WithTimeout(ctx, RoundTimeout)
 		err := watch.Scan(chainCtx)
 		if err == nil {
+			// Check status asked to look again (R-55): what a rescan finds is booked below in the same round. Its own
+			// shorter deadline leaves the ledger its time even when rescans hit a slow RPC.
+			rescanCtx, cancelRescan := context.WithTimeout(chainCtx, RescanTimeout)
+			if rescanErr := watch.Rescans(rescanCtx); rescanErr != nil {
+				slog.Error("worker rescans", "chain", id, "err", chain.Redact(rescanErr))
+			}
+			cancelRescan()
 			err = w.ledger.ProcessChain(chainCtx, id)
 		}
 		cancel()

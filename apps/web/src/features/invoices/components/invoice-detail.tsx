@@ -14,7 +14,8 @@ import {
 import { Check, ChevronLeft, Copy, FileDown } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useId } from "react";
-import { API_PAYMENT_STATUSES } from "@/features/activity/activity";
+import { API_PAYMENT_STATUSES, API_SETTLEMENT_STATUSES } from "@/features/activity/activity";
+import { CheckStatus } from "@/features/invoices/components/check-status";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { InvoiceDeposits } from "@/features/invoices/components/invoice-deposits";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
@@ -215,6 +216,17 @@ function Loaded({
             )}
           </p>
           <InvoiceDeposits invoice={invoice} token={token ?? null} />
+          {invoice.settlementStatus === API_SETTLEMENT_STATUSES.settled ? null : (
+            <CheckStatus
+              invoiceId={invoice.invoiceId}
+              network={chainName(invoice.chainId)}
+              money={(units) =>
+                token
+                  ? `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`
+                  : units.toString()
+              }
+            />
+          )}
         </div>
       </section>
 

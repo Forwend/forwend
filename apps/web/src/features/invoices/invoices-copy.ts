@@ -7,6 +7,7 @@ import {
   INVOICE_STEPS,
   type InvoicePdf,
   type InvoiceStep,
+  type Recheck,
   SETTLEMENT_WAITS,
   type SettlementWaitKind,
 } from "@/features/invoices/invoices";
@@ -150,6 +151,22 @@ export const INVOICE_COPY = {
     [SETTLEMENT_WAITS.refused]: () =>
       "Stopped for a manual check. The money stays at the invoice's address until Forwend resolves it",
   } satisfies Record<SettlementWaitKind, (network: string, seconds: number, at: string) => string>,
+  checkStatus: "Check status",
+  // What Check status found (R-55); `money` formats base units with the token's symbol.
+  recheck: (r: Recheck, network: string, money: (units: bigint) => string) => {
+    const missing = BigInt(r.onChain) - BigInt(r.recorded);
+    if (r.rescanning && missing > 0n)
+      return `Found ${money(missing)} that is not recorded yet. Recording it now; this page updates by itself.`;
+    if (r.rescanning) return `Looking at ${network} again; this page updates by itself.`;
+    // A full look ran minutes ago and found no transfer for it, such as Arc's native USDC.
+    if (missing > 0n)
+      return `${money(missing)} at the address has no recorded transfer. A full check ran a few minutes ago; check again later.`;
+    if (BigInt(r.onChain) === 0n && BigInt(r.recorded) === 0n)
+      return `Nothing has arrived on ${network} yet. A payment shows once the network finalizes it.`;
+    return "Up to date: every payment at the address is recorded.";
+  },
+  recheckFailed: "We could not reach the network. Try again in a moment.",
+  recheckTooSoon: "This invoice was just checked. Try again in a few seconds.",
   deposits: "Payments received",
   late: "After the checkout closed",
   from: "From",

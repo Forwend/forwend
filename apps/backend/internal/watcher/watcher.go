@@ -159,24 +159,7 @@ func (c *Chain) Scan(ctx context.Context) error {
 	}
 	finalized := uint64(final.Number)
 
-	var deposits []deposit
-	seen := map[logKey]bool{}
-	for _, l := range logs {
-		h, ok := headers[l.BlockNumber]
-		if !ok || h.Hash != l.BlockHash {
-			continue // this node's view moved since eth_getLogs; the next scan sees it again
-		}
-		inv := invoices[common.BytesToAddress(l.Topics[2].Bytes())]
-		d := deposit{
-			// The emitting contract, not the invoice's token: the foreign key then also rejects a mismatch.
-			invoiceID: inv.invoiceID, token: hexutil.Encode(l.Address[:]), txHash: hexutil.Encode(l.TxHash[:]),
-			blockHash: hexutil.Encode(l.BlockHash[:]), from: hexutil.Encode(l.Topics[1][12:]),
-			to: hexutil.Encode(l.Topics[2][12:]), logIndex: uint64(l.Index), blockNumber: l.BlockNumber,
-			blockTime: uint64(h.Timestamp), amount: new(big.Int).SetBytes(l.Data), final: l.BlockNumber <= finalized,
-		}
-		deposits = append(deposits, d)
-		seen[logKey{d.blockHash, d.logIndex}] = true
-	}
+	deposits, seen := depositsOf(logs, headers, invoices, finalized)
 	transfers := wallets.transfers(walletLogs, openWallet, headers, finalized, seen)
 	// A detected row is reorged only when the chain shows another block at its height. A log that is merely
 	// missing from one answer proves nothing.
@@ -202,6 +185,31 @@ func (c *Chain) Scan(ctx context.Context) error {
 	return c.record(ctx, reorgedOf(open), deposits, reorgedOf(openWallet), transfers, final, latest)
 }
 
+// depositsOf turns invoice logs into deposits, final at or below finalized, and the set of logs it kept. A log whose
+// block this node no longer shows is left for the next scan.
+func depositsOf(logs []types.Log, headers map[uint64]header, invoices map[common.Address]receiver,
+	finalized uint64) ([]deposit, map[logKey]bool) {
+	var deposits []deposit
+	seen := map[logKey]bool{}
+	for _, l := range logs {
+		h, ok := headers[l.BlockNumber]
+		if !ok || h.Hash != l.BlockHash {
+			continue // this node's view moved since eth_getLogs; the next scan sees it again
+		}
+		inv := invoices[common.BytesToAddress(l.Topics[2].Bytes())]
+		d := deposit{
+			// The emitting contract, not the invoice's token: the foreign key then also rejects a mismatch.
+			invoiceID: inv.invoiceID, token: hexutil.Encode(l.Address[:]), txHash: hexutil.Encode(l.TxHash[:]),
+			blockHash: hexutil.Encode(l.BlockHash[:]), from: hexutil.Encode(l.Topics[1][12:]),
+			to: hexutil.Encode(l.Topics[2][12:]), logIndex: uint64(l.Index), blockNumber: l.BlockNumber,
+			blockTime: uint64(h.Timestamp), amount: new(big.Int).SetBytes(l.Data), final: l.BlockNumber <= finalized,
+		}
+		deposits = append(deposits, d)
+		seen[logKey{d.blockHash, d.logIndex}] = true
+	}
+	return deposits, seen
+}
+
 // start is where this scan begins. A new chain starts at its finalized block: deposits and wallet transfers before
 // the first scan are not looked for. ponytail: add a start block to chains if a chain is enabled after invoices on it
 // exist.
@@ -222,6 +230,45 @@ func (c *Chain) start(ctx context.Context) (uint64, error) {
 		return 0, fmt.Errorf("read chain %d cursor: %w", c.chainID, err)
 	}
 	return uint64(from), nil
+}
+
+// insertDeposits inserts each deposit, or brings a reorged one back, inside tx. A confirmed row may be booked and never
+// changes; a reorged one comes back if its block is canonical again.
+func (c *Chain) insertDeposits(ctx context.Context, tx pgx.Tx, deposits []deposit) error {
+	for _, d := range deposits {
+		status := "detected"
+		if d.final {
+			status = "confirmed"
+		}
+		row, err := tx.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("record chain %d deposit %s/%d: %w", c.chainID, d.txHash, d.logIndex, err)
+		}
+		_, err = row.Exec(ctx, `
+			INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
+			    block_hash, block_number, block_time, from_address, to_address, amount, status)
+			VALUES ($1, 'evm', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			ON CONFLICT (chain_id, block_hash, log_index) DO UPDATE SET status = excluded.status
+			WHERE chain_transfers.status <> 'confirmed' AND chain_transfers.status <> excluded.status`,
+			c.chainID, d.token, d.invoiceID, d.txHash, d.logIndex, d.blockHash, d.blockNumber, d.blockTime,
+			d.from, d.to, d.amount.String(), status)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.ConstraintName == "chain_transfers_live_log" {
+			// The same transaction is already recorded under another block: one bad node must not stop the chain's
+			// scan, and an operator decides which block is real.
+			_ = row.Rollback(ctx)
+			slog.Error("ALERT deposit recorded under another block was mined again; skipped", "chain", c.chainID,
+				"tx", d.txHash, "log", d.logIndex, "block", d.blockHash)
+			continue
+		}
+		if err == nil {
+			err = row.Commit(ctx)
+		}
+		if err != nil {
+			return fmt.Errorf("record chain %d deposit %s/%d: %w", c.chainID, d.txHash, d.logIndex, err)
+		}
+	}
+	return nil
 }
 
 // invoices maps each receive address on this chain to its invoice and token.
@@ -377,39 +424,8 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 		reorgedWallet); err != nil {
 		return fmt.Errorf("mark chain %d reorged wallet transfers: %w", c.chainID, err)
 	}
-	for _, d := range deposits {
-		status := "detected"
-		if d.final {
-			status = "confirmed"
-		}
-		// A confirmed row may be booked and never changes; a reorged one comes back if its block is canonical again.
-		row, err := tx.Begin(ctx)
-		if err != nil {
-			return fmt.Errorf("record chain %d deposit %s/%d: %w", c.chainID, d.txHash, d.logIndex, err)
-		}
-		_, err = row.Exec(ctx, `
-			INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
-			    block_hash, block_number, block_time, from_address, to_address, amount, status)
-			VALUES ($1, 'evm', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-			ON CONFLICT (chain_id, block_hash, log_index) DO UPDATE SET status = excluded.status
-			WHERE chain_transfers.status <> 'confirmed' AND chain_transfers.status <> excluded.status`,
-			c.chainID, d.token, d.invoiceID, d.txHash, d.logIndex, d.blockHash, d.blockNumber, d.blockTime,
-			d.from, d.to, d.amount.String(), status)
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.ConstraintName == "chain_transfers_live_log" {
-			// The same transaction is already recorded under another block: one bad node must not stop the chain's
-			// scan, and an operator decides which block is real.
-			_ = row.Rollback(ctx)
-			slog.Error("ALERT deposit recorded under another block was mined again; skipped", "chain", c.chainID,
-				"tx", d.txHash, "log", d.logIndex, "block", d.blockHash)
-			continue
-		}
-		if err == nil {
-			err = row.Commit(ctx)
-		}
-		if err != nil {
-			return fmt.Errorf("record chain %d deposit %s/%d: %w", c.chainID, d.txHash, d.logIndex, err)
-		}
+	if err := c.insertDeposits(ctx, tx, deposits); err != nil {
+		return err
 	}
 	for _, t := range transfers {
 		status := "detected"

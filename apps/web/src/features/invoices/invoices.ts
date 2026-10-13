@@ -164,6 +164,14 @@ export interface Invoice extends InvoiceSummary {
   settlementWait?: SettlementWait | null;
 }
 
+/** POST /v1/invoices/{id}/recheck (R-55): what Check status found. Amounts in base units. */
+export interface Recheck {
+  onChain: string;
+  recorded: string;
+  rescanning: boolean;
+  nextCheckAt: string;
+}
+
 export interface InvoicesPage {
   items: InvoiceSummary[];
   nextCursor: string | null;
