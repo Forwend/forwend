@@ -110,7 +110,7 @@ const deposit: Deposit = {
 
 describe("invoiceProgress", () => {
   it("waits for a payment, then confirms it with the slowest deposit's blocks and time left", () => {
-    expect(invoiceProgress(open)).toMatchObject({ done: 0, current: "detected" });
+    expect(invoiceProgress(open)).toMatchObject({ done: 0, current: "waiting" });
     const confirming = {
       ...open,
       paymentStatus: "detected",
@@ -120,7 +120,7 @@ describe("invoiceProgress", () => {
       ],
     };
     expect(invoiceProgress(confirming)).toEqual({
-      done: 1,
+      done: 2,
       current: "confirming",
       blocksLeft: 9,
       blocksTotal: 12,
@@ -131,15 +131,15 @@ describe("invoiceProgress", () => {
   it("is paid only on the API's word, and done once settled", () => {
     const confirmed = { ...open, deposits: [{ ...deposit, status: "confirmed" }] };
     expect(invoiceProgress({ ...confirmed, paymentStatus: "partially_paid" })).toMatchObject({
-      done: 2,
+      done: 3,
       current: "paid",
     });
     expect(invoiceProgress({ ...confirmed, paymentStatus: "paid" })).toMatchObject({
-      done: 3,
+      done: 4,
       current: "settled",
     });
     const settled = { ...confirmed, paymentStatus: "paid", settlementStatus: "settled" };
-    expect(invoiceProgress(settled)).toMatchObject({ done: 4, current: null });
+    expect(invoiceProgress(settled)).toMatchObject({ done: 5, current: null });
     expect(invoiceStatus(settled)).toBe(PAYMENT_STATUS.settled);
   });
 

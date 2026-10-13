@@ -3314,7 +3314,7 @@
       "dependsOn": [
         "F152"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -3326,7 +3326,77 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T20:11:31Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 138.1,
+            "log": "docs/runs/F154-20261013T201131Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": "docs/runs/F154-20261013T201131Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F154-20261013T201131Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F154-20261013T201131Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F154-20261013T201131Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 93.3,
+            "log": "docs/runs/F154-20261013T201131Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.3,
+            "log": "docs/runs/F154-20261013T201131Z-build.log"
+          }
+        ],
+        "taskHash": "3fec70d76cdc2e83",
+        "filesHash": "18913065c26882b0",
+        "proof": {
+          "1": "e2e: Waiting step first and moving; pay link in the header, gone once paid"
+        },
+        "commit": "56a6498",
+        "doneAt": "2026-10-13T20:15:37Z"
+      },
+      "branch": "feat/f154-the-owner-s-invoice-page-starts-at-waiti",
+      "baseCommit": "e0796c7ad2c72d3fb62bab5a90b0e5d039ca3fef",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f154-the-owner-s-invoice-page-starts-at-waiti",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {

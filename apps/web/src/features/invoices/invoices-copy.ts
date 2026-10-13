@@ -161,6 +161,7 @@ export const INVOICE_COPY = {
   amount: "Amount",
   progress: "Payment progress",
   steps: {
+    [INVOICE_STEPS.waiting]: "Waiting",
     [INVOICE_STEPS.detected]: "Detected",
     [INVOICE_STEPS.confirming]: "Confirming",
     [INVOICE_STEPS.paid]: "Paid",
