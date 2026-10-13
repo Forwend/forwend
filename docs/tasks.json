@@ -1304,7 +1304,7 @@
       "dependsOn": [
         "F132"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "unit"
@@ -1374,12 +1374,19 @@
         "taskHash": "144a72a188a7352d",
         "filesHash": "d4d40e3723a85f74",
         "proof": {
-          "1": "e2e: pay.spec picks Arbitrum then sees its address, Change switches to Base and its address, the picker is gone once optionLocked, a fixed invoice shows its one option as chosen, axe clean with the picker open, the canary reads an option via ?option=; unit: option-picker.test (network then only its tokens, single token picked at once, new network clears a token)"
-        }
+          "1": "e2e: pick, Change before payment, lock after money, fixed invoice, canary reads an option; unit: option picker"
+        },
+        "commit": "55ddb43",
+        "doneAt": "2026-10-13T16:19:25Z"
       },
       "branch": "feat/f133-the-payer-picks-the-network-then-the-tok",
       "baseCommit": "d70c6972ac8064ab082f51095f7d747946941fef",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f133-the-payer-picks-the-network-then-the-tok",
+        "base": "main"
+      }
     },
     {
       "id": "F134",
