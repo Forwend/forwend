@@ -322,6 +322,8 @@ settlement intent (unique per invoice) in the same transaction. For each due int
    transaction: intent `confirmed`, a `settlement` ledger transaction (receiver and recipient_payable each
    −amount; one per invoice) and the invoice's `settlement_status` `settled`. A settle a reorg drops before that is
    reconciled like an unsent one.
+A waiting intent also stores its wait kind (`retry`, `cap` for the sponsored limit, `unresolved`), cleared when a
+settle is signed, so the invoice API can tell the owner why the money waits (R-54) without reading the reason text.
 Each intent's attempt has a 3-minute limit, so an RPC that stops answering can't stall the others. Before each intent
 the signer checks it still holds its lock; without it the round stops.
 It signs only `factory.deploy(terms)` and `receiver.settle()`, and only for chains enabled in the database: a chain

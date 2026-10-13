@@ -814,17 +814,18 @@
     {
       "id": "F129",
       "type": "fix",
-      "behavior": "A paid invoice settles after the worker or signer restarts, and a settle that cannot go on says why",
+      "behavior": "A payment made or finalized while the worker or signer was down still settles after a restart, and the invoice page says why money is still on its way",
       "acceptance": [
-        "R-54: a backend test that stops the worker and the signer around a payment fails before the fix and passes after; each round gives every paid invoice without a confirmed settlement an intent; a blocked intent stores its reason and the invoice API returns it"
+        "R-54: a backend test pays an invoice while the worker is stopped, passes the checkout's close time, then starts a new worker and signer: the invoice is paid (not late) and settles exactly once; the invoice API returns a settlement wait (signing soon, finalizing with time left, retrying until a time, daily cap until a time, or refused) computed from a stored wait kind, never from log text; the invoice page shows it in one line; backend, unit and e2e tests cover each wait"
       ],
       "dependsOn": [
         "F128"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend",
-        "unit"
+        "unit",
+        "e2e"
       ],
       "refs": [
         "R-54",
@@ -834,9 +835,96 @@
         "packages/contracts/src/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-13 review pass by reviewer: Money safety: the signer never reads wait (load/Run in signer.go select no wait), so it changes no decision. wait is set by postpone retry/cap (reconcile.go:282-291) and stall unresolved (reconcile.go:256), cleared by refuse (:265), sign (settle.go:154) and replace (settle.go:277); every write keeps its status guard, so a stale attempt can't overwrite it. confirm leaves wait but sets status confirmed and settlement_status settled in one tx, and get.go:189 returns nil for settled. Migration 00018: goose Up/Down correct, CHECK (retry, cap, unresolved) matches the Go constants. get.go settlementWait is correct for no intent, refused, cap, retry/unresolved, sent (finalizing, signed_at - finalized time as in D-45) and pending; unpaid invoices return before the query; the cursor read only moved from deposits(). Only create and the profile GET use toOwnerInvoiceJSON (invoices.go:139,194); the public GET still uses invoiceDetailJSON, and a test checks that. api.md and openapi.yaml match the JSON (secondsLeft only for finalizing, until RFC3339). Web: SETTLEMENT_WAITS drives the type and the copy (satisfies Record), the owner query polls with LIVE_QUERY, one status line. Tests: TestPaidWhileTheWorkerWasDownSettlesAfterARestart covers never-seen and seen-not-final across the close (refund none, nonce +2, settled once); TestOwnerSeesWhyAPaidInvoiceWaits covers every kind plus public and settled; existing signer tests gained wait asserts, none weakened; unit and e2e cover the line. Re-ran: go test settlement/invoice/httpapi ok; web vitest 82 passed; logs at docs/runs/F129-20261013T132625Z-* are all exit 0. Not blockers: (1) a stalled intent keeps wait=unresolved after a later round finds the receipt and only waits for finality or resends without replace, so the owner sees retrying with a past until (get.go:210, reconcile.go:256) until confirm; (2) an overpaid paid invoice shows the overpaid label and no wait line (invoice-detail.tsx:146-153,201); (3) the public GET also runs the intent query for paid unsettled invoices and drops the result (get.go:183). The scope edit drops the per-round intent sweep; the ledger queues the intent in the same tx as paid (ledger/process.go:138-141), so the sweep isn't needed.",
+        "2026-10-13 review pass by reviewer: Re-review of the delta after the first pass. (1) get.go:95,97: a stored cap/retry/unresolved wait counts only while next_attempt_at is in the future. A passed one reads as the status: sent is finalizing, pending is signing. This fixes the stale retrying text with a past until after a resolved stall. The signer still never reads wait, so no money decision changes. invoices_test.go now uses a future next time and adds a passed unresolved case that expects finalizing (invoices_test.go:615-621). (2) invoice-detail.tsx:200-214: the status line joins the untold label (for example Overpaid) and the wait text with ' · ', so an overpaid paid invoice shows its wait. When both are missing the line is empty, as before (empty:sr-only); confirming is unchanged. (3) get.go:66: settlementWait runs only on the owner's read (profileID set). The public GET runs no intent query and still has no settlementWait (asserted). Create returns an open invoice, so null is correct there. Re-ran: go test ./internal/invoice/ ./internal/httpapi/ ok; web vitest 82 passed; no Anvil left running. docs/runs/F129-20261013T133517Z-* show every check passed, including e2e. No blockers."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T13:35:17Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 83.2,
+            "log": "docs/runs/F129-20261013T133517Z-backend.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 80.7,
+            "log": "docs/runs/F129-20261013T133517Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 117.4,
+            "log": "docs/runs/F129-20261013T133517Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": "docs/runs/F129-20261013T133517Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F129-20261013T133517Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F129-20261013T133517Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F129-20261013T133517Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.5,
+            "log": "docs/runs/F129-20261013T133517Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F129-20261013T133517Z-keep.log"
+          }
+        ],
+        "taskHash": "5fa1bdb6671b5c99",
+        "filesHash": "9ecb5e95621f09ae",
+        "proof": {
+          "1": "backend: TestPaidWhileTheWorkerWasDownSettlesAfterARestart (never seen / seen, not final; fails when the watcher skips the downtime) and TestOwnerSeesWhyAPaidInvoiceWaits (every wait kind, a passed wait, public read without it); the signer stores wait retry/cap/unresolved (TestPausedFactoryIsRetried, TestSponsoredSettlementsPerUserAreCapped); unit covers each wait line and e2e shows it on the invoice page"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review of the delta after the first pass. (1) get.go:95,97: a stored cap/retry/unresolved wait counts only while next_attempt_at is in the future. A passed one reads as the status: sent is finalizing, pending is signing. This fixes the stale retrying text with a past until after a resolved stall. The signer still never reads wait, so no money decision changes. invoices_test.go now uses a future next time and adds a passed unresolved case that expects finalizing (invoices_test.go:615-621). (2) invoice-detail.tsx:200-214: the status line joins the untold label (for example Overpaid) and the wait text with ' · ', so an overpaid paid invoice shows its wait. When both are missing the line is empty, as before (empty:sr-only); confirming is unchanged. (3) get.go:66: settlementWait runs only on the owner's read (profileID set). The public GET runs no intent query and still has no settlementWait (asserted). Create returns an open invoice, so null is correct there. Re-ran: go test ./internal/invoice/ ./internal/httpapi/ ok; web vitest 82 passed; no Anvil left running. docs/runs/F129-20261013T133517Z-* show every check passed, including e2e. No blockers.",
+          "at": "2026-10-13T13:40:42Z",
+          "filesHash": "9ecb5e95621f09ae"
+        }
+      },
+      "branch": "fix/f129-a-paid-invoice-settles-after-the-worker",
+      "baseCommit": "3311d2c1e372f93238de4e4d545b3547f3e18034",
+      "failedVerifies": 0
     },
     {
       "id": "F130",

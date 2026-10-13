@@ -135,6 +135,24 @@ export interface InvoiceSummary {
   createdAt: string;
 }
 
+/** Why a paid invoice's money has not reached the profile wallet yet (openapi.yaml, Invoice.settlementWait). */
+export const SETTLEMENT_WAITS = {
+  signing: "signing",
+  finalizing: "finalizing",
+  retrying: "retrying",
+  dailyLimit: "dailyLimit",
+  refused: "refused",
+} as const;
+export type SettlementWaitKind = (typeof SETTLEMENT_WAITS)[keyof typeof SETTLEMENT_WAITS];
+
+export interface SettlementWait {
+  kind: SettlementWaitKind;
+  /** retrying and dailyLimit: when the signer tries again. */
+  until: string | null;
+  /** finalizing: estimated chain time until the settle is final. */
+  secondsLeft: number | null;
+}
+
 /** An invoice read alone or just created. */
 export interface Invoice extends InvoiceSummary {
   /** Once paid: the block time of the deposit that completed the amount. */
@@ -142,6 +160,8 @@ export interface Invoice extends InvoiceSummary {
   /** Once settled: when the settlement was recorded as final. */
   settledAt: string | null;
   deposits: Deposit[];
+  /** Only in the owner's reads: null while not paid or once settled. */
+  settlementWait?: SettlementWait | null;
 }
 
 export interface InvoicesPage {

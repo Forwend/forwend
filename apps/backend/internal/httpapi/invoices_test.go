@@ -564,6 +564,72 @@ func TestListInvoices(t *testing.T) {
 	}
 }
 
+// R-54: the owner's read says why a paid invoice's money still waits, from the intent's status and stored wait kind;
+// the public read leaves it out, and an invoice that is not paid or already settled has none.
+func TestOwnerSeesWhyAPaidInvoiceWaits(t *testing.T) {
+	e := invoiceAPI(t)
+	ctx := context.Background()
+	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
+	owner := func() any {
+		return e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/invoices/"+id, "did:privy:alice", "", "").body["settlementWait"]
+	}
+	if got := owner(); got != nil {
+		t.Fatalf("open invoice: settlementWait %v, want null", got)
+	}
+	finalized := time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC)
+	next := time.Now().Add(30 * time.Minute).Truncate(time.Second).UTC() // a wait still ahead
+	if _, err := e.pool.Exec(ctx, `
+		WITH cur AS (UPDATE chain_cursors SET last_finalized_time = $2 WHERE chain_id = 84532)
+		UPDATE invoices SET payment_status = 'paid' WHERE id = $1`, id, finalized.Unix()); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := owner(), map[string]any{"kind": "signing", "until": nil, "secondsLeft": nil}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("paid, no intent yet: %v, want %v", got, want)
+	}
+	until := next.Format(time.RFC3339)
+	for _, c := range []struct {
+		name, set string
+		want      map[string]any
+	}{
+		{"pending", "status = 'pending', wait = NULL", map[string]any{"kind": "signing", "until": nil, "secondsLeft": nil}},
+		{"retrying", "status = 'pending', wait = 'retry'", map[string]any{"kind": "retrying", "until": until, "secondsLeft": nil}},
+		{"daily limit", "status = 'pending', wait = 'cap'", map[string]any{"kind": "dailyLimit", "until": until, "secondsLeft": nil}},
+		{"sent, finalizing", "status = 'sent', wait = NULL",
+			map[string]any{"kind": "finalizing", "until": nil, "secondsLeft": float64(120)}},
+		{"sent, unresolved", "status = 'sent', wait = 'unresolved'",
+			map[string]any{"kind": "retrying", "until": until, "secondsLeft": nil}},
+		{"refused", "status = 'refused', wait = NULL", map[string]any{"kind": "refused", "until": nil, "secondsLeft": nil}},
+	} {
+		if _, err := e.pool.Exec(ctx, `INSERT INTO settlement_intents (invoice_id, status, nonce, tx_hash, raw_tx, next_attempt_at)
+			VALUES ($1, 'sent', 0, '0x' || repeat('0a', 32), '\x00', $2)
+			ON CONFLICT (invoice_id) DO UPDATE SET next_attempt_at = $2, signed_at = $3, `+c.set, id, next, finalized.Add(2*time.Minute)); err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if got := owner(); !reflect.DeepEqual(got, c.want) {
+			t.Fatalf("%s: settlementWait %v, want %v", c.name, got, c.want)
+		}
+	}
+	if _, ok := e.get(t, id).body["settlementWait"]; ok {
+		t.Fatal("the public read shows settlementWait")
+	}
+	// A wait whose time has passed reads as the intent's status: a sent settle is finalizing again.
+	if _, err := e.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'sent', wait = 'unresolved',
+		next_attempt_at = now() - interval '1 minute' WHERE invoice_id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	if got := owner().(map[string]any)["kind"]; got != "finalizing" {
+		t.Fatalf("an unresolved wait that has passed: kind %v, want finalizing", got)
+	}
+	if _, err := e.pool.Exec(ctx, `
+		WITH i AS (UPDATE settlement_intents SET status = 'confirmed' WHERE invoice_id = $1)
+		UPDATE invoices SET settlement_status = 'settled' WHERE id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	if got := owner(); got != nil {
+		t.Fatalf("settled: settlementWait %v, want null", got)
+	}
+}
+
 // The owner reads one invoice of the profile as the public GET does, with the client's details; an invoice of another
 // profile, even the user's own, is not found there, and another user's profile is forbidden.
 func TestGetProfileInvoice(t *testing.T) {

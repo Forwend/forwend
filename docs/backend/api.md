@@ -100,8 +100,13 @@ R-19 and R-42; the full schema is in openapi.yaml.
   UTC), from the stored transfer.
 - `GET /v1/profiles/{profileId}/invoices?limit=&cursor=&status=&q=`: the list format above, highest number (newest)
   first; items have no `deposits`. Owner only, like every `{profileId}` route.
-- `GET /v1/profiles/{profileId}/invoices/{invoiceId}`: the public GET plus `client`. Another profile's invoice is 404
-  (`invoice_not_found`), also when the same user owns both.
+- `GET /v1/profiles/{profileId}/invoices/{invoiceId}`: the public GET plus `client` and `settlementWait`. Another
+  profile's invoice is 404 (`invoice_not_found`), also when the same user owns both.
+- `settlementWait` (owner reads and create only) says why a paid invoice's money has not reached the profile wallet
+  yet, null when it is not paid or already settled (R-54): `{kind, until, secondsLeft}` with `kind` one of `signing`,
+  `finalizing` (`secondsLeft` estimates the chain time until the settle is final), `retrying` and `dailyLimit` (the
+  user's sponsored settlements for 24 hours are used up; both with `until`, the next try) and `refused`. It comes from
+  the intent's status and the wait kind the signer stores with it, never from log text.
 - The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due date, `senderName` and
   `issuer` (who bills them; the issuer's own business details) but no `client`: the id is a bearer link, so it returns
   only what the payer needs (OWASP API Security Top 10 2023, API3). Create, list and the profile's GET, which only the

@@ -281,3 +281,33 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
   await expect(transfers).toHaveCount(20);
   await context.close();
 });
+
+// R-54: a paid invoice whose settle waits to be final says so on its page, with the chain and the time left.
+test("a paid invoice that is still settling says why its money waits", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page);
+  const paid = {
+    ...SETTLED_INVOICE,
+    settlementStatus: "none",
+    settlementTxHash: null,
+    deposits: [],
+  };
+  const wait = { kind: "finalizing", until: null, secondsLeft: 720 };
+  await page.route(`/api/v1/invoices/${paid.invoiceId}`, (route) => route.fulfill({ json: paid }));
+  await page.route(`/api/v1/profiles/*/invoices/${paid.invoiceId}`, (route) =>
+    route.fulfill({ json: { ...paid, settlementWait: wait } }),
+  );
+  await page.goto(`/app/invoices/${paid.invoiceId}`);
+  await expect(
+    page
+      .getByRole("main")
+      .getByRole("status")
+      .filter({ hasText: /^Sending/ }),
+  ).toHaveText("Sending to your wallet · waiting for Base Sepolia to finalize, about 12 min left");
+  expect(await blockingViolations(page)).toEqual([]);
+  await context.close();
+});

@@ -31,6 +31,7 @@ import {
   invoicePdfUrl,
   invoiceProgress,
   invoiceStatus,
+  type SettlementWait,
   tokenKey,
 } from "@/features/invoices/invoices";
 import { useGetInvoiceQuery, useGetProfileInvoiceQuery } from "@/features/invoices/invoices-api";
@@ -39,6 +40,7 @@ import {
   NEW_REQUEST_COPY,
   REQUESTS_COPY,
 } from "@/features/invoices/invoices-copy";
+import { chainName } from "@/shared/chains/chains";
 import { ExplorerLink } from "@/shared/chains/explorer-link";
 import { TokenMark } from "@/shared/chains/token-mark";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -46,6 +48,7 @@ import { APP_ROUTES } from "@/shared/config/routes";
 
 const NOT_FOUND = 404;
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+const CLOCK = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
 const COUNTRY = new Intl.DisplayNames(undefined, { type: "region" });
 const PANEL = "rounded-md border border-line bg-surface";
 const PANEL_TITLE = "border-b border-line px-4 py-3 text-base font-semibold text-ink sm:px-5";
@@ -66,7 +69,8 @@ export function InvoiceDetail({
   request?: boolean;
 }) {
   const invoice = useGetInvoiceQuery(invoiceId, LIVE_QUERY);
-  const owned = useGetProfileInvoiceQuery({ profileId, invoiceId });
+  // Polled like the public read: it carries why a paid invoice's money still waits, which changes as it settles.
+  const owned = useGetProfileInvoiceQuery({ profileId, invoiceId }, LIVE_QUERY);
   const mine = owned.currentData ?? null;
   const failure = invoice.error as { status?: unknown } | undefined;
   const notMine = (owned.error as { status?: unknown } | undefined)?.status === NOT_FOUND;
@@ -87,6 +91,7 @@ export function InvoiceDetail({
           <Loaded
             invoice={invoice.data}
             mine={mine}
+            wait={owned.currentData?.settlementWait ?? null}
             clientFailed={owned.isError}
             tokens={tokens}
             request={request}
@@ -111,12 +116,14 @@ export function InvoiceDetail({
 function Loaded({
   invoice,
   mine,
+  wait,
   clientFailed,
   tokens,
   request,
 }: {
   invoice: Invoice;
   mine: InvoiceSummary | null;
+  wait: SettlementWait | null;
   clientFailed: boolean;
   tokens: readonly InvoiceToken[] | null;
   request: boolean;
@@ -191,9 +198,21 @@ function Loaded({
             {/* The page has no status pill: the timeline cannot say expired or partial, so this line does. */}
             {current === INVOICE_STEPS.confirming ? (
               <ConfirmingStatus blocks={blocksLeft} seconds={secondsLeft} />
-            ) : untold ? (
-              PAYMENT_STATUSES[status].label
-            ) : null}
+            ) : (
+              // An overpaid invoice is paid too, so its label and its settlement wait share the line.
+              [
+                untold ? PAYMENT_STATUSES[status].label : null,
+                wait
+                  ? COPY.settling[wait.kind](
+                      chainName(invoice.chainId),
+                      wait.secondsLeft ?? 0,
+                      wait.until ? CLOCK.format(new Date(wait.until)) : "",
+                    )
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")
+            )}
           </p>
           <InvoiceDeposits invoice={invoice} token={token ?? null} />
         </div>

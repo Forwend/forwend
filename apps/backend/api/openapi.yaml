@@ -822,6 +822,22 @@ components:
               type: array
               description: Transfers to the receive address that are not reorged, in chain order. Empty on create.
               items: { $ref: "#/components/schemas/Deposit" }
+            settlementWait:
+              description: |
+                Only in the owner's responses (create and the profile's GET); the public GET leaves it out. Why a paid
+                invoice's money has not reached the profile wallet yet (R-54); null when it is not paid or already
+                settled. signing: the signer settles it on its next round. finalizing: the settle was sent and counts
+                once its block is final; secondsLeft estimates the chain time left. retrying: a temporary condition;
+                tried again at until. dailyLimit: the user's sponsored settlements for 24 hours are used up; tried
+                again at until. refused: the signer refused the terms and an operator looks at it.
+              oneOf:
+                - type: "null"
+                - type: object
+                  required: [kind, until, secondsLeft]
+                  properties:
+                    kind: { type: string, enum: [signing, finalizing, retrying, dailyLimit, refused] }
+                    until: { type: [string, "null"], format: date-time }
+                    secondsLeft: { type: [integer, "null"], minimum: 0 }
     InvoiceSummary:
       type: object
       required: [invoiceId, number, title, note, dueDate, senderName, issuer, chainId, token, amount, recipient, factory,
