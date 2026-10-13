@@ -1376,7 +1376,7 @@
       "dependsOn": [
         "F128"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -1452,12 +1452,19 @@
         "taskHash": "14cc824cf8a0efe9",
         "filesHash": "9e945e17a51dd03b",
         "proof": {
-          "1": "backend: invoices_pdf_test checks text and sections of invoice.pdf (open invoice, with and without billing details, long texts) and receipt.pdf (paid, settled) incl. QR drawn, explorer /URI links, full hashes; document_test keeps logo and explorer copies equal to the web"
-        }
+          "1": "backend: invoices_pdf_test checks invoice.pdf (open) and receipt.pdf (paid, settled) text, sections, QR and explorer links"
+        },
+        "commit": "10c8914",
+        "doneAt": "2026-10-13T15:16:24Z"
       },
       "branch": "feat/f137-invoice-and-receipt-pdfs-are-designed-li",
       "baseCommit": "cb0c47f429602598d51f98a1a15c456d48883502",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f137-invoice-and-receipt-pdfs-are-designed-li",
+        "base": "main"
+      }
     },
     {
       "id": "F138",
