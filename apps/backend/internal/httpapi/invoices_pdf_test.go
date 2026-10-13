@@ -149,7 +149,8 @@ func TestInvoicePDF(t *testing.T) {
 		"BILL TO\nBob Ltd\nMain St 1\nBerlin",
 		"Issued\n"+created.Format("2006-01-02 15:04")+" UTC\nDue date\n2026-11-01\nCheckout closes\n"+
 			expires.Format("2006-01-02 15:04")+" UTC",
-		"Description\nNetwork\nAmount\nLogo design\nBase Sepolia\nChain 84532\n5.00 USDC\nTotal\n5.00 USDC",
+		"Description\nNetwork\nAmount\nLogo design\nBase Sepolia\nChain 84532\n5.00 USDC\nTotal due\n5.00 USDC",
+		"Invoice INV-0003\nPage 1 of 1",
 		"NOTE\nThanks!\nPay within 14 days.",
 		"Pay this invoice\nScan the code or open the link. Send only USDC on Base Sepolia.\n"+webURL+"/pay/",
 		"Invoice ID\n"+id)
@@ -202,8 +203,8 @@ func TestInvoicePDFFitsLongTexts(t *testing.T) {
 	text := pdfText(t, pdf.body)
 	mustContain(t, text, "ééé…", "Bob\n?ccc", "a\na\na\na\na\na\na\na…", "n\nn\nn…")
 	// An amount too wide for its column wraps inside it and is never cut.
-	full := "115792089237316195423570985008687907853269984665640564039457584007913129.639935USDC"
-	mustContain(t, strings.NewReplacer("\n", "", " ", "").Replace(text), "Chain84532"+full+"Total"+full)
+	full := "115,792,089,237,316,195,423,570,985,008,687,907,853,269,984,665,640,564,039,457,584,007,913,129.639935USDC"
+	mustContain(t, strings.NewReplacer("\n", "", " ", "").Replace(text), "Chain84532"+full+"Totaldue"+full)
 }
 
 func TestInvoicePDFNotFound(t *testing.T) {

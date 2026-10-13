@@ -70,9 +70,30 @@ func networkOf(inv invoice.Invoice) network {
 	return network{name: inv.Network}
 }
 
-// choosing: the payer may still pick among several tokens and networks (R-56).
-func choosing(inv invoice.Invoice) bool {
-	return len(inv.Options) > 1 && !inv.OptionLocked
+// anyOption: the invoice accepts several tokens and networks, so it is priced in USD (R-56, R-70).
+func anyOption(inv invoice.Invoice) bool {
+	return len(inv.Options) > 1
+}
+
+// accepted lists the invoice's tokens with their networks, one line per token: "USDC on Base Sepolia, Arc Testnet".
+func accepted(inv invoice.Invoice) []string {
+	var symbols []string
+	nets := map[string][]string{}
+	for _, o := range inv.Options {
+		name := o.Network
+		if n, ok := networks[o.ChainID]; ok {
+			name = n.name
+		}
+		if _, seen := nets[o.Symbol]; !seen {
+			symbols = append(symbols, o.Symbol)
+		}
+		nets[o.Symbol] = append(nets[o.Symbol], name)
+	}
+	var out []string
+	for _, s := range symbols {
+		out = append(out, s+" on "+strings.Join(nets[s], ", "))
+	}
+	return out
 }
 
 func Number(n int64) string {
@@ -83,12 +104,21 @@ func Invoice(inv invoice.Invoice, payLink string) ([]byte, error) {
 	d := start(inv, "Invoice")
 	d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Due date", inv.DueDate},
 		[2]string{"Checkout closes", stamp(inv.ExpiresAt)})
-	d.lines(inv, "Total")
-	d.note(inv.Note)
+	d.lines(inv, "Total due", anyOption(inv))
 	help := "Scan the code or open the link. Send only " + inv.Symbol + " on " + networkOf(inv).name + "."
-	if choosing(inv) {
-		help = "Scan the code or open the link, then pick the token and network to pay with."
+	if anyOption(inv) {
+		d.heading("Pay with")
+		d.SetFont(font, "", 10)
+		for _, l := range accepted(inv) {
+			d.CellFormat(width, lineHeight, l, "", 1, "L", false, 0, "")
+		}
+		d.text(muted)
+		d.CellFormat(width, lineHeight, "Send only on these networks, 1 USD per token.", "", 1, "L", false, 0, "")
+		d.text(ink)
+		d.Ln(6)
+		help = "Scan the code or open the link, then pick the token and network."
 	}
+	d.note(inv.Note)
 	d.code(payLink, "Pay this invoice", help)
 	d.footer(inv)
 	return d.output()
@@ -105,7 +135,7 @@ func Receipt(inv invoice.Invoice, payLink string) ([]byte, error) {
 	}
 	d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Paid", stamp(inv.PaidAt)},
 		[2]string{"Settled", settled})
-	d.lines(inv, "Amount paid")
+	d.lines(inv, "Amount paid", false)
 
 	net := networkOf(inv)
 	d.heading("Payments")
@@ -151,6 +181,16 @@ func start(inv invoice.Invoice, kind string) doc {
 	d.SetCreationDate(date)
 	d.SetModificationDate(date)
 	d.SetCatalogSort(true)
+	// Every page names the invoice and its place, so a printed page that comes loose is still traceable.
+	d.AliasNbPages("{pages}")
+	d.SetFooterFunc(func() {
+		d.SetY(-margin + 6)
+		d.SetFont(font, "", 8)
+		d.text(subtle)
+		d.CellFormat(width/2, lineHeight, kind+" "+Number(inv.Number), "", 0, "L", false, 0, "")
+		d.CellFormat(width/2, lineHeight, fmt.Sprintf("Page %d of {pages}", d.PageNo()), "", 0, "R", false, 0, "")
+		d.text(ink)
+	})
 	d.AddPage()
 
 	// The mark and name on the left, the document's kind and number on the right.
@@ -274,7 +314,7 @@ func (d doc) facts(pairs ...[2]string) {
 }
 
 // lines is the invoice's one line: what it is for, the network and the amount in its token, then the total.
-func (d doc) lines(inv invoice.Invoice, total string) {
+func (d doc) lines(inv invoice.Invoice, total string, any bool) {
 	cols := [3]float64{88, 42, 40}
 	const pad = 3.0
 	d.color(surface)
@@ -298,9 +338,9 @@ func (d doc) lines(inv invoice.Invoice, total string) {
 	net := networkOf(inv)
 	network := append(d.fit(net.name, cols[1]-2*pad, 2), "Chain "+strconv.FormatUint(inv.ChainID, 10))
 	price := amount(inv.Amount, inv.Decimals, inv.Symbol)
-	if choosing(inv) {
+	if any {
 		// Every option is the same USD amount at 1 USD per stablecoin (D-75).
-		network = []string{"Payer chooses", fmt.Sprintf("%d tokens and networks", len(inv.Options))}
+		network = []string{"Any"}
 		price = amount(inv.Amount, inv.Decimals, "USD")
 	}
 	title := inv.Title
@@ -322,7 +362,7 @@ func (d doc) lines(inv invoice.Invoice, total string) {
 		for j, l := range c {
 			d.text(ink)
 			d.SetFont(font, "", 10)
-			if i == 1 && j == len(c)-1 {
+			if i == 1 && j == len(c)-1 && !any { // the chain id line
 				d.text(subtle)
 				d.SetFont(font, "", 8.5)
 			}
@@ -500,15 +540,21 @@ func (d doc) output() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// amount writes base units exactly in whole tokens, with at least 2 decimals when the token has them.
+// amount writes base units exactly in whole tokens, with at least 2 decimals when the token has them and the
+// thousands grouped.
 func amount(n *big.Int, decimals int, symbol string) string {
 	s := new(big.Rat).SetFrac(n, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)).FloatString(decimals)
-	if whole, frac, ok := strings.Cut(s, "."); ok {
+	whole, frac, ok := strings.Cut(s, ".")
+	// Thousands grouped as finance teams read them: 1,250.00.
+	for i := len(whole) - 3; i > 0; i -= 3 {
+		whole = whole[:i] + "," + whole[i:]
+	}
+	if ok {
 		frac = strings.TrimRight(frac, "0")
 		frac += strings.Repeat("0", max(0, min(2, decimals)-len(frac)))
-		s = whole + "." + frac
+		return whole + "." + frac + " " + symbol
 	}
-	return s + " " + symbol
+	return whole + " " + symbol
 }
 
 func stamp(t time.Time) string {

@@ -190,7 +190,11 @@ export function InvoicesTable({
                     <td className="px-5 py-3 text-right whitespace-nowrap">
                       <InvoiceAmount invoice={inv} tokens={tokens} className="flex-nowrap" />
                       <span className="flex justify-end text-xs text-muted">
-                        <NetworkName chainId={inv.chainId} />
+                        {inv.optionCount > 1 ? (
+                          INVOICES_COPY.anyNetwork
+                        ) : (
+                          <NetworkName chainId={inv.chainId} />
+                        )}
                       </span>
                     </td>
                   </tr>
@@ -215,7 +219,11 @@ export function InvoicesTable({
                     {/* The network first: a narrow row cuts the due date, never the network. */}
                     <span className="flex min-w-0 items-center gap-1 text-xs text-muted">
                       <span className="shrink-0">
-                        <NetworkName chainId={inv.chainId} />
+                        {inv.optionCount > 1 ? (
+                          INVOICES_COPY.anyNetwork
+                        ) : (
+                          <NetworkName chainId={inv.chainId} />
+                        )}
                       </span>
                       {inv.dueDate ? (
                         <span className="truncate">· {COPY.due(formatDueDate(inv.dueDate))}</span>
