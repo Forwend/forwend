@@ -18,7 +18,7 @@ export const BALANCES_COPY = {
   pastMonth: "Past 30 days",
   byNetwork: "Balances by network",
   estimateHint: "Estimated: each stablecoin counts as 1 USD.",
-  pending: "on its way: paid to this profile's invoices, not in the wallet yet",
+  pending: "on its way",
   held: "held for payers: late or extra payments owed back",
   unavailable: "We could not read this balance just now. It updates on its own.",
   noTokens: "No networks are enabled yet.",

@@ -451,6 +451,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   );
   await expect(current).toHaveText("Confirming");
   await expect(payments.locator("[data-status]")).toHaveCount(0);
+  await expect(main.getByText(/test network|no real value/i)).toHaveCount(0); // R-72
   expect(await blockingViolations(page)).toEqual([]);
 
   // Partly paid: the Paid step itself says so, tinted and half full, and the amount says what came in.

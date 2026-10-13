@@ -12,33 +12,29 @@ interface Explorer {
  * tempo.xyz/developers (connection details). A local chain has none.
  */
 export const CHAINS: Readonly<
-  Record<number, { name: string; testnet: boolean; icon?: BrandIconName; explorer?: Explorer }>
+  Record<number, { name: string; icon?: BrandIconName; explorer?: Explorer }>
 > = {
   84532: {
     name: "Base Sepolia",
-    testnet: true,
     icon: "base",
     explorer: { name: "Basescan", url: "https://sepolia.basescan.org" },
   },
   421614: {
     name: "Arbitrum Sepolia",
-    testnet: true,
     icon: "arbitrum",
     explorer: { name: "Arbiscan", url: "https://sepolia.arbiscan.io" },
   },
   5042002: {
     name: "Arc Testnet",
-    testnet: true,
     icon: "arc",
     explorer: { name: "ArcScan", url: "https://testnet.arcscan.app" },
   },
   42431: {
     name: "Tempo Moderato",
-    testnet: true,
     icon: "tempo",
     explorer: { name: "Tempo Explorer", url: "https://explore.testnet.tempo.xyz" },
   },
-  31337: { name: "Anvil (local)", testnet: true },
+  31337: { name: "Anvil (local)" },
 };
 
 /** Token logos by symbol. */
@@ -51,11 +47,6 @@ export const TOKEN_ICONS: Readonly<Record<string, BrandIconName>> = {
 /** The network's name, or its chain ID when this app does not know it. */
 export function chainName(chainId: number): string {
   return CHAINS[chainId]?.name ?? `Chain ${chainId}`;
-}
-
-/** Unknown chains count as test networks: never imply real value. */
-export function isTestnet(chainId: number): boolean {
-  return CHAINS[chainId]?.testnet ?? true;
 }
 
 const TX_HASH = /^0x[0-9a-fA-F]{64}$/;
