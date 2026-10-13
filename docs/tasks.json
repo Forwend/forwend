@@ -2109,7 +2109,7 @@
         "F141",
         "F138"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "a11y-e2e"
@@ -2125,7 +2125,8 @@
         "2026-10-13 review fail by reviewer: Code is correct: the optionCount subquery counts the main row plus its options and plans as a BitmapOr of the id unique index and invoices_main, run once per returned row (checked with EXPLAIN on the dev database); OpenAPI, api.md, DESIGN.md and fixtures match; the phone transaction row keeps a <time> element on its own line; no unrelated edits; invoice and httpapi Go tests, web feature tests and tsc pass. Fail on the acceptance claim: the note lists 10 screens (60 screenshots) but omits the New profile page (/app/profiles/new) and the first-run screen at /app, so 'every app page at 390, 768 and 1440 px in both themes' is not shown. Review those two at three widths in both themes, fix anything found, and add them to the note.",
         "2026-10-13 Added after review: New profile (/app/profiles/new) and the first-run choice (/app with onboardedAt null) at 1440, 768 and 390 px in light and dark; both hold, nothing to fix. All 72 screenshots (12 screens x 3 widths x 2 themes) are in docs/runs/F142-screens/ beside the run logs (git-ignored, local).",
         "2026-10-13 review fail by reviewer: Code is unchanged since 198df0a and still correct. The 72 screenshots exist at 1440, 768 and 390 px wide, and the new New profile and first-run shots hold in both themes. But the phone screenshots of transactions and overview (light and dark) show the old row: 'Base Sepolia · Oct 13, 8:13 ...' on one line with the time cut. That is the layout this commit replaces, so these shots were taken before the fix and the one changed screen is not shown in its final state. Retake transactions and overview at 390 px in both themes on 198df0a and check the network and time sit on their own lines. Also check at 390 px: the overview 'On its way' card cuts its hint ('Paid to invoices, not in th...'). Smaller gap: no screenshot or unit test shows a payer-chooses invoice in USD in a list, because the sample data has none.",
-        "2026-10-13 Second review follow-up: the overview figure notes wrap instead of being cut at 390 px (On its way), InvoiceAmount has a test for USD while the payer chooses, and all 72 screenshots in docs/runs/F142-screens/ were retaken on the final code (phone transaction rows show the network and the time on their own lines)."
+        "2026-10-13 Second review follow-up: the overview figure notes wrap instead of being cut at 390 px (On its way), InvoiceAmount has a test for USD while the payer chooses, and all 72 screenshots in docs/runs/F142-screens/ were retaken on the final code (phone transaction rows show the network and the time on their own lines).",
+        "2026-10-13 review pass by reviewer: Both earlier findings are fixed in cab99e6. The retaken phone shots of transactions and overview, light and dark, show the network and the time on separate lines with nothing cut. The overview 'On its way' note now wraps at 390 px; the change only removes truncate from the figure note. The new invoice-amount test checks USD while the payer chooses and the token when locked or fixed; it fails on the old options-based check and passes now. The optionCount subquery, OpenAPI, api.md and DESIGN.md are unchanged and correct. All 72 screenshots exist at 390, 768 and 1440 px. Invoice and httpapi Go tests, web invoices tests and tsc pass. No unrelated edits."
       ],
       "blockedReason": null,
       "evidence": {
@@ -2193,12 +2194,26 @@
         "taskHash": "deffdfbcb233b5f2",
         "filesHash": "1f72cfca3b2d0578",
         "proof": {
-          "1": "e2e: phone tests check scrollWidth 390 on overview, invoices, requests and transactions, and every e2e axe check finds 0 serious or critical; a11y-e2e passes; unit: InvoiceAmount shows USD while the payer chooses; 72 screenshots of every app page at 390, 768 and 1440 px in both themes retaken on the final code and reviewed, in docs/runs/F142-screens (task notes)"
-        }
+          "1": "e2e: no sideways scroll at 390 and axe clean; a11y-e2e passes; 72 screenshots reviewed (docs/runs/F142-screens, local)"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Both earlier findings are fixed in cab99e6. The retaken phone shots of transactions and overview, light and dark, show the network and the time on separate lines with nothing cut. The overview 'On its way' note now wraps at 390 px; the change only removes truncate from the figure note. The new invoice-amount test checks USD while the payer chooses and the token when locked or fixed; it fails on the old options-based check and passes now. The optionCount subquery, OpenAPI, api.md and DESIGN.md are unchanged and correct. All 72 screenshots exist at 390, 768 and 1440 px. Invoice and httpapi Go tests, web invoices tests and tsc pass. No unrelated edits.",
+          "at": "2026-10-13T17:42:28Z",
+          "filesHash": "1f72cfca3b2d0578"
+        },
+        "commit": "cab99e6",
+        "doneAt": "2026-10-13T17:42:40Z"
       },
       "branch": "chore/f142-every-app-page-is-polished-spacing-align",
       "baseCommit": "f6ed677456932cffefabc778d340e19f39297bb8",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f142-every-app-page-is-polished-spacing-align",
+        "base": "main"
+      }
     },
     {
       "id": "F143",
