@@ -43,6 +43,7 @@ import {
   invoiceStatus,
 } from "@/features/invoices/invoices";
 import { useGetInvoiceQuery } from "@/features/invoices/invoices-api";
+import { type Choice, OptionPicker } from "@/features/pay/option-picker";
 import {
   checkoutClosesAt,
   PAY_METHODS,
@@ -129,7 +130,11 @@ function Loaded({
   option?: string;
 }) {
   const now = useNow();
-  const invoice = useMemo(() => withOption(answer, option), [answer, option]);
+  // Payer chooses (R-57): until an option has money, the payer picks the network, then the token; the link's
+  // ?option= starts with that one picked.
+  const choosing = !answer.optionLocked && answer.options.length > 1;
+  const [picked, setPicked] = useState(option?.toLowerCase());
+  const invoice = useMemo(() => withOption(answer, picked), [answer, picked]);
   const address = useMemo(
     () => checkedReceiveAddress(invoice, linkInvoiceId),
     [invoice, linkInvoiceId],
@@ -168,7 +173,21 @@ function Loaded({
         </a>
       </header>
       {address && token ? (
-        <Checkout invoice={invoice} address={address} token={token} now={now} />
+        <Checkout
+          invoice={invoice}
+          address={address}
+          token={token}
+          now={now}
+          choice={
+            choosing
+              ? {
+                  options: answer.options,
+                  picked: answer.options.find((o) => o.optionId === picked)?.optionId,
+                  onPick: setPicked,
+                }
+              : null
+          }
+        />
       ) : (
         <p
           role="alert"
@@ -187,12 +206,16 @@ function Checkout({
   address,
   token,
   now,
+  choice,
 }: {
   invoice: Invoice;
   address: string;
   token: PayToken;
   now: number;
+  choice: Choice | null;
 }) {
+  // Before a pick the amount is the same in every option: USD at 1 per stablecoin (D-75), with no network yet.
+  const picking = choice !== null && !choice.picked;
   const [confirmed, setConfirmed] = useState(false);
   const [method, setMethod] = useState<PayMethod | null>(null);
   const networkHeading = useRef<HTMLHeadingElement>(null);
@@ -244,10 +267,10 @@ function Checkout({
               baseUnits={shown}
               decimals={token.decimals}
               fractionDigits={exactDigits(shown, token.decimals)}
-              token={token.symbol}
+              token={picking ? COPY.usd : token.symbol}
               className="min-w-0 text-amount-lg text-ink"
             />
-            <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
+            {picking ? null : <TokenMark chainId={invoice.chainId} symbol={token.symbol} />}
           </div>
         </div>
         <dl className="divide-y divide-line">
@@ -278,7 +301,7 @@ function Checkout({
 
       {pay.state === PAY_STATES.settled ? <Receipt invoice={invoice} token={token} /> : null}
 
-      {isTestnet(invoice.chainId) ? (
+      {!picking && isTestnet(invoice.chainId) ? (
         <p
           role="note"
           className="flex items-start gap-3 rounded-md bg-info-soft px-4 py-3 text-sm text-info"
@@ -302,10 +325,14 @@ function Checkout({
             changeLabel={COPY.changeNetwork}
             onChange={() => setConfirmed(false)}
           >
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-ink px-4 py-3">
-              <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
-              <span className="text-xs text-muted">{COPY.onlyOption}</span>
-            </div>
+            {choice ? (
+              <OptionPicker {...choice} />
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-ink px-4 py-3">
+                <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
+                <span className="text-xs text-muted">{COPY.onlyOption}</span>
+              </div>
+            )}
             <ul className="-mx-4 my-4 divide-y divide-line border-y border-line text-sm text-ink sm:-mx-5">
               <Item icon={<Globe aria-hidden className={ICON} />}>
                 {COPY.host} <strong className="font-semibold">{window.location.host}</strong>.{" "}
@@ -315,10 +342,15 @@ function Checkout({
               <Item icon={<ShieldCheck aria-hidden className={ICON} />}>{COPY.scam}</Item>
             </ul>
             <div className="flex flex-col gap-4">
-              <NetworkWarning token={token.symbol} network={network} />
+              {picking ? null : <NetworkWarning token={token.symbol} network={network} />}
               <div className="flex flex-col gap-2">
-                <Button size="lg" className="w-full" onClick={() => setConfirmed(true)}>
-                  {COPY.confirm(token.symbol, network)}
+                <Button
+                  size="lg"
+                  className="w-full"
+                  disabled={picking}
+                  onClick={() => setConfirmed(true)}
+                >
+                  {picking ? COPY.chooseFirst : COPY.confirm(token.symbol, network)}
                 </Button>
                 <p className="text-center text-xs text-muted">{COPY.confirmHint}</p>
               </div>

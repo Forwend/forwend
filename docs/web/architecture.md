@@ -84,7 +84,9 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   keccak256 from `@noble/hashes`, tested against the R-15 vectors) and shows no address on a mismatch. Token symbol and
   decimals come from `PAY_TOKENS` in the build, never the API; another token is refused, so enabling a token in the
   API also needs an entry there. The refund rule, the scam note and the network warning come first; the address and
-  QR show only after the payer confirms the network. Paid and settled come only from the API (D-29). It loads no
+  QR show only after the payer confirms the network. A payer-chooses invoice (R-57) lists its `options`: until one has
+  money the payer picks the network, then a token on it (`features/pay/option-picker.tsx`), and the page checks that
+  option's terms with its own id, which must derive from the link's; `?option=<id>` starts with one picked. Paid and settled come only from the API (D-29). It loads no
   third-party scripts ([money-safety.md](../backend/money-safety.md)).
 
 ## Tests
