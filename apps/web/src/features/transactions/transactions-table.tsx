@@ -3,6 +3,7 @@
 import {
   Button,
   buttonClasses,
+  EmptyState,
   Money,
   PAYMENT_STATUS,
   PAYMENT_STATUSES,
@@ -11,7 +12,7 @@ import {
   StatusPill,
   shortAddress,
 } from "@forwend/ui-web";
-import { ArrowDownLeft, ArrowUpRight, ChevronRight, Download } from "lucide-react";
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChevronRight, Download } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import {
@@ -173,13 +174,15 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
           className={pageHeading ? "rounded-md border border-line bg-surface" : ""}
         />
       ) : rows.length === 0 && !filtered ? (
-        <p className="px-5 py-8 text-sm text-muted">{TRANSACTIONS_COPY.empty}</p>
-      ) : rows.length === 0 ? (
-        <NoMatch
-          text={TRANSACTIONS_COPY.noMatch}
-          onClear={filters.clear}
-          className={pageHeading ? "rounded-md border border-line bg-surface" : ""}
+        <EmptyState
+          icon={ArrowLeftRight}
+          title={TRANSACTIONS_COPY.emptyTitle}
+          description={TRANSACTIONS_COPY.emptyText}
+          // An overview card has its own frame.
+          compact={!pageHeading}
         />
+      ) : rows.length === 0 ? (
+        <NoMatch onClear={filters.clear} compact={!pageHeading} />
       ) : (
         <div className={pageHeading ? "rounded-md border border-line bg-surface" : ""}>
           {/* Wide screens: a ruled table, scrolled sideways rather than squeezed when its column is narrow. */}
