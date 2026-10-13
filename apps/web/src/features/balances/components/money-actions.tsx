@@ -11,15 +11,14 @@ import {
 } from "lucide-react";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 
-// Receive and Request work; the others keep their place, say why in their accessible name and show "Coming soon" on
-// hover or focus. Five fit a phone's row with the narrow gap.
-export function MoneyActions({
-  onReceive,
-  onRequest,
-}: {
+export interface MoneyActionsProps {
   onReceive: () => void;
   onRequest: () => void;
-}) {
+}
+
+// Receive and Request work; the others keep their place, say why in their accessible name and show "Coming soon" on
+// hover or focus. Five fit a phone's row with the narrow gap.
+export function MoneyActions({ onReceive, onRequest }: MoneyActionsProps) {
   const actions: readonly {
     label: string;
     icon: LucideIcon;

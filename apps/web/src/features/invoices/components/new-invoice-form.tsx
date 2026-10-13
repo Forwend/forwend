@@ -47,19 +47,17 @@ const DAY_MS = 86_400_000;
 type Expiry = ExpiryChoice | typeof CUSTOM_EXPIRY;
 const localDate = (time: number) => new Date(time).toLocaleDateString("en-CA");
 
+export interface NewInvoiceFormProps {
+  profileId: string;
+  tokens: readonly InvoiceToken[];
+  request?: { senderName: string; onCreated: (invoice: Invoice) => void };
+}
+
 // One idempotency key per filled-in form: a double click, or a retry of the same values after an error, makes one
 // invoice; changed values are a new request with a new key, never a 409. With `request` it is a personal profile's
 // request (D-52): amount, note, expiry, return link and the name the payer sees, handed to onCreated instead of
 // opening the invoice.
-export function NewInvoiceForm({
-  profileId,
-  tokens,
-  request,
-}: {
-  profileId: string;
-  tokens: readonly InvoiceToken[];
-  request?: { senderName: string; onCreated: (invoice: Invoice) => void };
-}) {
+export function NewInvoiceForm({ profileId, tokens, request }: NewInvoiceFormProps) {
   const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
   const [createInvoice] = useCreateInvoiceMutation();
   const router = useRouter();

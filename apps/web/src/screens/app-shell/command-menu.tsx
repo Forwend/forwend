@@ -62,6 +62,16 @@ interface Command {
   run: () => void;
 }
 
+export interface CommandMenuProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  profiles: Profile[];
+  active: Profile;
+  onSwitch: (profileId: string) => void;
+  onReceive: () => void;
+  onRequest: () => void;
+}
+
 export function CommandMenu({
   open,
   onOpenChange,
@@ -70,15 +80,7 @@ export function CommandMenu({
   onSwitch,
   onReceive,
   onRequest,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  profiles: Profile[];
-  active: Profile;
-  onSwitch: (profileId: string) => void;
-  onReceive: () => void;
-  onRequest: () => void;
-}) {
+}: CommandMenuProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const router = useRouter();
   const [theme, setTheme] = useTheme();

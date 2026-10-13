@@ -11,6 +11,14 @@ import type { Profile } from "@/features/profiles/types/profile";
 import { DESKTOP_QUERY } from "@/shared/config/breakpoints";
 import { APP_ROUTES } from "@/shared/config/routes";
 
+export interface ProfileSheetProps {
+  profiles: Profile[];
+  active: Profile;
+  onSwitch: (profileId: string) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
 // The phone switcher: the same choice as the sidebar's menu, in a bottom sheet a thumb can reach. Opened from the tab
 // bar or the profile pill over the balance.
 export function ProfileSheet({
@@ -19,13 +27,7 @@ export function ProfileSheet({
   onSwitch,
   open,
   onOpenChange,
-}: {
-  profiles: Profile[];
-  active: Profile;
-  onSwitch: (profileId: string) => void;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+}: ProfileSheetProps) {
   // The sheet belongs to the phone layout: close it when the window turns desktop-wide (a tablet rotated), or it
   // would stay open over the desktop page.
   useEffect(() => {

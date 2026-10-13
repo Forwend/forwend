@@ -5,17 +5,15 @@ import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import type { Balances, TokenBalance } from "@/features/balances/types/balances";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 
-// Every enabled token on every network: what the wallet holds there (read at the network's finalized block), and
-// apart from it what is on its way and what is held for payers.
-export function BalancesList({
-  balances,
-  failed,
-  onRetry,
-}: {
+export interface BalancesListProps {
   balances: Balances | null;
   failed: boolean;
   onRetry: () => void;
-}) {
+}
+
+// Every enabled token on every network: what the wallet holds there (read at the network's finalized block), and
+// apart from it what is on its way and what is held for payers.
+export function BalancesList({ balances, failed, onRetry }: BalancesListProps) {
   if (!balances && failed) {
     return (
       <div role="alert" className="flex flex-wrap items-center gap-4 text-muted">

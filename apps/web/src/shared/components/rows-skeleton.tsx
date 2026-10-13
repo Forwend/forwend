@@ -3,8 +3,13 @@ import { Skeleton } from "@forwend/ui-web";
 /** Rows before a list knows how many it has. */
 export const SKELETON_ROWS = 5;
 
+export interface RowsSkeletonProps {
+  count: number;
+  className?: string;
+}
+
 /** A loading list shaped like its rows (icon, two lines, amount over status), so the page does not jump when they arrive. */
-export function RowsSkeleton({ count, className = "" }: { count: number; className?: string }) {
+export function RowsSkeleton({ count, className = "" }: RowsSkeletonProps) {
   return (
     <ul aria-hidden className={`divide-y divide-line ${className}`}>
       {Array.from({ length: count }, (_, i) => (

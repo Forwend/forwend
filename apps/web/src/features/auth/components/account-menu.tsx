@@ -16,18 +16,15 @@ import { ChevronsUpDown, LogOut, Moon, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 
-// The signed-in account: the app's one theme control, settings (not built yet) and sign out.
-export function AccountMenu({
-  email,
-  onSignOut,
-  trigger,
-  side = "top",
-}: {
+export interface AccountMenuProps {
   email: string;
   onSignOut: () => void;
   trigger?: ReactNode;
   side?: "top" | "bottom" | "right";
-}) {
+}
+
+// The signed-in account: the app's one theme control, settings (not built yet) and sign out.
+export function AccountMenu({ email, onSignOut, trigger, side = "top" }: AccountMenuProps) {
   const [theme, setTheme] = useTheme();
   return (
     <Menu>
@@ -68,8 +65,12 @@ export function AccountMenu({
   );
 }
 
+export interface AccountInitialProps {
+  email: string;
+}
+
 /** The account's round initial, also the phone top bar's account button. */
-export function AccountInitial({ email }: { email: string }) {
+export function AccountInitial({ email }: AccountInitialProps) {
   return (
     <span className="grid size-8 shrink-0 place-items-center rounded-pill bg-surface-2 text-sm font-semibold text-ink ring-1 ring-line">
       {email.charAt(0).toUpperCase() || "?"}

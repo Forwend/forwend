@@ -43,15 +43,13 @@ function shownSeries(series: HistorySeries, width: number): [HistorySeries, Grou
   return [groupSeries(series, by), by];
 }
 
-export function ReceivedChart({
-  series,
-  label,
-  className,
-}: {
+export interface ReceivedChartProps {
   series: HistorySeries;
   label: string;
   className?: string;
-}) {
+}
+
+export function ReceivedChart({ series, label, className }: ReceivedChartProps) {
   const chart = useChart((width) => {
     const count = shownSeries(series, width)[0].values.length;
     return Array.from({ length: count }, (_, i) => x(i, width, count));

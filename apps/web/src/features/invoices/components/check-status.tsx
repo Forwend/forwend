@@ -11,21 +11,18 @@ const TOO_MANY_REQUESTS = 429;
 // time.
 const TOO_SOON_REST_MS = 30_000;
 
-/**
- * Check status (R-55): asks Forwend to read the invoice's address on chain again and says what it found. It rests
- * until the next check the api allows, which the invoice read also gives, so a reload never asks again early.
- */
-export function CheckStatus({
-  invoiceId,
-  network,
-  money,
-  nextCheckAt,
-}: {
+export interface CheckStatusProps {
   invoiceId: string;
   network: string;
   money: (units: bigint) => string;
   nextCheckAt: string | null;
-}) {
+}
+
+/**
+ * Check status (R-55): asks Forwend to read the invoice's address on chain again and says what it found. It rests
+ * until the next check the api allows, which the invoice read also gives, so a reload never asks again early.
+ */
+export function CheckStatus({ invoiceId, network, money, nextCheckAt }: CheckStatusProps) {
   const [recheck, { data, isLoading, error }] = useRecheckInvoiceMutation();
   // Asked too soon (another tab, or before the read caught up): rest, then the button comes back.
   const tooSoon = (error as { status?: unknown } | undefined)?.status === TOO_MANY_REQUESTS;

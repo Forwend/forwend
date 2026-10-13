@@ -7,8 +7,13 @@ import { APP_ROUTES } from "@/shared/config/routes";
 
 const LINK = "rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-focus";
 
+export interface PayScreenProps {
+  invoiceId: string;
+  option?: string;
+}
+
 /** The public checkout: the invoice beside how to pay it on wide screens, one column on phones (R-68). */
-export function PayScreen({ invoiceId, option }: { invoiceId: string; option?: string }) {
+export function PayScreen({ invoiceId, option }: PayScreenProps) {
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-5xl flex-col gap-8 px-4 py-6 sm:px-6 lg:py-10">
       <Link href={APP_ROUTES.site} className={`${LINK} self-start`}>

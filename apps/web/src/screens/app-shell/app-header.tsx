@@ -35,6 +35,17 @@ export const HEADER_COPY = {
   expand: "Expand sidebar",
 } as const;
 
+export interface AppHeaderProps {
+  active: Profile;
+  pathname: string;
+  email: string;
+  onSignOut: () => void;
+  onSearch: () => void;
+  onReceive: () => void;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+}
+
 export function AppHeader({
   active,
   pathname,
@@ -44,16 +55,7 @@ export function AppHeader({
   onReceive,
   collapsed,
   onToggleCollapsed,
-}: {
-  active: Profile;
-  pathname: string;
-  email: string;
-  onSignOut: () => void;
-  onSearch: () => void;
-  onReceive: () => void;
-  collapsed: boolean;
-  onToggleCollapsed: () => void;
-}) {
+}: AppHeaderProps) {
   const CollapseIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
   return (
     <header className="sticky top-0 z-[var(--fw-z-nav)] flex h-14 items-center gap-3 border-b border-line bg-[color-mix(in_oklab,var(--fw-bg)_88%,transparent)] px-4 backdrop-blur-glass sm:px-6">

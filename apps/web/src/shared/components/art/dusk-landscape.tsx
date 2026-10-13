@@ -49,7 +49,11 @@ const LAYERS: readonly { spec: RidgeSpec; fill: string }[] = [
   },
 ];
 
-export function DuskLandscape({ className }: { className?: string }) {
+export interface DuskLandscapeProps {
+  className?: string;
+}
+
+export function DuskLandscape({ className }: DuskLandscapeProps) {
   return (
     <svg
       className={className}

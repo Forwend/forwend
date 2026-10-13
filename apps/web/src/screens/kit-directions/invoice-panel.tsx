@@ -3,8 +3,12 @@ import { SAMPLE_INVOICE, SAMPLE_STEPS } from "@/shared/examples/sample-invoice";
 
 const shortHash = `${SAMPLE_INVOICE.txHash.slice(0, 6)}…${SAMPLE_INVOICE.txHash.slice(-4)}`;
 
+export interface InvoicePanelProps {
+  className?: string;
+}
+
 // Reads its colors from the parent comp's --ink, --muted, --line, --surface and --accent.
-export function InvoicePanel({ className = "" }: { className?: string }) {
+export function InvoicePanel({ className = "" }: InvoicePanelProps) {
   return (
     <div
       data-testid="product-panel"

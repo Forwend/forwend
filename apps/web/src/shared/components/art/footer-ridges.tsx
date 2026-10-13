@@ -47,8 +47,12 @@ const LAYERS: readonly { spec: RidgeSpec; fill: string; opacity: number }[] = [
   },
 ];
 
+export interface FooterRidgesProps {
+  className?: string;
+}
+
 // Grainy layered ridges behind the footer (the Ironclad-style reference), drawn in code.
-export function FooterRidges({ className }: { className?: string }) {
+export function FooterRidges({ className }: FooterRidgesProps) {
   return (
     <svg
       className={className}

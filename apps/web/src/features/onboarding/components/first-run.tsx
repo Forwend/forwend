@@ -19,16 +19,15 @@ const ICONS = {
 
 const CHOICES = Object.values(ONBOARDING_CHOICES);
 
-// R-50: asked once, while /v1/me has no onboardedAt. Continue with nothing picked is the same as Skip.
-export function FirstRun({
-  profiles,
-  onDone,
-}: {
+export interface FirstRunProps {
   /** The user's profiles before the choice. */
   profiles: readonly Profile[];
   /** Gets the profile to open: the one made for the most specific use, else the personal one. */
   onDone: (profile: Profile) => void;
-}) {
+}
+
+// R-50: asked once, while /v1/me has no onboardedAt. Continue with nothing picked is the same as Skip.
+export function FirstRun({ profiles, onDone }: FirstRunProps) {
   const [complete] = useCompleteOnboardingMutation();
   const [picked, setPicked] = useState<OnboardingChoice[]>([]);
   const [busy, setBusy] = useState<"continue" | "skip" | null>(null);

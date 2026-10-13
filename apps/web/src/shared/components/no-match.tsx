@@ -4,8 +4,13 @@ import { SearchX } from "lucide-react";
 const TITLE = "Nothing matches";
 const CLEAR = "Clear filter and search";
 
+export interface NoMatchProps {
+  onClear: () => void;
+  compact?: boolean;
+}
+
 /** A filtered list with no rows: says so in the list's place and offers the whole list again (R-75). */
-export function NoMatch({ onClear, compact }: { onClear: () => void; compact?: boolean }) {
+export function NoMatch({ onClear, compact }: NoMatchProps) {
   return (
     <EmptyState
       icon={SearchX}

@@ -39,14 +39,13 @@ function readSeen(profileId: string): number {
   }
 }
 
-// "New" means received since the menu was last opened, remembered per profile in this browser.
-export function NotificationsMenu({
-  profileId,
-  className,
-}: {
+export interface NotificationsMenuProps {
   profileId: string;
   className?: string;
-}) {
+}
+
+// "New" means received since the menu was last opened, remembered per profile in this browser.
+export function NotificationsMenu({ profileId, className }: NotificationsMenuProps) {
   const list = useGetTransactionsQuery({ profileId, limit: 20 }, LIVE_QUERY);
   // currentData: after a profile switch, never the last profile's transfers.
   const received = (list.currentData?.items ?? [])

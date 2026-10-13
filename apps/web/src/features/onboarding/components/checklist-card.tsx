@@ -23,6 +23,16 @@ function stepCopy(id: ChecklistStepId, kind: ChecklistKind) {
   }
 }
 
+export interface ChecklistCardProps {
+  kind: ChecklistKind;
+  steps: readonly ChecklistStep[];
+  actions: Record<ChecklistStepId, StepAction>;
+  /** A step's failure, shown under the list. */
+  error: string;
+  onSkip: (id: ChecklistStepId) => void;
+  onClose: () => void;
+}
+
 // R-50: the profile's first steps, each done or not from its data, with a way to do it or skip it.
 export function ChecklistCard({
   kind,
@@ -31,15 +41,7 @@ export function ChecklistCard({
   error,
   onSkip,
   onClose,
-}: {
-  kind: ChecklistKind;
-  steps: readonly ChecklistStep[];
-  actions: Record<ChecklistStepId, StepAction>;
-  /** A step's failure, shown under the list. */
-  error: string;
-  onSkip: (id: ChecklistStepId) => void;
-  onClose: () => void;
-}) {
+}: ChecklistCardProps) {
   const done = steps.filter((s) => s.done).length;
   return (
     <section

@@ -8,6 +8,13 @@ import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-cop
 import { confirmingProgress, invoiceProgress } from "@/features/invoices/lib/invoices";
 import type { Invoice, InvoiceStep } from "@/features/invoices/types/invoices";
 
+export interface InvoiceTimelineProps {
+  invoice: Invoice;
+  label: string;
+  waiting?: boolean;
+  steps?: readonly InvoiceStep[];
+}
+
 /**
  * The status timeline. While a payment confirms, its bar fills as blocks pass of those it had to wait (R-73); until one
  * passes it shows a sweep. `waiting` false shows no step in progress (a closed checkout). `steps` picks which steps
@@ -18,12 +25,7 @@ export function InvoiceTimeline({
   label,
   waiting = true,
   steps: shownSteps = INVOICE_TIMELINE,
-}: {
-  invoice: Invoice;
-  label: string;
-  waiting?: boolean;
-  steps?: readonly InvoiceStep[];
-}) {
+}: InvoiceTimelineProps) {
   const { done: reached, current, blocksLeft, blocksTotal, secondsLeft } = invoiceProgress(invoice);
   // A fast chain can go from nothing to paid in one read: the steps still show one after another (R-62).
   const done = useStepped(reached);
@@ -94,19 +96,17 @@ function useStepped(reached: number): number {
   return Math.min(shown, reached);
 }
 
+export interface ConfirmingStatusProps {
+  blocks: number;
+  total: number;
+  seconds: number;
+}
+
 /**
  * "Confirming (4/12) · about 19 min left" for screen readers, in a live line: the Confirming step shows the same, so
  * it stays hidden on screen.
  */
-export function ConfirmingStatus({
-  blocks,
-  total,
-  seconds,
-}: {
-  blocks: number;
-  total: number;
-  seconds: number;
-}) {
+export function ConfirmingStatus({ blocks, total, seconds }: ConfirmingStatusProps) {
   return (
     <span className="sr-only">
       {COPY.confirming(Math.max(0, total - blocks), Math.max(total, blocks), seconds)}

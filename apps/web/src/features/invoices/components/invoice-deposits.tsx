@@ -15,6 +15,13 @@ export interface SettlementRow {
   at: string | null;
 }
 
+export interface InvoiceDepositsProps {
+  invoice: Pick<Invoice, "chainId" | "token" | "deposits">;
+  token: Pick<InvoiceToken, "symbol" | "decimals"> | null;
+  title?: string;
+  settlement?: SettlementRow | null;
+}
+
 /**
  * Every transaction of the invoice in one list (R-69): each payment the chain shows for it, then the settlement to the
  * wallet once there is one; refunds join later (PLAN 9.4). Each row: what it was, amount, the other side, time,
@@ -25,12 +32,7 @@ export function InvoiceDeposits({
   token,
   title = INVOICE_COPY.deposits,
   settlement,
-}: {
-  invoice: Pick<Invoice, "chainId" | "token" | "deposits">;
-  token: Pick<InvoiceToken, "symbol" | "decimals"> | null;
-  title?: string;
-  settlement?: SettlementRow | null;
-}) {
+}: InvoiceDepositsProps) {
   if (invoice.deposits.length === 0 && !settlement) return null;
   const amountOf = (units: bigint, raw: string) =>
     token ? (

@@ -20,6 +20,15 @@ import { TokenMark } from "@/shared/components/chains/token-mark";
 import { CHAINS, TOKEN_ICONS } from "@/shared/constants/chains";
 import { chainName } from "@/shared/lib/chains";
 
+export interface ReceiveSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  address: string | null;
+  balances: Balances | null;
+  failed: boolean;
+  onRetry: () => void;
+}
+
 // Receive, in a sheet over the dashboard. The user picks the token, then the network; the address never shows without
 // the warning naming that exact network and token, so while the enabled tokens load, or if they fail, it stays hidden.
 export function ReceiveSheet({
@@ -29,14 +38,7 @@ export function ReceiveSheet({
   balances,
   failed,
   onRetry,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  address: string | null;
-  balances: Balances | null;
-  failed: boolean;
-  onRetry: () => void;
-}) {
+}: ReceiveSheetProps) {
   const [symbol, setSymbol] = useState<string | null>(null);
   const [network, setNetwork] = useState<string | null>(null);
   // Every opening starts from the token, so the address shows only for a choice made this time.
