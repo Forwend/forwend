@@ -2845,7 +2845,7 @@
       "dependsOn": [
         "F146"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -2856,7 +2856,77 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T19:22:27Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 145.1,
+            "log": "docs/runs/F149-20261013T192227Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": "docs/runs/F149-20261013T192227Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F149-20261013T192227Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F149-20261013T192227Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F149-20261013T192227Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 98.6,
+            "log": "docs/runs/F149-20261013T192227Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.2,
+            "log": "docs/runs/F149-20261013T192227Z-build.log"
+          }
+        ],
+        "taskHash": "be425ef883b69297",
+        "filesHash": "245d7c81fc018e67",
+        "proof": {
+          "1": "e2e: Request money opens /app/invoices/new without a dialog and lands on the new request with its pay link"
+        },
+        "commit": "af83b66",
+        "doneAt": "2026-10-13T19:26:43Z"
+      },
+      "branch": "feat/f149-request-money-opens-its-own-page-instead",
+      "baseCommit": "d64018d2e0d84ce1f5d5e12af30171eb83f23068",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f149-request-money-opens-its-own-page-instead",
+        "base": "main"
+      }
     },
     {
       "id": "F150",

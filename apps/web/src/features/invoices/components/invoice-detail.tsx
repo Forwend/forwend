@@ -379,7 +379,7 @@ function Party({ lines }: { lines: (string | null)[] }) {
 }
 
 /** The pay link in one row: the link (cut to fit, whole on hover and when copied), Copy and Open in a new tab. */
-export function ShareLink({ invoiceId }: { invoiceId: string }) {
+function ShareLink({ invoiceId }: { invoiceId: string }) {
   // The app renders only in the browser, after sign-in.
   const link = `${window.location.origin}/pay/${invoiceId}`;
   const [status, copy] = useCopy(link);

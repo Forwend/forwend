@@ -12,7 +12,12 @@ import {
 } from "lucide-react";
 import { ACTIVITY_COPY } from "@/features/activity/activity-copy";
 import { BALANCES_COPY } from "@/features/balances/balances-copy";
-import { INVOICES_COPY, NEW_INVOICE_COPY, REQUESTS_COPY } from "@/features/invoices/invoices-copy";
+import {
+  INVOICES_COPY,
+  NEW_INVOICE_COPY,
+  NEW_REQUEST_COPY,
+  REQUESTS_COPY,
+} from "@/features/invoices/invoices-copy";
 import { PROFILE_KINDS, type ProfileKind } from "@/features/profiles/profile";
 import { BILLING_DETAILS_COPY } from "@/features/profiles/profiles-copy";
 import { TRANSACTIONS_COPY } from "@/features/transactions/transactions-copy";
@@ -106,7 +111,13 @@ export function breadcrumb(
   const crumb = { label: page.label, href: page.href ?? APP_ROUTES.home };
   if (pathname === APP_ROUTES.newInvoice) {
     return {
-      trail: [crumb, { label: NEW_INVOICE_COPY.title, href: APP_ROUTES.newInvoice }],
+      trail: [
+        crumb,
+        {
+          label: kind === PROFILE_KINDS.personal ? NEW_REQUEST_COPY.title : NEW_INVOICE_COPY.title,
+          href: APP_ROUTES.newInvoice,
+        },
+      ],
       invoiceId: null,
     };
   }

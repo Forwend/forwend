@@ -182,10 +182,10 @@ test("on a phone a new user skips the first run and gets the personal checklist"
   expect(user.profiles).toHaveLength(1);
   await expect(checklist(page).getByRole("listitem")).toHaveCount(4);
   await expect(step(page, "Add billing details")).toHaveCount(0);
-  // A personal profile's first invoice is a request, made in the request sheet.
+  // A personal profile's first invoice is a request, made on its own page.
   await step(page, "Request money").getByRole("button", { name: "Request", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "Request money" })).toBeVisible();
-  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL("/app/invoices/new");
+  await expect(page.getByRole("heading", { level: 1, name: "Request money" })).toBeAttached();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   expect(await blockingViolations(page)).toEqual([]);
   await context.close();
