@@ -121,6 +121,7 @@ export type { CustomIconProps } from "./icons/custom-icons";
 export { FreelancerIcon, MerchantIcon, PaymentPathIcon } from "./icons/custom-icons";
 export type { LogoMarkProps, LogoProps } from "./icons/logo";
 export { Logo, LogoMark } from "./icons/logo";
+export { ROW_INTERACTIVE_CLASSES } from "./lib/row-classes";
 export type { Tone } from "./lib/tone";
 export { TONES } from "./lib/tone";
 export type { LoaderProps } from "./types/loader";

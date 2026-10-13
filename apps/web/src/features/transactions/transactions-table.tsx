@@ -13,7 +13,7 @@ import {
 } from "@forwend/ui-web";
 import { ArrowDownLeft, ArrowUpRight, ChevronRight, Download } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import {
   TRANSACTION_DIRECTIONS,
   TRANSACTION_FILTERS,
@@ -26,8 +26,9 @@ import {
 } from "@/features/transactions/transactions";
 import { useGetTransactionsQuery } from "@/features/transactions/transactions-api";
 import { TRANSACTIONS_COPY } from "@/features/transactions/transactions-copy";
-import { chainName } from "@/shared/chains/chains";
+import { addressLink } from "@/shared/chains/chains";
 import { ExplorerLink } from "@/shared/chains/explorer-link";
+import { NetworkName } from "@/shared/chains/network-name";
 import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -124,7 +125,9 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
             </Link>
           ) : null
         ) : (
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div
+            className={`flex flex-wrap items-center gap-2 ${pageHeading ? "w-full lg:w-auto lg:flex-1" : "w-full sm:w-auto"}`}
+          >
             <SegmentedControl
               label={TRANSACTIONS_COPY.filterLabel}
               value={filters.filter}
@@ -145,7 +148,7 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
               type="button"
               onClick={exportCsv}
               disabled={rows.length === 0}
-              className={buttonClasses({ variant: "secondary", size: "sm" })}
+              className={`${buttonClasses({ variant: "secondary", size: "sm" })} ml-auto`}
             >
               <Download aria-hidden className="size-[var(--fw-icon-sm)]" />
               {TRANSACTIONS_COPY.exportCsv}
@@ -206,10 +209,14 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                   <tr key={transactionKey(t)}>
                     <td className="px-5 py-3">
                       {/* Below 2xl the network moves under the counterparty, so no amount lacks it. */}
-                      <Party t={t} detail={chainName(t.chainId)} detailClassName="2xl:hidden" />
+                      <Party
+                        t={t}
+                        detail={<NetworkName chainId={t.chainId} />}
+                        detailClassName="2xl:hidden"
+                      />
                     </td>
                     <td className="hidden px-3 py-3 whitespace-nowrap text-muted 2xl:table-cell">
-                      {chainName(t.chainId)}
+                      <NetworkName chainId={t.chainId} />
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap text-muted">
                       <span className="inline-flex items-center gap-1">
@@ -235,13 +242,23 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                 <Party
                   t={t}
                   short
-                  detail={`${chainName(t.chainId)} · ${DATE.format(new Date(t.at))}`}
+                  detail={
+                    <>
+                      {/* The network never shrinks; the time is what a narrow row cuts. */}
+                      <span className="shrink-0">
+                        <NetworkName chainId={t.chainId} />
+                      </span>
+                      <span className="truncate">· {DATE.format(new Date(t.at))}</span>
+                    </>
+                  }
                 />
                 <span className="ml-auto flex shrink-0 flex-col items-end gap-1">
                   <Amount t={t} />
                   <span className="flex items-center gap-1">
                     <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
-                    <Status t={t} />
+                    <span className="text-xs">
+                      <Status t={t} />
+                    </span>
                   </span>
                 </span>
               </li>
@@ -275,7 +292,7 @@ function Party({
   short = false,
 }: {
   t: Transaction;
-  detail?: string;
+  detail?: ReactNode;
   detailClassName?: string;
   short?: boolean;
 }) {
@@ -305,16 +322,38 @@ function Party({
           {zero ? null : (
             <>
               {" "}
-              <span className="font-mono font-normal text-muted" title={t.counterparty}>
-                {shortAddress(t.counterparty)}
-              </span>
+              <Counterparty t={t} />
             </>
           )}
         </span>
         {detail ? (
-          <span className={`block truncate text-xs text-muted ${detailClassName}`}>{detail}</span>
+          <span className={`flex min-w-0 items-center gap-1 text-xs text-muted ${detailClassName}`}>
+            {detail}
+          </span>
         ) : null}
       </span>
+    </span>
+  );
+}
+
+// The other side's address, linked to its page on the chain's explorer when the chain has one.
+function Counterparty({ t }: { t: Transaction }) {
+  const link = addressLink(t.chainId, t.counterparty);
+  const short = shortAddress(t.counterparty);
+  return link ? (
+    <a
+      href={link.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={t.counterparty}
+      aria-label={TRANSACTIONS_COPY.counterpartyLink(t.counterparty, link.name)}
+      className="rounded-sm font-mono font-normal text-muted underline-offset-2 outline-none hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+    >
+      {short}
+    </a>
+  ) : (
+    <span className="font-mono font-normal text-muted" title={t.counterparty}>
+      {short}
     </span>
   );
 }

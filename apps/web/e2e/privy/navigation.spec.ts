@@ -349,3 +349,58 @@ test("an open invoice's page offers Check status and a settled one does not", as
   await expect(page.getByRole("button", { name: "Check status" })).toHaveCount(0);
   await context.close();
 });
+
+// R-64: clickable rows share their hover and press; Transactions keeps Export at the toolbar's right end, shows each
+// network's logo and links the other side's address to the explorer.
+test("money tables share row hover, show network logos, keep Export at the right and link counterparties", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page);
+  const main = page.getByRole("main");
+  const hoverOf = async (row: import("@playwright/test").Locator) => {
+    await page.mouse.move(0, 0);
+    const before = await row.evaluate((el) => getComputedStyle(el).backgroundColor);
+    await row.hover();
+    await expect
+      .poll(() => row.evaluate((el) => getComputedStyle(el).backgroundColor))
+      .not.toBe(before);
+    return row.evaluate((el) => getComputedStyle(el).backgroundColor);
+  };
+  await page.goto("/app/invoices");
+  const invoiceHover = await hoverOf(main.locator("tbody tr").first());
+  await page.goto("/app/activity");
+  const activityHover = await hoverOf(main.getByRole("listitem").first());
+  expect(invoiceHover).toBe(activityHover);
+
+  await page.goto("/app/transactions");
+  const exportButton = main.getByRole("button", { name: "Export CSV" });
+  const search = main.getByRole("searchbox", { name: "Search transactions" });
+  const [exportBox, searchBox, mainBox] = await Promise.all([
+    exportButton.boundingBox(),
+    search.boundingBox(),
+    main.locator("table").boundingBox(),
+  ]);
+  expect(exportBox && searchBox && mainBox).toBeTruthy();
+  // Export ends where the table ends, to the right of the search.
+  expect(
+    Math.abs(
+      (exportBox?.x ?? 0) + (exportBox?.width ?? 0) - ((mainBox?.x ?? 0) + (mainBox?.width ?? 0)),
+    ),
+  ).toBeLessThan(2);
+  expect(exportBox?.x ?? 0).toBeGreaterThan(searchBox?.x ?? 0);
+
+  const firstRow = main.locator("tbody tr").first();
+  await expect(firstRow.locator("svg").first()).toBeVisible(); // the network's logo
+  const counterparty = firstRow.getByRole("link", { name: /on Basescan \(opens in a new tab\)$/ });
+  await expect(counterparty).toHaveAttribute(
+    "href",
+    /^https:\/\/sepolia\.basescan\.org\/address\/0x[0-9a-f]{40}$/,
+  );
+  await expect(counterparty).toHaveAttribute("target", "_blank");
+  await context.close();
+});

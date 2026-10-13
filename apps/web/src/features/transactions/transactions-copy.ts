@@ -33,6 +33,8 @@ export const TRANSACTIONS_COPY = {
   empty: "No transactions yet. Money sent to or from this profile's wallet shows here.",
   noMatch: "No transactions match.",
   failed: "We could not load the transactions.",
+  counterpartyLink: (address: string, explorer: string) =>
+    `${address} on ${explorer} (opens in a new tab)`,
   loadMore: "Show more",
   latestOnly: "Showing the latest 100.",
   retry: "Try again",

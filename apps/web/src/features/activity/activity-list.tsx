@@ -4,6 +4,7 @@ import {
   ACTIVITY_DIRECTIONS,
   ActivityRow,
   Button,
+  ROW_INTERACTIVE_CLASSES,
   SearchField,
   SegmentedControl,
 } from "@forwend/ui-web";
@@ -121,7 +122,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
                     // The same transaction can pay two invoices, and one invoice can get two payments in it.
                     // biome-ignore lint/suspicious/noArrayIndexKey: the position completes the key
                     key={`${item.kind}:${item.invoiceId}:${item.txHash ?? ""}:${i}`}
-                    className="relative px-4 hover:bg-[color-mix(in_oklab,var(--fw-surface-2)_50%,transparent)] active:bg-surface-2"
+                    className={`relative px-4 ${ROW_INTERACTIVE_CLASSES}`}
                   >
                     <ActivityRow
                       // The title's link covers the row, so the whole row opens the invoice.

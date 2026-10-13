@@ -1377,7 +1377,7 @@
       "dependsOn": [
         "F128"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -1388,7 +1388,77 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T14:33:00Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 134.2,
+            "log": "docs/runs/F140-20261013T143300Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": "docs/runs/F140-20261013T143300Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F140-20261013T143300Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F140-20261013T143300Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F140-20261013T143300Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 96.0,
+            "log": "docs/runs/F140-20261013T143300Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F140-20261013T143300Z-build.log"
+          }
+        ],
+        "taskHash": "0fbffb1a78180bea",
+        "filesHash": "eb5a9d26c8e6dd1b",
+        "proof": {
+          "1": "e2e: the money tables e2e passes; verify F140 passed all checks"
+        },
+        "commit": "c1e78a7",
+        "doneAt": "2026-10-13T14:37:02Z"
+      },
+      "branch": "feat/f140-money-tables-share-row-hover-show-networ",
+      "baseCommit": "7268fce508eaa76cccc56ab55dfabf881b8b2554",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f140-money-tables-share-row-hover-show-networ",
+        "base": "main"
+      }
     },
     {
       "id": "F141",
