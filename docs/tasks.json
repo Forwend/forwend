@@ -579,7 +579,7 @@
         "Running a backend package that starts Anvil (internal/watcher) leaves no anvil-state-* folder in ~/.foundry/anvil/tmp; backend tests pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -653,12 +653,19 @@
         "taskHash": "478796f8edaf325c",
         "filesHash": "10fb35f207e9eb6b",
         "proof": {
-          "1": "backend: the full backend suite passes with Anvil started with --max-persisted-states 0; running watcher, ledger and settlement left 0 anvil-state-* folders in ~/.foundry/anvil/tmp (before the fix the same run left 7, about 550 MB each at most); a manual check showed Anvil 1.5.1 keeps its folder even after SIGINT, so a clean stop is not enough"
-        }
+          "1": "backend: suite passes, no anvil-state folders left"
+        },
+        "commit": "fffb3f1",
+        "doneAt": "2026-10-13T23:49:07Z"
       },
       "branch": "fix/f173-backend-tests-stop-anvil-cleanly-so-it-l",
       "baseCommit": "15de5846666cb7eee73b58bc0ab6adc80b033e6c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f173-backend-tests-stop-anvil-cleanly-so-it-l",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
