@@ -3687,7 +3687,7 @@
         "R-68: e2e checks no status or Check status before Show address; a picked option folds into one row with Change, then Confirm, then the selects again; Need help opens a dialog from the footer; no copy says the sender; no overpaid line; axe clean"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -3756,12 +3756,19 @@
         "taskHash": "0d1f61c200a8c96c",
         "filesHash": "1c10013db24453df",
         "proof": {
-          "1": "e2e: pay.spec checks no Waiting for payment and no Check status before Show address, both after it; a picked option folds into one row whose Change becomes a focused Confirm change, Tab cancels, the second press shows the selects again with the address gone and focus on Pay with; Need help opens a dialog from the footer with the host and the rules; no text says sender; the closed line names Alice Design GmbH and the mismatch alert says the invoice's creator; no overpaid line; axe clean in both themes; privy money-requests.spec opens Need help from the footer"
-        }
+          "1": "e2e: status after address, Change then Confirm, help dialog in footer, no sender, no overpaid line"
+        },
+        "commit": "5ebf361",
+        "doneAt": "2026-10-13T21:13:18Z"
       },
       "branch": "feat/f158-the-pay-page-shows-status-only-after-the",
       "baseCommit": "acc8bd2e910332e961d7d7aeaa0173fff8a4142e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f158-the-pay-page-shows-status-only-after-the",
+        "base": "main"
+      }
     },
     {
       "id": "F159",
