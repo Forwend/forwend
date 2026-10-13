@@ -81,7 +81,7 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     await expect(sheet).toContainText("3.25 USDC");
     const link = `http://localhost:3000/pay/${request.invoiceId}`;
     const share = sheet.getByRole("region", { name: "Pay link" });
-    await expect(share).toContainText(link);
+    await expect(share.locator("p[title]")).toHaveAttribute("title", link);
     await share.getByRole("button", { name: "Copy link" }).click();
     await expect(share.getByRole("button", { name: "Link copied" })).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
@@ -97,7 +97,7 @@ test("a personal profile requests money, sends the pay link and the payer sees w
         .getByRole("link", { name: "Requests", exact: true }),
     ).toBeVisible();
     await expect(page.getByRole("region", { name: "From" })).toContainText("E2E Requester");
-    await expect(page.getByRole("region", { name: "Client" })).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Billed to" })).toHaveCount(0);
     expect(await blockingViolations(page)).toEqual([]);
     await sidebar.getByRole("link", { name: "Requests" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeAttached();
@@ -143,9 +143,9 @@ test("on a phone a personal profile requests money from the round actions withou
     await sheet.getByRole("textbox", { name: "Amount" }).fill("1");
     await sheet.getByRole("textbox", { name: "Your name (shown to the payer)" }).fill("E2E Phone");
     const request = await createRequest(page);
-    await expect(sheet.getByRole("region", { name: "Pay link" })).toContainText(
-      `/pay/${request.invoiceId}`,
-    );
+    await expect(
+      sheet.getByRole("region", { name: "Pay link" }).locator("p[title]"),
+    ).toHaveAttribute("title", new RegExp(`/pay/${request.invoiceId}$`));
     await fits();
     expect(await blockingViolations(page)).toEqual([]);
     await sheet.getByRole("link", { name: "View request" }).click();

@@ -93,7 +93,7 @@ function Request({
           <InvoiceAmount invoice={created} tokens={tokens} />
         </p>
       </div>
-      <ShareLink invoiceId={created.invoiceId} hint={COPY.shareHint} />
+      <ShareLink invoiceId={created.invoiceId} />
       <Link
         href={`${APP_ROUTES.invoices}/${created.invoiceId}`}
         onClick={onClose}

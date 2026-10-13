@@ -131,10 +131,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - PDFs open through the same-origin `/api` path. The invoice detail lists them under Documents: the invoice PDF
   always, the receipt PDF once paid.
 - While a payment confirms, the timeline's step fills as blocks pass (a sweep until the first block passes) and the
-  status line stays short: "Confirming · about 19 min left", the blocks left smaller beside it. The invoice detail uses
-  the same timeline, line and payments, and no status pill: the timeline and the line carry the status (the line
-  names it in every state, such as Expired or Partially paid). The pay link shows only while the checkout can take
-  money. A current step that is not confirming shows an empty bar, never a full one.
+  status line stays short: "Confirming (4/12) · about 19 min left", blocks passed of the most left seen on the page.
+  A current step that is not confirming shows an empty bar, never a full one.
+- The invoice page (R-60) says its state at once: a header with the title, one status pill and when it closes, closed,
+  was paid or settled (a paid invoice never shows its close time). Below, two columns from large screens up: the
+  amount with the timeline, the status line (Expired, Partially paid or why settling waits), the payments and Check
+  status; beside it the pay link as one row (host and short id, Copy, Open in a new tab; only while the checkout can
+  take money), the details (empty ones left out), Billed to, and From (or "None on this invoice" with a link to add
+  billing details).
 
 ## Theme and behavior
 

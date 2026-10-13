@@ -119,7 +119,6 @@ export const NEW_REQUEST_COPY = {
   invalid: "We could not create the request with these values. Check them and try again.",
   created: "Request created",
   view: "View request",
-  shareHint: "Send this link to the payer. They pay without an account.",
 } as const;
 
 export const INVOICE_COPY = {
@@ -136,9 +135,10 @@ export const INVOICE_COPY = {
     [INVOICE_STEPS.paid]: "Paid",
     [INVOICE_STEPS.settled]: "Settled",
   } satisfies Record<InvoiceStep, string>,
-  confirming: (seconds: number) => `Confirming · ${timeLeft(seconds)} left`,
-  blocks: (blocks: number) =>
-    blocks === 1 ? "1 block" : `${blocks.toLocaleString("en-US")} blocks`,
+  confirming: (done: number, total: number, seconds: number) =>
+    total > 0
+      ? `Confirming (${done.toLocaleString("en-US")}/${total.toLocaleString("en-US")}) · ${timeLeft(seconds)} left`
+      : `Confirming · ${timeLeft(seconds)} left`,
   // Why a paid invoice's money still waits (R-54); `at` is a short local time.
   settling: {
     [SETTLEMENT_WAITS.signing]: () => "Sending to your wallet",
@@ -171,7 +171,6 @@ export const INVOICE_COPY = {
   late: "After the checkout closed",
   from: "From",
   share: "Pay link",
-  shareHint: "Send this link to your client. They pay without an account.",
   copy: "Copy link",
   copied: "Link copied",
   copyFailed: "Copy failed: select the link above",
@@ -186,12 +185,16 @@ export const INVOICE_COPY = {
     [INVOICE_PDFS.invoice]: "Invoice PDF",
     [INVOICE_PDFS.receipt]: "Receipt PDF",
   } satisfies Record<InvoicePdf, string>,
-  none: "None",
-  client: "Client",
+  client: "Billed to",
   noClient: "No client details.",
   clientFailed: "We could not load the client details.",
   issuer: "From",
   taxId: "Tax ID",
-  noIssuer:
-    "No billing details: the profile had none when this invoice was made, so the client sees no sender name or address.",
+  addBillingDetails: "Add billing details",
+  openPayPage: "Open the pay page in a new tab",
+  closesOn: (time: string) => `Checkout closes ${time}`,
+  closedOn: (time: string) => `Checkout closed ${time}`,
+  paidOn: (time: string) => `Paid ${time}`,
+  settledOn: (time: string) => `Settled ${time}`,
+  noIssuer: "None on this invoice.",
 } as const;
