@@ -1617,7 +1617,7 @@
       "dependsOn": [
         "F128"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "unit"
@@ -1687,12 +1687,19 @@
         "taskHash": "44187f5e3c6597d1",
         "filesHash": "a6bd160d4a1bb63a",
         "proof": {
-          "1": "e2e: privy balances.spec picks USDC then Base Sepolia, sees QR, address and note, presses Change token and network, picks USDC then Arbitrum Sepolia and sees the new network's address; unit: receive-choice.test.ts runs the choice and address lookup with a solana family option"
-        }
+          "1": "e2e: privy balances picks token then network, Change shows the new network's address; unit: receive-choice with a solana option"
+        },
+        "commit": "30b0cc4",
+        "doneAt": "2026-10-13T15:03:54Z"
       },
       "branch": "feat/f141-the-receive-sheet-asks-for-the-token-and",
       "baseCommit": "f72d12b0e057990cb32f29cc7f33122bdf4e5a19",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f141-the-receive-sheet-asks-for-the-token-and",
+        "base": "main"
+      }
     },
     {
       "id": "F142",
