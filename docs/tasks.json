@@ -3407,7 +3407,7 @@
         "AGENTS.md has the cross-check rule; PLAN.md has 11.10 wallet Connect and 11.10.1 overpaid handling and 9.1 no longer lists overpaid; docs-check passes"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -3474,12 +3474,19 @@
         "taskHash": "cde83370fb93b3f0",
         "filesHash": "c8b2820a12a44257",
         "proof": {
-          "1": "docs-check: AGENTS.md shared rules add the cross-check rule; PLAN.md adds 11.10 wallet Connect and 11.10.1 overpaid handling after it, and 9.1 points overpaid there; rows R-68, R-69, R-70 updated for the queued tasks"
-        }
+          "1": "docs-check: rule and plan entries"
+        },
+        "commit": "183e451",
+        "doneAt": "2026-10-13T20:46:35Z"
       },
       "branch": "docs/f155-the-repo-rules-ask-every-fix-to-cover-al",
       "baseCommit": "2a2b2d2d8707e39316c83a18aad4dd217dfb7a44",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f155-the-repo-rules-ask-every-fix-to-cover-al",
+        "base": "main"
+      }
     },
     {
       "id": "F156",
