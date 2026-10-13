@@ -54,18 +54,63 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 	if settledAt != nil {
 		inv.SettledAt = settledAt.UTC()
 	}
-	inv.Deposits, err = s.deposits(ctx, inv)
+	var head finality.Block
+	err = s.pool.QueryRow(ctx, "SELECT last_finalized_block, last_finalized_time FROM chain_cursors WHERE chain_id = $1",
+		inv.ChainID).Scan(&head.Number, &head.Time)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return Invoice{}, fmt.Errorf("read chain %d cursor: %w", inv.ChainID, err)
+	}
+	if inv.Deposits, err = s.deposits(ctx, inv, head); err != nil {
+		return Invoice{}, err
+	}
+	if profileID != "" { // the owner's read only; the public one leaves it out
+		inv.SettlementWait, err = s.settlementWait(ctx, inv, head)
+	}
 	return inv, err
 }
 
-// deposits lists the invoice's transfers that are not reorged, with progress toward the chain's finalized block.
-func (s *Service) deposits(ctx context.Context, inv Invoice) ([]Deposit, error) {
-	var head finality.Block
-	err := s.pool.QueryRow(ctx, "SELECT last_finalized_block, last_finalized_time FROM chain_cursors WHERE chain_id = $1",
-		inv.ChainID).Scan(&head.Number, &head.Time)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("read chain %d cursor: %w", inv.ChainID, err)
+// settlementWait reads why a paid, unsettled invoice still waits, from its intent's status and stored wait kind.
+func (s *Service) settlementWait(ctx context.Context, inv Invoice, head finality.Block) (*SettlementWait, error) {
+	if inv.PaymentStatus != ledger.Paid || inv.SettlementStatus == "settled" {
+		return nil, nil
 	}
+	var status string
+	var wait *string
+	var next time.Time
+	var signed *time.Time
+	err := s.pool.QueryRow(ctx, `SELECT status, wait, next_attempt_at, signed_at FROM settlement_intents
+		WHERE invoice_id = $1`, inv.ID).Scan(&status, &wait, &next, &signed)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// The ledger queues the intent in the same transaction as paid; none yet means the next round makes it.
+		return &SettlementWait{Kind: WaitSigning}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read invoice %s settlement intent: %w", inv.ID, err)
+	}
+	switch {
+	case status == "refused":
+		return &SettlementWait{Kind: WaitRefused}, nil
+	// A wait whose time has passed is over: the signer is on it again (a resolved stall can keep its kind until
+	// confirmed), so it reads as the status alone.
+	case wait != nil && *wait == "cap" && next.After(time.Now()):
+		return &SettlementWait{Kind: WaitDailyLimit, Until: next.UTC()}, nil
+	case wait != nil && next.After(time.Now()): // retry, or a sent settle the signer can't resolve yet
+		return &SettlementWait{Kind: WaitRetrying, Until: next.UTC()}, nil
+	case status == "sent" && signed != nil:
+		// The settle mines within moments of signing, so its block time is about signed_at: what is left is the chain
+		// time the finalized head must still cover, as for a deposit (finality.ProgressOf).
+		w := &SettlementWait{Kind: WaitFinalizing}
+		if t := signed.Unix(); t > int64(head.Time) {
+			w.TimeLeft = time.Duration(t-int64(head.Time)) * time.Second
+		}
+		return w, nil
+	default:
+		return &SettlementWait{Kind: WaitSigning}, nil
+	}
+}
+
+// deposits lists the invoice's transfers that are not reorged, with progress toward the chain's finalized block head.
+func (s *Service) deposits(ctx context.Context, inv Invoice, head finality.Block) ([]Deposit, error) {
 	rows, err := s.pool.Query(ctx, `SELECT tx_hash, log_index, from_address, amount::text, block_number, block_time, status
 		FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged' ORDER BY block_number, log_index`, inv.ID)
 	if err != nil {

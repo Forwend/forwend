@@ -225,14 +225,27 @@ func (s *Signer) confirm(ctx context.Context, in intent) error {
 // backoff is the growing wait between tries: 1 min doubling, at most 1 h.
 const backoff = "now() + least(interval '1 minute' * power(2, least(attempts, 6)), interval '1 hour')"
 
+// Wait kinds stored with an intent for the invoice API (migration 00018); the reason text is for operators only.
+const (
+	waitRetry      = "retry"
+	waitCap        = "cap"
+	waitUnresolved = "unresolved"
+)
+
 // retry puts the intent back to pending for a temporary condition, with a growing wait. A saved settle that can no
 // longer mine is dropped, with every version of it, so a new one is signed.
 func (s *Signer) retry(ctx context.Context, in intent, reason string) error {
+	return s.postpone(ctx, in, waitRetry, reason)
+}
+
+// postpone is retry with the wait kind the invoice API shows.
+func (s *Signer) postpone(ctx context.Context, in intent, wait, reason string) error {
 	slog.Warn("settlement waits", "invoice", in.invoiceID, "reason", reason)
 	// Only from the status this attempt loaded: a stale attempt never moves an intent that went on.
 	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'pending', sender = NULL, nonce = NULL,
-		tx_hash = NULL, raw_tx = NULL, replaced_hashes = '{}', signed_at = NULL, reason = $2, attempts = attempts + 1,
-		updated_at = now(), next_attempt_at = `+backoff+` WHERE id = $1 AND status = $3`, in.id, reason, in.status)
+		tx_hash = NULL, raw_tx = NULL, replaced_hashes = '{}', signed_at = NULL, reason = $2, wait = $4,
+		attempts = attempts + 1, updated_at = now(), next_attempt_at = `+backoff+` WHERE id = $1 AND status = $3`,
+		in.id, reason, in.status, wait)
 	return err
 }
 
@@ -240,8 +253,8 @@ func (s *Signer) retry(ctx context.Context, in intent, reason string) error {
 // in the operators' query (docs/backend/architecture.md#signer).
 func (s *Signer) stall(ctx context.Context, in intent, reason string) error {
 	slog.Warn("settlement unresolved", "invoice", in.invoiceID, "tx", *in.txHash, "reason", reason)
-	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET reason = $2, attempts = attempts + 1, updated_at = now(),
-		next_attempt_at = `+backoff+` WHERE id = $1 AND status = 'sent'`, in.id, reason)
+	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET reason = $2, wait = $3, attempts = attempts + 1,
+		updated_at = now(), next_attempt_at = `+backoff+` WHERE id = $1 AND status = 'sent'`, in.id, reason, waitUnresolved)
 	return err
 }
 
@@ -249,7 +262,7 @@ func (s *Signer) stall(ctx context.Context, in intent, reason string) error {
 // don't match, or a settler other than this executor.
 func (s *Signer) refuse(ctx context.Context, in intent, reason string) error {
 	slog.Warn("settlement refused", "invoice", in.invoiceID, "reason", reason)
-	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'refused', reason = $2, updated_at = now()
-		WHERE id = $1 AND status = $3`, in.id, reason, in.status)
+	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'refused', reason = $2, wait = NULL,
+		updated_at = now() WHERE id = $1 AND status = $3`, in.id, reason, in.status)
 	return err
 }

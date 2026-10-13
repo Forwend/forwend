@@ -7,6 +7,8 @@ import {
   INVOICE_STEPS,
   type InvoicePdf,
   type InvoiceStep,
+  SETTLEMENT_WAITS,
+  type SettlementWaitKind,
 } from "@/features/invoices/invoices";
 
 const atMost = (n: number) =>
@@ -136,6 +138,18 @@ export const INVOICE_COPY = {
   confirming: (seconds: number) => `Confirming · ${timeLeft(seconds)} left`,
   blocks: (blocks: number) =>
     blocks === 1 ? "1 block" : `${blocks.toLocaleString("en-US")} blocks`,
+  // Why a paid invoice's money still waits (R-54); `at` is a short local time.
+  settling: {
+    [SETTLEMENT_WAITS.signing]: () => "Sending to your wallet",
+    [SETTLEMENT_WAITS.finalizing]: (network: string, seconds: number) =>
+      `Sending to your wallet · waiting for ${network} to finalize, ${timeLeft(seconds)} left`,
+    [SETTLEMENT_WAITS.retrying]: (_network: string, _seconds: number, at: string) =>
+      `Sending to your wallet · trying again at ${at}`,
+    [SETTLEMENT_WAITS.dailyLimit]: (_network: string, _seconds: number, at: string) =>
+      `Paused: today's settlements that Forwend pays the network fee for are used up. Next try at ${at}`,
+    [SETTLEMENT_WAITS.refused]: () =>
+      "Stopped for a manual check. The money stays at the invoice's address until Forwend resolves it",
+  } satisfies Record<SettlementWaitKind, (network: string, seconds: number, at: string) => string>,
   deposits: "Payments received",
   late: "After the checkout closed",
   from: "From",

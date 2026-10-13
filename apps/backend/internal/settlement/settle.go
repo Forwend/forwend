@@ -106,7 +106,7 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 	if used >= SponsoredPerDay {
 		slog.Error("ALERT a user's settlements in 24 hours reached the sponsored limit", "invoice", in.invoiceID,
 			"limit", SponsoredPerDay)
-		return s.retry(ctx, in, "the user's sponsored settlements for 24 hours are used up")
+		return s.postpone(ctx, in, waitCap, "the user's sponsored settlements for 24 hours are used up")
 	}
 
 	receive := common.HexToAddress(in.receive)
@@ -152,7 +152,7 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 	}
 	// Saved before it is sent: a crash after this point resends these bytes, never a new settle.
 	tag, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'sent', sender = $2, nonce = $3, tx_hash = $4,
-		raw_tx = $5, signed_at = now(), reason = NULL, attempts = attempts + 1, updated_at = now()
+		raw_tx = $5, signed_at = now(), reason = NULL, wait = NULL, attempts = attempts + 1, updated_at = now()
 		WHERE id = $1 AND status = 'pending'`,
 		in.id, strings.ToLower(s.sender.Hex()), int64(tx.Nonce()), tx.Hash().Hex(), raw)
 	if err != nil {
@@ -275,7 +275,7 @@ func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in inten
 		return nil, fmt.Errorf("encode replacement settle: %w", err)
 	}
 	tag, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET tx_hash = $2, raw_tx = $3,
-		replaced_hashes = replaced_hashes || tx_hash, signed_at = now(), reason = NULL, updated_at = now()
+		replaced_hashes = replaced_hashes || tx_hash, signed_at = now(), reason = NULL, wait = NULL, updated_at = now()
 		WHERE id = $1 AND status = 'sent' AND tx_hash = $4`, in.id, tx.Hash().Hex(), raw, old.Hash().Hex())
 	if err != nil {
 		return nil, fmt.Errorf("save replacement settle: %w", err)

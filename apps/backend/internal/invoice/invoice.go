@@ -107,6 +107,26 @@ type Invoice struct {
 	PaidAt time.Time
 	// SettledAt is when the settlement was booked as final, from the ledger; set by Get once settled.
 	SettledAt time.Time
+	// SettlementWait says why a paid invoice's money has not reached the creator yet; nil when it is not waiting.
+	// Set by Get.
+	SettlementWait *SettlementWait
+}
+
+// Why a paid invoice still waits to settle (R-54).
+const (
+	WaitSigning    = "signing"    // the signer settles it on its next round
+	WaitFinalizing = "finalizing" // the settle was sent; it counts once its block is final (D-45)
+	WaitRetrying   = "retrying"   // a temporary condition; the signer tries again at Until
+	WaitDailyLimit = "dailyLimit" // the user's sponsored settlements for 24 hours are used up (SEC-03); next try at Until
+	WaitRefused    = "refused"    // the signer refused the terms; an operator looks at it
+)
+
+// SettlementWait is one of the Wait kinds, with when the signer tries again (retrying, daily limit) or the estimated
+// chain time until the sent settle is final (finalizing).
+type SettlementWait struct {
+	Kind     string
+	Until    time.Time
+	TimeLeft time.Duration
 }
 
 // Deposit is a transfer to the receive address that is not reorged. Until its block is final, Progress says how far

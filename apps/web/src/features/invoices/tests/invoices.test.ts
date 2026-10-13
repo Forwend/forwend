@@ -13,7 +13,9 @@ import {
   invoiceProgress,
   invoiceStatus,
   parseTokenAmount,
+  SETTLEMENT_WAITS,
 } from "@/features/invoices/invoices";
+import { INVOICE_COPY } from "@/features/invoices/invoices-copy";
 
 describe("parseTokenAmount", () => {
   it("turns typed USDC amounts into exact base units", () => {
@@ -158,5 +160,27 @@ describe("invoicePdfUrl", () => {
     expect(invoicePdfUrl(open.invoiceId, INVOICE_PDFS.receipt)).toBe(
       `/api/v1/invoices/${open.invoiceId}/receipt.pdf`,
     );
+  });
+});
+
+// R-54: one line per reason a paid invoice's money still waits.
+describe("settlement wait line", () => {
+  const line = (kind: keyof typeof SETTLEMENT_WAITS, seconds = 0, at = "") =>
+    INVOICE_COPY.settling[SETTLEMENT_WAITS[kind]]("Base Sepolia", seconds, at);
+  it("names the chain and the time left while the settle finalizes", () => {
+    expect(line("finalizing", 720)).toBe(
+      "Sending to your wallet · waiting for Base Sepolia to finalize, about 12 min left",
+    );
+    expect(line("finalizing", 0)).toBe(
+      "Sending to your wallet · waiting for Base Sepolia to finalize, under a minute left",
+    );
+  });
+  it("says when the signer tries again", () => {
+    expect(line("retrying", 0, "14:05")).toBe("Sending to your wallet · trying again at 14:05");
+    expect(line("dailyLimit", 0, "14:05")).toMatch(/used up\. Next try at 14:05$/);
+  });
+  it("says signing and refused without times", () => {
+    expect(line("signing")).toBe("Sending to your wallet");
+    expect(line("refused")).toMatch(/^Stopped for a manual check/);
   });
 });

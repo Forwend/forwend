@@ -78,6 +78,19 @@ type invoiceDetailJSON struct {
 	Deposits  []depositJSON `json:"deposits"`
 }
 
+// ownerInvoiceJSON is an invoice read by its owner: the detail plus why a paid invoice's money has not reached the
+// creator yet (null when it is not waiting). The public read leaves it out.
+type ownerInvoiceJSON struct {
+	invoiceDetailJSON
+	SettlementWait *settlementWaitJSON `json:"settlementWait"`
+}
+
+type settlementWaitJSON struct {
+	Kind        string  `json:"kind"`
+	Until       *string `json:"until"`
+	SecondsLeft *int64  `json:"secondsLeft"`
+}
+
 type invoicesJSON struct {
 	Items      []invoiceJSON `json:"items"`
 	NextCursor *string       `json:"nextCursor"`
@@ -123,7 +136,7 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 		if created {
 			status = http.StatusCreated
 		}
-		writeJSON(w, status, toInvoiceDetailJSON(inv, true))
+		writeJSON(w, status, toOwnerInvoiceJSON(inv))
 	}
 }
 
@@ -178,7 +191,7 @@ func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
 			writeError(w, r, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, toInvoiceDetailJSON(inv, true))
+		writeJSON(w, http.StatusOK, toOwnerInvoiceJSON(inv))
 	}
 }
 
@@ -210,6 +223,18 @@ func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON
 		out.Deposits = append(out.Deposits, depositJSON{TxHash: d.TxHash, LogIndex: d.LogIndex, From: d.From,
 			Amount: d.Amount.String(), BlockNumber: d.BlockNumber, BlockTime: d.BlockTime.Format(time.RFC3339),
 			Status: d.Status, Late: d.Late, BlocksLeft: d.BlocksLeft, SecondsLeft: int64(d.TimeLeft / time.Second)})
+	}
+	return out
+}
+
+func toOwnerInvoiceJSON(inv invoice.Invoice) ownerInvoiceJSON {
+	out := ownerInvoiceJSON{invoiceDetailJSON: toInvoiceDetailJSON(inv, true)}
+	if w := inv.SettlementWait; w != nil {
+		out.SettlementWait = &settlementWaitJSON{Kind: w.Kind, Until: orNullTime(w.Until)}
+		if w.Kind == invoice.WaitFinalizing {
+			left := int64(w.TimeLeft / time.Second)
+			out.SettlementWait.SecondsLeft = &left
+		}
 	}
 	return out
 }

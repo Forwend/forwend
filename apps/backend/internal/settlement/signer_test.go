@@ -104,6 +104,22 @@ func (e env) paidInvoice(t *testing.T) (id, receive string) {
 func (e env) pay(t *testing.T, n int) (id, receive string) {
 	t.Helper()
 	ctx := context.Background()
+	id, receive = e.create(t, n)
+	e.anvil.Transfer(e.token, receive, "6000000")
+	e.anvil.Mine(2)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.ledger.ProcessChain(ctx, chaintest.ChainID); err != nil {
+		t.Fatal(err)
+	}
+	return id, receive
+}
+
+// create stores the invoice with ID n for 5 USDC, open for an hour, with the address the API would compute.
+func (e env) create(t *testing.T, n int) (id, receive string) {
+	t.Helper()
+	ctx := context.Background()
 	now := e.anvil.Now()
 	terms := address.Terms{InvoiceID: [32]byte(common.FromHex(fmt.Sprintf("0x%064x", n))), Recipient: common.HexToAddress(wallet),
 		Token: common.HexToAddress(e.token), Amount: big.NewInt(5000000), ExpiresAt: uint64(now + 3600),
@@ -120,14 +136,6 @@ func (e env) pay(t *testing.T, n int) (id, receive string) {
 		FROM profile_wallets`, id, chaintest.ChainID, e.token, terms.ExpiresAt, terms.SettleDeadline, wallet,
 		strings.ToLower(common.Address(address.Factory).Hex()), receive, fmt.Sprintf("k%d", n))
 	if err != nil {
-		t.Fatal(err)
-	}
-	e.anvil.Transfer(e.token, receive, "6000000")
-	e.anvil.Mine(2)
-	if err := e.watch.Scan(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if err := e.ledger.ProcessChain(ctx, chaintest.ChainID); err != nil {
 		t.Fatal(err)
 	}
 	return id, receive
@@ -159,6 +167,20 @@ func (e env) balance(t *testing.T, holder string) int64 {
 		t.Fatal(err)
 	}
 	return b.Int64()
+}
+
+// wait is the wait kind the signer stored with the invoice's intent, "" when none.
+func (e env) wait(t *testing.T, invoiceID string) string {
+	t.Helper()
+	var w *string
+	if err := e.pool.QueryRow(context.Background(), "SELECT wait FROM settlement_intents WHERE invoice_id = $1",
+		invoiceID).Scan(&w); err != nil {
+		t.Fatal(err)
+	}
+	if w == nil {
+		return ""
+	}
+	return *w
 }
 
 func (e env) intent(t *testing.T, invoiceID string) (status, settlement, reason string) {
@@ -283,6 +305,61 @@ func TestRestartAfterSendingSendsNothing(t *testing.T) {
 	}
 }
 
+// R-54: the worker and the signer are down while the payer pays (or after the worker saw the payment but before it was
+// final) and until after the checkout closed. New processes book it from the saved cursor, as paid and not late,
+// since it was mined before the close, and settle it exactly once.
+func TestPaidWhileTheWorkerWasDownSettlesAfterARestart(t *testing.T) {
+	for name, seenBeforeTheStop := range map[string]bool{"never seen": false, "seen, not final": true} {
+		t.Run(name, func(t *testing.T) {
+			e := setup(t)
+			ctx := context.Background()
+			id, receive := e.create(t, 7)
+			e.anvil.Transfer(e.token, receive, "5000000")
+			if seenBeforeTheStop {
+				if err := e.watch.Scan(ctx); err != nil { // its block is above the finalized one: detected only
+					t.Fatal(err)
+				}
+				var status string
+				if err := e.pool.QueryRow(ctx, "SELECT status FROM chain_transfers WHERE invoice_id = $1", id).
+					Scan(&status); err != nil || status != "detected" {
+					t.Fatalf("before the stop: transfer %q (%v), want detected", status, err)
+				}
+			}
+			// The processes are down: the chain goes on past the checkout's close.
+			e.anvil.Wait(2 * 3600)
+			e.anvil.Mine(3)
+
+			before := e.nonce(t)
+			client := map[uint64]*ethclient.Client{chaintest.ChainID: e.client}
+			if err := watcher.NewChain(e.pool, chaintest.ChainID, e.anvil.RPC).Scan(ctx); err != nil {
+				t.Fatal(err)
+			}
+			if err := ledger.NewService(e.pool, ledger.BalanceFrom(client)).ProcessChain(ctx, chaintest.ChainID); err != nil {
+				t.Fatal(err)
+			}
+			var payment, refund string
+			if err := e.pool.QueryRow(ctx, "SELECT payment_status, refund_status FROM invoices WHERE id = $1", id).
+				Scan(&payment, &refund); err != nil {
+				t.Fatal(err)
+			}
+			if payment != "paid" || refund != "none" {
+				t.Fatalf("after the restart: payment %s, refund %s; want paid with nothing held", payment, refund)
+			}
+			if err := e.signer(t).Run(ctx); err != nil {
+				t.Fatal(err)
+			}
+			e.final(t, e.signer(t))
+			if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" ||
+				e.balance(t, wallet) != 5000000 {
+				t.Fatalf("after the restart: intent %s, invoice %s, recipient %d", status, settlement, e.balance(t, wallet))
+			}
+			if got := e.nonce(t) - before; got != 2 {
+				t.Fatalf("executor sent %d transactions, want 2 (deploy, settle)", got)
+			}
+		})
+	}
+}
+
 // Terms that no longer pay the profile wallet, or no longer compute the receive address, are refused: nothing sent.
 func TestRefusesTermsThatDoNotMatch(t *testing.T) {
 	for name, tamper := range map[string]string{
@@ -344,8 +421,10 @@ func TestPausedFactoryIsRetried(t *testing.T) {
 	if err := e.signer(t).Run(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if status, _, reason := e.intent(t, id); status != "pending" || reason == "" || e.balance(t, wallet) != 0 {
-		t.Fatalf("while paused: intent %s (%s), recipient %d; want pending with a reason", status, reason, e.balance(t, wallet))
+	if status, _, reason := e.intent(t, id); status != "pending" || reason == "" || e.wait(t, id) != waitRetry ||
+		e.balance(t, wallet) != 0 {
+		t.Fatalf("while paused: intent %s (%s, wait %q), recipient %d; want pending with a reason and wait retry",
+			status, reason, e.wait(t, id), e.balance(t, wallet))
 	}
 	e.anvil.AsAuthority(factory, "setPaused(bool)", "false")
 	if _, err := e.pool.Exec(ctx, "UPDATE settlement_intents SET next_attempt_at = now()"); err != nil {
@@ -1163,7 +1242,7 @@ func TestSponsoredSettlementsPerUserAreCapped(t *testing.T) {
 		t.Fatal(err)
 	}
 	if status, _, reason := e.intent(t, id); status != "pending" || !strings.Contains(reason, "sponsored") ||
-		e.nonce(t) != before {
+		e.wait(t, id) != waitCap || e.nonce(t) != before {
 		t.Fatalf("over the budget: intent %s (%s), %d transactions sent; want pending and none", status, reason,
 			e.nonce(t)-before)
 	}
