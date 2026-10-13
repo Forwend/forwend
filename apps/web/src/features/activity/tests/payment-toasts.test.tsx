@@ -19,6 +19,7 @@ const deposit = (txHash: string): ActivityItem => ({
   amount: "2000000",
   status: "detected",
   txHash,
+  optionCount: 1,
 });
 
 // The app calls the API same-origin ("/api/…"); Node's Request needs an absolute URL.

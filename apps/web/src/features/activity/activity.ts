@@ -68,6 +68,8 @@ export interface ActivityItem {
   status: ApiPaymentStatus | ApiDepositStatus | (string & {});
   settlementStatus?: ApiSettlementStatus | (string & {});
   txHash?: string;
+  /** Above 1 the client chooses: the invoice reads in USD, not in the token given here (its first option). */
+  optionCount: number;
 }
 
 export interface ActivityPage {

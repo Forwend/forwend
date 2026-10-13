@@ -19,6 +19,7 @@ import {
 } from "@/features/activity/activity";
 import { useGetActivityQuery } from "@/features/activity/activity-api";
 import { ACTIVITY_COPY } from "@/features/activity/activity-copy";
+import { INVOICES_COPY } from "@/features/invoices/invoices-copy";
 import { chainName } from "@/shared/chains/chains";
 import { ExplorerLink } from "@/shared/chains/explorer-link";
 import { NoMatch } from "@/shared/components/no-match";
@@ -117,6 +118,8 @@ function ProfileActivity({ profileId }: ActivityListProps) {
             <ul className="divide-y divide-line overflow-hidden rounded-md border border-line bg-surface">
               {rows.map((item, i) => {
                 const deposit = item.kind === ACTIVITY_KINDS.deposit;
+                // A client-chooses invoice reads in USD on any network, as in the invoice list (R-70).
+                const anyOption = !deposit && item.optionCount > 1;
                 return (
                   <li
                     // The same transaction can pay two invoices, and one invoice can get two payments in it.
@@ -135,14 +138,14 @@ function ProfileActivity({ profileId }: ActivityListProps) {
                         </Link>
                       }
                       // The network first: a narrow row cuts the time, never the network.
-                      detail={`${chainName(item.chainId)} · ${TIME.format(new Date(item.at))}`}
+                      detail={`${anyOption ? INVOICES_COPY.anyNetwork : chainName(item.chainId)} · ${TIME.format(new Date(item.at))}`}
                       direction={
                         deposit ? ACTIVITY_DIRECTIONS.incoming : ACTIVITY_DIRECTIONS.request
                       }
                       amount={{
                         baseUnits: BigInt(item.amount),
                         decimals: item.decimals,
-                        token: item.symbol,
+                        token: anyOption ? INVOICES_COPY.usd : item.symbol,
                       }}
                       status={activityStatus(item)}
                       action={

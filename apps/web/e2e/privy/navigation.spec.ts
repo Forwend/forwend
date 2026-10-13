@@ -518,7 +518,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
 });
 
 // R-70: an invoice the client may pay with any stablecoin reads in USD with Any network in the list, chosen or not.
-test("the invoice list shows a client-chooses invoice in USD with Any network", async ({
+test("the invoice list and activity show a client-chooses invoice in USD with Any network", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -530,7 +530,11 @@ test("the invoice list shows a client-chooses invoice in USD with Any network", 
     ...sampleInvoice(9, "paid", "pending", "Any network work", "Kettle & Co."),
     optionCount: 4,
   };
-  await mockApi(page, { invoices: [any, OPEN_INVOICE], activity: [], transfers: [] });
+  await mockApi(page, {
+    invoices: [any, OPEN_INVOICE],
+    activity: [activityItem(any), activityItem(OPEN_INVOICE)],
+    transfers: [],
+  });
   await page.goto("/app/invoices");
   const row = page.getByRole("row").filter({ hasText: "INV-0009" });
   await expect(row).toContainText("Any network");
@@ -539,6 +543,15 @@ test("the invoice list shows a client-chooses invoice in USD with Any network", 
   const fixed = page.getByRole("row").filter({ hasText: "INV-0002" });
   await expect(fixed).toContainText("USDC");
   await expect(fixed).toContainText("Base Sepolia");
+
+  // Activity reads it the same way, never as its first option's token.
+  await page.goto("/app/activity");
+  const rows = page.getByRole("main").getByRole("listitem");
+  await expect(rows.first()).toContainText("Any network");
+  await expect(rows.first()).toContainText("9.00 USD");
+  await expect(rows.first()).not.toContainText("USDC");
+  await expect(rows.nth(1)).toContainText("Base Sepolia");
+  await expect(rows.nth(1)).toContainText("USDC");
   await context.close();
 });
 

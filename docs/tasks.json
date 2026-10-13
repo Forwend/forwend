@@ -3496,7 +3496,7 @@
         "R-70: backend test checks activity invoice items carry optionCount; e2e checks an Activity row of a client-chooses invoice shows USD and Any network"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -3508,7 +3508,84 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T20:48:51Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 98.9,
+            "log": "docs/runs/F156-20261013T204851Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 145.2,
+            "log": "docs/runs/F156-20261013T204851Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": "docs/runs/F156-20261013T204851Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F156-20261013T204851Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F156-20261013T204851Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F156-20261013T204851Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 94.7,
+            "log": "docs/runs/F156-20261013T204851Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.9,
+            "log": "docs/runs/F156-20261013T204851Z-build.log"
+          }
+        ],
+        "taskHash": "b2b06ce106668482",
+        "filesHash": "5454ea40b85bb043",
+        "proof": {
+          "1": "backend: activity optionCount; e2e: Activity row in USD with Any network"
+        },
+        "commit": "1db41cc",
+        "doneAt": "2026-10-13T20:54:45Z"
+      },
+      "branch": "fix/f156-activity-shows-client-chooses-invoices-i",
+      "baseCommit": "785b8d64faae67e9731d94881df7541ff1430b6f",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f156-activity-shows-client-chooses-invoices-i",
+        "base": "main"
+      }
     },
     {
       "id": "F157",

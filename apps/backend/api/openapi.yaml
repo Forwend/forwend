@@ -674,7 +674,7 @@ components:
           description: Pass as cursor for the next page; null on the last page.
     ActivityItem:
       type: object
-      required: [kind, at, invoiceId, chainId, token, symbol, decimals, amount, status]
+      required: [kind, at, invoiceId, chainId, token, symbol, decimals, amount, status, optionCount]
       properties:
         kind:
           type: string
@@ -703,6 +703,12 @@ components:
           type: string
           pattern: "^0x[0-9a-f]{64}$"
           description: A deposit's transaction; for an invoice, its settlementTxHash once there is one.
+        optionCount:
+          type: integer
+          minimum: 1
+          description: >-
+            The invoice's accepted options; above 1 the client chooses, and the invoice reads in USD rather than the
+            token and network given here (its first option). 1 for a deposit.
     Transactions:
       type: object
       required: [items, nextCursor]
