@@ -2,7 +2,8 @@ import { STATUS_FILTERS, type StatusFilter } from "@/features/activity/activity"
 
 export const ACTIVITY_COPY = {
   activity: "Activity",
-  emptyActivity: "No invoices yet. Invoices and their payments appear here.",
+  emptyTitle: "No activity yet",
+  emptyText: "Invoices and their payments appear here.",
   activityFailed: "We could not load the activity.",
   loadMore: "Show more",
   latestOnly: "Showing the latest 100.",
@@ -19,7 +20,6 @@ export const ACTIVITY_COPY = {
   } satisfies Record<StatusFilter, string>,
   search: "Search activity",
   searchPlaceholder: "Search amount, token or hash",
-  noMatch: "Nothing matches.",
   toasts: {
     detected: (amount: string, confirmed: boolean) => ({
       title: "Payment detected",

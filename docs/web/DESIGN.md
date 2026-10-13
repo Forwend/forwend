@@ -155,6 +155,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 
 ## Theme and behavior
 
+- An empty list, or one filtered to nothing, is one centered block in the list's place (R-75): an icon in a soft
+  circle, a title ("No invoices yet", "Nothing matches"), a line or the next step under it ("Clear filter and
+  search"), as wide as the list and at least about half the screen tall. Inside an overview card it drops its frame
+  and most of its height.
+
 - Apply the saved theme, otherwise the system choice, before first paint using `data-theme` on `<html>`.
   Product sections can force dark with their own `data-theme="dark"`. Use the theme variant for theme-only differences.
 - A loading button shows only a centered spinner, at its own size and colors, and keeps its accessible name.

@@ -33,11 +33,7 @@ test("a profile shows its balance, networks, receive address and activity; a new
   await expect(balance.getByRole("radio", { name: "1W" })).toBeChecked();
   await expect(page.getByRole("region", { name: "Balances by network" })).toBeVisible();
   const recent = page.getByRole("region", { name: "Recent transactions" });
-  await expect(
-    recent
-      .getByText("No transactions yet. Money sent to or from this profile's wallet shows here.")
-      .or(recent.getByRole("table")),
-  ).toBeVisible();
+  await expect(recent.getByText("No transactions yet").or(recent.getByRole("table"))).toBeVisible();
 
   // Receive: the token, then the network; then a sheet with the QR code, the full address in one box and a warning
   // naming that exact network and token. The test account has USDC on Base Sepolia and Arbitrum Sepolia.

@@ -4,10 +4,12 @@ import {
   ACTIVITY_DIRECTIONS,
   ActivityRow,
   Button,
+  EmptyState,
   ROW_INTERACTIVE_CLASSES,
   SearchField,
   SegmentedControl,
 } from "@forwend/ui-web";
+import { History } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import {
@@ -109,11 +111,15 @@ function ProfileActivity({ profileId }: ActivityListProps) {
           className="overflow-hidden rounded-md border border-line bg-surface"
         />
       ) : noActivity ? (
-        <p className="py-2 text-muted">{ACTIVITY_COPY.emptyActivity}</p>
+        <EmptyState
+          icon={History}
+          title={ACTIVITY_COPY.emptyTitle}
+          description={ACTIVITY_COPY.emptyText}
+        />
       ) : (
         <>
           {rows.length === 0 ? (
-            <NoMatch text={ACTIVITY_COPY.noMatch} onClear={filters.clear} />
+            <NoMatch onClear={filters.clear} />
           ) : (
             <ul className="divide-y divide-line overflow-hidden rounded-md border border-line bg-surface">
               {rows.map((item, i) => {

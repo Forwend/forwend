@@ -9,7 +9,7 @@ import {
   SegmentedControl,
   StatusPill,
 } from "@forwend/ui-web";
-import { Plus } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import Link from "next/link";
 import { STATUS_FILTERS } from "@/features/activity/activity";
 import { ACTIVITY_COPY } from "@/features/activity/activity-copy";
@@ -123,12 +123,13 @@ export function InvoicesTable({
         <RowsSkeleton count={SKELETON_ROWS} className="rounded-md border border-line bg-surface" />
       ) : noInvoices ? (
         <EmptyState
+          icon={FileText}
           title={COPY.emptyTitle}
           description={COPY.emptyText}
           action={<NewInvoiceLink onRequest={onRequest} />}
         />
       ) : rows.length === 0 ? (
-        <NoMatch text={COPY.noMatch} onClear={filters.clear} />
+        <NoMatch onClear={filters.clear} />
       ) : (
         <div className="rounded-md border border-line bg-surface">
           {/* Wide screens: a ruled table, scrolled sideways rather than squeezed when its column is narrow. Below xl

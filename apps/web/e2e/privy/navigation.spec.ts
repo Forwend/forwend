@@ -231,7 +231,7 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
   // A filter joins the search in the URL; nothing matched says so and offers to clear both.
   await main.getByRole("group", { name: "Status" }).getByText("Paid", { exact: true }).click();
   await expect(page).toHaveURL("/app/invoices?q=zephyr&status=paid");
-  await expect(main.getByText("No invoices match.")).toBeVisible();
+  await expect(main.getByText("Nothing matches", { exact: true })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
   await main.getByRole("button", { name: "Clear filter and search" }).click();
   await expect(page).toHaveURL("/app/invoices");
@@ -274,9 +274,9 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
   );
   await main.getByRole("group", { name: "Direction" }).getByText("Out", { exact: true }).click();
   await expect(page).toHaveURL(`/app/transactions?q=${PAST_PAGE_PARTY}&direction=out`);
-  await expect(main.getByText("No transactions match.")).toBeVisible();
+  await expect(main.getByText("Nothing matches", { exact: true })).toBeVisible();
   await page.reload();
-  await expect(main.getByText("No transactions match.")).toBeVisible();
+  await expect(main.getByText("Nothing matches", { exact: true })).toBeVisible();
   await main.getByRole("button", { name: "Clear filter and search" }).click();
   await expect(transfers).toHaveCount(20);
   await context.close();
@@ -678,5 +678,42 @@ test("switching profile keeps the page, and leaves an invoice's page for the new
     await expect(page).toHaveURL("/app/invoices");
     await expect(page.getByRole("heading", { level: 1, name: "Invoices" })).toBeAttached();
   }
+  await context.close();
+});
+
+// R-75: an empty list, or one filtered to nothing, says so in one centered block that fills the list's width.
+test("empty and filtered-out lists say so in one centered block with an icon", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page, { invoices: [], activity: [], transfers: [] });
+  const main = page.getByRole("main");
+  const fills = async (text: string) => {
+    const title = main.getByText(text, { exact: true });
+    await expect(title).toBeVisible();
+    // The block is the title's centered box: about as wide as the main column.
+    const block = title.locator("xpath=..");
+    const [inner, outer] = await Promise.all([block.boundingBox(), main.boundingBox()]);
+    expect(inner && outer && inner.width > outer.width * 0.9).toBe(true);
+    await expect(block.locator("svg").first()).toBeVisible();
+    await expect(title).toHaveCSS("text-align", "center");
+  };
+  for (const [path, title] of [
+    ["/app/invoices", "No invoices yet"],
+    ["/app/activity", "No activity yet"],
+    ["/app/transactions", "No transactions yet"],
+  ] as const) {
+    await page.goto(path);
+    await fills(title);
+    expect(await blockingViolations(page)).toEqual([]);
+  }
+  await page.goto("/app/transactions?q=zzzz");
+  await fills("Nothing matches");
+  await main.getByRole("button", { name: "Clear filter and search" }).click();
+  await expect(main.getByText("No transactions yet", { exact: true })).toBeVisible();
   await context.close();
 });
