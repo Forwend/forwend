@@ -209,7 +209,10 @@ export const INVOICE_COPY = {
   recheckUnreadable: (networks: string) => `${networks} did not answer.`,
   recheckTooSoon: "Checked recently.",
   nextCheck: (left: string) => `Next check in ${left}`,
-  deposits: "Payments received",
+  // Every transaction of the invoice: payments in, the settlement to the wallet, later refunds (R-69).
+  deposits: "Transactions",
+  payment: "Payment",
+  to: "To",
   late: "After the checkout closed",
   from: "From",
   share: "Pay link",
@@ -220,7 +223,7 @@ export const INVOICE_COPY = {
   dueDate: "Due date",
   expires: "Checkout closes",
   created: "Created",
-  settlement: "Settlement transaction",
+  settlement: "Settlement",
   note: "Note",
   pdfs: "Documents",
   pdf: {

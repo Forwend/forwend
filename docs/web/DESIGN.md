@@ -148,7 +148,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   short id, Copy link, Open in a new tab) while the checkout can take money. Below, two columns from large screens up: the
   amount ("Received X of Y" under it when partly paid) with the timeline, where the Paid step reads "Partially paid"
   as a warning-tinted label when partly paid, the status line (only the confirming count or why settling waits; the
-  state itself is the pill's), the payments (amount, sender, time and hash, no status pill of their own) and Check
+  state itself is the pill's), one Transactions list (each payment, then the settlement to the wallet, later refunds: kind, amount, the other side,
+  time and hash with its explorer link, no status pill of its own; Details repeats none of them) and Check
   status only while the checkout can take money; beside it the details (empty ones left out), Billed to, and From (or "None on this invoice" with a link to add
   billing details).
 

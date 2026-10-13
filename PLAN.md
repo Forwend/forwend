@@ -116,7 +116,8 @@ bullets it needs.
   support evidence); `refund_claims` with states. After 9.1.
 - 9.4 Refund tool: an ops command (`cmd/ops`) lists claims, approves or rejects them with a reason (D-60) and prints
   the `refund(to, amount)` call for the refund-authority Safe; one refund of everything held by default (D-57).
-  The watcher books the refund. No new hot key. After 9.3.
+  The watcher books the refund. No new hot key. After 9.3. A refund shows in the invoice's Transactions list on the
+  owner page, beside the payments and the settlement (R-69).
 - 9.5 Cancel an unpaid invoice: settlement stops; later deposits stay held (D-26).
 - 9.6 Email notifications through a provider adapter and the outbox (D-65, Q-13): paid, settled, exception, claim
   opened and resolved; per-profile on/off. The in-app bell also shows invoice events. After 8.1.
