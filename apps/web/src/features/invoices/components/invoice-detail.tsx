@@ -38,7 +38,6 @@ import {
 import { useGetInvoiceQuery, useGetProfileInvoiceQuery } from "@/features/invoices/invoices-api";
 import { INVOICE_COPY as COPY, REQUESTS_COPY } from "@/features/invoices/invoices-copy";
 import { chainName } from "@/shared/chains/chains";
-import { ExplorerLink } from "@/shared/chains/explorer-link";
 import { TokenMark } from "@/shared/chains/token-mark";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -229,7 +228,21 @@ function Loaded({
                 )
               ) : null}
             </p>
-            <InvoiceDeposits invoice={invoice} token={token ?? null} />
+            <InvoiceDeposits
+              invoice={invoice}
+              token={token ?? null}
+              // The invoice's amount goes to the wallet; anything above it stays held for the payer (D-26).
+              settlement={
+                invoice.settlementTxHash
+                  ? {
+                      txHash: invoice.settlementTxHash,
+                      to: invoice.recipient,
+                      amount,
+                      at: invoice.settledAt,
+                    }
+                  : null
+              }
+            />
             {/* Money sent to an option the client did not end up paying with is the payer's (D-76). */}
             {invoice.options
               .filter((o) => o.optionId !== invoice.optionId)
@@ -264,18 +277,6 @@ function Loaded({
               ) : null}
               <Row term={COPY.expires}>{TIME.format(new Date(invoice.expiresAt))}</Row>
               <Row term={COPY.created}>{TIME.format(new Date(invoice.createdAt))}</Row>
-              {invoice.settlementTxHash ? (
-                <Row term={COPY.settlement}>
-                  <span className="font-mono" title={invoice.settlementTxHash}>
-                    {shortAddress(invoice.settlementTxHash)}
-                  </span>{" "}
-                  <ExplorerLink
-                    chainId={invoice.chainId}
-                    txHash={invoice.settlementTxHash}
-                    className="align-middle"
-                  />
-                </Row>
-              ) : null}
               {invoice.note ? <Row term={COPY.note}>{invoice.note}</Row> : null}
               <Row term={COPY.pdfs}>
                 <span className="flex flex-wrap gap-x-5 gap-y-1">

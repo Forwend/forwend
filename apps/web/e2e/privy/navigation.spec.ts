@@ -535,6 +535,30 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   // Paid takes no more money: the pay link is gone.
   await expect(main.getByRole("region", { name: "Pay link" })).toHaveCount(0);
 
+  // Settled: one Transactions list holds the payment and the settlement to the wallet; Details repeats neither (R-69).
+  const settleTx = hash("5");
+  body = {
+    ...OPEN_INVOICE,
+    paymentStatus: "paid",
+    settlementStatus: "settled",
+    paidAt: "2026-10-09T08:31:00Z",
+    settledAt: "2026-10-09T08:40:00Z",
+    settlementTxHash: settleTx,
+    deposits: [deposit("confirmed", OPEN_INVOICE.amount, 0)],
+  };
+  await page.reload();
+  const transactions = main.locator("ul").filter({ hasText: "Settlement" });
+  await expect(main.getByText("Transactions", { exact: true })).toBeVisible();
+  await expect(transactions.getByRole("listitem")).toHaveText([/^Payment/, /^Settlement/]);
+  const settlementRow = transactions.getByRole("listitem").nth(1);
+  await expect(settlementRow).toContainText("2.00 USDC");
+  await expect(settlementRow.getByRole("link", { name: /Basescan/ })).toHaveAttribute(
+    "href",
+    `https://sepolia.basescan.org/tx/${settleTx}`,
+  );
+  await expect(main.getByRole("region", { name: "Details" })).not.toContainText("Settlement");
+  expect(await blockingViolations(page)).toEqual([]);
+
   // Closed takes no more money either: nothing to check (R-69).
   body = { ...OPEN_INVOICE, paymentStatus: "expired", deposits: [] };
   await page.reload();
