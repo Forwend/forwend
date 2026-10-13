@@ -34,17 +34,14 @@ const PAD = { top: 12, right: 8, bottom: 28, left: 52 } as const;
 // Phones: the top tick sits above its line inside the plot, the first and last dates under it.
 const PAD_COMPACT = { top: 18, right: 6, bottom: 20, left: 6 } as const;
 
-export function BalanceChart({
-  series,
-  label,
-  compact = false,
-  className,
-}: {
+export interface BalanceChartProps {
   series: HistorySeries;
   label: string;
   compact?: boolean;
   className?: string;
-}) {
+}
+
+export function BalanceChart({ series, label, compact = false, className }: BalanceChartProps) {
   const id = useId();
   const pad = compact ? PAD_COMPACT : PAD;
   const count = series.values.length;
@@ -180,6 +177,16 @@ export function BalanceChart({
   );
 }
 
+export interface ChartReadoutProps {
+  series: HistorySeries;
+  label: string;
+  active: number | null;
+  announce: boolean;
+  left: number;
+  width: number;
+  dateLabel?: (index: number) => string;
+}
+
 export function ChartReadout({
   series,
   label,
@@ -188,15 +195,7 @@ export function ChartReadout({
   left,
   width,
   dateLabel = (i) => dayLabel(series, i),
-}: {
-  series: HistorySeries;
-  label: string;
-  active: number | null;
-  announce: boolean;
-  left: number;
-  width: number;
-  dateLabel?: (index: number) => string;
-}) {
+}: ChartReadoutProps) {
   return (
     <>
       {active === null ? null : (

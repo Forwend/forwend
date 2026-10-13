@@ -52,16 +52,14 @@ const invoiceHref = (inv: InvoiceSummary) => `${APP_ROUTES.invoices}/${inv.invoi
 
 const clientName = (inv: InvoiceSummary) => inv.client?.name ?? inv.client?.email ?? null;
 
-/** With onRequest the list is a personal profile's requests: no client or due date, so rows show the note. */
-export function InvoicesTable({
-  profileId,
-  tokens,
-  onRequest,
-}: {
+export interface InvoicesTableProps {
   profileId: string;
   tokens: readonly InvoiceToken[] | null;
   onRequest?: () => void;
-}) {
+}
+
+/** With onRequest the list is a personal profile's requests: no client or due date, so rows show the note. */
+export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTableProps) {
   const COPY = onRequest ? REQUESTS_COPY : INVOICES_COPY;
   const label = (inv: InvoiceSummary) => (onRequest ? inv.note : clientName(inv));
   const filters = useListFilters("status", Object.values(STATUS_FILTERS), STATUS_FILTERS.all);

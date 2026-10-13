@@ -2,8 +2,13 @@ import { BrandIcon } from "@forwend/ui-web";
 import { CHAINS, TOKEN_ICONS } from "@/shared/constants/chains";
 import { chainName } from "@/shared/lib/chains";
 
+export interface TokenMarkProps {
+  chainId: number;
+  symbol: string;
+}
+
 /** The token logo with the network's logo tucked on its corner, then the token and network in words. */
-export function TokenMark({ chainId, symbol }: { chainId: number; symbol: string }) {
+export function TokenMark({ chainId, symbol }: TokenMarkProps) {
   const token = TOKEN_ICONS[symbol];
   const chain = CHAINS[chainId]?.icon;
   return (

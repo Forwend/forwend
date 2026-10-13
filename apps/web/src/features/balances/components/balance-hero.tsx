@@ -23,6 +23,15 @@ import type { Balances } from "@/features/balances/types/balances";
 import { BALANCE_DAWN_IMAGE, BALANCE_NIGHT_IMAGE } from "@/shared/assets/images";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
+export interface BalanceHeroProps {
+  profileId: string;
+  balances: Balances | null;
+  failed: boolean;
+  onRetry: () => void;
+  onReceive: () => void;
+  onRequest: () => void;
+}
+
 export function BalanceHero({
   profileId,
   balances,
@@ -30,14 +39,7 @@ export function BalanceHero({
   onRetry,
   onReceive,
   onRequest,
-}: {
-  profileId: string;
-  balances: Balances | null;
-  failed: boolean;
-  onRetry: () => void;
-  onReceive: () => void;
-  onRequest: () => void;
-}) {
+}: BalanceHeroProps) {
   const [range, setRange] = useState<HistoryRange>(DEFAULT_RANGE);
   const history = useGetBalanceHistoryQuery({ profileId, days: HISTORY_RANGES[range] }, LIVE_QUERY);
   // The chart keeps the last range's line, dimmed, while the next loads; figures for the range wait for their own data.

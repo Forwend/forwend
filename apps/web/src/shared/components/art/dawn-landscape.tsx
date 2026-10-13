@@ -70,7 +70,11 @@ function pines(
   }).join(" ");
 }
 
-export function DawnLandscape({ className }: { className?: string }) {
+export interface DawnLandscapeProps {
+  className?: string;
+}
+
+export function DawnLandscape({ className }: DawnLandscapeProps) {
   return (
     <svg
       className={className}

@@ -56,6 +56,13 @@ const COUNTRY = new Intl.DisplayNames(undefined, { type: "region" });
 const PANEL = "rounded-md border border-line bg-surface";
 const PANEL_TITLE = "border-b border-line px-4 py-3 text-base font-semibold text-ink sm:px-5";
 
+export interface InvoiceDetailProps {
+  invoiceId: string;
+  profileId: string;
+  tokens: readonly InvoiceToken[] | null;
+  request?: boolean;
+}
+
 // The public read gives the terms, statuses and deposits and is read again every REFRESH_MS; the profile's own read
 // gives the client once, and its 404 tells that this profile did not make the invoice. On desktop the header's
 // breadcrumb leads back; phones have no breadcrumb, so they get a back link. A personal profile's invoice is a request:
@@ -65,12 +72,7 @@ export function InvoiceDetail({
   profileId,
   tokens,
   request = false,
-}: {
-  invoiceId: string;
-  profileId: string;
-  tokens: readonly InvoiceToken[] | null;
-  request?: boolean;
-}) {
+}: InvoiceDetailProps) {
   const invoice = useGetInvoiceQuery(invoiceId, LIVE_QUERY);
   // Polled like the public read: it carries why a paid invoice's money still waits, which changes as it settles.
   const owned = useGetProfileInvoiceQuery({ profileId, invoiceId }, LIVE_QUERY);

@@ -12,7 +12,11 @@ import { LIVE_QUERY } from "@/shared/config/refresh";
 
 const DAYS = 30;
 
-export function MoneyFlowCard({ profileId }: { profileId: string }) {
+export interface MoneyFlowCardProps {
+  profileId: string;
+}
+
+export function MoneyFlowCard({ profileId }: MoneyFlowCardProps) {
   const history = useGetBalanceHistoryQuery({ profileId, days: DAYS }, LIVE_QUERY);
   const flows = history.data
     ? ([

@@ -9,8 +9,12 @@ const ICONS = {
   [PROFILE_KINDS.merchant]: MerchantIcon,
 } as const;
 
+export interface ProfileAvatarProps {
+  kind: ProfileKind;
+}
+
 /** A square tile with the profile type's icon, the profile's mark in the switcher. */
-export function ProfileAvatar({ kind }: { kind: ProfileKind }) {
+export function ProfileAvatar({ kind }: ProfileAvatarProps) {
   const Icon = ICONS[kind];
   return (
     <span className="grid size-8 shrink-0 place-items-center rounded-sm bg-primary text-on-primary">

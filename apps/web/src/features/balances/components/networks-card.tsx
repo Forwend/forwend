@@ -6,8 +6,13 @@ import type { Balances } from "@/features/balances/types/balances";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { APP_ROUTES } from "@/shared/config/routes";
 
+export interface NetworksCardProps {
+  balances: Balances | null;
+  failed: boolean;
+}
+
 // Where the money is: each enabled token on each network, with what the wallet holds there.
-export function NetworksCard({ balances, failed }: { balances: Balances | null; failed: boolean }) {
+export function NetworksCard({ balances, failed }: NetworksCardProps) {
   return (
     <section
       aria-labelledby="networks-title"

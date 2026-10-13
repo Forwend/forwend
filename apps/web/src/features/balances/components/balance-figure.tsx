@@ -8,17 +8,15 @@ import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { formatUsd, usdTotal } from "@/features/balances/lib/balances";
 import type { Balances, TokenBalance } from "@/features/balances/types/balances";
 
-// Never a made-up 0 while loading or when a read failed. The parent is the size container: the figure and its
-// skeleton scale with its width, and the figure also shrinks as its digits grow, so a large total never clips.
-export function BalanceFigure({
-  balances,
-  failed,
-  onRetry,
-}: {
+export interface BalanceFigureProps {
   balances: Balances | null;
   failed: boolean;
   onRetry: () => void;
-}) {
+}
+
+// Never a made-up 0 while loading or when a read failed. The parent is the size container: the figure and its
+// skeleton scale with its width, and the figure also shrinks as its digits grow, so a large total never clips.
+export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps) {
   const tokens = balances?.tokens ?? [];
   const total = balances ? usdTotal(balances, "wallet") : null;
   const text = total === null ? "—" : formatUsd(total);

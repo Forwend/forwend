@@ -19,6 +19,16 @@ const SIDEBAR_COPY = {
 const ROW =
   "flex h-8 items-center gap-2.5 rounded-sm px-2 text-sm outline-none focus-visible:outline-2 focus-visible:outline-focus";
 
+export interface AppSidebarProps {
+  profiles: Profile[];
+  active: Profile;
+  onSwitch: (profileId: string) => void;
+  pathname: string;
+  email: string;
+  onSignOut: () => void;
+  collapsed: boolean;
+}
+
 export function AppSidebar({
   profiles,
   active,
@@ -27,15 +37,7 @@ export function AppSidebar({
   email,
   onSignOut,
   collapsed,
-}: {
-  profiles: Profile[];
-  active: Profile;
-  onSwitch: (profileId: string) => void;
-  pathname: string;
-  email: string;
-  onSignOut: () => void;
-  collapsed: boolean;
-}) {
+}: AppSidebarProps) {
   const named = (label: string, node: ReactElement) =>
     collapsed ? (
       <Tooltip content={label} side="right">

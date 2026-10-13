@@ -560,7 +560,7 @@
         "Every component declares its props as a named interface ComponentNameProps on a function declaration; no React.FC and no I-prefixed names; typecheck and unit pass"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "typecheck"
       ],
@@ -569,7 +569,77 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T23:49:46Z",
+        "checks": [
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": "docs/runs/F172-20261013T234946Z-typecheck.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": "docs/runs/F172-20261013T234946Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F172-20261013T234946Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F172-20261013T234946Z-lint.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 64.9,
+            "log": "docs/runs/F172-20261013T234946Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.2,
+            "log": "docs/runs/F172-20261013T234946Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 166.3,
+            "log": "docs/runs/F172-20261013T234946Z-e2e.log"
+          }
+        ],
+        "taskHash": "0d993815e513cd62",
+        "filesHash": "512aff4b54c1efc8",
+        "proof": {
+          "1": "typecheck: props interfaces, no inline exported props left"
+        },
+        "commit": "d3c7ac2",
+        "doneAt": "2026-10-13T23:53:55Z"
+      },
+      "branch": "refactor/f172-react-components-declare-their-props-one",
+      "baseCommit": "6ea0db3291b8a6cecc41727e364344db7ef0f2fb",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f172-react-components-declare-their-props-one",
+        "base": "main"
+      }
     },
     {
       "id": "F173",

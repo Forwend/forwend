@@ -19,18 +19,20 @@ import { profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
 import { APP_ROUTES } from "@/shared/config/routes";
 
+export interface ProfileSwitcherProps {
+  profiles: Profile[];
+  active: Profile;
+  onSwitch: (profileId: string) => void;
+  compact?: boolean;
+}
+
 // The workspace switcher: the chosen profile frames everything below it, and switching keeps you on the same page.
 export function ProfileSwitcher({
   profiles,
   active,
   onSwitch,
   compact = false,
-}: {
-  profiles: Profile[];
-  active: Profile;
-  onSwitch: (profileId: string) => void;
-  compact?: boolean;
-}) {
+}: ProfileSwitcherProps) {
   return (
     <Menu>
       <MenuTrigger

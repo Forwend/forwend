@@ -1,6 +1,13 @@
 import { ExternalLink } from "lucide-react";
 import { txLink } from "@/shared/lib/chains";
 
+export interface ExplorerLinkProps {
+  chainId: number;
+  txHash: string;
+  named?: boolean;
+  className?: string;
+}
+
 /**
  * The transaction on its chain's block explorer, in a new tab; nothing for a chain without one. An icon alone, or with
  * the explorer's name beside it when `named`.
@@ -10,12 +17,7 @@ export function ExplorerLink({
   txHash,
   named = false,
   className = "",
-}: {
-  chainId: number;
-  txHash: string;
-  named?: boolean;
-  className?: string;
-}) {
+}: ExplorerLinkProps) {
   const link = txLink(chainId, txHash);
   if (!link) return null;
   return (

@@ -2,8 +2,12 @@ import { BrandIcon } from "@forwend/ui-web";
 import { CHAINS } from "@/shared/constants/chains";
 import { chainName } from "@/shared/lib/chains";
 
+export interface NetworkNameProps {
+  chainId: number;
+}
+
 /** The network's logo, then its name: scanning a list by network is faster with the logo (R-64). */
-export function NetworkName({ chainId }: { chainId: number }) {
+export function NetworkName({ chainId }: NetworkNameProps) {
   const icon = CHAINS[chainId]?.icon;
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5">

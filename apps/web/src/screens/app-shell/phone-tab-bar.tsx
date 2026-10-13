@@ -12,13 +12,12 @@ const TAB =
 const TAB_ICON =
   "grid h-7 w-12 place-items-center rounded-pill transition-colors duration-[var(--fw-duration-fast)] group-aria-[current=page]:bg-surface-2";
 
-export function PhoneTabBar({
-  pathname,
-  onProfiles,
-}: {
+export interface PhoneTabBarProps {
   pathname: string;
   onProfiles: () => void;
-}) {
+}
+
+export function PhoneTabBar({ pathname, onProfiles }: PhoneTabBarProps) {
   const tabs = [
     { ...NAV.overview, label: TAB_COPY.home, icon: Home },
     NAV.transactions,

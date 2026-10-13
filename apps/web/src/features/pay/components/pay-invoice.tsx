@@ -59,8 +59,13 @@ const PAYER_STEPS = [INVOICE_STEPS.detected, INVOICE_STEPS.confirming, INVOICE_S
 const formatMoney = (units: bigint, token: PayToken) =>
   `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`;
 
+export interface PayInvoiceProps {
+  invoiceId: string;
+  option?: string;
+}
+
 // The public read, again every REFRESH_MS while the tab is visible: the payer sees the status move without a reload.
-export function PayInvoice({ invoiceId, option }: { invoiceId: string; option?: string }) {
+export function PayInvoice({ invoiceId, option }: PayInvoiceProps) {
   const invoice = useGetInvoiceQuery(invoiceId, LIVE_QUERY);
   const failure = invoice.error as { status?: unknown } | undefined;
   if (invoice.data) {

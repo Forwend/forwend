@@ -24,14 +24,13 @@ type Field = keyof BillingDetailsBody;
 
 const COUNTRY_ID = "billing-country";
 
-// R-43: one PUT replaces every field; the API checks them again.
-export function BillingDetailsForm({
-  profileId,
-  saved,
-}: {
+export interface BillingDetailsFormProps {
   profileId: string;
   saved: BillingDetails | null;
-}) {
+}
+
+// R-43: one PUT replaces every field; the API checks them again.
+export function BillingDetailsForm({ profileId, saved }: BillingDetailsFormProps) {
   const [save] = useSaveBillingDetailsMutation();
   const toast = useToast();
   const router = useRouter();

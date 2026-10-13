@@ -6,7 +6,11 @@ import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
-export function InvoiceScreen({ invoiceId }: { invoiceId: string }) {
+export interface InvoiceScreenProps {
+  invoiceId: string;
+}
+
+export function InvoiceScreen({ invoiceId }: InvoiceScreenProps) {
   const { profile } = useAppSession();
   const balances = useGetBalancesQuery(profile.profileId, LIVE_QUERY);
   return (

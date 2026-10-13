@@ -9,8 +9,12 @@ import { PAYMENT_EVENTS } from "@/features/activity/constants/payment-events";
 import { newPaymentEvents } from "@/features/activity/lib/payment-events";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
+export interface PaymentToastsProps {
+  profileId: string;
+}
+
 // ponytail: only the newest page is watched; a settle pushed off it gets no toast. Needs a settled-since API to fix.
-export function PaymentToasts({ profileId }: { profileId: string }) {
+export function PaymentToasts({ profileId }: PaymentToastsProps) {
   return <ProfileToasts key={profileId} profileId={profileId} />;
 }
 
