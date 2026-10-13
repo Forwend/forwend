@@ -3595,7 +3595,7 @@
         "R-68, R-69: ui-unit checks a step hint shows a clock icon with its text; e2e checks the pay and owner pages show Confirming (n/m) on the step with the time behind the icon, no separate confirming line, and Confirmed once done"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -3607,7 +3607,77 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T20:59:00Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 138.8,
+            "log": "docs/runs/F157-20261013T205900Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": "docs/runs/F157-20261013T205900Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F157-20261013T205900Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F157-20261013T205900Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": "docs/runs/F157-20261013T205900Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 98.9,
+            "log": "docs/runs/F157-20261013T205900Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.3,
+            "log": "docs/runs/F157-20261013T205900Z-build.log"
+          }
+        ],
+        "taskHash": "e6962c6176cf0077",
+        "filesHash": "617643bfa563825d",
+        "proof": {
+          "1": "e2e: step count with time hint, no repeated line, Confirmed when done"
+        },
+        "commit": "b8134f2",
+        "doneAt": "2026-10-13T21:03:12Z"
+      },
+      "branch": "feat/f157-the-confirming-step-carries-its-count-an",
+      "baseCommit": "4fea528236c82a1898abcb31c0ced99eaf5e4960",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f157-the-confirming-step-carries-its-count-an",
+        "base": "main"
+      }
     },
     {
       "id": "F158",

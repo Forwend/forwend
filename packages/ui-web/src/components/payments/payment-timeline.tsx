@@ -1,5 +1,7 @@
+import { Clock } from "lucide-react";
 import { cx } from "../../lib/cx";
 import { TONE_CLASSES, type Tone } from "../../lib/tone";
+import { Tooltip } from "../overlays/tooltip";
 
 export const STEP_STATES = {
   complete: "complete",
@@ -20,6 +22,8 @@ export interface TimelineStep {
   progress?: number | null;
   /** Shows the label as a tinted badge, for a step that ended in a state worth noticing (partly paid). */
   tone?: Tone;
+  /** A short note behind a clock icon after the label, such as the time a step has left; also its accessible name. */
+  hint?: string;
 }
 
 export interface PaymentTimelineProps {
@@ -50,11 +54,13 @@ export function PaymentTimeline({
       className="grid gap-2"
       style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
     >
-      {steps.map((step) => {
+      {steps.map((step, i) => {
         const sweeping = step.state === STEP_STATES.current && step.progress === null;
         return (
           <li
-            key={step.label}
+            // A label can change while its step runs (a count); the place keeps the bar mounted, so it slides.
+            // biome-ignore lint/suspicious/noArrayIndexKey: the steps are a fixed list in a fixed order
+            key={i}
             aria-current={step.state === STEP_STATES.current ? "step" : undefined}
             className="flex flex-col gap-2"
           >
@@ -78,25 +84,38 @@ export function PaymentTimeline({
                 />
               )}
             </span>
-            <span
-              className={cx(
-                "text-xs",
-                step.tone
-                  ? cx(
-                      "self-start rounded-pill border px-2 py-0.5 font-medium",
-                      TONE_CLASSES[step.tone],
-                    )
-                  : step.state === STEP_STATES.upcoming
-                    ? "text-subtle"
-                    : "font-medium text-ink",
-              )}
-            >
-              {step.label}
-              {step.state === STEP_STATES.current ? null : (
-                <span className="sr-only">
-                  {step.state === STEP_STATES.complete ? doneLabel : notStartedLabel}
-                </span>
-              )}
+            <span className="flex flex-wrap items-center gap-1">
+              <span
+                className={cx(
+                  "text-xs",
+                  step.tone
+                    ? cx(
+                        "self-start rounded-pill border px-2 py-0.5 font-medium",
+                        TONE_CLASSES[step.tone],
+                      )
+                    : step.state === STEP_STATES.upcoming
+                      ? "text-subtle"
+                      : "font-medium text-ink",
+                )}
+              >
+                {step.label}
+                {step.state === STEP_STATES.current ? null : (
+                  <span className="sr-only">
+                    {step.state === STEP_STATES.complete ? doneLabel : notStartedLabel}
+                  </span>
+                )}
+              </span>
+              {step.hint ? (
+                <Tooltip content={step.hint}>
+                  <button
+                    type="button"
+                    aria-label={step.hint}
+                    className="grid size-5 place-items-center rounded-pill text-muted outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+                  >
+                    <Clock aria-hidden className="size-3.5" />
+                  </button>
+                </Tooltip>
+              ) : null}
             </span>
             {step.detail ? (
               <span className="font-mono text-xs text-subtle [overflow-wrap:anywhere]">

@@ -280,7 +280,10 @@ test.describe("pay page", () => {
     await expect(page.getByRole("heading", { name: "Paying with" })).toBeVisible();
     const steps = page.getByRole("list", { name: "Payment progress" });
     await expect(steps.getByRole("listitem")).toHaveText([/^Detected/, /^Confirming/, /^Paid/]);
-    await expect(steps.locator("[aria-current=step]")).toHaveText("Confirming");
+    // The step carries the count, the time sits behind its clock, and no visible line repeats it (R-68).
+    await expect(steps.locator("[aria-current=step]")).toHaveText("Confirming (0/12)");
+    await expect(steps.getByRole("button", { name: "About 3 min left" })).toBeVisible();
+    await expect(status(page)).toHaveClass(/sr-only/);
     const payment = page.getByRole("region", { name: "Payment progress" }).locator("ul > li");
     await expect(payment).toContainText("1,250.00 USDC");
     await expect(payment).toContainText("0x3333…3333");
@@ -324,9 +327,14 @@ test.describe("pay page", () => {
     await expect(page.locator("[data-money]").first()).toHaveText("1,000.00 USDC");
     // Money is still due: the address stays, and the Paid step says it is partly there.
     await expect(showAddress(page)).toBeVisible();
-    await expect(
-      page.getByRole("list", { name: "Payment progress" }).getByText("Partially paid"),
-    ).toHaveClass(/bg-warning-soft/);
+    const partlySteps = page.getByRole("list", { name: "Payment progress" });
+    await expect(partlySteps.getByText("Partially paid")).toHaveClass(/bg-warning-soft/);
+    // Done, the step says Confirmed rather than Confirming.
+    await expect(partlySteps.getByRole("listitem")).toHaveText([
+      /^Detected/,
+      /^Confirmed/,
+      /^Partially paid/,
+    ]);
     await page.clock.runFor(POLL_MS);
     await expect(status(page)).toHaveText(
       "This invoice is closed. If you already sent money, it is not lost: contact the sender.",

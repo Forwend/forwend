@@ -167,6 +167,17 @@ export const INVOICE_COPY = {
     [INVOICE_STEPS.paid]: "Paid",
     [INVOICE_STEPS.settled]: "Settled",
   } satisfies Record<InvoiceStep, string>,
+  // The Confirming step reads its count; the time left sits behind its clock icon; done, it reads Confirmed.
+  confirmingStep: (done: number, total: number) =>
+    total > 0
+      ? `Confirming (${done.toLocaleString("en-US")}/${total.toLocaleString("en-US")})`
+      : "Confirming",
+  confirmingHint: (seconds: number) => {
+    const left = timeLeft(seconds);
+    return `${left[0]?.toUpperCase()}${left.slice(1)} left`;
+  },
+  confirmed: "Confirmed",
+  // Read out to screen readers as blocks pass; the step shows the same.
   confirming: (done: number, total: number, seconds: number) =>
     total > 0
       ? `Confirming (${done.toLocaleString("en-US")}/${total.toLocaleString("en-US")}) · ${timeLeft(seconds)} left`

@@ -29,7 +29,7 @@ export function InvoiceTimeline({
   waiting?: boolean;
   steps?: readonly InvoiceStep[];
 }) {
-  const { done: reached, current, blocksLeft, blocksTotal } = invoiceProgress(invoice);
+  const { done: reached, current, blocksLeft, blocksTotal, secondsLeft } = invoiceProgress(invoice);
   // A fast chain can go from nothing to paid in one read: the steps still show one after another (R-62).
   const done = useStepped(reached);
   const confirming = current === INVOICE_STEPS.confirming && done === reached;
@@ -45,8 +45,21 @@ export function InvoiceTimeline({
   const steps = shownSteps.map((step) => {
     const i = INVOICE_TIMELINE.indexOf(step);
     const partlyPaid = partly && step === INVOICE_STEPS.paid;
+    const counting = confirming && step === INVOICE_STEPS.confirming && i === done;
+    // The step carries its own count and time, so no line under the steps repeats it.
+    const label = partlyPaid
+      ? COPY.partlyPaid
+      : counting
+        ? COPY.confirmingStep(
+            Math.max(0, blocksTotal - blocksLeft),
+            Math.max(blocksTotal, blocksLeft),
+          )
+        : step === INVOICE_STEPS.confirming && i < done
+          ? COPY.confirmed
+          : COPY.steps[step];
     return {
-      label: partlyPaid ? COPY.partlyPaid : COPY.steps[step],
+      label,
+      hint: counting ? COPY.confirmingHint(secondsLeft) : undefined,
       tone: partlyPaid ? TONES.warning : undefined,
       state:
         i < done
@@ -84,7 +97,10 @@ function useStepped(reached: number): number {
   return Math.min(shown, reached);
 }
 
-/** "Confirming (4/12) · about 19 min left": blocks passed of those to wait, as the timeline's bar counts them. */
+/**
+ * "Confirming (4/12) · about 19 min left" for screen readers, in a live line: the Confirming step shows the same, so
+ * it stays hidden on screen.
+ */
 export function ConfirmingStatus({
   blocks,
   total,
@@ -94,5 +110,9 @@ export function ConfirmingStatus({
   total: number;
   seconds: number;
 }) {
-  return <>{COPY.confirming(Math.max(0, total - blocks), Math.max(total, blocks), seconds)}</>;
+  return (
+    <span className="sr-only">
+      {COPY.confirming(Math.max(0, total - blocks), Math.max(total, blocks), seconds)}
+    </span>
+  );
 }

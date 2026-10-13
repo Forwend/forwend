@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { TONES } from "../../../lib/tone";
+import { TooltipProvider } from "../../overlays/tooltip";
 import { ACTIVITY_DIRECTIONS, ActivityRow } from "../activity-row";
 import { Address } from "../address/address";
 import { Money } from "../money/money";
@@ -133,5 +134,24 @@ describe("PaymentTimeline", () => {
       />,
     );
     expect(getByText("Partly paid").getAttribute("class")).toContain("bg-warning-soft");
+  });
+
+  it("puts a step's hint behind a clock icon that names it", () => {
+    const { getByRole } = render(
+      <TooltipProvider>
+        <PaymentTimeline
+          label="Hinted"
+          steps={[
+            {
+              label: "Confirming (4/12)",
+              state: STEP_STATES.current,
+              progress: 0.33,
+              hint: "About 2 min left",
+            },
+          ]}
+        />
+      </TooltipProvider>,
+    );
+    expect(getByRole("button", { name: "About 2 min left" })).toBeTruthy();
   });
 });
