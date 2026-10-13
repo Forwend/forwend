@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { ActivityItem } from "@/features/activity/activity";
-import { newPaymentEvents, PAYMENT_EVENTS } from "@/features/activity/payment-events";
+import { PAYMENT_EVENTS } from "@/features/activity/constants/payment-events";
+import { newPaymentEvents } from "@/features/activity/lib/payment-events";
+import type { ActivityItem } from "@/features/activity/types/activity";
 
 const item = (over: Partial<ActivityItem>): ActivityItem => ({
   kind: "invoice",

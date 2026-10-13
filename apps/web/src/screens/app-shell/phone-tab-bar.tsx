@@ -2,8 +2,8 @@
 
 import { Home, type LucideIcon, Users } from "lucide-react";
 import Link from "next/link";
-import { PROFILES_COPY } from "@/features/profiles/profiles-copy";
-import { NAV } from "@/screens/app-shell/app-nav";
+import { PROFILES_COPY } from "@/features/profiles/constants/profiles-copy";
+import { NAV } from "@/screens/app-shell/constants/app-nav";
 
 const TAB_COPY = { home: "Home", nav: "Main" } as const;
 

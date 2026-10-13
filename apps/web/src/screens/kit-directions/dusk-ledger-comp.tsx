@@ -1,8 +1,9 @@
-import { CTA } from "@/features/waitlist/waitlist";
-import { COMP_UI, compVars, NAV_VARIANTS } from "@/screens/kit-directions/comp";
+import { CTA } from "@/features/waitlist/constants/waitlist";
 import { CompNav } from "@/screens/kit-directions/comp-nav";
+import { COMP_UI, NAV_VARIANTS } from "@/screens/kit-directions/constants/comp";
 import { InvoicePanel } from "@/screens/kit-directions/invoice-panel";
-import { DuskLandscape } from "@/shared/art/dusk-landscape";
+import { compVars } from "@/screens/kit-directions/lib/comp";
+import { DuskLandscape } from "@/shared/components/art/dusk-landscape";
 
 export function DuskLedgerComp() {
   return (

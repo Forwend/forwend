@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addressFor, receiveChoice } from "@/features/receive/receive-choice";
+import { addressFor, receiveChoice } from "@/features/receive/lib/receive-choice";
 
 const BASE = { symbol: "USDC", network: "84532", family: "evm" };
 const ARBITRUM = { symbol: "USDC", network: "421614", family: "evm" };

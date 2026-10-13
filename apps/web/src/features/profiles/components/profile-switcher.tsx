@@ -13,8 +13,10 @@ import {
 import { ChevronsUpDown, Plus } from "lucide-react";
 import Link from "next/link";
 import { ProfileAvatar } from "@/features/profiles/components/profile-avatar";
-import { PROFILE_KIND_LABELS, type Profile, profileLabel } from "@/features/profiles/profile";
-import { PROFILES_COPY } from "@/features/profiles/profiles-copy";
+import { PROFILE_KIND_LABELS } from "@/features/profiles/constants/profile";
+import { PROFILES_COPY } from "@/features/profiles/constants/profiles-copy";
+import { profileLabel } from "@/features/profiles/lib/profile";
+import type { Profile } from "@/features/profiles/types/profile";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 // The workspace switcher: the chosen profile frames everything below it, and switching keeps you on the same page.

@@ -6,9 +6,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { AUTH_COPY } from "@/features/auth/auth-copy";
-import { SIGN_IN_COPY } from "@/features/auth/sign-in";
-import { SignInForm } from "@/features/auth/sign-in-form";
+import { SignInForm } from "@/features/auth/components/sign-in-form";
+import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
+import { SIGN_IN_COPY } from "@/features/auth/constants/sign-in";
 import { HERO_IMAGE, HERO_NIGHT_IMAGE } from "@/shared/assets/images";
 import { APP_ROUTES } from "@/shared/config/routes";
 

@@ -1,9 +1,7 @@
 import { Badge } from "@forwend/ui-web";
 import type { ReactNode } from "react";
-import {
-  PROFILES,
-  type ProfileTab,
-} from "@/screens/landing/sections/profile-preview/profile-preview-content";
+import { PROFILES } from "@/screens/landing/sections/profile-preview/constants/profile-preview-content";
+import type { ProfileTab } from "@/screens/landing/sections/profile-preview/types/profile-preview-content";
 
 interface ProfilePanelLayoutProps {
   tab: ProfileTab;

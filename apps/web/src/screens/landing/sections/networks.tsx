@@ -1,5 +1,5 @@
 import { BrandIcon } from "@forwend/ui-web";
-import { LANDING_SECTIONS, NETWORKS } from "@/screens/landing/landing-content";
+import { LANDING_SECTIONS, NETWORKS } from "@/screens/landing/constants/landing-content";
 
 const ITEMS = [
   ...NETWORKS.networks.map((n) => ({ ...n, mono: false })),

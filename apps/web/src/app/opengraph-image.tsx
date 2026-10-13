@@ -1,8 +1,8 @@
 import { ImageResponse } from "next/og";
-import { HERO } from "@/screens/landing/sections/hero/hero-content";
-import { ART } from "@/shared/art/art-colors";
+import { HERO } from "@/screens/landing/sections/hero/constants/hero-content";
 import { BRAND_COLORS } from "@/shared/config/brand-colors";
 import { SITE } from "@/shared/config/site";
+import { ART } from "@/shared/constants/art-colors";
 
 export const alt = SITE.title;
 

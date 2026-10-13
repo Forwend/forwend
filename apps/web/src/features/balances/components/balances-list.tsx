@@ -1,9 +1,9 @@
 "use client";
 
 import { Button, Money, Skeleton } from "@forwend/ui-web";
-import type { Balances, TokenBalance } from "@/features/balances/balances";
-import { BALANCES_COPY } from "@/features/balances/balances-copy";
-import { TokenMark } from "@/shared/chains/token-mark";
+import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import type { Balances, TokenBalance } from "@/features/balances/types/balances";
+import { TokenMark } from "@/shared/components/chains/token-mark";
 
 // Every enabled token on every network: what the wallet holds there (read at the network's finalized block), and
 // apart from it what is on its way and what is held for payers.

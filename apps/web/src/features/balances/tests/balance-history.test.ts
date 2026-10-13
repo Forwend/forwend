@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { GROUPINGS } from "@/features/balances/constants/balance-history";
 import {
-  GROUPINGS,
   groupSeries,
   historySeries,
   seriesChange,
   seriesTotal,
-  type TokenHistory,
-} from "@/features/balances/balance-history";
+} from "@/features/balances/lib/balance-history";
+import type { TokenHistory } from "@/features/balances/types/balance-history";
 
 const usdc: TokenHistory = {
   chainId: 84532,

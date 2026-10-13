@@ -5,14 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
-import {
-  BILLING_LIMITS,
-  type BillingDetails,
-  type BillingDetailsBody,
-  countryOptions,
-} from "@/features/profiles/billing-details";
-import { useSaveBillingDetailsMutation } from "@/features/profiles/profiles-api";
-import { BILLING_DETAILS_COPY as COPY } from "@/features/profiles/profiles-copy";
+import { useSaveBillingDetailsMutation } from "@/features/profiles/api/profiles-api";
+import { BILLING_LIMITS } from "@/features/profiles/constants/billing-details";
+import { BILLING_DETAILS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
+import { countryOptions } from "@/features/profiles/lib/billing-details";
+import type { BillingDetails, BillingDetailsBody } from "@/features/profiles/types/billing-details";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 type Field = keyof BillingDetailsBody;

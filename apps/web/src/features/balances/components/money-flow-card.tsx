@@ -2,10 +2,12 @@
 
 import { Button, Skeleton } from "@forwend/ui-web";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
-import { HISTORY_FIELDS, historySeries, seriesTotal } from "@/features/balances/balance-history";
-import { formatUsd, USD } from "@/features/balances/balances";
-import { useGetBalanceHistoryQuery } from "@/features/balances/balances-api";
-import { BALANCES_COPY } from "@/features/balances/balances-copy";
+import { useGetBalanceHistoryQuery } from "@/features/balances/api/balances-api";
+import { HISTORY_FIELDS } from "@/features/balances/constants/balance-history";
+import { USD } from "@/features/balances/constants/balances";
+import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { historySeries, seriesTotal } from "@/features/balances/lib/balance-history";
+import { formatUsd } from "@/features/balances/lib/balances";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
 const DAYS = 30;

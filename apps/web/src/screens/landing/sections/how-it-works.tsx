@@ -1,4 +1,4 @@
-import { HOW, LANDING_SECTIONS } from "@/screens/landing/landing-content";
+import { HOW, LANDING_SECTIONS } from "@/screens/landing/constants/landing-content";
 import { Section } from "@/screens/landing/layout/section";
 
 // One continuous path with four stops, not four cards.

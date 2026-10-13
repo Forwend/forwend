@@ -2,15 +2,11 @@
 
 import { Button, Money, Skeleton } from "@forwend/ui-web";
 import type { CSSProperties } from "react";
-import {
-  type Balances,
-  formatUsd,
-  type TokenBalance,
-  USD,
-  usdTotal,
-} from "@/features/balances/balances";
-import { BALANCES_COPY } from "@/features/balances/balances-copy";
 import { EstimateHint } from "@/features/balances/components/estimate-hint";
+import { USD } from "@/features/balances/constants/balances";
+import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { formatUsd, usdTotal } from "@/features/balances/lib/balances";
+import type { Balances, TokenBalance } from "@/features/balances/types/balances";
 
 // Never a made-up 0 while loading or when a read failed. The parent is the size container: the figure and its
 // skeleton scale with its width, and the figure also shrinks as its digits grow, so a large total never clips.

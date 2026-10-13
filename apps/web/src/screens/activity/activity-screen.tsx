@@ -1,7 +1,7 @@
 "use client";
 
-import { ActivityList } from "@/features/activity/activity-list";
-import { useAppSession } from "@/features/profiles/app-session";
+import { ActivityList } from "@/features/activity/components/activity-list";
+import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 
 export function ActivityScreen() {
   const { profile } = useAppSession();

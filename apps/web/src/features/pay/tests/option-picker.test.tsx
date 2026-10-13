@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { InvoiceOption } from "@/features/invoices/invoices";
-import { onlyOptionOn } from "@/features/pay/option-picker";
+import type { InvoiceOption } from "@/features/invoices/types/invoices";
+import { onlyOptionOn } from "@/features/pay/components/option-picker";
 
 const option = (optionId: string, chainId: number, symbol: string): InvoiceOption => ({
   optionId,

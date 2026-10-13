@@ -471,7 +471,7 @@
       },
       {
         "name": "The Token-Only Rule",
-        "body": "Tailwind's default palette is removed; only token colors exist as utilities. Art colors (the art tokens and the images) are for art only and never appear in UI components. The hex values in `src/shared/art/art-colors.ts` and `src/screens/kit-directions/comp.ts` belong to the old direction comps and the Open Graph image, not to new UI.",
+        "body": "Tailwind's default palette is removed; only token colors exist as utilities. Art colors (the art tokens and the images) are for art only and never appear in UI components. The hex values in `src/shared/constants/art-colors.ts` and `src/screens/kit-directions/constants/comp.ts` belong to the old direction comps and the Open Graph image, not to new UI.",
         "section": "colors"
       },
       {
@@ -524,7 +524,7 @@
       "Don't use cream or warm paper as a UI ground; warmth lives only in the art's horizon glow.",
       "Don't fill the open sky in the hero with badges, metrics or logos.",
       "Don't set the display serif in bold or below headline size.",
-      "Don't use art colors from `src/shared/art/art-colors.ts` in UI components."
+      "Don't use art colors from `src/shared/constants/art-colors.ts` in UI components."
     ]
   }
 }

@@ -1,9 +1,6 @@
 import type { ReactNode } from "react";
-import {
-  type LandingSection,
-  SECTION_LAYOUTS,
-  type SectionLayout,
-} from "@/screens/landing/landing-content";
+import { SECTION_LAYOUTS } from "@/screens/landing/constants/landing-content";
+import type { LandingSection, SectionLayout } from "@/screens/landing/types/landing-content";
 
 interface SectionProps {
   id?: string;

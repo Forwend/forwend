@@ -2,7 +2,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
-import type { InvoiceSummary } from "@/features/invoices/invoices";
+import type { InvoiceSummary } from "@/features/invoices/types/invoices";
 
 const USDC = {
   chainId: 84532,

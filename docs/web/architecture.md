@@ -41,7 +41,7 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   dashboard: the total balance (one token in its unit, several as a USD estimate) with Send, Receive, Transfer and
   Withdraw (only Receive works; the others say why when pressed), pending and held only when not zero, Networks (each
   chain and token), and recent activity. Receive opens a sheet where the user picks the token, then the network
-  (`features/receive/receive-choice.ts`, keyed by chain family so non-EVM families fit later); the choice folds into
+  (`features/receive/lib/receive-choice.ts`, keyed by chain family so non-EVM families fit later); the choice folds into
   one row with Change, over the full address (`ReceiveAddress`), QR code and an exact network and token warning (the
   address never shows without it). `/app/balances` and `/app/activity` list
   everything; in activity only a payment carries "+". Money sent straight to the wallet shows in the balance once final, not in activity. Balances
@@ -74,8 +74,8 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
 - The browser calls the backend same-origin at `/api/v1/…`; `next.config.ts` forwards it to `API_URL`, so the api needs
   no CORS. The rewrite is fixed at `next build`, so `API_URL` must be set when building; Turbo hashes `.env*` and
   these variables for the web build. Request and response types are written by hand from `apps/backend/api/openapi.yaml`
-  and belong to their feature (`features/profiles/profile.ts`, `features/balances/balances.ts`,
-  `features/activity/activity.ts`): `openapi-typescript` needs the TypeScript compiler API, which TypeScript 7 does not have.
+  and belong to their feature (`features/profiles/types/profile.ts`, `features/balances/types/balances.ts`,
+  `features/activity/types/activity.ts`): `openapi-typescript` needs the TypeScript compiler API, which TypeScript 7 does not have.
 - Features depend on each other in three places: the receive sheet (`features/receive`) takes the `Balances` type from
   `features/balances` to show which networks and tokens the address takes, `features/invoices` takes the API
   status values and `activityStatus` from `features/activity`, so an invoice shows the same status everywhere, and
@@ -85,12 +85,12 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
 - Checkout `/pay/<id>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed id is a 404;
   an id the API does not know shows the 404 page. It reads the public `GET /v1/invoices/{id}` every 15 s through a
   store whose requests carry no token (`providers/public-store-provider.tsx`). The browser recomputes the receive
-  address from the terms with the factory and implementation built into the page (`features/pay/receive-address.ts`,
+  address from the terms with the factory and implementation built into the page (`features/pay/lib/receive-address.ts`,
   keccak256 from `@noble/hashes`, tested against the R-15 vectors) and shows no address on a mismatch. Token symbol and
   decimals come from `PAY_TOKENS` in the build, never the API; another token is refused, so enabling a token in the
   API also needs an entry there. The address and QR show only after the payer picks the network and presses Show
   address, with one line naming the exact token and network. A payer-chooses invoice (R-57) lists its `options`: until
-  one has money the payer picks the network, then a token on it, with selects (`features/pay/option-picker.tsx`), and
+  one has money the payer picks the network, then a token on it, with selects (`features/pay/components/option-picker.tsx`), and
   the page checks that option's terms with its own id, which must derive from the link's; the pick goes into
   `?option=<id>` and the shown address into session storage, so a reload keeps both (R-68). Paid and settled come only from the API (D-29). It loads no
   third-party scripts ([money-safety.md](../backend/money-safety.md)).

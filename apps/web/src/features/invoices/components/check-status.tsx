@@ -2,9 +2,9 @@
 
 import { Button } from "@forwend/ui-web";
 import { useEffect, useState } from "react";
-import { useRecheckInvoiceMutation } from "@/features/invoices/invoices-api";
-import { INVOICE_COPY as COPY } from "@/features/invoices/invoices-copy";
-import { chainName } from "@/shared/chains/chains";
+import { useRecheckInvoiceMutation } from "@/features/invoices/api/invoices-api";
+import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
+import { chainName } from "@/shared/lib/chains";
 
 const TOO_MANY_REQUESTS = 429;
 // After a "too soon" answer the button rests at least this long; the read (polled every 15 s) then gives the exact

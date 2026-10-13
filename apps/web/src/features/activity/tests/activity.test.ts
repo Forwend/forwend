@@ -1,6 +1,7 @@
 import { PAYMENT_STATUS } from "@forwend/ui-web";
 import { describe, expect, it } from "vitest";
-import { type ActivityItem, activityStatus } from "@/features/activity/activity";
+import { activityStatus } from "@/features/activity/lib/activity";
+import type { ActivityItem } from "@/features/activity/types/activity";
 
 const base: ActivityItem = {
   kind: "invoice",

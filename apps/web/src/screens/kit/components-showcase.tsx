@@ -45,7 +45,7 @@ import {
 } from "@forwend/ui-web";
 import { ArrowDownLeft, ArrowUpRight, Landmark, Moon, Plus } from "lucide-react";
 import { useState } from "react";
-import { CTA } from "@/features/waitlist/waitlist";
+import { CTA } from "@/features/waitlist/constants/waitlist";
 import { KitGroup } from "@/screens/kit/kit-section";
 
 // A fixed day, so the kit shows the same months in every screenshot.

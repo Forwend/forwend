@@ -1,6 +1,6 @@
 import { CodeBlock } from "@forwend/ui-web";
 import { Check } from "lucide-react";
-import { DEVELOPERS, LANDING_SECTIONS } from "@/screens/landing/landing-content";
+import { DEVELOPERS, LANDING_SECTIONS } from "@/screens/landing/constants/landing-content";
 import { Section } from "@/screens/landing/layout/section";
 
 export function Developers() {

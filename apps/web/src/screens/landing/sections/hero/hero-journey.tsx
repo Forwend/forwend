@@ -7,16 +7,16 @@ import {
   FINAL_STEP_STATES,
   HERO_STEP_DELAYS_MS,
   HERO_STEPS,
-} from "@/screens/landing/sections/hero/hero-motion";
-import { HeroPayment } from "@/screens/landing/sections/hero/hero-payment";
+} from "@/screens/landing/sections/hero/constants/hero-motion";
 import {
   RIVER_MARKS,
   RIVER_MARKS_COMPACT,
   RIVER_SOURCE,
   RIVER_VIEWBOX,
-} from "@/screens/landing/sections/hero/river";
-import { smoothPath, smoothPathShares } from "@/shared/art/art-paths";
+} from "@/screens/landing/sections/hero/constants/river";
+import { HeroPayment } from "@/screens/landing/sections/hero/hero-payment";
 import { HERO_IMAGE, HERO_NIGHT_IMAGE } from "@/shared/assets/images";
+import { smoothPath, smoothPathShares } from "@/shared/lib/art-paths";
 
 const RIVERS = [
   { marks: RIVER_MARKS_COMPACT, className: "lg:hidden" },

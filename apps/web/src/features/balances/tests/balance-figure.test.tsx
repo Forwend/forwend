@@ -2,9 +2,9 @@
 import { TooltipProvider } from "@forwend/ui-web";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Balances, TokenBalance } from "@/features/balances/balances";
 import { BalanceFigure } from "@/features/balances/components/balance-figure";
 import { MoneyActions } from "@/features/balances/components/money-actions";
+import type { Balances, TokenBalance } from "@/features/balances/types/balances";
 
 const usdc: TokenBalance = {
   chainId: 84532,

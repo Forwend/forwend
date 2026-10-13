@@ -1,5 +1,6 @@
-import { CTA } from "@/features/waitlist/waitlist";
-import { NAV_VARIANTS, type NavVariant } from "@/screens/kit-directions/comp";
+import { CTA } from "@/features/waitlist/constants/waitlist";
+import { NAV_VARIANTS } from "@/screens/kit-directions/constants/comp";
+import type { NavVariant } from "@/screens/kit-directions/types/comp";
 
 interface CompNavProps {
   variant: NavVariant;

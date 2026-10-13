@@ -4,22 +4,22 @@ import { Button, SegmentedControl, Skeleton } from "@forwend/ui-web";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
+import { useGetBalanceHistoryQuery } from "@/features/balances/api/balances-api";
+import { BalanceFigure } from "@/features/balances/components/balance-figure";
+import { BalanceChart } from "@/features/balances/components/charts/balance-chart";
+import { MoneyActions } from "@/features/balances/components/money-actions";
 import {
   DEFAULT_RANGE,
   HISTORY_FIELDS,
   HISTORY_RANGES,
-  type HistoryRange,
-  type HistorySeries,
-  historySeries,
   RANGE_OPTIONS,
-  seriesChange,
-} from "@/features/balances/balance-history";
-import { type Balances, formatUsd, USD } from "@/features/balances/balances";
-import { useGetBalanceHistoryQuery } from "@/features/balances/balances-api";
-import { BALANCES_COPY } from "@/features/balances/balances-copy";
-import { BalanceChart } from "@/features/balances/charts/balance-chart";
-import { BalanceFigure } from "@/features/balances/components/balance-figure";
-import { MoneyActions } from "@/features/balances/components/money-actions";
+} from "@/features/balances/constants/balance-history";
+import { USD } from "@/features/balances/constants/balances";
+import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { historySeries, seriesChange } from "@/features/balances/lib/balance-history";
+import { formatUsd } from "@/features/balances/lib/balances";
+import type { HistoryRange, HistorySeries } from "@/features/balances/types/balance-history";
+import type { Balances } from "@/features/balances/types/balances";
 import { BALANCE_DAWN_IMAGE, BALANCE_NIGHT_IMAGE } from "@/shared/assets/images";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 

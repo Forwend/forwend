@@ -1,15 +1,15 @@
 import { FreelancerIcon, MerchantIcon, Tabs } from "@forwend/ui-web";
 import { Code2, User } from "lucide-react";
-import { LANDING_SECTIONS } from "@/screens/landing/landing-content";
+import { LANDING_SECTIONS } from "@/screens/landing/constants/landing-content";
 import { Section } from "@/screens/landing/layout/section";
+import {
+  PROFILE_TABS,
+  PROFILES,
+} from "@/screens/landing/sections/profile-preview/constants/profile-preview-content";
 import { DevelopersPanel } from "@/screens/landing/sections/profile-preview/developers-panel";
 import { FreelancerPanel } from "@/screens/landing/sections/profile-preview/freelancer-panel";
 import { MerchantPanel } from "@/screens/landing/sections/profile-preview/merchant-panel";
 import { PersonalPanel } from "@/screens/landing/sections/profile-preview/personal-panel";
-import {
-  PROFILE_TABS,
-  PROFILES,
-} from "@/screens/landing/sections/profile-preview/profile-preview-content";
 
 export function ProfilePreview() {
   return (

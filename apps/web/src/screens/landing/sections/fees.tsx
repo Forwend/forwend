@@ -1,5 +1,9 @@
 import { Money } from "@forwend/ui-web";
-import { FEES, LANDING_SECTIONS, SECTION_LAYOUTS } from "@/screens/landing/landing-content";
+import {
+  FEES,
+  LANDING_SECTIONS,
+  SECTION_LAYOUTS,
+} from "@/screens/landing/constants/landing-content";
 import { Section } from "@/screens/landing/layout/section";
 
 // Demonstration amount for the withdrawal example.

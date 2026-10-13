@@ -5,8 +5,9 @@ import { Check, Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
 import { ProfileAvatar } from "@/features/profiles/components/profile-avatar";
-import { type Profile, profileLabel } from "@/features/profiles/profile";
-import { PROFILES_COPY } from "@/features/profiles/profiles-copy";
+import { PROFILES_COPY } from "@/features/profiles/constants/profiles-copy";
+import { profileLabel } from "@/features/profiles/lib/profile";
+import type { Profile } from "@/features/profiles/types/profile";
 import { DESKTOP_QUERY } from "@/shared/config/breakpoints";
 import { APP_ROUTES } from "@/shared/config/routes";
 

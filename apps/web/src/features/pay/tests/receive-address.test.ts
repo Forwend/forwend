@@ -1,13 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import type { Invoice } from "@/features/invoices/invoices";
+import type { Invoice } from "@/features/invoices/types/invoices";
+import { FACTORY, IMPLEMENTATION } from "@/features/pay/constants/receive-address";
 import {
   checkedReceiveAddress,
-  FACTORY,
-  IMPLEMENTATION,
   optionIdOf,
   receiveAddress,
-} from "@/features/pay/receive-address";
+} from "@/features/pay/lib/receive-address";
 
 // Written by Foundry from factory.predict (R-15); see packages/contracts/script/ReceiveAddressVectors.s.sol.
 const vectors: {

@@ -1,7 +1,7 @@
 "use client";
 
-import { useAppSession } from "@/features/profiles/app-session";
-import { PROFILE_KINDS } from "@/features/profiles/profile";
+import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
+import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { BusinessOverview } from "@/screens/dashboard/business-overview";
 import { PersonalOverview } from "@/screens/dashboard/personal-overview";
 

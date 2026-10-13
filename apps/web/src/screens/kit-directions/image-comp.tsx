@@ -1,9 +1,10 @@
 import Image from "next/image";
-import { CTA } from "@/features/waitlist/waitlist";
-import { compVars, NAV_VARIANTS } from "@/screens/kit-directions/comp";
+import { CTA } from "@/features/waitlist/constants/waitlist";
 import { CompNav } from "@/screens/kit-directions/comp-nav";
-import type { ImageCompSpec } from "@/screens/kit-directions/directions";
+import { NAV_VARIANTS } from "@/screens/kit-directions/constants/comp";
 import { InvoicePanel } from "@/screens/kit-directions/invoice-panel";
+import { compVars } from "@/screens/kit-directions/lib/comp";
+import type { ImageCompSpec } from "@/screens/kit-directions/types/directions";
 
 interface ImageCompProps {
   name: string;

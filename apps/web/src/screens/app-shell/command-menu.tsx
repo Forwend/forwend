@@ -22,17 +22,20 @@ import {
   useRef,
   useState,
 } from "react";
-import { BALANCES_COPY } from "@/features/balances/balances-copy";
-import { NEW_REQUEST_COPY } from "@/features/invoices/invoices-copy";
-import { PROFILE_KINDS, type Profile, profileLabel } from "@/features/profiles/profile";
-import { PROFILES_COPY } from "@/features/profiles/profiles-copy";
-import { TRANSACTION_DIRECTIONS, transactionKey } from "@/features/transactions/transactions";
-import { useGetTransactionsQuery } from "@/features/transactions/transactions-api";
-import { TRANSACTIONS_COPY } from "@/features/transactions/transactions-copy";
-import { APP_NAV } from "@/screens/app-shell/app-nav";
-import { chainName } from "@/shared/chains/chains";
+import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { NEW_REQUEST_COPY } from "@/features/invoices/constants/invoices-copy";
+import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
+import { PROFILES_COPY } from "@/features/profiles/constants/profiles-copy";
+import { profileLabel } from "@/features/profiles/lib/profile";
+import type { Profile } from "@/features/profiles/types/profile";
+import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
+import { TRANSACTION_DIRECTIONS } from "@/features/transactions/constants/transactions";
+import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
+import { transactionKey } from "@/features/transactions/lib/transactions";
+import { APP_NAV } from "@/screens/app-shell/constants/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { SEARCH_PARAM } from "@/shared/hooks/use-list-filters";
+import { chainName } from "@/shared/lib/chains";
 
 const COMMAND_COPY = {
   title: "Search",

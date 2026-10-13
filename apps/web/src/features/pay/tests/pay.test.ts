@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { Deposit, Invoice } from "@/features/invoices/invoices";
+import type { Deposit, Invoice } from "@/features/invoices/types/invoices";
+import { PAY_STATES } from "@/features/pay/constants/pay";
 import {
-  PAY_STATES,
   payState,
   payToken,
   receiptDeposits,
   shortDuration,
   withOption,
-} from "@/features/pay/pay";
+} from "@/features/pay/lib/pay";
 
 const invoice: Invoice = {
   invoiceId: `0x${"1".repeat(64)}`,

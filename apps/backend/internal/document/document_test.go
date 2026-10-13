@@ -44,7 +44,7 @@ func TestCopiesMatchTheWeb(t *testing.T) {
 		!strings.Contains(string(logo), `d: "`+strings.TrimSpace(logoPath)+`"`) {
 		t.Fatal("logo.path differs from packages/ui-web/src/icons/logo-data.ts")
 	}
-	chains, err := os.ReadFile("../../../web/src/shared/chains/chains.ts")
+	chains, err := os.ReadFile("../../../web/src/shared/constants/chains.ts")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestCopiesMatchTheWeb(t *testing.T) {
 		entry := regexp.MustCompile(fmt.Sprintf(`(?s)\b%d: \{\s*name: "%s",.*?explorer: \{ name: "%s", url: "%s" \}`,
 			id, regexp.QuoteMeta(n.name), regexp.QuoteMeta(n.explorer), regexp.QuoteMeta(n.url)))
 		if !entry.Match(chains) {
-			t.Errorf("chain %d %+v differs from apps/web/src/shared/chains/chains.ts", id, n)
+			t.Errorf("chain %d %+v differs from apps/web/src/shared/constants/chains.ts", id, n)
 		}
 	}
 }

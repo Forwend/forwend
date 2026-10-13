@@ -1,6 +1,6 @@
 import { Tooltip } from "@forwend/ui-web";
 import { Info } from "lucide-react";
-import { BALANCES_COPY } from "@/features/balances/balances-copy";
+import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 
 export function EstimateHint() {
   return (

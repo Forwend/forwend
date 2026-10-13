@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { INVOICE_ID_PATTERN } from "@/features/pay/pay";
-import { PAY_COPY } from "@/features/pay/pay-copy";
+import { INVOICE_ID_PATTERN } from "@/features/pay/constants/pay";
+import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { PublicStoreProvider } from "@/providers/public-store-provider";
 import { PayScreen } from "@/screens/pay/pay-screen";
 

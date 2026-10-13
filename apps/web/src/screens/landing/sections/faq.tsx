@@ -1,5 +1,9 @@
 import { Accordion } from "@forwend/ui-web";
-import { FAQ, LANDING_SECTIONS, SECTION_LAYOUTS } from "@/screens/landing/landing-content";
+import {
+  FAQ,
+  LANDING_SECTIONS,
+  SECTION_LAYOUTS,
+} from "@/screens/landing/constants/landing-content";
 import { Section } from "@/screens/landing/layout/section";
 
 export function Faq() {

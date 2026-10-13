@@ -8,7 +8,7 @@ import {
   type StepState,
   TokenChip,
 } from "@forwend/ui-web";
-import { HERO_STEPS } from "@/screens/landing/sections/hero/hero-motion";
+import { HERO_STEPS } from "@/screens/landing/sections/hero/constants/hero-motion";
 import { SAMPLE_INVOICE } from "@/shared/examples/sample-invoice";
 
 interface HeroPaymentProps {

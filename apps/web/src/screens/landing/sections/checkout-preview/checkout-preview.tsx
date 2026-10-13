@@ -10,11 +10,11 @@ import {
 } from "@forwend/ui-web";
 import { Check } from "lucide-react";
 import Image from "next/image";
-import { LANDING_SECTIONS } from "@/screens/landing/landing-content";
+import { LANDING_SECTIONS } from "@/screens/landing/constants/landing-content";
 import {
   CHECKOUT,
   SAMPLE_DEPOSIT_ADDRESS,
-} from "@/screens/landing/sections/checkout-preview/checkout-preview-content";
+} from "@/screens/landing/sections/checkout-preview/constants/checkout-preview-content";
 import { CHECKOUT_IMAGE } from "@/shared/assets/images";
 import { SAMPLE_INVOICE, SAMPLE_STEPS } from "@/shared/examples/sample-invoice";
 

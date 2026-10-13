@@ -12,14 +12,16 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Fragment } from "react";
-import { AccountInitial, AccountMenu } from "@/features/auth/account-menu";
-import { AUTH_COPY } from "@/features/auth/auth-copy";
-import { BALANCES_COPY } from "@/features/balances/balances-copy";
-import { invoiceNumber } from "@/features/invoices/invoices";
-import { useGetInvoiceQuery } from "@/features/invoices/invoices-api";
-import { type Profile, profileLabel } from "@/features/profiles/profile";
-import { NotificationsMenu } from "@/features/transactions/notifications-menu";
-import { breadcrumb, type Crumb } from "@/screens/app-shell/app-nav";
+import { AccountInitial, AccountMenu } from "@/features/auth/components/account-menu";
+import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
+import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { useGetInvoiceQuery } from "@/features/invoices/api/invoices-api";
+import { invoiceNumber } from "@/features/invoices/lib/invoices";
+import { profileLabel } from "@/features/profiles/lib/profile";
+import type { Profile } from "@/features/profiles/types/profile";
+import { NotificationsMenu } from "@/features/transactions/components/notifications-menu";
+import { breadcrumb } from "@/screens/app-shell/lib/app-nav";
+import type { Crumb } from "@/screens/app-shell/types/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const CRUMB =

@@ -1,8 +1,8 @@
 import { Logo, LogoMark } from "@forwend/ui-web";
 import Link from "next/link";
-import { NeedHelp } from "@/features/pay/need-help";
-import { PAY_COPY } from "@/features/pay/pay-copy";
-import { PayInvoice } from "@/features/pay/pay-invoice";
+import { NeedHelp } from "@/features/pay/components/need-help";
+import { PayInvoice } from "@/features/pay/components/pay-invoice";
+import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const LINK = "rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-focus";

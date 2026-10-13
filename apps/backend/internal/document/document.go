@@ -52,7 +52,7 @@ var (
 	accent  = [3]int{0x1f, 0x6a, 0x8c}
 )
 
-// network is a chain's name and block explorer, as apps/web/src/shared/chains/chains.ts has them (a test keeps them
+// network is a chain's name and block explorer, as apps/web/src/shared/constants/chains.ts has them (a test keeps them
 // equal). Transactions are at <url>/tx/<hash>.
 type network struct{ name, explorer, url string }
 

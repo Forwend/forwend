@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { AuthProvider } from "@/features/auth/auth-provider";
+import { AuthProvider } from "@/features/auth/components/auth-provider";
 import { StoreProvider } from "@/providers/store-provider";
 
 // Sign-in and the app are private pages: Privy loads only here, never on the landing page.
