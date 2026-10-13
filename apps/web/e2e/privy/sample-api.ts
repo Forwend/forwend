@@ -98,6 +98,7 @@ export const activityItem = (
   decimals: 6,
   amount: inv.amount,
   status: deposit ? deposit.status : inv.paymentStatus,
+  optionCount: deposit ? 1 : inv.optionCount,
   ...(deposit ? { txHash: deposit.txHash } : { settlementStatus: inv.settlementStatus }),
 });
 const ACTIVITY = INVOICES.flatMap((inv) => [

@@ -13,6 +13,7 @@ const base: ActivityItem = {
   amount: "5000000",
   status: "open",
   settlementStatus: "none",
+  optionCount: 1,
 };
 
 describe("activityStatus", () => {
