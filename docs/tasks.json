@@ -2237,7 +2237,7 @@
       "dependsOn": [
         "F133"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -2248,7 +2248,8 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-10-13 review fail by reviewer: Blocking: when the current option's network (the one the page names) does not answer and another option reads 0/0, Recheck returns that other option's 0/0 through the new 'else any read' rule, and the page says 'Nothing has arrived on Base Sepolia yet ... Base Sepolia did not answer'. That claims nothing arrived on the network that was not read. Fix: when the current option is unreadable and no option holds more than recorded, do not report another option as the current one (return 503, or have the web drop the 'nothing arrived / up to date' line when the named network is in unreadable), and add a test with the current option's chain down. Not blocking: the trigger checks transfers only on the main row, not on sibling options (meets the acceptance text; no code path adds options later); a partial failure no longer logs the RPC error anywhere; api.md does not mention the 'else any read' fallback and two edited doc lines run past the usual width; no test checks that a rescan is still asked for on a readable option with more on chain while another chain is down. Checked and fine: 30 s per-invoice throttle and global limit unchanged, rescans asked only per option with more on chain, RPC errors redacted and the 503 body is fixed text, migration 00022 Up adds only the open and no-transfer conditions and Down restores the 00020 function exactly, OpenAPI and web types match, unreadable is always an array."
+        "2026-10-13 review fail by reviewer: Blocking: when the current option's network (the one the page names) does not answer and another option reads 0/0, Recheck returns that other option's 0/0 through the new 'else any read' rule, and the page says 'Nothing has arrived on Base Sepolia yet ... Base Sepolia did not answer'. That claims nothing arrived on the network that was not read. Fix: when the current option is unreadable and no option holds more than recorded, do not report another option as the current one (return 503, or have the web drop the 'nothing arrived / up to date' line when the named network is in unreadable), and add a test with the current option's chain down. Not blocking: the trigger checks transfers only on the main row, not on sibling options (meets the acceptance text; no code path adds options later); a partial failure no longer logs the RPC error anywhere; api.md does not mention the 'else any read' fallback and two edited doc lines run past the usual width; no test checks that a rescan is still asked for on a readable option with more on chain while another chain is down. Checked and fine: 30 s per-invoice throttle and global limit unchanged, rescans asked only per option with more on chain, RPC errors redacted and the 503 body is fixed text, migration 00022 Up adds only the open and no-transfer conditions and Down restores the 00020 function exactly, OpenAPI and web types match, unreadable is always an array.",
+        "2026-10-13 review pass by reviewer: Re-review of 51dc7bb. The blocking issue is fixed: another option's read now answers only when it holds more on chain than recorded, so the page never says nothing arrived on a network that was not read; if the shown option cannot be read and no other option holds unrecorded money, the check answers 503. The test now covers the other option down, the shown option down with an empty other (503), the shown option down with unrecorded money on the other (that answer, a rescan, unreadable lists the shown chain), and all down (503). Skipped options are logged with the redacted error. Throttle, global limit, per-option rescans, redaction, migration 00022 Up and Down, OpenAPI and web types were checked in the first review and are unchanged. Not blocking: the trigger checks transfers on the main row only, not on sibling options; with unrecorded money on another option the amount is shown with the shown option's token formatting (existing before this task); two edited doc lines are still longer than their neighbours, like many other lines in those docs."
       ],
       "blockedReason": null,
       "evidence": {
@@ -2316,12 +2317,26 @@
         "taskHash": "85630a8bbb8317b2",
         "filesHash": "c5844b8da66f0efa",
         "proof": {
-          "1": "backend: invoice TestRecheckWithOneNetworkDown (other option down: shown one still checked, unreadable [421614]; shown option down with an empty other: 503; shown option down with unrecorded money on the other: that answer and a rescan; all down: 503), database TestInvoiceOptions refuses an option for an invoice with a transfer and for an expired one, migrations roll back and reapply; e2e: pay.spec names the network that did not answer"
-        }
+          "1": "backend: recheck with one network down in four cases, option trigger refuses invoices with money or not open; e2e: unread network named"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review of 51dc7bb. The blocking issue is fixed: another option's read now answers only when it holds more on chain than recorded, so the page never says nothing arrived on a network that was not read; if the shown option cannot be read and no other option holds unrecorded money, the check answers 503. The test now covers the other option down, the shown option down with an empty other (503), the shown option down with unrecorded money on the other (that answer, a rescan, unreadable lists the shown chain), and all down (503). Skipped options are logged with the redacted error. Throttle, global limit, per-option rescans, redaction, migration 00022 Up and Down, OpenAPI and web types were checked in the first review and are unchanged. Not blocking: the trigger checks transfers on the main row only, not on sibling options; with unrecorded money on another option the amount is shown with the shown option's token formatting (existing before this task); two edited doc lines are still longer than their neighbours, like many other lines in those docs.",
+          "at": "2026-10-13T17:12:19Z",
+          "filesHash": "c5844b8da66f0efa"
+        },
+        "commit": "51dc7bb",
+        "doneAt": "2026-10-13T17:12:31Z"
       },
       "branch": "fix/f144-check-status-still-answers-when-one-opti",
       "baseCommit": "f228a3a1f19cb32b8851bed3498019cd0df0b87d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f144-check-status-still-answers-when-one-opti",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
