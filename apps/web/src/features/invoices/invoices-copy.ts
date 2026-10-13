@@ -23,6 +23,7 @@ export const timeLeft = (seconds: number) =>
 
 export const INVOICES_COPY = {
   usd: "USD",
+  anyNetwork: "Any network",
   invoices: "Invoices",
   newInvoice: "New invoice",
   emptyTitle: "No invoices yet",

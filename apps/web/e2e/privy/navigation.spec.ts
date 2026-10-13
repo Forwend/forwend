@@ -481,3 +481,28 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
   await context.close();
 });
+
+// R-70: an invoice the client may pay with any stablecoin reads in USD with Any network in the list, chosen or not.
+test("the invoice list shows a client-chooses invoice in USD with Any network", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  const any = {
+    ...sampleInvoice(9, "paid", "pending", "Any network work", "Kettle & Co."),
+    optionCount: 4,
+  };
+  await mockApi(page, { invoices: [any, OPEN_INVOICE], activity: [], transfers: [] });
+  await page.goto("/app/invoices");
+  const row = page.getByRole("row").filter({ hasText: "INV-0009" });
+  await expect(row).toContainText("Any network");
+  await expect(row).toContainText("9.00 USD");
+  await expect(row).not.toContainText("USDC");
+  const fixed = page.getByRole("row").filter({ hasText: "INV-0002" });
+  await expect(fixed).toContainText("USDC");
+  await expect(fixed).toContainText("Base Sepolia");
+  await context.close();
+});

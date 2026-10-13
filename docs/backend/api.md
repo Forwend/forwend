@@ -142,9 +142,10 @@ answer 404 `invoice_not_found` the same way.
   (name and chain id) and the exact amount with the token's symbol and decimals, never cut. Network names and
   explorers are a copy of `apps/web/src/shared/chains/chains.ts`; a test fails when either copy changes alone.
 - `invoice.pdf`: created time, due date and checkout expiry, the note, and a box with the pay link
-  `PUBLIC_WEB_URL/pay/<invoiceId>` and its QR code (drawn as vector modules), then the invoice id. While a
-  payer-chooses invoice has no option with money, the line says "Payer chooses" with the number of options and the
-  amount in USD, and the box tells the payer to pick the token and network.
+  `PUBLIC_WEB_URL/pay/<invoiceId>` and its QR code (drawn as vector modules), then the invoice id. A
+  payer-chooses invoice names the network "Any" with the amount and total due in USD, then lists under Pay with each
+  token and its networks ("USDC on Base Sepolia, Arbitrum Sepolia") and says to send only on those (R-70). Amounts
+  group thousands (1,250.00); every page's footer names the document and number and says Page X of Y.
 - `receipt.pdf`: 409 `invoice_not_paid` until `paymentStatus` is `paid` (it stays paid once settled). Adds the paid
   and settled times; under Payments each confirmed deposit's amount, block time, full tx hash and "View on
   <explorer>" link; under Settlement its status and `settlementTxHash` the same way; and the pay link with its QR code,

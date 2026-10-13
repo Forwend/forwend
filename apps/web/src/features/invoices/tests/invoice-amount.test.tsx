@@ -22,12 +22,12 @@ const invoice = (optionCount: number, optionLocked: boolean) =>
 afterEach(cleanup);
 
 describe("InvoiceAmount", () => {
-  it("shows USD while the payer still chooses among several options, else the token", () => {
+  it("shows USD for an invoice that accepts several options, chosen or not, else the token", () => {
     const text = (inv: InvoiceSummary) =>
       render(<InvoiceAmount invoice={inv} tokens={[USDC]} />).container.textContent;
     expect(text(invoice(4, false))).toMatch(/12\.50\s*USD$/);
     cleanup();
-    expect(text(invoice(4, true))).toMatch(/12\.50\s*USDC$/);
+    expect(text(invoice(4, true))).toMatch(/12\.50\s*USD$/);
     cleanup();
     expect(text(invoice(1, false))).toMatch(/12\.50\s*USDC$/);
   });

@@ -48,8 +48,9 @@ func TestPayerChoosesInvoice(t *testing.T) {
 
 	// Until an option has money, the PDF prices the invoice in USD and leaves the choice to the payer.
 	mustContain(t, pdfText(t, e.pdf(t, id, "invoice.pdf", "").body),
-		"Payment\nPayer chooses\n2 tokens and networks\n12.50 USD\nTotal\n12.50 USD",
-		"then pick the token and network to pay with.")
+		"Payment\nAny\n12.50 USD\nTotal due\n12.50 USD",
+		"PAY WITH\nEURC on Base Sepolia\nUSDC on Base Sepolia\nSend only on these networks, 1 USD per token.",
+		"then pick the token and network.")
 
 	// EURC has 2 decimals: a cent fraction can't be paid in it exactly.
 	if r := e.post(t, "did:privy:alice", e.aliceProfile, "key-2", `{"amountUsd": "12.505"}`); r.status != http.StatusUnprocessableEntity {
