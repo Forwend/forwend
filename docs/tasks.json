@@ -99,7 +99,7 @@
         "R-69: e2e at 390 px checks each Transactions row puts kind and amount on the left and time with the explorer link on the right in two lines, with no line wrapping mid-group; axe clean"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -168,12 +168,19 @@
         "taskHash": "f406d203ec35af3c",
         "filesHash": "9f2c01ce72d94ddd",
         "proof": {
-          "1": "e2e: privy navigation.spec at 390 px checks each Transactions row is under 96 px tall with the time at the top right and the Basescan link below it, no sideways scroll, axe clean"
-        }
+          "1": "e2e: two-line phone rows"
+        },
+        "commit": "eb1989f",
+        "doneAt": "2026-10-13T22:31:39Z"
       },
       "branch": "fix/f167-the-invoice-s-transactions-rows-read-cle",
       "baseCommit": "1894c965480d23296454ef077db025335fd255a6",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f167-the-invoice-s-transactions-rows-read-cle",
+        "base": "main"
+      }
     },
     {
       "id": "F168",
