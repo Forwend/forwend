@@ -7,10 +7,10 @@ import { PUBLIC_URL } from "./servers";
 // the computation against the R-15 vectors), so the page shows it only while every term is unchanged.
 const ID = "0x7f3a9c1e5b2d4086a1c3e5f7092b4d6f8a0c2e4f6a8b0d2f4e6c8a0b2d4f6e81";
 const RECEIVE = "0x586134f74b654f5835860ca198ae725344670078";
-// A second option of a payer-chooses invoice (R-56): USDC on Arbitrum Sepolia, its own id and the address predict
-// gives for the same terms with that id, token and chain.
-const OPTION_ID = "0x2b4d6f8a0c2e4f6a8b0d2f4e6c8a0b2d4f6e817f3a9c1e5b2d4086a1c3e5f709";
-const OPTION_RECEIVE = "0x4d80defc4cddd9f1c4d010642eaef1fc3853e5ae";
+// A second option of a payer-chooses invoice (R-56): USDC on Arbitrum Sepolia, its id derived from ID as the API does
+// (keccak256(abi.encode(ID, 421614, token))) and the address predict gives for the same terms with that id.
+const OPTION_ID = "0x80166bc7ad9374378c99215bffabc884c9fe82e8876840816d1eb4e5710a89e7";
+const OPTION_RECEIVE = "0xdb27b5da140247ca45e078798de10030638c2ba3";
 const NOW = new Date("2026-10-10T12:00:00Z");
 const POLL_MS = 15_000;
 

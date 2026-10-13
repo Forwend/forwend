@@ -1196,81 +1196,83 @@
         "packages/contracts/src/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-13 review pass by reviewer: Checked the diff c26fe34..a6bb349 for money safety. Ledger: the option row is locked first, then the main row, and chosen_id is set in the same transaction before any booking, so only the chosen option can book to recipient_payable, reach paid or get a settlement intent; deposits on any other option go to payer_held. No lock cycle: Process locks at most its own row then the main row, the main row's own run locks only itself, and the worker runs watcher and ledger in sequence. Triggers: options must share profile, recipient, factory, expiry, settle deadline, key and request hash with a main row that has no choice yet; no option of an option; chosen_id is set once, only on a main row, only to its own options; terms stay fixed by invoices_guard. Reads: every FROM/JOIN invoices in internal/ was checked; get, list, search, activity, recheck, PDFs and settlement wait use invoices_current or the option id; balance, watcher, signer and rescan work per row as intended. Idempotency: rational USD hash is canonical (12.5 = 12.50), partial unique indexes, the constraint name in Create matches the new index. Limits count each option. Canary: fixed invoices still match id, terms, predict on both RPCs and the page; the docs query matches the 10-field parser. Non-blocking: held money on a non-chosen option is not shown on the invoice page or its refund status (only balance and activity); a reorged first transfer keeps the choice (documented); the pay page check now binds the address to optionId from the API, not to the link id; recheck fails with 503 if any one option's chain RPC is down; the invoices_options trigger would let an option be added to a fixed invoice that already has money (no app path does this); a misplaced JSDoc line above InvoiceOption in invoices.ts and an unfinished sentence in canary_test.go. Ran: go test for invoice, ledger, database, canary, httpapi, settlement, activity, document, watcher, balance (all ok); vitest src/features/pay and src/features/invoices (31 passed); check-docs (0 errors)."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-13T15:44:04Z",
+        "at": "2026-10-13T15:58:18Z",
         "checks": [
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 94.2,
-            "log": "docs/runs/F132-20261013T154404Z-backend.log"
+            "seconds": 91.2,
+            "log": "docs/runs/F132-20261013T155818Z-backend.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 89.2,
-            "log": "docs/runs/F132-20261013T154404Z-unit.log"
+            "seconds": 96.5,
+            "log": "docs/runs/F132-20261013T155818Z-unit.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 131.2,
-            "log": "docs/runs/F132-20261013T154404Z-e2e.log"
+            "seconds": 127.8,
+            "log": "docs/runs/F132-20261013T155818Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 1.4,
-            "log": "docs/runs/F132-20261013T154404Z-harness.log"
+            "log": "docs/runs/F132-20261013T155818Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F132-20261013T154404Z-docs-check.log"
+            "log": "docs/runs/F132-20261013T155818Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F132-20261013T154404Z-lint.log"
+            "log": "docs/runs/F132-20261013T155818Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F132-20261013T154404Z-typecheck.log"
+            "seconds": 1.0,
+            "log": "docs/runs/F132-20261013T155818Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.7,
-            "log": "docs/runs/F132-20261013T154404Z-build.log"
+            "seconds": 4.7,
+            "log": "docs/runs/F132-20261013T155818Z-build.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F132-20261013T154404Z-keep.log"
+            "log": "docs/runs/F132-20261013T155818Z-keep.log"
           }
         ],
         "taskHash": "2c6ed6c722a67777",
-        "filesHash": "4eaa6dd34e1c2cde",
+        "filesHash": "516b441c0b9ad34a",
         "proof": {
-          "1": "backend: invoice/options_test (one option per enabled watched token, USD converted, own id and address, replay, conflict, inexact rejected), database TestInvoiceOptions (shared terms, number, chosen once), ledger TestFirstOptionPaidWinsAndOthersAreHeld (lock and held money), settlement TestSettlesTheOptionPaidFirst (settles the chosen option with real addresses), httpapi TestPayerChoosesInvoice (options, get by option id, PDF), canary tests (option lines, ?option= page); unit: receive-address and withOption tests; e2e: pay.spec canary reads an option via ?option=, tampered option refused, locked invoice keeps the chosen option"
+          "1": "backend: invoice/options_test (options per enabled watched token, USD converted, derived option ids, own addresses, replay, conflict, inexact rejected), address TestOptionID (vector shared with the web, matches Foundry abi.encode), database TestInvoiceOptions, ledger TestFirstOptionPaidWinsAndOthersAreHeld (lock and held money), settlement TestSettlesTheOptionPaidFirst, httpapi TestPayerChoosesInvoice (options, get by option id, PDF), canary option lines and ?option= page; unit: optionIdOf vector, option id must derive from the link, withOption; e2e: pay.spec canary reads a derived option via ?option=, tampered option refused, locked invoice keeps the chosen option"
         }
       },
       "branch": "feat/f132-the-creator-chooses-payer-chooses-defaul",

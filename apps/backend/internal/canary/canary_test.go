@@ -25,7 +25,7 @@ const (
 	expiresAt = 1893456000 // 2030-01-01
 	deadline  = expiresAt + 86400
 	wrong     = "0x3333333333333333333333333333333333333333"
-	// The pay link of a payer-chooses invoice whose option id is.
+	// The pay link of a payer-chooses invoice that has id as one of its options.
 	payID = "0x2c0ffee0000000000000000000000000000000000000000000000000000000cd"
 )
 

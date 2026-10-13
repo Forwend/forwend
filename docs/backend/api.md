@@ -110,8 +110,9 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - Payer chooses (R-56, D-75, D-76): create with `amountUsd` alone (a decimal like `"12.50"`) instead of `chainId`,
   `token` and `amount`. The invoice accepts every enabled token on every enabled chain the worker already watches
   (others would miss payments, SEC-02), each at 1 USD per token: the amount in the token's decimals, 422 when they
-  can't hold it exactly. Each option is an `invoices` row of its own with its own on-chain id, terms and receive
-  address, so the watcher, ledger and signer treat it as any invoice; the first row is the invoice (its id is the pay
+  can't hold it exactly. Each option is an `invoices` row of its own with its own on-chain id (the first random, the
+  others `keccak256(abi.encode(first id, chain id, token))`, so the pay page can tie them to the link), terms and
+  receive address, so the watcher, ledger and signer treat it as any invoice; the first row is the invoice (its id is the pay
   link, its number and details are the invoice's). Each option counts toward the profile's open and daily limits.
   Reads add `optionId` (the on-chain id in the shown terms), `optionLocked` and, on a read alone, `options` (each
   `{optionId, chainId, network, token, symbol, decimals, amount, receiveAddress}`). Until an option has money the

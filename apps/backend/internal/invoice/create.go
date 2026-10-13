@@ -73,9 +73,13 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	}
 	defer tx.Rollback(ctx)
 	var mainID *string
-	for _, o := range options {
-		var id [32]byte
-		_, _ = rand.Read(id[:])
+	var first [32]byte
+	_, _ = rand.Read(first[:])
+	for i, o := range options {
+		id := first
+		if i > 0 {
+			id = address.OptionID(first, o.chainID, hex20(o.token))
+		}
 		_, receive, err := buildTerms(id, o.chainID, o.token, recipient, o.amount, expiresAt, settleDeadline)
 		if err != nil {
 			return Invoice{}, false, err

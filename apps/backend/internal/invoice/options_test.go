@@ -6,8 +6,18 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/address"
 	"github.com/ensp1re/forwend/apps/backend/internal/search"
 )
+
+func mustHexID(t *testing.T, id string) []byte {
+	t.Helper()
+	b, err := hex.DecodeString(id[2:])
+	if err != nil || len(b) != 32 {
+		t.Fatalf("id %q", id)
+	}
+	return b
+}
 
 // Payer chooses (R-56, D-75, D-76): one option per enabled token on a watched chain, each with the USD amount in its
 // own decimals and its own on-chain id and receive address computed from its own terms.
@@ -40,6 +50,11 @@ func TestCreatePayerChooses(t *testing.T) {
 		if err != nil || o.ReceiveAddress != want || o.Amount.String() != "12500000" || o.Symbol != "USDC" {
 			t.Fatalf("option %+v: want address %s and 12500000 USDC (%v)", o, want, err)
 		}
+	}
+	// The second option's id derives from the invoice's, so the pay page can tie it to the link.
+	if main := [32]byte(mustHexID(t, inv.ID)); inv.Options[1].ID != hexID(address.OptionID(main, 421614,
+		hex20(inv.Options[1].Token))) {
+		t.Fatalf("option id %s does not derive from %s", inv.Options[1].ID, inv.ID)
 	}
 	if inv.Options[0].ReceiveAddress == inv.Options[1].ReceiveAddress {
 		t.Fatalf("both options share %s", inv.Options[0].ReceiveAddress)

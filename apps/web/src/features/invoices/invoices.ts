@@ -158,7 +158,6 @@ export interface SettlementWait {
   secondsLeft: number | null;
 }
 
-/** An invoice read alone or just created. */
 /** One token and network the invoice accepts, with its own on-chain id, amount and address (R-56). */
 export interface InvoiceOption {
   optionId: string;
@@ -173,6 +172,7 @@ export interface InvoiceOption {
   receiveAddress: string;
 }
 
+/** An invoice read alone or just created. */
 export interface Invoice extends InvoiceSummary {
   /** Every accepted option, the shown one included: one for a fixed invoice. */
   options: InvoiceOption[];

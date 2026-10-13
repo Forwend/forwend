@@ -34,7 +34,9 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 ## Checkout
 
-- The page shows an address only for the invoice its link names, only for terms the API would create (amount above
+- The page shows an address only for the invoice its link names: for a payer-chooses invoice's further option, only
+  when the option's id is `keccak256(abi.encode(link id, chain id, token))`, as `address.OptionID` makes it, so no
+  other invoice's terms pass under the link. Only for terms the API would create (amount above
   0, settle deadline 24 h after expiry, expiry at most a year after creation, a recipient that is not zero, the token,
   the factory or the implementation), and only when the terms compute to it.
 - No third-party scripts; pinned dependencies.
