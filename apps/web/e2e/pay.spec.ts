@@ -256,13 +256,9 @@ test.describe("pay page", () => {
     page,
   }) => {
     await openPay(page, CONFIRMING);
-    await expect(status(page)).toHaveText(
-      "Payment received · Confirming (6/12) · about 2 min left",
-    );
+    await expect(status(page)).toHaveText("Confirming (6/12) · about 2 min left");
     await page.reload();
-    await expect(status(page)).toHaveText(
-      "Payment received · Confirming (6/12) · about 2 min left",
-    );
+    await expect(status(page)).toHaveText("Confirming (6/12) · about 2 min left");
   });
 
   test("follows the payment from waiting to paid without a reload, and never shows Settled", async ({
@@ -275,18 +271,26 @@ test.describe("pay page", () => {
     await expect(status(page)).toHaveText("Waiting for payment…");
     await showAddress(page).click();
 
-    // The full amount is on its way: no address invites a second payment; one status, no pills.
+    // The full amount is on its way: no address invites a second payment. The box keeps its place and follows it:
+    // Detected, Confirming and Paid, the count, and the payment with its transaction (R-68).
     await page.clock.runFor(POLL_MS);
-    await expect(status(page)).toHaveText(
-      "Payment received · Confirming (0/12) · about 3 min left",
-    );
+    await expect(status(page)).toHaveText("Confirming (0/12) · about 3 min left");
     await expect(page.getByText(RECEIVE)).toHaveCount(0);
     await expect(page.locator("[data-status]")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Paying with" })).toBeVisible();
+    const steps = page.getByRole("list", { name: "Payment progress" });
+    await expect(steps.getByRole("listitem")).toHaveText([/^Detected/, /^Confirming/, /^Paid/]);
+    await expect(steps.locator("[aria-current=step]")).toHaveText("Confirming");
+    const payment = page.getByRole("region", { name: "Payment progress" }).locator("ul > li");
+    await expect(payment).toContainText("1,250.00 USDC");
+    await expect(payment).toContainText("0x3333…3333");
+    await expect(payment.getByRole("link", { name: /Basescan/ })).toHaveAttribute(
+      "href",
+      `https://sepolia.basescan.org/tx/${DEPOSIT.txHash}`,
+    );
 
     await page.clock.runFor(POLL_MS);
-    await expect(status(page)).toHaveText(
-      "Payment received · Confirming (6/12) · about 2 min left",
-    );
+    await expect(status(page)).toHaveText("Confirming (6/12) · about 2 min left");
 
     await page.clock.runFor(POLL_MS);
     await expect(page.getByRole("status").filter({ hasText: /^Paid$/ })).toBeVisible();
@@ -318,6 +322,11 @@ test.describe("pay page", () => {
       "250.00 USDC of 1,250.00 USDC received. Send the remaining 1,000.00 USDC.",
     );
     await expect(page.locator("[data-money]").first()).toHaveText("1,000.00 USDC");
+    // Money is still due: the address stays, and the Paid step says it is partly there.
+    await expect(showAddress(page)).toBeVisible();
+    await expect(
+      page.getByRole("list", { name: "Payment progress" }).getByText("Partially paid"),
+    ).toHaveClass(/bg-warning-soft/);
     await page.clock.runFor(POLL_MS);
     await expect(status(page)).toHaveText(
       "This invoice is closed. If you already sent money, it is not lost: contact the sender.",
@@ -484,7 +493,7 @@ test.describe("pay page", () => {
       await expect(page.getByText(RECEIVE)).toBeVisible();
       expect(await blocking()).toEqual([]);
       await page.clock.runFor(POLL_MS);
-      await expect(status(page)).toHaveText(/^Payment received/);
+      await expect(status(page)).toHaveText(/^Confirming/);
       expect(await blocking()).toEqual([]);
       await mockInvoice(page, PAID);
       await page.reload();
