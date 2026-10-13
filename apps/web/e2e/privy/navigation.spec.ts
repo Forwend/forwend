@@ -583,3 +583,46 @@ test("the overview chart shrinks with the window and the page never scrolls side
   }
   await context.close();
 });
+
+// Switching profile keeps the page, except an invoice's page: that invoice is the old profile's, so the new
+// profile's list opens instead of a dead end.
+test("switching profile keeps the page, and leaves an invoice's page for the new profile's list", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  const sidebar = page.locator("aside");
+  // The account may hold several merchant profiles: the first of a kind will do.
+  const switchTo = async (kind: string) => {
+    await sidebar.getByRole("button", { name: /^Switch profile/ }).click();
+    await page
+      .getByRole("menuitemradio", { name: new RegExp(`^${kind}`) })
+      .first()
+      .click();
+    await expect(page.getByRole("menu")).toBeHidden();
+    await expect(
+      sidebar.getByRole("button", { name: new RegExp(`^Switch profile: ${kind}`) }),
+    ).toBeVisible();
+  };
+  // Loaded and hydrated before the menu is used.
+  await page.goto("/app/balances", { waitUntil: "networkidle" });
+  await switchTo("Personal");
+  await switchTo("Merchant");
+  await expect(page).toHaveURL("/app/balances");
+
+  await switchTo("Personal");
+  await page.goto("/app/invoices", { waitUntil: "networkidle" });
+  const first = page.getByRole("main").getByRole("link", { name: /^INV-/ }).first();
+  // The test account's personal profile has requests once the request test has run.
+  if (await first.count()) {
+    await first.click();
+    await expect(page).toHaveURL(/\/app\/invoices\/0x/);
+    await switchTo("Merchant");
+    await expect(page).toHaveURL("/app/invoices");
+    await expect(page.getByRole("heading", { level: 1, name: "Invoices" })).toBeAttached();
+  }
+  await context.close();
+});

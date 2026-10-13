@@ -57,8 +57,13 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     (profileId: string) => {
       setActiveId(profileId);
       if (userId) saveChosenProfileId(userId, profileId);
+      // An invoice belongs to the profile it was made in: the new profile's list, not a dead end. Every other page
+      // stays, showing the new profile's data.
+      if (pathname.startsWith(`${APP_ROUTES.invoices}/`) && pathname !== APP_ROUTES.newInvoice) {
+        router.push(APP_ROUTES.invoices);
+      }
     },
-    [userId],
+    [userId, pathname, router],
   );
 
   useEffect(() => {
