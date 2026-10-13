@@ -16,7 +16,6 @@ import { useGetBalanceHistoryQuery, useGetBalancesQuery } from "@/features/balan
 import { BALANCES_COPY } from "@/features/balances/balances-copy";
 import { ReceivedChart } from "@/features/balances/charts/received-chart";
 import { EstimateHint } from "@/features/balances/components/estimate-hint";
-import { MoneyFlowCard } from "@/features/balances/components/money-flow-card";
 import { NetworksCard } from "@/features/balances/components/networks-card";
 import { useAppSession } from "@/features/profiles/app-session";
 import { ProfilePill } from "@/features/profiles/components/profile-pill";
@@ -31,8 +30,10 @@ import { LIVE_QUERY } from "@/shared/config/refresh";
 const BUSINESS_COPY = {
   overview: "Overview",
   balance: "Balance",
+  summary: "Summary",
   received: "Received",
-  payments: "Payments in",
+  sent: "Sent",
+  payments: (count: string) => `${count} payments in`,
   pending: "On its way",
   pendingHint: "Paid to invoices, not in the wallet yet",
   atLeast: (n: number) => `${n}+`,
@@ -55,6 +56,9 @@ export function BusinessOverview() {
   const received = history.data ? historySeries(history.data, HISTORY_FIELDS.received) : null;
   const receivedNow = history.currentData
     ? historySeries(history.currentData, HISTORY_FIELDS.received)
+    : null;
+  const sentNow = history.currentData
+    ? historySeries(history.currentData, HISTORY_FIELDS.sent)
     : null;
   const balancesFailed = balances.isError && !balances.currentData;
   const historyFailed = history.isError && !history.currentData;
@@ -80,21 +84,13 @@ export function BusinessOverview() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-col items-start gap-2">
-          <ProfilePill name={profileLabel(profile)} onClick={openProfiles} />
-          {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
-          <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
-            <span className="sr-only">{profileLabel(profile)} </span>
-            {BUSINESS_COPY.overview}
-          </h1>
-        </div>
-        <SegmentedControl
-          label={BALANCES_COPY.chartRange}
-          options={RANGE_OPTIONS}
-          value={range}
-          onValueChange={setRange}
-        />
+      <div className="flex min-w-0 flex-col items-start gap-2 lg:contents">
+        <ProfilePill name={profileLabel(profile)} onClick={openProfiles} />
+        {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
+        <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
+          <span className="sr-only">{profileLabel(profile)} </span>
+          {BUSINESS_COPY.overview}
+        </h1>
       </div>
 
       {profile.kind === PROFILE_KINDS.freelancer ? <OverviewChecklist /> : null}
@@ -108,43 +104,61 @@ export function BusinessOverview() {
         </div>
       ) : null}
 
-      <dl className="grid grid-cols-2 overflow-hidden rounded-md border border-line bg-surface lg:grid-cols-4 [&>div]:border-line [&>div:nth-child(n+3)]:border-t lg:[&>div:nth-child(n+3)]:border-t-0 [&>div:nth-child(even)]:border-l lg:[&>div:not(:first-child)]:border-l">
-        <Figure label={BUSINESS_COPY.balance} note={BALANCES_COPY.today} failed={balancesFailed}>
-          {balances.currentData ? <Total cents={wallet} hint /> : null}
-        </Figure>
-        <Figure label={BUSINESS_COPY.received} note={rangeName} failed={historyFailed}>
-          {history.currentData ? (
-            <Total cents={receivedNow ? seriesTotal(receivedNow) : null} />
-          ) : null}
-        </Figure>
-        <Figure
-          label={BUSINESS_COPY.payments}
-          note={rangeName}
-          failed={latest.isError && !latest.data}
-        >
-          {payments}
-        </Figure>
-        <Figure
-          label={BUSINESS_COPY.pending}
-          note={BUSINESS_COPY.pendingHint}
-          failed={balancesFailed}
-        >
-          {balances.currentData ? <Total cents={pending} /> : null}
-        </Figure>
-      </dl>
+      {/* The range belongs to the figures and the chart, so it sits in the summary's header, not alone on a row. */}
+      <section
+        aria-labelledby="summary-title"
+        className="overflow-hidden rounded-md border border-line bg-surface"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-2.5 sm:px-5">
+          <h2 id="summary-title" className="text-base font-semibold text-ink">
+            {BUSINESS_COPY.summary}
+            <span className="font-normal text-muted"> · {rangeName}</span>
+          </h2>
+          <SegmentedControl
+            label={BALANCES_COPY.chartRange}
+            options={RANGE_OPTIONS}
+            value={range}
+            onValueChange={setRange}
+          />
+        </div>
+        <dl className="grid grid-cols-2 lg:grid-cols-4 [&>div]:border-line [&>div:nth-child(n+3)]:border-t lg:[&>div:nth-child(n+3)]:border-t-0 [&>div:nth-child(even)]:border-l lg:[&>div:not(:first-child)]:border-l">
+          <Figure label={BUSINESS_COPY.balance} note={BALANCES_COPY.today} failed={balancesFailed}>
+            {balances.currentData ? <Total cents={wallet} hint /> : null}
+          </Figure>
+          <Figure label={BUSINESS_COPY.received} note={rangeName} failed={historyFailed}>
+            {history.currentData ? (
+              <Total cents={receivedNow ? seriesTotal(receivedNow) : null} />
+            ) : null}
+          </Figure>
+          <Figure label={BUSINESS_COPY.sent} note={rangeName} failed={historyFailed}>
+            {history.currentData ? <Total cents={sentNow ? seriesTotal(sentNow) : null} /> : null}
+          </Figure>
+          <Figure
+            label={BUSINESS_COPY.pending}
+            note={BUSINESS_COPY.pendingHint}
+            failed={balancesFailed}
+          >
+            {balances.currentData ? <Total cents={pending} /> : null}
+          </Figure>
+        </dl>
+      </section>
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)] xl:items-start">
+      {/* Both columns stretch to one height, so their bottom edges line up. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
         <section
           aria-labelledby="received-title"
-          className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4 sm:p-5"
+          className="flex flex-col rounded-md border border-line bg-surface"
         >
-          <div className="flex items-baseline justify-between gap-3">
+          <div className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
             <h2 id="received-title" className="text-base font-semibold text-ink">
               {BUSINESS_COPY.received}
             </h2>
-            <span className="text-xs text-muted">{rangeName}</span>
+            <span className="text-xs text-muted">
+              {payments === null ? rangeName : `${BUSINESS_COPY.payments(payments)} · ${rangeName}`}
+            </span>
           </div>
-          <div className="h-64">
+          {/* At least 16rem, and taller when the side column is, so the chart fills its panel. */}
+          <div className="grid min-h-64 flex-1 grid-rows-[minmax(0,1fr)] p-4 sm:p-5">
             {historyFailed ? (
               <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">
                 {BALANCES_COPY.historyFailed}
@@ -173,10 +187,7 @@ export function BusinessOverview() {
             )}
           </div>
         </section>
-        <div className="flex flex-col gap-4">
-          <NetworksCard balances={balances.currentData ?? null} failed={balances.isError} />
-          <MoneyFlowCard profileId={profile.profileId} />
-        </div>
+        <NetworksCard balances={balances.currentData ?? null} failed={balances.isError} />
       </div>
 
       <TransactionsTable

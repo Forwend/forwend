@@ -68,9 +68,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   4:1 shape within a minimum and maximum height: the total sits at the top left, the round actions at the
   bottom left, and the chart fills the right side. The total scales with its column (container units). Phones center
   the total and put the chart in its own panel below. The card has one padding on all sides.
-- Business overview (merchant, freelancer): title and range control, a ruled figure strip, received-per-day bars,
-  networks and money flow, then the latest payments with View all; filters, search and CSV export live on Transactions.
-  A range with nothing received says so in place of an empty chart.
+- Business overview (merchant, freelancer, R-63): a Summary panel whose ruled header names the range and holds the
+  range control, over one figure grid (Balance today, Received, Sent, On its way); then the Received chart (its header
+  counts the payments in) beside Balances by network, both stretched to one height; then the latest payments with View
+  all. Filters, search and CSV export live on Transactions. A range with nothing received says so in place of an empty
+  chart.
 - Charts: one ink line (or ink bars) with a faint wash, a few hairline grid lines, round tick values from zero.
   The river blue marks the latest or chosen point. Pointer, tap or arrow keys show a readout; only keyboard moves are
   announced, and a hidden table gives screen readers every value. Range choice is a segmented control. Received bars
