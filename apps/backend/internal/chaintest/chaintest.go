@@ -47,8 +47,10 @@ func Start(t *testing.T) *Anvil {
 	}
 	port := l.Addr().(*net.TCPAddr).Port
 	l.Close()
-	// One slot per epoch: safe = latest - 1, finalized = latest - 2.
-	cmd := exec.Command("anvil", "--port", fmt.Sprint(port), "--slots-in-an-epoch", "1", "--silent")
+	// One slot per epoch: safe = latest - 1, finalized = latest - 2. No states on disk: Anvil otherwise writes them to
+	// ~/.foundry/anvil/tmp and never removes them, even on a clean exit (Anvil 1.5); tests read only recent blocks.
+	cmd := exec.Command("anvil", "--port", fmt.Sprint(port), "--slots-in-an-epoch", "1", "--silent",
+		"--max-persisted-states", "0")
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start anvil (install Foundry): %v", err)
 	}
