@@ -10,7 +10,7 @@
         "R-69: e2e checks the owner page shows Check status while open or partly paid, and not when expired, paid or settled"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -79,12 +79,19 @@
         "taskHash": "9a6235740b2feba4",
         "filesHash": "9f952a0dc86d515a",
         "proof": {
-          "1": "e2e: privy navigation.spec checks Check status on an open invoice, and none once paid and settling or expired"
-        }
+          "1": "e2e: Check status only while payable"
+        },
+        "commit": "99405db",
+        "doneAt": "2026-10-13T21:41:09Z"
       },
       "branch": "fix/f160-check-status-shows-only-while-the-invoic",
       "baseCommit": "17cc0281aabc9ef6587d6bd1d9a730c929f637f8",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f160-check-status-shows-only-while-the-invoic",
+        "base": "main"
+      }
     },
     {
       "id": "F161",
