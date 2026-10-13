@@ -39,19 +39,38 @@ test("a profile shows its balance, networks, receive address and activity; a new
       .or(recent.getByRole("table")),
   ).toBeVisible();
 
-  // Receive: a sheet with the QR code, the full address in one box and a warning naming one exact network and token.
-  const address = page.getByRole("dialog", { name: "Receive" }).locator("p", { hasText: /^0x/ });
+  // Receive: the token, then the network; then a sheet with the QR code, the full address in one box and a warning
+  // naming that exact network and token. The test account has USDC on Base Sepolia and Arbitrum Sepolia.
+  const sheet = page.getByRole("dialog", { name: "Receive" });
+  const address = sheet.locator("p", { hasText: /^0x/ });
+  const qr = sheet.getByRole("img", { name: "QR code of this profile's receive address" });
+  const choose = async (network: string) => {
+    await sheet
+      .getByRole("region", { name: "Token" })
+      .getByRole("button", { name: /^USDC/ })
+      .click();
+    await expect(qr).toBeHidden();
+    await sheet
+      .getByRole("region", { name: "Network" })
+      .getByRole("button", { name: network })
+      .click();
+    await expect(qr).toBeVisible();
+    await expect(sheet.getByText(`Your ${network} address`)).toBeVisible();
+    await expect(address).toHaveText(/^0x([0-9a-f]{4}){10}$/);
+    await expect(sheet.getByRole("note")).toContainText(`Send only USDC on ${network}.`);
+  };
   const readAddress = async () => {
     // The header's Receive works on every profile and page.
     await page.getByRole("banner").getByRole("button", { name: "Receive", exact: true }).click();
-    const sheet = page.getByRole("dialog", { name: "Receive" });
-    await expect(
-      sheet.getByRole("img", { name: "QR code of this profile's receive address" }),
-    ).toBeVisible();
-    await expect(address).toHaveText(/^0x([0-9a-f]{4}){10}$/);
-    await expect(sheet.getByRole("note")).toContainText(/Send only \S+ on .+\./);
+    await expect(qr).toBeHidden();
+    await choose("Base Sepolia");
     expect(await blockingViolations(page)).toEqual([]);
     const text = await address.textContent();
+    // The choice folds into one row; Change starts it again, and the address follows the new network.
+    await sheet.getByRole("button", { name: "Change token and network" }).click();
+    await choose("Arbitrum Sepolia");
+    // One wallet address serves every EVM network.
+    await expect(address).toHaveText(text ?? "");
     await page.keyboard.press("Escape");
     await expect(sheet).toBeHidden();
     return text;
