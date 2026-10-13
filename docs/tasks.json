@@ -1423,7 +1423,7 @@
       "dependsOn": [
         "F128"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "a11y-e2e"
@@ -1500,12 +1500,19 @@
         "taskHash": "208b0ed7a91ee8d8",
         "filesHash": "bf94046d6cc827c4",
         "proof": {
-          "1": "e2e: balances and navigation e2e open the merchant and freelancer overviews (Received region, Chart range control, Payments) and axe them; a11y-e2e passes; screenshots at 390 and 1440 px in both themes show one grid, the range in the Summary header and equal-height chart and network columns with no sideways scroll"
-        }
+          "1": "e2e: verify F139 passed all checks including a11y-e2e"
+        },
+        "commit": "6900e4e",
+        "doneAt": "2026-10-13T14:54:40Z"
       },
       "branch": "feat/f139-the-merchant-and-freelancer-overview-is",
       "baseCommit": "a0681cd9ed038317d603bbd8cb4ebd2eac27624c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f139-the-merchant-and-freelancer-overview-is",
+        "base": "main"
+      }
     },
     {
       "id": "F140",
