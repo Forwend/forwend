@@ -1,22 +1,20 @@
 {
   "schemaVersion": 2,
-  "nextId": 166,
+  "nextId": 167,
   "tasks": [
     {
-      "id": "F160",
-      "type": "fix",
-      "behavior": "Check status shows only while the invoice can take money",
+      "id": "F166",
+      "type": "chore",
+      "behavior": "Finished tasks F160-F165 move to the archive",
       "acceptance": [
-        "R-69: e2e checks the owner page shows Check status while open or partly paid, and not when expired, paid or settled"
+        "docs/archive holds F160-F165 and docs/tasks.json is empty; docs-check passes"
       ],
       "dependsOn": [],
       "state": "passing",
       "verification": [
-        "e2e"
+        "docs-check"
       ],
-      "refs": [
-        "R-69"
-      ],
+      "refs": [],
       "keep": [],
       "review": false,
       "notes": [],
@@ -24,542 +22,72 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-13T21:36:55Z",
+        "at": "2026-10-13T22:18:43Z",
         "checks": [
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 145.1,
-            "log": "docs/runs/F160-20261013T213655Z-e2e.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.4,
-            "log": "docs/runs/F160-20261013T213655Z-harness.log"
-          },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F160-20261013T213655Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": "docs/runs/F160-20261013T213655Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.0,
-            "log": "docs/runs/F160-20261013T213655Z-typecheck.log"
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 95.3,
-            "log": "docs/runs/F160-20261013T213655Z-unit.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 4.2,
-            "log": "docs/runs/F160-20261013T213655Z-build.log"
-          }
-        ],
-        "taskHash": "9a6235740b2feba4",
-        "filesHash": "9f952a0dc86d515a",
-        "proof": {
-          "1": "e2e: Check status only while payable"
-        },
-        "commit": "99405db",
-        "doneAt": "2026-10-13T21:41:09Z"
-      },
-      "branch": "fix/f160-check-status-shows-only-while-the-invoic",
-      "baseCommit": "17cc0281aabc9ef6587d6bd1d9a730c929f637f8",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f160-check-status-shows-only-while-the-invoic",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F161",
-      "type": "fix",
-      "behavior": "A partly paid invoice with a payment still confirming reads as confirming",
-      "acceptance": [
-        "R-69: backend test checks the invoice list and read say confirming for a partly paid invoice with a detected deposit; e2e checks the owner page and list show the confirming pill, the Confirming step and no Partially paid badge until it confirms"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "backend",
-        "e2e"
-      ],
-      "refs": [
-        "R-69"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-13T21:43:41Z",
-        "checks": [
-          {
-            "id": "backend",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 90.4,
-            "log": "docs/runs/F161-20261013T214341Z-backend.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 153.4,
-            "log": "docs/runs/F161-20261013T214341Z-e2e.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.5,
-            "log": "docs/runs/F161-20261013T214341Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F161-20261013T214341Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": "docs/runs/F161-20261013T214341Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.1,
-            "log": "docs/runs/F161-20261013T214341Z-typecheck.log"
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 93.4,
-            "log": "docs/runs/F161-20261013T214341Z-unit.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 5.0,
-            "log": "docs/runs/F161-20261013T214341Z-build.log"
-          }
-        ],
-        "taskHash": "86574ac53022c3af",
-        "filesHash": "2045493ebbfb1041",
-        "proof": {
-          "1": "backend: confirming flag; e2e: Detected pill and Confirming step, no Partially paid badge"
-        },
-        "commit": "1c640e1",
-        "doneAt": "2026-10-13T21:49:35Z"
-      },
-      "branch": "fix/f161-a-partly-paid-invoice-with-a-payment-sti",
-      "baseCommit": "d82fbbecd6f7cc77c3ab14f9c3f090fef264415f",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f161-a-partly-paid-invoice-with-a-payment-sti",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F162",
-      "type": "feat",
-      "behavior": "The owner's invoice page lists every transaction of the invoice, settlement included",
-      "acceptance": [
-        "R-69: e2e checks the owner page's Transactions list shows the payments and the settlement with its hash and explorer link, and Details no longer has a Settlement row"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "e2e"
-      ],
-      "refs": [
-        "R-69"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-13T21:53:01Z",
-        "checks": [
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 152.6,
-            "log": "docs/runs/F162-20261013T215301Z-e2e.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.5,
-            "log": "docs/runs/F162-20261013T215301Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F162-20261013T215301Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": "docs/runs/F162-20261013T215301Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.1,
-            "log": "docs/runs/F162-20261013T215301Z-typecheck.log"
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 91.9,
-            "log": "docs/runs/F162-20261013T215301Z-unit.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 4.5,
-            "log": "docs/runs/F162-20261013T215301Z-build.log"
-          }
-        ],
-        "taskHash": "c5c13054759058f8",
-        "filesHash": "0657229a4213b676",
-        "proof": {
-          "1": "e2e: Transactions list with payment and settlement rows"
-        },
-        "commit": "e5a94dd",
-        "doneAt": "2026-10-13T21:57:19Z"
-      },
-      "branch": "feat/f162-the-owner-s-invoice-page-lists-every-tra",
-      "baseCommit": "1fffd6b1d9312bc8993366c9ce3123504d51d93f",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f162-the-owner-s-invoice-page-lists-every-tra",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F163",
-      "type": "fix",
-      "behavior": "The receipt PDF leaves out the settlement",
-      "acceptance": [
-        "R-61: backend test checks receipt.pdf has the payments and no Settled date, Settlement heading or settlement hash"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "backend"
-      ],
-      "refs": [
-        "R-61"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-13T21:58:15Z",
-        "checks": [
-          {
-            "id": "backend",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 94.5,
-            "log": "docs/runs/F163-20261013T215815Z-backend.log"
+            "log": "docs/runs/F166-20261013T221843Z-docs-check.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 1.3,
-            "log": "docs/runs/F163-20261013T215815Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F163-20261013T215815Z-docs-check.log"
+            "log": "docs/runs/F166-20261013T221843Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F163-20261013T215815Z-lint.log"
+            "log": "docs/runs/F166-20261013T221843Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F163-20261013T215815Z-typecheck.log"
+            "seconds": 0.2,
+            "log": "docs/runs/F166-20261013T221843Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 92.2,
-            "log": "docs/runs/F163-20261013T215815Z-unit.log"
+            "seconds": 95.8,
+            "log": "docs/runs/F166-20261013T221843Z-unit.log"
           },
           {
             "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.6,
-            "log": "docs/runs/F163-20261013T215815Z-build.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 152.0,
-            "log": "docs/runs/F163-20261013T215815Z-e2e.log"
-          }
-        ],
-        "taskHash": "8a6e01c148a892dc",
-        "filesHash": "e6940a377863fe00",
-        "proof": {
-          "1": "backend: receipt text has no settlement; ETag unchanged after settling"
-        },
-        "commit": "967df50",
-        "doneAt": "2026-10-13T22:04:07Z"
-      },
-      "branch": "fix/f163-the-receipt-pdf-leaves-out-the-settlemen",
-      "baseCommit": "3b375f162da12ba1c0c7dcc8acd589d8693f94ea",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f163-the-receipt-pdf-leaves-out-the-settlemen",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F164",
-      "type": "feat",
-      "behavior": "Empty and no-match lists say so in one centered block with an icon",
-      "acceptance": [
-        "R-75: e2e checks empty and no-match states on invoices, activity and transactions are one centered block with an icon, title and action, filling the list's width; axe clean"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "e2e"
-      ],
-      "refs": [
-        "R-75"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-13T22:08:07Z",
-        "checks": [
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 161.2,
-            "log": "docs/runs/F164-20261013T220807Z-e2e.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.6,
-            "log": "docs/runs/F164-20261013T220807Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F164-20261013T220807Z-docs-check.log"
-          },
-          {
-            "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F164-20261013T220807Z-lint.log"
+            "log": "docs/runs/F166-20261013T221843Z-build.log"
           },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.4,
-            "log": "docs/runs/F164-20261013T220807Z-typecheck.log"
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 95.1,
-            "log": "docs/runs/F164-20261013T220807Z-unit.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 4.7,
-            "log": "docs/runs/F164-20261013T220807Z-build.log"
-          }
-        ],
-        "taskHash": "54b4b6eb64481708",
-        "filesHash": "4e6d27ab7eb28627",
-        "proof": {
-          "1": "e2e: centered empty and no-match blocks"
-        },
-        "commit": "014617b",
-        "doneAt": "2026-10-13T22:12:38Z"
-      },
-      "branch": "feat/f164-empty-and-no-match-lists-say-so-in-one-c",
-      "baseCommit": "19305ef9064eaa7a5c6ae58206da57a5a7292018",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f164-empty-and-no-match-lists-say-so-in-one-c",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F165",
-      "type": "fix",
-      "behavior": "Switching profile opens the new profile's overview",
-      "acceptance": [
-        "R-76: e2e checks switching profile from Balances and from an invoice opens /app, and the phone overview has no profile pill"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "e2e"
-      ],
-      "refs": [
-        "R-76"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-13T22:13:57Z",
-        "checks": [
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 159.5,
-            "log": "docs/runs/F165-20261013T221357Z-e2e.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.5,
-            "log": "docs/runs/F165-20261013T221357Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F165-20261013T221357Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F165-20261013T221357Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.1,
-            "log": "docs/runs/F165-20261013T221357Z-typecheck.log"
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 90.2,
-            "log": "docs/runs/F165-20261013T221357Z-unit.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 4.2,
-            "log": "docs/runs/F165-20261013T221357Z-build.log"
+            "seconds": 161.8,
+            "log": "docs/runs/F166-20261013T221843Z-e2e.log"
           }
         ],
-        "taskHash": "d38af1b2d5cbcf34",
+        "taskHash": "6963eb374ae155ef",
         "filesHash": "ce69cccc2ac792c8",
         "proof": {
-          "1": "e2e: switch lands on /app; no phone pill"
+          "1": "docs-check: archive records"
         },
-        "commit": "32bba1c",
-        "doneAt": "2026-10-13T22:18:21Z"
+        "commit": "d3aedc7",
+        "doneAt": "2026-10-13T22:23:09Z"
       },
-      "branch": "fix/f165-switching-profile-opens-the-new-profile",
-      "baseCommit": "7930926ac7701300f598746cd79b164e76173e46",
+      "branch": "chore/f166-finished-tasks-f160-f165-move-to-the-arc",
+      "baseCommit": "d5e4655133b88765e4c56406864c7c258347e025",
       "failedVerifies": 0,
       "delivery": {
         "mode": "pr",
-        "branch": "fix/f165-switching-profile-opens-the-new-profile",
+        "branch": "chore/f166-finished-tasks-f160-f165-move-to-the-arc",
         "base": "main"
       }
     }
