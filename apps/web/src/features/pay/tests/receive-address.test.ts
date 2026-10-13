@@ -5,6 +5,7 @@ import {
   checkedReceiveAddress,
   FACTORY,
   IMPLEMENTATION,
+  optionIdOf,
   receiveAddress,
 } from "@/features/pay/receive-address";
 
@@ -66,6 +67,9 @@ describe("checkedReceiveAddress", () => {
   };
   const invoice: Invoice = {
     ...terms,
+    optionId: terms.invoiceId,
+    optionLocked: false,
+    options: [],
     receiveAddress: receiveAddress({
       ...terms,
       amount: 1_250_000_000n,
@@ -104,6 +108,7 @@ describe("checkedReceiveAddress", () => {
   it("gives none when any term or the address changed", () => {
     const changed: Partial<Invoice>[] = [
       { invoiceId: `0x${"ac".repeat(32)}` },
+      { optionId: `0x${"ac".repeat(32)}` },
       { recipient: "0x2222222222222222222222222222222222222222" },
       { token: "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d" },
       { amount: "1250000001" },
@@ -125,6 +130,7 @@ describe("checkedReceiveAddress", () => {
     const served: Invoice = {
       ...invoice,
       ...other,
+      optionId: other.invoiceId,
       receiveAddress: receiveAddress({
         ...other,
         amount: 1_250_000_000n,
@@ -135,6 +141,37 @@ describe("checkedReceiveAddress", () => {
     };
     expect(checkedReceiveAddress(served, served.invoiceId)).toBe(served.receiveAddress);
     expect(checkedReceiveAddress(served, invoice.invoiceId)).toBeNull();
+  });
+
+  it("derives an option's id from the invoice's as the API does (vector shared with address/option_test.go)", () => {
+    expect(
+      optionIdOf(
+        "0x7f3a9c1e5b2d4086a1c3e5f7092b4d6f8a0c2e4f6a8b0d2f4e6c8a0b2d4f6e81",
+        421614n,
+        "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d",
+      ),
+    ).toBe("0x80166bc7ad9374378c99215bffabc884c9fe82e8876840816d1eb4e5710a89e7");
+  });
+
+  it("checks an option of a payer-chooses invoice by its own id, which must derive from the link's", () => {
+    const link = `0x${"ef".repeat(32)}`;
+    const optionId = optionIdOf(link, BigInt(terms.chainId), terms.token);
+    const option: Invoice = {
+      ...invoice,
+      invoiceId: link,
+      optionId,
+      receiveAddress: receiveAddress({
+        ...terms,
+        invoiceId: optionId,
+        amount: 1_250_000_000n,
+        expiresAt: BigInt(Date.parse(terms.expiresAt) / 1000),
+        settleDeadline: BigInt(Date.parse(terms.settleDeadline) / 1000),
+        intendedChainId: 84532n,
+      }),
+    };
+    expect(checkedReceiveAddress(option, link)).toBe(option.receiveAddress);
+    // Another real invoice's terms under this link: their id does not derive from the link's.
+    expect(checkedReceiveAddress({ ...invoice, invoiceId: link }, link)).toBeNull();
   });
 
   it("gives none for terms the API would never create, even when they compute to the address", () => {
@@ -151,7 +188,7 @@ describe("checkedReceiveAddress", () => {
       const consistent = {
         ...inv,
         receiveAddress: receiveAddress({
-          invoiceId: inv.invoiceId,
+          invoiceId: inv.optionId,
           recipient: inv.recipient,
           token: inv.token,
           amount: BigInt(inv.amount),

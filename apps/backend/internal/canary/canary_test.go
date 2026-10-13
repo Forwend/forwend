@@ -25,6 +25,8 @@ const (
 	expiresAt = 1893456000 // 2030-01-01
 	deadline  = expiresAt + 86400
 	wrong     = "0x3333333333333333333333333333333333333333"
+	// The pay link of a payer-chooses invoice that has id as one of its options.
+	payID = "0x2c0ffee0000000000000000000000000000000000000000000000000000000cd"
 )
 
 // line is the invoice as the database lists it on the canary's stdin.
@@ -33,10 +35,13 @@ var line = fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil", id, chaintest.ChainID,
 
 // setup is what one case serves and configures.
 type setup struct {
-	rpc2, codeHash, pageAddress, qrAddress, network string
-	chainKey                                        uint64
-	api                                             map[string]any
+	rpc2, codeHash, pageAddress, qrAddress, network, payID string
+	chainKey                                               uint64
+	api                                                    map[string]any
 }
+
+// option is the api's first listed option, the one the line names.
+func (s setup) option() map[string]any { return s.api["options"].([]map[string]any)[0] }
 
 func TestCheck(t *testing.T) {
 	a, b := chaintest.Start(t), chaintest.Start(t)
@@ -65,7 +70,20 @@ func TestCheck(t *testing.T) {
 		alert  string
 	}{
 		{name: "addresses match"},
-		{name: "api address changed", change: func(s *setup) { s.api["receiveAddress"] = wrong }, alert: "api shows " + wrong},
+		{name: "api address changed", change: func(s *setup) { s.option()["receiveAddress"] = wrong },
+			alert: "api shows " + wrong},
+		{name: "api amount changed", change: func(s *setup) { s.option()["amount"] = "1" }, alert: "api amount 1"},
+		{name: "api lists no such option", change: func(s *setup) { s.option()["optionId"] = payID },
+			alert: "api lists no option " + id},
+		{name: "option of a payer-chooses invoice", change: func(s *setup) {
+			s.payID = payID
+			s.api["invoiceId"] = payID
+		}},
+		{name: "page of a payer-chooses invoice shows another option", change: func(s *setup) {
+			s.payID = payID
+			s.api["invoiceId"] = payID
+			s.pageAddress = wrong
+		}, alert: fmt.Sprintf("pay page shows [%s]", wrong)},
 		{name: "api recipient changed", change: func(s *setup) { s.api["recipient"] = wrong }, alert: "api recipient " + wrong},
 		{name: "api factory changed", change: func(s *setup) { s.api["factory"] = wrong }, alert: "api factory " + wrong},
 		{name: "page address changed", change: func(s *setup) { s.pageAddress = wrong },
@@ -82,17 +100,23 @@ func TestCheck(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := setup{rpc2: b.URL, codeHash: codeHash, pageAddress: want, qrAddress: want, network: "Anvil (local)",
-				chainKey: chaintest.ChainID,
+				chainKey: chaintest.ChainID, payID: id,
 				api: map[string]any{"invoiceId": id, "chainId": chaintest.ChainID, "token": token, "amount": amount,
 					"recipient": recipient, "factory": factory, "receiveAddress": want,
-					"expiresAt": "2030-01-01T00:00:00Z", "settleDeadline": "2030-01-02T00:00:00Z"}}
+					"expiresAt": "2030-01-01T00:00:00Z", "settleDeadline": "2030-01-02T00:00:00Z",
+					"options": []map[string]any{{"optionId": id, "chainId": chaintest.ChainID, "token": token,
+						"amount": amount, "receiveAddress": want}}}}
 			if tc.change != nil {
 				tc.change(&s)
 			}
-			origin := serve(t, maps.Clone(s.api), s.pageAddress, qrPath(t, s.qrAddress), s.network)
+			origin := serve(t, s.payID, maps.Clone(s.api), s.pageAddress, qrPath(t, s.qrAddress), s.network)
 			cfg := config.Canary{APIURL: origin, WebURL: origin, Factory: factory, FactoryCodeHash: s.codeHash,
 				RPCURLs: map[uint64][2]string{s.chainKey: {a.URL, s.rpc2}}, PageScript: script}
-			alerts := canary.Check(context.Background(), cfg, []string{line})
+			input := line
+			if s.payID != id {
+				input += " " + s.payID
+			}
+			alerts := canary.Check(context.Background(), cfg, []string{input})
 			if tc.alert == "" && len(alerts) != 0 {
 				t.Fatalf("got alerts %q", alerts)
 			}
@@ -132,15 +156,20 @@ func TestImportsNoAppCode(t *testing.T) {
 	}
 }
 
-// serve answers the api's GET /v1/invoices/<id> with api, and /pay/<id> with a page laid out like the real one that
+// serve answers the api's GET /v1/invoices/<pay> with api, and /pay/<pay> with a page laid out like the real one that
 // shows address and a QR code drawn as qr after the network-confirm gate and a choice of how to pay (Change opens the
-// choices again), or a closed invoice without the gate when address is "".
-func serve(t *testing.T, api map[string]any, address, qr, network string) string {
+// choices again), or a closed invoice without the gate when address is "". An option's page must be asked for by
+// ?option=<id>.
+func serve(t *testing.T, pay string, api map[string]any, address, qr, network string) string {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if pay != id && r.URL.Path == "/pay/"+pay && r.URL.Query().Get("option") != id {
+			http.NotFound(w, r)
+			return
+		}
 		switch r.URL.Path {
-		case "/v1/invoices/" + id:
+		case "/v1/invoices/" + pay:
 			_ = json.NewEncoder(w).Encode(api)
-		case "/pay/" + id:
+		case "/pay/" + pay:
 			page := `<!doctype html><main><section aria-labelledby="pay-amount"><h2 id="pay-amount">Amount due</h2>` +
 				`<p>2.50</p><p>USDC</p><p>` + network + `</p></section>`
 			if address != "" {

@@ -194,7 +194,11 @@ paths:
         (factory.predict). The same key with the same values returns the stored invoice with 200; with other values, 409.
         The invoice gets the profile's next number in the same transaction (D-50): no gaps, and a repeat returns the
         same number. The insert also copies the profile's billing details as issuer (null without them). The number,
-        title, note, due date, sender name, client and issuer never change after creation.
+        title, note, due date, sender name, client and issuer never change after creation. Send chainId, token and
+        amount for one fixed token and network, or amountUsd alone to let the payer choose (R-56): the invoice then
+        accepts every enabled token on every chain the worker watches, each as its own option with the amount in its
+        decimals at 1 USD per stablecoin (D-75), its own on-chain id and receive address (D-76). Each option counts
+        toward the profile's limits on open receive addresses.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -788,8 +792,14 @@ components:
     CreateInvoiceRequest:
       type: object
       additionalProperties: false
-      required: [chainId, token, amount]
+      description: Either chainId, token and amount (fixed), or amountUsd alone (payer chooses).
       properties:
+        amountUsd:
+          type: string
+          pattern: "^[0-9]{1,60}(\\.[0-9]{1,18})?$"
+          description: |
+            Payer chooses: the amount in USD, above 0, such as "12.50". 422 when an accepted token's decimals can't
+            hold it exactly.
         chainId: { type: integer, minimum: 1, maximum: 9223372036854775807 }
         token:
           type: string
@@ -864,8 +874,28 @@ components:
                 entry). null before.
             deposits:
               type: array
-              description: Transfers to the receive address that are not reorged, in chain order. Empty on create.
+              description: |
+                Transfers to the receive address (the shown option's) that are not reorged, in chain order. Empty on
+                create.
               items: { $ref: "#/components/schemas/Deposit" }
+            options:
+              type: array
+              description: |
+                Every token and network the invoice accepts, ordered by chain and symbol: one for a fixed invoice. Each
+                has its own on-chain id (in its terms instead of invoiceId), amount and receive address; recipient,
+                expiresAt and settleDeadline are the invoice's.
+              items:
+                type: object
+                required: [optionId, chainId, network, token, symbol, decimals, amount, receiveAddress]
+                properties:
+                  optionId: { $ref: "#/components/schemas/InvoiceId" }
+                  chainId: { type: integer }
+                  network: { type: string, description: The chain's name, such as base-sepolia. }
+                  token: { $ref: "#/components/schemas/Address" }
+                  symbol: { type: string }
+                  decimals: { type: integer, minimum: 0 }
+                  amount: { $ref: "#/components/schemas/Uint256" }
+                  receiveAddress: { $ref: "#/components/schemas/Address" }
             settlementWait:
               description: |
                 Only in the owner's responses (create and the profile's GET); the public GET leaves it out. Why a paid
@@ -884,11 +914,24 @@ components:
                     secondsLeft: { type: [integer, "null"], minimum: 0 }
     InvoiceSummary:
       type: object
-      required: [invoiceId, number, title, note, dueDate, senderName, issuer, chainId, token, amount, recipient, factory,
-        receiveAddress, expiresAt, settleDeadline, paymentStatus, settlementStatus, refundStatus, settlementTxHash,
-        createdAt]
+      required: [invoiceId, optionId, optionLocked, number, title, note, dueDate, senderName, issuer, chainId, token,
+        amount, recipient, factory, receiveAddress, expiresAt, settleDeadline, paymentStatus, settlementStatus,
+        refundStatus, settlementTxHash, createdAt]
+      description: |
+        With several options (payer chooses), the terms and statuses are the current option's: the one that received
+        money first, else the first listed.
       properties:
-        invoiceId: { $ref: "#/components/schemas/InvoiceId" }
+        invoiceId:
+          allOf: [{ $ref: "#/components/schemas/InvoiceId" }]
+          description: The pay link's id. GET with an option's id answers this invoice.
+        optionId:
+          allOf: [{ $ref: "#/components/schemas/InvoiceId" }]
+          description: The on-chain id in the terms below; invoiceId for a fixed invoice.
+        optionLocked:
+          type: boolean
+          description: |
+            An option received money, so it is the invoice's for good; money sent to any other option is held for the
+            payer (D-76).
         number:
           type: integer
           minimum: 1

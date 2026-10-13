@@ -107,6 +107,18 @@ R-19 and R-42; the full schema is in openapi.yaml.
   `finalizing` (`secondsLeft` estimates the chain time until the settle is final), `retrying` and `dailyLimit` (the
   user's sponsored settlements for 24 hours are used up; both with `until`, the next try) and `refused`. It comes from
   the intent's status and the wait kind the signer stores with it, never from log text.
+- Payer chooses (R-56, D-75, D-76): create with `amountUsd` alone (a decimal like `"12.50"`) instead of `chainId`,
+  `token` and `amount`. The invoice accepts every enabled token on every enabled chain the worker already watches
+  (others would miss payments, SEC-02), each at 1 USD per token: the amount in the token's decimals, 422 when they
+  can't hold it exactly. Each option is an `invoices` row of its own with its own on-chain id (the first random, the
+  others `keccak256(abi.encode(first id, chain id, token))`, so the pay page can tie them to the link), terms and
+  receive address, so the watcher, ledger and signer treat it as any invoice; the first row is the invoice (its id is the pay
+  link, its number and details are the invoice's). Each option counts toward the profile's open and daily limits.
+  Reads add `optionId` (the on-chain id in the shown terms), `optionLocked` and, on a read alone, `options` (each
+  `{optionId, chainId, network, token, symbol, decimals, amount, receiveAddress}`). Until an option has money the
+  terms shown are the first option's; the first option the ledger sees money on becomes the invoice's for good
+  (`chosen_id`), and money on any other is booked to `payer_held`. A GET with an option's id answers its invoice.
+  Lists, activity and search show each invoice once, with the current option (`invoices_current` view).
 - The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due date, `senderName` and
   `issuer` (who bills them; the issuer's own business details) but no `client`: the id is a bearer link, so it returns
   only what the payer needs (OWASP API Security Top 10 2023, API3). Create, list and the profile's GET, which only the
@@ -127,7 +139,9 @@ answer 404 `invoice_not_found` the same way.
   (name and chain id) and the exact amount with the token's symbol and decimals, never cut. Network names and
   explorers are a copy of `apps/web/src/shared/chains/chains.ts`; a test fails when either copy changes alone.
 - `invoice.pdf`: created time, due date and checkout expiry, the note, and a box with the pay link
-  `PUBLIC_WEB_URL/pay/<invoiceId>` and its QR code (drawn as vector modules), then the invoice id.
+  `PUBLIC_WEB_URL/pay/<invoiceId>` and its QR code (drawn as vector modules), then the invoice id. While a
+  payer-chooses invoice has no option with money, the line says "Payer chooses" with the number of options and the
+  amount in USD, and the box tells the payer to pick the token and network.
 - `receipt.pdf`: 409 `invoice_not_paid` until `paymentStatus` is `paid` (it stays paid once settled). Adds the paid
   and settled times; under Payments each confirmed deposit's amount, block time, full tx hash and "View on
   <explorer>" link; under Settlement its status and `settlementTxHash` the same way; and the pay link with its QR code,
@@ -201,7 +215,8 @@ seconds (when the next token is back) and runs nothing else.
 - `POST /v1/invoices/{invoiceId}/recheck` (Check status, R-55) reads a chain RPC, so it is limited in the api: one
   check per invoice every 30 s, kept in Postgres so every replica agrees (`invoice_rechecks.checked_at`), and a
   per-process bucket of 1 a second, 10 at once, for everyone together. Both answer 429 with `Retry-After`. A chain that
-  can't be read answers 503 `network_unavailable`. A rescan is asked only when the address holds more than is
+  can't be read answers 503 `network_unavailable`. Until an option has money it checks every option's address (the
+  payer may have paid any); the answer is an option holding more than recorded, else the shown one. A rescan is asked only when the address holds more than is
   recorded and no rescan finished in the last 10 minutes, so money no log explains (Arc native USDC) doesn't start a
   full rescan on every press.
 - The other public routes (`GET /v1/invoices/{invoiceId}` and both PDFs) have no limit in the api. Next's `/api` rewrite does

@@ -1,8 +1,9 @@
-// The canary's browser (R-51): `node canary-pay-page.ts <web origin>` reads invoice ids from stdin, opens each
-// /pay/<id> as a payer would, passes the network-confirm gate, picks each way to pay in turn and prints one JSON line
-// per id with the amount panel's text, every address the send step shows and whether each QR code encodes the address
-// shown, or why none is shown. It reads only the DOM and imports nothing from src/: the canary must not share the page's code. Keep uqr at
-// the version ui-web uses.
+// The canary's browser (R-51): `node canary-pay-page.ts <web origin>` reads ids from stdin (an invoice id, or
+// `<id>?option=<option id>` for one option of a payer-chooses invoice), opens each /pay/<id> as a payer would, passes
+// the network-confirm gate, picks each way to pay in turn and prints one JSON line per id with the amount panel's
+// text, every address the send step shows and whether each QR code encodes the address shown, or why none is shown.
+// It reads only the DOM and imports nothing from src/: the canary must not share the page's code. Keep uqr at the
+// version ui-web uses.
 import { text } from "node:stream/consumers";
 import { chromium, type Page } from "@playwright/test";
 import { encode } from "uqr";

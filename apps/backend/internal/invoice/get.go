@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Get reads an invoice by its on-chain id (0x + 64 hex).
+// Get reads an invoice by its on-chain id (0x + 64 hex); an option's id reads the invoice it belongs to.
 func (s *Service) Get(ctx context.Context, id string) (Invoice, error) {
 	return s.get(ctx, "", id)
 }
@@ -29,9 +29,13 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 	if len(id) != 66 || !strings.HasPrefix(id, "0x") || strings.Trim(id[2:], "0123456789abcdef") != "" {
 		return Invoice{}, ErrNotFound
 	}
-	inv, err := scanInvoice(s.pool.QueryRow(ctx, "SELECT "+invoiceColumns+
-		" FROM invoices WHERE id = $1 AND profile_id = coalesce(nullif($2, '')::uuid, profile_id)", id, profileID))
+	inv, err := scanInvoice(s.pool.QueryRow(ctx, "SELECT "+invoiceColumns+" FROM "+invoicesCurrent+
+		` WHERE id = (SELECT coalesce(main_id, id) FROM invoices WHERE id = $1)
+		  AND profile_id = coalesce(nullif($2, '')::uuid, profile_id)`, id, profileID))
 	if err != nil {
+		return Invoice{}, err
+	}
+	if inv.Options, err = s.options(ctx, inv.ID); err != nil {
 		return Invoice{}, err
 	}
 	// The last deposit that booked money to the creator is the one that completed the amount: later ones are held.
@@ -44,7 +48,7 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 		 WHERE ct.invoice_id = $3),
 		(SELECT created_at FROM ledger_transactions WHERE invoice_id = $3 AND kind = 'settlement')
 		FROM tokens t JOIN chains c ON c.chain_id = t.chain_id WHERE t.chain_id = $1 AND t.contract = $2`,
-		inv.ChainID, inv.Token, inv.ID).Scan(&inv.Symbol, &inv.Decimals, &inv.Network, &paidAt, &settledAt)
+		inv.ChainID, inv.Token, inv.OptionID).Scan(&inv.Symbol, &inv.Decimals, &inv.Network, &paidAt, &settledAt)
 	if err != nil {
 		return Invoice{}, fmt.Errorf("read invoice %s token, paid and settled times: %w", inv.ID, err)
 	}
@@ -79,7 +83,7 @@ func (s *Service) settlementWait(ctx context.Context, inv Invoice, head finality
 	var next time.Time
 	var signed *time.Time
 	err := s.pool.QueryRow(ctx, `SELECT status, wait, next_attempt_at, signed_at FROM settlement_intents
-		WHERE invoice_id = $1`, inv.ID).Scan(&status, &wait, &next, &signed)
+		WHERE invoice_id = $1`, inv.OptionID).Scan(&status, &wait, &next, &signed)
 	if errors.Is(err, pgx.ErrNoRows) {
 		// The ledger queues the intent in the same transaction as paid; none yet means the next round makes it.
 		return &SettlementWait{Kind: WaitSigning}, nil
@@ -112,7 +116,7 @@ func (s *Service) settlementWait(ctx context.Context, inv Invoice, head finality
 // deposits lists the invoice's transfers that are not reorged, with progress toward the chain's finalized block head.
 func (s *Service) deposits(ctx context.Context, inv Invoice, head finality.Block) ([]Deposit, error) {
 	rows, err := s.pool.Query(ctx, `SELECT tx_hash, log_index, from_address, amount::text, block_number, block_time, status
-		FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged' ORDER BY block_number, log_index`, inv.ID)
+		FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged' ORDER BY block_number, log_index`, inv.OptionID)
 	if err != nil {
 		return nil, fmt.Errorf("read invoice %s deposits: %w", inv.ID, err)
 	}
@@ -134,4 +138,23 @@ func (s *Service) deposits(ctx context.Context, inv Invoice, head finality.Block
 		out = append(out, d)
 	}
 	return out, rows.Err()
+}
+
+// options lists the invoice's accepted options, ordered by chain and symbol: one for a fixed invoice.
+func (s *Service) options(ctx context.Context, id string) ([]Option, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT i.id, i.chain_id, i.token_contract, t.symbol, t.decimals, c.name, i.amount::text, i.receive_address
+		FROM invoices i JOIN tokens t ON t.chain_id = i.chain_id AND t.contract = i.token_contract
+		JOIN chains c ON c.chain_id = i.chain_id
+		WHERE i.id = $1 OR i.main_id = $1 ORDER BY i.chain_id, t.symbol, i.token_contract`, id)
+	if err != nil {
+		return nil, fmt.Errorf("read invoice %s options: %w", id, err)
+	}
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Option, error) {
+		var o Option
+		var amount string
+		err := row.Scan(&o.ID, &o.ChainID, &o.Token, &o.Symbol, &o.Decimals, &o.Network, &amount, &o.ReceiveAddress)
+		o.Amount, _ = new(big.Int).SetString(amount, 10)
+		return o, err
+	})
 }

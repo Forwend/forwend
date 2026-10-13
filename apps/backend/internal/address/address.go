@@ -91,3 +91,13 @@ func mustHex(s string) []byte {
 func mustHex20(s string) [20]byte {
 	return [20]byte(mustHex(s))
 }
+
+// OptionID is the on-chain id of a payer-chooses invoice's further option (R-56): keccak256(abi.encode(invoice id,
+// chain id, token)). The pay page recomputes it, so an option's address stays tied to the
+// link's id as a fixed invoice's is.
+func OptionID(invoiceID [32]byte, chainID uint64, token [20]byte) [32]byte {
+	words := make([]byte, 64)
+	binary.BigEndian.PutUint64(words[24:32], chainID)
+	copy(words[44:64], token[:])
+	return [32]byte(keccak(invoiceID[:], words))
+}

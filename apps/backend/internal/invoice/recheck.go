@@ -35,8 +35,9 @@ type Recheck struct {
 	NextAt            time.Time
 }
 
-// Recheck reads the invoice's receive address on chain and, when it holds more than the recorded transfers, asks the
-// worker to rescan it (D-77). It reads only: it never signs, never books and never moves a cursor.
+// Recheck reads the invoice's receive addresses on chain (every option's until one has money) and, for each that holds
+// more than its recorded transfers, asks the worker to rescan it (D-77). It reads only: it never signs, never books
+// and never moves a cursor.
 func (s *Service) Recheck(ctx context.Context, id string, balanceOf ledger.BalanceOf) (Recheck, error) {
 	inv, err := s.Get(ctx, id)
 	if err != nil {
@@ -58,10 +59,36 @@ func (s *Service) Recheck(ctx context.Context, id string, balanceOf ledger.Balan
 	if err != nil {
 		return Recheck{}, fmt.Errorf("start invoice %s check: %w", inv.ID, err)
 	}
-	onChain, _, err := balanceOf(ctx, inv.ChainID, inv.Token, inv.ReceiveAddress)
+	// Before an option has money the payer may have paid any of them; after, only the chosen one takes payments.
+	var found Recheck
+	for _, o := range inv.Options {
+		if inv.OptionLocked && o.ID != inv.OptionID {
+			continue
+		}
+		r, err := s.recheckOption(ctx, o, balanceOf)
+		if err != nil {
+			return Recheck{}, err
+		}
+		// What the page shows: an option holding more than recorded, else the current option.
+		if (o.ID == inv.OptionID && found.OnChain == nil) || r.OnChain.Cmp(r.Recorded) > 0 {
+			found = r
+		}
+	}
+	found.NextAt = checked.Add(RecheckEvery).UTC()
+	return found, nil
+}
+
+// recheckOption reads one option's receive address and asks for its rescan when it holds more than recorded.
+func (s *Service) recheckOption(ctx context.Context, o Option, balanceOf ledger.BalanceOf) (Recheck, error) {
+	onChain, _, err := balanceOf(ctx, o.ChainID, o.Token, o.ReceiveAddress)
 	if err != nil {
 		// Redacted: an RPC error can carry the provider URL with its key.
-		return Recheck{}, fmt.Errorf("%w: read invoice %s balance: %s", ErrChainUnavailable, inv.ID, chain.Redact(err))
+		return Recheck{}, fmt.Errorf("%w: read invoice %s balance: %s", ErrChainUnavailable, o.ID, chain.Redact(err))
+	}
+	// The main row's check is already there; an option gets its own row to hold its rescan.
+	if _, err := s.pool.Exec(ctx, "INSERT INTO invoice_rechecks (invoice_id) VALUES ($1) ON CONFLICT DO NOTHING",
+		o.ID); err != nil {
+		return Recheck{}, fmt.Errorf("start invoice %s check: %w", o.ID, err)
 	}
 	var recordedText string
 	var rescanning, recentlyRescanned bool
@@ -69,18 +96,18 @@ func (s *Service) Recheck(ctx context.Context, id string, balanceOf ledger.Balan
 		SELECT coalesce((SELECT sum(amount) FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged'), 0)::text,
 		       rescan_requested_at IS NOT NULL,
 		       coalesce(rescanned_at > now() - make_interval(secs => $2), false)
-		FROM invoice_rechecks WHERE invoice_id = $1`, inv.ID, RescanAgainAfter.Seconds()).
+		FROM invoice_rechecks WHERE invoice_id = $1`, o.ID, RescanAgainAfter.Seconds()).
 		Scan(&recordedText, &rescanning, &recentlyRescanned)
 	if err != nil {
-		return Recheck{}, fmt.Errorf("read invoice %s recorded transfers: %w", inv.ID, err)
+		return Recheck{}, fmt.Errorf("read invoice %s recorded transfers: %w", o.ID, err)
 	}
 	recorded, _ := new(big.Int).SetString(recordedText, 10)
 	if onChain.Cmp(recorded) > 0 && !rescanning && !recentlyRescanned {
 		if _, err := s.pool.Exec(ctx, `UPDATE invoice_rechecks SET rescan_requested_at = now(), rescan_from_block = NULL
-			WHERE invoice_id = $1`, inv.ID); err != nil {
-			return Recheck{}, fmt.Errorf("ask for invoice %s rescan: %w", inv.ID, err)
+			WHERE invoice_id = $1`, o.ID); err != nil {
+			return Recheck{}, fmt.Errorf("ask for invoice %s rescan: %w", o.ID, err)
 		}
 		rescanning = true
 	}
-	return Recheck{OnChain: onChain, Recorded: recorded, Rescanning: rescanning, NextAt: checked.Add(RecheckEvery).UTC()}, nil
+	return Recheck{OnChain: onChain, Recorded: recorded, Rescanning: rescanning}, nil
 }

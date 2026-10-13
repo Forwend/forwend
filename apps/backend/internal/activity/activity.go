@@ -92,11 +92,11 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 		       settlement_status, tx_hash FROM (
 		    SELECT 'invoice' AS kind, created_at AS at, id AS key, id AS invoice_id, chain_id,
 		           token_contract AS token, amount, payment_status AS status, settlement_status,
-		           coalesce((SELECT s.tx_hash FROM settlement_intents s WHERE s.invoice_id = invoices.id
+		           coalesce((SELECT s.tx_hash FROM settlement_intents s WHERE s.invoice_id = invoices.option_id
 		                     AND s.status = 'confirmed'), '') AS tx_hash, `+invoice.StatusFilterSQL+` AS status_filter
-		    FROM invoices WHERE profile_id = $1
+		    FROM invoices_current invoices WHERE profile_id = $1
 		    UNION ALL
-		    SELECT 'deposit', t.created_at, t.id::text, t.invoice_id, t.chain_id, t.token_contract, t.amount, t.status,
+		    SELECT 'deposit', t.created_at, t.id::text, coalesce(i.main_id, i.id), t.chain_id, t.token_contract, t.amount, t.status,
 		           '', t.tx_hash, CASE WHEN t.status = 'confirmed' THEN 'paid' ELSE 'open' END
 		    FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
 		    WHERE i.profile_id = $1 AND t.status <> 'reorged'

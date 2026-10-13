@@ -32,17 +32,33 @@ var (
 	predict   = crypto.Keccak256([]byte("predict((bytes32,address,address,uint256,uint64,uint64,uint256))"))[:4]
 )
 
-// terms is one stdin line, as the database holds the invoice:
-// id chain_id recipient_address token_contract amount expires_at settle_deadline.
+// terms is one stdin line, as the database holds the invoice or one of its accepted options:
+// id chain_id recipient_address token_contract amount expires_at settle_deadline symbol network [pay_id].
+// PayID is the invoice an option belongs to (its pay link); for a fixed invoice it is ID.
 type terms struct {
-	ID, Recipient, Token, Amount, Symbol, Network string
-	ChainID, ExpiresAt, SettleDeadline            uint64
+	ID, PayID, Recipient, Token, Amount, Symbol, Network string
+	ChainID, ExpiresAt, SettleDeadline                   uint64
 }
 
 // apiInvoice is the part of GET /v1/invoices/{id} the canary compares.
 type apiInvoice struct {
 	InvoiceID, Recipient, Token, Amount, ExpiresAt, SettleDeadline, Factory, ReceiveAddress string
 	ChainID                                                                                 uint64
+	Options                                                                                 []apiOption
+}
+
+type apiOption struct {
+	OptionID, Token, Amount, ReceiveAddress string
+	ChainID                                 uint64
+}
+
+// page is what the page script is asked for: the pay link, and for an option of a payer-chooses invoice the
+// option shown.
+func (t terms) page() string {
+	if t.PayID == t.ID {
+		return t.ID
+	}
+	return t.PayID + "?option=" + t.ID
 }
 
 type payPage struct {
@@ -84,14 +100,14 @@ func Check(ctx context.Context, c config.Canary, lines []string) []string {
 			continue
 		}
 		invoices = append(invoices, t)
-		ids = append(ids, t.ID)
+		ids = append(ids, t.page())
 	}
 	pages, err := readPayPages(ctx, c, ids)
 	if err != nil {
 		alerts = append(alerts, fmt.Sprintf("pay page script: %v", err))
 	}
 	for _, t := range invoices {
-		page, ok := pages[t.ID]
+		page, ok := pages[t.page()]
 		if !ok {
 			page.Error = "no result from the page script"
 		}
@@ -125,9 +141,24 @@ func checkFactory(ctx context.Context, c config.Canary, cl *rpc.Client, chainID 
 }
 
 func checkInvoice(ctx context.Context, c config.Canary, rpcs map[uint64][2]*rpc.Client, t terms, page payPage) error {
-	api, err := readAPI(ctx, c.APIURL+"/v1/invoices/"+t.ID)
+	api, err := readAPI(ctx, c.APIURL+"/v1/invoices/"+t.PayID)
 	if err != nil {
 		return fmt.Errorf("api: %w", err)
+	}
+	// The option's own terms, beside the invoice's shared ones.
+	if api.InvoiceID != t.PayID {
+		return fmt.Errorf("api invoiceId %s, want %s", api.InvoiceID, t.PayID)
+	}
+	found := false
+	for _, o := range api.Options {
+		if o.OptionID == t.ID {
+			api.InvoiceID, api.ChainID, api.Token, api.Amount, api.ReceiveAddress = o.OptionID, o.ChainID, o.Token,
+				o.Amount, o.ReceiveAddress
+			found = true
+		}
+	}
+	if !found {
+		return fmt.Errorf("api lists no option %s", t.ID)
 	}
 	if err := sameTerms(c, t, api); err != nil {
 		return err
@@ -197,17 +228,20 @@ func sameTerms(c config.Canary, t terms, api apiInvoice) error {
 
 func parseTerms(line string) (terms, error) {
 	f := strings.Fields(line)
-	if len(f) != 9 {
-		return terms{}, errors.New("want: id chain_id recipient token amount expires_at settle_deadline symbol network")
+	if len(f) == 9 {
+		f = append(f, f[0])
 	}
-	t := terms{ID: f[0], Recipient: strings.ToLower(f[2]), Token: strings.ToLower(f[3]), Amount: f[4], Symbol: f[7],
-		Network: f[8]}
+	if len(f) != 10 {
+		return terms{}, errors.New("want: id chain_id recipient token amount expires_at settle_deadline symbol network [pay_id]")
+	}
+	t := terms{ID: f[0], PayID: f[9], Recipient: strings.ToLower(f[2]), Token: strings.ToLower(f[3]), Amount: f[4],
+		Symbol: f[7], Network: f[8]}
 	var err1, err2, err3 error
 	t.ChainID, err1 = strconv.ParseUint(f[1], 10, 64)
 	t.ExpiresAt, err2 = strconv.ParseUint(f[5], 10, 64)
 	t.SettleDeadline, err3 = strconv.ParseUint(f[6], 10, 64)
 	amount, ok := new(big.Int).SetString(t.Amount, 10)
-	if !invoiceID.MatchString(t.ID) || !common.IsHexAddress(t.Recipient) || !common.IsHexAddress(t.Token) || !ok ||
+	if !invoiceID.MatchString(t.ID) || !invoiceID.MatchString(t.PayID) || !common.IsHexAddress(t.Recipient) || !common.IsHexAddress(t.Token) || !ok ||
 		amount.Sign() < 0 || amount.BitLen() > 256 || amount.String() != t.Amount || errors.Join(err1, err2, err3) != nil {
 		return terms{}, errors.New("a value is malformed")
 	}

@@ -397,3 +397,54 @@ func TestInvoiceNumbers(t *testing.T) {
 		wantCode(t, err, codeRaise, column)
 	}
 }
+
+// An option row (R-56, D-76) shares its main invoice's number, recipient, expiry and request, moves no counter, and
+// the main row's chosen option is set once, to one of its own options.
+func TestInvoiceOptions(t *testing.T) {
+	conn, profile := moneyDB(t)
+	ctx := context.Background()
+	option := func(id, main int, receive, recipient string, expires int64) error {
+		_, err := conn.Exec(ctx, `
+			INSERT INTO invoices (id, main_id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
+			    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
+			    request_hash)
+			VALUES ($1, $2, $3, 84532, 'evm', $4, 5000000, $5::bigint, $5::bigint + 86400, $6, 'evm_create2', $7, $8, 'key-1', $9)`,
+			hex32(id), hex32(main), profile, token, expires, recipient, hex20(2), receive, make([]byte, 32))
+		return err
+	}
+	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
+	must(t, option(2, 1, hex20(101), hex20(1), 1800000000))
+	must(t, insertInvoice(conn, profile, 3, hex20(102), "key-3", "5000000"))
+	for id, want := range map[int]int64{1: 1, 2: 1, 3: 2} {
+		var got int64
+		must(t, conn.QueryRow(ctx, "SELECT number FROM invoices WHERE id = $1", hex32(id)).Scan(&got))
+		if got != want {
+			t.Fatalf("invoice %d has number %d, want %d", id, got, want)
+		}
+	}
+	wantCode(t, option(4, 1, hex20(103), hex20(7), 1800000000), codeRaise, "another recipient")
+	wantCode(t, option(4, 1, hex20(103), hex20(1), 1800000001), codeRaise, "another expiry")
+	wantCode(t, option(4, 2, hex20(103), hex20(1), 1800000000), codeRaise, "an option of an option")
+	wantCode(t, insertInvoice(conn, profile, 4, hex20(103), "key-1", "5000000"), codeUnique, "a second main row with the key")
+
+	choose := func(main, chosen int) error {
+		_, err := conn.Exec(ctx, "UPDATE invoices SET chosen_id = $2 WHERE id = $1", hex32(main), hex32(chosen))
+		return err
+	}
+	wantCode(t, choose(1, 3), codeRaise, "another invoice as the chosen option")
+	wantCode(t, choose(2, 2), codeCheck, "a chosen option on an option row")
+	must(t, choose(1, 2))
+	wantCode(t, choose(1, 1), codeRaise, "choosing again")
+	_, err := conn.Exec(ctx, "UPDATE invoices SET main_id = NULL WHERE id = $1", hex32(2))
+	wantCode(t, err, codeRaise, "leaving the group")
+	must(t, choose(3, 3))
+
+	// The view shows each invoice once, with the chosen option's terms.
+	var current string
+	var count int
+	must(t, conn.QueryRow(ctx, `SELECT (SELECT option_id FROM invoices_current WHERE id = $1),
+		(SELECT count(*) FROM invoices_current)`, hex32(1)).Scan(&current, &count))
+	if current != hex32(2) || count != 2 {
+		t.Fatalf("invoices_current: invoice 1 shows option %s of %d rows, want %s of 2", current, count, hex32(2))
+	}
+}

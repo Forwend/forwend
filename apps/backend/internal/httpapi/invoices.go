@@ -19,6 +19,7 @@ type createInvoiceBody struct {
 	ChainID    uint64 `json:"chainId"`
 	Token      string `json:"token"`
 	Amount     string `json:"amount"`
+	AmountUSD  string `json:"amountUsd"`
 	ExpiresIn  *int64 `json:"expiresIn"`
 	Title      string `json:"title"`
 	Note       string `json:"note"`
@@ -33,6 +34,8 @@ type createInvoiceBody struct {
 
 type invoiceJSON struct {
 	InvoiceID        string      `json:"invoiceId"`
+	OptionID         string      `json:"optionId"`
+	OptionLocked     bool        `json:"optionLocked"`
 	Number           int64       `json:"number"`
 	Title            *string     `json:"title"`
 	Note             *string     `json:"note"`
@@ -76,6 +79,19 @@ type invoiceDetailJSON struct {
 	PaidAt    *string       `json:"paidAt"`
 	SettledAt *string       `json:"settledAt"`
 	Deposits  []depositJSON `json:"deposits"`
+	Options   []optionJSON  `json:"options"`
+}
+
+// optionJSON is one token and network the invoice accepts, with the terms that differ per option.
+type optionJSON struct {
+	OptionID       string `json:"optionId"`
+	ChainID        uint64 `json:"chainId"`
+	Network        string `json:"network"`
+	Token          string `json:"token"`
+	Symbol         string `json:"symbol"`
+	Decimals       int    `json:"decimals"`
+	Amount         string `json:"amount"`
+	ReceiveAddress string `json:"receiveAddress"`
 }
 
 // ownerInvoiceJSON is an invoice read by its owner: the detail plus why a paid invoice's money has not reached the
@@ -123,7 +139,8 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 			return
 		}
 		inv, created, err := invoices.Create(r.Context(), r.PathValue("profileId"), key, invoice.Request{
-			ChainID: body.ChainID, Token: body.Token, Amount: body.Amount, ExpiresInSeconds: body.ExpiresIn,
+			ChainID: body.ChainID, Token: body.Token, Amount: body.Amount, AmountUSD: body.AmountUSD,
+			ExpiresInSeconds: body.ExpiresIn,
 			Details: invoice.Details{Title: body.Title, Note: body.Note, DueDate: body.DueDate,
 				ClientName: body.Client.Name, ClientEmail: body.Client.Email, ClientAddress: body.Client.Address,
 				SenderName: body.SenderName},
@@ -198,7 +215,7 @@ func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
 // toInvoiceJSON writes "" as null; withClient is for the owner only.
 func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 	out := invoiceJSON{
-		InvoiceID: inv.ID, Number: inv.Number, Title: orNull(inv.Title), Note: orNull(inv.Note),
+		InvoiceID: inv.ID, OptionID: inv.OptionID, OptionLocked: inv.OptionLocked, Number: inv.Number, Title: orNull(inv.Title), Note: orNull(inv.Note),
 		DueDate: orNull(inv.DueDate), SenderName: orNull(inv.SenderName), ChainID: inv.ChainID, Token: inv.Token, Amount: inv.Amount.String(),
 		Recipient: inv.Recipient, Factory: inv.Factory, ReceiveAddress: inv.ReceiveAddress,
 		ExpiresAt: inv.ExpiresAt.Format(time.RFC3339), SettleDeadline: inv.SettleDeadline.Format(time.RFC3339),
@@ -218,7 +235,12 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 
 func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON {
 	out := invoiceDetailJSON{invoiceJSON: toInvoiceJSON(inv, withClient), PaidAt: orNullTime(inv.PaidAt),
-		SettledAt: orNullTime(inv.SettledAt), Deposits: []depositJSON{}}
+		SettledAt: orNullTime(inv.SettledAt), Deposits: []depositJSON{}, Options: []optionJSON{}}
+	for _, o := range inv.Options {
+		out.Options = append(out.Options, optionJSON{OptionID: o.ID, ChainID: o.ChainID, Network: o.Network,
+			Token: o.Token, Symbol: o.Symbol, Decimals: o.Decimals, Amount: o.Amount.String(),
+			ReceiveAddress: o.ReceiveAddress})
+	}
 	for _, d := range inv.Deposits {
 		out.Deposits = append(out.Deposits, depositJSON{TxHash: d.TxHash, LogIndex: d.LogIndex, From: d.From,
 			Amount: d.Amount.String(), BlockNumber: d.BlockNumber, BlockTime: d.BlockTime.Format(time.RFC3339),

@@ -154,7 +154,12 @@ Built in `internal/database/migrations` (R-17); Postgres enforces the rules belo
   the insert trigger (D-50); it and the details (`title`, `note`, `due_date`, `client_name`, `client_email`,
   `client_address`) never change. The insert trigger also copies the profile's billing details into `issuer_name`,
   `issuer_address`, `issuer_country`, `issuer_tax_id` and `issuer_email` (all null without details), which never
-  change either.
+  change either. Payer chooses (R-56, migration 00020): each further accepted option is a row with `main_id` = the
+  invoice's first row, which must share its profile, recipient, factory, expiry, settle deadline and request; it takes
+  the main row's number, no details and no issuer, and moves no counter (number and idempotency key are unique among
+  main rows only). The main row's `chosen_id` names the option that received money first: set once, to one of its
+  own options. The `invoices_current` view gives one row per invoice with the main row's number and details and the
+  current option's terms and statuses.
 - `chain_transfers`: `block_hash`, `block_number`, `block_time`, status `detected|confirmed|reorged`. A transfer must go to
   its invoice's receive address, for the invoice's token, on its chain (foreign key).
 - `wallet_transfers` (R-38): enabled-token `Transfer` logs from or to a profile wallet, one row per wallet and direction
@@ -364,6 +369,10 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
 - Books each `confirmed`, not yet booked transfer in chain order: `receiver` gets the transfer amount; what is still
   owed up to the invoice amount goes to `recipient_payable`, the rest to `payer_held`. A late deposit (block time
   after `expires_at`) and any deposit after the invoice is final go entirely to `payer_held` (D-24, D-26).
+- Payer chooses (D-76): an option's processing also locks its main row. The first option with any transfer that is
+  not reorged becomes `chosen_id`; deposits on any other option are booked entirely to `payer_held`, as late money
+  is, so that option is never paid or settled and expires like any invoice. A choice made on a detected transfer that
+  a reorg later drops stays.
 - Payment status: `open` → `detected` (a transfer seen) → `partially_paid` → `paid` when the full amount is owed and
   a second RPC's `balanceOf` covers every booked deposit (D-15). An invoice owed in full never expires; it waits for
   the second RPC. Otherwise it becomes `expired` or `expired_partially_paid` once the chain's finalized block time
