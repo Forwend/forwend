@@ -3496,7 +3496,7 @@
         "R-70: backend test checks activity invoice items carry optionCount; e2e checks an Activity row of a client-chooses invoice shows USD and Any network"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -3573,12 +3573,19 @@
         "taskHash": "b2b06ce106668482",
         "filesHash": "5454ea40b85bb043",
         "proof": {
-          "1": "backend: invoices_options_test checks the activity invoice item of a client-chooses invoice has optionCount 2; e2e: privy navigation.spec checks the Activity row of a client-chooses invoice reads 9.00 USD with Any network and no USDC, while a fixed one keeps USDC on Base Sepolia"
-        }
+          "1": "backend: activity optionCount; e2e: Activity row in USD with Any network"
+        },
+        "commit": "1db41cc",
+        "doneAt": "2026-10-13T20:54:45Z"
       },
       "branch": "fix/f156-activity-shows-client-chooses-invoices-i",
       "baseCommit": "785b8d64faae67e9731d94881df7541ff1430b6f",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f156-activity-shows-client-chooses-invoices-i",
+        "base": "main"
+      }
     },
     {
       "id": "F157",
