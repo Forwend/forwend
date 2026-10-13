@@ -560,7 +560,7 @@
         "Every component declares its props as a named interface ComponentNameProps on a function declaration; no React.FC and no I-prefixed names; typecheck and unit pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "typecheck"
       ],
@@ -627,12 +627,19 @@
         "taskHash": "0d993815e513cd62",
         "filesHash": "512aff4b54c1efc8",
         "proof": {
-          "1": "typecheck: tsc passes in the web app and the kit after 42 exported components moved their inline props to an interface <Component>Props (41 app files, 1 kit file); a second dry run finds none left; grep finds no React.FC and no I-prefixed interface; lint and unit pass"
-        }
+          "1": "typecheck: props interfaces, no inline exported props left"
+        },
+        "commit": "d3c7ac2",
+        "doneAt": "2026-10-13T23:53:55Z"
       },
       "branch": "refactor/f172-react-components-declare-their-props-one",
       "baseCommit": "6ea0db3291b8a6cecc41727e364344db7ef0f2fb",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f172-react-components-declare-their-props-one",
+        "base": "main"
+      }
     },
     {
       "id": "F173",
