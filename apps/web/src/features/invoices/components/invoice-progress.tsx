@@ -8,22 +8,26 @@ import {
   INVOICE_STEPS,
   INVOICE_TIMELINE,
   type Invoice,
+  type InvoiceStep,
   invoiceProgress,
 } from "@/features/invoices/invoices";
 import { INVOICE_COPY as COPY } from "@/features/invoices/invoices-copy";
 
 /**
  * The status timeline. While a payment confirms, its bar fills as blocks pass of those it had to wait (R-73); until one
- * passes it shows a sweep. `waiting` false shows no step in progress (a closed checkout).
+ * passes it shows a sweep. `waiting` false shows no step in progress (a closed checkout). `steps` picks which steps
+ * show: the payer's end at Paid (R-68).
  */
 export function InvoiceTimeline({
   invoice,
   label,
   waiting = true,
+  steps: shownSteps = INVOICE_TIMELINE,
 }: {
   invoice: Invoice;
   label: string;
   waiting?: boolean;
+  steps?: readonly InvoiceStep[];
 }) {
   const { done: reached, current, blocksLeft, blocksTotal } = invoiceProgress(invoice);
   // A fast chain can go from nothing to paid in one read: the steps still show one after another (R-62).
@@ -38,7 +42,8 @@ export function InvoiceTimeline({
     .filter((d) => !d.late)
     .reduce((sum, d) => sum + BigInt(d.amount), 0n);
   const share = Number((received * 1000n) / BigInt(invoice.amount)) / 1000;
-  const steps = INVOICE_TIMELINE.map((step, i) => {
+  const steps = shownSteps.map((step) => {
+    const i = INVOICE_TIMELINE.indexOf(step);
     const partlyPaid = partly && step === INVOICE_STEPS.paid;
     return {
       label: partlyPaid ? COPY.partlyPaid : COPY.steps[step],

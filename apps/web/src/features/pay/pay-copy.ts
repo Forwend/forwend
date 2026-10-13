@@ -19,6 +19,8 @@ export const PAY_COPY = {
   stale: "Can't reach Forwend right now. This page keeps retrying.",
   loading: "Loading invoice",
   payWith: "Pay with",
+  payingWith: "Paying with",
+  progress: "Payment progress",
   network: "Network",
   token: "Token",
   usd: "USD",
@@ -41,8 +43,9 @@ export const PAY_COPY = {
   // One status line (R-68); confirming adds its block count (ConfirmingStatus).
   states: {
     [PAY_STATES.waiting]: () => "Waiting for payment…",
-    [PAY_STATES.confirming]: () => "Payment received · ",
-    [PAY_STATES.checking]: () => "Payment received · final check",
+    // The steps say it arrived; the line counts the blocks (ConfirmingStatus).
+    [PAY_STATES.confirming]: () => "Confirming",
+    [PAY_STATES.checking]: () => "Final check",
     [PAY_STATES.partial]: ({ received, total, remaining }) =>
       `${received} of ${total} received. Send the remaining ${remaining}.`,
     [PAY_STATES.paid]: () => "Paid",
