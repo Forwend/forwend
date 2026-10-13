@@ -13,7 +13,6 @@ export interface AppSession {
   openReceive: () => void;
   /** Request money: a personal profile's request sheet. */
   openRequest: () => void;
-  openProfiles: () => void;
 }
 
 export const AppSessionContext = createContext<AppSession | null>(null);

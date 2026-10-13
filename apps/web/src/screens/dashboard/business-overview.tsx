@@ -18,7 +18,6 @@ import { ReceivedChart } from "@/features/balances/charts/received-chart";
 import { EstimateHint } from "@/features/balances/components/estimate-hint";
 import { NetworksCard } from "@/features/balances/components/networks-card";
 import { useAppSession } from "@/features/profiles/app-session";
-import { ProfilePill } from "@/features/profiles/components/profile-pill";
 import { PROFILE_KINDS, profileLabel } from "@/features/profiles/profile";
 import { TRANSACTION_DIRECTIONS, TRANSACTIONS_MAX } from "@/features/transactions/transactions";
 import { useGetTransactionsQuery } from "@/features/transactions/transactions-api";
@@ -42,7 +41,7 @@ const BUSINESS_COPY = {
 const RECENT = 8;
 
 export function BusinessOverview() {
-  const { profile, openProfiles } = useAppSession();
+  const { profile } = useAppSession();
   const [range, setRange] = useState<HistoryRange>(DEFAULT_RANGE);
   const days = HISTORY_RANGES[range];
   const rangeName = BALANCES_COPY.rangeNames[range];
@@ -84,14 +83,11 @@ export function BusinessOverview() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex min-w-0 flex-col items-start gap-2 lg:contents">
-        <ProfilePill name={profileLabel(profile)} onClick={openProfiles} />
-        {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
-        <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
-          <span className="sr-only">{profileLabel(profile)} </span>
-          {BUSINESS_COPY.overview}
-        </h1>
-      </div>
+      {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
+      <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
+        <span className="sr-only">{profileLabel(profile)} </span>
+        {BUSINESS_COPY.overview}
+      </h1>
 
       {profile.kind === PROFILE_KINDS.freelancer ? <OverviewChecklist /> : null}
 

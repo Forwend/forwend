@@ -5,7 +5,6 @@ import { BalanceHero } from "@/features/balances/components/balance-hero";
 import { MoneyFlowCard } from "@/features/balances/components/money-flow-card";
 import { NetworksCard } from "@/features/balances/components/networks-card";
 import { useAppSession } from "@/features/profiles/app-session";
-import { ProfilePill } from "@/features/profiles/components/profile-pill";
 import { profileLabel } from "@/features/profiles/profile";
 import { TRANSACTIONS_COPY } from "@/features/transactions/transactions-copy";
 import { TransactionsTable } from "@/features/transactions/transactions-table";
@@ -15,14 +14,13 @@ import { LIVE_QUERY } from "@/shared/config/refresh";
 const RECENT = 6;
 
 export function PersonalOverview() {
-  const { profile, openReceive, openRequest, openProfiles } = useAppSession();
+  const { profile, openReceive, openRequest } = useAppSession();
   const balances = useGetBalancesQuery(profile.profileId, LIVE_QUERY);
   return (
     <div className="flex flex-col gap-4">
       <h1 className="sr-only">{profileLabel(profile)} overview</h1>
       <BalanceHero
         profileId={profile.profileId}
-        profile={<ProfilePill name={profileLabel(profile)} onClick={openProfiles} />}
         balances={balances.currentData ?? null}
         failed={balances.isError}
         onRetry={balances.refetch}

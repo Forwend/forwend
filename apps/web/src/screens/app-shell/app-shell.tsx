@@ -57,13 +57,10 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     (profileId: string) => {
       setActiveId(profileId);
       if (userId) saveChosenProfileId(userId, profileId);
-      // An invoice belongs to the profile it was made in: the new profile's list, not a dead end. Every other page
-      // stays, showing the new profile's data.
-      if (pathname.startsWith(`${APP_ROUTES.invoices}/`) && pathname !== APP_ROUTES.newInvoice) {
-        router.push(APP_ROUTES.invoices);
-      }
+      // Another profile starts at its own overview (R-76).
+      router.push(APP_ROUTES.home);
     },
-    [userId, pathname, router],
+    [userId, router],
   );
 
   useEffect(() => {
@@ -98,7 +95,6 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             openReceive: () => setReceiving(true),
             // A request is a form of its own, on a page (R-71).
             openRequest: () => router.push(APP_ROUTES.newInvoice),
-            openProfiles: () => setChoosing(true),
           }
         : null,
     [profiles, active, switchProfile, router],

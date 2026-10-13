@@ -3,7 +3,7 @@
 import { Button, SegmentedControl, Skeleton } from "@forwend/ui-web";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import Image from "next/image";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import {
   DEFAULT_RANGE,
   HISTORY_FIELDS,
@@ -25,7 +25,6 @@ import { LIVE_QUERY } from "@/shared/config/refresh";
 
 export function BalanceHero({
   profileId,
-  profile,
   balances,
   failed,
   onRetry,
@@ -33,7 +32,6 @@ export function BalanceHero({
   onRequest,
 }: {
   profileId: string;
-  profile: ReactNode;
   balances: Balances | null;
   failed: boolean;
   onRetry: () => void;
@@ -110,7 +108,6 @@ export function BalanceHero({
         <div className="grid flex-1 gap-6 p-4 sm:p-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-10">
           <div className="flex flex-col items-center gap-6 lg:items-start lg:justify-between">
             <div className="flex w-full flex-col items-center gap-3 lg:items-start">
-              {profile}
               <h2 id="balance-title" className="text-sm font-medium text-muted">
                 {BALANCES_COPY.totalBalance}
               </h2>
