@@ -163,7 +163,8 @@ for a distinct family of real components. Avoid one flat folder for every compon
 packages/ui-web/src/
   components/
     buttons/                   button, action-button
-    forms/                     text-field, select-field, checkbox, switch, code-input, email-capture
+    forms/                     text-field, select-field, checkbox, switch, code-input, email-capture,
+                               date-picker/ (calendar, date-picker, iso-date)
     navigation/                tabs, nav-pill, theme-switch, segmented-control
     overlays/                  dialog, sheet, menu, tooltip
     feedback/                  toast, empty-state, spinner, skeleton, shimmer, dot-loader, success-check

@@ -38,6 +38,18 @@ test.describe("accessibility", () => {
       await page.goto(`${KIT_URL}/kit`);
       await expect(page.locator("html")).toHaveAttribute("data-theme", colorScheme);
       expect(await blockingViolations(page)).toEqual([]);
+      // R-59: an open date picker, its calendar grid and the keyboard path into it.
+      await page.getByRole("button", { name: /^Due date \(optional\)/ }).click();
+      const grid = page.getByRole("grid", { name: "Due date (optional)" });
+      await expect(grid.locator("button[tabindex='0']")).toBeFocused();
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("Enter");
+      await expect(grid).toHaveCount(0);
+      await expect(
+        page.getByRole("button", { name: /^Due date \(optional\) Nov 3, 2026/ }),
+      ).toBeFocused();
+      await page.getByRole("button", { name: /^Due date \(optional\)/ }).click();
+      expect(await blockingViolations(page)).toEqual([]);
       await context.close();
     });
   }

@@ -8,9 +8,11 @@ import {
   BUTTON_VARIANTS,
   Button,
   CAPTURE_STATUS,
+  Calendar,
   Checkbox,
   CodeBlock,
   CodeInput,
+  DatePicker,
   Dialog,
   EmailCapture,
   EmptyState,
@@ -45,6 +47,11 @@ import { ArrowDownLeft, ArrowUpRight, Landmark, Moon, Plus } from "lucide-react"
 import { useState } from "react";
 import { CTA } from "@/features/waitlist/waitlist";
 import { KitGroup } from "@/screens/kit/kit-section";
+
+// A fixed day, so the kit shows the same months in every screenshot.
+const SAMPLE_TODAY = "2026-10-13";
+const SAMPLE_MONTH_LATER = "2026-11-13";
+const isWeekend = (iso: string) => [0, 6].includes(new Date(`${iso}T00:00:00Z`).getUTCDay());
 
 const noop = () => {};
 
@@ -89,6 +96,7 @@ export function ComponentsShowcase() {
   const [range, setRange] = useState("1M");
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [dueDate, setDueDate] = useState<string | null>("2026-11-02");
   const [code, setCode] = useState("826");
   return (
     <div className="flex flex-col gap-10">
@@ -167,6 +175,34 @@ export function ComponentsShowcase() {
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen} title="Receive">
           <p className="text-muted">A bottom sheet on phones, a centered panel from sm up.</p>
         </Sheet>
+      </KitGroup>
+      <KitGroup title="Dates">
+        <div className="grid w-full gap-6 md:grid-cols-3">
+          <DatePicker
+            label="Due date (optional)"
+            value={dueDate}
+            onChange={setDueDate}
+            clearLabel="Clear due date"
+            hint="Shown to the client."
+          />
+          <DatePicker
+            label="Weekdays in the next month"
+            value={null}
+            onChange={() => {}}
+            min={SAMPLE_TODAY}
+            max={SAMPLE_MONTH_LATER}
+            isDisabled={isWeekend}
+          />
+          <DatePicker
+            label="Checkout closes on"
+            value={null}
+            onChange={() => {}}
+            error="Pick a day within the next year."
+          />
+        </div>
+        <div className="rounded-lg border border-line bg-surface p-3">
+          <Calendar label="Calendar, with a chosen day" value="2026-10-21" onChange={() => {}} />
+        </div>
       </KitGroup>
       <KitGroup title="Fields">
         <div className="grid w-full gap-6 md:grid-cols-3">
