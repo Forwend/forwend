@@ -638,11 +638,9 @@ test("the overview chart shrinks with the window and the page never scrolls side
   await context.close();
 });
 
-// Switching profile keeps the page, except an invoice's page: that invoice is the old profile's, so the new
-// profile's list opens instead of a dead end.
-test("switching profile keeps the page, and leaves an invoice's page for the new profile's list", async ({
-  browser,
-}) => {
+// R-76: another profile starts at its own overview, from any page; on phones the tab bar's Profiles switches, so the
+// overview has no profile pill.
+test("switching profile opens the new profile's overview", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
     storageState: session,
@@ -663,9 +661,10 @@ test("switching profile keeps the page, and leaves an invoice's page for the new
   };
   // Loaded and hydrated before the menu is used.
   await page.goto("/app/balances", { waitUntil: "networkidle" });
-  await switchTo("Personal");
-  await switchTo("Merchant");
-  await expect(page).toHaveURL("/app/balances");
+  const start =
+    (await sidebar.getByRole("button", { name: /^Switch profile/ }).textContent()) ?? "";
+  await switchTo(start.includes("Personal") ? "Merchant" : "Personal");
+  await expect(page).toHaveURL("/app");
 
   await switchTo("Personal");
   await page.goto("/app/invoices", { waitUntil: "networkidle" });
@@ -675,9 +674,13 @@ test("switching profile keeps the page, and leaves an invoice's page for the new
     await first.click();
     await expect(page).toHaveURL(/\/app\/invoices\/0x/);
     await switchTo("Merchant");
-    await expect(page).toHaveURL("/app/invoices");
-    await expect(page.getByRole("heading", { level: 1, name: "Invoices" })).toBeAttached();
+    await expect(page).toHaveURL("/app");
   }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    page.getByRole("main").getByRole("button", { name: /Merchant|Personal/ }),
+  ).toHaveCount(0);
   await context.close();
 });
 

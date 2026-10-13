@@ -37,8 +37,7 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
 - The app shell: on desktop a sidebar with the profile switcher on top (a menu to switch or add a profile), the
   profile type's pages (`APP_NAV`) and the account at the bottom (theme, sign out); on phones a header with the
   switcher (a bottom sheet) and a tab bar (Overview, Balances, Receive in the center, Activity, Account). Switching
-  profile keeps the page and shows the new profile's data, except an invoice's page, which opens the new profile's
-  list (the invoice is the old profile's). `/app` is the
+  profile opens the new profile's overview, `/app` (R-76). `/app` is the
   dashboard: the total balance (one token in its unit, several as a USD estimate) with Send, Receive, Transfer and
   Withdraw (only Receive works; the others say why when pressed), pending and held only when not zero, Networks (each
   chain and token), and recent activity. Receive opens a sheet where the user picks the token, then the network
