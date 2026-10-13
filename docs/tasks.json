@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 145,
+  "nextId": 146,
   "tasks": [
     {
       "id": "F121",
@@ -2425,6 +2425,104 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f144-check-status-still-answers-when-one-opti",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F145",
+      "type": "fix",
+      "behavior": "An invoice paid in full never shows as partly paid while the second RPC catches up",
+      "acceptance": [
+        "R-21: a failing ledger test first: the full amount booked while the second RPC's finalized block lags leaves the invoice detected, not partially_paid; then paid once the second RPC agrees; a real partial payment still shows partially_paid"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-21"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T18:00:51Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 102.6,
+            "log": "docs/runs/F145-20261013T180051Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": "docs/runs/F145-20261013T180051Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F145-20261013T180051Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F145-20261013T180051Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F145-20261013T180051Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 92.1,
+            "log": "docs/runs/F145-20261013T180051Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.0,
+            "log": "docs/runs/F145-20261013T180051Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 131.3,
+            "log": "docs/runs/F145-20261013T180051Z-e2e.log"
+          }
+        ],
+        "taskHash": "d2b1b032bad0a09e",
+        "filesHash": "8f5f4a30c0e681cb",
+        "proof": {
+          "1": "backend: ledger test reproduced partially_paid, now detected then paid; real partial payments unchanged"
+        },
+        "commit": "b93193c",
+        "doneAt": "2026-10-13T18:06:53Z"
+      },
+      "branch": "fix/f145-an-invoice-paid-in-full-never-shows-as-p",
+      "baseCommit": "f3eba8ae363642c7bf9b58f341386b9df529b8ba",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f145-an-invoice-paid-in-full-never-shows-as-p",
         "base": "main"
       }
     }
