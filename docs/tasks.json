@@ -291,7 +291,7 @@
         "R-61: backend test checks receipt.pdf has the payments and no Settled date, Settlement heading or settlement hash"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -367,12 +367,19 @@
         "taskHash": "8a6e01c148a892dc",
         "filesHash": "e6940a377863fe00",
         "proof": {
-          "1": "backend: invoices_pdf_test TestReceiptPDF checks the receipt has the paid time and both payments with full hashes and Basescan links, and no text with settle in it; after settlement the paid receipt's ETag still matches (304)"
-        }
+          "1": "backend: receipt text has no settlement; ETag unchanged after settling"
+        },
+        "commit": "967df50",
+        "doneAt": "2026-10-13T22:04:07Z"
       },
       "branch": "fix/f163-the-receipt-pdf-leaves-out-the-settlemen",
       "baseCommit": "3b375f162da12ba1c0c7dcc8acd589d8693f94ea",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f163-the-receipt-pdf-leaves-out-the-settlemen",
+        "base": "main"
+      }
     },
     {
       "id": "F164",
