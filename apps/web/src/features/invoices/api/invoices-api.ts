@@ -1,5 +1,12 @@
+import { z } from "zod";
 import type { StatusFilter } from "@/features/activity/types/activity";
 import { INVOICES_PAGE_SIZE } from "@/features/invoices/constants/invoices";
+import {
+  createInvoiceBodySchema,
+  invoiceSchema,
+  invoicesPageSchema,
+  recheckSchema,
+} from "@/features/invoices/schemas/invoices";
 import type {
   CreateInvoiceBody,
   Invoice,
@@ -38,16 +45,19 @@ export const invoicesApi = apiSlice
             ...(pageParam ? { cursor: pageParam } : {}),
           },
         }),
+        responseSchema: invoicesPageSchema,
         providesTags: [INVOICES_TAG],
       }),
       /** Public: terms, statuses and deposits, without the client. */
       getInvoice: build.query<Invoice, string>({
         query: (invoiceId) => `/v1/invoices/${encodeURIComponent(invoiceId)}`,
+        responseSchema: invoiceSchema,
       }),
       /** The owner's read: the public one plus the client; 404 for another profile's invoice. */
       getProfileInvoice: build.query<Invoice, { profileId: string; invoiceId: string }>({
         query: ({ profileId, invoiceId }) =>
           `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}`,
+        responseSchema: invoiceSchema,
       }),
       /** Check status: public, like the checkout read; the api allows one per invoice every 5 minutes. */
       recheckInvoice: build.mutation<Recheck, string>({
@@ -57,6 +67,7 @@ export const invoicesApi = apiSlice
           url: `/v1/invoices/${encodeURIComponent(invoiceId)}/recheck`,
           method: "POST",
         }),
+        responseSchema: recheckSchema,
       }),
       /** One invoice per idempotency key, so a retried request never makes two. */
       createInvoice: build.mutation<
@@ -69,6 +80,12 @@ export const invoicesApi = apiSlice
           headers: { "Idempotency-Key": idempotencyKey },
           body,
         }),
+        argSchema: z.object({
+          profileId: z.guid(),
+          idempotencyKey: z.string().min(1),
+          body: createInvoiceBodySchema,
+        }),
+        responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
     }),

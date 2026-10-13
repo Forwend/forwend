@@ -4,13 +4,18 @@ import type { Me, Profile } from "@/features/profiles/types/profile";
 import { makeStore } from "@/store/store";
 
 const personal: Profile = {
-  profileId: "p-1",
+  profileId: "11111111-1111-1111-1111-111111111111",
   kind: "personal",
   name: null,
   walletAddress: "0x1111111111111111111111111111111111111111",
   createdAt: "2026-10-10T00:00:00Z",
 };
-const merchant: Profile = { ...personal, profileId: "p-2", kind: "merchant", name: "Shop" };
+const merchant: Profile = {
+  ...personal,
+  profileId: "22222222-2222-2222-2222-222222222222",
+  kind: "merchant",
+  name: "Shop",
+};
 
 // The app calls the API same-origin ("/api/…"); Node's Request needs an absolute URL.
 const NodeRequest = globalThis.Request;

@@ -1,3 +1,11 @@
+import { z } from "zod";
+import {
+  billingDetailsBodySchema,
+  billingDetailsSchema,
+  createProfileBodySchema,
+  meSchema,
+  profileSchema,
+} from "@/features/profiles/schemas/profiles";
 import type { BillingDetails, BillingDetailsBody } from "@/features/profiles/types/billing-details";
 import type { Me, Profile, ProfileKind } from "@/features/profiles/types/profile";
 import { apiSlice } from "@/shared/api/api-slice";
@@ -12,6 +20,7 @@ export const profilesApi = apiSlice.injectEndpoints({
     /** POST /v1/me: signs the user up on the first call, then returns their profiles (oldest first). */
     signUp: build.query<Me, void>({
       query: () => ({ url: "/v1/me", method: "POST" }),
+      responseSchema: meSchema,
     }),
     /** POST /v1/profiles: one profile per idempotency key, so a retried request never makes two. */
     createProfile: build.mutation<
@@ -24,6 +33,8 @@ export const profilesApi = apiSlice.injectEndpoints({
         headers: { "Idempotency-Key": idempotencyKey },
         body,
       }),
+      argSchema: z.object({ idempotencyKey: z.string().min(1), body: createProfileBodySchema }),
+      responseSchema: profileSchema,
       // The new profile joins the list at once, without asking for the list again.
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
@@ -46,12 +57,15 @@ export const profilesApi = apiSlice.injectEndpoints({
       }),
       transformResponse: (data: BillingDetails, meta) =>
         meta?.response?.status === NOT_FOUND ? null : data,
+      responseSchema: billingDetailsSchema.nullable(),
     }),
     saveBillingDetails: build.mutation<
       BillingDetails,
       { profileId: string; body: BillingDetailsBody }
     >({
       query: ({ profileId, body }) => ({ url: billingDetailsUrl(profileId), method: "PUT", body }),
+      argSchema: z.object({ profileId: z.guid(), body: billingDetailsBodySchema }),
+      responseSchema: billingDetailsSchema,
       async onQueryStarted({ profileId }, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;

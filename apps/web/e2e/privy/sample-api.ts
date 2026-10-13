@@ -28,6 +28,7 @@ export const sampleInvoice = (
       decimals: 6,
       amount: `${number}000000`,
       receiveAddress: `0x${"c".repeat(40)}`,
+      deposits: [],
     },
   ],
   number,
@@ -36,6 +37,8 @@ export const sampleInvoice = (
   dueDate: null,
   client: { name: client, email: null, address: null },
   issuer: null,
+  senderName: null,
+  returnUrl: null,
   chainId: 84532,
   token: USDC,
   amount: `${number}000000`,
@@ -47,6 +50,14 @@ export const sampleInvoice = (
   settlementStatus,
   settlementTxHash: settlementStatus === "settled" ? hash("f") : null,
   createdAt: new Date(NOW - number * 3_600_000).toISOString(),
+  // The detail read's own fields; a list answer leaves them out.
+  paidAt:
+    paymentStatus === "paid" ? new Date(NOW - number * 3_600_000 + 600_000).toISOString() : null,
+  settledAt:
+    settlementStatus === "settled"
+      ? new Date(NOW - number * 3_600_000 + 1_200_000).toISOString()
+      : null,
+  nextCheckAt: null,
 });
 export const CONFIRMING_INVOICE = sampleInvoice(
   4,
@@ -185,6 +196,7 @@ export async function mockApi(page: Page, lists: SampleLists = SAMPLE_LISTS) {
     if (path === "/v1/me") {
       return route.fulfill({
         json: {
+          onboardedAt: "2026-09-02T00:00:00Z",
           profiles: [
             {
               profileId: MERCHANT_ID,

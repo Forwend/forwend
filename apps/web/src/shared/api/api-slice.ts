@@ -21,5 +21,19 @@ export const apiSlice = createApi({
       },
     }),
   ),
+  // A response that breaks its schema is a failed request, shown like any other failure: the page never draws money
+  // from a value it cannot trust. The log names the endpoint and the fields, never the values.
+  catchSchemaFailure: (error) => ({
+    status: "CUSTOM_ERROR" as const,
+    error: `${error.schemaName} failed validation`,
+  }),
+  onSchemaFailure: (error, info) => {
+    const fields = error.issues.map((issue) =>
+      (issue.path ?? [])
+        .map((part) => (typeof part === "object" ? String(part.key) : String(part)))
+        .join("."),
+    );
+    console.error(`${info.endpoint}: ${error.schemaName} failed at ${fields.join(", ")}`);
+  },
   endpoints: () => ({}),
 });
