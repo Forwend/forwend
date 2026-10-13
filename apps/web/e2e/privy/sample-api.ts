@@ -78,6 +78,7 @@ const sampleDeposit = (inv: typeof CONFIRMING_INVOICE, status: string, blocksLef
   status,
   late: false,
   blocksLeft,
+  blocksTotal: blocksLeft,
   secondsLeft: blocksLeft * 3,
 });
 const DEPOSITS: Record<string, object[]> = {

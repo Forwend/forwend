@@ -432,6 +432,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
     status,
     late: false,
     blocksLeft,
+    blocksTotal: 120,
     secondsLeft: blocksLeft * 3,
   });
   const main = page.getByRole("main");
@@ -453,6 +454,16 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(payments.locator("[data-status]")).toHaveCount(0);
   await expect(main.getByText(/test network|no real value/i)).toHaveCount(0); // R-72
   expect(await blockingViolations(page)).toEqual([]);
+  // A reload halfway keeps the count: the API says how many blocks it had to wait (R-73).
+  body = {
+    ...OPEN_INVOICE,
+    paymentStatus: "detected",
+    deposits: [deposit("detected", OPEN_INVOICE.amount, 60)],
+  };
+  await page.reload();
+  await expect(main.getByRole("status").filter({ hasText: /^Confirming/ })).toHaveText(
+    "Confirming (60/120) · about 3 min left",
+  );
 
   // Partly paid: the Paid step itself says so, tinted and half full, and the amount says what came in.
   body = {

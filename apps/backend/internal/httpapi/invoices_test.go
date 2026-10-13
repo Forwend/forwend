@@ -421,6 +421,43 @@ func TestGetInvoiceNotFound(t *testing.T) {
 	}
 }
 
+// The m of "Confirming (n/m)" counts from the finalized block when the deposit was first seen, so it stays the same as
+// the head moves and after a reload (R-73); a row from before that was kept counts from what is left.
+func TestGetInvoiceKeepsTheConfirmingTotal(t *testing.T) {
+	e := invoiceAPI(t)
+	created := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody)
+	id, receive := created.body["invoiceId"].(string), created.body["receiveAddress"].(string)
+	ctx := context.Background()
+	_, err := e.pool.Exec(ctx, `
+		WITH cur AS (UPDATE chain_cursors SET last_scanned_block = 1000, last_finalized_block = 980, last_finalized_time = 1
+		             WHERE chain_id = 84532)
+		INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index, block_hash,
+		    block_number, block_time, from_address, to_address, amount, status, detected_finalized_block)
+		VALUES (84532, 'evm', $1, $2, '0x' || repeat('01', 32), 0, '0x' || repeat('01', 32), 1000, 2, $3, $3, 1, 'detected', 900),
+		       (84532, 'evm', $1, $2, '0x' || repeat('02', 32), 1, '0x' || repeat('02', 32), 1000, 2, $3, $3, 1, 'detected', NULL)`,
+		usdc, id, receive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	counts := func() [][2]any {
+		var out [][2]any
+		for _, d := range e.get(t, id).body["deposits"].([]any) {
+			m := d.(map[string]any)
+			out = append(out, [2]any{m["blocksLeft"], m["blocksTotal"]})
+		}
+		return out
+	}
+	if got := counts(); !reflect.DeepEqual(got, [][2]any{{float64(20), float64(100)}, {float64(20), float64(20)}}) {
+		t.Fatalf("at finalized 980: %v", got)
+	}
+	if _, err := e.pool.Exec(ctx, "UPDATE chain_cursors SET last_finalized_block = 990 WHERE chain_id = 84532"); err != nil {
+		t.Fatal(err)
+	}
+	if got := counts(); !reflect.DeepEqual(got, [][2]any{{float64(10), float64(100)}, {float64(10), float64(10)}}) {
+		t.Fatalf("at finalized 990: %v", got)
+	}
+}
+
 // Terms settle() would refuse are refused here, before any payer sees the address: a wallet equal to the token.
 func TestCreateInvoiceRefusesUnsettleableTerms(t *testing.T) {
 	e := invoiceAPI(t)

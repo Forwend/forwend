@@ -165,6 +165,8 @@ type Deposit struct {
 	Status      string // detected or confirmed
 	Late        bool   // block time after expiresAt: held for the payer (D-26)
 	finality.Progress
+	// BlocksTotal is the blocks it had to wait when first seen, at least BlocksLeft: the m of "Confirming (n/m)" (R-73).
+	BlocksTotal uint64
 }
 
 // normalize checks the request values that need no database and returns them in canonical form: token and amount

@@ -104,6 +104,7 @@ const deposit: Deposit = {
   status: "detected",
   late: false,
   blocksLeft: 0,
+  blocksTotal: 0,
   secondsLeft: 0,
 };
 
@@ -114,14 +115,15 @@ describe("invoiceProgress", () => {
       ...open,
       paymentStatus: "detected",
       deposits: [
-        { ...deposit, blocksLeft: 4, secondsLeft: 50 },
-        { ...deposit, logIndex: 1, blocksLeft: 9, secondsLeft: 110 },
+        { ...deposit, blocksLeft: 4, blocksTotal: 30, secondsLeft: 50 },
+        { ...deposit, logIndex: 1, blocksLeft: 9, blocksTotal: 12, secondsLeft: 110 },
       ],
     };
     expect(invoiceProgress(confirming)).toEqual({
       done: 1,
       current: "confirming",
       blocksLeft: 9,
+      blocksTotal: 12,
       secondsLeft: 110,
     });
   });
@@ -153,7 +155,7 @@ describe("invoiceProgress", () => {
 });
 
 describe("confirmingProgress", () => {
-  it("fills as blocks pass against the most seen, and claims nothing before one passes", () => {
+  it("fills as blocks pass of those to wait, and claims nothing before one passes", () => {
     expect(confirmingProgress(544, 544)).toBeNull();
     expect(confirmingProgress(408, 544)).toBe(0.25);
     expect(confirmingProgress(0, 544)).toBe(1);
