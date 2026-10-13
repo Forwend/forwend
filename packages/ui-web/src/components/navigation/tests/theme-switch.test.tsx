@@ -25,6 +25,8 @@ describe("ThemeSwitch", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
     fireEvent.click(screen.getByRole("button"));
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    // Transitions are off only while the theme changes.
+    expect(document.head.querySelector("style")).toBeNull();
   });
 
   it("remembers the choice in localStorage", () => {

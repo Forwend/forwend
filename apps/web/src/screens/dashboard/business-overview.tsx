@@ -37,6 +37,8 @@ const BUSINESS_COPY = {
   pendingHint: "Paid to invoices, not in the wallet yet",
   atLeast: (n: number) => `${n}+`,
 } as const;
+// The full list with filters, search and export is the Transactions page.
+const RECENT = 8;
 
 export function BusinessOverview() {
   const { profile, openProfiles } = useAppSession();
@@ -49,7 +51,13 @@ export function BusinessOverview() {
     { profileId: profile.profileId, limit: TRANSACTIONS_MAX },
     LIVE_QUERY,
   );
+  // The chart keeps the last range's bars, dimmed, while the next loads; figures for the range wait for their own data.
   const received = history.data ? historySeries(history.data, HISTORY_FIELDS.received) : null;
+  const receivedNow = history.currentData
+    ? historySeries(history.currentData, HISTORY_FIELDS.received)
+    : null;
+  const balancesFailed = balances.isError && !balances.currentData;
+  const historyFailed = history.isError && !history.currentData;
 
   // Payments in over the range, counted from the latest 100 transfers; when those do not reach back to the start of
   // the range, the count shows as "100+". The range starts where the history's does: 00:00 UTC, `days` days back
@@ -91,7 +99,7 @@ export function BusinessOverview() {
 
       {profile.kind === PROFILE_KINDS.freelancer ? <OverviewChecklist /> : null}
 
-      {balances.isError && !balances.currentData ? (
+      {balancesFailed ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">
           {BALANCES_COPY.balancesFailed}
           <Button size="sm" variant="secondary" onClick={balances.refetch}>
@@ -101,16 +109,26 @@ export function BusinessOverview() {
       ) : null}
 
       <dl className="grid grid-cols-2 overflow-hidden rounded-md border border-line bg-surface lg:grid-cols-4 [&>div]:border-line [&>div:nth-child(n+3)]:border-t lg:[&>div:nth-child(n+3)]:border-t-0 [&>div:nth-child(even)]:border-l lg:[&>div:not(:first-child)]:border-l">
-        <Figure label={BUSINESS_COPY.balance} note={BALANCES_COPY.today}>
+        <Figure label={BUSINESS_COPY.balance} note={BALANCES_COPY.today} failed={balancesFailed}>
           {balances.currentData ? <Total cents={wallet} hint /> : null}
         </Figure>
-        <Figure label={BUSINESS_COPY.received} note={rangeName}>
-          {history.data ? <Total cents={received ? seriesTotal(received) : null} /> : null}
+        <Figure label={BUSINESS_COPY.received} note={rangeName} failed={historyFailed}>
+          {history.currentData ? (
+            <Total cents={receivedNow ? seriesTotal(receivedNow) : null} />
+          ) : null}
         </Figure>
-        <Figure label={BUSINESS_COPY.payments} note={rangeName}>
+        <Figure
+          label={BUSINESS_COPY.payments}
+          note={rangeName}
+          failed={latest.isError && !latest.data}
+        >
           {payments}
         </Figure>
-        <Figure label={BUSINESS_COPY.pending} note={BUSINESS_COPY.pendingHint}>
+        <Figure
+          label={BUSINESS_COPY.pending}
+          note={BUSINESS_COPY.pendingHint}
+          failed={balancesFailed}
+        >
           {balances.currentData ? <Total cents={pending} /> : null}
         </Figure>
       </dl>
@@ -127,7 +145,7 @@ export function BusinessOverview() {
             <span className="text-xs text-muted">{rangeName}</span>
           </div>
           <div className="h-64">
-            {history.isError && !history.data ? (
+            {historyFailed ? (
               <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">
                 {BALANCES_COPY.historyFailed}
                 <Button size="sm" variant="secondary" onClick={history.refetch}>
@@ -138,32 +156,59 @@ export function BusinessOverview() {
               <Skeleton className="h-full" />
             ) : !received ? (
               <p className="text-sm text-muted">{BALANCES_COPY.historyUnavailable}</p>
+            ) : seriesTotal(received) === 0n ? (
+              history.currentData ? (
+                <p className="grid h-full place-items-center text-sm text-muted">
+                  {BALANCES_COPY.noneReceived(rangeName)}
+                </p>
+              ) : (
+                <Skeleton className="h-full" />
+              )
             ) : (
               <ReceivedChart
                 series={received}
                 label={BALANCES_COPY.receivedOver(rangeName)}
-                className={`h-full transition-opacity duration-[var(--fw-duration-base)] ${history.isFetching ? "opacity-60" : ""}`}
+                className={`h-full transition-opacity duration-[var(--fw-duration-base)] ${history.isFetching && !history.currentData ? "opacity-60" : ""}`}
               />
             )}
           </div>
         </section>
         <div className="flex flex-col gap-4">
-          <NetworksCard balances={balances.currentData ?? null} />
+          <NetworksCard balances={balances.currentData ?? null} failed={balances.isError} />
           <MoneyFlowCard profileId={profile.profileId} />
         </div>
       </div>
 
-      <TransactionsTable profileId={profile.profileId} title={TRANSACTIONS_COPY.payments} />
+      <TransactionsTable
+        profileId={profile.profileId}
+        title={TRANSACTIONS_COPY.payments}
+        preview={RECENT}
+      />
     </div>
   );
 }
 
-function Figure({ label, note, children }: { label: string; note: string; children: ReactNode }) {
+function Figure({
+  label,
+  note,
+  failed,
+  children,
+}: {
+  label: string;
+  note: string;
+  failed: boolean;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex min-w-0 flex-col gap-1.5 px-4 py-4 sm:px-5">
+    <div className="@container flex min-w-0 flex-col gap-1.5 px-4 py-4 sm:px-5">
       <dt className="text-sm text-muted">{label}</dt>
-      <dd className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">
-        {children ?? <Skeleton className="h-8 w-28" />}
+      <dd className="text-[length:clamp(1.25rem,11cqi,1.5rem)] leading-tight font-semibold tracking-tight text-ink">
+        {children ??
+          (failed ? (
+            <span className="text-muted">—</span>
+          ) : (
+            <Skeleton className="h-[1.25em] w-28 max-w-full" />
+          ))}
       </dd>
       <dd className="truncate text-xs text-subtle">{note}</dd>
     </div>
@@ -173,10 +218,12 @@ function Figure({ label, note, children }: { label: string; note: string; childr
 function Total({ cents, hint = false }: { cents: bigint | null; hint?: boolean }) {
   if (cents === null) return <span className="text-muted">—</span>;
   return (
-    <span className="flex flex-wrap items-baseline gap-x-1.5">
-      {formatUsd(cents)}
-      <span className="text-sm font-medium text-muted">{USD}</span>
-      {hint ? <EstimateHint /> : null}
+    <span>
+      {formatUsd(cents)}{" "}
+      <span className="inline-flex items-center gap-1 text-sm font-medium whitespace-nowrap text-muted">
+        {USD}
+        {hint ? <EstimateHint /> : null}
+      </span>
     </span>
   );
 }

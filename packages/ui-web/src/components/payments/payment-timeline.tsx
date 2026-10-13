@@ -22,6 +22,10 @@ export interface TimelineStep {
 export interface PaymentTimelineProps {
   steps: readonly TimelineStep[];
   label: string;
+  /** Read after a complete step's label. */
+  doneLabel?: string;
+  /** Read after an upcoming step's label. */
+  notStartedLabel?: string;
 }
 
 // Each bar is a track with a fill that grows from the left, so a step filling or completing slides rather than jumps.
@@ -31,7 +35,12 @@ function fill(step: TimelineStep): number {
   return typeof step.progress === "number" ? Math.min(1, Math.max(0, step.progress)) : 1;
 }
 
-export function PaymentTimeline({ steps, label }: PaymentTimelineProps) {
+export function PaymentTimeline({
+  steps,
+  label,
+  doneLabel = ", done",
+  notStartedLabel = ", not started",
+}: PaymentTimelineProps) {
   return (
     <ol
       aria-label={label}
@@ -73,9 +82,16 @@ export function PaymentTimeline({ steps, label }: PaymentTimelineProps) {
               )}
             >
               {step.label}
+              {step.state === STEP_STATES.current ? null : (
+                <span className="sr-only">
+                  {step.state === STEP_STATES.complete ? doneLabel : notStartedLabel}
+                </span>
+              )}
             </span>
             {step.detail ? (
-              <span className="font-mono text-xs text-subtle">{step.detail}</span>
+              <span className="font-mono text-xs text-subtle [overflow-wrap:anywhere]">
+                {step.detail}
+              </span>
             ) : null}
           </li>
         );

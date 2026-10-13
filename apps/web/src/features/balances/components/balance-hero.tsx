@@ -42,12 +42,16 @@ export function BalanceHero({
 }) {
   const [range, setRange] = useState<HistoryRange>(DEFAULT_RANGE);
   const history = useGetBalanceHistoryQuery({ profileId, days: HISTORY_RANGES[range] }, LIVE_QUERY);
+  // The chart keeps the last range's line, dimmed, while the next loads; figures for the range wait for their own data.
   const series = history.data ? historySeries(history.data, HISTORY_FIELDS.balances) : null;
+  const current = history.currentData
+    ? historySeries(history.currentData, HISTORY_FIELDS.balances)
+    : null;
   const rangeName = BALANCES_COPY.rangeNames[range];
   const chartLabel = BALANCES_COPY.balanceOver(rangeName);
 
   const chart = (compact: boolean) =>
-    history.isError && !history.data ? (
+    history.isError && !history.currentData ? (
       <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">
         {BALANCES_COPY.historyFailed}
         <Button size="sm" variant="secondary" onClick={history.refetch}>
@@ -63,7 +67,7 @@ export function BalanceHero({
         series={series}
         label={chartLabel}
         compact={compact}
-        className={`h-full transition-opacity duration-[var(--fw-duration-base)] ${history.isFetching ? "opacity-60" : ""}`}
+        className={`h-full transition-opacity duration-[var(--fw-duration-base)] ${history.isFetching && !history.currentData ? "opacity-60" : ""}`}
       />
     );
   const rangeControl = (
@@ -112,10 +116,14 @@ export function BalanceHero({
               </h2>
               <div
                 aria-busy={!balances && !failed}
-                className="flex w-full flex-col items-center gap-2 lg:items-start"
+                className="@container flex w-full flex-col items-center gap-2 lg:items-start"
               >
                 <BalanceFigure balances={balances} failed={failed} onRetry={onRetry} />
-                {series ? <Change series={series} rangeName={rangeName} /> : null}
+                {current ? (
+                  <Change series={current} rangeName={rangeName} />
+                ) : history.currentData || history.isError ? null : (
+                  <Skeleton className="h-5 w-40" />
+                )}
               </div>
             </div>
             <MoneyActions onReceive={onReceive} onRequest={onRequest} />

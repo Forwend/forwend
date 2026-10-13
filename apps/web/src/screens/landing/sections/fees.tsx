@@ -25,9 +25,9 @@ export function Fees() {
         </div>
         <dl className="divide-y divide-line">
           {FEES.quote.lines.map((line) => (
-            <div key={line} className="flex items-center justify-between gap-4 py-3.5">
-              <dt className="text-ink">{line}</dt>
-              <dd className="text-sm text-subtle">{FEES.quote.pending}</dd>
+            <div key={line.label} className="flex items-center justify-between gap-4 py-3.5">
+              <dt className="shrink-0 text-ink">{line.label}</dt>
+              <dd className="text-right text-sm text-muted">{line.detail}</dd>
             </div>
           ))}
         </dl>

@@ -5,7 +5,10 @@ import {
   buttonClasses,
   COPY_STATUS,
   formatTokenAmount,
+  PAYMENT_STATUS,
+  PAYMENT_STATUSES,
   Skeleton,
+  shortAddress,
   useCopy,
 } from "@forwend/ui-web";
 import { Check, ChevronLeft, Copy, FileDown } from "lucide-react";
@@ -27,6 +30,7 @@ import {
   invoiceNumber,
   invoicePdfUrl,
   invoiceProgress,
+  invoiceStatus,
   tokenKey,
 } from "@/features/invoices/invoices";
 import { useGetInvoiceQuery, useGetProfileInvoiceQuery } from "@/features/invoices/invoices-api";
@@ -71,7 +75,7 @@ export function InvoiceDetail({
     <div className="flex flex-col gap-6">
       <Link
         href={APP_ROUTES.invoices}
-        className="-ml-1 inline-flex items-center gap-1 self-start rounded-sm px-1 text-sm text-muted hover:text-ink lg:hidden"
+        className="-ml-1 inline-flex h-11 items-center gap-1 self-start rounded-sm px-1 text-sm text-muted hover:text-ink lg:hidden"
       >
         <ChevronLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
         {request ? REQUESTS_COPY.invoices : COPY.back}
@@ -122,6 +126,24 @@ function Loaded({
   const amount = BigInt(invoice.amount);
   const client = mine?.client;
   const issuer = invoice.issuer;
+  const status = invoiceStatus(invoice);
+  // The pay link takes money only while these last; sharing it later only creates money held for a refund.
+  const payable = (
+    [
+      PAYMENT_STATUS.open,
+      PAYMENT_STATUS.partiallyPaid,
+      PAYMENT_STATUS.detected,
+      PAYMENT_STATUS.confirming,
+    ] as string[]
+  ).includes(status);
+  const untold = (
+    [
+      PAYMENT_STATUS.expired,
+      PAYMENT_STATUS.expiredPartiallyPaid,
+      PAYMENT_STATUS.partiallyPaid,
+      PAYMENT_STATUS.overpaid,
+    ] as string[]
+  ).includes(status);
 
   return (
     <>
@@ -166,20 +188,25 @@ function Loaded({
           {/* No details under the steps: a phone leaves each column too little room for them. */}
           <InvoiceTimeline invoice={invoice} label={COPY.progress} />
           <p role="status" className="text-sm text-ink empty:sr-only">
+            {/* The page has no status pill: the timeline cannot say expired or partial, so this line does. */}
             {current === INVOICE_STEPS.confirming ? (
               <ConfirmingStatus blocks={blocksLeft} seconds={secondsLeft} />
+            ) : untold ? (
+              PAYMENT_STATUSES[status].label
             ) : null}
           </p>
           <InvoiceDeposits invoice={invoice} token={token ?? null} />
         </div>
       </section>
 
-      <ShareLink
-        invoiceId={invoice.invoiceId}
-        hint={request ? NEW_REQUEST_COPY.shareHint : COPY.shareHint}
-      />
+      {payable ? (
+        <ShareLink
+          invoiceId={invoice.invoiceId}
+          hint={request ? NEW_REQUEST_COPY.shareHint : COPY.shareHint}
+        />
+      ) : null}
 
-      <div className="grid items-start gap-4 lg:grid-cols-3">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         <section aria-labelledby="invoice-details" className={PANEL}>
           <h2 id="invoice-details" className={PANEL_TITLE}>
             {COPY.details}
@@ -194,7 +221,9 @@ function Loaded({
             <Row term={COPY.created}>{TIME.format(new Date(invoice.createdAt))}</Row>
             {invoice.settlementTxHash ? (
               <Row term={COPY.settlement}>
-                <span className="font-mono break-all">{invoice.settlementTxHash}</span>{" "}
+                <span className="font-mono" title={invoice.settlementTxHash}>
+                  {shortAddress(invoice.settlementTxHash)}
+                </span>{" "}
                 <ExplorerLink
                   chainId={invoice.chainId}
                   txHash={invoice.settlementTxHash}
@@ -214,43 +243,45 @@ function Loaded({
           </dl>
         </section>
 
-        {request ? null : (
-          <section aria-labelledby="invoice-client" className={PANEL}>
-            <h2 id="invoice-client" className={PANEL_TITLE}>
-              {COPY.client}
+        <div className="flex flex-col gap-4">
+          {request ? null : (
+            <section aria-labelledby="invoice-client" className={PANEL}>
+              <h2 id="invoice-client" className={PANEL_TITLE}>
+                {COPY.client}
+              </h2>
+              {clientFailed ? (
+                <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.clientFailed}</p>
+              ) : !mine ? (
+                <Skeleton className="m-5 h-16" />
+              ) : client?.name || client?.email || client?.address ? (
+                <Party lines={[client.name, client.email, client.address]} />
+              ) : (
+                <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.noClient}</p>
+              )}
+            </section>
+          )}
+
+          <section aria-labelledby="invoice-issuer" className={PANEL}>
+            <h2 id="invoice-issuer" className={PANEL_TITLE}>
+              {COPY.issuer}
             </h2>
-            {clientFailed ? (
-              <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.clientFailed}</p>
-            ) : !mine ? (
-              <Skeleton className="m-5 h-16" />
-            ) : client?.name || client?.email || client?.address ? (
-              <Party lines={[client.name, client.email, client.address]} />
+            {issuer ? (
+              <Party
+                lines={[
+                  issuer.name,
+                  issuer.email,
+                  issuer.address,
+                  COUNTRY.of(issuer.country) ?? issuer.country,
+                  issuer.taxId ? `${COPY.taxId} ${issuer.taxId}` : null,
+                ]}
+              />
+            ) : invoice.senderName ? (
+              <Party lines={[invoice.senderName]} />
             ) : (
-              <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.noClient}</p>
+              <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.noIssuer}</p>
             )}
           </section>
-        )}
-
-        <section aria-labelledby="invoice-issuer" className={PANEL}>
-          <h2 id="invoice-issuer" className={PANEL_TITLE}>
-            {COPY.issuer}
-          </h2>
-          {issuer ? (
-            <Party
-              lines={[
-                issuer.name,
-                issuer.email,
-                issuer.address,
-                COUNTRY.of(issuer.country) ?? issuer.country,
-                issuer.taxId ? `${COPY.taxId} ${issuer.taxId}` : null,
-              ]}
-            />
-          ) : invoice.senderName ? (
-            <Party lines={[invoice.senderName]} />
-          ) : (
-            <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.noIssuer}</p>
-          )}
-        </section>
+        </div>
       </div>
     </>
   );

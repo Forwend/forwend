@@ -108,9 +108,9 @@ describe("receiptDeposits", () => {
 
 describe("shortDuration", () => {
   it("shows the two largest units", () => {
-    expect(shortDuration(((6 * 24 + 23) * 3600 + 59) * 1000)).toBe("6 d 23 h");
+    expect(shortDuration(((6 * 24 + 23) * 3600 + 59) * 1000)).toBe("6 days 23 hours");
     expect(shortDuration(250_000)).toBe("4 min 10 s");
-    expect(shortDuration(3_600_000)).toBe("1 h 0 min");
+    expect(shortDuration(3_600_000)).toBe("1 hour 0 min");
     expect(shortDuration(-5)).toBe("0 s");
   });
 });

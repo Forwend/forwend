@@ -13,9 +13,6 @@
     background: var(--fw-bg);
     color: var(--fw-ink);
     caret-color: var(--fw-accent);
-    transition:
-      background-color var(--fw-duration-base) var(--fw-ease-out),
-      color var(--fw-duration-base) var(--fw-ease-out);
   }
 
   /* Everything clickable shows a pointer; disabled controls say so. */
@@ -92,8 +89,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    /* !important: the reduced-motion override has to beat every component style. */
-    *,
+    /* !important: the reduced-motion override has to beat every component style. Loading spinners
+       (data-motion="essential") keep turning: they are the only sign that work is in progress. */
+    *:not([data-motion="essential"]),
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
@@ -138,18 +136,19 @@
 }
 
 /* Shared UI motion: spinner, dot-loader, shimmer, progress-bar and success-check. */
-/* Menus and sheets: a short rise and fade from the edge they open on. */
+/* Menus, selects and toasts: a short fade from the edge they open on. --fw-pop-y is the start offset:
+   positive rises from below, negative drops from above. */
 @keyframes fw-pop-in {
   from {
     opacity: 0;
-    transform: translateY(4px) scale(0.98);
+    transform: translateY(var(--fw-pop-y, 4px)) scale(0.98);
   }
 }
 
-@keyframes fw-sheet-up {
-  from {
+@keyframes fw-pop-out {
+  to {
     opacity: 0;
-    transform: translateY(16px);
+    transform: scale(0.98);
   }
 }
 

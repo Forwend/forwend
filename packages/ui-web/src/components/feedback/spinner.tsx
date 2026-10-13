@@ -7,6 +7,7 @@ export function Spinner({ label = "Loading", className }: LoaderProps) {
     <svg
       role="status"
       aria-label={label}
+      data-motion="essential"
       viewBox="0 0 24 24"
       fill="none"
       className={cx(

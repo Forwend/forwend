@@ -1,7 +1,7 @@
 // The canary's browser (R-51): `node canary-pay-page.ts <web origin>` reads invoice ids from stdin, opens each
-// /pay/<id> as a payer would, passes the network-confirm gate and prints one JSON line per id with the amount panel's
-// text, every address the send tabs show and whether each tab's QR code encodes the address shown, or why none is
-// shown. It reads only the DOM and imports nothing from src/: the canary must not share the page's code. Keep uqr at
+// /pay/<id> as a payer would, passes the network-confirm gate, picks each way to pay in turn and prints one JSON line
+// per id with the amount panel's text, every address the send step shows and whether each QR code encodes the address
+// shown, or why none is shown. It reads only the DOM and imports nothing from src/: the canary must not share the page's code. Keep uqr at
 // the version ui-web uses.
 import { text } from "node:stream/consumers";
 import { chromium, type Page } from "@playwright/test";
@@ -41,14 +41,18 @@ export async function readPayPage(page: Page, web: string, id: string): Promise<
     return { id, error: "no address shown: the invoice is not open for payment" };
   const amountText = await page.locator('section[aria-labelledby="pay-amount"]').innerText();
   await gate.getByRole("button").click();
+  const method = page.locator('section[aria-labelledby="pay-method"]');
+  const choices = method.locator("[data-method]");
+  await choices.first().waitFor();
   const send = page.locator('section[aria-labelledby="pay-send"]');
   const addresses = new Set<string>();
   let qrMatches = true;
-  for (const tab of await send.getByRole("tab").all()) {
-    await tab.click();
-    await send
-      .locator(`[role=tabpanel][aria-labelledby="${await tab.getAttribute("id")}"]`)
-      .waitFor();
+  const count = await choices.count();
+  for (let i = 0; i < count; i++) {
+    // A chosen way folds into its step; Change opens the choices again.
+    if (i > 0) await method.locator("[data-change]").click();
+    await choices.nth(i).click();
+    await send.locator("svg[role=img]").first().waitFor();
     const shown = Array.from((await send.innerText()).matchAll(ADDRESS), ([address]) => address);
     for (const address of shown) addresses.add(address.toLowerCase());
     const codes = await send.locator("svg[role=img] path").all();

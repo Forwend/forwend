@@ -10,9 +10,12 @@ export function Networks() {
   return (
     <section
       data-section={LANDING_SECTIONS.networks}
-      aria-label={NETWORKS.label}
+      aria-labelledby="networks-title"
       className="mx-auto max-w-6xl px-4 py-10 sm:px-8"
     >
+      <p id="networks-title" className="mb-6 text-center text-sm text-muted">
+        {NETWORKS.label}
+      </p>
       {/* From lg each item takes an equal share and divide-x draws one line between neighbours;
           on phones items wrap, so there are no dividers to dangle at line ends. */}
       <ul className="flex flex-wrap items-center justify-center gap-x-8 gap-y-5 text-xl text-ink lg:flex-nowrap lg:gap-x-0 lg:divide-x lg:divide-line-strong">

@@ -50,7 +50,7 @@ export function ReceiveSheet({
           </Button>
         </div>
       ) : !balances ? (
-        <Skeleton className="h-80" />
+        <Skeleton className="h-128" />
       ) : !chosen ? (
         <p className="text-sm text-muted">{RECEIVE_COPY.receiveNoTokens}</p>
       ) : (
@@ -73,6 +73,7 @@ export function ReceiveSheet({
               ) : null}
             </div>
           )}
+          <NetworkWarning token={chosen.symbol} network={chainName(chosen.chainId)} />
           <div className="grid place-items-center rounded-lg bg-surface-2 p-5">
             <QrCode
               value={address}
@@ -84,7 +85,6 @@ export function ReceiveSheet({
             address={address}
             label={RECEIVE_COPY.yourAddress(chainName(chosen.chainId))}
           />
-          <NetworkWarning token={chosen.symbol} network={chainName(chosen.chainId)} />
           <p className="text-xs text-muted">
             {isTestnet(chosen.chainId)
               ? `${chainName(chosen.chainId)} ${RECEIVE_COPY.testnetNote} `

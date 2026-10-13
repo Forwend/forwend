@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
+import { cx } from "../../lib/cx";
 
 export interface SheetProps {
   open: boolean;
@@ -32,7 +33,13 @@ export function Sheet({ open, onOpenChange, title, closeLabel = "Close", childre
       onClick={(event) => {
         if (event.target === ref.current) onOpenChange(false); // a click on the backdrop
       }}
-      className="mx-0 mt-auto mb-0 max-h-[92dvh] w-full max-w-none rounded-t-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[color-mix(in_oklab,var(--fw-ink)_40%,transparent)] backdrop:backdrop-blur-glass motion-safe:open:animate-[fw-sheet-up_var(--fw-duration-base)_var(--fw-ease-out)] sm:m-auto sm:max-w-md sm:rounded-lg"
+      className={cx(
+        "mx-0 mt-auto mb-0 max-h-[92dvh] w-full max-w-none rounded-t-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)] backdrop:backdrop-blur-glass sm:m-auto sm:max-w-md sm:rounded-lg",
+        // Phones only: the bottom sheet slides up. Closing stays instant: an exit transition needs a discrete
+        // display/overlay transition, which only Chromium supports, so other browsers flash the closing sheet.
+        "max-sm:transition-[translate] max-sm:duration-[var(--fw-duration-base)] max-sm:ease-out max-sm:starting:open:translate-y-full",
+        "max-sm:backdrop:transition-opacity max-sm:backdrop:duration-[var(--fw-duration-base)] max-sm:backdrop:ease-out max-sm:starting:open:backdrop:opacity-0",
+      )}
     >
       <div className="flex items-center justify-between gap-4 px-5 pt-4 pb-2">
         <h2 className="text-lg font-medium">{title}</h2>
@@ -45,7 +52,9 @@ export function Sheet({ open, onOpenChange, title, closeLabel = "Close", childre
           <X aria-hidden className="size-[var(--fw-icon-md)]" />
         </button>
       </div>
-      <div className="max-h-[calc(92dvh-4rem)] overflow-y-auto px-5 pb-6">{children}</div>
+      <div className="max-h-[calc(92dvh-4rem)] overflow-y-auto overscroll-contain px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
+        {children}
+      </div>
     </dialog>
   );
 }

@@ -6,6 +6,7 @@ export type CustomIconProps = SVGProps<SVGSVGElement> & { strokeWidth?: number }
 // Forwend's own icons: 24px grid, round caps and joins, 1.75 stroke, like the Lucide set they sit beside.
 function Base({ children, strokeWidth = 1.75, ...props }: CustomIconProps) {
   return (
+    // biome-ignore lint/a11y/noSvgWithoutTitle: decorative unless the caller names it with aria-label
     <svg
       viewBox="0 0 24 24"
       fill="none"
@@ -13,7 +14,7 @@ function Base({ children, strokeWidth = 1.75, ...props }: CustomIconProps) {
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
-      aria-hidden="true"
+      aria-hidden={!props["aria-label"]}
       focusable="false"
       {...props}
     >

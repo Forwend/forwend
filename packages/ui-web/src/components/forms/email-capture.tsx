@@ -39,7 +39,9 @@ export function EmailCapture({
 }: EmailCaptureProps) {
   const id = useId();
   const [email, setEmail] = useState("");
-  const isError = status === CAPTURE_STATUS.error;
+  // The error belongs to the submitted address; it clears as soon as the user edits it.
+  const [submitted, setSubmitted] = useState("");
+  const isError = status === CAPTURE_STATUS.error && email === submitted;
   const isSuccess = status === CAPTURE_STATUS.success;
 
   return (
@@ -63,6 +65,7 @@ export function EmailCapture({
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
+            setSubmitted(email);
             onSubmit(email);
           }}
         >
@@ -81,6 +84,9 @@ export function EmailCapture({
               type="email"
               name="email"
               autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              enterKeyHint="send"
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}

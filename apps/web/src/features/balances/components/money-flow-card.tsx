@@ -1,6 +1,6 @@
 "use client";
 
-import { Skeleton } from "@forwend/ui-web";
+import { Button, Skeleton } from "@forwend/ui-web";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { HISTORY_FIELDS, historySeries, seriesTotal } from "@/features/balances/balance-history";
 import { formatUsd, USD } from "@/features/balances/balances";
@@ -35,9 +35,15 @@ export function MoneyFlowCard({ profileId }: { profileId: string }) {
       </div>
       {!flows ? (
         history.isError ? (
-          <p role="alert" className="px-5 py-6 text-sm text-muted">
+          <div
+            role="alert"
+            className="flex flex-wrap items-center gap-3 px-5 py-6 text-sm text-muted"
+          >
             {BALANCES_COPY.historyFailed}
-          </p>
+            <Button size="sm" variant="secondary" onClick={history.refetch}>
+              {BALANCES_COPY.retry}
+            </Button>
+          </div>
         ) : (
           <Skeleton className="m-5 h-16" />
         )

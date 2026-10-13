@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Money, Skeleton } from "@forwend/ui-web";
+import type { CSSProperties } from "react";
 import {
   type Balances,
   formatUsd,
@@ -11,7 +12,8 @@ import {
 import { BALANCES_COPY } from "@/features/balances/balances-copy";
 import { EstimateHint } from "@/features/balances/components/estimate-hint";
 
-// Never a made-up 0 while loading or when a read failed.
+// Never a made-up 0 while loading or when a read failed. The parent is the size container: the figure and its
+// skeleton scale with its width, and the figure also shrinks as its digits grow, so a large total never clips.
 export function BalanceFigure({
   balances,
   failed,
@@ -23,8 +25,9 @@ export function BalanceFigure({
 }) {
   const tokens = balances?.tokens ?? [];
   const total = balances ? usdTotal(balances, "wallet") : null;
+  const text = total === null ? "—" : formatUsd(total);
   const figure =
-    "text-[length:clamp(2.75rem,14cqi,5.25rem)] leading-none font-semibold tracking-[-0.03em] text-ink";
+    "text-[length:clamp(2rem,min(14cqi,160cqi_/_var(--chars)),5.25rem)] leading-none font-semibold tracking-[-0.03em] text-ink";
   const align = "items-center text-center lg:items-start lg:text-left";
   const row = "flex flex-wrap items-baseline justify-center gap-x-2 lg:justify-start";
 
@@ -38,15 +41,18 @@ export function BalanceFigure({
       </div>
     );
   }
-  if (!balances) return <Skeleton className="mx-auto h-12 w-56 lg:mx-0" />;
+  if (!balances)
+    return <Skeleton className="mx-auto h-[clamp(2rem,14cqi,5.25rem)] w-56 max-w-full lg:mx-0" />;
   if (tokens.length === 0)
     return <p className={`flex ${align} text-muted`}>{BALANCES_COPY.noTokens}</p>;
 
   return (
-    <div className={`@container flex w-full flex-col gap-2 ${align}`}>
+    <div className={`flex w-full flex-col gap-2 ${align}`}>
       <p className={row}>
-        <span className={figure}>{total === null ? "—" : formatUsd(total)}</span>
-        <span className="inline-flex items-center gap-1 text-xl font-medium text-muted">
+        <span className={figure} style={{ "--chars": text.length } as CSSProperties}>
+          {text}
+        </span>
+        <span className="inline-flex items-center gap-1 text-xl font-medium whitespace-nowrap text-muted">
           {USD}
           <EstimateHint />
         </span>

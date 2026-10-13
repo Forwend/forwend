@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { TONES } from "../../../lib/tone";
+import { ACTIVITY_DIRECTIONS, ActivityRow } from "../activity-row";
 import { Address } from "../address/address";
 import { Money } from "../money/money";
 import { PaymentTimeline, STEP_STATES } from "../payment-timeline";
@@ -15,6 +16,43 @@ describe("Money", () => {
     expect(container.textContent?.replace(/\s+/g, " ").trim()).toBe("1,234.56 USDC");
     const figures = screen.getByText("1,234.56");
     expect(figures.className).toContain("tabular-nums");
+  });
+
+  it("lets a huge amount break only after its group commas", () => {
+    const { container } = render(<Money baseUnits={123456789012123456n} decimals={6} />);
+    expect(container.textContent).toBe("123,456,789,012.12");
+    expect(container.querySelectorAll("wbr")).toHaveLength(3);
+    for (const wbr of container.querySelectorAll("wbr")) {
+      expect(wbr.previousSibling?.textContent).toBe(",");
+    }
+  });
+});
+
+describe("ActivityRow", () => {
+  const row = (baseUnits: bigint, status: PaymentStatus = "confirming") =>
+    render(
+      <ActivityRow
+        title="Withdrawal to bank"
+        detail="EUR · SEPA"
+        direction={ACTIVITY_DIRECTIONS.outgoing}
+        amount={{ baseUnits, decimals: 6, token: "USDC" }}
+        status={status}
+      />,
+    );
+
+  it("shows one sign, inside the figures, even for a negative amount", () => {
+    const { container, unmount } = row(-5000000n);
+    expect(container.querySelector(".font-mono")?.textContent).toBe("−5.00");
+    unmount();
+    expect(row(5000000n).container.querySelector(".font-mono")?.textContent).toBe("−5.00");
+  });
+
+  it("shows a confirmed transfer as plain text and a confirming one as a pill", () => {
+    const confirmed = row(5000000n, "confirmed").container;
+    expect(confirmed.querySelector("[data-status]")).toBeNull();
+    expect(within(confirmed).getByText("Confirmed")).toBeTruthy();
+    const confirming = row(5000000n, "confirming").container;
+    expect(confirming.querySelector('[data-status="confirming"]')).toBeTruthy();
   });
 });
 

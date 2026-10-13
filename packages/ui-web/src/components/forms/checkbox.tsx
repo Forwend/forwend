@@ -13,7 +13,7 @@ export function Checkbox({ label, id, className, ...props }: CheckboxProps) {
   return (
     <label
       htmlFor={fieldId}
-      className={cx("inline-flex cursor-pointer items-center gap-2.5 text-sm", className)}
+      className={cx("inline-flex min-h-11 cursor-pointer items-center gap-2.5 text-sm", className)}
     >
       <input
         id={fieldId}

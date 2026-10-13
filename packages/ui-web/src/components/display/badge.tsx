@@ -11,7 +11,7 @@ export function Badge({ tone = TONES.neutral, children }: BadgeProps) {
   return (
     <span
       className={cx(
-        "inline-flex items-center gap-1.5 rounded-pill border px-2.5 py-0.5 text-xs font-medium",
+        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill border px-2.5 py-0.5 text-xs font-medium",
         TONE_CLASSES[tone],
       )}
     >

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 128,
+  "nextId": 143,
   "tasks": [
     {
       "id": "F121",
@@ -692,6 +692,474 @@
         "branch": "fix/f127-only-privy-access-tokens-with-a-fresh-ke",
         "base": "main"
       }
+    },
+    {
+      "id": "F128",
+      "type": "refactor",
+      "behavior": "The UI audit from 2026-10-11..13 lands as one reviewed change: kit, app, landing and pay page polish with the three-step checkout",
+      "acceptance": [
+        "Every required check, ui-unit, tokens-unit and e2e (public and signed-in) pass on the branch's current UI changes; DESIGN.md, PROJECT R-45 and .impeccable/design.json match the shipped behavior"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "e2e",
+        "ui-unit",
+        "tokens-unit"
+      ],
+      "refs": [
+        "R-45"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-13 review pass by reviewer: Pass. Checked the staged diff (102 files) against git diff --cached main. R-45 gate: pay-invoice.tsx:555 renders a step's body only while it is current and step 3 is current only when confirmed && method (pay-invoice.tsx:352), so the address and QR appear only after the network confirm, and Change network hides them again. R-51: canary-pay-page.ts:45-53 clicks every [data-method] choice (pay-invoice.tsx:333), reopening with [data-change] (pay-invoice.tsx:546), and reads each send step's addresses and QR paths; the only svg[role=img] in pay-send is the QrCode. The canary e2e passed (pay.spec.ts:235, e2e log line 54), and the fake page in canary_test.go goes through the same Change flow; go test -count=1 ./internal/canary/ ok. Money: the partly paid figure is pay.remaining (pay-invoice.tsx:211). The plain-decimal copy (pay-invoice.tsx:604) is safe because formatTokenAmount always groups with en-US. Money's group split and ActivityRow's single sign have tests (payments.test.tsx). Security: no new scripts on /pay (pay.spec.ts still checks script origins), no logging, and external links keep rel noopener (address.tsx, explorer-link.tsx). Structure: rows-skeleton is in shared/components with three unrelated consumers (activity, invoices, transactions); site-menu is in landing/layout; tooltip.test.tsx is in overlays/tests; groupSeries is at the feature top and has a test. Tests: pay.test.ts and the e2e edits follow intended copy and flow changes (aria-pressed to aria-current, tabs to choice cards), and none got weaker. Docs: DESIGN.md Checkout, R-45, R-54..R-67 and D-75..D-77 (queued as F129+), and design.json fw-pop-out and sheet transition match the code. Re-ran pnpm lint, pnpm typecheck, web unit (79), ui-web unit (27) and check-docs: all pass. Non-blocking notes: (1) pay.ts:24 the PAY_STATES doc comment now sits above PAY_METHODS (pay.ts:26), so PAY_STATES has no doc and the first comment is orphaned. (2) No test covers the Left to pay figure, the Copy amount clipboard value, the stale banner, or Change network hiding the address again; worth an e2e. (3) Confirmed-as-plain-text markup is repeated in activity-row.tsx:63, invoice-deposits.tsx:56 and transactions-table.tsx:325 and could be one StatusPill variant. (4) pay-invoice.tsx is now 675 lines; Step, SendTo and ExactAmount could move to their own files if it grows. (5) Untracked package-lock.json and apps/backend/package-lock.json (Oct 11, not staged) should not be committed.",
+        "2026-10-13 review pass by reviewer: Pass (re-review after the re-verify at 13:04:40Z). The new delta is one line: in apps/web/src/features/pay/pay.ts:28 the 'What the status panel says' doc comment is back above PAY_STATES, and PAY_METHODS (pay.ts:24-26) keeps its own comment. That fixes earlier note 1 and is a comment move only. The two npm lockfiles are left out through .git/info/exclude (/package-lock.json, /apps/backend/package-lock.json); they are not in the index or in HEAD. HEAD 8a0d41b (parent main a9621f8) holds 103 files, 2253+/612-. That is the 102 files reviewed before (1792+/611-) plus docs/tasks.json (461+/1-), so the reviewed source is unchanged. The only uncommitted changes are pay.ts and docs/tasks.json (new evidence paths). The new verify logs (docs/runs/F128-20261013T130440Z-*.log, 9 files) show every check passed, with no failures or flaky tests in the e2e log; the canary reader test passed (e2e log line 52). The earlier findings and non-blocking notes 2-4 still hold: no tests for Left to pay, Copy amount, the stale banner or Change network re-hiding the address; the confirmed-as-text markup is repeated; pay-invoice.tsx is 675 lines."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T13:04:40Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 120.6,
+            "log": "docs/runs/F128-20261013T130440Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 140.2,
+            "log": "docs/runs/F128-20261013T130440Z-e2e.log"
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": "docs/runs/F128-20261013T130440Z-ui-unit.log"
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F128-20261013T130440Z-tokens-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": "docs/runs/F128-20261013T130440Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F128-20261013T130440Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F128-20261013T130440Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F128-20261013T130440Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.3,
+            "log": "docs/runs/F128-20261013T130440Z-build.log"
+          }
+        ],
+        "taskHash": "e97c2f60bb2f1036",
+        "filesHash": "5fa99058c2e17a18",
+        "proof": {
+          "1": "e2e: verify F128 passed all 9 checks (public e2e and signed-in suite, unit, ui-unit, tokens-unit, lint, typecheck, build, docs, harness); independent review passed"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass (re-review after the re-verify at 13:04:40Z). The new delta is one line: in apps/web/src/features/pay/pay.ts:28 the 'What the status panel says' doc comment is back above PAY_STATES, and PAY_METHODS (pay.ts:24-26) keeps its own comment. That fixes earlier note 1 and is a comment move only. The two npm lockfiles are left out through .git/info/exclude (/package-lock.json, /apps/backend/package-lock.json); they are not in the index or in HEAD. HEAD 8a0d41b (parent main a9621f8) holds 103 files, 2253+/612-. That is the 102 files reviewed before (1792+/611-) plus docs/tasks.json (461+/1-), so the reviewed source is unchanged. The only uncommitted changes are pay.ts and docs/tasks.json (new evidence paths). The new verify logs (docs/runs/F128-20261013T130440Z-*.log, 9 files) show every check passed, with no failures or flaky tests in the e2e log; the canary reader test passed (e2e log line 52). The earlier findings and non-blocking notes 2-4 still hold: no tests for Left to pay, Copy amount, the stale banner or Change network re-hiding the address; the confirmed-as-text markup is repeated; pay-invoice.tsx is 675 lines.",
+          "at": "2026-10-13T13:09:40Z",
+          "filesHash": "5fa99058c2e17a18"
+        },
+        "commit": "60ee557",
+        "doneAt": "2026-10-13T13:09:52Z"
+      },
+      "branch": "refactor/f128-the-ui-audit-from-2026-10-11-13-lands-as",
+      "baseCommit": "a9621f8c69ace1be659c6d9e3ce482abc75e2a7a",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f128-the-ui-audit-from-2026-10-11-13-lands-as",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F129",
+      "type": "fix",
+      "behavior": "A paid invoice settles after the worker or signer restarts, and a settle that cannot go on says why",
+      "acceptance": [
+        "R-54: a backend test that stops the worker and the signer around a payment fails before the fix and passes after; each round gives every paid invoice without a confirmed settlement an intent; a blocked intent stores its reason and the invoice API returns it"
+      ],
+      "dependsOn": [
+        "F128"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "unit"
+      ],
+      "refs": [
+        "R-54",
+        "D-22"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F130",
+      "type": "feat",
+      "behavior": "Check status on the pay page and the invoice page rechecks an invoice on chain without risk to money or RPCs",
+      "acceptance": [
+        "R-55, D-77: POST /v1/invoices/{id}/recheck books a deposit the worker missed (backend test with a deposit made while the worker was stopped), never signs, allows one run per invoice every 30 s with 429 and Retry-After, and has per-IP and global limits under test; the pay page and the invoice page show Check status with its state"
+      ],
+      "dependsOn": [
+        "F129"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "R-55",
+        "D-77"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F131",
+      "type": "feat",
+      "behavior": "The kit has a Calendar and DatePicker with full keyboard support",
+      "acceptance": [
+        "R-59: /kit shows every state in both themes; ui-unit tests cover keyboard moves, min and max, and the ISO value; axe finds 0 serious or critical violations"
+      ],
+      "dependsOn": [
+        "F128"
+      ],
+      "state": "not_started",
+      "verification": [
+        "ui-unit",
+        "kit-e2e",
+        "a11y-e2e"
+      ],
+      "refs": [
+        "R-59"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F132",
+      "type": "feat",
+      "behavior": "The creator chooses Payer chooses (default) or one fixed stablecoin and network, with a receive address per accepted option",
+      "acceptance": [
+        "R-56, D-75, D-76: the API creates one option per accepted token and network with its own address and terms; the first option paid becomes the invoice's option and money on another is held for the payer; backend tests cover creation, the lock, held money and settlement; the pay page's address check and the canary cover every option"
+      ],
+      "dependsOn": [
+        "F128"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-56",
+        "D-75",
+        "D-76"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F133",
+      "type": "feat",
+      "behavior": "The payer picks the network, then the token, on the pay page",
+      "acceptance": [
+        "R-57: e2e covers picking, Change before payment, the lock after money arrives, and a Fixed invoice; the canary reads every option"
+      ],
+      "dependsOn": [
+        "F132"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "unit"
+      ],
+      "refs": [
+        "R-57"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F134",
+      "type": "feat",
+      "behavior": "The invoice and request form groups its fields, uses the kit calendar and offers a Custom checkout time and a return link",
+      "acceptance": [
+        "R-58: e2e creates an invoice with Payer chooses, with a Fixed option, with a Custom expiry and with a return link; errors stay beside their fields; axe finds 0 serious or critical violations"
+      ],
+      "dependsOn": [
+        "F131",
+        "F132"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "ui-unit"
+      ],
+      "refs": [
+        "R-58"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F135",
+      "type": "feat",
+      "behavior": "The invoice page shows its state at once in a clear two-column layout with a compact pay link row",
+      "acceptance": [
+        "R-60: e2e checks the header status for open, closed, partly paid, paid and settled invoices, Confirming (n/m), the pay link's Copy and Open in a new tab, and no sideways scroll at 390 px"
+      ],
+      "dependsOn": [
+        "F128"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-60"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F136",
+      "type": "fix",
+      "behavior": "The timeline marks Detected and every payment shows its transaction hash and explorer link",
+      "acceptance": [
+        "R-67: the reported case is reproduced in a failing test first, then fixed; unit and e2e cover a detected, unconfirmed payment"
+      ],
+      "dependsOn": [
+        "F128"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-67"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F137",
+      "type": "feat",
+      "behavior": "Invoice and receipt PDFs are designed like the product",
+      "acceptance": [
+        "R-61: backend tests check the text and sections of invoice.pdf and receipt.pdf for an open, a paid and a settled invoice"
+      ],
+      "dependsOn": [
+        "F128"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-61"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F138",
+      "type": "feat",
+      "behavior": "The pay page is calm and never leaves the payer stuck: logo link, Payments by Forwend footer, Back to the site after payment, smooth fast-chain states",
+      "acceptance": [
+        "R-62: e2e checks the logo link, the footer, Back to <site> with a return link, Confirming (n/m), and that a payment confirming within one poll still shows each step without layout shift"
+      ],
+      "dependsOn": [
+        "F134",
+        "F133"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-62"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F139",
+      "type": "feat",
+      "behavior": "The merchant and freelancer overview is rebuilt on one grid like a modern finance app",
+      "acceptance": [
+        "R-63: e2e checks the layout at 390, 768, 1024 and 1440 px in both themes without sideways scroll; axe finds 0 serious or critical violations"
+      ],
+      "dependsOn": [
+        "F128"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "a11y-e2e"
+      ],
+      "refs": [
+        "R-63"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F140",
+      "type": "feat",
+      "behavior": "Money tables share row hover, show network icons, keep Export at the right and link counterparties to the explorer",
+      "acceptance": [
+        "R-64: e2e checks the Invoices row hover, the Export position, the network icon, pill vs quiet confirmed status and the counterparty explorer link"
+      ],
+      "dependsOn": [
+        "F128"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-64"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F141",
+      "type": "feat",
+      "behavior": "The Receive sheet asks for the token and network before showing the address",
+      "acceptance": [
+        "R-65: e2e picks a token and network, sees the address and QR, changes the choice and sees the new address; unit tests show the choice model is not EVM-specific"
+      ],
+      "dependsOn": [
+        "F128"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "unit"
+      ],
+      "refs": [
+        "R-65"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F142",
+      "type": "chore",
+      "behavior": "Every app page is polished: spacing, alignment, type and copy, at three widths in both themes",
+      "acceptance": [
+        "R-66: screenshots of every app page at 390, 768 and 1440 px in both themes are reviewed and attached to the task notes; e2e confirms no sideways scroll; axe finds 0 serious or critical violations"
+      ],
+      "dependsOn": [
+        "F135",
+        "F139",
+        "F140",
+        "F141",
+        "F138"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e",
+        "a11y-e2e"
+      ],
+      "refs": [
+        "R-66"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

@@ -35,6 +35,8 @@ export const NAV_LINKS = [
   { href: "#faq", label: "FAQ" },
 ] as const;
 
+export const NAV_MENU = "Sections";
+
 export const NETWORKS = {
   label: "Planned networks and stablecoins",
   networks: [
@@ -124,8 +126,12 @@ export const FEES = {
   body: "Withdrawals to a bank are always your choice. Before you approve, the quote shows the rate, each fee and what reaches your account.",
   quote: {
     title: "Withdrawal quote",
-    lines: ["Exchange rate", "Network fee", "Provider fee", "Arrives in your bank"],
-    pending: "Shown in your quote",
+    lines: [
+      { label: "Exchange rate", detail: "Stablecoin to your bank's currency" },
+      { label: "Network fee", detail: "Moving the stablecoin on chain" },
+      { label: "Provider fee", detail: "Charged by the payout partner" },
+      { label: "Arrives in your bank", detail: "The exact amount, before you approve" },
+    ],
   },
   note: "Pricing is not set yet. Bank withdrawals depend on your country and our payout partner.",
 } as const;
@@ -168,7 +174,7 @@ export const FINAL_CTA = {
 
 export const FOOTER = {
   tagline: "Stablecoin payments you can follow from invoice to wallet.",
-  socialsSoon: "Coming soon",
+  socialsSoon: "Soon",
   socials: [
     { name: "X", icon: "x" },
     { name: "GitHub", icon: "github" },

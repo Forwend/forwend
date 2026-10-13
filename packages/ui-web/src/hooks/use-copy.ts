@@ -14,8 +14,8 @@ export const COPIED_LABEL_MS = 1600;
 
 export type CopyStatus = (typeof COPY_STATUS)[keyof typeof COPY_STATUS];
 
-// Copies text; the status says copied or failed (clipboard blocked by permissions or an insecure context) for a
-// moment, then returns to idle, so callers can confirm or explain (DESIGN.md: copy controls).
+// Copies text; the status says copied for a moment, then returns to idle. Failed (clipboard blocked by permissions or
+// an insecure context) stays until the next attempt, so the explanation does not vanish while the user reads it.
 export function useCopy(text: string): [CopyStatus, () => Promise<void>] {
   const [status, setStatus] = useState<CopyStatus>(COPY_STATUS.idle);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -31,7 +31,9 @@ export function useCopy(text: string): [CopyStatus, () => Promise<void>] {
     }
     setStatus(next);
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => setStatus(COPY_STATUS.idle), COPIED_LABEL_MS);
+    if (next === COPY_STATUS.copied) {
+      timer.current = setTimeout(() => setStatus(COPY_STATUS.idle), COPIED_LABEL_MS);
+    }
   };
   return [status, copy];
 }

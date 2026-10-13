@@ -40,8 +40,9 @@ const VARIANTS: Record<ButtonVariant, string> = {
 };
 
 const SIZES: Record<ButtonSize, string> = {
-  sm: "h-8 px-3.5 text-sm",
-  md: "h-10 px-5 text-sm",
+  // The pseudo elements stretch the hit area to 44px without changing the look.
+  sm: "relative h-8 px-3.5 text-sm before:absolute before:inset-x-0 before:-inset-y-1.5",
+  md: "relative h-10 px-5 text-sm before:absolute before:inset-x-0 before:-inset-y-0.5",
   lg: "h-12 px-6 text-base",
 };
 
@@ -85,7 +86,8 @@ export function Button({
         <>
           <Loader2
             aria-hidden
-            className="absolute inset-0 m-auto size-[var(--fw-icon-sm)] animate-spin"
+            data-motion="essential"
+            className="absolute inset-0 m-auto size-[var(--fw-icon-sm)] animate-[fw-spin_var(--fw-duration-slower)_linear_infinite]"
           />
           <span data-loading-label className="inline-flex items-center gap-2 opacity-0">
             {children}

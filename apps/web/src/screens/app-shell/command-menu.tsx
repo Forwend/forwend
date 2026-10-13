@@ -41,6 +41,7 @@ const COMMAND_COPY = {
   actions: "Actions",
   profiles: "Profiles",
   noResults: "Nothing found.",
+  searching: "Searching transactions…",
   switchTo: "Switch to",
   hint: "to open",
   darkOn: "Turn on dark mode",
@@ -214,7 +215,7 @@ export function CommandMenu({
       onClick={(event) => {
         if (event.target === ref.current) close();
       }}
-      className="mx-auto mt-[12dvh] w-[calc(100vw-2rem)] max-w-xl overflow-hidden rounded-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[color-mix(in_oklab,var(--fw-ink)_35%,transparent)] backdrop:backdrop-blur-glass motion-safe:open:animate-[fw-pop-in_var(--fw-duration-base)_var(--fw-ease-out)]"
+      className="mx-auto mt-[12dvh] w-[calc(100vw-2rem)] max-w-xl overflow-hidden rounded-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)] backdrop:backdrop-blur-glass"
     >
       <div className="flex items-center gap-3 border-b border-line px-4">
         <Search aria-hidden className="size-[var(--fw-icon-md)] shrink-0 text-muted" />
@@ -237,16 +238,18 @@ export function CommandMenu({
           Esc
         </kbd>
       </div>
-      {shown.length === 0 ? (
-        <p role="status" className="px-3 py-8 text-center text-sm text-muted">
-          {COMMAND_COPY.noResults}
-        </p>
-      ) : null}
+      {/* Always mounted: a live region added together with its text is often not read. */}
+      <p
+        role="status"
+        className={shown.length ? "sr-only" : "px-3 py-8 text-center text-sm text-muted"}
+      >
+        {shown.length ? "" : recent.isFetching ? COMMAND_COPY.searching : COMMAND_COPY.noResults}
+      </p>
       <div
         id={listId}
         role="listbox"
         aria-label={COMMAND_COPY.title}
-        className="max-h-[50dvh] overflow-y-auto p-2 empty:hidden"
+        className="max-h-[50dvh] overflow-y-auto overscroll-contain p-2 empty:hidden"
       >
         {shown.map((c, i) => (
           <Fragment key={c.id}>

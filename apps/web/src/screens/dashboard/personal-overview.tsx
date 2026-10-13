@@ -37,7 +37,7 @@ export function PersonalOverview() {
           preview={RECENT}
         />
         <div className="flex flex-col gap-4">
-          <NetworksCard balances={balances.currentData ?? null} />
+          <NetworksCard balances={balances.currentData ?? null} failed={balances.isError} />
           <MoneyFlowCard profileId={profile.profileId} />
         </div>
       </div>

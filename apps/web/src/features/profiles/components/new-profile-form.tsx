@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, FreelancerIcon, MerchantIcon, TextField } from "@forwend/ui-web";
+import { Check } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
@@ -68,7 +69,7 @@ export function NewProfileForm() {
             return (
               <label
                 key={value}
-                className="flex cursor-pointer flex-col items-start gap-1 rounded-lg border border-line-strong bg-surface p-4 text-ink transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] has-checked:border-ink has-checked:shadow-sm has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus"
+                className="group relative flex cursor-pointer flex-col items-start gap-1 rounded-lg border border-line-strong bg-surface p-4 text-ink transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] has-checked:border-ink has-checked:shadow-sm has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus"
               >
                 <input
                   type="radio"
@@ -78,6 +79,13 @@ export function NewProfileForm() {
                   onChange={() => setKind(value)}
                   className="sr-only"
                 />
+                {/* The same mark as the first-run cards: the choice is not shown by border color alone. */}
+                <span
+                  aria-hidden
+                  className="absolute top-4 right-4 grid size-5 place-items-center rounded-pill border border-line-strong text-on-primary transition-colors duration-[var(--fw-duration-fast)] group-has-checked:border-primary group-has-checked:bg-primary"
+                >
+                  <Check className="size-3.5 opacity-0 group-has-checked:opacity-100" />
+                </span>
                 <Icon className="mb-2 size-[var(--fw-icon-lg)] text-accent" />
                 <span className="font-medium">{PROFILE_KIND_LABELS[value]}</span>
                 <span className="text-sm text-muted">{COPY.kindHints[value]}</span>

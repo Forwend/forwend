@@ -4,9 +4,10 @@ import {
   Button,
   buttonClasses,
   Money,
+  PAYMENT_STATUS,
+  PAYMENT_STATUSES,
   SearchField,
   SegmentedControl,
-  Skeleton,
   StatusPill,
   shortAddress,
 } from "@forwend/ui-web";
@@ -28,6 +29,7 @@ import { TRANSACTIONS_COPY } from "@/features/transactions/transactions-copy";
 import { chainName } from "@/shared/chains/chains";
 import { ExplorerLink } from "@/shared/chains/explorer-link";
 import { NoMatch } from "@/shared/components/no-match";
+import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
@@ -73,6 +75,9 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
   const filtered = !preview && filters.filtered;
   const more = Boolean(data?.nextCursor);
   const Heading = pageHeading ? "h1" : "h2";
+  // A new filter or search loads in place of as many rows as were shown.
+  const [skeletonRows, setSkeletonRows] = useState(preview ?? SKELETON_ROWS);
+  if (rows.length > 0 && rows.length !== skeletonRows) setSkeletonRows(rows.length);
 
   const exportCsv = () => {
     const url = URL.createObjectURL(new Blob([transactionsCsv(rows)], { type: "text/csv" }));
@@ -160,7 +165,10 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
           </Button>
         </div>
       ) : !data ? (
-        <Skeleton className="m-5 h-24" />
+        <RowsSkeleton
+          count={skeletonRows}
+          className={pageHeading ? "rounded-md border border-line bg-surface" : ""}
+        />
       ) : rows.length === 0 && !filtered ? (
         <p className="px-5 py-8 text-sm text-muted">{TRANSACTIONS_COPY.empty}</p>
       ) : rows.length === 0 ? (
@@ -195,10 +203,7 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
               </thead>
               <tbody className="divide-y divide-line">
                 {rows.map((t) => (
-                  <tr
-                    key={transactionKey(t)}
-                    className="hover:bg-[color-mix(in_oklab,var(--fw-surface-2)_50%,transparent)]"
-                  >
+                  <tr key={transactionKey(t)}>
                     <td className="px-5 py-3">
                       {/* Below 2xl the network moves under the counterparty, so no amount lacks it. */}
                       <Party t={t} detail={chainName(t.chainId)} detailClassName="2xl:hidden" />
@@ -213,7 +218,7 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                       </span>
                     </td>
                     <td className="px-3 py-3">
-                      <StatusPill status={transactionStatus(t)} />
+                      <Status t={t} />
                     </td>
                     <td className="px-5 py-3 text-right">
                       <Amount t={t} />
@@ -236,7 +241,7 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                   <Amount t={t} />
                   <span className="flex items-center gap-1">
                     <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
-                    <StatusPill status={transactionStatus(t)} />
+                    <Status t={t} />
                   </span>
                 </span>
               </li>
@@ -311,6 +316,16 @@ function Party({
         ) : null}
       </span>
     </span>
+  );
+}
+
+// Confirmed is the usual end state, so only a transfer still confirming gets a pill.
+function Status({ t }: { t: Transaction }) {
+  const status = transactionStatus(t);
+  return status === PAYMENT_STATUS.confirmed ? (
+    <span className="text-muted">{PAYMENT_STATUSES[status].label}</span>
+  ) : (
+    <StatusPill status={status} />
   );
 }
 

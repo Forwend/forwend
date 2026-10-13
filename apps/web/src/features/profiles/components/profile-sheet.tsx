@@ -42,12 +42,12 @@ export function ProfileSheet({
             <li key={p.profileId}>
               <button
                 type="button"
-                aria-pressed={current}
+                aria-current={current || undefined}
                 onClick={() => {
                   onSwitch(p.profileId);
                   onOpenChange(false);
                 }}
-                className="flex min-h-14 w-full items-center gap-3 rounded-md px-2 text-left text-ink outline-none hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-focus aria-pressed:bg-surface-2"
+                className="flex min-h-14 w-full items-center gap-3 rounded-md px-2 text-left text-ink outline-none hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-focus aria-[current]:bg-surface-2"
               >
                 <ProfileAvatar kind={p.kind} />
                 <span className="min-w-0 flex-1 truncate">{profileLabel(p)}</span>

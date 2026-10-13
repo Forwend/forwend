@@ -7,7 +7,7 @@ import { TokenMark } from "@/shared/chains/token-mark";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 // Where the money is: each enabled token on each network, with what the wallet holds there.
-export function NetworksCard({ balances }: { balances: Balances | null }) {
+export function NetworksCard({ balances, failed }: { balances: Balances | null; failed: boolean }) {
   return (
     <section
       aria-labelledby="networks-title"
@@ -25,7 +25,10 @@ export function NetworksCard({ balances }: { balances: Balances | null }) {
           <ChevronRight aria-hidden className="size-[var(--fw-icon-sm)]" />
         </Link>
       </div>
-      {!balances ? (
+      {!balances && failed ? (
+        // Not an alert: the page's balance already announces the same failure.
+        <p className="px-5 py-6 text-sm text-muted">{BALANCES_COPY.balancesFailed}</p>
+      ) : !balances ? (
         <Skeleton className="m-5 h-16" />
       ) : balances.tokens.length === 0 ? (
         <p className="px-5 py-6 text-sm text-muted">{BALANCES_COPY.noTokens}</p>

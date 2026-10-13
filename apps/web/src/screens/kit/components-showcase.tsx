@@ -83,6 +83,7 @@ function ToastDemo() {
 
 export function ComponentsShowcase() {
   const [on, setOn] = useState(true);
+  const [weekly, setWeekly] = useState(false);
   const [menuChoice, setMenuChoice] = useState("personal");
   const [menuDark, setMenuDark] = useState(false);
   const [range, setRange] = useState("1M");
@@ -199,6 +200,14 @@ export function ComponentsShowcase() {
               { value: "tempo", label: "Tempo (planned)", disabled: true },
             ]}
           />
+          <SelectField
+            label="Payout token"
+            error="Choose the token your client pays in."
+            options={[
+              { value: "usdc", label: "USDC" },
+              { value: "eurc", label: "EURC" },
+            ]}
+          />
         </div>
         <div className="grid w-full gap-6 md:grid-cols-3">
           <TextAreaField label="Note to the client" hint="Shown on the pay page." />
@@ -226,6 +235,7 @@ export function ComponentsShowcase() {
         </div>
         <Checkbox label="Send a reminder on the due date" defaultChecked />
         <Switch label="Email me when a payment settles" checked={on} onCheckedChange={setOn} />
+        <Switch label="Email me a weekly summary" checked={weekly} onCheckedChange={setWeekly} />
       </KitGroup>
       <KitGroup title="Email capture: idle, submitting, success, error">
         <div className="grid w-full gap-4 md:grid-cols-2">

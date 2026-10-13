@@ -25,7 +25,7 @@ export const INVOICES_COPY = {
   retry: "Try again",
   loadMore: "Show more",
   search: "Search invoices",
-  searchPlaceholder: "Search number, client or title",
+  searchPlaceholder: "Number, client, title",
   noMatch: "No invoices match.",
   columns: {
     invoice: "Invoice",
@@ -50,7 +50,7 @@ export const REQUESTS_COPY = {
   emptyText: "Request money, then send the pay link to whoever pays you.",
   failed: "We could not load the requests.",
   search: "Search requests",
-  searchPlaceholder: "Search number or note",
+  searchPlaceholder: "Number or note",
   noMatch: "No requests match.",
 } as const;
 
@@ -162,5 +162,5 @@ export const INVOICE_COPY = {
   issuer: "From",
   taxId: "Tax ID",
   noIssuer:
-    "No billing details: the profile had none when this invoice was made, so the client sees no sender name or address. Editing billing details in the app is coming soon.",
+    "No billing details: the profile had none when this invoice was made, so the client sees no sender name or address.",
 } as const;

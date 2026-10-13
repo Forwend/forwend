@@ -21,6 +21,10 @@ export const PAY_TOKENS: Readonly<Record<string, PayToken>> = {
   "42431:0x20c0000000000000000000006a37da5c996874be": { symbol: "OUSD", decimals: 6 },
 };
 
+/** How the payer sends: the instructions differ, the address and amount do not. */
+export const PAY_METHODS = { wallet: "wallet", exchange: "exchange" } as const;
+export type PayMethod = (typeof PAY_METHODS)[keyof typeof PAY_METHODS];
+
 /** What the status panel says, in the order the checks run. */
 export const PAY_STATES = {
   settled: "settled",
@@ -100,13 +104,14 @@ export function receiptDeposits(inv: Invoice) {
 }
 
 const UNITS = [
-  ["d", 86_400],
-  ["h", 3_600],
+  ["day", 86_400],
+  ["hour", 3_600],
   ["min", 60],
   ["s", 1],
 ] as const;
+const PLURAL: ReadonlySet<string> = new Set(["day", "hour"]);
 
-/** The two largest units of a duration: "6 d 23 h", "4 min 10 s". */
+/** The two largest units of a duration: "6 days 23 hours", "4 min 10 s". */
 export function shortDuration(ms: number): string {
   let left = Math.max(0, Math.floor(ms / 1000));
   const parts: string[] = [];
@@ -114,7 +119,8 @@ export function shortDuration(ms: number): string {
     if (parts.length === 2) break;
     const n = Math.floor(left / size);
     left -= n * size;
-    if (n > 0 || parts.length > 0) parts.push(`${n} ${unit}`);
+    if (n > 0 || parts.length > 0)
+      parts.push(`${n} ${unit}${n !== 1 && PLURAL.has(unit) ? "s" : ""}`);
   }
   return parts.join(" ") || "0 s";
 }

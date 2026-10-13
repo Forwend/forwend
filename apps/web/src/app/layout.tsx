@@ -1,5 +1,6 @@
 import "./globals.css";
 import { THEME_INIT_SCRIPT, THEMES } from "@forwend/design-tokens";
+import { TooltipProvider } from "@forwend/ui-web";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { BRAND_COLORS, BRAND_COLORS_DARK } from "@/shared/config/brand-colors";
@@ -37,7 +38,9 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: a fixed constant (THEME_INIT_SCRIPT) that must run before first paint to avoid a theme flash */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body>{children}</body>
+      <body>
+        <TooltipProvider>{children}</TooltipProvider>
+      </body>
     </html>
   );
 }

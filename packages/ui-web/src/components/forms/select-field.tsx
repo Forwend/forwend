@@ -18,6 +18,7 @@ export interface SelectFieldProps {
   hideLabel?: boolean;
   options: readonly SelectOption[];
   hint?: string;
+  error?: string;
   id?: string;
   name?: string;
   value?: string;
@@ -34,6 +35,7 @@ export function SelectField({
   hideLabel,
   options,
   hint,
+  error,
   id,
   name,
   value,
@@ -45,6 +47,7 @@ export function SelectField({
 }: SelectFieldProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
+  const describedBy = error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined;
   // Inside a modal <dialog> everything outside it is inert, so the list opens in the dialog, not at the end of <body>.
   const [dialog, setDialog] = useState<HTMLDialogElement | null>(null);
   const trigger = useCallback(
@@ -72,7 +75,8 @@ export function SelectField({
           ref={trigger}
           id={fieldId}
           aria-labelledby={`${fieldId}-label`}
-          aria-describedby={hint ? `${fieldId}-hint` : undefined}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
           className={cx(
             FIELD_CONTROL_CLASSES,
             "group flex items-center justify-between gap-3 text-left data-[placeholder]:text-subtle data-[state=open]:border-focus data-[state=open]:ring-4 data-[state=open]:ring-[color-mix(in_oklab,var(--fw-focus)_22%,transparent)]",
@@ -90,7 +94,7 @@ export function SelectField({
           <RadixSelect.Content
             position="popper"
             sideOffset={6}
-            className="z-[var(--fw-z-overlay)] max-h-[var(--radix-select-content-available-height)] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-line bg-surface p-1 text-ink shadow-lg"
+            className="z-[var(--fw-z-overlay)] max-h-[var(--radix-select-content-available-height)] min-w-[var(--radix-select-trigger-width)] origin-[var(--radix-select-content-transform-origin)] overflow-hidden rounded-md border border-line bg-surface p-1 text-ink shadow-lg data-[side=bottom]:[--fw-pop-y:-4px] motion-safe:data-[state=open]:animate-[fw-pop-in_var(--fw-duration-base)_var(--fw-ease-out)]"
           >
             <RadixSelect.Viewport>
               {options.map((option) => (
@@ -98,7 +102,7 @@ export function SelectField({
                   key={option.value}
                   value={option.value}
                   disabled={option.disabled}
-                  className="flex cursor-pointer items-center justify-between gap-3 rounded-sm px-3 py-2 text-base outline-none select-none data-[disabled]:cursor-not-allowed data-[disabled]:text-subtle data-[highlighted]:bg-surface-2 data-[state=checked]:font-medium"
+                  className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-sm px-3 py-2 text-base outline-none select-none data-[disabled]:cursor-not-allowed data-[disabled]:text-subtle data-[highlighted]:bg-surface-2 data-[state=checked]:font-medium"
                 >
                   <RadixSelect.ItemText>{option.label}</RadixSelect.ItemText>
                   <RadixSelect.ItemIndicator>
@@ -110,7 +114,11 @@ export function SelectField({
           </RadixSelect.Content>
         </RadixSelect.Portal>
       </RadixSelect.Root>
-      {hint ? (
+      {error ? (
+        <p id={`${fieldId}-error`} role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      ) : hint ? (
         <p id={`${fieldId}-hint`} className="text-sm text-muted">
           {hint}
         </p>

@@ -90,6 +90,13 @@ async function openPay(page: Page, ...bodies: object[]) {
 
 const confirmButton = (page: Page) =>
   page.getByRole("button", { name: "I will send USDC on Base Sepolia" });
+const method = (page: Page, name: "From a wallet" | "From an exchange") =>
+  page.getByRole("button", { name: new RegExp(`^${name}`) });
+// Steps 1 and 2: confirm the network, then pay from a wallet.
+const startPaying = async (page: Page) => {
+  await confirmButton(page).click();
+  await method(page, "From a wallet").click();
+};
 const receipt = (page: Page) => page.getByRole("region", { name: "Receipt" });
 const pdfPath = (file: string) => `/api/v1/invoices/${ID}/${file}`;
 
@@ -113,7 +120,9 @@ test.describe("pay page", () => {
     await expect(
       page.locator("li", { hasText: `You are on ${new URL(PUBLIC_URL).host}.` }),
     ).toBeVisible();
-    await expect(page.getByText(/^Send exactly 1,250\.00 USDC\. If you send more/)).toBeVisible();
+    await expect(
+      page.getByText(/^If you send more, or pay after the checkout closes/),
+    ).toBeVisible();
     await expect(
       page.getByText("Forwend never asks you to pay a different address or an extra fee."),
     ).toBeVisible();
@@ -126,19 +135,20 @@ test.describe("pay page", () => {
     await expect(page.getByText(RECEIVE)).toHaveCount(0);
     await expect(page.getByRole("img", { name: /QR code/ })).toHaveCount(0);
 
+    // One step at a time: the network first, then how to pay, and only then the address.
     await confirmButton(page).click();
+    await expect(page.getByRole("heading", { name: "How you pay" })).toBeFocused();
+    await expect(page.getByText(RECEIVE)).toHaveCount(0);
+    await method(page, "From a wallet").click();
     await expect(page.getByRole("heading", { name: "Send the payment" })).toBeFocused();
     await expect(page.getByText(RECEIVE)).toBeVisible();
     await expect(page.getByRole("img", { name: "QR code of the address to pay" })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "From a wallet" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
     await expect(
       page.getByText("Open your wallet and choose the Base Sepolia network."),
     ).toBeVisible();
 
-    await page.getByRole("tab", { name: "From an exchange" }).click();
+    await page.getByRole("button", { name: "Change how you pay" }).click();
+    await method(page, "From an exchange").click();
     await expect(
       page.getByText(/^Choose Withdraw, then USDC, then the Base Sepolia network/),
     ).toBeVisible();
@@ -263,7 +273,7 @@ test.describe("pay page", () => {
   test("fits a 390 px phone without sideways scrolling", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openPay(page, OPEN);
-    await confirmButton(page).click();
+    await startPaying(page);
     await expect(page.getByText(RECEIVE)).toBeVisible();
     const overflow = () =>
       page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -286,7 +296,7 @@ test.describe("pay page", () => {
           .filter((v) => v.impact === "serious" || v.impact === "critical")
           .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
       await openPay(page, OPEN, CONFIRMING);
-      await confirmButton(page).click();
+      await startPaying(page);
       await expect(page.getByText(RECEIVE)).toBeVisible();
       expect(await blocking()).toEqual([]);
       // A payment on its way: the pending pills, the filling step and the payment with its explorer link.

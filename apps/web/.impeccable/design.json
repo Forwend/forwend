@@ -292,9 +292,14 @@
         "purpose": "Menus rise from the edge they open on. Off under reduced motion."
       },
       {
-        "name": "fw-sheet-up",
-        "value": "opacity 0, translateY(16px) to rest; duration-base, ease-out",
-        "purpose": "Bottom sheets and the centered sheet panel. Off under reduced motion."
+        "name": "fw-pop-out",
+        "value": "rest to opacity 0, scale(0.98); duration-fast, ease-out",
+        "purpose": "Menus and toasts leave faster than they enter. Off under reduced motion."
+      },
+      {
+        "name": "sheet transition",
+        "value": "phones only: opacity and translateY(100%); in duration-base, out duration-fast, ease-out",
+        "purpose": "The phone bottom sheet slides in and out from the screen edge. The centered panel on larger screens has no motion. Off under reduced motion."
       }
     ],
     "breakpoints": [
