@@ -463,7 +463,7 @@
         "internal/httpapi is split into a server with the global router and middleware/ plus one package per module (profiles, invoices, money, health), each registering its own routes; backend tests pass unchanged in count; docs/backend/rules.md shows the layout"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -538,12 +538,19 @@
         "taskHash": "b8aa3eeb6cf9fd69",
         "filesHash": "47056a6ebb3c2e1a",
         "proof": {
-          "1": "backend: all backend packages pass; the 42 HTTP tests are all still there, now in internal/httpapi/tests through httpapi.NewMux, with server_test beside Serve; e2e: the full browser suite passes against the restructured api; docs/backend/rules.md shows the layout (router.go, mid, httpio, one <module>api package per module with routes.go and model.go, tests/)"
-        }
+          "1": "backend: all packages pass, 42 HTTP tests kept"
+        },
+        "commit": "30f742a",
+        "doneAt": "2026-10-13T23:39:44Z"
       },
       "branch": "refactor/f171-the-backend-http-layer-has-one-package-p",
       "baseCommit": "8c13b39c1c5a7837c104fbe99bb31db4b2d10855",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f171-the-backend-http-layer-has-one-package-p",
+        "base": "main"
+      }
     },
     {
       "id": "F172",
