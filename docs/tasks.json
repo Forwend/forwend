@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 167,
+  "nextId": 173,
   "tasks": [
     {
       "id": "F166",
@@ -90,6 +90,199 @@
         "branch": "chore/f166-finished-tasks-f160-f165-move-to-the-arc",
         "base": "main"
       }
+    },
+    {
+      "id": "F167",
+      "type": "fix",
+      "behavior": "The invoice's Transactions rows read cleanly on a phone",
+      "acceptance": [
+        "R-69: e2e at 390 px checks each Transactions row puts kind and amount on the left and time with the explorer link on the right in two lines, with no line wrapping mid-group; axe clean"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-69"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-13T22:27:13Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 161.5,
+            "log": "docs/runs/F167-20261013T222713Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": "docs/runs/F167-20261013T222713Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F167-20261013T222713Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F167-20261013T222713Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F167-20261013T222713Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 94.9,
+            "log": "docs/runs/F167-20261013T222713Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.4,
+            "log": "docs/runs/F167-20261013T222713Z-build.log"
+          }
+        ],
+        "taskHash": "f406d203ec35af3c",
+        "filesHash": "9f2c01ce72d94ddd",
+        "proof": {
+          "1": "e2e: two-line phone rows"
+        },
+        "commit": "eb1989f",
+        "doneAt": "2026-10-13T22:31:39Z"
+      },
+      "branch": "fix/f167-the-invoice-s-transactions-rows-read-cle",
+      "baseCommit": "1894c965480d23296454ef077db025335fd255a6",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f167-the-invoice-s-transactions-rows-read-cle",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F168",
+      "type": "refactor",
+      "behavior": "App controls use the shared kit components instead of hand-styled HTML elements",
+      "acceptance": [
+        "No raw <button>, <input>, <select> or <textarea> in apps/web/src outside the kit showcase unless the kit has no such control, and each such exception is named in docs/web/structure.md; e2e and unit pass unchanged"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "D-11"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F169",
+      "type": "refactor",
+      "behavior": "Every web feature follows one fixed folder layout",
+      "acceptance": [
+        "docs/web/structure.md defines one fixed feature layout (api, schemas, types, components, hooks, lib, constants, tests) and the TypeScript conventions; every feature and shared folder follows it with no .ts and .tsx mixed at a feature root; routes, behavior and tests unchanged: e2e, unit, typecheck and build pass"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "D-11"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F170",
+      "type": "feat",
+      "behavior": "Web API requests and responses are typed and checked at runtime with Zod",
+      "acceptance": [
+        "zod is installed; every RTK Query endpoint declares a Zod schema for its response (and request body), types are inferred from the schemas, and a unit test proves a malformed response is reported as a schema error rather than used"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "D-11"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F171",
+      "type": "refactor",
+      "behavior": "The backend HTTP layer has one package per module, its own routes, and shared middleware",
+      "acceptance": [
+        "internal/httpapi is split into a server with the global router and middleware/ plus one package per module (profiles, invoices, money, health), each registering its own routes; backend tests pass unchanged in count; docs/backend/rules.md shows the layout"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F172",
+      "type": "refactor",
+      "behavior": "React components declare their props one consistent way",
+      "acceptance": [
+        "Every component declares its props as a named interface ComponentNameProps on a function declaration; no React.FC and no I-prefixed names; typecheck and unit pass"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "typecheck"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
