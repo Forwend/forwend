@@ -219,8 +219,9 @@ func TestInvoicePDFNotFound(t *testing.T) {
 }
 
 // The receipt answers 409 until the invoice is paid, then shows the paid time (the block time of the deposit that
-// completed it), each payment and the settlement with its full tx hash and explorer link, and the pay link with its QR
-// code. The public GET gives the same paid time and, once settled, the time the ledger booked the settlement.
+// completed it), each payment with its full tx hash and explorer link, and the pay link with its QR code. It never
+// mentions the settlement, the creator's business (R-61), so settling leaves it unchanged. The public GET gives the same
+// paid time and, once settled, the time the ledger booked the settlement.
 func TestReceiptPDF(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
@@ -280,11 +281,10 @@ func TestReceiptPDF(t *testing.T) {
 	mustContain(t, text, "Forwend\nReceipt\nINV-0001", "Paid\n"+stamp(paidAt),
 		"Base Sepolia\nChain 84532\n2.00 USDC\nAmount paid\n2.00 USDC",
 		"PAYMENTS\n1.50 USDC · "+stamp(paidAt.Add(-time.Minute))+"\n"+first+"\nView on Basescan\n0.50 USDC · "+
-			stamp(paidAt)+"\n"+second+"\nView on Basescan",
-		"SETTLEMENT\nPending: on its way to the creator's wallet\nCheck this receipt")
+			stamp(paidAt)+"\n"+second+"\nView on Basescan\nCheck this receipt")
 	mustContain(t, strings.ReplaceAll(text, "\n", ""), link)
-	if strings.Contains(text, "Settled") {
-		t.Fatalf("a receipt before settlement says settled:\n%s", text)
+	if strings.Contains(strings.ToLower(text), "settle") {
+		t.Fatalf("the receipt mentions the settlement:\n%s", text)
 	}
 	if !bytes.Contains(r.body, []byte("/URI (https://sepolia.basescan.org/tx/"+first+")")) || !qrDrawn(t, r.body) {
 		t.Fatalf("the receipt's explorer link or QR code is missing")
@@ -317,14 +317,9 @@ func TestReceiptPDF(t *testing.T) {
 		t.Fatal(err)
 	}
 	times("settled", paid, settledAt.UTC().Format(time.RFC3339))
-	after := e.pdf(t, id, "receipt.pdf", r.header.Get("ETag"))
-	if after.status != http.StatusOK {
+	// Settling changes nothing the payer reads: the same receipt, so the paid receipt's ETag still matches.
+	if after := e.pdf(t, id, "receipt.pdf", r.header.Get("ETag")); after.status != http.StatusNotModified {
 		t.Fatalf("settled, with the paid receipt's ETag: %d", after.status)
-	}
-	mustContain(t, pdfText(t, after.body), "Paid\n"+stamp(paidAt)+"\nSettled\n"+stamp(settledAt),
-		"SETTLEMENT\nSettled: in the creator's wallet\n"+settled+"\nView on Basescan")
-	if !bytes.Contains(after.body, []byte("/URI (https://sepolia.basescan.org/tx/"+settled+")")) {
-		t.Fatalf("the settlement has no explorer link")
 	}
 	// The invoice itself still renders once settled.
 	mustContain(t, strings.ReplaceAll(pdfText(t, e.pdf(t, id, "invoice.pdf", "").body), "\n", ""), "InvoiceINV-0001", link)
