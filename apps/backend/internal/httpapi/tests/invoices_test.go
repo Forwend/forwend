@@ -1,4 +1,4 @@
-package httpapi
+package tests
 
 import (
 	"context"
@@ -19,6 +19,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/address"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
+	"github.com/ensp1re/forwend/apps/backend/internal/httpapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/privy"
 	"github.com/ensp1re/forwend/apps/backend/internal/privy/privytest"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -76,7 +77,7 @@ func invoiceAPI(t *testing.T) invoiceEnv {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.srv = httptest.NewServer(NewMux(pool, verifier, privy.NewClient(privytest.AppID, privytest.AppSecret, e.wallets.URL),
+	e.srv = httptest.NewServer(httpapi.NewMux(pool, verifier, privy.NewClient(privytest.AppID, privytest.AppSecret, e.wallets.URL),
 		func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 			return big.NewInt(2500000), 100, nil
 		}, webURL))

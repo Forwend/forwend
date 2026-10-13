@@ -1,4 +1,4 @@
-package httpapi
+package invoiceapi
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/document"
+	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 )
 
@@ -24,12 +25,12 @@ func servePDF(invoices *invoice.Service, webURL, kind string, render func(invoic
 	return func(w http.ResponseWriter, r *http.Request) {
 		inv, err := invoices.Get(r.Context(), r.PathValue("invoiceId"))
 		if err != nil {
-			writeError(w, r, err)
+			httpio.WriteError(w, r, err)
 			return
 		}
 		pdf, err := render(inv, webURL+"/pay/"+inv.ID)
 		if err != nil {
-			writeError(w, r, err)
+			httpio.WriteError(w, r, err)
 			return
 		}
 		// The same invoice gives the same bytes, so their hash changes exactly when the file does.

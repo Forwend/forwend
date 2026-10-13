@@ -1,4 +1,6 @@
-package httpapi
+// Package httpio reads requests and writes answers for every API module: JSON in and out, the one error
+// shape of docs/backend/api.md, and the query parameters lists share.
+package httpio
 
 import (
 	"errors"
@@ -14,12 +16,17 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/search"
 )
 
-// writeError maps a service error to the one error shape in docs/backend/api.md. Unknown errors are logged once and
+// ErrMalformed is a request the server can't parse: 400.
+var ErrMalformed = errors.New("malformed request")
+
+var ErrRateLimited = errors.New("rate limited")
+
+// WriteError maps a service error to the one error shape in docs/backend/api.md. Unknown errors are logged once and
 // answered as a 500 without details. 400 and 422 messages say what to fix: our rule text or the JSON decoder's.
-func writeError(w http.ResponseWriter, r *http.Request, err error) {
+func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	status, code, message := http.StatusInternalServerError, "internal", "internal error"
 	switch {
-	case errors.Is(err, errMalformed):
+	case errors.Is(err, ErrMalformed):
 		status, code, message = http.StatusBadRequest, "malformed_request", err.Error()
 	case errors.Is(err, auth.ErrUnauthorized):
 		status, code, message = http.StatusUnauthorized, "unauthorized", "missing or invalid access token"
@@ -43,10 +50,10 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, invoice.ErrChainUnavailable):
 		slog.Warn("recheck could not read the chain", "err", err)
 		status, code, message = http.StatusServiceUnavailable, "network_unavailable", "could not read the network: try again shortly"
-	case errors.Is(err, errRateLimited):
+	case errors.Is(err, ErrRateLimited):
 		status, code, message = http.StatusTooManyRequests, "rate_limited", "too many requests: wait Retry-After seconds"
 	default:
 		slog.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
 	}
-	writeJSON(w, status, map[string]map[string]string{"error": {"code": code, "message": message}})
+	WriteJSON(w, status, map[string]map[string]string{"error": {"code": code, "message": message}})
 }
