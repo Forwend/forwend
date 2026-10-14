@@ -261,6 +261,30 @@ class HarnessTests(unittest.TestCase):
             h.parse_proof(['1=nonexistent_test'], task)
         self.assertEqual(h.parse_proof(['1=unit: value assertion'], task)['1'], 'unit: value assertion')
 
+    def test_docs_only_changes_run_only_docs_checks(self):
+        from argparse import Namespace
+        self.task['verification'] = ['docs-check']
+        self.config['checks'] = [
+            {'id': 'docs-check', 'argv': [sys.executable, '-c', 'pass'], 'required': True, 'precommit': True, 'docs': True},
+            {'id': 'unit', 'argv': [sys.executable, '-c', 'raise SystemExit(1)'], 'required': True, 'precommit': True}]
+        self.save()
+        git = lambda *args: subprocess.run(['git', *args], cwd=self.root, check=True, capture_output=True, text=True).stdout
+        git('init', '-q')
+        git('add', '.')
+        git('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-qm', 'base')
+        self.task['baseCommit'] = git('rev-parse', 'HEAD').strip()
+        self.save()
+        hook = lambda: h.cmd_hook(self.root, Namespace(name='pre-commit'))
+        (self.root / 'README.md').write_text('docs\n')
+        git('add', 'README.md')
+        self.assertEqual(h.run_order(h.State(self.root), self.task), ['docs-check'])
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(hook(), 0)
+            (self.root / 'value.py').write_text('value = 1\n')
+            git('add', 'value.py')
+            self.assertEqual(h.run_order(h.State(self.root), self.task), ['docs-check', 'unit'])
+            self.assertEqual(hook(), 1)
+
     def test_failed_and_missing_commands_never_verify(self):
         for argv, outcome in [([sys.executable, '-c', 'raise SystemExit(7)'], 'failed'),
                               (['/does/not/exist'], 'missing-command')]:

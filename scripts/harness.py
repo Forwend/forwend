@@ -30,6 +30,7 @@ BOOKKEEPING = (TASKS, LOCK, RUNS + '/', 'docs/install.json')  # never fingerprin
 SKIP_DIRS = {'.git', 'node_modules', '__pycache__', '.venv', 'venv', '.next', 'dist', 'build', 'target', 'coverage'}
 TAIL_LINES = 30
 TASK_ID = re.compile(r'F\d{3,}')
+DOCS_ONLY = ('*.md', ARCHIVE + '/*')  # prose and task records: code checks have nothing new to test
 EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'  # git's empty tree, the base for repos without commits
 DEBUG_LEFTOVER = re.compile(r'console\.log\(|\bdebugger\b|breakpoint\(\)|pdb\.set_trace\(|binding\.pry|\bdbg!\(|\b(TODO|FIXME|XXX)\b')
 HOOKS = ('pre-commit', 'pre-push')
@@ -52,6 +53,11 @@ def changed_since(root, base):
     if tracked is None or untracked is None:
         return None
     return sorted({name for name in (tracked + untracked).splitlines() if name and not name.startswith(BOOKKEEPING)})
+
+
+def docs_only(paths):
+    """True when there are changed paths and each is prose or an archived task record."""
+    return bool(paths) and all(any(fnmatch.fnmatch(name, rule) for rule in DOCS_ONLY) for name in paths)
 
 
 def added_lines(root):
@@ -441,9 +447,12 @@ def problems(state):
 
 
 def run_order(state, task):
+    """The task's own checks, then the required ones; a docs-only change skips required checks not marked "docs"."""
     order = list(task.get('verification') or [])
+    docs = docs_only(changed_since(state.root, task.get('baseCommit')))
     order += [check['id'] for check in state.config.get('checks') or []
-              if isinstance(check, dict) and check.get('required') and check.get('id') not in order]
+              if isinstance(check, dict) and check.get('required') and (check.get('docs') or not docs)
+              and check.get('id') not in order]
     return order
 
 
@@ -1520,9 +1529,12 @@ def cmd_hook(root, args):
     runs = root / RUNS
     runs.mkdir(parents=True, exist_ok=True)
     stamp = now().replace('-', '').replace(':', '')
+    staged = (git(root, 'diff', '--cached', '--name-only') or '').splitlines()
+    docs = docs_only([name for name in staged if name and not name.startswith(BOOKKEEPING)])
     results = [run_check(root, check, runs / f'precommit-{stamp}-{check["id"]}.log')
                for check in state.config.get('checks') or []
-               if isinstance(check, dict) and check.get('precommit') and check.get('id') and check.get('argv')]
+               if isinstance(check, dict) and check.get('precommit') and check.get('id') and check.get('argv')
+               and (check.get('docs') or not docs)]
     failed = [result for result in results if result['outcome'] != 'passed']
     for result in failed:
         print(f'pre-commit: {result["id"]} {result["outcome"]} (exit {result["exit"]}), log {result["log"]}\n'
