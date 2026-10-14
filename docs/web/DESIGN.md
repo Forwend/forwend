@@ -40,7 +40,6 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   bottom.
   The collapse button sits at the start of the header. Collapsed, the sidebar is an icon rail with the profile tile on
   top and names as tooltips; the choice is remembered in the browser.
-  Switching a profile keeps the current page.
 - Desktop header: a sticky bar across the content. Breadcrumb of links (profile, page, then the invoice number or the
   form under the page) on the left; on the right a search field with the ⌘K hint, notifications, then Send and
   Receive. Content uses the header's side padding, with no maximum width, so its edges line up with the header.
@@ -176,6 +175,6 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Target WCAG 2.2 AA, including text contrast, keyboard access and accessible status announcements.
 - Keyboard focus stays visible. Errors identify the field and explain the correction; loading and success states are
   accessible to screen readers. Copy controls confirm successful copying and handle unavailable clipboard access.
-- Responsive behavior, accessibility and money formatting have tests. Review composition and typography in screenshots.
+- Width checks (no sideways scroll at the R-7 and R-66 widths), accessibility and money formatting have tests. Review composition and typography in screenshots.
 
 Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Image prompts: [images.md](images.md).

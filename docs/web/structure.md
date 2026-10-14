@@ -1,7 +1,7 @@
 # Web file and folder structure
 
 These are Forwend's placement and naming rules for new code and explicitly scoped refactors (D-11).
-Existing files may still use the old layout. Do not move unrelated code while delivering a feature.
+Do not move unrelated code while delivering a feature.
 Redux Toolkit with RTK Query is the request cache (D-47); this document does not authorize other state tools,
 adding services, or creating empty folders.
 Create only the parts a task needs. Behavior and design rules remain in [rules.md](rules.md).
@@ -30,7 +30,7 @@ features/invoices/
   types/        invoices.ts             interfaces and type aliases; unions derived from constants/ with `typeof`
   constants/    invoices.ts             finite values and limits (`as const`); invoices-copy.ts: the feature's text
   lib/          invoices.ts             pure functions: no React, no requests
-  hooks/        use-chart.ts            one hook per file, named after it; a React context lives with its hook
+  hooks/        (balances: use-chart.ts) one hook per file, named after it; a React context lives with its hook
   components/   invoice-detail.tsx      React components, and nothing else is .tsx
   tests/        invoices.test.ts        unit tests of this owner
 ```
@@ -98,9 +98,8 @@ An image also used by sign-in is shared branding, not landing-only data.
 |---|---|---|
 | API file | Request definitions, response mapping and request-cache rules | `features/profiles/api/profiles-api.ts` |
 | Logic | A meaningful operation independent of React | `features/invoices/lib/invoices.ts` |
-| Hook | React state, lifecycle or interaction coordination | `features/profiles/hooks/use-create-profile.ts` |
+| Hook | React state, lifecycle or interaction coordination | `features/profiles/hooks/use-app-session.ts` |
 | Component | Rendering and simple event handling | `features/profiles/components/new-profile-form.tsx` |
-| Slice | A feature's shared client state and updates | `features/profiles/store/profiles-slice.ts` if Redux is adopted |
 
 Logic is plain functions in `lib/`. Do not add a service that only forwards a request, or wrap a generated query
 hook without additional behavior. Backend services remain responsible for authorization, transactions and
@@ -108,30 +107,25 @@ money rules. Frontend validation does not replace backend validation.
 
 ## Redux and request caching
 
-Use established Redux terms: store, slice, reducer, selector, query and mutation. Use these filenames consistently:
+The store holds only the RTK Query request cache. What exists:
 
-- `store/store.ts`: exports `makeStore`, `AppStore`, `RootState` and `AppDispatch`; the filename describes the
-  module, while `makeStore` names the function. Do not create a server-wide singleton store.
-- `store/hooks.ts`: typed `useAppDispatch`, `useAppSelector` and `useAppStore` hooks as needed. Imports of store
-  types are type-only; this module must not import the running store.
-- `providers/store-provider.tsx`: the client provider; mount it around the app routes that need Redux.
-- `features/<feature>/store/<feature>-slice.ts`: feature state and reducers. Keep selectors beside the slice;
-  extract `<feature>-selectors.ts` only when their logic warrants a separate file.
-- `shared/api/api-slice.ts`: the shared RTK Query `apiSlice` for our backend, with common request setup.
-  Define endpoints in `features/<feature>/api/<feature>-api.ts` using `injectEndpoints`. Do not collect all
-  feature endpoints in the shared file or create a separate `createApi` instance for every feature.
-- `shared/api/client.ts`: the plain request client if needed. Do not maintain duplicate fetch and RTK Query
-  implementations for the same endpoint.
+- `store/store.ts`: `makeStore`, `AppStore`, `RootState` and `AppDispatch`; one store per tab, never a server-wide
+  singleton.
+- `providers/store-provider.tsx` (signed-in app, inside Privy) and `providers/public-store-provider.tsx` (`/pay`, no
+  token).
+- `shared/api/api-slice.ts`: the one `apiSlice` with the common request setup. Each feature injects its endpoints in
+  `features/<feature>/api/<feature>-api.ts` with `injectEndpoints`; no endpoints in the shared file and no second
+  `createApi`.
 
-These names adapt Redux's `store.ts`, `hooks.ts` and `apiSlice.ts` examples to this repo's kebab-case filenames;
-they are our convention, not framework-required paths. See the official [store example](https://redux.js.org/tutorials/essentials/part-2-app-structure)
-and [API slice example](https://redux.js.org/tutorials/essentials/part-7-rtk-query-basics).
+No slices, typed store hooks or plain fetch client exist. Add `store/hooks.ts` and
+`features/<feature>/store/<feature>-slice.ts` only with the first client state shared across screens, and never fetch
+an endpoint outside RTK Query.
 
 Keep menu state, forms and animations local. Put shareable filters in the URL. Use a request cache for server
 data; do not also copy the same responses into ordinary slices. Redux is for client state shared across screens.
 Profile-specific queries include the profile identity in their cache arguments, and sign-out clears private
 cached data. Preserve the project's exact money representation; do not convert amounts to floating point to
-fit a store. State serialization must be addressed explicitly when introducing Redux.
+fit a store.
 
 Server Components do not read or write Redux. Fetch server-rendered data on the server; use RTK Query for client
 requests. Follow [Redux with Next.js](https://redux.js.org/usage/nextjs) and [endpoint splitting](https://redux.js.org/toolkit/rtk-query/usage/code-splitting).
@@ -144,9 +138,9 @@ for a distinct family of real components. Avoid one flat folder for every compon
 ```text
 packages/ui-web/src/
   components/
-    buttons/                   button, action-button
-    forms/                     text-field, select-field, checkbox, switch, code-input, email-capture,
-                               date-picker/ (calendar, date-picker, iso-date)
+    buttons/                   button, action-button, icon-button, row-button
+    forms/                     text-field, text-area-field, select-field, search-field, checkbox, switch, choice-card,
+                               code-input, email-capture, form, field-classes, date-picker/ (calendar, date-picker, iso-date)
     navigation/                tabs, nav-pill, theme-switch, segmented-control
     overlays/                  dialog, sheet, menu, tooltip
     feedback/                  toast, empty-state, spinner, skeleton, shimmer, dot-loader, success-check
@@ -155,15 +149,13 @@ packages/ui-web/src/
                                receive-address, network-warning, qr-code
   hooks/                       hooks shared by multiple component families
   lib/                         small named capabilities shared by component families
-  constants/                   values shared by component families
   types/                       types shared by component families, grouped by domain
   icons/
   index.ts                     stable public package exports
 ```
 
-- Start with `components/buttons/button.tsx`. When a component gains supporting files, use
-  `components/buttons/button/button.tsx` and `button.types.ts` as needed, as `payments/money/` holds `Money` and
-  its `formatTokenAmount`. Keep simple props in the component file. Do not create a folder just to hold a single
+- Start with `components/buttons/button.tsx`. When a component gains supporting files, give it a folder and name
+  each file after its topic, as `payments/money/` holds `money.tsx` and `token-amount.ts`. Keep simple props in the component file. Do not create a folder just to hold a single
   file.
 - Keep related compound parts together: `Menu`, `MenuItem` and `MenuTrigger` can share `overlays/menu.tsx`.
   Independently maintained components deserve separate files. Split by responsibility, not an arbitrary line limit.
@@ -181,8 +173,7 @@ packages/ui-web/src/
   and UI packages; shared code and UI packages never import screens or features. A feature does not import
   another feature's private files. Compose independent features in a screen; any necessary public dependency
   between features must be named in the architecture and remain acyclic.
-- Store assembly may import feature reducers. Feature components may use typed store hooks; slices and API
-  definitions must not import the store instance. Type-only references do not create runtime dependencies.
+- API definitions must not import the store instance. Type-only references do not create runtime dependencies.
 - Use direct imports inside an owner. Do not add an `index.ts` in every directory. Keep a deliberate public entry
   point where there is a real package boundary. Keep server-only modules out of client import paths and preserve
   small client boundaries; see [Next.js server and client components](https://nextjs.org/docs/app/getting-started/server-and-client-components).

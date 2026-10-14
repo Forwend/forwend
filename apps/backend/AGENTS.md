@@ -1,6 +1,6 @@
 # Backend
 
-Go API, worker and signer (PLAN Phase 6). Requirements R-14…R-24 in `docs/PROJECT.md`.
+Go API, worker and signer. Requirements: the task's rows in `docs/PROJECT.md`.
 
 ## Commands
 

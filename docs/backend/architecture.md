@@ -1,7 +1,7 @@
 # Backend architecture
 
-The Go backend in `apps/backend` (PLAN Phase 6). Code rules: [rules.md](rules.md).
-Requirements: R-14…R-24 in [PROJECT.md](../PROJECT.md). Whole system: [architecture.md](../architecture.md).
+The Go backend in `apps/backend`. Code rules: [rules.md](rules.md).
+Requirements: the task's rows in [PROJECT.md](../PROJECT.md). Whole system: [architecture.md](../architecture.md).
 
 Built: signup and profiles API, billing details, balances, activity, wallet transactions and balance history API, invoice API, invoice and receipt PDFs (`internal/document`, drawn in Go from the stored invoice), Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
 (`apps/backend/e2e`, R-23) runs the whole loop. Not built yet: refunds, webhooks, merchants.
@@ -15,12 +15,14 @@ Built: signup and profiles API, billing details, balances, activity, wallet tran
   URL uses `sslmode=verify-full`.
 - `worker`: chain watcher (block cursor per chain, `eth_getLogs` for allowlisted tokens filtered
   to active receiver addresses), confirmation/finality tracking, reorg handling, invoice state
-  machine, outbox processing, webhook delivery, reconciliation.
+  machine and ledger booking, Check status rescans. Nothing writes or sends `outbox_events` yet (PLAN 9.6); webhooks
+  come in PLAN 11.5.
 - `signer`: separate process, own credentials, no public routes, no user sessions. Accepts only
-  typed intents ("settle invoice X"). Refunds are not signed here: an approved claim becomes a
-  proposed Safe transaction that the multisig owners approve. Re-reads the ledger and the chain
-  itself before signing. Caps amounts, allows only known contract methods, writes its own audit
-  log. Separate DB role with read access plus its own intent tables.
+  typed intents ("settle invoice X") and signs only `factory.deploy` and `receiver.settle`. Refunds are never signed
+  here: they will be Safe transactions the multisig owners approve (PLAN 11.10.3). Re-reads the ledger and the chain
+  itself before signing, and settles at most `SponsoredPerDay` (50) invoices per user a day on the executor's gas.
+  Writes settlement intents, the settlement ledger transaction and `settlement_status`. Every process uses one
+  `DATABASE_URL` today; a separate signer database role is planned for deployment (Q-8).
 - `canary`: run on its own host by a scheduler, not beside the others. Checks open invoices' receive addresses
   against `factory.predict` on two RPCs, the api and the pay page drawn in Chromium (address text and QR code), with
   its own config and no shared address code ([money safety](money-safety.md#canary), R-51).
@@ -134,12 +136,13 @@ generator, api, proxy and Anvil on the same machine; default pool size (14 conne
 
 ## Data model
 
-Built in `internal/database/migrations` (R-17); Postgres enforces the rules below, each with a test.
+Built in `internal/database/migrations` (R-17), except rows marked planned; Postgres enforces the rules below, each
+with a test.
 
 - `users(onboarded_at)` (set once by the first-run choice, R-50), `profiles(kind: personal|freelancer|merchant, name, idempotency_key, invoice_seq)` (one personal per user, made at
   signup without a key; other kinds once per user and key, or without a key by the first-run choice), `profile_wallets(provider, provider_wallet_id, address, chain_family)` (one per profile and family),
   `profile_billing_details(name, address, country, tax_id, contact_email, updated_at)` (at most one per profile, editable; R-43).
-- `merchants → stores(project_id, branding)`, `team_members(role, store scope)` (Phase 11).
+- Planned (PLAN 11.1, 11.2): `merchants → stores(project_id, branding)`, `team_members(role, store scope)`.
 - `chains(chain_id, chain_family, enabled)`, `tokens(chain_id, contract, decimals, enabled)`. One confirm rule for all
   chains (D-45), so no per-chain rule columns. From `00015` on, migrations add each planned network and its token
   switched off (Arbitrum Sepolia USDC in `00015`, Arc testnet USDC in `00016`, Tempo Moderato OUSD in `00017`), so
@@ -166,11 +169,11 @@ Built in `internal/database/migrations` (R-17); Postgres enforces the rules belo
   (`in`|`out`) with the counterparty, so a transfer between two profile wallets is out for one and in for the other.
   Block fields, statuses and identity rules as in `chain_transfers`, with the wallet and direction in each key.
 - `ledger_transactions` + `ledger_entries`: double-entry, append-only (below).
-- `settlement_intents` (unique per invoice), `refund_intents` (one per approved claim); nonce and tx hash tracked,
-  with the hashes a fee replacement replaced; reconcile before any retry.
-- `refund_claims`, `support_cases` (wrong chain, late).
-- `outbox_events` (written in the same transaction as the change, published at least once), `webhook_endpoints`,
-  `webhook_deliveries` (Phase 11).
+- `settlement_intents` (unique per invoice): nonce and tx hash tracked, with the hashes a fee replacement replaced;
+  reconcile before any retry.
+- `outbox_events`: the table exists; nothing writes or publishes it yet (PLAN 9.6).
+- Planned (PLAN 11.5, 11.10): `refund_intents` (one per approved claim), `refund_claims`, `support_cases` (wrong chain,
+  late), `webhook_endpoints`, `webhook_deliveries`.
 - `chain_cursors(chain_id, last_scanned_block, last_finalized_block)`.
 
 Rules:
@@ -178,7 +181,7 @@ Rules:
   rounds a fraction silently, so Go parses decimal strings into `big.Int` before any insert.
 - **Addresses and hashes**: text with a `chain_family`; for `evm` only lowercase `0x` hex passes a CHECK. A mixed-case
   (EIP-55) copy would otherwise dodge the unique indexes. Lowercase in Go on the way in; checksum only for display.
-- **Statuses**: text + CHECK, not Postgres enums (enum values can't be removed). Allowed transitions are F049's job.
+- **Statuses**: text + CHECK, not Postgres enums (enum values can't be removed). A trigger enforces the allowed transitions ([Invoice states](#invoice-states)).
 - **Transfer identity**: `log_index` is the log's position in the block. After a reorg the row stays `reorged` and the
   same transaction can be mined again with the same log index, so `(chain_id, tx_hash, log_index)` is unique only while
   not reorged; `(chain_id, block_hash, log_index)` is always unique.
@@ -227,7 +230,7 @@ each chain one pool of endpoints in `script/rpc.mjs` order: every Infura key (al
 public RPCs only when `INFURA_API_KEYS` is empty. An endpoint is used only after its `eth_chainId` matches. Hosts
 alternate between the two roles in list order (first host primary, second host second, third primary, ...), and a role
 uses only its own hosts: the primary (reading the chain, signing) and the second (balances, D-15) never share a host,
-even after an outage, so one provider can't supply both a deposit and the balance that confirms it (SEC-01). When all
+even after an outage, so one provider can't supply both a deposit and the balance that confirms it. When all
 of a role's hosts rest, that role waits; paid and settled wait with it. A list with fewer than two hosts is refused; every
 chain lists at least two public hosts from different operators (the chain's own RPC, then publicnode or dRPC), so it
 runs without Infura keys (`TestEveryChainListsTwoPublicHosts`). Every call, or batch, goes to its role's endpoint. No answer within 5 s, a connection error, an HTTP error
@@ -258,7 +261,7 @@ among them, refuse more with "exceed max topics". Invoices leave the scan 30 day
 contracts' `MAX_HOLD`), unless a deposit to them is still detected: later money is moved only by the refund authority, from the chain. A transfer already recorded
 under another block and then mined again is skipped with an `ALERT` log, so the chain's scan goes on.
 Invoices on a chain are created only once the worker has its cursor (`ErrNotWatched`, 503): a first scan starts at the
-finalized block and would never see a payment made before it (SEC-02). One JSON-RPC batch then reads `finalized` and the header of every block it judges, so they usually come
+finalized block and would never see a payment made before it. One JSON-RPC batch then reads `finalized` and the header of every block it judges, so they usually come
 from one node. One transaction then:
 - marks a `detected` row `reorged` only when the chain shows another block hash at its height; a log merely missing
   from one answer (a lagging or overloaded node) proves nothing;
@@ -322,7 +325,7 @@ signer:
    not settled at the finalized block, or a settler other than this executor (the deadline passed: it sends nothing
    and waits for the refund authority's settle). Also when the invoice's user already had `SponsoredPerDay` (50)
    settlements signed in 24 hours, across all their profiles: tiny invoices paid back and forth would otherwise drain
-   the executor's gas for everyone (SEC-03); this logs an `ALERT`.
+   the executor's gas for everyone; this logs an `ALERT`.
 4. Deploys the receiver if needed (`deploy` is idempotent). When a transaction we never saved waits at the executor's
    next mined nonce (an earlier deploy the fee left behind), the deploy takes that nonce at twice today's fee, so later
    transactions don't queue behind it. Then waits up to 10 s for the RPC to show the receiver's
@@ -397,5 +400,5 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
 open ──transfer seen──▶ detected ──booked < amount──▶ partially_paid ──booked ≥ amount and balanceOf agrees──▶ paid
 open/detected/partially_paid ──finalized block time > expires_at──▶ expired / expired_partially_paid (held)
 any deposit with block_time > expires_at ──▶ held for the payer, never owed to the creator
-paid ──settlement confirmed──▶ settled (F050)    held funds ──verified claim + approval──▶ refunded (later)
+paid ──settlement confirmed──▶ settled    held funds ──verified claim + approval──▶ refunded (later)
 ```

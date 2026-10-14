@@ -42,12 +42,11 @@ apps/backend/
     database/             connection pool and embedded migrations
       migrations/
       databasetest/
-      queries/            generated sqlc package when introduced
   e2e/                    flows involving the real binaries
 ```
 
-This is a placement guide for new code and scoped refactors, not a claim that every path exists or an instruction
-to create them all. Keep the current Go backend; do not copy frontend folders or NestJS layers into it.
+Other packages under `internal/`: `auth`, `address`, `finality`, `search`, `document`, `canary`, `chaintest`;
+`cmd/canary` is the canary binary. Keep the current Go backend; do not copy frontend folders or NestJS layers into it.
 
 - Production application logic belongs in `internal/`. `cmd/` owns startup, wiring and process lifetime;
   balance reads, RPC selection/retry and other reusable behavior belong in a named internal package.
@@ -75,8 +74,7 @@ to create them all. Keep the current Go backend; do not copy frontend folders or
   packages never import `httpapi` or `cmd`; database infrastructure never imports domains. Explicit dependencies
   between domain packages must remain acyclic. Integrations must not call back into HTTP handlers.
 - The operation owns its transaction boundary. Keep handwritten SQL with its feature, in a dedicated file when
-  it grows. When adopting sqlc, keep query sources grouped by feature and generated output under
-  `internal/database/queries/`; do not add a repository interface or database rewrite just to move files.
+  it grows; do not add a repository interface or database rewrite just to move files.
 - Keep migrations in `internal/database/migrations/`. Do not edit generated code; regenerate it. Adding a
   SQL-generation tool is a separate task from reorganizing existing code.
 - Keep tests beside the package code (`signup_test.go`), shared test helpers in `<package>test`, fixture files
@@ -92,8 +90,8 @@ unrelated file moves or changes to money behavior.
 - Package = folder name: short, lowercase, one noun (`invoice`, `ledger`).
 - Never `util`, `common`, `misc`, `types`, `interfaces`, `api`, `helpers`, `models`, `base`.
 - No stutter: `invoice.Service`, not `invoice.InvoiceService`.
-- Constructors name their type: `invoice.NewService`, `chain.NewClient`. Bare `New` only when it returns the type
-  named like the package (`queries.New` → `*queries.Queries`).
+- Constructors name their type: `invoice.NewService`, `watcher.NewChain`. Bare `New` only when it returns the type
+  named like the package.
 - Test helpers: `<package>test` (`databasetest`).
 - Files: descriptive lowercase names, with underscores for multiple words (`wallet_balance.go`); `_test.go`
   for tests. Use the operation name within a domain package (`invoice/create.go`), not `invoice_service_impl.go`.
@@ -127,4 +125,4 @@ unrelated file moves or changes to money behavior.
 - Database functions add operation context with `%w`; services translate expected failures to named domain errors.
   HTTP handlers use `errors.Is` to map those errors to the API response. Log unexpected errors once at the boundary.
 - `cmd/api` wires config, database and listener. `httpapi.Serve` owns request draining and its deadline; close the pool
-  after it returns. `routes.go` registers handlers; `health.go` implements the public database health check.
+  after it returns.

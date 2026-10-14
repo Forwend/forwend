@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 188,
+  "nextId": 189,
   "tasks": [
     {
       "id": "F179",
@@ -204,7 +204,7 @@
       "type": "feat",
       "behavior": "A payer can ask for the receipt by email on the pay page and gets one email once paid (PLAN 9.7)",
       "acceptance": [
-        "The pay page offers an optional Email me the receipt field before and after paying; the address is kept on that invoice only, can change until the receipt is sent, and the endpoint is limited per invoice and per IP (R-82)",
+        "The pay page offers an optional Email me the receipt field before and after paying; the address is kept on that invoice only, can change until the receipt is sent, and the endpoint is limited per invoice and globally in the api (per IP belongs to the edge, Q-8) (R-82)",
         "Once paid, one email with the amount, payee, transaction link and receipt PDF link is sent through the outbox, and nothing else is sent to that address (R-82)"
       ],
       "dependsOn": [
@@ -344,6 +344,79 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f187-a-change-that-touches-only-markdown-or-a",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F188",
+      "type": "docs",
+      "behavior": "Docs state only facts the code and runner confirm: safety nets, signer model, worker duties, built tables, staging coverage, openapi, rate limits, check names, web behavior",
+      "acceptance": [
+        "money-safety.md names the signer's address and factory.predict refusal instead of a watcher alert; backend architecture.md describes the signer, the worker (no outbox or webhooks yet) and only tables that migrations create, with planned ones marked; rules.md and api.md drop deleted files, sqlc symbols, the nonexistent cancel example, SEC IDs and finished-task references",
+        "workflow.md and staging.md say staging CI runs required and CI-only checks; PLAN drops the planned-openapi paragraph; D-77, R-82 and F185 limit per invoice and globally in the api with per-IP left to the edge; R-34, R-35, R-39 name e2e; D-37 ends at PLAN 11.10; docs/architecture.md points money rules to money-safety.md",
+        "web docs match the code: structure.md shows the store as the RTK Query apiSlice only and real example paths; PRODUCT.md keeps host, refund and scam lines under Need help; DESIGN.md drops the keep-the-page line; web architecture.md lists the real feature imports and current pages"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [
+        "D-77",
+        "R-82",
+        "D-37"
+      ],
+      "keep": [
+        "apps/*/src/*",
+        "apps/backend/internal/*",
+        "packages/*/src/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-14T22:10:50Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F188-20261014T221050Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F188-20261014T221050Z-harness.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F188-20261014T221050Z-keep.log"
+          }
+        ],
+        "taskHash": "4259b64ae02acfb5",
+        "filesHash": "919a8b4cdfaf2509",
+        "proof": {
+          "1": "docs-check: money-safety, backend architecture, rules, api and backend AGENTS match the code (watcher import, signer methods, migrations, deleted files, error codes)",
+          "2": "docs-check: staging coverage, openapi paragraph, D-77/R-82/F185 limits, R-34/35/39 checks, D-37 and docs/architecture links fixed",
+          "3": "docs-check: web structure, architecture, PRODUCT, DESIGN, rules and AGENTS match the store files, feature imports, pay page and profile switch"
+        },
+        "commit": "ac90420",
+        "doneAt": "2026-10-14T22:11:04Z"
+      },
+      "branch": "docs/f188-docs-state-only-facts-the-code-and-runne",
+      "baseCommit": "9ba2fe165a0b964e928d3fa71bf7678f5f6b0255",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f188-docs-state-only-facts-the-code-and-runne",
         "base": "main"
       }
     }

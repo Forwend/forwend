@@ -59,8 +59,6 @@ Additional gate requirements: Anvil in local compose, sqlc generation, append-on
 `SKIP LOCKED`, signer nonce reconciliation after a crash, low executor-gas alerts, structured logs and an error
 reporting hook disabled locally. Define a dust threshold before ignoring tiny deposits; they remain refundable.
 The signer checks the recipient against Privy and never receives authority to send from user wallets.
-Create `apps/backend/api/openapi.yaml` with the first business endpoint; generate the Go types and
-`packages/api-client` TypeScript client. These are planned paths, not existing infrastructure.
 
 ## Phase 7: app shell
 

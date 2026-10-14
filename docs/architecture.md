@@ -1,7 +1,8 @@
 # Architecture
 
 How Forwend works as a system: the parts, who holds which key, and how money moves. It names concepts and
-boundaries, not folders; each area's own doc has the detail. Roadmap and money rules: [PLAN.md](../PLAN.md).
+boundaries, not folders; each area's own doc has the detail. Roadmap: [PLAN.md](../PLAN.md). Money rules:
+[money safety](backend/money-safety.md).
 Requirements and decisions: [PROJECT.md](PROJECT.md).
 
 ## Parts
@@ -10,7 +11,7 @@ Requirements and decisions: [PROJECT.md](PROJECT.md).
 |---|---|---|---|
 | Web app (Next.js) | Landing, dashboard, hosted checkout, private `/kit` | No | [web](web/architecture.md) |
 | API | Signed-in users create invoices and read state; payers read checkout state | No | [backend](backend/architecture.md) |
-| Worker | Watches chains, keeps the append-only ledger, runs the invoice state machine, sends webhooks | No | [backend](backend/architecture.md) |
+| Worker | Watches chains, keeps the append-only ledger, runs the invoice state machine; webhooks come in PLAN 11.5 | No | [backend](backend/architecture.md) |
 | Signer | Turns typed intents ("settle invoice X") into transactions with the executor key | Executor key | [backend](backend/architecture.md) |
 | Postgres | Profiles, invoices, chain transfers, ledger, intents | No | [backend](backend/architecture.md) |
 | Invoice receiver contracts | One receiver per invoice at an address known in advance; can only pay the invoice amount to its recipient or return money through the refund authority | No | [contracts](contracts/architecture.md) |
@@ -45,7 +46,7 @@ Diagram: [who can move money](diagrams/security-keys.json).
 4. For a paid invoice the signer deploys the receiver (if needed) and calls `settle`: exactly the invoice amount goes
    to the profile wallet. Any excess stays held in the receiver.
 5. Held money (excess, late, expired partial) goes back to the payer through a verified claim and a delayed Safe
-   refund. Policy, not a contract rule: before the deadline the executor could still settle it to the recipient.
+   refund (claims come in PLAN 11.10; until then the Safe returns it by hand). Policy, not a contract rule: before the deadline the executor could still settle it to the recipient.
 
 Diagrams: [full contract workflow](diagrams/contracts-workflow.json), [invoice states](diagrams/invoice-lifecycle.json).
 Open one with `npx mapgrain@0.2.5 studio <file>.json`.

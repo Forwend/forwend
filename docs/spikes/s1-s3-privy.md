@@ -45,7 +45,8 @@ Tempo `0x07abc07e…c1fc` (0.05 AlphaUSD).
 - **Gas (D-43):** Privy sponsors gas on Base Sepolia and Tempo (and is enabled on Arbitrum Sepolia), free on testnets;
   no paymaster needed. Mainnet cost (gas plus Privy's fee) must be checked before mainnet trials. A sponsored profile
   wallet becomes an EIP-7702 account; it still receives settlements like any address.
-- **`internal/privy`:** wrap the SDK (D-12) and fix its gaps: `Wallets.Archive` needs a `{}` body,
+- **`internal/privy`** (server sends apply only if D-46 is reversed; today the server never signs for user wallets):
+  wrap the SDK (D-12) and fix its gaps: `Wallets.Archive` needs a `{}` body,
   `Wallets.Ethereum.SendTransaction` cannot set `sponsor` (use `Wallets.Rpc` with `Sponsor`), and the SDK has no
   transaction lookup (`GET /v1/transactions/{id}` until `transaction_hash` is set). Reads right after a send can lag:
   one public RPC read 0 USDC for a few seconds after a mined transfer.

@@ -6,7 +6,9 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 - Compute it locally (`internal/address`) from the factory and implementation addresses compiled into the binary. The
   init-code hash differs per invoice: the clone's init code contains the terms. Never read it from the database or an RPC.
-- `(chain_id, receive_address)` is unique. The watcher alerts on any invoice whose address does not recompute.
+- `(chain_id, receive_address)` is unique. The signer refuses to settle when the stored terms do not recompute the
+  receive address or `factory.predict` gives another one (`internal/settlement/settle.go`); the canary checks open
+  invoices ([Canary](#canary)).
 - Before showing an address, run the same term checks as `settle`, plus expiry ≤ 365 days and settle deadline =
   expiry + 24 h. The contract accepts any terms, so these checks live only here.
 - Go address code and `predict` share test vectors: `packages/contracts/vectors/receive-address.json`, written by

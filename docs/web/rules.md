@@ -10,6 +10,7 @@ Apply to `apps/web`, `packages/ui-web` and `packages/design-tokens`. Before addi
 - Mood images (landscapes, textures) come from Codex `image_gen` via `codex exec` (D-9). Product UI, charts and text
   are code. Store images as WebP in `apps/web/public/images/` and log them in [images.md](images.md).
 - Respect `prefers-reduced-motion`; no scroll hijacking.
-- Test only important behavior: money display, payment logic, forms, `/kit` privacy, theme, accessibility (axe). No
-  tests for layout, sizes, fonts, colors or section order; judge those in screenshots.
+- Test only important behavior: money display, payment logic, forms, `/kit` privacy, theme, accessibility (axe). Width
+  checks (no sideways scroll at the R-7 and R-66 widths) are tested; fonts, colors and section order are judged in
+  screenshots, not tested.
 - Visual decisions follow [DESIGN.md](DESIGN.md) (tokens, type, components) and [PRODUCT.md](PRODUCT.md) (brief).
