@@ -147,7 +147,8 @@ function Loaded({
   const amount = BigInt(invoice.amount);
   const client = mine?.client;
   const issuer = invoice.issuer;
-  // The API says open until the chain is final past expiry; the checkout closed at expiry, and the status says so.
+  // The checkout closes at expiry by the local clock (pay link, Closed on); the status follows the API's closed flag,
+  // at most one poll later.
   const closed = Date.parse(invoice.expiresAt) <= Date.now();
   const status = invoiceStatus(invoice);
   const exception = invoiceException(invoice, status);

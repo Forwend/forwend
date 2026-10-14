@@ -19,11 +19,11 @@ const (
 var StatusFilters = []string{"open", "paid", "settled", "expired"}
 
 // ClosedSQL is true for an invoices row (read through invoicesCurrent) whose checkout closed and that can no longer
-// be paid: open or partly paid, past expiry, with no payment made before expiry still confirming and less than the
-// amount paid before it. Its status waits for the chain to be final past expiry (the ledger's rule), but every reader
+// be paid: open, detected or partly paid, past expiry, with no payment made before expiry still confirming and less
+// than the amount paid before it. Detected counts: money after the close also reads detected until the chain is final. Its status waits for the chain to be final past expiry (the ledger's rule), but every reader
 // already shows it expired (R-77). Paid on time and awaiting the second RPC is not closed: that money goes to the
 // creator.
-const ClosedSQL = `(invoices.payment_status IN ('open', 'partially_paid')
+const ClosedSQL = `(invoices.payment_status IN ('open', 'detected', 'partially_paid')
 	AND invoices.expires_at < extract(epoch FROM now())
 	AND NOT EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = invoices.option_id AND t.status = 'detected'
 	                AND t.block_time <= invoices.expires_at)

@@ -35,7 +35,9 @@ export function activityStatus(
   if (item.settlementStatus === API_SETTLEMENT_STATUSES.settled) return PAYMENT_STATUS.settled;
   const status = INVOICE_STATUSES[item.status] ?? PAYMENT_STATUS.detected;
   if (item.closed) {
-    if (status === PAYMENT_STATUS.open) return PAYMENT_STATUS.expired;
+    // Detected and closed: only money after the close, held for the payer; nothing on time can still complete it.
+    if (status === PAYMENT_STATUS.open || status === PAYMENT_STATUS.confirming)
+      return PAYMENT_STATUS.expired;
     if (status === PAYMENT_STATUS.partiallyPaid) return PAYMENT_STATUS.expiredPartiallyPaid;
   }
   return status;
