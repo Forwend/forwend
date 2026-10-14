@@ -19,6 +19,16 @@ export const EXPIRY_BOUNDS_S = { min: 900, max: 31_536_000 } as const;
 /** How the payer pays (R-56): any enabled stablecoin and network, or one the creator fixes. */
 export const PAY_WITH = { any: "any", fixed: "fixed" } as const;
 
+/** The states whose owner page says what to do next (R-77). */
+export const INVOICE_EXCEPTIONS = {
+  partial: "partial",
+  closedUnpaid: "closedUnpaid",
+  closedPartial: "closedPartial",
+} as const;
+
+/** `?from=<invoiceId>` fills a new invoice from a closed one; `rest` asks only for what is left (R-77, D-25). */
+export const RESTART_PARAMS = { from: "from", rest: "rest" } as const;
+
 /** The API's text limits in characters (openapi.yaml, CreateInvoiceRequest). */
 export const INVOICE_LIMITS = {
   title: 200,

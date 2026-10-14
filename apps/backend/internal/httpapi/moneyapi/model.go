@@ -45,6 +45,7 @@ type activityItemJSON struct {
 	SettlementStatus string `json:"settlementStatus,omitempty"`
 	TxHash           string `json:"txHash,omitempty"`
 	OptionCount      int    `json:"optionCount"`
+	ExpiresAt        string `json:"expiresAt,omitempty"`
 }
 
 type transactionsJSON struct {

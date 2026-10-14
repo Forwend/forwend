@@ -19,9 +19,13 @@ const (
 var StatusFilters = []string{"open", "paid", "settled", "expired"}
 
 // StatusFilterSQL is the filter of an invoices row: settled once settled, otherwise its payment status, with open,
-// detected and partially paid as open and both expired ones as expired.
+// detected and partially paid as open and both expired ones as expired. An open or partly paid invoice whose checkout
+// has closed is expired too: its status waits for the chain to be final past expiry, but it takes no more money, as the
+// web shows it (R-77). A detected one stays open: that payment came before expiry and may still confirm.
 const StatusFilterSQL = `CASE WHEN settlement_status = 'settled' THEN 'settled' WHEN payment_status = 'paid' THEN 'paid'
-	WHEN payment_status IN ('expired', 'expired_partially_paid') THEN 'expired' ELSE 'open' END`
+	WHEN payment_status IN ('expired', 'expired_partially_paid') THEN 'expired'
+	WHEN payment_status IN ('open', 'partially_paid') AND expires_at <= extract(epoch FROM now()) THEN 'expired'
+	ELSE 'open' END`
 
 // searchText is what a search looks in: the number as shown (INV-0042), title, note, client name and email and
 // the main row's receive address. Read through invoicesCurrent, it must stay the expression of the invoices_search

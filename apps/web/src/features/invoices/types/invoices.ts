@@ -3,6 +3,7 @@ import type { TokenBalance } from "@/features/balances/types/balances";
 import type {
   AMOUNT_ERRORS,
   EXPIRY_CHOICES,
+  INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
   INVOICE_PDFS,
   INVOICE_STEPS,
@@ -23,6 +24,23 @@ import type {
 } from "@/features/invoices/schemas/invoices";
 
 export type PayWith = (typeof PAY_WITH)[keyof typeof PAY_WITH];
+export type InvoiceExceptionKind = (typeof INVOICE_EXCEPTIONS)[keyof typeof INVOICE_EXCEPTIONS];
+
+/** Base units of the shown option: received before expiry, still left to pay, and arrived after it (held). */
+export interface InvoiceException {
+  kind: InvoiceExceptionKind | null;
+  received: bigint;
+  left: bigint;
+  late: bigint;
+}
+
+/** Starting values of the new invoice form, as its fields hold them. */
+export interface InvoiceStart {
+  payWith: PayWith;
+  picked: string;
+  amount: string;
+  client: { name: string; email: string; address: string };
+}
 
 export type ExpiryChoice = keyof typeof EXPIRY_CHOICES;
 export type InvoiceField = (typeof INVOICE_FIELDS)[keyof typeof INVOICE_FIELDS];

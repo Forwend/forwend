@@ -31,6 +31,8 @@ export const activityItemSchema = z.object({
   txHash: hash32.optional(),
   // Above 1 the client chooses: the invoice reads in USD, not in the token given here (its first option).
   optionCount: z.number().int().positive(),
+  // Invoices only: when the checkout closes (R-77).
+  expiresAt: apiTime.optional(),
 });
 
 export const activityPageSchema = pageOf(activityItemSchema);

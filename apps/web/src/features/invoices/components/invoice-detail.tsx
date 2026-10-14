@@ -26,10 +26,16 @@ import { CheckStatus } from "@/features/invoices/components/check-status";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { InvoiceDeposits } from "@/features/invoices/components/invoice-deposits";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
-import { INVOICE_PDFS, INVOICE_STEPS } from "@/features/invoices/constants/invoices";
+import {
+  INVOICE_EXCEPTIONS,
+  INVOICE_PDFS,
+  INVOICE_STEPS,
+  RESTART_PARAMS,
+} from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY as COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
 import {
   formatDueDate,
+  invoiceException,
   invoiceNumber,
   invoicePdfUrl,
   invoiceProgress,
@@ -38,6 +44,7 @@ import {
 } from "@/features/invoices/lib/invoices";
 import type {
   Invoice,
+  InvoiceException,
   InvoicePdf,
   InvoiceSummary,
   InvoiceToken,
@@ -140,18 +147,11 @@ function Loaded({
   const amount = BigInt(invoice.amount);
   const client = mine?.client;
   const issuer = invoice.issuer;
-  // The API says open until the chain is final past expiry; the checkout closed at expiry.
+  // The API says open until the chain is final past expiry; the checkout closed at expiry, and the status says so.
   const closed = Date.parse(invoice.expiresAt) <= Date.now();
-  const apiStatus = invoiceStatus(invoice);
-  const status =
-    closed && apiStatus === PAYMENT_STATUS.open
-      ? PAYMENT_STATUS.expired
-      : closed && apiStatus === PAYMENT_STATUS.partiallyPaid
-        ? PAYMENT_STATUS.expiredPartiallyPaid
-        : apiStatus;
-  const received = invoice.deposits
-    .filter((d) => !d.late)
-    .reduce((sum, d) => sum + BigInt(d.amount), 0n);
+  const status = invoiceStatus(invoice);
+  const exception = invoiceException(invoice, status);
+  const received = exception.received;
   const money = (units: bigint) =>
     token
       ? `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`
@@ -186,6 +186,12 @@ function Loaded({
             <StatusPill status={status} />
             {when(invoice) ? <span>{when(invoice)}</span> : null}
           </p>
+          <NextStep
+            invoiceId={invoice.invoiceId}
+            exception={exception}
+            money={money}
+            request={request}
+          />
         </div>
         {payable ? <ShareLink invoiceId={invoice.invoiceId} /> : null}
       </header>
@@ -348,6 +354,46 @@ function Loaded({
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * What happened and what to do next, under the status (R-77): what is left while partly paid; a new invoice once the
+ * checkout closed, never the old one reopened (D-25); and money after the close, which is held for the payer (D-26).
+ */
+function NextStep({
+  invoiceId,
+  exception,
+  money,
+  request,
+}: {
+  invoiceId: string;
+  exception: InvoiceException;
+  money: (units: bigint) => string;
+  request: boolean;
+}) {
+  const noun = request ? COPY.noun.request : COPY.noun.invoice;
+  const { kind, received, left, late } = exception;
+  const restart = (rest: boolean) =>
+    `${APP_ROUTES.newInvoice}?${RESTART_PARAMS.from}=${invoiceId}${rest ? `&${RESTART_PARAMS.rest}=1` : ""}`;
+  if (!kind && late === 0n) return null;
+  return (
+    <div className="flex flex-col items-start gap-2 text-sm text-ink">
+      {kind ? <p>{COPY.next[kind]({ left: money(left), held: money(received), noun })}</p> : null}
+      {late > 0n ? <p>{COPY.lateHeld(money(late))}</p> : null}
+      {kind === INVOICE_EXCEPTIONS.closedUnpaid || kind === INVOICE_EXCEPTIONS.closedPartial ? (
+        <Link
+          href={restart(kind === INVOICE_EXCEPTIONS.closedPartial)}
+          className={buttonClasses({ variant: "secondary", size: "sm" })}
+        >
+          {kind === INVOICE_EXCEPTIONS.closedPartial
+            ? COPY.newForRest(noun)
+            : request
+              ? COPY.newRequest
+              : COPY.newInvoice}
+        </Link>
+      ) : null}
+    </div>
   );
 }
 

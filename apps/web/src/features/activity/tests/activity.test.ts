@@ -44,6 +44,21 @@ describe("activityStatus", () => {
     );
   });
 
+  it("reads open and partly paid as expired once the checkout closed, before the API's status does", () => {
+    const at = Date.parse("2026-10-10T12:00:00Z");
+    const closed = { ...base, expiresAt: "2026-10-10T11:59:59Z" };
+    expect(activityStatus(closed, at)).toBe(PAYMENT_STATUS.expired);
+    expect(activityStatus({ ...closed, status: "partially_paid" }, at)).toBe(
+      PAYMENT_STATUS.expiredPartiallyPaid,
+    );
+    // A payment seen before expiry may still confirm, and paid stays paid.
+    expect(activityStatus({ ...closed, status: "detected" }, at)).toBe(PAYMENT_STATUS.confirming);
+    expect(activityStatus({ ...closed, status: "paid" }, at)).toBe(PAYMENT_STATUS.paid);
+    expect(activityStatus({ ...base, expiresAt: "2026-10-10T12:00:01Z" }, at)).toBe(
+      PAYMENT_STATUS.open,
+    );
+  });
+
   it("never claims money arrived for a status it does not know", () => {
     expect(activityStatus({ ...base, status: "something_new" })).toBe(PAYMENT_STATUS.detected);
   });

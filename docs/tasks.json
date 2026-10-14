@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 195,
+  "nextId": 196,
   "tasks": [
     {
       "id": "F179",
@@ -78,7 +78,7 @@
         "Pay page: a partly paid invoice shows the remaining amount with the time left and one line to copy the address from this page, not from wallet history; the Invoices list and Activity name each state the same way (R-77)"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "e2e"
@@ -92,7 +92,71 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-14T23:03:24Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 69.7,
+            "log": "docs/runs/F180-20261014T230324Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 160.4,
+            "log": "docs/runs/F180-20261014T230324Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.4,
+            "log": "docs/runs/F180-20261014T230324Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F180-20261014T230324Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F180-20261014T230324Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F180-20261014T230324Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.1,
+            "log": "docs/runs/F180-20261014T230324Z-build.log"
+          }
+        ],
+        "taskHash": "9a0cc21f6c8d40f3",
+        "filesHash": "eb2c0208d42c31a7",
+        "proof": {
+          "1": "e2e: navigation.spec 'names the next step of every exception' covers partial left-to-pay beside the pay link, closed unpaid with New invoice filled with the client and amount, closed partial with held money and New invoice for the rest (1.5), and late money held; unit tests cover invoiceException and restartFrom",
+          "2": "e2e: pay.spec partial shows Closes in and the copy-from-this-page line, gone once closed; navigation.spec shows a closed checkout as Expired in Invoices and Activity; backend list and activity filters file it as expired and activity sends expiresAt (go tests fail without the SQL rule)"
+        }
+      },
+      "branch": "feat/f180-every-payment-exception-shows-what-happe",
+      "baseCommit": "1412c248bb295c84c8940642e0407e9ef23ae943",
+      "failedVerifies": 0
     },
     {
       "id": "F181",
@@ -760,6 +824,28 @@
       ],
       "refs": [
         "R-25"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F195",
+      "type": "refactor",
+      "behavior": "Every USD label in the web app reads from MONEY_COPY.usd",
+      "acceptance": [
+        "INVOICE_COPY.usd, PAY_COPY.usd, the balances USD constant used as a label, and the literal in new-invoice-form.tsx use MONEY_COPY.usd or are removed; rendered text is unchanged"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "D-11"
       ],
       "keep": [],
       "review": false,

@@ -709,6 +709,11 @@ components:
           description: >-
             The invoice's accepted options; above 1 the client chooses, and the invoice reads in USD rather than the
             token and network given here (its first option). 1 for a deposit.
+        expiresAt:
+          type: string
+          format: date-time
+          description: Invoices only. When the checkout closes; after it an open or partly paid invoice takes no more
+            money, before its status catches up.
     Transactions:
       type: object
       required: [items, nextCursor]

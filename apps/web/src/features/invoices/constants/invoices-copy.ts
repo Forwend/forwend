@@ -2,6 +2,7 @@ import {
   AMOUNT_ERRORS,
   type CUSTOM_EXPIRY,
   type EXPIRY_CHOICES,
+  INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
   INVOICE_LIMITS,
   INVOICE_PDFS,
@@ -9,6 +10,7 @@ import {
   SETTLEMENT_WAITS,
 } from "@/features/invoices/constants/invoices";
 import type {
+  InvoiceExceptionKind,
   InvoicePdf,
   InvoiceStep,
   PayWith,
@@ -213,6 +215,24 @@ export const INVOICE_COPY = {
   payment: "Payment",
   to: "To",
   late: "After the checkout closed",
+  // What happened and what to do, under the status (R-77). Amounts arrive formatted with their symbol; `noun` is
+  // invoice or request.
+  next: {
+    [INVOICE_EXCEPTIONS.partial]: ({ left }) => `${left} left to pay before the checkout closes.`,
+    [INVOICE_EXCEPTIONS.closedUnpaid]: ({ noun }) =>
+      `The checkout closed with nothing paid. A closed ${noun} can't take money again.`,
+    [INVOICE_EXCEPTIONS.closedPartial]: ({ held, left, noun }) =>
+      `${held} is held for the payer. To collect the remaining ${left}, send a new ${noun}.`,
+  } satisfies Record<
+    InvoiceExceptionKind,
+    (v: { left: string; held: string; noun: string }) => string
+  >,
+  lateHeld: (late: string) =>
+    `${late} arrived after the checkout closed and is held for the payer.`,
+  noun: { invoice: "invoice", request: "request" },
+  newInvoice: "New invoice",
+  newRequest: "New request",
+  newForRest: (noun: string) => `New ${noun} for the rest`,
   from: "From",
   share: "Pay link",
   copy: "Copy link",

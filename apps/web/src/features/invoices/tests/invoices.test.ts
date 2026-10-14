@@ -11,12 +11,14 @@ import {
   customExpiresIn,
   decimalText,
   invalidField,
+  invoiceException,
   invoiceNumber,
   invoicePdfUrl,
   invoiceProgress,
   invoiceStatus,
   isReturnLink,
   parseTokenAmount,
+  restartFrom,
 } from "@/features/invoices/lib/invoices";
 import type { Deposit, Invoice } from "@/features/invoices/types/invoices";
 
@@ -88,6 +90,8 @@ const open: Invoice = {
   settledAt: null,
   deposits: [],
 };
+const BEFORE_CLOSE = Date.parse("2026-10-11T00:00:00Z");
+const AFTER_CLOSE = Date.parse("2026-10-17T10:00:00Z");
 const deposit: Deposit = {
   txHash: `0x${"3".repeat(64)}`,
   logIndex: 0,
@@ -124,7 +128,8 @@ describe("invoiceProgress", () => {
 
   it("labels detected and partly paid invoices as confirming while finality is pending", () => {
     const partly = { ...open, paymentStatus: "partially_paid" };
-    expect(invoiceStatus(partly)).toBe(PAYMENT_STATUS.partiallyPaid);
+    expect(invoiceStatus(partly, BEFORE_CLOSE)).toBe(PAYMENT_STATUS.partiallyPaid);
+    expect(invoiceStatus(partly, AFTER_CLOSE)).toBe(PAYMENT_STATUS.expiredPartiallyPaid);
     expect(invoiceStatus({ ...partly, confirming: true })).toBe(PAYMENT_STATUS.confirming);
     expect(invoiceStatus({ ...open, paymentStatus: "detected", confirming: true })).toBe(
       PAYMENT_STATUS.confirming,
@@ -254,5 +259,74 @@ describe("form values (R-58)", () => {
       "https://",
     ])
       expect(isReturnLink(bad), bad).toBe(false);
+  });
+});
+
+describe("invoiceException", () => {
+  const paid = (amount: string, late = false) => ({
+    ...deposit,
+    status: "confirmed",
+    amount,
+    late,
+  });
+
+  it("names the next step and the amounts of the shown option", () => {
+    const partly = { ...open, deposits: [paid("2000000")] };
+    expect(invoiceException(partly, PAYMENT_STATUS.partiallyPaid)).toEqual({
+      kind: "partial",
+      received: 2_000_000n,
+      left: 3_000_000n,
+      late: 0n,
+    });
+    expect(invoiceException(open, PAYMENT_STATUS.expired).kind).toBe("closedUnpaid");
+    expect(invoiceException(partly, PAYMENT_STATUS.expiredPartiallyPaid).kind).toBe(
+      "closedPartial",
+    );
+    expect(invoiceException(open, PAYMENT_STATUS.open).kind).toBeNull();
+  });
+
+  it("counts money after the checkout closed as late, whatever the status", () => {
+    const late = { ...open, deposits: [paid("5000000"), paid("1500000", true)] };
+    expect(invoiceException(late, PAYMENT_STATUS.paid)).toEqual({
+      kind: null,
+      received: 5_000_000n,
+      left: 0n,
+      late: 1_500_000n,
+    });
+  });
+});
+
+describe("restartFrom", () => {
+  const client = { name: "Bob Ltd", email: "bob@example.com", address: null };
+  const option = {
+    optionId: open.optionId,
+    chainId: open.chainId,
+    network: "base-sepolia",
+    token: open.token,
+    symbol: "USDC",
+    decimals: 6,
+    amount: open.amount,
+    receiveAddress: open.receiveAddress,
+    deposits: [],
+  };
+
+  it("asks again for the whole amount, or only what is left, from the same client in the same token", () => {
+    const partly = { ...open, options: [option], deposits: [{ ...deposit, amount: "1250000" }] };
+    const start = {
+      payWith: "fixed",
+      picked: `84532:${open.token}`,
+      client: { name: "Bob Ltd", email: "bob@example.com", address: "" },
+    };
+    expect(restartFrom(partly, client, false)).toEqual({ ...start, amount: "5" });
+    expect(restartFrom(partly, client, true)).toEqual({ ...start, amount: "3.75" });
+  });
+
+  it("keeps payer chooses while no option took money, and leaves the client empty for a request", () => {
+    const choosing = { ...open, options: [option, { ...option, optionId: `0x${"9".repeat(64)}` }] };
+    expect(restartFrom(choosing, undefined, false)).toMatchObject({
+      payWith: "any",
+      amount: "5",
+      client: { name: "", email: "", address: "" },
+    });
   });
 });

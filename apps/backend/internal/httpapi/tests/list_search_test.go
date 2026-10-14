@@ -74,6 +74,15 @@ func (e invoiceEnv) exec(t *testing.T, sql string, args ...any) {
 	}
 }
 
+// closeCheckout moves an invoice's expiry into the past. Terms never change in production (the invoices_guard
+// trigger), so the test lifts that trigger for this one update.
+func (e invoiceEnv) closeCheckout(t *testing.T, id string) {
+	t.Helper()
+	e.exec(t, `ALTER TABLE invoices DISABLE TRIGGER invoices_guard`)
+	e.exec(t, `UPDATE invoices SET expires_at = extract(epoch FROM now())::bigint - 60 WHERE id = $1`, id)
+	e.exec(t, `ALTER TABLE invoices ENABLE TRIGGER invoices_guard`)
+}
+
 func TestListInvoicesFilterAndSearch(t *testing.T) {
 	e := invoiceAPI(t)
 	body := func(amount, details string) string {
@@ -96,15 +105,16 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 	e.exec(t, `UPDATE invoices SET payment_status = 'paid' WHERE id IN ($1, $2)`, ids[2], ids[3])
 	e.exec(t, `UPDATE invoices SET settlement_status = 'settled' WHERE id = $1`, ids[3])
 	e.exec(t, `UPDATE invoices SET payment_status = 'detected' WHERE id = $1`, ids[4])
+	e.closeCheckout(t, ids[5])                                                                // open, but its checkout has closed
 	e.post(t, "did:privy:alice", e.walletless, "other", body("7000000", `, "title": "Logo"`)) // another profile's
 
 	path := "/v1/profiles/" + e.aliceProfile + "/invoices"
 	checkList(t, e, path, func(it map[string]any) any { return it["number"] }, []listCase{
 		{"", []any{5.0, 4.0, 3.0, 2.0, 1.0}},
-		{"status=open", []any{5.0, 4.0}}, // open and detected
+		{"status=open", []any{4.0}}, // detected: that payment came before expiry
 		{"status=paid", []any{2.0}},
 		{"status=settled", []any{3.0}},
-		{"status=expired", []any{1.0}},
+		{"status=expired", []any{5.0, 1.0}}, // expired, and open with its checkout closed
 		{"q=INV-0003", []any{3.0}},
 		{"q=inv-000", []any{5.0, 4.0, 3.0, 2.0, 1.0}},
 		{"q=LOGO", []any{1.0}},          // title
@@ -141,20 +151,25 @@ func TestGetActivityFilterAndSearch(t *testing.T) {
 	e.exec(t, `UPDATE invoices SET payment_status = 'paid', settlement_status = 'settled' WHERE id = $1`, ids[1])
 	e.exec(t, `INSERT INTO settlement_intents (invoice_id, status, tx_hash) VALUES ($1, 'confirmed', $2)`, ids[1], settle)
 	e.exec(t, `UPDATE invoices SET payment_status = 'expired' WHERE id = $1`, ids[2])
+	e.closeCheckout(t, ids[0]) // open, but its checkout has closed
 
 	// Newest first: the deposits (recorded last), then the invoices. An invoice pays 5 USDC, a deposit 1 USDC.
 	dep := func(hash string) any { return "deposit " + hash }
 	inv := func(i int) any { return "invoice " + ids[i] }
 	checkList(t, e, "/v1/profiles/"+e.aliceProfile+"/activity", func(it map[string]any) any {
+		// Only an invoice carries when its checkout closes (R-77).
+		if _, has := it["expiresAt"]; has != (it["kind"] == "invoice") {
+			t.Fatalf("%v %v: expiresAt %v", it["kind"], it["invoiceId"], it["expiresAt"])
+		}
 		if it["kind"] == "deposit" {
 			return dep(it["txHash"].(string))
 		}
 		return inv(slices.Index(ids, it["invoiceId"].(string)))
 	}, []listCase{
-		{"status=open", []any{dep(detected), inv(0)}},
+		{"status=open", []any{dep(detected)}},
 		{"status=paid", []any{dep(confirmed)}},
 		{"status=settled", []any{inv(1)}},
-		{"status=expired", []any{inv(2)}},
+		{"status=expired", []any{inv(2), inv(0)}},
 		{"q=" + strings.ToUpper(confirmed[:12]), []any{dep(confirmed)}},
 		{"q=" + settle[20:40], []any{inv(1)}}, // the settle transaction
 		{"q=1.0", []any{dep(detected), dep(confirmed)}},
