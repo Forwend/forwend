@@ -4,6 +4,9 @@
   required review. Automatic GitHub Actions runs are disabled for PRs into main and pushes to main.
 - `staging` is the batch-validation branch. Its push event runs the full CI registry, including CI-only checks.
   There is no additional PR-triggered run. Staging is not a deployment environment and this workflow deploys nothing.
+- PostgreSQL uses the official `postgres:17` image directly from Docker Hub. GitHub-hosted runners are
+  [exempt from its public-image pull rate limit](https://docs.github.com/en/enterprise-cloud%40latest/actions/reference/limits).
+  Avoid the AWS public mirror here: its data limit can fail service startup before any repository check runs.
 - `delivery.requireRemoteChecks: false` in [check registry](config.json) applies to normal task delivery into the
   configured base, `main`. The default is true when omitted. It permits absent remote checks, never missing local
   verification, failed/skipped checks, authentication errors or a stale verification record.

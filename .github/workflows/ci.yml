@@ -17,8 +17,8 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        # The official image through AWS's public mirror: Docker Hub limits anonymous pulls from shared runners.
-        image: public.ecr.aws/docker/library/postgres:17
+        # GitHub-hosted runners are exempt from Docker Hub's public-image pull rate limit.
+        image: postgres:17
         env:
           POSTGRES_USER: forwend
           POSTGRES_PASSWORD: forwend
