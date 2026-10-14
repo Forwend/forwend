@@ -105,7 +105,7 @@
         "All required repository checks pass before the hotfix is promoted to staging"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness",
         "docs-check"
@@ -187,11 +187,18 @@
         "proof": {
           "1": "docs-check: CI uses Docker Hub postgres:17; diff review confirms database settings and health check are unchanged; failed staging logs show the AWS mirror data limit; Docker Hub manifest includes Linux amd64",
           "2": "build: Full required checks pass before delivery; two prior live-browser runs timed out on Loading your profiles in different tests; invoice-search passed three targeted repetitions unchanged"
-        }
+        },
+        "commit": "56f4703",
+        "doneAt": "2026-10-14T13:53:29Z"
       },
       "branch": "ci/f178-staging-ci-pulls-postgresql-directly-fro",
       "baseCommit": "72e826c5a70e322bab6b8f20ce731dacf1b5bac6",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "ci/f178-staging-ci-pulls-postgresql-directly-fro",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
