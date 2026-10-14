@@ -504,7 +504,7 @@
         "done and status require a passing independent review for every task that changes more than docs, as well as for tasks added with --review; workflow.md says so; a harness test covers both cases"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness",
         "docs-check"
@@ -515,7 +515,8 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-14 review fail by independent reviewer: 1) Code can skip review via rename: changed_since (harness.py:52) uses git diff --name-only, which reports a rename only by its new path. Repro in a clone: git mv scripts/check-docs.py docs/check-docs.md -> changed_since(HEAD) == ['docs/check-docs.md'], docs_only True, so needs_review (1450) is False; same staged and committed. Fix: add --no-renames at harness.py:52 and the hook diff at 1548 (checked: then scripts/check-docs.py is listed). 2) Accept 3 test gap: only the code-change case is tested. Mutations that survive the 35 tests: dropping bool(task.get('review')) from needs_review; reverting the done gate (1168) or next_step (698) to task.get('review'). Fix: assert needs_review is True for review=True with docs-only changes, and one done refusal for an unreviewed code change. Minor: check-docs.py:42 splits on 'manual' before stripping parentheses, so 'e2e (manual later)' reports check 'e2e (' (repro done); strip parens first. needs_review fails open when git diff fails (bad baseCommit -> None). show/status print the 'review:' line only for --review tasks. Passing: unittest 35 OK, check-docs 0 errors; it catches fake R-999/D-998, task ref R-777 and check 'bakend'; SHA-256, EIP-55 and R-1...R-13 give no false errors; show row parsing and its test are correct."
+        "2026-10-14 review fail by independent reviewer: 1) Code can skip review via rename: changed_since (harness.py:52) uses git diff --name-only, which reports a rename only by its new path. Repro in a clone: git mv scripts/check-docs.py docs/check-docs.md -> changed_since(HEAD) == ['docs/check-docs.md'], docs_only True, so needs_review (1450) is False; same staged and committed. Fix: add --no-renames at harness.py:52 and the hook diff at 1548 (checked: then scripts/check-docs.py is listed). 2) Accept 3 test gap: only the code-change case is tested. Mutations that survive the 35 tests: dropping bool(task.get('review')) from needs_review; reverting the done gate (1168) or next_step (698) to task.get('review'). Fix: assert needs_review is True for review=True with docs-only changes, and one done refusal for an unreviewed code change. Minor: check-docs.py:42 splits on 'manual' before stripping parentheses, so 'e2e (manual later)' reports check 'e2e (' (repro done); strip parens first. needs_review fails open when git diff fails (bad baseCommit -> None). show/status print the 'review:' line only for --review tasks. Passing: unittest 35 OK, check-docs 0 errors; it catches fake R-999/D-998, task ref R-777 and check 'bakend'; SHA-256, EIP-55 and R-1...R-13 give no false errors; show row parsing and its test are correct.",
+        "2026-10-14 review pass by independent reviewer 2: Pass. Ran: unittest 36 OK; check-docs 0 errors. Earlier fail items fixed. Mutations on a copy: caught = drop review flag in needs_review, done gate back to task.get('review'), next_step back, changed_since without --no-renames, hook without --no-renames, needs_review always False for code. Git scenarios with needs_review (temp repo): committed code, deleted code, git mv code->.md (both paths listed), docs/config.json, untracked code, code moved into ignored docs/runs/, missing baseCommit, bad baseCommit -> all True; docs-only commit -> False. check-docs on a docs copy catches R-999, (D-9999), task ref Q-777, check 'harnes (manual later)' -> 'harnes'; no false hits on SHA-256, EIP-55, ERC-20, R-1...R-13. Minor notes: (1) show prints 'review: required, not done yet' for finished tasks (show F179/F188/F189, passing docs tasks) because needs_review diffs the current tree against an old baseCommit; fix: in cmd_show call needs_review only for active/verified, else only when review evidence exists or task.review. (2) Surviving mutations: needs_review returning False when git diff fails (bad baseCommit) and dropping untracked files from changed_since are not tested; status/show review lines are display-only (status gate is covered via next_step). (3) Local delivery mode only: reopen resets baseCommit to HEAD (begin_work), so code committed before a failed review then a docs-only fix skips review; this repo uses pr mode where baseCommit is the merge-base. (4) No git -> no review required (fails open); not stated in workflow.md. (5) No regression test for the new check-docs rules; text after 'manual' is unchecked by design. (6) Pre-existing: BOOKKEEPING prefix match also filters docs/tasks.json.py, and docs/archive/*.py counts as docs-only."
       ],
       "blockedReason": null,
       "evidence": {
@@ -579,11 +580,25 @@
           "1": "harness: test_show_prints_referenced_project_rows shows show prints only the referenced rows",
           "2": "docs-check: passes on the current docs; unknown IDs and check names are reported; notes in () are removed before the manual split",
           "3": "harness: test_code_change_cannot_finish_without_review (done refused, status asks for review) and test_docs_only_changes_run_only_docs_checks (rename to .md, --review flag); four mutations of the gate are each caught"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer 2",
+          "summary": "Pass. Ran: unittest 36 OK; check-docs 0 errors. Earlier fail items fixed. Mutations on a copy: caught = drop review flag in needs_review, done gate back to task.get('review'), next_step back, changed_since without --no-renames, hook without --no-renames, needs_review always False for code. Git scenarios with needs_review (temp repo): committed code, deleted code, git mv code->.md (both paths listed), docs/config.json, untracked code, code moved into ignored docs/runs/, missing baseCommit, bad baseCommit -> all True; docs-only commit -> False. check-docs on a docs copy catches R-999, (D-9999), task ref Q-777, check 'harnes (manual later)' -> 'harnes'; no false hits on SHA-256, EIP-55, ERC-20, R-1...R-13. Minor notes: (1) show prints 'review: required, not done yet' for finished tasks (show F179/F188/F189, passing docs tasks) because needs_review diffs the current tree against an old baseCommit; fix: in cmd_show call needs_review only for active/verified, else only when review evidence exists or task.review. (2) Surviving mutations: needs_review returning False when git diff fails (bad baseCommit) and dropping untracked files from changed_since are not tested; status/show review lines are display-only (status gate is covered via next_step). (3) Local delivery mode only: reopen resets baseCommit to HEAD (begin_work), so code committed before a failed review then a docs-only fix skips review; this repo uses pr mode where baseCommit is the merge-base. (4) No git -> no review required (fails open); not stated in workflow.md. (5) No regression test for the new check-docs rules; text after 'manual' is unchecked by design. (6) Pre-existing: BOOKKEEPING prefix match also filters docs/tasks.json.py, and docs/archive/*.py counts as docs-only.",
+          "at": "2026-10-14T22:43:36Z",
+          "filesHash": "30f2dd7558697af0"
+        },
+        "commit": "3122c08",
+        "doneAt": "2026-10-14T22:43:58Z"
       },
       "branch": "fix/f190-show-id-prints-the-text-of-each-referenc",
       "baseCommit": "b91c9a04f7ba73ce38b285f35526ee3fbb305b33",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f190-show-id-prints-the-text-of-each-referenc",
+        "base": "main"
+      }
     },
     {
       "id": "F191",
