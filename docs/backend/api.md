@@ -1,13 +1,6 @@
 # Backend API rules
 
-Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/me/onboarding`, `POST /v1/profiles`,
-`PUT /v1/profiles/{profileId}/billing-details`, `GET /v1/profiles/{profileId}/billing-details`,
-`POST /v1/profiles/{profileId}/invoices`,
-`GET /v1/profiles/{profileId}/invoices`, `GET /v1/profiles/{profileId}/invoices/{invoiceId}`,
-`GET /v1/profiles/{profileId}/balances`, `GET /v1/profiles/{profileId}/activity`,
-`GET /v1/profiles/{profileId}/transactions`, `GET /v1/profiles/{profileId}/balance-history`,
-`GET /v1/invoices/{invoiceId}`, `POST /v1/invoices/{invoiceId}/recheck`, `GET /v1/invoices/{invoiceId}/invoice.pdf`,
-`GET /v1/invoices/{invoiceId}/receipt.pdf` (the last four public).
+Routes: `apps/backend/api/openapi.yaml`; each module mounts its own in `internal/httpapi/<module>api/routes.go`.
 
 ## Contract first
 
@@ -40,9 +33,6 @@ Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/me/onboarding`,
   it contains `q` in any letter case. When `q` is a decimal number (digits and one point; thousands commas are
   dropped) it also matches an amount equal to it in whole tokens: `amount = q × 10^decimals` in Postgres `numeric`,
   exact, never a float. `internal/search` parses it; the fields per list are in openapi.yaml.
-- The invoice search reads a trigram index on its fields (migration 00014, `pg_trgm`). A search that is a number
-  also compares amounts, which no index covers, so it reads the profile's invoices in number order until the page
-  fills; activity and transactions read all of the profile's rows to sort them, with or without a filter.
 
 ## First run
 
@@ -219,8 +209,7 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
 come back at a fixed rate up to the burst size. An empty bucket answers 429 `rate_limited` with `Retry-After` in whole
 seconds (when the next token is back) and runs nothing else.
 
-- Routes that need a token: per Privy user, after the token is checked; 2 requests a second, 60 at once. A dashboard
-  tab polls about six routes every 15 s and a page load sends about ten at once, so several tabs stay well under it.
+- Routes that need a token: per Privy user, after the token is checked; 2 requests a second, 60 at once.
 - `POST /v1/invoices/{invoiceId}/recheck` (Check status, R-55) reads a chain RPC, so it is limited in the api: one
   check per invoice every 5 minutes (the invoice read gives `nextCheckAt`, so a reloaded page still waits), kept in Postgres so every replica agrees (`invoice_rechecks.checked_at`), and a
   per-process bucket of 1 a second, 10 at once, for everyone together. Both answer 429 with `Retry-After`. A chain that
@@ -236,12 +225,10 @@ seconds (when the next token is back) and runs nothing else.
   `/healthz` has no limit.
 - The buckets live in each api process (D-72): with N replicas behind a load balancer a caller gets up to N times the
   rate. Redis can hold the counts once more than a few replicas run.
-- The web waits `Retry-After` and sends the request once more; if that is refused too, its reads pause 15 s, doubling
-  with each refusal up to 5 min, until an answer is not a 429 (`apps/web/src/shared/api/rate-limit.ts`).
+- How the web handles 429: [web architecture](../web/architecture.md).
 
 ## Handlers and tests
 
-- One package per module under `internal/httpapi` (`<module>api/`): `routes.go`, `model.go` and handler files that
-  parse, call the service and write JSON. No SQL, no business rules. API tests go through the whole router in
-  `internal/httpapi/tests/`, one file per module.
+- Module layout: [rules.md](rules.md). Handlers hold no SQL and no business rules. API tests go through the whole
+  router in `internal/httpapi/tests/`, one file per module.
 - Each route has a test for success and for every error code it can return, on real Postgres.

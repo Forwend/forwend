@@ -26,16 +26,9 @@ Runner regression tests live in `tests/test_harness.py`. No installed skill is n
 5. `verify ID --proof "1=CHECK: evidence" ...` runs task and required checks. Each acceptance line needs a named check.
 6. If review is required, a fresh reviewer reads `show ID` and the diff, then runs `review ID --pass|--fail --summary "findings"`.
 7. With commit/push/merge authorization, commit the verified files and run `done ID`. It pushes, opens the PR,
-   checks the configured delivery policy and merges. Main requires fresh local verification; reported GitHub
-   failures or pending checks still block delivery, but absent checks are allowed by the delivery policy below.
+   checks the delivery policy ([staging.md](staging.md)) and merges.
    Pending CI: repeat `done ID`. Failed CI: fix, verify, review and commit again. Approval or closed PR: ask the owner.
 8. Before stopping: `wrapup --note "result; next step"`. Resolve failures or report the exact remaining blocker.
-
-## Delivery policy
-
-Main task PRs require fresh local verification and any required review. The explicit policy in
-[config.json](config.json) permits absent GitHub checks; reported failures and pending checks still block delivery.
-Read [staging.md](staging.md) only when promoting a batch to staging or changing the CI policy.
 
 ## Structure review
 
@@ -59,11 +52,10 @@ manual until a task explicitly adds import-boundary checks; do not claim that pa
 
 - `check` runs required checks without changing task state; `check CHECK` runs one; `check --ci` adds CI-only checks.
 - When every file a task changed is Markdown or under `archive/`, `verify` and the pre-commit hook skip the required
-  checks not marked `"docs": true` in config.json; the task's own checks still run, and staging CI runs the required and CI-only checks.
+  checks not marked `"docs": true` in config.json; the task's own checks still run.
 - `verify` rejects changed inputs during a run. Later source, config or task-constraint edits require another verify.
 - Proof names must refer to checks that passed. The description explains relevance; independent review checks that claim.
 - `--keep` path globs are enforced. Behavioral constraints need tests and review; prose alone is not a machine check.
-- Completed v2 records remain historical evidence. New verification uses v3 evidence; old unmerged verification must rerun.
 - Missing scripts, commands, remotes or required CI results never imply success. Explicitly disabled remote checks
   are reported as not required, not passed. `passing` with pending delivery is not merged.
 - Fix failed checks; never weaken them. After three failures without a new approach, `note` attempts and `block ID --reason "..."`.

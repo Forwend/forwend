@@ -8,101 +8,30 @@ reason; it joins the plan once the owner agrees.
 
 | Phase | Outcome | Gate |
 |---|---|---|
-| 1–2 | Product definition, workspace, checks and task workflow | A fresh checkout installs, builds, tests and serves the web app |
-| 3 | Design tokens, shared components, private `/kit`, responsive landing | R-1…R-13 checks; owner reviews the visual direction; real waitlist before public launch |
-| 4 | Resolve integration risks with testnet spikes | Q-7 answered, Base USDC contract verified, spike results recorded |
-| 5 | Receiver contracts and authority operations | Unit, fork, fuzz, invariant and symbolic checks; no open high/medium findings; same factory and matching real receiver on four testnets |
-| 6 | Go API, watcher, ledger and signer | R-14…R-24; local create → pay → confirmed → settled twice with one invoice and matching ledger |
-| 7 | Login, app shell and profile wallets | Sign in, create freelancer profile, switch profiles and see the correct wallet |
-| 8 | First payment through the UI on Base USDC: invoice numbers, pay page, PDFs, personal requests, first-run onboarding | Sasha's Base Sepolia run; then enable other planned pairs individually |
+| 1–2 | Done: product definition, workspace, checks and task workflow | A fresh checkout installs, builds, tests and serves the web app |
+| 3 | Done: design tokens, shared components, private `/kit`, responsive landing | R-1…R-13 checks; Q-1 review still open; real waitlist before launch (13.5) |
+| 4 | Done: integration risks resolved with testnet spikes | Q-7 answered, Base USDC contract verified, spike results recorded |
+| 5 | Done: receiver contracts and authority operations | Unit, fork, fuzz, invariant and symbolic checks; no open high/medium findings; same factory and matching real receiver on four testnets |
+| 6 | Done: Go API, watcher, ledger and signer | R-14…R-24; local create → pay → confirmed → settled twice with one invoice and matching ledger |
+| 7 | Done: login, app shell and profile wallets | Sign in, create freelancer profile, switch profiles and see the correct wallet |
+| 8 | Done: first payment through the UI on Base USDC, then Arbitrum, Arc and Tempo | Sasha's Base Sepolia run; then enable other planned pairs individually |
 | 9 | Payment exceptions, cancel and notifications | On Anvil: partial → top-up → paid; expired partial → held; late → held; cancel → later deposit held; each email sent once |
 | 10 | Freelancer work | One freelancer runs deposit → delivery → acceptance → final invoice paid on testnet |
 | 11 | Merchant stores, developer tools, connected wallet and refunds | Sample merchant uses SDK, pays and verifies an invoice.settled webhook; on Anvil overpay → claim → refund and expired partial → claim → refund |
 | 12 | Account security, send, handles and bank withdrawal | Send works on a fork; withdrawal works in provider sandbox |
 | 13 | Security review and personal mainnet trials | Full testnet exception suite, then 20 tiny personal mainnet invoices with zero reconciliation difference |
 
-## Phase 3: design and landing
+## Open from phases 1–8
 
-Code and tests are defined by R-1…R-13. Visual rules: [DESIGN](docs/web/DESIGN.md).
-Compare the three existing direction pages for Q-1. Keep the landing honest and the kit private.
-Before publishing, replace the mock waitlist with real storage. No fake customer or funding claims.
+Phases 1–8 are done; their requirements are PROJECT R-1…R-76 and their records are in `docs/archive/`. Still open:
 
-## Phase 4: integration spikes
-
-Write measured results and source links in `docs/spikes/`. Local forks, testnets and provider sandboxes only.
-
-| Spike | Measure | Failure decision |
-|---|---|---|
-| S-1 Privy Go | Access-token checks, wallet create/lookup, authorization policies | Wrap an unsupported endpoint in internal/privy; keep Go |
-| S-2 Profile wallets | Several wallets for one user; user approval for sends | Revisit wallet provider/model with owner; do not silently combine profile balances |
-| S-3 Gas sponsorship | Sponsored USDC send on Base Sepolia and expected cost | Evaluate paymaster (D-43) |
-| S-4 Chains | go-ethereum blocks, receipts, token logs, fee/transaction types, safe/finalized tags on all four testnets | Raw RPC or another adapter for unsupported types; establish Q-7 before enabling |
-| S-5 Deterministic deployment | Deployer and Safe support; matching factory and real receiver addresses across chains | Separate factory and no cross-chain recovery; never nonce-based fallback (D-40) |
-| S-6 Tokens | Exact USDC/USDT contracts, decimals and behavior per chain; mocks for unavailable test tokens | Leave unverified pairs disabled |
-| S-7 RPC | Infura/public endpoints and independent confirmation provider: log ranges, rate limits, finality tags, polling cost | Choose another verified provider; approval before paid usage |
-
-Existing measurements: [S-1…S-3](docs/spikes/s1-s3-privy.md), [S-4](docs/spikes/s4-chains.md), [S-5/S-6](docs/spikes/s5-s6-testnets.md).
-
-## Phase 5: contracts
-
-Implementation rules and tests: [contracts/rules](docs/contracts/rules.md).
-Authority and deployment requirements: [contracts/operations](docs/contracts/operations.md).
-Verify nonstandard token behavior, decimal arithmetic and recovery on each enabled chain.
-Run static analysis (including Slither), independent review, stateful fuzzing and symbolic tests;
-record unresolved findings. Measure clone-deploy + settle gas. Do not infer phase completion from deployed addresses.
-
-## Phase 6: backend
-
-[Backend architecture](docs/backend/architecture.md), [API contract](docs/backend/api.md) and
-[money safety](docs/backend/money-safety.md) own the implementation rules. R-14…R-24 define the current tasks.
-Additional gate requirements: Anvil in local compose, sqlc generation, append-only ledger, outbox workers using
-`SKIP LOCKED`, signer nonce reconciliation after a crash, low executor-gas alerts, structured logs and an error
-reporting hook disabled locally. Define a dust threshold before ignoring tiny deposits; they remain refundable.
-The signer checks the recipient against Privy and never receives authority to send from user wallets.
-
-## Phase 7: app shell
-
-- Privy email, Google and passkey login; personal profile and wallet on signup.
-- Sidebar, top bar, profile/theme switchers; create profile and its wallet.
-- Per-token/per-chain balance, clearly marked estimated total, pending and held amounts separately.
-- Receive address + QR + exact network/token warning; activity and empty states.
-- Authorization tests across profiles. Sessions and re-authentication for money actions move to phase 12 (12.1).
-
-## Phase 8: first payment
-
-Base Sepolia + USDC. Requirements: R-42…R-52. From here on, one numbered bullet is one PR and "After" names the
-bullets it needs.
-
-- 8.1 Invoice fields: per-profile number `INV-0001` (D-50), title, note, due date (separate from checkout expiry),
-  client name, email and address copied into the invoice; `GET /v1/profiles/{id}/invoices` with cursor pages;
-  settlement tx hash on the invoice.
-- 8.2 Profile billing details (name, address, country, optional tax ID, contact email): GET/PUT; a copy goes into
-  each invoice at creation. After 8.1.
-- 8.3 Dashboard Invoices: create form, list, detail with status timeline, share link and copy. Replaces the "Soon"
-  item. After 8.1.
-- 8.4 Public `/pay/<id>`, no payer signup: issuer name, invoice number, amount, token, network and the host domain.
-  The browser recomputes the receive address from the terms; the payer confirms the network before copying.
-  Separate wallet and exchange tabs. Live detected → confirming → paid → settled with blocks or time left (R-28).
-  A short refund rule and a scam note before sending. No third-party scripts. After 8.1.
-- 8.6 PDFs: `invoice.pdf` and `receipt.pdf` (D-51), issuer and client blocks from the invoice's copies. After 8.2.
-- 8.7 Public receipt on `/pay/<id>` after settlement: tx hashes, times, PDF links; the dashboard detail links to
-  both PDFs. After 8.3, 8.4, 8.6.
-- 8.8 Personal "Request money": amount, note, expiry; link only (D-52). After 8.3, 8.4.
-- 8.9 First-run "What do you want to do?" screen and checklists for personal and freelancer profiles, computed
-  from data; passkey link step (D-53). After 8.2, 8.3.
-- 8.10 Independent canary per [money safety](docs/backend/money-safety.md). After 8.4.
-- 8.12 Review the complete money path, then Sasha's Base Sepolia run. This is the gate. After all of the above.
-- 8.13–8.15 Enable Arbitrum Sepolia, Arc and Tempo: one PR each, each after its own run. After 8.12.
-- Owner track, in parallel, no code: 5–10 interviews; register forwend.com; free USPTO, EUIPO and WIPO search in
-  finance and software classes; check social handles and app-store names; spoken spelling test with 5 people.
-  Results feed D-55, D-58 and Q-12. Interview questions:
-  1. Your last three cross-border client payments: who chose the method, which currency and route, which arrived?
-  2. USDC or USDT received for client work in the last 90 days: which network, exchange or wallet, and your net
-     amount after conversion and bank fees?
-  3. The last time an exchange or accountant asked where a payment came from, what did you show?
-  4. When did a client refuse or struggle to pay in crypto, and what did you use instead?
-  5. What do you pay today for invoicing, stablecoin receipt and cash-out? Would you pick free with a visible 1% fee,
-     a monthly plan, or your current method?
+- Q-1: the owner reviews the visual direction on `/kit/directions`.
+- Before ignoring tiny deposits, define a dust threshold; they stay refundable.
+- S-7 RPC spike (log ranges, rate limits, finality tags, polling cost of the independent confirmation provider) before
+  any paid RPC plan; approval before paid usage.
+- Owner track, no code: interviews, a free USPTO, EUIPO and WIPO search in finance and software classes, social
+  handles and app-store names, a spoken spelling test with 5 people. Results feed D-55, D-58 and Q-12. Questions:
+  [owner research](docs/owner-research.md).
 
 ## Phase 9: payment exceptions, cancel and notifications
 
@@ -121,8 +50,8 @@ return it by hand ([operations](docs/contracts/operations.md)). 9.3 and 9.4 beca
   not USDC.e; paying from an exchange says to pick the same network there. Wrong-network help moved to 11.10.4.
 - 9.5 Cancel an invoice or request before any money arrives (R-79). After 8.3.
 - 9.6 Owner email through Resend behind an adapter and the outbox (D-65, R-80): paid, settled, money held (expired
-  partial, late, after cancel); per-profile on/off. Sending needs a verified sending domain and the owner's approval of
-  the account (Q-13); without an API key nothing is sent. After 9.1, 9.5.
+  partial, late, after cancel); the worker claims outbox rows with `SKIP LOCKED`; per-profile on/off. Sending needs a
+  verified sending domain and the owner's approval of the account (Q-13); without an API key nothing is sent. After 9.1, 9.5.
   - 9.6.1 The in-app bell shows the same invoice events beside incoming payments (R-81). After 9.6.
 - 9.7 Payer receipt email: an optional field on `/pay`, kept per invoice (D-68); one receipt email once paid (R-82).
   Claim updates come with 11.10.2. After 9.6.

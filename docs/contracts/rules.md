@@ -1,6 +1,6 @@
 # Contracts rules
 
-Every rule has a test. Source: the 2026-10-09 design review and audit (findings fixed in F039, F041).
+Every rule has a test.
 
 ## Status
 

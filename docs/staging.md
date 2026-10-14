@@ -15,11 +15,4 @@
   consumes one full CI run; promote deliberately, not after every task. Do not squash or delete staging.
 - A staging push happens before CI reports a result. Treat only a passing run for that exact commit as validated;
   do not deploy or release an unverified batch. Fix failures on a task branch, merge into main, then promote again.
-- Bootstrap: merge the trigger and harness-policy changes into main before first publishing staging at that
-  updated main commit. Creating staging from the old workflow alone does not enable staging CI. The transition
-  PR may still receive a final run under the old trigger; no workflow-wide disable or skipped-check override is needed.
-
-GitHub's [branch filters](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)
-control which events start a workflow. This repo is private, so hosted runs consume the owner's included allowance
-under [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions).
 

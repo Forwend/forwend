@@ -4,16 +4,10 @@ Every raster in `apps/web/public/images/` needs one row here; `node scripts/chec
 (check `images-check`) fails otherwise. Mood images (landscapes, textures) come from the Codex CLI built-in
 `image_gen` tool, run headless with `codex exec` (D-9). Product UI, charts, numbers and text are always built in code.
 
-Status 2026-10-08: Grok `image_gen` returned HTTP 403 (no credits), so the owner switched to Codex.
-F002 generated the three direction candidates below. Since F011 the landing hero and checkout
-section use the A and B images; the call to action and footer keep code-drawn art. Files are WebP (cwebp -q 82); the
-original PNGs stay in `$CODEX_HOME/generated_images/`.
+Files are WebP (cwebp -q 82); the original PNGs stay in `$CODEX_HOME/generated_images/`.
 
 Style suffix for every prompt: painterly digital illustration, soft morning light, gentle haze,
 muted greens and sky blues, wide cinematic composition, no text, no people in focus.
-
-Planned slots: hero (desktop 16:9 and a mobile crop), checkout band (dusk), call-to-action texture
-(halftone), footer ridges, Open Graph image (1200x630).
 
 | Slot | File | Prompt | Date |
 |---|---|---|---|
@@ -43,7 +37,7 @@ Source: the owner's hand-drawn draft (2026-10-08). Steps used to make the files:
    - `packages/ui-web/src/icons/logo-data.ts`: the mark path (used by `Logo` and `LogoMark`)
    - `apps/web/public/brand/forwend-mark.svg`: one-color mark (currentColor)
    - `apps/web/public/brand/forwend-icon.svg` and `apps/web/src/app/icon.svg`: tile, `--fw-primary`
-     #0f2219 with the mark in `--fw-on-primary` #f5faf7, mark at 62% of the tile
+     with the mark in `--fw-on-primary`, mark at 62% of the tile
    - `apps/web/src/app/favicon.ico` (16, 32, 48), `apps/web/src/app/apple-icon.png` (180, square)
    - `apps/web/public/icon-192.png`, `icon-512.png`, `icon-maskable-512.png` (mark at 50% for the
      maskable safe zone)
