@@ -42,9 +42,6 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
   0, settle deadline 24 h after expiry, expiry at most a year after creation, a recipient that is not zero, the token,
   the factory or the implementation), and only when the terms compute to it.
 - No third-party scripts; pinned dependencies.
-- A canary from a separate build and host takes the factory address from its own config, calls `predict(terms)` on
-  two RPCs and compares with the live page. A canary in the same build would share a tampered constant. See
-  [Canary](#canary).
 
 ## Canary
 

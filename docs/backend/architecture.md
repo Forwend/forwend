@@ -92,47 +92,18 @@ Redis is the next step when more than a few replicas run: the cache sits behind 
 ## Load test
 
 `pnpm --filter @forwend/backend loadtest -users=10000 -duration=3m` (`e2e/load_test.go`; needs Postgres and Foundry,
-like the gate). It starts Anvil with two tokens, a JWKS stand-in for Privy and the api, then seeds per user a personal
-profile with a wallet, 5 paid invoices (one booked deposit each) and 10 wallet transfers. Every user then polls
-`/v1/me`, `/balances`, `/balance-history`, `/transactions` and `/activity` at once every 15 s, starting at a random
-moment in the first 15 s, while Anvil mines a block every `-block` (12 s; each block moves the finalized block). It
-prints p50/p95/p99 per route, errors, `/balances` tokens whose wallet balance was not read, and RPC calls per second
-counted at a proxy in front of Anvil. `RPC_RATE_PER_SECOND` is 100000, so the count is the api's demand, not the pace
-limit. `-api=<binary>` tests another build: the before runs used origin/main at d2971b5
-(`git archive d2971b5 apps/backend | tar -x -C <dir>`, then `go build ./cmd/api` there).
+like the gate). Each user polls the dashboard routes every 15 s against Anvil behind a counting proxy; it prints
+p50/p95/p99 per route, errors, unread balances and RPC calls per second. On 2026-10-10 (one Apple M4 Pro running
+everything) 10,000 users gave p95 2.4 ms, 0 errors and 1,333 RPC calls/s (334 when the finalized block moves every
+60 s). What keeps it there:
 
-Run 2026-10-10 on an Apple M4 Pro (14 cores, 24 GB, macOS), Postgres 17 in Docker (14 CPUs, 8 GB), with the load
-generator, api, proxy and Anvil on the same machine; default pool size (14 connections here). 10,000 users means
-50,000 invoices, 100,000 ledger entries and 100,000 wallet transfers. All routes together, and `/balances` alone:
+- RPC demand ≈ users × tokens ÷ max(15 s, how long a finalized block stays) + chains ÷ 3 s. It has to fit
+  `RPC_RATE_PER_SECOND` times the second role's endpoints; batching `balanceOf` (Multicall) is the next step if not.
+- `/balances` needs the `ledger_transactions_invoice` index (migration 00011): 21.5 ms without it, 0.37 ms with it.
+- The RPC pool keeps up to 100 idle connections per host ([scaling](#scaling)).
 
-| Build | Users | Block every | p50 / p95 / p99, all | `/balances` p50 / p95 | Errors | Balances unread | RPC calls/s |
-|---|---|---|---|---|---|---|---|
-| before | 1,000 | 12 s | 3.4 / 11.8 / 16.4 ms | 6.7 / 14.1 ms | 0 | 0 | 533 |
-| after | 1,000 | 12 s | 3.7 / 9.4 / 12.4 ms | 5.0 / 10.6 ms | 0 | 0 | 134 |
-| before | 10,000 | 12 s | 40 / 73 / 80 s | 43 / 74 s | 170,918 of 211,410 | 6,305 of 12,842 | 145 got through of 5,333 asked |
-| after | 10,000 | 12 s | 1.1 / 2.4 / 3.7 ms | 1.5 / 2.6 ms | 0 | 0 | 1,333 |
-| after | 10,000 | 60 s | 1.0 / 2.1 / 3.6 ms | 1.3 / 2.3 ms | 0 | 0 | 334 |
-
-- Before, each `/balances` and `/balance-history` request read the finalized block and `balanceOf` for every token:
-  4 calls per user and token every 15 s, 5,333 calls/s at 10,000 users. The proxy and Anvil could not keep up: most
-  calls got no answer within the pool's 5 s per attempt, the pool's client opened a new connection for each call
-  beyond 2 at once until local ports ran out ("can't assign requested address"), and balance reads waited out their
-  10 s. Postgres was over its limit too: 1,333 balance sums a second at 21 ms each (below) is about 28 CPU-seconds a
-  second on 14 CPUs. Requests queued until the load generator's 60 s timeout; 6,305 of the 12,842 tokens answered
-  had no wallet balance.
-- After: one `balanceOf` per user and token per finalized block, and 60 finalized block reads in 3 minutes (one per
-  3 s). When the block moves faster than users poll (12 s against 15 s) that is 4 times fewer calls; when it stays
-  60 s, 16 times. RPC calls/s ≈ users × tokens ÷ max(15 s, how long a finalized block stays) + chains ÷ 3 s. The
-  finalized block of Base and Arbitrum moves in steps as Ethereum finalizes, so real numbers are nearer the 60 s run.
-  This demand has to fit `RPC_RATE_PER_SECOND` times the second role's endpoints; batching `balanceOf` calls
-  (Multicall) is the next step if it does not.
-- Postgres, `EXPLAIN ANALYZE` on the 10,000-user data: `/balances` took 21.5 ms, reading all 50,000
-  `ledger_transactions` rows 4 times per request (sequential scans; no index on `invoice_id`). With
-  `ledger_transactions_invoice` (migration 00011) it takes 0.37 ms. The other queries of these routes (activity,
-  transactions, history, invoices list, `/v1/me`, the owner check) already used indexes and took 0.13 ms or less, so
-  no other index was added.
-- Not covered: Anvil answers in under 1 ms where a hosted RPC takes tens of ms, so real `/balances` misses are slower;
-  one machine plays every part; the worker, the signer and Privy are not loaded.
+Not covered: hosted RPC latency (tens of ms, not Anvil's 1 ms), separate machines, and load on the worker, signer and
+Privy.
 
 ## Data model
 
@@ -196,13 +167,6 @@ Rules:
   `session_replication_role = replica` does not skip them. The table owner can still drop them: in deployment the
   app and signer roles must not own the tables and get only `SELECT, INSERT` on the ledger.
 - Balances are `SUM` over entries. Add a stored balance with a version column when that gets slow.
-
-Sources: PostgreSQL 17 docs ([CREATE TRIGGER](https://www.postgresql.org/docs/17/sql-createtrigger.html),
-[numeric](https://www.postgresql.org/docs/17/datatype-numeric.html), [enum](https://www.postgresql.org/docs/17/datatype-enum.html)),
-[EIP-55](https://eips.ethereum.org/EIPS/eip-55), [Ethereum JSON-RPC `logIndex`](https://ethereum.org/developers/docs/apis/json-rpc/),
-ledger designs from [Modern Treasury](https://www.moderntreasury.com/journal/accounting-for-developers-part-ii),
-[pgledger](https://github.com/pgr0ss/pgledger) and [Stripe](https://stripe.dev/blog/ledger-stripe-system-for-tracking-and-validating-money-movement),
-idempotency from [Brandur Leach](https://brandur.org/idempotency-keys).
 
 ## Privy
 
@@ -279,11 +243,10 @@ wallet before anyone can know its address and the next scan follows within one p
 history; as for invoices, only a scan longer than 2,000 blocks could miss a transfer to a wallet made while it ran.
 Transfers older than that window are not looked for: those of wallets made before this table existed, or before a
 chain's first scan. Arc native-coin sends log no token `Transfer`, so they are not recorded.
-The 2,000-block rescan means one empty or lagging answer is never the last look at a final block. Only the invoice's own
+Only the invoice's own
 token counts, and the row stores the emitting contract, so the foreign key also rejects a look-alike. Block hashes and
-times come from the RPC, never computed in Go. Arc's native-coin `Transfer` logs are ignored (see money-safety). A
-chain's first scan starts at its finalized block: deposits before it are not looked for. Scanning again changes
-nothing, so a restarted worker resumes from the cursor.
+times come from the RPC, never computed in Go. Arc's native-coin `Transfer` logs are ignored (see money-safety).
+Scanning again changes nothing, so a restarted worker resumes from the cursor.
 
 Check status (R-55) asks for a rescan of one invoice in `invoice_rechecks`. After each scan the worker takes up to
 `watcher.RescanLimit` (5) asked invoices of the chain and reads their address's logs from the invoice's creation block

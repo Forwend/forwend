@@ -64,10 +64,7 @@ Other packages under `internal/`: `auth`, `address`, `finality`, `search`, `docu
 - A new API area is a module: `internal/httpapi/<name>api/` with `routes.go` (`func Routes(mux, guards, deps...)`
   listing its routes and the guard each needs), `model.go` (request and response JSON) and handler files named for
   what they do; then one line in `router.go`. A module imports `mid`, `httpio` and its domain packages, never another
-  module. Middleware is `func(http.Handler) http.Handler` in `mid`; route-specific limits stay in their module. This
-  follows the HTTP layer of [Ardan Labs' service](https://github.com/ardanlabs/service) (`app/domain/<x>app/route.go`,
-  `app/sdk/mid`) and [Mat Ryer's handler style](https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/)
-  (handler makers that take their dependencies).
+  module. Middleware is `func(http.Handler) http.Handler` in `mid`; route-specific limits stay in their module.
 - Unit tests stay beside their package: Go tests read the package's unexported names. API tests, which go through
   `httpapi.NewMux` like a client, live in `internal/httpapi/tests/`.
 - Dependencies flow from `cmd` to HTTP/worker orchestration, then domain operations and integrations. Domain
@@ -79,11 +76,6 @@ Other packages under `internal/`: `auth`, `address`, `finality`, `search`, `docu
   SQL-generation tool is a separate task from reorganizing existing code.
 - Keep tests beside the package code (`signup_test.go`), shared test helpers in `<package>test`, fixture files
   under the owning package's `testdata/`, and cross-process flows in `e2e/`.
-
-The `cmd`/`internal` split and file-within-package approach follow the official
-[Go module layout guide](https://go.dev/doc/modules/layout). The specific domain names and HTTP boundary are
-Forwend's choices. These rules apply when adding code or performing an authorized refactor; they do not authorize
-unrelated file moves or changes to money behavior.
 
 ## Naming
 
@@ -109,8 +101,8 @@ unrelated file moves or changes to money behavior.
 - Interfaces only for an external boundary tests must replace (Privy) or two real implementations. Declare a
   small interface in the consuming package and return concrete types from constructors. Do not create global
   interface packages or a service/repository interface pair for every domain.
-- Money: `*big.Int`, `NUMERIC(78,0)`, decimal strings in JSON. Never `float64`.
-- Logs: `log/slog`. Never log keys, secrets, tokens or request bodies.
+- Money: decimal strings in JSON, never `float64` (the root AGENTS.md money rule).
+- Logs: `log/slog` (the root AGENTS.md secret rule applies).
 - New dependency only when stdlib can't do it in a few lines; say why in the PR.
 - HTTP API: [api.md](api.md). Money and chain code: [money-safety.md](money-safety.md).
 

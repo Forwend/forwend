@@ -102,8 +102,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Request (also in ⌘K) opens the Request money page (R-71) with amount, note, checkout expiry and the name the payer
   sees, then opens the new request with its pay link. A personal profile's invoices are Requests in the sidebar, list
   and breadcrumb.
-- A feature that is not built yet keeps its place in the subtle text color, with "Soon" as plain text at the end:
-  no badge, no link. A disabled action says why in its accessible name and shows "Coming soon" in a tooltip on
+- In the desktop sidebar, a feature that is not built yet keeps its place in the subtle text color, with "Soon" as
+  plain text at the end: no badge, no link. A disabled action says why in its accessible name and shows "Coming soon" in a tooltip on
   hover, focus or tap; no notice text is added to the page.
 - A toast is only for an event the user did not just do on that spot: a payment detected or settled while the app is
   open, or a save that leaves the page (billing details). Errors and anything that needs an answer stay inline beside

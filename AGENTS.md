@@ -21,7 +21,7 @@ Read only the task's requirement rows and the relevant package instructions.
 ## Shared rules
 
 - Application code belongs in `apps/` or `packages/`; tooling in `scripts/` and `tests/`; local services in `infra/`.
-  Docs belong in `docs/`, except this entry point and the roadmap. Create planned folders only when needed.
+  Docs belong in `docs/`, except this entry point and the roadmap.
 - Before adding a file or folder, identify its feature or responsibility and follow the owning layout rules:
   [web and shared UI](docs/web/structure.md), [Go backend](docs/backend/rules.md). Keep related source and tests together;
   split unrelated responsibilities and use concrete names. Create layers and folders only for existing code.

@@ -186,8 +186,3 @@ packages/ui-web/src/
   exports, fixtures and docs with a move.
 - A structure refactor preserves routes, rendered behavior, API contracts and package exports. Run the existing
   relevant unit, type, build and browser checks through the harness. Do not install new state tools as part of a move.
-
-The feature grouping is informed by [Bulletproof React](https://github.com/alan2207/bulletproof-react/blob/master/docs/project-structure.md)
-and [Feature-Sliced Design](https://fsd.how/docs/reference/slices-segments/). We use the simpler names above rather
-than adopting every layer of either template. Next.js permits [multiple organization approaches](https://nextjs.org/docs/app/getting-started/project-structure);
-the concrete paths and UI categories in this document are Forwend's choices.

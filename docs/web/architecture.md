@@ -33,31 +33,18 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   overview checklist (Privy's `useLinkWithPasskey`) and sign in with it (`useLoginWithPasskey`). Privy loads only in the
   `(app)` route group (`/sign-in`, `/app`), never on the landing page or checkout. `/app` sends signed-out visitors to
   `/sign-in` and calls `POST /v1/me` each time it loads, which makes the personal profile and its wallet once (R-34).
-- The app shell: on desktop a sidebar with the profile switcher on top (a menu to switch or add a profile), the
-  profile type's pages (`APP_NAV`) and the account at the bottom (theme, sign out); on phones an account/search header
-  and a tab bar (Home, Transactions, Balances, More). More derives its remaining pages from the same `APP_NAV` and
-  opens the profile switcher sheet; it also links billing details for businesses. Switching
-  profile opens the new profile's overview, `/app` (R-76). `/app` is the
-  dashboard: the total balance (one token in its unit, several as a USD estimate) and its money actions
-  ([DESIGN.md](DESIGN.md)), pending and held only when not zero, Networks (each
-  chain and token), and recent activity. Receive opens a sheet where the user picks the token, then the network
-  (`features/receive/lib/receive-choice.ts`, keyed by chain family so non-EVM families fit later); the choice folds into
-  one row with Change, over the full address (`ReceiveAddress`), QR code and an exact network and token warning (the
-  address never shows without it). `/app/balances` and `/app/activity` list
-  everything; in activity only a payment carries "+". Money sent straight to the wallet shows in the balance once final, not in activity. Balances
-  and activity are read again every 15 s while the tab is visible and when it comes back. `/app/profiles/new` creates a freelancer
-  or merchant profile with one idempotency key per visit (R-35). While `onboardedAt` is empty, `/app` shows the first-run choice screen instead (R-50, D-73);
-  `/app/billing-details` edits the profile's billing details (R-43).
-- Invoices (freelancer and merchant profiles, R-44): `/app/invoices` lists them newest first with "Show more" cursor
-  pages; `/app/invoices/new` (Request money for a personal profile, R-58, R-71) groups the form into Amount, Details, Dates and Client.
-  The client chooses by default (`amountUsd`, at most the fewest decimals among the enabled tokens); One token asks for
-  a network and token from the profile's enabled tokens (the balances list). The due date uses the kit DatePicker;
-  Checkout closes after offers 1 hour to 30 days or Custom (a date and a time, sent as seconds from now, checked
-  against 15 minutes to 365 days); an optional https return link goes to `returnUrl`. It turns the typed amount into
-  exact base units without float, shows each error beside its field, and sends one idempotency key per filled-in form;
-  `/app/invoices/<id>` shows the status timeline, due date apart from checkout expiry, client, issuer and the
-  `/pay/<id>` link with a copy button. The public `GET /v1/invoices/{id}` has no client, so the detail reads it from
-  `GET /v1/profiles/{id}/invoices/{invoiceId}`, whose 404 also tells that the active profile did not make the invoice.
+- Pages, the app shell and the dashboard look as [DESIGN.md](DESIGN.md) says. Wiring behind them:
+  - Navigation comes from one `APP_NAV`; switching profile opens the new profile's `/app` (R-76).
+  - Receive's choice is keyed by chain family (`features/receive/lib/receive-choice.ts`), so non-EVM families fit
+    later; the address never shows without its exact network and token warning.
+  - Balances and activity are read again every 15 s while the tab is visible and when it comes back. Money sent
+    straight to the wallet shows in the balance once final, not in activity.
+  - `/app/profiles/new` sends one idempotency key per visit (R-35) and the invoice form one per filled-in form (R-44).
+    While `onboardedAt` is empty, `/app` shows the first-run choice screen (R-50, D-73).
+  - The invoice form turns the typed amount into exact base units without float; a custom checkout close is sent as
+    seconds from now (15 minutes to 365 days).
+  - `/app/invoices/<id>` reads `GET /v1/profiles/{id}/invoices/{invoiceId}`, because the public read has no client;
+    its 404 also means another profile made the invoice.
 - Invoices, Activity and Transactions (also the business overview's payments) send their filter and search to the API
   (`?status=` or `?direction=`, `?q=`) and show only its answer for the current pair, so a match on an older page shows
   at once and "Show more" continues the filtered list. `shared/hooks/use-list-filters.ts` keeps both in the page URL
