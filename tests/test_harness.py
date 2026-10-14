@@ -261,6 +261,18 @@ class HarnessTests(unittest.TestCase):
             h.parse_proof(['1=nonexistent_test'], task)
         self.assertEqual(h.parse_proof(['1=unit: value assertion'], task)['1'], 'unit: value assertion')
 
+    def test_show_prints_referenced_project_rows(self):
+        self.task['refs'] = ['R-2', 'D-9']
+        self.save()
+        (self.root / h.PROJECT).write_text('| R-1 | one |\n| R-2 | two | e2e |\n| D-9 | nine |\n')
+        from argparse import Namespace
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            h.cmd_show(self.root, Namespace(id='F001', history=False))
+        self.assertIn('| R-2 | two | e2e |', out.getvalue())
+        self.assertIn('| D-9 | nine |', out.getvalue())
+        self.assertNotIn('| R-1 |', out.getvalue())
+
     def test_docs_only_changes_run_only_docs_checks(self):
         from argparse import Namespace
         self.task['verification'] = ['docs-check']
@@ -269,6 +281,7 @@ class HarnessTests(unittest.TestCase):
             {'id': 'unit', 'argv': [sys.executable, '-c', 'raise SystemExit(1)'], 'required': True, 'precommit': True}]
         self.save()
         git = lambda *args: subprocess.run(['git', *args], cwd=self.root, check=True, capture_output=True, text=True).stdout
+        (self.root / 'tool.py').write_text('tool = 1\n')
         git('init', '-q')
         git('add', '.')
         git('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-qm', 'base')
@@ -278,12 +291,33 @@ class HarnessTests(unittest.TestCase):
         (self.root / 'README.md').write_text('docs\n')
         git('add', 'README.md')
         self.assertEqual(h.run_order(h.State(self.root), self.task), ['docs-check'])
+        self.assertFalse(h.needs_review(h.State(self.root), self.task))
+        self.assertTrue(h.needs_review(h.State(self.root), {**self.task, 'review': True}))
         with contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(hook(), 0)
+            git('mv', 'tool.py', 'notes.md')  # a code file renamed to Markdown is still a code change
+            self.assertEqual(h.run_order(h.State(self.root), self.task), ['docs-check', 'unit'])
+            self.assertTrue(h.needs_review(h.State(self.root), self.task))
+            self.assertEqual(hook(), 1)
+            git('mv', 'notes.md', 'tool.py')
             (self.root / 'value.py').write_text('value = 1\n')
             git('add', 'value.py')
             self.assertEqual(h.run_order(h.State(self.root), self.task), ['docs-check', 'unit'])
+            self.assertTrue(h.needs_review(h.State(self.root), self.task))
             self.assertEqual(hook(), 1)
+
+    def test_code_change_cannot_finish_without_review(self):
+        from argparse import Namespace
+        self.assertEqual(self.verify(), 0)
+        out = io.StringIO()
+        with patch.object(h, 'changed_since', return_value=['value.py']):
+            with contextlib.redirect_stdout(out):
+                h.cmd_status(self.root, Namespace())
+            with self.assertRaises(h.Refused):
+                h.cmd_done(self.root, Namespace(id='F001', proof=None))
+        self.assertIn('independent review', out.getvalue())
+        with patch.object(h, 'changed_since', return_value=['README.md']), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(h.cmd_done(self.root, Namespace(id='F001', proof=None)), 0)
 
     def test_failed_and_missing_commands_never_verify(self):
         for argv, outcome in [([sys.executable, '-c', 'raise SystemExit(7)'], 'failed'),

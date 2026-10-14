@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 190,
+  "nextId": 194,
   "tasks": [
     {
       "id": "F179",
@@ -493,6 +493,177 @@
         "branch": "docs/f189-docs-keep-only-open-work-and-one-copy-of",
         "base": "main"
       }
+    },
+    {
+      "id": "F190",
+      "type": "fix",
+      "behavior": "show ID prints the text of each referenced PROJECT row, and docs-check fails on cited IDs or check names that do not exist",
+      "acceptance": [
+        "harness show ID prints each referenced R-, D-, Q- or A- row from docs/PROJECT.md under the refs line, so a task never needs the whole file; a harness test covers it",
+        "docs-check reports any R-, D-, Q- or A- ID cited in the docs or in open task refs that PROJECT.md does not define, and any PROJECT Check-column name that docs/config.json does not define (manual entries allowed); it passes on the current docs",
+        "done and status require a passing independent review for every task that changes more than docs, as well as for tasks added with --review; workflow.md says so; a harness test covers both cases"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "harness",
+        "docs-check"
+      ],
+      "refs": [
+        "R-25"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-14 review fail by independent reviewer: 1) Code can skip review via rename: changed_since (harness.py:52) uses git diff --name-only, which reports a rename only by its new path. Repro in a clone: git mv scripts/check-docs.py docs/check-docs.md -> changed_since(HEAD) == ['docs/check-docs.md'], docs_only True, so needs_review (1450) is False; same staged and committed. Fix: add --no-renames at harness.py:52 and the hook diff at 1548 (checked: then scripts/check-docs.py is listed). 2) Accept 3 test gap: only the code-change case is tested. Mutations that survive the 35 tests: dropping bool(task.get('review')) from needs_review; reverting the done gate (1168) or next_step (698) to task.get('review'). Fix: assert needs_review is True for review=True with docs-only changes, and one done refusal for an unreviewed code change. Minor: check-docs.py:42 splits on 'manual' before stripping parentheses, so 'e2e (manual later)' reports check 'e2e (' (repro done); strip parens first. needs_review fails open when git diff fails (bad baseCommit -> None). show/status print the 'review:' line only for --review tasks. Passing: unittest 35 OK, check-docs 0 errors; it catches fake R-999/D-998, task ref R-777 and check 'bakend'; SHA-256, EIP-55 and R-1...R-13 give no false errors; show row parsing and its test are correct.",
+        "2026-10-14 review pass by independent reviewer 2: Pass. Ran: unittest 36 OK; check-docs 0 errors. Earlier fail items fixed. Mutations on a copy: caught = drop review flag in needs_review, done gate back to task.get('review'), next_step back, changed_since without --no-renames, hook without --no-renames, needs_review always False for code. Git scenarios with needs_review (temp repo): committed code, deleted code, git mv code->.md (both paths listed), docs/config.json, untracked code, code moved into ignored docs/runs/, missing baseCommit, bad baseCommit -> all True; docs-only commit -> False. check-docs on a docs copy catches R-999, (D-9999), task ref Q-777, check 'harnes (manual later)' -> 'harnes'; no false hits on SHA-256, EIP-55, ERC-20, R-1...R-13. Minor notes: (1) show prints 'review: required, not done yet' for finished tasks (show F179/F188/F189, passing docs tasks) because needs_review diffs the current tree against an old baseCommit; fix: in cmd_show call needs_review only for active/verified, else only when review evidence exists or task.review. (2) Surviving mutations: needs_review returning False when git diff fails (bad baseCommit) and dropping untracked files from changed_since are not tested; status/show review lines are display-only (status gate is covered via next_step). (3) Local delivery mode only: reopen resets baseCommit to HEAD (begin_work), so code committed before a failed review then a docs-only fix skips review; this repo uses pr mode where baseCommit is the merge-base. (4) No git -> no review required (fails open); not stated in workflow.md. (5) No regression test for the new check-docs rules; text after 'manual' is unchecked by design. (6) Pre-existing: BOOKKEEPING prefix match also filters docs/tasks.json.py, and docs/archive/*.py counts as docs-only."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-14T22:35:01Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F190-20261014T223501Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F190-20261014T223501Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F190-20261014T223501Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F190-20261014T223501Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 91.4,
+            "log": "docs/runs/F190-20261014T223501Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F190-20261014T223501Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 169.7,
+            "log": "docs/runs/F190-20261014T223501Z-e2e.log"
+          }
+        ],
+        "taskHash": "b81be3bdd8e09322",
+        "filesHash": "30f2dd7558697af0",
+        "proof": {
+          "1": "harness: test_show_prints_referenced_project_rows shows show prints only the referenced rows",
+          "2": "docs-check: passes on the current docs; unknown IDs and check names are reported; notes in () are removed before the manual split",
+          "3": "harness: test_code_change_cannot_finish_without_review (done refused, status asks for review) and test_docs_only_changes_run_only_docs_checks (rename to .md, --review flag); four mutations of the gate are each caught"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer 2",
+          "summary": "Pass. Ran: unittest 36 OK; check-docs 0 errors. Earlier fail items fixed. Mutations on a copy: caught = drop review flag in needs_review, done gate back to task.get('review'), next_step back, changed_since without --no-renames, hook without --no-renames, needs_review always False for code. Git scenarios with needs_review (temp repo): committed code, deleted code, git mv code->.md (both paths listed), docs/config.json, untracked code, code moved into ignored docs/runs/, missing baseCommit, bad baseCommit -> all True; docs-only commit -> False. check-docs on a docs copy catches R-999, (D-9999), task ref Q-777, check 'harnes (manual later)' -> 'harnes'; no false hits on SHA-256, EIP-55, ERC-20, R-1...R-13. Minor notes: (1) show prints 'review: required, not done yet' for finished tasks (show F179/F188/F189, passing docs tasks) because needs_review diffs the current tree against an old baseCommit; fix: in cmd_show call needs_review only for active/verified, else only when review evidence exists or task.review. (2) Surviving mutations: needs_review returning False when git diff fails (bad baseCommit) and dropping untracked files from changed_since are not tested; status/show review lines are display-only (status gate is covered via next_step). (3) Local delivery mode only: reopen resets baseCommit to HEAD (begin_work), so code committed before a failed review then a docs-only fix skips review; this repo uses pr mode where baseCommit is the merge-base. (4) No git -> no review required (fails open); not stated in workflow.md. (5) No regression test for the new check-docs rules; text after 'manual' is unchecked by design. (6) Pre-existing: BOOKKEEPING prefix match also filters docs/tasks.json.py, and docs/archive/*.py counts as docs-only.",
+          "at": "2026-10-14T22:43:36Z",
+          "filesHash": "30f2dd7558697af0"
+        },
+        "commit": "3122c08",
+        "doneAt": "2026-10-14T22:43:58Z"
+      },
+      "branch": "fix/f190-show-id-prints-the-text-of-each-referenc",
+      "baseCommit": "b91c9a04f7ba73ce38b285f35526ee3fbb305b33",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f190-show-id-prints-the-text-of-each-referenc",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F191",
+      "type": "refactor",
+      "behavior": "The activity and invoices features no longer import each other in a cycle",
+      "acceptance": [
+        "No import cycle between apps/web/src/features/activity and features/invoices: the shared status values and helpers have one owner both import from; behavior, routes and rendered output are unchanged; docs/web/architecture.md lists the new feature edges"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "D-11"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F192",
+      "type": "fix",
+      "behavior": "brand-colors.ts no longer cites a test that F016 deleted",
+      "acceptance": [
+        "The comment in apps/web/src/shared/config/brand-colors.ts names no missing test and says how its copies stay equal to tokens.css; nothing else changes"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit"
+      ],
+      "refs": [
+        "D-11"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F193",
+      "type": "fix",
+      "behavior": "The api rate-limit comment and api.md agree on whether Next's /api rewrite passes X-Forwarded-For, measured rather than assumed",
+      "acceptance": [
+        "A request through the Next /api rewrite to a stub upstream shows whether X-Forwarded-For arrives; internal/httpapi/mid/ratelimit.go and docs/backend/api.md state that result and still give per-IP limits to the edge (Q-8)"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "docs-check"
+      ],
+      "refs": [
+        "D-72"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

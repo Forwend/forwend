@@ -22,6 +22,7 @@ from pathlib import Path
 TASKS = 'docs/tasks.json'
 ARCHIVE = 'docs/archive'
 CONFIG = 'docs/config.json'
+PROJECT = 'docs/PROJECT.md'  # requirement and decision rows, one per line: `| R-1 | ...`
 RUNS = 'docs/runs'
 LOCK = 'docs/.harness.lock'
 STATES = ('not_started', 'active', 'blocked', 'verified', 'passing', 'dropped')
@@ -48,7 +49,8 @@ def is_path_rule(rule):
 
 def changed_since(root, base):
     """Paths changed since commit `base` (committed, staged, unstaged, or untracked); None without git."""
-    tracked = git(root, 'diff', '--name-only', base or EMPTY_TREE)
+    # --no-renames lists a renamed file's old path too, so `git mv x.py notes.md` is not a docs-only change
+    tracked = git(root, 'diff', '--name-only', '--no-renames', base or EMPTY_TREE)
     untracked = git(root, 'ls-files', '--others', '--exclude-standard')
     if tracked is None or untracked is None:
         return None
@@ -694,7 +696,7 @@ def next_step(state, found):
         reason = stale_reason(state, task)
         if reason:
             return f'`verify {task["id"]}` again ({reason})'
-        if task.get('review') and not review_passed(state, task):
+        if needs_review(state, task) and not review_passed(state, task):
             return (f'get an independent review: a reviewer with fresh context reads `show {task["id"]}` and `git diff`, '
                     f'then records `review {task["id"]} --pass|--fail --summary "..."`')
         return f'commit, then `done {task["id"]} --proof ...`'
@@ -742,7 +744,7 @@ def cmd_status(root, args):
                                                      if here and here != task['branch'] else ''))
         reason = stale_reason(state, task)
         print('  last: ' + evidence_line(task) + (f' [stale: {reason}]' if reason else ''))
-        if task.get('review'):
+        if needs_review(state, task):
             review = (task.get('evidence') or {}).get('review')
             print('  review: ' + (f'{review.get("result")} by {review.get("by")} at {review.get("at")}: {shorten(review.get("summary"), 240)}'
                                  if review else 'required, not done yet'))
@@ -820,6 +822,15 @@ def cmd_show(root, args):
     for key, label in (('dependsOn', 'depends on'), ('refs', 'refs')):
         if task.get(key):
             print(f'{label}: ' + ', '.join(task[key]))
+    if task.get('refs'):
+        try:
+            rows = {line.split(' | ', 1)[0][2:]: line for line in (root / PROJECT).read_text(encoding='utf-8').splitlines()
+                    if line.startswith('| ') and ' | ' in line}
+        except OSError:
+            rows = {}
+        for ref in task['refs']:
+            if ref in rows:
+                print(rows[ref])
     if not task.get('refs') and task.get('state') not in ('passing', 'dropped'):
         print(f'refs: none; add the relevant requirement or decision with `edit {task["id"]} --ref ID` before implementation')
     if task.get('keep'):
@@ -827,7 +838,7 @@ def cmd_show(root, args):
     for key in ('branch', 'spec', 'plan', 'blockedReason', 'baseCommit'):
         if task.get(key):
             print(f'{key}: {task[key]}')
-    if task.get('review'):
+    if needs_review(state, task):
         review = (task.get('evidence') or {}).get('review')
         print('review: ' + (f'{review.get("result")} by {review.get("by")} at {review.get("at")}: {review.get("summary")}'
                             if review else 'required, not done yet'))
@@ -1155,7 +1166,7 @@ def cmd_done(root, args):
             reason = stale_reason(state, task)
             if reason:
                 raise Refused(f'{task["id"]} evidence is stale ({reason}); run `verify {task["id"]}` again')
-            if task.get('review') and not review_passed(state, task):
+            if needs_review(state, task) and not review_passed(state, task):
                 raise Refused(f'{task["id"]} needs an independent review of the current files: a reviewer with fresh context '
                               f'reads `show {task["id"]}` and `git diff`, then records `review {task["id"]} --pass|--fail --summary "..."`')
             commit = None
@@ -1437,6 +1448,16 @@ def cmd_drop(root, args):
     return transition(root, args.id, change)
 
 
+def needs_review(state, task):
+    """A task asked for review, or it changed more than docs: code never merges on its author's word alone."""
+    if task.get('review'):
+        return True
+    paths = changed_since(state.root, task.get('baseCommit'))
+    if paths is None:  # a git repository whose diff failed (such as a missing base commit) cannot prove docs-only
+        return git(state.root, 'rev-parse', '--is-inside-work-tree') is not None
+    return not docs_only(paths)
+
+
 def review_passed(state, task):
     review = (task.get('evidence') or {}).get('review') or {}
     return review.get('result') == 'pass' and review.get('filesHash') == state.files_hash()
@@ -1529,7 +1550,7 @@ def cmd_hook(root, args):
     runs = root / RUNS
     runs.mkdir(parents=True, exist_ok=True)
     stamp = now().replace('-', '').replace(':', '')
-    staged = (git(root, 'diff', '--cached', '--name-only') or '').splitlines()
+    staged = (git(root, 'diff', '--cached', '--name-only', '--no-renames') or '').splitlines()
     docs = docs_only([name for name in staged if name and not name.startswith(BOOKKEEPING)])
     results = [run_check(root, check, runs / f'precommit-{stamp}-{check["id"]}.log')
                for check in state.config.get('checks') or []
