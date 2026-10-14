@@ -28,7 +28,7 @@ Routes: `apps/backend/api/openapi.yaml`; each module mounts its own in `internal
 - Times: RFC 3339 in UTC. IDs and addresses: strings.
 - Lists: `?limit=` (max 100) and `?cursor=`; response `{ "items": [...], "nextCursor": "…" }`.
 - The owner's invoice, activity and transaction lists also take a filter (`?status=` open | paid | settled | expired
-  on invoices and activity, `?direction=` in | out on transactions) and `?q=`, a search of 1–100 characters (blank or
+  on invoices and activity, where a closed checkout (`closed`, R-77) counts as expired, `?direction=` in | out on transactions) and `?q=`, a search of 1–100 characters (blank or
   longer: 422). Both narrow the list before paging, so `nextCursor` continues the filtered list. A field matches when
   it contains `q` in any letter case. When `q` is a decimal number (digits and one point; thousands commas are
   dropped) it also matches an amount equal to it in whole tokens: `amount = q × 10^decimals` in Postgres `numeric`,

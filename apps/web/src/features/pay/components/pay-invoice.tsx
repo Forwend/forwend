@@ -527,6 +527,9 @@ function Received({
           COPY.states[pay.state](values(invoice, pay, money))
         )}
       </p>
+      {pay.state === PAY_STATES.partial ? (
+        <p className="text-sm text-muted">{COPY.copyFromHere}</p>
+      ) : null}
       <ul className="divide-y divide-line rounded-md border border-line">
         {invoice.deposits
           .filter((d) => !d.late)

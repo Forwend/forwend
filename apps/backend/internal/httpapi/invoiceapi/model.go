@@ -31,6 +31,7 @@ type invoiceJSON struct {
 	OptionLocked     bool        `json:"optionLocked"`
 	OptionCount      int         `json:"optionCount"`
 	Confirming       bool        `json:"confirming"`
+	Closed           bool        `json:"closed"`
 	Number           int64       `json:"number"`
 	Title            *string     `json:"title"`
 	Note             *string     `json:"note"`
@@ -128,7 +129,7 @@ type depositJSON struct {
 // toInvoiceJSON writes "" as null; withClient is for the owner only.
 func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 	out := invoiceJSON{
-		InvoiceID: inv.ID, OptionID: inv.OptionID, OptionLocked: inv.OptionLocked, OptionCount: inv.OptionCount, Confirming: inv.Confirming, Number: inv.Number, Title: httpio.OrNull(inv.Title), Note: httpio.OrNull(inv.Note),
+		InvoiceID: inv.ID, OptionID: inv.OptionID, OptionLocked: inv.OptionLocked, OptionCount: inv.OptionCount, Confirming: inv.Confirming, Closed: inv.Closed, Number: inv.Number, Title: httpio.OrNull(inv.Title), Note: httpio.OrNull(inv.Note),
 		DueDate: httpio.OrNull(inv.DueDate), SenderName: httpio.OrNull(inv.SenderName), ReturnURL: httpio.OrNull(inv.ReturnURL), ChainID: inv.ChainID, Token: inv.Token, Amount: inv.Amount.String(),
 		Recipient: inv.Recipient, Factory: inv.Factory, ReceiveAddress: inv.ReceiveAddress,
 		ExpiresAt: inv.ExpiresAt.Format(time.RFC3339), SettleDeadline: inv.SettleDeadline.Format(time.RFC3339),

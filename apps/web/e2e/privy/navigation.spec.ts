@@ -578,6 +578,127 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await context.close();
 });
 
+// R-77: every exception says what happened and what to do; a closed invoice is asked again with a new one (D-25).
+test("the owner's invoice page names the next step of every exception", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page, {
+    invoices: [OPEN_INVOICE],
+    activity: [activityItem(OPEN_INVOICE)],
+    transfers: [],
+  });
+  let body: object = OPEN_INVOICE;
+  // The public and the owner's read of this invoice; the owner's carries the client.
+  await page.route(
+    (url) =>
+      url.pathname.startsWith("/api/") &&
+      url.pathname.endsWith(`/invoices/${OPEN_INVOICE.invoiceId}`),
+    (route) => route.fulfill({ json: body }),
+  );
+  const paid = (amount: string, late = false) => ({
+    txHash: late ? hash("8") : hash("9"),
+    logIndex: 0,
+    from: `0x${"c".repeat(40)}`,
+    amount,
+    blockNumber: 1000,
+    blockTime: "2026-10-09T08:30:00Z",
+    status: "confirmed",
+    late,
+    blocksLeft: 0,
+    blocksTotal: 120,
+    secondsLeft: 0,
+  });
+  const closedAt = new Date(Date.now() - 60_000).toISOString();
+  const main = page.getByRole("main");
+  const header = main.locator("header");
+  const open = async () => {
+    await page.goto(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
+    await expect(main.getByRole("list", { name: "Payment progress" })).toBeVisible({
+      timeout: 15_000,
+    });
+  };
+
+  // Partly paid and open: the amount already says Received X of Y, so no next-step line repeats it.
+  body = { ...OPEN_INVOICE, paymentStatus: "partially_paid", deposits: [paid("1000000")] };
+  await open();
+  await expect(main.getByText("Received 1.00 USDC of 2.00 USDC")).toBeVisible();
+  await expect(header).not.toContainText("left to pay");
+  await expect(header.getByRole("region", { name: "Pay link" })).toBeVisible();
+  expect(await blockingViolations(page)).toEqual([]);
+
+  // Closed with nothing paid, while the API's status still says open (closed says sooner): Expired, and a new invoice
+  // with the same client.
+  body = { ...OPEN_INVOICE, expiresAt: closedAt, closed: true, deposits: [] };
+  await open();
+  await expect(header.locator("[data-status]")).toHaveText("Expired");
+  await expect(header).toContainText(
+    "The checkout closed with nothing paid. A closed invoice can't take money again.",
+  );
+  await expect(header.getByRole("region", { name: "Pay link" })).toHaveCount(0);
+  await header.getByRole("link", { name: "New invoice" }).click();
+  await expect(page).toHaveURL(`/app/invoices/new?from=${OPEN_INVOICE.invoiceId}`);
+  await expect(main.getByLabel("Amount")).toHaveValue("2");
+  await expect(main.getByLabel("Name", { exact: true })).toHaveValue("Mara Ilić");
+
+  // Closed partly paid: the money is held for the payer, and the new invoice asks only for the rest.
+  body = {
+    ...OPEN_INVOICE,
+    paymentStatus: "expired_partially_paid",
+    expiresAt: closedAt,
+    closed: false,
+    deposits: [paid("500000")],
+  };
+  await open();
+  await expect(header.locator("[data-status]")).toHaveText(/Expired/);
+  await expect(header).toContainText(
+    "0.50 USDC is held for the payer. To collect the remaining 1.50 USDC, send a new invoice.",
+  );
+  await header.getByRole("link", { name: "New invoice for the rest" }).click();
+  await expect(page).toHaveURL(`/app/invoices/new?from=${OPEN_INVOICE.invoiceId}&rest=1`);
+  await expect(main.getByLabel("Amount")).toHaveValue("1.5");
+
+  // Money after the checkout closed is held for the payer, whatever else happened.
+  body = {
+    ...OPEN_INVOICE,
+    paymentStatus: "paid",
+    settlementStatus: "pending",
+    paidAt: "2026-10-09T08:31:00Z",
+    deposits: [paid(OPEN_INVOICE.amount), { ...paid("500000", true), logIndex: 1 }],
+  };
+  await open();
+  await expect(header).toContainText(
+    "0.50 USDC arrived after the checkout closed and is held for the payer.",
+  );
+  expect(await blockingViolations(page)).toEqual([]);
+  await context.close();
+});
+
+// R-77: a closed checkout reads Expired in the lists too, as soon as the API says closed.
+test("the invoice list and activity show a closed checkout as expired", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  const closed = {
+    ...OPEN_INVOICE,
+    expiresAt: new Date(Date.now() - 60_000).toISOString(),
+    closed: true,
+  };
+  await mockApi(page, { invoices: [closed], activity: [activityItem(closed)], transfers: [] });
+  const main = page.getByRole("main");
+  await page.goto("/app/invoices");
+  await expect(main.locator("tbody tr").first().locator("[data-status]")).toHaveText("Expired", {
+    timeout: 15_000,
+  });
+  await page.goto("/app/activity");
+  await expect(main.locator("[data-status]").first()).toHaveText("Expired", { timeout: 15_000 });
+  await context.close();
+});
+
 // R-70: an invoice the client may pay with any stablecoin reads in USD with Any network in the list, chosen or not.
 test("the invoice list and activity show a client-chooses invoice in USD with Any network", async ({
   browser,

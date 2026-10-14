@@ -31,7 +31,7 @@ const invoiceColumns = `id, option_id, chosen_id IS NOT NULL,
 	coalesce((SELECT tx_hash FROM settlement_intents s WHERE s.invoice_id = invoices.option_id AND s.status = 'confirmed'), ''),
 	created_at,
 	EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = invoices.option_id AND t.status = 'detected'
-	        AND t.block_time <= invoices.expires_at)`
+	        AND t.block_time <= invoices.expires_at), ` + ClosedSQL
 
 // invoicesCurrent is the invoices_current view (migration 00020) under the table's name, so filters written for
 // invoices read the same.
@@ -47,7 +47,7 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 		&inv.ClientEmail, &inv.ClientAddress, &inv.SenderName, &issuerName, &issuer.Address, &issuer.Country, &issuer.TaxID,
 		&issuer.Email, &inv.ReturnURL, &inv.ChainID, &inv.Token, &amount, &inv.Recipient, &inv.Factory,
 		&inv.ReceiveAddress, &expiresAt, &settleDeadline, &inv.PaymentStatus, &inv.SettlementStatus, &inv.RefundStatus,
-		&inv.SettlementTxHash, &inv.CreatedAt, &inv.Confirming}
+		&inv.SettlementTxHash, &inv.CreatedAt, &inv.Confirming, &inv.Closed}
 	if err := row.Scan(dest...); errors.Is(err, pgx.ErrNoRows) {
 		return Invoice{}, ErrNotFound
 	} else if err != nil {

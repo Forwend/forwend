@@ -66,6 +66,9 @@ export const PAY_COPY = {
   backTo: (host: string) => `Back to ${host}`,
   // Who asked for the money: the name on the invoice, never "the sender", who could be read as the payer.
   creator: "the invoice's creator",
+  // Address poisoning: a look-alike address planted in the payer's wallet history after the first payment (R-77).
+  copyFromHere:
+    "Copy the address from this page for the rest, not from your wallet's history: scammers plant look-alike addresses there.",
   late: (late: string, payee: string) =>
     `${late} arrived after the checkout closed. It is held for you; ask ${payee} to get it back.`,
   otherOption: (amount: string, network: string, payee: string) =>

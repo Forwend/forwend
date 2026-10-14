@@ -31,6 +31,8 @@ export const activityItemSchema = z.object({
   txHash: hash32.optional(),
   // Above 1 the client chooses: the invoice reads in USD, not in the token given here (its first option).
   optionCount: z.number().int().positive(),
+  // An invoice whose checkout closed and can no longer be paid, before its status catches up (R-77); false for a deposit.
+  closed: z.boolean(),
 });
 
 export const activityPageSchema = pageOf(activityItemSchema);

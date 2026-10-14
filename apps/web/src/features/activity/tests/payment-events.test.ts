@@ -15,6 +15,7 @@ const item = (over: Partial<ActivityItem>): ActivityItem => ({
   status: "open",
   settlementStatus: "none",
   optionCount: 1,
+  closed: false,
   ...over,
 });
 const deposit = (txHash: string, invoiceId = "0xinv1") =>

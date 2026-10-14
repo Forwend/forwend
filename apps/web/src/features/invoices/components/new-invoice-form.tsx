@@ -36,6 +36,7 @@ import type {
   ExpiryChoice,
   Invoice,
   InvoiceField,
+  InvoiceStart,
   InvoiceToken,
   PayWith,
 } from "@/features/invoices/types/invoices";
@@ -51,21 +52,23 @@ export interface NewInvoiceFormProps {
   profileId: string;
   tokens: readonly InvoiceToken[];
   request?: { senderName: string; onCreated: (invoice: Invoice) => void };
+  // Filled from a closed invoice (R-77): its client, accepted options and amount.
+  start?: InvoiceStart;
 }
 
 // One idempotency key per filled-in form: a double click, or a retry of the same values after an error, makes one
 // invoice; changed values are a new request with a new key, never a 409. With `request` it is a personal profile's
 // request (D-52): amount, note, expiry, return link and the name the payer sees, handed to onCreated instead of
 // opening the invoice.
-export function NewInvoiceForm({ profileId, tokens, request }: NewInvoiceFormProps) {
+export function NewInvoiceForm({ profileId, tokens, request, start }: NewInvoiceFormProps) {
   const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
   const [createInvoice] = useCreateInvoiceMutation();
   const router = useRouter();
   const keys = useRef(new Map<string, { key: string; body: CreateInvoiceBody }>());
   // Payer chooses is the default once there is more than one token to choose from (R-56).
-  const [payWith, setPayWith] = useState<PayWith>(PAY_WITH.any);
-  const [picked, setPicked] = useState("");
-  const [amount, setAmount] = useState("");
+  const [payWith, setPayWith] = useState<PayWith>(start?.payWith ?? PAY_WITH.any);
+  const [picked, setPicked] = useState(start?.picked ?? "");
+  const [amount, setAmount] = useState(start?.amount ?? "");
   const [expiry, setExpiry] = useState<Expiry>(DEFAULT_EXPIRY);
   const [closesOn, setClosesOn] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null);
@@ -338,6 +341,7 @@ export function NewInvoiceForm({ profileId, tokens, request }: NewInvoiceFormPro
             <TextField
               label={COPY.clientName}
               name="clientName"
+              defaultValue={start?.client.name}
               autoComplete="off"
               maxLength={INVOICE_LIMITS.clientName}
               error={errors[INVOICE_FIELDS.clientName]}
@@ -346,6 +350,7 @@ export function NewInvoiceForm({ profileId, tokens, request }: NewInvoiceFormPro
               type="email"
               label={COPY.clientEmail}
               name="clientEmail"
+              defaultValue={start?.client.email}
               autoComplete="off"
               maxLength={INVOICE_LIMITS.clientEmail}
               error={errors[INVOICE_FIELDS.clientEmail]}
@@ -354,6 +359,7 @@ export function NewInvoiceForm({ profileId, tokens, request }: NewInvoiceFormPro
           <TextAreaField
             label={COPY.clientAddress}
             name="clientAddress"
+            defaultValue={start?.client.address}
             maxLength={INVOICE_LIMITS.clientAddress}
             error={errors[INVOICE_FIELDS.clientAddress]}
           />

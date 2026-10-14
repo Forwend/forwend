@@ -70,6 +70,7 @@ describe("checkedReceiveAddress", () => {
     optionLocked: false,
     optionCount: 1,
     confirming: false,
+    closed: false,
     nextCheckAt: null,
     options: [],
     receiveAddress: receiveAddress({

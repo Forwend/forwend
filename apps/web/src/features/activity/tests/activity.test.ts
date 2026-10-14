@@ -15,6 +15,7 @@ const base: ActivityItem = {
   status: "open",
   settlementStatus: "none",
   optionCount: 1,
+  closed: false,
 };
 
 describe("activityStatus", () => {
@@ -41,6 +42,20 @@ describe("activityStatus", () => {
     );
     expect(activityStatus({ ...base, status: "expired_partially_paid" })).toBe(
       PAYMENT_STATUS.expiredPartiallyPaid,
+    );
+  });
+
+  it("reads open and partly paid as expired once the API says the checkout closed (R-77)", () => {
+    const closed = { ...base, closed: true };
+    expect(activityStatus(closed)).toBe(PAYMENT_STATUS.expired);
+    expect(activityStatus({ ...closed, status: "partially_paid" })).toBe(
+      PAYMENT_STATUS.expiredPartiallyPaid,
+    );
+    // Money after the close reads detected until the chain is final; closed says it can't complete the invoice.
+    expect(activityStatus({ ...closed, status: "detected" })).toBe(PAYMENT_STATUS.expired);
+    expect(activityStatus({ ...closed, status: "paid" })).toBe(PAYMENT_STATUS.paid);
+    expect(activityStatus({ ...base, status: "partially_paid" })).toBe(
+      PAYMENT_STATUS.partiallyPaid,
     );
   });
 

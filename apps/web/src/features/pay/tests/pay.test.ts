@@ -15,6 +15,7 @@ const invoice: Invoice = {
   optionLocked: false,
   optionCount: 1,
   confirming: false,
+  closed: false,
   nextCheckAt: null,
   options: [],
   number: 1,

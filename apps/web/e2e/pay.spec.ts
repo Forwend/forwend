@@ -32,6 +32,7 @@ const OPEN = {
   optionLocked: false,
   optionCount: 1,
   confirming: false,
+  closed: false,
   senderName: null as string | null,
   returnUrl: null as string | null,
   nextCheckAt: null,
@@ -343,6 +344,9 @@ test.describe("pay page", () => {
     await expect(page.locator("[data-money]").first()).toHaveText("1,000.00 USDC");
     // Money is still due: the address stays, and the Paid step says it is partly there.
     await expect(showAddress(page)).toBeVisible();
+    // The rest goes to the address on this page, with the time left, never one copied from wallet history (R-77).
+    await expect(page.getByText(/^Closes in/)).toBeVisible();
+    await expect(page.getByText(/Copy the address from this page for the rest/)).toBeVisible();
     const partlySteps = page.getByRole("list", { name: "Payment progress" });
     await expect(partlySteps.getByText("Partially paid")).toHaveClass(/bg-warning-soft/);
     // Done, the step says Confirmed rather than Confirming.
@@ -356,6 +360,7 @@ test.describe("pay page", () => {
       "This invoice is closed. If you already sent money, it is not lost: contact Alice Design GmbH.",
     );
     await expect(showAddress(page)).toHaveCount(0);
+    await expect(page.getByText(/Copy the address from this page/)).toHaveCount(0);
   });
 
   test("lets the payer pick the network and token with selects, keeps the pick after a reload, and locks it once money arrives", async ({

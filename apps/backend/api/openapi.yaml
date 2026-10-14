@@ -500,7 +500,8 @@ components:
       in: query
       description: |
         Only invoices under this filter; absent for all. settled once settlementStatus is settled; otherwise by
-        paymentStatus: paid; expired or expired_partially_paid is expired; open, detected or partially_paid is open.
+        paymentStatus: paid; expired, expired_partially_paid or closed (see Invoice.closed) is expired; any other open,
+        detected or partially_paid is open.
         Another value is 422.
       schema: { type: string, enum: [open, paid, settled, expired] }
     Search:
@@ -674,7 +675,7 @@ components:
           description: Pass as cursor for the next page; null on the last page.
     ActivityItem:
       type: object
-      required: [kind, at, invoiceId, chainId, token, symbol, decimals, amount, status, optionCount]
+      required: [kind, at, invoiceId, chainId, token, symbol, decimals, amount, status, optionCount, closed]
       properties:
         kind:
           type: string
@@ -709,6 +710,9 @@ components:
           description: >-
             The invoice's accepted options; above 1 the client chooses, and the invoice reads in USD rather than the
             token and network given here (its first option). 1 for a deposit.
+        closed:
+          type: boolean
+          description: As Invoice.closed for an invoice; false for a deposit.
     Transactions:
       type: object
       required: [items, nextCursor]
@@ -942,7 +946,7 @@ components:
                     secondsLeft: { type: [integer, "null"], minimum: 0 }
     InvoiceSummary:
       type: object
-      required: [invoiceId, optionId, optionLocked, optionCount, confirming, number, title, note, dueDate, senderName, returnUrl, issuer, chainId,
+      required: [invoiceId, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, senderName, returnUrl, issuer, chainId,
         token, amount, recipient, factory, receiveAddress, expiresAt, settleDeadline, paymentStatus, settlementStatus,
         refundStatus, settlementTxHash, createdAt]
       description: |
@@ -964,6 +968,13 @@ components:
           description: >-
             A payment made before expiry is seen and not final yet. A partially_paid invoice keeps that status while the
             rest confirms, so show it as confirming.
+        closed:
+          type: boolean
+          description: >-
+            The checkout closed and the invoice can no longer be paid: open, detected or partially_paid, past expiresAt,
+            with no payment made before expiry still confirming and less than the amount paid before it (money after
+            the close reads detected until the chain is final). Its paymentStatus
+            changes once the chain is final past expiry; show it as expired (or expired, partially paid) meanwhile.
         optionLocked:
           type: boolean
           description: |
