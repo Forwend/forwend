@@ -1,9 +1,9 @@
 import { Money, shortAddress, TruncatedAddress } from "@forwend/ui-web";
 import type { ReactNode } from "react";
 import { INVOICE_COPY, INVOICES_COPY } from "@/features/invoices/constants/invoices-copy";
-import { exactDigits } from "@/features/invoices/lib/invoices";
 import type { Invoice, InvoiceToken } from "@/features/invoices/types/invoices";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
+import { exactDigits } from "@/shared/lib/money";
 
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 

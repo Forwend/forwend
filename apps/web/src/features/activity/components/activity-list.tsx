@@ -21,15 +21,15 @@ import {
 } from "@/features/activity/constants/activity";
 import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { activityStatus } from "@/features/activity/lib/activity";
-import { INVOICES_COPY } from "@/features/invoices/constants/invoices-copy";
-import { exactDigits } from "@/features/invoices/lib/invoices";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
 import { chainName } from "@/shared/lib/chains";
+import { exactDigits } from "@/shared/lib/money";
 
 // Short enough for a phone row: "Oct 10, 12:50 AM".
 const TIME = new Intl.DateTimeFormat(undefined, {
@@ -145,14 +145,14 @@ function ProfileActivity({ profileId }: ActivityListProps) {
                         </Link>
                       }
                       // The network first: a narrow row cuts the time, never the network.
-                      detail={`${anyOption ? INVOICES_COPY.anyNetwork : chainName(item.chainId)} · ${TIME.format(new Date(item.at))}`}
+                      detail={`${anyOption ? MONEY_COPY.anyNetwork : chainName(item.chainId)} · ${TIME.format(new Date(item.at))}`}
                       direction={
                         deposit ? ACTIVITY_DIRECTIONS.incoming : ACTIVITY_DIRECTIONS.request
                       }
                       amount={{
                         baseUnits: BigInt(item.amount),
                         decimals: item.decimals,
-                        token: anyOption ? INVOICES_COPY.usd : item.symbol,
+                        token: anyOption ? MONEY_COPY.usd : item.symbol,
                         fractionDigits: exactDigits(BigInt(item.amount), item.decimals),
                       }}
                       status={activityStatus(item)}

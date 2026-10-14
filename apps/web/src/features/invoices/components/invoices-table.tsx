@@ -23,6 +23,7 @@ import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { useListFilters } from "@/shared/hooks/use-list-filters";
 
 // A personal profile's requests open the request sheet; invoices have their own page.
@@ -185,7 +186,7 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
                       <InvoiceAmount invoice={inv} tokens={tokens} className="flex-nowrap" />
                       <span className="flex justify-end text-xs text-muted">
                         {inv.optionCount > 1 ? (
-                          INVOICES_COPY.anyNetwork
+                          MONEY_COPY.anyNetwork
                         ) : (
                           <NetworkName chainId={inv.chainId} />
                         )}
@@ -214,7 +215,7 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
                     <span className="flex min-w-0 items-center gap-1 text-xs text-muted">
                       <span className="shrink-0">
                         {inv.optionCount > 1 ? (
-                          INVOICES_COPY.anyNetwork
+                          MONEY_COPY.anyNetwork
                         ) : (
                           <NetworkName chainId={inv.chainId} />
                         )}

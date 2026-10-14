@@ -10,7 +10,6 @@ import {
   confirmingProgress,
   customExpiresIn,
   decimalText,
-  exactDigits,
   invalidField,
   invoiceNumber,
   invoicePdfUrl,
@@ -43,13 +42,6 @@ describe("parseTokenAmount", () => {
 });
 
 describe("invoice display", () => {
-  it("shows every decimal an amount has, and at least 2", () => {
-    expect(exactDigits(1n, 6)).toBe(6);
-    expect(exactDigits(1_234_560_000n, 6)).toBe(2);
-    expect(exactDigits(1_123_000n, 6)).toBe(3);
-    expect(exactDigits(5n, 0)).toBe(0);
-  });
-
   it("numbers invoices INV- with at least 4 digits", () => {
     expect(invoiceNumber(1)).toBe("INV-0001");
     expect(invoiceNumber(12345)).toBe("INV-12345");

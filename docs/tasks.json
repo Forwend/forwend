@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 194,
+  "nextId": 195,
   "tasks": [
     {
       "id": "F179",
@@ -608,7 +608,7 @@
         "No import cycle between apps/web/src/features/activity and features/invoices: the shared status values and helpers have one owner both import from; behavior, routes and rendered output are unchanged; docs/web/architecture.md lists the new feature edges"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "e2e"
@@ -620,7 +620,70 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-14T22:45:58Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 70.5,
+            "log": "docs/runs/F191-20261014T224558Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 167.6,
+            "log": "docs/runs/F191-20261014T224558Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.7,
+            "log": "docs/runs/F191-20261014T224558Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F191-20261014T224558Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F191-20261014T224558Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F191-20261014T224558Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.6,
+            "log": "docs/runs/F191-20261014T224558Z-build.log"
+          }
+        ],
+        "taskHash": "0b66f4038e600920",
+        "filesHash": "a9d9d58b730f1b28",
+        "proof": {
+          "1": "e2e: activity no longer imports invoices (grep finds no @/features/invoices in features/activity); exactDigits moved to shared/lib/money.ts with its test, USD and Any network to shared/constants/money-copy.ts; unit and e2e pass unchanged; architecture.md lists the edges"
+        }
+      },
+      "branch": "refactor/f191-the-activity-and-invoices-features-no-lo",
+      "baseCommit": "d63391fba4615bba72a8588ce362ba2b8ed74036",
+      "failedVerifies": 0
     },
     {
       "id": "F192",
@@ -658,6 +721,29 @@
       ],
       "refs": [
         "D-72"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F194",
+      "type": "fix",
+      "behavior": "show prints the review line only where a review applies, and the docs-only rule has tests for its remaining edges",
+      "acceptance": [
+        "show prints the review line for an active or verified task that needs review, and for a finished task only when it has review evidence or was added with --review; show F179 no longer says review is required",
+        "Harness tests fail if needs_review ignores a failed git diff, if changed_since drops untracked files, or if a non-JSON file under docs/archive/ counts as docs-only; DOCS_ONLY accepts only docs/archive/*.json; workflow.md step 6 says review is forced only in a git repository"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "harness",
+        "docs-check"
+      ],
+      "refs": [
+        "R-25"
       ],
       "keep": [],
       "review": false,

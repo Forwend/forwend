@@ -29,7 +29,6 @@ import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/component
 import { INVOICE_PDFS, INVOICE_STEPS } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY as COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
 import {
-  exactDigits,
   formatDueDate,
   invoiceNumber,
   invoicePdfUrl,
@@ -48,6 +47,7 @@ import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { chainName } from "@/shared/lib/chains";
+import { exactDigits } from "@/shared/lib/money";
 
 const NOT_FOUND = 404;
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });

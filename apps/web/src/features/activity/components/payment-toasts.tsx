@@ -7,8 +7,8 @@ import { ACTIVITY_PAGE_SIZE, API_DEPOSIT_STATUSES } from "@/features/activity/co
 import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { PAYMENT_EVENTS } from "@/features/activity/constants/payment-events";
 import { newPaymentEvents } from "@/features/activity/lib/payment-events";
-import { exactDigits } from "@/features/invoices/lib/invoices";
 import { LIVE_QUERY } from "@/shared/config/refresh";
+import { exactDigits } from "@/shared/lib/money";
 
 export interface PaymentToastsProps {
   profileId: string;
