@@ -11,7 +11,7 @@
         "Merged F176 moves to docs/archive"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness",
         "docs-check"
@@ -81,13 +81,20 @@
         "taskHash": "982310381a4ec90b",
         "filesHash": "8d9de41173bb3efd",
         "proof": {
-          "1": "harness: test_sigterm_stops_the_running_check sends SIGTERM to the harness during a check and asserts the check process is gone; it fails without the fix.",
-          "2": "docs-check: harness archive moved F176 to docs/archive; docs-check passes."
-        }
+          "1": "harness: test_sigterm_stops_the_running_check fails without the fix and passes with it.",
+          "2": "docs-check: docs/archive holds F176; docs-check passes."
+        },
+        "commit": "df223db",
+        "doneAt": "2026-10-14T13:32:02Z"
       },
       "branch": "fix/f177-stopping-the-harness-with-sigterm-also-s",
       "baseCommit": "4dcd02bfca41cee768a8334a75256be6e7216475",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f177-stopping-the-harness-with-sigterm-also-s",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
