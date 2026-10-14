@@ -856,14 +856,15 @@
     {
       "id": "F175",
       "type": "fix",
-      "behavior": "Polish checkout progress, payment success and the personal balance overview",
+      "behavior": "Polish checkout, balance overview and complete mobile navigation",
       "acceptance": [
         "Payer and owner timelines keep short step labels and show the full confirmation count with its time hint beneath the steps, including 0/3,628 on phones.",
         "Confirmation progress, accessible announcements, and payment transitions retain their existing behavior.",
         "The paid checkout card centers its checkmark, message and actions, with readable spacing on mobile and desktop, including long payee names and no return link.",
         "Invoice detail and list badges read Confirming for detected payments and partially paid invoices with a payment still confirming; Activity also labels detected invoices Confirming, preserving paid and settled states.",
         "The personal balance hero shows at most one pending and one held USD summary linked to exact token balances, including hundreds of tokens and sub-cent totals.",
-        "The personal balance hero has a fresh light-theme river background and more vertical space on phones, readable in both themes at phone, tablet and desktop widths."
+        "The personal balance hero uses a restrained tinted surface in light mode, keeps the night background in dark mode and has more vertical space on phones, readable at phone, tablet and desktop widths.",
+        "Mobile navigation exposes every available page for personal, freelancer and merchant profiles through the main tabs and More, with profile switching, clear current-page state, accessible sheet dismissal and safe-area spacing."
       ],
       "dependsOn": [],
       "state": "verified",
@@ -879,7 +880,9 @@
         "R-68",
         "R-69",
         "R-72",
-        "R-73"
+        "R-73",
+        "R-39",
+        "R-76"
       ],
       "keep": [
         "apps/backend/**",
@@ -894,81 +897,82 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-14T12:16:27Z",
+        "at": "2026-10-14T12:38:41Z",
         "checks": [
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 173.1,
-            "log": "docs/runs/F175-20261014T121627Z-e2e.log"
+            "seconds": 179.8,
+            "log": "docs/runs/F175-20261014T123841Z-e2e.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 68.7,
-            "log": "docs/runs/F175-20261014T121627Z-unit.log"
+            "seconds": 76.7,
+            "log": "docs/runs/F175-20261014T123841Z-unit.log"
           },
           {
             "id": "images-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F175-20261014T121627Z-images-check.log"
+            "log": "docs/runs/F175-20261014T123841Z-images-check.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.6,
-            "log": "docs/runs/F175-20261014T121627Z-harness.log"
+            "seconds": 1.1,
+            "log": "docs/runs/F175-20261014T123841Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F175-20261014T121627Z-docs-check.log"
+            "seconds": 0.0,
+            "log": "docs/runs/F175-20261014T123841Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F175-20261014T121627Z-lint.log"
+            "log": "docs/runs/F175-20261014T123841Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.5,
-            "log": "docs/runs/F175-20261014T121627Z-typecheck.log"
+            "seconds": 1.3,
+            "log": "docs/runs/F175-20261014T123841Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.5,
-            "log": "docs/runs/F175-20261014T121627Z-build.log"
+            "seconds": 4.2,
+            "log": "docs/runs/F175-20261014T123841Z-build.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F175-20261014T121627Z-keep.log"
+            "log": "docs/runs/F175-20261014T123841Z-keep.log"
           }
         ],
-        "taskHash": "b6ac2f9169be9542",
-        "filesHash": "954e09f0d83a865c",
+        "taskHash": "8814688dce7836f4",
+        "filesHash": "102e96ff4bcb94ba",
         "proof": {
-          "1": "e2e: Pay and owner browser tests verify short steps, visible full counts and accessible time hints; screenshots checked at 375, 390, 768 and 1440 px.",
+          "1": "e2e: Pay and owner browser tests verify short steps, visible full counts and accessible time hints; screenshots reviewed at mobile, tablet and desktop widths.",
           "2": "e2e: Existing payment state and accessibility tests cover confirmation updates, announcements and transitions.",
-          "3": "e2e: Paid checkout behavior and receipt links pass; visual checks at 375, 768 and 1440 px cover centered content, long names and no return link.",
+          "3": "e2e: Paid checkout behavior and receipt links pass; prior visual checks cover centered content, long names and no return link.",
           "4": "unit: Shared Activity mapping and invoice tests cover detected and partial-payment states, preserving paid and settled precedence; browser tests cover detail and list badges.",
-          "5": "unit: Money tests cover 201 tokens aggregated into one summary, separate pending and held, and sub-cent totals; browser flow opens exact token balances.",
-          "6": "images-check: New WebP is registered with its full prompt; browser screenshots reviewed at 390, 768 and 1440 px in both themes, no horizontal overflow or clipped actions. Feature ownership and imports reviewed; no new source modules."
+          "5": "unit: Money tests cover 201 tokens aggregated into one summary, separate pending and held, and sub-cent totals; browser flow opens token balances.",
+          "6": "images-check: Removed the rejected light landscape and its asset reference. Light surface and dark landscape reviewed at 320, 390, 768 and 1440 pixels, including landscape and larger text; no horizontal overflow.",
+          "7": "e2e: Reproduced missing mobile navigation before the fix. Tests now open Requests or Invoices, Activity, billing and Profiles for all three profile kinds; verify dismissal, focus return and desktop resize. More derives pages from APP_NAV. Existing app-shell ownership reviewed; no new source modules."
         }
       },
       "branch": "fix/f175-keep-invoice-confirmation-counts-readabl",

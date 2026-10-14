@@ -50,9 +50,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - ⌘K (or the search field) opens one command dialog: pages, actions, other profiles and recent transactions,
   filtered as you type. Arrow keys move, Enter opens, Escape closes.
 - The account menu holds the app's one theme control, a Dark mode switch item, on desktop and phones.
-- Phones: the header becomes a top bar with the account initial, a search pill and notifications. A bottom tab bar has Home, Transactions, Balances and Profiles (Profiles
-  opens the profile sheet); icon over label, the current tab's icon on the second surface. Pages carry no profile
-  pill: Profiles is the one way to switch on a phone. A switch opens the new profile's overview (R-76).
+- Phones: the header becomes a top bar with the account initial, a search pill and notifications. A bottom tab bar has Home, Transactions, Balances and More;
+  large icons over labels, with the whole current tab on the second surface. More opens a sheet of the remaining
+  sidebar pages for the profile type, plus billing details for businesses and Profiles to switch profiles.
+  Unbuilt pages remain plain Soon rows. Current-page links include nested pages; More stays selected for those pages.
+  The bar and page padding include the bottom safe area, and toasts sit above it. A switch opens the new profile's overview (R-76).
 - A choice opened from the sidebar is a menu; the same choice on a phone is a bottom sheet, which becomes a centered
   panel from small screens up. Both are solid surface panels with the float shadow. Menus rise from the edge they
   open on and the phone sheet slides up from the screen edge; the centered panel appears without motion. Reduced
@@ -62,8 +64,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Totals across tokens (the total balance, its chart, the business figures, money in and out) are in USD, each
   stablecoin counted as 1 USD. An info icon after "USD" marks the estimate and explains it in a tooltip. A row for one
   token keeps its symbol.
-- Personal overview: a pale river and sage meadows in light mode, a night valley in dark mode. A surface wash keeps
-  the total, its change over the range and the money actions readable. Pending and held money each use one USD
+- Personal overview: a quiet surface-to-background tint in light mode, without landscape art; a night valley in
+  dark mode. Figures, chart ticks and money actions stay readable. Pending and held money each use one USD
   summary link to Balances, where exact amounts remain separate by token and network; never list every token in
   the hero. Positive totals below a cent read `<0.01 USD`. The card is at least 24rem tall and grows with its content.
   On desktop, the total sits at the top left, the round actions at the bottom left, and the chart fills the right side. The total scales with its column (container units). Phones center the total

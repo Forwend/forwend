@@ -649,7 +649,7 @@ test("the overview chart shrinks with the window and the page never scrolls side
   await context.close();
 });
 
-// R-76: another profile starts at its own overview, from any page; on phones the tab bar's Profiles switches, so the
+// R-76: another profile starts at its own overview, from any page; on phones More opens Profiles, so the
 // overview has no profile pill.
 test("switching profile opens the new profile's overview", async ({ browser }) => {
   const context = await browser.newContext({
@@ -791,5 +791,53 @@ test("the invoice's transactions read in two lines on a phone", async ({ browser
   }
   expect(await page.evaluate(() => document.scrollingElement?.scrollWidth)).toBe(390);
   expect(await blockingViolations(page)).toEqual([]);
+  await context.close();
+});
+
+test("a freelancer can reach invoices, activity and billing from the mobile menu", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await page.route("/api/v1/me", async (route) => {
+    const response = await route.fetch();
+    const me = await response.json();
+    await route.fulfill({
+      response,
+      json: {
+        ...me,
+        profiles: me.profiles.map((profile: object) => ({ ...profile, kind: "freelancer" })),
+      },
+    });
+  });
+  await page.goto("/app");
+  const tabs = page.getByRole("navigation", { name: "Main", exact: true });
+  const more = page.getByRole("dialog", { name: "More" });
+  for (const [label, path] of [
+    ["Invoices", "/app/invoices"],
+    ["Activity", "/app/activity"],
+    ["Billing details", "/app/billing-details"],
+  ] as const) {
+    await tabs.getByRole("button", { name: "More" }).click();
+    await more.getByRole("link", { name: label, exact: true }).click();
+    await expect(page).toHaveURL(path);
+    await expect(more).toBeHidden();
+    await expect(tabs.getByRole("button", { name: "More" })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    await tabs.getByRole("button", { name: "More" }).click();
+    await expect(more.getByRole("link", { name: label, exact: true })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await page.keyboard.press("Escape");
+  }
+  await tabs.getByRole("button", { name: "More" }).click();
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await expect(more).toBeHidden();
   await context.close();
 });

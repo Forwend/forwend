@@ -144,8 +144,30 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
   await expect(page.getByRole("dialog", { name: "Receive" })).toBeVisible();
   await page.keyboard.press("Escape");
   expect(await blockingViolations(page)).toEqual([]);
-  // The switcher opens as a bottom sheet with the profiles to choose from, from the tab bar.
-  await tabs.getByRole("button", { name: "Profiles" }).click();
+  // Every page remains reachable without using search.
+  const more = page.getByRole("dialog", { name: "More" });
+  await tabs.getByRole("button", { name: "More" }).click();
+  await more.getByRole("link", { name: "Requests", exact: true }).click();
+  await expect(page).toHaveURL("/app/invoices");
+  await expect(more).toBeHidden();
+  await tabs.getByRole("button", { name: "More" }).click();
+  await expect(more.getByRole("link", { name: "Requests", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await more.getByRole("link", { name: "Activity", exact: true }).click();
+  await expect(page).toHaveURL("/app/activity");
+  await expect(more).toBeHidden();
+  await tabs.getByRole("button", { name: "More" }).click();
+  expect(await blockingViolations(page)).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(tabs.getByRole("button", { name: "More" })).toBeFocused();
+  // Profile switching stays available through More.
+  await tabs.getByRole("button", { name: "More" }).click();
+  await page
+    .getByRole("dialog", { name: "More" })
+    .getByRole("button", { name: "Profiles" })
+    .click();
   const profilesSheet = page.getByRole("dialog", { name: "Profiles" });
   // The current profile is the one choice made, not an on/off toggle.
   await expect(profilesSheet.getByRole("button", { name: "Personal" })).toHaveAttribute(
@@ -154,6 +176,7 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
   );
   await expect(profilesSheet.getByRole("link", { name: "New profile" })).toBeVisible();
   await page.keyboard.press("Escape");
+  await expect(tabs.getByRole("button", { name: "More" })).toBeFocused();
   // The account opens from the top bar; on phones it carries the one dark-mode switch.
   await page
     .getByRole("banner")
@@ -172,7 +195,11 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
 
   // A tablet turned to landscape while the profile sheet is open: the sheet closes, the page stays usable.
   await page.setViewportSize({ width: 800, height: 1100 });
-  await tabs.getByRole("button", { name: "Profiles" }).click();
+  await tabs.getByRole("button", { name: "More" }).click();
+  await page
+    .getByRole("dialog", { name: "More" })
+    .getByRole("button", { name: "Profiles" })
+    .click();
   await expect(page.getByRole("dialog", { name: "Profiles" })).toBeVisible();
   await page.setViewportSize({ width: 1200, height: 800 });
   await expect(page.getByRole("dialog", { name: "Profiles" })).toBeHidden();

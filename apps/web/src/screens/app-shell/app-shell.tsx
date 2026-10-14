@@ -146,8 +146,8 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
 
   const email = user?.email?.address ?? user?.google?.email ?? AUTH_COPY.signedIn;
   return (
-    // Phones: toasts sit above the tab bar (h-16, its top border and the safe area).
-    <ToastProvider className="max-lg:bottom-[calc(4rem+1px+env(safe-area-inset-bottom)+1rem)]">
+    // Phones: toasts sit above the tab bar, its border and the safe area.
+    <ToastProvider className="max-lg:bottom-[calc(5rem+1px+env(safe-area-inset-bottom)+1rem)]">
       <div className="min-h-dvh bg-bg">
         <PaymentToasts profileId={active.profileId} />
         <AppSidebar
@@ -171,11 +171,11 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             collapsed={collapsed}
             onToggleCollapsed={toggleCollapsed}
           />
-          <main className="px-4 pt-4 pb-28 sm:px-6 sm:pt-6 lg:pb-10">
+          <main className="px-4 pt-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] sm:px-6 sm:pt-6 lg:pb-10">
             <AppSessionContext value={session}>{children}</AppSessionContext>
           </main>
         </div>
-        <PhoneTabBar pathname={pathname} onProfiles={() => setChoosing(true)} />
+        <PhoneTabBar active={active} pathname={pathname} onProfiles={() => setChoosing(true)} />
         <ProfileSheet
           profiles={profiles}
           active={active}
