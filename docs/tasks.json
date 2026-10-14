@@ -753,7 +753,7 @@
         "UX: billing name error on its field, Show more errors, full pay link on copy failure, closed checkout state, Check status in tokens, held money on other options, long return host wraps, landing nav fits 320 px (unit)"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "lint",
@@ -840,11 +840,18 @@
           "7": "unit: backend canary TestCheckFirstOptionOfPayerChoosesInvoice (page in picking mode without ?option=) and TestCheckSkipsInvoicesThePayPageClosed",
           "8": "unit: web activity-amounts.test.tsx (1.005 USDC row and 0.0015 USDC toast exact), new-invoice-form.test.tsx (Custom-expiry retry: same key and body)",
           "9": "unit: web billing-details-form, invoices-table, invoice-detail (full link on copy failure, closed checkout, amounts without balances), pay-held tests; 320 px browser checks of pay and landing pages had no horizontal overflow"
-        }
+        },
+        "commit": "f824541",
+        "doneAt": "2026-10-14T11:21:06Z"
       },
       "branch": "fix/f174-bugs-found-in-the-october-audit-are-fixe",
       "baseCommit": "a81bc43ca5613a718a11aa6c5acb3567dd33a8fc",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f174-bugs-found-in-the-october-audit-are-fixe",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
