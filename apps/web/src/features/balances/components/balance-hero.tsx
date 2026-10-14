@@ -20,7 +20,7 @@ import { historySeries, seriesChange } from "@/features/balances/lib/balance-his
 import { formatUsd } from "@/features/balances/lib/balances";
 import type { HistoryRange, HistorySeries } from "@/features/balances/types/balance-history";
 import type { Balances } from "@/features/balances/types/balances";
-import { BALANCE_NIGHT_IMAGE } from "@/shared/assets/images";
+import { BALANCE_LIGHT_IMAGE, BALANCE_NIGHT_IMAGE } from "@/shared/assets/images";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
 export interface BalanceHeroProps {
@@ -85,7 +85,15 @@ export function BalanceHero({
         aria-labelledby="balance-title"
         className="relative isolate -mx-4 -mt-4 flex min-h-96 flex-col overflow-hidden bg-surface sm:mx-0 sm:mt-0 sm:rounded-md sm:border sm:border-line [&_svg_text]:stroke-none dark:[&_svg_text]:stroke-surface"
       >
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(135deg,var(--fw-surface-2),var(--fw-bg))] dark:hidden" />
+        <Image
+          src={BALANCE_LIGHT_IMAGE.src}
+          alt=""
+          fill
+          priority
+          sizes="(min-width: 64rem) 80vw, 100vw"
+          className="-z-10 object-cover object-bottom dark:hidden"
+        />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,transparent_45%,color-mix(in_oklab,var(--fw-surface)_70%,transparent)_100%)] dark:hidden" />
         <Image
           src={BALANCE_NIGHT_IMAGE.src}
           alt=""

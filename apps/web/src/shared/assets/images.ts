@@ -15,6 +15,12 @@ export const CHECKOUT_IMAGE = {
 
 export const NOT_FOUND_IMAGE = { src: "/images/not-found.webp", width: 1916, height: 821 } as const;
 
+export const BALANCE_LIGHT_IMAGE = {
+  src: "/images/balance-day.webp",
+  width: 2172,
+  height: 724,
+} as const;
+
 export const BALANCE_NIGHT_IMAGE = {
   src: "/images/balance-night.webp",
   width: 2172,

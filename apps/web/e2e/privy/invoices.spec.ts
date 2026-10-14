@@ -266,7 +266,7 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
   const more = page.getByRole("dialog", { name: "More" });
   await chooseMerchant(page, async () => {
     await tabs.getByRole("button", { name: "More" }).click();
-    await more.getByRole("button", { name: "Profiles" }).click();
+    await more.getByRole("button", { name: /^Switch profile:/ }).click();
   });
   await tabs.getByRole("button", { name: "More" }).click();
   await expect(more.getByRole("link", { name: "Activity", exact: true })).toBeVisible();

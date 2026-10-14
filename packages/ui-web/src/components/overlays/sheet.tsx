@@ -20,7 +20,11 @@ export function Sheet({ open, onOpenChange, title, closeLabel = "Close", childre
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
+    if (open && !dialog.open) {
+      dialog.showModal();
+      // Opening focuses the close button, which then shows a focus ring before anyone used the keyboard.
+      dialog.focus();
+    }
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
@@ -29,12 +33,13 @@ export function Sheet({ open, onOpenChange, title, closeLabel = "Close", childre
     <dialog
       ref={ref}
       aria-label={title}
+      tabIndex={-1}
       onClose={() => onOpenChange(false)}
       onClick={(event) => {
         if (event.target === ref.current) onOpenChange(false); // a click on the backdrop
       }}
       className={cx(
-        "mx-0 mt-auto mb-0 max-h-[92dvh] w-full max-w-none rounded-t-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)] backdrop:backdrop-blur-glass sm:m-auto sm:max-w-md sm:rounded-lg",
+        "mx-0 mt-auto mb-0 max-h-[92dvh] outline-none w-full max-w-none rounded-t-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)] backdrop:backdrop-blur-glass sm:m-auto sm:max-w-md sm:rounded-lg",
         // Phones only: the bottom sheet slides up. Closing stays instant: an exit transition needs a discrete
         // display/overlay transition, which only Chromium supports, so other browsers flash the closing sheet.
         "max-sm:transition-[translate] max-sm:duration-[var(--fw-duration-base)] max-sm:ease-out max-sm:starting:open:translate-y-full",

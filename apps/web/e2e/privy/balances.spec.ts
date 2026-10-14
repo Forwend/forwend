@@ -166,7 +166,7 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
   await tabs.getByRole("button", { name: "More" }).click();
   await page
     .getByRole("dialog", { name: "More" })
-    .getByRole("button", { name: "Profiles" })
+    .getByRole("button", { name: /^Switch profile:/ })
     .click();
   const profilesSheet = page.getByRole("dialog", { name: "Profiles" });
   // The current profile is the one choice made, not an on/off toggle.
@@ -198,7 +198,7 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
   await tabs.getByRole("button", { name: "More" }).click();
   await page
     .getByRole("dialog", { name: "More" })
-    .getByRole("button", { name: "Profiles" })
+    .getByRole("button", { name: /^Switch profile:/ })
     .click();
   await expect(page.getByRole("dialog", { name: "Profiles" })).toBeVisible();
   await page.setViewportSize({ width: 1200, height: 800 });
