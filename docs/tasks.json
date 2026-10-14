@@ -357,7 +357,7 @@
         "web docs match the code: structure.md shows the store as the RTK Query apiSlice only and real example paths; PRODUCT.md keeps host, refund and scam lines under Need help; DESIGN.md drops the keep-the-page line; web architecture.md lists the real feature imports and current pages"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -407,11 +407,18 @@
           "1": "docs-check: money-safety, backend architecture, rules, api and backend AGENTS match the code (watcher import, signer methods, migrations, deleted files, error codes)",
           "2": "docs-check: staging coverage, openapi paragraph, D-77/R-82/F185 limits, R-34/35/39 checks, D-37 and docs/architecture links fixed",
           "3": "docs-check: web structure, architecture, PRODUCT, DESIGN, rules and AGENTS match the store files, feature imports, pay page and profile switch"
-        }
+        },
+        "commit": "ac90420",
+        "doneAt": "2026-10-14T22:11:04Z"
       },
       "branch": "docs/f188-docs-state-only-facts-the-code-and-runne",
       "baseCommit": "9ba2fe165a0b964e928d3fa71bf7678f5f6b0255",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f188-docs-state-only-facts-the-code-and-runne",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
