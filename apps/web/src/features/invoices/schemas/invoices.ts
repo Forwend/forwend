@@ -60,6 +60,8 @@ export const invoiceSummarySchema = z.object({
   optionCount: z.number().int().positive(),
   // A payment before expiry is seen and not final: a partly paid invoice reads as confirming meanwhile (R-69).
   confirming: z.boolean(),
+  // The checkout closed and it can no longer be paid, before paymentStatus catches up: show it expired (R-77).
+  closed: z.boolean(),
   number: z.number().int().positive(),
   title: z.string().nullable(),
   note: z.string().nullable(),

@@ -134,6 +134,53 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 	checkListErrors(t, e, path, "status=all", "status=refunded")
 }
 
+// R-77: a checkout that closed with less than the amount paid on time reads expired at once, everywhere; one whose
+// on-time money may still complete it does not.
+func TestClosedCheckoutReadsExpired(t *testing.T) {
+	e := invoiceAPI(t)
+	var ids []string
+	for i := range 4 {
+		ids = append(ids, e.post(t, "did:privy:alice", e.aliceProfile, fmt.Sprintf("key-%d", i), basicBody).body["invoiceId"].(string))
+		e.closeCheckout(t, ids[i])
+	}
+	onTime := func(id string, log int, amount int64, status string) {
+		e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
+			    block_hash, block_number, block_time, from_address, to_address, amount, status)
+			SELECT 84532, 'evm', $1, $2, $3, $4, $3, 1, expires_at - 10, $5, receive_address, $6, $7 FROM invoices WHERE id = $2`,
+			usdc, id, "0x"+strings.Repeat(fmt.Sprintf("%02x", log), 32), log, aliceWallet, amount, status)
+	}
+	// 0: nothing paid. 1: 1 of 5 USDC paid on time. 2: 2 more seen on time and still confirming. 3: all 5 paid
+	// on time, the second RPC not yet agreeing, so still partially_paid.
+	onTime(ids[1], 1, 1000000, "confirmed")
+	onTime(ids[2], 2, 1000000, "confirmed")
+	onTime(ids[2], 3, 2000000, "detected")
+	onTime(ids[3], 4, 5000000, "confirmed")
+	e.exec(t, `UPDATE invoices SET payment_status = 'partially_paid' WHERE id IN ($1, $2, $3)`, ids[1], ids[2], ids[3])
+
+	closed := []bool{true, true, false, false}
+	for i, id := range ids {
+		r := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/invoices/"+id, "did:privy:alice", "", "")
+		if r.body["closed"] != closed[i] {
+			t.Fatalf("invoice %d: closed %v, want %v", i, r.body["closed"], closed[i])
+		}
+	}
+	index := func(it map[string]any) any { return float64(slices.Index(ids, it["invoiceId"].(string))) }
+	checkList(t, e, "/v1/profiles/"+e.aliceProfile+"/invoices", index, []listCase{
+		{"status=expired", []any{1.0, 0.0}},
+		{"status=open", []any{3.0, 2.0}},
+	})
+	checkList(t, e, "/v1/profiles/"+e.aliceProfile+"/activity", func(it map[string]any) any {
+		if it["kind"] != "invoice" {
+			return nil
+		}
+		i := slices.Index(ids, it["invoiceId"].(string))
+		if it["closed"] != closed[i] {
+			t.Fatalf("activity invoice %d: closed %v, want %v", i, it["closed"], closed[i])
+		}
+		return float64(i)
+	}, []listCase{{"status=expired", []any{1.0, 0.0}}})
+}
+
 func TestGetActivityFilterAndSearch(t *testing.T) {
 	e := invoiceAPI(t)
 	var ids []string
@@ -151,25 +198,20 @@ func TestGetActivityFilterAndSearch(t *testing.T) {
 	e.exec(t, `UPDATE invoices SET payment_status = 'paid', settlement_status = 'settled' WHERE id = $1`, ids[1])
 	e.exec(t, `INSERT INTO settlement_intents (invoice_id, status, tx_hash) VALUES ($1, 'confirmed', $2)`, ids[1], settle)
 	e.exec(t, `UPDATE invoices SET payment_status = 'expired' WHERE id = $1`, ids[2])
-	e.closeCheckout(t, ids[0]) // open, but its checkout has closed
 
 	// Newest first: the deposits (recorded last), then the invoices. An invoice pays 5 USDC, a deposit 1 USDC.
 	dep := func(hash string) any { return "deposit " + hash }
 	inv := func(i int) any { return "invoice " + ids[i] }
 	checkList(t, e, "/v1/profiles/"+e.aliceProfile+"/activity", func(it map[string]any) any {
-		// Only an invoice carries when its checkout closes (R-77).
-		if _, has := it["expiresAt"]; has != (it["kind"] == "invoice") {
-			t.Fatalf("%v %v: expiresAt %v", it["kind"], it["invoiceId"], it["expiresAt"])
-		}
 		if it["kind"] == "deposit" {
 			return dep(it["txHash"].(string))
 		}
 		return inv(slices.Index(ids, it["invoiceId"].(string)))
 	}, []listCase{
-		{"status=open", []any{dep(detected)}},
+		{"status=open", []any{dep(detected), inv(0)}},
 		{"status=paid", []any{dep(confirmed)}},
 		{"status=settled", []any{inv(1)}},
-		{"status=expired", []any{inv(2), inv(0)}},
+		{"status=expired", []any{inv(2)}},
 		{"q=" + strings.ToUpper(confirmed[:12]), []any{dep(confirmed)}},
 		{"q=" + settle[20:40], []any{inv(1)}}, // the settle transaction
 		{"q=1.0", []any{dep(detected), dep(confirmed)}},

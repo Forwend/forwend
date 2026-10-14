@@ -74,8 +74,8 @@
       "type": "feat",
       "behavior": "Every payment exception shows what happened and the next step on the owner's invoice page and the pay page (PLAN 9.1)",
       "acceptance": [
-        "Owner page: partial shows the amount left and the closing time beside the pay link; expired with nothing paid offers New invoice filled with the same client, amount and accepted options; expired partial shows the amount held for the payer and offers a new invoice for the rest; late money shows as held for the payer (R-77)",
-        "Pay page: a partly paid invoice shows the remaining amount with the time left and one line to copy the address from this page, not from wallet history; the Invoices list and Activity name each state the same way (R-77)"
+        "Owner page: expired with nothing paid offers New invoice filled with the same client, amount and accepted options; expired partial shows the amount held for the payer and offers a new invoice for the rest; late money shows as held for the payer; a partly paid open invoice gets no extra line (R-77)",
+        "Pay page: a partly paid invoice shows the remaining amount with the time left and one line to copy the address from this page, not from wallet history; the API's closed flag makes the owner page, Invoices, Activity and the list filters name a closed checkout expired at the same moment, never one whose on-time money may still complete it (R-77)"
       ],
       "dependsOn": [],
       "state": "verified",
@@ -90,68 +90,70 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-14 review fail by independent reviewer: FAIL. (1) Status mismatch at the confirming edge. A partially_paid invoice whose next payment was seen before expiry and is still confirming: the API read says confirming=true, so the owner page and the Invoices pill show Confirming. But StatusFilterSQL (invoice/list.go:27) files it under status=expired and drops it from status=open, and activityStatus (activity/lib/activity.ts:37-41) shows the Activity row as Expired partly paid. It can still become Paid. Reproduced with a scratch Go test (partially_paid + detected transfer with block_time <= expires_at + closeCheckout): read confirming=true, invoices status=open 0 items, status=expired 1 item, activity status=expired returns the invoice. Scratch vitest: invoiceStatus=confirming, activityStatus=expiredPartiallyPaid. Fix: add the confirming condition (detected transfer on option_id with block_time <= expires_at, as in invoice/service.go:33) to the expiry branch of StatusFilterSQL; send confirming on activity invoice rows and pass it to activityStatus the way invoiceStatus does; add a Go and a Vitest case. (2) ledger.go:55 keeps partially_paid when the full amount is booked but the second RPC has not agreed yet. After expiry the web turns that into expiredPartiallyPaid. invoiceException then gives closedPartial with left=0, so the page says '5 USDC is held for the payer. To collect the remaining 0 USDC, send a new invoice', and the button fills the form with 0. The invoice then goes Paid and settles to the merchant, which contradicts the held-for-payer line (D-26). Scratch vitest confirmed {kind: closedPartial, received: 5000000n, left: 0n}. Fix: do not file it as expired when non-late received >= amount (web), and do the same in SQL. Minor: (3) restartFrom (invoices/lib/invoices.ts:200) uses optionLocked. A payer-chooses invoice gets locked by a late-only deposit too (chosen_id comes from the first transfer, late or not; ledger/process.go), so an expired-unpaid one restarts as fixed instead of any. Use received==0 rather than !optionLocked. (4) new-invoice-screen.tsx:39 reads .data. RTK Query keeps the last arg's data after a 404, so use currentData as invoice-detail does. Impact is only a short window during a profile switch. (5) A token that is no longer enabled silently falls back to tokens[0] with the old amount (new-invoice-form token fallback). (6) openapi.yaml StatusFilter description (lines 501-503) and docs/backend/api.md still say open/partially_paid is open. (7) The backend counts block_time <= expires_at as on time, so the web and SQL '<=' call it closed 1 second early. Negligible. (8) Mutations that survive the tests: removing partially_paid from the SQL IN list, dropping !optionLocked in restartFrom, and <= changed to <. Checked OK: privacy (no client in URL; a fresh ?from= with another profile's id gets a 404 and an empty form), USD 1:1 prefill, decimals from the shown option, other-option deposits excluded from the rest amount, toasts/bell/search/PDF/checklist unaffected. Ran: pnpm --filter @forwend/web test 120/120; go test ./internal/... all ok."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-14T23:03:24Z",
+        "at": "2026-10-14T23:22:05Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 69.7,
-            "log": "docs/runs/F180-20261014T230324Z-unit.log"
+            "seconds": 67.9,
+            "log": "docs/runs/F180-20261014T232205Z-unit.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 160.4,
-            "log": "docs/runs/F180-20261014T230324Z-e2e.log"
+            "seconds": 156.5,
+            "log": "docs/runs/F180-20261014T232205Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.4,
-            "log": "docs/runs/F180-20261014T230324Z-harness.log"
+            "seconds": 2.2,
+            "log": "docs/runs/F180-20261014T232205Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F180-20261014T230324Z-docs-check.log"
+            "seconds": 0.0,
+            "log": "docs/runs/F180-20261014T232205Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F180-20261014T230324Z-lint.log"
+            "log": "docs/runs/F180-20261014T232205Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F180-20261014T230324Z-typecheck.log"
+            "seconds": 1.0,
+            "log": "docs/runs/F180-20261014T232205Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.1,
-            "log": "docs/runs/F180-20261014T230324Z-build.log"
+            "seconds": 3.9,
+            "log": "docs/runs/F180-20261014T232205Z-build.log"
           }
         ],
-        "taskHash": "9a0cc21f6c8d40f3",
-        "filesHash": "eb2c0208d42c31a7",
+        "taskHash": "f0266e80dec9380f",
+        "filesHash": "58a0fd0260603566",
         "proof": {
-          "1": "e2e: navigation.spec 'names the next step of every exception' covers partial left-to-pay beside the pay link, closed unpaid with New invoice filled with the client and amount, closed partial with held money and New invoice for the rest (1.5), and late money held; unit tests cover invoiceException and restartFrom",
-          "2": "e2e: pay.spec partial shows Closes in and the copy-from-this-page line, gone once closed; navigation.spec shows a closed checkout as Expired in Invoices and Activity; backend list and activity filters file it as expired and activity sends expiresAt (go tests fail without the SQL rule)"
+          "1": "e2e: navigation.spec 'names the next step of every exception' covers closed unpaid with New invoice filled with client and amount, closed partial with held money and New invoice for the rest (1.5), late money held, and no extra line while partly paid and open; unit tests cover invoiceException and restartFrom (late-locked option stays payer chooses)",
+          "2": "e2e: pay.spec partial shows Closes in and the copy-from-this-page line; navigation.spec shows a closed checkout Expired in Invoices and Activity; backend TestClosedCheckoutReadsExpired pins ClosedSQL (nothing paid and partly paid close, still-confirming and paid-in-full-awaiting-RPC do not) in the read, Activity and both filters; each SQL condition is needed (mutations caught)"
         }
       },
       "branch": "feat/f180-every-payment-exception-shows-what-happe",

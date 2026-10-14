@@ -101,7 +101,9 @@ type Invoice struct {
 	OptionCount  int    // accepted options: 1 for a fixed invoice
 	// Confirming: a payment before expiry is seen and not final yet. A partly paid invoice keeps that status while the
 	// rest confirms (the database allows no way back to detected), so readers show it as confirming (R-69).
-	Confirming       bool
+	Confirming bool
+	// Closed: the checkout closed and the invoice can no longer be paid, before its status catches up (ClosedSQL).
+	Closed           bool
 	NextCheckAt      time.Time // when Check status may run again; zero when it may now. Set by Get
 	Options          []Option  // every accepted option, the current one included; set by Get
 	Number           int64     // per profile, from 1; shown as INV-0001

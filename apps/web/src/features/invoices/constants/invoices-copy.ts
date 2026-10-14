@@ -218,7 +218,6 @@ export const INVOICE_COPY = {
   // What happened and what to do, under the status (R-77). Amounts arrive formatted with their symbol; `noun` is
   // invoice or request.
   next: {
-    [INVOICE_EXCEPTIONS.partial]: ({ left }) => `${left} left to pay before the checkout closes.`,
     [INVOICE_EXCEPTIONS.closedUnpaid]: ({ noun }) =>
       `The checkout closed with nothing paid. A closed ${noun} can't take money again.`,
     [INVOICE_EXCEPTIONS.closedPartial]: ({ held, left, noun }) =>

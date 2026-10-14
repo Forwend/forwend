@@ -621,15 +621,17 @@ test("the owner's invoice page names the next step of every exception", async ({
     });
   };
 
-  // Partly paid and open: what is left, beside the pay link.
+  // Partly paid and open: the amount already says Received X of Y, so no next-step line repeats it.
   body = { ...OPEN_INVOICE, paymentStatus: "partially_paid", deposits: [paid("1000000")] };
   await open();
-  await expect(header).toContainText("1.00 USDC left to pay before the checkout closes.");
+  await expect(main.getByText("Received 1.00 USDC of 2.00 USDC")).toBeVisible();
+  await expect(header).not.toContainText("left to pay");
   await expect(header.getByRole("region", { name: "Pay link" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
 
-  // Closed with nothing paid, while the API still says open: Expired, and a new invoice with the same client.
-  body = { ...OPEN_INVOICE, expiresAt: closedAt, deposits: [] };
+  // Closed with nothing paid, while the API's status still says open (closed says sooner): Expired, and a new invoice
+  // with the same client.
+  body = { ...OPEN_INVOICE, expiresAt: closedAt, closed: true, deposits: [] };
   await open();
   await expect(header.locator("[data-status]")).toHaveText("Expired");
   await expect(header).toContainText(
@@ -646,6 +648,7 @@ test("the owner's invoice page names the next step of every exception", async ({
     ...OPEN_INVOICE,
     paymentStatus: "expired_partially_paid",
     expiresAt: closedAt,
+    closed: false,
     deposits: [paid("500000")],
   };
   await open();
@@ -673,14 +676,18 @@ test("the owner's invoice page names the next step of every exception", async ({
   await context.close();
 });
 
-// R-77: a closed checkout reads Expired in the lists too, before the API's status catches up.
+// R-77: a closed checkout reads Expired in the lists too, as soon as the API says closed.
 test("the invoice list and activity show a closed checkout as expired", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
     storageState: session,
   });
   const page = await context.newPage();
-  const closed = { ...OPEN_INVOICE, expiresAt: new Date(Date.now() - 60_000).toISOString() };
+  const closed = {
+    ...OPEN_INVOICE,
+    expiresAt: new Date(Date.now() - 60_000).toISOString(),
+    closed: true,
+  };
   await mockApi(page, { invoices: [closed], activity: [activityItem(closed)], transfers: [] });
   const main = page.getByRole("main");
   await page.goto("/app/invoices");

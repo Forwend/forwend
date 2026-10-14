@@ -18,6 +18,7 @@ export const sampleInvoice = (
   optionLocked: paymentStatus !== "open",
   optionCount: 1,
   confirming: paymentStatus === "detected",
+  closed: false,
   options: [
     {
       optionId: `0x${String(number).padStart(4, "0")}${"a".repeat(60)}`,
@@ -111,9 +112,8 @@ export const activityItem = (
   amount: inv.amount,
   status: deposit ? deposit.status : inv.paymentStatus,
   optionCount: deposit ? 1 : inv.optionCount,
-  ...(deposit
-    ? { txHash: deposit.txHash }
-    : { settlementStatus: inv.settlementStatus, expiresAt: inv.expiresAt }),
+  ...(deposit ? { txHash: deposit.txHash } : { settlementStatus: inv.settlementStatus }),
+  closed: deposit ? false : inv.closed,
 });
 const ACTIVITY = INVOICES.flatMap((inv) => [
   ...((DEPOSITS[inv.invoiceId] ?? []) as { txHash: string; status: string }[]).map((d) =>

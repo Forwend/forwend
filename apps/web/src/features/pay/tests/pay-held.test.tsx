@@ -58,6 +58,7 @@ const PAID_TWICE = {
   optionLocked: true,
   optionCount: 2,
   confirming: false,
+  closed: false,
   senderName: null,
   returnUrl: null,
   nextCheckAt: null,

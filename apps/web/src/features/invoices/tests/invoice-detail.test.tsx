@@ -34,6 +34,7 @@ const OPEN = {
   optionLocked: false,
   optionCount: 1,
   confirming: false,
+  closed: false,
   senderName: null,
   returnUrl: null,
   nextCheckAt: null,
@@ -112,7 +113,8 @@ describe("owner's invoice page", () => {
   });
 
   it("does not offer the pay link, or say it waits for payment, once the checkout has closed", async () => {
-    serve({ ...OPEN, expiresAt: new Date(Date.now() - 10 * 60_000).toISOString() });
+    // As the API answers once nothing can complete it (R-77).
+    serve({ ...OPEN, expiresAt: new Date(Date.now() - 10 * 60_000).toISOString(), closed: true });
     show();
     await settle();
     expect(screen.getByText(/Checkout closed/)).toBeTruthy();

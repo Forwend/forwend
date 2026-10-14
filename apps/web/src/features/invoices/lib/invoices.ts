@@ -44,18 +44,15 @@ export function tokenKey(t: { chainId: number; token: string }): string {
  * The status pill: settled once the money reached the wallet, otherwise the payment status. A partly paid invoice
  * whose next payment still confirms reads as confirming, like a full payment awaiting finality (R-69).
  */
-export function invoiceStatus(inv: InvoiceSummary, now = Date.now()): PaymentStatus {
+export function invoiceStatus(inv: InvoiceSummary): PaymentStatus {
   const partlyConfirming =
     inv.confirming && inv.paymentStatus === API_PAYMENT_STATUSES.partiallyPaid;
-  return activityStatus(
-    {
-      kind: ACTIVITY_KINDS.invoice,
-      status: partlyConfirming ? API_PAYMENT_STATUSES.detected : inv.paymentStatus,
-      settlementStatus: inv.settlementStatus,
-      expiresAt: inv.expiresAt,
-    },
-    now,
-  );
+  return activityStatus({
+    kind: ACTIVITY_KINDS.invoice,
+    status: partlyConfirming ? API_PAYMENT_STATUSES.detected : inv.paymentStatus,
+    settlementStatus: inv.settlementStatus,
+    closed: inv.closed,
+  });
 }
 
 /**
@@ -158,7 +155,6 @@ export function formatDueDate(date: string): string {
 }
 
 const EXCEPTIONS: Partial<Record<PaymentStatus, InvoiceException["kind"]>> = {
-  [PAYMENT_STATUS.partiallyPaid]: INVOICE_EXCEPTIONS.partial,
   [PAYMENT_STATUS.expired]: INVOICE_EXCEPTIONS.closedUnpaid,
   [PAYMENT_STATUS.expiredPartiallyPaid]: INVOICE_EXCEPTIONS.closedPartial,
 };
@@ -182,7 +178,8 @@ export function invoiceException(inv: Invoice, status: PaymentStatus): InvoiceEx
 
 /**
  * A new invoice's form filled from a closed one: the same client and accepted options, and the whole amount or only
- * what is left. A closed invoice is never reopened (D-25). Payer-chooses amounts are USD at 1 per token (D-75).
+ * what is left. A closed invoice is never reopened (D-25). Payer-chooses amounts are USD at 1 per token (D-75). It stays
+ * payer chooses unless money arrived on time: a late payment also locks an option, but the client never paid with it.
  */
 export function restartFrom(
   inv: Invoice,
@@ -190,11 +187,10 @@ export function restartFrom(
   rest: boolean,
 ): InvoiceStart {
   const decimals = inv.options.find((o) => o.optionId === inv.optionId)?.decimals ?? 0;
-  const units = rest
-    ? invoiceException(inv, PAYMENT_STATUS.expiredPartiallyPaid).left
-    : BigInt(inv.amount);
+  const { received, left } = invoiceException(inv, PAYMENT_STATUS.expiredPartiallyPaid);
+  const units = rest ? left : BigInt(inv.amount);
   return {
-    payWith: inv.options.length > 1 && !inv.optionLocked ? PAY_WITH.any : PAY_WITH.fixed,
+    payWith: inv.options.length > 1 && received === 0n ? PAY_WITH.any : PAY_WITH.fixed,
     picked: tokenKey(inv),
     amount: decimalText(units, decimals),
     client: {

@@ -66,6 +66,7 @@ const open: Invoice = {
   optionLocked: false,
   optionCount: 1,
   confirming: false,
+  closed: false,
   nextCheckAt: null,
   options: [],
   number: 1,
@@ -90,8 +91,6 @@ const open: Invoice = {
   settledAt: null,
   deposits: [],
 };
-const BEFORE_CLOSE = Date.parse("2026-10-11T00:00:00Z");
-const AFTER_CLOSE = Date.parse("2026-10-17T10:00:00Z");
 const deposit: Deposit = {
   txHash: `0x${"3".repeat(64)}`,
   logIndex: 0,
@@ -128,8 +127,10 @@ describe("invoiceProgress", () => {
 
   it("labels detected and partly paid invoices as confirming while finality is pending", () => {
     const partly = { ...open, paymentStatus: "partially_paid" };
-    expect(invoiceStatus(partly, BEFORE_CLOSE)).toBe(PAYMENT_STATUS.partiallyPaid);
-    expect(invoiceStatus(partly, AFTER_CLOSE)).toBe(PAYMENT_STATUS.expiredPartiallyPaid);
+    expect(invoiceStatus(partly)).toBe(PAYMENT_STATUS.partiallyPaid);
+    // The API says when the checkout closed for good (R-77); a payment still confirming keeps it confirming.
+    expect(invoiceStatus({ ...partly, closed: true })).toBe(PAYMENT_STATUS.expiredPartiallyPaid);
+    expect(invoiceStatus({ ...open, closed: true })).toBe(PAYMENT_STATUS.expired);
     expect(invoiceStatus({ ...partly, confirming: true })).toBe(PAYMENT_STATUS.confirming);
     expect(invoiceStatus({ ...open, paymentStatus: "detected", confirming: true })).toBe(
       PAYMENT_STATUS.confirming,
@@ -270,14 +271,16 @@ describe("invoiceException", () => {
     late,
   });
 
-  it("names the next step and the amounts of the shown option", () => {
+  it("names the next step of a closed checkout and the amounts of the shown option", () => {
     const partly = { ...open, deposits: [paid("2000000")] };
-    expect(invoiceException(partly, PAYMENT_STATUS.partiallyPaid)).toEqual({
-      kind: "partial",
+    expect(invoiceException(partly, PAYMENT_STATUS.expiredPartiallyPaid)).toEqual({
+      kind: "closedPartial",
       received: 2_000_000n,
       left: 3_000_000n,
       late: 0n,
     });
+    // Partly paid and still open says it in the amount (Received X of Y), not again here.
+    expect(invoiceException(partly, PAYMENT_STATUS.partiallyPaid).kind).toBeNull();
     expect(invoiceException(open, PAYMENT_STATUS.expired).kind).toBe("closedUnpaid");
     expect(invoiceException(partly, PAYMENT_STATUS.expiredPartiallyPaid).kind).toBe(
       "closedPartial",
@@ -319,6 +322,19 @@ describe("restartFrom", () => {
     };
     expect(restartFrom(partly, client, false)).toEqual({ ...start, amount: "5" });
     expect(restartFrom(partly, client, true)).toEqual({ ...start, amount: "3.75" });
+  });
+
+  it("keeps payer chooses when only a late payment locked an option", () => {
+    const late = { ...deposit, status: "confirmed", late: true };
+    const lateLocked = {
+      ...open,
+      optionLocked: true,
+      options: [option, { ...option, optionId: `0x${"9".repeat(64)}` }],
+      deposits: [late],
+    };
+    expect(restartFrom(lateLocked, undefined, false).payWith).toBe("any");
+    const onTime = { ...lateLocked, deposits: [{ ...late, late: false, amount: "1000000" }] };
+    expect(restartFrom(onTime, undefined, true)).toMatchObject({ payWith: "fixed", amount: "4" });
   });
 
   it("keeps payer chooses while no option took money, and leaves the client empty for a request", () => {

@@ -32,6 +32,7 @@ const OPEN = {
   optionLocked: false,
   optionCount: 1,
   confirming: false,
+  closed: false,
   senderName: null as string | null,
   returnUrl: null as string | null,
   nextCheckAt: null,

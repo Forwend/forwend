@@ -35,9 +35,10 @@ export function NewInvoiceScreen() {
     { skip: !from },
   );
   // Another profile's invoice, or one that failed to load, starts an empty form.
+  // currentData: a 404 for this id must not leave an earlier invoice's values behind.
   const start =
-    from && source.data && owned.data
-      ? restartFrom(source.data, owned.data.client, params.has(RESTART_PARAMS.rest))
+    from && source.currentData && owned.currentData
+      ? restartFrom(source.currentData, owned.currentData.client, params.has(RESTART_PARAMS.rest))
       : undefined;
   const loadingStart = Boolean(from) && (source.isLoading || owned.isLoading);
   const tokens = balances.currentData?.tokens;

@@ -50,10 +50,9 @@ type Item struct {
 	// OptionCount is the invoice's accepted options: above 1 the client chooses, so the invoice reads in USD rather
 	// than its first option's token (R-70). 1 for a deposit, which is in the token it moved.
 	OptionCount int
-	// ExpiresAt is when an invoice's checkout closes, so a list can name it closed before its status catches up
-	// (R-77); nil for a deposit.
-	ExpiresAt *time.Time
-	key       string
+	// Closed: the invoice's checkout closed and it can no longer be paid (invoice.ClosedSQL); false for a deposit.
+	Closed bool
+	key    string
 }
 
 // Page is one page; NextCursor is "" on the last one.
@@ -96,17 +95,17 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 	// Newest first; kind and key break ties, so pages never skip or repeat an item.
 	rows, err := s.pool.Query(ctx, `
 		SELECT kind, at, key, invoice_id, a.chain_id, token, tk.symbol, tk.decimals, amount::text, status,
-		       settlement_status, tx_hash, option_count, expires_at FROM (
+		       settlement_status, tx_hash, option_count, closed FROM (
 		    SELECT 'invoice' AS kind, created_at AS at, id AS key, id AS invoice_id, chain_id,
 		           token_contract AS token, amount, payment_status AS status, settlement_status,
 		           coalesce((SELECT s.tx_hash FROM settlement_intents s WHERE s.invoice_id = invoices.option_id
 		                     AND s.status = 'confirmed'), '') AS tx_hash, `+invoice.StatusFilterSQL+` AS status_filter,
 		           (SELECT count(*) FROM invoices o WHERE o.id = invoices.id OR o.main_id = invoices.id) AS option_count,
-		           to_timestamp(expires_at) AS expires_at
+		           `+invoice.ClosedSQL+` AS closed
 		    FROM invoices_current invoices WHERE profile_id = $1
 		    UNION ALL
 		    SELECT 'deposit', t.created_at, t.id::text, coalesce(i.main_id, i.id), t.chain_id, t.token_contract, t.amount, t.status,
-		           '', t.tx_hash, CASE WHEN t.status = 'confirmed' THEN 'paid' ELSE 'open' END, 1, NULL
+		           '', t.tx_hash, CASE WHEN t.status = 'confirmed' THEN 'paid' ELSE 'open' END, 1, false
 		    FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
 		    WHERE i.profile_id = $1 AND t.status <> 'reorged'
 		) a JOIN tokens tk ON tk.chain_id = a.chain_id AND tk.contract = a.token
@@ -121,7 +120,7 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 		var it Item
 		var amount string
 		err := row.Scan(&it.Kind, &it.At, &it.key, &it.InvoiceID, &it.ChainID, &it.Token, &it.Symbol, &it.Decimals,
-			&amount, &it.Status, &it.SettlementStatus, &it.TxHash, &it.OptionCount, &it.ExpiresAt)
+			&amount, &it.Status, &it.SettlementStatus, &it.TxHash, &it.OptionCount, &it.Closed)
 		it.Amount, _ = new(big.Int).SetString(amount, 10)
 		return it, err
 	})

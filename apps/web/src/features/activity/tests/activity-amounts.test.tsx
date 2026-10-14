@@ -35,6 +35,7 @@ const invoice: ActivityItem = {
   status: "open",
   settlementStatus: "none",
   optionCount: 1,
+  closed: false,
 };
 const deposit = (txHash: string, amount: string): ActivityItem => ({
   ...invoice,

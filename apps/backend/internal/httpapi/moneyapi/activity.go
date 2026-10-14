@@ -32,13 +32,10 @@ func getActivity(activities *activity.Service) http.HandlerFunc {
 			out.NextCursor = &page.NextCursor
 		}
 		for _, it := range page.Items {
-			item := activityItemJSON{Kind: it.Kind, At: it.At.UTC().Format(time.RFC3339Nano),
+			out.Items = append(out.Items, activityItemJSON{Kind: it.Kind, At: it.At.UTC().Format(time.RFC3339Nano),
 				InvoiceID: it.InvoiceID, tokenJSON: toTokenJSON(it.Asset), Amount: it.Amount.String(),
-				Status: it.Status, SettlementStatus: it.SettlementStatus, TxHash: it.TxHash, OptionCount: it.OptionCount}
-			if it.ExpiresAt != nil {
-				item.ExpiresAt = it.ExpiresAt.UTC().Format(time.RFC3339)
-			}
-			out.Items = append(out.Items, item)
+				Status: it.Status, SettlementStatus: it.SettlementStatus, TxHash: it.TxHash, OptionCount: it.OptionCount,
+				Closed: it.Closed})
 		}
 		httpio.WriteJSON(w, http.StatusOK, out)
 	}

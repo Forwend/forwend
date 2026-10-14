@@ -20,13 +20,12 @@ const INVOICE_STATUSES: Readonly<Record<string, PaymentStatus>> = {
 /**
  * What an activity row shows: a deposit is "Confirming" until its block is final, then "Confirmed"; an invoice shows
  * "Settled" once its money reached the wallet, otherwise its payment status. Unknown values show as "Detected" rather
- * than claiming money arrived. The API keeps an invoice open until the chain is final past expiry, but its checkout
- * takes no money after `expiresAt`, so open and partly paid read as expired from then on, as the API's list filter
- * files them (R-77).
+ * than claiming money arrived. The API keeps an invoice open until the chain is final past expiry; `closed` says sooner
+ * that it can no longer be paid, so open and partly paid read as expired then, as the API's list filter files them
+ * (R-77).
  */
 export function activityStatus(
-  item: Pick<ActivityItem, "kind" | "status" | "settlementStatus" | "expiresAt">,
-  now = Date.now(),
+  item: Pick<ActivityItem, "kind" | "status" | "settlementStatus" | "closed">,
 ): PaymentStatus {
   if (item.kind === ACTIVITY_KINDS.deposit) {
     return item.status === API_DEPOSIT_STATUSES.confirmed
@@ -35,7 +34,7 @@ export function activityStatus(
   }
   if (item.settlementStatus === API_SETTLEMENT_STATUSES.settled) return PAYMENT_STATUS.settled;
   const status = INVOICE_STATUSES[item.status] ?? PAYMENT_STATUS.detected;
-  if (item.expiresAt && Date.parse(item.expiresAt) <= now) {
+  if (item.closed) {
     if (status === PAYMENT_STATUS.open) return PAYMENT_STATUS.expired;
     if (status === PAYMENT_STATUS.partiallyPaid) return PAYMENT_STATUS.expiredPartiallyPaid;
   }

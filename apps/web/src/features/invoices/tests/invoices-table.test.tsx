@@ -32,6 +32,7 @@ const SUMMARY = {
   optionLocked: false,
   optionCount: 1,
   confirming: false,
+  closed: false,
   number: 1,
   title: "Logo design",
   note: null,
