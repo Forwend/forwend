@@ -1,0 +1,116 @@
+{
+  "id": "F174",
+  "type": "fix",
+  "behavior": "Bugs found in the October audit are fixed, each covered by a regression test",
+  "acceptance": [
+    "Log spam that the RPC refuses at the smallest range no longer stops a chain's scan; payments after it are recorded (backend)",
+    "On a payer-chooses invoice the option whose money came first on the chain is chosen (backend)",
+    "The signer never pays a gas tip above what the second RPC suggests (backend)",
+    "amountUsd length is checked before parsing; bad search or cursor bytes answer 422; unknown invoice ids do not use the global recheck limit (backend)",
+    "Concurrent invoice creates cannot pass the open or daily cap (backend)",
+    "The Forwend name check catches small capitals, Lisu letters and vv, and allows names such as Gifts for Wendy (backend)",
+    "The canary checks the first option of a payer-chooses invoice and skips invoices the pay page has closed (backend)",
+    "Activity rows and payment toasts show exact amounts; a Custom-expiry retry reuses its idempotency key (unit)",
+    "UX: billing name error on its field, Show more errors, full pay link on copy failure, closed checkout state, Check status in tokens, held money on other options, long return host wraps, landing nav fits 320 px (unit)"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "lint",
+    "typecheck"
+  ],
+  "refs": [
+    "D-76",
+    "R-55",
+    "R-51",
+    "R-45",
+    "R-69",
+    "R-70",
+    "R-7",
+    "R-33"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-14T11:15:13Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 65.8,
+        "log": "docs/runs/F174-20261014T111513Z-unit.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F174-20261014T111513Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.2,
+        "log": "docs/runs/F174-20261014T111513Z-typecheck.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.2,
+        "log": "docs/runs/F174-20261014T111513Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F174-20261014T111513Z-docs-check.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 5.3,
+        "log": "docs/runs/F174-20261014T111513Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 144.0,
+        "log": "docs/runs/F174-20261014T111513Z-e2e.log"
+      }
+    ],
+    "taskHash": "379a9aced839202c",
+    "filesHash": "d37ca0a07e4a49f9",
+    "proof": {
+      "1": "unit: backend watcher TestLogSpamDoesNotStopTheChain (every answer with a log refused: scan narrows to one block, reads its receipts, records the later payment); TestLogRangeHalvesAndGrowsBack keeps the rate-limit floor",
+      "2": "unit: backend ledger TestOptionPaidFirstOnChainIsChosen (full payment on option O, dust on main one block later: O chosen and paid)",
+      "3": "unit: backend settlement TestOneRPCCannotRaiseTheTip (primary reports a 1,000 gwei tip; deploy and settle cost stays under MinGas x MaxFeeFactor at the honest fee cap)",
+      "4": "unit: backend httpapi TestHugeAmountUSDIsRefusedBeforeParsing, TestSearchAndCursorWithBadBytesAre422, TestUnknownInvoicesDoNotUseTheSharedCheckLimit; existing recheck limit tests pass",
+      "5": "unit: backend invoice TestDailyCapHoldsUnderConcurrentCreates and TestOpenCapHoldsUnderConcurrentCreates (20 concurrent creates at cap-1: exactly 1 succeeds), run with -race",
+      "6": "unit: backend profile TestImpersonates (small capitals, Lisu, Forvvend, F o r w e n d refused; Gifts for Wendy, For Wendy's Bakery allowed)",
+      "7": "unit: backend canary TestCheckFirstOptionOfPayerChoosesInvoice (page in picking mode without ?option=) and TestCheckSkipsInvoicesThePayPageClosed",
+      "8": "unit: web activity-amounts.test.tsx (1.005 USDC row and 0.0015 USDC toast exact), new-invoice-form.test.tsx (Custom-expiry retry: same key and body)",
+      "9": "unit: web billing-details-form, invoices-table, invoice-detail (full link on copy failure, closed checkout, amounts without balances), pay-held tests; 320 px browser checks of pay and landing pages had no horizontal overflow"
+    },
+    "commit": "f824541",
+    "doneAt": "2026-10-14T11:21:06Z"
+  },
+  "branch": "fix/f174-bugs-found-in-the-october-audit-are-fixe",
+  "baseCommit": "a81bc43ca5613a718a11aa6c5acb3567dd33a8fc",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f174-bugs-found-in-the-october-audit-are-fixe",
+    "base": "main"
+  }
+}

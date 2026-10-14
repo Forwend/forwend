@@ -1,0 +1,96 @@
+{
+  "id": "F173",
+  "type": "fix",
+  "behavior": "Backend tests stop Anvil cleanly, so it leaves no state folders on disk",
+  "acceptance": [
+    "Running a backend package that starts Anvil (internal/watcher) leaves no anvil-state-* folder in ~/.foundry/anvil/tmp; backend tests pass"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "backend"
+  ],
+  "refs": [],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-13T23:44:07Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 58.4,
+        "log": "docs/runs/F173-20261013T234407Z-backend.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.3,
+        "log": "docs/runs/F173-20261013T234407Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F173-20261013T234407Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F173-20261013T234407Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F173-20261013T234407Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 59.1,
+        "log": "docs/runs/F173-20261013T234407Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.4,
+        "log": "docs/runs/F173-20261013T234407Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 165.0,
+        "log": "docs/runs/F173-20261013T234407Z-e2e.log"
+      }
+    ],
+    "taskHash": "478796f8edaf325c",
+    "filesHash": "10fb35f207e9eb6b",
+    "proof": {
+      "1": "backend: suite passes, no anvil-state folders left"
+    },
+    "commit": "fffb3f1",
+    "doneAt": "2026-10-13T23:49:07Z"
+  },
+  "branch": "fix/f173-backend-tests-stop-anvil-cleanly-so-it-l",
+  "baseCommit": "15de5846666cb7eee73b58bc0ab6adc80b033e6c",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f173-backend-tests-stop-anvil-cleanly-so-it-l",
+    "base": "main"
+  }
+}
