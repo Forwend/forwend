@@ -1,17 +1,19 @@
 {
   "schemaVersion": 2,
-  "nextId": 177,
+  "nextId": 178,
   "tasks": [
     {
-      "id": "F176",
-      "type": "chore",
-      "behavior": "Finished tasks F166-F175 move to the archive",
+      "id": "F177",
+      "type": "fix",
+      "behavior": "Stopping the harness with SIGTERM also stops the check it is running",
       "acceptance": [
-        "docs/archive holds F166-F175 and docs/tasks.json keeps only F176; docs-check passes"
+        "When the harness gets SIGTERM during a check, the check's process group stops too; a regression test proves it",
+        "Merged F176 moves to docs/archive"
       ],
       "dependsOn": [],
       "state": "passing",
       "verification": [
+        "harness",
         "docs-check"
       ],
       "refs": [
@@ -24,72 +26,73 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-14T13:14:00Z",
+        "at": "2026-10-14T13:27:16Z",
         "checks": [
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F176-20261014T131400Z-docs-check.log"
-          },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 1.4,
-            "log": "docs/runs/F176-20261014T131400Z-harness.log"
+            "log": "docs/runs/F177-20261014T132716Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F177-20261014T132716Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.4,
-            "log": "docs/runs/F176-20261014T131400Z-lint.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F177-20261014T132716Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F176-20261014T131400Z-typecheck.log"
+            "seconds": 0.2,
+            "log": "docs/runs/F177-20261014T132716Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 85.8,
-            "log": "docs/runs/F176-20261014T131400Z-unit.log"
+            "seconds": 72.2,
+            "log": "docs/runs/F177-20261014T132716Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.0,
-            "log": "docs/runs/F176-20261014T131400Z-build.log"
+            "seconds": 0.7,
+            "log": "docs/runs/F177-20261014T132716Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 204.2,
-            "log": "docs/runs/F176-20261014T131400Z-e2e.log"
+            "seconds": 199.6,
+            "log": "docs/runs/F177-20261014T132716Z-e2e.log"
           }
         ],
-        "taskHash": "72979c8130c36d6b",
-        "filesHash": "7fd3376eb099204d",
+        "taskHash": "982310381a4ec90b",
+        "filesHash": "8d9de41173bb3efd",
         "proof": {
-          "1": "docs-check: docs/archive holds F166-F175, tasks.json holds only F176, docs-check passes."
+          "1": "harness: test_sigterm_stops_the_running_check fails without the fix and passes with it.",
+          "2": "docs-check: docs/archive holds F176; docs-check passes."
         },
-        "commit": "861aa40",
-        "doneAt": "2026-10-14T13:19:01Z"
+        "commit": "df223db",
+        "doneAt": "2026-10-14T13:32:02Z"
       },
-      "branch": "chore/f176-finished-tasks-f166-f175-move-to-the-arc",
-      "baseCommit": "8b00efc892fbdb1c94bd4a9436caff78c952278a",
+      "branch": "fix/f177-stopping-the-harness-with-sigterm-also-s",
+      "baseCommit": "4dcd02bfca41cee768a8334a75256be6e7216475",
       "failedVerifies": 0,
       "delivery": {
         "mode": "pr",
-        "branch": "chore/f176-finished-tasks-f166-f175-move-to-the-arc",
+        "branch": "fix/f177-stopping-the-harness-with-sigterm-also-s",
         "base": "main"
       }
     }

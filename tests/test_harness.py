@@ -9,6 +9,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -274,6 +275,29 @@ class HarnessTests(unittest.TestCase):
         self.save()
         self.assertEqual(self.verify(), 1)
         self.assertEqual(h.State(self.root).task('F001')['evidence']['checks'][0]['outcome'], 'timeout')
+
+    def test_sigterm_stops_the_running_check(self):
+        pid_file = self.root / 'check.pid'
+        self.config['checks'][0]['argv'] = [
+            sys.executable, '-c', f'import os, time; open({str(pid_file)!r}, "w").write(str(os.getpid())); time.sleep(30)']
+        self.save()
+        harness = subprocess.Popen([sys.executable, spec.origin, '--root', str(self.root), 'check', 'unit'],
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        deadline = time.monotonic() + 10
+        while not pid_file.exists() or not pid_file.read_text():
+            self.assertLess(time.monotonic(), deadline, 'the check never started')
+            time.sleep(.05)
+        check = int(pid_file.read_text())
+        harness.terminate()
+        harness.wait(timeout=10)
+        while time.monotonic() < deadline:
+            try:
+                os.kill(check, 0)
+            except ProcessLookupError:
+                return
+            time.sleep(.05)
+        os.kill(check, 9)
+        self.fail('the check kept running after the harness got SIGTERM')
 
     def test_missing_package_script_fails_before_pnpm(self):
         (self.root / 'package.json').write_text(json.dumps({'scripts': {}}))

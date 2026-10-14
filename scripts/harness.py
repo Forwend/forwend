@@ -1605,4 +1605,6 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
+    # SIGTERM would end Python without unwinding, leaving a running check's process group behind.
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
     sys.exit(main())
