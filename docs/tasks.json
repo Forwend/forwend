@@ -291,7 +291,7 @@
         "The pre-commit hook applies the same rule to the staged paths; docs/workflow.md states the rule and that staging CI still runs everything"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness",
         "docs-check"
@@ -361,11 +361,18 @@
         "proof": {
           "1": "harness: test_docs_only_changes_run_only_docs_checks shows a docs-only change runs only docs-check, and a .py change brings back every required check",
           "2": "harness: the same test shows the pre-commit hook passes on staged docs only and fails once code is staged; docs-check passes with the workflow.md line"
-        }
+        },
+        "commit": "10f2ccd",
+        "doneAt": "2026-10-14T21:58:03Z"
       },
       "branch": "fix/f187-a-change-that-touches-only-markdown-or-a",
       "baseCommit": "85e1c0aa69b8fa2c55ae6a69e77fbc13a5f640fb",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f187-a-change-that-touches-only-markdown-or-a",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
