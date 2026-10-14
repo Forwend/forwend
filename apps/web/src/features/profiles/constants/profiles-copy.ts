@@ -1,3 +1,4 @@
+import { BILLING_LIMITS } from "@/features/profiles/constants/billing-details";
 import { PROFILE_KINDS, PROFILE_NAME_MAX } from "@/features/profiles/constants/profile";
 
 export const PROFILES_COPY = {
@@ -45,5 +46,12 @@ export const BILLING_DETAILS_COPY = {
     country: "Choose a country.",
     email: "Enter an email like name@example.com.",
     failed: "We could not save your billing details. Check them and try again.",
+    invalid: {
+      name: `Use at most ${BILLING_LIMITS.name} characters, with no hidden characters. The name can't be Forwend.`,
+      address: `Use at most ${BILLING_LIMITS.address} characters, with no hidden characters.`,
+      country: "Choose a country.",
+      taxId: `Use at most ${BILLING_LIMITS.taxId} characters, with no hidden characters.`,
+      email: "Enter an email like name@example.com.",
+    },
   },
 } as const;

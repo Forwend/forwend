@@ -184,8 +184,8 @@ func TestReorgMarksTheDepositReorged(t *testing.T) {
 	}
 }
 
-// A log query the RPC refuses for its size or rate is read again in half the range, down to MinRange, and the range
-// doubles back after each answer. The answered ranges still cover every block once, in order, and the deposit is found.
+// A log query the RPC refuses for its size or rate is read again in half the range, down to MinRange for a rate limit,
+// and the range doubles back after each answer. The answered ranges still cover every block once, in order, and the deposit is found.
 func TestLogRangeHalvesAndGrowsBack(t *testing.T) {
 	for name, c := range map[string]struct {
 		refuse    func(blocks uint64, earlier int) chaintest.Fault
@@ -204,7 +204,7 @@ func TestLogRangeHalvesAndGrowsBack(t *testing.T) {
 			}
 			return chaintest.Forward
 		}, wantSizes: []uint64{2000, 1000, 2000}},
-		"refused down to the floor": {refuse: func(uint64, int) chaintest.Fault { return chaintest.TooManyResults },
+		"rate limited down to the floor": {refuse: func(uint64, int) chaintest.Fault { return chaintest.HTTP429 },
 			wantSizes: []uint64{2000, 1000, 500, 250, 125, 62, MinRange}, wantErr: true},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -375,4 +375,59 @@ func TestInvoiceLeavingTheScanWithADetectedDepositStaysUntilItConfirms(t *testin
 	if got, _ := e.rows(t); got[late][0] != "confirmed" {
 		t.Fatalf("the deposit of an invoice that left the scan: %v, want confirmed", got[late])
 	}
+}
+
+// Here every eth_getLogs answer with a log is refused, as Infura refuses more than 10,000.
+func TestLogSpamDoesNotStopTheChain(t *testing.T) {
+	ctx := context.Background()
+	e := setup(t)
+	const victim = "0x00000000000000000000000000000000000000bb"
+	if _, err := e.pool.Exec(ctx, `
+		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+		SELECT '0x' || repeat('04', 32), profile_id, chain_id, chain_family, token_contract, amount, expires_at,
+		    settle_deadline, recipient_address, receive_method, factory_address, $1, 'key-victim', request_hash
+		FROM invoices`, victim); err != nil {
+		t.Fatal(err)
+	}
+
+	for range 6 {
+		e.anvil.Transfer(e.token, receive, "0")
+	}
+	e.anvil.Mine(100)
+	payment := e.anvil.Transfer(e.token, victim, "5000000")
+	e.anvil.Mine(3)
+
+	proxy := e.anvil.Proxy()
+	proxy.Fail(func(call chaintest.Call) chaintest.Fault {
+		if call.Method != "eth_getLogs" || len(call.Params) != 1 {
+			return chaintest.Forward
+		}
+		var logs []json.RawMessage
+		if err := e.anvil.RPC.Call(&logs, "eth_getLogs", call.Params[0]); err != nil {
+			t.Errorf("count logs: %v", err)
+			return chaintest.Forward
+		}
+		if len(logs) > 0 {
+			return chaintest.TooManyResults
+		}
+		return chaintest.Forward
+	})
+	client, err := rpc.Dial(proxy.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	e.chain = NewChain(e.pool, chaintest.ChainID, client)
+
+	var lastErr error
+	for range 5 {
+		lastErr = e.chain.Scan(ctx)
+		if got, _ := e.rows(t); len(got[payment]) > 0 {
+			return
+		}
+	}
+	got, _ := e.rows(t)
+	t.Fatalf("payment %s to another invoice never recorded after 5 scans (rows %v); last scan error: %v",
+		payment, got, lastErr)
 }

@@ -715,3 +715,17 @@ func TestGetProfileInvoice(t *testing.T) {
 		t.Fatalf("without a token: %d", r.status)
 	}
 }
+
+func TestHugeAmountUSDIsRefusedBeforeParsing(t *testing.T) {
+	e := invoiceAPI(t)
+	body := `{"amountUsd": "` + strings.Repeat("9", 1<<20-100) + `"}`
+	start := time.Now()
+	r := e.post(t, "did:privy:alice", e.aliceProfile, "huge-usd", body)
+	took := time.Since(start)
+	if r.status != http.StatusUnprocessableEntity {
+		t.Fatalf("status %d %v, want 422", r.status, r.body)
+	}
+	if took > 300*time.Millisecond {
+		t.Fatalf("a refused 1 MB amountUsd took %v, want under 300ms (the pattern alone)", took)
+	}
+}

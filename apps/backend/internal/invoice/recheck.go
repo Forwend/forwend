@@ -40,26 +40,38 @@ type Recheck struct {
 
 // Recheck reads the invoice's receive addresses on chain (every option's until one has money) and, for each that holds
 // more than its recorded transfers, asks the worker to rescan it (D-77). It reads only: it never signs, never books
-// and never moves a cursor.
-func (s *Service) Recheck(ctx context.Context, id string, balanceOf ledger.BalanceOf) (Recheck, error) {
+// and never moves a cursor. allow runs only for an invoice due a check, so unknown ids never spend the shared budget.
+func (s *Service) Recheck(ctx context.Context, id string, balanceOf ledger.BalanceOf, allow func() time.Duration) (Recheck, error) {
 	inv, err := s.Get(ctx, id)
 	if err != nil {
 		return Recheck{}, err
 	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Recheck{}, fmt.Errorf("start invoice %s check: %w", inv.ID, err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
 	var checked time.Time
-	err = s.pool.QueryRow(ctx, `INSERT INTO invoice_rechecks (invoice_id) VALUES ($1)
+	err = tx.QueryRow(ctx, `INSERT INTO invoice_rechecks (invoice_id) VALUES ($1)
 		ON CONFLICT (invoice_id) DO UPDATE SET checked_at = now()
 		WHERE invoice_rechecks.checked_at <= now() - make_interval(secs => $2)
 		RETURNING checked_at`, inv.ID, RecheckEvery.Seconds()).Scan(&checked)
 	if errors.Is(err, pgx.ErrNoRows) {
 		var wait time.Duration
-		if err := s.pool.QueryRow(ctx, `SELECT greatest(checked_at + make_interval(secs => $2) - now(), interval '0')
+		if err := tx.QueryRow(ctx, `SELECT greatest(checked_at + make_interval(secs => $2) - now(), interval '0')
 			FROM invoice_rechecks WHERE invoice_id = $1`, inv.ID, RecheckEvery.Seconds()).Scan(&wait); err != nil {
 			return Recheck{}, fmt.Errorf("read invoice %s last check: %w", inv.ID, err)
 		}
 		return Recheck{}, &TooSoonError{Wait: wait}
 	}
 	if err != nil {
+		return Recheck{}, fmt.Errorf("start invoice %s check: %w", inv.ID, err)
+	}
+	// The rollback keeps the last check time, so a payer refused here may press again soon.
+	if wait := allow(); wait > 0 {
+		return Recheck{}, &TooSoonError{Wait: wait}
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return Recheck{}, fmt.Errorf("start invoice %s check: %w", inv.ID, err)
 	}
 	// Before an option has money the payer may have paid any of them; after, only the chosen one takes payments.

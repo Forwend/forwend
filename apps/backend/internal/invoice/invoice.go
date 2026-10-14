@@ -179,7 +179,11 @@ func (r Request) normalize() (token string, amount *big.Int, usd *big.Rat, expir
 		if r.ChainID != 0 || r.Token != "" || r.Amount != "" {
 			return "", nil, nil, 0, fmt.Errorf("%w: send amountUsd alone, or chainId, token and amount", ErrInvalid)
 		}
-		if usd, _ = new(big.Rat).SetString(r.AmountUSD); !usdAmount.MatchString(r.AmountUSD) || usd.Sign() == 0 {
+		// Pattern first: parsing a huge string costs CPU.
+		if usdAmount.MatchString(r.AmountUSD) {
+			usd, _ = new(big.Rat).SetString(r.AmountUSD)
+		}
+		if usd == nil || usd.Sign() == 0 {
 			return "", nil, nil, 0, fmt.Errorf("%w: amountUsd must be a decimal like 12.50, above 0", ErrInvalid)
 		}
 	} else {

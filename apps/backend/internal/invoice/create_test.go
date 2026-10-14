@@ -169,3 +169,66 @@ func TestInvoicesPerProfilePerDayAreCapped(t *testing.T) {
 		t.Fatalf("over the daily cap: %v, want ErrInvalid", err)
 	}
 }
+
+func capRace(t *testing.T, fill, count string, limit, n int) (ok, rows int) {
+	t.Helper()
+	ctx := context.Background()
+	pool, profile := open(t)
+	if _, err := pool.Exec(ctx, fill, profile, usdc, limit-1); err != nil {
+		t.Fatal(err)
+	}
+	s := NewService(pool)
+	req := Request{ChainID: 84532, Token: usdc, Amount: "5000000"}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	start := make(chan struct{})
+	for i := range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			if _, _, err := s.Create(ctx, profile, fmt.Sprintf("race-%d", i), req); err == nil {
+				mu.Lock()
+				ok++
+				mu.Unlock()
+			}
+		}()
+	}
+	close(start)
+	wg.Wait()
+	if err := pool.QueryRow(ctx, count, profile).Scan(&rows); err != nil {
+		t.Fatal(err)
+	}
+	return ok, rows
+}
+
+func TestDailyCapHoldsUnderConcurrentCreates(t *testing.T) {
+	ok, rows := capRace(t, `
+		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+		SELECT '0x' || lpad(to_hex(n), 64, '0'), $1, 84532, 'evm', $2, 5000000, 1, 86401,
+		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
+		    '0x' || lpad(to_hex(n), 40, '0'), 'day-' || n, decode(repeat('00', 32), 'hex')
+		FROM generate_series(1, $3::int) n`,
+		`SELECT count(*) FROM invoices WHERE profile_id = $1 AND created_at > now() - interval '1 day'`, MaxPerDay, 20)
+	if rows > MaxPerDay || ok != 1 {
+		t.Fatalf("20 concurrent creates at %d of %d a day: %d succeeded, %d invoices today; want 1 and %d",
+			MaxPerDay-1, MaxPerDay, ok, rows, MaxPerDay)
+	}
+}
+
+func TestOpenCapHoldsUnderConcurrentCreates(t *testing.T) {
+	ok, rows := capRace(t, `
+		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash,
+		    created_at)
+		SELECT '0x' || lpad(to_hex(n), 64, '0'), $1, 84532, 'evm', $2, 5000000, 4000000000, 4000086400,
+		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
+		    '0x' || lpad(to_hex(n), 40, '0'), 'bulk-' || n, decode(repeat('00', 32), 'hex'), now() - interval '2 days'
+		FROM generate_series(1, $3::int) n`,
+		`SELECT count(*) FROM invoices WHERE profile_id = $1 AND expires_at > extract(epoch FROM now())::bigint`, MaxOpen, 20)
+	if rows > MaxOpen || ok != 1 {
+		t.Fatalf("20 concurrent creates at %d of %d open: %d succeeded, %d open invoices; want 1 and %d",
+			MaxOpen-1, MaxOpen, ok, rows, MaxOpen)
+	}
+}

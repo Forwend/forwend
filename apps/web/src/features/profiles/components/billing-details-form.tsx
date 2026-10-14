@@ -16,7 +16,7 @@ import { flushSync } from "react-dom";
 import { useSaveBillingDetailsMutation } from "@/features/profiles/api/profiles-api";
 import { BILLING_LIMITS } from "@/features/profiles/constants/billing-details";
 import { BILLING_DETAILS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
-import { countryOptions } from "@/features/profiles/lib/billing-details";
+import { countryOptions, invalidBillingField } from "@/features/profiles/lib/billing-details";
 import type { BillingDetails, BillingDetailsBody } from "@/features/profiles/types/billing-details";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -71,8 +71,14 @@ export function BillingDetailsForm({ profileId, saved }: BillingDetailsFormProps
       await save({ profileId, body }).unwrap();
       toast({ tone: TONES.success, title: COPY.saved });
       router.push(APP_ROUTES.home);
-    } catch {
-      setFormError(COPY.errors.failed);
+    } catch (error) {
+      const message =
+        (error as { data?: { error?: { message?: string } } }).data?.error?.message ?? "";
+      const field = invalidBillingField(message);
+      if (field) {
+        flushSync(() => setErrors({ [field]: COPY.errors.invalid[field] }));
+        form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      } else setFormError(COPY.errors.failed);
       setBusy(false);
     }
   };
@@ -112,6 +118,7 @@ export function BillingDetailsForm({ profileId, saved }: BillingDetailsFormProps
         name="taxId"
         defaultValue={saved?.taxId ?? ""}
         maxLength={BILLING_LIMITS.taxId}
+        error={errors.taxId}
       />
       <TextField
         label={COPY.email}

@@ -23,7 +23,7 @@ func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, balance
 	mux.Handle("GET /v1/profiles/{profileId}/invoices", g.ProfileScoped(listInvoices(invoices)))
 	mux.Handle("GET /v1/profiles/{profileId}/invoices/{invoiceId}", g.ProfileScoped(getProfileInvoice(invoices)))
 	mux.Handle("GET /v1/invoices/{invoiceId}", getInvoice(invoices)) // checkout reads
-	mux.Handle("POST /v1/invoices/{invoiceId}/recheck", mid.Limit(rechecks, mid.Everyone, recheckInvoice(invoices, balances)))
+	mux.Handle("POST /v1/invoices/{invoiceId}/recheck", recheckInvoice(invoices, balances, rechecks))
 	mux.Handle("GET /v1/invoices/{invoiceId}/invoice.pdf", invoicePDF(invoices, webURL))
 	mux.Handle("GET /v1/invoices/{invoiceId}/receipt.pdf", receiptPDF(invoices, webURL))
 }

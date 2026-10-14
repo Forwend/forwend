@@ -7,6 +7,7 @@ export const ACTIVITY_COPY = {
   emptyText: "Invoices and their payments appear here.",
   activityFailed: "We could not load the activity.",
   loadMore: "Show more",
+  updateFailed: "We could not update the activity.",
   latestOnly: "Showing the latest 100.",
   invoice: "Invoice",
   deposit: "Payment",

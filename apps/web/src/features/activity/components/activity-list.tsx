@@ -22,6 +22,7 @@ import {
 import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { activityStatus } from "@/features/activity/lib/activity";
 import { INVOICES_COPY } from "@/features/invoices/constants/invoices-copy";
+import { exactDigits } from "@/features/invoices/lib/invoices";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
@@ -152,6 +153,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
                         baseUnits: BigInt(item.amount),
                         decimals: item.decimals,
                         token: anyOption ? INVOICES_COPY.usd : item.symbol,
+                        fractionDigits: exactDigits(BigInt(item.amount), item.decimals),
                       }}
                       status={activityStatus(item)}
                       action={
@@ -180,6 +182,14 @@ function ProfileActivity({ profileId }: ActivityListProps) {
             </Button>
           ) : more ? (
             <p className="text-sm text-muted">{ACTIVITY_COPY.latestOnly}</p>
+          ) : null}
+          {list.isError ? (
+            <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
+              {ACTIVITY_COPY.updateFailed}
+              <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
+                {ACTIVITY_COPY.retry}
+              </Button>
+            </div>
           ) : null}
         </>
       )}

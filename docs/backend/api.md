@@ -123,7 +123,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
   Reads add `optionId` (the on-chain id in the shown terms), `optionLocked`, `optionCount` and, on a read alone, `options` (each
   `{optionId, chainId, network, token, symbol, decimals, amount, receiveAddress, deposits}`; deposits on an option
   other than the shown one are held for the payer). Until an option has money the
-  terms shown are the first option's; the first option the ledger sees money on becomes the invoice's for good
+  terms shown are the first option's; the option whose money came first on chain becomes the invoice's for good
   (`chosen_id`), and money on any other is booked to `payer_held`. A GET with an option's id answers its invoice.
   Lists, activity and search show each invoice once, with the current option (`invoices_current` view).
 - The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due date, `senderName` and

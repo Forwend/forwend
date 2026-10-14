@@ -68,6 +68,8 @@ export const PAY_COPY = {
   creator: "the invoice's creator",
   late: (late: string, payee: string) =>
     `${late} arrived after the checkout closed. It is held for you; ask ${payee} to get it back.`,
+  otherOption: (amount: string, network: string, payee: string) =>
+    `${amount} sent on ${network} went to another payment option. It is held for you; ask ${payee} to get it back.`,
   change: "Change",
   confirmChange: "Confirm change",
   changeLabel: "Change network and token",

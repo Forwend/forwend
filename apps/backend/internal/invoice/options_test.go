@@ -6,6 +6,7 @@ import (
 	"errors"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/address"
 	"github.com/ensp1re/forwend/apps/backend/internal/search"
@@ -124,7 +125,7 @@ func TestRecheckWithOneNetworkDown(t *testing.T) {
 		}
 		return big.NewInt(0), 1, nil
 	}
-	r, err := s.Recheck(ctx, inv.ID, balanceOf)
+	r, err := s.Recheck(ctx, inv.ID, balanceOf, noLimit)
 	if err != nil || r.OnChain.Sign() != 0 || len(r.Unreadable) != 1 || r.Unreadable[0] != 421614 {
 		t.Fatalf("one down: %+v, %v", r, err)
 	}
@@ -139,7 +140,7 @@ func TestRecheckWithOneNetworkDown(t *testing.T) {
 	}
 	// The shown option (Base Sepolia) down: another option's empty read must not answer for it.
 	down = map[uint64]bool{84532: true}
-	if _, err := s.Recheck(ctx, inv.ID, balanceOf); !errors.Is(err, ErrChainUnavailable) {
+	if _, err := s.Recheck(ctx, inv.ID, balanceOf, noLimit); !errors.Is(err, ErrChainUnavailable) {
 		t.Fatalf("shown option down: err = %v, want ErrChainUnavailable", err)
 	}
 	// Unless the other option holds money not recorded yet: that is worth saying, and it is rescanned.
@@ -150,13 +151,15 @@ func TestRecheckWithOneNetworkDown(t *testing.T) {
 		}
 		return big.NewInt(1000000), 1, nil
 	}
-	r, err = s.Recheck(ctx, inv.ID, money)
+	r, err = s.Recheck(ctx, inv.ID, money, noLimit)
 	if err != nil || r.OnChain.Int64() != 1000000 || !r.Rescanning || len(r.Unreadable) != 1 || r.Unreadable[0] != 84532 {
 		t.Fatalf("money on the other option: %+v, %v", r, err)
 	}
 	again()
 	down = map[uint64]bool{84532: true, 421614: true}
-	if _, err := s.Recheck(ctx, inv.ID, balanceOf); !errors.Is(err, ErrChainUnavailable) {
+	if _, err := s.Recheck(ctx, inv.ID, balanceOf, noLimit); !errors.Is(err, ErrChainUnavailable) {
 		t.Fatalf("all down: err = %v, want ErrChainUnavailable", err)
 	}
 }
+
+func noLimit() time.Duration { return 0 }

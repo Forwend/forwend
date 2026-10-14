@@ -33,6 +33,7 @@ export const INVOICES_COPY = {
   failed: "We could not load the invoices.",
   retry: "Try again",
   loadMore: "Show more",
+  updateFailed: "We could not update the invoices.",
   search: "Search invoices",
   searchPlaceholder: "Number, client, title",
   columns: {
@@ -56,6 +57,7 @@ export const REQUESTS_COPY = {
   emptyTitle: "No requests yet",
   emptyText: "Request money, then send the pay link to whoever pays you.",
   failed: "We could not load the requests.",
+  updateFailed: "We could not update the requests.",
   search: "Search requests",
   searchPlaceholder: "Number or note",
 } as const;
@@ -218,7 +220,7 @@ export const INVOICE_COPY = {
   share: "Pay link",
   copy: "Copy link",
   copied: "Link copied",
-  copyFailed: "Copy failed: select the link above",
+  copyFailed: "Copy failed: select the link",
   details: "Details",
   dueDate: "Due date",
   expires: "Checkout closes",

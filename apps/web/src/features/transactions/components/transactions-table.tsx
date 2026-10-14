@@ -286,6 +286,17 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
           {TRANSACTIONS_COPY.latestOnly}
         </p>
       ) : null}
+      {list.isError && data ? (
+        <div
+          role="alert"
+          className={`flex flex-wrap items-center gap-4 text-sm text-muted ${pageHeading ? "" : "px-5 pb-4"}`}
+        >
+          {TRANSACTIONS_COPY.updateFailed}
+          <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
+            {TRANSACTIONS_COPY.retry}
+          </Button>
+        </div>
+      ) : null}
     </section>
   );
 }

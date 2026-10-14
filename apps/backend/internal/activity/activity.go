@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
@@ -140,7 +141,8 @@ func encode(at time.Time, kind, key string) string {
 func decode(cursor string) (time.Time, string, string, error) {
 	raw, err := base64.RawURLEncoding.DecodeString(cursor)
 	parts := strings.SplitN(string(raw), "|", 3)
-	if err != nil || len(parts) != 3 || (parts[1] != Invoice && parts[1] != Deposit) {
+	if err != nil || len(parts) != 3 || (parts[1] != Invoice && parts[1] != Deposit) ||
+		!utf8.ValidString(parts[2]) || strings.ContainsRune(parts[2], 0) {
 		return time.Time{}, "", "", fmt.Errorf("%w: cursor is not one this API returned", ErrInvalid)
 	}
 	micros, err := strconv.ParseInt(parts[0], 10, 64)

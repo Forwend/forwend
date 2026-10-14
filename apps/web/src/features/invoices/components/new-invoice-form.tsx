@@ -61,7 +61,7 @@ export function NewInvoiceForm({ profileId, tokens, request }: NewInvoiceFormPro
   const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
   const [createInvoice] = useCreateInvoiceMutation();
   const router = useRouter();
-  const keys = useRef(new Map<string, string>());
+  const keys = useRef(new Map<string, { key: string; body: CreateInvoiceBody }>());
   // Payer chooses is the default once there is more than one token to choose from (R-56).
   const [payWith, setPayWith] = useState<PayWith>(PAY_WITH.any);
   const [picked, setPicked] = useState("");
@@ -134,10 +134,18 @@ export function NewInvoiceForm({ profileId, tokens, request }: NewInvoiceFormPro
     setFormError("");
     setBusy(true);
     try {
-      const values = JSON.stringify(body);
-      const key = keys.current.get(values) ?? crypto.randomUUID();
-      keys.current.set(values, key);
-      const invoice = await createInvoice({ profileId, idempotencyKey: key, body }).unwrap();
+      // Custom's expiresIn changes every second, and the API refuses a known key with another body.
+      const values = JSON.stringify({
+        ...body,
+        expiresIn: expiry === CUSTOM_EXPIRY ? `${closesOn} ${text("closesAt")}` : body.expiresIn,
+      });
+      const sent = keys.current.get(values) ?? { key: crypto.randomUUID(), body };
+      keys.current.set(values, sent);
+      const invoice = await createInvoice({
+        profileId,
+        idempotencyKey: sent.key,
+        body: sent.body,
+      }).unwrap();
       if (request) request.onCreated(invoice);
       else router.push(`${APP_ROUTES.invoices}/${invoice.invoiceId}`);
     } catch (error) {

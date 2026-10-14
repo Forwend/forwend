@@ -57,7 +57,8 @@ Stdin holds one open invoice or accepted option per line, its terms as the datab
 symbol, its chain's name and, for an option of a payer-chooses invoice (R-56), the invoice's id:
 `id chain_id recipient_address token_contract amount expires_at settle_deadline symbol network [pay_id]`. A line whose
 terms break create's rules (amount 0, a settle deadline other than expiry + 24 h, a recipient that is zero or the
-token) is an alert. The canary then:
+token) is an alert. A line within 6 minutes of its expiry is skipped: the pay page stops showing the address 5
+minutes before expiry. The canary then:
 
 1. On both RPCs of every configured chain, requires `eth_chainId` to equal the chain ID and the keccak256 of the
    factory's code to equal `CANARY_FACTORY_CODE_HASH`. A receiver's init-code hash differs per invoice (its init
@@ -68,8 +69,8 @@ token) is an alert. The canary then:
    `CANARY_FACTORY`.
 3. Calls `predict` with the database's terms on both RPCs and requires both to agree and to equal the api's
    `receiveAddress`.
-4. Runs the script once for all ids, with a deadline that grows with their number. It opens `<web>/pay/<id>` (for an
-   option `<web>/pay/<pay_id>?option=<id>`, which shows that option while none has money) in
+4. Runs the script once for all ids, with a deadline that grows with their number. It opens `<web>/pay/<pay_id>?option=<id>`
+   (`pay_id` is `id` for a fixed invoice and for the first option), which shows that option while none has money, in
    Chromium as a payer would, presses Show address and reads the send box's text and QR code. The text
    must show that one address, each QR code must draw what `uqr` encodes for it, as `QrCode` in
    `packages/ui-web` does, and the amount panel must name the token's symbol and the chain (`Base Sepolia` for

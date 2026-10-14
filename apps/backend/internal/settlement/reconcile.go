@@ -140,7 +140,7 @@ func (s *Signer) fillGap(ctx context.Context, client *ethclient.Client, chainID 
 		int64(chainID), strings.ToLower(s.sender.Hex()), int64(nonce)).Scan(&saved); err != nil || saved {
 		return err
 	}
-	tip, feeCap, err := fees(ctx, client, chainID)
+	tip, feeCap, err := s.fees(ctx, client, chainID)
 	if err != nil {
 		return err
 	}
