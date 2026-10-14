@@ -1,0 +1,104 @@
+{
+  "id": "F178",
+  "type": "ci",
+  "behavior": "Staging CI pulls PostgreSQL directly from Docker Hub without the rate-limited AWS mirror",
+  "acceptance": [
+    "The CI PostgreSQL service uses the official Docker Hub postgres:17 image and retains its database settings and health check",
+    "All required repository checks pass before the hotfix is promoted to staging"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "harness",
+    "docs-check"
+  ],
+  "refs": [
+    "R-40"
+  ],
+  "keep": [
+    "apps/**",
+    "packages/**"
+  ],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-14T13:49:03Z",
+    "checks": [
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.3,
+        "log": "docs/runs/F178-20261014T134903Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F178-20261014T134903Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F178-20261014T134903Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F178-20261014T134903Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 73.8,
+        "log": "docs/runs/F178-20261014T134903Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.7,
+        "log": "docs/runs/F178-20261014T134903Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 172.0,
+        "log": "docs/runs/F178-20261014T134903Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F178-20261014T134903Z-keep.log"
+      }
+    ],
+    "taskHash": "ed6988d49ae86801",
+    "filesHash": "836afe5e3a94dbbf",
+    "proof": {
+      "1": "docs-check: CI uses Docker Hub postgres:17; diff review confirms database settings and health check are unchanged; failed staging logs show the AWS mirror data limit; Docker Hub manifest includes Linux amd64",
+      "2": "build: Full required checks pass before delivery; two prior live-browser runs timed out on Loading your profiles in different tests; invoice-search passed three targeted repetitions unchanged"
+    },
+    "commit": "56f4703",
+    "doneAt": "2026-10-14T13:53:29Z"
+  },
+  "branch": "ci/f178-staging-ci-pulls-postgresql-directly-fro",
+  "baseCommit": "72e826c5a70e322bab6b8f20ce731dacf1b5bac6",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "ci/f178-staging-ci-pulls-postgresql-directly-fro",
+    "base": "main"
+  }
+}

@@ -15,9 +15,9 @@ reason; it joins the plan once the owner agrees.
 | 6 | Go API, watcher, ledger and signer | R-14…R-24; local create → pay → confirmed → settled twice with one invoice and matching ledger |
 | 7 | Login, app shell and profile wallets | Sign in, create freelancer profile, switch profiles and see the correct wallet |
 | 8 | First payment through the UI on Base USDC: invoice numbers, pay page, PDFs, personal requests, first-run onboarding | Sasha's Base Sepolia run; then enable other planned pairs individually |
-| 9 | Payment exceptions, refunds and notifications | On Anvil: partial → top-up → paid; overpay → claim → refund; expired partial → refund; late → held |
+| 9 | Payment exceptions, cancel and notifications | On Anvil: partial → top-up → paid; expired partial → held; late → held; cancel → later deposit held; each email sent once |
 | 10 | Freelancer work | One freelancer runs deposit → delivery → acceptance → final invoice paid on testnet |
-| 11 | Merchant stores and developer tools | Sample merchant uses SDK, pays and verifies an invoice.settled webhook |
+| 11 | Merchant stores, developer tools, connected wallet and refunds | Sample merchant uses SDK, pays and verifies an invoice.settled webhook; on Anvil overpay → claim → refund and expired partial → claim → refund |
 | 12 | Account security, send, handles and bank withdrawal | Send works on a fork; withdrawal works in provider sandbox |
 | 13 | Security review and personal mainnet trials | Full testnet exception suite, then 20 tiny personal mainnet invoices with zero reconciliation difference |
 
@@ -106,24 +106,29 @@ bullets it needs.
   5. What do you pay today for invoicing, stablecoin receipt and cash-out? Would you pick free with a visible 1% fee,
      a monthly plan, or your current method?
 
-## Phase 9: payment exceptions, refunds and notifications
+## Phase 9: payment exceptions, cancel and notifications
 
-- 9.1 Pay page and dashboard states for partial (remainder and deadline), expired, expired partial and late, each
-  with its next step. After 8.4. Overpaid waits for 11.10.1.
-- 9.2 Warnings for wrong chain, bridged USDC.e and address poisoning (compare the first and last 6 characters).
-  Wrong-network help requires a tx hash (D-33).
-- 9.3 Payer claims on `/pay`: evidence per Q-9 (wallet signature for self-custody, otherwise a destination and
-  support evidence); `refund_claims` with states. After 9.1.
-- 9.4 Refund tool: an ops command (`cmd/ops`) lists claims, approves or rejects them with a reason (D-60) and prints
-  the `refund(to, amount)` call for the refund-authority Safe; one refund of everything held by default (D-57).
-  The watcher books the refund. No new hot key. After 9.3. A refund shows in the invoice's Transactions list on the
-  owner page, beside the payments and the settlement (R-69).
-- 9.5 Cancel an unpaid invoice: settlement stops; later deposits stay held (D-26).
-- 9.6 Email notifications through a provider adapter and the outbox (D-65, Q-13): paid, settled, exception, claim
-  opened and resolved; per-profile on/off. The in-app bell also shows invoice events. After 8.1.
-- 9.7 Payer receipt email: an optional email field on `/pay`, kept per invoice for the receipt and claim updates
-  only (D-68). After 9.6.
-- 9.8 Exception suite on Anvil (the gate). After 9.1–9.7.
+Refunds moved to 11.10 (owner choice 2026-10-15): a payer who connects the wallet that sent the money proves it with a
+signature, which answers most of Q-9. Until then held money stays in its receiver; the refund-authority Safe can still
+return it by hand ([operations](docs/contracts/operations.md)). 9.3 and 9.4 became 11.10.2 and 11.10.3.
+
+- 9.1 A next step for every exception (R-77). Owner page: partial shows what is left and when the checkout closes,
+  beside the pay link; expired with nothing paid offers New invoice with the same client and amount; expired partial
+  shows the money held for the payer and offers a new invoice for the rest (D-25); late money shows as held. Pay page:
+  partial keeps the time left beside the remaining amount and asks the payer to copy the address from this page, not
+  from wallet history (address poisoning: a lookalike address planted in that history). After 8.4. Overpaid waits for
+  11.10.1.
+- 9.2 Payer warnings before sending (R-78): the address shows in groups of 4 characters so the payer can compare all
+  of it, not only its ends; the token line links the token contract on the explorer; on Arbitrum it says native USDC,
+  not USDC.e; paying from an exchange says to pick the same network there. Wrong-network help moved to 11.10.4.
+- 9.5 Cancel an invoice or request before any money arrives (R-79). After 8.3.
+- 9.6 Owner email through Resend behind an adapter and the outbox (D-65, R-80): paid, settled, money held (expired
+  partial, late, after cancel); per-profile on/off. Sending needs a verified sending domain and the owner's approval of
+  the account (Q-13); without an API key nothing is sent. After 9.1, 9.5.
+  - 9.6.1 The in-app bell shows the same invoice events beside incoming payments (R-81). After 9.6.
+- 9.7 Payer receipt email: an optional field on `/pay`, kept per invoice (D-68); one receipt email once paid (R-82).
+  Claim updates come with 11.10.2. After 9.6.
+- 9.8 Exception suite on Anvil, the gate (R-83). After 9.1–9.7.
 
 ## Phase 10: freelancer work
 
@@ -145,7 +150,7 @@ Freelancer before merchant (D-55). Phase 9 comes first for both, so phases 10 an
 - 10.8 Records: transfers between your own profiles are labeled "own transfer"; a deposit without an invoice stays
   "Unclassified" until the user labels it; CSV export with a classification column.
 
-## Phase 11: merchants and developers
+## Phase 11: merchants, developers, connected wallet and refunds
 
 - 11.1 Stores: project ID, logo, color, default checkout expiry; each invoice records its store; per-invoice
   override (D-30).
@@ -184,6 +189,18 @@ Freelancer before merchant (D-55). Phase 9 comes first for both, so phases 10 an
   - 11.10.1 Overpaid handling: the pay page and the owner's invoice page show money sent above the amount (held for
     the payer, D-26) with its next step and a way to return it. Until then neither page shows an overpaid line.
     After 11.10.
+  - 11.10.2 Refund claims on `/pay` (was 9.3): the payer connects the wallet that sent the money and signs a claim
+    naming the invoice and the destination; exchange deposits give a destination and support evidence instead (Q-9);
+    `refund_claims` with states; claim updates reach the payer email from 9.7. After 11.10.
+  - 11.10.3 Refund tool (was 9.4): an ops command (`cmd/ops`) lists claims, approves or rejects them with a reason
+    (D-60) and prints the `refund(to, amount)` call for the refund-authority Safe; one refund of everything held by
+    default (D-57). The watcher books the refund. No new hot key. A refund shows in the invoice's Transactions list on
+    the owner page, beside the payments and the settlement (R-69). After 11.10.2.
+  - 11.10.4 Wrong-network help (was in 9.2): the payer gives the tx hash, the API finds it on an enabled chain and
+    opens a recovery claim; `recover()` works only where our factory exists, and recovery is never promised (D-33).
+    After 11.10.2.
+  - 11.10.5 Refund suite on Anvil: overpay → claim → refund; expired partial → claim → refund; late → claim → refund;
+    the ledger matches the chain after each. After 11.10.1–11.10.4.
 - Before outside merchants: Q-11.
 
 ## Phase 12: account security, send and bank withdrawal
