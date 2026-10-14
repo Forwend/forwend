@@ -2,7 +2,7 @@
 
 - `main` is the development branch. Task branches still merge through PRs and must pass local `verify` and any
   required review. Automatic GitHub Actions runs are disabled for PRs into main and pushes to main.
-- `staging` is the batch-validation branch. Its push event runs the full CI registry, including CI-only checks.
+- `staging` is the batch-validation branch. Its push event runs the required and CI-only checks (`harness.py check --ci`).
   There is no additional PR-triggered run. Staging is not a deployment environment and this workflow deploys nothing.
 - PostgreSQL uses the official `postgres:17` image directly from Docker Hub. GitHub-hosted runners are
   [exempt from its public-image pull rate limit](https://docs.github.com/en/enterprise-cloud%40latest/actions/reference/limits).

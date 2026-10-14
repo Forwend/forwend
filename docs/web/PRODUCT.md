@@ -8,9 +8,9 @@ Product requirements and money policy live in [PROJECT](../PROJECT.md); future s
 - Separate work progress from payment status, due dates from checkout expiry, and available money from held money.
 - Partial, overpaid, expired, late and wrong-network payments need explicit next steps. Refunds follow approved claims;
   never promise automatic recovery or payment timing.
-- Pay page: show who is asking (issuer name, or a request's sender name, and invoice number) and the site's host
-  name. Before sending, show the short refund rule and "Forwend never asks you to pay a different address or an extra
-  fee." The invoice PDF is linked at any time; after settlement the page is the payer's receipt (R-48), with the receipt
+- Pay page: show who is asking (issuer name, or a request's sender name, and invoice number). The site's host name,
+  the short refund rule and "Forwend never asks you to pay a different address or an extra fee." live under Need help
+  (R-45, R-68), never in the pay box. The invoice PDF is linked at any time; after settlement the page is the payer's receipt (R-48), with the receipt
   PDF.
 - Personal profiles can request money: amount, note, expiry and a private link. Call it a request, not an invoice.
 - First run asks once what the user wants to do and says which profile each choice adds; the checklist names real next
@@ -21,4 +21,4 @@ Product requirements and money policy live in [PROJECT](../PROJECT.md); future s
 - Say the exact network and token; planned support is not live support. First payment slice is Base + USDC.
 - Plain words, short instructions, no crypto knowledge assumed beyond choosing the specified network.
 
-Visual direction and accessibility: [DESIGN.md](DESIGN.md). Required copy behavior: PROJECT R-6…R-12.
+Visual direction and accessibility: [DESIGN.md](DESIGN.md).

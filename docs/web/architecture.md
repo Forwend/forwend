@@ -1,7 +1,7 @@
 # Web architecture
 
-One Next.js app (App Router, TypeScript strict) for every surface: landing `/`, private `/kit`, and later the
-dashboard and hosted checkout `/pay/<invoice>` (PROJECT D-2). Rules: [rules.md](rules.md).
+One Next.js app (App Router, TypeScript strict) for every surface: landing `/`, private `/kit`, the signed-in
+app `/app` and the public checkout `/pay/<invoice>` (PROJECT D-2). Rules: [rules.md](rules.md).
 Whole system: [architecture.md](../architecture.md).
 
 ## Parts
@@ -10,18 +10,17 @@ Whole system: [architecture.md](../architecture.md).
 |---|---|
 | `packages/design-tokens` | Every color, type size, space, radius, shadow, blur and duration as CSS variables, light and dark (D-4). Tailwind v4 reads them; a unit test checks contrast (R-2). |
 | `packages/ui-web` | Shared React components built only on the tokens: buttons, fields, address, payment status and money display, motion, theme switch. Money is `bigint` base units plus decimals (D-6). |
-| `apps/web` | Pages and page-specific sections (landing, kit). Imports tokens and components; adds no raw colors or sizes. |
+| `apps/web` | Routes, screens and features: landing, kit, `/app`, `/pay`. Imports tokens and components; adds no raw colors or sizes. |
 | `/kit` | Shows every token and component with all states; private (`KIT_ENABLED=1`, `noindex`, not in the sitemap) (D-5, R-4). |
 
-The target source layout and naming rules are in [structure.md](structure.md): routes assemble screens,
-features own product behavior, and shared UI components are grouped by purpose. Existing paths are migrated
-only in scoped refactors. `ui-web/src/index.ts` remains the public package entry point.
+The source layout and naming rules are in [structure.md](structure.md): routes assemble screens,
+features own product behavior, and shared UI components are grouped by purpose. `ui-web/src/index.ts` remains the public package entry point.
 
 ## Visual direction
 
 A Dawn Path for marketing, B Dusk Ledger's dark framed product sections, C Halftone Horizon's dots as a secondary
 texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the product brief in [PRODUCT.md](PRODUCT.md)
-(both maintained by the impeccable skill). Mood images and their prompts: [images.md](images.md).
+(edit them with the change they describe). Mood images and their prompts: [images.md](images.md).
 
 ## Data and trust
 
@@ -39,8 +38,8 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   and a tab bar (Home, Transactions, Balances, More). More derives its remaining pages from the same `APP_NAV` and
   opens the profile switcher sheet; it also links billing details for businesses. Switching
   profile opens the new profile's overview, `/app` (R-76). `/app` is the
-  dashboard: the total balance (one token in its unit, several as a USD estimate) with Send, Receive, Transfer and
-  Withdraw (only Receive works; the others say why when pressed), pending and held only when not zero, Networks (each
+  dashboard: the total balance (one token in its unit, several as a USD estimate) and its money actions
+  ([DESIGN.md](DESIGN.md)), pending and held only when not zero, Networks (each
   chain and token), and recent activity. Receive opens a sheet where the user picks the token, then the network
   (`features/receive/lib/receive-choice.ts`, keyed by chain family so non-EVM families fit later); the choice folds into
   one row with Change, over the full address (`ReceiveAddress`), QR code and an exact network and token warning (the
@@ -66,7 +65,7 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   last key. ⌘K and notifications open a transaction as `/app/transactions?q=<hash>`.
 - API data lives in an RTK Query cache (D-47): one store per tab (`store/store.ts`, mounted by
   `providers/store-provider.tsx` inside Privy), one `apiSlice` that adds the Privy access token, and endpoints
-  injected by each feature (`features/*/…-api.ts`). On a 429 the slice waits `Retry-After` and sends the request once
+  injected by each feature (`features/*/api/*-api.ts`). On a 429 the slice waits `Retry-After` and sends the request once
   more; if that is refused too, reads pause 15 s, doubling with each refusal up to 5 min, until an answer is not a
   429 (`shared/api/rate-limit.ts`, [api rate limits](../backend/api.md#rate-limits)). Query arguments carry the profile, so a profile never shows
   another's data; a created profile joins the cached list without a refetch. A store belongs to one signed-in
@@ -81,12 +80,10 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   failed request, shown like any other failure, and logged by endpoint and field, never by value; a body that breaks
   its schema is never sent. `openapi-typescript` is not used: it needs the TypeScript compiler API, which TypeScript 7
   does not have.
-- Features depend on each other in three places: the receive sheet (`features/receive`) takes the `Balances` type from
-  `features/balances` to show which networks and tokens the address takes, `features/invoices` takes the API
-  status values and `activityStatus` from `features/activity`, so an invoice shows the same status everywhere, and
-  the `TokenBalance` type from `features/balances` for the tokens an invoice can use; `features/pay` takes the
-  `Invoice` type, the `getInvoice` query and the progress helpers from `features/invoices` and the API status values
-  from `features/activity`.
+- Features import each other here (checked with grep, 2026-10-15): receive → balances; invoices → activity, balances;
+  activity → invoices; pay → activity, invoices (including the `check-status` and `invoice-progress` components);
+  onboarding → activity, invoices, profiles, transactions. activity ↔ invoices is a cycle, which
+  [structure.md](structure.md) forbids; a queued task removes it. Add no new edge without listing it here.
 - Checkout `/pay/<id>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed id is a 404;
   an id the API does not know shows the 404 page. It reads the public `GET /v1/invoices/{id}` every 15 s through a
   store whose requests carry no token (`providers/public-store-provider.tsx`). The browser recomputes the receive

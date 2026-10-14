@@ -1,6 +1,6 @@
 # Web app
 
-Next.js app: landing page, private `/kit`, later dashboard and checkout.
+Next.js app: landing page, private `/kit`, signed-in `/app` and public checkout `/pay/<id>`.
 
 ## Commands
 

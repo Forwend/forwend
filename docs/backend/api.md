@@ -11,7 +11,7 @@ Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/me/onboarding`,
 
 ## Contract first
 
-- `apps/backend/api/openapi.yaml` (OpenAPI 3.1) describes every route; change it before code.
+- `apps/backend/api/openapi.yaml` (OpenAPI 3.1) describes every route except `/healthz`; change it before code.
 - Go request and response types are written by hand in each module's `model.go` (`internal/httpapi/invoiceapi/model.go`)
   until a generator is added (oapi-codegen for Go); the web app's are Zod schemas in its features
   (`apps/web/src/features/*/schemas/`, see docs/web/architecture.md). Keep them equal to the spec.
@@ -20,7 +20,7 @@ Routes today: `/healthz`, `POST /v1/me`, `GET /v1/me`, `POST /v1/me/onboarding`,
 
 - Prefix `/v1` (except `/healthz`). A breaking change means `/v2`.
 - Plural nouns, IDs in the path: `/v1/profiles/{profileId}/invoices`, `/v1/invoices/{invoiceId}`.
-- `GET` reads and never changes state. `POST` creates or runs an action (`POST /v1/invoices/{id}/cancel`).
+- `GET` reads and never changes state. `POST` creates or runs an action (`POST /v1/invoices/{invoiceId}/recheck`).
 - `PUT` creates or replaces a whole editable resource (billing details).
 - Invoice terms and ledger entries are immutable. Transfer and invoice statuses change through validated worker
   transitions. Clients cannot edit money records with `PUT` or `DELETE`.
@@ -115,7 +115,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
   the intent's status and the wait kind the signer stores with it, never from log text.
 - Payer chooses (R-56, D-75, D-76): create with `amountUsd` alone (a decimal like `"12.50"`) instead of `chainId`,
   `token` and `amount`. The invoice accepts every enabled token on every enabled chain the worker already watches
-  (others would miss payments, SEC-02), each at 1 USD per token: the amount in the token's decimals, 422 when they
+  (others would miss payments), each at 1 USD per token: the amount in the token's decimals, 422 when they
   can't hold it exactly. Each option is an `invoices` row of its own with its own on-chain id (the first random, the
   others `keccak256(abi.encode(first id, chain id, token))`, so the pay page can tie them to the link), terms and
   receive address, so the watcher, ledger and signer treat it as any invoice; the first row is the invoice (its id is the pay
@@ -182,13 +182,13 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
 - Every `POST` that creates something or moves money needs an `Idempotency-Key` header. Exceptions: `POST /v1/me`
   (signup) and `POST /v1/me/onboarding` happen once per user, so the user's token is the key.
 - First call: 201. Same key and body again: 200 with the same resource. Same key, other body: 409.
-- Keys are unique per profile (per user for `POST /v1/profiles`), 1–255 characters; a missing or longer key is 400. The server stores a SHA-256 of the
+- Keys are unique per profile (per user for `POST /v1/profiles`), 1–255 bytes of UTF-8; a missing or longer key is 400. The server stores a SHA-256 of the
   normalized values, never the body, so field order, spacing and address letter case don't matter. A request that
   fails validation stores nothing. Two requests with one key at once get one resource.
 
 ## Auth
 
-- `Authorization: Bearer <Privy access token>`, checked by middleware on every route.
+- `Authorization: Bearer <Privy access token>`, checked by middleware on every route not marked `security: []`.
 - Public routes (checkout reads) are marked `security: []` in the spec. `/healthz` is also public and uses its own status response. No other route is public by default.
 - Profile-scoped routes check that the user owns the profile: 403 otherwise, also for an unknown or malformed
   profile ID, so callers can't probe which profiles exist.
@@ -209,7 +209,7 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
 
 - One shape: `{ "error": { "code": "invoice_not_found", "message": "…" } }`. Codes are snake_case and listed in the spec.
 - 400 malformed, 401 no or bad token, 403 not yours, 404 missing, 409 conflict, 422 invalid value, 429 too many
-  requests, 503 a network the worker has not scanned yet (`network_not_ready`, on invoice create), 500 anything else.
+  requests, 503 a network the worker has not scanned yet (`network_not_ready` on invoice create, `network_unavailable` when a recheck cannot read it), 500 anything else.
   A profile has at most 1,000 invoices open for payment at once and creates at most 500 a day: 422 above.
 - A 500 never shows internal details. `httpio.WriteError` maps sentinel errors to codes in one place.
 

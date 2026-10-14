@@ -1,7 +1,8 @@
 # Development workflow
 
 Entry point: `python3 scripts/harness.py`. Add `-h` after any command for options.
-Check definitions live only in [config.json](config.json); staging CI runs the same registry.
+Check definitions live only in [config.json](config.json); staging CI runs the required and CI-only checks. Checks that are neither (images-check, lighthouse,
+diagrams) run only when a task names them.
 Open task state lives in `tasks.json` (edit through the runner); completed records live in `archive/`;
 logs live in ignored `runs/`.
 Runner regression tests live in `tests/test_harness.py`. No installed skill is needed to use this workflow.
@@ -58,7 +59,7 @@ manual until a task explicitly adds import-boundary checks; do not claim that pa
 
 - `check` runs required checks without changing task state; `check CHECK` runs one; `check --ci` adds CI-only checks.
 - When every file a task changed is Markdown or under `archive/`, `verify` and the pre-commit hook skip the required
-  checks not marked `"docs": true` in config.json; the task's own checks still run, and staging CI runs everything.
+  checks not marked `"docs": true` in config.json; the task's own checks still run, and staging CI runs the required and CI-only checks.
 - `verify` rejects changed inputs during a run. Later source, config or task-constraint edits require another verify.
 - Proof names must refer to checks that passed. The description explains relevance; independent review checks that claim.
 - `--keep` path globs are enforced. Behavioral constraints need tests and review; prose alone is not a machine check.
