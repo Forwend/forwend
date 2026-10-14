@@ -39,8 +39,8 @@ for task in json.loads((root / 'docs/tasks.json').read_text())['tasks']:
             errors.append(f'docs/tasks.json: {task["id"]} refs {ident}, which docs/PROJECT.md does not define')
 for number, line in enumerate(project, 1):
     if re.match(r'\| R-\d+ \|', line):
-        named = line.split(' | ')[3].split('manual')[0]  # everything after "manual" is free text
-        for name in re.sub(r'\([^)]*\)', '', named).split(','):
+        named = re.sub(r'\([^)]*\)', '', line.split(' | ')[3]).split('manual')[0]  # notes in (), free text after manual
+        for name in named.split(','):
             if name.strip() and name.strip() not in checks:
                 errors.append(f'docs/PROJECT.md:{number}: check {name.strip()!r} is not in docs/config.json')
 for error in errors:

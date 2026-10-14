@@ -281,6 +281,7 @@ class HarnessTests(unittest.TestCase):
             {'id': 'unit', 'argv': [sys.executable, '-c', 'raise SystemExit(1)'], 'required': True, 'precommit': True}]
         self.save()
         git = lambda *args: subprocess.run(['git', *args], cwd=self.root, check=True, capture_output=True, text=True).stdout
+        (self.root / 'tool.py').write_text('tool = 1\n')
         git('init', '-q')
         git('add', '.')
         git('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-qm', 'base')
@@ -291,13 +292,32 @@ class HarnessTests(unittest.TestCase):
         git('add', 'README.md')
         self.assertEqual(h.run_order(h.State(self.root), self.task), ['docs-check'])
         self.assertFalse(h.needs_review(h.State(self.root), self.task))
+        self.assertTrue(h.needs_review(h.State(self.root), {**self.task, 'review': True}))
         with contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(hook(), 0)
+            git('mv', 'tool.py', 'notes.md')  # a code file renamed to Markdown is still a code change
+            self.assertEqual(h.run_order(h.State(self.root), self.task), ['docs-check', 'unit'])
+            self.assertTrue(h.needs_review(h.State(self.root), self.task))
+            self.assertEqual(hook(), 1)
+            git('mv', 'notes.md', 'tool.py')
             (self.root / 'value.py').write_text('value = 1\n')
             git('add', 'value.py')
             self.assertEqual(h.run_order(h.State(self.root), self.task), ['docs-check', 'unit'])
             self.assertTrue(h.needs_review(h.State(self.root), self.task))
             self.assertEqual(hook(), 1)
+
+    def test_code_change_cannot_finish_without_review(self):
+        from argparse import Namespace
+        self.assertEqual(self.verify(), 0)
+        out = io.StringIO()
+        with patch.object(h, 'changed_since', return_value=['value.py']):
+            with contextlib.redirect_stdout(out):
+                h.cmd_status(self.root, Namespace())
+            with self.assertRaises(h.Refused):
+                h.cmd_done(self.root, Namespace(id='F001', proof=None))
+        self.assertIn('independent review', out.getvalue())
+        with patch.object(h, 'changed_since', return_value=['README.md']), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(h.cmd_done(self.root, Namespace(id='F001', proof=None)), 0)
 
     def test_failed_and_missing_commands_never_verify(self):
         for argv, outcome in [([sys.executable, '-c', 'raise SystemExit(7)'], 'failed'),

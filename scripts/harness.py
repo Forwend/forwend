@@ -49,7 +49,8 @@ def is_path_rule(rule):
 
 def changed_since(root, base):
     """Paths changed since commit `base` (committed, staged, unstaged, or untracked); None without git."""
-    tracked = git(root, 'diff', '--name-only', base or EMPTY_TREE)
+    # --no-renames lists a renamed file's old path too, so `git mv x.py notes.md` is not a docs-only change
+    tracked = git(root, 'diff', '--name-only', '--no-renames', base or EMPTY_TREE)
     untracked = git(root, 'ls-files', '--others', '--exclude-standard')
     if tracked is None or untracked is None:
         return None
@@ -743,7 +744,7 @@ def cmd_status(root, args):
                                                      if here and here != task['branch'] else ''))
         reason = stale_reason(state, task)
         print('  last: ' + evidence_line(task) + (f' [stale: {reason}]' if reason else ''))
-        if task.get('review'):
+        if needs_review(state, task):
             review = (task.get('evidence') or {}).get('review')
             print('  review: ' + (f'{review.get("result")} by {review.get("by")} at {review.get("at")}: {shorten(review.get("summary"), 240)}'
                                  if review else 'required, not done yet'))
@@ -837,7 +838,7 @@ def cmd_show(root, args):
     for key in ('branch', 'spec', 'plan', 'blockedReason', 'baseCommit'):
         if task.get(key):
             print(f'{key}: {task[key]}')
-    if task.get('review'):
+    if needs_review(state, task):
         review = (task.get('evidence') or {}).get('review')
         print('review: ' + (f'{review.get("result")} by {review.get("by")} at {review.get("at")}: {review.get("summary")}'
                             if review else 'required, not done yet'))
@@ -1449,8 +1450,12 @@ def cmd_drop(root, args):
 
 def needs_review(state, task):
     """A task asked for review, or it changed more than docs: code never merges on its author's word alone."""
+    if task.get('review'):
+        return True
     paths = changed_since(state.root, task.get('baseCommit'))
-    return bool(task.get('review')) or (paths is not None and not docs_only(paths))
+    if paths is None:  # a git repository whose diff failed (such as a missing base commit) cannot prove docs-only
+        return git(state.root, 'rev-parse', '--is-inside-work-tree') is not None
+    return not docs_only(paths)
 
 
 def review_passed(state, task):
@@ -1545,7 +1550,7 @@ def cmd_hook(root, args):
     runs = root / RUNS
     runs.mkdir(parents=True, exist_ok=True)
     stamp = now().replace('-', '').replace(':', '')
-    staged = (git(root, 'diff', '--cached', '--name-only') or '').splitlines()
+    staged = (git(root, 'diff', '--cached', '--name-only', '--no-renames') or '').splitlines()
     docs = docs_only([name for name in staged if name and not name.startswith(BOOKKEEPING)])
     results = [run_check(root, check, runs / f'precommit-{stamp}-{check["id"]}.log')
                for check in state.config.get('checks') or []
