@@ -20,7 +20,6 @@ import { CheckStatus } from "@/features/invoices/components/check-status";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
 import { INVOICE_PDFS, INVOICE_STEPS } from "@/features/invoices/constants/invoices";
 import {
-  exactDigits,
   formatDueDate,
   invoiceNumber,
   invoicePdfUrl,
@@ -45,6 +44,7 @@ import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { chainName, txLink } from "@/shared/lib/chains";
+import { exactDigits } from "@/shared/lib/money";
 
 const NOT_FOUND = 404;
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });

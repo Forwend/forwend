@@ -24,8 +24,6 @@ export const timeLeft = (seconds: number) =>
   seconds < 60 ? "under a minute" : `about ${Math.ceil(seconds / 60)} min`;
 
 export const INVOICES_COPY = {
-  usd: "USD",
-  anyNetwork: "Any network",
   invoices: "Invoices",
   newInvoice: "New invoice",
   emptyTitle: "No invoices yet",

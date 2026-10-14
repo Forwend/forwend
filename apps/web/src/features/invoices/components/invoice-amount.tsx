@@ -1,7 +1,9 @@
 import { Money, Skeleton, shortAddress } from "@forwend/ui-web";
 import { INVOICES_COPY } from "@/features/invoices/constants/invoices-copy";
-import { exactDigits, tokenKey } from "@/features/invoices/lib/invoices";
+import { tokenKey } from "@/features/invoices/lib/invoices";
 import type { InvoiceSummary, InvoiceToken } from "@/features/invoices/types/invoices";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { exactDigits } from "@/shared/lib/money";
 
 export interface InvoiceAmountProps {
   invoice: InvoiceSummary;
@@ -24,7 +26,7 @@ export function InvoiceAmount({ invoice, tokens, className }: InvoiceAmountProps
       baseUnits={amount}
       decimals={token.decimals}
       fractionDigits={exactDigits(amount, token.decimals)}
-      token={choosing ? INVOICES_COPY.usd : token.symbol}
+      token={choosing ? MONEY_COPY.usd : token.symbol}
       className={className}
     />
   ) : (

@@ -67,10 +67,10 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   failed request, shown like any other failure, and logged by endpoint and field, never by value; a body that breaks
   its schema is never sent. `openapi-typescript` is not used: it needs the TypeScript compiler API, which TypeScript 7
   does not have.
-- Features import each other here (checked with grep, 2026-10-15): receive → balances; invoices → activity, balances;
-  activity → invoices; pay → activity, invoices (including the `check-status` and `invoice-progress` components);
-  onboarding → activity, invoices, profiles, transactions. activity ↔ invoices is a cycle, which
-  [structure.md](structure.md) forbids; a queued task removes it. Add no new edge without listing it here.
+- Features import each other only here: receive → balances; invoices → activity, balances; pay → activity, invoices
+  (including the `check-status` and `invoice-progress` components); onboarding → activity, invoices, profiles,
+  transactions. No cycles ([structure.md](structure.md)); money helpers and words that several features show live in
+  `shared/lib/money.ts` and `shared/constants/money-copy.ts`. Add no new edge without listing it here.
 - Checkout `/pay/<id>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed id is a 404;
   an id the API does not know shows the 404 page. It reads the public `GET /v1/invoices/{id}` every 15 s through a
   store whose requests carry no token (`providers/public-store-provider.tsx`). The browser recomputes the receive
