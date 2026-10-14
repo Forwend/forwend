@@ -867,7 +867,7 @@
         "Mobile navigation exposes every available page for personal, freelancer and merchant profiles through the main tabs and More, with profile switching, clear current-page state, accessible sheet dismissal without a focus ring on open, and safe-area spacing. The More sheet opens with a profile card (avatar, name, Switch profile, then Billing details for businesses), lists pages as grouped cards and shows unbuilt pages as Coming soon chips."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "unit",
@@ -966,18 +966,25 @@
         "taskHash": "60a03a9348723756",
         "filesHash": "7fd3376eb099204d",
         "proof": {
-          "1": "e2e: Pay and owner browser tests verify short steps, visible full counts and accessible time hints; screenshots reviewed at mobile, tablet and desktop widths.",
+          "1": "e2e: Pay and owner browser tests verify short steps, visible full counts and accessible time hints.",
           "2": "e2e: Existing payment state and accessibility tests cover confirmation updates, announcements and transitions.",
-          "3": "e2e: Paid checkout behavior and receipt links pass; prior visual checks cover centered content, long names and no return link.",
-          "4": "unit: Shared Activity mapping and invoice tests cover detected and partial-payment states, preserving paid and settled precedence; browser tests cover detail and list badges.",
-          "5": "unit: Money tests cover 201 tokens aggregated into one summary, separate pending and held, and sub-cent totals; browser flow opens token balances.",
-          "6": "images-check: balance-day.webp generated with Codex image_gen in edit mode from balance-night; prompt and size recorded. Reviewed in the live hero at 390 and 1440 px in light mode; figures, chart ticks and actions readable, dark mode unchanged.",
-          "7": "e2e: Phone navigation tests reach Requests or Invoices, Activity, billing and Profiles for all profile kinds via the Switch profile card; verify dismissal, focus return and desktop resize. Screenshots of the new sheet reviewed for personal and merchant in both themes, with no focus ring on open."
-        }
+          "3": "e2e: Paid checkout behavior and receipt links pass; visual checks cover centered content, long names and no return link.",
+          "4": "unit: Activity mapping and invoice tests cover detected and partial-payment states; browser tests cover detail and list badges.",
+          "5": "unit: Money tests cover 201 tokens in one summary, separate pending and held, and sub-cent totals.",
+          "6": "images-check: balance-day.webp recorded with its prompt; reviewed in the live hero at 390 and 1440 px.",
+          "7": "e2e: Phone navigation tests reach every page and Profiles for all profile kinds through the new More sheet."
+        },
+        "commit": "04e7f82",
+        "doneAt": "2026-10-14T13:10:34Z"
       },
       "branch": "fix/f175-keep-invoice-confirmation-counts-readabl",
       "baseCommit": "484d9d795d40eeda66014ebd870f23ad3d60a30c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f175-keep-invoice-confirmation-counts-readabl",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
