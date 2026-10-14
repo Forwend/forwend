@@ -22,6 +22,7 @@ from pathlib import Path
 TASKS = 'docs/tasks.json'
 ARCHIVE = 'docs/archive'
 CONFIG = 'docs/config.json'
+PROJECT = 'docs/PROJECT.md'  # requirement and decision rows, one per line: `| R-1 | ...`
 RUNS = 'docs/runs'
 LOCK = 'docs/.harness.lock'
 STATES = ('not_started', 'active', 'blocked', 'verified', 'passing', 'dropped')
@@ -694,7 +695,7 @@ def next_step(state, found):
         reason = stale_reason(state, task)
         if reason:
             return f'`verify {task["id"]}` again ({reason})'
-        if task.get('review') and not review_passed(state, task):
+        if needs_review(state, task) and not review_passed(state, task):
             return (f'get an independent review: a reviewer with fresh context reads `show {task["id"]}` and `git diff`, '
                     f'then records `review {task["id"]} --pass|--fail --summary "..."`')
         return f'commit, then `done {task["id"]} --proof ...`'
@@ -820,6 +821,15 @@ def cmd_show(root, args):
     for key, label in (('dependsOn', 'depends on'), ('refs', 'refs')):
         if task.get(key):
             print(f'{label}: ' + ', '.join(task[key]))
+    if task.get('refs'):
+        try:
+            rows = {line.split(' | ', 1)[0][2:]: line for line in (root / PROJECT).read_text(encoding='utf-8').splitlines()
+                    if line.startswith('| ') and ' | ' in line}
+        except OSError:
+            rows = {}
+        for ref in task['refs']:
+            if ref in rows:
+                print(rows[ref])
     if not task.get('refs') and task.get('state') not in ('passing', 'dropped'):
         print(f'refs: none; add the relevant requirement or decision with `edit {task["id"]} --ref ID` before implementation')
     if task.get('keep'):
@@ -1155,7 +1165,7 @@ def cmd_done(root, args):
             reason = stale_reason(state, task)
             if reason:
                 raise Refused(f'{task["id"]} evidence is stale ({reason}); run `verify {task["id"]}` again')
-            if task.get('review') and not review_passed(state, task):
+            if needs_review(state, task) and not review_passed(state, task):
                 raise Refused(f'{task["id"]} needs an independent review of the current files: a reviewer with fresh context '
                               f'reads `show {task["id"]}` and `git diff`, then records `review {task["id"]} --pass|--fail --summary "..."`')
             commit = None
@@ -1435,6 +1445,12 @@ def cmd_drop(root, args):
                    and other.get('state') not in ('passing', 'dropped')]
         return f'dropped {task["id"]}' + (f'\nstill depending on it: {", ".join(waiting)} (`edit ID --after ...`)' if waiting else '')
     return transition(root, args.id, change)
+
+
+def needs_review(state, task):
+    """A task asked for review, or it changed more than docs: code never merges on its author's word alone."""
+    paths = changed_since(state.root, task.get('baseCommit'))
+    return bool(task.get('review')) or (paths is not None and not docs_only(paths))
 
 
 def review_passed(state, task):

@@ -261,6 +261,18 @@ class HarnessTests(unittest.TestCase):
             h.parse_proof(['1=nonexistent_test'], task)
         self.assertEqual(h.parse_proof(['1=unit: value assertion'], task)['1'], 'unit: value assertion')
 
+    def test_show_prints_referenced_project_rows(self):
+        self.task['refs'] = ['R-2', 'D-9']
+        self.save()
+        (self.root / h.PROJECT).write_text('| R-1 | one |\n| R-2 | two | e2e |\n| D-9 | nine |\n')
+        from argparse import Namespace
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            h.cmd_show(self.root, Namespace(id='F001', history=False))
+        self.assertIn('| R-2 | two | e2e |', out.getvalue())
+        self.assertIn('| D-9 | nine |', out.getvalue())
+        self.assertNotIn('| R-1 |', out.getvalue())
+
     def test_docs_only_changes_run_only_docs_checks(self):
         from argparse import Namespace
         self.task['verification'] = ['docs-check']
@@ -278,11 +290,13 @@ class HarnessTests(unittest.TestCase):
         (self.root / 'README.md').write_text('docs\n')
         git('add', 'README.md')
         self.assertEqual(h.run_order(h.State(self.root), self.task), ['docs-check'])
+        self.assertFalse(h.needs_review(h.State(self.root), self.task))
         with contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(hook(), 0)
             (self.root / 'value.py').write_text('value = 1\n')
             git('add', 'value.py')
             self.assertEqual(h.run_order(h.State(self.root), self.task), ['docs-check', 'unit'])
+            self.assertTrue(h.needs_review(h.State(self.root), self.task))
             self.assertEqual(hook(), 1)
 
     def test_failed_and_missing_commands_never_verify(self):

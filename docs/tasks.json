@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 190,
+  "nextId": 191,
   "tasks": [
     {
       "id": "F179",
@@ -493,6 +493,95 @@
         "branch": "docs/f189-docs-keep-only-open-work-and-one-copy-of",
         "base": "main"
       }
+    },
+    {
+      "id": "F190",
+      "type": "fix",
+      "behavior": "show ID prints the text of each referenced PROJECT row, and docs-check fails on cited IDs or check names that do not exist",
+      "acceptance": [
+        "harness show ID prints each referenced R-, D-, Q- or A- row from docs/PROJECT.md under the refs line, so a task never needs the whole file; a harness test covers it",
+        "docs-check reports any R-, D-, Q- or A- ID cited in the docs or in open task refs that PROJECT.md does not define, and any PROJECT Check-column name that docs/config.json does not define (manual entries allowed); it passes on the current docs",
+        "done and status require a passing independent review for every task that changes more than docs, as well as for tasks added with --review; workflow.md says so; a harness test covers both cases"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "harness",
+        "docs-check"
+      ],
+      "refs": [
+        "R-25"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-14T22:25:03Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F190-20261014T222503Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F190-20261014T222503Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F190-20261014T222503Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F190-20261014T222503Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 93.6,
+            "log": "docs/runs/F190-20261014T222503Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F190-20261014T222503Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 192.0,
+            "log": "docs/runs/F190-20261014T222503Z-e2e.log"
+          }
+        ],
+        "taskHash": "b81be3bdd8e09322",
+        "filesHash": "4d85c96217bb96c9",
+        "proof": {
+          "1": "harness: test_show_prints_referenced_project_rows shows show prints only the referenced rows",
+          "2": "docs-check: passes on the current docs after fixing R-24's Q-4 and the S-spike pointers; a temporary Q-999 and a nonexistent-check name made it report 2 errors",
+          "3": "harness: test_docs_only_changes_run_only_docs_checks asserts needs_review is false for a docs-only change and true once code changes; done and status call needs_review"
+        }
+      },
+      "branch": "fix/f190-show-id-prints-the-text-of-each-referenc",
+      "baseCommit": "b91c9a04f7ba73ce38b285f35526ee3fbb305b33",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

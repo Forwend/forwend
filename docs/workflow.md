@@ -9,8 +9,8 @@ Runner regression tests live in `tests/test_harness.py`. No installed skill is n
 
 ## One task at a time
 
-1. `status` gives current state and the next action. `show ID` gives acceptance, refs, checks and must-not-change paths.
-   Read only the referenced PROJECT rows and owning package instructions. If refs are missing, add the relevant
+1. `status` gives current state and the next action. `show ID` gives acceptance, refs with the text of each
+   referenced PROJECT row, checks and must-not-change paths. Read only those rows and the owning package instructions. If refs are missing, add the relevant
    requirement or decision with `edit ID --ref R-N` before implementation. Use `show ID --history` only to investigate
    earlier notes or check results; dated notes are history, so confirm they still apply. Do not load all of tasks.json,
    PROJECT.md or the runner source for ordinary task work.
@@ -24,7 +24,8 @@ Runner regression tests live in `tests/test_harness.py`. No installed skill is n
    Identify the owner, filename and allowed dependencies; search for existing code before adding another shared helper.
    Reproduce bugs first. Make the smallest fix and run its direct checks. Add tests for behavior, not formatting or copied prose.
 5. `verify ID --proof "1=CHECK: evidence" ...` runs task and required checks. Each acceptance line needs a named check.
-6. If review is required, a fresh reviewer reads `show ID` and the diff, then runs `review ID --pass|--fail --summary "findings"`.
+6. Review is required for every task that changes more than docs (`done` refuses it otherwise) and for tasks added
+   with `--review`. A fresh reviewer reads `show ID` and the diff, then runs `review ID --pass|--fail --summary "findings"`.
 7. With commit/push/merge authorization, commit the verified files and run `done ID`. It pushes, opens the PR,
    checks the delivery policy ([staging.md](staging.md)) and merges.
    Pending CI: repeat `done ID`. Failed CI: fix, verify, review and commit again. Approval or closed PR: ask the owner.
@@ -45,7 +46,8 @@ For a refactor, acceptance must require unchanged behavior and public contracts,
 test discovery, and the relevant existing checks. Record unrelated cleanup separately rather than expanding
 the task. The structure rules do not authorize adding dependencies or moving code outside the task scope.
 
-`docs-check` validates documentation links and decision IDs, not source architecture. Structure review is
+`docs-check` validates documentation links, that cited R-/D-/Q-/A- IDs and PROJECT check names exist, and that each
+decision is defined once; not source architecture. Structure review is
 manual until a task explicitly adds import-boundary checks; do not claim that passing lint proves ownership.
 
 ## Evidence and scope
