@@ -50,9 +50,12 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - ⌘K (or the search field) opens one command dialog: pages, actions, other profiles and recent transactions,
   filtered as you type. Arrow keys move, Enter opens, Escape closes.
 - The account menu holds the app's one theme control, a Dark mode switch item, on desktop and phones.
-- Phones: the header becomes a top bar with the account initial, a search pill and notifications. A bottom tab bar has Home, Transactions, Balances and Profiles (Profiles
-  opens the profile sheet); icon over label, the current tab's icon on the second surface. Pages carry no profile
-  pill: Profiles is the one way to switch on a phone. A switch opens the new profile's overview (R-76).
+- Phones: the header becomes a top bar with the account initial, a search pill and notifications. A bottom tab bar has Home, Transactions, Balances and More;
+  large icons over labels, with the whole current tab on the second surface. More opens a sheet: first a profile card
+  (avatar, name, Switch profile and an up/down selector icon, then Billing details for businesses), then the remaining
+  sidebar pages for the profile type as grouped cards of rows with an icon tile, then unbuilt pages as small
+  Coming soon chips that are not links. Current-page links include nested pages; More stays selected for those pages.
+  The bar and page padding include the bottom safe area, and toasts sit above it. A switch opens the new profile's overview (R-76).
 - A choice opened from the sidebar is a menu; the same choice on a phone is a bottom sheet, which becomes a centered
   panel from small screens up. Both are solid surface panels with the float shadow. Menus rise from the edge they
   open on and the phone sheet slides up from the screen edge; the centered panel appears without motion. Reduced
@@ -62,12 +65,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Totals across tokens (the total balance, its chart, the business figures, money in and out) are in USD, each
   stablecoin counted as 1 USD. An info icon after "USD" marks the estimate and explains it in a tooltip. A row for one
   token keeps its symbol.
-- Personal overview: the dawn (night in dark mode) valley image is the page's one image moment. A surface wash keeps
-  the total, its change over the range and the money actions readable over the sky. In light mode, mute the image
-  and strengthen the pale wash toward the bottom so action labels and chart ticks need no text outline. On desktop the card keeps the
-  4:1 shape within a minimum and maximum height: the total sits at the top left, the round actions at the
-  bottom left, and the chart fills the right side. The total scales with its column (container units). Phones center
-  the total and put the chart in its own panel below. The card has one padding on all sides.
+- Personal overview: one valley in both themes, a pale mint daytime sky in light mode and night in dark mode. In light mode a surface wash over the lower half keeps chart ticks and money actions readable. Pending and held money each use one USD
+  summary link to Balances, where exact amounts remain separate by token and network; never list every token in
+  the hero. Positive totals below a cent read `<0.01 USD`. The card is at least 24rem tall and grows with its content.
+  On desktop, the total sits at the top left, the round actions at the bottom left, and the chart fills the right side. The total scales with its column (container units). Phones center the total
+  with space before the actions at the bottom, and put the chart in its own panel below.
 - Business overview (merchant, freelancer, R-63): a Summary panel whose ruled header names the range and holds the
   range control, over one figure grid (Balance today, Received, Sent, On its way); then the Received chart (its header
   counts the payments in) beside Balances by network, both stretched to one height; then the latest payments with View
@@ -126,8 +128,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Detected, Confirming and Paid fade in, the waiting one moving (Partially paid tinted on Paid), one line for what the
   steps cannot say ("Final check", or what is left to pay), and each payment with its amount, time,
   short hash and explorer link. The address stays only while money is still due. Closed says so in one line. Paid
-  replaces the panel with a check that scales in, "Paid", the amount, payee and time, View transaction, Download
-  receipt and Back to <host> when the invoice has a return link. The payer never sees Settled, status pills,
+  replaces the panel with centered content and generous vertical padding: a check that scales in, "Paid", the amount, payee and time, View transaction, Download
+  receipt and Back to <host> when the invoice has a return link. The check, message and wrapping action row share the
+  center of the card; invoice details retain their normal reading alignment. The payer never sees Settled, status pills,
   testnet notes or an overpaid line (PLAN 11.10.1). Copy names the payee, or "the invoice's creator", never "the
   sender". The footer is one quiet line: "Payments by" with the mark and Forwend, opening the site in a new tab, and
   "Need help?", which opens a dialog with the rules (where you are, refunds, scams, the unverified name), so the pay
@@ -136,10 +139,12 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   may be out of date. The invoice PDF link stays in every state; the receipt link appears once paid.
 - PDFs open through the same-origin `/api` path. The invoice detail lists them under Documents: the invoice PDF
   always, the receipt PDF once paid.
-- While a payment confirms, the Confirming step itself reads "Confirming (4/12)" with a small clock icon whose tooltip
-  says "About 19 min left", and its bar fills as blocks pass (a sweep until the first block passes); done, it reads
-  "Confirmed". The count is blocks passed of those the payment had to wait when first seen, from the API, so a reload
-  keeps it (R-73). No visible line repeats it; a screen-reader-only live line reads it out.
+- While a payment confirms, the step label stays "Confirming"; one full-width row below the steps shows "4 / 12
+  blocks confirmed" and a small clock icon whose tooltip says "About 19 min left". Keep the count out of the narrow
+  step columns on both payer and owner pages, including four-digit counts on phones. Its bar fills as blocks pass
+  (a sweep until the first block passes); done, the step reads "Confirmed". The count is blocks passed of those the
+  payment had to wait when first seen, from the API, so a reload keeps it (R-73). A screen-reader-only live line
+  announces the count and time left.
   The owner's steps are Waiting, Detected, Confirming, Paid and Settled. The step that waits always moves, so it never
   reads as stuck: a sweep on Waiting before any money and on Settled while the money is on its way to the wallet, a
   fill by the share received when partly paid (R-69).

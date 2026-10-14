@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 175,
+  "nextId": 176,
   "tasks": [
     {
       "id": "F166",
@@ -852,12 +852,145 @@
         "branch": "fix/f174-bugs-found-in-the-october-audit-are-fixe",
         "base": "main"
       }
+    },
+    {
+      "id": "F175",
+      "type": "fix",
+      "behavior": "Polish checkout, balance overview and complete mobile navigation",
+      "acceptance": [
+        "Payer and owner timelines keep short step labels and show the full confirmation count with its time hint beneath the steps, including 0/3,628 on phones.",
+        "Confirmation progress, accessible announcements, and payment transitions retain their existing behavior.",
+        "The paid checkout card centers its checkmark, message and actions, with readable spacing on mobile and desktop, including long payee names and no return link.",
+        "Invoice detail and list badges read Confirming for detected payments and partially paid invoices with a payment still confirming; Activity also labels detected invoices Confirming, preserving paid and settled states.",
+        "The personal balance hero shows at most one pending and one held USD summary linked to exact token balances, including hundreds of tokens and sub-cent totals.",
+        "The personal balance hero uses a generated daytime version of the night valley in light mode, with a pale mint sky that blends with the light surface, keeps the night background in dark mode and remains readable at phone, tablet and desktop widths.",
+        "Mobile navigation exposes every available page for personal, freelancer and merchant profiles through the main tabs and More, with profile switching, clear current-page state, accessible sheet dismissal without a focus ring on open, and safe-area spacing. The More sheet opens with a profile card (avatar, name, Switch profile, then Billing details for businesses), lists pages as grouped cards and shows unbuilt pages as Coming soon chips."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "e2e",
+        "unit",
+        "images-check"
+      ],
+      "refs": [
+        "R-60",
+        "R-62",
+        "R-66",
+        "R-68",
+        "R-69",
+        "R-72",
+        "R-73",
+        "R-39",
+        "R-76"
+      ],
+      "keep": [
+        "apps/backend/**",
+        "packages/contracts/**"
+      ],
+      "review": false,
+      "notes": [
+        "2026-10-14 F175 implemented locally: short confirmation step labels, full count and time hint beneath both timelines; visual checks at 375/390/768/1440 and all verification checks passed. Awaiting commit/push authorization.",
+        "2026-10-14 F175: confirmation labels and counts fixed across checkout, invoice detail, lists and Activity; paid card centered; pending and held money summarized with links to token balances; new light river image and taller mobile hero. All nine verification checks passed, including 66 browser tests. Visual review passed at 390, 768 and 1440 in both themes. Temporary preview code removed and no Anvil process remains. Preparing the user-authorized local commit; push and PR delivery are not requested."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-14T13:05:43Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 200.6,
+            "log": "docs/runs/F175-20261014T130543Z-e2e.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 74.8,
+            "log": "docs/runs/F175-20261014T130543Z-unit.log"
+          },
+          {
+            "id": "images-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F175-20261014T130543Z-images-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F175-20261014T130543Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F175-20261014T130543Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F175-20261014T130543Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F175-20261014T130543Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F175-20261014T130543Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F175-20261014T130543Z-keep.log"
+          }
+        ],
+        "taskHash": "60a03a9348723756",
+        "filesHash": "7fd3376eb099204d",
+        "proof": {
+          "1": "e2e: Pay and owner browser tests verify short steps, visible full counts and accessible time hints.",
+          "2": "e2e: Existing payment state and accessibility tests cover confirmation updates, announcements and transitions.",
+          "3": "e2e: Paid checkout behavior and receipt links pass; visual checks cover centered content, long names and no return link.",
+          "4": "unit: Activity mapping and invoice tests cover detected and partial-payment states; browser tests cover detail and list badges.",
+          "5": "unit: Money tests cover 201 tokens in one summary, separate pending and held, and sub-cent totals.",
+          "6": "images-check: balance-day.webp recorded with its prompt; reviewed in the live hero at 390 and 1440 px.",
+          "7": "e2e: Phone navigation tests reach every page and Profiles for all profile kinds through the new More sheet."
+        },
+        "commit": "04e7f82",
+        "doneAt": "2026-10-14T13:10:34Z"
+      },
+      "branch": "fix/f175-keep-invoice-confirmation-counts-readabl",
+      "baseCommit": "484d9d795d40eeda66014ebd870f23ad3d60a30c",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f175-keep-invoice-confirmation-counts-readabl",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-10T16:07:40Z",
+    "at": "2026-10-14T12:24:47Z",
     "clean": true,
     "problems": [],
-    "note": "Merged F084-F087, F099 today (PRs #85-#89). Next ready: F088 (open-in-wallet), F089 (PDFs), F091 (requests), F092 (onboarding), F093 (canary), F100 (owner invoice route). Owner's local API runs outside pnpm dev (PIDs 23264/23336) until pnpm dev restarts."
+    "note": "F175: confirmation labels and counts fixed across checkout, invoice detail, lists and Activity; paid card centered; pending and held money summarized with links to token balances; new light river image and taller mobile hero. All nine verification checks passed, including 66 browser tests. Visual review passed at 390, 768 and 1440 in both themes. Temporary preview code removed and no Anvil process remains. Preparing the user-authorized local commit; push and PR delivery are not requested."
   }
 }

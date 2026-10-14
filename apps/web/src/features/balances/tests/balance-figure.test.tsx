@@ -49,8 +49,26 @@ describe("BalanceFigure", () => {
       />,
     );
     // Just the amount and "on its way", no explanation after it (R-72).
-    expect(screen.getByText(/on its way/).textContent).toMatch(/^1\.00\s*USDC on its way$/);
+    expect(screen.getByText(/on its way/).textContent).toMatch(/^1\.00\s*USD on its way$/);
     expect(screen.getByText(/held for payers/).textContent).toContain("0.25");
+  });
+
+  it("summarizes hundreds of held tokens in one USD link to their balances", () => {
+    const tokens = Array.from({ length: 200 }, (_, i) => ({
+      ...usdc,
+      token: `0x${(i + 1).toString(16).padStart(40, "0")}`,
+      held: "3750",
+    }));
+    tokens.push({ ...usdc, symbol: "OUSD", held: "20000" });
+    show({ tokens, estimatedUsdTotal: null });
+    const link = screen.getByRole("link", { name: "0.77 USD held for payers" });
+    expect(link.getAttribute("href")).toBe("/app/balances");
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
+
+  it("does not hide held money smaller than one cent", () => {
+    show({ tokens: [{ ...usdc, held: "1" }], estimatedUsdTotal: "2.50" });
+    expect(screen.getByRole("link", { name: "<0.01 USD held for payers" })).toBeTruthy();
   });
 
   it("adds several stablecoins in USD, and never shows a made-up 0", () => {

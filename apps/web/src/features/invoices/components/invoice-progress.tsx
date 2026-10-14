@@ -1,6 +1,7 @@
 "use client";
 
-import { PaymentTimeline, STEP_STATES, TONES } from "@forwend/ui-web";
+import { IconButton, PaymentTimeline, STEP_STATES, TONES, Tooltip } from "@forwend/ui-web";
+import { Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { API_PAYMENT_STATUSES } from "@/features/activity/constants/activity";
 import { INVOICE_STEPS, INVOICE_TIMELINE } from "@/features/invoices/constants/invoices";
@@ -26,7 +27,7 @@ export function InvoiceTimeline({
   waiting = true,
   steps: shownSteps = INVOICE_TIMELINE,
 }: InvoiceTimelineProps) {
-  const { done: reached, current, blocksLeft, blocksTotal, secondsLeft } = invoiceProgress(invoice);
+  const { done: reached, current, blocksLeft, blocksTotal } = invoiceProgress(invoice);
   // A fast chain can go from nothing to paid in one read: the steps still show one after another (R-62).
   const done = useStepped(reached);
   const confirming = current === INVOICE_STEPS.confirming && done === reached;
@@ -44,21 +45,13 @@ export function InvoiceTimeline({
   const steps = shownSteps.map((step) => {
     const i = INVOICE_TIMELINE.indexOf(step);
     const partlyPaid = partly && step === INVOICE_STEPS.paid;
-    const counting = confirming && step === INVOICE_STEPS.confirming && i === done;
-    // The step carries its own count and time, so no line under the steps repeats it.
     const label = partlyPaid
       ? COPY.partlyPaid
-      : counting
-        ? COPY.confirmingStep(
-            Math.max(0, blocksTotal - blocksLeft),
-            Math.max(blocksTotal, blocksLeft),
-          )
-        : step === INVOICE_STEPS.confirming && i < done
-          ? COPY.confirmed
-          : COPY.steps[step];
+      : step === INVOICE_STEPS.confirming && i < done
+        ? COPY.confirmed
+        : COPY.steps[step];
     return {
       label,
-      hint: counting ? COPY.confirmingHint(secondsLeft) : undefined,
       tone: partlyPaid ? TONES.warning : undefined,
       state:
         i < done
@@ -102,14 +95,21 @@ export interface ConfirmingStatusProps {
   seconds: number;
 }
 
-/**
- * "Confirming (4/12) · about 19 min left" for screen readers, in a live line: the Confirming step shows the same, so
- * it stays hidden on screen.
- */
 export function ConfirmingStatus({ blocks, total, seconds }: ConfirmingStatusProps) {
+  const done = Math.max(0, total - blocks);
+  const target = Math.max(total, blocks);
+  const hint = COPY.confirmingHint(seconds);
   return (
-    <span className="sr-only">
-      {COPY.confirming(Math.max(0, total - blocks), Math.max(total, blocks), seconds)}
+    <span className="flex items-center gap-1 text-sm text-muted">
+      <span aria-hidden="true" className="tabular-nums">
+        {COPY.confirmingCount(done, target)}
+      </span>
+      <Tooltip content={hint}>
+        <IconButton label={hint} size="xs">
+          <Clock aria-hidden className="size-3.5" />
+        </IconButton>
+      </Tooltip>
+      <span className="sr-only">{COPY.confirming(done, target, seconds)}</span>
     </span>
   );
 }

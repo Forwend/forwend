@@ -96,6 +96,7 @@ export function PaymentsShowcase() {
           <PaymentTimeline
             label="Payment progress, confirming with no known share"
             steps={[
+              { label: "Waiting", state: STEP_STATES.complete },
               { label: "Detected", state: STEP_STATES.complete },
               { label: "Confirming", state: STEP_STATES.current, progress: null },
               { label: "Paid", state: STEP_STATES.upcoming },

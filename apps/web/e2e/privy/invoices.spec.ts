@@ -262,16 +262,16 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
   const fits = async () =>
     expect(await page.evaluate(() => document.scrollingElement?.scrollWidth)).toBe(390);
   await page.goto("/app");
-  await chooseMerchant(page, () =>
-    page
-      .getByRole("navigation", { name: "Main" })
-      .getByRole("button", { name: "Profiles" })
-      .click(),
-  );
-  // Phones reach Invoices from search.
-  await page.getByRole("banner").getByRole("button", { name: "Search" }).click();
-  await page.getByRole("dialog", { name: "Search" }).getByRole("combobox").fill("invoices");
-  await page.keyboard.press("Enter");
+  const tabs = page.getByRole("navigation", { name: "Main" });
+  const more = page.getByRole("dialog", { name: "More" });
+  await chooseMerchant(page, async () => {
+    await tabs.getByRole("button", { name: "More" }).click();
+    await more.getByRole("button", { name: /^Switch profile:/ }).click();
+  });
+  await tabs.getByRole("button", { name: "More" }).click();
+  await expect(more.getByRole("link", { name: "Activity", exact: true })).toBeVisible();
+  await expect(more.getByRole("link", { name: "Billing details", exact: true })).toBeVisible();
+  await more.getByRole("link", { name: "Invoices", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Invoices" })).toBeVisible();
   await fits();
   await page.getByRole("link", { name: "New invoice" }).first().click();

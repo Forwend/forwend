@@ -53,7 +53,7 @@ export function PaymentTimeline({
     <ol
       aria-label={label}
       className="grid gap-2"
-      style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
+      style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(min-content, 1fr))` }}
     >
       {steps.map((step, i) => {
         const sweeping = step.state === STEP_STATES.current && step.progress === null;

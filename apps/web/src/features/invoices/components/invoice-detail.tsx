@@ -229,15 +229,8 @@ function Loaded({
             </div>
           </div>
           <div className="flex flex-col gap-3 px-4 py-5 sm:px-5">
-            {/* No details under the steps: a phone leaves each column too little room for them. */}
             <InvoiceTimeline invoice={invoice} label={COPY.progress} />
-            {/* While confirming the step shows the count, so this line only reads it out. */}
-            <p
-              role="status"
-              className={
-                current === INVOICE_STEPS.confirming ? "sr-only" : "text-sm text-ink empty:sr-only"
-              }
-            >
+            <p role="status" className="text-sm text-ink empty:sr-only">
               {current === INVOICE_STEPS.confirming ? (
                 <ConfirmingStatus blocks={blocksLeft} total={blocksTotal} seconds={secondsLeft} />
               ) : // The badge and the timeline say the state; this line says only why money still waits.

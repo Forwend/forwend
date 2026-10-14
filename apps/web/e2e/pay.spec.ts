@@ -272,9 +272,9 @@ test.describe("pay page", () => {
     page,
   }) => {
     await openPay(page, CONFIRMING);
-    await expect(status(page)).toHaveText("Confirming (6/12) · about 2 min left");
+    await expect(status(page)).toContainText("Confirming (6/12) · about 2 min left");
     await page.reload();
-    await expect(status(page)).toHaveText("Confirming (6/12) · about 2 min left");
+    await expect(status(page)).toContainText("Confirming (6/12) · about 2 min left");
   });
 
   test("follows the payment from waiting to paid without a reload, and never shows Settled", async ({
@@ -290,16 +290,16 @@ test.describe("pay page", () => {
     // The full amount is on its way: no address invites a second payment. The box keeps its place and follows it:
     // Detected, Confirming and Paid, the count, and the payment with its transaction (R-68).
     await page.clock.runFor(POLL_MS);
-    await expect(status(page)).toHaveText("Confirming (0/12) · about 3 min left");
+    await expect(status(page)).toContainText("Confirming (0/12) · about 3 min left");
     await expect(page.getByText(RECEIVE)).toHaveCount(0);
     await expect(page.locator("[data-status]")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Paying with" })).toBeVisible();
     const steps = page.getByRole("list", { name: "Payment progress" });
     await expect(steps.getByRole("listitem")).toHaveText([/^Detected/, /^Confirming/, /^Paid/]);
-    // The step carries the count, the time sits behind its clock, and no visible line repeats it (R-68).
-    await expect(steps.locator("[aria-current=step]")).toHaveText("Confirming (0/12)");
-    await expect(steps.getByRole("button", { name: "About 3 min left" })).toBeVisible();
-    await expect(status(page)).toHaveClass(/sr-only/);
+    // Counts live below the steps, with an accessible time hint and the existing live announcement.
+    await expect(steps.locator("[aria-current=step]")).toHaveText("Confirming");
+    await expect(status(page).getByRole("button", { name: "About 3 min left" })).toBeVisible();
+    await expect(status(page).getByText("0 / 12 blocks confirmed", { exact: true })).toBeVisible();
     const payment = page.getByRole("region", { name: "Payment progress" }).locator("ul > li");
     await expect(payment).toContainText("1,250.00 USDC");
     await expect(payment).toContainText("0x3333…3333");
@@ -309,7 +309,7 @@ test.describe("pay page", () => {
     );
 
     await page.clock.runFor(POLL_MS);
-    await expect(status(page)).toHaveText("Confirming (6/12) · about 2 min left");
+    await expect(status(page)).toContainText("Confirming (6/12) · about 2 min left");
 
     await page.clock.runFor(POLL_MS);
     await expect(page.getByRole("status").filter({ hasText: /^Paid$/ })).toBeVisible();
@@ -533,7 +533,7 @@ test.describe("pay page", () => {
       await expect(page.getByText(RECEIVE)).toBeVisible();
       expect(await blocking()).toEqual([]);
       await page.clock.runFor(POLL_MS);
-      await expect(status(page)).toHaveText(/^Confirming/);
+      await expect(status(page)).toContainText(/Confirming/);
       expect(await blocking()).toEqual([]);
       await mockInvoice(page, PAID);
       await page.reload();

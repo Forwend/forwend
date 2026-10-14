@@ -520,11 +520,7 @@ function Received({
         {COPY.progress}
       </h2>
       <InvoiceTimeline invoice={invoice} label={COPY.progress} steps={PAYER_STEPS} />
-      {/* While confirming the step shows the count, so this line only reads it out. */}
-      <p
-        role="status"
-        className={pay.state === PAY_STATES.confirming ? "sr-only" : "text-sm text-ink"}
-      >
+      <p role="status" className="text-sm text-ink">
         {pay.state === PAY_STATES.confirming ? (
           <ConfirmingStatus blocks={blocksLeft} total={blocksTotal} seconds={secondsLeft} />
         ) : (
@@ -585,11 +581,11 @@ function Paid({ invoice, token }: { invoice: Invoice; token: PayToken }) {
   const back = invoice.returnUrl && isReturnLink(invoice.returnUrl) ? invoice.returnUrl : null;
   const backLabel = back ? COPY.backTo(new URL(back).host) : "";
   return (
-    <div className="flex flex-col items-start gap-4 p-5 sm:p-6">
-      <span className="grid size-10 place-items-center rounded-pill bg-success-soft text-success transition-[opacity,transform] duration-[var(--fw-duration-base)] ease-out starting:scale-90 starting:opacity-0">
-        <Check aria-hidden className="size-5" />
+    <div className="flex flex-col items-center gap-5 px-5 py-8 text-center sm:px-6 sm:py-10">
+      <span className="grid size-12 place-items-center rounded-pill bg-success-soft text-success transition-[opacity,transform] duration-[var(--fw-duration-base)] ease-out starting:scale-90 starting:opacity-0">
+        <Check aria-hidden className="size-6" />
       </span>
-      <div className="flex flex-col gap-1">
+      <div className="flex min-w-0 max-w-full flex-col gap-1 break-words">
         <p role="status" className="text-xl font-semibold text-ink">
           {COPY.paid}
         </p>
@@ -602,7 +598,7 @@ function Paid({ invoice, token }: { invoice: Invoice; token: PayToken }) {
         </p>
         <p className="text-sm text-muted">{COPY.closeHint}</p>
       </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm">
         {tx ? (
           <a href={tx.href} target="_blank" rel="noopener noreferrer" className={LINK}>
             {COPY.viewTx}

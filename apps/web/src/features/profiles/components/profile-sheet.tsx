@@ -19,8 +19,7 @@ export interface ProfileSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// The phone switcher: the same choice as the sidebar's menu, in a bottom sheet a thumb can reach. Opened from the tab
-// bar or the profile pill over the balance.
+// The phone switcher: the sidebar's profile choices, opened from More in a bottom sheet.
 export function ProfileSheet({
   profiles,
   active,

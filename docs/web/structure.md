@@ -64,7 +64,7 @@ features/invoices/
   Raw controls remain only where the kit has no such control and the element is used once:
   - `screens/app-shell/command-menu.tsx`: the search box is an ARIA combobox inside its own dialog.
   - `screens/app-shell/app-header.tsx`: the two search triggers that look like a field and open the command menu.
-  - `screens/app-shell/phone-tab-bar.tsx`: the Profiles tab is a button styled exactly like its sibling tab links.
+  - `screens/app-shell/phone-tab-bar.tsx`: the More tab is a button styled exactly like its sibling tab links.
   Add a kit component instead the second time any of these is needed.
 
 ## Landing sections
