@@ -5,13 +5,15 @@
       "id": "harness",
       "argv": ["python3", "-m", "unittest", "discover", "-s", "tests"],
       "required": true,
-      "precommit": true
+      "precommit": true,
+      "docs": true
     },
     {
       "id": "docs-check",
       "argv": ["python3", "scripts/check-docs.py"],
       "required": true,
-      "precommit": true
+      "precommit": true,
+      "docs": true
     },
     {
       "id": "lint",
