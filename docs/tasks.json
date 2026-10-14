@@ -10,7 +10,7 @@
         "docs/archive holds F166-F175 and docs/tasks.json keeps only F176; docs-check passes"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -79,12 +79,19 @@
         "taskHash": "72979c8130c36d6b",
         "filesHash": "7fd3376eb099204d",
         "proof": {
-          "1": "docs-check: harness archive moved F166-F175 to docs/archive; tasks.json holds only F176 and docs-check passes."
-        }
+          "1": "docs-check: docs/archive holds F166-F175, tasks.json holds only F176, docs-check passes."
+        },
+        "commit": "861aa40",
+        "doneAt": "2026-10-14T13:19:01Z"
       },
       "branch": "chore/f176-finished-tasks-f166-f175-move-to-the-arc",
       "baseCommit": "8b00efc892fbdb1c94bd4a9436caff78c952278a",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f176-finished-tasks-f166-f175-move-to-the-arc",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
