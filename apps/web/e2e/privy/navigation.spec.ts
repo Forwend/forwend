@@ -69,7 +69,7 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   await expect(main.getByRole("link", { name: "Invoices" })).toHaveCount(0);
   await expect(main.getByRole("region", { name: "Billed to" })).toContainText("Brightline Studio");
   // A payment on its way: pending, a short line, and its transaction on Basescan.
-  await expect(main.getByRole("status").filter({ hasText: /./ })).toHaveText(
+  await expect(main.getByRole("status").filter({ hasText: /./ })).toContainText(
     "Confirming (0/120) · about 6 min left",
   );
   // The timeline carries the invoice's status, at its Confirming step; the payment repeats no pill of its own (R-69).
@@ -473,13 +473,14 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   };
   await page.reload();
   await shown();
-  await expect(main.getByRole("status").filter({ hasText: /^Confirming/ })).toHaveText(
+  await expect(main.getByRole("status").filter({ hasText: /Confirming/ })).toContainText(
     "Confirming (0/120) · about 6 min left",
   );
-  // The step carries the count with the time behind its clock; the line under it only reads it out (R-69).
-  await expect(current).toHaveText("Confirming (0/120)");
-  await expect(current.getByRole("button", { name: "About 6 min left" })).toBeVisible();
-  await expect(main.getByRole("status").filter({ hasText: /^Confirming/ })).toHaveClass(/sr-only/);
+  await expect(main.locator("header [data-status]")).toHaveText("Confirming");
+  // Keep the count and accessible clock below the short step label (R-69).
+  await expect(current).toHaveText("Confirming");
+  await expect(main.getByRole("button", { name: "About 6 min left" })).toBeVisible();
+  await expect(main.getByText("0 / 120 blocks confirmed", { exact: true })).toBeVisible();
   await expect(payments.locator("[data-status]")).toHaveCount(0);
   await expect(main.getByText(/test network|no real value/i)).toHaveCount(0); // R-72
   expect(await blockingViolations(page)).toEqual([]);
@@ -491,7 +492,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   };
   await page.reload();
   await shown();
-  await expect(main.getByRole("status").filter({ hasText: /^Confirming/ })).toHaveText(
+  await expect(main.getByRole("status").filter({ hasText: /Confirming/ })).toContainText(
     "Confirming (60/120) · about 3 min left",
   );
 
@@ -522,8 +523,8 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   };
   await page.reload();
   await shown();
-  await expect(main.locator("header [data-status]")).toHaveText("Detected");
-  await expect(current).toHaveText("Confirming (60/120)");
+  await expect(main.locator("header [data-status]")).toHaveText("Confirming");
+  await expect(current).toHaveText("Confirming");
   await expect(progress.getByText("Partially paid")).toHaveCount(0);
 
   // Paid and on its way to the wallet: Paid out (Settled) is the moving step, not an empty one.
@@ -607,7 +608,7 @@ test("the invoice list and activity show a client-chooses invoice in USD with An
   await expect(row).not.toContainText("USDC");
   await expect(
     page.getByRole("row").filter({ hasText: "INV-0007" }).locator("[data-status]"),
-  ).toHaveText("Detected");
+  ).toHaveText("Confirming");
   const fixed = page.getByRole("row").filter({ hasText: "INV-0002" });
   await expect(fixed).toContainText("USDC");
   await expect(fixed).toContainText("Base Sepolia");

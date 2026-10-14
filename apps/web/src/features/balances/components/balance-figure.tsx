@@ -1,12 +1,15 @@
 "use client";
 
-import { Button, Money, Skeleton } from "@forwend/ui-web";
+import { Button, Skeleton } from "@forwend/ui-web";
+import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import type { CSSProperties } from "react";
 import { EstimateHint } from "@/features/balances/components/estimate-hint";
 import { USD } from "@/features/balances/constants/balances";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { formatUsd, usdTotal } from "@/features/balances/lib/balances";
-import type { Balances, TokenBalance } from "@/features/balances/types/balances";
+import type { Balances } from "@/features/balances/types/balances";
+import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface BalanceFigureProps {
   balances: Balances | null;
@@ -52,30 +55,38 @@ export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps)
         </span>
       </p>
       {total === null ? <p className="text-sm text-muted">{BALANCES_COPY.unavailable}</p> : null}
-      {tokens.map((t) => (
-        <PendingHeld key={`${t.chainId}:${t.token}`} t={t} />
-      ))}
+      <PendingHeld balances={balances} />
     </div>
   );
 }
 
-function PendingHeld({ t }: { t: TokenBalance }) {
-  const pending = BigInt(t.pending);
-  const held = BigInt(t.held);
+function PendingHeld({ balances }: { balances: Balances }) {
+  const summaries = [
+    { field: "pending", label: BALANCES_COPY.pending },
+    { field: "held", label: BALANCES_COPY.held },
+  ] as const;
   return (
-    <>
-      {pending > 0n ? (
-        <p className="text-sm text-muted">
-          <Money baseUnits={pending} decimals={t.decimals} token={t.symbol} className="text-ink" />{" "}
-          {BALANCES_COPY.pending}
-        </p>
-      ) : null}
-      {held > 0n ? (
-        <p className="text-sm text-muted">
-          <Money baseUnits={held} decimals={t.decimals} token={t.symbol} className="text-ink" />{" "}
-          {BALANCES_COPY.held}
-        </p>
-      ) : null}
-    </>
+    <div className="flex max-w-full flex-wrap justify-center gap-x-3 gap-y-1 empty:hidden lg:justify-start">
+      {summaries.map(({ field, label }) => {
+        if (!balances.tokens.some((t) => BigInt(t[field]) > 0n)) return null;
+        const total = usdTotal(balances, field);
+        if (total === null) return null;
+        return (
+          <Link
+            key={field}
+            href={APP_ROUTES.balances}
+            className="inline-flex min-h-11 items-center gap-1 rounded-sm text-sm text-muted underline decoration-line underline-offset-4 outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+          >
+            <span>
+              <span className="font-mono tabular-nums text-ink">
+                {total === 0n ? BALANCES_COPY.lessThanCent : formatUsd(total)} {USD}
+              </span>{" "}
+              {label}
+            </span>
+            <ChevronRight aria-hidden className="size-3.5 shrink-0" />
+          </Link>
+        );
+      })}
+    </div>
   );
 }

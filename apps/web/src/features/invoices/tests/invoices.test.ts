@@ -130,10 +130,16 @@ describe("invoiceProgress", () => {
     });
   });
 
-  it("reads a partly paid invoice as detected while its next payment confirms", () => {
+  it("labels detected and partly paid invoices as confirming while finality is pending", () => {
     const partly = { ...open, paymentStatus: "partially_paid" };
     expect(invoiceStatus(partly)).toBe(PAYMENT_STATUS.partiallyPaid);
-    expect(invoiceStatus({ ...partly, confirming: true })).toBe(PAYMENT_STATUS.detected);
+    expect(invoiceStatus({ ...partly, confirming: true })).toBe(PAYMENT_STATUS.confirming);
+    expect(invoiceStatus({ ...open, paymentStatus: "detected", confirming: true })).toBe(
+      PAYMENT_STATUS.confirming,
+    );
+    expect(invoiceStatus({ ...partly, confirming: true, settlementStatus: "settled" })).toBe(
+      PAYMENT_STATUS.settled,
+    );
     expect(invoiceStatus({ ...open, paymentStatus: "paid", confirming: true })).toBe(
       PAYMENT_STATUS.paid,
     );

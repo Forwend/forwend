@@ -43,7 +43,7 @@ export function tokenKey(t: { chainId: number; token: string }): string {
 
 /**
  * The status pill: settled once the money reached the wallet, otherwise the payment status. A partly paid invoice
- * whose next payment still confirms reads as detected, like a full payment confirming: one state at a time (R-69).
+ * whose next payment still confirms reads as confirming, like a full payment awaiting finality (R-69).
  */
 export function invoiceStatus(inv: InvoiceSummary): PaymentStatus {
   const partlyConfirming =

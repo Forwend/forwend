@@ -29,6 +29,7 @@ describe("activityStatus", () => {
 
   it("shows an invoice's payment status, and settled only once the money reached the wallet", () => {
     expect(activityStatus(base)).toBe(PAYMENT_STATUS.open);
+    expect(activityStatus({ ...base, status: "detected" })).toBe(PAYMENT_STATUS.confirming);
     expect(activityStatus({ ...base, status: "partially_paid" })).toBe(
       PAYMENT_STATUS.partiallyPaid,
     );

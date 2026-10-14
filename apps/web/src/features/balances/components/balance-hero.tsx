@@ -83,7 +83,7 @@ export function BalanceHero({
     <>
       <section
         aria-labelledby="balance-title"
-        className="relative isolate -mx-4 -mt-4 flex flex-col overflow-hidden bg-surface sm:mx-0 sm:mt-0 sm:rounded-md sm:border sm:border-line lg:aspect-[4/1] lg:max-h-[26rem] lg:min-h-[19rem] [&_svg_text]:stroke-none dark:[&_svg_text]:stroke-surface"
+        className="relative isolate -mx-4 -mt-4 flex min-h-96 flex-col overflow-hidden bg-surface sm:mx-0 sm:mt-0 sm:rounded-md sm:border sm:border-line [&_svg_text]:stroke-none dark:[&_svg_text]:stroke-surface"
       >
         <Image
           src={BALANCE_DAWN_IMAGE.src}
@@ -91,7 +91,7 @@ export function BalanceHero({
           fill
           priority
           sizes="(min-width: 64rem) 80vw, 100vw"
-          className="-z-10 object-cover object-bottom saturate-[.65] dark:hidden"
+          className="-z-10 object-cover object-bottom dark:hidden"
         />
         <Image
           src={BALANCE_NIGHT_IMAGE.src}
@@ -103,12 +103,11 @@ export function BalanceHero({
         />
         {/* A soft wash of the surface behind the figures keeps text at full contrast over the sky; on phones the valley
             fades into the page under the actions, as a banking app's header does. */}
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--fw-surface)_45%,transparent)_0%,transparent_40%,color-mix(in_oklab,var(--fw-bg)_80%,transparent)_72%,var(--fw-bg)_100%)] lg:bg-[linear-gradient(90deg,color-mix(in_oklab,var(--fw-surface)_78%,transparent)_0%,color-mix(in_oklab,var(--fw-surface)_40%,transparent)_38%,transparent_70%)]" />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--fw-surface)_65%,transparent)_0%,color-mix(in_oklab,var(--fw-surface)_25%,transparent)_45%,color-mix(in_oklab,var(--fw-bg)_85%,transparent)_100%)] lg:bg-[linear-gradient(90deg,color-mix(in_oklab,var(--fw-surface)_75%,transparent)_0%,color-mix(in_oklab,var(--fw-surface)_45%,transparent)_45%,color-mix(in_oklab,var(--fw-surface)_35%,transparent)_100%)] dark:hidden" />
+        <div className="absolute inset-0 -z-10 hidden bg-[linear-gradient(180deg,color-mix(in_oklab,var(--fw-surface)_45%,transparent)_0%,transparent_40%,color-mix(in_oklab,var(--fw-bg)_80%,transparent)_72%,var(--fw-bg)_100%)] lg:bg-[linear-gradient(90deg,color-mix(in_oklab,var(--fw-surface)_78%,transparent)_0%,color-mix(in_oklab,var(--fw-surface)_40%,transparent)_38%,transparent_70%)] dark:block" />
 
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--fw-surface)_45%,transparent)_0%,color-mix(in_oklab,var(--fw-surface)_35%,transparent)_40%,color-mix(in_oklab,var(--fw-surface)_82%,transparent)_100%)] dark:hidden" />
-
-        <div className="grid flex-1 gap-6 p-4 sm:p-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-10">
-          <div className="flex flex-col items-center gap-6 lg:items-start lg:justify-between">
+        <div className="grid flex-1 gap-8 px-4 py-8 sm:px-6 lg:gap-10 lg:p-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+          <div className="flex flex-col items-center justify-between gap-10 lg:items-start lg:gap-6">
             <div className="flex w-full flex-col items-center gap-3 lg:items-start">
               <h2 id="balance-title" className="text-sm font-medium text-muted">
                 {BALANCES_COPY.totalBalance}

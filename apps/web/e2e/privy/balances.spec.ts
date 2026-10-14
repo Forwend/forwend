@@ -180,3 +180,52 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
   await expect(page.getByRole("heading", { level: 1, name: "Balances" })).toBeVisible();
   await context.close();
 });
+
+test("pending and held summaries open the exact token balances", async ({ browser }) => {
+  const context = await browser.newContext({ storageState: session });
+  const page = await context.newPage();
+  await page.route("**/api/v1/profiles/*/balances", (route) =>
+    route.fulfill({
+      json: {
+        tokens: [
+          {
+            chainId: 84532,
+            token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+            symbol: "USDC",
+            decimals: 6,
+            wallet: "250000",
+            finalizedBlock: 100,
+            pending: "200000",
+            held: "750000",
+          },
+          {
+            chainId: 42431,
+            token: "0x20c0000000000000000000006a37da5c996874be",
+            symbol: "OUSD",
+            decimals: 6,
+            wallet: "26000000",
+            finalizedBlock: 100,
+            pending: "0",
+            held: "20000",
+          },
+        ],
+        estimatedUsdTotal: "26.25",
+      },
+    }),
+  );
+  await page.goto("/app");
+  const balance = page.getByRole("region", { name: "Total balance" });
+  await expect(balance.getByText("26.25", { exact: true })).toBeVisible();
+  await expect(balance.getByRole("link", { name: "0.20 USD on its way" })).toHaveAttribute(
+    "href",
+    "/app/balances",
+  );
+  await balance.getByRole("link", { name: "0.77 USD held for payers" }).click();
+  await expect(page).toHaveURL("/app/balances");
+  const usdc = page.getByRole("listitem").filter({ hasText: "USDC" });
+  const ousd = page.getByRole("listitem").filter({ hasText: "OUSD" });
+  await expect(usdc.getByText("0.20", { exact: true })).toBeVisible();
+  await expect(usdc.getByText("0.75", { exact: true })).toBeVisible();
+  await expect(ousd.getByText("0.02", { exact: true })).toBeVisible();
+  await context.close();
+});

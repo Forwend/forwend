@@ -10,7 +10,7 @@ import type { ActivityItem } from "@/features/activity/types/activity";
 // API payment statuses (openapi.yaml, Invoice.paymentStatus) to the statuses users see.
 const INVOICE_STATUSES: Readonly<Record<string, PaymentStatus>> = {
   [API_PAYMENT_STATUSES.open]: PAYMENT_STATUS.open,
-  [API_PAYMENT_STATUSES.detected]: PAYMENT_STATUS.detected,
+  [API_PAYMENT_STATUSES.detected]: PAYMENT_STATUS.confirming,
   [API_PAYMENT_STATUSES.partiallyPaid]: PAYMENT_STATUS.partiallyPaid,
   [API_PAYMENT_STATUSES.paid]: PAYMENT_STATUS.paid,
   [API_PAYMENT_STATUSES.expired]: PAYMENT_STATUS.expired,
