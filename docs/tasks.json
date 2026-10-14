@@ -430,7 +430,7 @@
         "Web docs drop the image history and copied token values, Redux and layout rationale and page prose that DESIGN.md owns; DESIGN.md scopes the Soon rule to the sidebar; the two stale .impeccable surface briefs are deleted"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -481,11 +481,18 @@
           "1": "docs-check: PLAN phases 1-8 collapsed to an open list with interview questions in docs/owner-research.md; Q-4, A-1, stale Scope lines and hedge clauses removed; links valid",
           "2": "docs-check: delivery-policy copy, v2 note, staging bootstrap and billing, load-test log, sources, api route list and repeats removed; links valid",
           "3": "docs-check: image history, token hex values, structure rationale and page prose removed; DESIGN Soon rule scoped to the sidebar; .impeccable surface briefs deleted with no live link left"
-        }
+        },
+        "commit": "369d5a2",
+        "doneAt": "2026-10-14T22:16:31Z"
       },
       "branch": "docs/f189-docs-keep-only-open-work-and-one-copy-of",
       "baseCommit": "e45dddf469bf168d38b196bbe226b9b35f797ef1",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f189-docs-keep-only-open-work-and-one-copy-of",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
