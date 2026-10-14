@@ -245,6 +245,14 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
           {COPY.loadMore}
         </Button>
       ) : null}
+      {list.isError && list.currentData ? (
+        <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
+          {COPY.updateFailed}
+          <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
+            {COPY.retry}
+          </Button>
+        </div>
+      ) : null}
     </section>
   );
 }

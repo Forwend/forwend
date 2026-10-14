@@ -7,6 +7,7 @@ import { ACTIVITY_PAGE_SIZE, API_DEPOSIT_STATUSES } from "@/features/activity/co
 import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { PAYMENT_EVENTS } from "@/features/activity/constants/payment-events";
 import { newPaymentEvents } from "@/features/activity/lib/payment-events";
+import { exactDigits } from "@/features/invoices/lib/invoices";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
 export interface PaymentToastsProps {
@@ -36,7 +37,8 @@ function ProfileToasts({ profileId }: { profileId: string }) {
     const { seen: known, events } = newPaymentEvents(seen.current, items);
     seen.current = known;
     for (const { kind, item } of events) {
-      const amount = `${formatTokenAmount({ baseUnits: BigInt(item.amount), decimals: item.decimals })} ${item.symbol}`;
+      const units = BigInt(item.amount);
+      const amount = `${formatTokenAmount({ baseUnits: units, decimals: item.decimals, fractionDigits: exactDigits(units, item.decimals) })} ${item.symbol}`;
       toast(
         kind === PAYMENT_EVENTS.settled
           ? { tone: TONES.success, ...ACTIVITY_COPY.toasts.settled(amount) }

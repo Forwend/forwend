@@ -403,6 +403,17 @@ function PayBox({
       {pay.late > 0n ? (
         <p className="text-sm text-warning">{COPY.late(money(pay.late), payeeOf(invoice))}</p>
       ) : null}
+      {invoice.options
+        .filter((o) => o.optionId !== invoice.optionId && o.deposits.length > 0)
+        .map((o) => {
+          const units = o.deposits.reduce((sum, d) => sum + BigInt(d.amount), 0n);
+          const amount = `${formatTokenAmount({ baseUnits: units, decimals: o.decimals, fractionDigits: exactDigits(units, o.decimals) })} ${o.symbol}`;
+          return (
+            <p key={o.optionId} className="text-sm text-warning">
+              {COPY.otherOption(amount, chainName(o.chainId), payeeOf(invoice))}
+            </p>
+          );
+        })}
     </div>
   );
 }
@@ -572,6 +583,7 @@ function Paid({ invoice, token }: { invoice: Invoice; token: PayToken }) {
   const tx = last ? txLink(invoice.chainId, last.txHash) : null;
   const name = invoice.issuer?.name ?? invoice.senderName;
   const back = invoice.returnUrl && isReturnLink(invoice.returnUrl) ? invoice.returnUrl : null;
+  const backLabel = back ? COPY.backTo(new URL(back).host) : "";
   return (
     <div className="flex flex-col items-start gap-4 p-5 sm:p-6">
       <span className="grid size-10 place-items-center rounded-pill bg-success-soft text-success transition-[opacity,transform] duration-[var(--fw-duration-base)] ease-out starting:scale-90 starting:opacity-0">
@@ -602,8 +614,13 @@ function Paid({ invoice, token }: { invoice: Invoice; token: PayToken }) {
         </a>
       </div>
       {back ? (
-        <a href={back} rel="noopener noreferrer" className={buttonClasses({ variant: "primary" })}>
-          {COPY.backTo(new URL(back).host)}
+        <a
+          href={back}
+          rel="noopener noreferrer"
+          title={backLabel}
+          className={`${buttonClasses({ variant: "primary" })} max-w-full`}
+        >
+          <span className="truncate">{backLabel}</span>
         </a>
       ) : null}
     </div>

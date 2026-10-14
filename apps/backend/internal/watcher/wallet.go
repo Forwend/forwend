@@ -72,7 +72,7 @@ func (c *Chain) walletLogs(ctx context.Context, lo, hi uint64, w wallets) ([]typ
 		filters = append(filters, [][]common.Hash{{transferTopic}, part}, [][]common.Hash{{transferTopic}, nil, part})
 	}
 	for _, topics := range filters {
-		logs, err := c.eth.FilterLogs(ctx, ethereum.FilterQuery{
+		logs, err := c.filterLogs(ctx, ethereum.FilterQuery{
 			FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi), Addresses: tokens, Topics: topics,
 		})
 		if err != nil {

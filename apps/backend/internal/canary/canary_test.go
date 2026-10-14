@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/canary"
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
@@ -212,4 +213,75 @@ func cast(t *testing.T, args ...string) string {
 		t.Fatalf("cast %s: %v\n%s", args[0], err, out)
 	}
 	return strings.ToLower(strings.TrimSpace(string(out)))
+}
+
+func TestCheckFirstOptionOfPayerChoosesInvoice(t *testing.T) {
+	a := chaintest.Start(t)
+	factory := a.DeployFactory()
+	want := cast(t, "call", factory, "predict((bytes32,address,address,uint256,uint64,uint64,uint256))(address)",
+		fmt.Sprintf("(%s,%s,%s,%s,%d,%d,%d)", id, recipient, token, amount, expiresAt, deadline, chaintest.ChainID),
+		"--rpc-url", a.URL)
+	codeHash := cast(t, "codehash", factory, "--rpc-url", a.URL)
+	script, err := filepath.Abs("../../../web/scripts/canary-pay-page.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := map[string]any{"invoiceId": id, "chainId": chaintest.ChainID, "token": token, "amount": amount,
+		"recipient": recipient, "factory": factory, "receiveAddress": want,
+		"expiresAt": "2030-01-01T00:00:00Z", "settleDeadline": "2030-01-02T00:00:00Z", "optionLocked": false,
+		"options": []map[string]any{
+			{"optionId": id, "chainId": chaintest.ChainID, "token": token, "amount": amount, "receiveAddress": want},
+			{"optionId": payID, "chainId": 84532, "token": wrong, "amount": amount, "receiveAddress": wrong},
+		}}
+	qr := qrPath(t, want)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/invoices/" + id:
+			_ = json.NewEncoder(w).Encode(api)
+		case "/pay/" + id:
+			page := `<!doctype html><main><section aria-labelledby="pay-amount"><h2 id="pay-amount">Amount due</h2>` +
+				`<p>2.50</p><p>USDC</p><p>Anvil (local)</p></section>`
+			if r.URL.Query().Get("option") != id {
+				page += `<section aria-labelledby="pay-before"><div role="combobox">Network</div>` +
+					`<div role="combobox">Token</div></section>`
+			} else {
+				panel := fmt.Sprintf(`<svg role="img"><path d="%s"/></svg><p>Send to</p><p>%s</p>`, qr, want)
+				page += `<section aria-labelledby="pay-before"><button>Show address</button></section>` +
+					`<section aria-labelledby="pay-send"></section><script>
+document.querySelector('[aria-labelledby="pay-before"] button').onclick = () => {
+  document.querySelector('[aria-labelledby="pay-send"]').innerHTML = '` + panel + `';
+};
+</script>`
+			}
+			fmt.Fprint(w, page+"</main>")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfg := config.Canary{APIURL: srv.URL, WebURL: srv.URL, Factory: factory, FactoryCodeHash: codeHash,
+		RPCURLs: map[uint64][2]string{chaintest.ChainID: {a.URL, a.URL}}, PageScript: script}
+	if alerts := canary.Check(context.Background(), cfg, []string{line + " " + id}); len(alerts) != 0 {
+		t.Fatalf("an honest payer-chooses invoice alerts: %q", alerts)
+	}
+}
+
+func TestCheckSkipsInvoicesThePayPageClosed(t *testing.T) {
+	a := chaintest.Start(t)
+	factory := a.DeployFactory()
+	script, err := filepath.Abs("../../../web/scripts/canary-pay-page.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	soon := time.Now().Add(2 * time.Minute).Unix()
+	input := fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil", id, chaintest.ChainID, recipient, token, amount, soon,
+		soon+86400)
+	origin := serve(t, id, map[string]any{}, "", "", "Anvil (local)")
+	cfg := config.Canary{APIURL: origin, WebURL: origin, Factory: factory,
+		FactoryCodeHash: cast(t, "codehash", factory, "--rpc-url", a.URL),
+		RPCURLs:         map[uint64][2]string{chaintest.ChainID: {a.URL, a.URL}}, PageScript: script}
+	if alerts := canary.Check(context.Background(), cfg, []string{input}); len(alerts) != 0 {
+		t.Fatalf("an invoice 2 minutes from expiry alerts: %q", alerts)
+	}
 }

@@ -37,7 +37,7 @@ func NewBuckets(rate, burst float64) *Buckets {
 	return &Buckets{rate: rate, burst: burst, m: map[string]*bucket{}}
 }
 
-func (b *Buckets) wait(key string) time.Duration {
+func (b *Buckets) Wait(key string) time.Duration {
 	now := time.Now()
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -71,7 +71,7 @@ func (b *Buckets) sweep(now time.Time) {
 
 func Limit(b *Buckets, key func(*http.Request) string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if wait := b.wait(key(r)); wait > 0 {
+		if wait := b.Wait(key(r)); wait > 0 {
 			w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(wait.Seconds()))))
 			httpio.WriteError(w, r, httpio.ErrRateLimited)
 			return

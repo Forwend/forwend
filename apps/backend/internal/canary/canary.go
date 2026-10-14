@@ -27,6 +27,9 @@ import (
 
 const timeout = 30 * time.Second
 
+// The pay page hides the address 5 minutes before expiry (CLOSE_EARLY_MS in apps/web); one more for the run.
+const payPageCloses = 6 * time.Minute
+
 var (
 	invoiceID = regexp.MustCompile(`^0x[0-9a-f]{64}$`)
 	predict   = crypto.Keccak256([]byte("predict((bytes32,address,address,uint256,uint64,uint64,uint256))"))[:4]
@@ -52,12 +55,8 @@ type apiOption struct {
 	ChainID                                 uint64
 }
 
-// page is what the page script is asked for: the pay link, and for an option of a payer-chooses invoice the
-// option shown.
+// page always names the option: without it a payer-chooses link shows no address, also for its first option.
 func (t terms) page() string {
-	if t.PayID == t.ID {
-		return t.ID
-	}
 	return t.PayID + "?option=" + t.ID
 }
 
@@ -97,6 +96,9 @@ func Check(ctx context.Context, c config.Canary, lines []string) []string {
 		t, err := parseTerms(line)
 		if err != nil {
 			alerts = append(alerts, fmt.Sprintf("input line %q: %v", line, err))
+			continue
+		}
+		if time.Until(time.Unix(int64(t.ExpiresAt), 0)) < payPageCloses {
 			continue
 		}
 		invoices = append(invoices, t)

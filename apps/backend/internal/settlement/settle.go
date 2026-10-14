@@ -232,7 +232,7 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 		}
 	}
 	gas = max(gas, minGas)
-	tip, feeCap, err := fees(ctx, client, chainID)
+	tip, feeCap, err := s.fees(ctx, client, chainID)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +247,7 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 // fee cap (geth wants a tenth) and at least what a new settle gets now. It saves the new version before it is sent,
 // keeping old's hash, since either may be mined. Over MaxFeeFactor it returns old, to be sent again as it is.
 func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in intent, old *types.Transaction) (*types.Transaction, error) {
-	tip, feeCap, err := fees(ctx, client, in.chainID)
+	tip, feeCap, err := s.fees(ctx, client, in.chainID)
 	if err != nil {
 		return nil, err
 	}
@@ -321,6 +321,26 @@ func bigMax(a, b *big.Int) *big.Int {
 		return a
 	}
 	return b
+}
+
+// The executor pays the tip as signed, so one RPC host must not set it alone (D-15).
+func (s *Signer) fees(ctx context.Context, client *ethclient.Client, chainID uint64) (tip, feeCap *big.Int, err error) {
+	tip, feeCap, err = fees(ctx, client, chainID)
+	if err != nil {
+		return nil, nil, err
+	}
+	second := s.seconds[chainID]
+	if second == nil {
+		return nil, nil, fmt.Errorf("chain %d: no second RPC to check the gas tip", chainID)
+	}
+	other, err := second.SuggestGasTipCap(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("second RPC: read gas tip: %w", err)
+	}
+	if other.Cmp(tip) < 0 {
+		feeCap, tip = new(big.Int).Add(new(big.Int).Sub(feeCap, tip), other), other
+	}
+	return tip, feeCap, nil
 }
 
 // fees are the tip and fee cap the signer pays now: the node's suggested tip, and twice the base fee plus the tip.

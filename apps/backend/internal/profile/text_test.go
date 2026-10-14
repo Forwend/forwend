@@ -16,12 +16,14 @@ func TestPlainText(t *testing.T) {
 
 func TestImpersonates(t *testing.T) {
 	for _, name := range []string{"Forwend", "forwend support", "For wend", "Forwеnd" /* Cyrillic е */, "Fórwend",
-		"F0rwend", "FORWEND Security Team", "𝐅𝐨𝐫𝐰𝐞𝐧𝐝", "ℱorwend", "FORWΕND", "FORWEΝD", "Ｆｏｒｗｅｎｄ"} {
+		"F0rwend", "FORWEND Security Team", "𝐅𝐨𝐫𝐰𝐞𝐧𝐝", "ℱorwend", "FORWΕND", "FORWEΝD", "Ｆｏｒｗｅｎｄ",
+		"ꜰᴏʀᴡᴇɴᴅ" /* small capitals */, "ꓝꓳꓣꓪꓰꓠꓓ" /* Lisu */, "ꓝORWEND Support", "Forvvend Support", "F o r w e n d"} {
 		if !Impersonates(name) {
 			t.Errorf("%q passes", name)
 		}
 	}
-	for _, name := range []string{"Kettle & Co.", "Forward End", "Brightline Studio"} {
+	for _, name := range []string{"Kettle & Co.", "Forward End", "Brightline Studio", "Gifts for Wendy",
+		"For Wendy's Bakery"} {
 		if Impersonates(name) {
 			t.Errorf("%q refused", name)
 		}

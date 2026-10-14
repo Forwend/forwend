@@ -36,6 +36,7 @@ export const TRANSACTIONS_COPY = {
   counterpartyLink: (address: string, explorer: string) =>
     `${address} on ${explorer} (opens in a new tab)`,
   loadMore: "Show more",
+  updateFailed: "We could not update the transactions.",
   latestOnly: "Showing the latest 100.",
   retry: "Try again",
   notifications: "Notifications",

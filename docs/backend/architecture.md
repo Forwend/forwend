@@ -248,8 +248,10 @@ worker's lock, [startup](#startup)).
 Each `Scan` reads `latest`, then `eth_getLogs` for `Transfer` from the invoices' tokens to their receive addresses,
 from `RescanDepth` (2,000) blocks below the last finalized block (or from the oldest `detected` row) to latest, so a
 log one answer missed is read again for 15 minutes or more even where finalized is latest (Arc, Tempo), in ranges of at most
-2,000 blocks; a range the RPC refuses for its size or rate (after every endpoint was tried) is read again in half, down to
-50 blocks, and the range doubles back after each answer. One scan reads at most 40,000 blocks, so a long backlog (a
+2,000 blocks; a range the RPC refuses for its rate (after every endpoint was tried) is read again in half, down to
+50 blocks; one refused for its size is halved down to one block, and a single block still refused is read from
+`eth_getBlockReceipts` and filtered the same way, so zero-value Transfer spam (gas only) can't stop the chain. The
+range doubles back after each answer. One scan reads at most 40,000 blocks, so a long backlog (a
 worker down for days) is caught up over several rounds, each recorded, instead of needing one round longer than its
 timeout. Receive addresses and wallets go into topic lists of at most 1,000: go-ethereum nodes, Arbitrum's public RPC
 among them, refuse more with "exceed max topics". Invoices leave the scan 30 days after their settle deadline (the
@@ -292,7 +294,9 @@ authority's. One invoice's failing rescan does not hold up the others.
 ## Signer
 
 `internal/settlement` (R-22), one `Signer` per executor key (the signer's lock, [startup](#startup)). When the ledger marks an invoice `paid` it queues one
-settlement intent (unique per invoice) in the same transaction. For each due intent the signer:
+settlement intent (unique per invoice) in the same transaction. Every transaction it signs uses the lower of the
+primary and second RPC's suggested tips (D-15), so one host can't make the executor overpay. For each due intent the
+signer:
 1. If a settle is already saved (`sent`), finishes it first, whatever changed since. The saved bytes must decode to
    `settle()` on this receiver on this chain with the saved hash. A receipt for the saved hash or any version it
    replaced (`replaced_hashes`, same nonce, so at most one mines) decides first: status 1 with the receiver's
@@ -369,8 +373,8 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
 - Books each `confirmed`, not yet booked transfer in chain order: `receiver` gets the transfer amount; what is still
   owed up to the invoice amount goes to `recipient_payable`, the rest to `payer_held`. A late deposit (block time
   after `expires_at`) and any deposit after the invoice is final go entirely to `payer_held` (D-24, D-26).
-- Payer chooses (D-76): an option's processing also locks its main row. The first option with any transfer that is
-  not reorged becomes `chosen_id`; deposits on any other option are booked entirely to `payer_held`, as late money
+- Payer chooses (D-76): an option's processing also locks its main row. When the first option gets a transfer, the option
+  whose transfer that is not reorged came first on chain (block time, then block and log) becomes `chosen_id`; deposits on any other option are booked entirely to `payer_held`, as late money
   is, so that option is never paid or settled and expires like any invoice. A choice made on a detected transfer that
   a reorg later drops stays.
 - Payment status: `open` → `detected` (a transfer seen) → `partially_paid` → `paid` when the full amount is owed and

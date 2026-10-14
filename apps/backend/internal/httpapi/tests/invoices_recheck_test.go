@@ -109,3 +109,18 @@ func TestRecheckLimitsAndChainErrors(t *testing.T) {
 		t.Fatalf("%d checks of different invoices at once: none limited", invoiceapi.RecheckBurst+2)
 	}
 }
+
+func TestUnknownInvoicesDoNotUseTheSharedCheckLimit(t *testing.T) {
+	e := invoiceAPI(t)
+	id := e.post(t, "did:privy:alice", e.aliceProfile, "unknown-recheck", basicBody).body["invoiceId"].(string)
+	unknown := "0x" + strings.Repeat("0", 64)
+	for range invoiceapi.RecheckBurst + 1 {
+		if r := e.recheck(t, e.srv, unknown); r.status != http.StatusNotFound && r.status != http.StatusTooManyRequests {
+			t.Fatalf("unknown id: %d %v", r.status, r.body)
+		}
+	}
+	if r := e.recheck(t, e.srv, id); r.status != http.StatusOK {
+		t.Fatalf("first check of a real invoice after %d unknown-id requests (no RPC read): %d %v, want 200",
+			invoiceapi.RecheckBurst+1, r.status, r.body)
+	}
+}

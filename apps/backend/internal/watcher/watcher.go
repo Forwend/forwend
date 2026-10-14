@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"slices"
 	"strings"
 	"time"
 
@@ -31,7 +32,8 @@ var transferTopic = crypto.Keccak256Hash([]byte("Transfer(address,address,uint25
 const (
 	// MaxRange is the most blocks one eth_getLogs call covers; RPCs reject larger result sets (S-4).
 	MaxRange = 2000
-	// MinRange is the fewest: a range this small that the RPC still refuses fails the scan.
+	// MinRange is the fewest blocks for a rate limit: a range this small that is still rate limited fails the scan. A
+	// result too large narrows to one block, then its receipts, so zero-value Transfer spam can't stop the chain.
 	MinRange = 50
 	// RescanDepth finalized blocks are read again on every scan, so one lagging or empty eth_getLogs answer is never
 	// the last look at a block. On Arc and Tempo finalized is latest, and 2,000 blocks are still 15 minutes or more.
@@ -46,8 +48,8 @@ type Chain struct {
 	chainID uint64
 	rpc     *rpc.Client
 	eth     *ethclient.Client
-	// span is the blocks per eth_getLogs call: halved down to MinRange when the RPC refuses a range for its rate or
-	// size, doubled back up to MaxRange after each range it answers.
+	// span is the blocks per eth_getLogs call: halved when the RPC refuses a range for its rate (down to MinRange) or
+	// size (down to one block), doubled back up to MaxRange after each range it answers.
 	span uint64
 }
 
@@ -121,8 +123,8 @@ func (c *Chain) Scan(ctx context.Context) error {
 		if err == nil {
 			foundWallet, err = c.walletLogs(ctx, lo, hi, wallets)
 		}
-		if err != nil && chain.Overloaded(err) && c.span > MinRange {
-			c.span = max(c.span/2, MinRange)
+		if next, ok := narrower(err, c.span); ok {
+			c.span = next
 			continue
 		}
 		if err != nil {
@@ -313,6 +315,52 @@ func topicParts(addresses []common.Hash) [][]common.Hash {
 	return append(parts, addresses)
 }
 
+func narrower(err error, span uint64) (uint64, bool) {
+	switch {
+	case err == nil:
+		return span, false
+	case chain.TooLarge(err) && span > 1:
+		return span / 2, true
+	case chain.Overloaded(err) && span > MinRange:
+		return max(span/2, MinRange), true
+	}
+	return span, false
+}
+
+func (c *Chain) filterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+	logs, err := c.eth.FilterLogs(ctx, q)
+	if err == nil || !chain.TooLarge(err) || q.FromBlock.Cmp(q.ToBlock) != 0 {
+		return logs, err
+	}
+	var receipts []struct {
+		Logs []types.Log `json:"logs"`
+	}
+	if err := c.rpc.CallContext(ctx, &receipts, "eth_getBlockReceipts", hexutil.EncodeBig(q.FromBlock)); err != nil {
+		return nil, fmt.Errorf("read block %s receipts: %w", q.FromBlock, err)
+	}
+	logs = nil
+	for _, r := range receipts {
+		for _, l := range r.Logs {
+			if matches(q, l) {
+				logs = append(logs, l)
+			}
+		}
+	}
+	return logs, nil
+}
+
+func matches(q ethereum.FilterQuery, l types.Log) bool {
+	if len(q.Addresses) > 0 && !slices.Contains(q.Addresses, l.Address) {
+		return false
+	}
+	for i, want := range q.Topics {
+		if len(want) > 0 && (i >= len(l.Topics) || !slices.Contains(want, l.Topics[i])) {
+			return false
+		}
+	}
+	return true
+}
+
 // logs returns the Transfer logs in [lo, hi] that pay an invoice in its own token.
 func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Address]receiver) ([]types.Log, error) {
 	tokens := map[common.Address]bool{}
@@ -327,7 +375,7 @@ func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Add
 	}
 	var logs []types.Log
 	for _, part := range topicParts(receivers) {
-		found, err := c.eth.FilterLogs(ctx, ethereum.FilterQuery{
+		found, err := c.filterLogs(ctx, ethereum.FilterQuery{
 			FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi),
 			Addresses: tokenList, Topics: [][]common.Hash{{transferTopic}, nil, part},
 		})

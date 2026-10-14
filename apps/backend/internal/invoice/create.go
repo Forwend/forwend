@@ -42,8 +42,27 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	if err != nil {
 		return Invoice{}, false, err
 	}
+	var recipient string
+	err = s.pool.QueryRow(ctx, "SELECT address FROM profile_wallets WHERE profile_id = $1 AND chain_family = $2",
+		profileID, options[0].family).Scan(&recipient)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Invoice{}, false, fmt.Errorf("%w: the profile has no wallet for this chain", ErrInvalid)
+	}
+	if err != nil {
+		return Invoice{}, false, fmt.Errorf("read profile wallet: %w", err)
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Invoice{}, false, fmt.Errorf("insert invoice: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	// The profile row lock makes concurrent creates count one after another, so none passes a cap on a stale count.
+	if _, err := tx.Exec(ctx, "SELECT 1 FROM profiles WHERE id = $1 FOR UPDATE", profileID); err != nil {
+		return Invoice{}, false, fmt.Errorf("lock profile: %w", err)
+	}
 	var open, today int
-	if err := s.pool.QueryRow(ctx, `SELECT count(*) FILTER (WHERE expires_at > $2),
+	if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE expires_at > $2),
 		count(*) FILTER (WHERE created_at > now() - interval '1 day') FROM invoices WHERE profile_id = $1`,
 		profileID, s.now().Unix()).Scan(&open, &today); err != nil {
 		return Invoice{}, false, fmt.Errorf("count open invoices: %w", err)
@@ -55,23 +74,8 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	if today+len(options) > MaxPerDay {
 		return Invoice{}, false, fmt.Errorf("%w: a profile creates at most %d receive addresses a day", ErrInvalid, MaxPerDay)
 	}
-	var recipient string
-	err = s.pool.QueryRow(ctx, "SELECT address FROM profile_wallets WHERE profile_id = $1 AND chain_family = $2",
-		profileID, options[0].family).Scan(&recipient)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Invoice{}, false, fmt.Errorf("%w: the profile has no wallet for this chain", ErrInvalid)
-	}
-	if err != nil {
-		return Invoice{}, false, fmt.Errorf("read profile wallet: %w", err)
-	}
-
 	expiresAt := s.now().UTC().Truncate(time.Second).Add(expiresIn)
 	settleDeadline := expiresAt.Add(SettleWindow)
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return Invoice{}, false, fmt.Errorf("insert invoice: %w", err)
-	}
-	defer tx.Rollback(ctx)
 	var mainID *string
 	var first [32]byte
 	_, _ = rand.Read(first[:])

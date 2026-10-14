@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -196,4 +197,19 @@ func TestGetTransactionsFilterAndSearch(t *testing.T) {
 		{"direction=out&q=1", []any{}},
 	})
 	checkListErrors(t, e, path, "direction=all", "direction=sideways")
+}
+
+func TestSearchAndCursorWithBadBytesAre422(t *testing.T) {
+	e := invoiceAPI(t)
+	p := "/v1/profiles/" + e.aliceProfile
+	cursor := func(s string) string { return url.QueryEscape(base64.RawURLEncoding.EncodeToString([]byte(s))) }
+	for _, path := range []string{
+		p + "/invoices?q=a%00b", p + "/invoices?q=a%FFb",
+		p + "/activity?q=a%00b", p + "/transactions?q=a%FFb",
+		p + "/activity?cursor=" + cursor("1|invoice|\x00"),
+	} {
+		if r := e.call(t, "GET", path, "did:privy:alice", "", ""); r.status != http.StatusUnprocessableEntity {
+			t.Errorf("%s: %d %v, want 422 invalid_value", path[len(p):], r.status, r.body)
+		}
+	}
 }

@@ -352,6 +352,11 @@ func Overloaded(err error) bool {
 	return rateLimited(e.ErrorCode(), e.Error()) || tooLarge(strings.ToLower(e.Error()))
 }
 
+func TooLarge(err error) bool {
+	var e rpc.Error
+	return errors.As(err, &e) && tooLarge(strings.ToLower(e.Error()))
+}
+
 func roleName(second bool) string {
 	if second {
 		return "second"

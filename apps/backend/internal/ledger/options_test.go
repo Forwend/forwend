@@ -79,3 +79,33 @@ func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 		t.Fatalf("settlement intent for %q (%v), want %s", settles, err, other)
 	}
 }
+
+func TestOptionPaidFirstOnChainIsChosen(t *testing.T) {
+	ctx := context.Background()
+	e := newChainEnv(t)
+	main, mainReceive := e.invoice(t, 1, 5000000, e.anvil.Now()+3600)
+	other, otherReceive := e.option(t, main, 2)
+	e.run(t)
+
+	e.anvil.Transfer(e.token, otherReceive, "5000000")
+	e.anvil.Transfer(e.token, mainReceive, "1")
+	e.anvil.Mine(2)
+	e.run(t)
+
+	var chosen *string
+	if err := e.pool.QueryRow(ctx, "SELECT chosen_id FROM invoices WHERE id = $1", main).Scan(&chosen); err != nil {
+		t.Fatal(err)
+	}
+	if chosen == nil || *chosen != other {
+		t.Fatalf("chosen option %v, want %s (paid first on chain); main %+v, option %+v",
+			deref(chosen), other, e.state(t, main), e.state(t, other))
+	}
+	want(t, "option paid first", e.state(t, other), state{payment: Paid, refund: "none", receiver: 5000000, owed: 5000000})
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return "<nil>"
+	}
+	return *s
+}

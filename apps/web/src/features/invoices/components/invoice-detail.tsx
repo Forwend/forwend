@@ -134,11 +134,21 @@ function Loaded({
   request: boolean;
 }) {
   const { current, blocksLeft, blocksTotal, secondsLeft } = invoiceProgress(invoice);
-  const token = tokens?.find((t) => tokenKey(t) === tokenKey(invoice));
+  const token =
+    tokens?.find((t) => tokenKey(t) === tokenKey(invoice)) ??
+    invoice.options.find((o) => o.optionId === invoice.optionId);
   const amount = BigInt(invoice.amount);
   const client = mine?.client;
   const issuer = invoice.issuer;
-  const status = invoiceStatus(invoice);
+  // The API says open until the chain is final past expiry; the checkout closed at expiry.
+  const closed = Date.parse(invoice.expiresAt) <= Date.now();
+  const apiStatus = invoiceStatus(invoice);
+  const status =
+    closed && apiStatus === PAYMENT_STATUS.open
+      ? PAYMENT_STATUS.expired
+      : closed && apiStatus === PAYMENT_STATUS.partiallyPaid
+        ? PAYMENT_STATUS.expiredPartiallyPaid
+        : apiStatus;
   const received = invoice.deposits
     .filter((d) => !d.late)
     .reduce((sum, d) => sum + BigInt(d.amount), 0n);
@@ -149,14 +159,16 @@ function Loaded({
   // Payer chooses with no money yet: the amount is USD in any accepted option (R-56, D-75).
   const choosing = invoice.options.length > 1 && !invoice.optionLocked;
   // The pay link takes money only while these last; sharing it later only creates money held for a refund.
-  const payable = (
-    [
-      PAYMENT_STATUS.open,
-      PAYMENT_STATUS.partiallyPaid,
-      PAYMENT_STATUS.detected,
-      PAYMENT_STATUS.confirming,
-    ] as string[]
-  ).includes(status);
+  const payable =
+    !closed &&
+    (
+      [
+        PAYMENT_STATUS.open,
+        PAYMENT_STATUS.partiallyPaid,
+        PAYMENT_STATUS.detected,
+        PAYMENT_STATUS.confirming,
+      ] as string[]
+    ).includes(status);
   return (
     <>
       {/* One status, said at once: open with its close time, closed, partly paid, paid or settled (R-60). */}
@@ -417,9 +429,11 @@ function ShareLink({ invoiceId }: { invoiceId: string }) {
         {/* The host and a short id fit the row; Copy and Open use the whole link. */}
         <p
           title={link}
-          className="min-w-0 flex-1 truncate rounded-md border border-line bg-surface-2 px-3 py-1.5 font-mono text-sm text-ink"
+          className={`min-w-0 flex-1 rounded-md border border-line bg-surface-2 px-3 py-1.5 font-mono text-sm text-ink ${status === COPY_STATUS.failed ? "break-all select-all" : "truncate"}`}
         >
-          {`${window.location.host}/pay/${shortAddress(invoiceId)}`}
+          {status === COPY_STATUS.failed
+            ? link
+            : `${window.location.host}/pay/${shortAddress(invoiceId)}`}
         </p>
         <Button variant="secondary" size="sm" onClick={copy} className="shrink-0">
           {status === COPY_STATUS.copied ? (

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/jackc/pgx/v5"
@@ -132,8 +131,8 @@ func (c *Chain) logsIn(ctx context.Context, lo, hi uint64, invoices map[common.A
 	for lo <= hi {
 		top := min(lo+span-1, hi)
 		found, err := c.logs(ctx, lo, top, invoices)
-		if err != nil && chain.Overloaded(err) && span > MinRange {
-			span = max(span/2, MinRange)
+		if next, ok := narrower(err, span); ok {
+			span = next
 			continue
 		}
 		if err != nil {

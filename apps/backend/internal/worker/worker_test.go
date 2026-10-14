@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
@@ -149,7 +150,7 @@ func recheck(t *testing.T, ctx context.Context, pool *pgxpool.Pool, a *chaintest
 	}
 	defer client.Close()
 	found, err := invoice.NewService(pool).Recheck(ctx, missedID,
-		ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: client}))
+		ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: client}), func() time.Duration { return 0 })
 	if err != nil {
 		t.Fatal(err)
 	}

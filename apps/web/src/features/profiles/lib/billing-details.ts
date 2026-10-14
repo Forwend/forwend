@@ -1,3 +1,5 @@
+import type { BillingDetailsBody } from "@/features/profiles/types/billing-details";
+
 // The assigned ISO 3166-1 alpha-2 codes the API accepts (internal/profile/billing.go).
 const COUNTRY_CODES = (
   "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT " +
@@ -8,6 +10,14 @@ const COUNTRY_CODES = (
   "PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN " +
   "TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW"
 ).split(" ");
+
+const FIELDS: (keyof BillingDetailsBody)[] = ["name", "address", "country", "taxId", "email"];
+
+/** The field a refused save names: the API's message reads "invalid profile request: email must be …". */
+export function invalidBillingField(message: string): keyof BillingDetailsBody | null {
+  const name = message.split(": ")[1]?.split(" ")[0];
+  return FIELDS.find((field) => field === name) ?? null;
+}
 
 /** Every country the API accepts, by English name. */
 export function countryOptions(): { value: string; label: string }[] {

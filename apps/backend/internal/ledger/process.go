@@ -69,8 +69,8 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		invoiceID).Scan(&anyTransfer, &anyPending); err != nil {
 		return fmt.Errorf("read invoice %s transfers: %w", invoiceID, err)
 	}
-	// Payer chooses (R-56, D-76): the first option seen with money becomes the invoice's, under the main row's lock so
-	// two options can't both win; money on any other option is held for the payer.
+	// Payer chooses (R-56, D-76): the option whose money came first on chain becomes the invoice's, under the main
+	// row's lock so two options can't both win; money on any other option is held for the payer.
 	superseded := false
 	if options {
 		var chosen *string
@@ -78,10 +78,16 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			return fmt.Errorf("read invoice %s chosen option: %w", group, err)
 		}
 		if chosen == nil && anyTransfer {
-			if _, err := tx.Exec(ctx, "UPDATE invoices SET chosen_id = $2 WHERE id = $1", group, invoiceID); err != nil {
-				return fmt.Errorf("choose invoice %s option %s: %w", group, invoiceID, err)
+			var first string
+			if err := tx.QueryRow(ctx, `SELECT t.invoice_id FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
+				WHERE coalesce(i.main_id, i.id) = $1 AND t.status <> 'reorged'
+				ORDER BY t.block_time, t.chain_id, t.block_number, t.log_index LIMIT 1`, group).Scan(&first); err != nil {
+				return fmt.Errorf("read invoice %s first paid option: %w", group, err)
 			}
-			chosen = &invoiceID
+			if _, err := tx.Exec(ctx, "UPDATE invoices SET chosen_id = $2 WHERE id = $1", group, first); err != nil {
+				return fmt.Errorf("choose invoice %s option %s: %w", group, first, err)
+			}
+			chosen = &first
 		}
 		superseded = chosen != nil && *chosen != invoiceID
 	}

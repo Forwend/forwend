@@ -12,7 +12,7 @@ import (
 // MaxLength is the longest search in characters.
 const MaxLength = 100
 
-// ErrInvalid wraps a search that is blank or too long.
+// ErrInvalid wraps a search that is blank, too long or not text.
 var ErrInvalid = errors.New("invalid search")
 
 // Query is a parsed search; the zero Query matches every row.
@@ -31,6 +31,10 @@ func Parse(text string) (Query, error) {
 	text = strings.TrimSpace(text)
 	if text == "" || utf8.RuneCountInString(text) > MaxLength {
 		return Query{}, fmt.Errorf("%w: q must be 1 to %d characters", ErrInvalid, MaxLength)
+	}
+	// Postgres text can't hold a NUL byte.
+	if !utf8.ValidString(text) || strings.ContainsRune(text, 0) {
+		return Query{}, fmt.Errorf("%w: q must be UTF-8 text", ErrInvalid)
 	}
 	like := "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(text) + "%"
 	q := Query{Like: &like}
