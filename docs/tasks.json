@@ -654,76 +654,77 @@
       "notes": [
         "2026-10-15 blocked: Verify blocked by the stale balances e2e step fixed in F197",
         "2026-10-15 blocked: refresh base after merging main",
-        "2026-10-15 review pass by independent reviewer: Pass. Ran go test (httpapi/tests, notify, ledger, invoice, document) ok; web vitest 124/124, typecheck, lint ok. Mutations on a scratch copy: 409 removal, owner-instead-of-payer, per-invoice burst, bell exclusion, ledger queue removal, PUT-after-paid queue removal all fail tests. Once-only holds: SetPayerEmail and ledger.Process both lock the main row, partial unique index + ON CONFLICT DO NOTHING; option->main mapping right; PDF link webURL+/api/v1 matches API_BASE rewrite; address never read back, logged, or put in the payload; form hidden on canceled/closed. Minor: (1) removing ON CONFLICT and the unique index together survives - no test queues twice; add a second PUT after paid before sent asserting receipts()==1. (2) Global limit untested (5000/s survives). (3) Tx-link filters (confirmed, on time, latest) untested beyond one transfer. (4) No 400 malformed_request test for the route (api.md Handlers and tests). (5) payer_email.go reads published_at without locking the outbox row: a PUT while the worker is mid-send returns 200 with the new address but the mail goes to the old one; add FOR UPDATE to that read. (6) A given-up receipt (failed_at) still answers 200 'on its way'. (7) The email shows the owner-set sender name with no 'not checked' note, unlike the PDF; low phishing risk since each mail needs a paid invoice."
+        "2026-10-15 review pass by independent reviewer: Pass. Ran go test (httpapi/tests, notify, ledger, invoice, document) ok; web vitest 124/124, typecheck, lint ok. Mutations on a scratch copy: 409 removal, owner-instead-of-payer, per-invoice burst, bell exclusion, ledger queue removal, PUT-after-paid queue removal all fail tests. Once-only holds: SetPayerEmail and ledger.Process both lock the main row, partial unique index + ON CONFLICT DO NOTHING; option->main mapping right; PDF link webURL+/api/v1 matches API_BASE rewrite; address never read back, logged, or put in the payload; form hidden on canceled/closed. Minor: (1) removing ON CONFLICT and the unique index together survives - no test queues twice; add a second PUT after paid before sent asserting receipts()==1. (2) Global limit untested (5000/s survives). (3) Tx-link filters (confirmed, on time, latest) untested beyond one transfer. (4) No 400 malformed_request test for the route (api.md Handlers and tests). (5) payer_email.go reads published_at without locking the outbox row: a PUT while the worker is mid-send returns 200 with the new address but the mail goes to the old one; add FOR UPDATE to that read. (6) A given-up receipt (failed_at) still answers 200 'on its way'. (7) The email shows the owner-set sender name with no 'not checked' note, unlike the PDF; low phishing risk since each mail needs a paid invoice.",
+        "2026-10-15 review pass by independent reviewer: Re-review of 4e42ed4: pass. Go tests (httpapi/tests, notify, ledger, invoice, document) ok. Mutations on a scratch copy now all fail tests: 409, address restart, ON CONFLICT+unique index removed, owner address, per-invoice burst, global limit (5000/20000), bell exclusion, late filter, confirmed filter, unchecked-name note. Race fix checked with a scratch test that holds the receipt row like the worker, sends a PUT, then marks it published: with FOR UPDATE the PUT waits and answers 409; without it the PUT answers 200. No deadlock: the worker locks only the outbox row, the PUT locks main then outbox. Minor, not blocking: (1) no committed test for the FOR UPDATE wait (removing it survives the suite); the scratch test above is ~30 lines in httpapi/tests. (2) the issuer_name branch of the receipt is untested (case issuer -> false survives). (3) unverified: a restarted receipt keeps the Resend Idempotency-Key forwend-<invoice>-<event>; if Resend kept that key from an earlier attempt to the old address within 24 h, the new body may be refused; adding the address hash to the key would avoid it."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-15T02:55:12Z",
+        "at": "2026-10-15T03:03:59Z",
         "checks": [
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 62.6,
-            "log": "docs/runs/F185-20261015T025512Z-backend.log"
+            "seconds": 63.3,
+            "log": "docs/runs/F185-20261015T030359Z-backend.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 65.7,
-            "log": "docs/runs/F185-20261015T025512Z-unit.log"
+            "seconds": 64.6,
+            "log": "docs/runs/F185-20261015T030359Z-unit.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 164.0,
-            "log": "docs/runs/F185-20261015T025512Z-e2e.log"
+            "seconds": 160.5,
+            "log": "docs/runs/F185-20261015T030359Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 1.9,
-            "log": "docs/runs/F185-20261015T025512Z-harness.log"
+            "log": "docs/runs/F185-20261015T030359Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F185-20261015T025512Z-docs-check.log"
+            "seconds": 0.0,
+            "log": "docs/runs/F185-20261015T030359Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F185-20261015T025512Z-lint.log"
+            "log": "docs/runs/F185-20261015T030359Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F185-20261015T025512Z-typecheck.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F185-20261015T030359Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.3,
-            "log": "docs/runs/F185-20261015T025512Z-build.log"
+            "seconds": 2.4,
+            "log": "docs/runs/F185-20261015T030359Z-build.log"
           }
         ],
         "taskHash": "b7d4c44948b26ee9",
-        "filesHash": "4f1e5cf88b14c5ec",
+        "filesHash": "62e0f33f2885841d",
         "proof": {
-          "1": "e2e: pay.spec 'takes an optional address for the receipt' saves it before paying, says where the receipt goes, shows the 422 and 409 answers; backend TestPayerEmail (422, 404, normalized, paid queues one, 409 after sent, bell leaves receipts out), TestPayerEmailQueuesOneReceipt (one receipt across changes, a given-up receipt restarts, 400), TestPayerEmailIsLimitedPerInvoice and TestPayerEmailIsLimitedForEveryone (429)",
-          "2": "backend: TestPaidQueuesTheReceiptWhenAsked and TestDeliverSendsTheReceiptToThePayer (the payer's address whatever the owner's setting; amount, payee with the unchecked-name note, the on-time confirmed transaction link, receipt PDF link); the change locks the receipt row the worker holds while sending"
+          "1": "e2e: pay.spec 'takes an optional address for the receipt' saves it before paying, says where the receipt goes, shows the 422 and 409 answers; backend TestPayerEmail, TestPayerEmailQueuesOneReceipt (one receipt across changes, a given-up receipt restarts, 400), TestPayerEmailWaitsForASendInProgress (a change during a send waits and answers 409; caught without FOR UPDATE), and both limit tests (429)",
+          "2": "backend: TestPaidQueuesTheReceiptWhenAsked, TestDeliverSendsTheReceiptToThePayer (payer's address, amount, payee with the unchecked-name note, on-time confirmed transaction link, receipt PDF link), TestReceiptNamesTheIssuer, and TestKeyFollowsTheAddress (a new address gets a new Idempotency-Key)"
         }
       },
       "branch": "feat/f185-a-payer-can-ask-for-the-receipt-by-email",

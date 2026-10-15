@@ -63,7 +63,7 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
   can never set it, so nobody can point another person's notifications at an inbox.
 - The ledger and the signer queue `invoice.paid`, `invoice.held` (with the amount newly held) and `invoice.settled` in
   `outbox_events`, in the transaction that makes the change (`internal/outbox`). The worker sends them through Resend
-  (`internal/notify`) with `forwend-<invoiceId>-<eventId>` as the Idempotency-Key, one at a time with `FOR UPDATE SKIP
+  (`internal/notify`) with `forwend-<invoiceId>-<eventId>-<address hash>` as the Idempotency-Key, one at a time with `FOR UPDATE SKIP
   LOCKED`; a failed send ends that round and is retried after 1 min doubling to 1 h, given up after 10 tries. Email off
   or no address: the event is marked done and nothing is sent. Without `RESEND_API_KEY` the worker sends nothing and
   events wait; `scripts/with-env.sh` gives the key to the worker alone.

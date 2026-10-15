@@ -5,6 +5,7 @@ package notify
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -112,7 +113,10 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 			webURL+"/app/invoices/"+invoice, webURL+"/app/notifications")
 	}
 	// The invoice id too: event ids start again in another database (a reset, staging) that may share the Resend team.
-	m.To, m.Key = *to, fmt.Sprintf("forwend-%s-%d", invoice, id)
+	// And the address: a receipt sent again to a changed address is a new request, which Resend would refuse under a
+	// key it already saw with another body.
+	sum := sha256.Sum256([]byte(*to))
+	m.To, m.Key = *to, fmt.Sprintf("forwend-%s-%d-%x", invoice, id, sum[:8])
 	if err := sender.Send(ctx, m); err != nil {
 		attempts++
 		if attempts >= MaxAttempts {

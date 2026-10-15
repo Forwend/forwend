@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 // R-82, D-68: the payer gives an address for the receipt on the public pay page; it changes until the receipt is sent,
@@ -114,5 +115,45 @@ func TestPayerEmailIsLimitedForEveryone(t *testing.T) {
 	}
 	if limited == 0 {
 		t.Fatal("25 changes at once on 25 invoices: none limited")
+	}
+}
+
+// A change while the worker sends the receipt waits for that send, then says it was sent: never "on its way" to an
+// address the email did not go to.
+func TestPayerEmailWaitsForASendInProgress(t *testing.T) {
+	e := invoiceAPI(t)
+	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
+	e.exec(t, `UPDATE invoices SET payment_status = 'paid' WHERE id = $1`, id)
+	if r := e.call(t, "PUT", "/v1/invoices/"+id+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status != http.StatusOK {
+		t.Fatalf("first address: %d %v", r.status, r.body)
+	}
+	// The worker's send: it holds the receipt row until Resend answers.
+	tx, err := e.pool.Begin(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(t.Context())
+	if _, err := tx.Exec(t.Context(), `SELECT 1 FROM outbox_events WHERE invoice_id = $1 AND kind = 'invoice.receipt'
+		FOR UPDATE`, id); err != nil {
+		t.Fatal(err)
+	}
+	answer := make(chan reply, 1)
+	go func() {
+		answer <- e.call(t, "PUT", "/v1/invoices/"+id+"/payer-email", "", "", `{"email": "b@example.com"}`)
+	}()
+	select {
+	case r := <-answer:
+		t.Fatalf("the change did not wait for the send: %d %v", r.status, r.body)
+	case <-time.After(300 * time.Millisecond):
+	}
+	if _, err := tx.Exec(t.Context(), `UPDATE outbox_events SET published_at = now(), attempts = 1
+		WHERE invoice_id = $1 AND kind = 'invoice.receipt'`, id); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if r := <-answer; r.status != http.StatusConflict || errorCode(r) != "receipt_sent" {
+		t.Fatalf("after the send: %d %v, want 409 receipt_sent", r.status, r.body)
 	}
 }

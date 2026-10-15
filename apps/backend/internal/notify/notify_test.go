@@ -114,7 +114,7 @@ func TestDeliverSendsOneEmailPerEvent(t *testing.T) {
 		m := f.sent[i]
 		if m.To != "owner@example.com" || m.Subject != want.subject || !strings.Contains(m.Text, want.text) ||
 			!strings.Contains(m.Text, web+"/app/invoices/"+id) || !strings.Contains(m.Text, web+"/app/notifications") ||
-			m.Key != fmt.Sprintf("forwend-%s-%d", id, i+1) {
+			!strings.HasPrefix(m.Key, fmt.Sprintf("forwend-%s-%d-", id, i+1)) {
 			t.Fatalf("email %d: %+v", i, m)
 		}
 	}
@@ -268,5 +268,32 @@ func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 	}
 	if m.To != "payer@example.com" || m.Subject != "Your receipt for INV-0001" {
 		t.Fatalf("receipt %+v", m)
+	}
+}
+
+// The idempotency key changes with the address: a receipt restarted for a changed address is a new request to
+// Resend, not a replay it would refuse.
+func TestKeyFollowsTheAddress(t *testing.T) {
+	pool, id := setup(t, "owner@example.com")
+	queue(t, pool, outbox.Paid, id, nil)
+	f := &fake{}
+	if err := Deliver(context.Background(), pool, f, web); err != nil {
+		t.Fatal(err)
+	}
+	exec(t, pool, "UPDATE users SET login_email = 'other@example.com'")
+	exec(t, pool, "UPDATE outbox_events SET published_at = NULL")
+	if err := Deliver(context.Background(), pool, f, web); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.sent) != 2 || f.sent[0].Key == f.sent[1].Key {
+		t.Fatalf("keys %v: want a new key for the new address", f.sent)
+	}
+}
+
+// An invoice with billing details names its issuer, which Forwend shows as given, without the unchecked note.
+func TestReceiptNamesTheIssuer(t *testing.T) {
+	m := receipt("INV-0001", "5.00 USDC", "Base Sepolia", "Alice Design GmbH", "Mara", "", "pdf")
+	if !strings.Contains(m.Text, "to Alice Design GmbH for INV-0001.") || strings.Contains(m.Text, "doesn't check") {
+		t.Fatalf("receipt %q", m.Text)
 	}
 }
