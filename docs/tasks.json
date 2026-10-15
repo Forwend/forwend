@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 198,
+  "nextId": 199,
   "tasks": [
     {
       "id": "F179",
@@ -1317,7 +1317,7 @@
         "The comment in apps/web/src/shared/config/brand-colors.ts names no missing test and says how its copies stay equal to tokens.css; nothing else changes"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit"
       ],
@@ -1328,7 +1328,70 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T03:37:14Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 64.4,
+            "log": "docs/runs/F192-20261015T033714Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": "docs/runs/F192-20261015T033714Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F192-20261015T033714Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F192-20261015T033714Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F192-20261015T033714Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.1,
+            "log": "docs/runs/F192-20261015T033714Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 160.3,
+            "log": "docs/runs/F192-20261015T033714Z-e2e.log"
+          }
+        ],
+        "taskHash": "bb9aeef4a693ab79",
+        "filesHash": "2a6f03937f8411c7",
+        "proof": {
+          "1": "unit: the comment in brand-colors.ts names no missing test and says how the copies stay equal to tokens.css (same-commit rule); no code changed; unit and the full suite pass"
+        }
+      },
+      "branch": "fix/f192-brand-colors-ts-no-longer-cites-a-test-t",
+      "baseCommit": "8e9cc2a913b9b9913e9b89949635d4b4a9a90c4f",
+      "failedVerifies": 0
     },
     {
       "id": "F193",
@@ -1521,6 +1584,27 @@
         "branch": "fix/f197-the-live-privy-balances-test-passes-reli",
         "base": "main"
       }
+    },
+    {
+      "id": "F198",
+      "type": "test",
+      "behavior": "A retried email keeps its Idempotency-Key, proven by a test, so a send whose answer was lost is never delivered twice",
+      "acceptance": [
+        "A notify test fails one send, lets the retry succeed, and checks both sends used the same Idempotency-Key; a key that changes per send fails it"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-80"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
