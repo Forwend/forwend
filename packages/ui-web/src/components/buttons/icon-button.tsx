@@ -18,9 +18,9 @@ export interface IconButtonProps extends ComponentPropsWithRef<"button"> {
 // xs sits inline with text (a hint); sm and md are toolbar buttons. Each reaches a 44px hit area through a pseudo
 // element without changing its look.
 const SIZES: Record<IconButtonSize, string> = {
-  xs: "size-6 rounded-pill text-subtle before:-inset-2.5",
+  xs: "size-6 rounded-sm text-subtle before:-inset-2.5",
   sm: "size-8 rounded-md text-muted hover:bg-surface-2 before:-inset-1.5",
-  md: "size-10 rounded-pill text-muted hover:bg-surface-2 before:-inset-0.5",
+  md: "size-10 rounded-md text-muted hover:bg-surface-2 before:-inset-0.5",
 };
 
 /** A button that shows only an icon (or an avatar); the label names it. */

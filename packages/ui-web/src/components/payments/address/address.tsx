@@ -28,7 +28,7 @@ export function Address({
   const copied = status === COPY_STATUS.copied;
   const failed = status === COPY_STATUS.failed;
   return (
-    <span className="inline-flex max-w-full items-center gap-1 rounded-pill border border-line bg-surface py-1 pr-1 pl-3 text-sm">
+    <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-line bg-surface py-1 pr-1 pl-3 text-sm">
       <span
         className={cx("min-w-0 font-mono text-ink", failed && "break-all select-all")}
         title={address}
@@ -43,7 +43,7 @@ export function Address({
         onClick={copy}
         aria-label={copied ? copiedLabel : failed ? failedLabel : copyLabel}
         aria-describedby={fullId}
-        className="relative shrink-0 rounded-pill p-1.5 text-muted before:absolute before:-inset-x-0.5 before:-inset-y-2 hover:bg-surface-2 hover:text-ink"
+        className="relative shrink-0 rounded-sm p-1.5 text-muted before:absolute before:-inset-x-0.5 before:-inset-y-2 hover:bg-surface-2 hover:text-ink"
       >
         {copied ? (
           <Check aria-hidden className="size-[var(--fw-icon-sm)] text-success" />
@@ -59,7 +59,7 @@ export function Address({
           target="_blank"
           rel="noreferrer noopener"
           aria-label={explorerLabel}
-          className="relative shrink-0 rounded-pill p-1.5 text-muted before:absolute before:-inset-x-0.5 before:-inset-y-2 hover:bg-surface-2 hover:text-ink"
+          className="relative shrink-0 rounded-sm p-1.5 text-muted before:absolute before:-inset-x-0.5 before:-inset-y-2 hover:bg-surface-2 hover:text-ink"
         >
           <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
         </a>

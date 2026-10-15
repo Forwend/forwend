@@ -15,7 +15,7 @@ export function NavPill({ brand, links, action }: NavPillProps) {
   return (
     <nav
       aria-label="Main"
-      className="mx-auto flex w-fit max-w-full items-center gap-2 rounded-pill border border-[color-mix(in_oklab,var(--fw-surface)_70%,transparent)] bg-glass py-1.5 pr-1.5 pl-5 shadow-md backdrop-blur-glass sm:gap-6"
+      className="mx-auto flex w-fit max-w-full items-center gap-2 rounded-lg border border-[color-mix(in_oklab,var(--fw-surface)_70%,transparent)] bg-glass py-1.5 pr-1.5 pl-4 shadow-md backdrop-blur-glass sm:gap-6"
     >
       {/* flex, not an inline span: an inline wrapper aligns the brand to its text baseline and lifts it. */}
       <span className="flex items-center font-semibold tracking-tight text-ink">{brand}</span>

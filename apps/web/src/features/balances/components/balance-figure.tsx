@@ -4,7 +4,6 @@ import { Button, Skeleton } from "@forwend/ui-web";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { EstimateHint } from "@/features/balances/components/estimate-hint";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { formatUsd, usdTotal } from "@/features/balances/lib/balances";
 import type { Balances } from "@/features/balances/types/balances";
@@ -24,9 +23,8 @@ export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps)
   const total = balances ? usdTotal(balances, "wallet") : null;
   const text = total === null ? "—" : formatUsd(total);
   const figure =
-    "text-[length:clamp(2rem,min(14cqi,160cqi_/_var(--chars)),5.25rem)] leading-none font-semibold tracking-[-0.03em] text-ink";
+    "text-[length:clamp(2rem,min(16cqi,170cqi_/_var(--chars)),5.25rem)] leading-none font-semibold tracking-[-0.035em] text-ink tabular-nums";
   const align = "items-center text-center lg:items-start lg:text-left";
-  const row = "flex flex-wrap items-baseline justify-center gap-x-2 lg:justify-start";
 
   if (!balances && failed) {
     return (
@@ -45,14 +43,9 @@ export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps)
 
   return (
     <div className={`flex w-full flex-col gap-2 ${align}`}>
-      <p className={row}>
-        <span className={figure} style={{ "--chars": text.length } as CSSProperties}>
-          {text}
-        </span>
-        <span className="inline-flex items-center gap-1 text-xl font-medium whitespace-nowrap text-muted">
-          {MONEY_COPY.usd}
-          <EstimateHint />
-        </span>
+      <p className={figure} style={{ "--chars": text.length } as CSSProperties}>
+        {text}
+        <span className="sr-only"> {MONEY_COPY.usd}</span>
       </p>
       {total === null ? <p className="text-sm text-muted">{BALANCES_COPY.unavailable}</p> : null}
       <PendingHeld balances={balances} />
@@ -78,7 +71,7 @@ function PendingHeld({ balances }: { balances: Balances }) {
             className="inline-flex min-h-11 items-center gap-1 rounded-sm text-sm text-muted underline decoration-line underline-offset-4 outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
           >
             <span>
-              <span className="font-mono tabular-nums text-ink">
+              <span className="font-medium tabular-nums text-ink">
                 {total === 0n ? BALANCES_COPY.lessThanCent : formatUsd(total)} {MONEY_COPY.usd}
               </span>{" "}
               {label}

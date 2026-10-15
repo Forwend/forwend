@@ -35,6 +35,9 @@ export const PAY_COPY = {
   sendTo: (symbol: string, network: string) => `Send ${symbol} on ${network} to`,
   exactAmount: "Amount",
   copyAmount: "Copy amount",
+  // The copy buttons' own words; their accessible names say what they copy.
+  copyShort: "Copy",
+  copiedShort: "Copied",
   amountCopied: "Amount copied",
   copyAmountFailed: "Copy failed: type the amount instead",
   exchange: (amount: string, network: string) =>
@@ -81,7 +84,9 @@ export const PAY_COPY = {
     `${amount} sent on ${network} went to another payment option. It is held for you; ask ${payee} to get it back.`,
   // Email me the receipt (R-82, D-68): optional, for this receipt only.
   receipt: {
+    open: "Email me a receipt",
     label: "Email me the receipt (optional)",
+    placeholder: "you@example.com",
     hint: "Used for this receipt only. Nothing else is sent to it.",
     send: "Send",
     before: (email: string) => `We will email the receipt to ${email} once it is paid.`,

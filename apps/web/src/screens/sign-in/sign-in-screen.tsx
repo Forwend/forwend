@@ -44,7 +44,7 @@ export function SignInScreen() {
         <Link
           href={APP_ROUTES.site}
           aria-label={SIGN_IN_COPY.homeLabel}
-          className="absolute top-6 left-6 rounded-pill lg:top-8 lg:left-10"
+          className="absolute top-6 left-6 rounded-sm lg:top-8 lg:left-10"
         >
           <Logo />
         </Link>

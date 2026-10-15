@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useGetBalanceHistoryQuery } from "@/features/balances/api/balances-api";
 import { BalanceFigure } from "@/features/balances/components/balance-figure";
 import { BalanceChart } from "@/features/balances/components/charts/balance-chart";
+import { EstimateHint } from "@/features/balances/components/estimate-hint";
 import { MoneyActions } from "@/features/balances/components/money-actions";
 import {
   DEFAULT_RANGE,
@@ -107,9 +108,12 @@ export function BalanceHero({
         <div className="grid flex-1 gap-8 px-4 py-8 sm:px-6 lg:gap-10 lg:p-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
           <div className="flex flex-col items-center justify-between gap-10 lg:items-start lg:gap-6">
             <div className="flex w-full flex-col items-center gap-3 lg:items-start">
-              <h2 id="balance-title" className="text-sm font-medium text-muted">
-                {BALANCES_COPY.totalBalance}
-              </h2>
+              <div className="flex items-center gap-1">
+                <h2 id="balance-title" className="text-sm font-medium text-muted">
+                  {BALANCES_COPY.totalBalanceIn(MONEY_COPY.usd)}
+                </h2>
+                <EstimateHint />
+              </div>
               <div
                 aria-busy={!balances && !failed}
                 className="@container flex w-full flex-col items-center gap-2 lg:items-start"
@@ -164,7 +168,7 @@ function Change({ series, rangeName }: { series: HistorySeries; rangeName: strin
         className={`inline-flex items-center gap-1 font-medium ${up ? "text-success" : "text-danger"}`}
       >
         <Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
-        <span className="font-mono tabular-nums">
+        <span className="tabular-nums">
           {up ? "+" : "−"}
           {amount} {MONEY_COPY.usd}
         </span>

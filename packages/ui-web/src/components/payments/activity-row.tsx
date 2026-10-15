@@ -61,7 +61,7 @@ export function ActivityRow({
         <span className="flex items-center gap-1">
           {action}
           {status === PAYMENT_STATUS.confirmed ? (
-            <span className="inline-flex items-center whitespace-nowrap rounded-pill border border-transparent px-2.5 py-1 text-xs text-muted">
+            <span className="inline-flex items-center whitespace-nowrap rounded-sm border border-transparent px-2 py-0.5 text-xs text-muted">
               {PAYMENT_STATUSES.confirmed.label}
             </span>
           ) : (

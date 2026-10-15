@@ -30,7 +30,7 @@ export function SegmentedControl<T extends string>({
       {options.map((option) => (
         <label
           key={option.value}
-          className="relative grid h-8 cursor-pointer place-items-center rounded-sm px-3 text-xs font-medium text-muted transition-colors duration-[var(--fw-duration-fast)] before:absolute before:inset-x-0 before:-inset-y-1.5 hover:text-ink has-checked:bg-surface has-checked:text-ink has-checked:shadow-sm has-focus-visible:outline-2 has-focus-visible:outline-focus"
+          className="relative grid h-8 cursor-pointer place-items-center rounded-sm px-3 text-xs font-medium text-muted transition-colors duration-[var(--fw-duration-fast)] before:absolute before:inset-x-0 before:-inset-y-1.5 hover:text-ink has-checked:bg-surface has-checked:text-ink has-checked:shadow-[0_0_0_1px_var(--fw-line)] has-focus-visible:outline-2 has-focus-visible:outline-focus"
         >
           <input
             type="radio"

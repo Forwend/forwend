@@ -201,11 +201,10 @@ test.describe("pay page", () => {
     await expect(page.getByText(RECEIVE)).toBeVisible();
     await expect(page.getByRole("img", { name: "QR code of the address to pay" })).toBeVisible();
     await expect(page.getByRole("note")).toHaveText("Send only USDC on Base Sepolia.");
-    // R-78: the whole address in groups of 4 that copies as one address, the token contract, the exchange's network.
+    // R-78: the whole address as one plain string with Copy in its field, the token contract, the exchange's network.
     const shown = page.locator("[data-address]");
     await expect(shown).toHaveText(RECEIVE);
-    await expect(shown.locator("span")).toHaveCount(10);
-    // Selected and copied by hand, the groups still give the one address: no spaces or line breaks between them.
+    // Selected and copied by hand, it gives exactly the address: no spaces or line breaks inside it.
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     await shown.click();
     await page.keyboard.press("ControlOrMeta+C");
@@ -363,7 +362,10 @@ test.describe("pay page", () => {
         : route.fulfill({ status: answer, json: { error: { code: "x", message: "x" } } });
     });
     await openPay(page, OPEN);
+    // The panel's last row, folded until the payer asks for it; the field takes focus when it opens.
+    await page.getByRole("button", { name: "Email me a receipt" }).click();
     const field = page.getByLabel("Email me the receipt (optional)");
+    await expect(field).toBeFocused();
     await expect(
       page.getByText("Used for this receipt only. Nothing else is sent to it."),
     ).toBeVisible();
@@ -386,6 +388,7 @@ test.describe("pay page", () => {
     );
     await mockInvoice(page, PAID);
     await page.reload();
+    await page.getByRole("button", { name: "Email me a receipt" }).click();
     await page.getByLabel("Email me the receipt (optional)").fill("payer@example.com");
     await page.getByRole("button", { name: "Send", exact: true }).click();
     await expect(page.getByText("The receipt was already sent.")).toBeVisible();

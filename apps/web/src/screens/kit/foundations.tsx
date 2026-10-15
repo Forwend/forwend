@@ -31,7 +31,7 @@ export function TypographySamples() {
         </ul>
       </div>
       <div>
-        <p className="text-sm text-muted">Text: Hanken Grotesk</p>
+        <p className="text-sm text-muted">Text and money: Geist</p>
         <ul className="mt-4 flex flex-col gap-3">
           {TYPE_SCALE.slice(4).map((t) => (
             <li
@@ -63,9 +63,13 @@ export function TypographySamples() {
         </ul>
       </div>
       <div>
-        <p className="text-sm text-muted">Numbers and addresses: Geist Mono, tabular figures</p>
-        <p className="mt-4 font-mono text-amount-lg tabular-nums text-ink">
-          1,250.00 · 98,431.07 · 0x8f3a…c21d
+        <p className="text-sm text-muted">Money: Geist, tabular figures</p>
+        <p className="mt-4 text-amount-lg font-semibold tabular-nums text-ink">
+          1,250.00 · 98,431.07
+        </p>
+        <p className="mt-6 text-sm text-muted">Addresses and hashes: Geist Mono</p>
+        <p className="mt-4 font-mono text-base text-ink">
+          0x586134f74b654f5835860ca198ae725344670078
         </p>
       </div>
     </div>

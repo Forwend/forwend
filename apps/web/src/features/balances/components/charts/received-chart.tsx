@@ -104,7 +104,7 @@ export function ReceivedChart({ series, label, className }: ReceivedChartProps) 
                   y={ty}
                   dy="0.32em"
                   textAnchor="end"
-                  className="fill-muted font-mono text-2xs tabular-nums"
+                  className="fill-muted text-2xs tabular-nums"
                 >
                   {COMPACT.format(t)}
                 </text>

@@ -12,7 +12,16 @@ import {
   shortAddress,
   useCopy,
 } from "@forwend/ui-web";
-import { CalendarDays, Check, Clock, Copy, FileDown, ShieldAlert } from "lucide-react";
+import {
+  CalendarDays,
+  Check,
+  Clock,
+  Copy,
+  ExternalLink,
+  FileDown,
+  ShieldAlert,
+  TriangleAlert,
+} from "lucide-react";
 import { notFound, usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useGetInvoiceQuery } from "@/features/invoices/api/invoices-api";
@@ -206,7 +215,7 @@ function Summary({
       <div className="flex min-w-0 items-center gap-3">
         <span
           aria-hidden
-          className="grid size-11 shrink-0 place-items-center rounded-md bg-primary text-lg font-semibold text-on-primary"
+          className="grid size-11 shrink-0 place-items-center rounded-md border border-line bg-surface text-lg font-semibold text-ink"
         >
           {(payee ?? COPY.noIssuer).trim().charAt(0).toUpperCase()}
         </span>
@@ -388,19 +397,36 @@ function PayBox({
                 <h2 id="pay-send" ref={sendHeading} tabIndex={-1} className="sr-only">
                   {COPY.sendTo(token.symbol, network)}
                 </h2>
-                <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 sm:gap-4">
+                {/* What to send and where beside the code a phone scans; the address itself runs full width. */}
+                <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
                   <QrCode
                     value={address}
                     label={COPY.qr}
-                    className="w-28 border border-line sm:w-36"
+                    className="w-28 border border-line p-1 sm:w-32"
                   />
-                  <ExactAmount amount={pay.remaining} token={token} />
+                  <div className="flex min-w-0 flex-col gap-3">
+                    <ExactAmount amount={pay.remaining} token={token} />
+                    <p
+                      role="note"
+                      className="flex items-start gap-2 text-sm font-medium text-warning"
+                    >
+                      <TriangleAlert
+                        aria-hidden
+                        className="mt-0.5 size-[var(--fw-icon-sm)] shrink-0"
+                      />
+                      <span>
+                        {COPY.sendOnly(token.symbol, network)}
+                        {lookalike ? ` ${COPY.notLookalike(token.symbol, lookalike)}` : null}
+                      </span>
+                    </p>
+                  </div>
                 </div>
-                <ReceiveAddress address={address} label={COPY.sendTo(token.symbol, network)} />
-                <p role="note" className="text-sm font-medium text-warning">
-                  {COPY.sendOnly(token.symbol, network)}
-                  {lookalike ? ` ${COPY.notLookalike(token.symbol, lookalike)}` : null}
-                </p>
+                <ReceiveAddress
+                  address={address}
+                  label={COPY.sendTo(token.symbol, network)}
+                  copyShort={COPY.copyShort}
+                  copiedShort={COPY.copiedShort}
+                />
                 {contract ? (
                   <p className="text-xs text-muted">
                     {COPY.contract(token.symbol)}{" "}
@@ -438,11 +464,12 @@ function PayBox({
             )}
           </>
         )}
+        {/* The receipt by email, before or after paying, as the panel's last row; not for a canceled or closed
+            checkout (R-82). */}
+        {pay.canSend || seen || done ? (
+          <ReceiptEmail invoiceId={invoice.invoiceId} paid={done} />
+        ) : null}
       </div>
-      {/* The receipt by email, before or after paying; not for a canceled or closed checkout (R-82). */}
-      {pay.canSend || seen || done ? (
-        <ReceiptEmail invoiceId={invoice.invoiceId} paid={done} />
-      ) : null}
       {/* Overpaid gets its own handling later (PLAN 11.10.1); late money is held for the payer now. */}
       {pay.late > 0n ? (
         <p className="text-sm text-warning">{COPY.late(money(pay.late), payeeOf(invoice))}</p>
@@ -484,8 +511,10 @@ function StatusLine({
 }) {
   const pending = pay.state === PAY_STATES.waiting;
   return (
-    <div className={`flex flex-col gap-3 p-4 sm:p-5 ${bordered ? "border-t border-line" : ""}`}>
-      <p role="status" className="flex items-start gap-2.5 text-sm text-ink">
+    <div
+      className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-3 p-4 sm:p-5 ${bordered ? "border-t border-line" : ""}`}
+    >
+      <p role="status" className="flex items-start gap-2.5 text-sm font-medium text-ink">
         {pending ? (
           <span aria-hidden className="relative mt-1.5 flex size-2 shrink-0">
             <span className="absolute inset-0 rounded-pill bg-accent opacity-60 motion-safe:animate-ping" />
@@ -650,13 +679,22 @@ function Paid({ invoice, token }: { invoice: Invoice; token: PayToken }) {
         </p>
         <p className="text-sm text-muted">{COPY.closeHint}</p>
       </div>
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm">
+      <div className="flex flex-wrap items-center justify-center gap-2">
         {tx ? (
-          <a href={tx.href} target="_blank" rel="noopener noreferrer" className={LINK}>
+          <a
+            href={tx.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonClasses({ variant: "secondary", size: "sm" })}
+          >
+            <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
             {COPY.viewTx}
           </a>
         ) : null}
-        <a href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.receipt)} className={LINK}>
+        <a
+          href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.receipt)}
+          className={buttonClasses({ variant: "secondary", size: "sm" })}
+        >
           <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
           {COPY.receiptPdf}
         </a>
@@ -691,23 +729,33 @@ function ExactAmount({ amount, token }: { amount: bigint; token: PayToken }) {
         ? COPY.copyAmountFailed
         : COPY.copyAmount;
   return (
-    <div className="flex min-w-0 flex-col justify-center gap-2 rounded-md bg-surface-2 p-3 sm:p-4">
+    <div className="flex min-w-0 flex-col gap-1.5">
       <span className="text-xs text-muted">{COPY.exactAmount}</span>
-      <Money
-        baseUnits={amount}
-        decimals={token.decimals}
-        fractionDigits={fractionDigits}
-        token={token.symbol}
-        className="text-xl font-semibold break-all text-ink"
-      />
-      <Button size="sm" variant="secondary" onClick={copy} className="self-start">
-        {status === COPY_STATUS.copied ? (
-          <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
-        ) : (
-          <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
-        )}
-        {label}
-      </Button>
+      <div className="flex items-center justify-between gap-2 rounded-md border border-line-strong bg-surface py-1.5 pr-1.5 pl-3">
+        <Money
+          baseUnits={amount}
+          decimals={token.decimals}
+          fractionDigits={fractionDigits}
+          token={token.symbol}
+          className="min-w-0 text-base font-semibold break-all text-ink"
+        />
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={copy}
+          aria-label={label}
+          className="shrink-0"
+        >
+          {status === COPY_STATUS.copied ? (
+            <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
+          ) : (
+            <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
+          )}
+          <span className="max-sm:sr-only">
+            {status === COPY_STATUS.copied ? COPY.copiedShort : COPY.copyShort}
+          </span>
+        </Button>
+      </div>
       <span role="status" className="sr-only">
         {status === COPY_STATUS.idle ? "" : label}
       </span>

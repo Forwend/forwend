@@ -74,7 +74,7 @@ export function AppHeader({
       <button
         type="button"
         onClick={onSearch}
-        className="relative flex h-9 min-w-0 flex-1 items-center gap-2 rounded-pill bg-surface-2 px-3 text-sm text-muted outline-none after:absolute after:-inset-y-1 after:inset-x-0 focus-visible:outline-2 focus-visible:outline-focus lg:hidden"
+        className="relative flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md border border-line bg-surface-2 px-3 text-sm text-muted outline-none after:absolute after:-inset-y-1 after:inset-x-0 focus-visible:outline-2 focus-visible:outline-focus lg:hidden"
       >
         <Search aria-hidden className="size-[var(--fw-icon-sm)]" />
         {HEADER_COPY.search}

@@ -9,83 +9,83 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  /* Grounds */
-  --fw-bg: #f4f8f7;
+  /* Grounds: neutral, so money and status colors carry the only tint. */
+  --fw-bg: #f6f6f7;
   --fw-surface: #ffffff;
-  --fw-surface-2: #eaf2f0;
-  --fw-sunken: #e2ecea;
-  --fw-glass: rgb(255 255 255 / 0.72);
+  --fw-surface-2: #f0f0f2;
+  --fw-sunken: #e9e9ec;
+  --fw-glass: rgb(255 255 255 / 0.78);
 
   /* Text */
-  --fw-ink: #0f2219;
-  --fw-muted: #3a5047;
-  --fw-subtle: #566a62;
+  --fw-ink: #0b0b0d;
+  --fw-muted: #4a4a52;
+  --fw-subtle: #63636c;
 
   /* Lines */
-  --fw-line: #d3e0dc;
-  --fw-line-strong: #a9bfb8;
+  --fw-line: #e3e3e7;
+  --fw-line-strong: #c8c8cf;
 
   /* Actions */
-  --fw-primary: #0f2219;
-  --fw-on-primary: #f5faf7;
+  --fw-primary: #0b0b0d;
+  --fw-on-primary: #fafafa;
   --fw-accent: #1f6a8c;
   --fw-on-accent: #ffffff;
   --fw-focus: #1f6a8c;
 
   /* Status */
   --fw-success: #1b6e45;
-  --fw-success-soft: #e2f2e9;
+  --fw-success-soft: #e7f3ec;
   --fw-warning: #865500;
-  --fw-warning-soft: #f8eed8;
+  --fw-warning-soft: #faf1de;
   --fw-danger: #b42318;
-  --fw-danger-soft: #fbe9e7;
+  --fw-danger-soft: #fcebe9;
   --fw-info: #1f6a8c;
-  --fw-info-soft: #e3f0f6;
+  --fw-info-soft: #e6f0f5;
 
   /* Art: code-drawn ridges and halftone dots (footer, call to action) */
-  --fw-art-ridge-far: #a9c3cb;
-  --fw-art-ridge-mid: #8babaf;
-  --fw-art-ridge-near: #7da38f;
+  --fw-art-ridge-far: #bccbd3;
+  --fw-art-ridge-mid: #9fb1bb;
+  --fw-art-ridge-near: #7f939e;
   --fw-art-dot: #8dbfd4;
 
-  /* Elevation */
-  --fw-shadow-sm: 0 1px 2px rgb(15 34 25 / 0.06), 0 1px 1px rgb(15 34 25 / 0.04);
-  --fw-shadow-md: 0 10px 24px -12px rgb(15 34 25 / 0.28);
-  --fw-shadow-lg: 0 28px 56px -24px rgb(15 34 25 / 0.38);
+  /* Elevation: only what floats (menus, sheets, toasts, the landing's sample panels) casts a shadow. */
+  --fw-shadow-sm: 0 1px 2px rgb(11 11 13 / 0.05);
+  --fw-shadow-md: 0 8px 20px -12px rgb(11 11 13 / 0.22);
+  --fw-shadow-lg: 0 24px 48px -24px rgb(11 11 13 / 0.32);
   /* Behind modals: a darkening veil in both themes (the ink mix turned milky in dark). */
-  --fw-scrim: rgb(15 34 25 / 0.4);
+  --fw-scrim: rgb(11 11 13 / 0.45);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --fw-bg: #0d1412;
-  --fw-surface: #141d1a;
-  --fw-surface-2: #1a2521;
-  --fw-sunken: #0a0f0d;
-  --fw-glass: rgb(20 29 26 / 0.72);
+  --fw-bg: #09090b;
+  --fw-surface: #111113;
+  --fw-surface-2: #19191c;
+  --fw-sunken: #060607;
+  --fw-glass: rgb(17 17 19 / 0.78);
 
-  --fw-ink: #eef4f1;
-  --fw-muted: #b4c3bd;
-  --fw-subtle: #8fa29a;
+  --fw-ink: #f4f4f5;
+  --fw-muted: #b5b5bd;
+  --fw-subtle: #90909a;
 
-  --fw-line: #25322d;
-  --fw-line-strong: #3a4a43;
+  --fw-line: #242428;
+  --fw-line-strong: #3a3a41;
 
-  --fw-primary: #eef4f1;
-  --fw-on-primary: #0f2219;
+  --fw-primary: #f4f4f5;
+  --fw-on-primary: #0b0b0d;
   --fw-accent: #7cc0dd;
   --fw-on-accent: #0b1a22;
   --fw-focus: #7cc0dd;
 
   --fw-success: #5cc08b;
-  --fw-success-soft: #12291e;
+  --fw-success-soft: #10241a;
   --fw-warning: #e3b054;
-  --fw-warning-soft: #2c2210;
+  --fw-warning-soft: #2a2010;
   --fw-danger: #f0857a;
-  --fw-danger-soft: #2f1714;
+  --fw-danger-soft: #2c1513;
   --fw-info: #7cc0dd;
-  --fw-info-soft: #102430;
+  --fw-info-soft: #0f212b;
 
   --fw-art-ridge-far: #1d2a33;
   --fw-art-ridge-mid: #17222a;
@@ -105,10 +105,11 @@
   --fw-font-mono: var(--fw-font-mono-loaded, ui-monospace), "SFMono-Regular", monospace;
 
   /* Radius */
-  --fw-radius-sm: 0.5rem;
-  --fw-radius-md: 0.75rem;
-  --fw-radius-lg: 1.25rem;
-  --fw-radius-xl: 1.75rem;
+  /* Tight corners: controls 8px, panels 12px. Round only for avatars, dots, bars and the money actions. */
+  --fw-radius-sm: 0.375rem;
+  --fw-radius-md: 0.5rem;
+  --fw-radius-lg: 0.75rem;
+  --fw-radius-xl: 1rem;
   --fw-radius-pill: 9999px;
 
   /* Icon sizes */

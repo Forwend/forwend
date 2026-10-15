@@ -47,7 +47,7 @@ export function Dialog({
             type="button"
             aria-label={closeLabel}
             onClick={() => ref.current?.close()}
-            className="relative rounded-pill p-1 text-muted before:absolute before:-inset-2.5 hover:bg-surface-2 hover:text-ink"
+            className="relative rounded-sm p-1 text-muted before:absolute before:-inset-2.5 hover:bg-surface-2 hover:text-ink"
           >
             <X aria-hidden className="size-[var(--fw-icon-md)]" />
           </button>

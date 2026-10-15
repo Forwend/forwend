@@ -160,7 +160,7 @@ export function PhoneTabBar({ pathname, active, onProfiles }: PhoneTabBarProps) 
                 {soon.map(({ label, icon: Icon }) => (
                   <li
                     key={label}
-                    className="inline-flex items-center gap-1.5 rounded-pill border border-line px-3 py-1.5 text-xs text-muted"
+                    className="inline-flex items-center gap-1.5 rounded-sm border border-line px-2.5 py-1 text-xs text-muted"
                   >
                     <Icon aria-hidden className="size-4" />
                     {label}

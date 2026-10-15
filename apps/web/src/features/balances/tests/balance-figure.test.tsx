@@ -26,12 +26,10 @@ function show(balances: Balances | null, { failed = false } = {}) {
 describe("BalanceFigure", () => {
   afterEach(cleanup);
 
-  it("shows the total in USD, marked as an estimate, also for a single stablecoin", () => {
+  // The hero's label says "in USD" with the estimate hint; the figure alone stays centered, and still reads its unit.
+  it("shows the total in USD, also for a single stablecoin", () => {
     show({ tokens: [usdc], estimatedUsdTotal: "2.50" });
-    expect(screen.getByText("2.50").closest("p")?.textContent).toBe("2.50USD");
-    expect(
-      screen.getByRole("button", { name: /^Estimated: each stablecoin counts as 1 USD/ }),
-    ).toBeTruthy();
+    expect(screen.getByText("2.50").closest("p")?.textContent).toBe("2.50 USD");
   });
 
   it("shows pending and held apart from the wallet, each only when there is some", () => {
@@ -80,7 +78,6 @@ describe("BalanceFigure", () => {
     };
     const { rerender } = show({ tokens: [usdc, usdt], estimatedUsdTotal: "5.00" });
     expect(screen.getByText("5.00")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /^Estimated:/ })).toBeTruthy();
     rerender(
       <BalanceFigure
         balances={{ tokens: [usdc, { ...usdt, wallet: null }], estimatedUsdTotal: null }}

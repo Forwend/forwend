@@ -104,7 +104,7 @@ export function BalanceChart({ series, label, compact = false, className }: Bala
                 strokeLinejoin="round"
                 strokeOpacity="0.8"
                 paintOrder="stroke"
-                className="fill-muted font-mono text-2xs tabular-nums"
+                className="fill-muted text-2xs tabular-nums"
               >
                 {COMPACT.format(t)}
               </text>
@@ -208,7 +208,7 @@ export function ChartReadout({
             transform: `translateX(clamp(0px, calc(${left}px - 50%), calc(${width}px - 100%)))`,
           }}
         >
-          <span className="font-mono text-sm font-medium whitespace-nowrap text-ink tabular-nums">
+          <span className="text-sm font-medium whitespace-nowrap text-ink tabular-nums">
             {amountLabel(series, active)}
           </span>
           <span className="text-xs text-muted">{dateLabel(active)}</span>

@@ -61,7 +61,7 @@ export function MoneyFlowCard({ profileId }: MoneyFlowCardProps) {
                 <Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
                 {label}
               </dt>
-              <dd className="font-mono text-base text-ink tabular-nums">
+              <dd className="text-base font-medium text-ink tabular-nums">
                 {series ? `${formatUsd(seriesTotal(series))} ${MONEY_COPY.usd}` : "—"}
               </dd>
             </div>

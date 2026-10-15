@@ -43,7 +43,7 @@ export function StatusPill({ status }: StatusPillProps) {
     <span
       data-status={status}
       className={cx(
-        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill border px-2.5 py-1 text-xs font-medium transition-colors duration-[var(--fw-duration-base)] ease-out",
+        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm border px-2 py-0.5 text-xs font-medium transition-colors duration-[var(--fw-duration-base)] ease-out",
         TONE_CLASSES[tone],
       )}
     >

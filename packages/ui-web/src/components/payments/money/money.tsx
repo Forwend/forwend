@@ -13,7 +13,7 @@ export function Money({ baseUnits, decimals, token, sign, fractionDigits, classN
   const groups = formatTokenAmount({ baseUnits, decimals, fractionDigits }).split(",");
   return (
     <span data-money className={cx("inline-flex flex-wrap items-baseline gap-x-1.5", className)}>
-      <span className="font-mono tabular-nums">
+      <span data-figures className="font-medium tabular-nums">
         {sign}
         {/* A huge amount wraps only after a group comma, never inside a group. */}
         {groups.map((group, index) => (

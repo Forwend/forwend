@@ -18,17 +18,20 @@ Use `/kit` for the implemented components. This file owns visual use; token sour
 
 ## Type and color
 
-- Libre Caslon Display at 400 for large headings; Hanken Grotesk for UI and body; Geist Mono for money, addresses,
-  hashes and event names. Money uses tabular figures. In the app, headline figures (the total balance and the
-  overview figure strip) use Hanken Grotesk semibold with proportional figures; table amounts, addresses, hashes and
-  chart ticks stay Geist Mono with tabular figures. No bold display serif or small serif labels.
+- Libre Caslon Display at 400 for the landing's large headings, sign-in and first run; Geist for UI, body and money;
+  Geist Mono only for addresses, hashes, contract links, raw base units, keyboard hints and code. Money is Geist with
+  tabular figures everywhere (medium weight in rows, semibold for headline figures), so amounts read like a statement,
+  not like code. No bold display serif or small serif labels.
 - Use role tokens for hero, section headings and featured amounts. No eyebrow labels or tracked uppercase kickers.
 - Text and primary buttons share the primary ink. River blue identifies links, focus, the current step and information.
   Completed steps use ink; upcoming steps use line color.
 - Success, warning and error use their matching text/background token pairs. Art colors never become UI colors.
-- Detected and confirming are pending: a neutral status pill with a turning icon, never the information blue or a
+- Detected and confirming are pending: a neutral status badge with a turning icon, never the information blue or a
   success color. Only confirmed, paid and settled look done.
-- Cool neutral surfaces, rounded controls and cards, pill navigation/buttons/chips. No hard offset shadows.
+- Neutral greys with no tint (owner review of D-13): the status colors are the only tinted UI. Tight corners: buttons,
+  fields, badges and segmented controls use the small and medium radii, panels the large one; only avatars, token marks,
+  dots, bars, switches and the round money actions are fully round. Buttons are flat (no shadow); only what floats
+  (menus, sheets, toasts, the landing's sample panels and floating navigation) casts one. No hard offset shadows.
 
 ## App shell
 
@@ -62,8 +65,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Panels are solid surface with a hairline border, medium corners and no shadow; a panel's header row is ruled off.
   Figure strips and tables use hairline rules between cells and rows, not separate cards.
 - Totals across tokens (the total balance, its chart, the business figures, money in and out) are in USD, each
-  stablecoin counted as 1 USD. An info icon after "USD" marks the estimate and explains it in a tooltip. A row for one
-  token keeps its symbol.
+  stablecoin counted as 1 USD. An info icon after "USD" marks the estimate and explains it in a tooltip. On the
+  personal overview the label says the unit ("Total balance in USD", with the icon) and the figure stands alone, so it
+  is centered on phones whatever its length. A row for one token keeps its symbol.
 - Personal overview: one valley in both themes, a pale mint daytime sky in light mode and night in dark mode. In light mode a surface wash over the lower half keeps chart ticks and money actions readable. Pending and held money each use one USD
   summary link to Balances, where exact amounts remain separate by token and network; never list every token in
   the hero. Positive totals below a cent read `<0.01 USD`. The card is at least 24rem tall and grows with its content.
@@ -122,24 +126,25 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 
 - `/pay/<id>` (R-68) is one short screen: the logo (links home), then on wide screens the invoice on the left and how
   to pay on the right, one column on phones. Left: the payee name (no display serif) beside a square tile with its
-  initial in the primary ink, "Invoice INV-0001 · title" with a small PDF link under the name, the amount (Geist Mono,
-  featured size; USD until the payer picks), "on <network>", the due date and "Closes in …" as ruled rows with a small
+  initial on a bordered surface tile, "Invoice INV-0001 · title" with a small PDF link under the name, the amount (Geist,
+  tabular, featured size; USD until the payer picks), "on <network>", the due date and "Closes in …" as ruled rows with a small
   icon, and the note. Right: one panel. While money is due it holds Pay with (the one option as a token mark,
   or Network and Token selects, which scale to many chains and tokens), a Show address button, then the QR beside the
-  exact amount with Copy, the address with Copy under them (the whole address in groups of 4 that select and copy as
-  one address, R-78), one warning line "Send only USDC on Base Sepolia." (plus "Native USDC, not USDC.e." where a
-  bridged look-alike exists), the token contract as a short explorer link, and one exchange hint that names the network
-  to withdraw on. The exact amount and the address sit on the second surface, without borders of their own inside the
-  panel. Under the panel, while money is due and once paid, an optional "Email me the receipt" field, with Send on the
-  input's row, says the address is used for this receipt only (R-82). Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
+  exact amount and the warning line "Send only USDC on Base Sepolia." with a warning icon (plus "Native USDC, not
+  USDC.e." where a bridged look-alike exists), then the address full width, then the token contract as a short explorer
+  link and one exchange hint that names the network to withdraw on. The amount and the address are read-only fields
+  (a bordered row like an input) with Copy inside on the right; the address is the whole address as one plain Geist
+  Mono string, as wallets show it, and fits one line on desktop (R-78). The panel's last row, while money is due and
+  once paid, is "Email me a receipt" with a mail icon; pressing it opens the optional field there, with Send inside its
+  row and the line that the address is used for this receipt only (R-82). Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
   into "Confirm change" and only a second press starts over (leaving the button cancels), so a payer who already sent
-  does not switch by accident. Under the address "Waiting for payment…" with a pulsing dot and Check status, which says
+  does not switch by accident. Under the address one row: "Waiting for payment…" with a pulsing dot, and Check status on its right, which says
   when the next check is allowed; nothing waits before the address shows. Once money is seen the panel keeps its place ("Paying with" while nothing more is due): the steps
   Detected, Confirming and Paid fade in, the waiting one moving (Partially paid tinted on Paid), one line for what the
   steps cannot say ("Final check", or what is left to pay), and each payment with its amount, time,
   short hash and explorer link. The address stays only while money is still due. Closed says so in one line. Paid
-  replaces the panel with centered content and generous vertical padding: a check that scales in, "Paid", the amount, payee and time, View transaction, Download
-  receipt and Back to <host> when the invoice has a return link. The check, message and wrapping action row share the
+  replaces the panel with centered content and generous vertical padding: a check that scales in, "Paid", the amount, payee and time, View transaction and Download
+  receipt as small secondary buttons and Back to <host> when the invoice has a return link. The check, message and wrapping action row share the
   center of the card; invoice details retain their normal reading alignment. The payer never sees Settled, status pills,
   testnet notes or an overpaid line (PLAN 11.10.1). Copy names the payee, or "the invoice's creator", never "the
   sender". The footer is one quiet line: "Payments by" with the mark and Forwend, opening the site in a new tab, and
