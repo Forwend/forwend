@@ -216,6 +216,14 @@ func TestSettlesAPaidInvoiceOnce(t *testing.T) {
 	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" {
 		t.Fatalf("after finality: intent %s, invoice settlement %s", status, settlement)
 	}
+	// The owner hears of each change once, from the transaction that made it (R-80): paid, the 1 USDC above the amount
+	// held for the payer, then the settlement.
+	e.final(t, e.signer(t))
+	var kinds string
+	if err := e.pool.QueryRow(ctx, `SELECT string_agg(kind, ',' ORDER BY id) FROM outbox_events WHERE invoice_id = $1`,
+		id).Scan(&kinds); err != nil || kinds != "invoice.paid,invoice.held,invoice.settled" {
+		t.Fatalf("outbox events %q (%v), want invoice.paid,invoice.held,invoice.settled", kinds, err)
+	}
 	hash := e.settlementTxHash(t, id)
 	if r, err := e.client.TransactionReceipt(ctx, common.HexToHash(hash)); err != nil || r.Status != types.ReceiptStatusSuccessful {
 		t.Fatalf("settlementTxHash %q: receipt %v (%v), want our successful settle", hash, r, err)

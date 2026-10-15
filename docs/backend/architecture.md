@@ -15,8 +15,9 @@ Built: signup and profiles API, billing details, balances, activity, wallet tran
   URL uses `sslmode=verify-full`.
 - `worker`: chain watcher (block cursor per chain, `eth_getLogs` for allowlisted tokens filtered
   to active receiver addresses), confirmation/finality tracking, reorg handling, invoice state
-  machine and ledger booking, Check status rescans. Nothing writes or sends `outbox_events` yet (PLAN 9.6); webhooks
-  come in PLAN 11.5.
+  machine and ledger booking, Check status rescans, and the owner's email from `outbox_events` after each round
+  (`internal/notify`, R-80; only the worker holds `RESEND_API_KEY`, and without it nothing is sent). Webhooks come in
+  PLAN 11.5.
 - `signer`: separate process, own credentials, no public routes, no user sessions. Accepts only
   typed intents ("settle invoice X") and signs only `factory.deploy` and `receiver.settle`. Refunds are never signed
   here: they will be Safe transactions the multisig owners approve (PLAN 11.10.3). Re-reads the ledger and the chain
@@ -142,7 +143,9 @@ with a test.
 - `ledger_transactions` + `ledger_entries`: double-entry, append-only (below).
 - `settlement_intents` (unique per invoice): nonce and tx hash tracked, with the hashes a fee replacement replaced;
   reconcile before any retry.
-- `outbox_events`: the table exists; nothing writes or publishes it yet (PLAN 9.6).
+- `outbox_events`: `invoice.paid`, `invoice.held` and `invoice.settled`, queued by the ledger and the signer in the
+  transaction that makes the change (`internal/outbox`), sent once by the worker with retries
+  ([api.md](api.md#notifications)). `users.login_email` and `profiles.email_notifications` decide where and whether.
 - Planned (PLAN 11.5, 11.10): `refund_intents` (one per approved claim), `refund_claims`, `support_cases` (wrong chain,
   late), `webhook_endpoints`, `webhook_deliveries`.
 - `chain_cursors(chain_id, last_scanned_block, last_finalized_block)`.

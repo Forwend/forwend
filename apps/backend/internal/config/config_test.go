@@ -65,6 +65,7 @@ func TestAPINamesEveryMissingVariable(t *testing.T) {
 }
 
 func TestWorkerAndSigner(t *testing.T) {
+	t.Setenv("RESEND_API_KEY", "") // never a real key in a failure message
 	t.Setenv("DATABASE_URL", "postgres://x")
 	t.Setenv("CHAINS_FILE", "chains.json")
 	t.Setenv("INFURA_API_KEYS", "a, b,")

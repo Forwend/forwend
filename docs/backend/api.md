@@ -53,6 +53,21 @@ column existed were set to their signup time (migration 00013), so they never se
   The pay page says the name is not checked, and so does the PDF of a request without billing details. Onboarding
   counts toward the 10 profiles too.
 
+## Notifications
+
+R-80, D-65; the full schema is in openapi.yaml. Owner only.
+
+- `GET` and `PUT /v1/profiles/{profileId}/notifications`: `{email, address}`. `PUT` takes `{"email": true|false}`
+  only. The address is the account's verified login email (email account, else Google), read from Privy once on
+  `POST /v1/me` and kept in `users.login_email` (`''` when the account has none, so it is not read again); a request
+  can never set it, so nobody can point another person's notifications at an inbox.
+- The ledger and the signer queue `invoice.paid`, `invoice.held` (with the amount newly held) and `invoice.settled` in
+  `outbox_events`, in the transaction that makes the change (`internal/outbox`). The worker sends them through Resend
+  (`internal/notify`) with `forwend-<invoiceId>-<eventId>` as the Idempotency-Key, one at a time with `FOR UPDATE SKIP
+  LOCKED`; a failed send ends that round and is retried after 1 min doubling to 1 h, given up after 10 tries. Email off
+  or no address: the event is marked done and nothing is sent. Without `RESEND_API_KEY` the worker sends nothing and
+  events wait; `scripts/with-env.sh` gives the key to the worker alone.
+
 ## Billing details
 
 R-43; the full schema is in openapi.yaml. Owner only, like every `{profileId}` route.

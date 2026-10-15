@@ -76,3 +76,16 @@ func toProfileJSON(p profile.Profile) profileJSON {
 	}
 	return out
 }
+
+type notificationsBody struct {
+	Email *bool `json:"email"`
+}
+
+type notificationsJSON struct {
+	Email   bool    `json:"email"`
+	Address *string `json:"address"` // null: the account has no login email (or it was not read yet)
+}
+
+func toNotificationsJSON(n profile.Notifications) notificationsJSON {
+	return notificationsJSON{Email: n.Email, Address: httpio.OrNull(n.Address)}
+}

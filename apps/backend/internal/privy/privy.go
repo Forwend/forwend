@@ -60,6 +60,29 @@ func (c *Client) ProfileWallet(ctx context.Context, privyUserID, profileID strin
 	return Wallet{ID: created.ID, Address: strings.ToLower(created.Address)}, nil
 }
 
+// LoginEmail is the user's verified login email: their email account, else their Google account's email; "" when
+// they sign in with neither (a passkey alone).
+func (c *Client) LoginEmail(ctx context.Context, privyUserID string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, Timeout)
+	defer cancel()
+	u, err := c.sdk.Users.Get(ctx, privyUserID)
+	if err != nil {
+		return "", fmt.Errorf("read Privy user: %w", err)
+	}
+	google := ""
+	for _, a := range u.LinkedAccounts {
+		switch a.Type {
+		case "email":
+			return strings.ToLower(a.Address), nil
+		case "google_oauth":
+			if google == "" {
+				google = strings.ToLower(a.Email)
+			}
+		}
+	}
+	return google, nil
+}
+
 func (c *Client) find(ctx context.Context, privyUserID, profileID string) (Wallet, error) {
 	page, err := c.sdk.Wallets.List(ctx, privyclient.WalletListParams{ExternalID: privyclient.String(profileID),
 		UserID: privyclient.String(privyUserID)})

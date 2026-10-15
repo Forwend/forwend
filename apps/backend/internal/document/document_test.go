@@ -28,8 +28,8 @@ func TestAmount(t *testing.T) {
 		{"999000000", 6, "999.00 USDC"},
 	} {
 		n, _ := new(big.Int).SetString(c.units, 10)
-		if got := amount(n, c.decimals, "USDC"); got != c.want {
-			t.Errorf("amount(%s, %d) = %q, want %q", c.units, c.decimals, got, c.want)
+		if got := Amount(n, c.decimals, "USDC"); got != c.want {
+			t.Errorf("Amount(%s, %d) = %q, want %q", c.units, c.decimals, got, c.want)
 		}
 	}
 }

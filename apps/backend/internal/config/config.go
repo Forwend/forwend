@@ -40,7 +40,18 @@ type API struct {
 type Worker struct {
 	DatabaseURL string
 	Chains      Chains
+	Email       Email
 }
+
+// Email is the owner's email (R-80, D-65). Without ResendKey the worker sends nothing and the events wait.
+type Email struct {
+	ResendKey    string // send-only Resend API key; never log it
+	From         string // the sender, on the domain Resend verified
+	PublicWebURL string // the web app's origin, for the links in each email
+}
+
+// DefaultEmailFrom is the sender when EMAIL_FROM is left out.
+const DefaultEmailFrom = "Forwend <notifications@mail.forwend.com>"
 
 // Chains is how the worker and signer reach the chains.
 type Chains struct {
@@ -77,7 +88,14 @@ func LoadAPI() (API, error) {
 
 func LoadWorker() (Worker, error) {
 	var r reader
-	c := Worker{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains()}
+	c := Worker{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(),
+		Email: Email{ResendKey: os.Getenv("RESEND_API_KEY"), From: os.Getenv("EMAIL_FROM")}}
+	if c.Email.From == "" {
+		c.Email.From = DefaultEmailFrom
+	}
+	if c.Email.ResendKey != "" {
+		c.Email.PublicWebURL = r.origin("PUBLIC_WEB_URL")
+	}
 	return c, r.err()
 }
 

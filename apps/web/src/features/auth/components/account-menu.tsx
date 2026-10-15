@@ -12,9 +12,11 @@ import {
   RowButton,
   useTheme,
 } from "@forwend/ui-web";
-import { ChevronsUpDown, LogOut, Moon, Settings } from "lucide-react";
+import { Bell, ChevronsUpDown, LogOut, Moon, Settings } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
+import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface AccountMenuProps {
   email: string;
@@ -23,7 +25,8 @@ export interface AccountMenuProps {
   side?: "top" | "bottom" | "right";
 }
 
-// The signed-in account: the app's one theme control, settings (not built yet) and sign out.
+// The signed-in account: the app's one theme control, the active profile's email notifications, settings (not built
+// yet) and sign out.
 export function AccountMenu({ email, onSignOut, trigger, side = "top" }: AccountMenuProps) {
   const [theme, setTheme] = useTheme();
   return (
@@ -49,6 +52,12 @@ export function AccountMenu({ email, onSignOut, trigger, side = "top" }: Account
           <Moon aria-hidden className="size-[var(--fw-icon-md)]" />
           {AUTH_COPY.darkMode}
         </MenuCheckboxItem>
+        <MenuItem asChild>
+          <Link href={APP_ROUTES.notifications}>
+            <Bell aria-hidden className="size-[var(--fw-icon-md)]" />
+            {AUTH_COPY.notifications}
+          </Link>
+        </MenuItem>
         {/* Not built yet: shown as coming (the owner's choice), it does nothing. */}
         <MenuItem disabled>
           <Settings aria-hidden className="size-[var(--fw-icon-md)]" />

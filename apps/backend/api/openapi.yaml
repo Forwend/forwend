@@ -112,6 +112,54 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/notifications:
+    get:
+      operationId: getNotifications
+      summary: The profile's owner email setting
+      description: |
+        R-80. email says whether the owner gets an email when one of this profile's invoices is paid, settled or gets
+        money held for the payer. address is the account's verified login email (read once from Privy on POST /v1/me);
+        null when the account has none.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: The setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Notifications" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+    put:
+      operationId: putNotifications
+      summary: Turn the profile's owner email on or off
+      description: The address can't be set here; any other field is 400.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email]
+              properties:
+                email: { type: boolean }
+      responses:
+        "200":
+          description: The saved setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Notifications" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/billing-details:
     get:
       operationId: getBillingDetails
@@ -640,6 +688,16 @@ components:
         country: { type: string, pattern: "^[A-Z]{2}$" }
         taxId: { type: [string, "null"] }
         email: { type: string }
+    Notifications:
+      type: object
+      required: [email, address]
+      properties:
+        email:
+          type: boolean
+          description: On (the default) or off for this profile.
+        address:
+          type: [string, "null"]
+          description: The account's verified login email that the email goes to; null when the account has none.
     BillingDetails:
       allOf:
         - $ref: "#/components/schemas/Issuer"

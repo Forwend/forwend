@@ -1,6 +1,7 @@
 package profileapi
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
@@ -122,5 +123,39 @@ func getBillingDetails(profiles *profile.Service) http.HandlerFunc {
 			return
 		}
 		httpio.WriteJSON(w, http.StatusOK, toBillingDetailsJSON(d))
+	}
+}
+
+// getNotifications is GET /v1/profiles/{profileId}/notifications (R-80).
+func getNotifications(profiles *profile.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		n, err := profiles.Notifications(r.Context(), r.PathValue("profileId"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, toNotificationsJSON(n))
+	}
+}
+
+// putNotifications is PUT /v1/profiles/{profileId}/notifications: {"email": true|false}; the address is the login
+// email and can't be set here.
+func putNotifications(profiles *profile.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body notificationsBody
+		if err := httpio.DecodeJSON(w, r, &body); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		if body.Email == nil {
+			httpio.WriteError(w, r, fmt.Errorf("%w: email: give true or false", profile.ErrInvalid))
+			return
+		}
+		n, err := profiles.SetNotifications(r.Context(), r.PathValue("profileId"), *body.Email)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, toNotificationsJSON(n))
 	}
 }

@@ -12,6 +12,8 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ensp1re/forwend/apps/backend/internal/config"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
+	"github.com/ensp1re/forwend/apps/backend/internal/email"
+	"github.com/ensp1re/forwend/apps/backend/internal/notify"
 	"github.com/ensp1re/forwend/apps/backend/internal/worker"
 )
 
@@ -57,12 +59,22 @@ func run() error {
 
 	w := worker.New(pool, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate)
 	defer w.Close()
-	slog.Info("worker ready", "every", cfg.Chains.PollInterval)
+	// Owner email (R-80): without a key nothing is sent, and the events wait in the outbox.
+	var sender email.Sender
+	if cfg.Email.ResendKey != "" {
+		sender = email.NewResend(cfg.Email.ResendKey, cfg.Email.From)
+	}
+	slog.Info("worker ready", "every", cfg.Chains.PollInterval, "email", sender != nil)
 	for {
 		if err := lock.Held(ctx); err != nil {
 			return err
 		}
 		w.Round(ctx)
+		if sender != nil {
+			if err := notify.Deliver(ctx, pool, sender, cfg.Email.PublicWebURL); err != nil {
+				slog.Error("deliver email", "err", err)
+			}
+		}
 		select {
 		case <-ctx.Done():
 			return nil
