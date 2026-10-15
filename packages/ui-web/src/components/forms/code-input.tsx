@@ -59,7 +59,7 @@ export function CodeInput({
                 error ? "border-danger" : "border-line-strong",
                 current &&
                   "border-focus ring-4 ring-[color-mix(in_oklab,var(--fw-focus)_22%,transparent)]",
-                disabled && "border-line bg-surface-2 text-subtle",
+                disabled && "border-line text-subtle shadow-none",
               )}
             >
               {digit ??

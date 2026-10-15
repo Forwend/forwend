@@ -23,7 +23,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { notFound, usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useGetInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import { CheckStatus } from "@/features/invoices/components/check-status";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
@@ -670,54 +670,73 @@ function Paid({ invoice, token }: { invoice: Invoice; token: PayToken }) {
   const name = invoice.issuer?.name ?? invoice.senderName;
   const back = invoice.returnUrl && isReturnLink(invoice.returnUrl) ? invoice.returnUrl : null;
   const backLabel = back ? COPY.backTo(new URL(back).host) : "";
+  // A receipt, read top to bottom: what happened, then its facts as label and value rows, then what to keep.
   return (
-    <div className="flex flex-col items-center gap-5 px-5 py-8 text-center sm:px-6 sm:py-10">
-      <span className="grid size-12 place-items-center rounded-pill bg-success-soft text-success transition-[opacity,transform] duration-[var(--fw-duration-base)] ease-out starting:scale-90 starting:opacity-0">
-        <Check aria-hidden className="size-6" />
-      </span>
-      <div className="flex min-w-0 max-w-full flex-col gap-1 break-words">
-        <p role="status" className="text-xl font-semibold text-ink">
-          {COPY.paid}
-        </p>
-        <p className="text-sm text-muted">
-          {COPY.paidTo(
-            formatMoney(amount, token),
-            name,
-            invoice.paidAt ? TIME.format(Date.parse(invoice.paidAt)) : "",
-          )}
-        </p>
-        <p className="text-sm text-muted">{COPY.closeHint}</p>
+    <div className="flex flex-col gap-5 p-4 sm:p-5">
+      <div className="flex items-center gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-pill bg-success-soft text-success transition-[opacity,transform] duration-[var(--fw-duration-base)] ease-out starting:scale-90 starting:opacity-0">
+          <Check aria-hidden className="size-5" />
+        </span>
+        <div className="min-w-0">
+          <p role="status" className="text-lg font-semibold text-ink">
+            {COPY.paid}
+          </p>
+          <p className="text-sm text-muted">{COPY.closeHint}</p>
+        </div>
       </div>
-      <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-center">
-        {tx ? (
-          <a
-            href={tx.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={buttonClasses({ variant: "secondary" })}
-          >
-            <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
-            {COPY.viewTx}
-          </a>
+      <dl className="divide-y divide-line border-y border-line text-sm">
+        <ReceiptRow term={COPY.receiptRows.amount}>
+          <span className="font-medium tabular-nums">{formatMoney(amount, token)}</span>
+        </ReceiptRow>
+        {name ? <ReceiptRow term={COPY.receiptRows.to}>{name}</ReceiptRow> : null}
+        {invoice.paidAt ? (
+          <ReceiptRow term={COPY.receiptRows.date}>
+            <time dateTime={invoice.paidAt}>{TIME.format(Date.parse(invoice.paidAt))}</time>
+          </ReceiptRow>
         ) : null}
+        {tx ? (
+          <ReceiptRow term={COPY.receiptRows.transaction}>
+            <a
+              href={tx.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={last?.txHash}
+              className={`${buttonClasses({ variant: "link" })} gap-1.5 text-sm`}
+            >
+              {COPY.viewTx}
+              <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
+            </a>
+          </ReceiptRow>
+        ) : null}
+      </dl>
+      <div className="flex flex-col gap-2">
         <a
           href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.receipt)}
-          className={buttonClasses({ variant: "secondary" })}
+          className={`${buttonClasses({ variant: back ? "secondary" : "primary" })} w-full`}
         >
           <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
           {COPY.receiptPdf}
         </a>
+        {back ? (
+          <a
+            href={back}
+            rel="noopener noreferrer"
+            title={backLabel}
+            className={`${buttonClasses({ variant: "primary" })} w-full`}
+          >
+            <span className="truncate">{backLabel}</span>
+          </a>
+        ) : null}
       </div>
-      {back ? (
-        <a
-          href={back}
-          rel="noopener noreferrer"
-          title={backLabel}
-          className={`${buttonClasses({ variant: "primary" })} max-w-full`}
-        >
-          <span className="truncate">{backLabel}</span>
-        </a>
-      ) : null}
+    </div>
+  );
+}
+
+function ReceiptRow({ term, children }: { term: string; children: ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 py-2.5">
+      <dt className="shrink-0 text-muted">{term}</dt>
+      <dd className="min-w-0 text-right break-words text-ink">{children}</dd>
     </div>
   );
 }

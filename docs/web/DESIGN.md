@@ -31,6 +31,8 @@ Use `/kit` for the implemented components. This file owns visual use; token sour
 - Cool neutral surfaces with a faint green tint, soft hairlines, rounded controls and cards, pill navigation, buttons
   and chips. Shadows are soft and layered in the ink's tint: resting controls barely lift, a primary button lifts a
   little more on hover, menus and the chart readout float. No hard offset shadows.
+- A disabled field keeps the surface background, with a lighter border and text, so a row of fields never mixes
+  backgrounds.
 
 ## App shell
 
@@ -158,9 +160,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   USDC.e." where a bridged look-alike exists), then the address full width, then the token contract as a short explorer
   link and one exchange hint that names the network to withdraw on. The amount and the address are read-only fields
   (a bordered row like an input) with Copy inside on the right. The address is Geist Mono with its first 6 and last 4
-  characters in the ink and semibold and the rest quieter; wide screens show it whole on one line, phones show the
+  characters in the ink (medium weight) and the rest quieter; wide screens show it whole on one line, phones show the
   ends with four more characters each around an ellipsis, the middle kept for screen readers, selection and Copy
-  (R-78). Once money is seen and once paid, the panel's last row is "Email me a receipt" with a mail icon; pressing it
+  (R-78). Its size follows the row's width (container units), so it fills the row at every width without wrapping. Once money is seen and once paid, the panel's last row is "Email me a receipt" with a mail icon; pressing it
   opens the optional field there, with Send inside its row and the line that the address is used for this receipt
   only (R-82). Before any money there is nothing to send a receipt for, so the row is not there. Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
   into "Confirm change" and only a second press starts over (leaving the button cancels), so a payer who already sent
@@ -169,9 +171,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Detected, Confirming and Paid fade in, the waiting one moving (Partially paid tinted on Paid), one line for what the
   steps cannot say ("Final check", or what is left to pay), and each payment with its amount, time,
   short hash and explorer link. The address stays only while money is still due. Closed says so in one line. Paid
-  replaces the panel with centered content and generous vertical padding: a check that scales in, "Paid", the amount, payee and time, View transaction and Download
-  receipt as secondary buttons (full width and stacked on phones) and Back to <host> when the invoice has a return link. The check, message and wrapping action row share the
-  center of the card; invoice details retain their normal reading alignment. The payer never sees Settled, status pills,
+  replaces the panel with a receipt, left aligned: a check that scales in beside "Paid" and "You can close this page.",
+  then ruled label and value rows (Amount, Paid to, Date, and Transaction with a View transaction link to the
+  explorer), then Download receipt as a full-width button (primary, or secondary under a full-width primary Back to
+  <host> when the invoice has a return link). The payer never sees Settled, status pills,
   testnet notes or an overpaid line (PLAN 11.10.1). Copy names the payee, or "the invoice's creator", never "the
   sender". The footer is one quiet line: "Payments by" with the mark and Forwend, opening the site in a new tab, and
   "Need help?", which opens a dialog with the rules (where you are, refunds, scams, the unverified name), so the pay
