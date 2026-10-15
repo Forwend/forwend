@@ -267,7 +267,8 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
 
   // Transactions, opened with a search as ⌘K and notifications link it: the 41st transfer.
   await page.goto(`/app/transactions?q=${PAST_PAGE_PARTY}`);
-  const transfers = main.getByRole("table").locator("tbody tr");
+  // Transfers only: each day's heading row is not one.
+  const transfers = main.getByRole("table").locator("tbody tr:not([data-day])");
   await expect(transfers).toHaveCount(1);
   await expect(main.getByRole("searchbox", { name: "Search transactions" })).toHaveValue(
     PAST_PAGE_PARTY,
@@ -393,7 +394,7 @@ test("money tables share row hover, show network logos, keep Export at the right
   ).toBeLessThan(2);
   expect(exportBox?.x ?? 0).toBeGreaterThan(searchBox?.x ?? 0);
 
-  const firstRow = main.locator("tbody tr").first();
+  const firstRow = main.locator("tbody tr:not([data-day])").first();
   await expect(firstRow.locator("svg").first()).toBeVisible(); // the network's logo
   const counterparty = firstRow.getByRole("link", { name: /on Basescan \(opens in a new tab\)$/ });
   await expect(counterparty).toHaveAttribute(
@@ -941,7 +942,10 @@ test("switching profile opens the new profile's overview", async ({ browser }) =
 
   await switchTo("Personal");
   await page.goto("/app/invoices", { waitUntil: "networkidle" });
-  const first = page.getByRole("main").getByRole("link", { name: /^INV-/ }).first();
+  const first = page
+    .getByRole("main")
+    .getByRole("link", { name: /\bINV-\d+/ })
+    .first();
   // The test account's personal profile has requests once the request test has run.
   if (await first.count()) {
     await first.click();

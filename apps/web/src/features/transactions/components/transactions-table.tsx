@@ -215,7 +215,7 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
               </thead>
               {days.map((group) => (
                 <tbody key={group.day} className="divide-y divide-line">
-                  <tr className="border-t border-line first:border-t-0">
+                  <tr data-day className="border-t border-line first:border-t-0">
                     <th
                       scope="rowgroup"
                       colSpan={5}

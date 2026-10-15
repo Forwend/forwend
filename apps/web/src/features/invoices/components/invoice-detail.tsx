@@ -187,19 +187,14 @@ function Loaded({
       {/* One status, said at once: open with its close time, closed, partly paid, paid or settled (R-60). */}
       {/* The pay link is the page's action, so it sits with the status, while it can still take money (R-60). */}
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex min-w-0 flex-col gap-2">
+        <div className="relative flex min-w-0 flex-col gap-2">
           {/* The number is the breadcrumb's last step on desktop, so the heading shows only on phones. There, above a
-              title, it is a quiet label sharing its row with the status, so the title reads as the heading. */}
-          <div className="flex items-center justify-between gap-3 lg:contents">
-            <h1
-              className={`text-ink lg:sr-only ${invoice.title ? "text-sm font-medium text-muted" : "text-2xl font-semibold tracking-tight"}`}
-            >
-              {invoiceNumber(invoice.number)}
-            </h1>
-            <span aria-hidden className="lg:hidden">
-              <StatusPill status={status} />
-            </span>
-          </div>
+              title, it is a quiet label, so the title reads as the heading, and the status pill moves up beside it. */}
+          <h1
+            className={`flex min-h-7 items-center text-ink max-lg:pr-40 lg:sr-only ${invoice.title ? "text-sm font-medium text-muted" : "text-2xl font-semibold tracking-tight"}`}
+          >
+            {invoiceNumber(invoice.number)}
+          </h1>
           {invoice.title ? (
             <p className="text-2xl font-semibold tracking-tight break-words text-ink">
               {invoice.title}
@@ -210,8 +205,8 @@ function Loaded({
             tabIndex={-1}
             className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted outline-none"
           >
-            {/* Read here on every screen; on phones it shows on the number's row instead. */}
-            <span className="max-lg:sr-only">
+            {/* One pill, read here in order; on phones it is drawn on the number's row. */}
+            <span className="max-lg:absolute max-lg:top-0 max-lg:right-0 max-lg:flex max-lg:h-7 max-lg:items-center">
               <StatusPill status={status} />
             </span>
             {when(invoice) ? <span>{when(invoice)}</span> : null}
