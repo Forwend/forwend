@@ -80,6 +80,18 @@ export const PAY_COPY = {
     `The ${received} you sent is held for you; ask ${payee} to get it back.`,
   otherOption: (amount: string, network: string, payee: string) =>
     `${amount} sent on ${network} went to another payment option. It is held for you; ask ${payee} to get it back.`,
+  // Email me the receipt (R-82, D-68): optional, for this receipt only.
+  receipt: {
+    label: "Email me the receipt (optional)",
+    hint: "Used for this receipt only. Nothing else is sent to it.",
+    send: "Send",
+    before: (email: string) => `We will email the receipt to ${email} once it is paid.`,
+    after: (email: string) => `The receipt is on its way to ${email}.`,
+    invalid: "Enter an address like name@example.com.",
+    sent: "The receipt was already sent.",
+    tooMany: "Too many tries. Wait a minute and try again.",
+    failed: "We could not save the address. Try again.",
+  },
   change: "Change",
   confirmChange: "Confirm change",
   changeLabel: "Change network and token",

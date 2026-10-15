@@ -639,7 +639,7 @@
       "dependsOn": [
         "F183"
       ],
-      "state": "blocked",
+      "state": "passing",
       "verification": [
         "backend",
         "unit",
@@ -652,81 +652,99 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-10-15 blocked: Verify blocked by the stale balances e2e step fixed in F197"
+        "2026-10-15 blocked: Verify blocked by the stale balances e2e step fixed in F197",
+        "2026-10-15 blocked: refresh base after merging main",
+        "2026-10-15 review pass by independent reviewer: Pass. Ran go test (httpapi/tests, notify, ledger, invoice, document) ok; web vitest 124/124, typecheck, lint ok. Mutations on a scratch copy: 409 removal, owner-instead-of-payer, per-invoice burst, bell exclusion, ledger queue removal, PUT-after-paid queue removal all fail tests. Once-only holds: SetPayerEmail and ledger.Process both lock the main row, partial unique index + ON CONFLICT DO NOTHING; option->main mapping right; PDF link webURL+/api/v1 matches API_BASE rewrite; address never read back, logged, or put in the payload; form hidden on canceled/closed. Minor: (1) removing ON CONFLICT and the unique index together survives - no test queues twice; add a second PUT after paid before sent asserting receipts()==1. (2) Global limit untested (5000/s survives). (3) Tx-link filters (confirmed, on time, latest) untested beyond one transfer. (4) No 400 malformed_request test for the route (api.md Handlers and tests). (5) payer_email.go reads published_at without locking the outbox row: a PUT while the worker is mid-send returns 200 with the new address but the mail goes to the old one; add FOR UPDATE to that read. (6) A given-up receipt (failed_at) still answers 200 'on its way'. (7) The email shows the owner-set sender name with no 'not checked' note, unlike the PDF; low phishing risk since each mail needs a paid invoice.",
+        "2026-10-15 review pass by independent reviewer: Re-review of 4e42ed4: pass. Go tests (httpapi/tests, notify, ledger, invoice, document) ok. Mutations on a scratch copy now all fail tests: 409, address restart, ON CONFLICT+unique index removed, owner address, per-invoice burst, global limit (5000/20000), bell exclusion, late filter, confirmed filter, unchecked-name note. Race fix checked with a scratch test that holds the receipt row like the worker, sends a PUT, then marks it published: with FOR UPDATE the PUT waits and answers 409; without it the PUT answers 200. No deadlock: the worker locks only the outbox row, the PUT locks main then outbox. Minor, not blocking: (1) no committed test for the FOR UPDATE wait (removing it survives the suite); the scratch test above is ~30 lines in httpapi/tests. (2) the issuer_name branch of the receipt is untested (case issuer -> false survives). (3) unverified: a restarted receipt keeps the Resend Idempotency-Key forwend-<invoice>-<event>; if Resend kept that key from an earlier attempt to the old address within 24 h, the new body may be refused; adding the address hash to the key would avoid it.",
+        "2026-10-15 review pass by independent reviewer: Re-review of 80b2d63: pass. Go tests (httpapi/tests, notify, ledger, invoice, email) ok. All three remaining points are fixed and tested; each mutation on a scratch copy fails its test: removing FOR UPDATE in SetPayerEmail fails TestPayerEmailWaitsForASendInProgress; ignoring issuer_name fails TestReceiptNamesTheIssuer; dropping the address hash from the key (sum[:0]) fails TestKeyFollowsTheAddress. The key adds 8 bytes of sha256(address), so the address stays out of the key; with the same address the key is stable, so a retry after a lost answer still sends once. api.md shows the new key; only past task notes and docs/runs/F183 show the old format, as history. Nothing left open."
       ],
-      "blockedReason": "Verify blocked by the stale balances e2e step fixed in F197",
+      "blockedReason": null,
       "evidence": {
         "version": 3,
-        "status": "failed",
-        "at": "2026-10-15T02:27:10Z",
+        "status": "passed",
+        "at": "2026-10-15T03:03:59Z",
         "checks": [
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 62.6,
-            "log": "docs/runs/F185-20261015T022710Z-backend.log"
+            "seconds": 63.3,
+            "log": "docs/runs/F185-20261015T030359Z-backend.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 64.2,
-            "log": "docs/runs/F185-20261015T022710Z-unit.log"
+            "seconds": 64.6,
+            "log": "docs/runs/F185-20261015T030359Z-unit.log"
           },
           {
             "id": "e2e",
-            "outcome": "failed",
-            "exit": 1,
-            "seconds": 163.9,
-            "log": "docs/runs/F185-20261015T022710Z-e2e.log"
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 160.5,
+            "log": "docs/runs/F185-20261015T030359Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 1.9,
-            "log": "docs/runs/F185-20261015T022710Z-harness.log"
+            "log": "docs/runs/F185-20261015T030359Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F185-20261015T022710Z-docs-check.log"
+            "log": "docs/runs/F185-20261015T030359Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F185-20261015T022710Z-lint.log"
+            "log": "docs/runs/F185-20261015T030359Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F185-20261015T022710Z-typecheck.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F185-20261015T030359Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.6,
-            "log": "docs/runs/F185-20261015T022710Z-build.log"
+            "seconds": 2.4,
+            "log": "docs/runs/F185-20261015T030359Z-build.log"
           }
         ],
         "taskHash": "b7d4c44948b26ee9",
-        "filesHash": "60a74fe5cde81b35",
+        "filesHash": "62e0f33f2885841d",
         "proof": {
-          "1": "e2e: pay.spec 'takes an optional address for the receipt' saves it before paying, says where the receipt goes, shows the 422 and 409 answers; backend TestPayerEmail (422, 404, trimmed and lowercased, a paid invoice queues one receipt, changes until sent, 409 receipt_sent after, the bell leaves receipts out) and TestPayerEmailIsLimitedPerInvoice (429 after 3, another invoice has its own budget)",
-          "2": "backend: TestPaidQueuesTheReceiptWhenAsked (paid queues one receipt beside the paid event) and TestDeliverSendsTheReceiptToThePayer (to the payer's address whatever the owner's setting, with amount, payee, transaction link and receipt PDF link); a unique index keeps one receipt per invoice"
-        }
+          "1": "e2e: pay.spec 'takes an optional address for the receipt' saves it before paying, says where the receipt goes, shows the 422 and 409 answers; backend TestPayerEmail, TestPayerEmailQueuesOneReceipt (one receipt across changes, a given-up receipt restarts, 400), TestPayerEmailWaitsForASendInProgress (a change during a send waits and answers 409; caught without FOR UPDATE), and both limit tests (429)",
+          "2": "backend: TestPaidQueuesTheReceiptWhenAsked, TestDeliverSendsTheReceiptToThePayer (payer's address, amount, payee with the unchecked-name note, on-time confirmed transaction link, receipt PDF link), TestReceiptNamesTheIssuer, and TestKeyFollowsTheAddress (a new address gets a new Idempotency-Key)"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "Re-review of 80b2d63: pass. Go tests (httpapi/tests, notify, ledger, invoice, email) ok. All three remaining points are fixed and tested; each mutation on a scratch copy fails its test: removing FOR UPDATE in SetPayerEmail fails TestPayerEmailWaitsForASendInProgress; ignoring issuer_name fails TestReceiptNamesTheIssuer; dropping the address hash from the key (sum[:0]) fails TestKeyFollowsTheAddress. The key adds 8 bytes of sha256(address), so the address stays out of the key; with the same address the key is stable, so a retry after a lost answer still sends once. api.md shows the new key; only past task notes and docs/runs/F183 show the old format, as history. Nothing left open.",
+          "at": "2026-10-15T03:09:57Z",
+          "filesHash": "62e0f33f2885841d"
+        },
+        "commit": "80b2d63",
+        "doneAt": "2026-10-15T03:10:06Z"
       },
       "branch": "feat/f185-a-payer-can-ask-for-the-receipt-by-email",
-      "baseCommit": "1c842159b3390484b42e866a3bc56a7665efc132",
-      "failedVerifies": 2
+      "baseCommit": "4e62cd61c5072da4247981008e83dc99af8ab5d9",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f185-a-payer-can-ask-for-the-receipt-by-email",
+        "base": "main"
+      }
     },
     {
       "id": "F186",
@@ -1333,7 +1351,8 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-15 review pass by independent reviewer: Root cause right: switchProfile calls router.push(APP_ROUTES.home) (R-76), so the old step's Balances heading check only passed when read before navigation. New step waits for /app URL, the Personal overview heading and the Personal switcher label, then reopens Balances; a self-flipping profile would still fail the switcher check. Nothing weakened: no timeout or retry added, no check removed, the axe check after Transactions stays. Radix MenuRadioItem calls onValueChange even for the already-active value, so the no-network branch (Personal already active) still navigates. No other e2e spec asserts the keep-the-page rule (auth, navigation, onboarding, invoices, money-requests checked). pnpm lint and pnpm typecheck pass. Minor: the task refs R-66; R-76 is the requirement the step tests."
+        "2026-10-15 review pass by independent reviewer: Root cause right: switchProfile calls router.push(APP_ROUTES.home) (R-76), so the old step's Balances heading check only passed when read before navigation. New step waits for /app URL, the Personal overview heading and the Personal switcher label, then reopens Balances; a self-flipping profile would still fail the switcher check. Nothing weakened: no timeout or retry added, no check removed, the axe check after Transactions stays. Radix MenuRadioItem calls onValueChange even for the already-active value, so the no-network branch (Personal already active) still navigates. No other e2e spec asserts the keep-the-page rule (auth, navigation, onboarding, invoices, money-requests checked). pnpm lint and pnpm typecheck pass. Minor: the task refs R-66; R-76 is the requirement the step tests.",
+        "2026-10-15 Also covers R-76 (the post-switch step tests it); ref left as R-66 to keep the reviewed definition."
       ],
       "blockedReason": null,
       "evidence": {

@@ -169,6 +169,9 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		if err := outbox.Queue(ctx, tx, outbox.Paid, invoiceID, nil); err != nil {
 			return err
 		}
+		if err := outbox.QueueReceipt(ctx, tx, invoiceID); err != nil {
+			return err
+		}
 	}
 	if newlyHeld.Sign() > 0 {
 		if err := outbox.Queue(ctx, tx, outbox.Held, invoiceID, newlyHeld); err != nil {

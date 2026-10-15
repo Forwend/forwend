@@ -5,6 +5,7 @@ package notify
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -69,19 +70,27 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 		return false, fmt.Errorf("read email event %d: %w", id, err)
 	}
 	var (
-		on             bool
-		to             *string
-		number         int64
-		symbol, amount string
-		decimals       int
-		chainID        uint64
+		on                   bool
+		to, payer            *string
+		number               int64
+		symbol, amount, hash string
+		issuer, typed        string
+		decimals             int
+		chainID              uint64
 	)
-	if err := tx.QueryRow(ctx, `SELECT p.email_notifications, u.login_email, m.number, t.symbol, t.decimals, o.chain_id,
-		    o.amount::text
+	if err := tx.QueryRow(ctx, `SELECT p.email_notifications, u.login_email, m.payer_email, m.number,
+		    coalesce(m.issuer_name, ''), coalesce(m.sender_name, ''), t.symbol, t.decimals, o.chain_id, o.amount::text,
+		    coalesce((SELECT d.tx_hash FROM chain_transfers d WHERE d.invoice_id = o.id AND d.status = 'confirmed'
+		              AND d.block_time <= o.expires_at ORDER BY d.block_number DESC, d.log_index DESC LIMIT 1), '')
 		FROM invoices m JOIN profiles p ON p.id = m.profile_id JOIN users u ON u.id = p.user_id
 		JOIN invoices o ON o.id = $2 JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
-		WHERE m.id = $1`, invoice, p.Option).Scan(&on, &to, &number, &symbol, &decimals, &chainID, &amount); err != nil {
+		WHERE m.id = $1`, invoice, p.Option).Scan(&on, &to, &payer, &number, &issuer, &typed, &symbol, &decimals, &chainID,
+		&amount, &hash); err != nil {
 		return false, fmt.Errorf("read email event %d invoice: %w", id, err)
+	}
+	// The payer's receipt goes to the address they gave, whatever the owner's setting (R-82).
+	if kind == outbox.Receipt {
+		on, to = true, payer
 	}
 	if !on || to == nil || *to == "" {
 		// Email off for this profile, or no login email ('' when the account has none; NULL when it was never read):
@@ -95,10 +104,19 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 		amount = p.Amount
 	}
 	units, _ := new(big.Int).SetString(amount, 10)
-	m := compose(kind, document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID),
-		webURL+"/app/invoices/"+invoice, webURL+"/app/notifications")
+	var m email.Message
+	if kind == outbox.Receipt {
+		m = receipt(document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID), issuer, typed,
+			document.TxURL(chainID, hash), webURL+"/api/v1/invoices/"+invoice+"/receipt.pdf")
+	} else {
+		m = compose(kind, document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID),
+			webURL+"/app/invoices/"+invoice, webURL+"/app/notifications")
+	}
 	// The invoice id too: event ids start again in another database (a reset, staging) that may share the Resend team.
-	m.To, m.Key = *to, fmt.Sprintf("forwend-%s-%d", invoice, id)
+	// And the address: a receipt sent again to a changed address is a new request, which Resend would refuse under a
+	// key it already saw with another body.
+	sum := sha256.Sum256([]byte(*to))
+	m.To, m.Key = *to, fmt.Sprintf("forwend-%s-%d-%x", invoice, id, sum[:8])
 	if err := sender.Send(ctx, m); err != nil {
 		attempts++
 		if attempts >= MaxAttempts {
@@ -139,4 +157,24 @@ func compose(kind, number, amount, network, link, settings string) email.Message
 	}
 	return email.Message{Subject: subject, Text: what + "\n\nOpen the invoice: " + link +
 		"\n\nYou get this email because email is on for this profile. Turn it off: " + settings + "\n"}
+}
+
+// receipt is the payer's one email (R-82): what they paid, to whom, the transaction and the receipt PDF. Nothing else
+// is ever sent to this address.
+func receipt(number, amount, network, issuer, sender, tx, pdf string) email.Message {
+	to, unchecked := "", ""
+	switch {
+	case issuer != "":
+		to = " to " + issuer
+	case sender != "":
+		// A name the invoice's creator typed, as the pay page and PDF say: not checked by Forwend.
+		to, unchecked = " to "+sender, "\n\nThe name is what the invoice's creator gave; Forwend doesn't check it."
+	}
+	text := "You paid " + amount + " on " + network + to + " for " + number + "." + unchecked
+	if tx != "" {
+		text += "\n\nTransaction: " + tx
+	}
+	text += "\nReceipt (PDF): " + pdf + "\n\nYou get this one email because you asked for the receipt on the payment " +
+		"page. Forwend sends nothing else to this address.\n"
+	return email.Message{Subject: "Your receipt for " + number, Text: text}
 }

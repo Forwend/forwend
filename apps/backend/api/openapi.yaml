@@ -491,6 +491,46 @@ paths:
               schema: { $ref: "#/components/schemas/Invoice" }
         "404": { $ref: "#/components/responses/InvoiceNotFound" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/invoices/{invoiceId}/payer-email:
+    put:
+      operationId: putPayerEmail
+      summary: Email me the receipt (public, like the checkout)
+      description: |
+        R-82, D-68. The payer's address for this invoice's receipt only, never used for anything else and deleted with
+        the invoice. It can change until the receipt is sent; an invoice already paid queues its receipt now, otherwise
+        it goes once paid. Limited per invoice and for everyone together; per IP at the edge (Q-8).
+      security: []
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email]
+              properties:
+                email: { type: string, maxLength: 254 }
+      responses:
+        "200":
+          description: The address as kept (trimmed, lowercase)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [email]
+                properties:
+                  email: { type: string }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "409": { $ref: "#/components/responses/ReceiptSent" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/invoices/{invoiceId}/recheck:
     post:
       operationId: recheckInvoice
@@ -723,6 +763,7 @@ components:
         kind:
           type: string
           enum: [invoice.paid, invoice.settled, invoice.held]
+          description: The payer's receipt (invoice.receipt) is not listed.
         invoiceId: { $ref: "#/components/schemas/InvoiceId" }
         number: { type: integer, minimum: 1 }
         chainId: { type: integer }
@@ -1225,7 +1266,7 @@ components:
             code:
               type: string
               enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found,
-                billing_details_not_found, idempotency_conflict, invoice_not_paid, invoice_not_cancelable,
+                billing_details_not_found, idempotency_conflict, invoice_not_paid, invoice_not_cancelable, receipt_sent,
                 invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
   responses:
@@ -1270,6 +1311,11 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     BillingDetailsNotFound:
       description: The profile has not saved billing details yet (billing_details_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ReceiptSent:
+      description: The receipt already went to the address given (receipt_sent)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

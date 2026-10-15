@@ -28,6 +28,7 @@ import {
 } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { type Choice, OptionPicker } from "@/features/pay/components/option-picker";
+import { ReceiptEmail } from "@/features/pay/components/receipt-email";
 import { PAY_STATES } from "@/features/pay/constants/pay";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 import {
@@ -423,6 +424,10 @@ function PayBox({
           </>
         )}
       </div>
+      {/* The receipt by email, before or after paying; not for a canceled or closed checkout (R-82). */}
+      {pay.canSend || seen || done ? (
+        <ReceiptEmail invoiceId={invoice.invoiceId} paid={done} />
+      ) : null}
       {/* Overpaid gets its own handling later (PLAN 11.10.1); late money is held for the payer now. */}
       {pay.late > 0n ? (
         <p className="text-sm text-warning">{COPY.late(money(pay.late), payeeOf(invoice))}</p>

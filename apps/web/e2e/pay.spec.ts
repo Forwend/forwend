@@ -352,6 +352,45 @@ test.describe("pay page", () => {
     );
   });
 
+  // R-82: the payer may leave an address for the receipt, before or after paying; the field says what will happen.
+  test("takes an optional address for the receipt", async ({ page }) => {
+    const sent: unknown[] = [];
+    let answer = 200;
+    await page.route("**/api/v1/invoices/*/payer-email", (route) => {
+      sent.push(route.request().postDataJSON());
+      return answer === 200
+        ? route.fulfill({ json: { email: "payer@example.com" } })
+        : route.fulfill({ status: answer, json: { error: { code: "x", message: "x" } } });
+    });
+    await openPay(page, OPEN);
+    const field = page.getByLabel("Email me the receipt (optional)");
+    await expect(
+      page.getByText("Used for this receipt only. Nothing else is sent to it."),
+    ).toBeVisible();
+    await field.fill(" Payer@Example.com ");
+    await page.getByRole("button", { name: "Send", exact: true }).click();
+    await expect(
+      page.getByText("We will email the receipt to payer@example.com once it is paid."),
+    ).toBeVisible();
+    expect(sent).toEqual([{ email: "Payer@Example.com" }]); // an email field trims; the server lowercases
+
+    answer = 422;
+    await field.fill("not an address");
+    await page.getByRole("button", { name: "Send", exact: true }).click();
+    await expect(page.getByText("Enter an address like name@example.com.")).toBeVisible();
+
+    answer = 409;
+    await page.unrouteAll({ behavior: "ignoreErrors" });
+    await page.route("**/api/v1/invoices/*/payer-email", (route) =>
+      route.fulfill({ status: 409, json: { error: { code: "receipt_sent", message: "x" } } }),
+    );
+    await mockInvoice(page, PAID);
+    await page.reload();
+    await page.getByLabel("Email me the receipt (optional)").fill("payer@example.com");
+    await page.getByRole("button", { name: "Send", exact: true }).click();
+    await expect(page.getByText("The receipt was already sent.")).toBeVisible();
+  });
+
   // R-79: a canceled invoice says so and shows no address; money that still arrives is held for the payer.
   test("tells the payer a canceled invoice takes no money", async ({ page }) => {
     await openPay(page, CANCELED);

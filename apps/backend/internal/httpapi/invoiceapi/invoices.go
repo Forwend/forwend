@@ -137,3 +137,23 @@ func listEvents(invoices *invoice.Service) http.HandlerFunc {
 		httpio.WriteJSON(w, http.StatusOK, out)
 	}
 }
+
+// putPayerEmail is PUT /v1/invoices/{invoiceId}/payer-email (R-82): public, like the checkout. 200 with the address as
+// kept; 409 receipt_sent once the receipt went out.
+func putPayerEmail(invoices *invoice.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Email string `json:"email"`
+		}
+		if err := httpio.DecodeJSON(w, r, &body); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		kept, err := invoices.SetPayerEmail(r.Context(), r.PathValue("invoiceId"), body.Email)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, map[string]string{"email": kept})
+	}
+}

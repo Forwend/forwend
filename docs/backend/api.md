@@ -63,10 +63,16 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
   can never set it, so nobody can point another person's notifications at an inbox.
 - The ledger and the signer queue `invoice.paid`, `invoice.held` (with the amount newly held) and `invoice.settled` in
   `outbox_events`, in the transaction that makes the change (`internal/outbox`). The worker sends them through Resend
-  (`internal/notify`) with `forwend-<invoiceId>-<eventId>` as the Idempotency-Key, one at a time with `FOR UPDATE SKIP
+  (`internal/notify`) with `forwend-<invoiceId>-<eventId>-<address hash>` as the Idempotency-Key, one at a time with `FOR UPDATE SKIP
   LOCKED`; a failed send ends that round and is retried after 1 min doubling to 1 h, given up after 10 tries. Email off
   or no address: the event is marked done and nothing is sent. Without `RESEND_API_KEY` the worker sends nothing and
   events wait; `scripts/with-env.sh` gives the key to the worker alone.
+- `PUT /v1/invoices/{invoiceId}/payer-email` (R-82, D-68, public like the checkout): the payer's address for this
+  invoice's receipt only, kept on the main row, trimmed and lowercased; it changes until the receipt is sent (then 409
+  `receipt_sent`). The ledger queues one `invoice.receipt` when the invoice becomes paid (a unique index keeps one per
+  invoice); an address given after that queues it at once. The worker sends it to that address whatever the owner's
+  setting: the amount, the payee, the transaction and the receipt PDF. Limited per invoice (3, then one per 10 s) and
+  for everyone together; per IP belongs to the edge (Q-8).
 - `GET /v1/profiles/{profileId}/events?limit=` (R-81, at most 50): the same events for the bell, newest first, with the
   invoice number, the option's token and the amount (newly held for `invoice.held`).
 
