@@ -2194,7 +2194,7 @@
         "e2e covers a new user opening /app/invoices: they land on /app/onboarding, finish it and arrive at /app/invoices; and an onboarded user opening /app/onboarding lands on /app"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit",
         "e2e"
@@ -2211,57 +2211,57 @@
       "blockedReason": null,
       "evidence": {
         "version": 3,
-        "status": "failed",
-        "at": "2026-10-15T12:00:20Z",
+        "status": "passed",
+        "at": "2026-10-15T12:04:08Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 139.0,
-            "log": "docs/runs/F201-20261015T120020Z-unit.log"
+            "seconds": 75.4,
+            "log": "docs/runs/F201-20261015T120408Z-unit.log"
           },
           {
             "id": "e2e",
-            "outcome": "failed",
-            "exit": 1,
-            "seconds": 60.5,
-            "log": "docs/runs/F201-20261015T120020Z-e2e.log"
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 196.3,
+            "log": "docs/runs/F201-20261015T120408Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.3,
-            "log": "docs/runs/F201-20261015T120020Z-harness.log"
+            "seconds": 2.5,
+            "log": "docs/runs/F201-20261015T120408Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F201-20261015T120020Z-docs-check.log"
+            "log": "docs/runs/F201-20261015T120408Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F201-20261015T120020Z-lint.log"
+            "log": "docs/runs/F201-20261015T120408Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.1,
-            "log": "docs/runs/F201-20261015T120020Z-typecheck.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F201-20261015T120408Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.8,
-            "log": "docs/runs/F201-20261015T120020Z-build.log"
+            "seconds": 0.7,
+            "log": "docs/runs/F201-20261015T120408Z-build.log"
           }
         ],
         "taskHash": "c772ebd525215c9b",
@@ -2274,7 +2274,7 @@
       },
       "branch": "feat/f201-onboarding-has-its-own-address-app-onboa",
       "baseCommit": "56a18461933061ddbbd9b25e9262b5e54b913c2f",
-      "failedVerifies": 1
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
