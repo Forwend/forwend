@@ -11,10 +11,10 @@ import (
 	"time"
 )
 
-// Message is one email. Key is the Idempotency-Key: Resend sends one email per key for 24 hours, so a retry after a
-// lost answer never sends twice.
+// Message is one email: a plain text part, and the designed HTML part when there is one. Key is the Idempotency-Key:
+// Resend sends one email per key for 24 hours, so a retry after a lost answer never sends twice.
 type Message struct {
-	To, Subject, Text, Key string
+	To, Subject, Text, HTML, Key string
 }
 
 // Sender sends one message; the worker's tests replace it.
@@ -36,7 +36,11 @@ func NewResend(key, from string) *Resend {
 }
 
 func (r *Resend) Send(ctx context.Context, m Message) error {
-	body, err := json.Marshal(map[string]any{"from": r.From, "to": []string{m.To}, "subject": m.Subject, "text": m.Text})
+	fields := map[string]any{"from": r.From, "to": []string{m.To}, "subject": m.Subject, "text": m.Text}
+	if m.HTML != "" {
+		fields["html"] = m.HTML
+	}
+	body, err := json.Marshal(fields)
 	if err != nil {
 		return fmt.Errorf("encode email: %w", err)
 	}

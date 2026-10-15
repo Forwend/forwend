@@ -77,6 +77,11 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
   welcome emails existed (`users.welcome`), it queues one `account.welcome` row for the user in the same statement (a
   unique index keeps one per user). The worker sends it whatever the profile setting, with
   `forwend-user-<userId>-<eventId>-<address hash>` as the Idempotency-Key.
+- Every email (F200) has an HTML part from one layout (`internal/notify/layout.html.tmpl`, `html/template`, so typed names
+  are escaped) and a plain text part built from the same content, with the same links: the logo
+  (`PUBLIC_WEB_URL/icon-192.png`), a badge, the title, the amount, a details table, one button, and a footer with why
+  it was sent, the email settings link on owner emails, `support@forwend.com` and `EMAIL_POSTAL_ADDRESS` when set.
+  Tables, inline styles and a dark-mode block; no scripts, tracking pixels or other remote assets.
 - `GET /v1/profiles/{profileId}/events?limit=` (R-81, at most 50): the same events for the bell, newest first, with the
   invoice number, the option's token and the amount (newly held for `invoice.held`).
 
