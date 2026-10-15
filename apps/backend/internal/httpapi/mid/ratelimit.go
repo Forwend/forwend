@@ -12,8 +12,8 @@ import (
 
 // A signed-in tab polls about six routes every 15 s and a page load sends about ten at once, so a user with several
 // tabs stays well under these, and a script that loops on the API does not. Public routes are limited per IP at the
-// edge (docs/backend/api.md#rate-limits): Next's /api rewrite passes the client's own X-Forwarded-For through, so the
-// api can't trust it to tell payers apart.
+// edge (docs/backend/api.md#rate-limits): Next's /api rewrite adds no X-Forwarded-For of its own and passes a client's
+// header through unchanged (measured 2026-10-15), so the api can neither see nor trust a payer's address.
 const UserRate, UserBurst = 2, 60
 
 // Everyone is the one key of a limit shared by all callers.
