@@ -22,6 +22,7 @@ import {
   useGetInvoiceQuery,
   useGetProfileInvoiceQuery,
 } from "@/features/invoices/api/invoices-api";
+import { CancelInvoice } from "@/features/invoices/components/cancel-invoice";
 import { CheckStatus } from "@/features/invoices/components/check-status";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { InvoiceDeposits } from "@/features/invoices/components/invoice-deposits";
@@ -101,6 +102,7 @@ export function InvoiceDetail({
           <p className="text-muted">{COPY.otherProfile}</p>
         ) : (
           <Loaded
+            profileId={profileId}
             invoice={invoice.data}
             mine={mine}
             wait={owned.currentData?.settlementWait ?? null}
@@ -126,6 +128,7 @@ export function InvoiceDetail({
 }
 
 function Loaded({
+  profileId,
   invoice,
   mine,
   wait,
@@ -133,6 +136,7 @@ function Loaded({
   tokens,
   request,
 }: {
+  profileId: string;
   invoice: Invoice;
   mine: InvoiceSummary | null;
   wait: SettlementWait | null;
@@ -194,7 +198,22 @@ function Loaded({
             request={request}
           />
         </div>
-        {payable ? <ShareLink invoiceId={invoice.invoiceId} /> : null}
+        {payable ? (
+          <div className="flex min-w-0 flex-col gap-1">
+            <ShareLink invoiceId={invoice.invoiceId} />
+            {/* Only before any money, on any option (R-79): after that the money decides, not a cancel. */}
+            {status === PAYMENT_STATUS.open &&
+            invoice.deposits.length === 0 &&
+            invoice.options.every((o) => o.deposits.length === 0) ? (
+              <CancelInvoice
+                profileId={profileId}
+                invoiceId={invoice.invoiceId}
+                number={invoiceNumber(invoice.number)}
+                noun={request ? COPY.noun.request : COPY.noun.invoice}
+              />
+            ) : null}
+          </div>
+        ) : null}
       </header>
 
       {/* minmax(0, 1fr): a long value never widens the column past the screen. */}
@@ -374,7 +393,10 @@ function NextStep({
   request: boolean;
 }) {
   const noun = request ? COPY.noun.request : COPY.noun.invoice;
-  const { kind, received, left, late } = exception;
+  const { received, left, late } = exception;
+  // Canceled with nothing sent needs no line: the badge says it.
+  const kind =
+    exception.kind === INVOICE_EXCEPTIONS.canceled && received === 0n ? null : exception.kind;
   const restart = (rest: boolean) =>
     `${APP_ROUTES.newInvoice}?${RESTART_PARAMS.from}=${invoiceId}${rest ? `&${RESTART_PARAMS.rest}=1` : ""}`;
   if (!kind && late === 0n) return null;
@@ -403,6 +425,7 @@ function NextStep({
  * never shows its checkout's close time, which would read as still open.
  */
 function when(invoice: Invoice): string | null {
+  if (invoice.canceledAt) return COPY.canceledOn(TIME.format(new Date(invoice.canceledAt)));
   if (invoice.settlementStatus === API_SETTLEMENT_STATUSES.settled)
     return invoice.settledAt ? COPY.settledOn(TIME.format(new Date(invoice.settledAt))) : null;
   if (invoice.paymentStatus === API_PAYMENT_STATUSES.paid)

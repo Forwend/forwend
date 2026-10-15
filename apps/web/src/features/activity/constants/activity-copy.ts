@@ -19,6 +19,7 @@ export const ACTIVITY_COPY = {
     [STATUS_FILTERS.paid]: "Paid",
     [STATUS_FILTERS.settled]: "Settled",
     [STATUS_FILTERS.expired]: "Expired",
+    [STATUS_FILTERS.canceled]: "Canceled",
   } satisfies Record<StatusFilter, string>,
   search: "Search activity",
   searchPlaceholder: "Search amount, token or hash",

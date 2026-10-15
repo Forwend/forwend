@@ -230,3 +230,27 @@ func TestInvoiceStartsOpen(t *testing.T) {
 		t.Fatal("an invoice was created as paid")
 	}
 }
+
+// R-79, D-26: money sent to a canceled invoice, even the whole amount on time, is held for the payer and never settled.
+func TestCanceledInvoiceHoldsEveryDeposit(t *testing.T) {
+	s := newSim(t)
+	id, receive := s.invoice()
+	s.exec(`UPDATE invoices SET payment_status = 'canceled', canceled_at = now() WHERE id = $1`, id)
+	s.transfer(id, receive, 5000000, simExpires-10, "confirmed")
+	s.answer[receive] = big.NewInt(5000000)
+	s.process(id)
+	if payment, refund := s.payment(id); payment != Canceled || refund != "held" {
+		t.Fatalf("after a full payment: %s/%s, want canceled/held", payment, refund)
+	}
+	var held, settles int64
+	if err := s.pool.QueryRow(context.Background(), `
+		SELECT -coalesce(sum(e.amount), 0)::bigint FROM ledger_entries e
+		    JOIN ledger_transactions x ON x.id = e.transaction_id WHERE x.invoice_id = $1 AND e.account = 'payer_held'`,
+		id).Scan(&held); err != nil || held != 5000000 {
+		t.Fatalf("held %d (%v), want 5000000", held, err)
+	}
+	if err := s.pool.QueryRow(context.Background(), "SELECT count(*) FROM settlement_intents WHERE invoice_id = $1",
+		id).Scan(&settles); err != nil || settles != 0 {
+		t.Fatalf("%d settlement intents (%v), want none", settles, err)
+	}
+}

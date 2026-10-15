@@ -119,6 +119,8 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   paidAt: apiTime.nullable(),
   // Once settled: when the settlement was recorded as final.
   settledAt: apiTime.nullable(),
+  // When the owner canceled it (R-79).
+  canceledAt: apiTime.nullable(),
   deposits: z.array(depositSchema),
   // When Check status may run again; null when it may now (R-55).
   nextCheckAt: apiTime.nullable(),

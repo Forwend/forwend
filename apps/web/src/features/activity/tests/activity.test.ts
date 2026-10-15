@@ -59,6 +59,13 @@ describe("activityStatus", () => {
     );
   });
 
+  it("shows a canceled invoice as canceled, closed or not (R-79)", () => {
+    expect(activityStatus({ ...base, status: "canceled" })).toBe(PAYMENT_STATUS.canceled);
+    expect(activityStatus({ ...base, status: "canceled", closed: true })).toBe(
+      PAYMENT_STATUS.canceled,
+    );
+  });
+
   it("never claims money arrived for a status it does not know", () => {
     expect(activityStatus({ ...base, status: "something_new" })).toBe(PAYMENT_STATUS.detected);
   });

@@ -102,6 +102,20 @@ func Number(n int64) string {
 
 func Invoice(inv invoice.Invoice, payLink string) ([]byte, error) {
 	d := start(inv, "Invoice")
+	canceled := inv.PaymentStatus == ledger.Canceled
+	if canceled {
+		// A canceled invoice keeps its number and PDF as a record (D-79), and never asks for money again: no total
+		// due, no pay link or code.
+		d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Canceled", stamp(inv.CanceledAt)})
+		d.lines(inv, "Total, canceled", anyOption(inv))
+		d.heading("Canceled")
+		d.SetFont(font, "B", 10)
+		d.CellFormat(width, lineHeight, "This invoice was canceled. Do not pay it.", "", 1, "L", false, 0, "")
+		d.Ln(6)
+		d.note(inv.Note)
+		d.footer(inv)
+		return d.output()
+	}
 	d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Due date", inv.DueDate},
 		[2]string{"Checkout closes", stamp(inv.ExpiresAt)})
 	d.lines(inv, "Total due", anyOption(inv))

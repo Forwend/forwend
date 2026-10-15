@@ -9,6 +9,8 @@ export const BUTTON_VARIANTS = {
   link: "link",
   /** A feature that keeps its place until it is built: dashed and quiet; pair it with aria-disabled. */
   soon: "soon",
+  /** Confirms an action that can't be undone, such as canceling an invoice. */
+  danger: "danger",
 } as const;
 
 export const BUTTON_SIZES = {
@@ -40,6 +42,7 @@ const VARIANTS: Record<ButtonVariant, string> = {
   ghost: "text-ink hover:bg-surface-2",
   link: "text-accent underline decoration-1 underline-offset-4 hover:decoration-2",
   soon: "cursor-not-allowed border border-dashed border-line-strong text-subtle",
+  danger: "border border-danger bg-surface text-danger shadow-sm hover:bg-danger-soft",
 };
 
 const SIZES: Record<ButtonSize, string> = {

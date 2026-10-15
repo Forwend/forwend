@@ -118,7 +118,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	if err != nil {
 		return fmt.Errorf("read invoice %s deposits: %w", invoiceID, err)
 	}
-	final := current == Paid || current == Expired || current == ExpiredPartiallyPaid
+	final := Final(current)
 	for _, d := range deposits {
 		value, _ := new(big.Int).SetString(d.Amount, 10)
 		toCreator, toHeld := split(amount, owed, value, d.BlockTime > expiresAt, final || superseded)

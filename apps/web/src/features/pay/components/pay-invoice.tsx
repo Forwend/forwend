@@ -221,7 +221,13 @@ function Summary({
       </div>
       <div className="flex flex-col gap-1">
         <h2 id="pay-amount" className="text-sm text-muted">
-          {done ? COPY.amountPaid : partial ? COPY.leftToPay : COPY.amountDue}
+          {done
+            ? COPY.amountPaid
+            : partial
+              ? COPY.leftToPay
+              : pay.state === PAY_STATES.canceled
+                ? COPY.amount
+                : COPY.amountDue}
         </h2>
         <Money
           baseUnits={shown}
@@ -402,6 +408,11 @@ function PayBox({
       {/* Overpaid gets its own handling later (PLAN 11.10.1); late money is held for the payer now. */}
       {pay.late > 0n ? (
         <p className="text-sm text-warning">{COPY.late(money(pay.late), payeeOf(invoice))}</p>
+      ) : null}
+      {pay.state === PAY_STATES.canceled && pay.received > 0n ? (
+        <p className="text-sm text-warning">
+          {COPY.canceledHeld(money(pay.received), payeeOf(invoice))}
+        </p>
       ) : null}
       {invoice.options
         .filter((o) => o.optionId !== invoice.optionId && o.deposits.length > 0)

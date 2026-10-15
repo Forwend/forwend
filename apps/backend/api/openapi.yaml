@@ -248,6 +248,32 @@ paths:
         "404": { $ref: "#/components/responses/InvoiceNotFound" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/invoices/{invoiceId}/cancel:
+    post:
+      operationId: cancelInvoice
+      summary: Cancel one of the profile's invoices before any money arrives
+      description: |
+        R-79, D-79. Only while the invoice (every option of a payer-chooses one) is open, its checkout is still open
+        and no transfer was ever seen for it. Canceled is final: the invoice keeps its number, page and PDFs, never
+        settles, and money sent to it later is held for the payer (D-26). Answers the canceled invoice.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+      responses:
+        "200":
+          description: The canceled invoice
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "409": { $ref: "#/components/responses/InvoiceNotCancelable" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/balances:
     get:
       operationId: getBalances
@@ -500,10 +526,10 @@ components:
       in: query
       description: |
         Only invoices under this filter; absent for all. settled once settlementStatus is settled; otherwise by
-        paymentStatus: paid; expired, expired_partially_paid or closed (see Invoice.closed) is expired; any other open,
-        detected or partially_paid is open.
+        paymentStatus: paid; canceled; expired, expired_partially_paid or closed (see Invoice.closed) is expired; any
+        other open, detected or partially_paid is open.
         Another value is 422.
-      schema: { type: string, enum: [open, paid, settled, expired] }
+      schema: { type: string, enum: [open, paid, settled, expired, canceled] }
     Search:
       name: q
       in: query
@@ -894,6 +920,10 @@ components:
               description: |
                 Once settlementStatus is settled: when the settlement was recorded as final (the ledger's settlement
                 entry). null before.
+            canceledAt:
+              type: [string, "null"]
+              format: date-time
+              description: When the owner canceled it (paymentStatus canceled); null otherwise.
             deposits:
               type: array
               description: |
@@ -1029,7 +1059,7 @@ components:
           description: expiresAt + 24 h.
         paymentStatus:
           type: string
-          enum: [open, detected, partially_paid, paid, expired, expired_partially_paid]
+          enum: [open, detected, partially_paid, paid, expired, expired_partially_paid, canceled]
         settlementStatus:
           type: string
           enum: [none, pending, settled]
@@ -1090,8 +1120,8 @@ components:
             code:
               type: string
               enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found,
-                billing_details_not_found, idempotency_conflict, invoice_not_paid, invalid_value, rate_limited,
-                network_not_ready, internal]
+                billing_details_not_found, idempotency_conflict, invoice_not_paid, invoice_not_cancelable,
+                invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
   responses:
     MalformedRequest:
@@ -1135,6 +1165,11 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     BillingDetailsNotFound:
       description: The profile has not saved billing details yet (billing_details_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    InvoiceNotCancelable:
+      description: Money was seen, the checkout closed, or the invoice is no longer open (invoice_not_cancelable)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

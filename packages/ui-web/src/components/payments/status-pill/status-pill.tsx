@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  Ban,
   Check,
   Circle,
   CircleCheck,
@@ -26,6 +27,7 @@ const STATUS_ICONS: Record<PaymentStatus, typeof Check> = {
   overpaid: AlertTriangle,
   expired: Clock,
   expiredPartiallyPaid: AlertTriangle,
+  canceled: Ban,
   settled: Check,
   refundPending: RotateCcw,
   refunded: RotateCcw,

@@ -13,7 +13,8 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-// Payment statuses. paid, expired and expired_partially_paid are final; the database rejects any other transition.
+// Payment statuses. paid, expired, expired_partially_paid and canceled are final; the database rejects any other
+// transition. The owner cancels (invoice.Cancel); the ledger never does.
 const (
 	Open                 = "open"
 	Detected             = "detected"
@@ -21,7 +22,13 @@ const (
 	Paid                 = "paid"
 	Expired              = "expired"
 	ExpiredPartiallyPaid = "expired_partially_paid"
+	Canceled             = "canceled"
 )
+
+// Final is a status that takes no more money for the creator: every later deposit is held for the payer (D-26).
+func Final(status string) bool {
+	return status == Paid || status == Expired || status == ExpiredPartiallyPaid || status == Canceled
+}
 
 // BalanceOf reads a token balance from an RPC independent of the watcher's, at that RPC's own finalized block, so
 // one bad provider can't mark an invoice paid with money that isn't final (D-15, D-45). It also returns the block it
@@ -48,7 +55,7 @@ func split(amount, owedSoFar, deposit *big.Int, late, final bool) (toCreator, to
 // holds every booked deposit; mayExpire means expiry has passed and the chain holds exactly what is booked.
 func status(current string, amount, owed *big.Int, anyTransfer, mayExpire, funded bool) string {
 	switch {
-	case current == Paid || current == Expired || current == ExpiredPartiallyPaid:
+	case Final(current):
 		return current
 	case owed.Cmp(amount) >= 0 && funded:
 		return Paid

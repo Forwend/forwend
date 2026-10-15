@@ -16,7 +16,7 @@ const (
 )
 
 // StatusFilters are the owner's list filters; an invoice falls under exactly one (StatusFilterSQL).
-var StatusFilters = []string{"open", "paid", "settled", "expired"}
+var StatusFilters = []string{"open", "paid", "settled", "expired", "canceled"}
 
 // ClosedSQL is true for an invoices row (read through invoicesCurrent) whose checkout closed and that can no longer
 // be paid: open, detected or partly paid, past expiry, with no payment made before expiry still confirming and less
@@ -31,8 +31,9 @@ const ClosedSQL = `(invoices.payment_status IN ('open', 'detected', 'partially_p
 	              AND t.status <> 'reorged' AND t.block_time <= invoices.expires_at), 0) < invoices.amount)`
 
 // StatusFilterSQL is the filter of an invoices row: settled once settled, otherwise its payment status, with open,
-// detected and partially paid as open, and both expired ones and a closed checkout (ClosedSQL) as expired.
+// detected and partially paid as open, both expired ones and a closed checkout (ClosedSQL) as expired, and canceled.
 const StatusFilterSQL = `CASE WHEN settlement_status = 'settled' THEN 'settled' WHEN payment_status = 'paid' THEN 'paid'
+	WHEN payment_status = 'canceled' THEN 'canceled'
 	WHEN payment_status IN ('expired', 'expired_partially_paid') OR ` + ClosedSQL + ` THEN 'expired'
 	ELSE 'open' END`
 

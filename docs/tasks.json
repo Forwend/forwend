@@ -206,12 +206,12 @@
       "type": "feat",
       "behavior": "The owner can cancel an invoice or request before any money arrives; it never settles and later money is held for the payer (PLAN 9.5)",
       "acceptance": [
-        "POST /v1/invoices/{id}/cancel marks an open invoice with no recorded deposit canceled with its time and answers 409 otherwise; a canceled invoice never settles and a later deposit is booked as held for the payer; backend tests cover the race with a deposit (R-79)",
-        "The owner page's more menu has Cancel invoice (Cancel request) with a confirm dialog naming the number and the consequences, Keep invoice and a destructive Cancel invoice, and a toast after (R-79)",
-        "The pay page says the payee canceled it and not to send money, with no address or QR; the Invoices and Requests lists and filter, Activity, search and both PDFs say Canceled (R-79)"
+        "POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel marks an open invoice (every option) with no recorded deposit and an open checkout canceled with its time and answers 409 invoice_not_cancelable otherwise; a canceled invoice never settles and a later deposit is booked as held for the payer; backend tests cover it, including a deposit before the cancel and a payer-chooses invoice (R-79)",
+        "The owner page's quiet Cancel invoice (Cancel request) link opens a confirm dialog naming the number and the consequences, with Keep invoice and a danger Cancel invoice, and a toast after (R-79)",
+        "The pay page says the payee canceled it and not to send money, with no address or QR, and money that still arrives is held for the payer; the Invoices and Requests lists, their Canceled filter, Activity and the invoice PDF (no pay link or code) say Canceled (R-79)"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend",
         "unit",
@@ -226,7 +226,79 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-14T23:55:42Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 64.0,
+            "log": "docs/runs/F182-20261014T235542Z-backend.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 66.7,
+            "log": "docs/runs/F182-20261014T235542Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 158.3,
+            "log": "docs/runs/F182-20261014T235542Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F182-20261014T235542Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F182-20261014T235542Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F182-20261014T235542Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F182-20261014T235542Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F182-20261014T235542Z-build.log"
+          }
+        ],
+        "taskHash": "3ec0f392dce9dd64",
+        "filesHash": "30cdbe0ea1b2dd71",
+        "proof": {
+          "1": "backend: TestCancelInvoice (200 with canceledAt, checkout read canceled, Canceled filter, 409 again, 409 after a detected deposit, 409 when closed, 404 for another profile's invoice, 403 for Bob, 404 unknown), TestCancelPayerChoosesInvoice (every option canceled), TestCanceledInvoiceHoldsEveryDeposit (full payment held, no settlement intent)",
+          "2": "e2e: navigation.spec 'cancels an invoice before any money' opens the dialog, Keep sends nothing, confirm cancels once, toast, Canceled badge, no pay link or cancel link; axe clean with the dialog open",
+          "3": "e2e: pay.spec canceled shows the canceled line, no Show address, Amount label, and the held line when money arrives; backend TestCanceledInvoicePDF has no pay link, code or total due and a new ETag; unit tests cover the canceled pay state and activity status"
+        }
+      },
+      "branch": "feat/f182-the-owner-can-cancel-an-invoice-or-reque",
+      "baseCommit": "bc0230b01284fbcf6d50a993a385b7ab24332567",
+      "failedVerifies": 0
     },
     {
       "id": "F183",

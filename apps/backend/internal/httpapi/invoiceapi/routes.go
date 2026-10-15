@@ -14,7 +14,7 @@ import (
 // is also limited to one check every invoice.RecheckEvery, across replicas.
 const RecheckRate, RecheckBurst = 1, 10
 
-// Routes mounts the invoice endpoints on mux: the owner's create, list and read behind the profile guard; the
+// Routes mounts the invoice endpoints on mux: the owner's create, list, read and cancel behind the profile guard; the
 // checkout's read, Check status and PDFs in public. balances reads wallet balances from each chain's second RPC
 // (D-15); webURL is the web app's origin, for the pay link in PDFs.
 func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, balances ledger.BalanceOf, webURL string) {
@@ -22,6 +22,7 @@ func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, balance
 	mux.Handle("POST /v1/profiles/{profileId}/invoices", g.ProfileScoped(createInvoice(invoices)))
 	mux.Handle("GET /v1/profiles/{profileId}/invoices", g.ProfileScoped(listInvoices(invoices)))
 	mux.Handle("GET /v1/profiles/{profileId}/invoices/{invoiceId}", g.ProfileScoped(getProfileInvoice(invoices)))
+	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel", g.ProfileScoped(cancelInvoice(invoices)))
 	mux.Handle("GET /v1/invoices/{invoiceId}", getInvoice(invoices)) // checkout reads
 	mux.Handle("POST /v1/invoices/{invoiceId}/recheck", recheckInvoice(invoices, balances, rechecks))
 	mux.Handle("GET /v1/invoices/{invoiceId}/invoice.pdf", invoicePDF(invoices, webURL))
