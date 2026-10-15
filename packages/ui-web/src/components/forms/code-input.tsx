@@ -58,7 +58,7 @@ export function CodeInput({
                 "grid h-12 flex-1 place-items-center rounded-md border bg-surface font-mono text-xl text-ink tabular-nums shadow-sm transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] ease-out",
                 error ? "border-danger" : "border-line-strong",
                 current &&
-                  "border-focus ring-4 ring-[color-mix(in_oklab,var(--fw-focus)_22%,transparent)]",
+                  "border-ink ring-2 ring-[color-mix(in_oklab,var(--fw-ink)_12%,transparent)]",
                 disabled && "border-line text-subtle shadow-none",
               )}
             >

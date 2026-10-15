@@ -22,7 +22,8 @@ export function TextField({ label, hint, error, action, id, className, ...props 
         {label}
       </label>
       {action ? (
-        <div className="flex items-center gap-2">
+        // The action (a pill button) takes the field's height, so the two read as one row.
+        <div className="flex items-center gap-2 [&>*]:h-11">
           <input
             id={fieldId}
             aria-invalid={error ? true : undefined}

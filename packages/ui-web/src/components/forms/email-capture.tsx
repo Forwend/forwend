@@ -72,7 +72,7 @@ export function EmailCapture({
           <div
             className={cx(
               PILL,
-              "pl-5 transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] focus-within:ring-4 focus-within:ring-[color-mix(in_oklab,var(--fw-focus)_22%,transparent)]",
+              "pl-5 transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] focus-within:border-ink focus-within:ring-2 focus-within:ring-[color-mix(in_oklab,var(--fw-ink)_12%,transparent)]",
               isError ? "border-danger" : "border-line-strong",
             )}
           >
