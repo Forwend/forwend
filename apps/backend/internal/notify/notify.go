@@ -1,6 +1,6 @@
 // Package notify sends the owner's email for each outbox event (R-80): paid, settled and money held for the payer.
-// One worker claims each event once (FOR UPDATE SKIP LOCKED); the event id is Resend's Idempotency-Key, so a retry
-// after a lost answer sends nothing twice. Nothing logs an address, a subject or a body.
+// One worker claims each event once (FOR UPDATE SKIP LOCKED); invoice, event id and address make Resend's
+// Idempotency-Key, the same on every retry, so a retry after a lost answer sends nothing twice. Nothing logs an address, a subject or a body.
 package notify
 
 import (
