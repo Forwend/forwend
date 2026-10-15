@@ -1730,7 +1730,7 @@
         "A deposit to a canceled or closed invoice, or to an option the client did not pay with, raises no payment toast and is not filed under Activity's Paid or Open filter as a payment to the owner; it reads as held for the payer; tests cover each case"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "backend",
@@ -1743,7 +1743,8 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-15 review fail by independent reviewer: FAIL. (1) activity.go:115-117 booked branch misses expired partial payments, the first case D-26 names: a deposit booked on time keeps its recipient_payable entry, and the later ledger 'expiry' transaction (chain_transfer_id NULL, process.go:149) moves that money to payer_held. Reproduced in a scratch test: booked deposit + expiry tx + status expired_partially_paid -> List(status=paid) returns the deposit with held=false, status confirmed, so the owner sees a Payment under Paid for money they never get; openapi says held covers a deposit on a final invoice. Fix: booked branch NOT EXISTS(...) OR i.payment_status = 'expired_partially_paid', plus a test row. (2) Tests: removing 'paid' or 'expired' from the unbooked status list still passes TestListMarksHeldDeposits; add unbooked deposits on a paid and an expired invoice. Late, canceled, other-option, booked and status_filter mutations all fail the test. Minor, not blocking: unbooked overpayment on an invoice already fully booked but still detected (waiting for the second RPC) reads as Payment and toasts until booked; an option deposit while chosen_id is NULL (between watcher Scan and ProcessChain in the same round, or while Process keeps rolling back) toasts and reads as Payment. Fixture change in list_search_test is fair: Process sets paid only after booking the deposit in the same transaction. Performance fine: unique index ledger_transactions_one_deposit on chain_transfer_id and UNIQUE(transaction_id, account) on ledger_entries. Other readers: bell uses ledger outbox events and wallet transfers, dashboard uses balances; invoice detail InvoiceDeposits labels every deposit Payment with a note only when late (canceled/after-paid rows rely on page context). Ran: go test ./internal/activity/ ./internal/httpapi/... ok; vitest src/features/activity 14 passed."
+        "2026-10-15 review fail by independent reviewer: FAIL. (1) activity.go:115-117 booked branch misses expired partial payments, the first case D-26 names: a deposit booked on time keeps its recipient_payable entry, and the later ledger 'expiry' transaction (chain_transfer_id NULL, process.go:149) moves that money to payer_held. Reproduced in a scratch test: booked deposit + expiry tx + status expired_partially_paid -> List(status=paid) returns the deposit with held=false, status confirmed, so the owner sees a Payment under Paid for money they never get; openapi says held covers a deposit on a final invoice. Fix: booked branch NOT EXISTS(...) OR i.payment_status = 'expired_partially_paid', plus a test row. (2) Tests: removing 'paid' or 'expired' from the unbooked status list still passes TestListMarksHeldDeposits; add unbooked deposits on a paid and an expired invoice. Late, canceled, other-option, booked and status_filter mutations all fail the test. Minor, not blocking: unbooked overpayment on an invoice already fully booked but still detected (waiting for the second RPC) reads as Payment and toasts until booked; an option deposit while chosen_id is NULL (between watcher Scan and ProcessChain in the same round, or while Process keeps rolling back) toasts and reads as Payment. Fixture change in list_search_test is fair: Process sets paid only after booking the deposit in the same transaction. Performance fine: unique index ledger_transactions_one_deposit on chain_transfer_id and UNIQUE(transaction_id, account) on ledger_entries. Other readers: bell uses ledger outbox events and wallet transfers, dashboard uses balances; invoice detail InvoiceDeposits labels every deposit Payment with a note only when late (canceled/after-paid rows rely on page context). Ran: go test ./internal/activity/ ./internal/httpapi/... ok; vitest src/features/activity 14 passed.",
+        "2026-10-15 review pass by independent reviewer: PASS on e7c562b. Point 1 fixed: activity.go booked branch adds OR i.payment_status = 'expired_partially_paid'. That is correct for every booked deposit on such a row: a partially_paid invoice never settles, and the ledger expiry book (process.go:151) moves the whole recipient_payable balance to payer_held. Point 2 fixed: the test adds unbooked deposits on paid and expired invoices plus a booked partial on an expired_partially_paid invoice. Mutation check in a scratch copy: removing the expired_partially_paid clause, 'paid', 'expired', the late check, 'canceled', the chosen_id check, the booked NOT EXISTS, or the status_filter NULL each fails TestListMarksHeldDeposits. openapi.yaml and api.md name the case. Point 3 not blocking: overpayment before booking and an option deposit before chosen_id is set are short windows, rare, flip to held once booked, and avoiding them would mean predicting the ledger split in the read path. Point 6: the invoice detail page labels each deposit Payment with a note only when late; the coordinator names it in the report. Ran: go test ./internal/activity/ ./internal/httpapi/... ok; vitest src/features/activity 14 passed; repo clean, scratch removed."
       ],
       "blockedReason": null,
       "evidence": {
@@ -1812,11 +1813,25 @@
         "filesHash": "61e80265cc1ab3b7",
         "proof": {
           "1": "unit: payment-events gives no toast for a held deposit and activity-amounts shows its row as 'Held for the payer', not 'Payment'; both fail with the check removed"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "PASS on e7c562b. Point 1 fixed: activity.go booked branch adds OR i.payment_status = 'expired_partially_paid'. That is correct for every booked deposit on such a row: a partially_paid invoice never settles, and the ledger expiry book (process.go:151) moves the whole recipient_payable balance to payer_held. Point 2 fixed: the test adds unbooked deposits on paid and expired invoices plus a booked partial on an expired_partially_paid invoice. Mutation check in a scratch copy: removing the expired_partially_paid clause, 'paid', 'expired', the late check, 'canceled', the chosen_id check, the booked NOT EXISTS, or the status_filter NULL each fails TestListMarksHeldDeposits. openapi.yaml and api.md name the case. Point 3 not blocking: overpayment before booking and an option deposit before chosen_id is set are short windows, rare, flip to held once booked, and avoiding them would mean predicting the ledger split in the read path. Point 6: the invoice detail page labels each deposit Payment with a note only when late; the coordinator names it in the report. Ran: go test ./internal/activity/ ./internal/httpapi/... ok; vitest src/features/activity 14 passed; repo clean, scratch removed.",
+          "at": "2026-10-15T10:29:05Z",
+          "filesHash": "61e80265cc1ab3b7"
+        },
+        "commit": "e7c562b",
+        "doneAt": "2026-10-15T10:29:18Z"
       },
       "branch": "fix/f196-money-held-for-the-payer-late-after-canc",
       "baseCommit": "1a3b75160909b7fd463777c853b3a8fdf2eebc9b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f196-money-held-for-the-payer-late-after-canc",
+        "base": "main"
+      }
     },
     {
       "id": "F197",
