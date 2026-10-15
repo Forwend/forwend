@@ -789,7 +789,8 @@ test("the bell lists paid, settled and held-money events beside payments", async
   await mockApi(page, {
     invoices: [OPEN_INVOICE],
     activity: [],
-    transfers: [],
+    // An incoming payment between two events: the bell sorts both kinds by time.
+    transfers: [{ ...sampleTransfer(0), at: new Date(Date.now() - 150_000).toISOString() }],
     events: [
       event(3, "invoice.settled", "2000000", 1),
       event(2, "invoice.held", "500000", 2),
@@ -798,14 +799,15 @@ test("the bell lists paid, settled and held-money events beside payments", async
   });
   await page.goto("/app");
   const bell = page.getByRole("banner").getByRole("button", { name: /^Notifications/ });
-  await expect(bell).toHaveAccessibleName("Notifications, 3 new", { timeout: 15_000 });
+  await expect(bell).toHaveAccessibleName("Notifications, 4 new", { timeout: 15_000 });
   await bell.click();
   const items = page.getByRole("menu").getByRole("menuitem");
   await expect(items.nth(0)).toContainText("INV-0002 in your wallet 2.00 USDC");
   await expect(items.nth(1)).toContainText("INV-0002 held for the payer 0.50 USDC");
-  await expect(items.nth(2)).toContainText("INV-0002 paid 2.00 USDC");
+  await expect(items.nth(2)).toContainText("Received 1.00 USDC");
+  await expect(items.nth(3)).toContainText("INV-0002 paid 2.00 USDC");
   expect(await blockingViolations(page)).toEqual([]);
-  await items.nth(2).click();
+  await items.nth(3).click();
   await expect(page).toHaveURL(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
   // Opened once: nothing is new any more.
   await expect(bell).toHaveAccessibleName("Notifications");

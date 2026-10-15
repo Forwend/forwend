@@ -544,67 +544,69 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-15 review fail by independent reviewer: FAIL (load). apps/backend/internal/invoice/events.go:49-53 joins outbox_events by invoice_id, but no index on outbox_events(invoice_id) exists (00002 has only the pkey; 00025 only outbox_events_due), and rows are never deleted. EXPLAIN ANALYZE on a scratch DB with 300k events from other profiles and 5 for alice: Index Scan Backward on outbox_events_pkey reads all 300,105 rows (Rows Removed by Join Filter 300100), 53 ms. Any profile with fewer events than the limit (most profiles, every new one) scans the whole table. The bell polls this every 15 s per tab (LIVE_QUERY), so the documented 10,000-user load target means about 667 full scans/s. With CREATE INDEX outbox_events_invoice ON outbox_events (invoice_id, id) the same query takes 0.16 ms (Bitmap Index Scan). Fix: a migration adding that index; optionally add AND m.main_id IS NULL so invoices_profile_number serves the profile filter (now a seq scan on invoices). Passed: no cross-profile leak (filter is on the main row; outbox.Queue derives invoice_id from the option's main_id; a payload without option is dropped by the inner join). Amounts match the email (option amount; payload amount for held). e.id DESC matches created_at except across overlapping transactions; the web re-sorts by at anyway. Edge transactions -> invoices is acyclic and listed in docs/web/architecture.md. Icons aria-hidden; axe runs in the e2e. Mutations in a scratch copy: removing the profile filter, ORDER BY ASC, ORDER BY created_at, and dropping the held amount each fail TestListEvents. pnpm lint, pnpm typecheck and web unit tests (124) pass. Minor: (1) events_test.go has no 401 case, unlike other routes; add a no-token call. (2) The test only covers option = main row; a payer-chooses option is untested. (3) No test fails if the merge sort in notifications-menu.tsx:46 is removed: the e2e uses transfers: [] and pre-sorted events; mix a transfer between two events in the e2e. (4) notifications-menu.tsx:43 uses e.kind in EVENT_LOOK, which is true for 'constructor'; Object.hasOwn is safer (the DB CHECK makes it theoretical). (5) If the events query fails, the bell silently shows only transfers."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-15T02:00:41Z",
+        "at": "2026-10-15T02:10:49Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 65.0,
-            "log": "docs/runs/F184-20261015T020041Z-unit.log"
+            "seconds": 64.6,
+            "log": "docs/runs/F184-20261015T021049Z-unit.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 160.8,
-            "log": "docs/runs/F184-20261015T020041Z-e2e.log"
+            "seconds": 157.0,
+            "log": "docs/runs/F184-20261015T021049Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 1.9,
-            "log": "docs/runs/F184-20261015T020041Z-harness.log"
+            "log": "docs/runs/F184-20261015T021049Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F184-20261015T020041Z-docs-check.log"
+            "seconds": 0.0,
+            "log": "docs/runs/F184-20261015T021049Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F184-20261015T020041Z-lint.log"
+            "log": "docs/runs/F184-20261015T021049Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F184-20261015T020041Z-typecheck.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F184-20261015T021049Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.3,
-            "log": "docs/runs/F184-20261015T020041Z-build.log"
+            "seconds": 4.0,
+            "log": "docs/runs/F184-20261015T021049Z-build.log"
           }
         ],
         "taskHash": "5242a9f5b13929df",
-        "filesHash": "38c1c05d35d944d8",
+        "filesHash": "f7e3f9ba8663cb9c",
         "proof": {
-          "1": "e2e: navigation.spec 'the bell lists paid, settled and held-money events beside payments' shows 3 new, the events newest first with number and amount, links the event to its invoice, and clears the count once opened (axe clean); backend TestListEvents lists the profile's events newest first with held amounts, honours limit, leaves out another profile's, and answers 422 and 403"
+          "1": "e2e: navigation.spec 'the bell lists paid, settled and held-money events beside payments' shows 4 new, events and a payment between them in time order, links an event to its invoice, and clears the count once opened (axe clean); backend TestListEvents (newest first, held amount, limit, another profile left out, 422, 403, 401) and TestListEventsOfAnOption (the option's token, caught when the join uses the main row); migration 00026 indexes outbox_events by invoice"
         }
       },
       "branch": "feat/f184-the-bell-lists-invoice-events-paid-settl",

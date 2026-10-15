@@ -46,4 +46,34 @@ func TestListEvents(t *testing.T) {
 	if r := e.call(t, "GET", path, "did:privy:bob", "", ""); r.status != http.StatusForbidden {
 		t.Fatalf("Bob: %d, want 403", r.status)
 	}
+	if r := e.call(t, "GET", path, "", "", ""); r.status != http.StatusUnauthorized {
+		t.Fatalf("no token: %d, want 401", r.status)
+	}
+}
+
+// An event on a payer-chooses invoice's second option lists the invoice and that option's token.
+func TestListEventsOfAnOption(t *testing.T) {
+	e := invoiceAPI(t)
+	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
+		VALUES (84532, 'evm', '0x3333333333333333333333333333333333333333', 'EURC', 2, true)`)
+	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", `{"amountUsd": "12.5"}`).body["invoiceId"].(string)
+	e.exec(t, `INSERT INTO outbox_events (kind, invoice_id, payload)
+		SELECT 'invoice.paid', main_id, jsonb_build_object('option', id) FROM invoices WHERE main_id = $1`, id)
+	r := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/events", "did:privy:alice", "", "")
+	items, _ := r.body["items"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("events %v", r.body)
+	}
+	it := items[0].(map[string]any)
+	if it["invoiceId"] != id || it["symbol"] == "" || it["number"] != 1.0 {
+		t.Fatalf("event %v: want the invoice id and the option's token", it)
+	}
+	var symbol, amount string
+	if err := e.pool.QueryRow(t.Context(), `SELECT t.symbol, i.amount::text FROM invoices i
+		JOIN tokens t ON t.chain_id = i.chain_id AND t.contract = i.token_contract WHERE i.main_id = $1`, id).Scan(&symbol, &amount); err != nil {
+		t.Fatal(err)
+	}
+	if it["symbol"] != symbol || it["amount"] != amount {
+		t.Fatalf("event %v: want the option's %s %s", it, amount, symbol)
+	}
 }

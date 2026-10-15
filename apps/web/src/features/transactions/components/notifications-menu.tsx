@@ -66,7 +66,7 @@ export function NotificationsMenu({ profileId, className }: NotificationsMenuPro
       .filter((t) => t.direction === TRANSACTION_DIRECTIONS.in)
       .map((t) => ({ at: t.at, transfer: t, event: null })),
     ...(events.currentData ?? [])
-      .filter((e) => e.kind in EVENT_LOOK)
+      .filter((e) => Object.hasOwn(EVENT_LOOK, e.kind))
       .map((e) => ({ at: e.at, transfer: null, event: e })),
   ]
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
