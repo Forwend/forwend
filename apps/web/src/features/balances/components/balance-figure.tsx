@@ -26,7 +26,9 @@ export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps)
   const figure =
     "text-[length:clamp(2rem,min(14cqi,160cqi_/_var(--chars)),5.25rem)] leading-none font-semibold tracking-[-0.03em] text-ink";
   const align = "items-center text-center lg:items-start lg:text-left";
-  const row = "flex flex-wrap items-baseline justify-center gap-x-2 lg:justify-start";
+  // Room for the hanging hint on both sides keeps the total centered, and a large total wraps USD before the hint
+  // reaches the edge.
+  const row = "flex flex-wrap items-baseline justify-center gap-x-2 px-7 lg:justify-start lg:px-0";
 
   if (!balances && failed) {
     return (
@@ -49,9 +51,12 @@ export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps)
         <span className={figure} style={{ "--chars": text.length } as CSSProperties}>
           {text}
         </span>
-        <span className="inline-flex items-center gap-1 text-xl font-medium whitespace-nowrap text-muted">
+        {/* The hint hangs after USD and takes no width, so the total itself sits on the center line. */}
+        <span className="relative text-xl font-medium whitespace-nowrap text-muted">
           {MONEY_COPY.usd}
-          <EstimateHint />
+          <span className="absolute top-1/2 left-full ml-1 -translate-y-1/2">
+            <EstimateHint />
+          </span>
         </span>
       </p>
       {total === null ? <p className="text-sm text-muted">{BALANCES_COPY.unavailable}</p> : null}
@@ -78,7 +83,7 @@ function PendingHeld({ balances }: { balances: Balances }) {
             className="inline-flex min-h-11 items-center gap-1 rounded-sm text-sm text-muted underline decoration-line underline-offset-4 outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
           >
             <span>
-              <span className="font-mono tabular-nums text-ink">
+              <span className="font-medium tabular-nums text-ink">
                 {total === 0n ? BALANCES_COPY.lessThanCent : formatUsd(total)} {MONEY_COPY.usd}
               </span>{" "}
               {label}

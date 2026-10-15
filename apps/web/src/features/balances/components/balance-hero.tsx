@@ -83,7 +83,7 @@ export function BalanceHero({
     <>
       <section
         aria-labelledby="balance-title"
-        className="relative isolate -mx-4 -mt-4 flex min-h-96 flex-col overflow-hidden bg-surface sm:mx-0 sm:mt-0 sm:rounded-md sm:border sm:border-line [&_svg_text]:stroke-none dark:[&_svg_text]:stroke-surface"
+        className="relative isolate -mx-4 -mt-4 flex min-h-80 flex-col lg:min-h-96 overflow-hidden bg-surface sm:mx-0 sm:mt-0 sm:rounded-md sm:border sm:border-line [&_svg_text]:stroke-none dark:[&_svg_text]:stroke-surface"
       >
         <Image
           src={BALANCE_LIGHT_IMAGE.src}
@@ -105,7 +105,7 @@ export function BalanceHero({
         <div className="absolute inset-0 -z-10 hidden bg-[linear-gradient(180deg,color-mix(in_oklab,var(--fw-surface)_45%,transparent)_0%,transparent_40%,color-mix(in_oklab,var(--fw-bg)_80%,transparent)_72%,var(--fw-bg)_100%)] lg:bg-[linear-gradient(90deg,color-mix(in_oklab,var(--fw-surface)_78%,transparent)_0%,color-mix(in_oklab,var(--fw-surface)_40%,transparent)_38%,transparent_70%)] dark:block" />
 
         <div className="grid flex-1 gap-8 px-4 py-8 sm:px-6 lg:gap-10 lg:p-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-          <div className="flex flex-col items-center justify-between gap-10 lg:items-start lg:gap-6">
+          <div className="flex flex-col items-center justify-between gap-8 lg:items-start lg:gap-6">
             <div className="flex w-full flex-col items-center gap-3 lg:items-start">
               <h2 id="balance-title" className="text-sm font-medium text-muted">
                 {BALANCES_COPY.totalBalance}
@@ -164,7 +164,7 @@ function Change({ series, rangeName }: { series: HistorySeries; rangeName: strin
         className={`inline-flex items-center gap-1 font-medium ${up ? "text-success" : "text-danger"}`}
       >
         <Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
-        <span className="font-mono tabular-nums">
+        <span className="tabular-nums">
           {up ? "+" : "−"}
           {amount} {MONEY_COPY.usd}
         </span>
