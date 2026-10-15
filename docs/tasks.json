@@ -1942,7 +1942,7 @@
         "A notify test fails one send, lets the retry succeed, and checks both sends used the same Idempotency-Key; a key that changes per send fails it"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend"
       ],
@@ -1953,7 +1953,77 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T10:30:10Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 66.4,
+            "log": "docs/runs/F198-20261015T103010Z-backend.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F198-20261015T103010Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F198-20261015T103010Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F198-20261015T103010Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F198-20261015T103010Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 69.3,
+            "log": "docs/runs/F198-20261015T103010Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.1,
+            "log": "docs/runs/F198-20261015T103010Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 164.8,
+            "log": "docs/runs/F198-20261015T103010Z-e2e.log"
+          }
+        ],
+        "taskHash": "29ee53c01540953d",
+        "filesHash": "67941af3f2509ff2",
+        "proof": {
+          "1": "backend: TestRetryKeepsTheIdempotencyKey fails one send, lets the retry succeed, and checks both used the same Idempotency-Key with one email sent; a key that changes per send (time added) fails it; the notify package comment now names the key's parts"
+        }
+      },
+      "branch": "test/f198-a-retried-email-keeps-its-idempotency-ke",
+      "baseCommit": "9583bbb2142d81e90a536e3bf7de662dc9ff5e1f",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

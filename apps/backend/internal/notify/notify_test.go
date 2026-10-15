@@ -23,12 +23,14 @@ const web = "https://app.example"
 type fake struct {
 	mu   sync.Mutex
 	sent []email.Message
+	keys []string // of every try, failed or not
 	fail bool
 }
 
 func (f *fake) Send(_ context.Context, m email.Message) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.keys = append(f.keys, m.Key)
 	if f.fail {
 		return errors.New("Resend answered 503")
 	}
@@ -180,6 +182,25 @@ func TestDeliverRetriesWithBackoffThenGivesUp(t *testing.T) {
 	f.fail = false
 	if err := Deliver(context.Background(), pool, f, web); err != nil || len(f.sent) != 0 {
 		t.Fatalf("a given-up event was sent: %d (%v)", len(f.sent), err)
+	}
+}
+
+// A retry is the same request to Resend: a send whose answer was lost (Resend delivered it, then the connection
+// dropped) is retried under the same Idempotency-Key, which Resend answers without sending again.
+func TestRetryKeepsTheIdempotencyKey(t *testing.T) {
+	pool, id := setup(t, "owner@example.com")
+	queue(t, pool, outbox.Paid, id, nil)
+	f := &fake{fail: true}
+	if err := Deliver(context.Background(), pool, f, web); err != nil {
+		t.Fatal(err)
+	}
+	exec(t, pool, "UPDATE outbox_events SET next_attempt_at = now()")
+	f.fail = false
+	if err := Deliver(context.Background(), pool, f, web); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.keys) != 2 || len(f.sent) != 1 || f.keys[0] != f.keys[1] {
+		t.Fatalf("keys of the failed try and the retry %v: want one key twice", f.keys)
 	}
 }
 
