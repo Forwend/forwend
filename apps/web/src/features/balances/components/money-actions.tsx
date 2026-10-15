@@ -32,9 +32,9 @@ export function MoneyActions({ onReceive, onRequest }: MoneyActionsProps) {
     { label: BALANCES_COPY.withdraw, icon: Landmark, soon: BALANCES_COPY.withdrawSoon },
   ];
   return (
-    <fieldset className="m-0 min-w-0 self-center border-0 p-0 lg:self-start">
+    <fieldset className="m-0 w-full min-w-0 max-w-sm self-center border-0 p-0 sm:w-auto sm:max-w-none lg:self-start">
       <legend className="sr-only">{BALANCES_COPY.actions}</legend>
-      <div className="grid grid-cols-5 gap-2 sm:gap-4 lg:gap-6">
+      <div className="grid grid-cols-5 gap-1 sm:gap-4 lg:gap-6">
         {actions.map(({ label, icon, soon, onClick }) =>
           soon ? (
             <Tooltip key={label} content={BALANCES_COPY.comingSoon}>

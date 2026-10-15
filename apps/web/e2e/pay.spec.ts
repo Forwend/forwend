@@ -361,7 +361,11 @@ test.describe("pay page", () => {
         ? route.fulfill({ json: { email: "payer@example.com" } })
         : route.fulfill({ status: answer, json: { error: { code: "x", message: "x" } } });
     });
+    // Nothing to send a receipt for before any money: the row comes with the first payment seen.
     await openPay(page, OPEN);
+    await expect(page.getByRole("button", { name: "Email me a receipt" })).toHaveCount(0);
+    await mockInvoice(page, DETECTED);
+    await page.reload();
     // The panel's last row, folded until the payer asks for it; the field takes focus when it opens.
     await page.getByRole("button", { name: "Email me a receipt" }).click();
     const field = page.getByLabel("Email me the receipt (optional)");

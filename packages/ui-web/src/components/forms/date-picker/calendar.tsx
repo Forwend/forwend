@@ -110,7 +110,7 @@ export function Calendar({
         aria-label={name}
         disabled={off}
         onClick={() => setFocused(clamp(addMonths(focused, step), min, max))}
-        className="relative grid size-8 place-items-center rounded-sm text-muted before:absolute before:-inset-1.5 hover:bg-surface-2 hover:text-ink disabled:text-subtle disabled:hover:bg-transparent"
+        className="relative grid size-8 place-items-center rounded-pill text-muted before:absolute before:-inset-1.5 hover:bg-surface-2 hover:text-ink disabled:text-subtle disabled:hover:bg-transparent"
       >
         <Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
       </button>

@@ -173,7 +173,7 @@ function Loaded({
   const pay = payState(invoice, now);
   return (
     <>
-      <Summary invoice={invoice} token={token} pay={pay} now={now} picking={picking} />
+      <Summary invoice={invoice} token={token} pay={pay} picking={picking} />
       <PayBox
         invoice={invoice}
         address={address}
@@ -183,24 +183,24 @@ function Loaded({
         choice={choice}
         picking={picking}
       />
+      <Terms invoice={invoice} pay={pay} now={now} />
     </>
   );
 }
 
 type Pay = ReturnType<typeof payState>;
 
-// Who asks and how much, in the reading order of an invoice: payee, number, amount, then its terms.
+// Who asks and how much: payee, number, amount. On phones the pay panel follows right under it and the terms after
+// the panel, so a payer reaches the address without scrolling past the note; wide screens keep them in one column.
 function Summary({
   invoice,
   token,
   pay,
-  now,
   picking,
 }: {
   invoice: Invoice;
   token: PayToken;
   pay: Pay;
-  now: number;
   picking: boolean;
 }) {
   const payee = invoice.issuer?.name ?? invoice.senderName;
@@ -209,9 +209,11 @@ function Summary({
   const done = pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled;
   const partial = pay.canSend && pay.received > 0n;
   const shown = partial ? pay.remaining : amount;
-  const closesAt = checkoutClosesAt(invoice);
   return (
-    <section aria-labelledby="pay-amount" className="flex min-w-0 flex-col gap-6 lg:gap-8">
+    <section
+      aria-labelledby="pay-amount"
+      className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-1 lg:gap-8"
+    >
       <div className="flex min-w-0 items-center gap-3">
         <span
           aria-hidden
@@ -259,17 +261,27 @@ function Summary({
           <p className="text-sm text-muted">{COPY.on(chainName(invoice.chainId))}</p>
         )}
       </div>
+    </section>
+  );
+}
+
+// The invoice's terms and note, under the amount on wide screens and after the pay panel on phones.
+function Terms({ invoice, pay, now }: { invoice: Invoice; pay: Pay; now: number }) {
+  const closesAt = checkoutClosesAt(invoice);
+  if (!invoice.dueDate && !pay.canSend && !invoice.note) return null;
+  return (
+    <div className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-2 lg:gap-6">
       {invoice.dueDate || pay.canSend ? (
-        <ul className="flex flex-col divide-y divide-line border-y border-line text-sm text-muted">
+        <ul className="flex flex-col gap-2.5 text-sm text-muted">
           {invoice.dueDate ? (
-            <li className="flex items-center gap-2.5 py-3">
+            <li className="flex items-center gap-2.5">
               <CalendarDays aria-hidden className={ICON} />
               {COPY.due(formatDueDate(invoice.dueDate))}
             </li>
           ) : null}
           {/* Once paid or closed the countdown no longer matters to the payer. */}
           {pay.canSend ? (
-            <li className="flex items-center gap-2.5 py-3">
+            <li className="flex items-center gap-2.5">
               <Clock aria-hidden className={ICON} />
               <time dateTime={new Date(closesAt).toISOString()} title={TIME.format(closesAt)}>
                 {COPY.closesIn(shortDuration(closesAt - now))}
@@ -279,11 +291,11 @@ function Summary({
         </ul>
       ) : null}
       {invoice.note ? (
-        <p className="max-w-prose border-l-2 border-line-strong pl-4 text-base break-words whitespace-pre-line text-ink">
+        <p className="max-w-prose border-l-2 border-line-strong pl-4 text-sm break-words whitespace-pre-line text-ink sm:text-base">
           {invoice.note}
         </p>
       ) : null}
-    </section>
+    </div>
   );
 }
 
@@ -355,7 +367,7 @@ function PayBox({
     pay.state === PAY_STATES.partial;
 
   return (
-    <div className="flex min-w-0 flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
       <div className={PANEL}>
         {done ? (
           <Paid invoice={invoice} token={token} />
@@ -464,11 +476,9 @@ function PayBox({
             )}
           </>
         )}
-        {/* The receipt by email, before or after paying, as the panel's last row; not for a canceled or closed
-            checkout (R-82). */}
-        {pay.canSend || seen || done ? (
-          <ReceiptEmail invoiceId={invoice.invoiceId} paid={done} />
-        ) : null}
+        {/* The receipt by email as the panel's last row, once there is a payment to send it for: from the first
+            money seen, so a payer can leave before the final check, and after paying (R-82). */}
+        {seen || done ? <ReceiptEmail invoiceId={invoice.invoiceId} paid={done} /> : null}
       </div>
       {/* Overpaid gets its own handling later (PLAN 11.10.1); late money is held for the payer now. */}
       {pay.late > 0n ? (
@@ -679,13 +689,13 @@ function Paid({ invoice, token }: { invoice: Invoice; token: PayToken }) {
         </p>
         <p className="text-sm text-muted">{COPY.closeHint}</p>
       </div>
-      <div className="flex flex-wrap items-center justify-center gap-2">
+      <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-center">
         {tx ? (
           <a
             href={tx.href}
             target="_blank"
             rel="noopener noreferrer"
-            className={buttonClasses({ variant: "secondary", size: "sm" })}
+            className={buttonClasses({ variant: "secondary" })}
           >
             <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
             {COPY.viewTx}
@@ -693,7 +703,7 @@ function Paid({ invoice, token }: { invoice: Invoice; token: PayToken }) {
         ) : null}
         <a
           href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.receipt)}
-          className={buttonClasses({ variant: "secondary", size: "sm" })}
+          className={buttonClasses({ variant: "secondary" })}
         >
           <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
           {COPY.receiptPdf}

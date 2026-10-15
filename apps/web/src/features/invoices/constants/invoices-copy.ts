@@ -286,6 +286,7 @@ export const INVOICE_COPY = {
     [INVOICE_EVENTS.held]: (number: string) => `${number} held for the payer`,
   } satisfies Record<InvoiceEventKind, (number: string) => string>,
   // Cancel before any money (R-79, D-79): the confirm dialog and its outcome.
+  moreActions: "More actions",
   cancel: {
     trigger: (noun: string) => `Cancel ${noun}`,
     title: (number: string) => `Cancel ${number}?`,

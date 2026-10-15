@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BrandIcon,
   Button,
   EmptyState,
   Money,
@@ -34,8 +35,9 @@ import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { CHAINS } from "@/shared/constants/chains";
 import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
-import { addressLink } from "@/shared/lib/chains";
+import { addressLink, chainName } from "@/shared/lib/chains";
 
 const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
 const DATE = new Intl.DateTimeFormat(undefined, {
@@ -211,7 +213,10 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
               </thead>
               <tbody className="divide-y divide-line">
                 {rows.map((t) => (
-                  <tr key={transactionKey(t)}>
+                  <tr
+                    key={transactionKey(t)}
+                    className="transition-colors duration-[var(--fw-duration-fast)] hover:bg-[color-mix(in_oklab,var(--fw-surface-2)_55%,transparent)]"
+                  >
                     <td className="px-5 py-3">
                       {/* Below 2xl the network moves under the counterparty, so no amount lacks it. */}
                       <Party
@@ -243,27 +248,26 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
           <ul className="divide-y divide-line md:hidden">
             {rows.map((t) => (
               <li key={transactionKey(t)} className="flex items-center gap-3 px-4 py-3">
-                {/* The network and the time each get their own line: a phone row is too narrow for both. */}
+                {/* Two lines that never cut: the network rides on the icon as its logo (and in words for
+                    screen readers), the time and the explorer link sit under the other side. */}
                 <Party
                   t={t}
                   short
-                  detailClassName="flex-wrap"
+                  chainBadge
                   detail={
                     <>
-                      <NetworkName chainId={t.chainId} />
-                      <time dateTime={t.at} className="basis-full whitespace-nowrap">
+                      <time dateTime={t.at} className="whitespace-nowrap">
                         {DATE.format(new Date(t.at))}
                       </time>
+                      <span className="sr-only">, {chainName(t.chainId)}</span>
+                      <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
                     </>
                   }
                 />
-                <span className="ml-auto flex shrink-0 flex-col items-end gap-1">
+                <span className="ml-auto flex shrink-0 flex-col items-end gap-0.5">
                   <Amount t={t} />
-                  <span className="flex items-center gap-1">
-                    <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
-                    <span className="text-xs">
-                      <Status t={t} />
-                    </span>
+                  <span className="text-xs">
+                    <Status t={t} />
                   </span>
                 </span>
               </li>
@@ -306,21 +310,30 @@ function Party({
   detail,
   detailClassName = "",
   short = false,
+  chainBadge = false,
 }: {
   t: Transaction;
   detail?: ReactNode;
   detailClassName?: string;
   short?: boolean;
+  /** The network's logo on the direction icon's corner, where a row has no room for its name. */
+  chainBadge?: boolean;
 }) {
   const incoming = t.direction === TRANSACTION_DIRECTIONS.in;
   const Icon = incoming ? ArrowDownLeft : ArrowUpRight;
   const zero = t.counterparty.toLowerCase() === ZERO_ADDRESS;
+  const chain = chainBadge ? CHAINS[t.chainId]?.icon : undefined;
   return (
     <span className="flex min-w-0 items-center gap-3">
       <span
-        className={`grid size-9 shrink-0 place-items-center rounded-pill ${incoming ? "bg-success-soft text-success" : "bg-surface-2 text-muted"}`}
+        className={`relative grid size-9 shrink-0 place-items-center rounded-pill ${incoming ? "bg-success-soft text-success" : "bg-surface-2 text-muted"}`}
       >
         <Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
+        {chain ? (
+          <span className="absolute -right-1 -bottom-1 grid size-4.5 place-items-center rounded-pill border-2 border-surface bg-surface">
+            <BrandIcon name={chain} className="size-3.5 rounded-sm" />
+          </span>
+        ) : null}
       </span>
       <span className="min-w-0">
         <span className="block truncate font-medium text-ink">

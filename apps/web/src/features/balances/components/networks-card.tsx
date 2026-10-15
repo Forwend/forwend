@@ -11,17 +11,8 @@ export interface NetworksCardProps {
   failed: boolean;
 }
 
-// Every token at 18 decimals, so shares compare tokens with different decimals.
-const SHARE_DECIMALS = 18;
-const scaled = (units: string | null, decimals: number) =>
-  units === null ? 0n : BigInt(units) * 10n ** BigInt(Math.max(SHARE_DECIMALS - decimals, 0));
-
-// Where the money is: each enabled token on each network, with what the wallet holds there and its share of the
-// whole, each stablecoin counted as 1 USD.
+// Where the money is: each enabled token on each network, with what the wallet holds there.
 export function NetworksCard({ balances, failed }: NetworksCardProps) {
-  const total = (balances?.tokens ?? []).reduce((sum, t) => sum + scaled(t.wallet, t.decimals), 0n);
-  const share = (units: string | null, decimals: number) =>
-    total === 0n ? 0 : Number((scaled(units, decimals) * 1000n) / total) / 10;
   return (
     <section
       aria-labelledby="networks-title"
@@ -49,30 +40,15 @@ export function NetworksCard({ balances, failed }: NetworksCardProps) {
       ) : (
         <ul className="divide-y divide-line">
           {balances.tokens.map((t) => (
-            <li key={`${t.chainId}:${t.token}`} className="flex flex-col gap-2.5 px-4 py-3 sm:px-5">
-              <div className="flex items-center justify-between gap-4">
-                <TokenMark chainId={t.chainId} symbol={t.symbol} />
-                {t.wallet === null ? (
-                  <span className="text-sm text-subtle">—</span>
-                ) : (
-                  <Money baseUnits={BigInt(t.wallet)} decimals={t.decimals} className="text-ink" />
-                )}
-              </div>
-              {total === 0n || t.wallet === null ? null : (
-                <div className="flex items-center gap-3">
-                  <span
-                    aria-hidden
-                    className="h-1.5 flex-1 overflow-hidden rounded-pill bg-surface-2"
-                  >
-                    <span
-                      className="block h-full rounded-pill bg-primary"
-                      style={{ width: `${share(t.wallet, t.decimals)}%` }}
-                    />
-                  </span>
-                  <span className="w-12 text-right text-xs text-muted tabular-nums">
-                    {BALANCES_COPY.share(share(t.wallet, t.decimals))}
-                  </span>
-                </div>
+            <li
+              key={`${t.chainId}:${t.token}`}
+              className="flex items-center justify-between gap-4 px-4 py-3 sm:px-5"
+            >
+              <TokenMark chainId={t.chainId} symbol={t.symbol} />
+              {t.wallet === null ? (
+                <span className="text-sm text-subtle">—</span>
+              ) : (
+                <Money baseUnits={BigInt(t.wallet)} decimals={t.decimals} className="text-ink" />
               )}
             </li>
           ))}

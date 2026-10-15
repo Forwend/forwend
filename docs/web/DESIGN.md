@@ -28,10 +28,9 @@ Use `/kit` for the implemented components. This file owns visual use; token sour
 - Success, warning and error use their matching text/background token pairs. Art colors never become UI colors.
 - Detected and confirming are pending: a neutral status badge with a turning icon, never the information blue or a
   success color. Only confirmed, paid and settled look done.
-- Neutral greys with no tint (owner review of D-13): the status colors are the only tinted UI. Tight corners: buttons,
-  fields, badges and segmented controls use the small and medium radii, panels the large one; only avatars, token marks,
-  dots, bars, switches and the round money actions are fully round. Buttons are flat (no shadow); only what floats
-  (menus, sheets, toasts, the landing's sample panels and floating navigation) casts one. No hard offset shadows.
+- Cool neutral surfaces with a faint green tint, soft hairlines, rounded controls and cards, pill navigation, buttons
+  and chips. Shadows are soft and layered in the ink's tint: resting controls barely lift, a primary button lifts a
+  little more on hover, menus and the chart readout float. No hard offset shadows.
 
 ## App shell
 
@@ -70,26 +69,34 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   is centered on phones whatever its length. A row for one token keeps its symbol.
 - Personal overview: one valley in both themes, a pale mint daytime sky in light mode and night in dark mode. In light mode a surface wash over the lower half keeps chart ticks and money actions readable. Pending and held money each use one USD
   summary link to Balances, where exact amounts remain separate by token and network; never list every token in
-  the hero. Positive totals below a cent read `<0.01 USD`. The card is at least 24rem tall and grows with its content.
+  the hero. Positive totals below a cent read `<0.01 USD`. From small screens up the card is at least 24rem tall and
+  grows with its content; on phones it fits its content, with the actions right under the total.
   On desktop, the total sits at the top left, the round actions at the bottom left, and the chart fills the right side. The total scales with its column (container units). Phones center the total
-  with space before the actions at the bottom, and put the chart in its own panel below.
+  with the actions under it (five equal columns, labels in the small size), and put the chart in its own panel below.
 - Business overview (merchant, freelancer, R-63): a Summary panel whose ruled header names the range and holds the
   range control, over one figure grid (Balance today, Received, Sent, On its way); then the Received chart (its header
   counts the payments in) beside Balances by network, both stretched to one height; then the latest payments with View
-  all. Each Balances by network row (business and personal overview) has a thin ink bar and a percent for its share of
-  the wallet, each stablecoin counted as 1 USD. Filters, search and CSV export live on Transactions. A range with nothing received says so in place of an empty
+  all. Filters, search and CSV export live on Transactions. A range with nothing received says so in place of an empty
   chart.
-- Charts: one ink line (or ink bars) with a faint wash, a few hairline grid lines, round tick values from zero.
-  The river blue marks the latest or chosen point. Pointer, tap or arrow keys show a readout; only keyboard moves are
-  announced, and a hidden table gives screen readers every value. Range choice is a segmented control. Received bars
-  group into weeks or months when a day would be too thin to see or touch. On phones the balance chart keeps its top
-  tick and its first and last dates. A failed figure shows "—" with Try again, never an endless skeleton.
+- Charts are drawn by us, with no grid lines and no value axis: the readout gives each exact amount and the dates
+  (first, middle, last; first and last on phones) sit under the plot. The balance is one smooth ink line (monotone, so
+  it never overshoots a real value or dips under zero) over a wash that fades down, from zero with a little headroom;
+  it draws itself in. Today's point is a river-blue dot with a soft ring that leaves it now and then (it is live).
+  While a point is chosen, the line up to it stays ink and the rest steps back, a dotted vertical cursor drops from
+  the point, and the readout floats just above it. Received is pill-capped ink bars on faint full-height tracks (where
+  the bars are wide enough), rising one after another; the chosen bar turns river blue and the rest step back.
+  Pointer, tap or arrow keys choose a point; only keyboard moves are announced, and a hidden table gives screen
+  readers every value. Range choice is a segmented control. Received bars group into weeks or months when a day would
+  be too thin to see or touch. Reduced motion shows every chart in place. A failed figure shows "—" with Try again,
+  never an endless skeleton.
 - Invoices and Activity: a status filter (All, Open, Paid, Settled, Expired) and a search; a row opens its invoice.
   Transactions has a direction filter (All, In, Out) and a search. The API filters and searches the whole list, and the
   URL keeps both. A confirmed transfer shows its status as plain text; only one still confirming gets a pill. A filter or search with no rows says nothing matched, with a button to clear them. A transaction hash links to the chain's block explorer in a new tab (Transactions, Activity,
   invoice detail, pay page).
 - Transactions table: ruled table from medium screens; the network has its own column only on the widest screens and
-  sits under the counterparty otherwise. Phone rows show the network and the time on lines of their own, so neither is cut.
+  sits under the counterparty otherwise; rows tint on hover. Phone rows are two lines that never cut: the network is
+  its logo on the corner of the direction icon (and in words for screen readers), the time and the explorer link sit
+  under the other side, and the amount sits over a small status on the right.
 - First run: while `/v1/me` has no `onboardedAt`, `/app` shows one standalone screen instead of the shell: the logo,
   "What do you want to do?" in the display serif, four choice cards (checkboxes, any number; two columns from small
   screens up) with an icon, a hint and the profile each one adds, then Continue and Skip for now. Continue with nothing
@@ -125,18 +132,21 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 ## Checkout
 
 - `/pay/<id>` (R-68) is one short screen: the logo (links home), then on wide screens the invoice on the left and how
-  to pay on the right, one column on phones. Left: the payee name (no display serif) beside a square tile with its
-  initial on a bordered surface tile, "Invoice INV-0001 · title" with a small PDF link under the name, the amount (Geist,
-  tabular, featured size; USD until the payer picks), "on <network>", the due date and "Closes in …" as ruled rows with a small
-  icon, and the note. Right: one panel. While money is due it holds Pay with (the one option as a token mark,
+  to pay on the right. Left: the payee name (no display serif) beside a square tile with its initial on a bordered
+  surface tile, "Invoice INV-0001 · title" with a small PDF link under the name, the amount (Geist, tabular, featured
+  size; USD until the payer picks), "on <network>", then the due date and "Closes in …" as quiet rows with a small icon
+  (no rules), and the note. On phones the pay panel comes right after the amount and the due date, close time and note
+  follow it, so the payer reaches the address first. Right: one panel. While money is due it holds Pay with (the one option as a token mark,
   or Network and Token selects, which scale to many chains and tokens), a Show address button, then the QR beside the
   exact amount and the warning line "Send only USDC on Base Sepolia." with a warning icon (plus "Native USDC, not
   USDC.e." where a bridged look-alike exists), then the address full width, then the token contract as a short explorer
   link and one exchange hint that names the network to withdraw on. The amount and the address are read-only fields
-  (a bordered row like an input) with Copy inside on the right; the address is the whole address as one plain Geist
-  Mono string, as wallets show it, and fits one line on desktop (R-78). The panel's last row, while money is due and
-  once paid, is "Email me a receipt" with a mail icon; pressing it opens the optional field there, with Send inside its
-  row and the line that the address is used for this receipt only (R-82). Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
+  (a bordered row like an input) with Copy inside on the right. The address is Geist Mono with its first 6 and last 4
+  characters in the ink and semibold and the rest quieter; wide screens show it whole on one line, phones show the
+  ends with four more characters each around an ellipsis, the middle kept for screen readers, selection and Copy
+  (R-78). Once money is seen and once paid, the panel's last row is "Email me a receipt" with a mail icon; pressing it
+  opens the optional field there, with Send inside its row and the line that the address is used for this receipt
+  only (R-82). Before any money there is nothing to send a receipt for, so the row is not there. Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
   into "Confirm change" and only a second press starts over (leaving the button cancels), so a payer who already sent
   does not switch by accident. Under the address one row: "Waiting for payment…" with a pulsing dot, and Check status on its right, which says
   when the next check is allowed; nothing waits before the address shows. Once money is seen the panel keeps its place ("Paying with" while nothing more is due): the steps
@@ -144,7 +154,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   steps cannot say ("Final check", or what is left to pay), and each payment with its amount, time,
   short hash and explorer link. The address stays only while money is still due. Closed says so in one line. Paid
   replaces the panel with centered content and generous vertical padding: a check that scales in, "Paid", the amount, payee and time, View transaction and Download
-  receipt as small secondary buttons and Back to <host> when the invoice has a return link. The check, message and wrapping action row share the
+  receipt as secondary buttons (full width and stacked on phones) and Back to <host> when the invoice has a return link. The check, message and wrapping action row share the
   center of the card; invoice details retain their normal reading alignment. The payer never sees Settled, status pills,
   testnet notes or an overpaid line (PLAN 11.10.1). Copy names the payee, or "the invoice's creator", never "the
   sender". The footer is one quiet line: "Payments by" with the mark and Forwend, opening the site in a new tab, and
@@ -165,7 +175,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   fill by the share received when partly paid (R-69).
 - The invoice page (R-60) says its state at once: a header with the title, one status pill and when it closes, closed,
   was paid or settled (a paid invoice never shows its close time), and on its right the pay link as one row (host and
-  short id, Copy link, Open in a new tab) while the checkout can take money. Below, two columns from large screens up: the
+  short id, Copy link, Open in a new tab, and while it can still be canceled, More actions with Cancel in the danger
+  color, which asks to confirm in a dialog) while the checkout can take money. Below, two columns from large screens up: the
   amount ("Received X of Y" under it when partly paid) with the timeline, where the Paid step reads "Partially paid"
   as a warning-tinted label when partly paid, the status line (only the confirming count or why settling waits; the
   state itself is the pill's), one Transactions list (each payment, then the settlement to the wallet, later refunds: kind, amount, the other side,
@@ -185,8 +196,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - A loading button shows only a centered spinner, at its own size and colors, and keeps its accessible name.
 - Status changes keep row geometry stable. Labels accompany status colors. Mark all demonstration data as Sample.
 - Use motion tokens; respect reduced motion. No scroll hijacking or layout jumps during state changes. Loading
-  spinners (`data-motion="essential"`) keep turning under reduced motion; everything else stops. Buttons do not
-  shrink on press. The ⌘K dialog opens with no animation: it is opened by keyboard many times a day.
+  spinners (`data-motion="essential"`) keep turning under reduced motion; everything else stops. A pressed button
+  scales to 0.97 on a fast ease-out (a round money action to 0.95), like a physical key; reduced motion keeps only the
+  color change. Landing sections rise into place as they scroll in, driven by the scroll itself (no script); without
+  scroll timelines or with reduced motion everything is simply in place. The ⌘K dialog opens with no animation: it is
+  opened by keyboard many times a day.
 - Touch targets are at least 44px on touch screens; small controls keep their look and grow only their hit area.
 - Target WCAG 2.2 AA, including text contrast, keyboard access and accessible status announcements.
 - Keyboard focus stays visible. Errors identify the field and explain the correction; loading and success states are

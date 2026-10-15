@@ -28,7 +28,7 @@ export function EmptyState({
           : "min-h-[min(22rem,55dvh)] rounded-lg border border-dashed border-line-strong bg-surface py-12",
       )}
     >
-      <span className="grid size-12 place-items-center rounded-lg border border-line bg-surface-2">
+      <span className="grid size-12 place-items-center rounded-pill bg-surface-2">
         <Icon aria-hidden className="size-[var(--fw-icon-lg)] text-muted" />
       </span>
       <p className="mt-4 text-lg font-medium text-ink">{title}</p>

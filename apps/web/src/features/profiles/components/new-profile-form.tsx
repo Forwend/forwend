@@ -96,7 +96,7 @@ export function NewProfileForm() {
         </Button>
         <Link
           href={APP_ROUTES.home}
-          className="rounded-md px-3 py-2 text-sm text-muted hover:bg-surface-2 hover:text-ink"
+          className="rounded-pill px-3 py-2 text-sm text-muted hover:text-ink"
         >
           {COPY.cancel}
         </Link>

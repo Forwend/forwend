@@ -52,7 +52,7 @@ export function Sheet({ open, onOpenChange, title, closeLabel = "Close", childre
           type="button"
           aria-label={closeLabel}
           onClick={() => onOpenChange(false)}
-          className="grid size-11 place-items-center rounded-md text-muted hover:bg-surface-2 hover:text-ink"
+          className="grid size-11 place-items-center rounded-pill text-muted hover:bg-surface-2 hover:text-ink"
         >
           <X aria-hidden className="size-[var(--fw-icon-md)]" />
         </button>

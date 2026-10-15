@@ -12,6 +12,8 @@ export interface DialogProps {
   /** How the trigger looks: a quiet link in a footer, a button elsewhere. */
   triggerVariant?: ButtonVariant;
   triggerClassName?: string;
+  /** Opens the dialog from something else than its own button, such as a menu item. */
+  trigger?: (open: () => void) => ReactNode;
 }
 
 export function Dialog({
@@ -21,17 +23,19 @@ export function Dialog({
   closeLabel = "Close",
   triggerVariant = BUTTON_VARIANTS.secondary,
   triggerClassName,
+  trigger,
 }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const open = () => ref.current?.showModal();
   return (
     <>
-      <Button
-        variant={triggerVariant}
-        className={triggerClassName}
-        onClick={() => ref.current?.showModal()}
-      >
-        {triggerLabel}
-      </Button>
+      {trigger ? (
+        trigger(open)
+      ) : (
+        <Button variant={triggerVariant} className={triggerClassName} onClick={open}>
+          {triggerLabel}
+        </Button>
+      )}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: the click only catches the backdrop; Escape is the keyboard way out */}
       <dialog
         ref={ref}
@@ -47,7 +51,7 @@ export function Dialog({
             type="button"
             aria-label={closeLabel}
             onClick={() => ref.current?.close()}
-            className="relative rounded-sm p-1 text-muted before:absolute before:-inset-2.5 hover:bg-surface-2 hover:text-ink"
+            className="relative rounded-pill p-1 text-muted before:absolute before:-inset-2.5 hover:bg-surface-2 hover:text-ink"
           >
             <X aria-hidden className="size-[var(--fw-icon-md)]" />
           </button>

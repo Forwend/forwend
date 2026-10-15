@@ -161,14 +161,22 @@ describe("PaymentTimeline", () => {
 describe("ReceiveAddress", () => {
   const address = "0x586134f74b654f5835860ca198ae725344670078";
 
-  it("shows the whole address as one string that selects, reads and copies as the address (R-78)", async () => {
+  it("marks the ends of the whole address, and selects, reads and copies as the address (R-78)", async () => {
     const user = userEvent.setup();
     const writeText = vi.spyOn(navigator.clipboard, "writeText");
     const { container } = render(<ReceiveAddress address={address} />);
     const shown = container.querySelector("[data-address]") as HTMLElement;
-    // Nothing inside it but the address: a selection, a copy or a screen reader gets the address itself.
+    // No character between the parts: a selection, a copy or a screen reader gets the address itself.
     expect(shown.textContent).toBe(address);
-    expect(shown.children).toHaveLength(0);
+    const parts = Array.from(shown.children, (part) => part.textContent);
+    expect(parts[0]).toBe("0x5861");
+    expect(parts.at(-1)).toBe("0078");
+    // The ends a look-alike copies stand out from everything between them.
+    expect(shown.children[0]?.className).toContain("text-ink");
+    expect(shown.children[4]?.className).toContain("text-ink");
+    expect(shown.children[2]?.className).not.toContain("text-ink");
+    // Phones hide only the middle, and only visually: it stays in the text.
+    expect(shown.children[2]?.className).toContain("max-sm:sr-only");
     await user.click(screen.getByRole("button", { name: "Copy address" }));
     expect(writeText).toHaveBeenCalledWith(address);
     expect(container.querySelector("p[role=status]")?.textContent).toBe("Address copied");

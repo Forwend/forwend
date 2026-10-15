@@ -22,7 +22,7 @@ export function TokenChip({ token, network }: TokenChipProps) {
   const tokenLogo = TOKEN_LOGOS[token];
   const networkLogo = NETWORK_LOGOS[network];
   return (
-    <span className="inline-flex max-w-full items-center overflow-hidden whitespace-nowrap rounded-md border border-line text-xs font-medium">
+    <span className="inline-flex max-w-full items-center overflow-hidden whitespace-nowrap rounded-pill border border-line text-xs font-medium">
       <span className="inline-flex shrink-0 items-center gap-1.5 bg-surface px-2.5 py-1 text-ink">
         {tokenLogo ? <BrandIcon name={tokenLogo} className="size-[var(--fw-icon-sm)]" /> : null}
         {token}

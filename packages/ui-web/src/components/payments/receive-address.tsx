@@ -15,8 +15,12 @@ export interface ReceiveAddressProps {
   copiedShort?: string;
 }
 
-// The whole address stays visible: a shortened one is what address-poisoning look-alikes copy (R-78). It is one plain
-// string, as wallets show it, so selecting it by hand gives exactly the address; Copy sits in the same field.
+// The start and end stand out, the part look-alikes match, with everything between them in a quieter color (R-78). Wide
+// screens show the whole address; phones show the ends with four more characters each and keep the middle for screen
+// readers, selection and Copy. The parts are adjacent spans with nothing between them, so the text is the address.
+const START = 6;
+const END = 4;
+const PHONE_EXTRA = 4;
 export function ReceiveAddress({
   address,
   label = "Receive address",
@@ -39,9 +43,17 @@ export function ReceiveAddress({
       <div className="flex items-center gap-2 rounded-md border border-line-strong bg-surface py-1.5 pr-1.5 pl-3">
         <p
           data-address
-          className="min-w-0 flex-1 font-mono text-sm leading-6 break-all text-ink select-all"
+          className="min-w-0 flex-1 font-mono text-sm leading-6 break-all text-muted select-all"
         >
-          {address}
+          <span className="font-semibold text-ink">{address.slice(0, START)}</span>
+          <span>{address.slice(START, START + PHONE_EXTRA)}</span>
+          <span className="max-sm:sr-only">
+            {address.slice(START + PHONE_EXTRA, address.length - END - PHONE_EXTRA)}
+          </span>
+          <span className="max-sm:before:content-['…']">
+            {address.slice(address.length - END - PHONE_EXTRA, address.length - END)}
+          </span>
+          <span className="font-semibold text-ink">{address.slice(address.length - END)}</span>
         </p>
         <Button size="sm" variant="secondary" onClick={copy} aria-label={text} className="shrink-0">
           {status === COPY_STATUS.copied ? (

@@ -393,7 +393,7 @@ export function NewInvoiceForm({ profileId, tokens, request, start }: NewInvoice
           {request ? null : (
             <Link
               href={APP_ROUTES.invoices}
-              className="inline-flex h-10 items-center rounded-md px-3 text-sm text-muted hover:bg-surface-2 hover:text-ink"
+              className="inline-flex h-11 items-center rounded-pill px-3 text-sm text-muted hover:text-ink"
             >
               {COPY.cancel}
             </Link>

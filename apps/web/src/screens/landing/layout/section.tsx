@@ -33,12 +33,16 @@ export function Section({
       } ${className}`}
     >
       <div>
-        <h2 id={headingId} className="max-w-3xl font-display text-section text-ink">
+        <h2 id={headingId} className="fw-reveal max-w-3xl font-display text-section text-ink">
           {title}
         </h2>
-        {body ? <p className="mt-5 max-w-2xl text-lg text-muted">{body}</p> : null}
+        {body ? (
+          <p className="fw-reveal fw-reveal-late mt-5 max-w-2xl text-lg text-muted">{body}</p>
+        ) : null}
       </div>
-      <div className={split ? "mt-14 lg:mt-2" : "mt-14"}>{children}</div>
+      <div className={`fw-reveal fw-reveal-late ${split ? "mt-14 lg:mt-2" : "mt-14"}`}>
+        {children}
+      </div>
     </section>
   );
 }

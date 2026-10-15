@@ -27,7 +27,7 @@ export interface EmailCaptureProps {
 
 // One pill, one fixed height, for every state: the control never jumps and never shows a
 // greyed-out button. 13.5 = 1px border + 6px padding + 40px button + 6px padding + 1px border.
-const PILL = "flex h-13 w-full items-center gap-2 rounded-lg border bg-surface p-1.5 shadow-md";
+const PILL = "flex h-13.5 w-full items-center gap-2 rounded-pill border bg-surface p-1.5 shadow-md";
 
 export function EmailCapture({
   status,
@@ -72,7 +72,7 @@ export function EmailCapture({
           <div
             className={cx(
               PILL,
-              "pl-4 transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] focus-within:ring-3 focus-within:ring-[color-mix(in_oklab,var(--fw-focus)_20%,transparent)]",
+              "pl-5 transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] focus-within:ring-4 focus-within:ring-[color-mix(in_oklab,var(--fw-focus)_22%,transparent)]",
               isError ? "border-danger" : "border-line-strong",
             )}
           >
@@ -111,7 +111,7 @@ export function EmailCapture({
         {isError && message ? (
           <p
             id={`${id}-error`}
-            className="rounded-sm bg-surface px-3 py-1 text-sm text-danger shadow-sm"
+            className="rounded-pill bg-surface px-3 py-1 text-sm text-danger shadow-sm"
           >
             {message}
           </p>

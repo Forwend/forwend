@@ -19,8 +19,6 @@ export const BALANCES_COPY = {
   moneyOut: "Out",
   pastMonth: "Past 30 days",
   byNetwork: "Balances by network",
-  // Share of the whole wallet, each stablecoin counted as 1 USD.
-  share: (percent: number) => `${percent > 0 && percent < 1 ? "<1" : Math.round(percent)}%`,
   estimateHint: "Estimated: each stablecoin counts as 1 USD.",
   pending: "on its way",
   held: "held for payers",

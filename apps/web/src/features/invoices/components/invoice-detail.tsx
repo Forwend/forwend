@@ -213,21 +213,23 @@ function Loaded({
           />
         </div>
         {payable ? (
-          <div className="flex min-w-0 flex-col gap-1">
-            <ShareLink invoiceId={invoice.invoiceId} />
-            {/* Only before any money, on any option (R-79): after that the money decides, not a cancel. */}
-            {status === PAYMENT_STATUS.open &&
-            invoice.deposits.length === 0 &&
-            invoice.options.every((o) => o.deposits.length === 0) ? (
-              <CancelInvoice
-                profileId={profileId}
-                invoiceId={invoice.invoiceId}
-                number={invoiceNumber(invoice.number)}
-                noun={request ? COPY.noun.request : COPY.noun.invoice}
-                onCanceled={() => setCanceling(true)}
-              />
-            ) : null}
-          </div>
+          <ShareLink
+            invoiceId={invoice.invoiceId}
+            actions={
+              // Only before any money, on any option (R-79): after that the money decides, not a cancel.
+              status === PAYMENT_STATUS.open &&
+              invoice.deposits.length === 0 &&
+              invoice.options.every((o) => o.deposits.length === 0) ? (
+                <CancelInvoice
+                  profileId={profileId}
+                  invoiceId={invoice.invoiceId}
+                  number={invoiceNumber(invoice.number)}
+                  noun={request ? COPY.noun.request : COPY.noun.invoice}
+                  onCanceled={() => setCanceling(true)}
+                />
+              ) : null
+            }
+          />
         ) : null}
       </header>
 
@@ -487,7 +489,7 @@ function Party({ lines }: { lines: (string | null)[] }) {
 }
 
 /** The pay link in one row: the link (cut to fit, whole on hover and when copied), Copy and Open in a new tab. */
-function ShareLink({ invoiceId }: { invoiceId: string }) {
+function ShareLink({ invoiceId, actions }: { invoiceId: string; actions?: ReactNode }) {
   // The app renders only in the browser, after sign-in.
   const link = `${window.location.origin}/pay/${invoiceId}`;
   const [status, copy] = useCopy(link);
@@ -531,6 +533,7 @@ function ShareLink({ invoiceId }: { invoiceId: string }) {
         >
           <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
         </a>
+        {actions}
       </div>
       <p role="status" className="sr-only">
         {status === COPY_STATUS.idle ? "" : label}

@@ -91,7 +91,7 @@ export function PaymentTimeline({
                   "text-xs",
                   step.tone
                     ? cx(
-                        "self-start rounded-sm border px-1.5 py-0.5 font-medium",
+                        "self-start rounded-pill border px-2 py-0.5 font-medium",
                         TONE_CLASSES[step.tone],
                       )
                     : step.state === STEP_STATES.upcoming

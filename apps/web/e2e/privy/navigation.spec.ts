@@ -714,8 +714,10 @@ test("the owner cancels an invoice before any money, after confirming", async ({
   await page.goto(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
   const dialog = page.getByRole("dialog", { name: "Cancel INV-0002?" });
 
-  // Keep: nothing happens.
-  await header.getByRole("button", { name: "Cancel invoice" }).click({ timeout: 15_000 });
+  // Behind More actions, as a destructive one. Keep: nothing happens.
+  const more = header.getByRole("button", { name: "More actions" });
+  await more.click({ timeout: 15_000 });
+  await page.getByRole("menuitem", { name: "Cancel invoice" }).click();
   await expect(dialog).toContainText("The pay link stops taking payments.");
   expect(await blockingViolations(page)).toEqual([]);
   await dialog.getByRole("button", { name: "Keep invoice" }).click();
@@ -723,7 +725,8 @@ test("the owner cancels an invoice before any money, after confirming", async ({
   expect(cancels).toBe(0);
 
   // Confirm: canceled, said in a toast, and the page no longer takes money or offers to cancel.
-  await header.getByRole("button", { name: "Cancel invoice" }).click();
+  await more.click();
+  await page.getByRole("menuitem", { name: "Cancel invoice" }).click();
   await dialog.getByRole("button", { name: "Cancel invoice" }).click();
   await expect(page.getByText("INV-0002 canceled")).toBeVisible();
   expect(cancels).toBe(1);
@@ -732,7 +735,7 @@ test("the owner cancels an invoice before any money, after confirming", async ({
   // The dialog and its trigger are gone, so keyboard focus moves to the status, not to the page body.
   await expect(header.locator("p[tabindex='-1']")).toBeFocused();
   await expect(header.getByRole("region", { name: "Pay link" })).toHaveCount(0);
-  await expect(header.getByRole("button", { name: "Cancel invoice" })).toHaveCount(0);
+  await expect(header.getByRole("button", { name: "More actions" })).toHaveCount(0);
   await context.close();
 });
 

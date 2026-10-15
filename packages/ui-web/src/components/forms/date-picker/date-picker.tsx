@@ -103,7 +103,7 @@ export function DatePicker({
               type="button"
               aria-label={clearLabel}
               onClick={() => onChange(null)}
-              className="relative grid size-8 shrink-0 place-items-center rounded-sm text-muted before:absolute before:-inset-1.5 hover:bg-surface-2 hover:text-ink"
+              className="relative grid size-8 shrink-0 place-items-center rounded-pill text-muted before:absolute before:-inset-1.5 hover:bg-surface-2 hover:text-ink"
             >
               <X aria-hidden className="size-[var(--fw-icon-sm)]" />
             </button>

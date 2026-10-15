@@ -32,24 +32,26 @@ export interface ButtonProps extends ComponentPropsWithoutRef<"button">, ButtonS
   loading?: boolean;
 }
 
+// A press answers with a small scale on a fast ease-out, like a physical key; reduced motion keeps only the color.
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-[background-color,border-color,color] duration-[var(--fw-duration-fast)] ease-out disabled:border-line disabled:bg-surface-2 disabled:text-subtle disabled:shadow-none";
+  "inline-flex items-center justify-center gap-2 rounded-pill font-medium whitespace-nowrap transition-[background-color,border-color,color,box-shadow,scale] duration-[var(--fw-duration-fast)] ease-[var(--fw-ease-out)] active:scale-[0.97] motion-reduce:active:scale-100 disabled:border-line disabled:bg-surface-2 disabled:text-subtle disabled:shadow-none disabled:active:scale-100";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-on-primary hover:bg-[color-mix(in_oklab,var(--fw-primary)_84%,var(--fw-bg))]",
-  secondary: "border border-line bg-surface text-ink hover:border-line-strong hover:bg-surface-2",
+    "bg-primary text-on-primary shadow-sm hover:bg-[color-mix(in_oklab,var(--fw-primary)_88%,var(--fw-bg))] hover:shadow-md",
+  secondary:
+    "border border-line-strong bg-surface text-ink shadow-sm hover:border-[color-mix(in_oklab,var(--fw-line-strong)_70%,var(--fw-ink))] hover:bg-surface-2",
   ghost: "text-ink hover:bg-surface-2",
   link: "text-accent underline decoration-1 underline-offset-4 hover:decoration-2",
   soon: "cursor-not-allowed border border-dashed border-line-strong text-subtle",
-  danger: "border border-danger bg-surface text-danger hover:bg-danger-soft",
+  danger: "border border-danger bg-surface text-danger shadow-sm hover:bg-danger-soft",
 };
 
 const SIZES: Record<ButtonSize, string> = {
   // The pseudo elements stretch the hit area to 44px without changing the look.
-  sm: "relative h-8 px-3 text-sm before:absolute before:inset-x-0 before:-inset-y-1.5",
-  md: "relative h-10 px-4 text-sm before:absolute before:inset-x-0 before:-inset-y-0.5",
-  lg: "h-11 px-5 text-base",
+  sm: "relative h-8 px-3.5 text-sm before:absolute before:inset-x-0 before:-inset-y-1.5",
+  md: "relative h-10 px-5 text-sm before:absolute before:inset-x-0 before:-inset-y-0.5",
+  lg: "h-12 px-6 text-base",
 };
 
 /** Classes for anything that should look like a button, such as a link. */
