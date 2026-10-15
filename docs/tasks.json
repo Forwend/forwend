@@ -1317,7 +1317,7 @@
         "The comment in apps/web/src/shared/config/brand-colors.ts names no missing test and says how its copies stay equal to tokens.css; nothing else changes"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit"
       ],
@@ -1326,7 +1326,9 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-15 review pass by independent reviewer: Comment is true: apps/web/test/brand-colors.test.ts was deleted in F016 (0518367); no current test reads BRAND_COLORS (only layout.tsx, manifest.ts, opengraph-image.tsx use it; contrast.test.ts reads tokens.css but not BRAND_COLORS). 'Judged in screenshots' matches docs/web/rules.md and DESIGN.md. Values match tokens.css now: light --fw-bg #f4f8f7, --fw-ink #0f2219, --fw-muted #3a5047; dark --fw-bg #0d1412. Only the 2-line comment changed in source; docs/tasks.json changes are harness bookkeeping (F192 evidence, nextId, new queued task F198)."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
@@ -1387,11 +1389,25 @@
         "filesHash": "2a6f03937f8411c7",
         "proof": {
           "1": "unit: the comment in brand-colors.ts names no missing test and says how the copies stay equal to tokens.css (same-commit rule); no code changed; unit and the full suite pass"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "Comment is true: apps/web/test/brand-colors.test.ts was deleted in F016 (0518367); no current test reads BRAND_COLORS (only layout.tsx, manifest.ts, opengraph-image.tsx use it; contrast.test.ts reads tokens.css but not BRAND_COLORS). 'Judged in screenshots' matches docs/web/rules.md and DESIGN.md. Values match tokens.css now: light --fw-bg #f4f8f7, --fw-ink #0f2219, --fw-muted #3a5047; dark --fw-bg #0d1412. Only the 2-line comment changed in source; docs/tasks.json changes are harness bookkeeping (F192 evidence, nextId, new queued task F198).",
+          "at": "2026-10-15T03:41:39Z",
+          "filesHash": "2a6f03937f8411c7"
+        },
+        "commit": "34cd3f1",
+        "doneAt": "2026-10-15T03:41:47Z"
       },
       "branch": "fix/f192-brand-colors-ts-no-longer-cites-a-test-t",
       "baseCommit": "8e9cc2a913b9b9913e9b89949635d4b4a9a90c4f",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f192-brand-colors-ts-no-longer-cites-a-test-t",
+        "base": "main"
+      }
     },
     {
       "id": "F193",
