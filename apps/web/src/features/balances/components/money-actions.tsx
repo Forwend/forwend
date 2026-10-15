@@ -17,7 +17,10 @@ export interface MoneyActionsProps {
 }
 
 // Receive and Request work; the others keep their place, say why in their accessible name and show "Coming soon" on
-// hover or focus. Five fit a phone's row with the narrow gap.
+// hover or focus. Five share a phone's row: below 360 px the columns shrink and the labels get smaller, so they never
+// touch.
+const NARROW = "min-w-0 max-[359px]:text-xs";
+
 export function MoneyActions({ onReceive, onRequest }: MoneyActionsProps) {
   const actions: readonly {
     label: string;
@@ -32,16 +35,23 @@ export function MoneyActions({ onReceive, onRequest }: MoneyActionsProps) {
     { label: BALANCES_COPY.withdraw, icon: Landmark, soon: BALANCES_COPY.withdrawSoon },
   ];
   return (
-    <fieldset className="m-0 min-w-0 self-center border-0 p-0 lg:self-start">
+    <fieldset className="m-0 w-full max-w-sm min-w-0 self-center border-0 p-0 lg:w-auto lg:max-w-none lg:self-start">
       <legend className="sr-only">{BALANCES_COPY.actions}</legend>
-      <div className="grid grid-cols-5 gap-2 sm:gap-4 lg:gap-6">
+      <div className="grid grid-cols-5 gap-1 min-[360px]:gap-2 sm:gap-4 lg:gap-6">
         {actions.map(({ label, icon, soon, onClick }) =>
           soon ? (
             <Tooltip key={label} content={BALANCES_COPY.comingSoon}>
-              <ActionButton icon={icon} label={label} disabledReason={soon} />
+              <ActionButton icon={icon} label={label} disabledReason={soon} className={NARROW} />
             </Tooltip>
           ) : (
-            <ActionButton key={label} icon={icon} label={label} primary onClick={onClick} />
+            <ActionButton
+              key={label}
+              icon={icon}
+              label={label}
+              primary
+              onClick={onClick}
+              className={NARROW}
+            />
           ),
         )}
       </div>

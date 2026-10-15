@@ -26,7 +26,9 @@ export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps)
   const figure =
     "text-[length:clamp(2rem,min(14cqi,160cqi_/_var(--chars)),5.25rem)] leading-none font-semibold tracking-[-0.03em] text-ink";
   const align = "items-center text-center lg:items-start lg:text-left";
-  const row = "flex flex-wrap items-baseline justify-center gap-x-2 lg:justify-start";
+  // Room for the hanging hint on both sides keeps the total centered, and a large total wraps USD before the hint
+  // reaches the edge.
+  const row = "flex flex-wrap items-baseline justify-center gap-x-2 px-7 lg:justify-start lg:px-0";
 
   if (!balances && failed) {
     return (

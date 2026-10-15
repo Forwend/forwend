@@ -21,7 +21,8 @@ Use `/kit` for the implemented components. This file owns visual use; token sour
 - Libre Caslon Display at 400 for large headings; Hanken Grotesk for UI and body; Geist Mono for money, addresses,
   hashes and event names. Money uses tabular figures. In the app, headline figures (the total balance and the
   overview figure strip) use Hanken Grotesk semibold with proportional figures; table amounts, addresses, hashes and
-  chart ticks stay Geist Mono with tabular figures. No bold display serif or small serif labels.
+  chart ticks stay Geist Mono with tabular figures. The balance hero's held and change lines are body text: Hanken
+  Grotesk with tabular figures. No bold display serif or small serif labels.
 - Use role tokens for hero, section headings and featured amounts. No eyebrow labels or tracked uppercase kickers.
 - Text and primary buttons share the primary ink. River blue identifies links, focus, the current step and information.
   Completed steps use ink; upcoming steps use line color.

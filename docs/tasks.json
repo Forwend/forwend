@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 205,
+  "nextId": 206,
   "tasks": [
     {
       "id": "F179",
@@ -2401,68 +2401,70 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-15 review fail by independent reviewer: Centering at 390 px is correct: measured row center 195 = label center 195 (26.25 and 1,234,567.89). Defect: the hanging estimate icon is outside the width budget of the figure clamp (balance-figure.tsx:27 sizes figure+USD to fill the container; the absolute hint at :54 adds 28 px). At 320 px a 16-char total (1,234,567,890.12) puts the icon at x 304-328 on a 320 px screen, so the section's overflow-hidden clips 8 px of it, and its 44 px hit area loses ~18 px. Before F202 the row wrapped instead. At 320 px any total of 1,000,000+ leaves the icon 1-2 px from the screen edge, outside the 16 px gutter. Fix idea: reserve the hint width symmetrically on phones (e.g. px-7 lg:px-0 on the row) or count it in the clamp. Doc gap: DESIGN.md:21-24 says Geist Mono for money and names only headline figures as Hanken; the held/change lines (balance-figure.tsx:84, balance-hero.tsx:167) now use Hanken, so DESIGN.md needs a line naming them. OK: keyboard focus opens the tooltip; desktop >=1024 keeps lg classes, icon stays inside the left column (40 px gap to chart); only 640-1023 px min-height changed 96->80. Tap does not open any Tooltip in Playwright touch emulation (also Send and /kit), so that is pre-existing, not F202. Unit tests 128/128 pass."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-15T12:58:06Z",
+        "at": "2026-10-15T13:10:15Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 69.9,
-            "log": "docs/runs/F202-20261015T125806Z-unit.log"
+            "seconds": 69.5,
+            "log": "docs/runs/F202-20261015T131015Z-unit.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 215.5,
-            "log": "docs/runs/F202-20261015T125806Z-e2e.log"
+            "seconds": 213.1,
+            "log": "docs/runs/F202-20261015T131015Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.6,
-            "log": "docs/runs/F202-20261015T125806Z-harness.log"
+            "seconds": 2.5,
+            "log": "docs/runs/F202-20261015T131015Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F202-20261015T125806Z-docs-check.log"
+            "log": "docs/runs/F202-20261015T131015Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F202-20261015T125806Z-lint.log"
+            "log": "docs/runs/F202-20261015T131015Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.2,
-            "log": "docs/runs/F202-20261015T125806Z-typecheck.log"
+            "seconds": 1.4,
+            "log": "docs/runs/F202-20261015T131015Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.7,
-            "log": "docs/runs/F202-20261015T125806Z-build.log"
+            "seconds": 5.4,
+            "log": "docs/runs/F202-20261015T131015Z-build.log"
           }
         ],
         "taskHash": "1728ace1c6d209fe",
-        "filesHash": "e0657539aaf25608",
+        "filesHash": "7ce28df516d5024d",
         "proof": {
-          "1": "e2e: at 390 px light and dark the total and USD sit on the label's center line (the estimate icon hangs outside the centered group), the held and change amounts use the body font, the phone card is min-h-80 with gap-8 so the action row follows the figure without a dead band; before/after screenshots in docs/runs/F202-shots",
-          "2": "e2e: desktop hero unchanged (docs/runs/F202-shots/after-hero-1440.png); balances e2e and unit tests pass"
+          "1": "e2e: at 390 px light and dark the total and USD sit on the label's center line (the estimate icon hangs in px-7 room on both sides), at 320 px a 16-character total wraps USD and the icon ends at x 209 of 320; held and change amounts use the body font (DESIGN.md says so); the card is min-h-80 with gap-8; the action labels never touch at 320 px; screenshots in docs/runs/F202-shots",
+          "2": "e2e: desktop hero unchanged (after-hero-1440.png); balances e2e and unit tests pass"
         }
       },
       "branch": "fix/f202-on-a-phone-the-overview-s-balance-hero-i",
@@ -2504,6 +2506,26 @@
       "verification": [
         "unit",
         "backend",
+        "e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F205",
+      "type": "fix",
+      "behavior": "On touch screens a tap shows a tooltip's text (the balance estimate hint and the Coming soon actions), as hover and focus do on desktop",
+      "acceptance": [
+        "With touch emulation at 390 px, tapping the estimate icon and a Coming soon action shows its text, and a tap elsewhere hides it; desktop hover and keyboard focus keep working; e2e covers the tap"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
         "e2e"
       ],
       "refs": [],
