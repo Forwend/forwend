@@ -68,8 +68,9 @@ export function PaymentsShowcase() {
           label="QR code for the sample deposit address"
           className="w-36"
         />
-        <div className="max-w-md">
+        <div className="flex max-w-md flex-col gap-3">
           <NetworkWarning token="USDC" network="Base" />
+          <NetworkWarning token="USDC" network="Arbitrum" lookalike="USDC.e" />
         </div>
       </KitGroup>
       <KitGroup title="Payment status">

@@ -197,75 +197,77 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-15 review pass by independent reviewer: PASS. Ran: ui-web test 40/40, web test 124/124, pay.spec e2e 15/15, lint, typecheck; in a scratch copy /kit axe light+dark pass. Copy (Chromium, real pay page, clipboard read back): Copy button, click on select-all p + Cmd+C, double-click a group, triple-click, Range+execCommand all give exactly 0x586134f74b654f5835860ca198ae725344670078; innerText same, so the canary reads one address (contract link text 0x036c…cf7e does not match the 40-hex regex; canary e2e passes). AX: ariaSnapshot reads the paragraph as one string; Chromium exposes 10 StaticText children. 390 px and 320 px: groups wrap on 2 lines at wbr, no group split, no overflow. Pay axe light/dark covers darker ends and the link; link name '0x036c…cf7e on Basescan (opens in a new tab)'. Mutations: space between groups, grouped copy, groups of 5, no darker end, no wbr each fail the unit test. Notes: (1) manual-select copy has no direct test: making the address p 'flex flex-wrap' copies 0x5861\\n34f7\\n... and only the canary e2e catches it (R-78 e2e block in pay.spec.ts ~204 checks textContent); add a select+Cmd+C+clipboard read check there. (2) WebKit/VoiceOver not checked (only Chromium installed); VoiceOver may announce the 10 spans as separate items; do a manual VoiceOver check. (3) docs/web/DESIGN.md:120-123 still lists the send box without the groups of 4, the token contract line and the USDC.e note. (4) /kit (payments-showcase.tsx:72) does not show the NetworkWarning lookalike variant. (5) the commit also adds unrelated queue task F196 to docs/tasks.json. Look-alike note is correct as an instruction on Arbitrum Sepolia and does not claim USDC.e exists there; Arbitrum One will need the same entry when added."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-15T00:25:56Z",
+        "at": "2026-10-15T00:36:33Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 65.7,
-            "log": "docs/runs/F181-20261015T002556Z-unit.log"
+            "seconds": 66.2,
+            "log": "docs/runs/F181-20261015T003633Z-unit.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 159.9,
-            "log": "docs/runs/F181-20261015T002556Z-e2e.log"
+            "seconds": 157.5,
+            "log": "docs/runs/F181-20261015T003633Z-e2e.log"
           },
           {
             "id": "a11y-e2e",
             "outcome": "passed",
             "exit": 0,
             "seconds": 16.6,
-            "log": "docs/runs/F181-20261015T002556Z-a11y-e2e.log"
+            "log": "docs/runs/F181-20261015T003633Z-a11y-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 2.2,
-            "log": "docs/runs/F181-20261015T002556Z-harness.log"
+            "log": "docs/runs/F181-20261015T003633Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F181-20261015T002556Z-docs-check.log"
+            "seconds": 0.1,
+            "log": "docs/runs/F181-20261015T003633Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F181-20261015T002556Z-lint.log"
+            "log": "docs/runs/F181-20261015T003633Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F181-20261015T002556Z-typecheck.log"
+            "seconds": 1.0,
+            "log": "docs/runs/F181-20261015T003633Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.7,
-            "log": "docs/runs/F181-20261015T002556Z-build.log"
+            "seconds": 3.8,
+            "log": "docs/runs/F181-20261015T003633Z-build.log"
           }
         ],
         "taskHash": "c8ab119570457718",
-        "filesHash": "dcc1d4a2b0fcb40c",
+        "filesHash": "38fd3c13d4f0ea4c",
         "proof": {
-          "1": "unit: ReceiveAddress test shows 10 groups whose text is exactly the address, wbr breaks, darker ends, and Copy writes the address; pay.spec checks [data-address] text and 10 groups on the pay page, and the canary still reads only the receive address",
-          "2": "e2e: pay.spec links the token contract on Basescan and Arbiscan, says 'Native USDC, not USDC.e' on Arbitrum only, and 'Withdraw on Base Sepolia' for exchanges; unit tests cover lookalikeOf and NetworkWarning; a11y-e2e and pay axe checks pass"
+          "1": "unit: ReceiveAddress test shows 10 groups whose text is exactly the address, wbr breaks, darker ends, and Copy writes the address; pay.spec checks [data-address] text, 10 groups, and a manual select-and-copy that reads back exactly the address; the canary still reads only the receive address",
+          "2": "e2e: pay.spec links the token contract on Basescan and Arbiscan, says 'Native USDC, not USDC.e' on Arbitrum only, and 'Withdraw on Base Sepolia' for exchanges; /kit shows the look-alike warning under axe; unit tests cover lookalikeOf and NetworkWarning"
         }
       },
       "branch": "feat/f181-the-payer-can-check-the-whole-address-an",

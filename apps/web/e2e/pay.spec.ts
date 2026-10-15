@@ -205,6 +205,11 @@ test.describe("pay page", () => {
     const shown = page.locator("[data-address]");
     await expect(shown).toHaveText(RECEIVE);
     await expect(shown.locator("span")).toHaveCount(10);
+    // Selected and copied by hand, the groups still give the one address: no spaces or line breaks between them.
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await shown.click();
+    await page.keyboard.press("ControlOrMeta+C");
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(RECEIVE);
     await expect(page.getByRole("link", { name: /0x036c.*cf7e/ })).toHaveAttribute(
       "href",
       "https://sepolia.basescan.org/address/0x036cbd53842c5426634e7929541ec2318f3dcf7e",
