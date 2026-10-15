@@ -44,11 +44,8 @@ export function ChecklistCard({
 }: ChecklistCardProps) {
   const done = steps.filter((s) => s.done).length;
   return (
-    <section
-      aria-labelledby="checklist-title"
-      className="flex flex-col rounded-md border border-line bg-surface"
-    >
-      <div className="flex items-center gap-3 border-b border-line py-2 pr-2 pl-4 sm:pl-5">
+    <section aria-labelledby="checklist-title" className="fw-panel flex flex-col">
+      <div className="fw-panel-head">
         <h2 id="checklist-title" className="text-base font-semibold text-ink">
           {COPY.title}
         </h2>

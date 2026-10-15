@@ -11,10 +11,12 @@ import {
   SegmentedControl,
   StatusPill,
   shortAddress,
+  TABLE_HEAD_CLASSES,
+  TABLE_ROW_CLASSES,
 } from "@forwend/ui-web";
 import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChevronRight, Download } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
 import {
   TRANSACTION_DIRECTIONS,
@@ -24,6 +26,8 @@ import {
 } from "@/features/transactions/constants/transactions";
 import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
 import {
+  type DayGroup,
+  groupByDay,
   transactionKey,
   transactionStatus,
   transactionsCsv,
@@ -40,12 +44,19 @@ import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
 import { addressLink, chainName } from "@/shared/lib/chains";
 
 const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
-const DATE = new Intl.DateTimeFormat(undefined, {
+// Rows sit under the day they happened on, so a row shows only its time.
+const TIME = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+const DAY = new Intl.DateTimeFormat(undefined, {
+  weekday: "short",
   month: "short",
   day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
 });
+const dayName = (when: DayGroup<Transaction>["when"]) =>
+  when === "today"
+    ? TRANSACTIONS_COPY.today
+    : when === "yesterday"
+      ? TRANSACTIONS_COPY.yesterday
+      : DAY.format(when);
 
 interface TransactionsTableProps {
   profileId: string;
@@ -77,9 +88,12 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
   );
   const data = useShownData(preview ? "" : filters.key, list.currentData, list.data);
   const rows = data?.items ?? [];
+  const days = groupByDay(rows, new Date());
+  const dayId = useId();
   const filtered = !preview && filters.filtered;
   const more = Boolean(data?.nextCursor);
   const Heading = pageHeading ? "h1" : "h2";
+  const DayHeading = pageHeading ? "h2" : "h3";
   // A new filter or search loads in place of as many rows as were shown.
   const [skeletonRows, setSkeletonRows] = useState(preview ?? SKELETON_ROWS);
   if (rows.length > 0 && rows.length !== skeletonRows) setSkeletonRows(rows.length);
@@ -98,14 +112,10 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
     <section
       aria-labelledby={`${profileId}-transactions`}
       aria-busy={!data && !list.isError}
-      className={
-        pageHeading
-          ? "flex flex-col gap-4"
-          : "flex flex-col rounded-md border border-line bg-surface"
-      }
+      className={pageHeading ? "flex flex-col gap-4" : "fw-panel flex flex-col"}
     >
       <div
-        className={`flex flex-wrap items-center justify-between gap-3 ${pageHeading ? "" : "border-b border-line px-4 py-3 sm:px-5"}`}
+        className={`flex flex-wrap items-center justify-between gap-3 ${pageHeading ? "" : "fw-panel-head"}`}
       >
         {/* As the page's heading, the header's breadcrumb names it on desktop, so it shows only on phones. */}
         <Heading
@@ -173,10 +183,7 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
           </Button>
         </div>
       ) : !data ? (
-        <RowsSkeleton
-          count={skeletonRows}
-          className={pageHeading ? "rounded-md border border-line bg-surface" : ""}
-        />
+        <RowsSkeleton count={skeletonRows} className={pageHeading ? "fw-panel" : ""} />
       ) : rows.length === 0 && !filtered ? (
         <EmptyState
           icon={ArrowLeftRight}
@@ -188,91 +195,116 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
       ) : rows.length === 0 ? (
         <NoMatch onClear={filters.clear} compact={!pageHeading} />
       ) : (
-        <div className={pageHeading ? "rounded-md border border-line bg-surface" : ""}>
+        <div className={pageHeading ? "fw-panel overflow-hidden" : ""}>
           {/* Wide screens: a ruled table, scrolled sideways rather than squeezed when its column is narrow. */}
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[36rem] text-sm">
               <thead>
-                <tr className="border-b border-line text-left text-xs text-muted">
-                  <th scope="col" className="px-5 py-2.5 font-medium">
+                <tr className={TABLE_HEAD_CLASSES}>
+                  <th scope="col" className="w-[38%]">
                     {TRANSACTIONS_COPY.columns.transaction}
                   </th>
-                  <th scope="col" className="hidden px-3 py-2.5 font-medium 2xl:table-cell">
+                  <th scope="col" className="hidden 2xl:table-cell">
                     {TRANSACTIONS_COPY.columns.network}
                   </th>
-                  <th scope="col" className="px-3 py-2.5 font-medium">
-                    {TRANSACTIONS_COPY.columns.date}
-                  </th>
-                  <th scope="col" className="px-3 py-2.5 font-medium">
-                    {TRANSACTIONS_COPY.columns.status}
-                  </th>
-                  <th scope="col" className="px-5 py-2.5 text-right font-medium">
+                  <th scope="col">{TRANSACTIONS_COPY.columns.date}</th>
+                  <th scope="col">{TRANSACTIONS_COPY.columns.status}</th>
+                  <th scope="col" className="text-right">
                     {TRANSACTIONS_COPY.columns.amount}
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line">
-                {rows.map((t) => (
-                  <tr
-                    key={transactionKey(t)}
-                    className="transition-colors duration-[var(--fw-duration-fast)] hover:bg-[color-mix(in_oklab,var(--fw-surface-2)_55%,transparent)]"
-                  >
-                    <td className="px-5 py-3">
-                      {/* Below 2xl the network moves under the counterparty, so no amount lacks it. */}
-                      <Party
-                        t={t}
-                        detail={<NetworkName chainId={t.chainId} />}
-                        detailClassName="2xl:hidden"
-                      />
-                    </td>
-                    <td className="hidden px-3 py-3 whitespace-nowrap text-muted 2xl:table-cell">
-                      <NetworkName chainId={t.chainId} />
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-muted">
-                      <span className="inline-flex items-center gap-1">
-                        <time dateTime={t.at}>{DATE.format(new Date(t.at))}</time>
-                        <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
-                      </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <Status t={t} />
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <Amount t={t} />
-                    </td>
+              {days.map((group) => (
+                <tbody key={group.day} className="divide-y divide-line">
+                  <tr className="border-t border-line first:border-t-0">
+                    <th
+                      scope="rowgroup"
+                      colSpan={5}
+                      className="h-9 bg-[color-mix(in_oklab,var(--fw-surface-2)_35%,var(--fw-surface))] px-5 text-left text-xs font-medium text-muted"
+                    >
+                      {dayName(group.when)}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
+                  {group.items.map((t) => (
+                    <tr
+                      key={transactionKey(t)}
+                      className={`transition-colors duration-[var(--fw-duration-fast)] ${TABLE_ROW_CLASSES} hover:bg-[color-mix(in_oklab,var(--fw-surface-2)_50%,transparent)]`}
+                    >
+                      <td>
+                        {/* Below 2xl the network moves under the counterparty, so no amount lacks it. */}
+                        <Party
+                          t={t}
+                          detail={<NetworkName chainId={t.chainId} />}
+                          detailClassName="2xl:hidden"
+                        />
+                      </td>
+                      <td className="hidden whitespace-nowrap text-muted 2xl:table-cell">
+                        <NetworkName chainId={t.chainId} />
+                      </td>
+                      <td className="whitespace-nowrap text-muted tabular-nums">
+                        <span className="inline-flex items-center gap-1">
+                          <time dateTime={t.at}>{TIME.format(new Date(t.at))}</time>
+                          <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
+                        </span>
+                      </td>
+                      <td>
+                        <Status t={t} />
+                      </td>
+                      <td className="text-right">
+                        <Amount t={t} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              ))}
             </table>
           </div>
-          <ul className="divide-y divide-line md:hidden">
-            {rows.map((t) => (
-              <li key={transactionKey(t)} className="flex items-center gap-3 px-4 py-3">
-                {/* Two lines that never cut: the network rides on the icon as its logo (and in words for
-                    screen readers), the time and the explorer link sit under the other side. */}
-                <Party
-                  t={t}
-                  short
-                  chainBadge
-                  detail={
-                    <>
-                      <time dateTime={t.at} className="whitespace-nowrap">
-                        {DATE.format(new Date(t.at))}
-                      </time>
-                      <span className="sr-only">, {chainName(t.chainId)}</span>
-                      <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
-                    </>
-                  }
-                />
-                <span className="ml-auto flex shrink-0 flex-col items-end gap-0.5">
-                  <Amount t={t} />
-                  <span className="text-xs">
-                    <Status t={t} />
-                  </span>
-                </span>
-              </li>
+          <div className="md:hidden">
+            {days.map((group) => (
+              <section key={group.day} aria-labelledby={`${dayId}-${group.day}`}>
+                <DayHeading
+                  id={`${dayId}-${group.day}`}
+                  className="px-4 pt-4 pb-1.5 text-xs font-medium text-muted first-of-type:pt-3"
+                >
+                  {dayName(group.when)}
+                </DayHeading>
+                <ul className="divide-y divide-line">
+                  {group.items.map((t) => (
+                    <li
+                      key={transactionKey(t)}
+                      className="flex min-h-16 items-center gap-3 px-4 py-3"
+                    >
+                      {/* Two lines that never cut: the network rides on the icon as its logo (and in words for
+                          screen readers), the time and the explorer link sit under the other side. */}
+                      <Party
+                        t={t}
+                        short
+                        chainBadge
+                        detail={
+                          <>
+                            <time dateTime={t.at} className="whitespace-nowrap">
+                              {TIME.format(new Date(t.at))}
+                            </time>
+                            <span className="sr-only">, {chainName(t.chainId)}</span>
+                            <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
+                          </>
+                        }
+                      />
+                      {/* A phone row names only a status that still needs waiting for, as banking apps do. */}
+                      <span className="ml-auto flex shrink-0 flex-col items-end gap-1">
+                        <Amount t={t} />
+                        {transactionStatus(t) === PAYMENT_STATUS.confirmed ? null : (
+                          <span className="text-xs">
+                            <Status t={t} />
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ))}
-          </ul>
+          </div>
         </div>
       )}
       {preview || !data ? null : more && limit < TRANSACTIONS_MAX ? (
@@ -391,7 +423,10 @@ function Counterparty({ t }: { t: Transaction }) {
 function Status({ t }: { t: Transaction }) {
   const status = transactionStatus(t);
   return status === PAYMENT_STATUS.confirmed ? (
-    <span className="text-muted">{PAYMENT_STATUSES[status].label}</span>
+    <span className="inline-flex items-center gap-2 whitespace-nowrap text-muted">
+      <span aria-hidden className="size-1.5 shrink-0 rounded-pill bg-success" />
+      {PAYMENT_STATUSES[status].label}
+    </span>
   ) : (
     <StatusPill status={status} />
   );

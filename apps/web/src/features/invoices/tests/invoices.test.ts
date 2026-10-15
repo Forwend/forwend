@@ -10,6 +10,8 @@ import {
   confirmingProgress,
   customExpiresIn,
   decimalText,
+  formatDueDate,
+  formatDueDateShort,
   invalidField,
   invoiceException,
   invoiceNumber,
@@ -105,6 +107,15 @@ const deposit: Deposit = {
   blocksTotal: 0,
   secondsLeft: 0,
 };
+
+describe("formatDueDateShort", () => {
+  it("drops the year only within the reader's current year", () => {
+    const now = new Date(2026, 9, 15);
+    expect(formatDueDateShort("2026-10-28", now)).not.toMatch(/2026/);
+    expect(formatDueDateShort("2026-10-28", now)).toMatch(/28/);
+    expect(formatDueDateShort("2027-01-05", now)).toBe(formatDueDate("2027-01-05"));
+  });
+});
 
 describe("invoiceProgress", () => {
   it("waits for a payment, then confirms it with the slowest deposit's blocks and time left", () => {

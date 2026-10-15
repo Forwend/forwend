@@ -107,10 +107,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
           </Button>
         </div>
       ) : !data ? (
-        <RowsSkeleton
-          count={skeletonRows}
-          className="overflow-hidden rounded-md border border-line bg-surface"
-        />
+        <RowsSkeleton count={skeletonRows} className="fw-panel overflow-hidden" />
       ) : noActivity ? (
         <EmptyState
           icon={History}
@@ -122,7 +119,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
           {rows.length === 0 ? (
             <NoMatch onClear={filters.clear} />
           ) : (
-            <ul className="divide-y divide-line overflow-hidden rounded-md border border-line bg-surface">
+            <ul className="fw-panel divide-y divide-line overflow-hidden">
               {rows.map((item, i) => {
                 const deposit = item.kind === ACTIVITY_KINDS.deposit;
                 // A client-chooses invoice reads in USD on any network, as in the invoice list (R-70).
@@ -132,7 +129,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
                     // The same transaction can pay two invoices, and one invoice can get two payments in it.
                     // biome-ignore lint/suspicious/noArrayIndexKey: the position completes the key
                     key={`${item.kind}:${item.invoiceId}:${item.txHash ?? ""}:${i}`}
-                    className={`relative px-4 ${ROW_INTERACTIVE_CLASSES}`}
+                    className={`relative px-4 transition-colors duration-[var(--fw-duration-fast)] sm:px-5 ${ROW_INTERACTIVE_CLASSES}`}
                   >
                     <ActivityRow
                       // The title's link covers the row, so the whole row opens the invoice.

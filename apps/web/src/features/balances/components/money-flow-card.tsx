@@ -29,11 +29,8 @@ export function MoneyFlowCard({ profileId }: MoneyFlowCardProps) {
       ] as const)
     : null;
   return (
-    <section
-      aria-labelledby="flow-title"
-      className="flex flex-col rounded-md border border-line bg-surface"
-    >
-      <div className="flex items-baseline justify-between gap-4 border-b border-line px-4 py-3 sm:px-5">
+    <section aria-labelledby="flow-title" className="fw-panel flex flex-col">
+      <div className="fw-panel-head justify-between">
         <h2 id="flow-title" className="text-base font-semibold text-ink">
           {BALANCES_COPY.moneyFlow}
         </h2>

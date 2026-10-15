@@ -10,20 +10,20 @@ import type { HistorySeries } from "@/features/balances/types/balance-history";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 // Points are the ends of UTC days (00:00 of the next day); a point is labeled with the day it closes. The last is now.
-export const DAY = new Intl.DateTimeFormat(undefined, {
+const DAY = new Intl.DateTimeFormat(undefined, {
   month: "short",
   day: "numeric",
   timeZone: "UTC",
 });
 const DAY_MS = 86_400_000;
 
-export function dayLabel(series: HistorySeries, index: number): string {
+function dayLabel(series: HistorySeries, index: number): string {
   if (index === series.dates.length - 1) return BALANCES_COPY.today;
   const date = series.dates[index];
   return date ? DAY.format(new Date(date.getTime() - DAY_MS / 2)) : "";
 }
 
-export function amountLabel(series: HistorySeries, index: number): string {
+function amountLabel(series: HistorySeries, index: number): string {
   return `${formatUsd(series.values[index] ?? 0n)} ${MONEY_COPY.usd}`;
 }
 
@@ -38,9 +38,17 @@ export interface BalanceChartProps {
   label: string;
   compact?: boolean;
   className?: string;
+  /** A second line in the readout, such as what one day added to a running total. */
+  readoutNote?: (index: number) => string;
 }
 
-export function BalanceChart({ series, label, compact = false, className }: BalanceChartProps) {
+export function BalanceChart({
+  series,
+  label,
+  compact = false,
+  className,
+  readoutNote,
+}: BalanceChartProps) {
   const id = useId();
   const pad = compact ? PAD_COMPACT : PAD;
   const count = series.values.length;
@@ -184,12 +192,13 @@ export function BalanceChart({ series, label, compact = false, className }: Bala
         left={pointX}
         top={pointY}
         width={width}
+        note={readoutNote}
       />
     </div>
   );
 }
 
-export interface ChartReadoutProps {
+interface ChartReadoutProps {
   series: HistorySeries;
   label: string;
   active: number | null;
@@ -199,9 +208,10 @@ export interface ChartReadoutProps {
   top?: number;
   width: number;
   dateLabel?: (index: number) => string;
+  note?: (index: number) => string;
 }
 
-export function ChartReadout({
+function ChartReadout({
   series,
   label,
   active,
@@ -210,6 +220,7 @@ export function ChartReadout({
   top = 0,
   width,
   dateLabel = (i) => dayLabel(series, i),
+  note,
 }: ChartReadoutProps) {
   return (
     <>
@@ -225,11 +236,14 @@ export function ChartReadout({
           <span className="text-sm font-medium whitespace-nowrap text-ink tabular-nums">
             {amountLabel(series, active)}
           </span>
+          {note ? <span className="text-xs text-ink">{note(active)}</span> : null}
           <span className="text-xs text-muted">{dateLabel(active)}</span>
         </div>
       )}
       <p aria-live="polite" className="sr-only">
-        {active === null || !announce ? "" : `${dateLabel(active)}: ${amountLabel(series, active)}`}
+        {active === null || !announce
+          ? ""
+          : `${dateLabel(active)}: ${amountLabel(series, active)}${note ? `, ${note(active)}` : ""}`}
       </p>
       {/* sr-only on the table itself does not hold: a table grows to its rows, and a year of rows ran far below the
           page, leaving an empty area to scroll through. A block wrapper clips it. */}
@@ -240,7 +254,10 @@ export function ChartReadout({
             {series.values.map((_, i) => (
               <tr key={series.dates[i]?.toISOString() ?? i}>
                 <th scope="row">{dateLabel(i)}</th>
-                <td>{amountLabel(series, i)}</td>
+                <td>
+                  {amountLabel(series, i)}
+                  {note ? `, ${note(i)}` : null}
+                </td>
               </tr>
             ))}
           </tbody>

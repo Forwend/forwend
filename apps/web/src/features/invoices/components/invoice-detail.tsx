@@ -62,8 +62,8 @@ const NOT_FOUND = 404;
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 const CLOCK = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
 const COUNTRY = new Intl.DisplayNames(undefined, { type: "region" });
-const PANEL = "rounded-md border border-line bg-surface";
-const PANEL_TITLE = "border-b border-line px-4 py-3 text-base font-semibold text-ink sm:px-5";
+const PANEL = "fw-panel";
+const PANEL_TITLE = "fw-panel-head text-base font-semibold text-ink";
 
 export interface InvoiceDetailProps {
   invoiceId: string;
@@ -189,7 +189,10 @@ function Loaded({
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex min-w-0 flex-col gap-2">
           {/* The number is the breadcrumb's last step on desktop, so the heading shows only on phones. */}
-          <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
+          {/* Above a title the number is a quiet label, so the title reads as the heading it looks like. */}
+          <h1
+            className={`text-ink lg:sr-only ${invoice.title ? "text-sm font-medium text-muted" : "text-2xl font-semibold tracking-tight"}`}
+          >
             {invoiceNumber(invoice.number)}
           </h1>
           {invoice.title ? (
@@ -506,16 +509,17 @@ function ShareLink({ invoiceId, actions }: { invoiceId: string; actions?: ReactN
         {COPY.share}
       </h2>
       <div className="flex items-center gap-2">
-        {/* The host and a short id fit the row; Copy and Open use the whole link. */}
+        {/* The host and a short id fit the row; Copy and Open use the whole link. A phone has no room to show
+            it, so Copy takes the row, unless copying failed and the link is there to select. */}
         <p
           title={link}
-          className={`min-w-0 flex-1 rounded-md border border-line bg-surface-2 px-3 py-1.5 font-mono text-sm text-ink ${status === COPY_STATUS.failed ? "break-all select-all" : "truncate"}`}
+          className={`min-w-0 flex-1 rounded-md border border-line bg-surface-2 px-3 py-1.5 font-mono text-sm text-ink ${status === COPY_STATUS.failed ? "break-all select-all" : "truncate max-sm:hidden"}`}
         >
           {status === COPY_STATUS.failed
             ? link
             : `${window.location.host}/pay/${shortAddress(invoiceId)}`}
         </p>
-        <Button variant="secondary" size="sm" onClick={copy} className="shrink-0">
+        <Button variant="secondary" size="sm" onClick={copy} className="shrink-0 max-sm:flex-1">
           {status === COPY_STATUS.copied ? (
             <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
           ) : (

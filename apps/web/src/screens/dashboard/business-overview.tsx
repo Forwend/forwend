@@ -108,14 +108,11 @@ export function BusinessOverview() {
       ) : null}
 
       {/* The range belongs to the figures and the chart, so it sits in the summary's header, not alone on a row. */}
-      <section
-        aria-labelledby="summary-title"
-        className="overflow-hidden rounded-md border border-line bg-surface"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-2.5 sm:px-5">
+      <section aria-labelledby="summary-title" className="fw-panel overflow-hidden">
+        <div className="fw-panel-head justify-between">
           <h2 id="summary-title" className="text-base font-semibold text-ink">
             {BUSINESS_COPY.summary}
-            <span className="font-normal text-muted"> · {rangeName}</span>
+            <span className="font-normal text-muted max-sm:sr-only"> · {rangeName}</span>
           </h2>
           <SegmentedControl
             label={BALANCES_COPY.chartRange}
@@ -124,7 +121,8 @@ export function BusinessOverview() {
             onValueChange={setRange}
           />
         </div>
-        <dl className="grid grid-cols-2 lg:grid-cols-4 [&>div]:border-line [&>div:nth-child(n+3)]:border-t lg:[&>div:nth-child(n+3)]:border-t-0 [&>div:nth-child(even)]:border-l lg:[&>div:not(:first-child)]:border-l">
+        {/* Phones: one row per figure, the value on the right, so no amount wraps; then two by two, then one row. */}
+        <dl className="grid grid-cols-1 pb-1 sm:grid-cols-2 sm:pb-0 lg:grid-cols-4 [&>div]:border-line max-sm:[&>div:not(:first-child)]:border-t sm:[&>div:nth-child(n+3)]:border-t lg:[&>div:nth-child(n+3)]:border-t-0 sm:[&>div:nth-child(even)]:border-l lg:[&>div:not(:first-child)]:border-l">
           <Figure label={BUSINESS_COPY.balance} note={BALANCES_COPY.today} failed={balancesFailed}>
             {balances.currentData ? <Total cents={wallet} hint /> : null}
           </Figure>
@@ -148,11 +146,8 @@ export function BusinessOverview() {
 
       {/* Both columns stretch to one height, so their bottom edges line up. */}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
-        <section
-          aria-labelledby="received-title"
-          className="flex flex-col rounded-md border border-line bg-surface"
-        >
-          <div className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
+        <section aria-labelledby="received-title" className="fw-panel flex flex-col">
+          <div className="fw-panel-head flex-wrap justify-between gap-y-1">
             <h2 id="received-title" className="text-base font-semibold text-ink">
               {BUSINESS_COPY.received}
             </h2>
@@ -160,8 +155,9 @@ export function BusinessOverview() {
               {payments === null ? rangeName : `${BUSINESS_COPY.payments(payments)} · ${rangeName}`}
             </span>
           </div>
-          {/* At least 16rem, and taller when the side column is, so the chart fills its panel. */}
-          <div className="grid min-h-64 flex-1 grid-rows-[minmax(0,1fr)] p-4 sm:p-5">
+          {/* At least 12rem on a phone and 16rem wider, and taller when the side column is, so the chart fills its
+              panel. */}
+          <div className="grid min-h-48 flex-1 sm:min-h-64 grid-rows-[minmax(0,1fr)] p-4 sm:p-5">
             {historyFailed ? (
               <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">
                 {BALANCES_COPY.historyFailed}
@@ -214,9 +210,9 @@ function Figure({
   children: ReactNode;
 }) {
   return (
-    <div className="@container flex min-w-0 flex-col gap-1.5 px-4 py-4 sm:px-5">
-      <dt className="text-sm text-muted">{label}</dt>
-      <dd className="text-[length:clamp(1.25rem,11cqi,1.5rem)] leading-tight font-semibold tracking-tight text-ink">
+    <div className="@container grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-0.5 px-4 py-3 sm:flex sm:flex-col sm:gap-1.5 sm:px-5 sm:py-4">
+      <dt className="text-sm text-ink sm:text-muted">{label}</dt>
+      <dd className="col-start-2 row-span-2 row-start-1 self-center text-right sm:self-start text-lg leading-tight font-semibold tracking-tight text-ink tabular-nums sm:text-left sm:text-[length:clamp(1.25rem,11cqi,1.5rem)]">
         {children ??
           (failed ? (
             <span className="text-muted">—</span>
@@ -224,7 +220,7 @@ function Figure({
             <Skeleton className="h-[1.25em] w-28 max-w-full" />
           ))}
       </dd>
-      <dd className="text-xs text-subtle">{note}</dd>
+      <dd className="min-w-0 text-xs text-subtle">{note}</dd>
     </div>
   );
 }
@@ -232,7 +228,7 @@ function Figure({
 function Total({ cents, hint = false }: { cents: bigint | null; hint?: boolean }) {
   if (cents === null) return <span className="text-muted">—</span>;
   return (
-    <span>
+    <span className="whitespace-nowrap">
       {formatUsd(cents)}{" "}
       <span className="inline-flex items-center gap-1 text-sm font-medium whitespace-nowrap text-muted">
         {MONEY_COPY.usd}

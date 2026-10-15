@@ -62,7 +62,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   open on and the phone sheet slides up from the screen edge; the centered panel appears without motion. Reduced
   motion removes the movement. Behind a modal the page darkens with the `scrim` token in both themes.
 - Panels are solid surface with a hairline border, medium corners and no shadow; a panel's header row is ruled off.
-  Figure strips and tables use hairline rules between cells and rows, not separate cards.
+  Figure strips and tables use hairline rules between cells and rows, not separate cards. On phones a panel is a
+  full-width section between top and bottom hairlines (no side border or corners, no box inside a box), its title
+  unruled above the rows, as in banking apps; panels become cards from small screens up (`fw-panel`, `fw-panel-head`).
 - Totals across tokens (the total balance, its chart, the business figures, money in and out) are in USD, each
   stablecoin counted as 1 USD. An info icon after "USD" marks the estimate and explains it in a tooltip. On the
   personal overview the label says the unit ("Total balance in USD", with the icon) and the figure stands alone, so it
@@ -76,27 +78,36 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Business overview (merchant, freelancer, R-63): a Summary panel whose ruled header names the range and holds the
   range control, over one figure grid (Balance today, Received, Sent, On its way); then the Received chart (its header
   counts the payments in) beside Balances by network, both stretched to one height; then the latest payments with View
-  all. Filters, search and CSV export live on Transactions. A range with nothing received says so in place of an empty
+  all. On phones the figures are rows, the label and its note on the left and the value on the right, and the chart is
+  shorter. Filters, search and CSV export live on Transactions. A range with nothing received says so in place of an empty
   chart.
 - Charts are drawn by us, with no grid lines and no value axis: the readout gives each exact amount and the dates
   (first, middle, last; first and last on phones) sit under the plot. The balance is one smooth ink line (monotone, so
   it never overshoots a real value or dips under zero) over a wash that fades down, from zero with a little headroom;
   it draws itself in. Today's point is a river-blue dot with a soft ring that leaves it now and then (it is live).
   While a point is chosen, the line up to it stays ink and the rest steps back, a dotted vertical cursor drops from
-  the point, and the readout floats just above it. Received is pill-capped ink bars on faint full-height tracks (where
-  the bars are wide enough), rising one after another; the chosen bar turns river blue and the rest step back.
+  the point, and the readout floats just above it. Received is the same line over the running total received in the
+  range, so it only climbs and its end is the range's Received figure; the readout adds what came in that day.
   Pointer, tap or arrow keys choose a point; only keyboard moves are announced, and a hidden table gives screen
-  readers every value. Range choice is a segmented control. Received bars group into weeks or months when a day would
-  be too thin to see or touch. Reduced motion shows every chart in place. A failed figure shows "—" with Try again,
+  readers every value. Range choice is a segmented control. Reduced motion shows every chart in place. A failed figure shows "—" with Try again,
   never an endless skeleton.
 - Invoices and Activity: a status filter (All, Open, Paid, Settled, Expired) and a search; a row opens its invoice.
   Transactions has a direction filter (All, In, Out) and a search. The API filters and searches the whole list, and the
-  URL keeps both. A confirmed transfer shows its status as plain text; only one still confirming gets a pill. A filter or search with no rows says nothing matched, with a button to clear them. A transaction hash links to the chain's block explorer in a new tab (Transactions, Activity,
+  URL keeps both. A confirmed transfer shows its status as a green dot and plain text; only one still confirming gets
+  a pill, and phone rows name a status only while it is still confirming. A filter or search with no rows says nothing matched, with a button to clear them. A transaction hash links to the chain's block explorer in a new tab (Transactions, Activity,
   invoice detail, pay page).
-- Transactions table: ruled table from medium screens; the network has its own column only on the widest screens and
-  sits under the counterparty otherwise; rows tint on hover. Phone rows are two lines that never cut: the network is
-  its logo on the corner of the direction icon (and in words for screen readers), the time and the explorer link sit
-  under the other side, and the amount sits over a small status on the right.
+- Tables: a quiet tinted header band in the small size, rows about 60px tall with the outer columns inset to the
+  panel's padding, hairlines between rows, a tint on hover.
+- Transactions table: ruled table from medium screens, grouped under day headings (Today, Yesterday, then the
+  weekday and date), so a row's Time column shows only the time; the network has its own column only on the widest
+  screens and sits under the counterparty otherwise. Phone rows sit under the same day headings and are two lines that
+  never cut: the network is its logo on the corner of the direction icon (and in words for screen readers), the time
+  and the explorer link sit under the other side, and the amount sits on the right.
+- Invoices table: the client has a round initials avatar. Phone rows lead with the client (or a request's note) beside
+  that avatar carrying the network's logo, with the number and a short due date (no year within this year) under it,
+  and the amount over the status pill on the right.
+- Invoice detail on phones: above a title the number is a small quiet label; the share row is a full-width Copy link
+  with Open and More actions beside it (the link text shows from small screens up).
 - First run: while `/v1/me` has no `onboardedAt`, `/app` shows one standalone screen instead of the shell: the logo,
   "What do you want to do?" in the display serif, four choice cards (checkboxes, any number; two columns from small
   screens up) with an icon, a hint and the profile each one adds, then Continue and Skip for now. Continue with nothing
@@ -133,7 +144,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 
 - `/pay/<id>` (R-68) is one short screen: the logo (links home), then on wide screens the invoice on the left and how
   to pay on the right. Left: the payee name (no display serif) beside a square tile with its initial on a bordered
-  surface tile, "Invoice INV-0001 · title" with a small PDF link under the name, the amount (Geist, tabular, featured
+  surface tile, "Invoice INV-0001 · title" under the name and a small secondary PDF button on the right, the amount (Geist, tabular, featured
   size; USD until the payer picks), "on <network>", then the due date and "Closes in …" as quiet rows with a small icon
   (no rules), and the note. On phones the pay panel comes right after the amount and the due date, close time and note
   follow it, so the payer reaches the address first. Right: one panel. While money is due it holds Pay with (the one option as a token mark,

@@ -10,6 +10,40 @@ export function transactionStatus(t: Transaction): PaymentStatus {
     : PAYMENT_STATUS.confirming;
 }
 
+export interface DayGroup<T> {
+  /** The local calendar day, YYYY-MM-DD. */
+  day: string;
+  /** "today", "yesterday", or the day itself, for the caller to word. */
+  when: "today" | "yesterday" | Date;
+  items: T[];
+}
+
+const localDay = (time: Date) =>
+  `${time.getFullYear()}-${String(time.getMonth() + 1).padStart(2, "0")}-${String(time.getDate()).padStart(2, "0")}`;
+
+/** Items in their order, cut into runs of the same local day, each with how to name that day from `now`. */
+export function groupByDay<T extends { at: string }>(
+  items: readonly T[],
+  now: Date,
+): DayGroup<T>[] {
+  const today = localDay(now);
+  const yesterday = localDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+  const groups: DayGroup<T>[] = [];
+  for (const item of items) {
+    const time = new Date(item.at);
+    const day = localDay(time);
+    const last = groups.at(-1);
+    if (last?.day === day) last.items.push(item);
+    else
+      groups.push({
+        day,
+        when: day === today ? "today" : day === yesterday ? "yesterday" : time,
+        items: [item],
+      });
+  }
+  return groups;
+}
+
 /** One key per transfer: a transaction can move tokens several times, once per log. */
 export function transactionKey(t: Transaction): string {
   return `${t.chainId}:${t.txHash}:${t.logIndex}`;

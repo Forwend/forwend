@@ -59,10 +59,8 @@ import { exactDigits } from "@/shared/lib/money";
 
 const NOT_FOUND = 404;
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
-const PANEL = "rounded-lg border border-line bg-surface";
+const PANEL = "fw-panel sm:rounded-lg";
 const ICON = "size-[var(--fw-icon-md)] shrink-0";
-const LINK =
-  "inline-flex items-center gap-1 rounded-sm text-accent outline-none hover:underline focus-visible:outline-2 focus-visible:outline-focus";
 const CLOSING_SOON_MS = 30 * 60_000;
 // The payer's steps end at Paid: settling is the sender's business (R-68).
 const PAYER_STEPS = [INVOICE_STEPS.detected, INVOICE_STEPS.confirming, INVOICE_STEPS.paid];
@@ -217,28 +215,28 @@ function Summary({
       <div className="flex min-w-0 items-center gap-3">
         <span
           aria-hidden
-          className="grid size-11 shrink-0 place-items-center rounded-md border border-line bg-surface text-lg font-semibold text-ink"
+          className="grid size-10 shrink-0 place-items-center rounded-md border border-line bg-surface text-base font-semibold text-ink sm:size-11 sm:text-lg"
         >
           {(payee ?? COPY.noIssuer).trim().charAt(0).toUpperCase()}
         </span>
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <h1 className="text-xl font-semibold break-words text-ink">{payee ?? COPY.noIssuer}</h1>
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
-            <span className="break-words">
-              {[invoice.issuer ? COPY.invoice(number) : COPY.request(number), invoice.title]
-                .filter(Boolean)
-                .join(" · ")}
-            </span>
-            <a
-              href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.invoice)}
-              aria-label={COPY.pdfLabel}
-              className={LINK}
-            >
-              <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
-              {COPY.pdf}
-            </a>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <h1 className="text-lg font-semibold break-words text-ink sm:text-xl">
+            {payee ?? COPY.noIssuer}
+          </h1>
+          <p className="line-clamp-2 text-sm break-words text-muted">
+            {[invoice.issuer ? COPY.invoice(number) : COPY.request(number), invoice.title]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
         </div>
+        <a
+          href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.invoice)}
+          aria-label={COPY.pdfLabel}
+          className={`${buttonClasses({ variant: "secondary", size: "sm" })} shrink-0`}
+        >
+          <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
+          {COPY.pdf}
+        </a>
       </div>
       <div className="flex flex-col gap-1.5">
         <h2 id="pay-amount" className="text-sm text-muted">

@@ -157,6 +157,19 @@ export function formatDueDate(date: string): string {
   return DUE_DATE.format(new Date(`${date}T00:00:00Z`));
 }
 
+const DUE_DAY = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+/** As formatDueDate, without the year when it is the reader's current year: for rows with little room. */
+export function formatDueDateShort(date: string, now: Date): string {
+  return date.startsWith(`${now.getFullYear()}-`)
+    ? DUE_DAY.format(new Date(`${date}T00:00:00Z`))
+    : formatDueDate(date);
+}
+
 const EXCEPTIONS: Partial<Record<PaymentStatus, InvoiceException["kind"]>> = {
   [PAYMENT_STATUS.canceled]: INVOICE_EXCEPTIONS.canceled,
   [PAYMENT_STATUS.expired]: INVOICE_EXCEPTIONS.closedUnpaid,

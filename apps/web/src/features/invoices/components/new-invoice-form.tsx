@@ -435,12 +435,9 @@ export function NewInvoiceForm({ profileId, tokens, request, start }: NewInvoice
 // A titled group of fields: a panel with its title ruled off.
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <fieldset className="flex min-w-0 flex-col rounded-lg border border-line bg-surface">
+    <fieldset className="fw-panel flex min-w-0 flex-col sm:rounded-lg">
       <legend className="sr-only">{title}</legend>
-      <p
-        aria-hidden
-        className="border-b border-line px-4 py-3.5 text-base font-semibold text-ink sm:px-5"
-      >
+      <p aria-hidden className="fw-panel-head text-base font-semibold text-ink">
         {title}
       </p>
       <div className="flex flex-col gap-5 p-4 sm:p-5">{children}</div>
