@@ -24,8 +24,8 @@ Runner regression tests live in `tests/test_harness.py`. No installed skill is n
    Identify the owner, filename and allowed dependencies; search for existing code before adding another shared helper.
    Reproduce bugs first. Make the smallest fix and run its direct checks. Add tests for behavior, not formatting or copied prose.
 5. `verify ID --proof "1=CHECK: evidence" ...` runs task and required checks. Each acceptance line needs a named check.
-6. Review is required for every task that changes more than docs (`done` refuses it otherwise) and for tasks added
-   with `--review`. A fresh reviewer reads `show ID` and the diff, then runs `review ID --pass|--fail --summary "findings"`.
+6. Review is required for every task that changes more than docs (`done` refuses it otherwise; outside a git
+   repository the harness can't tell, so only `--review` tasks need it) and for tasks added with `--review`. A fresh reviewer reads `show ID` and the diff, then runs `review ID --pass|--fail --summary "findings"`.
 7. With commit/push/merge authorization, commit the verified files and run `done ID`. It pushes, opens the PR,
    checks the delivery policy ([staging.md](staging.md)) and merges.
    Pending CI: repeat `done ID`. Failed CI: fix, verify, review and commit again. Approval or closed PR: ask the owner.

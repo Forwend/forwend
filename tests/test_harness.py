@@ -306,6 +306,39 @@ class HarnessTests(unittest.TestCase):
             self.assertTrue(h.needs_review(h.State(self.root), self.task))
             self.assertEqual(hook(), 1)
 
+    def test_review_rule_edges(self):
+        # A failed diff (a base commit git doesn't know) can't prove docs-only: review is needed.
+        git = lambda *args: subprocess.run(['git', *args], cwd=self.root, check=True, capture_output=True, text=True).stdout
+        git('init', '-q')
+        git('add', '.')
+        git('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-qm', 'base')
+        self.task['baseCommit'] = 'f' * 40
+        self.assertTrue(h.needs_review(h.State(self.root), self.task))
+        # Untracked code counts, and only task records (JSON) under the archive are docs.
+        self.task['baseCommit'] = git('rev-parse', 'HEAD').strip()
+        (self.root / 'new.py').write_text('x = 1\n')
+        self.assertIn('new.py', h.changed_since(self.root, self.task['baseCommit']))
+        self.assertTrue(h.needs_review(h.State(self.root), self.task))
+        self.assertTrue(h.docs_only(['docs/archive/F001.json', 'README.md']))
+        self.assertFalse(h.docs_only(['docs/archive/run.py']))
+
+    def test_show_review_line_only_where_review_applies(self):
+        from argparse import Namespace
+        def shown(task):
+            self.task = task
+            self.save()
+            out = io.StringIO()
+            with patch.object(h, 'changed_since', return_value=['value.py']), contextlib.redirect_stdout(out):
+                h.cmd_show(self.root, Namespace(id='F001', history=False))
+            return out.getvalue()
+        base = dict(self.task)
+        self.assertIn('review: required', shown({**base, 'state': 'active'}))
+        self.assertNotIn('review:', shown({**base, 'state': 'passing'}))
+        self.assertIn('review: required', shown({**base, 'state': 'passing', 'review': True}))
+        self.assertIn('review: required', shown({**base, 'state': 'verified'}))
+        reviewed = {'review': {'result': 'pass', 'by': 'r', 'at': 't', 'summary': 's'}}
+        self.assertIn('review: pass by r', shown({**base, 'state': 'passing', 'evidence': reviewed}))
+
     def test_code_change_cannot_finish_without_review(self):
         from argparse import Namespace
         self.assertEqual(self.verify(), 0)

@@ -31,7 +31,7 @@ BOOKKEEPING = (TASKS, LOCK, RUNS + '/', 'docs/install.json')  # never fingerprin
 SKIP_DIRS = {'.git', 'node_modules', '__pycache__', '.venv', 'venv', '.next', 'dist', 'build', 'target', 'coverage'}
 TAIL_LINES = 30
 TASK_ID = re.compile(r'F\d{3,}')
-DOCS_ONLY = ('*.md', ARCHIVE + '/*')  # prose and task records: code checks have nothing new to test
+DOCS_ONLY = ('*.md', ARCHIVE + '/*.json')  # prose and task records: code checks have nothing new to test
 EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'  # git's empty tree, the base for repos without commits
 DEBUG_LEFTOVER = re.compile(r'console\.log\(|\bdebugger\b|breakpoint\(\)|pdb\.set_trace\(|binding\.pry|\bdbg!\(|\b(TODO|FIXME|XXX)\b')
 HOOKS = ('pre-commit', 'pre-push')
@@ -838,8 +838,9 @@ def cmd_show(root, args):
     for key in ('branch', 'spec', 'plan', 'blockedReason', 'baseCommit'):
         if task.get(key):
             print(f'{key}: {task[key]}')
-    if needs_review(state, task):
-        review = (task.get('evidence') or {}).get('review')
+    review = (task.get('evidence') or {}).get('review')
+    # A finished task's base commit is old, so whether it "changed code" is only asked of work in progress.
+    if review or task.get('review') or (task.get('state') in ('active', 'verified') and needs_review(state, task)):
         print('review: ' + (f'{review.get("result")} by {review.get("by")} at {review.get("at")}: {review.get("summary")}'
                             if review else 'required, not done yet'))
     for index, item in enumerate(task.get('acceptance') or [], 1):
