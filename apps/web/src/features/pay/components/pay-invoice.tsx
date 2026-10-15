@@ -530,8 +530,10 @@ function StatusLine({
 }) {
   const pending = pay.state === PAY_STATES.waiting;
   return (
+    // The status and Check status share the first row; what a check found takes the full row under them, so the
+    // button never moves when it answers.
     <div
-      className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-3 p-4 sm:p-5 ${bordered ? "border-t border-line" : ""}`}
+      className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 p-4 sm:p-5 ${bordered ? "border-t border-line" : ""}`}
     >
       <p role="status" className="flex items-start gap-2.5 text-sm font-medium text-ink">
         {pending ? (
@@ -549,6 +551,8 @@ function StatusLine({
           network={network}
           money={money}
           nextCheckAt={invoice.nextCheckAt}
+          className="contents"
+          messageClassName="col-span-2"
         />
       ) : null}
     </div>

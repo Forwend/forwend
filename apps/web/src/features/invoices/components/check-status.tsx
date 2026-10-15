@@ -16,13 +16,23 @@ export interface CheckStatusProps {
   network: string;
   money: (units: bigint) => string;
   nextCheckAt: string | null;
+  /** The wrapper's layout; "contents" hands the button and the message to the caller's grid. */
+  className?: string;
+  messageClassName?: string;
 }
 
 /**
  * Check status (R-55): asks Forwend to read the invoice's address on chain again and says what it found. It rests
  * until the next check the api allows, which the invoice read also gives, so a reload never asks again early.
  */
-export function CheckStatus({ invoiceId, network, money, nextCheckAt }: CheckStatusProps) {
+export function CheckStatus({
+  invoiceId,
+  network,
+  money,
+  nextCheckAt,
+  className = "flex flex-wrap items-center gap-x-3 gap-y-2",
+  messageClassName = "",
+}: CheckStatusProps) {
   const [recheck, { data, isLoading, error }] = useRecheckInvoiceMutation();
   // Asked too soon (another tab, or before the read caught up): rest, then the button comes back.
   const tooSoon = (error as { status?: unknown } | undefined)?.status === TOO_MANY_REQUESTS;
@@ -38,9 +48,18 @@ export function CheckStatus({ invoiceId, network, money, nextCheckAt }: CheckSta
   );
   const left = useLeft(next);
   const resting = left > 0;
+  const found = [
+    tooSoon ? COPY.recheckTooSoon : error ? COPY.recheckFailed : null,
+    data ? COPY.recheck(data, network, money) : null,
+    data && data.unreadable.length > 0
+      ? COPY.recheckUnreadable(data.unreadable.map(chainName).join(", "))
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+    <div className={className}>
       <Button
         size="sm"
         variant="secondary"
@@ -50,22 +69,14 @@ export function CheckStatus({ invoiceId, network, money, nextCheckAt }: CheckSta
       >
         {COPY.checkStatus}
       </Button>
-      <p className="text-sm text-muted">
-        <span role="status">
-          {[
-            tooSoon ? COPY.recheckTooSoon : error ? COPY.recheckFailed : null,
-            data ? COPY.recheck(data, network, money) : null,
-            data && data.unreadable.length > 0
-              ? COPY.recheckUnreadable(data.unreadable.map(chainName).join(", "))
-              : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </span>
+      {/* Kept in the page while empty, so its live region is there before the first answer; out of the layout
+          (sr-only) until there is something to read. */}
+      <p className={`text-sm text-muted ${found || left > 0 ? messageClassName : "sr-only"}`}>
+        <span role="status">{found}</span>
         {/* The countdown sits outside the live region, so screen readers are not told each second. */}
         {left > 0 ? (
           <span>
-            {data || tooSoon || error ? " · " : null}
+            {found ? " · " : null}
             {COPY.nextCheck(roughly(left))}
           </span>
         ) : null}

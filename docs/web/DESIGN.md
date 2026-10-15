@@ -170,8 +170,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   opens the optional field there, with Send inside its row and the line that the address is used for this receipt
   only (R-82). Before any money there is nothing to send a receipt for, so the row is not there. Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
   into "Confirm change" and only a second press starts over (leaving the button cancels), so a payer who already sent
-  does not switch by accident. Under the address one row: "Waiting for payment…" with a pulsing dot, and Check status on its right, which says
-  when the next check is allowed; nothing waits before the address shows. Once money is seen the panel keeps its place ("Paying with" while nothing more is due): the steps
+  does not switch by accident. Under the address one row: "Waiting for payment…" with a pulsing dot, and Check status on its right; what a check
+  found and when the next check is allowed take their own line under them, so the button never moves; nothing waits before the address shows. Once money is seen the panel keeps its place ("Paying with" while nothing more is due): the steps
   Detected, Confirming and Paid fade in, the waiting one moving (Partially paid tinted on Paid), one line for what the
   steps cannot say ("Final check", or what is left to pay), and each payment with its amount, time,
   short hash and explorer link. The address stays only while money is still due. Closed says so in one line. Paid

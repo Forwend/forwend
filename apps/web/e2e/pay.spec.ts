@@ -263,6 +263,42 @@ test.describe("pay page", () => {
     await expect(page.getByText("Next check in 4 min", { exact: true })).toBeVisible();
   });
 
+  // A bug a user hit: once a check answered, its message pushed Check status off the status's row.
+  test("Check status stays beside the status once a check answers, with the answer under them", async ({
+    page,
+  }) => {
+    await openPay(page, OPEN);
+    await showAddress(page).click();
+    await page.route(`**/api/v1/invoices/${ID}/recheck`, (route) =>
+      route.fulfill({
+        json: {
+          onChain: "0",
+          recorded: "0",
+          rescanning: false,
+          nextCheckAt: new Date(NOW.getTime() + 300_000).toISOString(),
+          unreadable: [],
+        },
+      }),
+    );
+    const waiting = page.getByRole("status").filter({ hasText: "Waiting for payment…" });
+    const check = page.getByRole("button", { name: "Check status" });
+    const answer = page.getByText(/· Next check in 5 min$/);
+    for (const width of [1440, 390, 360]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.reload();
+      await check.click();
+      await expect(answer).toBeVisible();
+      const [row, button, below] = await Promise.all([
+        waiting.boundingBox(),
+        check.boundingBox(),
+        answer.boundingBox(),
+      ]);
+      const middle = (box: typeof row) => (box ? box.y + box.height / 2 : 0);
+      expect(Math.abs(middle(row) - middle(button))).toBeLessThan(4);
+      expect(below && button && below.y >= button.y + button.height).toBe(true);
+    }
+  });
+
   test("Check status asked too soon rests instead of reporting a network failure", async ({
     page,
   }) => {
