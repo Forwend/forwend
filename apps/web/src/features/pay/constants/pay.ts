@@ -23,5 +23,6 @@ export const PAY_STATES = {
   partial: "partial",
   closedPartial: "closedPartial",
   closed: "closed",
+  canceled: "canceled",
   waiting: "waiting",
 } as const;

@@ -12,6 +12,7 @@ export const PAY_COPY = {
   pdf: "PDF",
   pdfLabel: "Download invoice PDF",
   amountDue: "Amount due",
+  amount: "Amount",
   amountPaid: "Amount paid",
   leftToPay: "Left to pay",
   on: (network: string) => `on ${network}`,
@@ -54,6 +55,7 @@ export const PAY_COPY = {
     [PAY_STATES.settled]: () => "Paid",
     [PAY_STATES.closed]: ({ payee }) =>
       `This invoice is closed. If you already sent money, it is not lost: contact ${payee}.`,
+    [PAY_STATES.canceled]: ({ payee }) => `${payee} canceled this invoice. Do not send money.`,
     [PAY_STATES.closedPartial]: ({ received, payee }) =>
       `Closed before the full amount arrived. The ${received} you sent is held for you; ask ${payee} to get it back.`,
   } satisfies Record<PayState, (v: StateValues) => string>,
@@ -71,6 +73,8 @@ export const PAY_COPY = {
     "Copy the address from this page for the rest, not from your wallet's history: scammers plant look-alike addresses there.",
   late: (late: string, payee: string) =>
     `${late} arrived after the checkout closed. It is held for you; ask ${payee} to get it back.`,
+  canceledHeld: (received: string, payee: string) =>
+    `The ${received} you sent is held for you; ask ${payee} to get it back.`,
   otherOption: (amount: string, network: string, payee: string) =>
     `${amount} sent on ${network} went to another payment option. It is held for you; ask ${payee} to get it back.`,
   change: "Change",

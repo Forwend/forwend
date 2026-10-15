@@ -63,6 +63,7 @@ const OPEN = {
   createdAt: "2026-10-10T11:00:00Z",
   paidAt: null as string | null,
   settledAt: null as string | null,
+  canceledAt: null,
   deposits: [] as object[],
 };
 const CHOOSING = {
@@ -149,6 +150,7 @@ const PARTIAL = {
   ],
 };
 const CLOSED = { ...OPEN, paymentStatus: "expired" };
+const CANCELED = { ...OPEN, paymentStatus: "canceled", canceledAt: "2026-10-10T10:05:00Z" };
 
 // R-68: one short screen: who asks, the amount, Pay with, the address on request, one status line.
 test.describe("pay page", () => {
@@ -332,6 +334,26 @@ test.describe("pay page", () => {
     expect(await page.evaluate(() => (window as unknown as { stayed?: boolean }).stayed)).toBe(
       true,
     );
+  });
+
+  // R-79: a canceled invoice says so and shows no address; money that still arrives is held for the payer.
+  test("tells the payer a canceled invoice takes no money", async ({ page }) => {
+    await openPay(page, CANCELED);
+    await expect(status(page)).toHaveText(
+      "Alice Design GmbH canceled this invoice. Do not send money.",
+    );
+    await expect(showAddress(page)).toHaveCount(0);
+    await expect(page.getByText("Amount", { exact: true })).toBeVisible();
+
+    await page.unrouteAll({ behavior: "ignoreErrors" });
+    await mockInvoice(page, { ...CANCELED, deposits: [{ ...DEPOSIT, amount: "250000000" }] });
+    await page.reload();
+    await expect(
+      page.getByText(
+        "The 250.00 USDC you sent is held for you; ask Alice Design GmbH to get it back.",
+      ),
+    ).toBeVisible();
+    await expect(showAddress(page)).toHaveCount(0);
   });
 
   test("says what is left when partly paid, and that a closed invoice takes no more", async ({

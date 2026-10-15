@@ -27,8 +27,8 @@ Routes: `apps/backend/api/openapi.yaml`; each module mounts its own in `internal
 - Money: decimal string in base units (`"5000000"`) next to `chainId` and `token` (contract address), as in R-19.
 - Times: RFC 3339 in UTC. IDs and addresses: strings.
 - Lists: `?limit=` (max 100) and `?cursor=`; response `{ "items": [...], "nextCursor": "…" }`.
-- The owner's invoice, activity and transaction lists also take a filter (`?status=` open | paid | settled | expired
-  on invoices and activity, where a closed checkout (`closed`, R-77) counts as expired, `?direction=` in | out on transactions) and `?q=`, a search of 1–100 characters (blank or
+- The owner's invoice, activity and transaction lists also take a filter (`?status=` open | paid | settled | expired |
+  canceled on invoices and activity, where a closed checkout (`closed`, R-77) counts as expired, `?direction=` in | out on transactions) and `?q=`, a search of 1–100 characters (blank or
   longer: 422). Both narrow the list before paging, so `nextCursor` continues the filtered list. A field matches when
   it contains `q` in any letter case. When `q` is a decimal number (digits and one point; thousands commas are
   dropped) it also matches an amount equal to it in whole tokens: `amount = q × 10^decimals` in Postgres `numeric`,
@@ -98,6 +98,12 @@ R-19 and R-42; the full schema is in openapi.yaml.
   first; items have no `deposits`. Owner only, like every `{profileId}` route.
 - `GET /v1/profiles/{profileId}/invoices/{invoiceId}`: the public GET plus `client` and `settlementWait`. Another
   profile's invoice is 404 (`invoice_not_found`), also when the same user owns both.
+- `POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel` (R-79, D-79): cancels the invoice and every option of
+  it, only while all are open, the checkout is open and no transfer was ever seen; otherwise 409
+  `invoice_not_cancelable`. It locks the rows the ledger locks. The watcher records transfers without that lock, so a
+  transfer seen in the same moment can land on a canceled invoice: it is held like any later deposit. Canceled is
+  final and sets `canceledAt`; the ledger holds any later deposit for the payer (D-26), and `invoice.pdf` drops the pay
+  link and code.
 - `settlementWait` (owner reads and create only) says why a paid invoice's money has not reached the profile wallet
   yet, null when it is not paid or already settled (R-54): `{kind, until, secondsLeft}` with `kind` one of `signing`,
   `finalizing` (`secondsLeft` estimates the chain time until the settle is final), `retrying` and `dailyLimit` (the

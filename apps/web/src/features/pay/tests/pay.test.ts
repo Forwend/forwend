@@ -38,6 +38,7 @@ const invoice: Invoice = {
   createdAt: "2026-10-10T10:00:00Z",
   paidAt: null,
   settledAt: null,
+  canceledAt: null,
   deposits: [],
 };
 const deposit = (amount: string, extra: Partial<Deposit> = {}): Deposit => ({
@@ -93,6 +94,20 @@ describe("payState", () => {
     expect(
       payState({ ...seen, paymentStatus: "paid", settlementStatus: "settled" }, before).state,
     ).toBe(PAY_STATES.settled);
+  });
+
+  it("takes nothing once canceled, and holds whatever still arrives (R-79)", () => {
+    const canceled = { ...invoice, paymentStatus: "canceled", canceledAt: "2026-10-10T10:05:00Z" };
+    expect(payState(canceled, before)).toMatchObject({
+      state: PAY_STATES.canceled,
+      canSend: false,
+    });
+    const sent = { ...canceled, deposits: [deposit("1000")] };
+    expect(payState(sent, before)).toMatchObject({
+      state: PAY_STATES.canceled,
+      canSend: false,
+      received: 1000n,
+    });
   });
 
   it("holds what was sent too late", () => {

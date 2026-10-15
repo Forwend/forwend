@@ -100,6 +100,7 @@ const PAID_TWICE = {
   createdAt: "2026-10-10T11:00:00Z",
   paidAt: "2026-10-10T12:05:00Z",
   settledAt: null,
+  canceledAt: null,
   deposits: [deposit("3")],
 };
 

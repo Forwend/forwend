@@ -6,6 +6,7 @@ export const API_PAYMENT_STATUSES = {
   paid: "paid",
   expired: "expired",
   expiredPartiallyPaid: "expired_partially_paid",
+  canceled: "canceled",
 } as const;
 
 /** Invoice.settlementStatus values. */
@@ -39,4 +40,5 @@ export const STATUS_FILTERS = {
   paid: "paid",
   settled: "settled",
   expired: "expired",
+  canceled: "canceled",
 } as const;

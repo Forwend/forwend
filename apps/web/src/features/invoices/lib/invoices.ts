@@ -121,10 +121,13 @@ export function invoiceProgress(inv: Invoice) {
         : deposits.length > 0
           ? 3
           : 0;
+  // Closed (R-77) and canceled (R-79) take no more money: nothing moves.
   const ended =
     settled ||
+    inv.closed ||
     inv.paymentStatus === API_PAYMENT_STATUSES.expired ||
-    inv.paymentStatus === API_PAYMENT_STATUSES.expiredPartiallyPaid;
+    inv.paymentStatus === API_PAYMENT_STATUSES.expiredPartiallyPaid ||
+    inv.paymentStatus === API_PAYMENT_STATUSES.canceled;
   return {
     done,
     current: ended ? null : (INVOICE_TIMELINE[done] ?? null),
@@ -155,6 +158,7 @@ export function formatDueDate(date: string): string {
 }
 
 const EXCEPTIONS: Partial<Record<PaymentStatus, InvoiceException["kind"]>> = {
+  [PAYMENT_STATUS.canceled]: INVOICE_EXCEPTIONS.canceled,
   [PAYMENT_STATUS.expired]: INVOICE_EXCEPTIONS.closedUnpaid,
   [PAYMENT_STATUS.expiredPartiallyPaid]: INVOICE_EXCEPTIONS.closedPartial,
 };

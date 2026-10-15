@@ -73,10 +73,12 @@ type issuerJSON struct {
 // invoiceDetailJSON is one invoice read alone: with its deposits and, once reached, the paid and settled times.
 type invoiceDetailJSON struct {
 	invoiceJSON
-	PaidAt    *string       `json:"paidAt"`
-	SettledAt *string       `json:"settledAt"`
-	Deposits  []depositJSON `json:"deposits"`
-	Options   []optionJSON  `json:"options"`
+	PaidAt    *string `json:"paidAt"`
+	SettledAt *string `json:"settledAt"`
+	// When the owner canceled it (R-79); null otherwise.
+	CanceledAt *string       `json:"canceledAt"`
+	Deposits   []depositJSON `json:"deposits"`
+	Options    []optionJSON  `json:"options"`
 	// When Check status may run again; null when it may now (R-55).
 	NextCheckAt *string `json:"nextCheckAt"`
 }
@@ -149,7 +151,7 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 
 func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON {
 	out := invoiceDetailJSON{invoiceJSON: toInvoiceJSON(inv, withClient), PaidAt: httpio.OrNullTime(inv.PaidAt),
-		SettledAt: httpio.OrNullTime(inv.SettledAt), Deposits: []depositJSON{}, Options: []optionJSON{},
+		SettledAt: httpio.OrNullTime(inv.SettledAt), CanceledAt: httpio.OrNullTime(inv.CanceledAt), Deposits: []depositJSON{}, Options: []optionJSON{},
 		NextCheckAt: httpio.OrNullTime(inv.NextCheckAt)}
 	for _, o := range inv.Options {
 		out.Options = append(out.Options, optionJSON{OptionID: o.ID, ChainID: o.ChainID, Network: o.Network,

@@ -108,7 +108,11 @@ export function ComponentsShowcase() {
       <KitGroup title="Button: variants">
         {Object.values(BUTTON_VARIANTS).map((variant) => (
           <Button key={variant} variant={variant}>
-            {variant === BUTTON_VARIANTS.link ? "Read the docs" : CTA.joinWaitlist}
+            {variant === BUTTON_VARIANTS.link
+              ? "Read the docs"
+              : variant === BUTTON_VARIANTS.danger
+                ? "Cancel invoice"
+                : CTA.joinWaitlist}
           </Button>
         ))}
       </KitGroup>

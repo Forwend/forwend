@@ -15,6 +15,7 @@ const INVOICE_STATUSES: Readonly<Record<string, PaymentStatus>> = {
   [API_PAYMENT_STATUSES.paid]: PAYMENT_STATUS.paid,
   [API_PAYMENT_STATUSES.expired]: PAYMENT_STATUS.expired,
   [API_PAYMENT_STATUSES.expiredPartiallyPaid]: PAYMENT_STATUS.expiredPartiallyPaid,
+  [API_PAYMENT_STATUSES.canceled]: PAYMENT_STATUS.canceled,
 };
 
 /**

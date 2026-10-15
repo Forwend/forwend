@@ -52,7 +52,9 @@ export function payState(inv: Invoice, now: number) {
     inv.deposits.filter((d) => d.late === late).reduce((s, d) => s + BigInt(d.amount), 0n);
   const received = sum(false);
   const late = sum(true);
+  const canceled = inv.paymentStatus === API_PAYMENT_STATUSES.canceled;
   const closed =
+    canceled ||
     now >= checkoutClosesAt(inv) ||
     inv.paymentStatus === API_PAYMENT_STATUSES.expired ||
     inv.paymentStatus === API_PAYMENT_STATUSES.expiredPartiallyPaid;
@@ -64,17 +66,20 @@ export function payState(inv: Invoice, now: number) {
       ? PAY_STATES.settled
       : inv.paymentStatus === API_PAYMENT_STATUSES.paid
         ? PAY_STATES.paid
-        : confirming
-          ? PAY_STATES.confirming
-          : received >= amount
-            ? PAY_STATES.checking
-            : received > 0n
-              ? closed
-                ? PAY_STATES.closedPartial
-                : PAY_STATES.partial
-              : closed
-                ? PAY_STATES.closed
-                : PAY_STATES.waiting;
+        : // Canceled takes no money, whatever arrives: it is all held for the payer (R-79, D-26).
+          canceled
+          ? PAY_STATES.canceled
+          : confirming
+            ? PAY_STATES.confirming
+            : received >= amount
+              ? PAY_STATES.checking
+              : received > 0n
+                ? closed
+                  ? PAY_STATES.closedPartial
+                  : PAY_STATES.partial
+                : closed
+                  ? PAY_STATES.closed
+                  : PAY_STATES.waiting;
   return {
     state,
     closed,

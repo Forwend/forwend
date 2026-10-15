@@ -93,6 +93,7 @@ describe("checkedReceiveAddress", () => {
     createdAt: "2026-10-10T10:00:00Z",
     paidAt: null,
     settledAt: null,
+    canceledAt: null,
     deposits: [],
   };
 

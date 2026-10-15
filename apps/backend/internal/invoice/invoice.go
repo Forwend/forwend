@@ -125,6 +125,8 @@ type Invoice struct {
 	PaidAt time.Time
 	// SettledAt is when the settlement was booked as final, from the ledger; set by Get once settled.
 	SettledAt time.Time
+	// CanceledAt is when the owner canceled it (R-79); zero otherwise.
+	CanceledAt time.Time
 	// SettlementWait says why a paid invoice's money has not reached the creator yet; nil when it is not waiting.
 	// Set by Get.
 	SettlementWait *SettlementWait

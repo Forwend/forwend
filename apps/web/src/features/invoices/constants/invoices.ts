@@ -21,6 +21,7 @@ export const PAY_WITH = { any: "any", fixed: "fixed" } as const;
 
 /** The states whose owner page says what to do next (R-77). */
 export const INVOICE_EXCEPTIONS = {
+  canceled: "canceled",
   closedUnpaid: "closedUnpaid",
   closedPartial: "closedPartial",
 } as const;

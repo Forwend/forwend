@@ -52,12 +52,23 @@ export const invoicesApi = apiSlice
       getInvoice: build.query<Invoice, string>({
         query: (invoiceId) => `/v1/invoices/${encodeURIComponent(invoiceId)}`,
         responseSchema: invoiceSchema,
+        providesTags: [INVOICES_TAG],
       }),
       /** The owner's read: the public one plus the client; 404 for another profile's invoice. */
       getProfileInvoice: build.query<Invoice, { profileId: string; invoiceId: string }>({
         query: ({ profileId, invoiceId }) =>
           `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}`,
         responseSchema: invoiceSchema,
+        providesTags: [INVOICES_TAG],
+      }),
+      /** Cancel before any money (R-79): 409 once money was seen or the checkout closed. */
+      cancelInvoice: build.mutation<Invoice, { profileId: string; invoiceId: string }>({
+        query: ({ profileId, invoiceId }) => ({
+          url: `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}/cancel`,
+          method: "POST",
+        }),
+        responseSchema: invoiceSchema,
+        invalidatesTags: [INVOICES_TAG],
       }),
       /** Check status: public, like the checkout read; the api allows one per invoice every 5 minutes. */
       recheckInvoice: build.mutation<Recheck, string>({
@@ -96,5 +107,6 @@ export const {
   useGetInvoiceQuery,
   useGetProfileInvoiceQuery,
   useCreateInvoiceMutation,
+  useCancelInvoiceMutation,
   useRecheckInvoiceMutation,
 } = invoicesApi;

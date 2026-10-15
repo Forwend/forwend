@@ -58,6 +58,7 @@ export const sampleInvoice = (
     settlementStatus === "settled"
       ? new Date(NOW - number * 3_600_000 + 1_200_000).toISOString()
       : null,
+  canceledAt: null,
   nextCheckAt: null,
 });
 export const CONFIRMING_INVOICE = sampleInvoice(

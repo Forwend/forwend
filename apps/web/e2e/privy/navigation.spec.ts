@@ -676,6 +676,66 @@ test("the owner's invoice page names the next step of every exception", async ({
   await context.close();
 });
 
+// R-79: the owner cancels an invoice that has no money yet, after a confirm that says what canceling means.
+test("the owner cancels an invoice before any money, after confirming", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page, {
+    invoices: [OPEN_INVOICE],
+    activity: [activityItem(OPEN_INVOICE)],
+    transfers: [],
+  });
+  let body: object = { ...OPEN_INVOICE, deposits: [] };
+  let cancels = 0;
+  await page.route(
+    (url) =>
+      url.pathname.startsWith("/api/") &&
+      url.pathname.endsWith(`/invoices/${OPEN_INVOICE.invoiceId}`),
+    (route) => route.fulfill({ json: body }),
+  );
+  await page.route(
+    (url) => url.pathname.endsWith(`/invoices/${OPEN_INVOICE.invoiceId}/cancel`),
+    (route) => {
+      cancels++;
+      body = {
+        ...OPEN_INVOICE,
+        paymentStatus: "canceled",
+        canceledAt: new Date().toISOString(),
+        deposits: [],
+      };
+      return route.fulfill({ json: body });
+    },
+  );
+  const main = page.getByRole("main");
+  const header = main.locator("header");
+  await page.goto(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
+  const dialog = page.getByRole("dialog", { name: "Cancel INV-0002?" });
+
+  // Keep: nothing happens.
+  await header.getByRole("button", { name: "Cancel invoice" }).click({ timeout: 15_000 });
+  await expect(dialog).toContainText("The pay link stops taking payments.");
+  expect(await blockingViolations(page)).toEqual([]);
+  await dialog.getByRole("button", { name: "Keep invoice" }).click();
+  await expect(dialog).toBeHidden();
+  expect(cancels).toBe(0);
+
+  // Confirm: canceled, said in a toast, and the page no longer takes money or offers to cancel.
+  await header.getByRole("button", { name: "Cancel invoice" }).click();
+  await dialog.getByRole("button", { name: "Cancel invoice" }).click();
+  await expect(page.getByText("INV-0002 canceled")).toBeVisible();
+  expect(cancels).toBe(1);
+  await expect(header.locator("[data-status]")).toHaveText("Canceled");
+  await expect(header).toContainText(/Canceled /);
+  // The dialog and its trigger are gone, so keyboard focus moves to the status, not to the page body.
+  await expect(header.locator("p[tabindex='-1']")).toBeFocused();
+  await expect(header.getByRole("region", { name: "Pay link" })).toHaveCount(0);
+  await expect(header.getByRole("button", { name: "Cancel invoice" })).toHaveCount(0);
+  await context.close();
+});
+
 // R-77: a closed checkout reads Expired in the lists too, as soon as the API says closed.
 test("the invoice list and activity show a closed checkout as expired", async ({ browser }) => {
   const context = await browser.newContext({

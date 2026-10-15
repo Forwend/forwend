@@ -218,6 +218,9 @@ export const INVOICE_COPY = {
   // What happened and what to do, under the status (R-77). Amounts arrive formatted with their symbol; `noun` is
   // invoice or request.
   next: {
+    // Only said when money came: canceled with nothing sent needs no line under the badge.
+    [INVOICE_EXCEPTIONS.canceled]: ({ held, noun }) =>
+      `${held} arrived after the ${noun} was canceled and is held for the payer.`,
     [INVOICE_EXCEPTIONS.closedUnpaid]: ({ noun }) =>
       `The checkout closed with nothing paid. A closed ${noun} can't take money again.`,
     [INVOICE_EXCEPTIONS.closedPartial]: ({ held, left, noun }) =>
@@ -257,6 +260,18 @@ export const INVOICE_COPY = {
   openPayPage: "Open the pay page in a new tab",
   closesOn: (time: string) => `Checkout closes ${time}`,
   closedOn: (time: string) => `Checkout closed ${time}`,
+  canceledOn: (time: string) => `Canceled ${time}`,
+  // Cancel before any money (R-79, D-79): the confirm dialog and its outcome.
+  cancel: {
+    trigger: (noun: string) => `Cancel ${noun}`,
+    title: (number: string) => `Cancel ${number}?`,
+    body: "The pay link stops taking payments. Money sent after this is held for the payer. This can't be undone.",
+    keep: (noun: string) => `Keep ${noun}`,
+    confirm: (noun: string) => `Cancel ${noun}`,
+    done: (number: string) => `${number} canceled`,
+    failed: "We could not cancel it. Try again.",
+    tooLate: "It can't be canceled anymore: money was seen or the checkout closed.",
+  },
   paidOn: (time: string) => `Paid ${time}`,
   settledOn: (time: string) => `Settled ${time}`,
   noIssuer: "None on this invoice.",

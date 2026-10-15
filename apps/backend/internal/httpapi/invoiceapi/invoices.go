@@ -82,6 +82,19 @@ func getInvoice(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
+// cancelInvoice is POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel (R-79): 200 with the canceled invoice;
+// 409 invoice_not_cancelable once money was seen, the checkout closed or the invoice is not open.
+func cancelInvoice(invoices *invoice.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		inv, err := invoices.Cancel(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, toOwnerInvoiceJSON(inv))
+	}
+}
+
 // getProfileInvoice is GET /v1/profiles/{profileId}/invoices/{invoiceId}: the public read with the client's details.
 func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

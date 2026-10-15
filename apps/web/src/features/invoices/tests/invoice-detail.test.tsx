@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { ToastProvider } from "@forwend/ui-web";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -70,6 +71,7 @@ const OPEN = {
   createdAt: "2026-10-10T11:00:00Z",
   paidAt: null,
   settledAt: null,
+  canceledAt: null,
   deposits: [],
   settlementWait: null,
 };
@@ -84,11 +86,13 @@ function serve(invoice: object) {
 function show(tokens: (typeof TOKEN)[] | null = [TOKEN]) {
   render(
     <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-      <InvoiceDetail
-        invoiceId={ID}
-        profileId="6f9619ff-8b86-4011-b42d-00c04fc964ff"
-        tokens={tokens}
-      />
+      <ToastProvider>
+        <InvoiceDetail
+          invoiceId={ID}
+          profileId="6f9619ff-8b86-4011-b42d-00c04fc964ff"
+          tokens={tokens}
+        />
+      </ToastProvider>
     </Provider>,
   );
 }
