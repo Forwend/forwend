@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 207,
+  "nextId": 208,
   "tasks": [
     {
       "id": "F179",
@@ -2921,6 +2921,108 @@
       "delivery": {
         "mode": "pr",
         "branch": "feat/f206-refine-the-app-wide-fintech-visual-syste",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F207",
+      "type": "fix",
+      "behavior": "The receive address stays on one line in Linux browsers too, where each character's width is rounded to a whole pixel",
+      "acceptance": [
+        "In Linux Chromium (whole-pixel glyph widths) and on macOS the whole receive address stays on one line at every address box width from 252 to 440 px; a measurement with the shipped Geist Mono file proves both",
+        "The pay e2e test that keeps the address on one line once copied passes locally and on staging CI"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-78"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-15 review pass by reviewer: PASS. packages/ui-web/src/components/payments/receive-address.tsx:50 (100cqi - 21px)/25.2 is right at 1x: shipped Geist Mono (same bytes as .next/static/media/797e433ab948586e-s.0r6juujl39pe6.woff2) is 0.6em wide at weights 400 and 500, 42 x 0.6em = 25.2em, and nearest-pixel rounding adds at most 0.5px x 42 = 21px. Build CSS .next/static/chunks/02-r8w_b2q4u4.css has font-size:clamp(.625rem,3.96825cqi - .833333px,1rem): valid, spaces kept, and the minifier rounding makes the size about 0.00001px smaller (safe side); the old 25.5 rule is gone. The 10px floor applies to boxes up to 273px (6px glyphs, 252px needed); the 16px cap starts at 424.2px (Linux text 420px). Rechecked in the Playwright 1.64.0 Linux image with the compiled rule: 0 wraps at all 189 integer box widths 252-440 (old rule 66); macOS 0 of 1005 widths. Real pay page on the dev server: the address box is a whole number at all 1121 window widths 320-1440 (window minus 69px below 640). Comment lines 15-20 match the code. pay-invoice.tsx:449, receive-sheet.tsx:138 and kit/payments-showcase.tsx:62 all use this component; no other copy of the formula. DESIGN.md:215 is still true. Commit message is accurate. pnpm lint and ui-web tests (14) pass; the verify e2e log shows pay.spec.ts:672 passed. Non-blocking notes: (1) No spare room at the boundary: on Linux, fractional boxes 293.92-293.97, 377.84-377.97 and 419.92-419.97px still wrap (font sizes move in 1/64px steps). The pay page never produces such widths (0 of 1121), and the Receive sheet uses whole rem widths. (2) At forced device scale 0.9/0.8/1.25 on Linux the new rule still wraps at 8/26/17 of 189 widths (old rule 77/77/70; nothing newly broken); at 1.25 all wraps are in the 10px floor zone. (3) A 320px window gives a 251px box, 1px short of what the 10px floor needs, so the address wraps there on every platform, same as before this change. R-78 says every width, so this may need its own task. (4) The staging CI half of acceptance 2 can only be confirmed after merge. (5) 21px is a raw pixel value (docs/web/rules.md:6), but it has to be CSS px because the rounding is per pixel, and raw px already appears elsewhere (max-[359px]); acceptable. (6) Trade-off: on phones the address is about 0.7px smaller than before (11.90px vs 12.59px at a 390px window), and macOS/iOS leave 21px free at the line end."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T23:15:01Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 210.5,
+            "log": "docs/runs/F207-20261015T231501Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F207-20261015T231501Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F207-20261015T231501Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F207-20261015T231501Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F207-20261015T231501Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 68.7,
+            "log": "docs/runs/F207-20261015T231501Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.5,
+            "log": "docs/runs/F207-20261015T231501Z-build.log"
+          }
+        ],
+        "taskHash": "7d7ee866316f8e9a",
+        "filesHash": "742af84c478f52e1",
+        "proof": {
+          "1": "e2e: the pay address test passes; also measured on the real pay page in Linux Chromium (Playwright 1.64.0 image): before the fix the address wrapped at 390 and 360 px (48px tall, as on staging CI), after it one line at 1440/390/360; with the shipped Geist Mono file every box width from 252 to 440 px: old formula wraps at 66 widths on Linux, the new one at 0; macOS one line everywhere",
+          "2": "e2e: pay.spec 'the address stays on one line once copied, and Copy keeps its width' passes in the local verify; staging CI (Linux) runs it after the merge"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. packages/ui-web/src/components/payments/receive-address.tsx:50 (100cqi - 21px)/25.2 is right at 1x: shipped Geist Mono (same bytes as .next/static/media/797e433ab948586e-s.0r6juujl39pe6.woff2) is 0.6em wide at weights 400 and 500, 42 x 0.6em = 25.2em, and nearest-pixel rounding adds at most 0.5px x 42 = 21px. Build CSS .next/static/chunks/02-r8w_b2q4u4.css has font-size:clamp(.625rem,3.96825cqi - .833333px,1rem): valid, spaces kept, and the minifier rounding makes the size about 0.00001px smaller (safe side); the old 25.5 rule is gone. The 10px floor applies to boxes up to 273px (6px glyphs, 252px needed); the 16px cap starts at 424.2px (Linux text 420px). Rechecked in the Playwright 1.64.0 Linux image with the compiled rule: 0 wraps at all 189 integer box widths 252-440 (old rule 66); macOS 0 of 1005 widths. Real pay page on the dev server: the address box is a whole number at all 1121 window widths 320-1440 (window minus 69px below 640). Comment lines 15-20 match the code. pay-invoice.tsx:449, receive-sheet.tsx:138 and kit/payments-showcase.tsx:62 all use this component; no other copy of the formula. DESIGN.md:215 is still true. Commit message is accurate. pnpm lint and ui-web tests (14) pass; the verify e2e log shows pay.spec.ts:672 passed. Non-blocking notes: (1) No spare room at the boundary: on Linux, fractional boxes 293.92-293.97, 377.84-377.97 and 419.92-419.97px still wrap (font sizes move in 1/64px steps). The pay page never produces such widths (0 of 1121), and the Receive sheet uses whole rem widths. (2) At forced device scale 0.9/0.8/1.25 on Linux the new rule still wraps at 8/26/17 of 189 widths (old rule 77/77/70; nothing newly broken); at 1.25 all wraps are in the 10px floor zone. (3) A 320px window gives a 251px box, 1px short of what the 10px floor needs, so the address wraps there on every platform, same as before this change. R-78 says every width, so this may need its own task. (4) The staging CI half of acceptance 2 can only be confirmed after merge. (5) 21px is a raw pixel value (docs/web/rules.md:6), but it has to be CSS px because the rounding is per pixel, and raw px already appears elsewhere (max-[359px]); acceptable. (6) Trade-off: on phones the address is about 0.7px smaller than before (11.90px vs 12.59px at a 390px window), and macOS/iOS leave 21px free at the line end.",
+          "at": "2026-10-15T23:31:49Z",
+          "filesHash": "742af84c478f52e1"
+        },
+        "commit": "af9ee04",
+        "doneAt": "2026-10-15T23:32:25Z"
+      },
+      "branch": "fix/f207-the-receive-address-stays-on-one-line-in",
+      "baseCommit": "d3ba20cf5aba4872ea382bd5f6d7b5e6c4378a18",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f207-the-receive-address-stays-on-one-line-in",
         "base": "main"
       }
     }
