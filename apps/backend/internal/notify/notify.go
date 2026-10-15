@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/document"
@@ -33,10 +34,10 @@ func Backoff(n int) time.Duration {
 	return min(time.Minute<<min(n-1, 6), time.Hour)
 }
 
-// Deliver sends up to Batch due events. webURL is the web app's origin, for the invoice link.
-func Deliver(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, webURL string) error {
+// Deliver sends up to Batch due events.
+func Deliver(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, site Site) error {
 	for range Batch {
-		more, err := deliverOne(ctx, pool, sender, webURL)
+		more, err := deliverOne(ctx, pool, sender, site)
 		if err != nil || !more {
 			return err
 		}
@@ -45,7 +46,7 @@ func Deliver(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, webUR
 }
 
 // deliverOne sends the oldest due event; false when none is due.
-func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, webURL string) (bool, error) {
+func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, site Site) (bool, error) {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return false, fmt.Errorf("deliver email: %w", err)
@@ -66,20 +67,20 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 		return false, fmt.Errorf("claim email event: %w", err)
 	}
 	var (
-		m     email.Message
+		v     view
 		to    *string
 		on    bool
 		scope string // what the event is about, for the Idempotency-Key
 	)
 	if kind == outbox.Welcome {
 		// About the account, not a profile's invoices: the profile's email setting doesn't apply (R-84).
-		on, scope, m = true, "user-"+user, welcome(webURL+"/app")
+		on, scope, v = true, "user-"+user, welcome(site.WebURL+"/app")
 		if err := tx.QueryRow(ctx, "SELECT login_email FROM users WHERE id = $1", user).Scan(&to); err != nil {
 			return false, fmt.Errorf("read email event %d user: %w", id, err)
 		}
 	} else {
 		scope = invoice
-		if m, to, on, err = invoiceEmail(ctx, tx, kind, invoice, payload, webURL); err != nil {
+		if v, to, on, err = invoiceEmail(ctx, tx, kind, invoice, payload, site.WebURL); err != nil {
 			return false, fmt.Errorf("read email event %d: %w", id, err)
 		}
 	}
@@ -94,6 +95,10 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 	// The invoice or user id too: event ids start again in another database (a reset, staging) that may share the
 	// Resend team. And the address: a receipt sent again to a changed address is a new request, which Resend would
 	// refuse under a key it already saw with another body.
+	m, err := message(site, v)
+	if err != nil {
+		return false, fmt.Errorf("render email event %d: %w", id, err)
+	}
 	sum := sha256.Sum256([]byte(*to))
 	m.To, m.Key = *to, fmt.Sprintf("forwend-%s-%d-%x", scope, id, sum[:8])
 	if err := sender.Send(ctx, m); err != nil {
@@ -121,10 +126,10 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 // invoiceEmail builds an invoice event's email and says where it goes: the owner's login email when the profile has
 // email on, or the payer's address for the receipt.
 func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload []byte,
-	webURL string) (email.Message, *string, bool, error) {
+	webURL string) (view, *string, bool, error) {
 	var p outbox.Payload
 	if err := json.Unmarshal(payload, &p); err != nil {
-		return email.Message{}, nil, false, err
+		return view{}, nil, false, err
 	}
 	var (
 		on                   bool
@@ -143,7 +148,7 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 		JOIN invoices o ON o.id = $2 JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
 		WHERE m.id = $1`, invoice, p.Option).Scan(&on, &to, &payer, &number, &issuer, &typed, &symbol, &decimals, &chainID,
 		&amount, &hash); err != nil {
-		return email.Message{}, nil, false, fmt.Errorf("invoice: %w", err)
+		return view{}, nil, false, fmt.Errorf("invoice: %w", err)
 	}
 	// The payer's receipt goes to the address they gave, whatever the owner's setting (R-82).
 	if kind == outbox.Receipt {
@@ -154,58 +159,100 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 	}
 	units, _ := new(big.Int).SetString(amount, 10)
 	if kind == outbox.Receipt {
-		return receipt(document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID), issuer, typed,
+		return receipt(document.Number(number), document.Amount(units, decimals, symbol), symbol, document.NetworkName(chainID), issuer, typed,
 			document.TxURL(chainID, hash), webURL+"/api/v1/invoices/"+invoice+"/receipt.pdf"), to, on, nil
 	}
-	return compose(kind, document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID),
+	return compose(kind, document.Number(number), document.Amount(units, decimals, symbol), symbol, document.NetworkName(chainID),
 		webURL+"/app/invoices/"+invoice, webURL+"/app/notifications"), to, on, nil
 }
 
-// compose says what happened in plain words, with the invoice link and where to turn email off.
-func compose(kind, number, amount, network, link, settings string) email.Message {
-	var subject, what string
+// compose says what happened, with the invoice link and where to turn email off.
+func compose(kind, number, amount, symbol, network, link, settings string) view {
+	v := view{Amount: amount, Tone: "success", Button: button{"View invoice", link},
+		Details: []row{{Label: "Invoice", Value: number}, {Label: "Network", Value: network}, {Label: "Token", Value: symbol}},
+		Reason:  "You get this email because email is on for this profile.", Settings: settings}
 	switch kind {
 	case outbox.Paid:
-		subject = number + " paid: " + amount
-		what = number + " was paid: " + amount + " on " + network + ". Forwend sends it to your wallet next."
+		v.Subject, v.Badge, v.Title = number+" paid: "+amount, "Paid", number+" was paid"
+		v.Lead = []string{number + " was paid: " + amount + " on " + network + ". Forwend sends it to your wallet next."}
 	case outbox.Settled:
-		subject = number + ": " + amount + " is in your wallet"
-		what = "The payment for " + number + " reached your wallet: " + amount + " on " + network + "."
+		v.Subject, v.Badge, v.Title = number+": "+amount+" is in your wallet", "In your wallet", "The money is in your wallet"
+		v.Lead = []string{"The payment for " + number + " reached your wallet: " + amount + " on " + network + "."}
 	default: // outbox.Held
-		subject = number + ": " + amount + " held for the payer"
-		what = amount + " for " + number + " on " + network + " does not pay it: more than the amount, a partial " +
-			"payment when the checkout closed, money after it closed or after you canceled it, or money on another " +
-			"payment option. It is held for the payer, not paid to you."
+		v.Subject, v.Badge, v.Tone, v.Title = number+": "+amount+" held for the payer", "Held for the payer", "warning",
+			"Money held for the payer"
+		v.Lead = []string{amount + " for " + number + " on " + network + " does not pay it: more than the amount, a " +
+			"partial payment when the checkout closed, money after it closed or after you canceled it, or money on " +
+			"another payment option. It is held for the payer, not paid to you."}
 	}
-	return email.Message{Subject: subject, Text: what + "\n\nOpen the invoice: " + link +
-		"\n\nYou get this email because email is on for this profile. Turn it off: " + settings + "\n"}
+	v.Preheader = v.Lead[0]
+	return v
 }
 
 // welcome is a new account's one welcome email (R-84): what Forwend does and where to start.
-func welcome(app string) email.Message {
-	return email.Message{Subject: "Welcome to Forwend", Text: "Your Forwend account is ready. Create an invoice or " +
-		"a payment request, share its pay link, and get paid in stablecoins to your wallet.\n\nForwend emails you when an invoice is " +
-		"paid, when the money reaches your wallet, and when money is held for a payer. You can turn those emails " +
-		"off for each profile.\n\nOpen Forwend: " + app + "\n\nYou get this email once, because you created a " +
-		"Forwend account.\n"}
+func welcome(app string) view {
+	return view{Subject: "Welcome to Forwend", Preheader: "Your Forwend account is ready.", Title: "Welcome to Forwend",
+		Lead: []string{"Your Forwend account is ready. Create an invoice or a payment request, share its pay link, " +
+			"and get paid in stablecoins to your wallet.", "Forwend emails you when an invoice is paid, when the money " +
+			"reaches your wallet, and when money is held for a payer. You can turn those emails off for each profile."},
+		Button: button{"Open Forwend", app}, Reason: "You get this email once, because you created a Forwend account."}
 }
 
 // receipt is the payer's one email (R-82): what they paid, to whom, the transaction and the receipt PDF. Nothing else
 // is ever sent to this address.
-func receipt(number, amount, network, issuer, sender, tx, pdf string) email.Message {
-	to, unchecked := "", ""
+func receipt(number, amount, symbol, network, issuer, sender, tx, pdf string) view {
+	v := view{Subject: "Your receipt for " + number, Badge: "Paid", Tone: "success", Title: "Receipt for " + number,
+		Amount: amount, Button: button{"Download receipt (PDF)", pdf}, Details: []row{{Label: "Invoice", Value: number}},
+		Reason: "You get this one email because you asked for the receipt on the payment page. Forwend sends nothing " +
+			"else to this address."}
+	to := ""
 	switch {
 	case issuer != "":
-		to = " to " + issuer
+		to = issuer
 	case sender != "":
 		// A name the invoice's creator typed, as the pay page and PDF say: not checked by Forwend.
-		to, unchecked = " to "+sender, "\n\nThe name is what the invoice's creator gave; Forwend doesn't check it."
+		to, v.Note = sender, "The name is what the invoice's creator gave; Forwend doesn't check it."
 	}
-	text := "You paid " + amount + " on " + network + to + " for " + number + "." + unchecked
+	if to != "" {
+		v.Details = append(v.Details, row{Label: "Paid to", Value: to})
+		to = " to " + to
+	}
+	v.Details = append(v.Details, row{Label: "Network", Value: network}, row{Label: "Token", Value: symbol})
 	if tx != "" {
-		text += "\n\nTransaction: " + tx
+		v.Details = append(v.Details, row{Label: "Transaction", Value: "View on the block explorer", Href: tx})
 	}
-	text += "\nReceipt (PDF): " + pdf + "\n\nYou get this one email because you asked for the receipt on the payment " +
-		"page. Forwend sends nothing else to this address.\n"
-	return email.Message{Subject: "Your receipt for " + number, Text: text}
+	v.Lead = []string{"You paid " + amount + " on " + network + to + " for " + number + "."}
+	v.Preheader = v.Lead[0]
+	return v
+}
+
+// message is the email for a view: the designed HTML part and a plain text part with the same words and links.
+func message(site Site, v view) (email.Message, error) {
+	html, err := render(site, v)
+	if err != nil {
+		return email.Message{}, err
+	}
+	text := strings.Join(v.Lead, "\n\n")
+	if len(v.Details) > 0 {
+		text += "\n"
+		for _, d := range v.Details {
+			value := d.Value
+			if d.Href != "" {
+				value = d.Href
+			}
+			text += "\n" + d.Label + ": " + value
+		}
+	}
+	if v.Note != "" {
+		text += "\n\n" + v.Note
+	}
+	text += "\n\n" + v.Button.Label + ": " + v.Button.URL + "\n\n" + v.Reason
+	if v.Settings != "" {
+		text += " Email settings: " + v.Settings
+	}
+	text += "\nQuestions? " + Support + "\nForwend: " + site.WebURL + "\n"
+	if site.PostalAddress != "" {
+		text += site.PostalAddress + "\n"
+	}
+	return email.Message{Subject: v.Subject, Text: text, HTML: html}, nil
 }

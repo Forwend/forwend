@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>{{.Subject}}</title>
+<style>
+  body { margin: 0; padding: 0; }
+  a { color: #1f6a8c; }
+  @media (max-width: 620px) {
+    .fw-pad { padding-left: 20px !important; padding-right: 20px !important; }
+    .fw-title { font-size: 26px !important; }
+    .fw-amount { font-size: 30px !important; }
+  }
+  @media (prefers-color-scheme: dark) {
+    .fw-bg { background-color: #0d1412 !important; }
+    .fw-card { background-color: #141d1a !important; border-color: #25322d !important; }
+    .fw-ink { color: #eef4f1 !important; }
+    .fw-muted { color: #b4c3bd !important; }
+    .fw-line { border-color: #25322d !important; }
+    .fw-link { color: #7cc0dd !important; }
+    .fw-button { background-color: #eef4f1 !important; }
+    .fw-button a { color: #0f2219 !important; }
+    .fw-logo { box-shadow: 0 0 0 1px #3a4a43 !important; }
+    .fw-note { background-color: #1a2521 !important; border-color: #3a4a43 !important; }
+    .fw-badge-success { background-color: #16301f !important; color: #8fd4ae !important; }
+    .fw-badge-warning { background-color: #33270f !important; color: #e8c37a !important; }
+    .fw-badge-neutral { background-color: #1a2521 !important; color: #b4c3bd !important; }
+  }
+</style>
+</head>
+<body class="fw-bg" style="margin:0;padding:0;background-color:#f4f8f7;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">{{.Preheader}}&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="fw-bg" style="background-color:#f4f8f7;">
+<tr><td align="center" style="padding:32px 12px;">
+  <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+    <tr><td class="fw-pad" style="padding:0 32px 20px 32px;">
+      <a href="{{.Site}}" style="text-decoration:none;">
+        <img class="fw-logo" src="{{.Logo}}" width="36" height="36" alt="Forwend" style="display:inline-block;vertical-align:middle;border:0;border-radius:8px;">
+        <span class="fw-ink" style="display:inline-block;vertical-align:middle;margin-left:10px;font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:18px;font-weight:600;color:#0f2219;">Forwend</span>
+      </a>
+    </td></tr>
+    <tr><td class="fw-card" style="background-color:#ffffff;border:1px solid #d3e0dc;border-radius:16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr><td class="fw-pad" style="padding:36px 40px 8px 40px;font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+          {{with .Badge}}<span class="fw-badge-{{$.Tone}}" style="display:inline-block;padding:4px 12px;border-radius:999px;font-size:13px;font-weight:600;line-height:20px;{{if eq $.Tone "success"}}background-color:#e2f2e9;color:#1b6e45;{{else if eq $.Tone "warning"}}background-color:#f8eed8;color:#865500;{{else}}background-color:#eaf2f0;color:#3a5047;{{end}}">{{.}}</span>{{end}}
+          <h1 class="fw-title fw-ink" style="margin:{{if .Badge}}16px{{else}}0{{end}} 0 0 0;font-family:'Libre Caslon Display',Georgia,'Times New Roman',serif;font-size:32px;font-weight:400;line-height:1.2;color:#0f2219;">{{.Title}}</h1>
+          {{with .Amount}}<p class="fw-amount fw-ink" style="margin:16px 0 0 0;font-size:36px;font-weight:600;line-height:1.15;letter-spacing:-0.01em;color:#0f2219;">{{.}}</p>{{end}}
+          {{range .Lead}}<p class="fw-muted" style="margin:16px 0 0 0;font-size:16px;line-height:1.6;color:#3a5047;">{{.}}</p>{{end}}
+        </td></tr>
+        {{if .Details}}<tr><td class="fw-pad" style="padding:20px 40px 0 40px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;">
+            {{range .Details}}<tr>
+              <td class="fw-muted fw-line" style="padding:12px 16px 12px 0;border-top:1px solid #d3e0dc;color:#3a5047;white-space:nowrap;vertical-align:top;">{{.Label}}</td>
+              <td class="fw-ink fw-line" align="right" style="padding:12px 0;border-top:1px solid #d3e0dc;color:#0f2219;text-align:right;word-break:break-word;">{{if .Href}}<a class="fw-link" href="{{.Href}}" style="color:#1f6a8c;text-decoration:underline;">{{.Value}}</a>{{else}}{{.Value}}{{end}}</td>
+            </tr>{{end}}
+          </table>
+        </td></tr>{{end}}
+        {{with .Note}}<tr><td class="fw-pad" style="padding:20px 40px 0 40px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td class="fw-note fw-muted" style="padding:14px 16px;background-color:#eaf2f0;border:1px solid #d3e0dc;border-radius:12px;font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;color:#3a5047;">{{.}}</td>
+          </tr></table>
+        </td></tr>{{end}}
+        <tr><td class="fw-pad" style="padding:28px 40px 36px 40px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td class="fw-button" bgcolor="#0f2219" style="border-radius:999px;background-color:#0f2219;">
+              <a href="{{.Button.URL}}" style="display:inline-block;padding:13px 28px;font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;line-height:20px;color:#f5faf7;text-decoration:none;border-radius:999px;">{{.Button.Label}}</a>
+            </td>
+          </tr></table>
+        </td></tr>
+      </table>
+    </td></tr>
+    <tr><td class="fw-pad fw-muted" style="padding:24px 32px 0 32px;font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#3a5047;">
+      <p style="margin:0 0 8px 0;">{{.Reason}}{{with .Settings}} <a class="fw-link" href="{{.}}" style="color:#1f6a8c;text-decoration:underline;">Email settings</a>{{end}}</p>
+      <p style="margin:0 0 8px 0;">Questions? <a class="fw-link" href="mailto:{{.Support}}" style="color:#1f6a8c;text-decoration:underline;">{{.Support}}</a></p>
+      <p style="margin:0;">Forwend{{with .Postal}} · {{.}}{{end}}</p>
+    </td></tr>
+  </table>
+</td></tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,88 @@
+package notify
+
+import (
+	"os"
+	"path/filepath"
+	"regexp"
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
+)
+
+// Every kind of email, with what the worker fills in.
+func samples() map[string]view {
+	tx := "https://sepolia.basescan.org/tx/0x" + strings.Repeat("cd", 32)
+	link, settings := web+"/app/invoices/0xabc", web+"/app/notifications"
+	return map[string]view{
+		"paid":          compose(outbox.Paid, "INV-0001", "1,250.00 USDC", "USDC", "Base Sepolia", link, settings),
+		"settled":       compose(outbox.Settled, "INV-0001", "1,250.00 USDC", "USDC", "Base Sepolia", link, settings),
+		"held":          compose(outbox.Held, "INV-0002", "1.00 USDC", "USDC", "Base Sepolia", link, settings),
+		"receipt":       receipt("INV-0001", "1,250.00 USDC", "USDC", "Base Sepolia", "Alice Design GmbH", "", tx, web+"/api/v1/invoices/0xabc/receipt.pdf"),
+		"receipt-typed": receipt("INV-0003", "40.00 USDC", "USDC", "Base Sepolia", "", "Mara Ilić", "", web+"/api/v1/invoices/0xdef/receipt.pdf"),
+		"welcome":       welcome(web + "/app"),
+	}
+}
+
+var (
+	hrefs    = regexp.MustCompile(`href="([^"]+)"`)
+	textURLs = regexp.MustCompile(`https?://\S+|[\w.+-]+@[\w-]+\.[\w.]+`)
+)
+
+// links are a part's link targets, mailto: as the bare address, sorted and without repeats.
+func links(all []string) []string {
+	for i, l := range all {
+		all[i] = strings.TrimPrefix(l, "mailto:")
+	}
+	slices.Sort(all)
+	return slices.Compact(all)
+}
+
+// F200: each kind has a designed HTML part beside its text part, and both lead to the same pages.
+func TestEveryEmailHasHTMLWithTheTextLinks(t *testing.T) {
+	for name, v := range samples() {
+		m, err := message(site, v)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if !strings.Contains(m.HTML, "<!DOCTYPE html>") || !strings.Contains(m.HTML, v.Title) || m.Text == "" {
+			t.Fatalf("%s: no designed HTML part beside the text", name)
+		}
+		var html []string
+		for _, h := range hrefs.FindAllStringSubmatch(m.HTML, -1) {
+			html = append(html, strings.ReplaceAll(h[1], "&amp;", "&"))
+		}
+		if got, want := links(html), links(textURLs.FindAllString(m.Text, -1)); !slices.Equal(got, want) {
+			t.Fatalf("%s: HTML links %v, text links %v", name, got, want)
+		}
+	}
+}
+
+// A name the invoice's creator typed is shown as text, never as markup.
+func TestEmailEscapesTypedNames(t *testing.T) {
+	m, err := message(site, receipt("INV-0001", "5.00 USDC", "USDC", "Base Sepolia", "", `<b>Mara</b> & "Co"`, "", "pdf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(m.HTML, "<b>Mara") || !strings.Contains(m.HTML, "&lt;b&gt;Mara&lt;/b&gt; &amp; &#34;Co&#34;") {
+		t.Fatal("the typed name reached the HTML unescaped")
+	}
+}
+
+// With EMAIL_SAMPLES_DIR set, writes each email's HTML there for screenshots (docs/runs); otherwise skipped.
+func TestWriteEmailSamples(t *testing.T) {
+	dir := os.Getenv("EMAIL_SAMPLES_DIR")
+	if dir == "" {
+		t.Skip("EMAIL_SAMPLES_DIR not set")
+	}
+	for name, v := range samples() {
+		m, err := message(Site{WebURL: "https://forwend.com", PostalAddress: os.Getenv("EMAIL_POSTAL_ADDRESS")}, v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name+".html"), []byte(m.HTML), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+}

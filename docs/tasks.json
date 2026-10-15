@@ -2169,7 +2169,7 @@
       "dependsOn": [
         "F199"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend",
         "e2e"
@@ -2182,7 +2182,80 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T12:28:11Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 65.0,
+            "log": "docs/runs/F200-20261015T122811Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 195.9,
+            "log": "docs/runs/F200-20261015T122811Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F200-20261015T122811Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F200-20261015T122811Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F200-20261015T122811Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F200-20261015T122811Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 70.9,
+            "log": "docs/runs/F200-20261015T122811Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.4,
+            "log": "docs/runs/F200-20261015T122811Z-build.log"
+          }
+        ],
+        "taskHash": "b032c2b23f595519",
+        "filesHash": "b2cebace2578c600",
+        "proof": {
+          "1": "backend: TestEveryEmailHasHTMLWithTheTextLinks renders paid, settled, held, both receipts and welcome: each has an HTML part and a text part, and the HTML hrefs equal the text links; dropping the HTML part or a text link fails it",
+          "2": "backend: layout.html.tmpl: hidden preheader, hosted logo with alt text, badge, title, large amount, details table with the explorer link, a table-based button, footer with the reason, email settings (owner emails), support@forwend.com and EMAIL_POSTAL_ADDRESS when set",
+          "3": "backend: 600 px table layout, inline styles plus a dark-mode block and color-scheme meta, web-safe font stacks, no scripts, pixels or remote assets but the logo; every color pair computed at 5.39:1 or more (WCAG AA)",
+          "4": "backend: docs/runs/F200-emails has 24 screenshots (6 emails x 600/375 x light/dark); TestEmailEscapesTypedNames fails with text/template"
+        }
+      },
+      "branch": "feat/f200-every-forwend-email-looks-like-a-real-pr",
+      "baseCommit": "431704b8e03dd02179db4c4c952270b08525465f",
+      "failedVerifies": 0
     },
     {
       "id": "F201",
