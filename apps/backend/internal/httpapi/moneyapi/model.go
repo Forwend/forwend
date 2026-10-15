@@ -46,6 +46,7 @@ type activityItemJSON struct {
 	TxHash           string `json:"txHash,omitempty"`
 	OptionCount      int    `json:"optionCount"`
 	Closed           bool   `json:"closed"`
+	Held             bool   `json:"held"`
 }
 
 type transactionsJSON struct {

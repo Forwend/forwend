@@ -11,6 +11,7 @@ export const ACTIVITY_COPY = {
   latestOnly: "Showing the latest 100.",
   invoice: "Invoice",
   deposit: "Payment",
+  held: "Held for the payer",
   retry: "Try again",
   filterLabel: "Status",
   filters: {

@@ -141,7 +141,11 @@ function ProfileActivity({ profileId }: ActivityListProps) {
                           href={`${APP_ROUTES.invoices}/${item.invoiceId}`}
                           className="outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
                         >
-                          {deposit ? ACTIVITY_COPY.deposit : ACTIVITY_COPY.invoice}
+                          {deposit
+                            ? item.held
+                              ? ACTIVITY_COPY.held
+                              : ACTIVITY_COPY.deposit
+                            : ACTIVITY_COPY.invoice}
                         </Link>
                       }
                       // The network first: a narrow row cuts the time, never the network.

@@ -1730,7 +1730,7 @@
         "A deposit to a canceled or closed invoice, or to an option the client did not pay with, raises no payment toast and is not filed under Activity's Paid or Open filter as a payment to the owner; it reads as held for the payer; tests cover each case"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "backend",
@@ -1744,7 +1744,77 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T10:11:47Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 69.4,
+            "log": "docs/runs/F196-20261015T101147Z-unit.log"
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 66.7,
+            "log": "docs/runs/F196-20261015T101147Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 180.1,
+            "log": "docs/runs/F196-20261015T101147Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F196-20261015T101147Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F196-20261015T101147Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F196-20261015T101147Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F196-20261015T101147Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.0,
+            "log": "docs/runs/F196-20261015T101147Z-build.log"
+          }
+        ],
+        "taskHash": "c4fb132943663c35",
+        "filesHash": "5fb4d53a367bd001",
+        "proof": {
+          "1": "unit: payment-events gives no toast for a held deposit and activity-amounts shows its row as 'Held for the payer', not 'Payment'; both fail with the check removed"
+        }
+      },
+      "branch": "fix/f196-money-held-for-the-payer-late-after-canc",
+      "baseCommit": "1a3b75160909b7fd463777c853b3a8fdf2eebc9b",
+      "failedVerifies": 0
     },
     {
       "id": "F197",

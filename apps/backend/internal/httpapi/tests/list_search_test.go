@@ -199,6 +199,11 @@ func TestGetActivityFilterAndSearch(t *testing.T) {
 			SELECT 84532, 'evm', $1, $2, $3, 0, $3, 1, 1, $4, receive_address, 1000000, $5 FROM invoices WHERE id = $2`,
 			usdc, d[0], d[1], aliceWallet, status)
 	}
+	// Booked as the ledger does before it marks an invoice paid: to the owner, so it is a payment, not held.
+	e.exec(t, `WITH x AS (INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id)
+		           SELECT invoice_id, 'deposit', id FROM chain_transfers WHERE tx_hash = $1 RETURNING id)
+		INSERT INTO ledger_entries (transaction_id, account, amount) SELECT id, 'receiver', 1000000 FROM x
+		UNION ALL SELECT id, 'recipient_payable', -1000000 FROM x`, confirmed)
 	e.exec(t, `UPDATE invoices SET payment_status = 'paid', settlement_status = 'settled' WHERE id = $1`, ids[1])
 	e.exec(t, `INSERT INTO settlement_intents (invoice_id, status, tx_hash) VALUES ($1, 'confirmed', $2)`, ids[1], settle)
 	e.exec(t, `UPDATE invoices SET payment_status = 'expired' WHERE id = $1`, ids[2])
