@@ -83,8 +83,9 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 		WHERE m.id = $1`, invoice, p.Option).Scan(&on, &to, &number, &symbol, &decimals, &chainID, &amount); err != nil {
 		return false, fmt.Errorf("read email event %d invoice: %w", id, err)
 	}
-	if !on || to == nil {
-		// Email off for this profile, or no login email: nothing to send, and nothing waits for it.
+	if !on || to == nil || *to == "" {
+		// Email off for this profile, or no login email ('' when the account has none; NULL when it was never read):
+		// nothing to send, and nothing waits for it.
 		if _, err := tx.Exec(ctx, "UPDATE outbox_events SET published_at = now() WHERE id = $1", id); err != nil {
 			return false, fmt.Errorf("skip email event %d: %w", id, err)
 		}
@@ -96,7 +97,8 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 	units, _ := new(big.Int).SetString(amount, 10)
 	m := compose(kind, document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID),
 		webURL+"/app/invoices/"+invoice, webURL+"/app/notifications")
-	m.To, m.Key = *to, fmt.Sprintf("forwend-outbox-%d", id)
+	// The invoice id too: event ids start again in another database (a reset, staging) that may share the Resend team.
+	m.To, m.Key = *to, fmt.Sprintf("forwend-%s-%d", invoice, id)
 	if err := sender.Send(ctx, m); err != nil {
 		attempts++
 		if attempts >= MaxAttempts {
@@ -110,7 +112,8 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 		if err != nil {
 			return false, fmt.Errorf("record email event %d failure: %w", id, err)
 		}
-		return true, tx.Commit(ctx)
+		// Stop this round: a Resend that fails or hangs must not hold up the worker's chain rounds for a whole batch.
+		return false, tx.Commit(ctx)
 	}
 	if _, err := tx.Exec(ctx, "UPDATE outbox_events SET attempts = attempts + 1, published_at = now() WHERE id = $1", id); err != nil {
 		return false, fmt.Errorf("record email event %d: %w", id, err)
@@ -130,9 +133,9 @@ func compose(kind, number, amount, network, link, settings string) email.Message
 		what = "The payment for " + number + " reached your wallet: " + amount + " on " + network + "."
 	default: // outbox.Held
 		subject = number + ": " + amount + " held for the payer"
-		what = amount + " arrived for " + number + " on " + network + " that does not pay it: more than the amount, " +
-			"after the checkout closed, after you canceled it, or on another payment option. It is held for the payer, " +
-			"not paid to you."
+		what = amount + " for " + number + " on " + network + " does not pay it: more than the amount, a partial " +
+			"payment when the checkout closed, money after it closed or after you canceled it, or money on another " +
+			"payment option. It is held for the payer, not paid to you."
 	}
 	return email.Message{Subject: subject, Text: what + "\n\nOpen the invoice: " + link +
 		"\n\nYou get this email because email is on for this profile. Turn it off: " + settings + "\n"}

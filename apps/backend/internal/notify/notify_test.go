@@ -36,7 +36,8 @@ func (f *fake) Send(_ context.Context, m email.Message) error {
 	return nil
 }
 
-// setup makes a database with one user (login email given; "" for none), profile and 5 USDC invoice on Base Sepolia.
+// setup makes a database with one user (login email as sign-up stores it: "" when the account has none), profile and
+// 5 USDC invoice on Base Sepolia.
 func setup(t *testing.T, login string) (*pgxpool.Pool, string) {
 	t.Helper()
 	ctx := context.Background()
@@ -54,7 +55,7 @@ func setup(t *testing.T, login string) (*pgxpool.Pool, string) {
 		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true)),
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		            VALUES (84532, 'evm', '0x00000000000000000000000000000000000000ee', 'USDC', 6, true)),
-		     u AS (INSERT INTO users (privy_user_id, login_email) VALUES ('did:privy:a', nullif($2, '')) RETURNING id),
+		     u AS (INSERT INTO users (privy_user_id, login_email) VALUES ('did:privy:a', $2) RETURNING id),
 		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id)
 		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
 		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
@@ -108,12 +109,12 @@ func TestDeliverSendsOneEmailPerEvent(t *testing.T) {
 	for i, want := range []struct{ subject, text string }{
 		{"INV-0001 paid: 5.00 USDC", "INV-0001 was paid: 5.00 USDC on Base Sepolia."},
 		{"INV-0001: 5.00 USDC is in your wallet", "reached your wallet: 5.00 USDC on Base Sepolia."},
-		{"INV-0001: 1.50 USDC held for the payer", "It is held for the payer, not paid to you."},
+		{"INV-0001: 1.50 USDC held for the payer", "a partial payment when the checkout closed"},
 	} {
 		m := f.sent[i]
 		if m.To != "owner@example.com" || m.Subject != want.subject || !strings.Contains(m.Text, want.text) ||
 			!strings.Contains(m.Text, web+"/app/invoices/"+id) || !strings.Contains(m.Text, web+"/app/notifications") ||
-			m.Key != fmt.Sprintf("forwend-outbox-%d", i+1) {
+			m.Key != fmt.Sprintf("forwend-%s-%d", id, i+1) {
 			t.Fatalf("email %d: %+v", i, m)
 		}
 	}
@@ -153,6 +154,15 @@ func TestDeliverRetriesWithBackoffThenGivesUp(t *testing.T) {
 	if count(t, pool, "attempts = 1 AND next_attempt_at > now() + interval '50 seconds' AND published_at IS NULL") != 1 {
 		t.Fatal("after one failure: want attempts 1 and a wait of about a minute")
 	}
+	// A failure ends the round: a second due event is left for the next one, not tried against a failing Resend.
+	queue(t, pool, outbox.Paid, id, nil)
+	if err := Deliver(context.Background(), pool, f, web); err != nil {
+		t.Fatal(err)
+	}
+	if count(t, pool, "attempts = 1") != 2 {
+		t.Fatal("want the new event tried once")
+	}
+	exec(t, pool, "DELETE FROM outbox_events WHERE id = 2")
 	if err := Deliver(context.Background(), pool, f, web); err != nil { // not due yet: no second try now
 		t.Fatal(err)
 	}
