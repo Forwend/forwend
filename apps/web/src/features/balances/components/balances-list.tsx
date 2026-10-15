@@ -32,7 +32,7 @@ export function BalancesList({ balances, failed, onRetry }: BalancesListProps) {
       {/* Each amount keeps its own label for screen readers; this row only shows them once on wide screens. */}
       <div
         aria-hidden
-        className={`hidden h-10 items-center gap-4 border-b border-line bg-[color-mix(in_oklab,var(--fw-surface-2)_55%,var(--fw-surface))] px-5 text-right text-xs font-medium text-muted md:grid ${columns}`}
+        className={`hidden h-10 items-center gap-4 border-b border-line px-5 text-right text-xs font-medium text-muted md:grid ${columns}`}
       >
         <span />
         <span>{BALANCES_COPY.inWallet}</span>

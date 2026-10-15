@@ -219,7 +219,7 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                     <th
                       scope="rowgroup"
                       colSpan={5}
-                      className="h-9 bg-[color-mix(in_oklab,var(--fw-surface-2)_35%,var(--fw-surface))] px-5 text-left text-xs font-medium text-muted"
+                      className="h-10 px-5 pt-3 text-left align-bottom text-xs font-medium text-muted"
                     >
                       {dayName(group.when)}
                     </th>

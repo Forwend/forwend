@@ -22,11 +22,11 @@ const TABS = [
 ] as const;
 const TAB =
   "flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-md px-1 text-xs font-medium text-muted outline-none transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 active:bg-surface-2 focus-visible:outline-2 focus-visible:outline-focus data-[active=true]:bg-surface-2 data-[active=true]:text-ink";
-const CARD = "overflow-hidden rounded-md border border-line bg-surface-2 divide-y divide-line";
+const CARD = "overflow-hidden rounded-md border border-line bg-surface divide-y divide-line";
 const ROW =
-  "group flex min-h-14 w-full items-center gap-3 px-3 text-left text-sm font-medium text-ink outline-none hover:bg-line active:bg-line focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus aria-[current=page]:bg-line";
+  "group flex min-h-14 w-full items-center gap-3 px-3 text-left text-sm font-medium text-ink outline-none hover:bg-surface-2 active:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus";
 const ROW_ICON =
-  "grid size-9 shrink-0 place-items-center rounded-sm bg-surface text-ink group-aria-[current=page]:bg-primary group-aria-[current=page]:text-on-primary";
+  "grid size-9 shrink-0 place-items-center rounded-sm bg-surface-2 text-muted group-aria-[current=page]:bg-info-soft group-aria-[current=page]:text-info";
 const HEADING = "px-1 pb-2 text-xs font-medium text-muted";
 
 export interface PhoneTabBarProps {

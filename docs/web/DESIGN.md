@@ -56,7 +56,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Phones: the header becomes a top bar with the account initial, a search pill and notifications. A bottom tab bar has Home, Transactions, Balances and More;
   large icons over labels, with the whole current tab on the second surface. More opens a sheet: first a profile card
   (avatar, name, Switch profile and an up/down selector icon, then Billing details for businesses), then the remaining
-  sidebar pages for the profile type as grouped cards of rows with an icon tile, then unbuilt pages as small
+  sidebar pages for the profile type as grouped cards of rows with an icon tile (white cards with hairlines, neutral
+  tiles; the current page's tile is river blue), then unbuilt pages as small
   Coming soon chips that are not links. Current-page links include nested pages; More stays selected for those pages.
   The bar and page padding include the bottom safe area, and toasts sit above it. A switch opens the new profile's overview (R-76).
 - A choice opened from the sidebar is a menu; the same choice on a phone is a bottom sheet, which becomes a centered
@@ -99,8 +100,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   URL keeps both. A confirmed transfer shows its status as a green dot and plain text; only one still confirming gets
   a pill, and phone rows name a status only while it is still confirming. A filter or search with no rows says nothing matched, with a button to clear them. A transaction hash links to the chain's block explorer in a new tab (Transactions, Activity,
   invoice detail, pay page).
-- Tables: a quiet tinted header band in the small size, rows about 60px tall with the outer columns inset to the
-  panel's padding, hairlines between rows, a tint on hover.
+- Tables: plain header labels in the small size over a hairline (no tinted band), rows about 60px tall with the outer
+  columns inset to the panel's padding, hairlines between rows, a tint on hover; day headings are quiet labels, not
+  bands.
 - Transactions table: ruled table from medium screens, grouped under day headings (Today, Yesterday, then the
   weekday and date), so a row's Time column shows only the time; the network has its own column only on the widest
   screens and sits under the counterparty otherwise. Phone rows sit under the same day headings and are two lines that
@@ -161,9 +163,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   USDC.e." where a bridged look-alike exists), then the address full width, then the token contract as a short explorer
   link and one exchange hint that names the network to withdraw on. The amount and the address are read-only fields
   (a bordered row like an input) with Copy inside on the right. The address is Geist Mono with its first 6 and last 4
-  characters in the ink (medium weight) and the rest quieter; wide screens show it whole on one line, phones show the
-  ends with four more characters each around an ellipsis, the middle kept for screen readers, selection and Copy
-  (R-78). Its size follows the width the text has (container units), so it fills it at every width without wrapping, and Copy keeps one width as it turns to Copied. Once money is seen and once paid, the panel's last row is "Email me a receipt" with a mail icon; pressing it
+  characters in the ink (medium weight) and the rest quieter; a wide field shows it whole on one line, a narrow one (a
+  phone, the Receive dialog) shows the ends with four more characters each around an ellipsis, the middle kept for
+  screen readers, selection and Copy (R-78). The choice and the size follow the field's own width (container units),
+  not the screen, so it never wraps, and Copy keeps one width as it turns to Copied. Once money is seen and once paid, the panel's last row is "Email me a receipt" with a mail icon; pressing it
   opens the optional field there, with Send inside its row and the line that the address is used for this receipt
   only (R-82). Before any money there is nothing to send a receipt for, so the row is not there. Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
   into "Confirm change" and only a second press starts over (leaving the button cancels), so a payer who already sent

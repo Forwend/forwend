@@ -77,8 +77,9 @@ describe("ReceiveAddress", () => {
     expect(shown.children[0]?.className).toContain("text-ink");
     expect(shown.children[4]?.className).toContain("text-ink");
     expect(shown.children[2]?.className).not.toContain("text-ink");
-    // Phones hide only the middle, and only visually: it stays in the text.
-    expect(shown.children[2]?.className).toContain("max-sm:sr-only");
+    // A narrow field hides only the middle, and only visually: it stays in the text.
+    expect(shown.children[2]?.className).toMatch(/:sr-only\b/);
+    expect(shown.children[2]?.className).not.toMatch(/\bhidden\b/);
     await user.click(screen.getByRole("button", { name: "Copy address" }));
     expect(writeText).toHaveBeenCalledWith(address);
     expect(container.querySelector("p[role=status]")?.textContent).toBe("Address copied");

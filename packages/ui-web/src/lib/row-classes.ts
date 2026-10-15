@@ -4,7 +4,7 @@ export const ROW_INTERACTIVE_CLASSES =
 
 /** A table's header row: a quiet band over the rows, small labels, the same side padding as the cells. */
 export const TABLE_HEAD_CLASSES =
-  "border-b border-line bg-[color-mix(in_oklab,var(--fw-surface-2)_55%,var(--fw-surface))] text-left text-xs text-muted [&>th]:h-10 [&>th]:px-3 [&>th]:font-medium [&>th]:whitespace-nowrap [&>th:first-child]:pl-5 [&>th:last-child]:pr-5";
+  "border-b border-line text-left text-xs text-muted [&>th]:h-10 [&>th]:px-3 [&>th]:font-medium [&>th]:whitespace-nowrap [&>th:first-child]:pl-5 [&>th:last-child]:pr-5";
 
 /** A table's body row: one height for every row, cells centered on it, the head's side padding. */
 export const TABLE_ROW_CLASSES =
