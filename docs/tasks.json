@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 199,
+  "nextId": 201,
   "tasks": [
     {
       "id": "F179",
@@ -2041,6 +2041,131 @@
         "branch": "test/f198-a-retried-email-keeps-its-idempotency-ke",
         "base": "main"
       }
+    },
+    {
+      "id": "F199",
+      "type": "feat",
+      "behavior": "A new account gets one welcome email at its verified login email",
+      "acceptance": [
+        "When POST /v1/me creates a user that has a verified login email, the worker sends one welcome email to that address through the outbox: once per account, also across retries and a worker restart, with a stable Idempotency-Key",
+        "No welcome email when the account has no login email, and none for accounts that existed before this change; the profile email setting does not turn it off (it is about the account, not an invoice)",
+        "The email says what Forwend does in two or three plain sentences and links to /app; tests use the fake sender"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "R-84",
+        "R-80"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T11:12:04Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 67.0,
+            "log": "docs/runs/F199-20261015T111204Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 219.4,
+            "log": "docs/runs/F199-20261015T111204Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.2,
+            "log": "docs/runs/F199-20261015T111204Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F199-20261015T111204Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F199-20261015T111204Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F199-20261015T111204Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 97.7,
+            "log": "docs/runs/F199-20261015T111204Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F199-20261015T111204Z-build.log"
+          }
+        ],
+        "taskHash": "77f701c7cb9a05bc",
+        "filesHash": "bafa46e7936df23f",
+        "proof": {
+          "1": "backend: TestWelcomeEmailOncePerNewAccount: a new account queues one welcome across three loads, also when the first Privy read failed (FailUserReads); TestDeliverSendsTheWelcome sends it once to the login email with profile email off, key forwend-user-<id>-<event>-; dropping the welcome or address condition, the new-user flag, or ignoring the setting fails them",
+          "2": "backend: an account with no login email (erin) and one made before this change (olga, users.welcome false) get no welcome; the profile email setting does not stop it (TestDeliverSendsTheWelcome)",
+          "3": "backend: the email says what Forwend does and links web+/app (TestDeliverSendsTheWelcome); tests use the fake sender"
+        }
+      },
+      "branch": "feat/f199-a-new-account-gets-one-welcome-email-at",
+      "baseCommit": "6f603e5c05d211a9775fc46570080eddf44fbcf2",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F200",
+      "type": "feat",
+      "behavior": "Every Forwend email looks like a real product's email: one designed HTML layout that renders the same in Gmail, Apple Mail and Outlook, with the plain text kept as the text part",
+      "acceptance": [
+        "Paid, settled, held, the payer receipt and the welcome email are sent with an HTML part and the current plain text as the text part, both carrying the same links",
+        "Layout as production transactional email: hidden preheader text; header with the hosted Forwend logo (alt text); a clear title and the amount large; a details table (invoice number, network, token, transaction link where there is one); one bulletproof button (table-based, works without images); footer with why the email was sent, a link to email settings for owner emails, a support contact, and the sender's name and postal address placeholder for Q-13",
+        "Built for email clients: 600 px max table layout, inline styles only, web-safe font stack, no scripts, no tracking pixels, no remote assets but the logo; color-scheme meta so dark mode stays readable; contrast meets WCAG AA",
+        "Screenshots of each email at 600 px and 375 px, light and dark, are attached to the run; backend tests fail if any email kind lacks an HTML part, if the HTML and text parts link to different pages, or if user-given text (names) is not HTML-escaped"
+      ],
+      "dependsOn": [
+        "F199"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "R-80",
+        "R-82"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

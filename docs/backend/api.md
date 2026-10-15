@@ -73,6 +73,10 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
   invoice); an address given after that queues it at once. The worker sends it to that address whatever the owner's
   setting: the amount, the payee, the transaction and the receipt PDF. Limited per invoice (3, then one per 10 s) and
   for everyone together; per IP belongs to the edge (Q-8).
+- A new account's welcome (R-84): when `POST /v1/me` first stores a non-empty login email for an account made after
+  welcome emails existed (`users.welcome`), it queues one `account.welcome` row for the user in the same statement (a
+  unique index keeps one per user). The worker sends it whatever the profile setting, with
+  `forwend-user-<userId>-<eventId>-<address hash>` as the Idempotency-Key.
 - `GET /v1/profiles/{profileId}/events?limit=` (R-81, at most 50): the same events for the bell, newest first, with the
   invoice number, the option's token and the amount (newly held for `invoice.held`).
 

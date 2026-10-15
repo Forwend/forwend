@@ -39,6 +39,8 @@ type Fake struct {
 	// Emails are the users' verified email accounts by Privy user ID; UserReads counts GET /v1/users/{id}.
 	Emails    map[string]string
 	UserReads int
+	// FailUserReads answers that many user reads with 500.
+	FailUserReads int
 }
 
 // New starts the fake until the test ends.
@@ -120,6 +122,11 @@ func (f *Fake) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(wallet)
 	case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v1/users/"):
 		f.UserReads++
+		if f.FailUserReads > 0 {
+			f.FailUserReads--
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		id := strings.TrimPrefix(r.URL.Path, "/v1/users/")
 		accounts := []any{}
 		if email, ok := f.Emails[id]; ok {
