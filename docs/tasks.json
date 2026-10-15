@@ -762,7 +762,7 @@
         "F184",
         "F185"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend-e2e"
       ],
@@ -773,7 +773,78 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T03:15:27Z",
+        "checks": [
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 13.3,
+            "log": "docs/runs/F186-20261015T031527Z-backend-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": "docs/runs/F186-20261015T031527Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F186-20261015T031527Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F186-20261015T031527Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F186-20261015T031527Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 65.7,
+            "log": "docs/runs/F186-20261015T031527Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F186-20261015T031527Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 161.1,
+            "log": "docs/runs/F186-20261015T031527Z-e2e.log"
+          }
+        ],
+        "taskHash": "39c55b1ffd599a9e",
+        "filesHash": "192e648f8d101fff",
+        "proof": {
+          "1": "backend-e2e: TestExceptionsCancelAndEmail on Anvil with the real api, worker and signer: A partial -> top-up -> paid -> settled; B expired partial held 1.00 with the receiver holding 1.00; C late deposit held 5.00; D canceled then paid, held 5.00 and still canceled; one settlement intent (A); chain balances equal the ledger's held amounts",
+          "2": "backend-e2e: a fake Resend gets exactly six emails (A paid, A settled, A receipt to the payer, B, C and D held), none twice, with the worker stopped and started again between events; TestMoneyLoop still passes on the shared newStack setup"
+        }
+      },
+      "branch": "test/f186-exceptions-cancel-and-email-are-proven-o",
+      "baseCommit": "9d1356ae17fe2bfbfe5344dd424e05087a8b00be",
+      "failedVerifies": 0
     },
     {
       "id": "F187",
