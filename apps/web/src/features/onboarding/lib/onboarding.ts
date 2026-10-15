@@ -11,6 +11,7 @@ import {
   TRANSACTION_DIRECTIONS,
   TRANSACTION_STATUSES,
 } from "@/features/transactions/constants/transactions";
+import { APP_ROUTES } from "@/shared/config/routes";
 
 // After the first-run choice the app opens the profile made for the most specific use: freelancer (get paid by
 // clients), then merchant (business payments or an integration), else the personal one.
@@ -88,4 +89,14 @@ export function saveDismissal(profileId: string, dismissal: ChecklistDismissal) 
   } catch {
     // Storage blocked: the choice lasts for this page view.
   }
+}
+
+/**
+ * Where the first run returns to: the app page the user asked for (`next`), else the overview. Only a path in this
+ * app: never another site, which would make the link an open redirect.
+ */
+export function afterOnboarding(next: string | null): string {
+  return next && /^\/app(\/|\?|$)/.test(next) && !next.startsWith(APP_ROUTES.onboarding)
+    ? next
+    : APP_ROUTES.home;
 }

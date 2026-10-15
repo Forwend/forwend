@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { CHECKLIST_STEPS } from "@/features/onboarding/constants/onboarding";
 import {
+  afterOnboarding,
   checklistSteps,
   landingProfile,
   readDismissal,
@@ -119,5 +120,26 @@ describe("landingProfile", () => {
     expect(landingProfile([personal], [personal])).toBe(personal);
     // Profiles the user had before are not "made" by the choice.
     expect(landingProfile([personal, merchant], [personal, merchant])).toBe(personal);
+  });
+});
+
+describe("afterOnboarding", () => {
+  it("returns to the app page asked for, with its query", () => {
+    expect(afterOnboarding("/app/invoices?status=paid")).toBe("/app/invoices?status=paid");
+    expect(afterOnboarding("/app")).toBe("/app");
+  });
+
+  it("goes to the overview for anything that is not an app page: never another site", () => {
+    for (const next of [
+      null,
+      "",
+      "//evil.example",
+      "https://evil.example/app",
+      "/apple",
+      "/app/onboarding",
+      "/pay/0x1",
+    ]) {
+      expect(afterOnboarding(next)).toBe("/app");
+    }
   });
 });

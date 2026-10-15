@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 201,
+  "nextId": 202,
   "tasks": [
     {
       "id": "F179",
@@ -2183,6 +2183,96 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F201",
+      "type": "feat",
+      "behavior": "Onboarding has its own address, /app/onboarding, instead of replacing whatever /app page was opened",
+      "acceptance": [
+        "A signed-in user whose onboarding is not done is sent from any /app page to /app/onboarding, keeping the page they asked for; Continue or Skip takes them there (or to /app), only to a same-site /app path",
+        "A user who finished or skipped onboarding and opens /app/onboarding is sent to /app; reload and the back button keep the user on the right page; the page title names onboarding",
+        "e2e covers a new user opening /app/invoices: they land on /app/onboarding, finish it and arrive at /app/invoices; and an onboarded user opening /app/onboarding lands on /app"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-50",
+        "D-53"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T11:48:38Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 67.7,
+            "log": "docs/runs/F201-20261015T114838Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 193.6,
+            "log": "docs/runs/F201-20261015T114838Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.7,
+            "log": "docs/runs/F201-20261015T114838Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F201-20261015T114838Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F201-20261015T114838Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F201-20261015T114838Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 7.1,
+            "log": "docs/runs/F201-20261015T114838Z-build.log"
+          }
+        ],
+        "taskHash": "c772ebd525215c9b",
+        "filesHash": "ac112ce05a45d516",
+        "proof": {
+          "1": "e2e: onboarding.spec 'keeps the page a new user asked for': opening /app/invoices lands on /app/onboarding?next=%2Fapp%2Finvoices, survives a reload, Skip returns to /app/invoices; the first test sees /app/onboarding?next=%2Fapp and Continue lands on /app; unit afterOnboarding accepts only /app paths (rejects //evil, https://, /apple, /app/onboarding, /pay)",
+          "2": "e2e: once done, /app/onboarding sends to /app and the back button does not return to it; the title is 'Forwend | Get started'",
+          "3": "e2e: both cases run in onboarding.spec (new user opening /app/invoices; onboarded user opening /app/onboarding)"
+        }
+      },
+      "branch": "feat/f201-onboarding-has-its-own-address-app-onboa",
+      "baseCommit": "56a18461933061ddbbd9b25e9262b5e54b913c2f",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
