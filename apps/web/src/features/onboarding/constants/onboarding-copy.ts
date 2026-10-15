@@ -2,6 +2,7 @@ import { CHECKLIST_STEPS, ONBOARDING_CHOICES } from "@/features/onboarding/const
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 
 export const FIRST_RUN_COPY = {
+  pageTitle: "Get started",
   title: "What do you want to do?",
   intro:
     "Pick all that fit. Each business use gets its own profile and wallet; you can add profiles later.",

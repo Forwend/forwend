@@ -90,6 +90,9 @@ test("a new user picks what they want to do once and lands on the new profile wi
   await mockNewUser(page, user);
   await page.goto("/app");
 
+  // The first run has its own address and title.
+  await expect(page).toHaveURL("/app/onboarding?next=%2Fapp");
+  await expect(page).toHaveTitle("Forwend | Get started");
   await expect(
     page.getByRole("heading", { level: 1, name: "What do you want to do?" }),
   ).toBeVisible();
@@ -188,6 +191,31 @@ test("on a phone a new user skips the first run and gets the personal checklist"
   await expect(page.getByRole("heading", { level: 1, name: "Request money" })).toBeAttached();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   expect(await blockingViolations(page)).toEqual([]);
+  await context.close();
+});
+
+test("the first run keeps the page a new user asked for, and is closed once done", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ storageState: session });
+  const page = await context.newPage();
+  const user = newUser();
+  await mockNewUser(page, user);
+  await page.goto("/app/invoices");
+  await expect(page).toHaveURL("/app/onboarding?next=%2Fapp%2Finvoices");
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "What do you want to do?" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Skip for now" }).click();
+  await expect(page).toHaveURL("/app/invoices");
+  await expect(page.locator("aside")).toBeVisible();
+
+  // Done: the first run's address goes to the overview, also from the back button.
+  await page.goto("/app/onboarding");
+  await expect(page).toHaveURL("/app");
+  await page.goBack();
+  await expect(page).not.toHaveURL(/\/app\/onboarding/);
   await context.close();
 });
 

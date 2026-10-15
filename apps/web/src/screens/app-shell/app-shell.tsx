@@ -9,6 +9,7 @@ import { PaymentToasts } from "@/features/activity/components/payment-toasts";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
 import { FirstRun } from "@/features/onboarding/components/first-run";
+import { afterOnboarding } from "@/features/onboarding/lib/onboarding";
 import { useSignUpQuery } from "@/features/profiles/api/profiles-api";
 import { ProfileSheet } from "@/features/profiles/components/profile-sheet";
 import { AppSessionContext } from "@/features/profiles/hooks/use-app-session";
@@ -54,15 +55,34 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const active = profiles ? chosenProfile(profiles, activeId ?? savedId) : undefined;
   const balances = useGetBalancesQuery(active ? active.profileId : skipToken, LIVE_QUERY);
 
-  const switchProfile = useCallback(
+  const rememberProfile = useCallback(
     (profileId: string) => {
       setActiveId(profileId);
       if (userId) saveChosenProfileId(userId, profileId);
+    },
+    [userId],
+  );
+  const switchProfile = useCallback(
+    (profileId: string) => {
+      rememberProfile(profileId);
       // Another profile starts at its own overview (R-76).
       router.push(APP_ROUTES.home);
     },
-    [userId, router],
+    [rememberProfile, router],
   );
+
+  // R-50: the first run has its own address. Until it is done every app page sends there, keeping the page asked for;
+  // once done (also the moment it is finished) the address returns to that page, else the overview.
+  const firstRun = me.currentData ? me.currentData.onboardedAt === null : null;
+  const onOnboarding = pathname === APP_ROUTES.onboarding;
+  useEffect(() => {
+    if (firstRun && !onOnboarding) {
+      const next = encodeURIComponent(pathname + window.location.search);
+      router.replace(`${APP_ROUTES.onboarding}?next=${next}`);
+    } else if (firstRun === false && onOnboarding) {
+      router.replace(afterOnboarding(new URLSearchParams(window.location.search).get("next")));
+    }
+  }, [firstRun, onOnboarding, pathname, router]);
 
   useEffect(() => {
     if (ready && !authenticated) router.replace(APP_ROUTES.signIn);
@@ -122,8 +142,9 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
       </main>
     );
   }
-  // Also after sign out, until the redirect: never show the shell to a signed-out visitor.
-  if (!ready || !authenticated || !profiles || !active || !session) {
+  // Also after sign out, until the redirect: never show the shell to a signed-out visitor. And while the first run's
+  // address is still being reached or left.
+  if (!ready || !authenticated || !profiles || !active || !session || firstRun !== onOnboarding) {
     return (
       <main className="grid min-h-dvh place-items-center bg-bg">
         <Spinner label={SHELL_COPY.loading} />
@@ -132,14 +153,12 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   }
 
   // R-50: the first-run choice, once, before the shell.
-  if (me.currentData?.onboardedAt === null) {
+  if (firstRun) {
     return (
       <FirstRun
         profiles={profiles}
-        onDone={(profile) => {
-          switchProfile(profile.profileId);
-          router.replace(APP_ROUTES.home);
-        }}
+        // The finished first run updates onboardedAt, and the address check above returns to the page.
+        onDone={(profile) => rememberProfile(profile.profileId)}
       />
     );
   }
