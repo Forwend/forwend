@@ -356,8 +356,9 @@ test.describe("pay page", () => {
   test("takes an optional address for the receipt", async ({ page }) => {
     const sent: unknown[] = [];
     let answer = 200;
-    await page.route("**/api/v1/invoices/*/payer-email", (route) => {
+    await page.route("**/api/v1/invoices/*/payer-email", async (route) => {
       sent.push(route.request().postDataJSON());
+      await new Promise((resolve) => setTimeout(resolve, 300)); // a slow answer: a second press must not send again
       return answer === 200
         ? route.fulfill({ json: { email: "payer@example.com" } })
         : route.fulfill({ status: answer, json: { error: { code: "x", message: "x" } } });
@@ -375,12 +376,17 @@ test.describe("pay page", () => {
       page.getByText("Used for this receipt only. Nothing else is sent to it."),
     ).toBeVisible();
     await field.fill(" Payer@Example.com ");
-    await page.getByRole("button", { name: "Send", exact: true }).click();
-    await expect(
-      page.getByText("We will email the receipt to payer@example.com once it is paid."),
-    ).toBeVisible();
+    await field.press("Enter");
+    await field.press("Enter");
+    // Saved: the form gives way to a confirmation, which takes focus; nothing is left to press again.
+    const saved = page.getByText("We will email the receipt to payer@example.com once it is paid.");
+    await expect(saved).toBeVisible();
+    await expect(page.getByText("Receipt saved")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
     expect(sent).toEqual([{ email: "Payer@Example.com" }]); // an email field trims; the server lowercases
 
+    await page.getByRole("button", { name: "Use another address" }).click();
+    await expect(field).toBeFocused();
     answer = 422;
     await field.fill("not an address");
     await page.getByRole("button", { name: "Send", exact: true }).click();
