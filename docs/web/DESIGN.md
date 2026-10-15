@@ -106,6 +106,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Invoices table: the client has a round initials avatar. Phone rows lead with the client (or a request's note) beside
   that avatar carrying the network's logo, with the number and a short due date (no year within this year) under it,
   and the amount over the status pill on the right.
+- Activity on phones: one network rides on the row icon as its logo, so the detail line is only the time and never
+  cuts; a confirmed payment names no status, as on Transactions.
 - Invoice detail on phones: above a title the number is a small quiet label sharing its row with the status pill; the
   share row is a full-width Copy link
   with Open and More actions beside it (the link text shows from small screens up).
@@ -151,7 +153,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   underlined link with a file icon. On phones the pay panel comes right after the amount and the title, dates, note and PDF
   link follow it, so the payer reaches the address first. Right: one panel. While money is due it holds Pay with (the one option as a token mark,
   or Network and Token selects, which scale to many chains and tokens), a Show address button, then the QR beside the
-  exact amount and the warning line "Send only USDC on Base Sepolia." with a warning icon (plus "Native USDC, not
+  exact amount and the warning line "Send only USDC on Base Sepolia." with a warning icon (the small size on phones, so it
+  stays on one line beside the QR down to 360 px) (plus "Native USDC, not
   USDC.e." where a bridged look-alike exists), then the address full width, then the token contract as a short explorer
   link and one exchange hint that names the network to withdraw on. The amount and the address are read-only fields
   (a bordered row like an input) with Copy inside on the right. The address is Geist Mono with its first 6 and last 4

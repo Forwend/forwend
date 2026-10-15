@@ -16,7 +16,9 @@ export type ActivityDirection = (typeof ACTIVITY_DIRECTIONS)[keyof typeof ACTIVI
 export interface ActivityRowProps {
   /** Text, or a link that the row opens. */
   title: ReactNode;
-  detail: string;
+  detail: ReactNode;
+  /** A small mark on the icon's corner, such as the network's logo where a row has no room for its name. */
+  badge?: ReactNode;
   direction: ActivityDirection;
   /** The size of the amount; the direction sets its sign. */
   amount: MoneyProps;
@@ -28,6 +30,7 @@ export interface ActivityRowProps {
 export function ActivityRow({
   title,
   detail,
+  badge,
   direction,
   amount,
   status,
@@ -40,8 +43,9 @@ export function ActivityRow({
   const size = amount.baseUnits < 0n ? -amount.baseUnits : amount.baseUnits;
   return (
     <div className="flex items-center gap-4 py-3">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-pill border border-line bg-surface-2 text-muted">
+      <span className="relative flex size-10 shrink-0 items-center justify-center rounded-pill border border-line bg-surface-2 text-muted">
         <Icon aria-hidden className="size-[var(--fw-icon-md)]" />
+        {badge}
       </span>
       <span className="min-w-0 flex-1">
         <span
@@ -50,7 +54,10 @@ export function ActivityRow({
         >
           {title}
         </span>
-        <span className="block truncate text-sm text-muted" title={detail}>
+        <span
+          className="block truncate text-sm text-muted"
+          title={typeof detail === "string" ? detail : undefined}
+        >
           {detail}
         </span>
       </span>
@@ -60,8 +67,9 @@ export function ActivityRow({
         </span>
         <span className="flex items-center gap-1">
           {action}
+          {/* Confirmed is the usual end state: phones name only a status still to wait for. */}
           {status === PAYMENT_STATUS.confirmed ? (
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-transparent px-2.5 py-1 text-xs text-muted">
+            <span className="max-sm:sr-only inline-flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-transparent px-2.5 py-1 text-xs text-muted">
               <span aria-hidden className="size-1.5 shrink-0 rounded-pill bg-success" />
               {PAYMENT_STATUSES.confirmed.label}
             </span>

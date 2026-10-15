@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  BrandIcon,
   Button,
   EmptyState,
   Money,
@@ -33,13 +32,13 @@ import {
   transactionsCsv,
 } from "@/features/transactions/lib/transactions";
 import type { Transaction } from "@/features/transactions/types/transactions";
+import { ChainBadge } from "@/shared/components/chains/chain-badge";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { NetworkName } from "@/shared/components/chains/network-name";
 import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { CHAINS } from "@/shared/constants/chains";
 import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
 import { addressLink, chainName } from "@/shared/lib/chains";
 
@@ -354,18 +353,13 @@ function Party({
   const incoming = t.direction === TRANSACTION_DIRECTIONS.in;
   const Icon = incoming ? ArrowDownLeft : ArrowUpRight;
   const zero = t.counterparty.toLowerCase() === ZERO_ADDRESS;
-  const chain = chainBadge ? CHAINS[t.chainId]?.icon : undefined;
   return (
     <span className="flex min-w-0 items-center gap-3">
       <span
         className={`relative grid size-9 shrink-0 place-items-center rounded-pill ${incoming ? "bg-success-soft text-success" : "bg-surface-2 text-muted"}`}
       >
         <Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
-        {chain ? (
-          <span className="absolute -right-1 -bottom-1 grid size-4.5 place-items-center rounded-pill border-2 border-surface bg-surface">
-            <BrandIcon name={chain} className="size-3.5 rounded-sm" />
-          </span>
-        ) : null}
+        {chainBadge ? <ChainBadge chainId={t.chainId} /> : null}
       </span>
       <span className="min-w-0">
         <span className="block truncate font-medium text-ink">

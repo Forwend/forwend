@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  BrandIcon,
   Button,
   buttonClasses,
   EmptyState,
@@ -26,12 +25,12 @@ import {
   invoiceStatus,
 } from "@/features/invoices/lib/invoices";
 import type { InvoiceSummary, InvoiceToken } from "@/features/invoices/types/invoices";
+import { ChainBadge } from "@/shared/components/chains/chain-badge";
 import { NetworkName } from "@/shared/components/chains/network-name";
 import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { CHAINS } from "@/shared/constants/chains";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { useListFilters } from "@/shared/hooks/use-list-filters";
 import { chainName } from "@/shared/lib/chains";
@@ -284,7 +283,6 @@ function Avatar({
   chainId?: number | null;
   small?: boolean;
 }) {
-  const chain = chainId ? CHAINS[chainId]?.icon : undefined;
   const letters = name ? initials(name) : "";
   return (
     <span
@@ -292,11 +290,7 @@ function Avatar({
       className={`relative grid shrink-0 place-items-center rounded-pill bg-surface-2 font-medium text-muted ${small ? "size-7 text-xs" : "size-9 text-sm"}`}
     >
       {letters || <FileText className="size-[var(--fw-icon-sm)]" />}
-      {chain ? (
-        <span className="absolute -right-1 -bottom-1 grid size-4.5 place-items-center rounded-pill border-2 border-surface bg-surface">
-          <BrandIcon name={chain} className="size-3.5 rounded-sm" />
-        </span>
-      ) : null}
+      {chainId ? <ChainBadge chainId={chainId} /> : null}
     </span>
   );
 }

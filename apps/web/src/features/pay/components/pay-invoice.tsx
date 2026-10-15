@@ -408,21 +408,22 @@ function PayBox({
                   {COPY.sendTo(token.symbol, network)}
                 </h2>
                 {/* What to send and where beside the code a phone scans; the address itself runs full width. */}
-                <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
+                <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:gap-4">
                   <QrCode
                     value={address}
                     label={COPY.qr}
-                    className="w-28 border border-line p-1 sm:w-32"
+                    className="w-26 border border-line p-1 sm:w-32"
                   />
                   <div className="flex min-w-0 flex-col gap-3">
                     <ExactAmount amount={pay.remaining} token={token} />
+                    {/* The small size on phones, so the warning fits its narrow column on one line. */}
                     <p
                       role="note"
-                      className="flex items-start gap-2 text-sm font-medium text-warning"
+                      className="flex items-start gap-1.5 text-xs font-medium text-warning sm:gap-2 sm:text-sm"
                     >
                       <TriangleAlert
                         aria-hidden
-                        className="mt-0.5 size-[var(--fw-icon-sm)] shrink-0"
+                        className="mt-px size-3.5 shrink-0 sm:mt-0.5 sm:size-[var(--fw-icon-sm)]"
                       />
                       <span>
                         {COPY.sendOnly(token.symbol, network)}
