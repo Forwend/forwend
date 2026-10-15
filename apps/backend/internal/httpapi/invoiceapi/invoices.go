@@ -1,7 +1,10 @@
 package invoiceapi
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
@@ -104,5 +107,33 @@ func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
 			return
 		}
 		httpio.WriteJSON(w, http.StatusOK, toOwnerInvoiceJSON(inv))
+	}
+}
+
+// listEvents is GET /v1/profiles/{profileId}/events?limit= (R-81): the bell's paid, settled and held-money events,
+// newest first.
+func listEvents(invoices *invoice.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		limit := invoice.MaxEvents
+		if v := r.URL.Query().Get("limit"); v != "" {
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				httpio.WriteError(w, r, fmt.Errorf("%w: limit must be a number", invoice.ErrInvalid))
+				return
+			}
+			limit = n
+		}
+		events, err := invoices.Events(r.Context(), r.PathValue("profileId"), limit)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		out := eventsJSON{Items: []eventJSON{}}
+		for _, e := range events {
+			out.Items = append(out.Items, eventJSON{ID: e.ID, Kind: e.Kind, InvoiceID: e.InvoiceID, Number: e.Number,
+				ChainID: e.ChainID, Token: e.Token, Symbol: e.Symbol, Decimals: e.Decimals, Amount: e.Amount.String(),
+				At: e.At.UTC().Format(time.RFC3339Nano)})
+		}
+		httpio.WriteJSON(w, http.StatusOK, out)
 	}
 }

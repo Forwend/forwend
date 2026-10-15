@@ -67,6 +67,8 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
   LOCKED`; a failed send ends that round and is retried after 1 min doubling to 1 h, given up after 10 tries. Email off
   or no address: the event is marked done and nothing is sent. Without `RESEND_API_KEY` the worker sends nothing and
   events wait; `scripts/with-env.sh` gives the key to the worker alone.
+- `GET /v1/profiles/{profileId}/events?limit=` (R-81, at most 50): the same events for the bell, newest first, with the
+  invoice number, the option's token and the amount (newly held for `invoice.held`).
 
 ## Billing details
 

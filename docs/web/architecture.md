@@ -69,7 +69,7 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   does not have.
 - Features import each other only here: receive → balances; invoices → activity, balances; pay → activity, invoices
   (including the `check-status` and `invoice-progress` components); onboarding → activity, invoices, profiles,
-  transactions. No cycles ([structure.md](structure.md)); money helpers and words that several features show live in
+  transactions; transactions → invoices (the bell's invoice events, R-81). No cycles ([structure.md](structure.md)); money helpers and words that several features show live in
   `shared/lib/money.ts` and `shared/constants/money-copy.ts`. Add no new edge without listing it here.
 - Checkout `/pay/<id>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed id is a 404;
   an id the API does not know shows the 404 page. It reads the public `GET /v1/invoices/{id}` every 15 s through a

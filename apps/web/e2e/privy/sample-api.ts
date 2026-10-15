@@ -151,6 +151,8 @@ interface SampleLists {
   invoices: SampleInvoice[];
   activity: SampleItem[];
   transfers: SampleTransfer[];
+  // The bell's invoice events (R-81); none unless a test gives them.
+  events?: object[];
 }
 const SAMPLE_LISTS: SampleLists = { invoices: INVOICES, activity: ACTIVITY, transfers: TRANSFERS };
 
@@ -251,6 +253,7 @@ export async function mockApi(page: Page, lists: SampleLists = SAMPLE_LISTS) {
       );
       return route.fulfill({ json });
     }
+    if (what?.startsWith("events")) return route.fulfill({ json: { items: lists.events ?? [] } });
     if (what === "notifications") {
       if (route.request().method() === "PUT")
         notifications.email = route.request().postDataJSON().email;

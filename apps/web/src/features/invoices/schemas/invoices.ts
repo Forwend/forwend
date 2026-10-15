@@ -5,6 +5,7 @@ import type {
   ApiSettlementStatus,
 } from "@/features/activity/types/activity";
 import { SETTLEMENT_WAITS } from "@/features/invoices/constants/invoices";
+import type { InvoiceEventKind } from "@/features/invoices/types/invoices";
 import {
   apiDate,
   apiTime,
@@ -154,3 +155,20 @@ export const createInvoiceBodySchema = z.object({
   senderName: z.string(),
   client: z.object({ name: z.string(), email: z.string(), address: z.string() }),
 });
+
+/** One of the bell's events (R-81): GET /v1/profiles/{id}/events. */
+export const invoiceEventSchema = z.object({
+  id: z.number().int(),
+  kind: openEnum<InvoiceEventKind>(),
+  invoiceId: hash32,
+  number: z.number().int().positive(),
+  chainId: count,
+  token: evmAddress,
+  symbol: z.string(),
+  decimals: count,
+  // The option's amount; for held money, the amount newly held for the payer.
+  amount: baseUnits,
+  at: apiTime,
+});
+
+export const invoiceEventsSchema = z.object({ items: z.array(invoiceEventSchema) });
