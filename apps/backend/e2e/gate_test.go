@@ -15,7 +15,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -40,72 +42,14 @@ const (
 // the same invoice.
 func TestMoneyLoop(t *testing.T) {
 	ctx := context.Background()
-	anvil := chaintest.Start(t)
-	anvil.DeployFactory()
-	token := anvil.DeployToken()
-	anvil.Mint(token, "1000000000")
-	privy := authtest.NewPrivy(t)
-	dbURL := databasetest.New(t)
-	bin := build(t)
-
-	chains := filepath.Join(t.TempDir(), "chains.json")
-	// Public RPCs only, on three hosts. The first answers every third request with 429, so the binaries' calls must move
-	// to the next RPC; two host names for the one Anvil give the second, independent RPC for balances (D-15).
-	limited, requests := anvil.Proxy(), 0
-	limited.Fail(func(chaintest.Call) chaintest.Fault {
-		if requests++; requests%3 == 0 {
-			return chaintest.HTTP429
-		}
-		return chaintest.Forward
-	})
-	second := strings.Replace(anvil.URL, "127.0.0.1", "localhost", 1)
-	if err := os.WriteFile(chains, fmt.Appendf(nil, `{"anvil": {"chainId": %d, "infura": null, "public": [%q, %q, %q]}}`,
-		chaintest.ChainID, limited.URL, anvil.URL, second), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	apiAddr := freeAddr(t)
-	common := []string{"DATABASE_URL=" + dbURL}
-	rpcs := []string{"CHAINS_FILE=" + chains, "INFURA_API_KEYS=", "RPC_RATE_PER_SECOND=100"}
-	loop := append(append(common, rpcs...), "POLL_INTERVAL=200ms")
-	start(t, bin, "api", append(append(common, rpcs...), "API_ADDR="+apiAddr, "PRIVY_APP_ID="+appID,
-		"PRIVY_JWKS_URL="+privy.JWKSURL, "PRIVY_APP_SECRET=unused", // this test makes its profile in the database
-		"PUBLIC_WEB_URL=http://localhost:3000"))
-	api := "http://" + apiAddr
-	waitFor(t, "api healthy", func() bool {
-		res, err := http.Get(api + "/healthz")
-		if err == nil {
-			res.Body.Close()
-		}
-		return err == nil && res.StatusCode == http.StatusOK
-	})
-
-	conn, err := pgx.Connect(ctx, dbURL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close(ctx)
-	var profile string
-	err = conn.QueryRow(ctx, `
-		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES ($1, 'evm', 'anvil', true)),
-		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
-		            VALUES ($1, 'evm', $2, 'USDC', 6, true)),
-		     u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:gate') RETURNING id),
-		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id),
-		     w AS (INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
-		           SELECT id, 'privy', 'w1', 'evm', $3 FROM p)
-		SELECT id::text FROM p`, chaintest.ChainID, token, wallet).Scan(&profile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	start(t, bin, "worker", loop)
-	start(t, bin, "signer", append(loop, "EXECUTOR_PRIVATE_KEY="+chaintest.Key))
-	waitFor(t, "the worker's first scan", func() bool {
-		var n int
-		return conn.QueryRow(ctx, "SELECT count(*) FROM chain_cursors").Scan(&n) == nil && n > 0
-	})
+	st := newStack(t)
+	anvil, token, privy, api, conn, profile, limited := st.anvil, st.token, st.privy, st.api, st.conn, st.profile, st.limited
+	start(t, st.bin, "worker", st.loop)
+	start(t, st.bin, "signer", append(st.loop, "EXECUTOR_PRIVATE_KEY="+chaintest.Key))
+	st.waitScanned(t)
 
 	body := fmt.Sprintf(`{"chainId": %d, "token": %q, "amount": %q}`, chaintest.ChainID, token, amount)
-	status, created := post(t, api+"/v1/profiles/"+profile+"/invoices", privy, body)
+	status, created := post(t, api+"/v1/profiles/"+profile+"/invoices", privy, "gate-1", body)
 	if status != http.StatusCreated {
 		t.Fatalf("create invoice: %d %v", status, created)
 	}
@@ -194,7 +138,7 @@ func TestMoneyLoop(t *testing.T) {
 	}
 
 	// The same request with the same key: the same invoice, still one.
-	status, again := post(t, api+"/v1/profiles/"+profile+"/invoices", privy, body)
+	status, again := post(t, api+"/v1/profiles/"+profile+"/invoices", privy, "gate-1", body)
 	if status != http.StatusOK || again["invoiceId"] != id {
 		t.Fatalf("same key again: %d %v, want 200 with %s", status, again["invoiceId"], id)
 	}
@@ -202,6 +146,91 @@ func TestMoneyLoop(t *testing.T) {
 	if err := conn.QueryRow(ctx, "SELECT count(*) FROM invoices").Scan(&n); err != nil || n != 1 {
 		t.Fatalf("%d invoices, want 1", n)
 	}
+}
+
+// stack is the api, a database with the gate's user and freelancer profile, and an Anvil chain behind three RPCs, the
+// first of which answers every third request with 429. Tests start the worker and signer themselves.
+type stack struct {
+	anvil          *chaintest.Anvil
+	limited        *chaintest.Proxy
+	privy          *authtest.Privy
+	conn           *pgx.Conn
+	bin, api       string
+	token, profile string
+	loop           []string // the worker's and signer's environment
+}
+
+func newStack(t *testing.T) *stack {
+	t.Helper()
+	ctx := context.Background()
+	anvil := chaintest.Start(t)
+	anvil.DeployFactory()
+	token := anvil.DeployToken()
+	anvil.Mint(token, "1000000000")
+	privy := authtest.NewPrivy(t)
+	dbURL := databasetest.New(t)
+	bin := build(t)
+
+	chains := filepath.Join(t.TempDir(), "chains.json")
+	// Public RPCs only, on three hosts. The first answers every third request with 429, so the binaries' calls must move
+	// to the next RPC; two host names for the one Anvil give the second, independent RPC for balances (D-15).
+	limited, requests := anvil.Proxy(), 0
+	limited.Fail(func(chaintest.Call) chaintest.Fault {
+		if requests++; requests%3 == 0 {
+			return chaintest.HTTP429
+		}
+		return chaintest.Forward
+	})
+	second := strings.Replace(anvil.URL, "127.0.0.1", "localhost", 1)
+	if err := os.WriteFile(chains, fmt.Appendf(nil, `{"anvil": {"chainId": %d, "infura": null, "public": [%q, %q, %q]}}`,
+		chaintest.ChainID, limited.URL, anvil.URL, second), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	apiAddr := freeAddr(t)
+	common := []string{"DATABASE_URL=" + dbURL}
+	rpcs := []string{"CHAINS_FILE=" + chains, "INFURA_API_KEYS=", "RPC_RATE_PER_SECOND=100"}
+	start(t, bin, "api", append(append(common, rpcs...), "API_ADDR="+apiAddr, "PRIVY_APP_ID="+appID,
+		"PRIVY_JWKS_URL="+privy.JWKSURL, "PRIVY_APP_SECRET=unused", // this test makes its profile in the database
+		"PUBLIC_WEB_URL=http://localhost:3000"))
+	api := "http://" + apiAddr
+	waitFor(t, "api healthy", func() bool {
+		res, err := http.Get(api + "/healthz")
+		if err == nil {
+			res.Body.Close()
+		}
+		return err == nil && res.StatusCode == http.StatusOK
+	})
+
+	conn, err := pgx.Connect(ctx, dbURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { conn.Close(ctx) })
+	var profile string
+	err = conn.QueryRow(ctx, `
+		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES ($1, 'evm', 'anvil', true)),
+		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
+		            VALUES ($1, 'evm', $2, 'USDC', 6, true)),
+		     u AS (INSERT INTO users (privy_user_id, login_email) VALUES ('did:privy:gate', 'owner@example.com') RETURNING id),
+		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id),
+		     w AS (INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
+		           SELECT id, 'privy', 'w1', 'evm', $3 FROM p)
+		SELECT id::text FROM p`, chaintest.ChainID, token, wallet).Scan(&profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &stack{anvil: anvil, limited: limited, privy: privy, conn: conn, bin: bin, api: api, token: token,
+		// Clipped: an append for one binary must never write into another's environment.
+		profile: profile, loop: slices.Clip(append(append(common, rpcs...), "POLL_INTERVAL=200ms"))}
+}
+
+// waitScanned waits for the worker's first scan: invoices are made only once a chain is watched.
+func (s *stack) waitScanned(t *testing.T) {
+	t.Helper()
+	waitFor(t, "the worker's first scan", func() bool {
+		var n int
+		return s.conn.QueryRow(context.Background(), "SELECT count(*) FROM chain_cursors").Scan(&n) == nil && n > 0
+	})
 }
 
 // build compiles the three binaries once for this test.
@@ -215,8 +244,9 @@ func build(t *testing.T) string {
 	return dir
 }
 
-// start runs a binary with only the given environment; its output is shown if the test fails.
-func start(t *testing.T, bin, name string, env []string) {
+// start runs a binary with only the given environment; its output is shown if the test fails. stop ends it early, as
+// a deploy or a crash would.
+func start(t *testing.T, bin, name string, env []string) (stop func()) {
 	t.Helper()
 	var logs bytes.Buffer
 	cmd := exec.Command(filepath.Join(bin, name))
@@ -225,13 +255,20 @@ func start(t *testing.T, bin, name string, env []string) {
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
+	var once sync.Once
+	stop = func() {
+		once.Do(func() {
+			_ = cmd.Process.Signal(os.Interrupt)
+			_ = cmd.Wait()
+		})
+	}
 	t.Cleanup(func() {
-		_ = cmd.Process.Signal(os.Interrupt)
-		_ = cmd.Wait()
+		stop()
 		if t.Failed() {
 			t.Logf("%s output:\n%s", name, logs.String())
 		}
 	})
+	return stop
 }
 
 func freeAddr(t *testing.T) string {
@@ -244,14 +281,14 @@ func freeAddr(t *testing.T) string {
 	return l.Addr().String()
 }
 
-func post(t *testing.T, url string, privy *authtest.Privy, body string) (int, map[string]any) {
+func post(t *testing.T, url string, privy *authtest.Privy, key, body string) (int, map[string]any) {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token(t, privy))
-	req.Header.Set("Idempotency-Key", "gate-1")
+	req.Header.Set("Idempotency-Key", key)
 	return do(t, req)
 }
 

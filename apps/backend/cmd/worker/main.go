@@ -62,7 +62,11 @@ func run() error {
 	// Owner email (R-80): without a key nothing is sent, and the events wait in the outbox.
 	var sender email.Sender
 	if cfg.Email.ResendKey != "" {
-		sender = email.NewResend(cfg.Email.ResendKey, cfg.Email.From)
+		r := email.NewResend(cfg.Email.ResendKey, cfg.Email.From)
+		if cfg.Email.ResendURL != "" {
+			r.URL = cfg.Email.ResendURL // the gate's fake Resend
+		}
+		sender = r
 	}
 	slog.Info("worker ready", "every", cfg.Chains.PollInterval, "email", sender != nil)
 	for {
