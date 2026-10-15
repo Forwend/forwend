@@ -231,6 +231,21 @@ func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 		VALUES (84532, 'evm', '0x00000000000000000000000000000000000000ee', $1, $2, 0, $2, 1, 1,
 		    '0x4444444444444444444444444444444444444444', '0x3333333333333333333333333333333333333333', 5000000, 'confirmed')`,
 		id, hash)
+	// Later transfers the link must not pick: one after the checkout closed, and one not final yet.
+	for i, d := range []struct {
+		status string
+		late   bool
+	}{{"confirmed", true}, {"detected", false}} {
+		at := "1"
+		if d.late {
+			at = "2000000001"
+		}
+		exec(t, pool, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
+			    block_hash, block_number, block_time, from_address, to_address, amount, status)
+			VALUES (84532, 'evm', '0x00000000000000000000000000000000000000ee', $1, $2, 0, $2, $3, $4::bigint,
+			    '0x4444444444444444444444444444444444444444', '0x3333333333333333333333333333333333333333', 1, $5)`,
+			id, "0x"+strings.Repeat(fmt.Sprintf("%02x", 0xe0+i), 32), 10+i, at, d.status)
+	}
 	if err := pgx.BeginFunc(context.Background(), pool, func(tx pgx.Tx) error {
 		return outbox.QueueReceipt(context.Background(), tx, id)
 	}); err != nil {
@@ -245,6 +260,7 @@ func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 	}
 	m := f.sent[0]
 	for _, want := range []string{"You paid 5.00 USDC on Base Sepolia to Mara Ilić for INV-0001.",
+		"The name is what the invoice's creator gave; Forwend doesn't check it.",
 		"Transaction: https://sepolia.basescan.org/tx/" + hash, "Receipt (PDF): " + web + "/api/v1/invoices/" + id + "/receipt.pdf"} {
 		if !strings.Contains(m.Text, want) {
 			t.Fatalf("receipt text %q lacks %q", m.Text, want)

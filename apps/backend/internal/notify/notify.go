@@ -69,20 +69,21 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 		return false, fmt.Errorf("read email event %d: %w", id, err)
 	}
 	var (
-		on                          bool
-		to, payer                   *string
-		number                      int64
-		symbol, amount, payee, hash string
-		decimals                    int
-		chainID                     uint64
+		on                   bool
+		to, payer            *string
+		number               int64
+		symbol, amount, hash string
+		issuer, typed        string
+		decimals             int
+		chainID              uint64
 	)
 	if err := tx.QueryRow(ctx, `SELECT p.email_notifications, u.login_email, m.payer_email, m.number,
-		    coalesce(m.issuer_name, m.sender_name, ''), t.symbol, t.decimals, o.chain_id, o.amount::text,
+		    coalesce(m.issuer_name, ''), coalesce(m.sender_name, ''), t.symbol, t.decimals, o.chain_id, o.amount::text,
 		    coalesce((SELECT d.tx_hash FROM chain_transfers d WHERE d.invoice_id = o.id AND d.status = 'confirmed'
 		              AND d.block_time <= o.expires_at ORDER BY d.block_number DESC, d.log_index DESC LIMIT 1), '')
 		FROM invoices m JOIN profiles p ON p.id = m.profile_id JOIN users u ON u.id = p.user_id
 		JOIN invoices o ON o.id = $2 JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
-		WHERE m.id = $1`, invoice, p.Option).Scan(&on, &to, &payer, &number, &payee, &symbol, &decimals, &chainID,
+		WHERE m.id = $1`, invoice, p.Option).Scan(&on, &to, &payer, &number, &issuer, &typed, &symbol, &decimals, &chainID,
 		&amount, &hash); err != nil {
 		return false, fmt.Errorf("read email event %d invoice: %w", id, err)
 	}
@@ -104,7 +105,7 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 	units, _ := new(big.Int).SetString(amount, 10)
 	var m email.Message
 	if kind == outbox.Receipt {
-		m = receipt(document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID), payee,
+		m = receipt(document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID), issuer, typed,
 			document.TxURL(chainID, hash), webURL+"/api/v1/invoices/"+invoice+"/receipt.pdf")
 	} else {
 		m = compose(kind, document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID),
@@ -156,12 +157,16 @@ func compose(kind, number, amount, network, link, settings string) email.Message
 
 // receipt is the payer's one email (R-82): what they paid, to whom, the transaction and the receipt PDF. Nothing else
 // is ever sent to this address.
-func receipt(number, amount, network, payee, tx, pdf string) email.Message {
-	to := ""
-	if payee != "" {
-		to = " to " + payee
+func receipt(number, amount, network, issuer, sender, tx, pdf string) email.Message {
+	to, unchecked := "", ""
+	switch {
+	case issuer != "":
+		to = " to " + issuer
+	case sender != "":
+		// A name the invoice's creator typed, as the pay page and PDF say: not checked by Forwend.
+		to, unchecked = " to "+sender, "\n\nThe name is what the invoice's creator gave; Forwend doesn't check it."
 	}
-	text := "You paid " + amount + " on " + network + to + " for " + number + "."
+	text := "You paid " + amount + " on " + network + to + " for " + number + "." + unchecked
 	if tx != "" {
 		text += "\n\nTransaction: " + tx
 	}

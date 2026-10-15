@@ -36,9 +36,12 @@ func (s *Service) SetPayerEmail(ctx context.Context, id, email string) (string, 
 		} else if err != nil {
 			return fmt.Errorf("lock invoice %s: %w", id, err)
 		}
+		// The receipt row too: the worker holds it while it sends, so a change waits for that send and then sees it sent,
+		// instead of answering "on its way" to an address the email did not go to.
 		var sent bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM outbox_events WHERE invoice_id = $1 AND kind = $2
-			AND published_at IS NOT NULL)`, main, outbox.Receipt).Scan(&sent); err != nil {
+		err = tx.QueryRow(ctx, `SELECT published_at IS NOT NULL FROM outbox_events WHERE invoice_id = $1 AND kind = $2
+			FOR UPDATE`, main, outbox.Receipt).Scan(&sent)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("read invoice %s receipt: %w", id, err)
 		}
 		if sent {
@@ -46,6 +49,11 @@ func (s *Service) SetPayerEmail(ctx context.Context, id, email string) (string, 
 		}
 		if _, err := tx.Exec(ctx, "UPDATE invoices SET payer_email = $2 WHERE id = $1", main, email); err != nil {
 			return fmt.Errorf("save payer email: %w", err)
+		}
+		// A receipt the worker gave up on, or still retrying, starts again for the new address.
+		if _, err := tx.Exec(ctx, `UPDATE outbox_events SET attempts = 0, failed_at = NULL, next_attempt_at = now()
+			WHERE invoice_id = $1 AND kind = $2 AND published_at IS NULL`, main, outbox.Receipt); err != nil {
+			return fmt.Errorf("restart invoice %s receipt: %w", id, err)
 		}
 		if err := tx.QueryRow(ctx, "SELECT option_id, payment_status FROM "+invoicesCurrent+" WHERE id = $1", main).
 			Scan(&option, &status); err != nil {

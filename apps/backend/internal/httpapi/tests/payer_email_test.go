@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -69,5 +70,49 @@ func TestPayerEmailIsLimitedPerInvoice(t *testing.T) {
 	other := e.post(t, "did:privy:alice", e.aliceProfile, "key-2", basicBody).body["invoiceId"].(string)
 	if r := e.call(t, "PUT", "/v1/invoices/"+other+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status != http.StatusOK {
 		t.Fatalf("another invoice: %d %v", r.status, r.body)
+	}
+}
+
+// A paid invoice queues one receipt however often the address changes before it goes, and a receipt the worker gave
+// up on starts again for the new address.
+func TestPayerEmailQueuesOneReceipt(t *testing.T) {
+	e := invoiceAPI(t)
+	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
+	e.exec(t, `UPDATE invoices SET payment_status = 'paid' WHERE id = $1`, id)
+	put := func(email string) {
+		t.Helper()
+		if r := e.call(t, "PUT", "/v1/invoices/"+id+"/payer-email", "", "", `{"email": "`+email+`"}`); r.status != http.StatusOK {
+			t.Fatalf("PUT %s: %d %v", email, r.status, r.body)
+		}
+	}
+	put("a@example.com")
+	e.exec(t, `UPDATE outbox_events SET attempts = 10, failed_at = now() WHERE invoice_id = $1`, id)
+	put("b@example.com")
+	var n, attempts int
+	var failed bool
+	if err := e.pool.QueryRow(t.Context(), `SELECT count(*), max(attempts), bool_or(failed_at IS NOT NULL) FROM outbox_events
+		WHERE invoice_id = $1 AND kind = 'invoice.receipt'`, id).Scan(&n, &attempts, &failed); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 || attempts != 0 || failed {
+		t.Fatalf("receipts %d, attempts %d, given up %v; want one, started again", n, attempts, failed)
+	}
+	if r := e.call(t, "PUT", "/v1/invoices/"+id+"/payer-email", "", "", `{"email": 1}`); r.status != http.StatusBadRequest {
+		t.Fatalf("a number for email: %d %v, want 400", r.status, r.body)
+	}
+}
+
+// Everyone together gets a few changes a second, so many invoices can't be used to mail many addresses.
+func TestPayerEmailIsLimitedForEveryone(t *testing.T) {
+	e := invoiceAPI(t)
+	limited := 0
+	for i := range 25 {
+		id := fmt.Sprintf("0x%064x", i+1) // unknown invoices: the limits come before the lookup
+		if r := e.call(t, "PUT", "/v1/invoices/"+id+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status == http.StatusTooManyRequests {
+			limited++
+		}
+	}
+	if limited == 0 {
+		t.Fatal("25 changes at once on 25 invoices: none limited")
 	}
 }

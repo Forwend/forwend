@@ -653,76 +653,77 @@
       "review": true,
       "notes": [
         "2026-10-15 blocked: Verify blocked by the stale balances e2e step fixed in F197",
-        "2026-10-15 blocked: refresh base after merging main"
+        "2026-10-15 blocked: refresh base after merging main",
+        "2026-10-15 review pass by independent reviewer: Pass. Ran go test (httpapi/tests, notify, ledger, invoice, document) ok; web vitest 124/124, typecheck, lint ok. Mutations on a scratch copy: 409 removal, owner-instead-of-payer, per-invoice burst, bell exclusion, ledger queue removal, PUT-after-paid queue removal all fail tests. Once-only holds: SetPayerEmail and ledger.Process both lock the main row, partial unique index + ON CONFLICT DO NOTHING; option->main mapping right; PDF link webURL+/api/v1 matches API_BASE rewrite; address never read back, logged, or put in the payload; form hidden on canceled/closed. Minor: (1) removing ON CONFLICT and the unique index together survives - no test queues twice; add a second PUT after paid before sent asserting receipts()==1. (2) Global limit untested (5000/s survives). (3) Tx-link filters (confirmed, on time, latest) untested beyond one transfer. (4) No 400 malformed_request test for the route (api.md Handlers and tests). (5) payer_email.go reads published_at without locking the outbox row: a PUT while the worker is mid-send returns 200 with the new address but the mail goes to the old one; add FOR UPDATE to that read. (6) A given-up receipt (failed_at) still answers 200 'on its way'. (7) The email shows the owner-set sender name with no 'not checked' note, unlike the PDF; low phishing risk since each mail needs a paid invoice."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-15T02:40:48Z",
+        "at": "2026-10-15T02:55:12Z",
         "checks": [
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 65.2,
-            "log": "docs/runs/F185-20261015T024048Z-backend.log"
+            "seconds": 62.6,
+            "log": "docs/runs/F185-20261015T025512Z-backend.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 67.3,
-            "log": "docs/runs/F185-20261015T024048Z-unit.log"
+            "seconds": 65.7,
+            "log": "docs/runs/F185-20261015T025512Z-unit.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 160.3,
-            "log": "docs/runs/F185-20261015T024048Z-e2e.log"
+            "seconds": 164.0,
+            "log": "docs/runs/F185-20261015T025512Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.8,
-            "log": "docs/runs/F185-20261015T024048Z-harness.log"
+            "seconds": 1.9,
+            "log": "docs/runs/F185-20261015T025512Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F185-20261015T024048Z-docs-check.log"
+            "seconds": 0.1,
+            "log": "docs/runs/F185-20261015T025512Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F185-20261015T024048Z-lint.log"
+            "log": "docs/runs/F185-20261015T025512Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F185-20261015T024048Z-typecheck.log"
+            "seconds": 0.2,
+            "log": "docs/runs/F185-20261015T025512Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.7,
-            "log": "docs/runs/F185-20261015T024048Z-build.log"
+            "seconds": 2.3,
+            "log": "docs/runs/F185-20261015T025512Z-build.log"
           }
         ],
         "taskHash": "b7d4c44948b26ee9",
-        "filesHash": "62378d381ffd2165",
+        "filesHash": "4f1e5cf88b14c5ec",
         "proof": {
-          "1": "e2e: pay.spec 'takes an optional address for the receipt' saves it before paying, says where the receipt goes, shows the 422 and 409 answers; backend TestPayerEmail (422, 404, trimmed and lowercased, a paid invoice queues one receipt, changes until sent, 409 receipt_sent after, the bell leaves receipts out) and TestPayerEmailIsLimitedPerInvoice (429 after 3, another invoice has its own budget)",
-          "2": "backend: TestPaidQueuesTheReceiptWhenAsked (paid queues one receipt beside the paid event) and TestDeliverSendsTheReceiptToThePayer (to the payer's address whatever the owner's setting, with amount, payee, transaction link and receipt PDF link); a unique index keeps one receipt per invoice"
+          "1": "e2e: pay.spec 'takes an optional address for the receipt' saves it before paying, says where the receipt goes, shows the 422 and 409 answers; backend TestPayerEmail (422, 404, normalized, paid queues one, 409 after sent, bell leaves receipts out), TestPayerEmailQueuesOneReceipt (one receipt across changes, a given-up receipt restarts, 400), TestPayerEmailIsLimitedPerInvoice and TestPayerEmailIsLimitedForEveryone (429)",
+          "2": "backend: TestPaidQueuesTheReceiptWhenAsked and TestDeliverSendsTheReceiptToThePayer (the payer's address whatever the owner's setting; amount, payee with the unchecked-name note, the on-time confirmed transaction link, receipt PDF link); the change locks the receipt row the worker holds while sending"
         }
       },
       "branch": "feat/f185-a-payer-can-ask-for-the-receipt-by-email",
