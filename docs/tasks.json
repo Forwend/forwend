@@ -529,12 +529,12 @@
       "type": "feat",
       "behavior": "The bell lists invoice events (paid, settled, money held, canceled) beside incoming payments (PLAN 9.6.1)",
       "acceptance": [
-        "The bell lists paid, settled, held-money and canceled invoice events beside incoming payments, newest first, each linking to its invoice and counted unread like a payment (R-81)"
+        "GET /v1/profiles/{id}/events lists the profile's paid, settled and held-money events from outbox_events, newest first; the bell shows them beside incoming payments, newest first, each linking to its invoice and counted unread like a payment (R-81)"
       ],
       "dependsOn": [
         "F183"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "e2e"
@@ -546,7 +546,70 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T02:00:41Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 65.0,
+            "log": "docs/runs/F184-20261015T020041Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 160.8,
+            "log": "docs/runs/F184-20261015T020041Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F184-20261015T020041Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F184-20261015T020041Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F184-20261015T020041Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F184-20261015T020041Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.3,
+            "log": "docs/runs/F184-20261015T020041Z-build.log"
+          }
+        ],
+        "taskHash": "5242a9f5b13929df",
+        "filesHash": "38c1c05d35d944d8",
+        "proof": {
+          "1": "e2e: navigation.spec 'the bell lists paid, settled and held-money events beside payments' shows 3 new, the events newest first with number and amount, links the event to its invoice, and clears the count once opened (axe clean); backend TestListEvents lists the profile's events newest first with held amounts, honours limit, leaves out another profile's, and answers 422 and 403"
+        }
+      },
+      "branch": "feat/f184-the-bell-lists-invoice-events-paid-settl",
+      "baseCommit": "a4f4af28091478d5d9234e3049ffe4f66ce6231d",
+      "failedVerifies": 0
     },
     {
       "id": "F185",

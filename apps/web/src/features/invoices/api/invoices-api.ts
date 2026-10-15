@@ -3,6 +3,7 @@ import type { StatusFilter } from "@/features/activity/types/activity";
 import { INVOICES_PAGE_SIZE } from "@/features/invoices/constants/invoices";
 import {
   createInvoiceBodySchema,
+  invoiceEventsSchema,
   invoiceSchema,
   invoicesPageSchema,
   recheckSchema,
@@ -10,6 +11,7 @@ import {
 import type {
   CreateInvoiceBody,
   Invoice,
+  InvoiceEvent,
   InvoicesPage,
   Recheck,
 } from "@/features/invoices/types/invoices";
@@ -61,6 +63,15 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         providesTags: [INVOICES_TAG],
       }),
+      /** The bell's events (R-81): paid, settled and held money, newest first. */
+      getInvoiceEvents: build.query<InvoiceEvent[], string>({
+        query: (profileId) => ({
+          url: `/v1/profiles/${encodeURIComponent(profileId)}/events`,
+          params: { limit: 20 },
+        }),
+        rawResponseSchema: invoiceEventsSchema,
+        transformResponse: (data: { items: InvoiceEvent[] }) => data.items,
+      }),
       /** Cancel before any money (R-79): 409 once money was seen or the checkout closed. */
       cancelInvoice: build.mutation<Invoice, { profileId: string; invoiceId: string }>({
         query: ({ profileId, invoiceId }) => ({
@@ -108,5 +119,6 @@ export const {
   useGetProfileInvoiceQuery,
   useCreateInvoiceMutation,
   useCancelInvoiceMutation,
+  useGetInvoiceEventsQuery,
   useRecheckInvoiceMutation,
 } = invoicesApi;

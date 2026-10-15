@@ -2,6 +2,7 @@ import {
   AMOUNT_ERRORS,
   type CUSTOM_EXPIRY,
   type EXPIRY_CHOICES,
+  INVOICE_EVENTS,
   INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
   INVOICE_LIMITS,
@@ -10,6 +11,7 @@ import {
   SETTLEMENT_WAITS,
 } from "@/features/invoices/constants/invoices";
 import type {
+  InvoiceEventKind,
   InvoiceExceptionKind,
   InvoicePdf,
   InvoiceStep,
@@ -261,6 +263,12 @@ export const INVOICE_COPY = {
   closesOn: (time: string) => `Checkout closes ${time}`,
   closedOn: (time: string) => `Checkout closed ${time}`,
   canceledOn: (time: string) => `Canceled ${time}`,
+  // The bell's lines (R-81); the amount follows each.
+  events: {
+    [INVOICE_EVENTS.paid]: (number: string) => `${number} paid`,
+    [INVOICE_EVENTS.settled]: (number: string) => `${number} in your wallet`,
+    [INVOICE_EVENTS.held]: (number: string) => `${number} held for the payer`,
+  } satisfies Record<InvoiceEventKind, (number: string) => string>,
   // Cancel before any money (R-79, D-79): the confirm dialog and its outcome.
   cancel: {
     trigger: (noun: string) => `Cancel ${noun}`,

@@ -191,3 +191,20 @@ type recheckJSON struct {
 	NextCheckAt string   `json:"nextCheckAt"`
 	Unreadable  []uint64 `json:"unreadable"`
 }
+
+type eventsJSON struct {
+	Items []eventJSON `json:"items"`
+}
+
+type eventJSON struct {
+	ID        int64  `json:"id"`
+	Kind      string `json:"kind"`
+	InvoiceID string `json:"invoiceId"`
+	Number    int64  `json:"number"`
+	ChainID   uint64 `json:"chainId"`
+	Token     string `json:"token"`
+	Symbol    string `json:"symbol"`
+	Decimals  int    `json:"decimals"`
+	Amount    string `json:"amount"`
+	At        string `json:"at"`
+}

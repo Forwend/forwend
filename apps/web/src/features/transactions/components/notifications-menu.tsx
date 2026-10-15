@@ -10,9 +10,13 @@ import {
   Money,
   Skeleton,
 } from "@forwend/ui-web";
-import { ArrowDownLeft, Bell } from "lucide-react";
+import { ArrowDownLeft, Bell, CircleCheck, Hand, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useGetInvoiceEventsQuery } from "@/features/invoices/api/invoices-api";
+import { INVOICE_EVENTS } from "@/features/invoices/constants/invoices";
+import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
+import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
 import { TRANSACTION_DIRECTIONS } from "@/features/transactions/constants/transactions";
 import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
@@ -44,16 +48,32 @@ export interface NotificationsMenuProps {
   className?: string;
 }
 
-// "New" means received since the menu was last opened, remembered per profile in this browser.
+// The icon and tint of each invoice event (R-81): paid and settled are good news, held money is the payer's.
+const EVENT_LOOK = {
+  [INVOICE_EVENTS.paid]: { Icon: CircleCheck, tint: "bg-success-soft text-success" },
+  [INVOICE_EVENTS.settled]: { Icon: Wallet, tint: "bg-success-soft text-success" },
+  [INVOICE_EVENTS.held]: { Icon: Hand, tint: "bg-warning-soft text-warning" },
+} as const;
+
+// Incoming payments and the profile's invoice events (paid, settled, held money) in one list, newest first. "New"
+// means since the menu was last opened, remembered per profile in this browser.
 export function NotificationsMenu({ profileId, className }: NotificationsMenuProps) {
   const list = useGetTransactionsQuery({ profileId, limit: 20 }, LIVE_QUERY);
-  // currentData: after a profile switch, never the last profile's transfers.
-  const received = (list.currentData?.items ?? [])
-    .filter((t) => t.direction === TRANSACTION_DIRECTIONS.in)
+  const events = useGetInvoiceEventsQuery(profileId, LIVE_QUERY);
+  // currentData: after a profile switch, never the last profile's transfers or events.
+  const rows = [
+    ...(list.currentData?.items ?? [])
+      .filter((t) => t.direction === TRANSACTION_DIRECTIONS.in)
+      .map((t) => ({ at: t.at, transfer: t, event: null })),
+    ...(events.currentData ?? [])
+      .filter((e) => e.kind in EVENT_LOOK)
+      .map((e) => ({ at: e.at, transfer: null, event: e })),
+  ]
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
     .slice(0, SHOWN);
   const [seen, setSeen] = useState(0);
   useEffect(() => setSeen(readSeen(profileId)), [profileId]);
-  const fresh = received.filter((t) => new Date(t.at).getTime() > seen).length;
+  const fresh = rows.filter((r) => new Date(r.at).getTime() > seen).length;
 
   const onOpenChange = (open: boolean) => {
     if (!open) return;
@@ -100,30 +120,49 @@ export function NotificationsMenu({ profileId, className }: NotificationsMenuPro
             <Skeleton className="h-10" />
             <Skeleton className="h-10" />
           </div>
-        ) : received.length === 0 ? (
+        ) : rows.length === 0 ? (
           <p className="px-3 pb-3 text-sm text-muted">{TRANSACTIONS_COPY.noNotifications}</p>
         ) : (
-          received.map((t) => (
-            <MenuItem key={transactionKey(t)} asChild>
-              <Link
-                href={`${APP_ROUTES.transactions}?${SEARCH_PARAM}=${t.txHash}`}
-                className="py-2"
-              >
-                <span className="grid size-8 shrink-0 place-items-center rounded-pill bg-success-soft text-success">
-                  <ArrowDownLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-ink">
-                    {TRANSACTIONS_COPY.receivedNote}{" "}
-                    <Money baseUnits={BigInt(t.amount)} decimals={t.decimals} token={t.symbol} />
+          rows.map(({ transfer: t, event: e }) =>
+            e ? (
+              <MenuItem key={`event-${e.id}`} asChild>
+                <Link href={`${APP_ROUTES.invoices}/${e.invoiceId}`} className="py-2">
+                  <EventIcon kind={e.kind} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-ink">
+                      {INVOICE_COPY.events[e.kind as keyof typeof EVENT_LOOK](
+                        invoiceNumber(e.number),
+                      )}{" "}
+                      <Money baseUnits={BigInt(e.amount)} decimals={e.decimals} token={e.symbol} />
+                    </span>
+                    <span className="block truncate text-xs text-muted">
+                      {chainName(e.chainId)} · {TIME.format(new Date(e.at))}
+                    </span>
                   </span>
-                  <span className="block truncate text-xs text-muted">
-                    {chainName(t.chainId)} · {TIME.format(new Date(t.at))}
+                </Link>
+              </MenuItem>
+            ) : t ? (
+              <MenuItem key={transactionKey(t)} asChild>
+                <Link
+                  href={`${APP_ROUTES.transactions}?${SEARCH_PARAM}=${t.txHash}`}
+                  className="py-2"
+                >
+                  <span className="grid size-8 shrink-0 place-items-center rounded-pill bg-success-soft text-success">
+                    <ArrowDownLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
                   </span>
-                </span>
-              </Link>
-            </MenuItem>
-          ))
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-ink">
+                      {TRANSACTIONS_COPY.receivedNote}{" "}
+                      <Money baseUnits={BigInt(t.amount)} decimals={t.decimals} token={t.symbol} />
+                    </span>
+                    <span className="block truncate text-xs text-muted">
+                      {chainName(t.chainId)} · {TIME.format(new Date(t.at))}
+                    </span>
+                  </span>
+                </Link>
+              </MenuItem>
+            ) : null,
+          )
         )}
         <MenuSeparator />
         <MenuItem asChild>
@@ -131,5 +170,14 @@ export function NotificationsMenu({ profileId, className }: NotificationsMenuPro
         </MenuItem>
       </MenuContent>
     </Menu>
+  );
+}
+
+function EventIcon({ kind }: { kind: string }) {
+  const look = EVENT_LOOK[kind as keyof typeof EVENT_LOOK];
+  return (
+    <span className={`grid size-8 shrink-0 place-items-center rounded-pill ${look.tint}`}>
+      <look.Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
+    </span>
   );
 }

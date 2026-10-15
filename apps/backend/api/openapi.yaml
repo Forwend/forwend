@@ -112,6 +112,33 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/events:
+    get:
+      operationId: listEvents
+      summary: The bell's events of the profile's invoices, newest first
+      description: R-81. The same paid, settled and held-money events as the owner's email (R-80).
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 50 }
+      responses:
+        "200":
+          description: The events
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/InvoiceEvent" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/notifications:
     get:
       operationId: getNotifications
@@ -688,6 +715,26 @@ components:
         country: { type: string, pattern: "^[A-Z]{2}$" }
         taxId: { type: [string, "null"] }
         email: { type: string }
+    InvoiceEvent:
+      type: object
+      required: [id, kind, invoiceId, number, chainId, token, symbol, decimals, amount, at]
+      properties:
+        id: { type: integer }
+        kind:
+          type: string
+          enum: [invoice.paid, invoice.settled, invoice.held]
+        invoiceId: { $ref: "#/components/schemas/InvoiceId" }
+        number: { type: integer, minimum: 1 }
+        chainId: { type: integer }
+        token: { $ref: "#/components/schemas/Address" }
+        symbol: { type: string }
+        decimals: { type: integer, minimum: 0 }
+        amount:
+          allOf: [{ $ref: "#/components/schemas/Uint256" }]
+          description: The option's amount; for invoice.held, the amount newly held for the payer.
+        at:
+          type: string
+          format: date-time
     Notifications:
       type: object
       required: [email, address]

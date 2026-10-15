@@ -19,6 +19,13 @@ export const EXPIRY_BOUNDS_S = { min: 900, max: 31_536_000 } as const;
 /** How the payer pays (R-56): any enabled stablecoin and network, or one the creator fixes. */
 export const PAY_WITH = { any: "any", fixed: "fixed" } as const;
 
+/** GET /v1/profiles/{id}/events kinds (R-81), the same as the owner's email (R-80). */
+export const INVOICE_EVENTS = {
+  paid: "invoice.paid",
+  settled: "invoice.settled",
+  held: "invoice.held",
+} as const;
+
 /** The states whose owner page says what to do next (R-77). */
 export const INVOICE_EXCEPTIONS = {
   canceled: "canceled",

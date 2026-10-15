@@ -767,6 +767,51 @@ test("the owner turns email notifications off from the account menu", async ({ b
   await context.close();
 });
 
+// R-81: the bell lists invoice events beside incoming payments, newest first, each linking to its invoice.
+test("the bell lists paid, settled and held-money events beside payments", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  const event = (id: number, kind: string, amount: string, minutesAgo: number) => ({
+    id,
+    kind,
+    invoiceId: OPEN_INVOICE.invoiceId,
+    number: OPEN_INVOICE.number,
+    chainId: 84532,
+    token: OPEN_INVOICE.token,
+    symbol: "USDC",
+    decimals: 6,
+    amount,
+    at: new Date(Date.now() - minutesAgo * 60_000).toISOString(),
+  });
+  await mockApi(page, {
+    invoices: [OPEN_INVOICE],
+    activity: [],
+    transfers: [],
+    events: [
+      event(3, "invoice.settled", "2000000", 1),
+      event(2, "invoice.held", "500000", 2),
+      event(1, "invoice.paid", "2000000", 3),
+    ],
+  });
+  await page.goto("/app");
+  const bell = page.getByRole("banner").getByRole("button", { name: /^Notifications/ });
+  await expect(bell).toHaveAccessibleName("Notifications, 3 new", { timeout: 15_000 });
+  await bell.click();
+  const items = page.getByRole("menu").getByRole("menuitem");
+  await expect(items.nth(0)).toContainText("INV-0002 in your wallet 2.00 USDC");
+  await expect(items.nth(1)).toContainText("INV-0002 held for the payer 0.50 USDC");
+  await expect(items.nth(2)).toContainText("INV-0002 paid 2.00 USDC");
+  expect(await blockingViolations(page)).toEqual([]);
+  await items.nth(2).click();
+  await expect(page).toHaveURL(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
+  // Opened once: nothing is new any more.
+  await expect(bell).toHaveAccessibleName("Notifications");
+  await context.close();
+});
+
 // R-77: a closed checkout reads Expired in the lists too, as soon as the API says closed.
 test("the invoice list and activity show a closed checkout as expired", async ({ browser }) => {
   const context = await browser.newContext({

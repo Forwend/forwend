@@ -3,6 +3,7 @@ import type { TokenBalance } from "@/features/balances/types/balances";
 import type {
   AMOUNT_ERRORS,
   EXPIRY_CHOICES,
+  INVOICE_EVENTS,
   INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
   INVOICE_PDFS,
@@ -14,6 +15,7 @@ import type {
   createInvoiceBodySchema,
   depositSchema,
   invoiceClientSchema,
+  invoiceEventSchema,
   invoiceIssuerSchema,
   invoiceOptionSchema,
   invoiceSchema,
@@ -24,6 +26,8 @@ import type {
 } from "@/features/invoices/schemas/invoices";
 
 export type PayWith = (typeof PAY_WITH)[keyof typeof PAY_WITH];
+export type InvoiceEventKind = (typeof INVOICE_EVENTS)[keyof typeof INVOICE_EVENTS];
+export type InvoiceEvent = z.infer<typeof invoiceEventSchema>;
 export type InvoiceExceptionKind = (typeof INVOICE_EXCEPTIONS)[keyof typeof INVOICE_EXCEPTIONS];
 
 /** Base units of the shown option: received before expiry, still left to pay, and arrived after it (held). */
