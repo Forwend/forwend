@@ -391,6 +391,26 @@ test.describe("pay page", () => {
     await expect(page.getByText("The receipt was already sent.")).toBeVisible();
   });
 
+  test("a failed load says so in the middle of the page, and Try again loads the invoice", async ({
+    page,
+  }) => {
+    let call = 0;
+    await page.route("**/api/v1/invoices/*", (route) =>
+      call++ === 0 ? route.fulfill({ status: 500, json: {} }) : route.fulfill({ json: OPEN }),
+    );
+    await page.goto(`/pay/${ID}`);
+    const alert = page.getByRole("alert").filter({ hasText: "We could not load this invoice" });
+    await expect(alert).toBeVisible();
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      const box = await alert.boundingBox();
+      expect(box && Math.abs(box.x + box.width / 2 - width / 2)).toBeLessThan(2);
+      expect(box?.y).toBeGreaterThan(900 / 6);
+    }
+    await alert.getByRole("button", { name: "Try again" }).click();
+    await expect(showAddress(page)).toBeVisible();
+  });
+
   // R-79: a canceled invoice says so and shows no address; money that still arrives is held for the payer.
   test("tells the payer a canceled invoice takes no money", async ({ page }) => {
     await openPay(page, CANCELED);

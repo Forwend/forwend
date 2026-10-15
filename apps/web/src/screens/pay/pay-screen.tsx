@@ -19,7 +19,7 @@ export function PayScreen({ invoiceId, option }: PayScreenProps) {
       <Link href={APP_ROUTES.site} className={`${LINK} self-start`}>
         <Logo />
       </Link>
-      <main className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:gap-16">
+      <main className="grid flex-1 grid-cols-[minmax(0,1fr)] content-start items-start gap-8 has-[>[data-load-error]]:content-center lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:gap-16">
         <PayInvoice invoiceId={invoiceId} option={option} />
       </main>
       {/* A new tab: the payer keeps the checkout open. */}
