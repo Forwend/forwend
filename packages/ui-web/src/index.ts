@@ -11,6 +11,8 @@ export type { IconButtonProps, IconButtonSize } from "./components/buttons/icon-
 export { ICON_BUTTON_SIZES, IconButton } from "./components/buttons/icon-button";
 export type { RowButtonProps } from "./components/buttons/row-button";
 export { RowButton } from "./components/buttons/row-button";
+export type { SwapLabelProps } from "./components/buttons/swap-label";
+export { SwapLabel } from "./components/buttons/swap-label";
 export type { AccordionItem, AccordionProps } from "./components/display/accordion";
 export { Accordion } from "./components/display/accordion";
 export type { BadgeProps } from "./components/display/badge";

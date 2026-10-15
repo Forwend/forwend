@@ -10,6 +10,7 @@ import {
   QrCode,
   ReceiveAddress,
   Skeleton,
+  SwapLabel,
   shortAddress,
   useCopy,
 } from "@forwend/ui-web";
@@ -788,9 +789,11 @@ function ExactAmount({ amount, token }: { amount: bigint; token: PayToken }) {
           ) : (
             <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
           )}
-          <span className="max-sm:sr-only">
-            {status === COPY_STATUS.copied ? COPY.copiedShort : COPY.copyShort}
-          </span>
+          <SwapLabel
+            labels={[COPY.copyShort, COPY.copiedShort]}
+            active={status === COPY_STATUS.copied ? COPY.copiedShort : COPY.copyShort}
+            className="max-sm:sr-only"
+          />
         </Button>
       </div>
       <span role="status" className="sr-only">

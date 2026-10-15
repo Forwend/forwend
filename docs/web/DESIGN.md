@@ -163,7 +163,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   (a bordered row like an input) with Copy inside on the right. The address is Geist Mono with its first 6 and last 4
   characters in the ink (medium weight) and the rest quieter; wide screens show it whole on one line, phones show the
   ends with four more characters each around an ellipsis, the middle kept for screen readers, selection and Copy
-  (R-78). Its size follows the row's width (container units), so it fills the row at every width without wrapping. Once money is seen and once paid, the panel's last row is "Email me a receipt" with a mail icon; pressing it
+  (R-78). Its size follows the width the text has (container units), so it fills it at every width without wrapping, and Copy keeps one width as it turns to Copied. Once money is seen and once paid, the panel's last row is "Email me a receipt" with a mail icon; pressing it
   opens the optional field there, with Send inside its row and the line that the address is used for this receipt
   only (R-82). Before any money there is nothing to send a receipt for, so the row is not there. Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
   into "Confirm change" and only a second press starts over (leaving the button cancels), so a payer who already sent

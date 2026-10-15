@@ -621,6 +621,26 @@ test.describe("pay page", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("This path ends here.");
   });
 
+  // A bug a user hit: "Copied" is wider than "Copy", and the address beside it wrapped onto two lines.
+  test("the address stays on one line once copied, and Copy keeps its width", async ({ page }) => {
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await openPay(page, OPEN);
+    await showAddress(page).click();
+    const shown = page.locator("[data-address]");
+    for (const width of [1440, 390, 360]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.reload();
+      const copy = page.getByRole("button", { name: "Copy address" });
+      const before = await copy.boundingBox();
+      await copy.click();
+      const copied = page.getByRole("button", { name: "Address copied" });
+      await expect(copied).toBeVisible();
+      expect((await copied.boundingBox())?.width).toBe(before?.width);
+      const line = await shown.evaluate((el) => Number.parseFloat(getComputedStyle(el).lineHeight));
+      expect((await shown.boundingBox())?.height).toBeLessThanOrEqual(line + 1);
+    }
+  });
+
   test("fits a 390 px phone in one column without sideways scrolling", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openPay(page, OPEN);
