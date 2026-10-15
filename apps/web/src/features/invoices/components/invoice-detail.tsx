@@ -188,13 +188,18 @@ function Loaded({
       {/* The pay link is the page's action, so it sits with the status, while it can still take money (R-60). */}
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex min-w-0 flex-col gap-2">
-          {/* The number is the breadcrumb's last step on desktop, so the heading shows only on phones. */}
-          {/* Above a title the number is a quiet label, so the title reads as the heading it looks like. */}
-          <h1
-            className={`text-ink lg:sr-only ${invoice.title ? "text-sm font-medium text-muted" : "text-2xl font-semibold tracking-tight"}`}
-          >
-            {invoiceNumber(invoice.number)}
-          </h1>
+          {/* The number is the breadcrumb's last step on desktop, so the heading shows only on phones. There, above a
+              title, it is a quiet label sharing its row with the status, so the title reads as the heading. */}
+          <div className="flex items-center justify-between gap-3 lg:contents">
+            <h1
+              className={`text-ink lg:sr-only ${invoice.title ? "text-sm font-medium text-muted" : "text-2xl font-semibold tracking-tight"}`}
+            >
+              {invoiceNumber(invoice.number)}
+            </h1>
+            <span aria-hidden className="lg:hidden">
+              <StatusPill status={status} />
+            </span>
+          </div>
           {invoice.title ? (
             <p className="text-2xl font-semibold tracking-tight break-words text-ink">
               {invoice.title}
@@ -205,7 +210,10 @@ function Loaded({
             tabIndex={-1}
             className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted outline-none"
           >
-            <StatusPill status={status} />
+            {/* Read here on every screen; on phones it shows on the number's row instead. */}
+            <span className="max-lg:sr-only">
+              <StatusPill status={status} />
+            </span>
             {when(invoice) ? <span>{when(invoice)}</span> : null}
           </p>
           <NextStep

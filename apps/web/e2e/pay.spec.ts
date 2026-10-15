@@ -164,7 +164,8 @@ test.describe("pay page", () => {
     await openPay(page, OPEN);
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Alice Design GmbH");
-    await expect(page.getByText("Invoice INV-0001 · Logo design")).toBeVisible();
+    await expect(page.getByText("Invoice INV-0001", { exact: true })).toBeVisible();
+    await expect(page.getByText("Logo design", { exact: true })).toBeVisible();
     await expect(page.locator("[data-money]")).toHaveText("1,250.00 USDC");
     await expect(page.getByText("on Base Sepolia", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Download invoice PDF" })).toHaveAttribute(

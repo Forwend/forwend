@@ -9,7 +9,6 @@ export const PAY_COPY = {
   invoice: (number: string) => `Invoice ${number}`,
   request: (number: string) => `Request ${number}`,
   noIssuer: "Invoice",
-  pdf: "PDF",
   pdfLabel: "Download invoice PDF",
   amountDue: "Amount due",
   amount: "Amount",

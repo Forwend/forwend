@@ -223,20 +223,10 @@ function Summary({
           <h1 className="text-lg font-semibold break-words text-ink sm:text-xl">
             {payee ?? COPY.noIssuer}
           </h1>
-          <p className="line-clamp-2 text-sm break-words text-muted">
-            {[invoice.issuer ? COPY.invoice(number) : COPY.request(number), invoice.title]
-              .filter(Boolean)
-              .join(" · ")}
+          <p className="text-sm text-muted">
+            {invoice.issuer ? COPY.invoice(number) : COPY.request(number)}
           </p>
         </div>
-        <a
-          href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.invoice)}
-          aria-label={COPY.pdfLabel}
-          className={`${buttonClasses({ variant: "secondary", size: "sm" })} shrink-0`}
-        >
-          <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
-          {COPY.pdf}
-        </a>
       </div>
       <div className="flex flex-col gap-1.5">
         <h2 id="pay-amount" className="text-sm text-muted">
@@ -263,12 +253,15 @@ function Summary({
   );
 }
 
-// The invoice's terms and note, under the amount on wide screens and after the pay panel on phones.
+// What the invoice is for, its terms, its note and its PDF, as a hosted invoice page lists them: under the amount on
+// wide screens and after the pay panel on phones, so the top of the page is only who asks and how much.
 function Terms({ invoice, pay, now }: { invoice: Invoice; pay: Pay; now: number }) {
   const closesAt = checkoutClosesAt(invoice);
-  if (!invoice.dueDate && !pay.canSend && !invoice.note) return null;
   return (
-    <div className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-2 lg:gap-6">
+    <div className="flex min-w-0 flex-col items-start gap-4 lg:col-start-1 lg:row-start-2 lg:gap-5">
+      {invoice.title ? (
+        <p className="text-base font-medium break-words text-ink">{invoice.title}</p>
+      ) : null}
       {invoice.dueDate || pay.canSend ? (
         <ul className="flex flex-col gap-2.5 text-sm text-muted">
           {invoice.dueDate ? (
@@ -293,6 +286,13 @@ function Terms({ invoice, pay, now }: { invoice: Invoice; pay: Pay; now: number 
           {invoice.note}
         </p>
       ) : null}
+      <a
+        href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.invoice)}
+        className="-mx-1 inline-flex items-center gap-2 rounded-sm px-1 text-sm font-medium text-ink underline decoration-line-strong underline-offset-4 outline-none hover:decoration-ink focus-visible:outline-2 focus-visible:outline-focus"
+      >
+        <FileDown aria-hidden className={ICON} />
+        {COPY.pdfLabel}
+      </a>
     </div>
   );
 }

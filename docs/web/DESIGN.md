@@ -106,7 +106,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Invoices table: the client has a round initials avatar. Phone rows lead with the client (or a request's note) beside
   that avatar carrying the network's logo, with the number and a short due date (no year within this year) under it,
   and the amount over the status pill on the right.
-- Invoice detail on phones: above a title the number is a small quiet label; the share row is a full-width Copy link
+- Invoice detail on phones: above a title the number is a small quiet label sharing its row with the status pill; the
+  share row is a full-width Copy link
   with Open and More actions beside it (the link text shows from small screens up).
 - First run: while `/v1/me` has no `onboardedAt`, `/app` shows one standalone screen instead of the shell: the logo,
   "What do you want to do?" in the display serif, four choice cards (checkboxes, any number; two columns from small
@@ -144,10 +145,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 
 - `/pay/<id>` (R-68) is one short screen: the logo (links home), then on wide screens the invoice on the left and how
   to pay on the right. Left: the payee name (no display serif) beside a square tile with its initial on a bordered
-  surface tile, "Invoice INV-0001 · title" under the name and a small secondary PDF button on the right, the amount (Geist, tabular, featured
-  size; USD until the payer picks), "on <network>", then the due date and "Closes in …" as quiet rows with a small icon
-  (no rules), and the note. On phones the pay panel comes right after the amount and the due date, close time and note
-  follow it, so the payer reaches the address first. Right: one panel. While money is due it holds Pay with (the one option as a token mark,
+  surface tile, "Invoice INV-0001" under the name, the amount (Geist, tabular, featured size; USD until the payer picks)
+  and "on <network>": the top says only who asks and how much. Then, as a hosted invoice page lists them, the title,
+  the due date and "Closes in …" as quiet rows with a small icon (no rules), the note, and Download invoice PDF as an
+  underlined link with a file icon. On phones the pay panel comes right after the amount and the title, dates, note and PDF
+  link follow it, so the payer reaches the address first. Right: one panel. While money is due it holds Pay with (the one option as a token mark,
   or Network and Token selects, which scale to many chains and tokens), a Show address button, then the QR beside the
   exact amount and the warning line "Send only USDC on Base Sepolia." with a warning icon (plus "Native USDC, not
   USDC.e." where a bridged look-alike exists), then the address full width, then the token contract as a short explorer
