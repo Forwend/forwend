@@ -4,11 +4,11 @@ import { Skeleton } from "@forwend/ui-web";
 import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
 import { BalancesList } from "@/features/balances/components/balances-list";
 import { EstimateHint } from "@/features/balances/components/estimate-hint";
-import { USD } from "@/features/balances/constants/balances";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { formatUsd, usdTotal } from "@/features/balances/lib/balances";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { LIVE_QUERY } from "@/shared/config/refresh";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 export function BalancesScreen() {
   const { profile } = useAppSession();
@@ -29,7 +29,7 @@ export function BalancesScreen() {
         ) : (
           <span className="flex items-baseline gap-1.5 text-3xl font-semibold tracking-tight text-ink">
             {formatUsd(total)}
-            <span className="text-sm font-medium text-muted">{USD}</span>
+            <span className="text-sm font-medium text-muted">{MONEY_COPY.usd}</span>
             <EstimateHint />
           </span>
         )}

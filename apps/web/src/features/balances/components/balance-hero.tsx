@@ -14,7 +14,6 @@ import {
   HISTORY_RANGES,
   RANGE_OPTIONS,
 } from "@/features/balances/constants/balance-history";
-import { USD } from "@/features/balances/constants/balances";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { historySeries, seriesChange } from "@/features/balances/lib/balance-history";
 import { formatUsd } from "@/features/balances/lib/balances";
@@ -22,6 +21,7 @@ import type { HistoryRange, HistorySeries } from "@/features/balances/types/bala
 import type { Balances } from "@/features/balances/types/balances";
 import { BALANCE_LIGHT_IMAGE, BALANCE_NIGHT_IMAGE } from "@/shared/assets/images";
 import { LIVE_QUERY } from "@/shared/config/refresh";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 export interface BalanceHeroProps {
   profileId: string;
@@ -166,7 +166,7 @@ function Change({ series, rangeName }: { series: HistorySeries; rangeName: strin
         <Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
         <span className="font-mono tabular-nums">
           {up ? "+" : "−"}
-          {amount} {USD}
+          {amount} {MONEY_COPY.usd}
         </span>
       </span>
       <span className="text-muted">{rangeName}</span>

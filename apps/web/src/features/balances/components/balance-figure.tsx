@@ -5,11 +5,11 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { EstimateHint } from "@/features/balances/components/estimate-hint";
-import { USD } from "@/features/balances/constants/balances";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { formatUsd, usdTotal } from "@/features/balances/lib/balances";
 import type { Balances } from "@/features/balances/types/balances";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 export interface BalanceFigureProps {
   balances: Balances | null;
@@ -50,7 +50,7 @@ export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps)
           {text}
         </span>
         <span className="inline-flex items-center gap-1 text-xl font-medium whitespace-nowrap text-muted">
-          {USD}
+          {MONEY_COPY.usd}
           <EstimateHint />
         </span>
       </p>
@@ -79,7 +79,7 @@ function PendingHeld({ balances }: { balances: Balances }) {
           >
             <span>
               <span className="font-mono tabular-nums text-ink">
-                {total === 0n ? BALANCES_COPY.lessThanCent : formatUsd(total)} {USD}
+                {total === 0n ? BALANCES_COPY.lessThanCent : formatUsd(total)} {MONEY_COPY.usd}
               </span>{" "}
               {label}
             </span>

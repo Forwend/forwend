@@ -1629,7 +1629,7 @@
         "INVOICE_COPY.usd, PAY_COPY.usd, the balances USD constant used as a label, and the literal in new-invoice-form.tsx use MONEY_COPY.usd or are removed; rendered text is unchanged"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "e2e"
@@ -1641,7 +1641,70 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T09:59:33Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 76.4,
+            "log": "docs/runs/F195-20261015T095933Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 176.5,
+            "log": "docs/runs/F195-20261015T095933Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F195-20261015T095933Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F195-20261015T095933Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F195-20261015T095933Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F195-20261015T095933Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.4,
+            "log": "docs/runs/F195-20261015T095933Z-build.log"
+          }
+        ],
+        "taskHash": "e0603cc2e3ce45cb",
+        "filesHash": "a377cb450a346a00",
+        "proof": {
+          "1": "unit: INVOICE_COPY.usd and PAY_COPY.usd removed (their two readers use MONEY_COPY.usd), the balances USD constant removed (seven readers use MONEY_COPY.usd, USD_DECIMALS stays), new-invoice-form uses MONEY_COPY.usd; the value is the same 'USD', so the unchanged unit and e2e text assertions pass"
+        }
+      },
+      "branch": "refactor/f195-every-usd-label-in-the-web-app-reads-fro",
+      "baseCommit": "50824683ec8757a1c9eab835251486284fe40f85",
+      "failedVerifies": 0
     },
     {
       "id": "F196",

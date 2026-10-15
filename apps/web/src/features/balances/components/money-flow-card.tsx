@@ -4,11 +4,11 @@ import { Button, Skeleton } from "@forwend/ui-web";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { useGetBalanceHistoryQuery } from "@/features/balances/api/balances-api";
 import { HISTORY_FIELDS } from "@/features/balances/constants/balance-history";
-import { USD } from "@/features/balances/constants/balances";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { historySeries, seriesTotal } from "@/features/balances/lib/balance-history";
 import { formatUsd } from "@/features/balances/lib/balances";
 import { LIVE_QUERY } from "@/shared/config/refresh";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 const DAYS = 30;
 
@@ -62,7 +62,7 @@ export function MoneyFlowCard({ profileId }: MoneyFlowCardProps) {
                 {label}
               </dt>
               <dd className="font-mono text-base text-ink tabular-nums">
-                {series ? `${formatUsd(seriesTotal(series))} ${USD}` : "—"}
+                {series ? `${formatUsd(seriesTotal(series))} ${MONEY_COPY.usd}` : "—"}
               </dd>
             </div>
           ))}
