@@ -2494,7 +2494,7 @@
         "When the invoice cannot be loaded, the message and Try again sit centered in the checkout area (horizontally and in the space above the footer) at 1440 px and 390 px, with an icon and a short heading; screenshots attached; e2e covers the error state"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "e2e"
@@ -2506,7 +2506,70 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T13:21:48Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 72.7,
+            "log": "docs/runs/F203-20261015T132148Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 206.1,
+            "log": "docs/runs/F203-20261015T132148Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F203-20261015T132148Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F203-20261015T132148Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F203-20261015T132148Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F203-20261015T132148Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.9,
+            "log": "docs/runs/F203-20261015T132148Z-build.log"
+          }
+        ],
+        "taskHash": "16ea80e1bbd57ea5",
+        "filesHash": "dcaea2fa9e71f8d7",
+        "proof": {
+          "1": "e2e: pay.spec 'a failed load says so in the middle of the page': a 500 shows the EmptyState (icon, heading 'We could not load this invoice', 'Check your connection and try again.', Try again) centered horizontally and below the top sixth, main grows to the footer; Try again loads the invoice; screenshots at 1440 and 390 px in docs/runs/F203-shots"
+        }
+      },
+      "branch": "fix/f203-the-pay-page-s-load-error-is-centered-on",
+      "baseCommit": "dd4333924d3057acec2401298c8c5e35b57184ff",
+      "failedVerifies": 0
     },
     {
       "id": "F204",
