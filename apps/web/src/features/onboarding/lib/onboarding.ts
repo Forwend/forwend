@@ -98,7 +98,12 @@ export function saveDismissal(profileId: string, dismissal: ChecklistDismissal) 
 export function afterOnboarding(next: string | null): string {
   // Checked as the browser resolves it, so ".." or "//" can't step out of /app.
   const base = "http://forwend.invalid";
-  const url = new URL(next || APP_ROUTES.home, base);
+  let url: URL;
+  try {
+    url = new URL(next || APP_ROUTES.home, base);
+  } catch {
+    return APP_ROUTES.home; // not a URL at all ("http://[")
+  }
   return url.origin === base &&
     /^\/app(\/|$)/.test(url.pathname) &&
     !url.pathname.startsWith(APP_ROUTES.onboarding)

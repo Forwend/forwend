@@ -142,6 +142,8 @@ describe("afterOnboarding", () => {
       "/app/..//evil.example/x",
       "/app\\..\\pay",
       "javascript:alert(1)",
+      "http://[",
+      "//[",
     ]) {
       expect(afterOnboarding(next)).toBe("/app");
     }
