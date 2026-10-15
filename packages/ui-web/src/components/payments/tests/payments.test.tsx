@@ -75,11 +75,10 @@ describe("ReceiveAddress", () => {
     expect(parts.at(-1)).toBe("0078");
     // The ends a look-alike copies stand out from everything between them.
     expect(shown.children[0]?.className).toContain("text-ink");
-    expect(shown.children[4]?.className).toContain("text-ink");
-    expect(shown.children[2]?.className).not.toContain("text-ink");
-    // A narrow field hides only the middle, and only visually: it stays in the text.
-    expect(shown.children[2]?.className).toMatch(/:sr-only\b/);
-    expect(shown.children[2]?.className).not.toMatch(/\bhidden\b/);
+    expect(shown.children[2]?.className).toContain("text-ink");
+    expect(shown.children[1]?.className).not.toContain("text-ink");
+    // Nothing is hidden at any width: a shortened address is what look-alikes copy.
+    for (const part of shown.children) expect(part.className).not.toMatch(/sr-only|hidden/);
     await user.click(screen.getByRole("button", { name: "Copy address" }));
     expect(writeText).toHaveBeenCalledWith(address);
     expect(container.querySelector("p[role=status]")?.textContent).toBe("Address copied");
