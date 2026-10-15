@@ -193,7 +193,9 @@ function Loaded({
             {invoiceNumber(invoice.number)}
           </h1>
           {invoice.title ? (
-            <p className="text-lg font-medium break-words text-ink">{invoice.title}</p>
+            <p className="text-2xl font-semibold tracking-tight break-words text-ink">
+              {invoice.title}
+            </p>
           ) : null}
           <p
             ref={statusLine}

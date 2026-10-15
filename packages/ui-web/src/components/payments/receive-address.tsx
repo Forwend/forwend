@@ -35,7 +35,7 @@ export function ReceiveAddress({
         : copyLabel;
   return (
     <div className="flex flex-col gap-3">
-      <div className="rounded-md border border-line bg-surface px-4 py-3">
+      <div className="rounded-md bg-surface-2 px-4 py-3">
         <p className="text-xs text-muted">{label}</p>
         <p data-address className="mt-1 font-mono text-sm leading-6 text-muted select-all">
           {groups.map((group, i) => (

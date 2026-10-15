@@ -72,7 +72,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Business overview (merchant, freelancer, R-63): a Summary panel whose ruled header names the range and holds the
   range control, over one figure grid (Balance today, Received, Sent, On its way); then the Received chart (its header
   counts the payments in) beside Balances by network, both stretched to one height; then the latest payments with View
-  all. Filters, search and CSV export live on Transactions. A range with nothing received says so in place of an empty
+  all. Each Balances by network row (business and personal overview) has a thin ink bar and a percent for its share of
+  the wallet, each stablecoin counted as 1 USD. Filters, search and CSV export live on Transactions. A range with nothing received says so in place of an empty
   chart.
 - Charts: one ink line (or ink bars) with a faint wash, a few hairline grid lines, round tick values from zero.
   The river blue marks the latest or chosen point. Pointer, tap or arrow keys show a readout; only keyboard moves are
@@ -91,11 +92,16 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   picked is Skip. Afterwards the app opens on the overview of the new freelancer profile, else the new merchant, else
   the personal one (D-73).
 - Onboarding checklist: a "Get started" panel on the personal overview (under the balance card) and the freelancer
-  overview (above the figure strip), with "n of m done" and a close button in its ruled header. Each step is a row
+  overview (above the figure strip), with "n of m done", a short ink meter (from small screens up) and a close button
+  in its ruled header. Each step is a row
   with a round mark (filled ink with a check when done), title and hint (a done step shows its title only); a step not done has its action (secondary
   button or link) and Skip. Steps come from data: passkey linked, billing details (freelancer), first invoice or
   request, first paid in full, first final money in. Skipped steps and the closed card are remembered per profile in
   the browser; the card hides when closed or when every step left is done.
+- New invoice and Request money: each field group (Amount, Details, Dates, Client) is a panel with its title ruled off.
+  From extra-large screens a sticky Preview panel beside the form echoes it in the pay page's order: title, amount with
+  how it is paid, then Billed to (Shown as for a request), Due and Checkout closes after as ruled rows, and the note. It
+  is hidden from screen readers, since the fields already say all of it.
 - Money actions are round icon buttons with the label underneath, on desktop and phones; only working actions are
   filled with the primary ink. In the header, Send is a dashed outline pill in the subtle color until it is built.
 - Personal overview actions: Receive, Request, Send, Transfer, Withdraw, in one row with a narrow gap on phones.
@@ -115,15 +121,17 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 ## Checkout
 
 - `/pay/<id>` (R-68) is one short screen: the logo (links home), then on wide screens the invoice on the left and how
-  to pay on the right, one column on phones. Left: the payee name (no display serif), "Invoice INV-0001 · title" with
-  a small PDF link, the amount (Geist Mono, featured size; USD until the payer picks), "on <network>", the due date,
-  "Closes in …" and the note. Right: one panel. While money is due it holds Pay with (the one option as a token mark,
+  to pay on the right, one column on phones. Left: the payee name (no display serif) beside a square tile with its
+  initial in the primary ink, "Invoice INV-0001 · title" with a small PDF link under the name, the amount (Geist Mono,
+  featured size; USD until the payer picks), "on <network>", the due date and "Closes in …" as ruled rows with a small
+  icon, and the note. Right: one panel. While money is due it holds Pay with (the one option as a token mark,
   or Network and Token selects, which scale to many chains and tokens), a Show address button, then the QR beside the
   exact amount with Copy, the address with Copy under them (the whole address in groups of 4 that select and copy as
   one address, R-78), one warning line "Send only USDC on Base Sepolia." (plus "Native USDC, not USDC.e." where a
   bridged look-alike exists), the token contract as a short explorer link, and one exchange hint that names the network
-  to withdraw on. Under the panel, while money is due and once paid, an optional "Email me the receipt" field says the
-  address is used for this receipt only (R-82). Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
+  to withdraw on. The exact amount and the address sit on the second surface, without borders of their own inside the
+  panel. Under the panel, while money is due and once paid, an optional "Email me the receipt" field, with Send on the
+  input's row, says the address is used for this receipt only (R-82). Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
   into "Confirm change" and only a second press starts over (leaving the button cancels), so a payer who already sent
   does not switch by accident. Under the address "Waiting for payment…" with a pulsing dot and Check status, which says
   when the next check is allowed; nothing waits before the address shows. Once money is seen the panel keeps its place ("Paying with" while nothing more is due): the steps

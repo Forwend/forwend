@@ -26,23 +26,21 @@ export function ReceiptEmail({ invoiceId, paid }: ReceiptEmailProps) {
   };
   return (
     <form onSubmit={submit} className="flex flex-col gap-2" noValidate>
-      <div className="flex items-end gap-2">
-        <div className="min-w-0 flex-1">
-          <TextField
-            label={COPY.label}
-            hint={problem ? undefined : COPY.hint}
-            error={problem}
-            type="email"
-            autoComplete="email"
-            maxLength={254}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-        </div>
-        <Button type="submit" variant="secondary" loading={isLoading} disabled={!text.trim()}>
-          {COPY.send}
-        </Button>
-      </div>
+      <TextField
+        label={COPY.label}
+        hint={problem ? undefined : COPY.hint}
+        error={problem}
+        type="email"
+        autoComplete="email"
+        maxLength={254}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        action={
+          <Button type="submit" variant="secondary" loading={isLoading} disabled={!text.trim()}>
+            {COPY.send}
+          </Button>
+        }
+      />
       <p role="status" className="text-sm text-muted empty:sr-only">
         {data && !error ? (paid ? COPY.after(data.email) : COPY.before(data.email)) : ""}
       </p>

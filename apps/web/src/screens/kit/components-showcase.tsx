@@ -273,6 +273,12 @@ export function ComponentsShowcase() {
             defaultValue="client@"
             error="Enter a full email address, like name@company.com."
           />
+          <TextField
+            label="Email me the receipt"
+            type="email"
+            hint="Used for this receipt only."
+            action={<Button variant="secondary">Send</Button>}
+          />
           <SelectField
             label="Profile (label for screen readers only)"
             hideLabel

@@ -12,7 +12,7 @@ import {
   shortAddress,
   useCopy,
 } from "@forwend/ui-web";
-import { Check, Copy, FileDown, ShieldAlert } from "lucide-react";
+import { CalendarDays, Check, Clock, Copy, FileDown, ShieldAlert } from "lucide-react";
 import { notFound, usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useGetInvoiceQuery } from "@/features/invoices/api/invoices-api";
@@ -202,26 +202,34 @@ function Summary({
   const shown = partial ? pay.remaining : amount;
   const closesAt = checkoutClosesAt(invoice);
   return (
-    <section aria-labelledby="pay-amount" className="flex min-w-0 flex-col gap-5">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold break-words text-ink">{payee ?? COPY.noIssuer}</h1>
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
-          <span className="break-words">
-            {[invoice.issuer ? COPY.invoice(number) : COPY.request(number), invoice.title]
-              .filter(Boolean)
-              .join(" · ")}
-          </span>
-          <a
-            href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.invoice)}
-            aria-label={COPY.pdfLabel}
-            className={LINK}
-          >
-            <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
-            {COPY.pdf}
-          </a>
-        </p>
+    <section aria-labelledby="pay-amount" className="flex min-w-0 flex-col gap-6 lg:gap-8">
+      <div className="flex min-w-0 items-center gap-3">
+        <span
+          aria-hidden
+          className="grid size-11 shrink-0 place-items-center rounded-md bg-primary text-lg font-semibold text-on-primary"
+        >
+          {(payee ?? COPY.noIssuer).trim().charAt(0).toUpperCase()}
+        </span>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h1 className="text-xl font-semibold break-words text-ink">{payee ?? COPY.noIssuer}</h1>
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+            <span className="break-words">
+              {[invoice.issuer ? COPY.invoice(number) : COPY.request(number), invoice.title]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+            <a
+              href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.invoice)}
+              aria-label={COPY.pdfLabel}
+              className={LINK}
+            >
+              <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
+              {COPY.pdf}
+            </a>
+          </p>
+        </div>
       </div>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1.5">
         <h2 id="pay-amount" className="text-sm text-muted">
           {done
             ? COPY.amountPaid
@@ -243,11 +251,17 @@ function Summary({
         )}
       </div>
       {invoice.dueDate || pay.canSend ? (
-        <ul className="flex flex-col gap-1 text-sm text-muted">
-          {invoice.dueDate ? <li>{COPY.due(formatDueDate(invoice.dueDate))}</li> : null}
+        <ul className="flex flex-col divide-y divide-line border-y border-line text-sm text-muted">
+          {invoice.dueDate ? (
+            <li className="flex items-center gap-2.5 py-3">
+              <CalendarDays aria-hidden className={ICON} />
+              {COPY.due(formatDueDate(invoice.dueDate))}
+            </li>
+          ) : null}
           {/* Once paid or closed the countdown no longer matters to the payer. */}
           {pay.canSend ? (
-            <li>
+            <li className="flex items-center gap-2.5 py-3">
+              <Clock aria-hidden className={ICON} />
               <time dateTime={new Date(closesAt).toISOString()} title={TIME.format(closesAt)}>
                 {COPY.closesIn(shortDuration(closesAt - now))}
               </time>
@@ -256,7 +270,7 @@ function Summary({
         </ul>
       ) : null}
       {invoice.note ? (
-        <p className="border-l-2 border-line pl-3 text-sm break-words whitespace-pre-line text-ink">
+        <p className="max-w-prose border-l-2 border-line-strong pl-4 text-base break-words whitespace-pre-line text-ink">
           {invoice.note}
         </p>
       ) : null}
@@ -677,7 +691,7 @@ function ExactAmount({ amount, token }: { amount: bigint; token: PayToken }) {
         ? COPY.copyAmountFailed
         : COPY.copyAmount;
   return (
-    <div className="flex min-w-0 flex-col justify-center gap-2 rounded-md border border-line p-3 sm:p-4">
+    <div className="flex min-w-0 flex-col justify-center gap-2 rounded-md bg-surface-2 p-3 sm:p-4">
       <span className="text-xs text-muted">{COPY.exactAmount}</span>
       <Money
         baseUnits={amount}

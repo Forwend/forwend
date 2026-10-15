@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, type ReactNode, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useCreateInvoiceMutation } from "@/features/invoices/api/invoices-api";
+import { NewInvoicePreview } from "@/features/invoices/components/new-invoice-preview";
 import {
   CUSTOM_EXPIRY,
   DEFAULT_EXPIRY,
@@ -26,6 +27,7 @@ import { NEW_INVOICE_COPY, NEW_REQUEST_COPY } from "@/features/invoices/constant
 import {
   customExpiresIn,
   decimalText,
+  formatDueDate,
   invalidField,
   isReturnLink,
   parseTokenAmount,
@@ -76,6 +78,12 @@ export function NewInvoiceForm({ profileId, tokens, request, start }: NewInvoice
   const [errors, setErrors] = useState<Partial<Record<InvoiceField, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
+  // The free-text fields stay uncontrolled; the preview reads them as they are typed.
+  const [typed, setTyped] = useState({
+    title: "",
+    note: "",
+    client: request?.senderName ?? start?.client.name ?? "",
+  });
   const token = tokens.find((t) => tokenKey(t) === picked) ?? tokens[0];
   if (!token) return null;
   const any = payWith === PAY_WITH.any && tokens.length > 1;
@@ -91,6 +99,16 @@ export function NewInvoiceForm({ profileId, tokens, request, start }: NewInvoice
     return typeof error === "function" ? error(unit, decimals) : error;
   };
   const clear = (field: InvoiceField) => setErrors((shown) => ({ ...shown, [field]: undefined }));
+  const typedUnits = parseTokenAmount(amount, decimals);
+  const readTyped = (event: FormEvent<HTMLFormElement>) => {
+    const form = new FormData(event.currentTarget);
+    const text = (name: string) => String(form.get(name) ?? "").trim();
+    setTyped({
+      title: text("title"),
+      note: text("note"),
+      client: text(request ? "senderName" : "clientName"),
+    });
+  };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -230,172 +248,202 @@ export function NewInvoiceForm({ profileId, tokens, request, start }: NewInvoice
   );
 
   return (
-    <Form onSubmit={submit}>
-      <Group title={COPY.amountGroup}>
-        {tokens.length > 1 ? (
-          <div className="flex flex-col gap-1.5">
-            <p aria-hidden className="text-sm font-medium text-ink">
-              {COPY.payWithLabel}
-            </p>
-            <SegmentedControl
-              label={COPY.payWithLabel}
-              value={payWith}
-              onValueChange={(value) => {
-                setPayWith(value);
-                clear(INVOICE_FIELDS.amount);
-              }}
-              className="self-start"
-              options={Object.values(PAY_WITH).map((value) => ({
-                value,
-                label: COPY.payWith[value],
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 xl:grid-cols-[minmax(0,42rem)_minmax(0,22rem)]">
+      <Form onSubmit={submit} onInput={readTyped}>
+        <Group title={COPY.amountGroup}>
+          {tokens.length > 1 ? (
+            <div className="flex flex-col gap-1.5">
+              <p aria-hidden className="text-sm font-medium text-ink">
+                {COPY.payWithLabel}
+              </p>
+              <SegmentedControl
+                label={COPY.payWithLabel}
+                value={payWith}
+                onValueChange={(value) => {
+                  setPayWith(value);
+                  clear(INVOICE_FIELDS.amount);
+                }}
+                className="self-start"
+                options={Object.values(PAY_WITH).map((value) => ({
+                  value,
+                  label: COPY.payWith[value],
+                }))}
+              />
+            </div>
+          ) : null}
+          {any ? null : (
+            <SelectField
+              label={COPY.tokenLabel}
+              value={tokenKey(token)}
+              onValueChange={setPicked}
+              options={tokens.map((t) => ({
+                value: tokenKey(t),
+                label: `${t.symbol} · ${chainName(t.chainId)}`,
               }))}
             />
-          </div>
-        ) : null}
-        {any ? null : (
-          <SelectField
-            label={COPY.tokenLabel}
-            value={tokenKey(token)}
-            onValueChange={setPicked}
-            options={tokens.map((t) => ({
-              value: tokenKey(t),
-              label: `${t.symbol} · ${chainName(t.chainId)}`,
-            }))}
-          />
-        )}
-        <TextField
-          label={any ? COPY.amountUsdLabel : COPY.amountLabel}
-          inputMode="decimal"
-          autoComplete="off"
-          placeholder="0.00"
-          value={amount}
-          onChange={(event) => {
-            setAmount(event.target.value);
-            clear(INVOICE_FIELDS.amount);
-          }}
-          // Too many decimals or a comma shows when the field is left, not only on Create; empty waits for submit.
-          onBlur={() =>
-            amount.trim() &&
-            setErrors((shown) => ({ ...shown, [INVOICE_FIELDS.amount]: amountError(amount) }))
-          }
-          hint={
-            any
-              ? COPY.payWithAnyHint(
-                  [...new Set(tokens.map((t) => t.symbol))].join(" or "),
-                  new Set(tokens.map((t) => t.chainId)).size,
-                )
-              : COPY.amountHint(token.symbol, network, token.decimals)
-          }
-          error={errors[INVOICE_FIELDS.amount]}
-        />
-      </Group>
-
-      <Group title={COPY.detailsGroup}>
-        {request ? null : (
+          )}
           <TextField
-            label={COPY.titleLabel}
-            name="title"
-            maxLength={INVOICE_LIMITS.title}
-            placeholder={COPY.titlePlaceholder}
-            error={errors[INVOICE_FIELDS.title]}
-          />
-        )}
-        <TextAreaField
-          label={COPY.noteLabel}
-          name="note"
-          maxLength={INVOICE_LIMITS.note}
-          error={errors[INVOICE_FIELDS.note]}
-        />
-        {request ? (
-          <TextField
-            label={NEW_REQUEST_COPY.senderLabel}
-            name="senderName"
-            autoComplete="name"
-            defaultValue={request.senderName}
-            maxLength={INVOICE_LIMITS.senderName}
-            error={errors[INVOICE_FIELDS.senderName]}
-          />
-        ) : null}
-        {returnField}
-      </Group>
-
-      <Group title={COPY.datesGroup}>
-        {request ? null : (
-          <DatePicker
-            label={COPY.dueLabel}
-            name="dueDate"
-            value={dueDate}
-            onChange={setDueDate}
-            min={today}
-            clearLabel={COPY.dueClear}
-            hint={COPY.dueHint}
-            error={errors[INVOICE_FIELDS.dueDate]}
-            className="sm:max-w-xs"
-          />
-        )}
-        {expiryField}
-      </Group>
-
-      {request ? null : (
-        <Group title={COPY.client}>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <TextField
-              label={COPY.clientName}
-              name="clientName"
-              defaultValue={start?.client.name}
-              autoComplete="off"
-              maxLength={INVOICE_LIMITS.clientName}
-              error={errors[INVOICE_FIELDS.clientName]}
-            />
-            <TextField
-              type="email"
-              label={COPY.clientEmail}
-              name="clientEmail"
-              defaultValue={start?.client.email}
-              autoComplete="off"
-              maxLength={INVOICE_LIMITS.clientEmail}
-              error={errors[INVOICE_FIELDS.clientEmail]}
-            />
-          </div>
-          <TextAreaField
-            label={COPY.clientAddress}
-            name="clientAddress"
-            defaultValue={start?.client.address}
-            maxLength={INVOICE_LIMITS.clientAddress}
-            error={errors[INVOICE_FIELDS.clientAddress]}
+            label={any ? COPY.amountUsdLabel : COPY.amountLabel}
+            inputMode="decimal"
+            autoComplete="off"
+            placeholder="0.00"
+            value={amount}
+            onChange={(event) => {
+              setAmount(event.target.value);
+              clear(INVOICE_FIELDS.amount);
+            }}
+            // Too many decimals or a comma shows when the field is left, not only on Create; empty waits for submit.
+            onBlur={() =>
+              amount.trim() &&
+              setErrors((shown) => ({ ...shown, [INVOICE_FIELDS.amount]: amountError(amount) }))
+            }
+            hint={
+              any
+                ? COPY.payWithAnyHint(
+                    [...new Set(tokens.map((t) => t.symbol))].join(" or "),
+                    new Set(tokens.map((t) => t.chainId)).size,
+                  )
+                : COPY.amountHint(token.symbol, network, token.decimals)
+            }
+            error={errors[INVOICE_FIELDS.amount]}
           />
         </Group>
-      )}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" loading={busy}>
-          {COPY.create}
-        </Button>
+        <Group title={COPY.detailsGroup}>
+          {request ? null : (
+            <TextField
+              label={COPY.titleLabel}
+              name="title"
+              maxLength={INVOICE_LIMITS.title}
+              placeholder={COPY.titlePlaceholder}
+              error={errors[INVOICE_FIELDS.title]}
+            />
+          )}
+          <TextAreaField
+            label={COPY.noteLabel}
+            name="note"
+            maxLength={INVOICE_LIMITS.note}
+            error={errors[INVOICE_FIELDS.note]}
+          />
+          {request ? (
+            <TextField
+              label={NEW_REQUEST_COPY.senderLabel}
+              name="senderName"
+              autoComplete="name"
+              defaultValue={request.senderName}
+              maxLength={INVOICE_LIMITS.senderName}
+              error={errors[INVOICE_FIELDS.senderName]}
+            />
+          ) : null}
+          {returnField}
+        </Group>
+
+        <Group title={COPY.datesGroup}>
+          {request ? null : (
+            <DatePicker
+              label={COPY.dueLabel}
+              name="dueDate"
+              value={dueDate}
+              onChange={setDueDate}
+              min={today}
+              clearLabel={COPY.dueClear}
+              hint={COPY.dueHint}
+              error={errors[INVOICE_FIELDS.dueDate]}
+              className="sm:max-w-xs"
+            />
+          )}
+          {expiryField}
+        </Group>
+
         {request ? null : (
-          <Link
-            href={APP_ROUTES.invoices}
-            className="inline-flex h-11 items-center rounded-pill px-3 text-sm text-muted hover:text-ink"
-          >
-            {COPY.cancel}
-          </Link>
+          <Group title={COPY.client}>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <TextField
+                label={COPY.clientName}
+                name="clientName"
+                defaultValue={start?.client.name}
+                autoComplete="off"
+                maxLength={INVOICE_LIMITS.clientName}
+                error={errors[INVOICE_FIELDS.clientName]}
+              />
+              <TextField
+                type="email"
+                label={COPY.clientEmail}
+                name="clientEmail"
+                defaultValue={start?.client.email}
+                autoComplete="off"
+                maxLength={INVOICE_LIMITS.clientEmail}
+                error={errors[INVOICE_FIELDS.clientEmail]}
+              />
+            </div>
+            <TextAreaField
+              label={COPY.clientAddress}
+              name="clientAddress"
+              defaultValue={start?.client.address}
+              maxLength={INVOICE_LIMITS.clientAddress}
+              error={errors[INVOICE_FIELDS.clientAddress]}
+            />
+          </Group>
         )}
-      </div>
-      <p role="alert" className="min-h-5 text-sm text-danger">
-        {formError}
-      </p>
-    </Form>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="submit" loading={busy}>
+            {COPY.create}
+          </Button>
+          {request ? null : (
+            <Link
+              href={APP_ROUTES.invoices}
+              className="inline-flex h-11 items-center rounded-pill px-3 text-sm text-muted hover:text-ink"
+            >
+              {COPY.cancel}
+            </Link>
+          )}
+        </div>
+        <p role="alert" className="min-h-5 text-sm text-danger">
+          {formError}
+        </p>
+      </Form>
+      <NewInvoicePreview
+        copy={COPY.preview}
+        units={typeof typedUnits === "string" ? 0n : typedUnits}
+        decimals={decimals}
+        unit={unit}
+        payLine={
+          any
+            ? COPY.preview.any(
+                [...new Set(tokens.map((t) => t.symbol))].join(" or "),
+                new Set(tokens.map((t) => t.chainId)).size,
+              )
+            : COPY.preview.on(network)
+        }
+        title={typed.title}
+        note={typed.note}
+        client={typed.client}
+        due={dueDate ? formatDueDate(dueDate) : null}
+        closes={
+          expiry === CUSTOM_EXPIRY
+            ? closesOn
+              ? formatDueDate(closesOn)
+              : COPY.expiry[CUSTOM_EXPIRY]
+            : COPY.expiry[expiry]
+        }
+      />
+    </div>
   );
 }
 
-// A titled group of fields; the first group has no rule above it.
+// A titled group of fields: a panel with its title ruled off.
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <fieldset className="flex flex-col gap-5 border-line [&:not(:first-child)]:border-t [&:not(:first-child)]:pt-6">
+    <fieldset className="flex min-w-0 flex-col rounded-lg border border-line bg-surface">
       <legend className="sr-only">{title}</legend>
-      <p aria-hidden className="text-base font-semibold text-ink">
+      <p
+        aria-hidden
+        className="border-b border-line px-4 py-3.5 text-base font-semibold text-ink sm:px-5"
+      >
         {title}
       </p>
-      {children}
+      <div className="flex flex-col gap-5 p-4 sm:p-5">{children}</div>
     </fieldset>
   );
 }

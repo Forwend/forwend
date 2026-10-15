@@ -45,7 +45,7 @@ export function NewInvoiceScreen() {
   const request = profile.kind === PROFILE_KINDS.personal;
   const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
   return (
-    <div className="flex max-w-2xl flex-col gap-8">
+    <div className="flex max-w-2xl flex-col gap-6 xl:max-w-none">
       <div className="flex flex-col gap-2">
         {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
         <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">{COPY.title}</h1>

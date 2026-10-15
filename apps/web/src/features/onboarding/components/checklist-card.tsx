@@ -53,6 +53,15 @@ export function ChecklistCard({
           {COPY.title}
         </h2>
         <span className="text-sm text-muted">{COPY.progress(done, steps.length)}</span>
+        <span
+          aria-hidden
+          className="hidden h-1.5 w-24 overflow-hidden rounded-pill bg-surface-2 sm:block"
+        >
+          <span
+            className="block h-full rounded-pill bg-primary transition-[width] duration-[var(--fw-duration-base)] ease-out"
+            style={{ width: `${(done / Math.max(steps.length, 1)) * 100}%` }}
+          />
+        </span>
         <IconButton label={COPY.close} onClick={onClose} className="ml-auto">
           <X aria-hidden className="size-[var(--fw-icon-sm)]" />
         </IconButton>
