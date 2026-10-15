@@ -2707,7 +2707,7 @@
         "With touch emulation at 390 px, tapping the estimate icon and a Coming soon action shows its text, and a tap elsewhere hides it; desktop hover and keyboard focus keep working; e2e covers the tap"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "e2e"
@@ -2717,7 +2717,70 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T14:15:21Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 73.2,
+            "log": "docs/runs/F205-20261015T141521Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 208.6,
+            "log": "docs/runs/F205-20261015T141521Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.9,
+            "log": "docs/runs/F205-20261015T141521Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F205-20261015T141521Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F205-20261015T141521Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F205-20261015T141521Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.8,
+            "log": "docs/runs/F205-20261015T141521Z-build.log"
+          }
+        ],
+        "taskHash": "cc67d076fbe3ef37",
+        "filesHash": "8831c3ad99738295",
+        "proof": {
+          "1": "e2e: kit.spec 'a tap opens a tooltip on a touch screen': at 390 px with touch, a tap opens the tooltip, a tap elsewhere closes it, a tap opens it again and a second tap closes it (it failed before the fix: focus opened it and the click toggled it shut). Desktop hover and keyboard focus still open it (checked against the dev server with the original and the fixed file). The jsdom tooltip test, which passed while real taps failed, is replaced by this e2e"
+        }
+      },
+      "branch": "fix/f205-on-touch-screens-a-tap-shows-a-tooltip-s",
+      "baseCommit": "2f6beab5fbecb9bbcca4fad1eda6eaadf6c80091",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

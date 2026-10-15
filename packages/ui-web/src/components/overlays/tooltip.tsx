@@ -25,24 +25,30 @@ export function TooltipProvider({ children }: TooltipProviderProps) {
 
 export function Tooltip({ content, children, side = "top" }: TooltipProps) {
   const [open, setOpen] = useState(false);
-  // Radix opens tooltips on hover and focus only, and closes them on every press of the trigger. A tap opens this one,
-  // so touch users can read it too; a second tap or a tap outside closes it.
+  // Radix opens tooltips on hover and focus, and closes them on the trigger's pointer leave and press. A tap fires
+  // leave, then focus (which opens it), then click. So during a tap Radix's closes are ignored, and the click sets the
+  // opposite of the state the tap began with; after the click a tap outside closes it as usual.
   const tapped = useRef(false);
+  const openAtTap = useRef(false);
   return (
     <RadixTooltip.Root
       open={open}
       onOpenChange={(next) => {
         if (next || !tapped.current) setOpen(next);
-        tapped.current = false;
       }}
     >
       <RadixTooltip.Trigger
         asChild
         onPointerDown={(event) => {
           tapped.current = event.pointerType === "touch";
+          openAtTap.current = open;
         }}
         onClick={() => {
-          if (tapped.current) setOpen(true);
+          if (!tapped.current) return;
+          setOpen(!openAtTap.current);
+          setTimeout(() => {
+            tapped.current = false;
+          });
         }}
       >
         {children}
