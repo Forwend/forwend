@@ -154,15 +154,16 @@ func TestDeliverRetriesWithBackoffThenGivesUp(t *testing.T) {
 	if count(t, pool, "attempts = 1 AND next_attempt_at > now() + interval '50 seconds' AND published_at IS NULL") != 1 {
 		t.Fatal("after one failure: want attempts 1 and a wait of about a minute")
 	}
-	// A failure ends the round: a second due event is left for the next one, not tried against a failing Resend.
+	// A failure ends the round: of two events due at once, one is tried against a failing Resend, the other waits.
+	queue(t, pool, outbox.Paid, id, nil)
 	queue(t, pool, outbox.Paid, id, nil)
 	if err := Deliver(context.Background(), pool, f, web); err != nil {
 		t.Fatal(err)
 	}
-	if count(t, pool, "attempts = 1") != 2 {
-		t.Fatal("want the new event tried once")
+	if count(t, pool, "id > 1 AND attempts = 1") != 1 || count(t, pool, "id > 1 AND attempts = 0") != 1 {
+		t.Fatal("a failed send did not end the round")
 	}
-	exec(t, pool, "DELETE FROM outbox_events WHERE id = 2")
+	exec(t, pool, "DELETE FROM outbox_events WHERE id > 1")
 	if err := Deliver(context.Background(), pool, f, web); err != nil { // not due yet: no second try now
 		t.Fatal(err)
 	}
