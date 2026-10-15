@@ -4,7 +4,8 @@ import type { PayState } from "@/features/pay/types/pay";
 /** Amounts arrive formatted with their symbol, like "1,250.00 USDC". */
 export const PAY_COPY = {
   title: "Pay invoice",
-  failed: "We could not load this invoice. Check your connection and try again.",
+  failedTitle: "We could not load this invoice",
+  failed: "Check your connection and try again.",
   retry: "Try again",
   invoice: (number: string) => `Invoice ${number}`,
   request: (number: string) => `Request ${number}`,

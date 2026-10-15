@@ -1,7 +1,5 @@
 export const BALANCES_COPY = {
   totalBalance: "Total balance",
-  // The hero says the unit once, over the figure, so the figure itself sits centered on phones.
-  totalBalanceIn: (unit: string) => `Total balance in ${unit}`,
   today: "Today",
   chartKeys: "Arrow keys move across the days.",
   balanceOver: (range: string) => `Balance over the ${range}`,

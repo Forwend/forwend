@@ -20,12 +20,13 @@ func TestResendSendsOneKeyedMessage(t *testing.T) {
 	defer srv.Close()
 	r := NewResend("re_test", "Forwend <notifications@mail.forwend.com>")
 	r.URL = srv.URL
-	err := r.Send(context.Background(), Message{To: "a@example.com", Subject: "INV-0001 paid", Text: "body", Key: "outbox-7"})
+	err := r.Send(context.Background(), Message{To: "a@example.com", Subject: "INV-0001 paid", Text: "body", HTML: "<p>body</p>",
+		Key: "outbox-7"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if key != "outbox-7" || auth != "Bearer re_test" || got["from"] != "Forwend <notifications@mail.forwend.com>" ||
-		got["subject"] != "INV-0001 paid" || got["text"] != "body" {
+		got["subject"] != "INV-0001 paid" || got["text"] != "body" || got["html"] != "<p>body</p>" {
 		t.Fatalf("key %q auth %q body %v", key, auth, got)
 	}
 	if to, _ := got["to"].([]any); len(to) != 1 || to[0] != "a@example.com" {

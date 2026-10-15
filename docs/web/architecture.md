@@ -40,7 +40,8 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   - Balances and activity are read again every 15 s while the tab is visible and when it comes back. Money sent
     straight to the wallet shows in the balance once final, not in activity.
   - `/app/profiles/new` sends one idempotency key per visit (R-35) and the invoice form one per filled-in form (R-44).
-    While `onboardedAt` is empty, `/app` shows the first-run choice screen (R-50, D-73).
+    While `onboardedAt` is empty, every `/app` page sends to `/app/onboarding?next=<page>`, the first-run choice screen
+    (R-50, D-73); once done that address returns to `next` (an `/app` path only, `afterOnboarding`), else `/app`.
   - The invoice form turns the typed amount into exact base units without float; a custom checkout close is sent as
     seconds from now (15 minutes to 365 days).
   - `/app/invoices/<id>` reads `GET /v1/profiles/{id}/invoices/{invoiceId}`, because the public read has no client;

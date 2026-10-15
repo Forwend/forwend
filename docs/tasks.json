@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 201,
+  "nextId": 206,
   "tasks": [
     {
       "id": "F179",
@@ -2169,7 +2169,7 @@
       "dependsOn": [
         "F199"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e"
@@ -2180,9 +2180,624 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-15 review pass by independent reviewer: Pass. Ran: go test ./internal/... all ok; e2e gate (-tags e2e ./e2e/) ok 14.4s; pnpm -s lint clean. Logo /icon-192.png served 200 image/png by the dev server. Contrast AA: lowest light pair 5.39 (success badge), lowest dark 8.26; button 15.75. Idempotency key format unchanged; render errors returned before Send and roll back the claim. Escaping: html/template; all hrefs come from PUBLIC_WEB_URL, DB ids/tx hashes or constants; mutation making Value or Lead template.HTML fails TestEmailEscapesTypedNames. Mutations caught: empty HTML, text button URL changed, tx href missing in text, settings link missing in HTML, button href missing. Not caught: (1) email.go:39-41 Resend dropping the html field passes all tests (email_test sends no HTML); fix: set HTML in email_test and assert the body has it. (2) layout.html.tmpl:52 lead paragraph has no word-break: a 60-char name with no spaces (e.g. a typed name that is an email address) makes the 375px email 540px wide (measured with Playwright); details cell wraps fine; fix: add overflow-wrap:anywhere to the lead p and note td. (3) Outlook desktop not verified: button padding is on the <a> (Word ignores it, tight button) and the 600 table uses style width:100% with no MSO ghost table, so it stretches on wide windows; fix: padding on the td, an [if mso] 600px wrapper. (4) With <style> stripped (some Gmail cases) the 32px title breaks at 375 as 'Receipt for INV-' / '0001'. Text part wording changed slightly (View invoice, Email settings, Download receipt (PDF), added details and footer lines); old assertions otherwise unchanged.",
+        "2026-10-15 review pass by independent reviewer: Re-review of 91e0fe3: all four findings fixed. (1) email_test sends HTML and asserts got[html]. (2) overflow-wrap:anywhere + word-break on h1, lead and note; Playwright scrollWidth at 375px is 375 for all 6 samples, with and without the <style> block, including the 58-char unspaced name (receipt-typed-375-light.png checked). (3) button padding on the td; 600px [if mso] wrapper table. (4) keep() runs template.HTMLEscapeString before wrapping INV-\\d+ in a nowrap span; the inserted markup holds only the matched digits, and TestEmailEscapesTypedNames still covers names in the lead. Ran: go test ./internal/notify ./internal/email ok; pnpm -s lint clean. Note: TestEveryEmailHasHTMLWithTheTextLinks now checks the button label instead of the title text (the title now holds a span); fine, not required by the acceptance rows."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T12:44:06Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 64.8,
+            "log": "docs/runs/F200-20261015T124406Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 204.1,
+            "log": "docs/runs/F200-20261015T124406Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.8,
+            "log": "docs/runs/F200-20261015T124406Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F200-20261015T124406Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F200-20261015T124406Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F200-20261015T124406Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 70.6,
+            "log": "docs/runs/F200-20261015T124406Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.4,
+            "log": "docs/runs/F200-20261015T124406Z-build.log"
+          }
+        ],
+        "taskHash": "b032c2b23f595519",
+        "filesHash": "ec33a456e726290c",
+        "proof": {
+          "1": "backend: TestEveryEmailHasHTMLWithTheTextLinks renders paid, settled, held, both receipts and welcome: each has an HTML part and a text part, and the HTML hrefs equal the text links; email_test checks the html field reaches Resend; dropping the HTML part or a text link fails them",
+          "2": "backend: layout.html.tmpl: hidden preheader, hosted logo with alt text, badge, title, large amount, details table with the explorer link, a table-based button (padding on the cell for Outlook), footer with the reason, email settings (owner emails), support@forwend.com and EMAIL_POSTAL_ADDRESS when set",
+          "3": "backend: 600 px table layout with an Outlook-only fixed-width wrapper, inline styles plus a dark-mode block and color-scheme meta, web-safe font stacks, long words wrap and invoice numbers stay whole, no scripts, pixels or remote assets but the logo; every color pair 5.39:1 or more (WCAG AA)",
+          "4": "backend: docs/runs/F200-emails has 24 screenshots (6 emails x 600/375 x light/dark), none wider than its screen with a 58-character unspaced name; TestEmailEscapesTypedNames fails with text/template"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "Re-review of 91e0fe3: all four findings fixed. (1) email_test sends HTML and asserts got[html]. (2) overflow-wrap:anywhere + word-break on h1, lead and note; Playwright scrollWidth at 375px is 375 for all 6 samples, with and without the <style> block, including the 58-char unspaced name (receipt-typed-375-light.png checked). (3) button padding on the td; 600px [if mso] wrapper table. (4) keep() runs template.HTMLEscapeString before wrapping INV-\\d+ in a nowrap span; the inserted markup holds only the matched digits, and TestEmailEscapesTypedNames still covers names in the lead. Ran: go test ./internal/notify ./internal/email ok; pnpm -s lint clean. Note: TestEveryEmailHasHTMLWithTheTextLinks now checks the button label instead of the title text (the title now holds a span); fine, not required by the acceptance rows.",
+          "at": "2026-10-15T12:50:54Z",
+          "filesHash": "ec33a456e726290c"
+        },
+        "commit": "91e0fe3",
+        "doneAt": "2026-10-15T12:51:09Z"
+      },
+      "branch": "feat/f200-every-forwend-email-looks-like-a-real-pr",
+      "baseCommit": "431704b8e03dd02179db4c4c952270b08525465f",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f200-every-forwend-email-looks-like-a-real-pr",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F201",
+      "type": "feat",
+      "behavior": "Onboarding has its own address, /app/onboarding, instead of replacing whatever /app page was opened",
+      "acceptance": [
+        "A signed-in user whose onboarding is not done is sent from any /app page to /app/onboarding, keeping the page they asked for; Continue or Skip takes them there (or to /app), only to a same-site /app path",
+        "A user who finished or skipped onboarding and opens /app/onboarding is sent to /app; reload and the back button keep the user on the right page; the page title names onboarding",
+        "e2e covers a new user opening /app/invoices: they land on /app/onboarding, finish it and arrive at /app/invoices; and an onboarded user opening /app/onboarding lands on /app"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-50",
+        "D-53"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-15 review pass by independent reviewer: Pass. Ran lint, tsc, unit (128 passed), docs-check (0 errors), e2e (51 + 41 passed, exit 0). Mutation: removing the /app regex or the onboarding exclusion in afterOnboarding each fails the unit test. Browser probe on the dev server as an onboarded user: javascript:, /app\\evil, //evil, https://evil all go to /app; a 4000-char next works; nothing leaves the origin. Non-blocking: afterOnboarding (features/onboarding/lib/onboarding.ts:98) accepts dot segments, so next=/app/../../pay/0x1 lands on /pay/0x1 and /app/..//evil.example/x lands on same-origin /evil.example/x. Same site only, no open redirect, but the docs and accept 1 say an /app path only. Fix: resolve with new URL(next, base), check the pathname, and return pathname+search. Redirect flow checked: signed out, loading, me error, profile switch, reload with and without next, back button: no loop. The freelancer profile still opens after Continue (e2e). page.tsx imports only constants.",
+        "2026-10-15 review fail by independent reviewer: Fail. dccac12 fixes the dot-segment bypass: /app/../pay, /app/..//evil, /app/%2e%2e/pay, backslashes and javascript: now all resolve to /app; the onboarding unit tests pass (9 of 9). New defect: afterOnboarding (apps/web/src/features/onboarding/lib/onboarding.ts:101) calls new URL(next, base), which throws TypeError ERR_INVALID_URL for a malformed next such as 'http://[', '//[' or 'https://a:b' (checked in node). It runs inside the app-shell effect (app-shell.tsx:83) with no catch, so an onboarded user who opens /app/onboarding?next=http://%5B gets an uncaught error instead of /app. Anyone can send that link. Smallest fix: const url = URL.parse(next || APP_ROUTES.home, base); return url && url.origin === base && ...; or wrap new URL in try/catch and return APP_ROUTES.home on error. Add 'http://[' to the blocked list in the unit test. Everything else from the first review still holds.",
+        "2026-10-15 review pass by independent reviewer: Pass. 2a1ed48 wraps new URL in try/catch in afterOnboarding (apps/web/src/features/onboarding/lib/onboarding.ts:101-106), so a malformed next such as http://[ or //[ returns /app instead of throwing in the app-shell effect. The unit test now blocks both values; without the catch new URL throws and the test fails. The onboarding unit tests pass (9 of 9). dccac12 still resolves .., //, encoded dots, backslashes and javascript: to /app. The earlier findings (redirect flow, freelancer landing, page.tsx imports, e2e 51 + 41 passed) still hold. Full e2e not run again, as asked."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T12:09:51Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 81.7,
+            "log": "docs/runs/F201-20261015T120951Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 209.9,
+            "log": "docs/runs/F201-20261015T120951Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F201-20261015T120951Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F201-20261015T120951Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F201-20261015T120951Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": "docs/runs/F201-20261015T120951Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.8,
+            "log": "docs/runs/F201-20261015T120951Z-build.log"
+          }
+        ],
+        "taskHash": "c772ebd525215c9b",
+        "filesHash": "e20ec196d36485ef",
+        "proof": {
+          "1": "e2e: onboarding.spec 'keeps the page a new user asked for': opening /app/invoices lands on /app/onboarding?next=%2Fapp%2Finvoices, survives a reload, Skip returns to /app/invoices; the first test sees /app/onboarding?next=%2Fapp and Continue lands on /app; unit afterOnboarding resolves next as the browser does and accepts only /app paths (rejects //evil, https://, javascript:, /apple, /app/onboarding, /pay, /app/../pay, /app/..//evil, backslashes, and malformed 'http://[' without throwing)",
+          "2": "e2e: once done, /app/onboarding sends to /app and the back button does not return to it; the title is 'Forwend | Get started'",
+          "3": "e2e: both cases run in onboarding.spec (new user opening /app/invoices; onboarded user opening /app/onboarding)"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "Pass. 2a1ed48 wraps new URL in try/catch in afterOnboarding (apps/web/src/features/onboarding/lib/onboarding.ts:101-106), so a malformed next such as http://[ or //[ returns /app instead of throwing in the app-shell effect. The unit test now blocks both values; without the catch new URL throws and the test fails. The onboarding unit tests pass (9 of 9). dccac12 still resolves .., //, encoded dots, backslashes and javascript: to /app. The earlier findings (redirect flow, freelancer landing, page.tsx imports, e2e 51 + 41 passed) still hold. Full e2e not run again, as asked.",
+          "at": "2026-10-15T12:15:22Z",
+          "filesHash": "e20ec196d36485ef"
+        },
+        "commit": "2a1ed48",
+        "doneAt": "2026-10-15T12:15:31Z"
+      },
+      "branch": "feat/f201-onboarding-has-its-own-address-app-onboa",
+      "baseCommit": "56a18461933061ddbbd9b25e9262b5e54b913c2f",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f201-onboarding-has-its-own-address-app-onboa",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F202",
+      "type": "fix",
+      "behavior": "On a phone the overview's balance hero is centered and balanced: the total sits on the center line, secondary lines match the body type, and no dead band separates the figure from the actions",
+      "acceptance": [
+        "At 390 px, light and dark, the total and USD are centered on the label's center line (the estimate icon does not shift them), the held and change lines use the body font, and the gap between the figure block and the action row is the same rhythm as the rest of the card; screenshots before and after attached to the run",
+        "Desktop keeps its layout (screenshot at 1440 px); e2e balance tests still pass"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-76"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-15 review fail by independent reviewer: Centering at 390 px is correct: measured row center 195 = label center 195 (26.25 and 1,234,567.89). Defect: the hanging estimate icon is outside the width budget of the figure clamp (balance-figure.tsx:27 sizes figure+USD to fill the container; the absolute hint at :54 adds 28 px). At 320 px a 16-char total (1,234,567,890.12) puts the icon at x 304-328 on a 320 px screen, so the section's overflow-hidden clips 8 px of it, and its 44 px hit area loses ~18 px. Before F202 the row wrapped instead. At 320 px any total of 1,000,000+ leaves the icon 1-2 px from the screen edge, outside the 16 px gutter. Fix idea: reserve the hint width symmetrically on phones (e.g. px-7 lg:px-0 on the row) or count it in the clamp. Doc gap: DESIGN.md:21-24 says Geist Mono for money and names only headline figures as Hanken; the held/change lines (balance-figure.tsx:84, balance-hero.tsx:167) now use Hanken, so DESIGN.md needs a line naming them. OK: keyboard focus opens the tooltip; desktop >=1024 keeps lg classes, icon stays inside the left column (40 px gap to chart); only 640-1023 px min-height changed 96->80. Tap does not open any Tooltip in Playwright touch emulation (also Send and /kit), so that is pre-existing, not F202. Unit tests 128/128 pass.",
+        "2026-10-15 review pass by independent reviewer: Re-review of 611ba39. Clipping fixed: balance-figure.tsx:31 px-7 lg:px-0. Swept 320/360/390/430 px x totals 26.25 to 1,234,567,890,123.45: hint always inside the section (min 17 px from edge), no horizontal scroll, figure+USD centered on the label (offset 0) on every phone case. Trade-off, acceptable: totals of 1,000,000+ now put USD on its own line at 320-390 px (123,456.78 also wraps at 320 px). Action row (money-actions.tsx:22,38-40): labels at least 10 px apart at 320 px; desktop button positions at 1024/1280/1440 are identical to the old classes. DESIGN.md:24-25 now names the held and change lines as Hanken body text. Keyboard focus opens the hint tooltip. Unit tests 128/128. Not F202: action button boxes overlap ~9 px at 1024 px (same before); tap tooltips are F205."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T13:10:15Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 69.5,
+            "log": "docs/runs/F202-20261015T131015Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 213.1,
+            "log": "docs/runs/F202-20261015T131015Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.5,
+            "log": "docs/runs/F202-20261015T131015Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F202-20261015T131015Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F202-20261015T131015Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": "docs/runs/F202-20261015T131015Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.4,
+            "log": "docs/runs/F202-20261015T131015Z-build.log"
+          }
+        ],
+        "taskHash": "1728ace1c6d209fe",
+        "filesHash": "7ce28df516d5024d",
+        "proof": {
+          "1": "e2e: at 390 px light and dark the total and USD sit on the label's center line (the estimate icon hangs in px-7 room on both sides), at 320 px a 16-character total wraps USD and the icon ends at x 209 of 320; held and change amounts use the body font (DESIGN.md says so); the card is min-h-80 with gap-8; the action labels never touch at 320 px; screenshots in docs/runs/F202-shots",
+          "2": "e2e: desktop hero unchanged (after-hero-1440.png); balances e2e and unit tests pass"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "Re-review of 611ba39. Clipping fixed: balance-figure.tsx:31 px-7 lg:px-0. Swept 320/360/390/430 px x totals 26.25 to 1,234,567,890,123.45: hint always inside the section (min 17 px from edge), no horizontal scroll, figure+USD centered on the label (offset 0) on every phone case. Trade-off, acceptable: totals of 1,000,000+ now put USD on its own line at 320-390 px (123,456.78 also wraps at 320 px). Action row (money-actions.tsx:22,38-40): labels at least 10 px apart at 320 px; desktop button positions at 1024/1280/1440 are identical to the old classes. DESIGN.md:24-25 now names the held and change lines as Hanken body text. Keyboard focus opens the hint tooltip. Unit tests 128/128. Not F202: action button boxes overlap ~9 px at 1024 px (same before); tap tooltips are F205.",
+          "at": "2026-10-15T13:19:49Z",
+          "filesHash": "7ce28df516d5024d"
+        },
+        "commit": "611ba39",
+        "doneAt": "2026-10-15T13:20:04Z"
+      },
+      "branch": "fix/f202-on-a-phone-the-overview-s-balance-hero-i",
+      "baseCommit": "acb22c144de8bca3f22af97385c51d6abd0860f0",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f202-on-a-phone-the-overview-s-balance-hero-i",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F203",
+      "type": "fix",
+      "behavior": "The pay page's load error is centered on the page like the rest of the checkout, with its retry button",
+      "acceptance": [
+        "When the invoice cannot be loaded, the message and Try again sit centered in the checkout area (horizontally and in the space above the footer) at 1440 px and 390 px, with an icon and a short heading; screenshots attached; e2e covers the error state"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-68"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-15 review fail by independent reviewer: Defect: flex-1 on main (apps/web/src/screens/pay/pay-screen.tsx:22) changes the loaded page at 390 px. The grid's auto rows stretch to fill the taller main (align-content defaults to stretch), so the gap between Summary and the pay box grows with leftover height: open invoice, PayBox moves from y=376 to y=427 (gap 32 -> 83 px); choosing +33 px; paid +8 px. The gap also shifts when the box grows. 1440 px is unchanged (one row, items-start); the footer is unchanged at both widths. Fix idea: keep main from stretching its rows for loaded content (content-start) and center only the error state. Otherwise OK: the error passes axe (0 serious/critical) and shows role=alert with a button. The title is a <p> from the kit EmptyState, not a heading (minor). No reader of the old PAY_COPY.failed text is left; receipt.failed and INVOICES_COPY.failed are separate. The e2e catches a no-op Try again (no reload within 6 s; polling is 15 s) and a non-centered error (y=103 < 120 without flex-1). But it runs only on Desktop Chrome, not at 390. Nit: apps/web/e2e/pay.spec.ts:394, the new test sits between the R-79 comment and the canceled-invoice test it describes. Unit 128/128 pass, lint clean.",
+        "2026-10-15 review pass by independent reviewer: Re-check of c142794. main is now flex-1 content-start, and has-[>[data-load-error]]:content-center (apps/web/src/screens/pay/pay-screen.tsx:22) centers only the load error. Measured on the dev server with mocked invoices: at 390 px the open, choosing and paid states have a 32 px row gap again (open [87-344] [376-670]), the same as before F203. At 1440 px both columns start at y=103. The footer stays at 844 and 804. The mismatch alert still sits at the top (y=103, y=87) because it has no data-load-error. The error is centered: 1440 [282-634] x464, 390 [254-606]. The e2e (apps/web/e2e/pay.spec.ts:394) now checks 1440 and 390, and the R-79 comment is back above its test. Verify e2e passed (docs/runs/F203-20261015T133129Z-e2e.log). Unit 128/128, lint clean. Left as is: the EmptyState title is a <p>, not a heading (minor, axe 0 serious/critical)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T13:31:29Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 71.7,
+            "log": "docs/runs/F203-20261015T133129Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 195.0,
+            "log": "docs/runs/F203-20261015T133129Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.3,
+            "log": "docs/runs/F203-20261015T133129Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F203-20261015T133129Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F203-20261015T133129Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F203-20261015T133129Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.6,
+            "log": "docs/runs/F203-20261015T133129Z-build.log"
+          }
+        ],
+        "taskHash": "16ea80e1bbd57ea5",
+        "filesHash": "ed11da6f99a95e39",
+        "proof": {
+          "1": "e2e: pay.spec 'a failed load says so in the middle of the page': a 500 shows the EmptyState (icon, 'We could not load this invoice', 'Check your connection and try again.', Try again) centered horizontally and below the top sixth at 1440 and 390 px; Try again loads the invoice. main is content-start and centers only when it holds the load error (data-load-error), so the loaded checkout keeps a 32 px row gap at 390 px and top-aligned columns at 1440 px (measured); screenshots in docs/runs/F203-shots"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "Re-check of c142794. main is now flex-1 content-start, and has-[>[data-load-error]]:content-center (apps/web/src/screens/pay/pay-screen.tsx:22) centers only the load error. Measured on the dev server with mocked invoices: at 390 px the open, choosing and paid states have a 32 px row gap again (open [87-344] [376-670]), the same as before F203. At 1440 px both columns start at y=103. The footer stays at 844 and 804. The mismatch alert still sits at the top (y=103, y=87) because it has no data-load-error. The error is centered: 1440 [282-634] x464, 390 [254-606]. The e2e (apps/web/e2e/pay.spec.ts:394) now checks 1440 and 390, and the R-79 comment is back above its test. Verify e2e passed (docs/runs/F203-20261015T133129Z-e2e.log). Unit 128/128, lint clean. Left as is: the EmptyState title is a <p>, not a heading (minor, axe 0 serious/critical).",
+          "at": "2026-10-15T13:36:56Z",
+          "filesHash": "ed11da6f99a95e39"
+        },
+        "commit": "c142794",
+        "doneAt": "2026-10-15T13:37:11Z"
+      },
+      "branch": "fix/f203-the-pay-page-s-load-error-is-centered-on",
+      "baseCommit": "dd4333924d3057acec2401298c8c5e35b57184ff",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f203-the-pay-page-s-load-error-is-centered-on",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F204",
+      "type": "test",
+      "behavior": "Tests guard what matters: a written rule keeps money, security, data-integrity and real-regression tests, and low-value unit tests are removed",
+      "acceptance": [
+        "docs/workflow.md (or the owning test rules) says which tests to write and keep: money and ledger rules, auth and security, data integrity, API contracts, parsing at trust boundaries, and regressions of bugs a user hit; not tests that only restate copy text, constants, simple rendering or a one-off fix already covered by e2e",
+        "Unit test files and cases that fall outside the rule are removed; the removal list with a one-line reason each is in the PR; every remaining check passes and the unit check runs faster (time before and after)"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "backend",
+        "e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-15 review fail by independent reviewer: FAIL on cef292a. Only tests and docs changed; lint, typecheck (--force), web 70, ui 14, tokens 52 tests pass. Two removals drop money protection that the new rule says to keep, with no other unit or e2e coverage: (1) apps/web/src/features/activity/tests/activity-amounts.test.tsx 'Activity names held money' (F196 fix: a held deposit must not read as Payment in Activity; 'Held for the payer' appears in no e2e for Activity) and the exact-amount cases (F174 audit bug: Activity row 1.005 and toast 0.0015 USDC, not 0.00; components must pass exactDigits; no e2e uses such amounts). Restore the file. (2) apps/web/src/features/pay/tests/pay.test.ts 'payToken > names OUSD on Tempo and refuses a token this build does not know': the public pay page must refuse a chain+contract it does not know (unknownToken, no address); nothing else tests it. Other findings: onboarding.test.ts keeps dead _nothing, _done and a type-only checklistSteps import, and receive-choice.test.ts keeps dead _OPTIONS; the underscore only silences lint, delete them. workflow.md last sentence says to select contracts 'beyond unit', but the contracts check runs the same forge fmt --check && forge test as unit; drop contracts from that list. Optional, low risk: profiles-api.test.ts (Bearer header; only the local-only Privy e2e covers it, fail-closed 401), invoices.test.ts recheck case 'Found 4000000 units' (onChain minus recorded; e2e only tests recorded=0). Rest of the removals fit the rule: customExpiresIn and 422 field mapping are UX (backend enforces 900..31536000 and validates), apiSearch cap is UX (API answers 422), rate-limit helpers are covered through withRateLimit, iso-date toTime validation, afterOnboarding redirect, CSV, chains and token-amount stay.",
+        "2026-10-15 review pass by independent reviewer: PASS on 23b940e. activity-amounts.test.tsx and profiles-api.test.ts are restored byte-identical to 3994d05; pay.test.ts payToken case is back (OUSD on Tempo, unknown chain+contract refused). Dead _nothing, _done, _OPTIONS and the unused import are gone; workflow.md no longer names contracts as selectable beyond unit. No file outside tests and docs differs from 3994d05. lint, typecheck --force and web tests (20 files, 75 tests) pass; tree clean. Nit, not blocking: receive-choice.test.ts now keeps a dead _TEMPO (renamed with an underscore to pass lint, the same pattern removed elsewhere); delete it, and the SOLANA comment still mentions 'the choice' whose test is gone. Leaving out the recheck subtraction case is acceptable.",
+        "2026-10-15 review pass by independent reviewer: PASS on 295dc96. It only removes the dead _TEMPO and rewords the SOLANA comment in receive-choice.test.ts (plus harness evidence in docs/tasks.json). lint passes, web tests 75 passed. Earlier findings all closed; no source change since 3994d05."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T14:04:28Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 75.8,
+            "log": "docs/runs/F204-20261015T140428Z-unit.log"
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 70.6,
+            "log": "docs/runs/F204-20261015T140428Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 208.6,
+            "log": "docs/runs/F204-20261015T140428Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.8,
+            "log": "docs/runs/F204-20261015T140428Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F204-20261015T140428Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F204-20261015T140428Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F204-20261015T140428Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.1,
+            "log": "docs/runs/F204-20261015T140428Z-build.log"
+          }
+        ],
+        "taskHash": "896d3978ccaa0fe0",
+        "filesHash": "4069356aaa81abd4",
+        "proof": {
+          "1": "unit: docs/workflow.md 'Which tests to keep' (money, auth/security, data integrity, API contracts/trust-boundary parsing, user-hit regressions; not copy, constants, layout, simple rendering or one-off fixes; visual changes proven by screenshots); web and backend rules link to it; unit already runs backend and contracts, so tasks don't select them twice",
+          "2": "unit: removed 19 files (activity toasts, invoice amount/table, option picker, pay held copy, billing form, chosen profile, waitlist, app nav, command menu, list filters, theme script, ui button/loaders/toast/calendar/theme switch/use-copy/use-theme: copy, rendering, UI behavior or one-off fixes covered by e2e) and 39 cases from 10 files (copy lines, INV numbering, PDF paths, checklist steps, duration format, status labels, step visuals, date math helpers, rate-limit helper math); kept money, Activity held label and exact amounts (F196, F174 regressions), unknown-token refusal, auth header, address check, CSV injection, open redirect, cross-user cache, schema and idempotency tests. Web 128 to 75 tests, ui 40 to 14, tokens 55 to 52; the whole unit check about 69 s to 67 s (backend Go tests dominate)"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "PASS on 295dc96. It only removes the dead _TEMPO and rewords the SOLANA comment in receive-choice.test.ts (plus harness evidence in docs/tasks.json). lint passes, web tests 75 passed. Earlier findings all closed; no source change since 3994d05.",
+          "at": "2026-10-15T14:10:59Z",
+          "filesHash": "4069356aaa81abd4"
+        },
+        "commit": "295dc96",
+        "doneAt": "2026-10-15T14:11:10Z"
+      },
+      "branch": "test/f204-tests-guard-what-matters-a-written-rule",
+      "baseCommit": "3994d0520103d0ec06e45af2882bc3791b64fdd8",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "test/f204-tests-guard-what-matters-a-written-rule",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F205",
+      "type": "fix",
+      "behavior": "On touch screens a tap shows a tooltip's text (the balance estimate hint and the Coming soon actions), as hover and focus do on desktop",
+      "acceptance": [
+        "With touch emulation at 390 px, tapping the estimate icon and a Coming soon action shows its text, and a tap elsewhere hides it; desktop hover and keyboard focus keep working; e2e covers the tap"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-15 review fail by independent reviewer: Defect: tooltip.tsx:42-52 clears tapped only after a click. A touch that becomes a scroll (pointerdown, pointercancel, pointerleave; no click) or any touch without a click leaves tapped=true, so onOpenChange (line 37) ignores every Radix close. Repro on dev server /kit with CDP touch: tap estimate hint (opens), swipe starting on it -> stays open through the scroll; tap heading -> still open; tap 'Hover for tooltip' -> both tooltips open at once. Old code did not stick (any onOpenChange reset the flag). Suggested fix: clear tapped in onPointerCancel, plus an e2e step for swipe-from-trigger then tap elsewhere. Checked OK: tap A then B (A closes), tap then wheel/swipe elsewhere closes, long press toggles, tap while open from focus closes, desktop hover opens, mouse press and Enter/Space close as Radix did, stale setTimeout only writes a ref. A tap on a trigger with its own onClick runs both (Slot runs child onClick first); same as before, and no current phone-visible trigger has an action. New e2e fails on HEAD~1 tooltip.tsx (kit.spec.ts:31) and passes with the fix; lint and ui-web tests pass. Removing the jsdom test fits workflow.md 'Which tests to keep': it used an impossible event order and the e2e covers the bug.",
+        "2026-10-15 review pass by independent reviewer: Re-review of c262906: tooltip.tsx onPointerCancel clears tapped, so a touch that turns into a scroll no longer makes the tooltip ignore Radix closes. kit.spec.ts swipe step (CDP touchStart on trigger, move up, touchEnd, then tap heading) passes with the fix (40 passed) and fails at kit.spec.ts:51 with the handler removed (1 failed). Earlier checks still hold: tap toggles, tap elsewhere closes, two tooltips, long press, mouse press and Enter/Space same as Radix, desktop hover, stale timeout harmless. Lint passes. Note: a tap on a trigger with its own onClick runs both, same as before; no phone-visible trigger has one today."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T14:27:32Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 73.2,
+            "log": "docs/runs/F205-20261015T142732Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 204.7,
+            "log": "docs/runs/F205-20261015T142732Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.8,
+            "log": "docs/runs/F205-20261015T142732Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F205-20261015T142732Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F205-20261015T142732Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": "docs/runs/F205-20261015T142732Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.7,
+            "log": "docs/runs/F205-20261015T142732Z-build.log"
+          }
+        ],
+        "taskHash": "cc67d076fbe3ef37",
+        "filesHash": "a45a90c719d9c30b",
+        "proof": {
+          "1": "e2e: kit.spec 'a tap opens a tooltip on a touch screen': at 390 px with touch, a tap opens it, a tap elsewhere closes it, a tap opens it again and a second tap closes it; a swipe that starts on the trigger (pointercancel, no click) leaves it closable by a tap elsewhere. It fails without the fix and without the pointercancel reset. Desktop hover and keyboard focus still open it; on the phone overview a tap on the estimate hint and on Send shows their text. The jsdom test that passed while real taps failed is replaced by this e2e"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "Re-review of c262906: tooltip.tsx onPointerCancel clears tapped, so a touch that turns into a scroll no longer makes the tooltip ignore Radix closes. kit.spec.ts swipe step (CDP touchStart on trigger, move up, touchEnd, then tap heading) passes with the fix (40 passed) and fails at kit.spec.ts:51 with the handler removed (1 failed). Earlier checks still hold: tap toggles, tap elsewhere closes, two tooltips, long press, mouse press and Enter/Space same as Radix, desktop hover, stale timeout harmless. Lint passes. Note: a tap on a trigger with its own onClick runs both, same as before; no phone-visible trigger has one today.",
+          "at": "2026-10-15T14:33:26Z",
+          "filesHash": "a45a90c719d9c30b"
+        },
+        "commit": "c262906",
+        "doneAt": "2026-10-15T14:33:38Z"
+      },
+      "branch": "fix/f205-on-touch-screens-a-tap-shows-a-tooltip-s",
+      "baseCommit": "2f6beab5fbecb9bbcca4fad1eda6eaadf6c80091",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f205-on-touch-screens-a-tap-shows-a-tooltip-s",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {

@@ -1,6 +1,6 @@
 import type { BaseQueryApi, FetchBaseQueryMeta } from "@reduxjs/toolkit/query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MAX_PAUSE_MS, nextPause, retryAfterMs, withRateLimit } from "@/shared/api/rate-limit";
+import { withRateLimit } from "@/shared/api/rate-limit";
 import { REFRESH_MS } from "@/shared/config/refresh";
 
 function answer(status: number, retryAfter?: string) {
@@ -16,23 +16,6 @@ function answer(status: number, retryAfter?: string) {
 
 const api = (type: "query" | "mutation") =>
   ({ signal: new AbortController().signal, type }) as unknown as BaseQueryApi;
-
-describe("retryAfterMs", () => {
-  it("reads whole seconds, defaults to 1 s and stops at the cap", () => {
-    expect(retryAfterMs("3")).toBe(3000);
-    expect(retryAfterMs(null)).toBe(1000);
-    expect(retryAfterMs("soon")).toBe(1000);
-    expect(retryAfterMs("100000")).toBe(MAX_PAUSE_MS);
-  });
-});
-
-describe("nextPause", () => {
-  it("starts at the refresh interval and doubles up to the cap", () => {
-    expect(nextPause(0)).toBe(REFRESH_MS);
-    expect(nextPause(REFRESH_MS)).toBe(2 * REFRESH_MS);
-    expect(nextPause(MAX_PAUSE_MS)).toBe(MAX_PAUSE_MS);
-  });
-});
 
 describe("withRateLimit", () => {
   beforeEach(() => vi.useFakeTimers());

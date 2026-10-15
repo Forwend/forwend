@@ -4,6 +4,7 @@ import { Button, Skeleton } from "@forwend/ui-web";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties } from "react";
+import { EstimateHint } from "@/features/balances/components/estimate-hint";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { formatUsd, usdTotal } from "@/features/balances/lib/balances";
 import type { Balances } from "@/features/balances/types/balances";
@@ -23,8 +24,11 @@ export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps)
   const total = balances ? usdTotal(balances, "wallet") : null;
   const text = total === null ? "—" : formatUsd(total);
   const figure =
-    "text-[length:clamp(2rem,min(16cqi,170cqi_/_var(--chars)),5.25rem)] leading-none font-semibold tracking-[-0.035em] text-ink tabular-nums";
+    "text-[length:clamp(2rem,min(14cqi,160cqi_/_var(--chars)),5.25rem)] leading-none font-semibold tracking-[-0.03em] text-ink";
   const align = "items-center text-center lg:items-start lg:text-left";
+  // Room for the hanging hint on both sides keeps the total centered, and a large total wraps USD before the hint
+  // reaches the edge.
+  const row = "flex flex-wrap items-baseline justify-center gap-x-2 px-7 lg:justify-start lg:px-0";
 
   if (!balances && failed) {
     return (
@@ -43,9 +47,17 @@ export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps)
 
   return (
     <div className={`flex w-full flex-col gap-2 ${align}`}>
-      <p className={figure} style={{ "--chars": text.length } as CSSProperties}>
-        {text}
-        <span className="sr-only"> {MONEY_COPY.usd}</span>
+      <p className={row}>
+        <span className={figure} style={{ "--chars": text.length } as CSSProperties}>
+          {text}
+        </span>
+        {/* The hint hangs after USD and takes no width, so the total itself sits on the center line. */}
+        <span className="relative text-xl font-medium whitespace-nowrap text-muted">
+          {MONEY_COPY.usd}
+          <span className="absolute top-1/2 left-full ml-1 -translate-y-1/2">
+            <EstimateHint />
+          </span>
+        </span>
       </p>
       {total === null ? <p className="text-sm text-muted">{BALANCES_COPY.unavailable}</p> : null}
       <PendingHeld balances={balances} />

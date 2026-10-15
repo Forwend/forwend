@@ -11,6 +11,7 @@ import {
   TRANSACTION_DIRECTIONS,
   TRANSACTION_STATUSES,
 } from "@/features/transactions/constants/transactions";
+import { APP_ROUTES } from "@/shared/config/routes";
 
 // After the first-run choice the app opens the profile made for the most specific use: freelancer (get paid by
 // clients), then merchant (business payments or an integration), else the personal one.
@@ -88,4 +89,24 @@ export function saveDismissal(profileId: string, dismissal: ChecklistDismissal) 
   } catch {
     // Storage blocked: the choice lasts for this page view.
   }
+}
+
+/**
+ * Where the first run returns to: the app page the user asked for (`next`), else the overview. Only a path in this
+ * app: never another site, which would make the link an open redirect.
+ */
+export function afterOnboarding(next: string | null): string {
+  // Checked as the browser resolves it, so ".." or "//" can't step out of /app.
+  const base = "http://forwend.invalid";
+  let url: URL;
+  try {
+    url = new URL(next || APP_ROUTES.home, base);
+  } catch {
+    return APP_ROUTES.home; // not a URL at all ("http://[")
+  }
+  return url.origin === base &&
+    /^\/app(\/|$)/.test(url.pathname) &&
+    !url.pathname.startsWith(APP_ROUTES.onboarding)
+    ? url.pathname + url.search
+    : APP_ROUTES.home;
 }

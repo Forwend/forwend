@@ -69,14 +69,15 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   unruled above the rows, as in banking apps; panels become cards from small screens up (`fw-panel`, `fw-panel-head`).
 - Totals across tokens (the total balance, its chart, the business figures, money in and out) are in USD, each
   stablecoin counted as 1 USD. An info icon after "USD" marks the estimate and explains it in a tooltip. On the
-  personal overview the label says the unit ("Total balance in USD", with the icon) and the figure stands alone, so it
-  is centered on phones whatever its length. A row for one token keeps its symbol.
+  personal overview the icon hangs after USD and takes no width, so the total sits on the center line on phones. A row
+  for one token keeps its symbol.
 - Personal overview: one valley in both themes, a pale mint daytime sky in light mode and night in dark mode. In light mode a surface wash over the lower half keeps chart ticks and money actions readable. Pending and held money each use one USD
   summary link to Balances, where exact amounts remain separate by token and network; never list every token in
-  the hero. Positive totals below a cent read `<0.01 USD`. From small screens up the card is at least 24rem tall and
-  grows with its content; on phones it fits its content, with the actions right under the total.
+  the hero. Positive totals below a cent read `<0.01 USD`. The card is at least 20rem tall (24rem on desktop) and grows
+  with its content, with the actions right under the total on phones.
   On desktop, the total sits at the top left, the round actions at the bottom left, and the chart fills the right side. The total scales with its column (container units). Phones center the total
-  with the actions under it (five equal columns, labels in the small size), and put the chart in its own panel below.
+  with the actions under it (five equal columns, labels smaller below 360 px so they never touch), and put the chart
+  in its own panel below.
 - Business overview (merchant, freelancer, R-63): a Summary panel whose ruled header names the range and holds the
   range control, over one figure grid (Balance today, Received, Sent, On its way); then the Received chart (its header
   counts the payments in) beside Balances by network, both stretched to one height; then the latest payments with View

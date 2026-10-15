@@ -75,7 +75,7 @@ func run() error {
 		}
 		w.Round(ctx)
 		if sender != nil {
-			if err := notify.Deliver(ctx, pool, sender, cfg.Email.PublicWebURL); err != nil {
+			if err := notify.Deliver(ctx, pool, sender, notify.Site{WebURL: cfg.Email.PublicWebURL, PostalAddress: cfg.Email.PostalAddress}); err != nil {
 				slog.Error("deliver email", "err", err)
 			}
 		}

@@ -4,6 +4,7 @@ import {
   Button,
   buttonClasses,
   COPY_STATUS,
+  EmptyState,
   formatTokenAmount,
   Money,
   QrCode,
@@ -21,6 +22,7 @@ import {
   FileDown,
   ShieldAlert,
   TriangleAlert,
+  WifiOff,
 } from "lucide-react";
 import { notFound, usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
@@ -98,12 +100,19 @@ export function PayInvoice({ invoiceId, option }: PayInvoiceProps) {
   }
   if (failure?.status === NOT_FOUND) notFound();
   if (invoice.isError) {
+    // data-load-error: the page centers this state alone (PayScreen).
     return (
-      <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
-        {COPY.failed}
-        <Button size="sm" variant="secondary" onClick={invoice.refetch}>
-          {COPY.retry}
-        </Button>
+      <div role="alert" data-load-error className="mx-auto w-full max-w-lg lg:col-span-2">
+        <EmptyState
+          icon={WifiOff}
+          title={COPY.failedTitle}
+          description={COPY.failed}
+          action={
+            <Button variant="secondary" onClick={invoice.refetch}>
+              {COPY.retry}
+            </Button>
+          }
+        />
       </div>
     );
   }

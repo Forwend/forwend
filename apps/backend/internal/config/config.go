@@ -49,6 +49,8 @@ type Email struct {
 	ResendURL    string // Resend's send endpoint; set only by tests that run a fake
 	From         string // the sender, on the domain Resend verified
 	PublicWebURL string // the web app's origin, for the links in each email
+	// PostalAddress is the sender's address for each email's footer; empty leaves it out (Q-13).
+	PostalAddress string
 }
 
 // DefaultEmailFrom is the sender when EMAIL_FROM is left out.
@@ -91,7 +93,8 @@ func LoadWorker() (Worker, error) {
 	var r reader
 	c := Worker{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(),
 		Email: Email{ResendKey: os.Getenv("RESEND_API_KEY"), ResendURL: os.Getenv("RESEND_API_URL"),
-			From: os.Getenv("EMAIL_FROM")}}
+			PostalAddress: os.Getenv("EMAIL_POSTAL_ADDRESS"),
+			From:          os.Getenv("EMAIL_FROM")}}
 	if c.Email.From == "" {
 		c.Email.From = DefaultEmailFrom
 	}

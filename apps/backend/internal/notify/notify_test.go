@@ -19,6 +19,8 @@ import (
 
 const web = "https://app.example"
 
+var site = Site{WebURL: web}
+
 // fake records what it sends; fail makes every send fail.
 type fake struct {
 	mu   sync.Mutex
@@ -99,10 +101,10 @@ func TestDeliverSendsOneEmailPerEvent(t *testing.T) {
 	queue(t, pool, outbox.Settled, id, nil)
 	queue(t, pool, outbox.Held, id, big.NewInt(1500000))
 	f := &fake{}
-	if err := Deliver(context.Background(), pool, f, web); err != nil {
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
 		t.Fatal(err)
 	}
-	if err := Deliver(context.Background(), pool, f, web); err != nil { // nothing left: nothing sent twice
+	if err := Deliver(context.Background(), pool, f, site); err != nil { // nothing left: nothing sent twice
 		t.Fatal(err)
 	}
 	if len(f.sent) != 3 || count(t, pool, "published_at IS NULL") != 0 {
@@ -135,7 +137,7 @@ func TestDeliverSkipsWhenOffOrNoAddress(t *testing.T) {
 			}
 			queue(t, pool, outbox.Paid, id, nil)
 			f := &fake{}
-			if err := Deliver(context.Background(), pool, f, web); err != nil {
+			if err := Deliver(context.Background(), pool, f, site); err != nil {
 				t.Fatal(err)
 			}
 			if len(f.sent) != 0 || count(t, pool, "published_at IS NOT NULL") != 1 {
@@ -150,7 +152,7 @@ func TestDeliverRetriesWithBackoffThenGivesUp(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	queue(t, pool, outbox.Paid, id, nil)
 	f := &fake{fail: true}
-	if err := Deliver(context.Background(), pool, f, web); err != nil {
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
 		t.Fatal(err)
 	}
 	if count(t, pool, "attempts = 1 AND next_attempt_at > now() + interval '50 seconds' AND published_at IS NULL") != 1 {
@@ -159,28 +161,28 @@ func TestDeliverRetriesWithBackoffThenGivesUp(t *testing.T) {
 	// A failure ends the round: of two events due at once, one is tried against a failing Resend, the other waits.
 	queue(t, pool, outbox.Paid, id, nil)
 	queue(t, pool, outbox.Paid, id, nil)
-	if err := Deliver(context.Background(), pool, f, web); err != nil {
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
 		t.Fatal(err)
 	}
 	if count(t, pool, "id > 1 AND attempts = 1") != 1 || count(t, pool, "id > 1 AND attempts = 0") != 1 {
 		t.Fatal("a failed send did not end the round")
 	}
 	exec(t, pool, "DELETE FROM outbox_events WHERE id > 1")
-	if err := Deliver(context.Background(), pool, f, web); err != nil { // not due yet: no second try now
+	if err := Deliver(context.Background(), pool, f, site); err != nil { // not due yet: no second try now
 		t.Fatal(err)
 	}
 	if count(t, pool, "attempts = 1") != 1 {
 		t.Fatal("tried again before its backoff")
 	}
 	exec(t, pool, "UPDATE outbox_events SET attempts = $1, next_attempt_at = now()", MaxAttempts-1)
-	if err := Deliver(context.Background(), pool, f, web); err != nil {
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
 		t.Fatal(err)
 	}
 	if count(t, pool, "failed_at IS NOT NULL AND published_at IS NULL") != 1 {
 		t.Fatal("not given up after MaxAttempts")
 	}
 	f.fail = false
-	if err := Deliver(context.Background(), pool, f, web); err != nil || len(f.sent) != 0 {
+	if err := Deliver(context.Background(), pool, f, site); err != nil || len(f.sent) != 0 {
 		t.Fatalf("a given-up event was sent: %d (%v)", len(f.sent), err)
 	}
 }
@@ -191,12 +193,12 @@ func TestRetryKeepsTheIdempotencyKey(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	queue(t, pool, outbox.Paid, id, nil)
 	f := &fake{fail: true}
-	if err := Deliver(context.Background(), pool, f, web); err != nil {
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
 		t.Fatal(err)
 	}
 	exec(t, pool, "UPDATE outbox_events SET next_attempt_at = now()")
 	f.fail = false
-	if err := Deliver(context.Background(), pool, f, web); err != nil {
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
 		t.Fatal(err)
 	}
 	if len(f.keys) != 2 || len(f.sent) != 1 || f.keys[0] != f.keys[1] {
@@ -214,7 +216,7 @@ func TestDeliverClaimsEachEventOnce(t *testing.T) {
 	var wg sync.WaitGroup
 	for range 2 {
 		wg.Go(func() {
-			if err := Deliver(context.Background(), pool, f, web); err != nil {
+			if err := Deliver(context.Background(), pool, f, site); err != nil {
 				t.Error(err)
 			}
 		})
@@ -273,7 +275,7 @@ func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 		t.Fatal(err)
 	}
 	f := &fake{}
-	if err := Deliver(context.Background(), pool, f, web); err != nil {
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
 		t.Fatal(err)
 	}
 	if len(f.sent) != 1 {
@@ -282,7 +284,7 @@ func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 	m := f.sent[0]
 	for _, want := range []string{"You paid 5.00 USDC on Base Sepolia to Mara Ilić for INV-0001.",
 		"The name is what the invoice's creator gave; Forwend doesn't check it.",
-		"Transaction: https://sepolia.basescan.org/tx/" + hash, "Receipt (PDF): " + web + "/api/v1/invoices/" + id + "/receipt.pdf"} {
+		"Transaction: https://sepolia.basescan.org/tx/" + hash, "Download receipt (PDF): " + web + "/api/v1/invoices/" + id + "/receipt.pdf"} {
 		if !strings.Contains(m.Text, want) {
 			t.Fatalf("receipt text %q lacks %q", m.Text, want)
 		}
@@ -298,12 +300,12 @@ func TestKeyFollowsTheAddress(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	queue(t, pool, outbox.Paid, id, nil)
 	f := &fake{}
-	if err := Deliver(context.Background(), pool, f, web); err != nil {
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
 		t.Fatal(err)
 	}
 	exec(t, pool, "UPDATE users SET login_email = 'other@example.com'")
 	exec(t, pool, "UPDATE outbox_events SET published_at = NULL")
-	if err := Deliver(context.Background(), pool, f, web); err != nil {
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
 		t.Fatal(err)
 	}
 	if len(f.sent) != 2 || f.sent[0].Key == f.sent[1].Key {
@@ -313,7 +315,10 @@ func TestKeyFollowsTheAddress(t *testing.T) {
 
 // An invoice with billing details names its issuer, which Forwend shows as given, without the unchecked note.
 func TestReceiptNamesTheIssuer(t *testing.T) {
-	m := receipt("INV-0001", "5.00 USDC", "Base Sepolia", "Alice Design GmbH", "Mara", "", "pdf")
+	m, err := message(site, receipt("INV-0001", "5.00 USDC", "USDC", "Base Sepolia", "Alice Design GmbH", "Mara", "", "pdf"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !strings.Contains(m.Text, "to Alice Design GmbH for INV-0001.") || strings.Contains(m.Text, "doesn't check") {
 		t.Fatalf("receipt %q", m.Text)
 	}
@@ -331,7 +336,7 @@ func TestDeliverSendsTheWelcome(t *testing.T) {
 	}
 	f := &fake{}
 	for range 2 {
-		if err := Deliver(context.Background(), pool, f, web); err != nil {
+		if err := Deliver(context.Background(), pool, f, site); err != nil {
 			t.Fatal(err)
 		}
 	}
