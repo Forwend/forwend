@@ -1526,7 +1526,7 @@
         "Harness tests fail if needs_review ignores a failed git diff, if changed_since drops untracked files, or if a non-JSON file under docs/archive/ counts as docs-only; DOCS_ONLY accepts only docs/archive/*.json; workflow.md step 6 says review is forced only in a git repository"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness",
         "docs-check"
@@ -1537,7 +1537,8 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-15 review pass by independent reviewer: Pass. unittest 38 OK on HEAD. show: F179 (passing docs task) prints no review line; F185, F190 print their review evidence; F194 (verified, code) prints 'required, not done yet'; status already limits review lines to active/verified, so it agrees. Mutations on a scratch copy, one at a time, each fails a new test: needs_review returning False on a failed git diff -> test_review_rule_edges; changed_since without untracked -> test_review_rule_edges; DOCS_ONLY back to ARCHIVE+'/*' -> test_review_rule_edges; show back to 'if needs_review' -> test_show_review_line_only_where_review_applies. workflow.md step 6 matches needs_review (harness.py:1452): no git -> changed_since None and rev-parse fails -> only task.review counts. Minor, not blocking: two show branches survive mutation - dropping the 'review evidence' condition (would hide the line on F190, which has evidence but review=false) and dropping 'verified' from the state tuple (harness.py:843); the test only covers active, passing, and passing+--review. Scratch files removed; repo unchanged."
+        "2026-10-15 review pass by independent reviewer: Pass. unittest 38 OK on HEAD. show: F179 (passing docs task) prints no review line; F185, F190 print their review evidence; F194 (verified, code) prints 'required, not done yet'; status already limits review lines to active/verified, so it agrees. Mutations on a scratch copy, one at a time, each fails a new test: needs_review returning False on a failed git diff -> test_review_rule_edges; changed_since without untracked -> test_review_rule_edges; DOCS_ONLY back to ARCHIVE+'/*' -> test_review_rule_edges; show back to 'if needs_review' -> test_show_review_line_only_where_review_applies. workflow.md step 6 matches needs_review (harness.py:1452): no git -> changed_since None and rev-parse fails -> only task.review counts. Minor, not blocking: two show branches survive mutation - dropping the 'review evidence' condition (would hide the line on F190, which has evidence but review=false) and dropping 'verified' from the state tuple (harness.py:843); the test only covers active, passing, and passing+--review. Scratch files removed; repo unchanged.",
+        "2026-10-15 review pass by independent reviewer: Re-review of a289e92: pass. unittest 38 OK. Both earlier surviving mutations now fail test_show_review_line_only_where_review_applies on a scratch copy: dropping the review-evidence condition at harness.py:843, and dropping 'verified' from the state tuple. The four earlier mutations (failed git diff, untracked files, DOCS_ONLY archive/*, show printing for every finished task) were caught at 1579af2; a289e92 only adds test lines. workflow.md step 6 unchanged and still matches needs_review. Scratch removed; repo unchanged."
       ],
       "blockedReason": null,
       "evidence": {
@@ -1600,11 +1601,25 @@
         "proof": {
           "1": "harness: show prints the review line for active/verified tasks that need review, and for finished tasks only with review evidence or --review (test_show_review_line_only_where_review_applies, five cases); show F179 prints no review line",
           "2": "harness: test_review_rule_edges covers a failed git diff (review needed), untracked files in changed_since, and docs/archive non-JSON not docs-only; DOCS_ONLY is docs/archive/*.json; workflow.md step 6 says outside git only --review tasks need review"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "Re-review of a289e92: pass. unittest 38 OK. Both earlier surviving mutations now fail test_show_review_line_only_where_review_applies on a scratch copy: dropping the review-evidence condition at harness.py:843, and dropping 'verified' from the state tuple. The four earlier mutations (failed git diff, untracked files, DOCS_ONLY archive/*, show printing for every finished task) were caught at 1579af2; a289e92 only adds test lines. workflow.md step 6 unchanged and still matches needs_review. Scratch removed; repo unchanged.",
+          "at": "2026-10-15T09:58:11Z",
+          "filesHash": "8dd83abf0e7eaafe"
+        },
+        "commit": "a289e92",
+        "doneAt": "2026-10-15T09:58:20Z"
       },
       "branch": "fix/f194-show-prints-the-review-line-only-where-a",
       "baseCommit": "3afd9ffa0e3404eb230f5ecb64012c1cadf8de2a",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f194-show-prints-the-review-line-only-where-a",
+        "base": "main"
+      }
     },
     {
       "id": "F195",
