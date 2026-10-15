@@ -79,7 +79,7 @@ export function SelectField({
           aria-describedby={describedBy}
           className={cx(
             FIELD_CONTROL_CLASSES,
-            "group flex items-center justify-between gap-3 text-left data-[placeholder]:text-subtle data-[state=open]:border-focus data-[state=open]:ring-4 data-[state=open]:ring-[color-mix(in_oklab,var(--fw-focus)_22%,transparent)]",
+            "group flex items-center justify-between gap-3 text-left data-[placeholder]:text-subtle data-[state=open]:border-ink data-[state=open]:ring-2 data-[state=open]:ring-[color-mix(in_oklab,var(--fw-ink)_12%,transparent)]",
           )}
         >
           <RadixSelect.Value placeholder={placeholder} />

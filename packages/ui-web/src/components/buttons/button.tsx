@@ -32,13 +32,15 @@ export interface ButtonProps extends ComponentPropsWithoutRef<"button">, ButtonS
   loading?: boolean;
 }
 
+// A press answers with a small scale on a fast ease-out, like a physical key; reduced motion keeps only the color.
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-pill font-medium whitespace-nowrap transition-[background-color,color,box-shadow] duration-[var(--fw-duration-fast)] ease-out disabled:border-line disabled:bg-surface-2 disabled:text-subtle disabled:shadow-none";
+  "inline-flex items-center justify-center gap-2 rounded-pill font-medium whitespace-nowrap transition-[background-color,border-color,color,box-shadow,scale] duration-[var(--fw-duration-fast)] ease-[var(--fw-ease-out)] active:scale-[0.97] motion-reduce:active:scale-100 disabled:border-line disabled:bg-surface-2 disabled:text-subtle disabled:shadow-none disabled:active:scale-100";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-on-primary shadow-md hover:bg-[color-mix(in_oklab,var(--fw-primary)_86%,var(--fw-bg))]",
-  secondary: "border border-line-strong bg-surface text-ink shadow-sm hover:bg-surface-2",
+    "bg-primary text-on-primary shadow-sm hover:bg-[color-mix(in_oklab,var(--fw-primary)_88%,var(--fw-bg))] hover:shadow-md",
+  secondary:
+    "border border-line-strong bg-surface text-ink shadow-sm hover:border-[color-mix(in_oklab,var(--fw-line-strong)_70%,var(--fw-ink))] hover:bg-surface-2",
   ghost: "text-ink hover:bg-surface-2",
   link: "text-accent underline decoration-1 underline-offset-4 hover:decoration-2",
   soon: "cursor-not-allowed border border-dashed border-line-strong text-subtle",

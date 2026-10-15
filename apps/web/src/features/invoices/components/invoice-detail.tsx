@@ -62,8 +62,8 @@ const NOT_FOUND = 404;
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 const CLOCK = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
 const COUNTRY = new Intl.DisplayNames(undefined, { type: "region" });
-const PANEL = "rounded-md border border-line bg-surface";
-const PANEL_TITLE = "border-b border-line px-4 py-3 text-base font-semibold text-ink sm:px-5";
+const PANEL = "fw-panel";
+const PANEL_TITLE = "fw-panel-head text-base font-semibold text-ink";
 
 export interface InvoiceDetailProps {
   invoiceId: string;
@@ -187,20 +187,28 @@ function Loaded({
       {/* One status, said at once: open with its close time, closed, partly paid, paid or settled (R-60). */}
       {/* The pay link is the page's action, so it sits with the status, while it can still take money (R-60). */}
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex min-w-0 flex-col gap-2">
-          {/* The number is the breadcrumb's last step on desktop, so the heading shows only on phones. */}
-          <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
+        <div className="relative flex min-w-0 flex-col gap-2">
+          {/* The number is the breadcrumb's last step on desktop, so the heading shows only on phones. There, above a
+              title, it is a quiet label, so the title reads as the heading, and the status pill moves up beside it. */}
+          <h1
+            className={`flex min-h-7 items-center text-ink max-lg:pr-40 lg:sr-only ${invoice.title ? "text-sm font-medium text-muted" : "text-2xl font-semibold tracking-tight"}`}
+          >
             {invoiceNumber(invoice.number)}
           </h1>
           {invoice.title ? (
-            <p className="text-lg font-medium break-words text-ink">{invoice.title}</p>
+            <p className="text-2xl font-semibold tracking-tight break-words text-ink">
+              {invoice.title}
+            </p>
           ) : null}
           <p
             ref={statusLine}
             tabIndex={-1}
             className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted outline-none"
           >
-            <StatusPill status={status} />
+            {/* One pill, read here in order; on phones it is drawn on the number's row. */}
+            <span className="max-lg:absolute max-lg:top-0 max-lg:right-0 max-lg:flex max-lg:h-7 max-lg:items-center">
+              <StatusPill status={status} />
+            </span>
             {when(invoice) ? <span>{when(invoice)}</span> : null}
           </p>
           <NextStep
@@ -211,21 +219,23 @@ function Loaded({
           />
         </div>
         {payable ? (
-          <div className="flex min-w-0 flex-col gap-1">
-            <ShareLink invoiceId={invoice.invoiceId} />
-            {/* Only before any money, on any option (R-79): after that the money decides, not a cancel. */}
-            {status === PAYMENT_STATUS.open &&
-            invoice.deposits.length === 0 &&
-            invoice.options.every((o) => o.deposits.length === 0) ? (
-              <CancelInvoice
-                profileId={profileId}
-                invoiceId={invoice.invoiceId}
-                number={invoiceNumber(invoice.number)}
-                noun={request ? COPY.noun.request : COPY.noun.invoice}
-                onCanceled={() => setCanceling(true)}
-              />
-            ) : null}
-          </div>
+          <ShareLink
+            invoiceId={invoice.invoiceId}
+            actions={
+              // Only before any money, on any option (R-79): after that the money decides, not a cancel.
+              status === PAYMENT_STATUS.open &&
+              invoice.deposits.length === 0 &&
+              invoice.options.every((o) => o.deposits.length === 0) ? (
+                <CancelInvoice
+                  profileId={profileId}
+                  invoiceId={invoice.invoiceId}
+                  number={invoiceNumber(invoice.number)}
+                  noun={request ? COPY.noun.request : COPY.noun.invoice}
+                  onCanceled={() => setCanceling(true)}
+                />
+              ) : null
+            }
+          />
         ) : null}
       </header>
 
@@ -485,7 +495,7 @@ function Party({ lines }: { lines: (string | null)[] }) {
 }
 
 /** The pay link in one row: the link (cut to fit, whole on hover and when copied), Copy and Open in a new tab. */
-function ShareLink({ invoiceId }: { invoiceId: string }) {
+function ShareLink({ invoiceId, actions }: { invoiceId: string; actions?: ReactNode }) {
   // The app renders only in the browser, after sign-in.
   const link = `${window.location.origin}/pay/${invoiceId}`;
   const [status, copy] = useCopy(link);
@@ -502,16 +512,17 @@ function ShareLink({ invoiceId }: { invoiceId: string }) {
         {COPY.share}
       </h2>
       <div className="flex items-center gap-2">
-        {/* The host and a short id fit the row; Copy and Open use the whole link. */}
+        {/* The host and a short id fit the row; Copy and Open use the whole link. A phone has no room to show
+            it, so Copy takes the row, unless copying failed and the link is there to select. */}
         <p
           title={link}
-          className={`min-w-0 flex-1 rounded-md border border-line bg-surface-2 px-3 py-1.5 font-mono text-sm text-ink ${status === COPY_STATUS.failed ? "break-all select-all" : "truncate"}`}
+          className={`min-w-0 flex-1 rounded-md border border-line bg-surface-2 px-3 py-1.5 font-mono text-sm text-ink ${status === COPY_STATUS.failed ? "break-all select-all" : "truncate max-sm:hidden"}`}
         >
           {status === COPY_STATUS.failed
             ? link
             : `${window.location.host}/pay/${shortAddress(invoiceId)}`}
         </p>
-        <Button variant="secondary" size="sm" onClick={copy} className="shrink-0">
+        <Button variant="secondary" size="sm" onClick={copy} className="shrink-0 max-sm:flex-1">
           {status === COPY_STATUS.copied ? (
             <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
           ) : (
@@ -529,6 +540,7 @@ function ShareLink({ invoiceId }: { invoiceId: string }) {
         >
           <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
         </a>
+        {actions}
       </div>
       <p role="status" className="sr-only">
         {status === COPY_STATUS.idle ? "" : label}

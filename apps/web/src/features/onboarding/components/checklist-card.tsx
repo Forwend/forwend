@@ -44,15 +44,21 @@ export function ChecklistCard({
 }: ChecklistCardProps) {
   const done = steps.filter((s) => s.done).length;
   return (
-    <section
-      aria-labelledby="checklist-title"
-      className="flex flex-col rounded-md border border-line bg-surface"
-    >
-      <div className="flex items-center gap-3 border-b border-line py-2 pr-2 pl-4 sm:pl-5">
+    <section aria-labelledby="checklist-title" className="fw-panel flex flex-col">
+      <div className="fw-panel-head">
         <h2 id="checklist-title" className="text-base font-semibold text-ink">
           {COPY.title}
         </h2>
         <span className="text-sm text-muted">{COPY.progress(done, steps.length)}</span>
+        <span
+          aria-hidden
+          className="hidden h-1.5 w-24 overflow-hidden rounded-pill bg-surface-2 sm:block"
+        >
+          <span
+            className="block h-full rounded-pill bg-primary transition-[width] duration-[var(--fw-duration-base)] ease-out"
+            style={{ width: `${(done / Math.max(steps.length, 1)) * 100}%` }}
+          />
+        </span>
         <IconButton label={COPY.close} onClick={onClose} className="ml-auto">
           <X aria-hidden className="size-[var(--fw-icon-sm)]" />
         </IconButton>

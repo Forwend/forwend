@@ -5,6 +5,36 @@
 
 @source "../../../../packages/ui-web/src";
 
+/*
+ * App panels. From small screens up a panel is a card. On phones it is a full-bleed section with hairline edges, so a
+ * phone screen is one flat column of sections instead of cards inside cards (it bleeds over the page's 1rem gutter).
+ */
+@utility fw-panel {
+  background-color: var(--fw-surface);
+  margin-inline: -1rem;
+  border-block: 1px solid var(--fw-line);
+
+  @variant sm {
+    margin-inline: 0;
+    border: 1px solid var(--fw-line);
+    border-radius: var(--fw-radius-md);
+  }
+}
+
+/* A panel's title row: ruled off inside a card; on phones a section heading, with no rule. */
+@utility fw-panel-head {
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0.25rem;
+
+  @variant sm {
+    padding: 0.625rem 1.25rem;
+    border-bottom: 1px solid var(--fw-line);
+  }
+}
+
 /* Hero signature: the river line draws to each mark as the sample payment reaches that step. */
 .fw-river-path {
   fill: none;

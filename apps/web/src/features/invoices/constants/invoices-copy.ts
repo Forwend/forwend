@@ -130,6 +130,17 @@ export const NEW_INVOICE_COPY = {
   },
   failed: "We could not create the invoice. Try again.",
   invalid: "We could not create the invoice with these values. Check them and try again.",
+  preview: {
+    title: "Preview",
+    untitled: "Invoice",
+    on: (network: string) => `on ${network}`,
+    any: (symbols: string, networks: number) => `in ${symbols} on any of ${networks} networks`,
+    client: "Billed to",
+    noClient: "No client",
+    due: "Due",
+    noDue: "No due date",
+    closes: "Checkout closes after",
+  },
 } as const;
 
 export const NEW_REQUEST_COPY = {
@@ -147,6 +158,12 @@ export const NEW_REQUEST_COPY = {
   senderLabel: "Your name (shown to the payer)",
   senderMissing: "Enter the name the payer will see.",
   create: "Create request",
+  preview: {
+    ...NEW_INVOICE_COPY.preview,
+    untitled: "Money request",
+    client: "Shown as",
+    noClient: "No name yet",
+  },
   failed: "We could not create the request. Try again.",
   invalid: "We could not create the request with these values. Check them and try again.",
 } as const;
@@ -269,6 +286,7 @@ export const INVOICE_COPY = {
     [INVOICE_EVENTS.held]: (number: string) => `${number} held for the payer`,
   } satisfies Record<InvoiceEventKind, (number: string) => string>,
   // Cancel before any money (R-79, D-79): the confirm dialog and its outcome.
+  moreActions: "More actions",
   cancel: {
     trigger: (noun: string) => `Cancel ${noun}`,
     title: (number: string) => `Cancel ${number}?`,

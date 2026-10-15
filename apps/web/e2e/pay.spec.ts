@@ -164,7 +164,8 @@ test.describe("pay page", () => {
     await openPay(page, OPEN);
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Alice Design GmbH");
-    await expect(page.getByText("Invoice INV-0001 · Logo design")).toBeVisible();
+    await expect(page.getByText("Invoice INV-0001", { exact: true })).toBeVisible();
+    await expect(page.getByText("Logo design", { exact: true })).toBeVisible();
     await expect(page.locator("[data-money]")).toHaveText("1,250.00 USDC");
     await expect(page.getByText("on Base Sepolia", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Download invoice PDF" })).toHaveAttribute(
@@ -201,11 +202,10 @@ test.describe("pay page", () => {
     await expect(page.getByText(RECEIVE)).toBeVisible();
     await expect(page.getByRole("img", { name: "QR code of the address to pay" })).toBeVisible();
     await expect(page.getByRole("note")).toHaveText("Send only USDC on Base Sepolia.");
-    // R-78: the whole address in groups of 4 that copies as one address, the token contract, the exchange's network.
+    // R-78: the whole address as one plain string with Copy in its field, the token contract, the exchange's network.
     const shown = page.locator("[data-address]");
     await expect(shown).toHaveText(RECEIVE);
-    await expect(shown.locator("span")).toHaveCount(10);
-    // Selected and copied by hand, the groups still give the one address: no spaces or line breaks between them.
+    // Selected and copied by hand, it gives exactly the address: no spaces or line breaks inside it.
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     await shown.click();
     await page.keyboard.press("ControlOrMeta+C");
@@ -261,6 +261,42 @@ test.describe("pay page", () => {
     await page.reload();
     await expect(check).toBeDisabled();
     await expect(page.getByText("Next check in 4 min", { exact: true })).toBeVisible();
+  });
+
+  // A bug a user hit: once a check answered, its message pushed Check status off the status's row.
+  test("Check status stays beside the status once a check answers, with the answer under them", async ({
+    page,
+  }) => {
+    await openPay(page, OPEN);
+    await showAddress(page).click();
+    await page.route(`**/api/v1/invoices/${ID}/recheck`, (route) =>
+      route.fulfill({
+        json: {
+          onChain: "0",
+          recorded: "0",
+          rescanning: false,
+          nextCheckAt: new Date(NOW.getTime() + 300_000).toISOString(),
+          unreadable: [],
+        },
+      }),
+    );
+    const waiting = page.getByRole("status").filter({ hasText: "Waiting for payment…" });
+    const check = page.getByRole("button", { name: "Check status" });
+    const answer = page.getByText(/· Next check in 5 min$/);
+    for (const width of [1440, 390, 360]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.reload();
+      await check.click();
+      await expect(answer).toBeVisible();
+      const [row, button, below] = await Promise.all([
+        waiting.boundingBox(),
+        check.boundingBox(),
+        answer.boundingBox(),
+      ]);
+      const middle = (box: typeof row) => (box ? box.y + box.height / 2 : 0);
+      expect(Math.abs(middle(row) - middle(button))).toBeLessThan(4);
+      expect(below && button && below.y >= button.y + button.height).toBe(true);
+    }
   });
 
   test("Check status asked too soon rests instead of reporting a network failure", async ({
@@ -356,24 +392,37 @@ test.describe("pay page", () => {
   test("takes an optional address for the receipt", async ({ page }) => {
     const sent: unknown[] = [];
     let answer = 200;
-    await page.route("**/api/v1/invoices/*/payer-email", (route) => {
+    await page.route("**/api/v1/invoices/*/payer-email", async (route) => {
       sent.push(route.request().postDataJSON());
+      await new Promise((resolve) => setTimeout(resolve, 300)); // a slow answer: a second press must not send again
       return answer === 200
         ? route.fulfill({ json: { email: "payer@example.com" } })
         : route.fulfill({ status: answer, json: { error: { code: "x", message: "x" } } });
     });
+    // Nothing to send a receipt for before any money: the row comes with the first payment seen.
     await openPay(page, OPEN);
+    await expect(page.getByRole("button", { name: "Email me a receipt" })).toHaveCount(0);
+    await mockInvoice(page, DETECTED);
+    await page.reload();
+    // The panel's last row, folded until the payer asks for it; the field takes focus when it opens.
+    await page.getByRole("button", { name: "Email me a receipt" }).click();
     const field = page.getByLabel("Email me the receipt (optional)");
+    await expect(field).toBeFocused();
     await expect(
       page.getByText("Used for this receipt only. Nothing else is sent to it."),
     ).toBeVisible();
     await field.fill(" Payer@Example.com ");
-    await page.getByRole("button", { name: "Send", exact: true }).click();
-    await expect(
-      page.getByText("We will email the receipt to payer@example.com once it is paid."),
-    ).toBeVisible();
+    await field.press("Enter");
+    await field.press("Enter");
+    // Saved: the form gives way to a confirmation, which takes focus; nothing is left to press again.
+    const saved = page.getByText("We will email the receipt to payer@example.com once it is paid.");
+    await expect(saved).toBeVisible();
+    await expect(page.getByText("Receipt saved")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
     expect(sent).toEqual([{ email: "Payer@Example.com" }]); // an email field trims; the server lowercases
 
+    await page.getByRole("button", { name: "Use another address" }).click();
+    await expect(field).toBeFocused();
     answer = 422;
     await field.fill("not an address");
     await page.getByRole("button", { name: "Send", exact: true }).click();
@@ -386,6 +435,7 @@ test.describe("pay page", () => {
     );
     await mockInvoice(page, PAID);
     await page.reload();
+    await page.getByRole("button", { name: "Email me a receipt" }).click();
     await page.getByLabel("Email me the receipt (optional)").fill("payer@example.com");
     await page.getByRole("button", { name: "Send", exact: true }).click();
     await expect(page.getByText("The receipt was already sent.")).toBeVisible();
@@ -611,6 +661,26 @@ test.describe("pay page", () => {
     );
     await page.goto(`/pay/${ID}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("This path ends here.");
+  });
+
+  // A bug a user hit: "Copied" is wider than "Copy", and the address beside it wrapped onto two lines.
+  test("the address stays on one line once copied, and Copy keeps its width", async ({ page }) => {
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await openPay(page, OPEN);
+    await showAddress(page).click();
+    const shown = page.locator("[data-address]");
+    for (const width of [1440, 390, 360]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.reload();
+      const copy = page.getByRole("button", { name: "Copy address" });
+      const before = await copy.boundingBox();
+      await copy.click();
+      const copied = page.getByRole("button", { name: "Address copied" });
+      await expect(copied).toBeVisible();
+      expect((await copied.boundingBox())?.width).toBe(before?.width);
+      const line = await shown.evaluate((el) => Number.parseFloat(getComputedStyle(el).lineHeight));
+      expect((await shown.boundingBox())?.height).toBeLessThanOrEqual(line + 1);
+    }
   });
 
   test("fits a 390 px phone in one column without sideways scrolling", async ({ page }) => {

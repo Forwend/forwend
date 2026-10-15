@@ -10,12 +10,23 @@ import {
   QrCode,
   ReceiveAddress,
   Skeleton,
+  SwapLabel,
   shortAddress,
   useCopy,
 } from "@forwend/ui-web";
-import { Check, Copy, FileDown, ShieldAlert, WifiOff } from "lucide-react";
+import {
+  CalendarDays,
+  Check,
+  Clock,
+  Copy,
+  ExternalLink,
+  FileDown,
+  ShieldAlert,
+  TriangleAlert,
+  WifiOff,
+} from "lucide-react";
 import { notFound, usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useGetInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import { CheckStatus } from "@/features/invoices/components/check-status";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
@@ -51,10 +62,8 @@ import { exactDigits } from "@/shared/lib/money";
 
 const NOT_FOUND = 404;
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
-const PANEL = "rounded-lg border border-line bg-surface";
+const PANEL = "fw-panel sm:rounded-lg";
 const ICON = "size-[var(--fw-icon-md)] shrink-0";
-const LINK =
-  "inline-flex items-center gap-1 rounded-sm text-accent outline-none hover:underline focus-visible:outline-2 focus-visible:outline-focus";
 const CLOSING_SOON_MS = 30 * 60_000;
 // The payer's steps end at Paid: settling is the sender's business (R-68).
 const PAYER_STEPS = [INVOICE_STEPS.detected, INVOICE_STEPS.confirming, INVOICE_STEPS.paid];
@@ -72,22 +81,20 @@ export function PayInvoice({ invoiceId, option }: PayInvoiceProps) {
   const invoice = useGetInvoiceQuery(invoiceId, LIVE_QUERY);
   const failure = invoice.error as { status?: unknown } | undefined;
   if (invoice.data) {
+    // A failed poll keeps the last read: say so first, or a payer may think nothing arrived and send again.
+    const stale = invoice.isError ? (
+      <p
+        role="status"
+        className="flex flex-wrap items-center gap-3 rounded-md bg-warning-soft px-4 py-3 text-sm text-warning"
+      >
+        {COPY.stale}
+        <Button size="sm" variant="secondary" onClick={invoice.refetch}>
+          {COPY.retry}
+        </Button>
+      </p>
+    ) : null;
     return (
-      <>
-        {/* A failed poll keeps the last read: say so, or a payer may think nothing arrived and send again. */}
-        {invoice.isError ? (
-          <p
-            role="status"
-            className="flex flex-wrap items-center gap-3 rounded-md bg-warning-soft px-4 py-3 text-sm text-warning lg:col-span-2"
-          >
-            {COPY.stale}
-            <Button size="sm" variant="secondary" onClick={invoice.refetch}>
-              {COPY.retry}
-            </Button>
-          </p>
-        ) : null}
-        <Loaded invoice={invoice.data} linkInvoiceId={invoiceId} option={option} />
-      </>
+      <Loaded invoice={invoice.data} linkInvoiceId={invoiceId} option={option} stale={stale} />
     );
   }
   if (failure?.status === NOT_FOUND) notFound();
@@ -126,10 +133,12 @@ function Loaded({
   invoice: answer,
   linkInvoiceId,
   option,
+  stale,
 }: {
   invoice: Invoice;
   linkInvoiceId: string;
   option?: string;
+  stale: ReactNode;
 }) {
   const now = useNow();
   const router = useRouter();
@@ -172,7 +181,7 @@ function Loaded({
   const pay = payState(invoice, now);
   return (
     <>
-      <Summary invoice={invoice} token={token} pay={pay} now={now} picking={picking} />
+      <Summary invoice={invoice} token={token} pay={pay} picking={picking} stale={stale} />
       <PayBox
         invoice={invoice}
         address={address}
@@ -182,25 +191,27 @@ function Loaded({
         choice={choice}
         picking={picking}
       />
+      <Terms invoice={invoice} pay={pay} now={now} />
     </>
   );
 }
 
 type Pay = ReturnType<typeof payState>;
 
-// Who asks and how much, in the reading order of an invoice: payee, number, amount, then its terms.
+// Who asks and how much: payee, number, amount. On phones the pay panel follows right under it and the terms after
+// the panel, so a payer reaches the address without scrolling past the note; wide screens keep them in one column.
 function Summary({
   invoice,
   token,
   pay,
-  now,
   picking,
+  stale,
 }: {
   invoice: Invoice;
   token: PayToken;
   pay: Pay;
-  now: number;
   picking: boolean;
+  stale: ReactNode;
 }) {
   const payee = invoice.issuer?.name ?? invoice.senderName;
   const number = invoiceNumber(invoice.number);
@@ -208,28 +219,30 @@ function Summary({
   const done = pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled;
   const partial = pay.canSend && pay.received > 0n;
   const shown = partial ? pay.remaining : amount;
-  const closesAt = checkoutClosesAt(invoice);
   return (
-    <section aria-labelledby="pay-amount" className="flex min-w-0 flex-col gap-5">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold break-words text-ink">{payee ?? COPY.noIssuer}</h1>
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
-          <span className="break-words">
-            {[invoice.issuer ? COPY.invoice(number) : COPY.request(number), invoice.title]
-              .filter(Boolean)
-              .join(" · ")}
-          </span>
-          <a
-            href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.invoice)}
-            aria-label={COPY.pdfLabel}
-            className={LINK}
-          >
-            <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
-            {COPY.pdf}
-          </a>
-        </p>
+    <section
+      aria-labelledby="pay-amount"
+      className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-1 lg:gap-8"
+    >
+      {/* Top of the first column: the first thing on the page at any width (the grid pins every block's row). */}
+      {stale}
+      <div className="flex min-w-0 items-center gap-3">
+        <span
+          aria-hidden
+          className="grid size-10 shrink-0 place-items-center rounded-md border border-line bg-surface text-base font-semibold text-ink sm:size-11 sm:text-lg"
+        >
+          {(payee ?? COPY.noIssuer).trim().charAt(0).toUpperCase()}
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <h1 className="text-lg font-semibold break-words text-ink sm:text-xl">
+            {payee ?? COPY.noIssuer}
+          </h1>
+          <p className="text-sm text-muted">
+            {invoice.issuer ? COPY.invoice(number) : COPY.request(number)}
+          </p>
+        </div>
       </div>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1.5">
         <h2 id="pay-amount" className="text-sm text-muted">
           {done
             ? COPY.amountPaid
@@ -250,12 +263,31 @@ function Summary({
           <p className="text-sm text-muted">{COPY.on(chainName(invoice.chainId))}</p>
         )}
       </div>
+    </section>
+  );
+}
+
+// What the invoice is for, its terms, its note and its PDF, as a hosted invoice page lists them: under the amount on
+// wide screens and after the pay panel on phones, so the top of the page is only who asks and how much.
+function Terms({ invoice, pay, now }: { invoice: Invoice; pay: Pay; now: number }) {
+  const closesAt = checkoutClosesAt(invoice);
+  return (
+    <div className="flex min-w-0 flex-col items-start gap-4 lg:col-start-1 lg:row-start-2 lg:gap-5">
+      {invoice.title ? (
+        <p className="text-base font-medium break-words text-ink">{invoice.title}</p>
+      ) : null}
       {invoice.dueDate || pay.canSend ? (
-        <ul className="flex flex-col gap-1 text-sm text-muted">
-          {invoice.dueDate ? <li>{COPY.due(formatDueDate(invoice.dueDate))}</li> : null}
+        <ul className="flex flex-col gap-2.5 text-sm text-muted">
+          {invoice.dueDate ? (
+            <li className="flex items-center gap-2.5">
+              <CalendarDays aria-hidden className={ICON} />
+              {COPY.due(formatDueDate(invoice.dueDate))}
+            </li>
+          ) : null}
           {/* Once paid or closed the countdown no longer matters to the payer. */}
           {pay.canSend ? (
-            <li>
+            <li className="flex items-center gap-2.5">
+              <Clock aria-hidden className={ICON} />
               <time dateTime={new Date(closesAt).toISOString()} title={TIME.format(closesAt)}>
                 {COPY.closesIn(shortDuration(closesAt - now))}
               </time>
@@ -264,11 +296,18 @@ function Summary({
         </ul>
       ) : null}
       {invoice.note ? (
-        <p className="border-l-2 border-line pl-3 text-sm break-words whitespace-pre-line text-ink">
+        <p className="max-w-prose border-l-2 border-line-strong pl-4 text-sm break-words whitespace-pre-line text-ink sm:text-base">
           {invoice.note}
         </p>
       ) : null}
-    </section>
+      <a
+        href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.invoice)}
+        className="-mx-1 inline-flex items-center gap-2 rounded-sm px-1 text-sm font-medium text-ink underline decoration-line-strong underline-offset-4 outline-none hover:decoration-ink focus-visible:outline-2 focus-visible:outline-focus"
+      >
+        <FileDown aria-hidden className={ICON} />
+        {COPY.pdfLabel}
+      </a>
+    </div>
   );
 }
 
@@ -340,7 +379,7 @@ function PayBox({
     pay.state === PAY_STATES.partial;
 
   return (
-    <div className="flex min-w-0 flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
       <div className={PANEL}>
         {done ? (
           <Paid invoice={invoice} token={token} />
@@ -382,19 +421,37 @@ function PayBox({
                 <h2 id="pay-send" ref={sendHeading} tabIndex={-1} className="sr-only">
                   {COPY.sendTo(token.symbol, network)}
                 </h2>
-                <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 sm:gap-4">
+                {/* What to send and where beside the code a phone scans; the address itself runs full width. */}
+                <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:gap-4">
                   <QrCode
                     value={address}
                     label={COPY.qr}
-                    className="w-28 border border-line sm:w-36"
+                    className="w-26 border border-line p-1 sm:w-32"
                   />
-                  <ExactAmount amount={pay.remaining} token={token} />
+                  <div className="flex min-w-0 flex-col gap-3">
+                    <ExactAmount amount={pay.remaining} token={token} />
+                    {/* The small size on phones, so the warning fits its narrow column on one line. */}
+                    <p
+                      role="note"
+                      className="flex items-start gap-1.5 text-xs font-medium text-warning sm:gap-2 sm:text-sm"
+                    >
+                      <TriangleAlert
+                        aria-hidden
+                        className="mt-px size-3.5 shrink-0 sm:mt-0.5 sm:size-[var(--fw-icon-sm)]"
+                      />
+                      <span>
+                        {COPY.sendOnly(token.symbol, network)}
+                        {lookalike ? ` ${COPY.notLookalike(token.symbol, lookalike)}` : null}
+                      </span>
+                    </p>
+                  </div>
                 </div>
-                <ReceiveAddress address={address} label={COPY.sendTo(token.symbol, network)} />
-                <p role="note" className="text-sm font-medium text-warning">
-                  {COPY.sendOnly(token.symbol, network)}
-                  {lookalike ? ` ${COPY.notLookalike(token.symbol, lookalike)}` : null}
-                </p>
+                <ReceiveAddress
+                  address={address}
+                  label={COPY.sendTo(token.symbol, network)}
+                  copyShort={COPY.copyShort}
+                  copiedShort={COPY.copiedShort}
+                />
                 {contract ? (
                   <p className="text-xs text-muted">
                     {COPY.contract(token.symbol)}{" "}
@@ -432,11 +489,10 @@ function PayBox({
             )}
           </>
         )}
+        {/* The receipt by email as the panel's last row, once there is a payment to send it for: from the first
+            money seen, so a payer can leave before the final check, and after paying (R-82). */}
+        {seen || done ? <ReceiptEmail invoiceId={invoice.invoiceId} paid={done} /> : null}
       </div>
-      {/* The receipt by email, before or after paying; not for a canceled or closed checkout (R-82). */}
-      {pay.canSend || seen || done ? (
-        <ReceiptEmail invoiceId={invoice.invoiceId} paid={done} />
-      ) : null}
       {/* Overpaid gets its own handling later (PLAN 11.10.1); late money is held for the payer now. */}
       {pay.late > 0n ? (
         <p className="text-sm text-warning">{COPY.late(money(pay.late), payeeOf(invoice))}</p>
@@ -478,8 +534,12 @@ function StatusLine({
 }) {
   const pending = pay.state === PAY_STATES.waiting;
   return (
-    <div className={`flex flex-col gap-3 p-4 sm:p-5 ${bordered ? "border-t border-line" : ""}`}>
-      <p role="status" className="flex items-start gap-2.5 text-sm text-ink">
+    // The status and Check status share the first row; what a check found takes the full row under them, so the
+    // button never moves when it answers.
+    <div
+      className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 p-4 sm:p-5 ${bordered ? "border-t border-line" : ""}`}
+    >
+      <p role="status" className="flex items-start gap-2.5 text-sm font-medium text-ink">
         {pending ? (
           <span aria-hidden className="relative mt-1.5 flex size-2 shrink-0">
             <span className="absolute inset-0 rounded-pill bg-accent opacity-60 motion-safe:animate-ping" />
@@ -495,6 +555,8 @@ function StatusLine({
           network={network}
           money={money}
           nextCheckAt={invoice.nextCheckAt}
+          className="contents"
+          messageClassName="col-span-2"
         />
       ) : null}
     </div>
@@ -626,45 +688,73 @@ function Paid({ invoice, token }: { invoice: Invoice; token: PayToken }) {
   const name = invoice.issuer?.name ?? invoice.senderName;
   const back = invoice.returnUrl && isReturnLink(invoice.returnUrl) ? invoice.returnUrl : null;
   const backLabel = back ? COPY.backTo(new URL(back).host) : "";
+  // A receipt, read top to bottom: what happened, then its facts as label and value rows, then what to keep.
   return (
-    <div className="flex flex-col items-center gap-5 px-5 py-8 text-center sm:px-6 sm:py-10">
-      <span className="grid size-12 place-items-center rounded-pill bg-success-soft text-success transition-[opacity,transform] duration-[var(--fw-duration-base)] ease-out starting:scale-90 starting:opacity-0">
-        <Check aria-hidden className="size-6" />
-      </span>
-      <div className="flex min-w-0 max-w-full flex-col gap-1 break-words">
-        <p role="status" className="text-xl font-semibold text-ink">
-          {COPY.paid}
-        </p>
-        <p className="text-sm text-muted">
-          {COPY.paidTo(
-            formatMoney(amount, token),
-            name,
-            invoice.paidAt ? TIME.format(Date.parse(invoice.paidAt)) : "",
-          )}
-        </p>
-        <p className="text-sm text-muted">{COPY.closeHint}</p>
+    <div className="flex flex-col gap-5 p-4 sm:p-5">
+      <div className="flex items-center gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-pill bg-success-soft text-success transition-[opacity,transform] duration-[var(--fw-duration-base)] ease-out starting:scale-90 starting:opacity-0">
+          <Check aria-hidden className="size-5" />
+        </span>
+        <div className="min-w-0">
+          <p role="status" className="text-lg font-semibold text-ink">
+            {COPY.paid}
+          </p>
+          <p className="text-sm text-muted">{COPY.closeHint}</p>
+        </div>
       </div>
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm">
-        {tx ? (
-          <a href={tx.href} target="_blank" rel="noopener noreferrer" className={LINK}>
-            {COPY.viewTx}
-          </a>
+      <dl className="divide-y divide-line border-y border-line text-sm">
+        <ReceiptRow term={COPY.receiptRows.amount}>
+          <span className="font-medium tabular-nums">{formatMoney(amount, token)}</span>
+        </ReceiptRow>
+        {name ? <ReceiptRow term={COPY.receiptRows.to}>{name}</ReceiptRow> : null}
+        {invoice.paidAt ? (
+          <ReceiptRow term={COPY.receiptRows.date}>
+            <time dateTime={invoice.paidAt}>{TIME.format(Date.parse(invoice.paidAt))}</time>
+          </ReceiptRow>
         ) : null}
-        <a href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.receipt)} className={LINK}>
+        {tx ? (
+          <ReceiptRow term={COPY.receiptRows.transaction}>
+            <a
+              href={tx.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={last?.txHash}
+              className={`${buttonClasses({ variant: "link" })} gap-1.5 text-sm`}
+            >
+              {COPY.viewTx}
+              <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
+            </a>
+          </ReceiptRow>
+        ) : null}
+      </dl>
+      <div className="flex flex-col gap-2">
+        <a
+          href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.receipt)}
+          className={`${buttonClasses({ variant: back ? "secondary" : "primary" })} w-full`}
+        >
           <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
           {COPY.receiptPdf}
         </a>
+        {back ? (
+          <a
+            href={back}
+            rel="noopener noreferrer"
+            title={backLabel}
+            className={`${buttonClasses({ variant: "primary" })} w-full`}
+          >
+            <span className="truncate">{backLabel}</span>
+          </a>
+        ) : null}
       </div>
-      {back ? (
-        <a
-          href={back}
-          rel="noopener noreferrer"
-          title={backLabel}
-          className={`${buttonClasses({ variant: "primary" })} max-w-full`}
-        >
-          <span className="truncate">{backLabel}</span>
-        </a>
-      ) : null}
+    </div>
+  );
+}
+
+function ReceiptRow({ term, children }: { term: string; children: ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 py-2.5">
+      <dt className="shrink-0 text-muted">{term}</dt>
+      <dd className="min-w-0 text-right break-words text-ink">{children}</dd>
     </div>
   );
 }
@@ -685,23 +775,35 @@ function ExactAmount({ amount, token }: { amount: bigint; token: PayToken }) {
         ? COPY.copyAmountFailed
         : COPY.copyAmount;
   return (
-    <div className="flex min-w-0 flex-col justify-center gap-2 rounded-md border border-line p-3 sm:p-4">
+    <div className="flex min-w-0 flex-col gap-1.5">
       <span className="text-xs text-muted">{COPY.exactAmount}</span>
-      <Money
-        baseUnits={amount}
-        decimals={token.decimals}
-        fractionDigits={fractionDigits}
-        token={token.symbol}
-        className="text-xl font-semibold break-all text-ink"
-      />
-      <Button size="sm" variant="secondary" onClick={copy} className="self-start">
-        {status === COPY_STATUS.copied ? (
-          <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
-        ) : (
-          <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
-        )}
-        {label}
-      </Button>
+      <div className="flex items-center justify-between gap-2 rounded-md border border-line-strong bg-surface py-1.5 pr-1.5 pl-3">
+        <Money
+          baseUnits={amount}
+          decimals={token.decimals}
+          fractionDigits={fractionDigits}
+          token={token.symbol}
+          className="min-w-0 text-base font-semibold break-all text-ink"
+        />
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={copy}
+          aria-label={label}
+          className="shrink-0"
+        >
+          {status === COPY_STATUS.copied ? (
+            <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
+          ) : (
+            <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
+          )}
+          <SwapLabel
+            labels={[COPY.copyShort, COPY.copiedShort]}
+            active={status === COPY_STATUS.copied ? COPY.copiedShort : COPY.copyShort}
+            className="max-sm:sr-only"
+          />
+        </Button>
+      </div>
       <span role="status" className="sr-only">
         {status === COPY_STATUS.idle ? "" : label}
       </span>

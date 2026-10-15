@@ -8,6 +8,8 @@ import {
   SearchField,
   SegmentedControl,
   StatusPill,
+  TABLE_HEAD_CLASSES,
+  TABLE_ROW_CLASSES,
 } from "@forwend/ui-web";
 import { FileText, Plus } from "lucide-react";
 import Link from "next/link";
@@ -16,8 +18,14 @@ import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { useGetInvoicesInfiniteQuery } from "@/features/invoices/api/invoices-api";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
-import { formatDueDate, invoiceNumber, invoiceStatus } from "@/features/invoices/lib/invoices";
+import {
+  formatDueDate,
+  formatDueDateShort,
+  invoiceNumber,
+  invoiceStatus,
+} from "@/features/invoices/lib/invoices";
 import type { InvoiceSummary, InvoiceToken } from "@/features/invoices/types/invoices";
+import { ChainBadge, hasChainBadge } from "@/shared/components/chains/chain-badge";
 import { NetworkName } from "@/shared/components/chains/network-name";
 import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
@@ -25,6 +33,7 @@ import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { useListFilters } from "@/shared/hooks/use-list-filters";
+import { chainName } from "@/shared/lib/chains";
 
 // A personal profile's requests open the request sheet; invoices have their own page.
 function NewInvoiceLink({
@@ -114,7 +123,7 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
           </Button>
         </div>
       ) : !list.currentData ? (
-        <RowsSkeleton count={SKELETON_ROWS} className="rounded-md border border-line bg-surface" />
+        <RowsSkeleton count={SKELETON_ROWS} className="fw-panel" />
       ) : noInvoices ? (
         <EmptyState
           icon={FileText}
@@ -125,26 +134,20 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
       ) : rows.length === 0 ? (
         <NoMatch onClear={filters.clear} />
       ) : (
-        <div className="rounded-md border border-line bg-surface">
+        <div className="fw-panel overflow-hidden">
           {/* Wide screens: a ruled table, scrolled sideways rather than squeezed when its column is narrow. Below xl
               the sidebar leaves too little room for five columns, so rows stack as on phones, as requests always do. */}
           <div className={onRequest ? "hidden" : "hidden overflow-x-auto xl:block"}>
             <table className="w-full min-w-[44rem] text-sm">
               <thead>
-                <tr className="border-b border-line text-left text-xs text-muted">
-                  <th scope="col" className="px-5 py-2.5 font-medium">
+                <tr className={TABLE_HEAD_CLASSES}>
+                  <th scope="col" className="w-[30%]">
                     {COPY.columns.invoice}
                   </th>
-                  <th scope="col" className="px-3 py-2.5 font-medium">
-                    {COPY.columns.client}
-                  </th>
-                  <th scope="col" className="px-3 py-2.5 font-medium">
-                    {COPY.columns.due}
-                  </th>
-                  <th scope="col" className="px-3 py-2.5 font-medium">
-                    {COPY.columns.status}
-                  </th>
-                  <th scope="col" className="px-5 py-2.5 text-right font-medium">
+                  <th scope="col">{COPY.columns.client}</th>
+                  <th scope="col">{COPY.columns.due}</th>
+                  <th scope="col">{COPY.columns.status}</th>
+                  <th scope="col" className="text-right">
                     {COPY.columns.amount}
                   </th>
                 </tr>
@@ -152,8 +155,11 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
               <tbody className="divide-y divide-line">
                 {rows.map((inv) => (
                   // The number's link covers the row, so the whole row opens the invoice.
-                  <tr key={inv.invoiceId} className={`relative ${ROW_INTERACTIVE_CLASSES}`}>
-                    <td className="max-w-56 px-5 py-3">
+                  <tr
+                    key={inv.invoiceId}
+                    className={`relative transition-colors duration-[var(--fw-duration-fast)] ${TABLE_ROW_CLASSES} ${ROW_INTERACTIVE_CLASSES}`}
+                  >
+                    <td className="max-w-64">
                       <Link
                         href={invoiceHref(inv)}
                         className="font-medium text-ink outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
@@ -166,24 +172,32 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
                         </span>
                       ) : null}
                     </td>
-                    <td
-                      title={clientName(inv) ?? undefined}
-                      className="max-w-48 truncate px-3 py-3"
-                    >
-                      {clientName(inv) ?? <span className="text-subtle">{COPY.noClient}</span>}
+                    <td title={clientName(inv) ?? undefined} className="max-w-56">
+                      {clientName(inv) ? (
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <Avatar name={clientName(inv)} small />
+                          <span className="truncate text-ink">{clientName(inv)}</span>
+                        </span>
+                      ) : (
+                        <span className="text-subtle">{COPY.noClient}</span>
+                      )}
                     </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-muted">
+                    <td className="whitespace-nowrap text-muted tabular-nums">
                       {inv.dueDate ? (
                         <time dateTime={inv.dueDate}>{formatDueDate(inv.dueDate)}</time>
                       ) : (
                         <span className="text-subtle">{COPY.noDueDate}</span>
                       )}
                     </td>
-                    <td className="px-3 py-3 whitespace-nowrap">
+                    <td className="whitespace-nowrap">
                       <StatusPill status={invoiceStatus(inv)} />
                     </td>
-                    <td className="px-5 py-3 text-right whitespace-nowrap">
-                      <InvoiceAmount invoice={inv} tokens={tokens} className="flex-nowrap" />
+                    <td className="text-right whitespace-nowrap">
+                      <InvoiceAmount
+                        invoice={inv}
+                        tokens={tokens}
+                        className="flex-nowrap justify-end text-ink"
+                      />
                       <span className="flex justify-end text-xs text-muted">
                         {inv.optionCount > 1 ? (
                           MONEY_COPY.anyNetwork
@@ -202,31 +216,34 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
               <li key={inv.invoiceId}>
                 <Link
                   href={invoiceHref(inv)}
-                  className={`flex items-center gap-3 px-4 py-3 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${ROW_INTERACTIVE_CLASSES}`}
+                  className={`flex min-h-16 items-center gap-3 px-4 py-3 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus sm:px-5 ${ROW_INTERACTIVE_CLASSES}`}
                 >
-                  <span className="min-w-0">
+                  {/* Who it is for leads; the number and due date sit under it, and one network rides on the
+                      avatar as its logo (and in words for screen readers), so a narrow row cuts neither. */}
+                  <Avatar name={label(inv)} chainId={inv.optionCount > 1 ? null : inv.chainId} />
+                  <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-ink">
-                      {invoiceNumber(inv.number)}
-                      {label(inv) ? (
-                        <span className="font-normal text-muted"> · {label(inv)}</span>
-                      ) : null}
+                      {label(inv) ?? invoiceNumber(inv.number)}
                     </span>
-                    {/* The network first: a narrow row cuts the due date, never the network. */}
-                    <span className="flex min-w-0 items-center gap-1 text-xs text-muted">
-                      <span className="shrink-0">
-                        {inv.optionCount > 1 ? (
-                          MONEY_COPY.anyNetwork
-                        ) : (
-                          <NetworkName chainId={inv.chainId} />
-                        )}
-                      </span>
+                    <span className="block truncate text-xs text-muted">
+                      {label(inv) ? invoiceNumber(inv.number) : null}
                       {inv.dueDate ? (
-                        <span className="truncate">· {COPY.due(formatDueDate(inv.dueDate))}</span>
+                        <>
+                          {label(inv) ? " · " : null}
+                          {COPY.due(formatDueDateShort(inv.dueDate, new Date()))}
+                        </>
                       ) : null}
+                      {inv.optionCount > 1 ? (
+                        ` · ${MONEY_COPY.anyNetwork}`
+                      ) : hasChainBadge(inv.chainId) ? (
+                        <span className="sr-only">, {chainName(inv.chainId)}</span>
+                      ) : (
+                        ` · ${chainName(inv.chainId)}`
+                      )}
                     </span>
                   </span>
-                  <span className="ml-auto flex shrink-0 flex-col items-end gap-1">
-                    <InvoiceAmount invoice={inv} tokens={tokens} className="flex-nowrap" />
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    <InvoiceAmount invoice={inv} tokens={tokens} className="flex-nowrap text-ink" />
                     <StatusPill status={invoiceStatus(inv)} />
                   </span>
                 </Link>
@@ -256,4 +273,37 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
       ) : null}
     </section>
   );
+}
+
+function Avatar({
+  name,
+  chainId,
+  small = false,
+}: {
+  name: string | null;
+  /** The one network the invoice is paid on, shown as its logo on the corner. */
+  chainId?: number | null;
+  small?: boolean;
+}) {
+  const letters = name ? initials(name) : "";
+  return (
+    <span
+      aria-hidden
+      className={`relative grid shrink-0 place-items-center rounded-pill bg-surface-2 font-medium text-muted ${small ? "size-7 text-xs" : "size-9 text-sm"}`}
+    >
+      {letters || <FileText className="size-[var(--fw-icon-sm)]" />}
+      {chainId ? <ChainBadge chainId={chainId} /> : null}
+    </span>
+  );
+}
+
+// Up to two letters of the client's name, for the avatar beside it.
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter((word) => /\p{L}/u.test(word))
+    .slice(0, 2)
+    .map((word) => word.match(/\p{L}/u)?.[0] ?? "")
+    .join("")
+    .toUpperCase();
 }

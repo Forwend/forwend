@@ -10,7 +10,6 @@ export const PAY_COPY = {
   invoice: (number: string) => `Invoice ${number}`,
   request: (number: string) => `Request ${number}`,
   noIssuer: "Invoice",
-  pdf: "PDF",
   pdfLabel: "Download invoice PDF",
   amountDue: "Amount due",
   amount: "Amount",
@@ -36,6 +35,9 @@ export const PAY_COPY = {
   sendTo: (symbol: string, network: string) => `Send ${symbol} on ${network} to`,
   exactAmount: "Amount",
   copyAmount: "Copy amount",
+  // The copy buttons' own words; their accessible names say what they copy.
+  copyShort: "Copy",
+  copiedShort: "Copied",
   amountCopied: "Amount copied",
   copyAmountFailed: "Copy failed: type the amount instead",
   exchange: (amount: string, network: string) =>
@@ -62,8 +64,7 @@ export const PAY_COPY = {
     [PAY_STATES.closedPartial]: ({ received, payee }) =>
       `Closed before the full amount arrived. The ${received} you sent is held for you; ask ${payee} to get it back.`,
   } satisfies Record<PayState, (v: StateValues) => string>,
-  paidTo: (amount: string, name: string | null, at: string) =>
-    name ? `${amount} to ${name} · ${at}` : `${amount} · ${at}`,
+  receiptRows: { amount: "Amount", to: "Paid to", date: "Date", transaction: "Transaction" },
   paid: "Paid",
   closeHint: "You can close this page.",
   viewTx: "View transaction",
@@ -82,9 +83,14 @@ export const PAY_COPY = {
     `${amount} sent on ${network} went to another payment option. It is held for you; ask ${payee} to get it back.`,
   // Email me the receipt (R-82, D-68): optional, for this receipt only.
   receipt: {
+    open: "Email me a receipt",
     label: "Email me the receipt (optional)",
+    placeholder: "you@example.com",
     hint: "Used for this receipt only. Nothing else is sent to it.",
     send: "Send",
+    sentTitle: "Receipt sent",
+    savedTitle: "Receipt saved",
+    another: "Use another address",
     before: (email: string) => `We will email the receipt to ${email} once it is paid.`,
     after: (email: string) => `The receipt is on its way to ${email}.`,
     invalid: "Enter an address like name@example.com.",

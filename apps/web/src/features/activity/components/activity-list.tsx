@@ -21,11 +21,13 @@ import {
 } from "@/features/activity/constants/activity";
 import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { activityStatus } from "@/features/activity/lib/activity";
+import { ChainBadge } from "@/shared/components/chains/chain-badge";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { CHAINS } from "@/shared/constants/chains";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
 import { chainName } from "@/shared/lib/chains";
@@ -107,10 +109,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
           </Button>
         </div>
       ) : !data ? (
-        <RowsSkeleton
-          count={skeletonRows}
-          className="overflow-hidden rounded-md border border-line bg-surface"
-        />
+        <RowsSkeleton count={skeletonRows} className="fw-panel overflow-hidden" />
       ) : noActivity ? (
         <EmptyState
           icon={History}
@@ -122,7 +121,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
           {rows.length === 0 ? (
             <NoMatch onClear={filters.clear} />
           ) : (
-            <ul className="divide-y divide-line overflow-hidden rounded-md border border-line bg-surface">
+            <ul className="fw-panel divide-y divide-line overflow-hidden">
               {rows.map((item, i) => {
                 const deposit = item.kind === ACTIVITY_KINDS.deposit;
                 // A client-chooses invoice reads in USD on any network, as in the invoice list (R-70).
@@ -132,7 +131,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
                     // The same transaction can pay two invoices, and one invoice can get two payments in it.
                     // biome-ignore lint/suspicious/noArrayIndexKey: the position completes the key
                     key={`${item.kind}:${item.invoiceId}:${item.txHash ?? ""}:${i}`}
-                    className={`relative px-4 ${ROW_INTERACTIVE_CLASSES}`}
+                    className={`relative px-4 transition-colors duration-[var(--fw-duration-fast)] sm:px-5 ${ROW_INTERACTIVE_CLASSES}`}
                   >
                     <ActivityRow
                       // The title's link covers the row, so the whole row opens the invoice.
@@ -148,8 +147,23 @@ function ProfileActivity({ profileId }: ActivityListProps) {
                             : ACTIVITY_COPY.invoice}
                         </Link>
                       }
-                      // The network first: a narrow row cuts the time, never the network.
-                      detail={`${anyOption ? MONEY_COPY.anyNetwork : chainName(item.chainId)} · ${TIME.format(new Date(item.at))}`}
+                      // Phones show one network as its logo on the icon (its name stays for screen readers), so
+                      // the time never gets cut; wider rows name it first.
+                      detail={
+                        anyOption || !CHAINS[item.chainId]?.icon ? (
+                          `${anyOption ? MONEY_COPY.anyNetwork : chainName(item.chainId)} · ${TIME.format(new Date(item.at))}`
+                        ) : (
+                          <>
+                            <span className="max-sm:sr-only">{chainName(item.chainId)} · </span>
+                            {TIME.format(new Date(item.at))}
+                          </>
+                        )
+                      }
+                      badge={
+                        !anyOption && CHAINS[item.chainId]?.icon ? (
+                          <ChainBadge chainId={item.chainId} className="sm:hidden" />
+                        ) : null
+                      }
                       direction={
                         deposit ? ACTIVITY_DIRECTIONS.incoming : ACTIVITY_DIRECTIONS.request
                       }

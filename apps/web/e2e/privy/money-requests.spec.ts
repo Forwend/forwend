@@ -119,9 +119,10 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     expect(await blockingViolations(page)).toEqual([]);
     await sidebar.getByRole("link", { name: "Requests" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeAttached();
-    await expect(page.getByRole("link", { name: new RegExp(`^${request.number}`) })).toContainText(
-      note,
-    );
+    // A row leads with its note, then the number.
+    await expect(
+      page.getByRole("link", { name: new RegExp(`\\b${request.number}\\b`) }),
+    ).toContainText(note);
     expect(await blockingViolations(page)).toEqual([]);
 
     // The payer, without an account, sees the name and the amount asked.

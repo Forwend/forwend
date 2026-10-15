@@ -42,9 +42,9 @@ describe("ActivityRow", () => {
 
   it("shows one sign, inside the figures, even for a negative amount", () => {
     const { container, unmount } = row(-5000000n);
-    expect(container.querySelector(".font-mono")?.textContent).toBe("−5.00");
+    expect(container.querySelector("[data-figures]")?.textContent).toBe("−5.00");
     unmount();
-    expect(row(5000000n).container.querySelector(".font-mono")?.textContent).toBe("−5.00");
+    expect(row(5000000n).container.querySelector("[data-figures]")?.textContent).toBe("−5.00");
   });
 });
 
@@ -63,34 +63,25 @@ describe("pending payment statuses", () => {
 describe("ReceiveAddress", () => {
   const address = "0x586134f74b654f5835860ca198ae725344670078";
 
-  it("shows the whole address in groups of 4 that copy and read as one address (R-78)", async () => {
+  it("marks the ends of the whole address, and selects, reads and copies as the address (R-78)", async () => {
     const user = userEvent.setup();
     const writeText = vi.spyOn(navigator.clipboard, "writeText");
     const { container } = render(<ReceiveAddress address={address} />);
     const shown = container.querySelector("[data-address]") as HTMLElement;
-    // No character between the groups: a selection, a copy or a screen reader gets the address itself.
+    // No character between the parts: a selection, a copy or a screen reader gets the address itself.
     expect(shown.textContent).toBe(address);
-    const groups = Array.from(shown.querySelectorAll("span"), (span) => span.textContent);
-    expect(groups).toEqual([
-      "0x5861",
-      "34f7",
-      "4b65",
-      "4f58",
-      "3586",
-      "0ca1",
-      "98ae",
-      "7253",
-      "4467",
-      "0078",
-    ]);
-    expect(shown.querySelectorAll("wbr")).toHaveLength(groups.length - 1);
-    // The ends a look-alike copies stay marked, so they are still compared, with everything between them.
-    const spans = shown.querySelectorAll("span");
-    expect(spans[0]?.className).toContain("text-ink");
-    expect(spans[spans.length - 1]?.className).toContain("text-ink");
-    expect(spans[1]?.className).not.toContain("text-ink");
+    const parts = Array.from(shown.children, (part) => part.textContent);
+    expect(parts[0]).toBe("0x5861");
+    expect(parts.at(-1)).toBe("0078");
+    // The ends a look-alike copies stand out from everything between them.
+    expect(shown.children[0]?.className).toContain("text-ink");
+    expect(shown.children[2]?.className).toContain("text-ink");
+    expect(shown.children[1]?.className).not.toContain("text-ink");
+    // Nothing is hidden at any width: a shortened address is what look-alikes copy.
+    for (const part of shown.children) expect(part.className).not.toMatch(/sr-only|hidden/);
     await user.click(screen.getByRole("button", { name: "Copy address" }));
     expect(writeText).toHaveBeenCalledWith(address);
+    expect(container.querySelector("p[role=status]")?.textContent).toBe("Address copied");
   });
 });
 

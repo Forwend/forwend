@@ -20,8 +20,3 @@ export const HISTORY_FIELDS = {
   received: "received",
   sent: "sent",
 } as const;
-
-export const GROUPINGS = {
-  week: "week",
-  month: "month",
-} as const;

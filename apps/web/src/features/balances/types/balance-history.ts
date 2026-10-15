@@ -1,9 +1,5 @@
 import type { z } from "zod";
-import type {
-  GROUPINGS,
-  HISTORY_FIELDS,
-  HISTORY_RANGES,
-} from "@/features/balances/constants/balance-history";
+import type { HISTORY_FIELDS, HISTORY_RANGES } from "@/features/balances/constants/balance-history";
 import type {
   balanceHistoryPointSchema,
   balanceHistorySchema,
@@ -24,5 +20,3 @@ export interface HistorySeries {
   dates: Date[];
   values: bigint[];
 }
-
-export type Grouping = (typeof GROUPINGS)[keyof typeof GROUPINGS];

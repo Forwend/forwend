@@ -2,6 +2,8 @@ import { TRANSACTION_FILTERS } from "@/features/transactions/constants/transacti
 
 export const TRANSACTIONS_COPY = {
   transactions: "Transactions",
+  today: "Today",
+  yesterday: "Yesterday",
   recentTransactions: "Recent transactions",
   payments: "Payments",
   viewAll: "View all",
@@ -26,7 +28,7 @@ export const TRANSACTIONS_COPY = {
   columns: {
     transaction: "Transaction",
     network: "Network",
-    date: "Date",
+    date: "Time",
     status: "Status",
     amount: "Amount",
   },

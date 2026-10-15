@@ -22,7 +22,7 @@
   --fw-subtle: #566a62;
 
   /* Lines */
-  --fw-line: #d3e0dc;
+  --fw-line: #dae5e1;
   --fw-line-strong: #a9bfb8;
 
   /* Actions */
@@ -49,9 +49,10 @@
   --fw-art-dot: #8dbfd4;
 
   /* Elevation */
-  --fw-shadow-sm: 0 1px 2px rgb(15 34 25 / 0.06), 0 1px 1px rgb(15 34 25 / 0.04);
-  --fw-shadow-md: 0 10px 24px -12px rgb(15 34 25 / 0.28);
-  --fw-shadow-lg: 0 28px 56px -24px rgb(15 34 25 / 0.38);
+  /* Soft, layered and tinted with the ink: resting things barely lift, raised and floating ones more. */
+  --fw-shadow-sm: 0 1px 2px rgb(15 34 25 / 0.05);
+  --fw-shadow-md: 0 6px 18px -4px rgb(15 34 25 / 0.12), 0 1px 3px rgb(15 34 25 / 0.05);
+  --fw-shadow-lg: 0 22px 52px -14px rgb(15 34 25 / 0.24), 0 3px 10px rgb(15 34 25 / 0.06);
   /* Behind modals: a darkening veil in both themes (the ink mix turned milky in dark). */
   --fw-scrim: rgb(15 34 25 / 0.4);
 }
@@ -92,9 +93,9 @@
   --fw-art-ridge-near: #122019;
   --fw-art-dot: #2f5f73;
 
-  --fw-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-  --fw-shadow-md: 0 12px 28px -12px rgb(0 0 0 / 0.6);
-  --fw-shadow-lg: 0 30px 60px -24px rgb(0 0 0 / 0.7);
+  --fw-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --fw-shadow-md: 0 8px 22px -6px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.3);
+  --fw-shadow-lg: 0 24px 56px -16px rgb(0 0 0 / 0.6), 0 3px 10px rgb(0 0 0 / 0.3);
   --fw-scrim: rgb(0 0 0 / 0.6);
 }
 

@@ -28,11 +28,11 @@ export function BalancesList({ balances, failed, onRetry }: BalancesListProps) {
   if (balances.tokens.length === 0) return <p className="text-muted">{BALANCES_COPY.noTokens}</p>;
   const columns = "md:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))]";
   return (
-    <div className="rounded-md border border-line bg-surface">
+    <div className="fw-panel overflow-hidden">
       {/* Each amount keeps its own label for screen readers; this row only shows them once on wide screens. */}
       <div
         aria-hidden
-        className={`hidden gap-4 border-b border-line px-5 py-2.5 text-right text-xs text-muted md:grid ${columns}`}
+        className={`hidden h-10 items-center gap-4 border-b border-line px-5 text-right text-xs font-medium text-muted md:grid ${columns}`}
       >
         <span />
         <span>{BALANCES_COPY.inWallet}</span>
@@ -43,7 +43,7 @@ export function BalancesList({ balances, failed, onRetry }: BalancesListProps) {
         {balances.tokens.map((t) => (
           <li
             key={`${t.chainId}:${t.token}`}
-            className={`grid gap-4 p-5 md:items-center md:py-4 ${columns}`}
+            className={`grid gap-3 px-4 py-4 sm:px-5 md:min-h-16 md:items-center md:gap-4 md:py-3 ${columns}`}
           >
             <TokenMark chainId={t.chainId} symbol={t.symbol} />
             <Amount label={BALANCES_COPY.inWallet} t={t} value={t.wallet} strong />

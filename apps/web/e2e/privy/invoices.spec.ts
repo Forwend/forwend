@@ -296,7 +296,10 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
     await fits();
     expect(await blockingViolations(page)).toEqual([]);
     await page.getByRole("link", { name: "Invoices" }).click();
-    await expect(page.getByRole("link", { name: new RegExp(`^${invoice.number}`) })).toBeVisible();
+    // Phone rows lead with the client, then the number.
+    await expect(
+      page.getByRole("link", { name: new RegExp(`\\b${invoice.number}\\b`) }),
+    ).toBeVisible();
     await fits();
     expect(await blockingViolations(page)).toEqual([]);
   }

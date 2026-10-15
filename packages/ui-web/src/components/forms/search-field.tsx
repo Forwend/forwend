@@ -21,7 +21,7 @@ export function SearchField({
   return (
     <label
       className={cx(
-        "relative flex h-9 min-w-0 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm before:absolute before:inset-x-0 before:-inset-y-1 focus-within:outline-2 focus-within:outline-focus",
+        "relative flex h-9 min-w-0 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] ease-out before:absolute before:inset-x-0 before:-inset-y-1 focus-within:border-ink focus-within:ring-2 focus-within:ring-[color-mix(in_oklab,var(--fw-ink)_12%,transparent)]",
         className,
       )}
     >

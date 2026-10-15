@@ -267,7 +267,8 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
 
   // Transactions, opened with a search as ⌘K and notifications link it: the 41st transfer.
   await page.goto(`/app/transactions?q=${PAST_PAGE_PARTY}`);
-  const transfers = main.getByRole("table").locator("tbody tr");
+  // Transfers only: each day's heading row is not one.
+  const transfers = main.getByRole("table").locator("tbody tr:not([data-day])");
   await expect(transfers).toHaveCount(1);
   await expect(main.getByRole("searchbox", { name: "Search transactions" })).toHaveValue(
     PAST_PAGE_PARTY,
@@ -393,7 +394,7 @@ test("money tables share row hover, show network logos, keep Export at the right
   ).toBeLessThan(2);
   expect(exportBox?.x ?? 0).toBeGreaterThan(searchBox?.x ?? 0);
 
-  const firstRow = main.locator("tbody tr").first();
+  const firstRow = main.locator("tbody tr:not([data-day])").first();
   await expect(firstRow.locator("svg").first()).toBeVisible(); // the network's logo
   const counterparty = firstRow.getByRole("link", { name: /on Basescan \(opens in a new tab\)$/ });
   await expect(counterparty).toHaveAttribute(
@@ -714,8 +715,10 @@ test("the owner cancels an invoice before any money, after confirming", async ({
   await page.goto(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
   const dialog = page.getByRole("dialog", { name: "Cancel INV-0002?" });
 
-  // Keep: nothing happens.
-  await header.getByRole("button", { name: "Cancel invoice" }).click({ timeout: 15_000 });
+  // Behind More actions, as a destructive one. Keep: nothing happens.
+  const more = header.getByRole("button", { name: "More actions" });
+  await more.click({ timeout: 15_000 });
+  await page.getByRole("menuitem", { name: "Cancel invoice" }).click();
   await expect(dialog).toContainText("The pay link stops taking payments.");
   expect(await blockingViolations(page)).toEqual([]);
   await dialog.getByRole("button", { name: "Keep invoice" }).click();
@@ -723,7 +726,8 @@ test("the owner cancels an invoice before any money, after confirming", async ({
   expect(cancels).toBe(0);
 
   // Confirm: canceled, said in a toast, and the page no longer takes money or offers to cancel.
-  await header.getByRole("button", { name: "Cancel invoice" }).click();
+  await more.click();
+  await page.getByRole("menuitem", { name: "Cancel invoice" }).click();
   await dialog.getByRole("button", { name: "Cancel invoice" }).click();
   await expect(page.getByText("INV-0002 canceled")).toBeVisible();
   expect(cancels).toBe(1);
@@ -732,7 +736,7 @@ test("the owner cancels an invoice before any money, after confirming", async ({
   // The dialog and its trigger are gone, so keyboard focus moves to the status, not to the page body.
   await expect(header.locator("p[tabindex='-1']")).toBeFocused();
   await expect(header.getByRole("region", { name: "Pay link" })).toHaveCount(0);
-  await expect(header.getByRole("button", { name: "Cancel invoice" })).toHaveCount(0);
+  await expect(header.getByRole("button", { name: "More actions" })).toHaveCount(0);
   await context.close();
 });
 
@@ -938,7 +942,10 @@ test("switching profile opens the new profile's overview", async ({ browser }) =
 
   await switchTo("Personal");
   await page.goto("/app/invoices", { waitUntil: "networkidle" });
-  const first = page.getByRole("main").getByRole("link", { name: /^INV-/ }).first();
+  const first = page
+    .getByRole("main")
+    .getByRole("link", { name: /\bINV-\d+/ })
+    .first();
   // The test account's personal profile has requests once the request test has run.
   if (await first.count()) {
     await first.click();

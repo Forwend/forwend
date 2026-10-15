@@ -131,10 +131,7 @@ export function BalanceHero({
         </div>
       </section>
 
-      <section
-        aria-label={chartLabel}
-        className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4 lg:hidden"
-      >
+      <section aria-label={chartLabel} className="fw-panel flex flex-col gap-3 p-4 lg:hidden">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-ink">{BALANCES_COPY.balanceTitle}</h2>
           {rangeControl}

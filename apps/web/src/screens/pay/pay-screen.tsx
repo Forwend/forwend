@@ -15,11 +15,11 @@ export interface PayScreenProps {
 /** The public checkout: the invoice beside how to pay it on wide screens, one column on phones (R-68). */
 export function PayScreen({ invoiceId, option }: PayScreenProps) {
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-5xl flex-col gap-8 px-4 py-6 sm:px-6 lg:py-10">
+    <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 lg:gap-12 lg:py-10">
       <Link href={APP_ROUTES.site} className={`${LINK} self-start`}>
         <Logo />
       </Link>
-      <main className="grid flex-1 grid-cols-[minmax(0,1fr)] content-start items-start gap-8 has-[>[data-load-error]]:content-center lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:gap-16">
+      <main className="grid flex-1 grid-cols-[minmax(0,1fr)] content-start items-start gap-8 has-[>[data-load-error]]:content-center lg:grid-cols-[minmax(0,1fr)_minmax(0,32rem)] lg:grid-rows-[auto_1fr] lg:has-[>[data-load-error]]:grid-rows-none lg:gap-x-16 lg:gap-y-8">
         <PayInvoice invoiceId={invoiceId} option={option} />
       </main>
       {/* A new tab: the payer keeps the checkout open. */}

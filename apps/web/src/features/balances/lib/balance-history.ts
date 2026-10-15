@@ -1,8 +1,7 @@
-import { GROUPINGS, HISTORY_FIELDS } from "@/features/balances/constants/balance-history";
+import { HISTORY_FIELDS } from "@/features/balances/constants/balance-history";
 import { USD_DECIMALS } from "@/features/balances/constants/balances";
 import type {
   BalanceHistory,
-  Grouping,
   HistoryField,
   HistorySeries,
 } from "@/features/balances/types/balance-history";
@@ -37,30 +36,8 @@ export function seriesChange(series: HistorySeries): bigint {
   return (series.values.at(-1) ?? 0n) - (series.values[0] ?? 0n);
 }
 
-/**
- * Daily amounts added up per week (from Monday) or month, in UTC; each date is the group's first day. A point belongs
- * to the day it closes (00:00 of the next day), the last one, now, to today.
- */
-export function groupSeries(series: HistorySeries, by: Grouping): HistorySeries {
-  const dates: Date[] = [];
-  const values: bigint[] = [];
-  series.dates.forEach((date, i) => {
-    const day = new Date(date.getTime() - 1);
-    const start =
-      by === GROUPINGS.month
-        ? Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), 1)
-        : Date.UTC(
-            day.getUTCFullYear(),
-            day.getUTCMonth(),
-            day.getUTCDate() - ((day.getUTCDay() + 6) % 7),
-          );
-    const value = series.values[i] ?? 0n;
-    const last = dates.length - 1;
-    if (dates[last]?.getTime() === start) values[last] = (values[last] ?? 0n) + value;
-    else {
-      dates.push(new Date(start));
-      values.push(value);
-    }
-  });
-  return { dates, values };
+/** The amounts added up day by day: each point is everything received from the first day through that one. */
+export function runningTotal(series: HistorySeries): HistorySeries {
+  let sum = 0n;
+  return { dates: series.dates, values: series.values.map((v) => (sum += v)) };
 }
