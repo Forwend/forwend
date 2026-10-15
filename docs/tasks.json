@@ -534,7 +534,7 @@
       "dependsOn": [
         "F183"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -545,7 +545,8 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-15 review fail by independent reviewer: FAIL (load). apps/backend/internal/invoice/events.go:49-53 joins outbox_events by invoice_id, but no index on outbox_events(invoice_id) exists (00002 has only the pkey; 00025 only outbox_events_due), and rows are never deleted. EXPLAIN ANALYZE on a scratch DB with 300k events from other profiles and 5 for alice: Index Scan Backward on outbox_events_pkey reads all 300,105 rows (Rows Removed by Join Filter 300100), 53 ms. Any profile with fewer events than the limit (most profiles, every new one) scans the whole table. The bell polls this every 15 s per tab (LIVE_QUERY), so the documented 10,000-user load target means about 667 full scans/s. With CREATE INDEX outbox_events_invoice ON outbox_events (invoice_id, id) the same query takes 0.16 ms (Bitmap Index Scan). Fix: a migration adding that index; optionally add AND m.main_id IS NULL so invoices_profile_number serves the profile filter (now a seq scan on invoices). Passed: no cross-profile leak (filter is on the main row; outbox.Queue derives invoice_id from the option's main_id; a payload without option is dropped by the inner join). Amounts match the email (option amount; payload amount for held). e.id DESC matches created_at except across overlapping transactions; the web re-sorts by at anyway. Edge transactions -> invoices is acyclic and listed in docs/web/architecture.md. Icons aria-hidden; axe runs in the e2e. Mutations in a scratch copy: removing the profile filter, ORDER BY ASC, ORDER BY created_at, and dropping the held amount each fail TestListEvents. pnpm lint, pnpm typecheck and web unit tests (124) pass. Minor: (1) events_test.go has no 401 case, unlike other routes; add a no-token call. (2) The test only covers option = main row; a payer-chooses option is untested. (3) No test fails if the merge sort in notifications-menu.tsx:46 is removed: the e2e uses transfers: [] and pre-sorted events; mix a transfer between two events in the e2e. (4) notifications-menu.tsx:43 uses e.kind in EVENT_LOOK, which is true for 'constructor'; Object.hasOwn is safer (the DB CHECK makes it theoretical). (5) If the events query fails, the bell silently shows only transfers."
+        "2026-10-15 review fail by independent reviewer: FAIL (load). apps/backend/internal/invoice/events.go:49-53 joins outbox_events by invoice_id, but no index on outbox_events(invoice_id) exists (00002 has only the pkey; 00025 only outbox_events_due), and rows are never deleted. EXPLAIN ANALYZE on a scratch DB with 300k events from other profiles and 5 for alice: Index Scan Backward on outbox_events_pkey reads all 300,105 rows (Rows Removed by Join Filter 300100), 53 ms. Any profile with fewer events than the limit (most profiles, every new one) scans the whole table. The bell polls this every 15 s per tab (LIVE_QUERY), so the documented 10,000-user load target means about 667 full scans/s. With CREATE INDEX outbox_events_invoice ON outbox_events (invoice_id, id) the same query takes 0.16 ms (Bitmap Index Scan). Fix: a migration adding that index; optionally add AND m.main_id IS NULL so invoices_profile_number serves the profile filter (now a seq scan on invoices). Passed: no cross-profile leak (filter is on the main row; outbox.Queue derives invoice_id from the option's main_id; a payload without option is dropped by the inner join). Amounts match the email (option amount; payload amount for held). e.id DESC matches created_at except across overlapping transactions; the web re-sorts by at anyway. Edge transactions -> invoices is acyclic and listed in docs/web/architecture.md. Icons aria-hidden; axe runs in the e2e. Mutations in a scratch copy: removing the profile filter, ORDER BY ASC, ORDER BY created_at, and dropping the held amount each fail TestListEvents. pnpm lint, pnpm typecheck and web unit tests (124) pass. Minor: (1) events_test.go has no 401 case, unlike other routes; add a no-token call. (2) The test only covers option = main row; a payer-chooses option is untested. (3) No test fails if the merge sort in notifications-menu.tsx:46 is removed: the e2e uses transfers: [] and pre-sorted events; mix a transfer between two events in the e2e. (4) notifications-menu.tsx:43 uses e.kind in EVENT_LOOK, which is true for 'constructor'; Object.hasOwn is safer (the DB CHECK makes it theoretical). (5) If the events query fails, the bell silently shows only transfers.",
+        "2026-10-15 review pass by independent reviewer: PASS on 133347d. Load defect fixed: migration 00026 adds outbox_events_invoice (invoice_id, id) and the query adds m.main_id IS NULL. Re-ran EXPLAIN ANALYZE on the same scratch setup (3,000 invoices x 100 events = 300k rows of another profile, 5 for alice): alice 0.054 ms (Index Scan on invoices_profile_idempotency_key, Bitmap Index Scan on outbox_events_invoice), was 53 ms; the 300k-event profile 0.253 ms (backward pkey scan stops after 20 rows). Notes fixed: TestListEvents checks 401 with no token; TestListEventsOfAnOption fails when the option is joined on e.invoice_id (mutated in a scratch copy); the e2e puts a transfer between two events, so removing the merge sort puts it first and fails item 0; the filter uses Object.hasOwn (ES2023 lib). Mutations still caught: no profile filter, dropped held amount. go test ./internal/database/... ./internal/httpapi/... ./internal/invoice/... ok; pnpm lint, pnpm typecheck, web unit tests (124) pass. The cap at 6 is untested; R-81 does not name it and it predates F184, so no test is required. Left as is: a failing events request leaves only transfers in the bell, with no error."
       ],
       "blockedReason": null,
       "evidence": {
@@ -607,11 +608,25 @@
         "filesHash": "f7e3f9ba8663cb9c",
         "proof": {
           "1": "e2e: navigation.spec 'the bell lists paid, settled and held-money events beside payments' shows 4 new, events and a payment between them in time order, links an event to its invoice, and clears the count once opened (axe clean); backend TestListEvents (newest first, held amount, limit, another profile left out, 422, 403, 401) and TestListEventsOfAnOption (the option's token, caught when the join uses the main row); migration 00026 indexes outbox_events by invoice"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "PASS on 133347d. Load defect fixed: migration 00026 adds outbox_events_invoice (invoice_id, id) and the query adds m.main_id IS NULL. Re-ran EXPLAIN ANALYZE on the same scratch setup (3,000 invoices x 100 events = 300k rows of another profile, 5 for alice): alice 0.054 ms (Index Scan on invoices_profile_idempotency_key, Bitmap Index Scan on outbox_events_invoice), was 53 ms; the 300k-event profile 0.253 ms (backward pkey scan stops after 20 rows). Notes fixed: TestListEvents checks 401 with no token; TestListEventsOfAnOption fails when the option is joined on e.invoice_id (mutated in a scratch copy); the e2e puts a transfer between two events, so removing the merge sort puts it first and fails item 0; the filter uses Object.hasOwn (ES2023 lib). Mutations still caught: no profile filter, dropped held amount. go test ./internal/database/... ./internal/httpapi/... ./internal/invoice/... ok; pnpm lint, pnpm typecheck, web unit tests (124) pass. The cap at 6 is untested; R-81 does not name it and it predates F184, so no test is required. Left as is: a failing events request leaves only transfers in the bell, with no error.",
+          "at": "2026-10-15T02:16:00Z",
+          "filesHash": "f7e3f9ba8663cb9c"
+        },
+        "commit": "133347d",
+        "doneAt": "2026-10-15T02:16:11Z"
       },
       "branch": "feat/f184-the-bell-lists-invoice-events-paid-settl",
       "baseCommit": "a4f4af28091478d5d9234e3049ffe4f66ce6231d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f184-the-bell-lists-invoice-events-paid-settl",
+        "base": "main"
+      }
     },
     {
       "id": "F185",
