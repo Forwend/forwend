@@ -639,7 +639,7 @@
       "dependsOn": [
         "F183"
       ],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "backend",
         "unit",
@@ -652,81 +652,82 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-10-15 blocked: Verify blocked by the stale balances e2e step fixed in F197"
+        "2026-10-15 blocked: Verify blocked by the stale balances e2e step fixed in F197",
+        "2026-10-15 blocked: refresh base after merging main"
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
-        "status": "failed",
-        "at": "2026-10-15T02:27:10Z",
+        "status": "passed",
+        "at": "2026-10-15T02:40:48Z",
         "checks": [
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 62.6,
-            "log": "docs/runs/F185-20261015T022710Z-backend.log"
+            "seconds": 65.2,
+            "log": "docs/runs/F185-20261015T024048Z-backend.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 64.2,
-            "log": "docs/runs/F185-20261015T022710Z-unit.log"
+            "seconds": 67.3,
+            "log": "docs/runs/F185-20261015T024048Z-unit.log"
           },
           {
             "id": "e2e",
-            "outcome": "failed",
-            "exit": 1,
-            "seconds": 163.9,
-            "log": "docs/runs/F185-20261015T022710Z-e2e.log"
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 160.3,
+            "log": "docs/runs/F185-20261015T024048Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.9,
-            "log": "docs/runs/F185-20261015T022710Z-harness.log"
+            "seconds": 1.8,
+            "log": "docs/runs/F185-20261015T024048Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F185-20261015T022710Z-docs-check.log"
+            "log": "docs/runs/F185-20261015T024048Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F185-20261015T022710Z-lint.log"
+            "log": "docs/runs/F185-20261015T024048Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F185-20261015T022710Z-typecheck.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F185-20261015T024048Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.6,
-            "log": "docs/runs/F185-20261015T022710Z-build.log"
+            "seconds": 3.7,
+            "log": "docs/runs/F185-20261015T024048Z-build.log"
           }
         ],
         "taskHash": "b7d4c44948b26ee9",
-        "filesHash": "60a74fe5cde81b35",
+        "filesHash": "62378d381ffd2165",
         "proof": {
           "1": "e2e: pay.spec 'takes an optional address for the receipt' saves it before paying, says where the receipt goes, shows the 422 and 409 answers; backend TestPayerEmail (422, 404, trimmed and lowercased, a paid invoice queues one receipt, changes until sent, 409 receipt_sent after, the bell leaves receipts out) and TestPayerEmailIsLimitedPerInvoice (429 after 3, another invoice has its own budget)",
           "2": "backend: TestPaidQueuesTheReceiptWhenAsked (paid queues one receipt beside the paid event) and TestDeliverSendsTheReceiptToThePayer (to the payer's address whatever the owner's setting, with amount, payee, transaction link and receipt PDF link); a unique index keeps one receipt per invoice"
         }
       },
       "branch": "feat/f185-a-payer-can-ask-for-the-receipt-by-email",
-      "baseCommit": "1c842159b3390484b42e866a3bc56a7665efc132",
-      "failedVerifies": 2
+      "baseCommit": "4e62cd61c5072da4247981008e83dc99af8ab5d9",
+      "failedVerifies": 0
     },
     {
       "id": "F186",
