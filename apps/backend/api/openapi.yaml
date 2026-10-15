@@ -889,8 +889,8 @@ components:
         held:
           type: boolean
           description: >-
-            A deposit the owner gets none of, held for the payer (D-26): late, on a canceled or final invoice, or on an
-            option the client did not pay with. False for an invoice.
+            A deposit the owner gets none of, held for the payer (D-26): late, on a canceled or final invoice, on an
+            invoice that expired partly paid, or on an option the client did not pay with. False for an invoice.
     Transactions:
       type: object
       required: [items, nextCursor]

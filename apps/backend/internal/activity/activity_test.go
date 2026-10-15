@@ -187,17 +187,28 @@ func TestListMarksHeldDeposits(t *testing.T) {
 	addDeposit(t, pool, option, 13, 3, "detected")
 	open := addInvoice(t, pool, profile, 5, 0)
 	addDeposit(t, pool, open, 14, 4, "detected")
-	// Booked: the ledger says what reached the owner. All of the first held, part of the second paid to the owner.
+	paidOver := addInvoice(t, pool, profile, 8, 0) // money after paid, not booked yet
+	exec(t, pool, "UPDATE invoices SET payment_status = 'paid' WHERE id = $1", paidOver)
+	addDeposit(t, pool, paidOver, 17, 7, "detected")
+	expired := addInvoice(t, pool, profile, 9, 0)
+	exec(t, pool, "UPDATE invoices SET payment_status = 'expired' WHERE id = $1", expired)
+	addDeposit(t, pool, expired, 18, 8, "detected")
+	// Booked: the ledger says what reached the owner. All of the first held, the second to the owner, the third to the
+	// owner until the invoice expired partly paid and the expiry book moved it to the payer.
 	paidHeld := addInvoice(t, pool, profile, 6, 0)
 	addDeposit(t, pool, paidHeld, 15, 5, "confirmed")
 	paid := addInvoice(t, pool, profile, 7, 0)
 	addDeposit(t, pool, paid, 16, 6, "confirmed")
-	for inv, account := range map[string]string{paidHeld: "payer_held", paid: "recipient_payable"} {
+	partial := addInvoice(t, pool, profile, 10, 0)
+	addDeposit(t, pool, partial, 19, 9, "confirmed")
+	for inv, account := range map[string]string{paidHeld: "payer_held", paid: "recipient_payable", partial: "recipient_payable"} {
 		exec(t, pool, `WITH x AS (INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id)
 			           SELECT $1, 'deposit', id FROM chain_transfers WHERE invoice_id = $1 RETURNING id)
 			INSERT INTO ledger_entries (transaction_id, account, amount) SELECT id, 'receiver', 1000000 FROM x
 			UNION ALL SELECT id, $2, -1000000 FROM x`, inv, account)
 	}
+
+	exec(t, pool, "UPDATE invoices SET payment_status = 'expired_partially_paid' WHERE id = $1", partial)
 
 	held := map[string]bool{}
 	s := NewService(pool)
@@ -210,7 +221,8 @@ func TestListMarksHeldDeposits(t *testing.T) {
 			held[it.InvoiceID] = it.Held
 		}
 	}
-	want := map[string]bool{canceled: true, late: true, main: true, open: false, paidHeld: true, paid: false}
+	want := map[string]bool{canceled: true, late: true, main: true, open: false, paidOver: true, expired: true,
+		paidHeld: true, paid: false, partial: true}
 	if !reflect.DeepEqual(held, want) {
 		t.Fatalf("held %v, want %v", held, want)
 	}

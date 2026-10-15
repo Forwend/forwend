@@ -1742,72 +1742,74 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-15 review fail by independent reviewer: FAIL. (1) activity.go:115-117 booked branch misses expired partial payments, the first case D-26 names: a deposit booked on time keeps its recipient_payable entry, and the later ledger 'expiry' transaction (chain_transfer_id NULL, process.go:149) moves that money to payer_held. Reproduced in a scratch test: booked deposit + expiry tx + status expired_partially_paid -> List(status=paid) returns the deposit with held=false, status confirmed, so the owner sees a Payment under Paid for money they never get; openapi says held covers a deposit on a final invoice. Fix: booked branch NOT EXISTS(...) OR i.payment_status = 'expired_partially_paid', plus a test row. (2) Tests: removing 'paid' or 'expired' from the unbooked status list still passes TestListMarksHeldDeposits; add unbooked deposits on a paid and an expired invoice. Late, canceled, other-option, booked and status_filter mutations all fail the test. Minor, not blocking: unbooked overpayment on an invoice already fully booked but still detected (waiting for the second RPC) reads as Payment and toasts until booked; an option deposit while chosen_id is NULL (between watcher Scan and ProcessChain in the same round, or while Process keeps rolling back) toasts and reads as Payment. Fixture change in list_search_test is fair: Process sets paid only after booking the deposit in the same transaction. Performance fine: unique index ledger_transactions_one_deposit on chain_transfer_id and UNIQUE(transaction_id, account) on ledger_entries. Other readers: bell uses ledger outbox events and wallet transfers, dashboard uses balances; invoice detail InvoiceDeposits labels every deposit Payment with a note only when late (canceled/after-paid rows rely on page context). Ran: go test ./internal/activity/ ./internal/httpapi/... ok; vitest src/features/activity 14 passed."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-15T10:11:47Z",
+        "at": "2026-10-15T10:22:39Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 69.4,
-            "log": "docs/runs/F196-20261015T101147Z-unit.log"
+            "seconds": 68.8,
+            "log": "docs/runs/F196-20261015T102239Z-unit.log"
           },
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 66.7,
-            "log": "docs/runs/F196-20261015T101147Z-backend.log"
+            "seconds": 64.8,
+            "log": "docs/runs/F196-20261015T102239Z-backend.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 180.1,
-            "log": "docs/runs/F196-20261015T101147Z-e2e.log"
+            "seconds": 171.4,
+            "log": "docs/runs/F196-20261015T102239Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.1,
-            "log": "docs/runs/F196-20261015T101147Z-harness.log"
+            "seconds": 2.0,
+            "log": "docs/runs/F196-20261015T102239Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F196-20261015T101147Z-docs-check.log"
+            "seconds": 0.0,
+            "log": "docs/runs/F196-20261015T102239Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F196-20261015T101147Z-lint.log"
+            "log": "docs/runs/F196-20261015T102239Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.1,
-            "log": "docs/runs/F196-20261015T101147Z-typecheck.log"
+            "seconds": 0.2,
+            "log": "docs/runs/F196-20261015T102239Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.0,
-            "log": "docs/runs/F196-20261015T101147Z-build.log"
+            "seconds": 2.4,
+            "log": "docs/runs/F196-20261015T102239Z-build.log"
           }
         ],
         "taskHash": "c4fb132943663c35",
-        "filesHash": "5fb4d53a367bd001",
+        "filesHash": "61e80265cc1ab3b7",
         "proof": {
           "1": "unit: payment-events gives no toast for a held deposit and activity-amounts shows its row as 'Held for the payer', not 'Payment'; both fail with the check removed"
         }

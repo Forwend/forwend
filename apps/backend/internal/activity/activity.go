@@ -111,11 +111,12 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 		           '', t.tx_hash, CASE WHEN h.held THEN NULL WHEN t.status = 'confirmed' THEN 'paid' ELSE 'open' END, 1, false,
 		           h.held
 		    FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id JOIN invoices m ON m.id = coalesce(i.main_id, i.id)
-		    -- Booked: held when none of it went to the owner. Not yet: the ledger's split rule (ledger.Final, late, money
-		    -- on an option the client didn't pay with).
+		    -- Booked: held when none of it went to the owner, or when the invoice expired partly paid (the ledger's expiry
+		    -- book moved what was owed to the payer). Not yet: the ledger's split rule (ledger.Final, late, money on an
+		    -- option the client didn't pay with).
 		    CROSS JOIN LATERAL (SELECT CASE WHEN t.booked THEN NOT EXISTS (SELECT 1 FROM ledger_transactions x
 		            JOIN ledger_entries e ON e.transaction_id = x.id WHERE x.chain_transfer_id = t.id
-		            AND e.account = 'recipient_payable')
+		            AND e.account = 'recipient_payable') OR i.payment_status = 'expired_partially_paid'
 		        ELSE t.block_time > i.expires_at OR i.payment_status IN ('paid', 'expired', 'expired_partially_paid', 'canceled')
 		            OR coalesce(m.chosen_id <> i.id, false) END AS held) h
 		    WHERE i.profile_id = $1 AND t.status <> 'reorged'
