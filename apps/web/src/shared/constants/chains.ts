@@ -12,7 +12,16 @@ interface Explorer {
  * tempo.xyz/developers (connection details). A local chain has none.
  */
 export const CHAINS: Readonly<
-  Record<number, { name: string; icon?: BrandIconName; explorer?: Explorer }>
+  Record<
+    number,
+    {
+      name: string;
+      icon?: BrandIconName;
+      explorer?: Explorer;
+      // A bridged token that looks like the real one by name, which the receive address does not count (R-78).
+      lookalikes?: Readonly<Record<string, string>>;
+    }
+  >
 > = {
   84532: {
     name: "Base Sepolia",
@@ -23,6 +32,8 @@ export const CHAINS: Readonly<
     name: "Arbitrum Sepolia",
     icon: "arbitrum",
     explorer: { name: "Arbiscan", url: "https://sepolia.arbiscan.io" },
+    // docs.arbitrum.io: USDC.e is USDC bridged from Ethereum, a different contract from native USDC.
+    lookalikes: { USDC: "USDC.e" },
   },
   5042002: {
     name: "Arc Testnet",

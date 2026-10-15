@@ -1,7 +1,9 @@
 "use client";
 
 import { Check, Copy } from "lucide-react";
+import { Fragment } from "react";
 import { COPY_STATUS, useCopy } from "../../hooks/use-copy";
+import { cx } from "../../lib/cx";
 import { Button } from "../buttons/button";
 
 export interface ReceiveAddressProps {
@@ -12,8 +14,10 @@ export interface ReceiveAddressProps {
   failedLabel?: string;
 }
 
-// The whole address stays visible: a shortened one is what address-poisoning look-alikes copy. Its start and end, the
-// parts people compare with the sender's screen, are set darker.
+// The whole address stays visible: a shortened one is what address-poisoning look-alikes copy. It reads in groups of 4
+// so the payer can compare all of it, not only the ends a look-alike matches (R-78); the start and end stay darker.
+// The groups are inline spans with no text between them and <wbr> break points, so selecting, copying and screen
+// readers still get the one address.
 export function ReceiveAddress({
   address,
   label = "Receive address",
@@ -22,9 +26,7 @@ export function ReceiveAddress({
   failedLabel = "Copy failed: select the address above",
 }: ReceiveAddressProps) {
   const [status, copy] = useCopy(address);
-  const head = address.slice(0, 6);
-  const middle = address.slice(6, -4);
-  const tail = address.slice(-4);
+  const groups = [address.slice(0, 6), ...(address.slice(6).match(/.{1,4}/g) ?? [])];
   const text =
     status === COPY_STATUS.copied
       ? copiedLabel
@@ -35,10 +37,20 @@ export function ReceiveAddress({
     <div className="flex flex-col gap-3">
       <div className="rounded-md border border-line bg-surface px-4 py-3">
         <p className="text-xs text-muted">{label}</p>
-        <p className="mt-1 font-mono text-sm leading-6 break-all text-muted select-all">
-          <span className="font-medium text-ink">{head}</span>
-          {middle}
-          <span className="font-medium text-ink">{tail}</span>
+        <p data-address className="mt-1 font-mono text-sm leading-6 text-muted select-all">
+          {groups.map((group, i) => (
+            <Fragment key={group + String(i)}>
+              {i > 0 ? <wbr /> : null}
+              <span
+                className={cx(
+                  i < groups.length - 1 && "mr-1.5",
+                  (i === 0 || i === groups.length - 1) && "font-medium text-ink",
+                )}
+              >
+                {group}
+              </span>
+            </Fragment>
+          ))}
         </p>
       </div>
       <Button onClick={copy} className="h-auto min-h-11 whitespace-normal py-2 text-center">

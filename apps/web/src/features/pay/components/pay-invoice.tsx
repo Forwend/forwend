@@ -43,7 +43,7 @@ import type { PayToken } from "@/features/pay/types/pay";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LIVE_QUERY } from "@/shared/config/refresh";
-import { chainName, txLink } from "@/shared/lib/chains";
+import { addressLink, chainName, lookalikeOf, txLink } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
 const NOT_FOUND = 404;
@@ -281,6 +281,8 @@ function PayBox({
   picking: boolean;
 }) {
   const network = chainName(invoice.chainId);
+  const lookalike = lookalikeOf(invoice.chainId, token.symbol);
+  const contract = addressLink(invoice.chainId, invoice.token);
   const optionId = invoice.optionId;
   // The address shows once the payer asked for it for this option; a reload in the same tab keeps it.
   const [shown, setShown] = useState<string | null>(null);
@@ -381,12 +383,28 @@ function PayBox({
                 <ReceiveAddress address={address} label={COPY.sendTo(token.symbol, network)} />
                 <p role="note" className="text-sm font-medium text-warning">
                   {COPY.sendOnly(token.symbol, network)}
+                  {lookalike ? ` ${COPY.notLookalike(token.symbol, lookalike)}` : null}
                 </p>
+                {contract ? (
+                  <p className="text-xs text-muted">
+                    {COPY.contract(token.symbol)}{" "}
+                    <a
+                      href={contract.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-accent underline decoration-1 underline-offset-4 hover:decoration-2"
+                    >
+                      {shortAddress(invoice.token)}
+                      {/* Never the full contract address here: next to the one to pay, it could be copied instead. */}
+                      <span className="sr-only">{` on ${contract.name}${COPY.newTab}`}</span>
+                    </a>
+                  </p>
+                ) : null}
                 <p className="text-xs text-muted">
                   {checkoutClosesAt(invoice) - now < CLOSING_SOON_MS
                     ? `${COPY.closingSoon} `
                     : null}
-                  {COPY.exchange(money(pay.remaining))}
+                  {COPY.exchange(money(pay.remaining), network)}
                 </p>
               </section>
             ) : null}

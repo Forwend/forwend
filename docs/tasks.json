@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 196,
+  "nextId": 197,
   "tasks": [
     {
       "id": "F179",
@@ -185,7 +185,7 @@
         "The token line links the token contract on the explorer; Arbitrum says native USDC, not USDC.e; the exchange line says to pick the same network; axe finds 0 serious or critical violations (R-78)"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "e2e",
@@ -199,7 +199,78 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T00:25:56Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 65.7,
+            "log": "docs/runs/F181-20261015T002556Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 159.9,
+            "log": "docs/runs/F181-20261015T002556Z-e2e.log"
+          },
+          {
+            "id": "a11y-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 16.6,
+            "log": "docs/runs/F181-20261015T002556Z-a11y-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.2,
+            "log": "docs/runs/F181-20261015T002556Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F181-20261015T002556Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F181-20261015T002556Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F181-20261015T002556Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.7,
+            "log": "docs/runs/F181-20261015T002556Z-build.log"
+          }
+        ],
+        "taskHash": "c8ab119570457718",
+        "filesHash": "dcc1d4a2b0fcb40c",
+        "proof": {
+          "1": "unit: ReceiveAddress test shows 10 groups whose text is exactly the address, wbr breaks, darker ends, and Copy writes the address; pay.spec checks [data-address] text and 10 groups on the pay page, and the canary still reads only the receive address",
+          "2": "e2e: pay.spec links the token contract on Basescan and Arbiscan, says 'Native USDC, not USDC.e' on Arbitrum only, and 'Withdraw on Base Sepolia' for exchanges; unit tests cover lookalikeOf and NetworkWarning; a11y-e2e and pay axe checks pass"
+        }
+      },
+      "branch": "feat/f181-the-payer-can-check-the-whole-address-an",
+      "baseCommit": "0745997a9017307d27b6e77e81c02c566cf964e4",
+      "failedVerifies": 0
     },
     {
       "id": "F182",
@@ -953,6 +1024,30 @@
       ],
       "refs": [
         "D-11"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F196",
+      "type": "fix",
+      "behavior": "Money held for the payer (late, after cancel, on another option) never reads to the owner as a payment: no Payment detected toast and not under the Paid filter",
+      "acceptance": [
+        "A deposit to a canceled or closed invoice, or to an option the client did not pay with, raises no payment toast and is not filed under Activity's Paid or Open filter as a payment to the owner; it reads as held for the payer; tests cover each case"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "backend",
+        "e2e"
+      ],
+      "refs": [
+        "D-26",
+        "R-79"
       ],
       "keep": [],
       "review": false,

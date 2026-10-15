@@ -18,7 +18,7 @@ import { RECEIVE_COPY } from "@/features/receive/constants/receive-copy";
 import { addressFor, receiveChoice } from "@/features/receive/lib/receive-choice";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { CHAINS, TOKEN_ICONS } from "@/shared/constants/chains";
-import { chainName } from "@/shared/lib/chains";
+import { chainName, lookalikeOf } from "@/shared/lib/chains";
 
 export interface ReceiveSheetProps {
   open: boolean;
@@ -130,7 +130,11 @@ export function ReceiveSheet({
           >
             <TokenMark chainId={chosen.chainId} symbol={chosen.symbol} />
           </Summary>
-          <NetworkWarning token={chosen.symbol} network={chainName(chosen.chainId)} />
+          <NetworkWarning
+            token={chosen.symbol}
+            network={chainName(chosen.chainId)}
+            lookalike={lookalikeOf(chosen.chainId, chosen.symbol)}
+          />
           {shown ? (
             <>
               <div className="grid place-items-center rounded-lg bg-surface-2 p-5">

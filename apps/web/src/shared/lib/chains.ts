@@ -5,6 +5,11 @@ export function chainName(chainId: number): string {
   return CHAINS[chainId]?.name ?? `Chain ${chainId}`;
 }
 
+/** A bridged token on this network that looks like `symbol` (USDC.e for USDC on Arbitrum), or undefined. */
+export function lookalikeOf(chainId: number, symbol: string): string | undefined {
+  return CHAINS[chainId]?.lookalikes?.[symbol];
+}
+
 const TX_HASH = /^0x[0-9a-fA-F]{64}$/;
 
 /** The address's page on the chain's explorer, or null for a chain without one or a value that is not an address. */
