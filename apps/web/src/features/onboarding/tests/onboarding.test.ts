@@ -1,16 +1,5 @@
-// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { afterOnboarding, type checklistSteps } from "@/features/onboarding/lib/onboarding";
-import type { ChecklistFacts } from "@/features/onboarding/types/onboarding";
-
-const _nothing: ChecklistFacts = {
-  passkeyLinked: false,
-  hasBillingDetails: false,
-  invoices: [],
-  transactions: [],
-};
-const _done = (steps: ReturnType<typeof checklistSteps>) =>
-  Object.fromEntries((steps ?? []).map((s) => [s.id, s.done]));
+import { afterOnboarding } from "@/features/onboarding/lib/onboarding";
 
 describe("afterOnboarding", () => {
   it("returns to the app page asked for, with its query", () => {

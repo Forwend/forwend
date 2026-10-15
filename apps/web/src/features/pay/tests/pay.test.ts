@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Deposit, Invoice } from "@/features/invoices/types/invoices";
 import { PAY_STATES } from "@/features/pay/constants/pay";
-import { payState, receiptDeposits, withOption } from "@/features/pay/lib/pay";
+import { payState, payToken, receiptDeposits, withOption } from "@/features/pay/lib/pay";
 
 const invoice: Invoice = {
   invoiceId: `0x${"1".repeat(64)}`,
@@ -174,5 +174,17 @@ describe("withOption", () => {
     );
     expect(withOption(choosing, `0x${"7".repeat(64)}`)).toBe(choosing);
     expect(withOption(choosing, undefined)).toBe(choosing);
+  });
+});
+
+describe("payToken", () => {
+  it("names OUSD on Tempo and refuses a token this build does not know", () => {
+    const tempo = {
+      ...invoice,
+      chainId: 42431,
+      token: "0x20C0000000000000000000006A37DA5C996874BE",
+    };
+    expect(payToken(tempo)).toEqual({ symbol: "OUSD", decimals: 6 });
+    expect(payToken({ ...tempo, chainId: 84532 })).toBeNull();
   });
 });

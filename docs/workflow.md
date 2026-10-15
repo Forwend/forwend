@@ -81,5 +81,5 @@ an e2e test or a screenshot already covers. When a kept test breaks because word
 to check the behavior, not the words.
 
 Checks: `unit` runs every package's tests (backend and contracts included), so a task doesn't also select `backend`
-or `contracts`; that would run them twice. Select `backend-e2e`, a named e2e check or `contracts` only when the
-change needs them beyond `unit`.
+or `contracts`; that would run them twice. Select `backend-e2e` or a named e2e check only when the change needs
+them beyond `unit`.
