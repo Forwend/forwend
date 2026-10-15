@@ -49,6 +49,9 @@ func TestCancelInvoice(t *testing.T) {
 	if r := cancel(e.aliceProfile, other); r.status != http.StatusNotFound {
 		t.Fatalf("another profile's invoice: %d %v, want 404", r.status, r.body)
 	}
+	if got := e.get(t, other); got.body["paymentStatus"] != "open" {
+		t.Fatalf("another profile's invoice after a refused cancel: %v, want open", got.body["paymentStatus"])
+	}
 	if r := cancel(e.bobProfile, id); r.status != http.StatusForbidden {
 		t.Fatalf("Bob's profile: %d %v, want 403", r.status, r.body)
 	}
@@ -73,6 +76,16 @@ func TestCancelPayerChoosesInvoice(t *testing.T) {
 	}
 	if open != 0 || canceled != 2 {
 		t.Fatalf("rows open %d, canceled %d; want 0 open and every option canceled", open, canceled)
+	}
+
+	// Money on any option, not only the shown one, is too late to cancel.
+	paid := e.post(t, "did:privy:alice", e.aliceProfile, "key-2", `{"amountUsd": "12.5"}`).body["invoiceId"].(string)
+	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
+		    block_hash, block_number, block_time, from_address, to_address, amount, status)
+		SELECT chain_id, 'evm', token_contract, id, $2, 0, $2, 1, 1, $3, receive_address, 100, 'detected'
+		FROM invoices WHERE main_id = $1`, paid, "0x"+strings.Repeat("cd", 32), aliceWallet)
+	if r := e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/invoices/"+paid+"/cancel", "did:privy:alice", "", ""); r.status != http.StatusConflict {
+		t.Fatalf("money on a second option: %d %v, want 409", r.status, r.body)
 	}
 }
 

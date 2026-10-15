@@ -23,8 +23,10 @@ func (s *Service) Cancel(ctx context.Context, profileID, id string) (Invoice, er
 		return Invoice{}, fmt.Errorf("cancel invoice %s: %w", id, err)
 	}
 	defer tx.Rollback(ctx)
+	// Options first, the main row last: the ledger locks an option, then its main row, so the two never wait on each
+	// other.
 	rows, err := tx.Query(ctx, `SELECT payment_status, expires_at FROM invoices
-		WHERE coalesce(main_id, id) = $1 AND profile_id = $2 FOR UPDATE`, id, profileID)
+		WHERE coalesce(main_id, id) = $1 AND profile_id = $2 ORDER BY main_id IS NULL, id FOR UPDATE`, id, profileID)
 	if err != nil {
 		return Invoice{}, fmt.Errorf("lock invoice %s: %w", id, err)
 	}

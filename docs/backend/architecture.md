@@ -354,8 +354,9 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
   deposit final too early can't get an invoice paid (D-15, D-45). An answer from behind the watcher's finalized block
   may miss final deposits, so it decides nothing (neither paid nor expired) until the node catches up. Every RPC in
   the chain list serves `eth_call` at the finalized block (checked 2026-10-09).
-- `paid`, `expired` and `expired_partially_paid` are final. A trigger rejects any other status change, any change to
-  invoice terms, and an invoice created with any status but `open`.
+- `paid`, `expired`, `expired_partially_paid` and `canceled` are final (`ledger.Final`). Only the owner cancels, from
+  `open` before any transfer (`invoice.Cancel`, R-79); every later deposit is held. A trigger rejects any other status
+  change, any change to invoice terms, and an invoice created with any status but `open`.
 - `GET /v1/invoices/{id}` lists deposits with `blocksLeft`/`secondsLeft` from the finalized block (R-28) and `blocksTotal`, the wait counted
   from the finalized block kept on the transfer row when it was first seen (`detected_finalized_block`, R-73).
 

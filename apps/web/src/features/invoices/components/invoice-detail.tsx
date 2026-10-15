@@ -13,7 +13,7 @@ import {
 } from "@forwend/ui-web";
 import { Check, ChevronLeft, Copy, ExternalLink, FileDown } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useId } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import {
   API_PAYMENT_STATUSES,
   API_SETTLEMENT_STATUSES,
@@ -164,6 +164,13 @@ function Loaded({
   // Payer chooses with no money yet: the amount is USD in any accepted option (R-56, D-75).
   const choosing = invoice.options.length > 1 && !invoice.optionLocked;
   // The pay link takes money only while these last; sharing it later only creates money held for a refund.
+  const statusLine = useRef<HTMLParagraphElement>(null);
+  // Focus waits for the canceled status to render: until the dialog is gone everything else is inert.
+  const [canceling, setCanceling] = useState(false);
+  const canceled = invoice.paymentStatus === API_PAYMENT_STATUSES.canceled;
+  useEffect(() => {
+    if (canceling && canceled) statusLine.current?.focus();
+  }, [canceling, canceled]);
   const payable =
     !closed &&
     (
@@ -187,7 +194,11 @@ function Loaded({
           {invoice.title ? (
             <p className="text-lg font-medium break-words text-ink">{invoice.title}</p>
           ) : null}
-          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+          <p
+            ref={statusLine}
+            tabIndex={-1}
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted outline-none"
+          >
             <StatusPill status={status} />
             {when(invoice) ? <span>{when(invoice)}</span> : null}
           </p>
@@ -210,6 +221,7 @@ function Loaded({
                 invoiceId={invoice.invoiceId}
                 number={invoiceNumber(invoice.number)}
                 noun={request ? COPY.noun.request : COPY.noun.invoice}
+                onCanceled={() => setCanceling(true)}
               />
             ) : null}
           </div>

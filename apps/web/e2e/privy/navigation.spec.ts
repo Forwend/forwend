@@ -729,6 +729,8 @@ test("the owner cancels an invoice before any money, after confirming", async ({
   expect(cancels).toBe(1);
   await expect(header.locator("[data-status]")).toHaveText("Canceled");
   await expect(header).toContainText(/Canceled /);
+  // The dialog and its trigger are gone, so keyboard focus moves to the status, not to the page body.
+  await expect(header.locator("p[tabindex='-1']")).toBeFocused();
   await expect(header.getByRole("region", { name: "Pay link" })).toHaveCount(0);
   await expect(header.getByRole("button", { name: "Cancel invoice" })).toHaveCount(0);
   await context.close();
