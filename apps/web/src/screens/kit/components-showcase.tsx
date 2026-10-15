@@ -437,6 +437,17 @@ export function ComponentsShowcase() {
         <Dialog triggerLabel="Open dialog" title="Confirm withdrawal">
           You receive the amount shown in the quote. A new quote is needed after it expires.
         </Dialog>
+        <Dialog
+          triggerLabel="Open from a link"
+          title="Confirm withdrawal"
+          trigger={(open) => (
+            <Button variant={BUTTON_VARIANTS.ghost} onClick={open}>
+              Open from a link
+            </Button>
+          )}
+        >
+          Opened by its own trigger, such as a menu item or a footer link.
+        </Dialog>
         <Tooltip content="The network fee is shown before you confirm.">
           <Button variant={BUTTON_VARIANTS.ghost}>Hover for tooltip</Button>
         </Tooltip>

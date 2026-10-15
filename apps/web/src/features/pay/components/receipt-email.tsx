@@ -20,7 +20,7 @@ export interface ReceiptEmailProps {
 // Email me the receipt (R-82, D-68): the pay panel's last row, folded until the payer asks for it, so the steps to pay
 // stay first. An optional address for this invoice's receipt only, sent once it is paid; not kept in the browser.
 // Once the address is saved the form gives way to a confirmation: the button can't be pressed again for the same
-// address, and "Use another address" reopens the form while the receipt can still change (the API refuses after).
+// address, and before payment "Use another address" reopens the form (once paid the receipt goes out at once).
 export function ReceiptEmail({ invoiceId, paid }: ReceiptEmailProps) {
   const [setPayerEmail, { data, error, isLoading, reset }] = useSetPayerEmailMutation();
   const [step, setStep] = useState<"folded" | "form" | "done">("folded");
@@ -60,16 +60,19 @@ export function ReceiptEmail({ invoiceId, paid }: ReceiptEmailProps) {
             <p className="text-sm break-words text-muted">
               {paid ? COPY.after(data.email) : COPY.before(data.email)}
             </p>
-            <button
-              type="button"
-              onClick={() => {
-                reset();
-                setStep("form");
-              }}
-              className="-mx-1 mt-1 self-start rounded-sm px-1 text-sm text-accent underline-offset-4 outline-none hover:underline focus-visible:outline-2 focus-visible:outline-focus"
-            >
-              {COPY.another}
-            </button>
+            {/* Once paid the receipt goes out at once; another address could only be refused (409). */}
+            {paid ? null : (
+              <button
+                type="button"
+                onClick={() => {
+                  reset();
+                  setStep("form");
+                }}
+                className="-mx-1 mt-1 self-start rounded-sm px-1 text-sm text-accent underline-offset-4 outline-none hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+              >
+                {COPY.another}
+              </button>
+            )}
           </div>
         </div>
       ) : step === "form" ? (

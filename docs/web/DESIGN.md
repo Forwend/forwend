@@ -23,7 +23,8 @@ Use `/kit` for the implemented components. This file owns visual use; token sour
   tabular figures everywhere (medium weight in rows, semibold for headline figures), so amounts read like a statement,
   not like code. No bold display serif or small serif labels.
 - Use role tokens for hero, section headings and featured amounts. No eyebrow labels or tracked uppercase kickers.
-- Text and primary buttons share the primary ink. River blue identifies links, focus, the current step and information.
+- Text and primary buttons share the primary ink. River blue identifies links, the focus outline of buttons and links,
+  the current step and information; fields focus with an ink border instead (below).
   Completed steps use ink; upcoming steps use line color.
 - Success, warning and error use their matching text/background token pairs. Art colors never become UI colors.
 - Detected and confirming are pending: a neutral status badge with a turning icon, never the information blue or a
@@ -165,10 +166,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   USDC.e." where a bridged look-alike exists), then the address full width, then the token contract as a short explorer
   link and one exchange hint that names the network to withdraw on. The amount and the address are read-only fields
   (a bordered row like an input) with Copy inside on the right. The address is Geist Mono with its first 6 and last 4
-  characters in the ink (medium weight) and the rest quieter; a wide field shows it whole on one line, a narrow one (a
-  phone, the Receive dialog) shows the ends with four more characters each around an ellipsis, the middle kept for
-  screen readers, selection and Copy (R-78). The choice and the size follow the field's own width (container units),
-  not the screen, so it never wraps, and Copy keeps one width as it turns to Copied. Once money is seen and once paid, the panel's last row is "Email me a receipt" with a mail icon; pressing it
+  characters in the ink (medium weight) and the rest quieter, always whole and on one line (R-78): a narrow field (a
+  phone, the Receive dialog) puts Copy under it at full width so the address gets the whole width. The size and the
+  choice follow the field's own width (container units), not the screen, and Copy keeps one width as it turns to
+  Copied. Once money is seen and once paid, the panel's last row is "Email me a receipt" with a mail icon; pressing it
   opens the optional field there, with Send inside its row and the line that the address is used for this receipt
   only (R-82). Before any money there is nothing to send a receipt for, so the row is not there. Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
   into "Confirm change" and only a second press starts over (leaving the button cancels), so a payer who already sent

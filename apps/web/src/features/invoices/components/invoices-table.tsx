@@ -25,7 +25,7 @@ import {
   invoiceStatus,
 } from "@/features/invoices/lib/invoices";
 import type { InvoiceSummary, InvoiceToken } from "@/features/invoices/types/invoices";
-import { ChainBadge } from "@/shared/components/chains/chain-badge";
+import { ChainBadge, hasChainBadge } from "@/shared/components/chains/chain-badge";
 import { NetworkName } from "@/shared/components/chains/network-name";
 import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
@@ -235,8 +235,10 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
                       ) : null}
                       {inv.optionCount > 1 ? (
                         ` · ${MONEY_COPY.anyNetwork}`
-                      ) : (
+                      ) : hasChainBadge(inv.chainId) ? (
                         <span className="sr-only">, {chainName(inv.chainId)}</span>
+                      ) : (
+                        ` · ${chainName(inv.chainId)}`
                       )}
                     </span>
                   </span>

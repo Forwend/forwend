@@ -204,16 +204,6 @@
   }
 }
 
-/* Chart bars rise from their base; set transform-origin on the bar. */
-@keyframes fw-grow-y {
-  from {
-    transform: scaleY(0);
-  }
-  to {
-    transform: scaleY(1);
-  }
-}
-
 /* A soft ring that leaves a live point, as a sign the value is current. */
 @keyframes fw-halo {
   from {

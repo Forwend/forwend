@@ -81,22 +81,20 @@ export function PayInvoice({ invoiceId, option }: PayInvoiceProps) {
   const invoice = useGetInvoiceQuery(invoiceId, LIVE_QUERY);
   const failure = invoice.error as { status?: unknown } | undefined;
   if (invoice.data) {
+    // A failed poll keeps the last read: say so first, or a payer may think nothing arrived and send again.
+    const stale = invoice.isError ? (
+      <p
+        role="status"
+        className="flex flex-wrap items-center gap-3 rounded-md bg-warning-soft px-4 py-3 text-sm text-warning"
+      >
+        {COPY.stale}
+        <Button size="sm" variant="secondary" onClick={invoice.refetch}>
+          {COPY.retry}
+        </Button>
+      </p>
+    ) : null;
     return (
-      <>
-        {/* A failed poll keeps the last read: say so, or a payer may think nothing arrived and send again. */}
-        {invoice.isError ? (
-          <p
-            role="status"
-            className="flex flex-wrap items-center gap-3 rounded-md bg-warning-soft px-4 py-3 text-sm text-warning lg:col-span-2"
-          >
-            {COPY.stale}
-            <Button size="sm" variant="secondary" onClick={invoice.refetch}>
-              {COPY.retry}
-            </Button>
-          </p>
-        ) : null}
-        <Loaded invoice={invoice.data} linkInvoiceId={invoiceId} option={option} />
-      </>
+      <Loaded invoice={invoice.data} linkInvoiceId={invoiceId} option={option} stale={stale} />
     );
   }
   if (failure?.status === NOT_FOUND) notFound();
@@ -135,10 +133,12 @@ function Loaded({
   invoice: answer,
   linkInvoiceId,
   option,
+  stale,
 }: {
   invoice: Invoice;
   linkInvoiceId: string;
   option?: string;
+  stale: ReactNode;
 }) {
   const now = useNow();
   const router = useRouter();
@@ -181,7 +181,7 @@ function Loaded({
   const pay = payState(invoice, now);
   return (
     <>
-      <Summary invoice={invoice} token={token} pay={pay} picking={picking} />
+      <Summary invoice={invoice} token={token} pay={pay} picking={picking} stale={stale} />
       <PayBox
         invoice={invoice}
         address={address}
@@ -205,11 +205,13 @@ function Summary({
   token,
   pay,
   picking,
+  stale,
 }: {
   invoice: Invoice;
   token: PayToken;
   pay: Pay;
   picking: boolean;
+  stale: ReactNode;
 }) {
   const payee = invoice.issuer?.name ?? invoice.senderName;
   const number = invoiceNumber(invoice.number);
@@ -222,6 +224,8 @@ function Summary({
       aria-labelledby="pay-amount"
       className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-1 lg:gap-8"
     >
+      {/* Top of the first column: the first thing on the page at any width (the grid pins every block's row). */}
+      {stale}
       <div className="flex min-w-0 items-center gap-3">
         <span
           aria-hidden

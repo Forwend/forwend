@@ -18,6 +18,7 @@ import Link from "next/link";
 import { type ReactNode, useId, useState } from "react";
 import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
 import {
+  RELATIVE_DAYS,
   TRANSACTION_DIRECTIONS,
   TRANSACTION_FILTERS,
   TRANSACTIONS_MAX,
@@ -32,7 +33,7 @@ import {
   transactionsCsv,
 } from "@/features/transactions/lib/transactions";
 import type { Transaction } from "@/features/transactions/types/transactions";
-import { ChainBadge } from "@/shared/components/chains/chain-badge";
+import { ChainBadge, hasChainBadge } from "@/shared/components/chains/chain-badge";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { NetworkName } from "@/shared/components/chains/network-name";
 import { NoMatch } from "@/shared/components/no-match";
@@ -50,12 +51,19 @@ const DAY = new Intl.DateTimeFormat(undefined, {
   month: "short",
   day: "numeric",
 });
+const DAY_WITH_YEAR = new Intl.DateTimeFormat(undefined, {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+// Another year's day says its year, so last October's transfers don't read as this October's.
 const dayName = (when: DayGroup<Transaction>["when"]) =>
-  when === "today"
+  when === RELATIVE_DAYS.today
     ? TRANSACTIONS_COPY.today
-    : when === "yesterday"
+    : when === RELATIVE_DAYS.yesterday
       ? TRANSACTIONS_COPY.yesterday
-      : DAY.format(when);
+      : (when.getFullYear() === new Date().getFullYear() ? DAY : DAY_WITH_YEAR).format(when);
 
 interface TransactionsTableProps {
   profileId: string;
@@ -284,7 +292,11 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                             <time dateTime={t.at} className="whitespace-nowrap">
                               {TIME.format(new Date(t.at))}
                             </time>
-                            <span className="sr-only">, {chainName(t.chainId)}</span>
+                            {hasChainBadge(t.chainId) ? (
+                              <span className="sr-only">, {chainName(t.chainId)}</span>
+                            ) : (
+                              ` · ${chainName(t.chainId)}`
+                            )}
                             <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
                           </>
                         }

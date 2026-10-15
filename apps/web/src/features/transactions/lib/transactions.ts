@@ -1,6 +1,9 @@
 import { formatTokenAmount, PAYMENT_STATUS, type PaymentStatus } from "@forwend/ui-web";
-import { TRANSACTION_STATUSES } from "@/features/transactions/constants/transactions";
-import type { Transaction } from "@/features/transactions/types/transactions";
+import {
+  RELATIVE_DAYS,
+  TRANSACTION_STATUSES,
+} from "@/features/transactions/constants/transactions";
+import type { RelativeDay, Transaction } from "@/features/transactions/types/transactions";
 import { chainName } from "@/shared/lib/chains";
 
 /** A transfer is "Confirming" until its block is final; unknown values never claim it is final. */
@@ -14,7 +17,7 @@ export interface DayGroup<T> {
   /** The local calendar day, YYYY-MM-DD. */
   day: string;
   /** "today", "yesterday", or the day itself, for the caller to word. */
-  when: "today" | "yesterday" | Date;
+  when: RelativeDay | Date;
   items: T[];
 }
 
@@ -37,7 +40,8 @@ export function groupByDay<T extends { at: string }>(
     else
       groups.push({
         day,
-        when: day === today ? "today" : day === yesterday ? "yesterday" : time,
+        when:
+          day === today ? RELATIVE_DAYS.today : day === yesterday ? RELATIVE_DAYS.yesterday : time,
         items: [item],
       });
   }
