@@ -1,12 +1,13 @@
 "use client";
 
 import { useId } from "react";
-import { USD, USD_DECIMALS } from "@/features/balances/constants/balances";
+import { USD_DECIMALS } from "@/features/balances/constants/balances";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { useChart } from "@/features/balances/hooks/use-chart";
 import { formatUsd } from "@/features/balances/lib/balances";
 import { niceTop, toNumber } from "@/features/balances/lib/chart";
 import type { HistorySeries } from "@/features/balances/types/balance-history";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 // Points are the ends of UTC days (00:00 of the next day); a point is labeled with the day it closes. The last is now.
 export const DAY = new Intl.DateTimeFormat(undefined, {
@@ -27,7 +28,7 @@ export function dayLabel(series: HistorySeries, index: number): string {
 }
 
 export function amountLabel(series: HistorySeries, index: number): string {
-  return `${formatUsd(series.values[index] ?? 0n)} ${USD}`;
+  return `${formatUsd(series.values[index] ?? 0n)} ${MONEY_COPY.usd}`;
 }
 
 const PAD = { top: 12, right: 8, bottom: 28, left: 52 } as const;

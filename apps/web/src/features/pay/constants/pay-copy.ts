@@ -25,7 +25,6 @@ export const PAY_COPY = {
   progress: "Payment progress",
   network: "Network",
   token: "Token",
-  usd: "USD",
   chooseNetwork: "Choose a network",
   chooseToken: "Choose a token",
   showAddress: "Show address",

@@ -41,6 +41,7 @@ import type {
   PayWith,
 } from "@/features/invoices/types/invoices";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { chainName } from "@/shared/lib/chains";
 
 const INVALID_VALUE = 422;
@@ -80,7 +81,7 @@ export function NewInvoiceForm({ profileId, tokens, request, start }: NewInvoice
   const any = payWith === PAY_WITH.any && tokens.length > 1;
   // In USD every token takes the amount, so it can have no more decimals than the token with the fewest.
   const decimals = any ? Math.min(...tokens.map((t) => t.decimals)) : token.decimals;
-  const unit = any ? "USD" : token.symbol;
+  const unit = any ? MONEY_COPY.usd : token.symbol;
   const network = chainName(token.chainId);
   const today = localDate(Date.now());
   const amountError = (value: string) => {

@@ -54,6 +54,7 @@ import type {
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { chainName } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
@@ -246,7 +247,7 @@ function Loaded({
                     })}
                   </span>{" "}
                   <span className="text-lg font-medium text-muted">
-                    {choosing ? COPY.usd : token.symbol}
+                    {choosing ? MONEY_COPY.usd : token.symbol}
                   </span>
                 </p>
               ) : (

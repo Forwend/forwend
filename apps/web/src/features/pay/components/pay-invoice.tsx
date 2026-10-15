@@ -44,6 +44,7 @@ import type { PayToken } from "@/features/pay/types/pay";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LIVE_QUERY } from "@/shared/config/refresh";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { addressLink, chainName, lookalikeOf, txLink } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
@@ -234,7 +235,7 @@ function Summary({
           baseUnits={shown}
           decimals={token.decimals}
           fractionDigits={exactDigits(shown, token.decimals)}
-          token={picking ? COPY.usd : token.symbol}
+          token={picking ? MONEY_COPY.usd : token.symbol}
           className="min-w-0 text-amount-lg text-ink"
         />
         {picking ? null : (

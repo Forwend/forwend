@@ -15,7 +15,6 @@ import {
   HISTORY_RANGES,
   RANGE_OPTIONS,
 } from "@/features/balances/constants/balance-history";
-import { USD } from "@/features/balances/constants/balances";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { historySeries, seriesTotal } from "@/features/balances/lib/balance-history";
 import { formatUsd, usdTotal } from "@/features/balances/lib/balances";
@@ -32,6 +31,7 @@ import {
 import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
 import { OverviewChecklist } from "@/screens/dashboard/overview-checklist";
 import { LIVE_QUERY } from "@/shared/config/refresh";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 const BUSINESS_COPY = {
   overview: "Overview",
@@ -235,7 +235,7 @@ function Total({ cents, hint = false }: { cents: bigint | null; hint?: boolean }
     <span>
       {formatUsd(cents)}{" "}
       <span className="inline-flex items-center gap-1 text-sm font-medium whitespace-nowrap text-muted">
-        {USD}
+        {MONEY_COPY.usd}
         {hint ? <EstimateHint /> : null}
       </span>
     </span>
