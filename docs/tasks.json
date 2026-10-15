@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 202,
+  "nextId": 205,
   "tasks": [
     {
       "id": "F179",
@@ -2381,6 +2381,137 @@
         "branch": "feat/f201-onboarding-has-its-own-address-app-onboa",
         "base": "main"
       }
+    },
+    {
+      "id": "F202",
+      "type": "fix",
+      "behavior": "On a phone the overview's balance hero is centered and balanced: the total sits on the center line, secondary lines match the body type, and no dead band separates the figure from the actions",
+      "acceptance": [
+        "At 390 px, light and dark, the total and USD are centered on the label's center line (the estimate icon does not shift them), the held and change lines use the body font, and the gap between the figure block and the action row is the same rhythm as the rest of the card; screenshots before and after attached to the run",
+        "Desktop keeps its layout (screenshot at 1440 px); e2e balance tests still pass"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-76"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T12:58:06Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 69.9,
+            "log": "docs/runs/F202-20261015T125806Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 215.5,
+            "log": "docs/runs/F202-20261015T125806Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F202-20261015T125806Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F202-20261015T125806Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F202-20261015T125806Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F202-20261015T125806Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.7,
+            "log": "docs/runs/F202-20261015T125806Z-build.log"
+          }
+        ],
+        "taskHash": "1728ace1c6d209fe",
+        "filesHash": "e0657539aaf25608",
+        "proof": {
+          "1": "e2e: at 390 px light and dark the total and USD sit on the label's center line (the estimate icon hangs outside the centered group), the held and change amounts use the body font, the phone card is min-h-80 with gap-8 so the action row follows the figure without a dead band; before/after screenshots in docs/runs/F202-shots",
+          "2": "e2e: desktop hero unchanged (docs/runs/F202-shots/after-hero-1440.png); balances e2e and unit tests pass"
+        }
+      },
+      "branch": "fix/f202-on-a-phone-the-overview-s-balance-hero-i",
+      "baseCommit": "acb22c144de8bca3f22af97385c51d6abd0860f0",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F203",
+      "type": "fix",
+      "behavior": "The pay page's load error is centered on the page like the rest of the checkout, with its retry button",
+      "acceptance": [
+        "When the invoice cannot be loaded, the message and Try again sit centered in the checkout area (horizontally and in the space above the footer) at 1440 px and 390 px, with an icon and a short heading; screenshots attached; e2e covers the error state"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-68"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F204",
+      "type": "test",
+      "behavior": "Tests guard what matters: a written rule keeps money, security, data-integrity and real-regression tests, and low-value unit tests are removed",
+      "acceptance": [
+        "docs/workflow.md (or the owning test rules) says which tests to write and keep: money and ledger rules, auth and security, data integrity, API contracts, parsing at trust boundaries, and regressions of bugs a user hit; not tests that only restate copy text, constants, simple rendering or a one-off fix already covered by e2e",
+        "Unit test files and cases that fall outside the rule are removed; the removal list with a one-line reason each is in the PR; every remaining check passes and the unit check runs faster (time before and after)"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "backend",
+        "e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

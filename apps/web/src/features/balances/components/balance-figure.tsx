@@ -49,9 +49,12 @@ export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps)
         <span className={figure} style={{ "--chars": text.length } as CSSProperties}>
           {text}
         </span>
-        <span className="inline-flex items-center gap-1 text-xl font-medium whitespace-nowrap text-muted">
+        {/* The hint hangs after USD and takes no width, so the total itself sits on the center line. */}
+        <span className="relative text-xl font-medium whitespace-nowrap text-muted">
           {MONEY_COPY.usd}
-          <EstimateHint />
+          <span className="absolute top-1/2 left-full ml-1 -translate-y-1/2">
+            <EstimateHint />
+          </span>
         </span>
       </p>
       {total === null ? <p className="text-sm text-muted">{BALANCES_COPY.unavailable}</p> : null}
@@ -78,7 +81,7 @@ function PendingHeld({ balances }: { balances: Balances }) {
             className="inline-flex min-h-11 items-center gap-1 rounded-sm text-sm text-muted underline decoration-line underline-offset-4 outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
           >
             <span>
-              <span className="font-mono tabular-nums text-ink">
+              <span className="font-medium tabular-nums text-ink">
                 {total === 0n ? BALANCES_COPY.lessThanCent : formatUsd(total)} {MONEY_COPY.usd}
               </span>{" "}
               {label}
