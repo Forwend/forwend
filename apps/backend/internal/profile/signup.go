@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -19,7 +20,7 @@ var RepairBudget = 5 * time.Second
 // personal profile.
 func (s *Service) SignUp(ctx context.Context, privyUserID string) (profiles []Profile, created bool, err error) {
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, "INSERT INTO users (privy_user_id) VALUES ($1) ON CONFLICT DO NOTHING",
+		if _, err := tx.Exec(ctx, "INSERT INTO users (privy_user_id, welcome) VALUES ($1, true) ON CONFLICT DO NOTHING",
 			privyUserID); err != nil {
 			return fmt.Errorf("insert user: %w", err)
 		}
@@ -67,7 +68,8 @@ func (s *Service) SignUp(ctx context.Context, privyUserID string) (profiles []Pr
 
 // storeLoginEmail reads the user's verified login email from Privy once and keeps it for their notifications (R-80):
 // never an address a request names, so nobody can point them at another inbox. A failure is retried on the next load;
-// an account without one keeps ” and is not read again.
+// an account without one keeps ” and is not read again. A new account's welcome email is queued with the address
+// (R-84), so it waits for a failed read and goes out once.
 func (s *Service) storeLoginEmail(ctx context.Context, privyUserID string) {
 	var unread bool
 	if err := s.pool.QueryRow(ctx, "SELECT login_email IS NULL FROM users WHERE privy_user_id = $1",
@@ -82,8 +84,10 @@ func (s *Service) storeLoginEmail(ctx context.Context, privyUserID string) {
 	if len(address) > 254 || (address != "" && len(address) < 3) {
 		address = ""
 	}
-	if _, err := s.pool.Exec(ctx, "UPDATE users SET login_email = $2 WHERE privy_user_id = $1 AND login_email IS NULL",
-		privyUserID, address); err != nil {
+	if _, err := s.pool.Exec(ctx, `
+		WITH u AS (UPDATE users SET login_email = $2 WHERE privy_user_id = $1 AND login_email IS NULL RETURNING id, welcome)
+		INSERT INTO outbox_events (kind, user_id, payload) SELECT $3, id, '{}' FROM u WHERE welcome AND $2 <> ''
+		ON CONFLICT (user_id) WHERE kind = 'account.welcome' DO NOTHING`, privyUserID, address, outbox.Welcome); err != nil {
 		slog.Warn("store login email", "err", err)
 	}
 }

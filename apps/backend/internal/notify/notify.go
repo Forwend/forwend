@@ -1,4 +1,5 @@
-// Package notify sends the owner's email for each outbox event (R-80): paid, settled and money held for the payer.
+// Package notify sends the email for each outbox event: the owner's paid, settled and held-money emails (R-80), the
+// payer's receipt (R-82) and a new account's welcome (R-84).
 // One worker claims each event once (FOR UPDATE SKIP LOCKED); invoice, event id and address make Resend's
 // Idempotency-Key, the same on every retry, so a retry after a lost answer sends nothing twice. Nothing logs an address, a subject or a body.
 package notify
@@ -51,46 +52,36 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 	}
 	defer tx.Rollback(ctx)
 	var (
-		id       int64
-		kind     string
-		invoice  string
-		payload  []byte
-		attempts int
+		id                  int64
+		kind, invoice, user string
+		payload             []byte
+		attempts            int
 	)
-	err = tx.QueryRow(ctx, `SELECT id, kind, invoice_id, payload, attempts FROM outbox_events
-		WHERE published_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()
-		ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED`).Scan(&id, &kind, &invoice, &payload, &attempts)
+	err = tx.QueryRow(ctx, `SELECT id, kind, coalesce(invoice_id, ''), coalesce(user_id::text, ''), payload, attempts
+		FROM outbox_events WHERE published_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()
+		ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED`).Scan(&id, &kind, &invoice, &user, &payload, &attempts)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	} else if err != nil {
 		return false, fmt.Errorf("claim email event: %w", err)
 	}
-	var p outbox.Payload
-	if err := json.Unmarshal(payload, &p); err != nil {
-		return false, fmt.Errorf("read email event %d: %w", id, err)
-	}
 	var (
-		on                   bool
-		to, payer            *string
-		number               int64
-		symbol, amount, hash string
-		issuer, typed        string
-		decimals             int
-		chainID              uint64
+		m     email.Message
+		to    *string
+		on    bool
+		scope string // what the event is about, for the Idempotency-Key
 	)
-	if err := tx.QueryRow(ctx, `SELECT p.email_notifications, u.login_email, m.payer_email, m.number,
-		    coalesce(m.issuer_name, ''), coalesce(m.sender_name, ''), t.symbol, t.decimals, o.chain_id, o.amount::text,
-		    coalesce((SELECT d.tx_hash FROM chain_transfers d WHERE d.invoice_id = o.id AND d.status = 'confirmed'
-		              AND d.block_time <= o.expires_at ORDER BY d.block_number DESC, d.log_index DESC LIMIT 1), '')
-		FROM invoices m JOIN profiles p ON p.id = m.profile_id JOIN users u ON u.id = p.user_id
-		JOIN invoices o ON o.id = $2 JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
-		WHERE m.id = $1`, invoice, p.Option).Scan(&on, &to, &payer, &number, &issuer, &typed, &symbol, &decimals, &chainID,
-		&amount, &hash); err != nil {
-		return false, fmt.Errorf("read email event %d invoice: %w", id, err)
-	}
-	// The payer's receipt goes to the address they gave, whatever the owner's setting (R-82).
-	if kind == outbox.Receipt {
-		on, to = true, payer
+	if kind == outbox.Welcome {
+		// About the account, not a profile's invoices: the profile's email setting doesn't apply (R-84).
+		on, scope, m = true, "user-"+user, welcome(webURL+"/app")
+		if err := tx.QueryRow(ctx, "SELECT login_email FROM users WHERE id = $1", user).Scan(&to); err != nil {
+			return false, fmt.Errorf("read email event %d user: %w", id, err)
+		}
+	} else {
+		scope = invoice
+		if m, to, on, err = invoiceEmail(ctx, tx, kind, invoice, payload, webURL); err != nil {
+			return false, fmt.Errorf("read email event %d: %w", id, err)
+		}
 	}
 	if !on || to == nil || *to == "" {
 		// Email off for this profile, or no login email ('' when the account has none; NULL when it was never read):
@@ -100,23 +91,11 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 		}
 		return true, tx.Commit(ctx)
 	}
-	if p.Amount != "" {
-		amount = p.Amount
-	}
-	units, _ := new(big.Int).SetString(amount, 10)
-	var m email.Message
-	if kind == outbox.Receipt {
-		m = receipt(document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID), issuer, typed,
-			document.TxURL(chainID, hash), webURL+"/api/v1/invoices/"+invoice+"/receipt.pdf")
-	} else {
-		m = compose(kind, document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID),
-			webURL+"/app/invoices/"+invoice, webURL+"/app/notifications")
-	}
-	// The invoice id too: event ids start again in another database (a reset, staging) that may share the Resend team.
-	// And the address: a receipt sent again to a changed address is a new request, which Resend would refuse under a
-	// key it already saw with another body.
+	// The invoice or user id too: event ids start again in another database (a reset, staging) that may share the
+	// Resend team. And the address: a receipt sent again to a changed address is a new request, which Resend would
+	// refuse under a key it already saw with another body.
 	sum := sha256.Sum256([]byte(*to))
-	m.To, m.Key = *to, fmt.Sprintf("forwend-%s-%d-%x", invoice, id, sum[:8])
+	m.To, m.Key = *to, fmt.Sprintf("forwend-%s-%d-%x", scope, id, sum[:8])
 	if err := sender.Send(ctx, m); err != nil {
 		attempts++
 		if attempts >= MaxAttempts {
@@ -139,6 +118,49 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 	return true, tx.Commit(ctx)
 }
 
+// invoiceEmail builds an invoice event's email and says where it goes: the owner's login email when the profile has
+// email on, or the payer's address for the receipt.
+func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload []byte,
+	webURL string) (email.Message, *string, bool, error) {
+	var p outbox.Payload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return email.Message{}, nil, false, err
+	}
+	var (
+		on                   bool
+		to, payer            *string
+		number               int64
+		symbol, amount, hash string
+		issuer, typed        string
+		decimals             int
+		chainID              uint64
+	)
+	if err := tx.QueryRow(ctx, `SELECT p.email_notifications, u.login_email, m.payer_email, m.number,
+		    coalesce(m.issuer_name, ''), coalesce(m.sender_name, ''), t.symbol, t.decimals, o.chain_id, o.amount::text,
+		    coalesce((SELECT d.tx_hash FROM chain_transfers d WHERE d.invoice_id = o.id AND d.status = 'confirmed'
+		              AND d.block_time <= o.expires_at ORDER BY d.block_number DESC, d.log_index DESC LIMIT 1), '')
+		FROM invoices m JOIN profiles p ON p.id = m.profile_id JOIN users u ON u.id = p.user_id
+		JOIN invoices o ON o.id = $2 JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
+		WHERE m.id = $1`, invoice, p.Option).Scan(&on, &to, &payer, &number, &issuer, &typed, &symbol, &decimals, &chainID,
+		&amount, &hash); err != nil {
+		return email.Message{}, nil, false, fmt.Errorf("invoice: %w", err)
+	}
+	// The payer's receipt goes to the address they gave, whatever the owner's setting (R-82).
+	if kind == outbox.Receipt {
+		on, to = true, payer
+	}
+	if p.Amount != "" {
+		amount = p.Amount
+	}
+	units, _ := new(big.Int).SetString(amount, 10)
+	if kind == outbox.Receipt {
+		return receipt(document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID), issuer, typed,
+			document.TxURL(chainID, hash), webURL+"/api/v1/invoices/"+invoice+"/receipt.pdf"), to, on, nil
+	}
+	return compose(kind, document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID),
+		webURL+"/app/invoices/"+invoice, webURL+"/app/notifications"), to, on, nil
+}
+
 // compose says what happened in plain words, with the invoice link and where to turn email off.
 func compose(kind, number, amount, network, link, settings string) email.Message {
 	var subject, what string
@@ -157,6 +179,15 @@ func compose(kind, number, amount, network, link, settings string) email.Message
 	}
 	return email.Message{Subject: subject, Text: what + "\n\nOpen the invoice: " + link +
 		"\n\nYou get this email because email is on for this profile. Turn it off: " + settings + "\n"}
+}
+
+// welcome is a new account's one welcome email (R-84): what Forwend does and where to start.
+func welcome(app string) email.Message {
+	return email.Message{Subject: "Welcome to Forwend", Text: "Your Forwend account is ready. Create an invoice or " +
+		"a payment request, share its pay link, and get paid in stablecoins to your wallet.\n\nForwend emails you when an invoice is " +
+		"paid, when the money reaches your wallet, and when money is held for a payer. You can turn those emails " +
+		"off for each profile.\n\nOpen Forwend: " + app + "\n\nYou get this email once, because you created a " +
+		"Forwend account.\n"}
 }
 
 // receipt is the payer's one email (R-82): what they paid, to whom, the transaction and the receipt PDF. Nothing else

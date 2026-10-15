@@ -17,6 +17,7 @@ const (
 	Settled = "invoice.settled"
 	Held    = "invoice.held"    // money held for the payer: an excess, an expired partial payment, a late deposit, one after cancel or on another option
 	Receipt = "invoice.receipt" // the payer's receipt, to the address they gave (R-82); at most one per invoice
+	Welcome = "account.welcome" // a new account's welcome, to its login email (R-84); at most one per user
 )
 
 // Payload names the option row the event happened on (its token and network) and, for held money, the amount.
