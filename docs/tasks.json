@@ -2391,7 +2391,7 @@
         "Desktop keeps its layout (screenshot at 1440 px); e2e balance tests still pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -2402,7 +2402,8 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-15 review fail by independent reviewer: Centering at 390 px is correct: measured row center 195 = label center 195 (26.25 and 1,234,567.89). Defect: the hanging estimate icon is outside the width budget of the figure clamp (balance-figure.tsx:27 sizes figure+USD to fill the container; the absolute hint at :54 adds 28 px). At 320 px a 16-char total (1,234,567,890.12) puts the icon at x 304-328 on a 320 px screen, so the section's overflow-hidden clips 8 px of it, and its 44 px hit area loses ~18 px. Before F202 the row wrapped instead. At 320 px any total of 1,000,000+ leaves the icon 1-2 px from the screen edge, outside the 16 px gutter. Fix idea: reserve the hint width symmetrically on phones (e.g. px-7 lg:px-0 on the row) or count it in the clamp. Doc gap: DESIGN.md:21-24 says Geist Mono for money and names only headline figures as Hanken; the held/change lines (balance-figure.tsx:84, balance-hero.tsx:167) now use Hanken, so DESIGN.md needs a line naming them. OK: keyboard focus opens the tooltip; desktop >=1024 keeps lg classes, icon stays inside the left column (40 px gap to chart); only 640-1023 px min-height changed 96->80. Tap does not open any Tooltip in Playwright touch emulation (also Send and /kit), so that is pre-existing, not F202. Unit tests 128/128 pass."
+        "2026-10-15 review fail by independent reviewer: Centering at 390 px is correct: measured row center 195 = label center 195 (26.25 and 1,234,567.89). Defect: the hanging estimate icon is outside the width budget of the figure clamp (balance-figure.tsx:27 sizes figure+USD to fill the container; the absolute hint at :54 adds 28 px). At 320 px a 16-char total (1,234,567,890.12) puts the icon at x 304-328 on a 320 px screen, so the section's overflow-hidden clips 8 px of it, and its 44 px hit area loses ~18 px. Before F202 the row wrapped instead. At 320 px any total of 1,000,000+ leaves the icon 1-2 px from the screen edge, outside the 16 px gutter. Fix idea: reserve the hint width symmetrically on phones (e.g. px-7 lg:px-0 on the row) or count it in the clamp. Doc gap: DESIGN.md:21-24 says Geist Mono for money and names only headline figures as Hanken; the held/change lines (balance-figure.tsx:84, balance-hero.tsx:167) now use Hanken, so DESIGN.md needs a line naming them. OK: keyboard focus opens the tooltip; desktop >=1024 keeps lg classes, icon stays inside the left column (40 px gap to chart); only 640-1023 px min-height changed 96->80. Tap does not open any Tooltip in Playwright touch emulation (also Send and /kit), so that is pre-existing, not F202. Unit tests 128/128 pass.",
+        "2026-10-15 review pass by independent reviewer: Re-review of 611ba39. Clipping fixed: balance-figure.tsx:31 px-7 lg:px-0. Swept 320/360/390/430 px x totals 26.25 to 1,234,567,890,123.45: hint always inside the section (min 17 px from edge), no horizontal scroll, figure+USD centered on the label (offset 0) on every phone case. Trade-off, acceptable: totals of 1,000,000+ now put USD on its own line at 320-390 px (123,456.78 also wraps at 320 px). Action row (money-actions.tsx:22,38-40): labels at least 10 px apart at 320 px; desktop button positions at 1024/1280/1440 are identical to the old classes. DESIGN.md:24-25 now names the held and change lines as Hanken body text. Keyboard focus opens the hint tooltip. Unit tests 128/128. Not F202: action button boxes overlap ~9 px at 1024 px (same before); tap tooltips are F205."
       ],
       "blockedReason": null,
       "evidence": {
@@ -2465,11 +2466,25 @@
         "proof": {
           "1": "e2e: at 390 px light and dark the total and USD sit on the label's center line (the estimate icon hangs in px-7 room on both sides), at 320 px a 16-character total wraps USD and the icon ends at x 209 of 320; held and change amounts use the body font (DESIGN.md says so); the card is min-h-80 with gap-8; the action labels never touch at 320 px; screenshots in docs/runs/F202-shots",
           "2": "e2e: desktop hero unchanged (after-hero-1440.png); balances e2e and unit tests pass"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "Re-review of 611ba39. Clipping fixed: balance-figure.tsx:31 px-7 lg:px-0. Swept 320/360/390/430 px x totals 26.25 to 1,234,567,890,123.45: hint always inside the section (min 17 px from edge), no horizontal scroll, figure+USD centered on the label (offset 0) on every phone case. Trade-off, acceptable: totals of 1,000,000+ now put USD on its own line at 320-390 px (123,456.78 also wraps at 320 px). Action row (money-actions.tsx:22,38-40): labels at least 10 px apart at 320 px; desktop button positions at 1024/1280/1440 are identical to the old classes. DESIGN.md:24-25 now names the held and change lines as Hanken body text. Keyboard focus opens the hint tooltip. Unit tests 128/128. Not F202: action button boxes overlap ~9 px at 1024 px (same before); tap tooltips are F205.",
+          "at": "2026-10-15T13:19:49Z",
+          "filesHash": "7ce28df516d5024d"
+        },
+        "commit": "611ba39",
+        "doneAt": "2026-10-15T13:20:04Z"
       },
       "branch": "fix/f202-on-a-phone-the-overview-s-balance-hero-i",
       "baseCommit": "acb22c144de8bca3f22af97385c51d6abd0860f0",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f202-on-a-phone-the-overview-s-balance-hero-i",
+        "base": "main"
+      }
     },
     {
       "id": "F203",
