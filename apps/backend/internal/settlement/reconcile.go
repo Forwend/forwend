@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
+	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -217,6 +218,9 @@ func (s *Signer) confirm(ctx context.Context, in intent) error {
 		WITH i AS (UPDATE settlement_intents SET status = 'confirmed', tx_hash = $3, updated_at = now() WHERE id = $1)
 		UPDATE invoices SET settlement_status = 'settled' WHERE id = $2`, in.id, in.invoiceID, in.txHash); err != nil {
 		return fmt.Errorf("confirm settlement: %w", err)
+	}
+	if err := outbox.Queue(ctx, tx, outbox.Settled, in.invoiceID, nil); err != nil {
+		return err
 	}
 	slog.Info("settled", "invoice", in.invoiceID, "amount", in.amount.String())
 	return tx.Commit(ctx)

@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -119,6 +120,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		return fmt.Errorf("read invoice %s deposits: %w", invoiceID, err)
 	}
 	final := Final(current)
+	newlyHeld := new(big.Int) // told to the owner once per run (R-80)
 	for _, d := range deposits {
 		value, _ := new(big.Int).SetString(d.Amount, 10)
 		toCreator, toHeld := split(amount, owed, value, d.BlockTime > expiresAt, final || superseded)
@@ -126,6 +128,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			return err
 		}
 		owed.Add(owed, toCreator)
+		newlyHeld.Add(newlyHeld, toHeld)
 	}
 
 	funded, mayExpire := false, false
@@ -148,6 +151,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		if err := book(ctx, tx, invoiceID, "expiry", nil, new(big.Int), new(big.Int).Neg(owed), owed); err != nil {
 			return err
 		}
+		newlyHeld.Add(newlyHeld, owed)
 	}
 	held, err := accountBalance(ctx, tx, invoiceID, "payer_held")
 	if err != nil {
@@ -160,7 +164,15 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		invoiceID, next, refund); err != nil {
 		return fmt.Errorf("update invoice %s status: %w", invoiceID, err)
 	}
+	if newlyHeld.Sign() > 0 {
+		if err := outbox.Queue(ctx, tx, outbox.Held, invoiceID, newlyHeld); err != nil {
+			return err
+		}
+	}
 	if next == Paid && current != Paid {
+		if err := outbox.Queue(ctx, tx, outbox.Paid, invoiceID, nil); err != nil {
+			return err
+		}
 		// The signer settles it; one intent per invoice (R-22).
 		if _, err := tx.Exec(ctx, `WITH i AS (INSERT INTO settlement_intents (invoice_id) VALUES ($1) ON CONFLICT DO NOTHING)
 			UPDATE invoices SET settlement_status = 'pending' WHERE id = $1`, invoiceID); err != nil {

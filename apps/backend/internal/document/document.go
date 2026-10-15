@@ -63,6 +63,14 @@ var networks = map[uint64]network{
 	42431:   {"Tempo Moderato", "Tempo Explorer", "https://explore.testnet.tempo.xyz"},
 }
 
+// NetworkName is the network as people call it (Base Sepolia), or its chain ID when unknown.
+func NetworkName(chainID uint64) string {
+	if n, ok := networks[chainID]; ok {
+		return n.name
+	}
+	return "Chain " + strconv.FormatUint(chainID, 10)
+}
+
 func networkOf(inv invoice.Invoice) network {
 	if n, ok := networks[inv.ChainID]; ok {
 		return n
@@ -151,7 +159,7 @@ func Receipt(inv invoice.Invoice, payLink string) ([]byte, error) {
 	d.heading("Payments")
 	for _, dep := range inv.Deposits {
 		if dep.Status == "confirmed" && !dep.Late { // late money is held for the payer, not paid (D-26)
-			d.transaction(net, amount(dep.Amount, inv.Decimals, inv.Symbol)+" · "+stamp(dep.BlockTime), dep.TxHash)
+			d.transaction(net, Amount(dep.Amount, inv.Decimals, inv.Symbol)+" · "+stamp(dep.BlockTime), dep.TxHash)
 		}
 	}
 	d.code(payLink, "Check this receipt", "A PDF can be edited. The pay page shows what the chain recorded.")
@@ -339,11 +347,11 @@ func (d doc) lines(inv invoice.Invoice, total string, any bool) {
 	d.SetFont(font, "", 10)
 	net := networkOf(inv)
 	network := append(d.fit(net.name, cols[1]-2*pad, 2), "Chain "+strconv.FormatUint(inv.ChainID, 10))
-	price := amount(inv.Amount, inv.Decimals, inv.Symbol)
+	price := Amount(inv.Amount, inv.Decimals, inv.Symbol)
 	if any {
 		// Every option is the same USD amount at 1 USD per stablecoin (D-75).
 		network = []string{"Any"}
-		price = amount(inv.Amount, inv.Decimals, "USD")
+		price = Amount(inv.Amount, inv.Decimals, "USD")
 	}
 	title := inv.Title
 	if title == "" {
@@ -544,7 +552,8 @@ func (d doc) output() ([]byte, error) {
 
 // amount writes base units exactly in whole tokens, with at least 2 decimals when the token has them and the
 // thousands grouped.
-func amount(n *big.Int, decimals int, symbol string) string {
+// Amount formats base units as people read money: 1,250.00 USDC.
+func Amount(n *big.Int, decimals int, symbol string) string {
 	s := new(big.Rat).SetFrac(n, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)).FloatString(decimals)
 	whole, frac, ok := strings.Cut(s, ".")
 	// Thousands grouped as finance teams read them: 1,250.00.

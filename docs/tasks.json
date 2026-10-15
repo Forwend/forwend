@@ -410,14 +410,14 @@
       "type": "feat",
       "behavior": "The owner gets one email for each paid, settled and held-money event through Resend and the outbox, and can turn it off per profile (PLAN 9.6)",
       "acceptance": [
-        "internal/email has the Resend sender and a fake sender; the worker sends one email per paid, settled and held-money event from outbox_events with the outbox id as Idempotency-Key, retries with backoff, and sends nothing without RESEND_API_KEY; no address or body is logged; RESEND_API_KEY is listed in apps/backend/.env.example (R-80)",
-        "/app/notifications turns the profile's email on or off and sets its address, filled at first with the Privy login email; each email names the invoice number, amount and network and links the invoice page (R-80)"
+        "internal/email has the Resend sender; the worker sends one email per paid, settled and held-money event from outbox_events with the outbox id as Idempotency-Key, retries with backoff, gives up after a bounded number of tries, and sends nothing without RESEND_API_KEY; only the worker holds the key; no address or body is logged; RESEND_API_KEY and EMAIL_FROM are listed in apps/backend/.env.example; Go tests use a fake sender (R-80)",
+        "The api stores the account's verified Privy login email once on POST /v1/me; /app/notifications turns the profile's email on or off and shows that address; each email names the invoice number, amount and network and links the invoice page (R-80)"
       ],
       "dependsOn": [
         "F180",
         "F182"
       ],
-      "state": "not_started",
+      "state": "active",
       "verification": [
         "backend",
         "unit",
@@ -430,9 +430,13 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-15 WIP: migration 00025 (login_email, email_notifications, outbox retry columns), internal/outbox Queue, paid/held queued in ledger.Process, settled in settlement reconcile, document.Amount/NetworkName exported. Left: internal/email Resend sender, internal/notify deliver loop (claim SKIP LOCKED, Idempotency-Key outbox-<id>, backoff, give up), worker wiring + config (RESEND_API_KEY, EMAIL_FROM, PUBLIC_WEB_URL; with-env drops key for api/signer), api POST /v1/me stores Privy login email, GET/PUT notifications, web /app/notifications, tests."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": null,
+      "branch": "feat/f183-the-owner-gets-one-email-for-each-paid-s",
+      "baseCommit": "b022208bdea6061cfd64a9e88bdd007d9035d3de"
     },
     {
       "id": "F184",
