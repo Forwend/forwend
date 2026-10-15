@@ -335,6 +335,9 @@ class HarnessTests(unittest.TestCase):
         self.assertIn('review: required', shown({**base, 'state': 'active'}))
         self.assertNotIn('review:', shown({**base, 'state': 'passing'}))
         self.assertIn('review: required', shown({**base, 'state': 'passing', 'review': True}))
+        self.assertIn('review: required', shown({**base, 'state': 'verified'}))
+        reviewed = {'review': {'result': 'pass', 'by': 'r', 'at': 't', 'summary': 's'}}
+        self.assertIn('review: pass by r', shown({**base, 'state': 'passing', 'evidence': reviewed}))
 
     def test_code_change_cannot_finish_without_review(self):
         from argparse import Namespace

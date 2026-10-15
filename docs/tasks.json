@@ -1536,67 +1536,69 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-15 review pass by independent reviewer: Pass. unittest 38 OK on HEAD. show: F179 (passing docs task) prints no review line; F185, F190 print their review evidence; F194 (verified, code) prints 'required, not done yet'; status already limits review lines to active/verified, so it agrees. Mutations on a scratch copy, one at a time, each fails a new test: needs_review returning False on a failed git diff -> test_review_rule_edges; changed_since without untracked -> test_review_rule_edges; DOCS_ONLY back to ARCHIVE+'/*' -> test_review_rule_edges; show back to 'if needs_review' -> test_show_review_line_only_where_review_applies. workflow.md step 6 matches needs_review (harness.py:1452): no git -> changed_since None and rev-parse fails -> only task.review counts. Minor, not blocking: two show branches survive mutation - dropping the 'review evidence' condition (would hide the line on F190, which has evidence but review=false) and dropping 'verified' from the state tuple (harness.py:843); the test only covers active, passing, and passing+--review. Scratch files removed; repo unchanged."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-15T03:49:42Z",
+        "at": "2026-10-15T09:53:20Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.9,
-            "log": "docs/runs/F194-20261015T034942Z-harness.log"
+            "seconds": 2.0,
+            "log": "docs/runs/F194-20261015T095320Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F194-20261015T034942Z-docs-check.log"
+            "seconds": 0.1,
+            "log": "docs/runs/F194-20261015T095320Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F194-20261015T034942Z-lint.log"
+            "seconds": 0.4,
+            "log": "docs/runs/F194-20261015T095320Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F194-20261015T034942Z-typecheck.log"
+            "log": "docs/runs/F194-20261015T095320Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 64.6,
-            "log": "docs/runs/F194-20261015T034942Z-unit.log"
+            "seconds": 68.8,
+            "log": "docs/runs/F194-20261015T095320Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.7,
-            "log": "docs/runs/F194-20261015T034942Z-build.log"
+            "log": "docs/runs/F194-20261015T095320Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 160.3,
-            "log": "docs/runs/F194-20261015T034942Z-e2e.log"
+            "seconds": 178.2,
+            "log": "docs/runs/F194-20261015T095320Z-e2e.log"
           }
         ],
         "taskHash": "10179130e64270c8",
-        "filesHash": "927698d601a9c779",
+        "filesHash": "8dd83abf0e7eaafe",
         "proof": {
-          "1": "harness: show prints the review line for active/verified tasks that need review, and for finished tasks only with review evidence or --review (test_show_review_line_only_where_review_applies); show F179 prints no review line",
+          "1": "harness: show prints the review line for active/verified tasks that need review, and for finished tasks only with review evidence or --review (test_show_review_line_only_where_review_applies, five cases); show F179 prints no review line",
           "2": "harness: test_review_rule_edges covers a failed git diff (review needed), untracked files in changed_since, and docs/archive non-JSON not docs-only; DOCS_ONLY is docs/archive/*.json; workflow.md step 6 says outside git only --review tasks need review"
         }
       },
