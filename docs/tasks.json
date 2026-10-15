@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 207,
+  "nextId": 208,
   "tasks": [
     {
       "id": "F179",
@@ -2923,6 +2923,92 @@
         "branch": "feat/f206-refine-the-app-wide-fintech-visual-syste",
         "base": "main"
       }
+    },
+    {
+      "id": "F207",
+      "type": "fix",
+      "behavior": "The receive address stays on one line in Linux browsers too, where each character's width is rounded to a whole pixel",
+      "acceptance": [
+        "In Linux Chromium (whole-pixel glyph widths) and on macOS the whole receive address stays on one line at every address box width from 252 to 440 px; a measurement with the shipped Geist Mono file proves both",
+        "The pay e2e test that keeps the address on one line once copied passes locally and on staging CI"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-78"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T23:15:01Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 210.5,
+            "log": "docs/runs/F207-20261015T231501Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F207-20261015T231501Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F207-20261015T231501Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F207-20261015T231501Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F207-20261015T231501Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 68.7,
+            "log": "docs/runs/F207-20261015T231501Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.5,
+            "log": "docs/runs/F207-20261015T231501Z-build.log"
+          }
+        ],
+        "taskHash": "7d7ee866316f8e9a",
+        "filesHash": "742af84c478f52e1",
+        "proof": {
+          "1": "e2e: the pay address test passes; also measured on the real pay page in Linux Chromium (Playwright 1.64.0 image): before the fix the address wrapped at 390 and 360 px (48px tall, as on staging CI), after it one line at 1440/390/360; with the shipped Geist Mono file every box width from 252 to 440 px: old formula wraps at 66 widths on Linux, the new one at 0; macOS one line everywhere",
+          "2": "e2e: pay.spec 'the address stays on one line once copied, and Copy keeps its width' passes in the local verify; staging CI (Linux) runs it after the merge"
+        }
+      },
+      "branch": "fix/f207-the-receive-address-stays-on-one-line-in",
+      "baseCommit": "d3ba20cf5aba4872ea382bd5f6d7b5e6c4378a18",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
