@@ -1,6 +1,9 @@
 import { NEW_INVOICE_COPY, NEW_REQUEST_COPY } from "@/features/invoices/constants/invoices-copy";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
-import { BILLING_DETAILS_COPY } from "@/features/profiles/constants/profiles-copy";
+import {
+  BILLING_DETAILS_COPY,
+  NOTIFICATIONS_COPY,
+} from "@/features/profiles/constants/profiles-copy";
 import type { ProfileKind } from "@/features/profiles/types/profile";
 import { APP_NAV, NAV } from "@/screens/app-shell/constants/app-nav";
 import type { Crumb } from "@/screens/app-shell/types/app-nav";
@@ -22,6 +25,12 @@ export function breadcrumb(
 ): { trail: Crumb[]; invoiceId: string | null } {
   if (pathname === APP_ROUTES.newProfile) {
     return { trail: [{ label: "New profile", href: APP_ROUTES.newProfile }], invoiceId: null };
+  }
+  if (pathname === APP_ROUTES.notifications) {
+    return {
+      trail: [{ label: NOTIFICATIONS_COPY.title, href: APP_ROUTES.notifications }],
+      invoiceId: null,
+    };
   }
   if (pathname === APP_ROUTES.billingDetails) {
     return {

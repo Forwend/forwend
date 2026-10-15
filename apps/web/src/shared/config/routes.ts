@@ -10,4 +10,5 @@ export const APP_ROUTES = {
   newInvoice: "/app/invoices/new",
   newProfile: "/app/profiles/new",
   billingDetails: "/app/billing-details",
+  notifications: "/app/notifications",
 } as const;

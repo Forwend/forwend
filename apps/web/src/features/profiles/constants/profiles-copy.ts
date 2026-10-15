@@ -55,3 +55,18 @@ export const BILLING_DETAILS_COPY = {
     },
   },
 } as const;
+
+/** /app/notifications (R-80). */
+export const NOTIFICATIONS_COPY = {
+  title: "Email notifications",
+  intro:
+    "Get an email when an invoice of this profile is paid, reaches your wallet, or gets money held for the payer.",
+  toggle: "Email me about this profile's invoices",
+  to: (address: string) => `Emails go to ${address}, the email you sign in with.`,
+  noAddress:
+    "Your account has no email to send to: you sign in with a passkey alone. Sign in with email or Google to get emails.",
+  loadFailed: "We could not load this setting.",
+  saveFailed: "We could not save this setting. Try again.",
+  retry: "Try again",
+  saved: (on: boolean) => (on ? "Email notifications on" : "Email notifications off"),
+} as const;

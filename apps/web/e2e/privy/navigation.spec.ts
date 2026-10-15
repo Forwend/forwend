@@ -736,6 +736,37 @@ test("the owner cancels an invoice before any money, after confirming", async ({
   await context.close();
 });
 
+// R-80: email notifications are one switch per profile, to the login email, reached from the account menu.
+test("the owner turns email notifications off from the account menu", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page);
+  const puts: unknown[] = [];
+  page.on("request", (r) => {
+    if (r.method() === "PUT" && r.url().endsWith("/notifications")) puts.push(r.postDataJSON());
+  });
+  await page.goto("/app");
+  await page
+    .getByRole("button", { name: /^Account:/ })
+    .first()
+    .click({ timeout: 15_000 });
+  await page.getByRole("menuitem", { name: "Email notifications" }).click();
+  await expect(page).toHaveURL("/app/notifications");
+  const main = page.getByRole("main");
+  const toggle = main.getByRole("switch", { name: "Email me about this profile's invoices" });
+  await expect(toggle).toBeChecked();
+  await expect(main).toContainText("Emails go to owner@example.com, the email you sign in with.");
+  expect(await blockingViolations(page)).toEqual([]);
+  await toggle.click();
+  await expect(toggle).not.toBeChecked();
+  await expect(page.getByText("Email notifications off")).toBeVisible();
+  expect(puts).toEqual([{ email: false }]);
+  await context.close();
+});
+
 // R-77: a closed checkout reads Expired in the lists too, as soon as the API says closed.
 test("the invoice list and activity show a closed checkout as expired", async ({ browser }) => {
   const context = await browser.newContext({

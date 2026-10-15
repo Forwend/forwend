@@ -417,7 +417,7 @@
         "F180",
         "F182"
       ],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "backend",
         "unit",
@@ -434,9 +434,78 @@
         "2026-10-15 WIP: migration 00025 (login_email, email_notifications, outbox retry columns), internal/outbox Queue, paid/held queued in ledger.Process, settled in settlement reconcile, document.Amount/NetworkName exported. Left: internal/email Resend sender, internal/notify deliver loop (claim SKIP LOCKED, Idempotency-Key outbox-<id>, backoff, give up), worker wiring + config (RESEND_API_KEY, EMAIL_FROM, PUBLIC_WEB_URL; with-env drops key for api/signer), api POST /v1/me stores Privy login email, GET/PUT notifications, web /app/notifications, tests."
       ],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T01:32:56Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 64.4,
+            "log": "docs/runs/F183-20261015T013256Z-backend.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 63.8,
+            "log": "docs/runs/F183-20261015T013256Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 155.4,
+            "log": "docs/runs/F183-20261015T013256Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": "docs/runs/F183-20261015T013256Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F183-20261015T013256Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F183-20261015T013256Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F183-20261015T013256Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.9,
+            "log": "docs/runs/F183-20261015T013256Z-build.log"
+          }
+        ],
+        "taskHash": "3cde9cf853a9f335",
+        "filesHash": "69be9ba0817cccc4",
+        "proof": {
+          "1": "backend: internal/email tests (keyed request, error names only the status), internal/notify tests (one email per event with forwend-outbox-<id>, skip when off or no address, backoff then give up after MaxAttempts, two workers send each event once), TestOutboxEventsFollowTheLedger and the signer test (paid, held, settled once each); with-env drops RESEND_API_KEY for api, signer and canary; .env.example lists RESEND_API_KEY and EMAIL_FROM",
+          "2": "e2e: navigation.spec 'turns email notifications off from the account menu' (switch on, address shown, PUT {email:false}, toast; axe clean); TestNotificationsUseTheLoginEmail reads Privy once, lowercases, rejects a body address (400) and other users (403); TestNotificationsWithoutLoginEmail keeps a null address with one read; emails name the number, amount, network and link (notify tests)"
+        }
+      },
       "branch": "feat/f183-the-owner-gets-one-email-for-each-paid-s",
-      "baseCommit": "b022208bdea6061cfd64a9e88bdd007d9035d3de"
+      "baseCommit": "b022208bdea6061cfd64a9e88bdd007d9035d3de",
+      "failedVerifies": 0
     },
     {
       "id": "F184",

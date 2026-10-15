@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -35,11 +36,14 @@ type Fake struct {
 	failedKeys  map[string]bool
 	// Delay holds every answer that long (or until the caller gives up), like a slow Privy.
 	Delay time.Duration
+	// Emails are the users' verified email accounts by Privy user ID; UserReads counts GET /v1/users/{id}.
+	Emails    map[string]string
+	UserReads int
 }
 
 // New starts the fake until the test ends.
 func New(t *testing.T) *Fake {
-	f := &Fake{t: t, wallets: map[string]map[string]any{}, failedKeys: map[string]bool{}}
+	f := &Fake{t: t, wallets: map[string]map[string]any{}, failedKeys: map[string]bool{}, Emails: map[string]string{}}
 	srv := httptest.NewServer(f)
 	t.Cleanup(srv.Close)
 	f.URL = srv.URL
@@ -114,6 +118,16 @@ func (f *Fake) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"policy_ids": []any{}, "additional_signers": []any{}}
 		f.wallets[ext] = wallet
 		_ = json.NewEncoder(w).Encode(wallet)
+	case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v1/users/"):
+		f.UserReads++
+		id := strings.TrimPrefix(r.URL.Path, "/v1/users/")
+		accounts := []any{}
+		if email, ok := f.Emails[id]; ok {
+			accounts = append(accounts, map[string]any{"type": "email", "address": email, "first_verified_at": 1,
+				"latest_verified_at": 1, "verified_at": 1})
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": id, "created_at": 1, "has_accepted_terms": true,
+			"is_guest": false, "linked_accounts": accounts, "mfa_methods": []any{}})
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}

@@ -192,6 +192,8 @@ function listPage<T>(
 }
 
 export async function mockApi(page: Page, lists: SampleLists = SAMPLE_LISTS) {
+  // The profile's email setting (R-80), changed by PUT for the rest of the page's life.
+  const notifications = { email: true, address: "owner@example.com" };
   // Our API only: Privy's own API is also under /api/v1.
   await page.route("/api/v1/**", (route) => {
     const url = new URL(route.request().url());
@@ -248,6 +250,11 @@ export async function mockApi(page: Page, lists: SampleLists = SAMPLE_LISTS) {
         (t) => [t.counterparty, t.txHash, t.symbol],
       );
       return route.fulfill({ json });
+    }
+    if (what === "notifications") {
+      if (route.request().method() === "PUT")
+        notifications.email = route.request().postDataJSON().email;
+      return route.fulfill({ json: notifications });
     }
     if (what === "balances") {
       return route.fulfill({

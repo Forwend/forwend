@@ -15,7 +15,7 @@ import (
 const (
 	Paid    = "invoice.paid"
 	Settled = "invoice.settled"
-	Held    = "invoice.held" // money held for the payer: an expired partial payment, a late deposit, one after cancel or on another option
+	Held    = "invoice.held" // money held for the payer: an excess, an expired partial payment, a late deposit, one after cancel or on another option
 )
 
 // Payload names the option row the event happened on (its token and network) and, for held money, the amount.

@@ -164,15 +164,18 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		invoiceID, next, refund); err != nil {
 		return fmt.Errorf("update invoice %s status: %w", invoiceID, err)
 	}
+	// Paid before held: the owner reads that it was paid, then that the extra is the payer's.
+	if next == Paid && current != Paid {
+		if err := outbox.Queue(ctx, tx, outbox.Paid, invoiceID, nil); err != nil {
+			return err
+		}
+	}
 	if newlyHeld.Sign() > 0 {
 		if err := outbox.Queue(ctx, tx, outbox.Held, invoiceID, newlyHeld); err != nil {
 			return err
 		}
 	}
 	if next == Paid && current != Paid {
-		if err := outbox.Queue(ctx, tx, outbox.Paid, invoiceID, nil); err != nil {
-			return err
-		}
 		// The signer settles it; one intent per invoice (R-22).
 		if _, err := tx.Exec(ctx, `WITH i AS (INSERT INTO settlement_intents (invoice_id) VALUES ($1) ON CONFLICT DO NOTHING)
 			UPDATE invoices SET settlement_status = 'pending' WHERE id = $1`, invoiceID); err != nil {

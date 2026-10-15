@@ -61,5 +61,29 @@ func (s *Service) SignUp(ctx context.Context, privyUserID string) (profiles []Pr
 	if repaired {
 		profiles, err = s.List(ctx, privyUserID)
 	}
+	s.storeLoginEmail(repairCtx, privyUserID)
 	return profiles, created, err
+}
+
+// storeLoginEmail reads the user's verified login email from Privy once and keeps it for their notifications (R-80):
+// never an address a request names, so nobody can point them at another inbox. A failure is retried on the next load;
+// an account without one keeps ” and is not read again.
+func (s *Service) storeLoginEmail(ctx context.Context, privyUserID string) {
+	var unread bool
+	if err := s.pool.QueryRow(ctx, "SELECT login_email IS NULL FROM users WHERE privy_user_id = $1",
+		privyUserID).Scan(&unread); err != nil || !unread {
+		return
+	}
+	address, err := s.wallets.LoginEmail(ctx, privyUserID)
+	if err != nil {
+		slog.Warn("read login email", "err", err)
+		return
+	}
+	if len(address) > 254 || (address != "" && len(address) < 3) {
+		address = ""
+	}
+	if _, err := s.pool.Exec(ctx, "UPDATE users SET login_email = $2 WHERE privy_user_id = $1 AND login_email IS NULL",
+		privyUserID, address); err != nil {
+		slog.Warn("store login email", "err", err)
+	}
 }

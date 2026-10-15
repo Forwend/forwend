@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"testing"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -252,5 +254,47 @@ func TestCanceledInvoiceHoldsEveryDeposit(t *testing.T) {
 	if err := s.pool.QueryRow(context.Background(), "SELECT count(*) FROM settlement_intents WHERE invoice_id = $1",
 		id).Scan(&settles); err != nil || settles != 0 {
 		t.Fatalf("%d settlement intents (%v), want none", settles, err)
+	}
+}
+
+// R-80: the owner hears of each change once, from the transaction that made it: paid when it is paid (not again on
+// the next round), and money held for the payer with the amount newly held.
+func TestOutboxEventsFollowTheLedger(t *testing.T) {
+	s := newSim(t)
+	events := func(id string) []string {
+		t.Helper()
+		rows, err := s.pool.Query(context.Background(), `SELECT kind || ' ' || coalesce(payload->>'amount', '') FROM outbox_events
+			WHERE invoice_id = $1 ORDER BY id`, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	paid, receive := s.invoice()
+	s.transfer(paid, receive, 5000000, simExpires-10, "confirmed")
+	s.answer[receive] = big.NewInt(5000000)
+	s.process(paid)
+	s.process(paid)
+	// A late deposit after it was paid is held, and said once.
+	s.transfer(paid, receive, 700000, simExpires+10, "confirmed")
+	s.answer[receive] = big.NewInt(5700000)
+	s.process(paid)
+	if got := strings.Join(events(paid), ","); got != "invoice.paid ,invoice.held 700000" {
+		t.Fatalf("paid invoice events %q", got)
+	}
+
+	partial, receive := s.invoice()
+	s.transfer(partial, receive, 2000000, simExpires-10, "confirmed")
+	s.answer[receive] = big.NewInt(2000000)
+	s.process(partial)
+	s.finalizedAt(simExpires + 1)
+	s.process(partial)
+	s.process(partial)
+	if got := strings.Join(events(partial), ","); got != "invoice.held 2000000" {
+		t.Fatalf("expired partial events %q", got)
 	}
 }

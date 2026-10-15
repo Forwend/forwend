@@ -4,9 +4,11 @@ import {
   billingDetailsSchema,
   createProfileBodySchema,
   meSchema,
+  notificationsSchema,
   profileSchema,
 } from "@/features/profiles/schemas/profiles";
 import type { BillingDetails, BillingDetailsBody } from "@/features/profiles/types/billing-details";
+import type { Notifications } from "@/features/profiles/types/notifications";
 import type { Me, Profile, ProfileKind } from "@/features/profiles/types/profile";
 import { apiSlice } from "@/shared/api/api-slice";
 
@@ -14,6 +16,8 @@ const NOT_FOUND = 404;
 
 const billingDetailsUrl = (profileId: string) =>
   `/v1/profiles/${encodeURIComponent(profileId)}/billing-details`;
+const notificationsUrl = (profileId: string) =>
+  `/v1/profiles/${encodeURIComponent(profileId)}/notifications`;
 
 export const profilesApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
@@ -75,6 +79,27 @@ export const profilesApi = apiSlice.injectEndpoints({
         }
       },
     }),
+    /** The profile's owner email (R-80): on or off, and the login email it goes to. */
+    getNotifications: build.query<Notifications, string>({
+      query: (profileId) => notificationsUrl(profileId),
+      responseSchema: notificationsSchema,
+    }),
+    saveNotifications: build.mutation<Notifications, { profileId: string; email: boolean }>({
+      query: ({ profileId, email }) => ({
+        url: notificationsUrl(profileId),
+        method: "PUT",
+        body: { email },
+      }),
+      responseSchema: notificationsSchema,
+      async onQueryStarted({ profileId }, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(profilesApi.util.upsertQueryData("getNotifications", profileId, data));
+        } catch {
+          // The page shows the error.
+        }
+      },
+    }),
   }),
 });
 
@@ -83,4 +108,6 @@ export const {
   useCreateProfileMutation,
   useGetBillingDetailsQuery,
   useSaveBillingDetailsMutation,
+  useGetNotificationsQuery,
+  useSaveNotificationsMutation,
 } = profilesApi;
