@@ -1,6 +1,5 @@
-import { PAYMENT_STATUS } from "@forwend/ui-web";
 import { describe, expect, it } from "vitest";
-import { transactionStatus, transactionsCsv } from "@/features/transactions/lib/transactions";
+import { transactionsCsv } from "@/features/transactions/lib/transactions";
 import type { Transaction } from "@/features/transactions/types/transactions";
 
 const base: Transaction = {
@@ -19,12 +18,6 @@ const base: Transaction = {
 };
 
 describe("transactions", () => {
-  it("shows a transfer as confirming until its block is final, also for unknown statuses", () => {
-    expect(transactionStatus(base)).toBe(PAYMENT_STATUS.confirmed);
-    expect(transactionStatus({ ...base, status: "detected" })).toBe(PAYMENT_STATUS.confirming);
-    expect(transactionStatus({ ...base, status: "new_value" })).toBe(PAYMENT_STATUS.confirming);
-  });
-
   it("exports exact amounts without separators, and never a cell a spreadsheet would run", () => {
     const [header, row] = transactionsCsv([{ ...base, symbol: '=HYPERLINK("x")' }]).split("\r\n");
     expect(header).toBe(

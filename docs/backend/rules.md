@@ -109,7 +109,7 @@ Other packages under `internal/`: `auth`, `address`, `finality`, `search`, `docu
 ## Tests
 
 - Real Postgres (`databasetest.New(t)`) and real Anvil with the real contracts. No SQL or chain mocks (D-17).
-- One test per acceptance line; table tests for rules.
+- Tests follow [Which tests to keep](../workflow.md#which-tests-to-keep); table tests for rules.
 - `go test -race` runs in the backend check.
 
 ## Errors and shutdown

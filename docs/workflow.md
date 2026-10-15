@@ -22,7 +22,8 @@ Runner regression tests live in `tests/test_harness.py`. No installed skill is n
    `show ID` reads archived records, `list --all` lists them, and `reopen ID --reason "..."` restores work to the queue.
 4. Before creating or moving files, read the owning structure rules: [web/UI](web/structure.md), [backend](backend/rules.md).
    Identify the owner, filename and allowed dependencies; search for existing code before adding another shared helper.
-   Reproduce bugs first. Make the smallest fix and run its direct checks. Add tests for behavior, not formatting or copied prose.
+   Reproduce bugs first. Make the smallest fix and run its direct checks. Keep a test only when the rule in
+   [Which tests to keep](#which-tests-to-keep) says so; prove a visual change with screenshots in `docs/runs/`.
 5. `verify ID --proof "1=CHECK: evidence" ...` runs task and required checks. Each acceptance line needs a named check.
 6. Review is required for every task that changes more than docs (`done` refuses it otherwise; outside a git
    repository the harness can't tell, so only `--review` tasks need it) and for tasks added with `--review`. A fresh reviewer reads `show ID` and the diff, then runs `review ID --pass|--fail --summary "findings"`.
@@ -64,3 +65,21 @@ manual until a task explicitly adds import-boundary checks; do not claim that pa
 - `edit` changes task scope; `reopen` resumes completed work; `drop` removes obsolete work with a reason.
   Update affected PROJECT rows and task refs together. `note` records only useful handoff facts.
 - Research only when needed, using primary sources. Record decisions in PROJECT; cite external facts where they are used.
+
+## Which tests to keep
+
+Write whatever tests help while building. Commit and keep a test only when it guards one of these:
+
+- Money: amounts, base units, rounding, the ledger, settlement, held money, what counts as paid.
+- Auth and security: who may read or change what, redirects, escaping, anything a payer, a link or the chain controls.
+- Data integrity: migrations, constraints, idempotency, events sent exactly once.
+- API contracts and parsing at trust boundaries: request and response schemas, addresses, CSV export.
+- A bug a user hit: one regression test, named after what broke.
+
+Don't keep tests that only restate copy text, constants, layout or simple rendering, or that confirm a one-off fix
+an e2e test or a screenshot already covers. When a kept test breaks because wording or layout changed, fix the test
+to check the behavior, not the words.
+
+Checks: `unit` runs every package's tests (backend and contracts included), so a task doesn't also select `backend`
+or `contracts`; that would run them twice. Select `backend-e2e`, a named e2e check or `contracts` only when the
+change needs them beyond `unit`.

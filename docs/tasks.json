@@ -2597,7 +2597,7 @@
         "Unit test files and cases that fall outside the rule are removed; the removal list with a one-line reason each is in the PR; every remaining check passes and the unit check runs faster (time before and after)"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "backend",
@@ -2608,7 +2608,78 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T13:46:36Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 69.4,
+            "log": "docs/runs/F204-20261015T134636Z-unit.log"
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 69.6,
+            "log": "docs/runs/F204-20261015T134636Z-backend.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 202.6,
+            "log": "docs/runs/F204-20261015T134636Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F204-20261015T134636Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F204-20261015T134636Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F204-20261015T134636Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F204-20261015T134636Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.7,
+            "log": "docs/runs/F204-20261015T134636Z-build.log"
+          }
+        ],
+        "taskHash": "896d3978ccaa0fe0",
+        "filesHash": "35462f8a5402eacf",
+        "proof": {
+          "1": "unit: docs/workflow.md 'Which tests to keep' (money, auth/security, data integrity, API contracts/trust-boundary parsing, user-hit regressions; not copy, constants, layout, simple rendering or one-off fixes; visual changes proven by screenshots); web and backend rules link to it; unit already runs backend and contracts, so tasks don't select them twice",
+          "2": "unit: removed 21 files (activity amounts and toasts, invoice amount/table, option picker, pay held copy, billing form, chosen profile, profiles api, waitlist, app nav, command menu, list filters, theme script, ui button/loaders/toast/calendar/theme switch/use-copy/use-theme: copy, rendering, UI behavior or one-off fixes covered by e2e) and 40 cases from 10 files (copy lines, INV numbering, PDF paths, checklist steps, duration format, token table, status labels, step visuals, date math helpers, rate-limit helper math); kept money, ledger display, address check, CSV injection, open redirect, cross-user cache, schema and idempotency tests. Web 128 to 70 tests, ui 40 to 14, tokens 55 to 52; JS unit time 2.9 s to 1.8 s; the whole unit check 69 s to 67 s (backend Go tests dominate)"
+        }
+      },
+      "branch": "test/f204-tests-guard-what-matters-a-written-rule",
+      "baseCommit": "3994d0520103d0ec06e45af2882bc3791b64fdd8",
+      "failedVerifies": 0
     },
     {
       "id": "F205",

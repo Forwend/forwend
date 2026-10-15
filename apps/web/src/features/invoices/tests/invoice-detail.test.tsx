@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { ToastProvider } from "@forwend/ui-web";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InvoiceDetail } from "@/features/invoices/components/invoice-detail";
@@ -103,18 +103,6 @@ afterEach(cleanup);
 
 describe("owner's invoice page", () => {
   // jsdom has no clipboard, like a browser that refuses it.
-  it("leaves the whole pay link on screen to select when the clipboard refuses", async () => {
-    serve(OPEN);
-    show();
-    await settle();
-    fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
-    await settle();
-    expect(screen.getByRole("button", { name: /Copy failed/ })).toBeTruthy();
-
-    const full = `${window.location.origin}/pay/${ID}`;
-    const visible = document.body.innerText ?? document.body.textContent ?? "";
-    expect(visible).toContain(full);
-  });
 
   it("does not offer the pay link, or say it waits for payment, once the checkout has closed", async () => {
     // As the API answers once nothing can complete it (R-77).
@@ -125,27 +113,5 @@ describe("owner's invoice page", () => {
 
     expect(screen.queryByRole("button", { name: "Copy link" })).toBeNull();
     expect(screen.queryByText("Waiting for payment")).toBeNull();
-  });
-
-  it("says what Check status found in the token, also while the balances are not loaded", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (request: Request) =>
-        request.method === "POST"
-          ? Response.json({
-              onChain: "1250000000",
-              recorded: "0",
-              rescanning: true,
-              nextCheckAt: new Date(Date.now() + 300_000).toISOString(),
-              unreadable: [],
-            })
-          : Response.json(OPEN),
-      ),
-    );
-    show(null);
-    await settle();
-    fireEvent.click(screen.getByRole("button", { name: "Check status" }));
-    await settle();
-    expect(screen.getByText(/Recording it now/).textContent).toContain("1,250.00 USDC");
   });
 });

@@ -1,19 +1,10 @@
 import { PAYMENT_STATUS } from "@forwend/ui-web";
 import { describe, expect, it } from "vitest";
-import {
-  AMOUNT_ERRORS,
-  INVOICE_PDFS,
-  SETTLEMENT_WAITS,
-} from "@/features/invoices/constants/invoices";
-import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
+import { AMOUNT_ERRORS } from "@/features/invoices/constants/invoices";
 import {
   confirmingProgress,
-  customExpiresIn,
   decimalText,
-  invalidField,
   invoiceException,
-  invoiceNumber,
-  invoicePdfUrl,
   invoiceProgress,
   invoiceStatus,
   isReturnLink,
@@ -40,23 +31,6 @@ describe("parseTokenAmount", () => {
     for (const junk of ["", ".", "-1", "1,5", "1.2.3", "1e6", "abc", "12 50", "１"]) {
       expect(parseTokenAmount(junk, 6)).toBe(AMOUNT_ERRORS.format);
     }
-  });
-});
-
-describe("invoice display", () => {
-  it("numbers invoices INV- with at least 4 digits", () => {
-    expect(invoiceNumber(1)).toBe("INV-0001");
-    expect(invoiceNumber(12345)).toBe("INV-12345");
-  });
-
-  it("finds the field a 422 names, and none for other reasons", () => {
-    expect(
-      invalidField(
-        "invalid invoice request: client.email must be an email address like name@example.com",
-      ),
-    ).toBe("client.email");
-    expect(invalidField("invalid invoice request: amount must be a decimal string")).toBe("amount");
-    expect(invalidField("invalid invoice request: token is not enabled on this chain")).toBeNull();
   });
 });
 
@@ -179,76 +153,12 @@ describe("confirmingProgress", () => {
   });
 });
 
-describe("invoicePdfUrl", () => {
-  it("links each PDF through the same-origin API path", () => {
-    expect(invoicePdfUrl(open.invoiceId, INVOICE_PDFS.invoice)).toBe(
-      `/api/v1/invoices/${open.invoiceId}/invoice.pdf`,
-    );
-    expect(invoicePdfUrl(open.invoiceId, INVOICE_PDFS.receipt)).toBe(
-      `/api/v1/invoices/${open.invoiceId}/receipt.pdf`,
-    );
-  });
-});
-
-// R-54: one line per reason a paid invoice's money still waits.
-describe("settlement wait line", () => {
-  const line = (kind: keyof typeof SETTLEMENT_WAITS, seconds = 0, at = "") =>
-    INVOICE_COPY.settling[SETTLEMENT_WAITS[kind]]("Base Sepolia", seconds, at);
-  it("names the chain and the time left while the settle finalizes", () => {
-    expect(line("finalizing", 720)).toBe(
-      "Sending to your wallet · waiting for Base Sepolia to finalize, about 12 min left",
-    );
-    expect(line("finalizing", 0)).toBe(
-      "Sending to your wallet · waiting for Base Sepolia to finalize, under a minute left",
-    );
-  });
-  it("says when the signer tries again", () => {
-    expect(line("retrying", 0, "14:05")).toBe("Sending to your wallet · trying again at 14:05");
-    expect(line("dailyLimit", 0, "14:05")).toMatch(/used up\. Next try at 14:05$/);
-  });
-  it("says signing and refused without times", () => {
-    expect(line("signing")).toBe("Sending to your wallet");
-    expect(line("refused")).toMatch(/^Stopped for a manual check/);
-  });
-});
-
-// R-55: what Check status says for each answer.
-describe("check status message", () => {
-  const money = (units: bigint) => `${units} units`;
-  const say = (onChain: string, recorded: string, rescanning: boolean) =>
-    INVOICE_COPY.recheck(
-      { onChain, recorded, rescanning, nextCheckAt: "2026-10-13T12:00:30Z", unreadable: [] },
-      "Base Sepolia",
-      money,
-    );
-  it("names what is on chain but not recorded while the worker looks again", () => {
-    expect(say("5000000", "1000000", true)).toBe("Found 4000000 units. Recording it now.");
-    expect(say("0", "0", true)).toBe("Looking on Base Sepolia again.");
-    expect(say("5000000", "0", false)).toBe("5000000 units has no recorded transfer yet.");
-  });
-  it("says nothing arrived, or that everything is recorded", () => {
-    expect(say("0", "0", false)).toBe("Nothing on Base Sepolia yet.");
-    expect(say("5000000", "5000000", false)).toBe("Up to date");
-  });
-});
-
 describe("form values (R-58)", () => {
   it("writes units as the plain decimal the API reads as amountUsd", () => {
     expect(decimalText(12_500_000n, 6)).toBe("12.5");
     expect(decimalText(12_000_000n, 6)).toBe("12");
     expect(decimalText(1n, 6)).toBe("0.000001");
     expect(decimalText(1250n, 2)).toBe("12.5");
-  });
-
-  it("turns a custom date and time into seconds from now within 15 minutes to 365 days", () => {
-    const now = Date.parse("2026-10-13T12:00:00");
-    expect(customExpiresIn("2026-10-14", "12:00", now)).toBe(86_400);
-    expect(customExpiresIn("2026-10-13", "12:15", now)).toBe(900);
-    expect(customExpiresIn("2026-10-13", "12:14", now)).toBeNull();
-    expect(customExpiresIn("2027-10-13", "12:00", now)).toBe(31_536_000);
-    expect(customExpiresIn("2027-10-13", "12:01", now)).toBeNull();
-    expect(customExpiresIn("", "12:00", now)).toBeNull();
-    expect(customExpiresIn("2026-10-14", "", now)).toBeNull();
   });
 
   it("takes only https return links with a host and no user or password", () => {
