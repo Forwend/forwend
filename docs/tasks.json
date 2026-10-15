@@ -2809,7 +2809,7 @@
         "Preserve money, authentication and API behavior; existing unit, build, accessibility and browser flows pass."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -2911,11 +2911,18 @@
           "summary": "PASS (re-review of the files changed after the previous pass). New owner request: invoice-detail.tsx:324-328 adds a Canceled on row to Details after Created, only when canceledAt is set; the header no longer has a canceled line. Row (:438-464) takes a React 19 ref prop (react 19.3.0) and gets tabIndex -1 only when given one; the effect at :161-167 focuses that row once the cancel lands. Measured on the dev server with the e2e mocks: after a cancel by click and by keyboard at 1440px and by touch at 390px, focus lands on the row, which exposes \"term: Canceled on, definition: <time>\"; 1440 needs no scroll, 390 scrolls 12px so the row clears the sticky header and the tab bar; the header no longer contains Canceled and More actions is gone. A canceled invoice at 320, 390, 768 and 1440px has no sideways scroll and Details rows Checkout closes, Created, Canceled on, Note, Documents. invoices-copy.ts:280 (canceledOn is now the term) has no other users. The cancel e2e (navigation.spec.ts:747-753) keeps its intent: it checks the Details row text, that the header lacks Canceled, focus on the row and that More actions is gone. Docs match: DESIGN.md:248-251 and PROJECT.md R-60 (line 105) put the cancel time in Details. Earlier notes: list-toolbar.tsx:19 max-sm:justify-end puts a wrapped status menu at the row's end (320px with Settled, Expired or Canceled), 360-430px stay on one row at the end for every status, and Transactions measures the same as before; code-input.tsx:58-64 gives disabled boxes only border-line and text-subtle; stale comments are fixed (invoice-detail.tsx:148-149, :264, invoices-copy.ts:239; the day-row comment is gone from navigation.spec.ts); DESIGN.md:285-287 names the controls that grow to 44px themselves. pnpm lint (573 files), web tsc, ui-web (14), design-tokens (52) and web (74) tests and docs-check pass; the verify run at 22:30:02Z (public e2e 42, Privy 37 including the cancel test) is newer than the last source change (22:28:44Z). Non-blocking: (a) invoice-detail.tsx:320-322: a canceled invoice whose expiry is still ahead reads \"Checkout closes <future time>\" right above \"Canceled on\"; now that the header says nothing about the cancel, showing it as closed once canceled would avoid reading as still open (the row's wording is older than this change). (b) Left as decided: select-menu.tsx:50 pr-3 pl-3.5 over px-4 (Tailwind writes the longhands after the shorthand), and networks.tsx:36-37 has no pause control for touch and keyboard users (owner's choice; reduced motion stops it).",
           "at": "2026-10-15T22:42:59Z",
           "filesHash": "024e78d0270a8e39"
-        }
+        },
+        "commit": "2bd1064",
+        "doneAt": "2026-10-15T22:43:34Z"
       },
       "branch": "feat/f206-refine-the-app-wide-fintech-visual-syste",
       "baseCommit": "f402071ac14581b516584bb28f01664b43b1d024",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f206-refine-the-app-wide-fintech-visual-syste",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
