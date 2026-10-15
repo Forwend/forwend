@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -219,7 +220,8 @@ func newStack(t *testing.T) *stack {
 		t.Fatal(err)
 	}
 	return &stack{anvil: anvil, limited: limited, privy: privy, conn: conn, bin: bin, api: api, token: token,
-		profile: profile, loop: append(append(common, rpcs...), "POLL_INTERVAL=200ms")}
+		// Clipped: an append for one binary must never write into another's environment.
+		profile: profile, loop: slices.Clip(append(append(common, rpcs...), "POLL_INTERVAL=200ms"))}
 }
 
 // waitScanned waits for the worker's first scan: invoices are made only once a chain is watched.

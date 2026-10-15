@@ -113,7 +113,9 @@ func TestExceptionsCancelAndEmail(t *testing.T) {
 	st.anvil.Transfer(st.token, bReceive, "1000000")
 	reach(b, ledger.PartiallyPaid)
 
-	// A worker restart in the middle: a deploy. Nothing may be sent twice or lost.
+	// A worker restart in the middle: a deploy. A's emails and D's go out before it, B's and C's after; nothing may be
+	// sent twice or lost.
+	waitFor(t, "A's and D's emails before the restart", func() bool { st.anvil.Mine(1); return len(mail.mails()) >= 4 })
 	stopWorker()
 	start(t, st.bin, "worker", worker)
 
@@ -182,13 +184,20 @@ func TestExceptionsCancelAndEmail(t *testing.T) {
 	}
 	time.Sleep(2 * time.Second) // a few more worker rounds: anything sent twice would show now
 	got := mail.mails()
-	keys := map[string]bool{}
+	seen, idempotency := map[string]bool{}, map[string]bool{}
+	ids := map[string]string{"INV-0001": a, "INV-0002": b, "INV-0003": c, "INV-0004": d}
 	for _, m := range got {
 		k := m.to + "|" + m.subject
-		if _, ok := want[k]; !ok || keys[k] {
+		if _, ok := want[k]; !ok || seen[k] {
 			t.Fatalf("unexpected or repeated email %q in %v", k, got)
 		}
-		keys[k] = true
+		seen[k] = true
+		// One Idempotency-Key per email, naming its invoice, so Resend would drop a repeat of it.
+		number := strings.Fields(strings.TrimPrefix(m.subject, "Your receipt for "))[0]
+		if idempotency[m.key] || !strings.HasPrefix(m.key, "forwend-"+ids[strings.TrimSuffix(number, ":")]+"-") {
+			t.Fatalf("email %q: key %q repeated or not its invoice's", k, m.key)
+		}
+		idempotency[m.key] = true
 	}
 	if len(got) != len(want) {
 		t.Fatalf("%d emails, want %d: %v", len(got), len(want), got)
