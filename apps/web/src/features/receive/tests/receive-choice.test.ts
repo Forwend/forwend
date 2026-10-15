@@ -3,8 +3,7 @@ import { addressFor } from "@/features/receive/lib/receive-choice";
 
 const BASE = { symbol: "USDC", network: "84532", family: "evm" };
 const ARBITRUM = { symbol: "USDC", network: "421614", family: "evm" };
-const _TEMPO = { symbol: "OUSD", network: "42431", family: "evm" };
-// A family this app does not have yet: the choice and the address lookup take it as they are.
+// A family this app does not have yet: the address lookup takes it as it is.
 const SOLANA = { symbol: "USDC", network: "solana-devnet", family: "solana" };
 const ADDRESSES = { evm: "0xabc", solana: "So1ana" };
 

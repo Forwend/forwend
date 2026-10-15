@@ -2607,73 +2607,74 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-15 review fail by independent reviewer: FAIL on cef292a. Only tests and docs changed; lint, typecheck (--force), web 70, ui 14, tokens 52 tests pass. Two removals drop money protection that the new rule says to keep, with no other unit or e2e coverage: (1) apps/web/src/features/activity/tests/activity-amounts.test.tsx 'Activity names held money' (F196 fix: a held deposit must not read as Payment in Activity; 'Held for the payer' appears in no e2e for Activity) and the exact-amount cases (F174 audit bug: Activity row 1.005 and toast 0.0015 USDC, not 0.00; components must pass exactDigits; no e2e uses such amounts). Restore the file. (2) apps/web/src/features/pay/tests/pay.test.ts 'payToken > names OUSD on Tempo and refuses a token this build does not know': the public pay page must refuse a chain+contract it does not know (unknownToken, no address); nothing else tests it. Other findings: onboarding.test.ts keeps dead _nothing, _done and a type-only checklistSteps import, and receive-choice.test.ts keeps dead _OPTIONS; the underscore only silences lint, delete them. workflow.md last sentence says to select contracts 'beyond unit', but the contracts check runs the same forge fmt --check && forge test as unit; drop contracts from that list. Optional, low risk: profiles-api.test.ts (Bearer header; only the local-only Privy e2e covers it, fail-closed 401), invoices.test.ts recheck case 'Found 4000000 units' (onChain minus recorded; e2e only tests recorded=0). Rest of the removals fit the rule: customExpiresIn and 422 field mapping are UX (backend enforces 900..31536000 and validates), apiSearch cap is UX (API answers 422), rate-limit helpers are covered through withRateLimit, iso-date toTime validation, afterOnboarding redirect, CSV, chains and token-amount stay."
+        "2026-10-15 review fail by independent reviewer: FAIL on cef292a. Only tests and docs changed; lint, typecheck (--force), web 70, ui 14, tokens 52 tests pass. Two removals drop money protection that the new rule says to keep, with no other unit or e2e coverage: (1) apps/web/src/features/activity/tests/activity-amounts.test.tsx 'Activity names held money' (F196 fix: a held deposit must not read as Payment in Activity; 'Held for the payer' appears in no e2e for Activity) and the exact-amount cases (F174 audit bug: Activity row 1.005 and toast 0.0015 USDC, not 0.00; components must pass exactDigits; no e2e uses such amounts). Restore the file. (2) apps/web/src/features/pay/tests/pay.test.ts 'payToken > names OUSD on Tempo and refuses a token this build does not know': the public pay page must refuse a chain+contract it does not know (unknownToken, no address); nothing else tests it. Other findings: onboarding.test.ts keeps dead _nothing, _done and a type-only checklistSteps import, and receive-choice.test.ts keeps dead _OPTIONS; the underscore only silences lint, delete them. workflow.md last sentence says to select contracts 'beyond unit', but the contracts check runs the same forge fmt --check && forge test as unit; drop contracts from that list. Optional, low risk: profiles-api.test.ts (Bearer header; only the local-only Privy e2e covers it, fail-closed 401), invoices.test.ts recheck case 'Found 4000000 units' (onChain minus recorded; e2e only tests recorded=0). Rest of the removals fit the rule: customExpiresIn and 422 field mapping are UX (backend enforces 900..31536000 and validates), apiSearch cap is UX (API answers 422), rate-limit helpers are covered through withRateLimit, iso-date toTime validation, afterOnboarding redirect, CSV, chains and token-amount stay.",
+        "2026-10-15 review pass by independent reviewer: PASS on 23b940e. activity-amounts.test.tsx and profiles-api.test.ts are restored byte-identical to 3994d05; pay.test.ts payToken case is back (OUSD on Tempo, unknown chain+contract refused). Dead _nothing, _done, _OPTIONS and the unused import are gone; workflow.md no longer names contracts as selectable beyond unit. No file outside tests and docs differs from 3994d05. lint, typecheck --force and web tests (20 files, 75 tests) pass; tree clean. Nit, not blocking: receive-choice.test.ts now keeps a dead _TEMPO (renamed with an underscore to pass lint, the same pattern removed elsewhere); delete it, and the SOLANA comment still mentions 'the choice' whose test is gone. Leaving out the recheck subtraction case is acceptable."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-15T13:57:06Z",
+        "at": "2026-10-15T14:04:28Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 68.8,
-            "log": "docs/runs/F204-20261015T135706Z-unit.log"
+            "seconds": 75.8,
+            "log": "docs/runs/F204-20261015T140428Z-unit.log"
           },
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 73.9,
-            "log": "docs/runs/F204-20261015T135706Z-backend.log"
+            "seconds": 70.6,
+            "log": "docs/runs/F204-20261015T140428Z-backend.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 214.4,
-            "log": "docs/runs/F204-20261015T135706Z-e2e.log"
+            "seconds": 208.6,
+            "log": "docs/runs/F204-20261015T140428Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 2.8,
-            "log": "docs/runs/F204-20261015T135706Z-harness.log"
+            "log": "docs/runs/F204-20261015T140428Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F204-20261015T135706Z-docs-check.log"
+            "log": "docs/runs/F204-20261015T140428Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F204-20261015T135706Z-lint.log"
+            "log": "docs/runs/F204-20261015T140428Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.1,
-            "log": "docs/runs/F204-20261015T135706Z-typecheck.log"
+            "seconds": 1.2,
+            "log": "docs/runs/F204-20261015T140428Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.6,
-            "log": "docs/runs/F204-20261015T135706Z-build.log"
+            "seconds": 5.1,
+            "log": "docs/runs/F204-20261015T140428Z-build.log"
           }
         ],
         "taskHash": "896d3978ccaa0fe0",
-        "filesHash": "8bd93abefd3278e8",
+        "filesHash": "4069356aaa81abd4",
         "proof": {
           "1": "unit: docs/workflow.md 'Which tests to keep' (money, auth/security, data integrity, API contracts/trust-boundary parsing, user-hit regressions; not copy, constants, layout, simple rendering or one-off fixes; visual changes proven by screenshots); web and backend rules link to it; unit already runs backend and contracts, so tasks don't select them twice",
           "2": "unit: removed 19 files (activity toasts, invoice amount/table, option picker, pay held copy, billing form, chosen profile, waitlist, app nav, command menu, list filters, theme script, ui button/loaders/toast/calendar/theme switch/use-copy/use-theme: copy, rendering, UI behavior or one-off fixes covered by e2e) and 39 cases from 10 files (copy lines, INV numbering, PDF paths, checklist steps, duration format, status labels, step visuals, date math helpers, rate-limit helper math); kept money, Activity held label and exact amounts (F196, F174 regressions), unknown-token refusal, auth header, address check, CSV injection, open redirect, cross-user cache, schema and idempotency tests. Web 128 to 75 tests, ui 40 to 14, tokens 55 to 52; the whole unit check about 69 s to 67 s (backend Go tests dominate)"
