@@ -2063,76 +2063,78 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-15 review pass by independent reviewer: Pass. Ran: go test ./internal/... all ok; go test -tags e2e ./e2e/ ok, TestExceptionsCancelAndEmail still sees exactly 6 emails with unchanged invoice keys forwend-<0x invoice>-<event>-<hash> (e2e seeds its user directly, welcome=false). Once per account: UPDATE ... WHERE login_email IS NULL plus unique index; scratch test with 4 parallel POST /v1/me per new user x15 (31 Privy reads) gave exactly 15 welcome rows, 15 users. Existing accounts: column default false, ON CONFLICT DO NOTHING keeps it. Address only from Privy via login_email, set once. Subject check rejects welcome without user and invoice rows with user_id; deleting a user cascades its welcome row (profiles FK still blocks deleting users with profiles, unchanged). Bell query inner-joins invoices so welcome rows never show (events 200, empty); payer_email.go filters by invoice_id+kind. deliverOne refactor: invoice key, skip rule, receipt routing unchanged; only error text moved from 'read email event N invoice:' to 'read email event N: invoice:' (cosmetic). Mutations in scratch copy: dropping the welcome flag, the non-empty check, the welcome=true insert, applying the profile setting, changing the welcome key scope, changing invoice key scope, sending to another column were all caught. Survivors (not defects): removing ON CONFLICT (UPDATE guard already holds) and dropping the address hash from the welcome key (login_email never changes). Copy nit: 'Create an invoice' while a new Personal profile's UI says 'Request money'; otherwise matches PROJECT.md (stablecoins to your wallet; paid/settled/held emails; per-profile off)."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-15T11:12:04Z",
+        "at": "2026-10-15T11:24:49Z",
         "checks": [
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 67.0,
-            "log": "docs/runs/F199-20261015T111204Z-backend.log"
+            "seconds": 66.3,
+            "log": "docs/runs/F199-20261015T112449Z-backend.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 219.4,
-            "log": "docs/runs/F199-20261015T111204Z-e2e.log"
+            "seconds": 202.1,
+            "log": "docs/runs/F199-20261015T112449Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 2.2,
-            "log": "docs/runs/F199-20261015T111204Z-harness.log"
+            "log": "docs/runs/F199-20261015T112449Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F199-20261015T111204Z-docs-check.log"
+            "log": "docs/runs/F199-20261015T112449Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.5,
-            "log": "docs/runs/F199-20261015T111204Z-lint.log"
+            "seconds": 0.4,
+            "log": "docs/runs/F199-20261015T112449Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F199-20261015T111204Z-typecheck.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F199-20261015T112449Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 97.7,
-            "log": "docs/runs/F199-20261015T111204Z-unit.log"
+            "seconds": 79.1,
+            "log": "docs/runs/F199-20261015T112449Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.7,
-            "log": "docs/runs/F199-20261015T111204Z-build.log"
+            "seconds": 3.1,
+            "log": "docs/runs/F199-20261015T112449Z-build.log"
           }
         ],
         "taskHash": "77f701c7cb9a05bc",
-        "filesHash": "bafa46e7936df23f",
+        "filesHash": "c837496deb50fb37",
         "proof": {
           "1": "backend: TestWelcomeEmailOncePerNewAccount: a new account queues one welcome across three loads, also when the first Privy read failed (FailUserReads); TestDeliverSendsTheWelcome sends it once to the login email with profile email off, key forwend-user-<id>-<event>-; dropping the welcome or address condition, the new-user flag, or ignoring the setting fails them",
           "2": "backend: an account with no login email (erin) and one made before this change (olga, users.welcome false) get no welcome; the profile email setting does not stop it (TestDeliverSendsTheWelcome)",
-          "3": "backend: the email says what Forwend does and links web+/app (TestDeliverSendsTheWelcome); tests use the fake sender"
+          "3": "backend: the email says what Forwend does (invoices and payment requests, as the Personal profile names them) and links web+/app (TestDeliverSendsTheWelcome); tests use the fake sender"
         }
       },
       "branch": "feat/f199-a-new-account-gets-one-welcome-email-at",

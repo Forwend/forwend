@@ -183,8 +183,8 @@ func compose(kind, number, amount, network, link, settings string) email.Message
 
 // welcome is a new account's one welcome email (R-84): what Forwend does and where to start.
 func welcome(app string) email.Message {
-	return email.Message{Subject: "Welcome to Forwend", Text: "Your Forwend account is ready. Create an invoice, " +
-		"share its pay link, and get paid in stablecoins to your wallet.\n\nForwend emails you when an invoice is " +
+	return email.Message{Subject: "Welcome to Forwend", Text: "Your Forwend account is ready. Create an invoice or " +
+		"a payment request, share its pay link, and get paid in stablecoins to your wallet.\n\nForwend emails you when an invoice is " +
 		"paid, when the money reaches your wallet, and when money is held for a payer. You can turn those emails " +
 		"off for each profile.\n\nOpen Forwend: " + app + "\n\nYou get this email once, because you created a " +
 		"Forwend account.\n"}
