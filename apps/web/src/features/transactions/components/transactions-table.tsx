@@ -2,6 +2,7 @@
 
 import {
   Button,
+  buttonClasses,
   EmptyState,
   Money,
   PAYMENT_STATUS,
@@ -36,6 +37,7 @@ import type { Transaction } from "@/features/transactions/types/transactions";
 import { ChainBadge, hasChainBadge } from "@/shared/components/chains/chain-badge";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { NetworkName } from "@/shared/components/chains/network-name";
+import { ListToolbar } from "@/shared/components/list-toolbar";
 import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -44,7 +46,7 @@ import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
 import { addressLink, chainName } from "@/shared/lib/chains";
 
 const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
-// Rows sit under the day they happened on, so a row shows only its time.
+// Phone rows sit under the day they happened on, so a row shows only its time.
 const TIME = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
 const DAY = new Intl.DateTimeFormat(undefined, {
   weekday: "short",
@@ -64,6 +66,19 @@ const dayName = (when: DayGroup<Transaction>["when"]) =>
     : when === RELATIVE_DAYS.yesterday
       ? TRANSACTIONS_COPY.yesterday
       : (when.getFullYear() === new Date().getFullYear() ? DAY : DAY_WITH_YEAR).format(when);
+// The table's Date column: the same day without its weekday, the time beside it.
+const SHORT_DAY = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+const SHORT_DAY_WITH_YEAR = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+const shortDay = (when: DayGroup<Transaction>["when"]) =>
+  when === RELATIVE_DAYS.today || when === RELATIVE_DAYS.yesterday
+    ? dayName(when)
+    : (when.getFullYear() === new Date().getFullYear() ? SHORT_DAY : SHORT_DAY_WITH_YEAR).format(
+        when,
+      );
 
 interface TransactionsTableProps {
   profileId: string;
@@ -122,9 +137,9 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
       className={pageHeading ? "flex flex-col gap-4" : "fw-panel flex flex-col"}
     >
       <div
-        className={`flex flex-wrap items-center justify-between gap-3 ${pageHeading ? "" : "fw-panel-head"}`}
+        className={`flex flex-wrap items-center justify-between gap-3 ${pageHeading ? "lg:contents" : "fw-panel-head"}`}
       >
-        {/* As the page's heading, the header's breadcrumb names it on desktop, so it shows only on phones. */}
+        {/* As the page's heading, the header's breadcrumb names it on desktop, so it shows only below that. */}
         <Heading
           id={`${profileId}-transactions`}
           className={
@@ -135,49 +150,56 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
         >
           {title}
         </Heading>
-        {preview ? (
-          rows.length > 0 ? (
-            <Link
-              href={APP_ROUTES.transactions}
-              className="inline-flex h-9 items-center gap-1 rounded-sm px-2 text-sm text-muted hover:bg-surface-2 hover:text-ink"
-            >
-              {TRANSACTIONS_COPY.viewAll}
-              <ChevronRight aria-hidden className="size-[var(--fw-icon-sm)]" />
-            </Link>
-          ) : null
-        ) : (
-          <div
-            className={`flex flex-wrap items-center gap-2 ${pageHeading ? "w-full lg:w-auto lg:flex-1" : "w-full sm:w-auto"}`}
+        {preview && rows.length > 0 ? (
+          <Link
+            href={APP_ROUTES.transactions}
+            className={`${buttonClasses({ variant: "ghost", size: "sm" })} -mr-2`}
           >
-            <SegmentedControl
-              label={TRANSACTIONS_COPY.filterLabel}
-              value={filters.filter}
-              onValueChange={filters.setFilter}
-              options={Object.values(TRANSACTION_FILTERS).map((value) => ({
-                value,
-                label: TRANSACTIONS_COPY.filters[value],
-              }))}
-            />
+            {TRANSACTIONS_COPY.viewAll}
+            <ChevronRight aria-hidden className="size-[var(--fw-icon-sm)]" />
+          </Link>
+        ) : null}
+      </div>
+      {preview ? null : (
+        <ListToolbar
+          search={
             <SearchField
               label={TRANSACTIONS_COPY.search}
               value={filters.search}
               onValueChange={filters.setSearch}
               placeholder={TRANSACTIONS_COPY.searchPlaceholder}
-              className="flex-1 sm:w-64 sm:flex-none max-sm:order-last max-sm:basis-full"
+              className="flex-1"
             />
+          }
+          filter={
+            <SegmentedControl
+              label={TRANSACTIONS_COPY.filterLabel}
+              value={filters.filter}
+              onValueChange={filters.setFilter}
+              // On phones the direction takes a row of its own: too wide to sit beside the search, then all of it.
+              className="max-sm:min-w-56 max-sm:flex-1"
+              options={Object.values(TRANSACTION_FILTERS).map((value) => ({
+                value,
+                label: TRANSACTIONS_COPY.filters[value],
+              }))}
+            />
+          }
+          actions={
+            // Phones keep only its icon, its touch area widened to 44px like an icon button's; the accessible name says
+            // what it does.
             <Button
               variant="secondary"
-              size="sm"
+              aria-label={TRANSACTIONS_COPY.exportCsv}
               onClick={exportCsv}
               disabled={rows.length === 0}
-              className="ml-auto"
+              className="max-sm:w-10 max-sm:px-0 max-sm:pointer-coarse:before:left-1/2 max-sm:pointer-coarse:before:w-11 max-sm:pointer-coarse:before:-translate-x-1/2"
             >
               <Download aria-hidden className="size-[var(--fw-icon-sm)]" />
-              {TRANSACTIONS_COPY.exportCsv}
+              <span className="max-sm:sr-only">{TRANSACTIONS_COPY.exportCsv}</span>
             </Button>
-          </div>
-        )}
-      </div>
+          }
+        />
+      )}
 
       {list.isError && !data ? (
         <div
@@ -221,18 +243,10 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                   </th>
                 </tr>
               </thead>
-              {days.map((group) => (
-                <tbody key={group.day} className="divide-y divide-line">
-                  <tr data-day className="border-t border-line first:border-t-0">
-                    <th
-                      scope="rowgroup"
-                      colSpan={5}
-                      className="h-10 px-5 pt-3 text-left align-bottom text-xs font-medium text-muted"
-                    >
-                      {dayName(group.when)}
-                    </th>
-                  </tr>
-                  {group.items.map((t) => (
+              {/* One ruled body: the date is a column, so no day breaks the table into bands. */}
+              <tbody className="divide-y divide-line">
+                {days.map((group) =>
+                  group.items.map((t) => (
                     <tr
                       key={transactionKey(t)}
                       className={`transition-colors duration-[var(--fw-duration-fast)] ${TABLE_ROW_CLASSES} hover:bg-[color-mix(in_oklab,var(--fw-surface-2)_50%,transparent)]`}
@@ -250,7 +264,9 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                       </td>
                       <td className="whitespace-nowrap text-muted tabular-nums">
                         <span className="inline-flex items-center gap-1">
-                          <time dateTime={t.at}>{TIME.format(new Date(t.at))}</time>
+                          <time dateTime={t.at}>
+                            {shortDay(group.when)}, {TIME.format(new Date(t.at))}
+                          </time>
                           <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
                         </span>
                       </td>
@@ -261,9 +277,9 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                         <Amount t={t} />
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              ))}
+                  )),
+                )}
+              </tbody>
             </table>
           </div>
           <div className="md:hidden">

@@ -24,6 +24,10 @@ import { breadcrumb } from "@/screens/app-shell/lib/app-nav";
 import type { Crumb } from "@/screens/app-shell/types/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
+// The two search triggers look like the list search fields they lead to: a soft filled pill.
+const SEARCH_TRIGGER =
+  "relative h-10 items-center gap-2 rounded-pill bg-surface-2 px-3.5 text-sm text-muted outline-none pointer-coarse:h-11 transition-colors duration-[var(--fw-duration-fast)] hover:text-ink active:bg-[color-mix(in_oklab,var(--fw-ink)_6%,var(--fw-surface-2))] focus-visible:outline-2 focus-visible:outline-focus";
+
 const CRUMB =
   "block truncate rounded-sm text-muted outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus aria-[current=page]:font-medium aria-[current=page]:text-ink";
 
@@ -58,7 +62,7 @@ export function AppHeader({
 }: AppHeaderProps) {
   const CollapseIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
   return (
-    <header className="sticky top-0 z-[var(--fw-z-nav)] flex h-14 items-center gap-3 border-b border-line bg-[color-mix(in_oklab,var(--fw-bg)_88%,transparent)] px-4 backdrop-blur-glass sm:px-6">
+    <header className="sticky top-0 z-[var(--fw-z-nav)] flex min-h-16 items-center gap-3 border-b border-line bg-surface fw-safe-x pt-[env(safe-area-inset-top)]">
       <div className="lg:hidden">
         <AccountMenu
           email={email}
@@ -74,7 +78,7 @@ export function AppHeader({
       <button
         type="button"
         onClick={onSearch}
-        className="relative flex h-9 min-w-0 flex-1 items-center gap-2 rounded-pill bg-surface-2 px-3 text-sm text-muted outline-none after:absolute after:-inset-y-1 after:inset-x-0 focus-visible:outline-2 focus-visible:outline-focus lg:hidden"
+        className={`${SEARCH_TRIGGER} flex min-w-0 flex-1 lg:hidden`}
       >
         <Search aria-hidden className="size-[var(--fw-icon-sm)]" />
         {HEADER_COPY.search}
@@ -84,20 +88,17 @@ export function AppHeader({
         <IconButton
           label={collapsed ? HEADER_COPY.expand : HEADER_COPY.collapse}
           aria-expanded={!collapsed}
+          size="md"
           onClick={onToggleCollapsed}
         >
           <CollapseIcon aria-hidden className="size-[var(--fw-icon-md)]" />
         </IconButton>
       </div>
       <Breadcrumb active={active} pathname={pathname} />
-      <button
-        type="button"
-        onClick={onSearch}
-        className="hidden h-9 w-64 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm text-subtle outline-none hover:border-line-strong focus-visible:outline-2 focus-visible:outline-focus lg:flex"
-      >
+      <button type="button" onClick={onSearch} className={`${SEARCH_TRIGGER} hidden w-56 lg:flex`}>
         <Search aria-hidden className="size-[var(--fw-icon-sm)]" />
         <span className="flex-1 text-left">{HEADER_COPY.search}</span>
-        <kbd className="rounded-sm border border-line bg-surface-2 px-1.5 font-mono text-2xs text-muted">
+        <kbd className="rounded-sm border border-line bg-surface px-1.5 font-mono text-2xs text-muted">
           {HEADER_COPY.searchShortcut}
         </kbd>
       </button>
@@ -106,13 +107,13 @@ export function AppHeader({
 
       <div className="hidden items-center gap-2 border-l border-line pl-3 lg:flex">
         <Tooltip content={BALANCES_COPY.comingSoon} side="bottom">
-          <Button variant="soon" size="sm" aria-disabled>
+          <Button variant="soon" aria-disabled>
             <ArrowUpRight aria-hidden className="size-[var(--fw-icon-sm)]" />
             {BALANCES_COPY.send}
             <span className="sr-only">: {BALANCES_COPY.sendSoon}</span>
           </Button>
         </Tooltip>
-        <Button size="sm" onClick={onReceive}>
+        <Button onClick={onReceive}>
           <ArrowDownLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
           {BALANCES_COPY.receive}
         </Button>

@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
+import { sidewaysScroll } from "../sideways";
 import { blockingViolations } from "./axe";
 import {
   activityItem,
@@ -11,6 +12,15 @@ import {
   sampleTransfer,
 } from "./sample-api";
 import { session } from "./session";
+
+// The status filter of Invoices and Activity is a menu beside the search.
+async function pickStatus(page: Page, name: string) {
+  await page
+    .getByRole("main")
+    .getByRole("button", { name: /^Status: / })
+    .click();
+  await page.getByRole("menuitemradio", { name, exact: true }).click();
+}
 
 test("app pages navigate from the breadcrumb and rows, filter and search, link to the explorer, and keep the sidebar fixed", async ({
   browser,
@@ -41,17 +51,16 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   await hiddenHeading("Invoices");
   const rows = main.getByRole("row").filter({ hasText: "INV-" });
   await expect(rows).toHaveCount(4);
-  const status = main.getByRole("group", { name: "Status" });
-  await status.getByText("Settled", { exact: true }).click();
+  await pickStatus(page, "Settled");
   await expect(rows).toHaveCount(1);
   await expect(rows).toContainText("INV-0003");
-  await status.getByText("Open", { exact: true }).click();
+  await pickStatus(page, "Open");
   await expect(rows).toHaveCount(2);
   const search = main.getByRole("searchbox", { name: "Search invoices" });
   await search.fill("brightline");
   await expect(rows).toHaveCount(1);
   await expect(rows).toContainText("INV-0004");
-  await status.getByText("All", { exact: true }).click();
+  await pickStatus(page, "All");
   await search.fill("inv-0001");
   await expect(rows).toHaveCount(1);
   await expect(rows).toContainText("Expired");
@@ -105,11 +114,10 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   await expect(
     items.first().getByRole("link", { name: "View transaction on Basescan" }),
   ).toHaveAttribute("href", basescan(hash("d")));
-  const activityStatus = main.getByRole("group", { name: "Status" });
-  await activityStatus.getByText("Paid", { exact: true }).click();
+  await pickStatus(page, "Paid");
   await expect(items).toHaveCount(1);
   await expect(items).toContainText("Confirmed");
-  await activityStatus.getByText("All", { exact: true }).click();
+  await pickStatus(page, "All");
   await main.getByRole("searchbox", { name: "Search activity" }).fill(hash("e").slice(0, 10));
   await expect(items).toHaveCount(1);
   expect(await blockingViolations(page)).toEqual([]);
@@ -163,12 +171,12 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   for (const path of ["/app/invoices", "/app/activity", "/app/transactions"]) {
     await small.goto(path);
     await expect(small.getByRole("main").getByRole("searchbox")).toBeVisible();
-    expect(await small.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+    expect(await sidewaysScroll(small)).toBeLessThanOrEqual(0);
   }
   await small.goto(`/app/invoices/${CONFIRMING_INVOICE.invoiceId}`);
   await expect(small.getByRole("heading", { level: 1, name: "INV-0004" })).toBeVisible();
   await expect(small.getByRole("main").getByRole("link", { name: "Invoices" })).toBeVisible();
-  expect(await small.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  expect(await sidewaysScroll(small)).toBeLessThanOrEqual(0);
   expect(await blockingViolations(small)).toEqual([]);
   await phone.close();
 });
@@ -229,7 +237,7 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
   await expect(invoiceSearch).toHaveValue("zephyr");
   await expect(rows).toHaveCount(1);
   // A filter joins the search in the URL; nothing matched says so and offers to clear both.
-  await main.getByRole("group", { name: "Status" }).getByText("Paid", { exact: true }).click();
+  await pickStatus(page, "Paid");
   await expect(page).toHaveURL("/app/invoices?q=zephyr&status=paid");
   await expect(main.getByText("Nothing matches", { exact: true })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
@@ -257,7 +265,7 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
     .fill(PAST_PAGE_DEPOSIT.slice(0, 12));
   await expect(items).toHaveCount(1);
   await expect(items).toContainText("Payment");
-  await main.getByRole("group", { name: "Status" }).getByText("Paid", { exact: true }).click();
+  await pickStatus(page, "Paid");
   await expect(page).toHaveURL(`/app/activity?q=${PAST_PAGE_DEPOSIT.slice(0, 12)}&status=paid`);
   await page.reload();
   await expect(items).toHaveCount(1);
@@ -267,8 +275,7 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
 
   // Transactions, opened with a search as ⌘K and notifications link it: the 41st transfer.
   await page.goto(`/app/transactions?q=${PAST_PAGE_PARTY}`);
-  // Transfers only: each day's heading row is not one.
-  const transfers = main.getByRole("table").locator("tbody tr:not([data-day])");
+  const transfers = main.getByRole("table").locator("tbody tr");
   await expect(transfers).toHaveCount(1);
   await expect(main.getByRole("searchbox", { name: "Search transactions" })).toHaveValue(
     PAST_PAGE_PARTY,
@@ -362,14 +369,19 @@ test("money tables share row hover, show network logos, keep Export at the right
   const page = await context.newPage();
   await mockApi(page);
   const main = page.getByRole("main");
+  // The tint is read once its color transition has finished: the transition starts from the same transparent written
+  // in the tint's color space, which differs as text while it is still no tint.
+  const settled = (row: import("@playwright/test").Locator) =>
+    row.evaluate(async (el) => {
+      await Promise.all(el.getAnimations().map((a) => a.finished.catch(() => {})));
+      return getComputedStyle(el).backgroundColor;
+    });
   const hoverOf = async (row: import("@playwright/test").Locator) => {
     await page.mouse.move(0, 0);
-    const before = await row.evaluate((el) => getComputedStyle(el).backgroundColor);
+    const before = await settled(row);
     await row.hover();
-    await expect
-      .poll(() => row.evaluate((el) => getComputedStyle(el).backgroundColor))
-      .not.toBe(before);
-    return row.evaluate((el) => getComputedStyle(el).backgroundColor);
+    await expect.poll(() => settled(row)).not.toBe(before);
+    return settled(row);
   };
   await page.goto("/app/invoices");
   const invoiceHover = await hoverOf(main.locator("tbody tr").first());
@@ -394,7 +406,7 @@ test("money tables share row hover, show network logos, keep Export at the right
   ).toBeLessThan(2);
   expect(exportBox?.x ?? 0).toBeGreaterThan(searchBox?.x ?? 0);
 
-  const firstRow = main.locator("tbody tr:not([data-day])").first();
+  const firstRow = main.locator("tbody tr").first();
   await expect(firstRow.locator("svg").first()).toBeVisible(); // the network's logo
   const counterparty = firstRow.getByRole("link", { name: /on Basescan \(opens in a new tab\)$/ });
   await expect(counterparty).toHaveAttribute(
@@ -456,13 +468,14 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   ]);
   await expect(current).toHaveText("Waiting");
   await expect(current.locator("[class*='fw-progress']")).toHaveCount(1);
-  const payLink = main.locator("header").getByRole("region", { name: "Pay link" });
-  await expect(payLink.locator("p[title]")).toHaveAttribute(
-    "title",
+  // The pay link waits in the header's More actions menu: Copy link, and Open the pay page itself.
+  await main.locator("header").getByRole("button", { name: "More actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "Copy link" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: /^Open pay page/ })).toHaveAttribute(
+    "href",
     `http://localhost:3000/pay/${OPEN_INVOICE.invoiceId}`,
   );
-  await expect(payLink.getByRole("button", { name: "Copy link" })).toBeVisible();
-  await expect(payLink.getByRole("link", { name: /Open the pay page/ })).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(main.getByRole("button", { name: "Check status" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
 
@@ -477,7 +490,8 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(main.getByRole("status").filter({ hasText: /Confirming/ })).toContainText(
     "Confirming (0/120) · about 6 min left",
   );
-  await expect(main.locator("header [data-status]")).toHaveText("Confirming");
+  // The timeline says the state; the header repeats it in no pill (R-60).
+  await expect(main.locator("header [data-status]")).toHaveCount(0);
   // Keep the count and accessible clock below the short step label (R-69).
   await expect(current).toHaveText("Confirming");
   await expect(main.getByRole("button", { name: "About 6 min left" })).toBeVisible();
@@ -524,7 +538,6 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   };
   await page.reload();
   await shown();
-  await expect(main.locator("header [data-status]")).toHaveText("Confirming");
   await expect(current).toHaveText("Confirming");
   await expect(progress.getByText("Partially paid")).toHaveCount(0);
 
@@ -542,8 +555,8 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(progress.getByRole("listitem").nth(2)).toHaveText(/^Confirmed/);
   await expect(current.locator("[class*='fw-progress']")).toHaveCount(1);
   await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
-  // Paid takes no more money: the pay link is gone.
-  await expect(main.getByRole("region", { name: "Pay link" })).toHaveCount(0);
+  // Paid takes no more money and can't be canceled: no actions are left to offer.
+  await expect(main.getByRole("button", { name: "More actions" })).toHaveCount(0);
 
   // Settled: one Transactions list holds the payment and the settlement to the wallet; Details repeats neither (R-69).
   const settleTx = hash("5");
@@ -574,7 +587,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   body = { ...OPEN_INVOICE, paymentStatus: "expired", deposits: [] };
   await page.reload();
   await shown();
-  await expect(main.locator("header [data-status]")).toHaveText("Expired");
+  await expect(main.locator("header")).toContainText("The checkout closed with nothing paid.");
   await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
   await context.close();
 });
@@ -627,18 +640,18 @@ test("the owner's invoice page names the next step of every exception", async ({
   await open();
   await expect(main.getByText("Received 1.00 USDC of 2.00 USDC")).toBeVisible();
   await expect(header).not.toContainText("left to pay");
-  await expect(header.getByRole("region", { name: "Pay link" })).toBeVisible();
+  await expect(header.getByRole("button", { name: "More actions" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
 
-  // Closed with nothing paid, while the API's status still says open (closed says sooner): Expired, and a new invoice
+  // Closed with nothing paid, while the API's status still says open (closed says sooner): closed, and a new invoice
   // with the same client.
   body = { ...OPEN_INVOICE, expiresAt: closedAt, closed: true, deposits: [] };
   await open();
-  await expect(header.locator("[data-status]")).toHaveText("Expired");
+  await expect(main.getByRole("region", { name: "Details" })).toContainText("Checkout closed");
   await expect(header).toContainText(
     "The checkout closed with nothing paid. A closed invoice can't take money again.",
   );
-  await expect(header.getByRole("region", { name: "Pay link" })).toHaveCount(0);
+  await expect(header.getByRole("button", { name: "More actions" })).toHaveCount(0);
   await header.getByRole("link", { name: "New invoice" }).click();
   await expect(page).toHaveURL(`/app/invoices/new?from=${OPEN_INVOICE.invoiceId}`);
   await expect(main.getByLabel("Amount")).toHaveValue("2");
@@ -653,7 +666,7 @@ test("the owner's invoice page names the next step of every exception", async ({
     deposits: [paid("500000")],
   };
   await open();
-  await expect(header.locator("[data-status]")).toHaveText(/Expired/);
+  await expect(main.getByRole("region", { name: "Details" })).toContainText("Checkout closed");
   await expect(header).toContainText(
     "0.50 USDC is held for the payer. To collect the remaining 1.50 USDC, send a new invoice.",
   );
@@ -731,11 +744,12 @@ test("the owner cancels an invoice before any money, after confirming", async ({
   await dialog.getByRole("button", { name: "Cancel invoice" }).click();
   await expect(page.getByText("INV-0002 canceled")).toBeVisible();
   expect(cancels).toBe(1);
-  await expect(header.locator("[data-status]")).toHaveText("Canceled");
-  await expect(header).toContainText(/Canceled /);
-  // The dialog and its trigger are gone, so keyboard focus moves to the status, not to the page body.
-  await expect(header.locator("p[tabindex='-1']")).toBeFocused();
-  await expect(header.getByRole("region", { name: "Pay link" })).toHaveCount(0);
+  // Details says when (R-60); the header only names the invoice.
+  const canceledRow = main.getByRole("region", { name: "Details" }).locator("[tabindex='-1']");
+  await expect(canceledRow).toContainText(/^Canceled on/);
+  await expect(header).not.toContainText("Canceled");
+  // The dialog and its trigger are gone, so keyboard focus moves to that row, not to the page body.
+  await expect(canceledRow).toBeFocused();
   await expect(header.getByRole("button", { name: "More actions" })).toHaveCount(0);
   await context.close();
 });
@@ -903,9 +917,7 @@ test("the overview chart shrinks with the window and the page never scrolls side
   await expect(chart).toBeVisible();
   for (const width of [1024, 768, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    await expect
-      .poll(() => page.evaluate(() => document.scrollingElement?.scrollWidth))
-      .toBe(width);
+    await expect.poll(() => sidewaysScroll(page)).toBeLessThanOrEqual(0);
     const [inner, outer] = await Promise.all([chart.boundingBox(), panel.boundingBox()]);
     expect(inner && outer && inner.width < outer.width).toBe(true);
   }
@@ -1055,7 +1067,7 @@ test("the invoice's transactions read in two lines on a phone", async ({ browser
     expect(time && box && time.y - box.y < 20).toBe(true);
     expect(link && time && link.y > time.y).toBe(true);
   }
-  expect(await page.evaluate(() => document.scrollingElement?.scrollWidth)).toBe(390);
+  expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
   expect(await blockingViolations(page)).toEqual([]);
   await context.close();
 });

@@ -23,7 +23,7 @@ export function SignInScreen() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-bg lg:block">
-      <div className="relative h-56 overflow-hidden sm:h-72 lg:h-[22rem]">
+      <div className="relative h-44 overflow-hidden sm:h-64 lg:h-72">
         <Image
           src={HERO_IMAGE.src}
           alt=""
@@ -44,13 +44,13 @@ export function SignInScreen() {
         <Link
           href={APP_ROUTES.site}
           aria-label={SIGN_IN_COPY.homeLabel}
-          className="absolute top-6 left-6 rounded-pill lg:top-8 lg:left-10"
+          className="absolute top-[max(1.5rem,env(safe-area-inset-top))] left-[max(1.5rem,env(safe-area-inset-left))] rounded-md lg:top-8 lg:left-10"
         >
           <Logo />
         </Link>
       </div>
-      {/* Phones and tablets: the form is centered in the space below the band. */}
-      <main className="relative -mt-10 flex flex-1 items-center px-6 pb-16 sm:-mt-16 lg:block">
+      {/* Phones and tablets: the form starts just under the band, overlapping its fade. */}
+      <main className="relative -mt-10 flex flex-1 items-start pr-[max(1.5rem,env(safe-area-inset-right))] pl-[max(1.5rem,env(safe-area-inset-left))] pb-[calc(4rem+env(safe-area-inset-bottom))] sm:-mt-16 lg:block">
         <div className="mx-auto w-full max-w-sm">
           {ready && !authenticated ? (
             <SignInForm />

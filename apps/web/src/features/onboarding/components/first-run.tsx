@@ -54,12 +54,14 @@ export function FirstRun({ profiles, onDone }: FirstRunProps) {
 
   return (
     <div className="min-h-dvh bg-bg">
-      <header className="px-4 pt-6 sm:px-6 lg:px-10 lg:pt-8">
+      <header className="fw-safe-x pt-[max(1.5rem,env(safe-area-inset-top))] lg:pt-8">
         <Logo />
       </header>
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 pt-10 pb-16 sm:px-6 sm:pt-16">
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 fw-safe-x pt-10 pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pt-16">
         <div className="flex flex-col gap-3">
-          <h1 className="font-display text-3xl text-balance text-ink sm:text-4xl">{COPY.title}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-balance text-ink">
+            {COPY.title}
+          </h1>
           <p className="max-w-xl text-pretty text-muted">{COPY.intro}</p>
         </div>
         <Form onSubmit={submit}>
@@ -89,11 +91,17 @@ export function FirstRun({ profiles, onDone }: FirstRunProps) {
               })}
             </div>
           </fieldset>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" loading={busy === "continue"} disabled={busy === "skip"}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <Button
+              size="lg"
+              type="submit"
+              loading={busy === "continue"}
+              disabled={busy === "skip"}
+            >
               {COPY.continue}
             </Button>
             <Button
+              size="lg"
               variant="ghost"
               loading={busy === "skip"}
               disabled={busy === "continue"}

@@ -7,7 +7,7 @@ export function SiteNav() {
   return (
     <header
       data-section={LANDING_SECTIONS.nav}
-      className="fixed inset-x-0 top-5 z-[var(--fw-z-nav)] px-4 max-[22rem]:px-2 sm:top-6"
+      className="fixed inset-x-0 top-[calc(1.25rem+env(safe-area-inset-top))] z-[var(--fw-z-nav)] fw-safe-x max-[22rem]:[--fw-page-gutter:.5rem] sm:top-[calc(1.5rem+env(safe-area-inset-top))]"
     >
       <NavPill
         brand={<Logo />}

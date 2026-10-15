@@ -2,7 +2,7 @@
 // fails if these drift from tokens.css.
 export const DURATION_MS = {
   fast: 140,
-  base: 240,
-  slow: 480,
+  base: 200,
+  slow: 400,
   slower: 900,
 } as const;

@@ -130,19 +130,10 @@ export function ReceiveSheet({
           >
             <TokenMark chainId={chosen.chainId} symbol={chosen.symbol} />
           </Summary>
-          <NetworkWarning
-            token={chosen.symbol}
-            network={chainName(chosen.chainId)}
-            lookalike={lookalikeOf(chosen.chainId, chosen.symbol)}
-          />
           {shown ? (
             <>
-              <div className="grid place-items-center rounded-lg bg-surface-2 p-5">
-                <QrCode
-                  value={shown}
-                  label={RECEIVE_COPY.receiveQrLabel}
-                  className="w-52 p-2 shadow-sm"
-                />
+              <div className="grid place-items-center py-2">
+                <QrCode value={shown} label={RECEIVE_COPY.receiveQrLabel} className="w-44 p-2" />
               </div>
               <ReceiveAddress
                 address={shown}
@@ -150,6 +141,11 @@ export function ReceiveSheet({
               />
             </>
           ) : null}
+          <NetworkWarning
+            token={chosen.symbol}
+            network={chainName(chosen.chainId)}
+            lookalike={lookalikeOf(chosen.chainId, chosen.symbol)}
+          />
           <p className="text-xs text-muted">{RECEIVE_COPY.receiveNote}</p>
         </div>
       )}
@@ -205,7 +201,7 @@ function Initial({ text }: { text: string }) {
 // The choice so far, folded into one row; Change opens the choice again.
 function Summary({ onChange, children }: { onChange: (() => void) | null; children: ReactNode }) {
   return (
-    <div className="flex min-h-14 items-center gap-3 rounded-md border border-line px-3 py-2">
+    <div className="flex min-h-14 items-center gap-3 border-b border-line pb-3">
       <span className="flex min-w-0 flex-1 items-center gap-3">{children}</span>
       {onChange ? (
         <Button size="sm" variant="ghost" aria-label={RECEIVE_COPY.changeLabel} onClick={onChange}>

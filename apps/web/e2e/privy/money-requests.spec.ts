@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { sidewaysScroll } from "../sideways";
 import { blockingViolations } from "./axe";
 import { session } from "./session";
 
@@ -101,11 +102,18 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     // The request opens with the link to send, and it copies whole.
     await expect(page.getByRole("region", { name: "Amount" })).toContainText("3.25");
     const link = `http://localhost:3000/pay/${request.invoiceId}`;
-    const share = page.getByRole("region", { name: "Pay link" });
-    await expect(share.locator("p[title]")).toHaveAttribute("title", link);
-    await share.getByRole("button", { name: "Copy link" }).click();
-    await expect(share.getByRole("button", { name: "Link copied" })).toBeVisible();
+    await page
+      .getByRole("main")
+      .locator("header")
+      .getByRole("button", { name: "More actions" })
+      .click();
+    await expect(
+      page.getByRole("menuitem", { name: "Open pay page in a new tab" }),
+    ).toHaveAttribute("href", link);
+    await page.getByRole("menuitem", { name: "Copy link" }).click();
+    await expect(page.getByRole("menuitem", { name: "Link copied" })).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
+    await page.keyboard.press("Escape");
     expect(await blockingViolations(page)).toEqual([]);
 
     // It sits under Requests and names who asks.
@@ -155,8 +163,7 @@ test("on a phone a personal profile requests money from the round actions withou
     storageState: session,
   });
   const page = await context.newPage();
-  const fits = async () =>
-    expect(await page.evaluate(() => document.scrollingElement?.scrollWidth)).toBe(390);
+  const fits = async () => expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
   await page.goto("/app");
   await fits();
   if (await openRequest(page)) {
@@ -164,9 +171,15 @@ test("on a phone a personal profile requests money from the round actions withou
     await sheet.getByRole("textbox", { name: "Amount" }).fill("1");
     await sheet.getByRole("textbox", { name: "Your name (shown to the payer)" }).fill("E2E Phone");
     const request = await createRequest(page);
+    await page
+      .getByRole("main")
+      .locator("header")
+      .getByRole("button", { name: "More actions" })
+      .click();
     await expect(
-      page.getByRole("region", { name: "Pay link" }).locator("p[title]"),
-    ).toHaveAttribute("title", new RegExp(`/pay/${request.invoiceId}$`));
+      page.getByRole("menuitem", { name: "Open pay page in a new tab" }),
+    ).toHaveAttribute("href", new RegExp(`/pay/${request.invoiceId}$`));
+    await page.keyboard.press("Escape");
     await fits();
     expect(await blockingViolations(page)).toEqual([]);
     await expect(page.getByRole("heading", { level: 1, name: request.number })).toBeVisible();

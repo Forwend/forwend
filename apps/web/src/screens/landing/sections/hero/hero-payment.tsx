@@ -45,10 +45,14 @@ export function HeroPayment({ states }: HeroPaymentProps) {
           }))}
         />
       </div>
-      <p className="mt-4 font-mono text-2xs text-muted sm:text-xs">
-        {settled
-          ? `Tx ${shortHash} · settled to your wallet`
-          : "Waiting for network confirmations…"}
+      <p className="mt-4 text-sm text-muted">
+        {settled ? (
+          <>
+            Tx <span className="font-mono">{shortHash}</span> · settled to your wallet
+          </>
+        ) : (
+          "Waiting for network confirmations…"
+        )}
       </p>
     </Panel>
   );

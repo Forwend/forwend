@@ -8,7 +8,7 @@ export function Hero() {
     <section
       data-section={LANDING_SECTIONS.hero}
       aria-labelledby="hero-title"
-      className="relative isolate flex min-h-248 flex-col max-sm:min-h-[calc(100svh+32rem)] px-4 pt-4 pb-6 sm:min-h-256 sm:px-8 sm:pt-5 lg:min-h-svh"
+      className="relative isolate flex min-h-248 flex-col max-sm:min-h-[calc(100svh+32rem)] fw-safe-x pt-4 pb-6 sm:min-h-256 sm:[--fw-page-gutter:2rem] sm:pt-5 lg:min-h-svh"
     >
       {/* Phones: the headline and form fill the first screen, centered over the sky. The section is taller there, so
           the river (which sits at a fixed share of the art's height) starts below the fold and leads to the invoice. */}

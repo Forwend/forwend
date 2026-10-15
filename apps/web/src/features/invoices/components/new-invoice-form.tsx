@@ -2,6 +2,7 @@
 
 import {
   Button,
+  buttonClasses,
   DatePicker,
   Form,
   SegmentedControl,
@@ -386,15 +387,12 @@ export function NewInvoiceForm({ profileId, tokens, request, start }: NewInvoice
           </Group>
         )}
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <Button type="submit" loading={busy}>
             {COPY.create}
           </Button>
           {request ? null : (
-            <Link
-              href={APP_ROUTES.invoices}
-              className="inline-flex h-11 items-center rounded-pill px-3 text-sm text-muted hover:text-ink"
-            >
+            <Link href={APP_ROUTES.invoices} className={buttonClasses({ variant: "ghost" })}>
               {COPY.cancel}
             </Link>
           )}

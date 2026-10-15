@@ -17,7 +17,7 @@ const SIDEBAR_COPY = {
 } as const;
 
 const ROW =
-  "flex h-8 items-center gap-2.5 rounded-sm px-2 text-sm outline-none focus-visible:outline-2 focus-visible:outline-focus";
+  "flex min-h-9 items-center gap-3 rounded-md text-sm outline-none pointer-coarse:min-h-11 focus-visible:outline-2 focus-visible:outline-focus";
 
 export interface AppSidebarProps {
   profiles: Profile[];
@@ -52,7 +52,7 @@ export function AppSidebar({
       className={`fixed inset-y-0 left-0 hidden flex-col border-r border-line bg-surface lg:flex ${collapsed ? "w-16" : "w-64"}`}
     >
       <div
-        className={`flex h-14 shrink-0 items-center gap-2 border-b border-line ${collapsed ? "justify-center" : "px-3"}`}
+        className={`flex h-16 shrink-0 items-center gap-2 border-b border-line ${collapsed ? "justify-center" : "px-3"}`}
       >
         {collapsed ? null : (
           <>
@@ -80,14 +80,14 @@ export function AppSidebar({
 
       <nav
         aria-label={SIDEBAR_COPY.nav}
-        className={`flex-1 overflow-y-auto py-4 ${collapsed ? "px-2" : "px-3"}`}
+        className={`flex-1 overflow-y-auto overscroll-contain py-6 ${collapsed ? "px-2" : "px-3"}`}
       >
         {APP_NAV[active.kind].map((group) => (
           <div key={group.label} className={collapsed ? "mb-3" : "mb-5"}>
-            <h2 className={collapsed ? "sr-only" : "px-2 pb-1.5 text-xs font-medium text-subtle"}>
+            <h2 className={collapsed ? "sr-only" : "px-3 pb-2 text-xs font-medium text-subtle"}>
               {group.label}
             </h2>
-            <ul className="flex flex-col gap-px">
+            <ul className="flex flex-col gap-0.5">
               {group.items.map(({ href, label, icon: Icon }) => (
                 <li key={label} className={collapsed ? "grid justify-center" : ""}>
                   {href
@@ -96,7 +96,7 @@ export function AppSidebar({
                         <Link
                           href={href}
                           aria-current={isCurrentPage(pathname, href) ? "page" : undefined}
-                          className={`${ROW} text-muted transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 hover:text-ink aria-[current=page]:bg-surface-2 aria-[current=page]:font-medium aria-[current=page]:text-ink ${collapsed ? "w-8 justify-center px-0" : ""}`}
+                          className={`${ROW} text-muted transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 active:bg-[color-mix(in_oklab,var(--fw-ink)_6%,var(--fw-surface-2))] hover:text-ink aria-[current=page]:bg-surface-2 aria-[current=page]:font-medium aria-[current=page]:text-ink ${collapsed ? "w-9 justify-center" : "px-3"}`}
                         >
                           <Icon aria-hidden className="size-[var(--fw-icon-sm)] shrink-0" />
                           <span className={collapsed ? "sr-only" : ""}>{label}</span>
@@ -107,7 +107,7 @@ export function AppSidebar({
                         `${label} · ${AUTH_COPY.soon}`,
                         <span
                           tabIndex={collapsed ? 0 : undefined}
-                          className={`${ROW} text-subtle ${collapsed ? "w-8 justify-center px-0" : ""}`}
+                          className={`${ROW} text-subtle ${collapsed ? "w-9 justify-center" : "px-3"}`}
                         >
                           <Icon aria-hidden className="size-[var(--fw-icon-sm)] shrink-0" />
                           <span className={collapsed ? "sr-only" : ""}>{label}</span>

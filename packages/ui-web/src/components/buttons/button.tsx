@@ -33,24 +33,32 @@ export interface ButtonProps extends ComponentPropsWithoutRef<"button">, ButtonS
 }
 
 // A press answers with a small scale on a fast ease-out, like a physical key; reduced motion keeps only the color.
+// On touch screens the pseudo element stretches the hit area to 44px without changing the look.
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-pill font-medium whitespace-nowrap transition-[background-color,border-color,color,box-shadow,scale] duration-[var(--fw-duration-fast)] ease-[var(--fw-ease-out)] active:scale-[0.97] motion-reduce:active:scale-100 disabled:border-line disabled:bg-surface-2 disabled:text-subtle disabled:shadow-none disabled:active:scale-100";
+  "relative inline-flex items-center justify-center gap-2 font-medium whitespace-nowrap transition-[background-color,border-color,color,box-shadow,scale] duration-[var(--fw-duration-fast)] ease-[var(--fw-ease-out)] before:absolute before:inset-x-0 active:scale-[0.98] aria-disabled:active:scale-100 motion-reduce:active:scale-100 disabled:border-line disabled:bg-surface-2 disabled:text-subtle disabled:shadow-none disabled:active:scale-100";
 
+// Secondary keeps a hairline and a soft lift on light grounds; dark grounds swallow shadows, so its edge is stronger.
 const VARIANTS: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-on-primary shadow-sm hover:bg-[color-mix(in_oklab,var(--fw-primary)_88%,var(--fw-bg))] hover:shadow-md",
+    "bg-primary text-on-primary shadow-sm hover:bg-[color-mix(in_oklab,var(--fw-primary)_88%,var(--fw-bg))] active:shadow-none",
   secondary:
-    "border border-line-strong bg-surface text-ink shadow-sm hover:border-[color-mix(in_oklab,var(--fw-line-strong)_70%,var(--fw-ink))] hover:bg-surface-2",
-  ghost: "text-ink hover:bg-surface-2",
-  link: "text-accent underline decoration-1 underline-offset-4 hover:decoration-2",
+    "border border-line bg-surface text-ink shadow-sm hover:border-line-strong hover:bg-surface-2 active:shadow-none dark:border-line-strong",
+  ghost: "text-ink hover:bg-surface-2 active:bg-surface-2",
+  link: "text-accent underline decoration-1 underline-offset-4 hover:decoration-2 pointer-coarse:before:-inset-y-3",
   soon: "cursor-not-allowed border border-dashed border-line-strong text-subtle",
   danger: "border border-danger bg-surface text-danger shadow-sm hover:bg-danger-soft",
 };
 
+// The touch area is a 44px band centered on the button, not an inset: an inset counts from inside the border, so a
+// bordered button would fall 2px short.
+const TOUCH =
+  "pointer-coarse:before:top-1/2 pointer-coarse:before:h-11 pointer-coarse:before:-translate-y-1/2";
+
+// One height scale for every control: 32px in dense rows, 40px by default and in toolbars, 48px for a screen's main
+// action.
 const SIZES: Record<ButtonSize, string> = {
-  // The pseudo elements stretch the hit area to 44px without changing the look.
-  sm: "relative h-8 px-3.5 text-sm before:absolute before:inset-x-0 before:-inset-y-1.5",
-  md: "relative h-10 px-5 text-sm before:absolute before:inset-x-0 before:-inset-y-0.5",
+  sm: `h-8 px-3 text-sm ${TOUCH}`,
+  md: `h-10 px-4 text-sm ${TOUCH}`,
   lg: "h-12 px-6 text-base",
 };
 
@@ -59,7 +67,11 @@ export function buttonClasses({
   variant = BUTTON_VARIANTS.primary,
   size = BUTTON_SIZES.md,
 }: ButtonStyleOptions = {}): string {
-  return cx(BASE, VARIANTS[variant], variant === BUTTON_VARIANTS.link ? "px-0" : SIZES[size]);
+  return cx(
+    BASE,
+    VARIANTS[variant],
+    variant === BUTTON_VARIANTS.link ? "rounded-sm px-0" : cx("rounded-pill", SIZES[size]),
+  );
 }
 
 export function Button({

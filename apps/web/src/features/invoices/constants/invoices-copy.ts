@@ -236,7 +236,7 @@ export const INVOICE_COPY = {
   // What happened and what to do, under the status (R-77). Amounts arrive formatted with their symbol; `noun` is
   // invoice or request.
   next: {
-    // Only said when money came: canceled with nothing sent needs no line under the badge.
+    // Only said when money came: with nothing sent, Details' Canceled on row says it.
     [INVOICE_EXCEPTIONS.canceled]: ({ held, noun }) =>
       `${held} arrived after the ${noun} was canceled and is held for the payer.`,
     [INVOICE_EXCEPTIONS.closedUnpaid]: ({ noun }) =>
@@ -254,13 +254,13 @@ export const INVOICE_COPY = {
   newRequest: "New request",
   newForRest: (noun: string) => `New ${noun} for the rest`,
   from: "From",
-  share: "Pay link",
   copy: "Copy link",
   copied: "Link copied",
   copyFailed: "Copy failed: select the link",
   details: "Details",
   dueDate: "Due date",
   expires: "Checkout closes",
+  closed: "Checkout closed",
   created: "Created",
   settlement: "Settlement",
   note: "Note",
@@ -275,10 +275,9 @@ export const INVOICE_COPY = {
   issuer: "From",
   taxId: "Tax ID",
   addBillingDetails: "Add billing details",
-  openPayPage: "Open the pay page in a new tab",
-  closesOn: (time: string) => `Checkout closes ${time}`,
-  closedOn: (time: string) => `Checkout closed ${time}`,
-  canceledOn: (time: string) => `Canceled ${time}`,
+  openPayPage: "Open pay page",
+  inNewTab: "in a new tab",
+  canceledOn: "Canceled on",
   // The bell's lines (R-81); the amount follows each.
   events: {
     [INVOICE_EVENTS.paid]: (number: string) => `${number} paid`,
@@ -297,7 +296,5 @@ export const INVOICE_COPY = {
     failed: "We could not cancel it. Try again.",
     tooLate: "It can't be canceled anymore: money was seen or the checkout closed.",
   },
-  paidOn: (time: string) => `Paid ${time}`,
-  settledOn: (time: string) => `Settled ${time}`,
   noIssuer: "None on this invoice.",
 } as const;

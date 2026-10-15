@@ -220,7 +220,7 @@ export function CommandMenu({
       onClick={(event) => {
         if (event.target === ref.current) close();
       }}
-      className="mx-auto mt-[12dvh] w-[calc(100vw-2rem)] max-w-xl overflow-hidden rounded-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)] backdrop:backdrop-blur-glass"
+      className="mx-auto mt-[12dvh] w-[calc(100vw-2rem)] max-w-xl overflow-hidden rounded-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)]"
     >
       <div className="flex items-center gap-3 border-b border-line px-4">
         <Search aria-hidden className="size-[var(--fw-icon-md)] shrink-0 text-muted" />

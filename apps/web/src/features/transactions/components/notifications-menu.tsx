@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  IconButton,
   Menu,
   MenuContent,
   MenuItem,
@@ -88,18 +89,21 @@ export function NotificationsMenu({ profileId, className }: NotificationsMenuPro
 
   return (
     <Menu onOpenChange={onOpenChange}>
-      <MenuTrigger
-        aria-label={
-          fresh
-            ? `${TRANSACTIONS_COPY.notifications}, ${TRANSACTIONS_COPY.newCount(fresh)}`
-            : TRANSACTIONS_COPY.notifications
-        }
-        className={`relative grid size-11 place-items-center rounded-md text-muted lg:size-9 outline-none hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-focus data-[state=open]:bg-surface-2 data-[state=open]:text-ink ${className ?? ""}`}
-      >
-        <Bell aria-hidden className="size-[var(--fw-icon-md)]" />
-        {fresh ? (
-          <span className="absolute top-1.5 right-1.5 size-2 rounded-pill border border-surface bg-danger" />
-        ) : null}
+      <MenuTrigger asChild>
+        <IconButton
+          label={
+            fresh
+              ? `${TRANSACTIONS_COPY.notifications}, ${TRANSACTIONS_COPY.newCount(fresh)}`
+              : TRANSACTIONS_COPY.notifications
+          }
+          size="md"
+          className={className}
+        >
+          <Bell aria-hidden className="size-[var(--fw-icon-md)]" />
+          {fresh ? (
+            <span className="absolute top-2 right-2 size-2 rounded-pill border border-surface bg-danger" />
+          ) : null}
+        </IconButton>
       </MenuTrigger>
       <MenuContent align="end" className="w-80">
         <MenuLabel>{TRANSACTIONS_COPY.notifications}</MenuLabel>

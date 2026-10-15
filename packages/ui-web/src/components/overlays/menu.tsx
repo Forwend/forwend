@@ -13,7 +13,8 @@ export type MenuRadioItemProps = RadixMenu.DropdownMenuRadioItemProps;
 export type MenuCheckboxItemProps = RadixMenu.DropdownMenuCheckboxItemProps;
 
 // A dropdown menu on Radix (keyboard, focus and screen-reader roles), styled with tokens. It moves in from the edge it
-// opens on and fades out; reduced motion drops the movement.
+// opens on and closes at once: a fade-out would hand focus back to the trigger late, and so close a menu opened again
+// in the meantime. Reduced motion drops the movement.
 
 /** Not modal: the page stays readable behind an open menu; Escape and a click outside still close it. */
 export function Menu(props: RadixMenu.DropdownMenuProps) {
@@ -41,7 +42,7 @@ export function MenuContent({
         collisionPadding={12}
         className={cx(
           "z-[var(--fw-z-overlay)] min-w-[var(--radix-dropdown-menu-trigger-width)] max-w-[calc(100vw-2rem)] rounded-lg border border-line bg-surface p-1.5 text-ink shadow-lg",
-          "origin-[var(--radix-dropdown-menu-content-transform-origin)] data-[side=bottom]:[--fw-pop-y:-4px] motion-safe:data-[state=open]:animate-[fw-pop-in_var(--fw-duration-base)_var(--fw-ease-out)] motion-safe:data-[state=closed]:animate-[fw-pop-out_var(--fw-duration-fast)_var(--fw-ease-out)]",
+          "origin-[var(--radix-dropdown-menu-content-transform-origin)] data-[side=bottom]:[--fw-pop-y:-4px] motion-safe:data-[state=open]:animate-[fw-pop-in_var(--fw-duration-base)_var(--fw-ease-out)]",
           className,
         )}
         {...props}
@@ -89,7 +90,7 @@ export function MenuCheckboxItem({
         aria-hidden
         className="relative inline-flex h-5 w-9 shrink-0 rounded-pill border border-line-strong bg-surface-2 transition-colors duration-[var(--fw-duration-base)] group-data-[state=checked]:border-transparent group-data-[state=checked]:bg-accent"
       >
-        <span className="absolute top-0.5 left-0.5 size-3.5 rounded-pill bg-subtle shadow-sm transition-[translate,background-color] duration-[var(--fw-duration-base)] ease-out group-data-[state=checked]:translate-x-4 group-data-[state=checked]:bg-surface" />
+        <span className="absolute top-0.5 left-0.5 size-3.5 rounded-pill bg-subtle shadow-sm transition-[translate,background-color] duration-[var(--fw-duration-base)] ease-out group-data-[state=checked]:translate-x-4 group-data-[state=checked]:bg-surface dark:group-data-[state=checked]:bg-ink" />
       </span>
     </RadixMenu.CheckboxItem>
   );

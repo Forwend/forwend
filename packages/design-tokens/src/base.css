@@ -7,6 +7,10 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     accent-color: var(--fw-accent);
+    /* Anchor jumps and focus scrolling stop clear of the sticky header and the phone tab bar; no section adds its own. */
+    scroll-padding-block: 6rem;
+    /* The scrollbar's room stays reserved, so locking the page under a modal does not shift it sideways. */
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -29,6 +33,32 @@
   input[type="checkbox"],
   input[type="radio"] {
     cursor: pointer;
+  }
+
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="switch"],
+  summary {
+    touch-action: manipulation;
+    user-select: none;
+  }
+
+  a[href] {
+    touch-action: manipulation;
+  }
+
+  /* The modal owns scrolling while open; its scroll must not move the page behind it. */
+  html:has(dialog:modal) {
+    overflow: hidden;
+  }
+
+  @media (pointer: coarse) {
+    input,
+    textarea,
+    select {
+      font-size: 1rem;
+    }
   }
 
   :disabled,
@@ -189,6 +219,16 @@
   }
 }
 
+/* The same sweep along an upright bar (a stacked timeline on a phone). */
+@keyframes fw-progress-down {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(250%);
+  }
+}
+
 @keyframes fw-draw-in {
   from {
     stroke-dashoffset: 1;
@@ -217,6 +257,53 @@
 }
 
 /*
+ * A row that scrolls sideways fades at the edge that still has more, so a cut option reads as more to come, not as a
+ * clipped one. The fade follows the row's own scroll (no script); a row that fits has no scroll timeline, so it never
+ * fades. Browsers without scroll timelines show the plain row.
+ */
+@property --fw-fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --fw-fade-end {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@keyframes fw-scroll-fade {
+  0% {
+    --fw-fade-start: 0px;
+    --fw-fade-end: 1.5rem;
+  }
+  8%,
+  92% {
+    --fw-fade-start: 1.5rem;
+    --fw-fade-end: 1.5rem;
+  }
+  100% {
+    --fw-fade-start: 1.5rem;
+    --fw-fade-end: 0px;
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  .fw-scroll-fade {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black var(--fw-fade-start),
+      black calc(100% - var(--fw-fade-end)),
+      transparent
+    );
+    animation: fw-scroll-fade linear both;
+    animation-timeline: scroll(self inline);
+  }
+}
+
+/*
  * Scroll reveal for marketing sections: each part rises into place as it enters the viewport, driven by the scroll
  * itself (no script). Browsers without scroll timelines, and reduced motion, show everything in place from the start.
  */
@@ -238,5 +325,12 @@
     .fw-reveal-late {
       animation-range: entry 15% entry 75%;
     }
+  }
+}
+
+/* A logo strip that drifts sideways in a loop: the list holds its items twice, so moving by half never shows a seam. */
+@keyframes fw-marquee {
+  to {
+    transform: translateX(-50%);
   }
 }

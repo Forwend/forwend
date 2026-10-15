@@ -2,11 +2,13 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 
 export async function blockingViolations(page: Page) {
-  // Colors are read after any opening fade (sheets, menus) has finished; endless loops (spinners) are not waited on.
+  // Colors are read after any opening fade (sheets, menus) has finished; endless loops (spinners) are not waited on,
+  // nor are effects that follow a scroll position (a scrolling filter's edge fade), which never finish on their own.
   await page.evaluate(() =>
     Promise.all(
       document
         .getAnimations()
+        .filter((a) => a.timeline === document.timeline)
         .filter((a) => a.effect?.getComputedTiming().iterations !== Number.POSITIVE_INFINITY)
         // A menu closing mid-wait cancels its animation; that is not a failure.
         .map((a) => a.finished.catch(() => {})),

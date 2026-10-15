@@ -92,14 +92,13 @@ export function ChecklistCard({
                   {"href" in action ? (
                     <Link
                       href={action.href}
-                      className={`${buttonClasses({ variant: "secondary", size: "sm" })} max-sm:h-11`}
+                      className={buttonClasses({ variant: "secondary", size: "sm" })}
                     >
                       {text.action}
                     </Link>
                   ) : (
                     <Button
                       size="sm"
-                      className="max-sm:h-11"
                       variant="secondary"
                       loading={action.busy}
                       onClick={action.onClick}
@@ -109,7 +108,6 @@ export function ChecklistCard({
                   )}
                   <Button
                     size="sm"
-                    className="max-sm:h-11"
                     variant="ghost"
                     aria-label={COPY.skipStep(text.title)}
                     onClick={() => onSkip(step.id)}

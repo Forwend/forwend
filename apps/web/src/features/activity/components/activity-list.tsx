@@ -7,12 +7,12 @@ import {
   EmptyState,
   ROW_INTERACTIVE_CLASSES,
   SearchField,
-  SegmentedControl,
 } from "@forwend/ui-web";
 import { History } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useGetActivityQuery } from "@/features/activity/api/activity-api";
+import { StatusFilter } from "@/features/activity/components/status-filter";
 import {
   ACTIVITY_KINDS,
   ACTIVITY_MAX,
@@ -23,6 +23,7 @@ import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { activityStatus } from "@/features/activity/lib/activity";
 import { ChainBadge } from "@/shared/components/chains/chain-badge";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
+import { ListToolbar } from "@/shared/components/list-toolbar";
 import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -80,26 +81,18 @@ function ProfileActivity({ profileId }: ActivityListProps) {
         {ACTIVITY_COPY.activity}
       </h1>
       {list.data && !noActivity ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Phones: the search first, the filter on its own row below. */}
-          <SegmentedControl
-            label={ACTIVITY_COPY.filterLabel}
-            className="max-sm:order-last"
-            value={filters.filter}
-            onValueChange={filters.setFilter}
-            options={Object.values(STATUS_FILTERS).map((value) => ({
-              value,
-              label: ACTIVITY_COPY.filters[value],
-            }))}
-          />
-          <SearchField
-            label={ACTIVITY_COPY.search}
-            value={filters.search}
-            onValueChange={filters.setSearch}
-            placeholder={ACTIVITY_COPY.searchPlaceholder}
-            className="flex-1 max-sm:basis-full sm:max-w-72"
-          />
-        </div>
+        <ListToolbar
+          search={
+            <SearchField
+              label={ACTIVITY_COPY.search}
+              value={filters.search}
+              onValueChange={filters.setSearch}
+              placeholder={ACTIVITY_COPY.searchPlaceholder}
+              className="flex-1"
+            />
+          }
+          filter={<StatusFilter value={filters.filter} onValueChange={filters.setFilter} />}
+        />
       ) : null}
       {list.isError && !data ? (
         <div role="alert" className="flex flex-wrap items-center gap-4 text-muted">

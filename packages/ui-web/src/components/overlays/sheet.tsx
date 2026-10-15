@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 import { cx } from "../../lib/cx";
+import { IconButton } from "../buttons/icon-button";
 
 export interface SheetProps {
   open: boolean;
@@ -39,7 +40,7 @@ export function Sheet({ open, onOpenChange, title, closeLabel = "Close", childre
         if (event.target === ref.current) onOpenChange(false); // a click on the backdrop
       }}
       className={cx(
-        "mx-0 mt-auto mb-0 max-h-[92dvh] outline-none w-full max-w-none rounded-t-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)] backdrop:backdrop-blur-glass sm:m-auto sm:max-w-md sm:rounded-lg",
+        "mx-0 mt-auto mb-0 max-h-[92dvh] outline-none w-full max-w-none rounded-t-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)] sm:m-auto sm:max-w-md sm:rounded-lg",
         // Phones only: the bottom sheet slides up. Closing stays instant: an exit transition needs a discrete
         // display/overlay transition, which only Chromium supports, so other browsers flash the closing sheet.
         "max-sm:transition-[translate] max-sm:duration-[var(--fw-duration-base)] max-sm:ease-out max-sm:starting:open:translate-y-full",
@@ -48,14 +49,9 @@ export function Sheet({ open, onOpenChange, title, closeLabel = "Close", childre
     >
       <div className="flex items-center justify-between gap-4 px-5 pt-4 pb-2">
         <h2 className="text-lg font-medium">{title}</h2>
-        <button
-          type="button"
-          aria-label={closeLabel}
-          onClick={() => onOpenChange(false)}
-          className="grid size-11 place-items-center rounded-pill text-muted hover:bg-surface-2 hover:text-ink"
-        >
+        <IconButton label={closeLabel} size="md" onClick={() => onOpenChange(false)}>
           <X aria-hidden className="size-[var(--fw-icon-md)]" />
-        </button>
+        </IconButton>
       </div>
       <div className="max-h-[calc(92dvh-4rem)] overflow-y-auto overscroll-contain px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
         {children}

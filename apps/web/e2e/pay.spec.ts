@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import { readPayPage } from "../scripts/canary-pay-page";
 import { PUBLIC_URL } from "./servers";
+import { sidewaysScroll } from "./sideways";
 
 // A sample invoice as GET /v1/invoices/{id} returns it. RECEIVE is factory.predict of these terms (the unit test checks
 // the computation against the R-15 vectors), so the page shows it only while every term is unchanged.
@@ -454,7 +455,11 @@ test.describe("pay page", () => {
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 });
       const box = await alert.boundingBox();
-      expect(box && Math.abs(box.x + box.width / 2 - width / 2)).toBeLessThan(2);
+      // The page's middle: its root's own width, which leaves out the scrollbar's reserved room.
+      const middle = await page.evaluate(
+        () => document.documentElement.getBoundingClientRect().width / 2,
+      );
+      expect(box && Math.abs(box.x + box.width / 2 - middle)).toBeLessThan(2);
       expect(box?.y).toBeGreaterThan(900 / 6);
     }
     await alert.getByRole("button", { name: "Try again" }).click();
@@ -688,8 +693,7 @@ test.describe("pay page", () => {
     await openPay(page, OPEN);
     await showAddress(page).click();
     await expect(page.getByText(RECEIVE)).toBeVisible();
-    const overflow = () =>
-      page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    const overflow = () => sidewaysScroll(page);
     expect(await overflow()).toBeLessThanOrEqual(0);
     await mockInvoice(page, PAID);
     await page.reload();

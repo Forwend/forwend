@@ -1,5 +1,9 @@
-import { Search } from "lucide-react";
+"use client";
+
+import { Search, X } from "lucide-react";
+import { useRef } from "react";
 import { cx } from "../../lib/cx";
+import { IconButton } from "../buttons/icon-button";
 
 export interface SearchFieldProps {
   /** The accessible name; the placeholder shows what it searches. */
@@ -7,6 +11,7 @@ export interface SearchFieldProps {
   value: string;
   onValueChange: (value: string) => void;
   placeholder?: string;
+  clearLabel?: string;
   className?: string;
 }
 
@@ -16,25 +21,43 @@ export function SearchField({
   value,
   onValueChange,
   placeholder,
+  clearLabel = "Clear search",
   className,
 }: SearchFieldProps) {
+  const input = useRef<HTMLInputElement>(null);
+  // The clear button sits outside the label, so it never joins the field's accessible name. The browser's own clear
+  // control is hidden: it ignores the theme.
   return (
-    <label
+    <div
       className={cx(
-        "relative flex h-9 min-w-0 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] ease-out before:absolute before:inset-x-0 before:-inset-y-1 focus-within:border-ink focus-within:ring-2 focus-within:ring-[color-mix(in_oklab,var(--fw-ink)_12%,transparent)]",
+        "flex h-10 min-w-0 items-center rounded-pill border border-transparent bg-surface-2 pr-1 transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] ease-out focus-within:border-field-focus focus-within:ring-2 focus-within:ring-field-ring pointer-coarse:h-11",
         className,
       )}
     >
-      <Search aria-hidden className="size-[var(--fw-icon-sm)] shrink-0 text-muted" />
-      <span className="sr-only">{label}</span>
-      {/* relative lifts the input above the label's hit-area pseudo, so a click still places the caret. */}
-      <input
-        type="search"
-        value={value}
-        onChange={(event) => onValueChange(event.target.value)}
-        placeholder={placeholder}
-        className="relative min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-subtle sm:text-sm"
-      />
-    </label>
+      <label className="flex h-full min-w-0 flex-1 cursor-text items-center gap-2 pl-3.5">
+        <Search aria-hidden className="size-[var(--fw-icon-sm)] shrink-0 text-muted" />
+        <span className="sr-only">{label}</span>
+        <input
+          ref={input}
+          type="search"
+          value={value}
+          onChange={(event) => onValueChange(event.target.value)}
+          placeholder={placeholder}
+          className="h-full min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-subtle sm:text-sm pointer-coarse:text-base [&::-webkit-search-cancel-button]:appearance-none"
+        />
+      </label>
+      {value ? (
+        <IconButton
+          label={clearLabel}
+          onClick={() => {
+            onValueChange("");
+            input.current?.focus();
+          }}
+          className="shrink-0"
+        >
+          <X aria-hidden className="size-[var(--fw-icon-sm)]" />
+        </IconButton>
+      ) : null}
+    </div>
   );
 }

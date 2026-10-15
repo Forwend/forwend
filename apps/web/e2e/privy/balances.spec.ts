@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { sidewaysScroll } from "../sideways";
 import { blockingViolations } from "./axe";
 import { session } from "./session";
 
@@ -139,7 +140,7 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
   await expect(page.locator("aside")).toBeHidden();
   const tabs = page.getByRole("navigation", { name: "Main" });
   await expect(tabs.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
-  expect(await page.evaluate(() => document.scrollingElement?.scrollWidth)).toBe(390);
+  expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
   // Round money actions under the centered total; Receive opens the sheet.
   await page
     .getByRole("region", { name: "Total balance" })
