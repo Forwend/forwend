@@ -6,7 +6,9 @@ import { TooltipProvider } from "../../overlays/tooltip";
 import { ACTIVITY_DIRECTIONS, ActivityRow } from "../activity-row";
 import { Address } from "../address/address";
 import { Money } from "../money/money";
+import { NetworkWarning } from "../network-warning";
 import { PaymentTimeline, STEP_STATES } from "../payment-timeline";
+import { ReceiveAddress } from "../receive-address";
 import type { PaymentStatus } from "../status-pill/payment-status";
 import { PAYMENT_STATUSES } from "../status-pill/payment-status";
 import { StatusPill } from "../status-pill/status-pill";
@@ -153,5 +155,52 @@ describe("PaymentTimeline", () => {
       </TooltipProvider>,
     );
     expect(getByRole("button", { name: "About 2 min left" })).toBeTruthy();
+  });
+});
+
+describe("ReceiveAddress", () => {
+  const address = "0x586134f74b654f5835860ca198ae725344670078";
+
+  it("shows the whole address in groups of 4 that copy and read as one address (R-78)", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.spyOn(navigator.clipboard, "writeText");
+    const { container } = render(<ReceiveAddress address={address} />);
+    const shown = container.querySelector("[data-address]") as HTMLElement;
+    // No character between the groups: a selection, a copy or a screen reader gets the address itself.
+    expect(shown.textContent).toBe(address);
+    const groups = Array.from(shown.querySelectorAll("span"), (span) => span.textContent);
+    expect(groups).toEqual([
+      "0x5861",
+      "34f7",
+      "4b65",
+      "4f58",
+      "3586",
+      "0ca1",
+      "98ae",
+      "7253",
+      "4467",
+      "0078",
+    ]);
+    expect(shown.querySelectorAll("wbr")).toHaveLength(groups.length - 1);
+    // The ends a look-alike copies stay marked, so they are still compared, with everything between them.
+    const spans = shown.querySelectorAll("span");
+    expect(spans[0]?.className).toContain("text-ink");
+    expect(spans[spans.length - 1]?.className).toContain("text-ink");
+    expect(spans[1]?.className).not.toContain("text-ink");
+    await user.click(screen.getByRole("button", { name: "Copy address" }));
+    expect(writeText).toHaveBeenCalledWith(address);
+  });
+});
+
+describe("NetworkWarning", () => {
+  it("names a bridged look-alike only when the network has one", () => {
+    const { container, rerender } = render(
+      <NetworkWarning token="USDC" network="Arbitrum Sepolia" lookalike="USDC.e" />,
+    );
+    expect(container.textContent).toContain(
+      "Send only USDC on Arbitrum Sepolia. Native USDC, not USDC.e.",
+    );
+    rerender(<NetworkWarning token="USDC" network="Base Sepolia" />);
+    expect(container.textContent).not.toContain("Native");
   });
 });

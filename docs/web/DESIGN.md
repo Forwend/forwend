@@ -119,8 +119,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   a small PDF link, the amount (Geist Mono, featured size; USD until the payer picks), "on <network>", the due date,
   "Closes in …" and the note. Right: one panel. While money is due it holds Pay with (the one option as a token mark,
   or Network and Token selects, which scale to many chains and tokens), a Show address button, then the QR beside the
-  exact amount with Copy, the address with Copy under them, one warning line "Send only USDC on Base Sepolia." and one
-  exchange-fee hint. Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
+  exact amount with Copy, the address with Copy under them (the whole address in groups of 4 that select and copy as
+  one address, R-78), one warning line "Send only USDC on Base Sepolia." (plus "Native USDC, not USDC.e." where a
+  bridged look-alike exists), the token contract as a short explorer link, and one exchange hint that names the network
+  to withdraw on. Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
   into "Confirm change" and only a second press starts over (leaving the button cancels), so a payer who already sent
   does not switch by accident. Under the address "Waiting for payment…" with a pulsing dot and Check status, which says
   when the next check is allowed; nothing waits before the address shows. Once money is seen the panel keeps its place ("Paying with" while nothing more is due): the steps

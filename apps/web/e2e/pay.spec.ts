@@ -201,6 +201,22 @@ test.describe("pay page", () => {
     await expect(page.getByText(RECEIVE)).toBeVisible();
     await expect(page.getByRole("img", { name: "QR code of the address to pay" })).toBeVisible();
     await expect(page.getByRole("note")).toHaveText("Send only USDC on Base Sepolia.");
+    // R-78: the whole address in groups of 4 that copies as one address, the token contract, the exchange's network.
+    const shown = page.locator("[data-address]");
+    await expect(shown).toHaveText(RECEIVE);
+    await expect(shown.locator("span")).toHaveCount(10);
+    // Selected and copied by hand, the groups still give the one address: no spaces or line breaks between them.
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await shown.click();
+    await page.keyboard.press("ControlOrMeta+C");
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(RECEIVE);
+    await expect(page.getByRole("link", { name: /0x036c.*cf7e/ })).toHaveAttribute(
+      "href",
+      "https://sepolia.basescan.org/address/0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+    );
+    await expect(
+      page.getByText(/^Paying from an exchange\? Withdraw on Base Sepolia,/),
+    ).toBeVisible();
     await expect(status(page)).toHaveText("Waiting for payment…");
     await expect(page.getByRole("button", { name: "Check status" })).toBeVisible();
     // A reload in the same tab keeps the address shown.
@@ -404,7 +420,14 @@ test.describe("pay page", () => {
     await expect(page).toHaveURL(new RegExp(`\\?option=${OPTION_ID}$`));
     await showAddress(page).click();
     await expect(page.getByText(OPTION_RECEIVE)).toBeVisible();
-    await expect(page.getByRole("note")).toHaveText("Send only USDC on Arbitrum Sepolia.");
+    // Arbitrum also has bridged USDC.e, another contract that does not pay this invoice (R-78).
+    await expect(page.getByRole("note")).toHaveText(
+      "Send only USDC on Arbitrum Sepolia. Native USDC, not USDC.e.",
+    );
+    await expect(page.getByRole("link", { name: /0x75fa.*aa4d/ })).toHaveAttribute(
+      "href",
+      "https://sepolia.arbiscan.io/address/0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d",
+    );
 
     // A reload keeps the pick and the shown address; the pick folds into one row.
     await page.reload();

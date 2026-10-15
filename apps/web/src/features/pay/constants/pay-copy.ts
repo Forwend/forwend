@@ -30,13 +30,16 @@ export const PAY_COPY = {
   chooseToken: "Choose a token",
   showAddress: "Show address",
   sendOnly: (symbol: string, network: string) => `Send only ${symbol} on ${network}.`,
+  // R-78: a bridged token with the same name is another contract, and does not pay this invoice.
+  notLookalike: (symbol: string, lookalike: string) => `Native ${symbol}, not ${lookalike}.`,
+  contract: (symbol: string) => `${symbol} contract`,
   sendTo: (symbol: string, network: string) => `Send ${symbol} on ${network} to`,
   exactAmount: "Amount",
   copyAmount: "Copy amount",
   amountCopied: "Amount copied",
   copyAmountFailed: "Copy failed: type the amount instead",
-  exchange: (amount: string) =>
-    `Paying from an exchange? Make sure ${amount} arrives after its fee.`,
+  exchange: (amount: string, network: string) =>
+    `Paying from an exchange? Withdraw on ${network}, and make sure ${amount} arrives after its fee.`,
   closingSoon: "Less than 30 minutes left.",
   qr: "QR code of the address to pay",
   mismatch:

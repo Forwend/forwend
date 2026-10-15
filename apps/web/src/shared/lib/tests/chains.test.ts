@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addressLink, txLink } from "@/shared/lib/chains";
+import { addressLink, lookalikeOf, txLink } from "@/shared/lib/chains";
 
 const HASH = `0x${"ab".repeat(32)}`;
 
@@ -30,5 +30,13 @@ describe("addressLink", () => {
   it("gives nothing for a chain without an explorer or a value that is not an address", () => {
     expect(addressLink(1, `0x${"ab".repeat(20)}`)).toBeNull();
     expect(addressLink(84532, "0x1234")).toBeNull();
+  });
+});
+
+describe("lookalikeOf", () => {
+  it("names the bridged token that looks like the real one, only where there is one (R-78)", () => {
+    expect(lookalikeOf(421614, "USDC")).toBe("USDC.e");
+    expect(lookalikeOf(84532, "USDC")).toBeUndefined();
+    expect(lookalikeOf(421614, "USDT")).toBeUndefined();
   });
 });
