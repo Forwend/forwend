@@ -1951,74 +1951,76 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-15 review pass by independent reviewer: Test passes on HEAD; fails (keys differ) when the key gets the attempt count or time.Now().UnixNano() appended (checked with go test -overlay, no repo edits). Fake now records every try's key; whole notify and email packages pass. Package comment matches notify.go:119 (invoice, event id, sha256 of address). Only notify.go, notify_test.go and tasks.json changed. Notes, not defects: notify.go line 3 is 141 chars, longer than the other comment lines; PROJECT.md R-80 and D-65 still say the event id alone is the key (api.md has it right)."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-15T10:30:10Z",
+        "at": "2026-10-15T10:36:44Z",
         "checks": [
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 66.4,
-            "log": "docs/runs/F198-20261015T103010Z-backend.log"
+            "seconds": 63.6,
+            "log": "docs/runs/F198-20261015T103644Z-backend.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 2.0,
-            "log": "docs/runs/F198-20261015T103010Z-harness.log"
+            "log": "docs/runs/F198-20261015T103644Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F198-20261015T103010Z-docs-check.log"
+            "seconds": 0.0,
+            "log": "docs/runs/F198-20261015T103644Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.4,
-            "log": "docs/runs/F198-20261015T103010Z-lint.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F198-20261015T103644Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F198-20261015T103010Z-typecheck.log"
+            "log": "docs/runs/F198-20261015T103644Z-typecheck.log"
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 69.3,
-            "log": "docs/runs/F198-20261015T103010Z-unit.log"
+            "seconds": 65.8,
+            "log": "docs/runs/F198-20261015T103644Z-unit.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.1,
-            "log": "docs/runs/F198-20261015T103010Z-build.log"
+            "seconds": 0.7,
+            "log": "docs/runs/F198-20261015T103644Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 164.8,
-            "log": "docs/runs/F198-20261015T103010Z-e2e.log"
+            "seconds": 160.8,
+            "log": "docs/runs/F198-20261015T103644Z-e2e.log"
           }
         ],
         "taskHash": "29ee53c01540953d",
-        "filesHash": "67941af3f2509ff2",
+        "filesHash": "f484bd1037d16b15",
         "proof": {
-          "1": "backend: TestRetryKeepsTheIdempotencyKey fails one send, lets the retry succeed, and checks both used the same Idempotency-Key with one email sent; a key that changes per send (time added) fails it; the notify package comment now names the key's parts"
+          "1": "backend: TestRetryKeepsTheIdempotencyKey fails one send, lets the retry succeed, and checks both used the same Idempotency-Key with one email sent; a key that changes per send (time added) fails it; the notify package comment and PROJECT.md R-80 and D-65 now name the key's parts"
         }
       },
       "branch": "test/f198-a-retried-email-keeps-its-idempotency-ke",
