@@ -2707,7 +2707,7 @@
         "With touch emulation at 390 px, tapping the estimate icon and a Coming soon action shows its text, and a tap elsewhere hides it; desktop hover and keyboard focus keep working; e2e covers the tap"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -2716,7 +2716,8 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-15 review fail by independent reviewer: Defect: tooltip.tsx:42-52 clears tapped only after a click. A touch that becomes a scroll (pointerdown, pointercancel, pointerleave; no click) or any touch without a click leaves tapped=true, so onOpenChange (line 37) ignores every Radix close. Repro on dev server /kit with CDP touch: tap estimate hint (opens), swipe starting on it -> stays open through the scroll; tap heading -> still open; tap 'Hover for tooltip' -> both tooltips open at once. Old code did not stick (any onOpenChange reset the flag). Suggested fix: clear tapped in onPointerCancel, plus an e2e step for swipe-from-trigger then tap elsewhere. Checked OK: tap A then B (A closes), tap then wheel/swipe elsewhere closes, long press toggles, tap while open from focus closes, desktop hover opens, mouse press and Enter/Space close as Radix did, stale setTimeout only writes a ref. A tap on a trigger with its own onClick runs both (Slot runs child onClick first); same as before, and no current phone-visible trigger has an action. New e2e fails on HEAD~1 tooltip.tsx (kit.spec.ts:31) and passes with the fix; lint and ui-web tests pass. Removing the jsdom test fits workflow.md 'Which tests to keep': it used an impossible event order and the e2e covers the bug."
+        "2026-10-15 review fail by independent reviewer: Defect: tooltip.tsx:42-52 clears tapped only after a click. A touch that becomes a scroll (pointerdown, pointercancel, pointerleave; no click) or any touch without a click leaves tapped=true, so onOpenChange (line 37) ignores every Radix close. Repro on dev server /kit with CDP touch: tap estimate hint (opens), swipe starting on it -> stays open through the scroll; tap heading -> still open; tap 'Hover for tooltip' -> both tooltips open at once. Old code did not stick (any onOpenChange reset the flag). Suggested fix: clear tapped in onPointerCancel, plus an e2e step for swipe-from-trigger then tap elsewhere. Checked OK: tap A then B (A closes), tap then wheel/swipe elsewhere closes, long press toggles, tap while open from focus closes, desktop hover opens, mouse press and Enter/Space close as Radix did, stale setTimeout only writes a ref. A tap on a trigger with its own onClick runs both (Slot runs child onClick first); same as before, and no current phone-visible trigger has an action. New e2e fails on HEAD~1 tooltip.tsx (kit.spec.ts:31) and passes with the fix; lint and ui-web tests pass. Removing the jsdom test fits workflow.md 'Which tests to keep': it used an impossible event order and the e2e covers the bug.",
+        "2026-10-15 review pass by independent reviewer: Re-review of c262906: tooltip.tsx onPointerCancel clears tapped, so a touch that turns into a scroll no longer makes the tooltip ignore Radix closes. kit.spec.ts swipe step (CDP touchStart on trigger, move up, touchEnd, then tap heading) passes with the fix (40 passed) and fails at kit.spec.ts:51 with the handler removed (1 failed). Earlier checks still hold: tap toggles, tap elsewhere closes, two tooltips, long press, mouse press and Enter/Space same as Radix, desktop hover, stale timeout harmless. Lint passes. Note: a tap on a trigger with its own onClick runs both, same as before; no phone-visible trigger has one today."
       ],
       "blockedReason": null,
       "evidence": {
@@ -2778,11 +2779,25 @@
         "filesHash": "a45a90c719d9c30b",
         "proof": {
           "1": "e2e: kit.spec 'a tap opens a tooltip on a touch screen': at 390 px with touch, a tap opens it, a tap elsewhere closes it, a tap opens it again and a second tap closes it; a swipe that starts on the trigger (pointercancel, no click) leaves it closable by a tap elsewhere. It fails without the fix and without the pointercancel reset. Desktop hover and keyboard focus still open it; on the phone overview a tap on the estimate hint and on Send shows their text. The jsdom test that passed while real taps failed is replaced by this e2e"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "Re-review of c262906: tooltip.tsx onPointerCancel clears tapped, so a touch that turns into a scroll no longer makes the tooltip ignore Radix closes. kit.spec.ts swipe step (CDP touchStart on trigger, move up, touchEnd, then tap heading) passes with the fix (40 passed) and fails at kit.spec.ts:51 with the handler removed (1 failed). Earlier checks still hold: tap toggles, tap elsewhere closes, two tooltips, long press, mouse press and Enter/Space same as Radix, desktop hover, stale timeout harmless. Lint passes. Note: a tap on a trigger with its own onClick runs both, same as before; no phone-visible trigger has one today.",
+          "at": "2026-10-15T14:33:26Z",
+          "filesHash": "a45a90c719d9c30b"
+        },
+        "commit": "c262906",
+        "doneAt": "2026-10-15T14:33:38Z"
       },
       "branch": "fix/f205-on-touch-screens-a-tap-shows-a-tooltip-s",
       "baseCommit": "2f6beab5fbecb9bbcca4fad1eda6eaadf6c80091",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f205-on-touch-screens-a-tap-shows-a-tooltip-s",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
