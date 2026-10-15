@@ -1417,7 +1417,7 @@
         "A request through the Next /api rewrite to a stub upstream shows whether X-Forwarded-For arrives; internal/httpapi/mid/ratelimit.go and docs/backend/api.md state that result and still give per-IP limits to the edge (Q-8)"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend",
         "docs-check"
@@ -1429,7 +1429,77 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T03:42:45Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 63.2,
+            "log": "docs/runs/F193-20261015T034245Z-backend.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F193-20261015T034245Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": "docs/runs/F193-20261015T034245Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F193-20261015T034245Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F193-20261015T034245Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 64.5,
+            "log": "docs/runs/F193-20261015T034245Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.8,
+            "log": "docs/runs/F193-20261015T034245Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 159.9,
+            "log": "docs/runs/F193-20261015T034245Z-e2e.log"
+          }
+        ],
+        "taskHash": "a98d384a66e8b412",
+        "filesHash": "1af72f9ee80b6c96",
+        "proof": {
+          "1": "backend: a stub upstream behind next start (API_URL built in) received no X-Forwarded-For for a plain request and '1.2.3.4' unchanged when the client sent it; ratelimit.go and api.md now say exactly that and keep per-IP limits at the edge (Q-8); docs-check passes"
+        }
+      },
+      "branch": "fix/f193-the-api-rate-limit-comment-and-api-md-ag",
+      "baseCommit": "c509be9667eb7f6a56948b758351ac8a16c46870",
+      "failedVerifies": 0
     },
     {
       "id": "F194",

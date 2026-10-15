@@ -248,8 +248,10 @@ seconds (when the next token is back) and runs nothing else.
   read and no other holds unrecorded money, it is 503: another option's empty read never answers for it. A rescan is asked only when the address holds more than is
   recorded and no rescan finished in the last 10 minutes, so money no log explains (Arc native USDC) doesn't start a
   full rescan on every press.
-- The other public routes (`GET /v1/invoices/{invoiceId}` and both PDFs) have no limit in the api. Next's `/api` rewrite does
-  not set `X-Forwarded-For`, so the api sees one address for every payer and cannot trust a client's header. Limit them
+- The other public routes (`GET /v1/invoices/{invoiceId}` and both PDFs) have no limit in the api. Next's `/api` rewrite adds
+  no `X-Forwarded-For` of its own and passes a client's header through unchanged (measured 2026-10-15 with a stub
+  behind `next start`: no header without one, a sent `1.2.3.4` arrived as is), so the api sees one address for every
+  payer and cannot trust the header. Limit them
   per IP at the load balancer or edge once hosting is chosen (Q-8), and keep the api reachable only through it.
   `/healthz` has no limit.
 - The buckets live in each api process (D-72): with N replicas behind a load balancer a caller gets up to N times the
