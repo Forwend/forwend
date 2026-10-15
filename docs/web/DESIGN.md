@@ -31,6 +31,8 @@ Use `/kit` for the implemented components. This file owns visual use; token sour
 - Cool neutral surfaces with a faint green tint, soft hairlines, rounded controls and cards, pill navigation, buttons
   and chips. Shadows are soft and layered in the ink's tint: resting controls barely lift, a primary button lifts a
   little more on hover, menus and the chart readout float. No hard offset shadows.
+- Fields have a quiet focus: an ink border with a faint ink ring, and no hover change (text fields, selects, search,
+  the code input and email capture). A field's action button takes the field's height.
 - A disabled field keeps the surface background, with a lighter border and text, so a row of fields never mixes
   backgrounds.
 
