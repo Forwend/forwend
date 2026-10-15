@@ -6,11 +6,11 @@ import {
   COPY_STATUS,
   EmptyState,
   formatTokenAmount,
+  IconButton,
   Money,
   QrCode,
   ReceiveAddress,
   Skeleton,
-  SwapLabel,
   shortAddress,
   useCopy,
 } from "@forwend/ui-web";
@@ -407,7 +407,7 @@ function PayBox({
                   <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
                 )}
                 {!pay.canSend || sending || picking ? null : (
-                  <Button className="w-full" onClick={show}>
+                  <Button size="lg" className="w-full" onClick={show}>
                     {COPY.showAddress}
                   </Button>
                 )}
@@ -446,12 +446,7 @@ function PayBox({
                     </p>
                   </div>
                 </div>
-                <ReceiveAddress
-                  address={address}
-                  label={COPY.sendTo(token.symbol, network)}
-                  copyShort={COPY.copyShort}
-                  copiedShort={COPY.copiedShort}
-                />
+                <ReceiveAddress address={address} label={COPY.sendTo(token.symbol, network)} />
                 {contract ? (
                   <p className="text-xs text-muted">
                     {COPY.contract(token.symbol)}{" "}
@@ -730,7 +725,7 @@ function Paid({ invoice, token }: { invoice: Invoice; token: PayToken }) {
       <div className="flex flex-col gap-2">
         <a
           href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.receipt)}
-          className={`${buttonClasses({ variant: back ? "secondary" : "primary" })} w-full`}
+          className={`${buttonClasses({ variant: back ? "secondary" : "primary", size: "lg" })} w-full`}
         >
           <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
           {COPY.receiptPdf}
@@ -740,7 +735,7 @@ function Paid({ invoice, token }: { invoice: Invoice; token: PayToken }) {
             href={back}
             rel="noopener noreferrer"
             title={backLabel}
-            className={`${buttonClasses({ variant: "primary" })} w-full`}
+            className={`${buttonClasses({ variant: "primary", size: "lg" })} w-full`}
           >
             <span className="truncate">{backLabel}</span>
           </a>
@@ -777,7 +772,7 @@ function ExactAmount({ amount, token }: { amount: bigint; token: PayToken }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <span className="text-xs text-muted">{COPY.exactAmount}</span>
-      <div className="flex items-center justify-between gap-2 rounded-md border border-line-strong bg-surface py-1.5 pr-1.5 pl-3">
+      <div className="flex items-center justify-between gap-2 rounded-md border border-field bg-surface py-1 pr-1 pl-3">
         <Money
           baseUnits={amount}
           decimals={token.decimals}
@@ -785,24 +780,13 @@ function ExactAmount({ amount, token }: { amount: bigint; token: PayToken }) {
           token={token.symbol}
           className="min-w-0 text-base font-semibold break-all text-ink"
         />
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={copy}
-          aria-label={label}
-          className="shrink-0"
-        >
+        <IconButton label={label} title={label} onClick={copy}>
           {status === COPY_STATUS.copied ? (
-            <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
+            <Check aria-hidden className="size-[var(--fw-icon-sm)] text-success" />
           ) : (
             <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
           )}
-          <SwapLabel
-            labels={[COPY.copyShort, COPY.copiedShort]}
-            active={status === COPY_STATUS.copied ? COPY.copiedShort : COPY.copyShort}
-            className="max-sm:sr-only"
-          />
-        </Button>
+        </IconButton>
       </div>
       <span role="status" className="sr-only">
         {status === COPY_STATUS.idle ? "" : label}

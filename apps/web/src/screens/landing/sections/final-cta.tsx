@@ -9,10 +9,10 @@ export function FinalCta() {
       id="join"
       data-section={LANDING_SECTIONS.cta}
       aria-labelledby="cta-title"
-      className="relative isolate scroll-mt-28 overflow-hidden border-y border-line bg-surface"
+      className="relative isolate overflow-hidden border-y border-line bg-surface"
     >
       <HalftoneRidge soft className="absolute inset-x-0 bottom-0 -z-10 h-1/2 w-full opacity-50" />
-      <div className="mx-auto flex max-w-3xl flex-col items-center px-4 pt-20 pb-40 text-center sm:pt-28 sm:pb-48">
+      <div className="mx-auto flex max-w-3xl flex-col items-center fw-safe-x pt-20 pb-40 text-center sm:pt-28 sm:pb-48">
         <h2 id="cta-title" className="font-display text-section text-ink">
           {FINAL_CTA.title}
         </h2>

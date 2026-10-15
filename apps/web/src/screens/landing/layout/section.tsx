@@ -28,7 +28,7 @@ export function Section({
       id={id}
       data-section={section}
       aria-labelledby={headingId}
-      className={`mx-auto max-w-6xl scroll-mt-28 px-4 py-20 sm:px-8 sm:py-24 ${
+      className={`mx-auto max-w-6xl fw-safe-x py-20 sm:[--fw-page-gutter:2rem] sm:py-24 ${
         split ? "lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16" : ""
       } ${className}`}
     >

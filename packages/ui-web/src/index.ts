@@ -11,8 +11,6 @@ export type { IconButtonProps, IconButtonSize } from "./components/buttons/icon-
 export { ICON_BUTTON_SIZES, IconButton } from "./components/buttons/icon-button";
 export type { RowButtonProps } from "./components/buttons/row-button";
 export { RowButton } from "./components/buttons/row-button";
-export type { SwapLabelProps } from "./components/buttons/swap-label";
-export { SwapLabel } from "./components/buttons/swap-label";
 export type { AccordionItem, AccordionProps } from "./components/display/accordion";
 export { Accordion } from "./components/display/accordion";
 export type { BadgeProps } from "./components/display/badge";
@@ -67,6 +65,8 @@ export type { NavLink, NavPillProps } from "./components/navigation/nav-pill";
 export { NavPill } from "./components/navigation/nav-pill";
 export type { SegmentedControlProps } from "./components/navigation/segmented-control";
 export { SegmentedControl } from "./components/navigation/segmented-control";
+export type { SelectMenuOption, SelectMenuProps } from "./components/navigation/select-menu";
+export { SelectMenu } from "./components/navigation/select-menu";
 export type { TabItem, TabsProps } from "./components/navigation/tabs";
 export { Tabs } from "./components/navigation/tabs";
 export type { ThemeSwitchProps } from "./components/navigation/theme-switch";

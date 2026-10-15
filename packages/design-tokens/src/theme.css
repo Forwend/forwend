@@ -20,6 +20,9 @@
   --color-subtle: var(--fw-subtle);
   --color-line: var(--fw-line);
   --color-line-strong: var(--fw-line-strong);
+  --color-field: var(--fw-field);
+  --color-field-focus: var(--fw-field-focus);
+  --color-field-ring: var(--fw-field-ring);
   --color-primary: var(--fw-primary);
   --color-on-primary: var(--fw-on-primary);
   --color-accent: var(--fw-accent);

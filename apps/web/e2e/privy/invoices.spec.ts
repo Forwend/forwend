@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { sidewaysScroll } from "../sideways";
 import { blockingViolations } from "./axe";
 import { session } from "./session";
 
@@ -150,25 +151,26 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(details).toContainText("Due date");
     await expect(details).toContainText(dueText);
     await expect(details).toContainText("Checkout closes");
-    // R-60: one status at once, with when the checkout closes, above the two columns.
-    await expect(page.getByRole("main").locator("header [data-status]")).toHaveText(
-      "Waiting for payment",
-    );
-    await expect(page.getByRole("main").locator("header")).toContainText("Checkout closes");
+    // R-60: each said once, the status by the timeline and the close time in Details, so the header has neither.
+    await expect(page.getByRole("main").locator("header [data-status]")).toHaveCount(0);
+    await expect(page.getByRole("main").locator("header")).not.toContainText("Checkout closes");
     const client = page.getByRole("region", { name: "Billed to" });
     await expect(client).toContainText("E2E client");
     await expect(client).toContainText("client@example.com");
-    // The pay link copies whole.
+    // The pay link copies whole, from the header's More actions menu, which also opens it.
     const link = `http://localhost:3000/pay/${invoice.invoiceId}`;
-    const share = page.getByRole("region", { name: "Pay link" });
-    // The row shows the host and a short id; the whole link is its title, Copy and Open.
-    await expect(share.locator("p[title]")).toHaveAttribute("title", link);
+    await page
+      .getByRole("main")
+      .locator("header")
+      .getByRole("button", { name: "More actions" })
+      .click();
     await expect(
-      share.getByRole("link", { name: "Open the pay page in a new tab" }),
+      page.getByRole("menuitem", { name: "Open pay page in a new tab" }),
     ).toHaveAttribute("href", link);
-    await share.getByRole("button", { name: "Copy link" }).click();
-    await expect(share.getByRole("button", { name: "Link copied" })).toBeVisible();
+    await page.getByRole("menuitem", { name: "Copy link" }).click();
+    await expect(page.getByRole("menuitem", { name: "Link copied" })).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
+    await page.keyboard.press("Escape");
     // The PDFs come through the same-origin /api path; the receipt only once the invoice is paid.
     const pdf = (name: string) => details.getByRole("link", { name });
     const read = `/api/v1/invoices/${invoice.invoiceId}`;
@@ -259,8 +261,7 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
     storageState: session,
   });
   const page = await context.newPage();
-  const fits = async () =>
-    expect(await page.evaluate(() => document.scrollingElement?.scrollWidth)).toBe(390);
+  const fits = async () => expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
   await page.goto("/app");
   const tabs = page.getByRole("navigation", { name: "Main" });
   const more = page.getByRole("dialog", { name: "More" });

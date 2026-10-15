@@ -72,8 +72,8 @@ export function EmailCapture({
           <div
             className={cx(
               PILL,
-              "pl-5 transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] focus-within:border-ink focus-within:ring-2 focus-within:ring-[color-mix(in_oklab,var(--fw-ink)_12%,transparent)]",
-              isError ? "border-danger" : "border-line-strong",
+              "pl-5 transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] focus-within:border-field-focus focus-within:ring-2 focus-within:ring-field-ring",
+              isError ? "border-danger" : "border-field",
             )}
           >
             <label htmlFor={id} className="sr-only">

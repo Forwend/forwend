@@ -15,7 +15,7 @@ export interface PayScreenProps {
 /** The public checkout: the invoice beside how to pay it on wide screens, one column on phones (R-68). */
 export function PayScreen({ invoiceId, option }: PayScreenProps) {
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 lg:gap-12 lg:py-10">
+    <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-8 fw-safe-x pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] lg:gap-12 lg:py-10">
       <Link href={APP_ROUTES.site} className={`${LINK} self-start`}>
         <Logo />
       </Link>

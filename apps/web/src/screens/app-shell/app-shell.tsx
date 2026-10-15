@@ -33,6 +33,7 @@ const SHELL_COPY = {
   loading: "Loading your profiles",
   loadFailed: "We could not load your profiles. Try again, or sign out and sign in again.",
   retry: "Try again",
+  skip: "Skip to content",
 } as const;
 
 // Signed out: go to sign-in. Signed in: POST /v1/me (signs up on the first visit), then the frame (sidebar and header
@@ -168,6 +169,12 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     // Phones: toasts sit above the tab bar, its border and the safe area.
     <ToastProvider className="max-lg:bottom-[calc(5rem+1px+env(safe-area-inset-bottom)+1rem)]">
       <div className="min-h-dvh bg-bg">
+        <a
+          href="#app-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[var(--fw-z-toast)] focus:rounded-md focus:bg-primary focus:px-4 focus:py-3 focus:text-on-primary"
+        >
+          {SHELL_COPY.skip}
+        </a>
         <PaymentToasts profileId={active.profileId} />
         <AppSidebar
           profiles={profiles}
@@ -190,7 +197,11 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             collapsed={collapsed}
             onToggleCollapsed={toggleCollapsed}
           />
-          <main className="px-4 pt-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] sm:px-6 sm:pt-6 lg:pb-10">
+          <main
+            id="app-content"
+            tabIndex={-1}
+            className="fw-safe-x pt-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] outline-none sm:pt-8 lg:pb-10"
+          >
             <AppSessionContext value={session}>{children}</AppSessionContext>
           </main>
         </div>

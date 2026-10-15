@@ -122,6 +122,18 @@ export function PaymentsShowcase() {
               { label: "Settled", state: STEP_STATES.upcoming },
             ]}
           />
+          <div className="w-80">
+            <PaymentTimeline
+              label="Payment progress on a phone, stacked"
+              steps={[
+                { label: "Waiting", state: STEP_STATES.complete },
+                { label: "Detected", state: STEP_STATES.complete, detail: "12:04" },
+                { label: "Confirming", state: STEP_STATES.current, progress: null },
+                { label: "Paid", state: STEP_STATES.upcoming },
+                { label: "Settled", state: STEP_STATES.upcoming },
+              ]}
+            />
+          </div>
           <PaymentTimeline
             label="Payment progress, confirming from zero"
             steps={[

@@ -76,6 +76,7 @@ export function BalanceHero({
       options={RANGE_OPTIONS}
       value={range}
       onValueChange={setRange}
+      size="sm"
     />
   );
 

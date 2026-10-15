@@ -3,6 +3,7 @@
 import { CalendarDays, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { cx } from "../../../lib/cx";
+import { IconButton } from "../../buttons/icon-button";
 import { FIELD_CONTROL_CLASSES } from "../field-classes";
 import { Calendar, type CalendarProps } from "./calendar";
 import { toTime } from "./iso-date";
@@ -99,21 +100,16 @@ export function DatePicker({
             <CalendarDays aria-hidden className="size-[var(--fw-icon-md)] shrink-0 text-muted" />
           </button>
           {clearLabel && value ? (
-            <button
-              type="button"
-              aria-label={clearLabel}
-              onClick={() => onChange(null)}
-              className="relative grid size-8 shrink-0 place-items-center rounded-pill text-muted before:absolute before:-inset-1.5 hover:bg-surface-2 hover:text-ink"
-            >
+            <IconButton label={clearLabel} onClick={() => onChange(null)}>
               <X aria-hidden className="size-[var(--fw-icon-sm)]" />
-            </button>
+            </IconButton>
           ) : null}
         </div>
         {open ? (
           <div
             role="dialog"
             aria-labelledby={`${id}-label`}
-            className="absolute top-full left-0 z-[var(--fw-z-overlay)] mt-1.5 rounded-lg border border-line bg-surface p-3 text-ink shadow-lg"
+            className="absolute top-full left-0 z-[var(--fw-z-overlay)] max-w-[calc(100vw-2rem)] mt-1.5 rounded-lg border border-line bg-surface p-3 text-ink shadow-lg"
           >
             <Calendar
               label={label}

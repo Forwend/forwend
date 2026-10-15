@@ -1,6 +1,14 @@
 "use client";
 
-import { Button, ChoiceCard, Form, FreelancerIcon, MerchantIcon, TextField } from "@forwend/ui-web";
+import {
+  Button,
+  buttonClasses,
+  ChoiceCard,
+  Form,
+  FreelancerIcon,
+  MerchantIcon,
+  TextField,
+} from "@forwend/ui-web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
@@ -90,14 +98,11 @@ export function NewProfileForm() {
         error={nameError || undefined}
         className="min-h-26"
       />
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         <Button type="submit" loading={busy}>
           {COPY.create}
         </Button>
-        <Link
-          href={APP_ROUTES.home}
-          className="rounded-pill px-3 py-2 text-sm text-muted hover:text-ink"
-        >
+        <Link href={APP_ROUTES.home} className={buttonClasses({ variant: "ghost" })}>
           {COPY.cancel}
         </Link>
       </div>

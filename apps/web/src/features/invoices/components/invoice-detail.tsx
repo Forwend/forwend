@@ -3,27 +3,20 @@
 import {
   Button,
   buttonClasses,
-  COPY_STATUS,
   formatTokenAmount,
   PAYMENT_STATUS,
   Skeleton,
-  StatusPill,
-  shortAddress,
-  useCopy,
 } from "@forwend/ui-web";
-import { Check, ChevronLeft, Copy, ExternalLink, FileDown } from "lucide-react";
+import { ChevronLeft, FileDown } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
-import {
-  API_PAYMENT_STATUSES,
-  API_SETTLEMENT_STATUSES,
-} from "@/features/activity/constants/activity";
+import { type ReactNode, type Ref, useEffect, useRef, useState } from "react";
+import { API_PAYMENT_STATUSES } from "@/features/activity/constants/activity";
 import {
   useGetInvoiceQuery,
   useGetProfileInvoiceQuery,
 } from "@/features/invoices/api/invoices-api";
-import { CancelInvoice } from "@/features/invoices/components/cancel-invoice";
 import { CheckStatus } from "@/features/invoices/components/check-status";
+import { InvoiceActions } from "@/features/invoices/components/invoice-actions";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { InvoiceDeposits } from "@/features/invoices/components/invoice-deposits";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
@@ -90,7 +83,7 @@ export function InvoiceDetail({
   const notMine = (owned.error as { status?: unknown } | undefined)?.status === NOT_FOUND;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4 lg:gap-6">
       <Link
         href={APP_ROUTES.invoices}
         className="-ml-1 inline-flex h-11 items-center gap-1 self-start rounded-sm px-1 text-sm text-muted hover:text-ink lg:hidden"
@@ -152,8 +145,8 @@ function Loaded({
   const amount = BigInt(invoice.amount);
   const client = mine?.client;
   const issuer = invoice.issuer;
-  // The checkout closes at expiry by the local clock (pay link, Closed on); the status follows the API's closed flag,
-  // at most one poll later.
+  // The checkout closes at expiry by the local clock (pay link, Checkout closed in Details); the status follows the
+  // API's closed flag, at most one poll later.
   const closed = Date.parse(invoice.expiresAt) <= Date.now();
   const status = invoiceStatus(invoice);
   const exception = invoiceException(invoice, status);
@@ -165,12 +158,12 @@ function Loaded({
   // Payer chooses with no money yet: the amount is USD in any accepted option (R-56, D-75).
   const choosing = invoice.options.length > 1 && !invoice.optionLocked;
   // The pay link takes money only while these last; sharing it later only creates money held for a refund.
-  const statusLine = useRef<HTMLParagraphElement>(null);
-  // Focus waits for the canceled status to render: until the dialog is gone everything else is inert.
+  const canceledRow = useRef<HTMLDivElement>(null);
+  // Focus waits for Details' Canceled on row to render: until the dialog is gone everything else is inert.
   const [canceling, setCanceling] = useState(false);
   const canceled = invoice.paymentStatus === API_PAYMENT_STATUSES.canceled;
   useEffect(() => {
-    if (canceling && canceled) statusLine.current?.focus();
+    if (canceling && canceled) canceledRow.current?.focus();
   }, [canceling, canceled]);
   const payable =
     !closed &&
@@ -184,14 +177,15 @@ function Loaded({
     ).includes(status);
   return (
     <>
-      {/* One status, said at once: open with its close time, closed, partly paid, paid or settled (R-60). */}
-      {/* The pay link is the page's action, so it sits with the status, while it can still take money (R-60). */}
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="relative flex min-w-0 flex-col gap-2">
-          {/* The number is the breadcrumb's last step on desktop, so the heading shows only on phones. There, above a
-              title, it is a quiet label, so the title reads as the heading, and the status pill moves up beside it. */}
+      {/* Each thing said once (R-60): the timeline says the status and Details the times (when the checkout closes,
+          when it was canceled), so the header only names the invoice. Its actions (copy and open the pay link while it
+          takes money, cancel before any money) wait behind one More actions menu at the header's top right. */}
+      <header className="flex items-start justify-between gap-3 lg:items-center">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          {/* Above a title the number is a quiet label on phones, so the title reads as the heading; on desktop the
+              breadcrumb's last step already shows it. With no title the number is the heading everywhere. */}
           <h1
-            className={`flex min-h-7 items-center text-ink max-lg:pr-40 lg:sr-only ${invoice.title ? "text-sm font-medium text-muted" : "text-2xl font-semibold tracking-tight"}`}
+            className={`flex min-h-7 items-center ${invoice.title ? "text-sm font-medium text-muted lg:sr-only" : "text-2xl font-semibold tracking-tight text-ink"}`}
           >
             {invoiceNumber(invoice.number)}
           </h1>
@@ -200,17 +194,6 @@ function Loaded({
               {invoice.title}
             </p>
           ) : null}
-          <p
-            ref={statusLine}
-            tabIndex={-1}
-            className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted outline-none"
-          >
-            {/* One pill, read here in order; on phones it is drawn on the number's row. */}
-            <span className="max-lg:absolute max-lg:top-0 max-lg:right-0 max-lg:flex max-lg:h-7 max-lg:items-center">
-              <StatusPill status={status} />
-            </span>
-            {when(invoice) ? <span>{when(invoice)}</span> : null}
-          </p>
           <NextStep
             invoiceId={invoice.invoiceId}
             exception={exception}
@@ -218,25 +201,21 @@ function Loaded({
             request={request}
           />
         </div>
-        {payable ? (
-          <ShareLink
-            invoiceId={invoice.invoiceId}
-            actions={
-              // Only before any money, on any option (R-79): after that the money decides, not a cancel.
-              status === PAYMENT_STATUS.open &&
-              invoice.deposits.length === 0 &&
-              invoice.options.every((o) => o.deposits.length === 0) ? (
-                <CancelInvoice
-                  profileId={profileId}
-                  invoiceId={invoice.invoiceId}
-                  number={invoiceNumber(invoice.number)}
-                  noun={request ? COPY.noun.request : COPY.noun.invoice}
-                  onCanceled={() => setCanceling(true)}
-                />
-              ) : null
-            }
-          />
-        ) : null}
+        <InvoiceActions
+          profileId={profileId}
+          invoiceId={invoice.invoiceId}
+          number={invoiceNumber(invoice.number)}
+          noun={request ? COPY.noun.request : COPY.noun.invoice}
+          payable={payable}
+          // Only before any money, on any option (R-79): after that the money decides, not a cancel.
+          cancelable={
+            payable &&
+            status === PAYMENT_STATUS.open &&
+            invoice.deposits.length === 0 &&
+            invoice.options.every((o) => o.deposits.length === 0)
+          }
+          onCanceled={() => setCanceling(true)}
+        />
       </header>
 
       {/* minmax(0, 1fr): a long value never widens the column past the screen. */}
@@ -282,7 +261,7 @@ function Loaded({
             <p role="status" className="text-sm text-ink empty:sr-only">
               {current === INVOICE_STEPS.confirming ? (
                 <ConfirmingStatus blocks={blocksLeft} total={blocksTotal} seconds={secondsLeft} />
-              ) : // The badge and the timeline say the state; this line says only why money still waits.
+              ) : // The timeline says the state; this line says only why money still waits.
               wait ? (
                 COPY.settling[wait.kind](
                   chainName(invoice.chainId),
@@ -338,11 +317,22 @@ function Loaded({
               {invoice.dueDate ? (
                 <Row term={COPY.dueDate}>{formatDueDate(invoice.dueDate)}</Row>
               ) : null}
-              <Row term={COPY.expires}>{TIME.format(new Date(invoice.expiresAt))}</Row>
+              <Row term={closed ? COPY.closed : COPY.expires}>
+                {TIME.format(new Date(invoice.expiresAt))}
+              </Row>
               <Row term={COPY.created}>{TIME.format(new Date(invoice.createdAt))}</Row>
-              {invoice.note ? <Row term={COPY.note}>{invoice.note}</Row> : null}
+              {invoice.canceledAt ? (
+                <Row term={COPY.canceledOn} ref={canceledRow}>
+                  {TIME.format(new Date(invoice.canceledAt))}
+                </Row>
+              ) : null}
+              {invoice.note ? (
+                <Row term={COPY.note} stacked>
+                  {invoice.note}
+                </Row>
+              ) : null}
               <Row term={COPY.pdfs}>
-                <span className="flex flex-wrap gap-x-5 gap-y-1">
+                <span className="flex flex-wrap justify-end gap-x-5 gap-y-1">
                   <PdfLink invoiceId={invoice.invoiceId} pdf={INVOICE_PDFS.invoice} />
                   {invoice.paymentStatus === API_PAYMENT_STATUSES.paid ? (
                     <PdfLink invoiceId={invoice.invoiceId} pdf={INVOICE_PDFS.receipt} />
@@ -417,7 +407,7 @@ function NextStep({
 }) {
   const noun = request ? COPY.noun.request : COPY.noun.invoice;
   const { received, left, late } = exception;
-  // Canceled with nothing sent needs no line: the badge says it.
+  // Canceled with nothing sent needs no line: Details says when it was canceled.
   const kind =
     exception.kind === INVOICE_EXCEPTIONS.canceled && received === 0n ? null : exception.kind;
   const restart = (rest: boolean) =>
@@ -443,27 +433,32 @@ function NextStep({
   );
 }
 
-/**
- * When the invoice's status last changed or will: settled, paid, closed, or when its checkout closes. A paid invoice
- * never shows its checkout's close time, which would read as still open.
- */
-function when(invoice: Invoice): string | null {
-  if (invoice.canceledAt) return COPY.canceledOn(TIME.format(new Date(invoice.canceledAt)));
-  if (invoice.settlementStatus === API_SETTLEMENT_STATUSES.settled)
-    return invoice.settledAt ? COPY.settledOn(TIME.format(new Date(invoice.settledAt))) : null;
-  if (invoice.paymentStatus === API_PAYMENT_STATUSES.paid)
-    return invoice.paidAt ? COPY.paidOn(TIME.format(new Date(invoice.paidAt))) : null;
-  const closes = TIME.format(new Date(invoice.expiresAt));
-  return Date.parse(invoice.expiresAt) <= Date.now()
-    ? COPY.closedOn(closes)
-    : COPY.closesOn(closes);
-}
-
-function Row({ term, children }: { term: string; children: ReactNode }) {
-  return (
+// A term and its value on one line, as a statement reads; free text (a note) stacks under its term instead. A row
+// given a ref can take focus from script (Canceled on, after a cancel).
+function Row({
+  term,
+  stacked = false,
+  children,
+  ref,
+}: {
+  term: string;
+  stacked?: boolean;
+  children: ReactNode;
+  ref?: Ref<HTMLDivElement>;
+}) {
+  return stacked ? (
     <div className="px-4 py-3 sm:px-5">
-      <dt className="text-xs text-muted">{term}</dt>
-      <dd className="mt-0.5 text-sm break-words whitespace-pre-line text-ink">{children}</dd>
+      <dt className="text-sm text-muted">{term}</dt>
+      <dd className="mt-1 text-sm break-words whitespace-pre-line text-ink">{children}</dd>
+    </div>
+  ) : (
+    <div
+      ref={ref}
+      tabIndex={ref ? -1 : undefined}
+      className="flex items-baseline justify-between gap-4 px-4 py-3 outline-none sm:px-5"
+    >
+      <dt className="shrink-0 text-sm text-muted">{term}</dt>
+      <dd className="min-w-0 text-right text-sm break-words text-ink">{children}</dd>
     </div>
   );
 }
@@ -491,60 +486,5 @@ function Party({ lines }: { lines: (string | null)[] }) {
         </p>
       ))}
     </div>
-  );
-}
-
-/** The pay link in one row: the link (cut to fit, whole on hover and when copied), Copy and Open in a new tab. */
-function ShareLink({ invoiceId, actions }: { invoiceId: string; actions?: ReactNode }) {
-  // The app renders only in the browser, after sign-in.
-  const link = `${window.location.origin}/pay/${invoiceId}`;
-  const [status, copy] = useCopy(link);
-  const titleId = useId();
-  const label =
-    status === COPY_STATUS.copied
-      ? COPY.copied
-      : status === COPY_STATUS.failed
-        ? COPY.copyFailed
-        : COPY.copy;
-  return (
-    <section aria-labelledby={titleId} className="min-w-0 lg:w-[26rem] lg:shrink-0">
-      <h2 id={titleId} className="sr-only">
-        {COPY.share}
-      </h2>
-      <div className="flex items-center gap-2">
-        {/* The host and a short id fit the row; Copy and Open use the whole link. A phone has no room to show
-            it, so Copy takes the row, unless copying failed and the link is there to select. */}
-        <p
-          title={link}
-          className={`min-w-0 flex-1 rounded-md border border-line bg-surface-2 px-3 py-1.5 font-mono text-sm text-ink ${status === COPY_STATUS.failed ? "break-all select-all" : "truncate max-sm:hidden"}`}
-        >
-          {status === COPY_STATUS.failed
-            ? link
-            : `${window.location.host}/pay/${shortAddress(invoiceId)}`}
-        </p>
-        <Button variant="secondary" size="sm" onClick={copy} className="shrink-0 max-sm:flex-1">
-          {status === COPY_STATUS.copied ? (
-            <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
-          ) : (
-            <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
-          )}
-          {label}
-        </Button>
-        <a
-          href={link}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={COPY.openPayPage}
-          title={COPY.openPayPage}
-          className={`${buttonClasses({ variant: "secondary", size: "sm" })} shrink-0 px-2.5`}
-        >
-          <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
-        </a>
-        {actions}
-      </div>
-      <p role="status" className="sr-only">
-        {status === COPY_STATUS.idle ? "" : label}
-      </p>
-    </section>
   );
 }

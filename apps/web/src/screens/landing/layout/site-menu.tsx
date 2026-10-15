@@ -26,7 +26,7 @@ export function SiteMenu() {
       <div
         id="site-menu"
         popover="auto"
-        className="inset-x-4 top-20 bottom-auto m-0 h-auto w-auto origin-top rounded-lg border border-line bg-surface p-1.5 text-ink shadow-lg [--fw-pop-y:-4px] motion-safe:open:animate-[fw-pop-in_var(--fw-duration-fast)_var(--fw-ease-out)]"
+        className="left-[max(1rem,env(safe-area-inset-left))] right-[max(1rem,env(safe-area-inset-right))] top-[calc(5rem+env(safe-area-inset-top))] bottom-auto m-0 h-auto w-auto origin-top rounded-lg border border-line bg-surface p-1.5 text-ink shadow-lg [--fw-pop-y:-4px] motion-safe:open:animate-[fw-pop-in_var(--fw-duration-fast)_var(--fw-ease-out)]"
       >
         <ul className="flex flex-col">
           {NAV_LINKS.map((link) => (

@@ -7,7 +7,7 @@ export function SiteFooter() {
   return (
     <footer data-section={LANDING_SECTIONS.footer} className="relative isolate overflow-hidden">
       <FooterRidges className="absolute inset-x-0 bottom-0 -z-10 h-24 w-full sm:h-40 lg:h-56" />
-      <div className="mx-auto max-w-6xl px-4 pt-12 pb-28 sm:px-8 sm:pb-44 lg:pb-60">
+      <div className="mx-auto max-w-6xl fw-safe-x pt-12 pb-28 sm:[--fw-page-gutter:2rem] sm:pb-44 lg:pb-60">
         <div className="flex flex-col gap-10 md:flex-row md:justify-between">
           <div className="max-w-xs">
             <Logo className="text-lg" />

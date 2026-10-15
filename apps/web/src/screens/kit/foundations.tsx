@@ -68,7 +68,7 @@ export function TypographySamples() {
           1,250.00 · 98,431.07
         </p>
         <p className="mt-6 text-sm text-muted">Addresses and hashes: Geist Mono</p>
-        <p className="mt-4 font-mono text-base text-ink">
+        <p className="mt-4 break-all font-mono text-base text-ink">
           0x586134f74b654f5835860ca198ae725344670078
         </p>
       </div>

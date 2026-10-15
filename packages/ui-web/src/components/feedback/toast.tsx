@@ -12,6 +12,7 @@ import {
 } from "react";
 import { cx } from "../../lib/cx";
 import { TONE_DOT_CLASSES, TONES, type Tone } from "../../lib/tone";
+import { IconButton } from "../buttons/icon-button";
 
 export const TOAST_MS = 5_000;
 const MAX_TOASTS = 3;
@@ -44,14 +45,9 @@ export function Toast({
         ) : null}
       </span>
       {onClose ? (
-        <button
-          type="button"
-          aria-label={closeLabel}
-          onClick={onClose}
-          className="relative -my-2 -mr-2 grid size-9 shrink-0 place-items-center rounded-pill text-muted outline-none before:absolute before:-inset-1 hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
-        >
+        <IconButton label={closeLabel} onClick={onClose} className="-my-1.5 -mr-1.5">
           <X aria-hidden className="size-[var(--fw-icon-sm)]" />
-        </button>
+        </IconButton>
       ) : null}
     </div>
   );

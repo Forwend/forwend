@@ -138,10 +138,10 @@ for a distinct family of real components. Avoid one flat folder for every compon
 ```text
 packages/ui-web/src/
   components/
-    buttons/                   button, action-button, icon-button, row-button, swap-label
+    buttons/                   button, action-button, icon-button, row-button
     forms/                     text-field, text-area-field, select-field, search-field, checkbox, switch, choice-card,
                                code-input, email-capture, form, field-classes, date-picker/ (calendar, date-picker, iso-date)
-    navigation/                tabs, nav-pill, theme-switch, segmented-control
+    navigation/                tabs, nav-pill, theme-switch, segmented-control, select-menu
     overlays/                  dialog, sheet, menu, tooltip
     feedback/                  toast, empty-state, spinner, skeleton, shimmer, dot-loader, success-check
     display/                   panel, badge, stat-tile, accordion, progress-bar, code-block

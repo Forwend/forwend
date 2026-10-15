@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { cx } from "../../../lib/cx";
+import { IconButton } from "../../buttons/icon-button";
 import {
   addDays,
   addMonths,
@@ -105,15 +106,13 @@ export function Calendar({
       (step < 0 && min !== undefined && addDays(shown, -1) < min) ||
       (step > 0 && max !== undefined && target > max);
     return (
-      <button
-        type="button"
-        aria-label={name}
+      <IconButton
+        label={name}
         disabled={off}
         onClick={() => setFocused(clamp(addMonths(focused, step), min, max))}
-        className="relative grid size-8 place-items-center rounded-pill text-muted before:absolute before:-inset-1.5 hover:bg-surface-2 hover:text-ink disabled:text-subtle disabled:hover:bg-transparent"
       >
         <Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
-      </button>
+      </IconButton>
     );
   };
 

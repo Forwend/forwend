@@ -15,13 +15,18 @@ export interface IconButtonProps extends ComponentPropsWithRef<"button"> {
   size?: IconButtonSize;
 }
 
-// xs sits inline with text (a hint); sm and md are toolbar buttons. Each reaches a 44px hit area through a pseudo
-// element without changing its look.
+// The heights of Button: xs sits inline with text (a hint), sm in dense rows, md in toolbars and headers. Each reaches
+// a 44px hit area through a pseudo element (xs always, the others on touch screens) without changing its look.
 const SIZES: Record<IconButtonSize, string> = {
-  xs: "size-6 rounded-pill text-subtle before:-inset-2.5",
-  sm: "size-8 rounded-md text-muted hover:bg-surface-2 before:-inset-1.5",
-  md: "size-10 rounded-pill text-muted hover:bg-surface-2 before:-inset-0.5",
+  xs: "size-6 text-subtle before:-inset-2.5",
+  sm: "size-8 text-muted pointer-coarse:before:-inset-1.5",
+  md: "size-10 text-muted pointer-coarse:before:-inset-0.5",
 };
+
+// Hover and press tint whatever lies beneath with the ink, so the button reads the same on a page, a card or a filled
+// row.
+const BASE =
+  "relative grid shrink-0 place-items-center rounded-pill outline-none transition-colors duration-[var(--fw-duration-fast)] before:absolute enabled:hover:bg-[color-mix(in_oklab,var(--fw-ink)_7%,transparent)] enabled:hover:text-ink enabled:active:bg-[color-mix(in_oklab,var(--fw-ink)_12%,transparent)] enabled:active:text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-focus data-[state=open]:bg-[color-mix(in_oklab,var(--fw-ink)_7%,transparent)] data-[state=open]:text-ink";
 
 /** A button that shows only an icon (or an avatar); the label names it. */
 export function IconButton({
@@ -33,16 +38,7 @@ export function IconButton({
   ...props
 }: IconButtonProps) {
   return (
-    <button
-      type={type}
-      aria-label={label}
-      className={cx(
-        "relative grid shrink-0 place-items-center outline-none transition-colors duration-[var(--fw-duration-fast)] before:absolute hover:text-ink focus-visible:outline-2 focus-visible:outline-focus data-[state=open]:bg-surface-2",
-        SIZES[size],
-        className,
-      )}
-      {...props}
-    >
+    <button type={type} aria-label={label} className={cx(BASE, SIZES[size], className)} {...props}>
       {children}
     </button>
   );

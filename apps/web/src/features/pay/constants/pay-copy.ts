@@ -35,9 +35,6 @@ export const PAY_COPY = {
   sendTo: (symbol: string, network: string) => `Send ${symbol} on ${network} to`,
   exactAmount: "Amount",
   copyAmount: "Copy amount",
-  // The copy buttons' own words; their accessible names say what they copy.
-  copyShort: "Copy",
-  copiedShort: "Copied",
   amountCopied: "Amount copied",
   copyAmountFailed: "Copy failed: type the amount instead",
   exchange: (amount: string, network: string) =>

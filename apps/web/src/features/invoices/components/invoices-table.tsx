@@ -2,19 +2,19 @@
 
 import {
   Button,
+  type ButtonSize,
   buttonClasses,
   EmptyState,
   ROW_INTERACTIVE_CLASSES,
   SearchField,
-  SegmentedControl,
   StatusPill,
   TABLE_HEAD_CLASSES,
   TABLE_ROW_CLASSES,
 } from "@forwend/ui-web";
 import { FileText, Plus } from "lucide-react";
 import Link from "next/link";
+import { StatusFilter } from "@/features/activity/components/status-filter";
 import { STATUS_FILTERS } from "@/features/activity/constants/activity";
-import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { useGetInvoicesInfiniteQuery } from "@/features/invoices/api/invoices-api";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
@@ -27,6 +27,7 @@ import {
 import type { InvoiceSummary, InvoiceToken } from "@/features/invoices/types/invoices";
 import { ChainBadge, hasChainBadge } from "@/shared/components/chains/chain-badge";
 import { NetworkName } from "@/shared/components/chains/network-name";
+import { ListToolbar } from "@/shared/components/list-toolbar";
 import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -38,20 +39,21 @@ import { chainName } from "@/shared/lib/chains";
 // A personal profile's requests open the request sheet; invoices have their own page.
 function NewInvoiceLink({
   className = "",
+  size = "md",
   onRequest,
 }: {
   className?: string;
+  size?: ButtonSize;
   onRequest?: () => void;
 }) {
-  const classes = `${buttonClasses({ size: "sm" })} ${className}`;
   const icon = <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />;
   return onRequest ? (
-    <Button size="sm" onClick={onRequest} className={className}>
+    <Button size={size} onClick={onRequest} className={className}>
       {icon}
       {REQUESTS_COPY.newInvoice}
     </Button>
   ) : (
-    <Link href={APP_ROUTES.newInvoice} className={classes}>
+    <Link href={APP_ROUTES.newInvoice} className={`${buttonClasses({ size })} ${className}`}>
       {icon}
       {INVOICES_COPY.newInvoice}
     </Link>
@@ -87,32 +89,33 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
       aria-busy={!list.currentData && !list.isError}
       className="flex flex-col gap-4"
     >
-      {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
-      <h1 id="invoices-title" className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
-        {COPY.invoices}
-      </h1>
+      {/* The header's breadcrumb names the page on desktop, so the heading and its action show only below that. */}
+      <div className="flex items-center justify-between gap-3 lg:contents">
+        <h1
+          id="invoices-title"
+          className="text-2xl font-semibold tracking-tight text-ink lg:sr-only"
+        >
+          {COPY.invoices}
+        </h1>
+        {/* An empty list offers it in its own block instead. */}
+        {noInvoices ? null : (
+          <NewInvoiceLink size="sm" className="lg:hidden" onRequest={onRequest} />
+        )}
+      </div>
       {list.data && !noInvoices ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Phones: the search first, the filter on its own row below. */}
-          <SegmentedControl
-            label={ACTIVITY_COPY.filterLabel}
-            className="max-sm:order-last"
-            value={filters.filter}
-            onValueChange={filters.setFilter}
-            options={Object.values(STATUS_FILTERS).map((value) => ({
-              value,
-              label: ACTIVITY_COPY.filters[value],
-            }))}
-          />
-          <SearchField
-            label={COPY.search}
-            value={filters.search}
-            onValueChange={filters.setSearch}
-            placeholder={COPY.searchPlaceholder}
-            className="flex-1 sm:max-w-72"
-          />
-          <NewInvoiceLink className="ml-auto" onRequest={onRequest} />
-        </div>
+        <ListToolbar
+          search={
+            <SearchField
+              label={COPY.search}
+              value={filters.search}
+              onValueChange={filters.setSearch}
+              placeholder={COPY.searchPlaceholder}
+              className="flex-1"
+            />
+          }
+          filter={<StatusFilter value={filters.filter} onValueChange={filters.setFilter} />}
+          actions={<NewInvoiceLink className="max-lg:hidden" onRequest={onRequest} />}
+        />
       ) : null}
 
       {list.isError && !list.currentData ? (
@@ -219,8 +222,12 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
                   className={`flex min-h-16 items-center gap-3 px-4 py-3 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus sm:px-5 ${ROW_INTERACTIVE_CLASSES}`}
                 >
                   {/* Who it is for leads; the number and due date sit under it, and one network rides on the
-                      avatar as its logo (and in words for screen readers), so a narrow row cuts neither. */}
-                  <Avatar name={label(inv)} chainId={inv.optionCount > 1 ? null : inv.chainId} />
+                      avatar as its logo (and in words for screen readers), so a narrow row cuts neither. A request's
+                      note is no name, so its avatar keeps the document icon. */}
+                  <Avatar
+                    name={onRequest ? null : label(inv)}
+                    chainId={inv.optionCount > 1 ? null : inv.chainId}
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-ink">
                       {label(inv) ?? invoiceNumber(inv.number)}
@@ -242,8 +249,14 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
                       )}
                     </span>
                   </span>
-                  <span className="flex shrink-0 flex-col items-end gap-1">
-                    <InvoiceAmount invoice={inv} tokens={tokens} className="flex-nowrap text-ink" />
+                  {/* Phones stack the amount over the status; wider rows put the status before the amount, in a
+                      column of its own, so every row is one line. */}
+                  <span className="flex shrink-0 flex-col items-end gap-1 sm:flex-row-reverse sm:items-center sm:gap-6">
+                    <InvoiceAmount
+                      invoice={inv}
+                      tokens={tokens}
+                      className="flex-nowrap justify-end text-ink sm:min-w-28"
+                    />
                     <StatusPill status={invoiceStatus(inv)} />
                   </span>
                 </Link>

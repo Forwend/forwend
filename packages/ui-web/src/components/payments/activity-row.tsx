@@ -41,8 +41,10 @@ export function ActivityRow({
   const Icon = request ? FileText : incoming ? ArrowDownLeft : ArrowUpRight;
   const sign = request ? "" : incoming ? "+" : "−";
   const size = amount.baseUnits < 0n ? -amount.baseUnits : amount.baseUnits;
+  // A wide row (a page's list) is one line: the status in its own column before the amount. A narrow one (a phone, a
+  // card) stacks the amount over the status.
   return (
-    <div className="flex items-center gap-4 py-3">
+    <div className="@container flex items-center gap-4 py-3">
       <span className="relative flex size-10 shrink-0 items-center justify-center rounded-pill border border-line bg-surface-2 text-muted">
         <Icon aria-hidden className="size-[var(--fw-icon-md)]" />
         {badge}
@@ -61,8 +63,8 @@ export function ActivityRow({
           {detail}
         </span>
       </span>
-      <span className="flex min-w-0 flex-col items-end gap-1">
-        <span className={incoming ? "text-success" : "text-ink"}>
+      <span className="flex min-w-0 flex-col items-end gap-1 @2xl:flex-row-reverse @2xl:items-center @2xl:gap-6">
+        <span className={`@2xl:min-w-28 @2xl:text-right ${incoming ? "text-success" : "text-ink"}`}>
           <Money {...amount} baseUnits={size} sign={sign} />
         </span>
         <span className="flex items-center gap-1">

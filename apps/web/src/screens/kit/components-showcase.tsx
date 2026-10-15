@@ -35,6 +35,7 @@ import {
   SearchField,
   SegmentedControl,
   SelectField,
+  SelectMenu,
   Sheet,
   Skeleton,
   Switch,
@@ -47,7 +48,21 @@ import {
   Tooltip,
   useToast,
 } from "@forwend/ui-web";
-import { ArrowDownLeft, ArrowUpRight, Info, Landmark, Moon, Plus, X } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Ban,
+  Circle,
+  CircleCheck,
+  Clock,
+  Info,
+  Landmark,
+  ListFilter,
+  Moon,
+  Plus,
+  Wallet,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { CTA } from "@/features/waitlist/constants/waitlist";
 import { KitGroup } from "@/screens/kit/kit-section";
@@ -99,6 +114,7 @@ export function ComponentsShowcase() {
   const [cardChoice, setCardChoice] = useState("merchant");
   const [menuDark, setMenuDark] = useState(false);
   const [range, setRange] = useState("1M");
+  const [status, setStatus] = useState("All");
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [dueDate, setDueDate] = useState<string | null>("2026-11-02");
@@ -185,12 +201,40 @@ export function ComponentsShowcase() {
           </div>
         </Form>
       </KitGroup>
-      <KitGroup title="Segmented control: a chart range or a table filter">
+      <KitGroup title="Segmented control: sm beside a chart, md in a toolbar; too narrow, it scrolls and fades">
         <SegmentedControl
           label="Chart range"
           value={range}
           onValueChange={setRange}
+          size="sm"
           options={["1W", "1M", "3M", "1Y"].map((value) => ({ value, label: value }))}
+        />
+        <div className="w-72">
+          <SegmentedControl
+            label="Status"
+            value={status}
+            onValueChange={setStatus}
+            className="w-full"
+            options={["All", "Open", "Paid", "Settled", "Expired", "Canceled"].map((value) => ({
+              value,
+              label: value,
+            }))}
+          />
+        </div>
+      </KitGroup>
+      <KitGroup title="Select menu: a longer choice beside a list's search, each option with its icon">
+        <SelectMenu
+          label="Status"
+          value={status}
+          onValueChange={setStatus}
+          options={[
+            { value: "All", label: "All", icon: ListFilter },
+            { value: "Open", label: "Open", icon: Circle },
+            { value: "Paid", label: "Paid", icon: CircleCheck },
+            { value: "Settled", label: "Settled", icon: Wallet },
+            { value: "Expired", label: "Expired", icon: Clock },
+            { value: "Canceled", label: "Canceled", icon: Ban },
+          ]}
         />
       </KitGroup>
       <KitGroup title="Search field: filters a list in its toolbar">
@@ -199,6 +243,13 @@ export function ComponentsShowcase() {
           value={search}
           onValueChange={setSearch}
           placeholder="Search number, client or title"
+          className="w-72"
+        />
+        <SearchField
+          label="Search transactions"
+          value="0x7a1c"
+          onValueChange={noop}
+          placeholder="Search address, hash or token"
           className="w-72"
         />
       </KitGroup>
@@ -234,7 +285,7 @@ export function ComponentsShowcase() {
         </Sheet>
       </KitGroup>
       <KitGroup title="Dates">
-        <div className="grid w-full gap-6 md:grid-cols-3">
+        <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-3">
           <DatePicker
             label="Due date (optional)"
             value={dueDate}
@@ -262,7 +313,7 @@ export function ComponentsShowcase() {
         </div>
       </KitGroup>
       <KitGroup title="Fields">
-        <div className="grid w-full gap-6 md:grid-cols-3">
+        <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-3">
           <TextField
             label="Invoice amount"
             placeholder="1,250.00"
@@ -308,7 +359,7 @@ export function ComponentsShowcase() {
             ]}
           />
         </div>
-        <div className="grid w-full gap-6 md:grid-cols-3">
+        <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-3">
           <TextAreaField label="Note to the client" hint="Shown on the pay page." />
           <TextAreaField
             label="Client address"
@@ -316,7 +367,7 @@ export function ComponentsShowcase() {
             error="Use at most 500 characters."
           />
         </div>
-        <div className="grid w-full gap-6 md:grid-cols-3">
+        <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-3">
           <CodeInput
             label="Code (empty)"
             value=""
@@ -337,7 +388,7 @@ export function ComponentsShowcase() {
         <Switch label="Email me a weekly summary" checked={weekly} onCheckedChange={setWeekly} />
       </KitGroup>
       <KitGroup title="Email capture: idle, submitting, success, error">
-        <div className="grid w-full gap-4 md:grid-cols-2">
+        <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
           <EmailCapture
             status={CAPTURE_STATUS.idle}
             onSubmit={noop}

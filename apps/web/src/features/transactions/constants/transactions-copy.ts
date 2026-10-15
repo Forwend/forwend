@@ -28,7 +28,7 @@ export const TRANSACTIONS_COPY = {
   columns: {
     transaction: "Transaction",
     network: "Network",
-    date: "Time",
+    date: "Date",
     status: "Status",
     amount: "Amount",
   },

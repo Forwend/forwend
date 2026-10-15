@@ -119,6 +119,7 @@ export function BusinessOverview() {
             options={RANGE_OPTIONS}
             value={range}
             onValueChange={setRange}
+            size="sm"
           />
         </div>
         {/* Phones: one row per figure, the value on the right, so no amount wraps; then two by two, then one row. */}

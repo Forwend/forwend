@@ -25,7 +25,7 @@ export function EmptyState({
         "flex w-full flex-col items-center justify-center px-6 text-center",
         compact
           ? "py-10"
-          : "min-h-[min(22rem,55dvh)] rounded-lg border border-dashed border-line-strong bg-surface py-12",
+          : "min-h-[min(22rem,55dvh)] rounded-lg border border-line bg-surface py-12",
       )}
     >
       <span className="grid size-12 place-items-center rounded-pill bg-surface-2">

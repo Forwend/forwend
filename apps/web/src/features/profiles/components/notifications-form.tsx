@@ -22,19 +22,21 @@ export function NotificationsForm({ profileId, saved }: NotificationsFormProps) 
       // Said below; the switch stays as saved.
     }
   };
+  // A settings row: what it does on the left, the switch at the row's end, where the emails go under it.
   return (
-    <div className="flex flex-col gap-3">
+    <div className="fw-panel flex flex-col gap-1 px-4 py-3 sm:px-5">
       <Switch
         label={COPY.toggle}
         checked={saved.email}
         onCheckedChange={flip}
         disabled={isLoading}
+        className="w-full flex-row-reverse justify-between font-medium text-ink"
       />
-      <p className="text-sm text-muted">
+      <p className="pb-1 text-sm text-muted">
         {saved.address ? COPY.to(saved.address) : COPY.noAddress}
       </p>
       {isError ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="pb-1 text-sm text-danger">
           {COPY.saveFailed}
         </p>
       ) : null}

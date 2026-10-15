@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { sidewaysScroll } from "../sideways";
 import { blockingViolations } from "./axe";
 import { SETTLED_INVOICE, TRANSFERS } from "./sample-api";
 import { session } from "./session";
@@ -176,7 +177,7 @@ test("on a phone a new user skips the first run and gets the personal checklist"
   await expect(
     page.getByRole("heading", { level: 1, name: "What do you want to do?" }),
   ).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
   expect(await blockingViolations(page)).toEqual([]);
   await page.getByRole("button", { name: "Skip for now" }).click();
 
@@ -189,7 +190,7 @@ test("on a phone a new user skips the first run and gets the personal checklist"
   await step(page, "Request money").getByRole("button", { name: "Request", exact: true }).click();
   await expect(page).toHaveURL("/app/invoices/new");
   await expect(page.getByRole("heading", { level: 1, name: "Request money" })).toBeAttached();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
   expect(await blockingViolations(page)).toEqual([]);
   await context.close();
 });

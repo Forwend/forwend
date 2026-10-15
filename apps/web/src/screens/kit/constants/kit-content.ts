@@ -34,8 +34,8 @@ export const SHADOWS = ["sm", "md", "lg"] as const;
 
 export const DURATIONS = [
   { token: "--fw-duration-fast", ms: 140, use: "Hover, press, small color changes" },
-  { token: "--fw-duration-base", ms: 240, use: "Toggles, tabs, theme change" },
-  { token: "--fw-duration-slow", ms: 480, use: "Panels, payment step changes" },
+  { token: "--fw-duration-base", ms: 200, use: "Toggles, tabs, theme change" },
+  { token: "--fw-duration-slow", ms: 400, use: "Panels, payment step changes" },
   { token: "--fw-duration-slower", ms: 900, use: "The hero river drawing forward" },
 ] as const;
 
@@ -59,10 +59,10 @@ export const TYPE_ROLES = [
   { token: "text-error-code", className: "font-display text-error-code", sample: "404" },
   {
     token: "text-amount-lg",
-    className: "font-mono tabular-nums text-amount-lg",
+    className: "font-sans tabular-nums text-amount-lg",
     sample: "1,250.00",
   },
-  { token: "text-amount", className: "font-mono tabular-nums text-amount", sample: "1,250.00" },
+  { token: "text-amount", className: "font-sans tabular-nums text-amount", sample: "1,250.00" },
   {
     token: "text-2xs",
     className: "font-mono text-2xs",

@@ -2,6 +2,7 @@
 
 import {
   Button,
+  buttonClasses,
   Form,
   SelectField,
   TextAreaField,
@@ -129,14 +130,11 @@ export function BillingDetailsForm({ profileId, saved }: BillingDetailsFormProps
         maxLength={BILLING_LIMITS.email}
         error={errors.email}
       />
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         <Button type="submit" loading={busy}>
           {COPY.save}
         </Button>
-        <Link
-          href={APP_ROUTES.home}
-          className="inline-flex h-11 items-center rounded-pill px-3 text-sm text-muted hover:text-ink"
-        >
+        <Link href={APP_ROUTES.home} className={buttonClasses({ variant: "ghost" })}>
           {COPY.cancel}
         </Link>
       </div>

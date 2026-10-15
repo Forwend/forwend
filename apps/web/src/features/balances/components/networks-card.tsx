@@ -1,4 +1,4 @@
-import { Money, Skeleton } from "@forwend/ui-web";
+import { buttonClasses, Money, Skeleton } from "@forwend/ui-web";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
@@ -21,7 +21,7 @@ export function NetworksCard({ balances, failed }: NetworksCardProps) {
         </h2>
         <Link
           href={APP_ROUTES.balances}
-          className="inline-flex h-9 items-center gap-1 rounded-sm px-2 text-sm text-muted hover:bg-surface-2 hover:text-ink"
+          className={`${buttonClasses({ variant: "ghost", size: "sm" })} -mr-2`}
         >
           {BALANCES_COPY.viewAll}
           <ChevronRight aria-hidden className="size-[var(--fw-icon-sm)]" />

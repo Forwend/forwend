@@ -37,7 +37,7 @@ export function CheckoutPreview() {
         />
       </div>
       <div className="absolute inset-x-0 top-0 -z-10 h-112 bg-[linear-gradient(to_bottom,transparent,var(--fw-bg))]" />
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-14 px-4 py-20 sm:px-8 sm:py-28 lg:grid-cols-[1fr_1fr] lg:items-center">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-14 fw-safe-x py-20 sm:[--fw-page-gutter:2rem] sm:py-28 lg:grid-cols-[1fr_1fr] lg:items-center">
         <div>
           <h2 id="checkout-title" className="font-display text-section">
             {CHECKOUT.title}
@@ -66,13 +66,14 @@ export function CheckoutPreview() {
             />
             <TokenChip token={SAMPLE_INVOICE.token} network={SAMPLE_INVOICE.network} />
           </div>
-          <div className="mt-6 grid gap-5 sm:grid-cols-[auto_1fr] sm:items-center">
+          {/* The code beside where it pays, as on the real checkout, so a phone's card has no empty half. */}
+          <div className="mt-6 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 sm:gap-5">
             <QrCode
               value={SAMPLE_DEPOSIT_ADDRESS}
               label="Sample QR code for the invoice deposit address"
-              className="w-36"
+              className="w-28 sm:w-36"
             />
-            <div className="flex flex-col gap-3">
+            <div className="flex min-w-0 flex-col gap-3">
               <p className="text-sm text-muted">Send to this invoice's address</p>
               <Address address={SAMPLE_DEPOSIT_ADDRESS} />
             </div>

@@ -88,7 +88,7 @@ export function SignInForm() {
         }}
       >
         <div className="flex flex-col gap-2 text-center">
-          <h1 className="font-display text-3xl text-balance text-ink sm:text-4xl">
+          <h1 className="text-3xl font-semibold tracking-tight text-balance text-ink">
             {SIGN_IN_COPY.codeTitle}
           </h1>
           <p className="text-muted">
@@ -111,10 +111,11 @@ export function SignInForm() {
           className="min-h-25"
         />
         <div className="flex flex-col gap-3">
-          <Button type="submit" loading={busy === "code"} disabled={busy === "resend"}>
+          <Button size="lg" type="submit" loading={busy === "code"} disabled={busy === "resend"}>
             {SIGN_IN_COPY.signIn}
           </Button>
           <Button
+            size="lg"
             type="button"
             variant="secondary"
             loading={busy === "resend"}
@@ -146,7 +147,7 @@ export function SignInForm() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-2 text-center">
-        <h1 className="font-display text-3xl text-balance text-ink sm:text-4xl">
+        <h1 className="text-3xl font-semibold tracking-tight text-balance text-ink">
           {SIGN_IN_COPY.title}
         </h1>
         <p className="text-balance text-muted">{SIGN_IN_COPY.intro}</p>
@@ -166,7 +167,12 @@ export function SignInForm() {
           autoFocus
           className="min-h-26"
         />
-        <Button type="submit" loading={busy === "send"} disabled={googleBusy || busy === "passkey"}>
+        <Button
+          size="lg"
+          type="submit"
+          loading={busy === "send"}
+          disabled={googleBusy || busy === "passkey"}
+        >
           {SIGN_IN_COPY.sendCode}
         </Button>
       </Form>
@@ -176,6 +182,7 @@ export function SignInForm() {
         <span className="h-px flex-1 bg-line" />
       </div>
       <Button
+        size="lg"
         variant="secondary"
         loading={googleBusy}
         disabled={busy !== ""}
@@ -190,6 +197,7 @@ export function SignInForm() {
         {SIGN_IN_COPY.google}
       </Button>
       <Button
+        size="lg"
         variant="secondary"
         loading={busy === "passkey"}
         disabled={googleBusy || (busy !== "" && busy !== "passkey")}

@@ -17,7 +17,7 @@
   @variant sm {
     margin-inline: 0;
     border: 1px solid var(--fw-line);
-    border-radius: var(--fw-radius-md);
+    border-radius: var(--fw-radius-lg);
   }
 }
 
@@ -30,8 +30,17 @@
   padding: 1rem 1rem 0.25rem;
 
   @variant sm {
-    padding: 0.625rem 1.25rem;
+    padding: 0.875rem 1.25rem;
     border-bottom: 1px solid var(--fw-line);
+  }
+}
+
+@utility fw-safe-x {
+  padding-left: max(var(--fw-page-gutter, 1rem), env(safe-area-inset-left));
+  padding-right: max(var(--fw-page-gutter, 1rem), env(safe-area-inset-right));
+
+  @variant sm {
+    --fw-page-gutter: 1.5rem;
   }
 }
 
