@@ -2504,67 +2504,69 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-15 review fail by independent reviewer: Defect: flex-1 on main (apps/web/src/screens/pay/pay-screen.tsx:22) changes the loaded page at 390 px. The grid's auto rows stretch to fill the taller main (align-content defaults to stretch), so the gap between Summary and the pay box grows with leftover height: open invoice, PayBox moves from y=376 to y=427 (gap 32 -> 83 px); choosing +33 px; paid +8 px. The gap also shifts when the box grows. 1440 px is unchanged (one row, items-start); the footer is unchanged at both widths. Fix idea: keep main from stretching its rows for loaded content (content-start) and center only the error state. Otherwise OK: the error passes axe (0 serious/critical) and shows role=alert with a button. The title is a <p> from the kit EmptyState, not a heading (minor). No reader of the old PAY_COPY.failed text is left; receipt.failed and INVOICES_COPY.failed are separate. The e2e catches a no-op Try again (no reload within 6 s; polling is 15 s) and a non-centered error (y=103 < 120 without flex-1). But it runs only on Desktop Chrome, not at 390. Nit: apps/web/e2e/pay.spec.ts:394, the new test sits between the R-79 comment and the canceled-invoice test it describes. Unit 128/128 pass, lint clean."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-15T13:21:48Z",
+        "at": "2026-10-15T13:31:29Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 72.7,
-            "log": "docs/runs/F203-20261015T132148Z-unit.log"
+            "seconds": 71.7,
+            "log": "docs/runs/F203-20261015T133129Z-unit.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 206.1,
-            "log": "docs/runs/F203-20261015T132148Z-e2e.log"
+            "seconds": 195.0,
+            "log": "docs/runs/F203-20261015T133129Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.6,
-            "log": "docs/runs/F203-20261015T132148Z-harness.log"
+            "seconds": 2.3,
+            "log": "docs/runs/F203-20261015T133129Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F203-20261015T132148Z-docs-check.log"
+            "log": "docs/runs/F203-20261015T133129Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.5,
-            "log": "docs/runs/F203-20261015T132148Z-lint.log"
+            "seconds": 0.4,
+            "log": "docs/runs/F203-20261015T133129Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 1.2,
-            "log": "docs/runs/F203-20261015T132148Z-typecheck.log"
+            "log": "docs/runs/F203-20261015T133129Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.9,
-            "log": "docs/runs/F203-20261015T132148Z-build.log"
+            "seconds": 4.6,
+            "log": "docs/runs/F203-20261015T133129Z-build.log"
           }
         ],
         "taskHash": "16ea80e1bbd57ea5",
-        "filesHash": "dcaea2fa9e71f8d7",
+        "filesHash": "ed11da6f99a95e39",
         "proof": {
-          "1": "e2e: pay.spec 'a failed load says so in the middle of the page': a 500 shows the EmptyState (icon, heading 'We could not load this invoice', 'Check your connection and try again.', Try again) centered horizontally and below the top sixth, main grows to the footer; Try again loads the invoice; screenshots at 1440 and 390 px in docs/runs/F203-shots"
+          "1": "e2e: pay.spec 'a failed load says so in the middle of the page': a 500 shows the EmptyState (icon, 'We could not load this invoice', 'Check your connection and try again.', Try again) centered horizontally and below the top sixth at 1440 and 390 px; Try again loads the invoice. main is content-start and centers only when it holds the load error (data-load-error), so the loaded checkout keeps a 32 px row gap at 390 px and top-aligned columns at 1440 px (measured); screenshots in docs/runs/F203-shots"
         }
       },
       "branch": "fix/f203-the-pay-page-s-load-error-is-centered-on",

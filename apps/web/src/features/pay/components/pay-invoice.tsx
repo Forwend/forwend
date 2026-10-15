@@ -92,8 +92,9 @@ export function PayInvoice({ invoiceId, option }: PayInvoiceProps) {
   }
   if (failure?.status === NOT_FOUND) notFound();
   if (invoice.isError) {
+    // data-load-error: the page centers this state alone (PayScreen).
     return (
-      <div role="alert" className="mx-auto w-full max-w-lg self-center lg:col-span-2">
+      <div role="alert" data-load-error className="mx-auto w-full max-w-lg lg:col-span-2">
         <EmptyState
           icon={WifiOff}
           title={COPY.failedTitle}
