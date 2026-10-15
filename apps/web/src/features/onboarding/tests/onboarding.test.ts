@@ -138,6 +138,10 @@ describe("afterOnboarding", () => {
       "/apple",
       "/app/onboarding",
       "/pay/0x1",
+      "/app/../pay/x",
+      "/app/..//evil.example/x",
+      "/app\\..\\pay",
+      "javascript:alert(1)",
     ]) {
       expect(afterOnboarding(next)).toBe("/app");
     }

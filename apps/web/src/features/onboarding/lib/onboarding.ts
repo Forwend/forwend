@@ -96,7 +96,12 @@ export function saveDismissal(profileId: string, dismissal: ChecklistDismissal) 
  * app: never another site, which would make the link an open redirect.
  */
 export function afterOnboarding(next: string | null): string {
-  return next && /^\/app(\/|\?|$)/.test(next) && !next.startsWith(APP_ROUTES.onboarding)
-    ? next
+  // Checked as the browser resolves it, so ".." or "//" can't step out of /app.
+  const base = "http://forwend.invalid";
+  const url = new URL(next || APP_ROUTES.home, base);
+  return url.origin === base &&
+    /^\/app(\/|$)/.test(url.pathname) &&
+    !url.pathname.startsWith(APP_ROUTES.onboarding)
+    ? url.pathname + url.search
     : APP_ROUTES.home;
 }

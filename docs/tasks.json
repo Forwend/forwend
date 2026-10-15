@@ -2194,7 +2194,7 @@
         "e2e covers a new user opening /app/invoices: they land on /app/onboarding, finish it and arrive at /app/invoices; and an onboarded user opening /app/onboarding lands on /app"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "active",
       "verification": [
         "unit",
         "e2e"
@@ -2205,74 +2205,76 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-15 review pass by independent reviewer: Pass. Ran lint, tsc, unit (128 passed), docs-check (0 errors), e2e (51 + 41 passed, exit 0). Mutation: removing the /app regex or the onboarding exclusion in afterOnboarding each fails the unit test. Browser probe on the dev server as an onboarded user: javascript:, /app\\evil, //evil, https://evil all go to /app; a 4000-char next works; nothing leaves the origin. Non-blocking: afterOnboarding (features/onboarding/lib/onboarding.ts:98) accepts dot segments, so next=/app/../../pay/0x1 lands on /pay/0x1 and /app/..//evil.example/x lands on same-origin /evil.example/x. Same site only, no open redirect, but the docs and accept 1 say an /app path only. Fix: resolve with new URL(next, base), check the pathname, and return pathname+search. Redirect flow checked: signed out, loading, me error, profile switch, reload with and without next, back button: no loop. The freelancer profile still opens after Continue (e2e). page.tsx imports only constants."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
-        "status": "passed",
-        "at": "2026-10-15T11:48:38Z",
+        "status": "failed",
+        "at": "2026-10-15T12:00:20Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 67.7,
-            "log": "docs/runs/F201-20261015T114838Z-unit.log"
+            "seconds": 139.0,
+            "log": "docs/runs/F201-20261015T120020Z-unit.log"
           },
           {
             "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 193.6,
-            "log": "docs/runs/F201-20261015T114838Z-e2e.log"
+            "outcome": "failed",
+            "exit": 1,
+            "seconds": 60.5,
+            "log": "docs/runs/F201-20261015T120020Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.7,
-            "log": "docs/runs/F201-20261015T114838Z-harness.log"
+            "seconds": 2.3,
+            "log": "docs/runs/F201-20261015T120020Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F201-20261015T114838Z-docs-check.log"
+            "log": "docs/runs/F201-20261015T120020Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.5,
-            "log": "docs/runs/F201-20261015T114838Z-lint.log"
+            "seconds": 0.4,
+            "log": "docs/runs/F201-20261015T120020Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.2,
-            "log": "docs/runs/F201-20261015T114838Z-typecheck.log"
+            "seconds": 1.1,
+            "log": "docs/runs/F201-20261015T120020Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 7.1,
-            "log": "docs/runs/F201-20261015T114838Z-build.log"
+            "seconds": 4.8,
+            "log": "docs/runs/F201-20261015T120020Z-build.log"
           }
         ],
         "taskHash": "c772ebd525215c9b",
-        "filesHash": "ac112ce05a45d516",
+        "filesHash": "3d9239ae5689c002",
         "proof": {
-          "1": "e2e: onboarding.spec 'keeps the page a new user asked for': opening /app/invoices lands on /app/onboarding?next=%2Fapp%2Finvoices, survives a reload, Skip returns to /app/invoices; the first test sees /app/onboarding?next=%2Fapp and Continue lands on /app; unit afterOnboarding accepts only /app paths (rejects //evil, https://, /apple, /app/onboarding, /pay)",
+          "1": "e2e: onboarding.spec 'keeps the page a new user asked for': opening /app/invoices lands on /app/onboarding?next=%2Fapp%2Finvoices, survives a reload, Skip returns to /app/invoices; the first test sees /app/onboarding?next=%2Fapp and Continue lands on /app; unit afterOnboarding resolves next as the browser does and accepts only /app paths (rejects //evil, https://, javascript:, /apple, /app/onboarding, /pay, /app/../pay, /app/..//evil, backslashes)",
           "2": "e2e: once done, /app/onboarding sends to /app and the back button does not return to it; the title is 'Forwend | Get started'",
           "3": "e2e: both cases run in onboarding.spec (new user opening /app/invoices; onboarded user opening /app/onboarding)"
         }
       },
       "branch": "feat/f201-onboarding-has-its-own-address-app-onboa",
       "baseCommit": "56a18461933061ddbbd9b25e9262b5e54b913c2f",
-      "failedVerifies": 0
+      "failedVerifies": 1
     }
   ],
   "lastWrapup": {
