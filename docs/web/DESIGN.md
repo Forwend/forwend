@@ -122,7 +122,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   exact amount with Copy, the address with Copy under them (the whole address in groups of 4 that select and copy as
   one address, R-78), one warning line "Send only USDC on Base Sepolia." (plus "Native USDC, not USDC.e." where a
   bridged look-alike exists), the token contract as a short explorer link, and one exchange hint that names the network
-  to withdraw on. Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
+  to withdraw on. Under the panel, while money is due and once paid, an optional "Email me the receipt" field says the
+  address is used for this receipt only (R-82). Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
   into "Confirm change" and only a second press starts over (leaving the button cancels), so a payer who already sent
   does not switch by accident. Under the address "Waiting for payment…" with a pulsing dot and Check status, which says
   when the next check is allowed; nothing waits before the address shows. Once money is seen the panel keeps its place ("Paying with" while nothing more is due): the steps

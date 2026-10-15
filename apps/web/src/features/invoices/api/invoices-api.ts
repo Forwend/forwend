@@ -91,6 +91,15 @@ export const invoicesApi = apiSlice
         }),
         responseSchema: recheckSchema,
       }),
+      /** Email me the receipt (R-82): public, like the checkout; 409 once the receipt went out. */
+      setPayerEmail: build.mutation<{ email: string }, { invoiceId: string; email: string }>({
+        query: ({ invoiceId, email }) => ({
+          url: `/v1/invoices/${encodeURIComponent(invoiceId)}/payer-email`,
+          method: "PUT",
+          body: { email },
+        }),
+        responseSchema: z.object({ email: z.string() }),
+      }),
       /** One invoice per idempotency key, so a retried request never makes two. */
       createInvoice: build.mutation<
         Invoice,
@@ -121,4 +130,5 @@ export const {
   useCancelInvoiceMutation,
   useGetInvoiceEventsQuery,
   useRecheckInvoiceMutation,
+  useSetPayerEmailMutation,
 } = invoicesApi;

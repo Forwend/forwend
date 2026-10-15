@@ -34,7 +34,8 @@ func (s *Service) Events(ctx context.Context, profileID string, limit int) ([]Ev
 		    coalesce(e.payload->>'amount', o.amount::text), e.created_at
 		FROM outbox_events e JOIN invoices m ON m.id = e.invoice_id
 		JOIN invoices o ON o.id = e.payload->>'option' JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
-		WHERE m.profile_id = $1 AND m.main_id IS NULL ORDER BY e.id DESC LIMIT $2`, profileID, limit)
+		WHERE m.profile_id = $1 AND m.main_id IS NULL AND e.kind <> 'invoice.receipt' -- the payer's, not the owner's
+		ORDER BY e.id DESC LIMIT $2`, profileID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("read events: %w", err)
 	}

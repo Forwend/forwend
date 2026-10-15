@@ -40,6 +40,8 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusNotFound, "not_signed_up", "sign up first with POST /v1/me"
 	case errors.Is(err, document.ErrNotPaid):
 		status, code, message = http.StatusConflict, "invoice_not_paid", "the invoice is not paid, so it has no receipt yet"
+	case errors.Is(err, invoice.ErrReceiptSent):
+		status, code, message = http.StatusConflict, "receipt_sent", "the receipt was already sent to the address given"
 	case errors.Is(err, invoice.ErrNotCancelable):
 		status, code, message = http.StatusConflict, "invoice_not_cancelable",
 			"only an open invoice with no payment seen and its checkout still open can be canceled"

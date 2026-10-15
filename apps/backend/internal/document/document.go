@@ -63,6 +63,14 @@ var networks = map[uint64]network{
 	42431:   {"Tempo Moderato", "Tempo Explorer", "https://explore.testnet.tempo.xyz"},
 }
 
+// TxURL is the transaction's page on the network's explorer, or "" for a network without one.
+func TxURL(chainID uint64, txHash string) string {
+	if n, ok := networks[chainID]; ok && n.url != "" {
+		return n.url + "/tx/" + txHash
+	}
+	return ""
+}
+
 // NetworkName is the network as people call it (Base Sepolia), or its chain ID when unknown.
 func NetworkName(chainID uint64) string {
 	if n, ok := networks[chainID]; ok {

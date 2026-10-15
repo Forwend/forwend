@@ -15,13 +15,30 @@ import (
 const (
 	Paid    = "invoice.paid"
 	Settled = "invoice.settled"
-	Held    = "invoice.held" // money held for the payer: an excess, an expired partial payment, a late deposit, one after cancel or on another option
+	Held    = "invoice.held"    // money held for the payer: an excess, an expired partial payment, a late deposit, one after cancel or on another option
+	Receipt = "invoice.receipt" // the payer's receipt, to the address they gave (R-82); at most one per invoice
 )
 
 // Payload names the option row the event happened on (its token and network) and, for held money, the amount.
 type Payload struct {
 	Option string `json:"option"`
 	Amount string `json:"amount,omitempty"`
+}
+
+// QueueReceipt adds the payer's receipt for the invoice that option belongs to, when the payer gave an address and no
+// receipt is queued yet (R-82).
+func QueueReceipt(ctx context.Context, tx pgx.Tx, option string) error {
+	payload, err := json.Marshal(Payload{Option: option})
+	if err != nil {
+		return fmt.Errorf("queue receipt for %s: %w", option, err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, invoice_id, payload)
+		SELECT $1, m.id, $3 FROM invoices o JOIN invoices m ON m.id = coalesce(o.main_id, o.id)
+		WHERE o.id = $2 AND m.payer_email IS NOT NULL
+		ON CONFLICT (invoice_id) WHERE kind = 'invoice.receipt' DO NOTHING`, Receipt, option, payload); err != nil {
+		return fmt.Errorf("queue receipt for %s: %w", option, err)
+	}
+	return nil
 }
 
 // Queue adds an event for the invoice that option belongs to. amount may be nil.

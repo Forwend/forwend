@@ -58,10 +58,10 @@ func setup(t *testing.T, login string) (*pgxpool.Pool, string) {
 		     u AS (INSERT INTO users (privy_user_id, login_email) VALUES ('did:privy:a', $2) RETURNING id),
 		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id)
 		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
-		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash, sender_name)
 		SELECT $1, id, 84532, 'evm', '0x00000000000000000000000000000000000000ee', 5000000, 2000000000, 2000086400,
 		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
-		    '0x3333333333333333333333333333333333333333', 'k', decode(repeat('00', 32), 'hex') FROM p`, id, login)
+		    '0x3333333333333333333333333333333333333333', 'k', decode(repeat('00', 32), 'hex'), 'Mara Ilić' FROM p`, id, login)
 	return pool, id
 }
 
@@ -216,5 +216,41 @@ func TestBackoff(t *testing.T) {
 		if got := Backoff(n).String(); got != want {
 			t.Errorf("Backoff(%d) = %s, want %s", n, got, want)
 		}
+	}
+}
+
+// R-82: the payer's receipt goes to the address they gave, whatever the owner's setting, with what they paid, to whom,
+// the transaction and the receipt PDF.
+func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
+	pool, id := setup(t, "owner@example.com")
+	exec(t, pool, "UPDATE profiles SET email_notifications = false")
+	exec(t, pool, "UPDATE invoices SET payer_email = 'payer@example.com' WHERE id = $1", id)
+	hash := "0x" + strings.Repeat("cd", 32)
+	exec(t, pool, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
+		    block_hash, block_number, block_time, from_address, to_address, amount, status)
+		VALUES (84532, 'evm', '0x00000000000000000000000000000000000000ee', $1, $2, 0, $2, 1, 1,
+		    '0x4444444444444444444444444444444444444444', '0x3333333333333333333333333333333333333333', 5000000, 'confirmed')`,
+		id, hash)
+	if err := pgx.BeginFunc(context.Background(), pool, func(tx pgx.Tx) error {
+		return outbox.QueueReceipt(context.Background(), tx, id)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	f := &fake{}
+	if err := Deliver(context.Background(), pool, f, web); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.sent) != 1 {
+		t.Fatalf("sent %d, want the receipt alone", len(f.sent))
+	}
+	m := f.sent[0]
+	for _, want := range []string{"You paid 5.00 USDC on Base Sepolia to Mara Ilić for INV-0001.",
+		"Transaction: https://sepolia.basescan.org/tx/" + hash, "Receipt (PDF): " + web + "/api/v1/invoices/" + id + "/receipt.pdf"} {
+		if !strings.Contains(m.Text, want) {
+			t.Fatalf("receipt text %q lacks %q", m.Text, want)
+		}
+	}
+	if m.To != "payer@example.com" || m.Subject != "Your receipt for INV-0001" {
+		t.Fatalf("receipt %+v", m)
 	}
 }

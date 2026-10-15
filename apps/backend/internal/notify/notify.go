@@ -69,19 +69,26 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 		return false, fmt.Errorf("read email event %d: %w", id, err)
 	}
 	var (
-		on             bool
-		to             *string
-		number         int64
-		symbol, amount string
-		decimals       int
-		chainID        uint64
+		on                          bool
+		to, payer                   *string
+		number                      int64
+		symbol, amount, payee, hash string
+		decimals                    int
+		chainID                     uint64
 	)
-	if err := tx.QueryRow(ctx, `SELECT p.email_notifications, u.login_email, m.number, t.symbol, t.decimals, o.chain_id,
-		    o.amount::text
+	if err := tx.QueryRow(ctx, `SELECT p.email_notifications, u.login_email, m.payer_email, m.number,
+		    coalesce(m.issuer_name, m.sender_name, ''), t.symbol, t.decimals, o.chain_id, o.amount::text,
+		    coalesce((SELECT d.tx_hash FROM chain_transfers d WHERE d.invoice_id = o.id AND d.status = 'confirmed'
+		              AND d.block_time <= o.expires_at ORDER BY d.block_number DESC, d.log_index DESC LIMIT 1), '')
 		FROM invoices m JOIN profiles p ON p.id = m.profile_id JOIN users u ON u.id = p.user_id
 		JOIN invoices o ON o.id = $2 JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
-		WHERE m.id = $1`, invoice, p.Option).Scan(&on, &to, &number, &symbol, &decimals, &chainID, &amount); err != nil {
+		WHERE m.id = $1`, invoice, p.Option).Scan(&on, &to, &payer, &number, &payee, &symbol, &decimals, &chainID,
+		&amount, &hash); err != nil {
 		return false, fmt.Errorf("read email event %d invoice: %w", id, err)
+	}
+	// The payer's receipt goes to the address they gave, whatever the owner's setting (R-82).
+	if kind == outbox.Receipt {
+		on, to = true, payer
 	}
 	if !on || to == nil || *to == "" {
 		// Email off for this profile, or no login email ('' when the account has none; NULL when it was never read):
@@ -95,8 +102,14 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, we
 		amount = p.Amount
 	}
 	units, _ := new(big.Int).SetString(amount, 10)
-	m := compose(kind, document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID),
-		webURL+"/app/invoices/"+invoice, webURL+"/app/notifications")
+	var m email.Message
+	if kind == outbox.Receipt {
+		m = receipt(document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID), payee,
+			document.TxURL(chainID, hash), webURL+"/api/v1/invoices/"+invoice+"/receipt.pdf")
+	} else {
+		m = compose(kind, document.Number(number), document.Amount(units, decimals, symbol), document.NetworkName(chainID),
+			webURL+"/app/invoices/"+invoice, webURL+"/app/notifications")
+	}
 	// The invoice id too: event ids start again in another database (a reset, staging) that may share the Resend team.
 	m.To, m.Key = *to, fmt.Sprintf("forwend-%s-%d", invoice, id)
 	if err := sender.Send(ctx, m); err != nil {
@@ -139,4 +152,20 @@ func compose(kind, number, amount, network, link, settings string) email.Message
 	}
 	return email.Message{Subject: subject, Text: what + "\n\nOpen the invoice: " + link +
 		"\n\nYou get this email because email is on for this profile. Turn it off: " + settings + "\n"}
+}
+
+// receipt is the payer's one email (R-82): what they paid, to whom, the transaction and the receipt PDF. Nothing else
+// is ever sent to this address.
+func receipt(number, amount, network, payee, tx, pdf string) email.Message {
+	to := ""
+	if payee != "" {
+		to = " to " + payee
+	}
+	text := "You paid " + amount + " on " + network + to + " for " + number + "."
+	if tx != "" {
+		text += "\n\nTransaction: " + tx
+	}
+	text += "\nReceipt (PDF): " + pdf + "\n\nYou get this one email because you asked for the receipt on the payment " +
+		"page. Forwend sends nothing else to this address.\n"
+	return email.Message{Subject: "Your receipt for " + number, Text: text}
 }

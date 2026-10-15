@@ -298,3 +298,19 @@ func TestOutboxEventsFollowTheLedger(t *testing.T) {
 		t.Fatalf("expired partial events %q", got)
 	}
 }
+
+// R-82: paying an invoice whose payer gave an address queues the payer's receipt once, beside the owner's paid event.
+func TestPaidQueuesTheReceiptWhenAsked(t *testing.T) {
+	s := newSim(t)
+	id, receive := s.invoice()
+	s.exec(`UPDATE invoices SET payer_email = 'payer@example.com' WHERE id = $1`, id)
+	s.transfer(id, receive, 5000000, simExpires-10, "confirmed")
+	s.answer[receive] = big.NewInt(5000000)
+	s.process(id)
+	s.process(id)
+	var kinds string
+	if err := s.pool.QueryRow(context.Background(), `SELECT string_agg(kind, ',' ORDER BY id) FROM outbox_events
+		WHERE invoice_id = $1`, id).Scan(&kinds); err != nil || kinds != "invoice.paid,invoice.receipt" {
+		t.Fatalf("events %q (%v), want invoice.paid,invoice.receipt", kinds, err)
+	}
+}
