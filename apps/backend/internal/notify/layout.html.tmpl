@@ -36,6 +36,7 @@
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">{{.Preheader}}&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="fw-bg" style="background-color:#f4f8f7;">
 <tr><td align="center" style="padding:32px 12px;">
+  <!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
   <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
     <tr><td class="fw-pad" style="padding:0 32px 20px 32px;">
       <a href="{{.Site}}" style="text-decoration:none;">
@@ -47,9 +48,9 @@
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr><td class="fw-pad" style="padding:36px 40px 8px 40px;font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
           {{with .Badge}}<span class="fw-badge-{{$.Tone}}" style="display:inline-block;padding:4px 12px;border-radius:999px;font-size:13px;font-weight:600;line-height:20px;{{if eq $.Tone "success"}}background-color:#e2f2e9;color:#1b6e45;{{else if eq $.Tone "warning"}}background-color:#f8eed8;color:#865500;{{else}}background-color:#eaf2f0;color:#3a5047;{{end}}">{{.}}</span>{{end}}
-          <h1 class="fw-title fw-ink" style="margin:{{if .Badge}}16px{{else}}0{{end}} 0 0 0;font-family:'Libre Caslon Display',Georgia,'Times New Roman',serif;font-size:32px;font-weight:400;line-height:1.2;color:#0f2219;">{{.Title}}</h1>
+          <h1 class="fw-title fw-ink" style="overflow-wrap:anywhere;word-break:break-word;margin:{{if .Badge}}16px{{else}}0{{end}} 0 0 0;font-family:'Libre Caslon Display',Georgia,'Times New Roman',serif;font-size:32px;font-weight:400;line-height:1.2;color:#0f2219;">{{keep .Title}}</h1>
           {{with .Amount}}<p class="fw-amount fw-ink" style="margin:16px 0 0 0;font-size:36px;font-weight:600;line-height:1.15;letter-spacing:-0.01em;color:#0f2219;">{{.}}</p>{{end}}
-          {{range .Lead}}<p class="fw-muted" style="margin:16px 0 0 0;font-size:16px;line-height:1.6;color:#3a5047;">{{.}}</p>{{end}}
+          {{range .Lead}}<p class="fw-muted" style="overflow-wrap:anywhere;word-break:break-word;margin:16px 0 0 0;font-size:16px;line-height:1.6;color:#3a5047;">{{keep .}}</p>{{end}}
         </td></tr>
         {{if .Details}}<tr><td class="fw-pad" style="padding:20px 40px 0 40px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;">
@@ -61,13 +62,13 @@
         </td></tr>{{end}}
         {{with .Note}}<tr><td class="fw-pad" style="padding:20px 40px 0 40px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td class="fw-note fw-muted" style="padding:14px 16px;background-color:#eaf2f0;border:1px solid #d3e0dc;border-radius:12px;font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;color:#3a5047;">{{.}}</td>
+            <td class="fw-note fw-muted" style="overflow-wrap:anywhere;word-break:break-word;padding:14px 16px;background-color:#eaf2f0;border:1px solid #d3e0dc;border-radius:12px;font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;color:#3a5047;">{{.}}</td>
           </tr></table>
         </td></tr>{{end}}
         <tr><td class="fw-pad" style="padding:28px 40px 36px 40px;">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td class="fw-button" bgcolor="#0f2219" style="border-radius:999px;background-color:#0f2219;">
-              <a href="{{.Button.URL}}" style="display:inline-block;padding:13px 28px;font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;line-height:20px;color:#f5faf7;text-decoration:none;border-radius:999px;">{{.Button.Label}}</a>
+            <td class="fw-button" bgcolor="#0f2219" style="padding:13px 28px;border-radius:999px;background-color:#0f2219;">
+              <a href="{{.Button.URL}}" style="display:inline-block;font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;line-height:20px;color:#f5faf7;text-decoration:none;border-radius:999px;">{{.Button.Label}}</a>
             </td>
           </tr></table>
         </td></tr>
@@ -79,6 +80,7 @@
       <p style="margin:0;">Forwend{{with .Postal}} · {{.}}{{end}}</p>
     </td></tr>
   </table>
+  <!--[if mso]></td></tr></table><![endif]-->
 </td></tr>
 </table>
 </body>

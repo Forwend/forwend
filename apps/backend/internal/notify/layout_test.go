@@ -20,7 +20,7 @@ func samples() map[string]view {
 		"settled":       compose(outbox.Settled, "INV-0001", "1,250.00 USDC", "USDC", "Base Sepolia", link, settings),
 		"held":          compose(outbox.Held, "INV-0002", "1.00 USDC", "USDC", "Base Sepolia", link, settings),
 		"receipt":       receipt("INV-0001", "1,250.00 USDC", "USDC", "Base Sepolia", "Alice Design GmbH", "", tx, web+"/api/v1/invoices/0xabc/receipt.pdf"),
-		"receipt-typed": receipt("INV-0003", "40.00 USDC", "USDC", "Base Sepolia", "", "Mara Ilić", "", web+"/api/v1/invoices/0xdef/receipt.pdf"),
+		"receipt-typed": receipt("INV-0003", "40.00 USDC", "USDC", "Base Sepolia", "", "MaraIlicDesignStudioInvoicesForInternationalClientsLimited", "", web+"/api/v1/invoices/0xdef/receipt.pdf"),
 		"welcome":       welcome(web + "/app"),
 	}
 }
@@ -46,7 +46,7 @@ func TestEveryEmailHasHTMLWithTheTextLinks(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
-		if !strings.Contains(m.HTML, "<!DOCTYPE html>") || !strings.Contains(m.HTML, v.Title) || m.Text == "" {
+		if !strings.Contains(m.HTML, "<!DOCTYPE html>") || !strings.Contains(m.HTML, ">"+v.Button.Label+"</a>") || m.Text == "" {
 			t.Fatalf("%s: no designed HTML part beside the text", name)
 		}
 		var html []string
