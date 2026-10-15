@@ -1417,7 +1417,7 @@
         "A request through the Next /api rewrite to a stub upstream shows whether X-Forwarded-For arrives; internal/httpapi/mid/ratelimit.go and docs/backend/api.md state that result and still give per-IP limits to the edge (Q-8)"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "docs-check"
@@ -1427,7 +1427,9 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-15 review pass by independent reviewer: PASS. Measured: stub on 127.0.0.1:4917 logging x-forwarded-*, apps/web built with API_URL=http://127.0.0.1:4917 (next 16.4.0), next start on :4918. curl /api/v1/x with no header -> stub got only x-forwarded-host:127.0.0.1:4918, no X-Forwarded-For; with 'X-Forwarded-For: 1.2.3.4' -> arrived as 1.2.3.4; with '1.2.3.4, 5.6.7.8' -> arrived unchanged. Matches source: router-utils/proxy-request.js (httpxy, no xfwd) sets only x-forwarded-host; base-server.js ??= x-forwarded-for applies to page handling, not external rewrites. Diff touches only the ratelimit.go comment, the api.md paragraph and harness state in tasks.json. Both texts keep per-IP limits at the edge (api.md names Q-8; the comment links api.md#rate-limits). git grep X-Forwarded-For: no live doc or comment keeps the old claim; only archived F107/F126 review notes (history, F126's base-server ??= note is about page requests). docs-check 0 errors. Servers stopped, scratch files removed, ports free; apps/web/.next now holds the stub-API_URL build (disposable cache, rebuilt by build/e2e)."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
@@ -1495,11 +1497,25 @@
         "filesHash": "1af72f9ee80b6c96",
         "proof": {
           "1": "backend: a stub upstream behind next start (API_URL built in) received no X-Forwarded-For for a plain request and '1.2.3.4' unchanged when the client sent it; ratelimit.go and api.md now say exactly that and keep per-IP limits at the edge (Q-8); docs-check passes"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "PASS. Measured: stub on 127.0.0.1:4917 logging x-forwarded-*, apps/web built with API_URL=http://127.0.0.1:4917 (next 16.4.0), next start on :4918. curl /api/v1/x with no header -> stub got only x-forwarded-host:127.0.0.1:4918, no X-Forwarded-For; with 'X-Forwarded-For: 1.2.3.4' -> arrived as 1.2.3.4; with '1.2.3.4, 5.6.7.8' -> arrived unchanged. Matches source: router-utils/proxy-request.js (httpxy, no xfwd) sets only x-forwarded-host; base-server.js ??= x-forwarded-for applies to page handling, not external rewrites. Diff touches only the ratelimit.go comment, the api.md paragraph and harness state in tasks.json. Both texts keep per-IP limits at the edge (api.md names Q-8; the comment links api.md#rate-limits). git grep X-Forwarded-For: no live doc or comment keeps the old claim; only archived F107/F126 review notes (history, F126's base-server ??= note is about page requests). docs-check 0 errors. Servers stopped, scratch files removed, ports free; apps/web/.next now holds the stub-API_URL build (disposable cache, rebuilt by build/e2e).",
+          "at": "2026-10-15T03:48:47Z",
+          "filesHash": "1af72f9ee80b6c96"
+        },
+        "commit": "54da3d3",
+        "doneAt": "2026-10-15T03:48:58Z"
       },
       "branch": "fix/f193-the-api-rate-limit-comment-and-api-md-ag",
       "baseCommit": "c509be9667eb7f6a56948b758351ac8a16c46870",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f193-the-api-rate-limit-comment-and-api-md-ag",
+        "base": "main"
+      }
     },
     {
       "id": "F194",
