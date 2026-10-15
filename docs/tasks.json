@@ -1942,7 +1942,7 @@
         "A notify test fails one send, lets the retry succeed, and checks both sends used the same Idempotency-Key; a key that changes per send fails it"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -1952,7 +1952,8 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-15 review pass by independent reviewer: Test passes on HEAD; fails (keys differ) when the key gets the attempt count or time.Now().UnixNano() appended (checked with go test -overlay, no repo edits). Fake now records every try's key; whole notify and email packages pass. Package comment matches notify.go:119 (invoice, event id, sha256 of address). Only notify.go, notify_test.go and tasks.json changed. Notes, not defects: notify.go line 3 is 141 chars, longer than the other comment lines; PROJECT.md R-80 and D-65 still say the event id alone is the key (api.md has it right)."
+        "2026-10-15 review pass by independent reviewer: Test passes on HEAD; fails (keys differ) when the key gets the attempt count or time.Now().UnixNano() appended (checked with go test -overlay, no repo edits). Fake now records every try's key; whole notify and email packages pass. Package comment matches notify.go:119 (invoice, event id, sha256 of address). Only notify.go, notify_test.go and tasks.json changed. Notes, not defects: notify.go line 3 is 141 chars, longer than the other comment lines; PROJECT.md R-80 and D-65 still say the event id alone is the key (api.md has it right).",
+        "2026-10-15 review pass by independent reviewer: 3dbfdc1: R-80 and D-65 in PROJECT.md now name the key's parts (invoice id, outbox event id, hash of the address, same on every retry), matching notify.go:119 and docs/backend/api.md:66; word diff shows only that phrase changed in each row. tasks.json changes are the earlier review note and re-verify evidence. check-docs: 0 errors. Earlier findings stand: test passes on HEAD and fails when the attempt count or time is added to the key."
       ],
       "blockedReason": null,
       "evidence": {
@@ -2021,11 +2022,25 @@
         "filesHash": "f484bd1037d16b15",
         "proof": {
           "1": "backend: TestRetryKeepsTheIdempotencyKey fails one send, lets the retry succeed, and checks both used the same Idempotency-Key with one email sent; a key that changes per send (time added) fails it; the notify package comment and PROJECT.md R-80 and D-65 now name the key's parts"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "3dbfdc1: R-80 and D-65 in PROJECT.md now name the key's parts (invoice id, outbox event id, hash of the address, same on every retry), matching notify.go:119 and docs/backend/api.md:66; word diff shows only that phrase changed in each row. tasks.json changes are the earlier review note and re-verify evidence. check-docs: 0 errors. Earlier findings stand: test passes on HEAD and fails when the attempt count or time is added to the key.",
+          "at": "2026-10-15T10:42:08Z",
+          "filesHash": "f484bd1037d16b15"
+        },
+        "commit": "3dbfdc1",
+        "doneAt": "2026-10-15T10:42:18Z"
       },
       "branch": "test/f198-a-retried-email-keeps-its-idempotency-ke",
       "baseCommit": "9583bbb2142d81e90a536e3bf7de662dc9ff5e1f",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "test/f198-a-retried-email-keeps-its-idempotency-ke",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
