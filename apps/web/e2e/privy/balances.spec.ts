@@ -110,11 +110,15 @@ test("a profile shows its balance, networks, receive address and activity; a new
   await sidebar.getByRole("link", { name: "Balances" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Balances" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
-  // Switching profile on a page other than the dashboard keeps that page.
+  // Switching profile on another page opens the new profile's overview (R-76). Waiting for the URL, not for a heading
+  // the old page may still show for a moment, is what keeps this step from passing or failing by timing.
   await sidebar.getByRole("button", { name: /^Switch profile/ }).click();
   await page.getByRole("menuitemradio", { name: "Personal" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Balances" })).toBeVisible();
+  await expect(page).toHaveURL("/app");
+  await expect(page.getByRole("heading", { level: 1, name: "Personal overview" })).toBeVisible();
   await expect(sidebar.getByRole("button", { name: /^Switch profile: Personal/ })).toBeVisible();
+  await sidebar.getByRole("link", { name: "Balances" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Balances" })).toBeVisible();
   await sidebar.getByRole("link", { name: "Activity" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Activity" })).toBeVisible();
   await sidebar.getByRole("link", { name: "Transactions" }).click();

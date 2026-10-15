@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 197,
+  "nextId": 198,
   "tasks": [
     {
       "id": "F179",
@@ -639,7 +639,7 @@
       "dependsOn": [
         "F183"
       ],
-      "state": "not_started",
+      "state": "blocked",
       "verification": [
         "backend",
         "unit",
@@ -651,9 +651,82 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": null
+      "notes": [
+        "2026-10-15 blocked: Verify blocked by the stale balances e2e step fixed in F197"
+      ],
+      "blockedReason": "Verify blocked by the stale balances e2e step fixed in F197",
+      "evidence": {
+        "version": 3,
+        "status": "failed",
+        "at": "2026-10-15T02:27:10Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 62.6,
+            "log": "docs/runs/F185-20261015T022710Z-backend.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 64.2,
+            "log": "docs/runs/F185-20261015T022710Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "failed",
+            "exit": 1,
+            "seconds": 163.9,
+            "log": "docs/runs/F185-20261015T022710Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F185-20261015T022710Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F185-20261015T022710Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F185-20261015T022710Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F185-20261015T022710Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F185-20261015T022710Z-build.log"
+          }
+        ],
+        "taskHash": "b7d4c44948b26ee9",
+        "filesHash": "60a74fe5cde81b35",
+        "proof": {
+          "1": "e2e: pay.spec 'takes an optional address for the receipt' saves it before paying, says where the receipt goes, shows the 422 and 409 answers; backend TestPayerEmail (422, 404, trimmed and lowercased, a paid invoice queues one receipt, changes until sent, 409 receipt_sent after, the bell leaves receipts out) and TestPayerEmailIsLimitedPerInvoice (429 after 3, another invoice has its own budget)",
+          "2": "backend: TestPaidQueuesTheReceiptWhenAsked (paid queues one receipt beside the paid event) and TestDeliverSendsTheReceiptToThePayer (to the payer's address whatever the owner's setting, with amount, payee, transaction link and receipt PDF link); a unique index keeps one receipt per invoice"
+        }
+      },
+      "branch": "feat/f185-a-payer-can-ask-for-the-receipt-by-email",
+      "baseCommit": "1c842159b3390484b42e866a3bc56a7665efc132",
+      "failedVerifies": 2
     },
     {
       "id": "F186",
@@ -1241,6 +1314,106 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F197",
+      "type": "fix",
+      "behavior": "The live Privy balances test passes reliably: find why the Balances page sometimes does not render within 5 s after its sidebar link is clicked",
+      "acceptance": [
+        "The cause of e2e/privy/balances.spec.ts:116 failing in about 3 of 10 full e2e runs is found: the step still expected the pre-R-76 rule (switching profile keeps the page) and passed only when it read the old Balances heading before the navigation to /app; it now waits for /app and the Personal overview per R-76, then opens Balances; no timeout or retry is added; the spec passes 3 runs in a row and the full e2e suite passes"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-66"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-15 review pass by independent reviewer: Root cause right: switchProfile calls router.push(APP_ROUTES.home) (R-76), so the old step's Balances heading check only passed when read before navigation. New step waits for /app URL, the Personal overview heading and the Personal switcher label, then reopens Balances; a self-flipping profile would still fail the switcher check. Nothing weakened: no timeout or retry added, no check removed, the axe check after Transactions stays. Radix MenuRadioItem calls onValueChange even for the already-active value, so the no-network branch (Personal already active) still navigates. No other e2e spec asserts the keep-the-page rule (auth, navigation, onboarding, invoices, money-requests checked). pnpm lint and pnpm typecheck pass. Minor: the task refs R-66; R-76 is the requirement the step tests."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T02:34:58Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 176.6,
+            "log": "docs/runs/F197-20261015T023458Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F197-20261015T023458Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F197-20261015T023458Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F197-20261015T023458Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": "docs/runs/F197-20261015T023458Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 64.4,
+            "log": "docs/runs/F197-20261015T023458Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.2,
+            "log": "docs/runs/F197-20261015T023458Z-build.log"
+          }
+        ],
+        "taskHash": "3c07804cd117a9e8",
+        "filesHash": "45c1edb952258db6",
+        "proof": {
+          "1": "e2e: the trace of the failed run shows the first Balances check passing and the failure at the post-switch check; the step now waits for /app and 'Personal overview' (R-76) and reopens Balances; balances.spec passed 3 runs in a row and the full e2e suite passes here"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "Root cause right: switchProfile calls router.push(APP_ROUTES.home) (R-76), so the old step's Balances heading check only passed when read before navigation. New step waits for /app URL, the Personal overview heading and the Personal switcher label, then reopens Balances; a self-flipping profile would still fail the switcher check. Nothing weakened: no timeout or retry added, no check removed, the axe check after Transactions stays. Radix MenuRadioItem calls onValueChange even for the already-active value, so the no-network branch (Personal already active) still navigates. No other e2e spec asserts the keep-the-page rule (auth, navigation, onboarding, invoices, money-requests checked). pnpm lint and pnpm typecheck pass. Minor: the task refs R-66; R-76 is the requirement the step tests.",
+          "at": "2026-10-15T02:40:04Z",
+          "filesHash": "45c1edb952258db6"
+        },
+        "commit": "52b8dcf",
+        "doneAt": "2026-10-15T02:40:18Z"
+      },
+      "branch": "fix/f197-the-live-privy-balances-test-passes-reli",
+      "baseCommit": "1c842159b3390484b42e866a3bc56a7665efc132",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f197-the-live-privy-balances-test-passes-reli",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
