@@ -16,6 +16,7 @@ const item = (over: Partial<ActivityItem>): ActivityItem => ({
   settlementStatus: "none",
   optionCount: 1,
   closed: false,
+  held: false,
   ...over,
 });
 const deposit = (txHash: string, invoiceId = "0xinv1") =>
@@ -47,6 +48,11 @@ describe("newPaymentEvents", () => {
     expect(once.events).toHaveLength(1);
     newPaymentEvents(once.seen, []);
     expect(newPaymentEvents(once.seen, [deposit("0xc")]).events).toEqual([]);
+  });
+
+  it("raises no toast for money held for the payer: late, after a cancel, or on another option", () => {
+    const { seen } = newPaymentEvents(undefined, []);
+    expect(newPaymentEvents(seen, [{ ...deposit("0xd"), held: true }]).events).toEqual([]);
   });
 
   it("ignores invoices that are not settled", () => {

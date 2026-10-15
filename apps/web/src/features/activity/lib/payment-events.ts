@@ -5,7 +5,10 @@ import type { PaymentEvent, PaymentEventKind } from "@/features/activity/types/p
 
 function eventOf(item: ActivityItem): { key: string; kind: PaymentEventKind } | null {
   if (item.kind === ACTIVITY_KINDS.deposit) {
-    return { key: `deposit:${item.invoiceId}:${item.txHash}`, kind: PAYMENT_EVENTS.detected };
+    // Held money is not a payment to the owner (R-79, D-26): no toast.
+    return item.held
+      ? null
+      : { key: `deposit:${item.invoiceId}:${item.txHash}`, kind: PAYMENT_EVENTS.detected };
   }
   if (item.settlementStatus === API_SETTLEMENT_STATUSES.settled) {
     return { key: `settled:${item.invoiceId}`, kind: PAYMENT_EVENTS.settled };

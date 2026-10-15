@@ -374,7 +374,8 @@ paths:
       summary: The profile's invoices and deposits, newest first, in cursor pages
       description: |
         status and q narrow the list before paging, so a cursor continues the same filtered list. Under status, an
-        invoice falls as in the invoice list; a deposit is open while detected and paid once confirmed. q looks in the
+        invoice falls as in the invoice list; a deposit is open while detected and paid once confirmed, and a held one
+        (held) under no status, only in the full list. q looks in the
         transaction hash (a deposit's, or a settled invoice's settle transaction), the token symbol and, when it is a
         number, the amount.
       parameters:
@@ -847,7 +848,7 @@ components:
           description: Pass as cursor for the next page; null on the last page.
     ActivityItem:
       type: object
-      required: [kind, at, invoiceId, chainId, token, symbol, decimals, amount, status, optionCount, closed]
+      required: [kind, at, invoiceId, chainId, token, symbol, decimals, amount, status, optionCount, closed, held]
       properties:
         kind:
           type: string
@@ -885,6 +886,11 @@ components:
         closed:
           type: boolean
           description: As Invoice.closed for an invoice; false for a deposit.
+        held:
+          type: boolean
+          description: >-
+            A deposit the owner gets none of, held for the payer (D-26): late, on a canceled or final invoice, on an
+            invoice that expired partly paid, or on an option the client did not pay with. False for an invoice.
     Transactions:
       type: object
       required: [items, nextCursor]

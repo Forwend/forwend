@@ -33,6 +33,8 @@ export const activityItemSchema = z.object({
   optionCount: z.number().int().positive(),
   // An invoice whose checkout closed and can no longer be paid, before its status catches up (R-77); false for a deposit.
   closed: z.boolean(),
+  // A deposit the owner gets none of, held for the payer (D-26); false for an invoice.
+  held: z.boolean(),
 });
 
 export const activityPageSchema = pageOf(activityItemSchema);

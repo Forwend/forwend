@@ -115,6 +115,7 @@ export const activityItem = (
   optionCount: deposit ? 1 : inv.optionCount,
   ...(deposit ? { txHash: deposit.txHash } : { settlementStatus: inv.settlementStatus }),
   closed: deposit ? false : inv.closed,
+  held: false,
 });
 const ACTIVITY = INVOICES.flatMap((inv) => [
   ...((DEPOSITS[inv.invoiceId] ?? []) as { txHash: string; status: string }[]).map((d) =>

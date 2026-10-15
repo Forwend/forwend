@@ -155,3 +155,86 @@ func TestListRefusesBadInput(t *testing.T) {
 		}
 	}
 }
+
+// Money the owner gets none of is held for the payer (D-26): it says so, and is filed under no Open or Paid filter as a
+// payment. Booked deposits follow the ledger; unbooked ones the ledger's own rule (late, final invoice, other option).
+func TestListMarksHeldDeposits(t *testing.T) {
+	pool := open(t)
+	var profile string
+	if err := pool.QueryRow(context.Background(), `
+		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true)),
+		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
+		            VALUES (84532, 'evm', $1, 'USDC', 6, true)),
+		     u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:alice') RETURNING id)
+		INSERT INTO profiles (user_id, kind) SELECT id, 'personal' FROM u RETURNING id::text`, usdc).Scan(&profile); err != nil {
+		t.Fatal(err)
+	}
+	canceled := addInvoice(t, pool, profile, 1, 0)
+	exec(t, pool, "UPDATE invoices SET payment_status = 'canceled', canceled_at = now() WHERE id = $1", canceled)
+	addDeposit(t, pool, canceled, 11, 1, "detected")
+	late := addInvoice(t, pool, profile, 2, 0)
+	addDeposit(t, pool, late, 12, 2, "confirmed")
+	exec(t, pool, "UPDATE chain_transfers SET block_time = 1900000000 WHERE invoice_id = $1", late)
+	main := addInvoice(t, pool, profile, 3, 0)
+	option := fmt.Sprintf("0x%064x", 4)
+	exec(t, pool, `INSERT INTO invoices (id, main_id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
+		    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
+		    request_hash, created_at)
+		SELECT $2, id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, $3, idempotency_key, request_hash, created_at FROM invoices WHERE id = $1`,
+		main, option, fmt.Sprintf("0x33%038x", 4))
+	exec(t, pool, "UPDATE invoices SET chosen_id = $1 WHERE id = $1", main)
+	addDeposit(t, pool, option, 13, 3, "detected")
+	open := addInvoice(t, pool, profile, 5, 0)
+	addDeposit(t, pool, open, 14, 4, "detected")
+	paidOver := addInvoice(t, pool, profile, 8, 0) // money after paid, not booked yet
+	exec(t, pool, "UPDATE invoices SET payment_status = 'paid' WHERE id = $1", paidOver)
+	addDeposit(t, pool, paidOver, 17, 7, "detected")
+	expired := addInvoice(t, pool, profile, 9, 0)
+	exec(t, pool, "UPDATE invoices SET payment_status = 'expired' WHERE id = $1", expired)
+	addDeposit(t, pool, expired, 18, 8, "detected")
+	// Booked: the ledger says what reached the owner. All of the first held, the second to the owner, the third to the
+	// owner until the invoice expired partly paid and the expiry book moved it to the payer.
+	paidHeld := addInvoice(t, pool, profile, 6, 0)
+	addDeposit(t, pool, paidHeld, 15, 5, "confirmed")
+	paid := addInvoice(t, pool, profile, 7, 0)
+	addDeposit(t, pool, paid, 16, 6, "confirmed")
+	partial := addInvoice(t, pool, profile, 10, 0)
+	addDeposit(t, pool, partial, 19, 9, "confirmed")
+	for inv, account := range map[string]string{paidHeld: "payer_held", paid: "recipient_payable", partial: "recipient_payable"} {
+		exec(t, pool, `WITH x AS (INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id)
+			           SELECT $1, 'deposit', id FROM chain_transfers WHERE invoice_id = $1 RETURNING id)
+			INSERT INTO ledger_entries (transaction_id, account, amount) SELECT id, 'receiver', 1000000 FROM x
+			UNION ALL SELECT id, $2, -1000000 FROM x`, inv, account)
+	}
+
+	exec(t, pool, "UPDATE invoices SET payment_status = 'expired_partially_paid' WHERE id = $1", partial)
+
+	held := map[string]bool{}
+	s := NewService(pool)
+	all, err := s.List(context.Background(), profile, "", DefaultLimit, "", search.Query{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range all.Items {
+		if it.Kind == Deposit {
+			held[it.InvoiceID] = it.Held
+		}
+	}
+	want := map[string]bool{canceled: true, late: true, main: true, open: false, paidOver: true, expired: true,
+		paidHeld: true, paid: false, partial: true}
+	if !reflect.DeepEqual(held, want) {
+		t.Fatalf("held %v, want %v", held, want)
+	}
+	for _, filter := range []string{"open", "paid"} {
+		page, err := s.List(context.Background(), profile, "", DefaultLimit, filter, search.Query{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, it := range page.Items {
+			if it.Kind == Deposit && it.Held {
+				t.Fatalf("held deposit of %s under %s", it.InvoiceID, filter)
+			}
+		}
+	}
+}

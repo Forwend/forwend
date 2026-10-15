@@ -16,6 +16,7 @@ const base: ActivityItem = {
   settlementStatus: "none",
   optionCount: 1,
   closed: false,
+  held: false,
 };
 
 describe("activityStatus", () => {

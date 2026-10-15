@@ -36,6 +36,7 @@ const invoice: ActivityItem = {
   settlementStatus: "none",
   optionCount: 1,
   closed: false,
+  held: false,
 };
 const deposit = (txHash: string, amount: string): ActivityItem => ({
   ...invoice,
@@ -96,5 +97,24 @@ describe("Activity shows invoice amounts exactly, as the invoice list, detail, p
     await settle();
     const toasts = screen.queryAllByRole("listitem").map((li) => li.textContent);
     expect(toasts).toEqual(["Payment detected0.0015 USDC is confirming."]);
+  });
+});
+
+describe("Activity names held money", () => {
+  it("reads a deposit the owner gets none of as held for the payer, not as a payment", async () => {
+    items = [
+      { ...deposit(`0x${"3".repeat(64)}`, "1000000"), held: true },
+      deposit(`0x${"4".repeat(64)}`, "1000000"),
+    ];
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <ActivityList profileId="p" />
+      </Provider>,
+    );
+    await settle();
+    const rows = screen.getAllByRole("listitem").map((li) => li.textContent ?? "");
+    expect(rows[0]).toContain("Held for the payer");
+    expect(rows[0]).not.toContain("Payment");
+    expect(rows[1]).toContain("Payment");
   });
 });
