@@ -1526,7 +1526,7 @@
         "Harness tests fail if needs_review ignores a failed git diff, if changed_since drops untracked files, or if a non-JSON file under docs/archive/ counts as docs-only; DOCS_ONLY accepts only docs/archive/*.json; workflow.md step 6 says review is forced only in a git repository"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "harness",
         "docs-check"
@@ -1538,7 +1538,71 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-15T03:49:42Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F194-20261015T034942Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F194-20261015T034942Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F194-20261015T034942Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F194-20261015T034942Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 64.6,
+            "log": "docs/runs/F194-20261015T034942Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F194-20261015T034942Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 160.3,
+            "log": "docs/runs/F194-20261015T034942Z-e2e.log"
+          }
+        ],
+        "taskHash": "10179130e64270c8",
+        "filesHash": "927698d601a9c779",
+        "proof": {
+          "1": "harness: show prints the review line for active/verified tasks that need review, and for finished tasks only with review evidence or --review (test_show_review_line_only_where_review_applies); show F179 prints no review line",
+          "2": "harness: test_review_rule_edges covers a failed git diff (review needed), untracked files in changed_since, and docs/archive non-JSON not docs-only; DOCS_ONLY is docs/archive/*.json; workflow.md step 6 says outside git only --review tasks need review"
+        }
+      },
+      "branch": "fix/f194-show-prints-the-review-line-only-where-a",
+      "baseCommit": "3afd9ffa0e3404eb230f5ecb64012c1cadf8de2a",
+      "failedVerifies": 0
     },
     {
       "id": "F195",
