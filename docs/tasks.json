@@ -2715,67 +2715,69 @@
       "refs": [],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-15 review fail by independent reviewer: Defect: tooltip.tsx:42-52 clears tapped only after a click. A touch that becomes a scroll (pointerdown, pointercancel, pointerleave; no click) or any touch without a click leaves tapped=true, so onOpenChange (line 37) ignores every Radix close. Repro on dev server /kit with CDP touch: tap estimate hint (opens), swipe starting on it -> stays open through the scroll; tap heading -> still open; tap 'Hover for tooltip' -> both tooltips open at once. Old code did not stick (any onOpenChange reset the flag). Suggested fix: clear tapped in onPointerCancel, plus an e2e step for swipe-from-trigger then tap elsewhere. Checked OK: tap A then B (A closes), tap then wheel/swipe elsewhere closes, long press toggles, tap while open from focus closes, desktop hover opens, mouse press and Enter/Space close as Radix did, stale setTimeout only writes a ref. A tap on a trigger with its own onClick runs both (Slot runs child onClick first); same as before, and no current phone-visible trigger has an action. New e2e fails on HEAD~1 tooltip.tsx (kit.spec.ts:31) and passes with the fix; lint and ui-web tests pass. Removing the jsdom test fits workflow.md 'Which tests to keep': it used an impossible event order and the e2e covers the bug."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-15T14:15:21Z",
+        "at": "2026-10-15T14:27:32Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
             "seconds": 73.2,
-            "log": "docs/runs/F205-20261015T141521Z-unit.log"
+            "log": "docs/runs/F205-20261015T142732Z-unit.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 208.6,
-            "log": "docs/runs/F205-20261015T141521Z-e2e.log"
+            "seconds": 204.7,
+            "log": "docs/runs/F205-20261015T142732Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.9,
-            "log": "docs/runs/F205-20261015T141521Z-harness.log"
+            "seconds": 2.8,
+            "log": "docs/runs/F205-20261015T142732Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F205-20261015T141521Z-docs-check.log"
+            "log": "docs/runs/F205-20261015T142732Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.4,
-            "log": "docs/runs/F205-20261015T141521Z-lint.log"
+            "seconds": 0.5,
+            "log": "docs/runs/F205-20261015T142732Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.9,
-            "log": "docs/runs/F205-20261015T141521Z-typecheck.log"
+            "seconds": 1.8,
+            "log": "docs/runs/F205-20261015T142732Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.8,
-            "log": "docs/runs/F205-20261015T141521Z-build.log"
+            "seconds": 4.7,
+            "log": "docs/runs/F205-20261015T142732Z-build.log"
           }
         ],
         "taskHash": "cc67d076fbe3ef37",
-        "filesHash": "8831c3ad99738295",
+        "filesHash": "a45a90c719d9c30b",
         "proof": {
-          "1": "e2e: kit.spec 'a tap opens a tooltip on a touch screen': at 390 px with touch, a tap opens the tooltip, a tap elsewhere closes it, a tap opens it again and a second tap closes it (it failed before the fix: focus opened it and the click toggled it shut). Desktop hover and keyboard focus still open it (checked against the dev server with the original and the fixed file). The jsdom tooltip test, which passed while real taps failed, is replaced by this e2e"
+          "1": "e2e: kit.spec 'a tap opens a tooltip on a touch screen': at 390 px with touch, a tap opens it, a tap elsewhere closes it, a tap opens it again and a second tap closes it; a swipe that starts on the trigger (pointercancel, no click) leaves it closable by a tap elsewhere. It fails without the fix and without the pointercancel reset. Desktop hover and keyboard focus still open it; on the phone overview a tap on the estimate hint and on Send shows their text. The jsdom test that passed while real taps failed is replaced by this e2e"
         }
       },
       "branch": "fix/f205-on-touch-screens-a-tap-shows-a-tooltip-s",

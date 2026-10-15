@@ -43,6 +43,10 @@ export function Tooltip({ content, children, side = "top" }: TooltipProps) {
           tapped.current = event.pointerType === "touch";
           openAtTap.current = open;
         }}
+        // A touch that turns into a scroll ends with no click: it was not a tap.
+        onPointerCancel={() => {
+          tapped.current = false;
+        }}
         onClick={() => {
           if (!tapped.current) return;
           setOpen(!openAtTap.current);
