@@ -12,7 +12,7 @@
         "docs/archive holds F179-F207 and docs/tasks.json keeps only open tasks; docs-check passes"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -50,11 +50,18 @@
           "1": "docs-check: PLAN row 9 reads Done; section renamed Open from phases 1-9 with R-1…R-85; phase 9 section removed, its refund note kept in D-78; finished 9.x dependencies dropped",
           "2": "docs-check: Q-13 row removed; D-65 says the owner approved the account and the domain is verified; grep finds Q-13 only in docs/archive and docs/runs",
           "3": "docs-check: harness archive moved F179-F207 to docs/archive; tasks.json keeps F208 and F209"
-        }
+        },
+        "commit": "24f66f2",
+        "doneAt": "2026-10-16T14:07:06Z"
       },
       "branch": "chore/f208-docs-match-the-finished-phase-9-phase-9",
       "baseCommit": "ffa681be42d8250f952e819c1d8e471970cee6b4",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f208-docs-match-the-finished-phase-9-phase-9",
+        "base": "main"
+      }
     },
     {
       "id": "F209",
