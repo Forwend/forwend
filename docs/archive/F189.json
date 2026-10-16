@@ -1,0 +1,74 @@
+{
+  "id": "F189",
+  "type": "docs",
+  "behavior": "Docs keep only open work and one copy of each rule: finished phases, answered questions, hedges, history, load-test logs and stale design briefs are gone",
+  "acceptance": [
+    "PLAN.md marks phases 1-8 done and keeps only their open items; PROJECT.md drops answered Q-4 and A-1, the stale Scope lines and the revisit/alternatives/owner-can-change clauses in D-46, D-61, D-65, D-73 and D-75",
+    "Each rule has one home: workflow.md drops the delivery-policy copy and the v2 note; backend architecture, api, rules and money-safety drop repeats, the load-test log, source lists and task history; staging.md drops the bootstrap and billing notes",
+    "Web docs drop the image history and copied token values, Redux and layout rationale and page prose that DESIGN.md owns; DESIGN.md scopes the Soon rule to the sidebar; the two stale .impeccable surface briefs are deleted"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "docs-check"
+  ],
+  "refs": [
+    "D-46",
+    "D-61",
+    "D-65",
+    "D-48"
+  ],
+  "keep": [
+    "apps/*/src/*",
+    "apps/backend/internal/*",
+    "packages/*/src/*"
+  ],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-14T22:16:21Z",
+    "checks": [
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F189-20261014T221621Z-docs-check.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.8,
+        "log": "docs/runs/F189-20261014T221621Z-harness.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F189-20261014T221621Z-keep.log"
+      }
+    ],
+    "taskHash": "a78798dbd415f0a5",
+    "filesHash": "f090b501b9a847ac",
+    "proof": {
+      "1": "docs-check: PLAN phases 1-8 collapsed to an open list with interview questions in docs/owner-research.md; Q-4, A-1, stale Scope lines and hedge clauses removed; links valid",
+      "2": "docs-check: delivery-policy copy, v2 note, staging bootstrap and billing, load-test log, sources, api route list and repeats removed; links valid",
+      "3": "docs-check: image history, token hex values, structure rationale and page prose removed; DESIGN Soon rule scoped to the sidebar; .impeccable surface briefs deleted with no live link left"
+    },
+    "commit": "369d5a2",
+    "doneAt": "2026-10-14T22:16:31Z"
+  },
+  "branch": "docs/f189-docs-keep-only-open-work-and-one-copy-of",
+  "baseCommit": "e45dddf469bf168d38b196bbe226b9b35f797ef1",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "docs/f189-docs-keep-only-open-work-and-one-copy-of",
+    "base": "main"
+  }
+}

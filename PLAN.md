@@ -15,15 +15,15 @@ reason; it joins the plan once the owner agrees.
 | 6 | Done: Go API, watcher, ledger and signer | R-14…R-24; local create → pay → confirmed → settled twice with one invoice and matching ledger |
 | 7 | Done: login, app shell and profile wallets | Sign in, create freelancer profile, switch profiles and see the correct wallet |
 | 8 | Done: first payment through the UI on Base USDC, then Arbitrum, Arc and Tempo | Sasha's Base Sepolia run; then enable other planned pairs individually |
-| 9 | Payment exceptions, cancel and notifications | On Anvil: partial → top-up → paid; expired partial → held; late → held; cancel → later deposit held; each email sent once |
+| 9 | Done: payment exceptions, cancel and notifications | On Anvil: partial → top-up → paid; expired partial → held; late → held; cancel → later deposit held; each email sent once |
 | 10 | Freelancer work | One freelancer runs deposit → delivery → acceptance → final invoice paid on testnet |
 | 11 | Merchant stores, developer tools, connected wallet and refunds | Sample merchant uses SDK, pays and verifies an invoice.settled webhook; on Anvil overpay → claim → refund and expired partial → claim → refund |
 | 12 | Account security, send, handles and bank withdrawal | Send works on a fork; withdrawal works in provider sandbox |
 | 13 | Security review and personal mainnet trials | Full testnet exception suite, then 20 tiny personal mainnet invoices with zero reconciliation difference |
 
-## Open from phases 1–8
+## Open from phases 1–9
 
-Phases 1–8 are done; their requirements are PROJECT R-1…R-76 and their records are in `docs/archive/`. Still open:
+Phases 1–9 are done; their requirements are PROJECT R-1…R-85 and their records are in `docs/archive/`. Still open:
 
 - Q-1: the owner reviews the visual direction on `/kit/directions`.
 - Before ignoring tiny deposits, define a dust threshold; they stay refundable.
@@ -33,30 +33,6 @@ Phases 1–8 are done; their requirements are PROJECT R-1…R-76 and their recor
   handles and app-store names, a spoken spelling test with 5 people. Results feed D-55, D-58 and Q-12. Questions:
   [owner research](docs/owner-research.md).
 
-## Phase 9: payment exceptions, cancel and notifications
-
-Refunds moved to 11.10 (owner choice 2026-10-15): a payer who connects the wallet that sent the money proves it with a
-signature, which answers most of Q-9. Until then held money stays in its receiver; the refund-authority Safe can still
-return it by hand ([operations](docs/contracts/operations.md)). 9.3 and 9.4 became 11.10.2 and 11.10.3.
-
-- 9.1 A next step for every exception (R-77). Owner page: partial shows what is left and when the checkout closes,
-  beside the pay link; expired with nothing paid offers New invoice with the same client and amount; expired partial
-  shows the money held for the payer and offers a new invoice for the rest (D-25); late money shows as held. Pay page:
-  partial keeps the time left beside the remaining amount and asks the payer to copy the address from this page, not
-  from wallet history (address poisoning: a lookalike address planted in that history). After 8.4. Overpaid waits for
-  11.10.1.
-- 9.2 Payer warnings before sending (R-78): the address shows in groups of 4 characters so the payer can compare all
-  of it, not only its ends; the token line links the token contract on the explorer; on Arbitrum it says native USDC,
-  not USDC.e; paying from an exchange says to pick the same network there. Wrong-network help moved to 11.10.4.
-- 9.5 Cancel an invoice or request before any money arrives (R-79). After 8.3.
-- 9.6 Owner email through Resend behind an adapter and the outbox (D-65, R-80): paid, settled, money held (expired
-  partial, late, after cancel); the worker claims outbox rows with `SKIP LOCKED`; per-profile on/off. Sending needs a
-  verified sending domain and the owner's approval of the account (Q-13); without an API key nothing is sent. After 9.1, 9.5.
-  - 9.6.1 The in-app bell shows the same invoice events beside incoming payments (R-81). After 9.6.
-- 9.7 Payer receipt email: an optional field on `/pay`, kept per invoice (D-68); one receipt email once paid (R-82).
-  Claim updates come with 11.10.2. After 9.6.
-- 9.8 Exception suite on Anvil, the gate (R-83). After 9.1–9.7.
-
 ## Phase 10: freelancer work
 
 Freelancer before merchant (D-55). Phase 9 comes first for both, so phases 10 and 11 can swap without rework.
@@ -65,15 +41,15 @@ Freelancer before merchant (D-55). Phase 9 comes first for both, so phases 10 an
 - 10.2 Line items, duplicate invoice, and an "Agreed value" in fiat that the user types (currency, amount and the
   time; no exchange-rate API). After 10.1.
 - 10.3 Recurring retainers (D-58): a schedule (day of month, end date); each cycle the worker creates a new invoice
-  and emails the client, who pays by hand. After 9.6.
+  and emails the client, who pays by hand.
 - 10.4 Jobs: a job groups invoices; deposit and milestone invoices; a quote the client accepts creates the deposit
   invoice. After 10.2.
 - 10.5 Shared work page `/w/<token>`: scope (deliverables, deadline, included revisions, how acceptance works);
   work states agreed, in progress, delivered, changes requested and approved stay separate from payment states;
   an append-only log of client acceptance and change requests (typed name, email, time). Delivery is links only
   (D-66). After 10.4.
-- 10.6 Action list: overdue, exceptions, waiting for approval, money available. After 9.1.
-- 10.7 Reminders only after the client opts in (D-69); at most 3, before and after the due date. After 9.6.
+- 10.6 Action list: overdue, exceptions, waiting for approval, money available.
+- 10.7 Reminders only after the client opts in (D-69); at most 3, before and after the due date.
 - 10.8 Records: transfers between your own profiles are labeled "own transfer"; a deposit without an invoice stays
   "Unclassified" until the user labels it; CSV export with a classification column.
 
@@ -92,7 +68,7 @@ Freelancer before merchant (D-55). Phase 9 comes first for both, so phases 10 an
   `invoice.partially_paid`, `invoice.expired`, `invoice.overpaid`, `refund.completed`.
 - 11.6 Public API v1 (idempotent create, get, list, events), OpenAPI, generated Node SDK, webhook verification
   helper. After 11.4, 11.5.
-- 11.7 Merchant ops: attention list (exceptions, claims, failed webhooks), store filter, CSV. After 9.1.
+- 11.7 Merchant ops: attention list (exceptions, claims, failed webhooks), store filter, CSV.
 - 11.8 Merchant onboarding: business name and website, first store, branding preview, team invites, developer steps
   (API key, webhook, test event, quickstart) and a KYB status row (D-64); the developer choice shows the developer
   steps first. After 11.1.
@@ -116,14 +92,14 @@ Freelancer before merchant (D-55). Phase 9 comes first for both, so phases 10 an
   - 11.10.1 Overpaid handling: the pay page and the owner's invoice page show money sent above the amount (held for
     the payer, D-26) with its next step and a way to return it. Until then neither page shows an overpaid line.
     After 11.10.
-  - 11.10.2 Refund claims on `/pay` (was 9.3): the payer connects the wallet that sent the money and signs a claim
+  - 11.10.2 Refund claims on `/pay`: the payer connects the wallet that sent the money and signs a claim
     naming the invoice and the destination; exchange deposits give a destination and support evidence instead (Q-9);
-    `refund_claims` with states; claim updates reach the payer email from 9.7. After 11.10.
-  - 11.10.3 Refund tool (was 9.4): an ops command (`cmd/ops`) lists claims, approves or rejects them with a reason
+    `refund_claims` with states; claim updates reach the payer receipt email (D-68). After 11.10.
+  - 11.10.3 Refund tool: an ops command (`cmd/ops`) lists claims, approves or rejects them with a reason
     (D-60) and prints the `refund(to, amount)` call for the refund-authority Safe; one refund of everything held by
     default (D-57). The watcher books the refund. No new hot key. A refund shows in the invoice's Transactions list on
     the owner page, beside the payments and the settlement (R-69). After 11.10.2.
-  - 11.10.4 Wrong-network help (was in 9.2): the payer gives the tx hash, the API finds it on an enabled chain and
+  - 11.10.4 Wrong-network help: the payer gives the tx hash, the API finds it on an enabled chain and
     opens a recovery claim; `recover()` works only where our factory exists, and recovery is never promised (D-33).
     After 11.10.2.
   - 11.10.5 Refund suite on Anvil: overpay → claim → refund; expired partial → claim → refund; late → claim → refund;

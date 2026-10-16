@@ -1,0 +1,92 @@
+{
+  "id": "F187",
+  "type": "fix",
+  "behavior": "A change that touches only Markdown or archived task records runs only the docs checks in verify and the pre-commit hook",
+  "acceptance": [
+    "When every path changed since the task's base is *.md or under docs/archive/, verify runs the task's own checks plus required checks marked \"docs\": true (harness, docs-check); any other changed path runs every required check; a harness test covers both",
+    "The pre-commit hook applies the same rule to the staged paths; docs/workflow.md states the rule and that staging CI still runs everything"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "harness",
+    "docs-check"
+  ],
+  "refs": [],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-14T21:53:25Z",
+    "checks": [
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.9,
+        "log": "docs/runs/F187-20261014T215325Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F187-20261014T215325Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.5,
+        "log": "docs/runs/F187-20261014T215325Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F187-20261014T215325Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 76.6,
+        "log": "docs/runs/F187-20261014T215325Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.7,
+        "log": "docs/runs/F187-20261014T215325Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 173.3,
+        "log": "docs/runs/F187-20261014T215325Z-e2e.log"
+      }
+    ],
+    "taskHash": "4d025879469f16e5",
+    "filesHash": "8b8d0e756ac77597",
+    "proof": {
+      "1": "harness: test_docs_only_changes_run_only_docs_checks shows a docs-only change runs only docs-check, and a .py change brings back every required check",
+      "2": "harness: the same test shows the pre-commit hook passes on staged docs only and fails once code is staged; docs-check passes with the workflow.md line"
+    },
+    "commit": "10f2ccd",
+    "doneAt": "2026-10-14T21:58:03Z"
+  },
+  "branch": "fix/f187-a-change-that-touches-only-markdown-or-a",
+  "baseCommit": "85e1c0aa69b8fa2c55ae6a69e77fbc13a5f640fb",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f187-a-change-that-touches-only-markdown-or-a",
+    "base": "main"
+  }
+}
