@@ -74,7 +74,8 @@ who pay late, so the phase builds deposits, milestones and payment terms as one 
   "send test event". Events: `invoice.detected`, `invoice.confirmed`, `invoice.paid`, `invoice.settled`,
   `invoice.partially_paid`, `invoice.expired`, `invoice.overpaid`, `refund.completed`.
 - 11.6 Public API v1 (idempotent create, get, list, events), OpenAPI, generated Node SDK, webhook verification
-  helper. After 11.4, 11.5.
+  helper; a create with `dueDate` and no `expiresIn` closes the checkout 60 days after the due date, as the form
+  does (D-80), with a retry-stable idempotency hash. After 11.4, 11.5.
 - 11.7 Merchant ops: attention list (exceptions, claims, failed webhooks), store filter, CSV.
 - 11.8 Merchant onboarding: business name and website, first store, branding preview, team invites, developer steps
   (API key, webhook, test event, quickstart) and a KYB status row (D-64); the developer choice shows the developer

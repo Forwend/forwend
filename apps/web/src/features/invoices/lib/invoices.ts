@@ -8,7 +8,9 @@ import {
 import { activityStatus } from "@/features/activity/lib/activity";
 import {
   AMOUNT_ERRORS,
+  DUE_GRACE_DAYS,
   EXPIRY_BOUNDS_S,
+  EXPIRY_CHOICES,
   INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
   INVOICE_TIMELINE,
@@ -84,6 +86,28 @@ export function customExpiresIn(date: string, time: string, now: number): number
   if (!date || !time || Number.isNaN(at)) return null;
   const seconds = Math.round((at - now) / 1000);
   return seconds >= EXPIRY_BOUNDS_S.min && seconds <= EXPIRY_BOUNDS_S.max ? seconds : null;
+}
+
+const DAY_MS = 86_400_000;
+
+/** The day `days` after a YYYY-MM-DD day, as YYYY-MM-DD. */
+export function addDays(day: string, days: number): string {
+  return new Date(Date.parse(`${day}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+}
+
+/** The day a checkout first needs to stay open to for a due date (D-80): the due date plus the grace days. */
+export function dueCheckoutTarget(dueDate: string): string {
+  return addDays(dueDate, DUE_GRACE_DAYS);
+}
+
+/**
+ * The close day the form sets for a due date: its target, or the last day a checkout can reach (D-18) when the target
+ * is further away. The day before the 365th, so the close time on it stays within 365 days of now.
+ */
+export function dueCheckoutDate(dueDate: string, today: string): string {
+  const target = dueCheckoutTarget(dueDate);
+  const latest = addDays(today, EXPIRY_BOUNDS_S.max / EXPIRY_CHOICES.day - 1);
+  return target < latest ? target : latest;
 }
 
 /** An https link with a host and no user or password, as the API accepts for returnUrl. */

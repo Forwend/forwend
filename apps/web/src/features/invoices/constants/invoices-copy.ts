@@ -1,7 +1,9 @@
 import {
   AMOUNT_ERRORS,
   type CUSTOM_EXPIRY,
-  type EXPIRY_CHOICES,
+  DUE_GRACE_DAYS,
+  EXPIRY_BOUNDS_S,
+  EXPIRY_CHOICES,
   INVOICE_EVENTS,
   INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
@@ -95,10 +97,15 @@ export const NEW_INVOICE_COPY = {
   returnError: "Enter an https link, like https://example.com/thanks.",
   datesGroup: "Dates",
   dueLabel: "Due date (optional)",
-  dueHint: "Shown to the client. Payment stays open until the checkout closes.",
+  dueHint: `Shown to the client. Picking one sets the checkout to close ${DUE_GRACE_DAYS} days after it.`,
   dueClear: "Clear due date",
   expiryLabel: "Checkout closes after",
   expiryHint: "After this the pay link takes no more payments.",
+  followsDue: (day: string) => `Open until ${day}, so a client who pays late still pays you.`,
+  closesEarly: (day: string) =>
+    `This closes before ${day}, ${DUE_GRACE_DAYS} days after the due date. A client who pays after the checkout closes sends money that is held for them, not paid to you.`,
+  closesAtLimit: (day: string) =>
+    `A checkout stays open at most ${EXPIRY_BOUNDS_S.max / EXPIRY_CHOICES.day} days, so this one closes before ${day}, ${DUE_GRACE_DAYS} days after the due date. A client who pays after it closes sends money that is held for them, not paid to you.`,
   expiry: {
     hour: "1 hour",
     day: "1 day",

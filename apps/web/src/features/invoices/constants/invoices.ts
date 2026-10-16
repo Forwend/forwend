@@ -17,6 +17,9 @@ export const DEFAULT_EXPIRY: ExpiryChoice = "week";
 export const CUSTOM_EXPIRY = "custom";
 export const EXPIRY_BOUNDS_S = { min: 900, max: 31_536_000 } as const;
 
+/** D-80: with a due date the checkout stays open this many days past it, so a client who pays late still pays. */
+export const DUE_GRACE_DAYS = 60;
+
 /** How the payer pays (R-56): any enabled stablecoin and network, or one the creator fixes. */
 export const PAY_WITH = { any: "any", fixed: "fixed" } as const;
 
