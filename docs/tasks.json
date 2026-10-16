@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 212,
+  "nextId": 213,
   "tasks": [
     {
       "id": "F208",
@@ -341,6 +341,64 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f211-the-clients-page-follows-the-app-s-list",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F212",
+      "type": "docs",
+      "behavior": "Web rules say to start every new screen or control from the closest existing one, and when none fits to research the pattern, build it reusable and record it in DESIGN.md; the structure review checks it",
+      "acceptance": [
+        "docs/web/rules.md has the reuse-first rule: look in /kit, apps/web/src/shared and the screen of the same kind (with its DESIGN.md section) and reuse its layout and components; when nothing fits, research the pattern (WAI-ARIA Authoring Practices, two or three well-known products), build it once in packages/ui-web (on /kit with every state) or apps/web/src/shared, and record it in DESIGN.md",
+        "docs/workflow.md's structure review checks that a new screen or control reuses the closest existing one, linking the rule instead of copying it; docs-check passes"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [
+        "R-66"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-16T22:30:34Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F212-20261016T223034Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.4,
+            "log": "docs/runs/F212-20261016T223034Z-harness.log"
+          }
+        ],
+        "taskHash": "1c01cc7d953336bf",
+        "filesHash": "57ca1f5382ae34a6",
+        "proof": {
+          "1": "docs-check: docs/web/rules.md has the reuse-first rule (kit, shared, the screen of the same kind with its DESIGN.md section) and the research-then-build-reusable rule (WAI-ARIA APG, two or three products, ui-web on /kit or apps/web/src/shared, DESIGN.md entry)",
+          "2": "docs-check: docs/workflow.md structure review checks web changes against it, linking web/rules.md"
+        },
+        "commit": "a557947",
+        "doneAt": "2026-10-16T22:30:45Z"
+      },
+      "branch": "docs/f212-web-rules-say-to-start-every-new-screen",
+      "baseCommit": "fb0e1a9477e0030f2c7c4c5d904baf86f0381e4d",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f212-web-rules-say-to-start-every-new-screen",
         "base": "main"
       }
     }
