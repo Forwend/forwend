@@ -1,3 +1,4 @@
+import { CLIENTS_COPY } from "@/features/clients/constants/clients-copy";
 import { NEW_INVOICE_COPY, NEW_REQUEST_COPY } from "@/features/invoices/constants/invoices-copy";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import {
@@ -50,6 +51,19 @@ export function breadcrumb(
         {
           label: kind === PROFILE_KINDS.personal ? NEW_REQUEST_COPY.title : NEW_INVOICE_COPY.title,
           href: APP_ROUTES.newInvoice,
+        },
+      ],
+      invoiceId: null,
+    };
+  }
+  // A client's form pages sit under Clients: New client, or Edit client for a saved one.
+  if (page.href === APP_ROUTES.clients && pathname !== APP_ROUTES.clients) {
+    return {
+      trail: [
+        crumb,
+        {
+          label: pathname === APP_ROUTES.newClient ? CLIENTS_COPY.newTitle : CLIENTS_COPY.editTitle,
+          href: pathname,
         },
       ],
       invoiceId: null,

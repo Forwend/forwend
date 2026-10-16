@@ -95,17 +95,29 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   const clientName = `E2E client ${Date.now()}`;
   await sidebar.getByRole("link", { name: "Clients" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Clients" })).toBeAttached();
-  await page.getByRole("button", { name: "Add client" }).first().click();
+  expect(await blockingViolations(page)).toEqual([]);
+  await page.getByRole("link", { name: "Add client" }).first().click();
+  await expect(page).toHaveURL("/app/clients/new");
   await page.getByRole("textbox", { name: "Name or business name" }).fill(clientName);
   await page.getByRole("textbox", { name: "Billing email (optional)" }).fill("client@example.com");
   await page.getByRole("textbox", { name: "Address (optional)" }).fill("1 Test Street\nBerlin");
-  await page.getByRole("combobox", { name: "Country (optional)" }).click();
-  await page.getByRole("option", { name: "Germany" }).click();
+  // A long list is searched: typing narrows the countries.
+  await page.getByRole("button", { name: /^Country \(optional\)/ }).click();
+  await page.getByRole("combobox", { name: /Country \(optional\)/ }).fill("germ");
+  await expect(page.getByRole("option")).toHaveCount(1);
+  expect(await blockingViolations(page)).toEqual([]);
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: /^Country \(optional\)/ })).toContainText(
+    "Germany",
+  );
   await page.getByRole("textbox", { name: "Tax or VAT ID (optional)" }).fill("DE123456789");
   expect(await blockingViolations(page)).toEqual([]);
   await page.getByRole("button", { name: "Save client" }).click();
-  const clientRow = page.getByRole("listitem").filter({ hasText: clientName });
-  await expect(clientRow).toContainText("client@example.com · Germany · DE123456789");
+  await expect(page).toHaveURL("/app/clients");
+  const clientRow = page.getByRole("row").filter({ hasText: clientName });
+  await expect(clientRow).toContainText("client@example.com");
+  await expect(clientRow).toContainText("Germany");
+  await expect(clientRow).toContainText("DE123456789");
   expect(await blockingViolations(page)).toEqual([]);
   await sidebar.getByRole("link", { name: "Invoices" }).click();
   await page.getByRole("link", { name: "New invoice" }).first().click();
@@ -139,8 +151,9 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     expect(due).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     await page.getByText("1 day", { exact: true }).click();
     await expect(page.getByRole("radio", { name: "1 day" })).toBeChecked();
-    await page.getByRole("combobox", { name: "Saved client" }).click();
-    await page.getByRole("option", { name: clientName }).click();
+    await page.getByRole("button", { name: /^Saved client/ }).click();
+    await page.getByRole("combobox", { name: /Saved client/ }).fill(clientName);
+    await page.getByRole("option", { name: new RegExp(`^${clientName}`) }).click();
     await expect(page.getByRole("textbox", { name: "Name", exact: true })).toHaveValue(clientName);
     await expect(page.getByRole("textbox", { name: "Tax or VAT ID" })).toHaveValue("DE123456789");
   });
@@ -270,12 +283,20 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
   }
 
+  // A row opens the client's page, whose More actions menu deletes it after asking.
   await sidebar.getByRole("link", { name: "Clients" }).click();
-  await clientRow.getByRole("button", { name: `Delete ${clientName}` }).click();
+  await clientRow.getByRole("link", { name: clientName }).click();
+  await expect(page).toHaveURL(/\/app\/clients\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole("textbox", { name: "Tax or VAT ID (optional)" })).toHaveValue(
+    "DE123456789",
+  );
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Delete client" }).click();
   await page
     .getByRole("dialog", { name: `Delete ${clientName}?` })
     .getByRole("button", { name: "Delete client" })
     .click();
+  await expect(page).toHaveURL("/app/clients");
   await expect(clientRow).toHaveCount(0);
   if (invoice) {
     await sidebar.getByRole("link", { name: "Invoices" }).click();
@@ -314,9 +335,13 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
   await expect(more.getByRole("link", { name: "Billing details", exact: true })).toBeVisible();
   // R-86: the Clients page and its form fit a phone.
   await more.getByRole("link", { name: "Clients", exact: true }).click();
-  await page.getByRole("button", { name: "Add client" }).first().click();
-  await expect(page.getByRole("textbox", { name: "Tax or VAT ID (optional)" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Clients" })).toBeVisible();
   await fits();
+  await page.getByRole("link", { name: "Add client" }).first().click();
+  await page.getByRole("button", { name: /^Country \(optional\)/ }).click();
+  await expect(page.getByRole("combobox", { name: /Country \(optional\)/ })).toBeFocused();
+  await fits();
+  await page.keyboard.press("Escape");
   await tabs.getByRole("button", { name: "More" }).click();
   await more.getByRole("link", { name: "Invoices", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Invoices" })).toBeVisible();

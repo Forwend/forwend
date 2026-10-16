@@ -43,6 +43,8 @@ export type { ChoiceCardProps } from "./components/forms/choice-card";
 export { ChoiceCard } from "./components/forms/choice-card";
 export type { CodeInputProps } from "./components/forms/code-input";
 export { CodeInput } from "./components/forms/code-input";
+export type { ComboboxFieldProps, ComboboxOption } from "./components/forms/combobox-field";
+export { ComboboxField } from "./components/forms/combobox-field";
 export type { CalendarProps } from "./components/forms/date-picker/calendar";
 export { Calendar } from "./components/forms/date-picker/calendar";
 export type { DatePickerProps } from "./components/forms/date-picker/date-picker";

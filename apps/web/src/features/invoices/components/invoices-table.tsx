@@ -27,6 +27,7 @@ import {
 import type { InvoiceSummary, InvoiceToken } from "@/features/invoices/types/invoices";
 import { ChainBadge, hasChainBadge } from "@/shared/components/chains/chain-badge";
 import { NetworkName } from "@/shared/components/chains/network-name";
+import { InitialsAvatar } from "@/shared/components/initials-avatar";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
@@ -298,25 +299,13 @@ function Avatar({
   chainId?: number | null;
   small?: boolean;
 }) {
-  const letters = name ? initials(name) : "";
   return (
-    <span
-      aria-hidden
-      className={`relative grid shrink-0 place-items-center rounded-pill bg-surface-2 font-medium text-muted ${small ? "size-7 text-xs" : "size-9 text-sm"}`}
+    <InitialsAvatar
+      name={name}
+      small={small}
+      fallback={<FileText className="size-[var(--fw-icon-sm)]" />}
     >
-      {letters || <FileText className="size-[var(--fw-icon-sm)]" />}
       {chainId ? <ChainBadge chainId={chainId} /> : null}
-    </span>
+    </InitialsAvatar>
   );
-}
-
-// Up to two letters of the client's name, for the avatar beside it.
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter((word) => /\p{L}/u.test(word))
-    .slice(0, 2)
-    .map((word) => word.match(/\p{L}/u)?.[0] ?? "")
-    .join("")
-    .toUpperCase();
 }

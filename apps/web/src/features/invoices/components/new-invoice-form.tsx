@@ -3,6 +3,7 @@
 import {
   Button,
   buttonClasses,
+  ComboboxField,
   DatePicker,
   Form,
   SegmentedControl,
@@ -12,9 +13,8 @@ import {
 } from "@forwend/ui-web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, type ReactNode, useMemo, useRef, useState } from "react";
+import { type FormEvent, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { NO_COUNTRY } from "@/features/clients/constants/clients";
 import { clientBody, clientCountryOptions } from "@/features/clients/lib/clients";
 import type { Client, ClientBody } from "@/features/clients/types/clients";
 import { useCreateInvoiceMutation } from "@/features/invoices/api/invoices-api";
@@ -46,6 +46,7 @@ import type {
   InvoiceToken,
   PayWith,
 } from "@/features/invoices/types/invoices";
+import { FieldGroup } from "@/shared/components/field-group";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { chainName } from "@/shared/lib/chains";
@@ -97,7 +98,7 @@ export function NewInvoiceForm({
     key: "",
     client: start?.client ?? NO_CLIENT,
   });
-  const [country, setCountry] = useState(fill.client.country || NO_COUNTRY);
+  const [country, setCountry] = useState(fill.client.country);
   const countries = useMemo(() => clientCountryOptions(COPY.noCountry), [COPY.noCountry]);
   // The free-text fields stay uncontrolled; the preview reads them as they are typed.
   const [typed, setTyped] = useState({
@@ -171,7 +172,7 @@ export function NewInvoiceForm({
         name: text("clientName"),
         email: text("clientEmail"),
         address: text("clientAddress"),
-        country: country === NO_COUNTRY ? "" : country,
+        country,
         taxId: text("clientTaxId"),
       },
     };
@@ -273,7 +274,7 @@ export function NewInvoiceForm({
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 xl:grid-cols-[minmax(0,42rem)_minmax(0,22rem)]">
       <Form onSubmit={submit} onInput={readTyped}>
-        <Group title={COPY.amountGroup}>
+        <FieldGroup title={COPY.amountGroup}>
           {tokens.length > 1 ? (
             <div className="flex flex-col gap-1.5">
               <p aria-hidden className="text-sm font-medium text-ink">
@@ -330,9 +331,9 @@ export function NewInvoiceForm({
             }
             error={errors[INVOICE_FIELDS.amount]}
           />
-        </Group>
+        </FieldGroup>
 
-        <Group title={COPY.detailsGroup}>
+        <FieldGroup title={COPY.detailsGroup}>
           {request ? null : (
             <TextField
               label={COPY.titleLabel}
@@ -359,9 +360,9 @@ export function NewInvoiceForm({
             />
           ) : null}
           {returnField}
-        </Group>
+        </FieldGroup>
 
-        <Group title={COPY.datesGroup}>
+        <FieldGroup title={COPY.datesGroup}>
           {request ? null : (
             <DatePicker
               label={COPY.dueLabel}
@@ -376,22 +377,27 @@ export function NewInvoiceForm({
             />
           )}
           {expiryField}
-        </Group>
+        </FieldGroup>
 
         {request ? null : (
-          <Group title={COPY.client}>
+          <FieldGroup title={COPY.client}>
             {clients?.length ? (
-              <SelectField
+              <ComboboxField
                 label={COPY.savedClient}
                 placeholder={COPY.savedClientPlaceholder}
-                options={clients.map((c) => ({ value: c.clientId, label: c.name }))}
-                value={fill.key || undefined}
+                searchLabel={COPY.searchClients}
+                options={clients.map((c) => ({
+                  value: c.clientId,
+                  label: c.name,
+                  detail: c.email ?? undefined,
+                }))}
+                value={fill.key}
                 onValueChange={(clientId) => {
                   const picked = clients.find((c) => c.clientId === clientId);
                   if (!picked) return;
                   const values = clientBody(picked);
                   setFill({ key: clientId, client: values });
-                  setCountry(values.country || NO_COUNTRY);
+                  setCountry(values.country);
                   setTyped((shown) => ({ ...shown, client: values.name }));
                   // The client fields are drawn again with new values; errors elsewhere stay.
                   setErrors((shown) => ({
@@ -433,9 +439,11 @@ export function NewInvoiceForm({
                 error={errors[INVOICE_FIELDS.clientAddress]}
               />
               <div className="grid gap-5 sm:grid-cols-2">
-                <SelectField
+                <ComboboxField
                   label={COPY.clientCountry}
                   options={countries}
+                  placeholder={COPY.noCountry}
+                  searchLabel={COPY.searchCountries}
                   value={country}
                   onValueChange={(next) => {
                     setCountry(next);
@@ -453,7 +461,7 @@ export function NewInvoiceForm({
                 />
               </div>
             </div>
-          </Group>
+          </FieldGroup>
         )}
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -496,18 +504,5 @@ export function NewInvoiceForm({
         }
       />
     </div>
-  );
-}
-
-// A titled group of fields: a panel with its title ruled off.
-function Group({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <fieldset className="fw-panel flex min-w-0 flex-col sm:rounded-lg">
-      <legend className="sr-only">{title}</legend>
-      <p aria-hidden className="fw-panel-head text-base font-semibold text-ink">
-        {title}
-      </p>
-      <div className="flex flex-col gap-5 p-4 sm:p-5">{children}</div>
-    </fieldset>
   );
 }

@@ -118,6 +118,8 @@ export const NEW_INVOICE_COPY = {
   clientTaxId: "Tax or VAT ID",
   savedClient: "Saved client",
   savedClientPlaceholder: "Fill in from a saved client",
+  searchClients: "Search clients",
+  searchCountries: "Search countries",
   create: "Create invoice",
   cancel: "Cancel",
   fieldErrors: {

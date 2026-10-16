@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 
 export interface ListToolbarProps {
   search: ReactNode;
-  filter: ReactNode;
+  /** Left out on a list with search alone (Clients), so the search reaches the row's end on phones. */
+  filter?: ReactNode;
   actions?: ReactNode;
 }
 
@@ -16,11 +17,16 @@ export function ListToolbar({ search, filter, actions }: ListToolbarProps) {
   return (
     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
       <div className="flex min-w-0 flex-[1000_1_10rem] sm:max-w-sm">{search}</div>
-      <div className="flex min-w-0 flex-[1_0_auto] items-center gap-2 max-sm:justify-end sm:gap-3">
-        {filter}
-        {/* No box of its own, so an action hidden at this width leaves no gap behind. */}
+      {filter ? (
+        <div className="flex min-w-0 flex-[1_0_auto] items-center gap-2 max-sm:justify-end sm:gap-3">
+          {filter}
+          {/* No box of its own, so an action hidden at this width leaves no gap behind. */}
+          <div className="contents [&>:first-child]:ml-auto">{actions}</div>
+        </div>
+      ) : (
+        // Without a filter there is no group: an action hidden at this width then takes no room and leaves no gap.
         <div className="contents [&>:first-child]:ml-auto">{actions}</div>
-      </div>
+      )}
     </div>
   );
 }

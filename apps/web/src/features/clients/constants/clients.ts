@@ -5,6 +5,3 @@ export const CLIENT_LIMITS = {
   address: 500,
   taxId: 50,
 } as const;
-
-/** The country select's "none" choice: a select item can't have an empty value. */
-export const NO_COUNTRY = "none";
