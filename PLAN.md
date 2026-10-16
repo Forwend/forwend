@@ -16,7 +16,7 @@ reason; it joins the plan once the owner agrees.
 | 7 | Done: login, app shell and profile wallets | Sign in, create freelancer profile, switch profiles and see the correct wallet |
 | 8 | Done: first payment through the UI on Base USDC, then Arbitrum, Arc and Tempo | Sasha's Base Sepolia run; then enable other planned pairs individually |
 | 9 | Done: payment exceptions, cancel and notifications | On Anvil: partial → top-up → paid; expired partial → held; late → held; cancel → later deposit held; each email sent once |
-| 10 | Freelancer work | One freelancer runs deposit → delivery → acceptance → final invoice paid on testnet |
+| 10 | Freelancer work | One freelancer runs quote → accepted → deposit → milestone → final invoice paid on testnet; the final invoice shows the earlier payments and the records export matches the chain |
 | 11 | Merchant stores, developer tools, connected wallet and refunds | Sample merchant uses SDK, pays and verifies an invoice.settled webhook; on Anvil overpay → claim → refund and expired partial → claim → refund |
 | 12 | Account security, send, handles and bank withdrawal | Send works on a fork; withdrawal works in provider sandbox |
 | 13 | Security review and personal mainnet trials | Full testnet exception suite, then 20 tiny personal mainnet invoices with zero reconciliation difference |
@@ -35,23 +35,29 @@ Phases 1–9 are done; their requirements are PROJECT R-1…R-85 and their recor
 
 ## Phase 10: freelancer work
 
-Freelancer before merchant (D-55). Phase 9 comes first for both, so phases 10 and 11 can swap without rework.
+Freelancer before merchant (D-55). Scope and evidence: [phase 10 research](docs/research/phase-10-freelancers.md)
+(owner approval 2026-10-16). Freelancers lose the most money on final invoices after delivery and on net-30 clients
+who pay late, so the phase builds deposits, milestones and payment terms as one flow.
 
-- 10.1 Saved clients (name, email, company, address, tax ID); an invoice picks a client and copies it.
-- 10.2 Line items, duplicate invoice, and an "Agreed value" in fiat that the user types (currency, amount and the
-  time; no exchange-rate API). After 10.1.
-- 10.3 Recurring retainers (D-58): a schedule (day of month, end date); each cycle the worker creates a new invoice
-  and emails the client, who pays by hand.
-- 10.4 Jobs: a job groups invoices; deposit and milestone invoices; a quote the client accepts creates the deposit
-  invoice. After 10.2.
-- 10.5 Shared work page `/w/<token>`: scope (deliverables, deadline, included revisions, how acceptance works);
-  work states agreed, in progress, delivered, changes requested and approved stay separate from payment states;
-  an append-only log of client acceptance and change requests (typed name, email, time). Delivery is links only
-  (D-66). After 10.4.
-- 10.6 Action list: overdue, exceptions, waiting for approval, money available.
-- 10.7 Reminders only after the client opts in (D-69); at most 3, before and after the due date.
-- 10.8 Records: transfers between your own profiles are labeled "own transfer"; a deposit without an invoice stays
-  "Unclassified" until the user labels it; CSV export with a classification column.
+- 10.1 Clients: saved clients with legal name, billing email (the finance contact, often not the person who ordered
+  the work), address, country, tax/VAT ID and an optional default PO or reference. An invoice picks a client and
+  copies the details; the copy never changes, like the issuer block (R-43).
+- 10.2 Invoice terms: line items with a description, supply date, PO/reference, duplicate, and an "Agreed value" in
+  fiat that the user types (currency, amount and the time). An invoice with a due date keeps its checkout open until
+  the due date plus 60 days (D-80); the form warns before saving an earlier close. After 10.1.
+- 10.3 Jobs (D-81): a quote with the work, price and a payment schedule (deposit, milestones, final) and pay dates;
+  the client accepts it on `/w/<token>` with a typed name and email. Acceptance issues the deposit invoice; each
+  milestone invoice goes out when the freelancer marks the step done; the final invoice lists earlier payments and
+  bills the rest. A scope change is a new milestone the client accepts the same way. The job keeps a dated record of
+  acceptance, invoices, payments and delivery links (links only, D-66) as dispute evidence. After 10.2.
+- 10.4 Retainers (D-58): a schedule (day of month, end date); each cycle the worker creates the invoice before the
+  period starts, due at its start, and emails the client's billing email, who pays by hand. After 10.2.
+- 10.5 Getting paid on time: Send to client emails the invoice to the billing email; an "Owed to you" list shows
+  overdue (days past due), partly paid and held money; reminders the freelancer turns on (D-69). After 10.1.
+- 10.6 Records (D-82): each payment keeps its time, token, network, transaction, invoice and client and its USD value
+  at receipt; a profile may add an ECB currency (EUR, GBP, …); transfers between your own profiles are labeled "own
+  transfer"; a deposit without an invoice stays "Unclassified" until the user labels it; CSV export with a
+  classification column; a payment statement PDF as proof of income.
 
 ## Phase 11: merchants, developers, connected wallet and refunds
 
@@ -143,4 +149,6 @@ Mobile; optional BNB and non-EVM networks; HD-wallet receive methods; cross-chai
 full accounting page and Koinly export; opt-in escrow; bank/card on-ramp; public developer sandbox; custom checkout
 domains; platform fees and the business model (D-56, Q-10); external payout address (D-62); file delivery storage
 (D-66). Each new chain or receive method needs its own spike. Planned Base/Arbitrum/Arc/Tempo expansion stays gated
-by D-38.
+by D-38. Card payers (card, Apple Pay or Google Pay in, USDC to the invoice) need a card-acquirer spike first:
+the consumer on-ramps forbid buying for another person's address, and card payments bring chargebacks back
+([research](docs/research/phase-10-freelancers.md#card-payers-paying-by-card-receiving-stablecoins)).

@@ -13,6 +13,7 @@ Start with the root [AGENTS.md](../AGENTS.md). Read only the row relevant to you
 | Web and shared UI | [architecture](web/architecture.md), [code rules](web/rules.md), [design](web/DESIGN.md), [product copy](web/PRODUCT.md) |
 | Image sources | [web/images.md](web/images.md) |
 | Measured integration results | [spikes/](spikes/) |
+| Product research behind a phase plan | [research/](research/) |
 | System diagrams | [diagrams/](diagrams/) |
 
 `tasks.json` owns progress; use harness `status`/`show` instead of reading it.
