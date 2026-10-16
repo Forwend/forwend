@@ -1,0 +1,118 @@
+{
+  "id": "F200",
+  "type": "feat",
+  "behavior": "Every Forwend email looks like a real product's email: one designed HTML layout that renders the same in Gmail, Apple Mail and Outlook, with the plain text kept as the text part",
+  "acceptance": [
+    "Paid, settled, held, the payer receipt and the welcome email are sent with an HTML part and the current plain text as the text part, both carrying the same links",
+    "Layout as production transactional email: hidden preheader text; header with the hosted Forwend logo (alt text); a clear title and the amount large; a details table (invoice number, network, token, transaction link where there is one); one bulletproof button (table-based, works without images); footer with why the email was sent, a link to email settings for owner emails, a support contact, and the sender's name and postal address placeholder for Q-13",
+    "Built for email clients: 600 px max table layout, inline styles only, web-safe font stack, no scripts, no tracking pixels, no remote assets but the logo; color-scheme meta so dark mode stays readable; contrast meets WCAG AA",
+    "Screenshots of each email at 600 px and 375 px, light and dark, are attached to the run; backend tests fail if any email kind lacks an HTML part, if the HTML and text parts link to different pages, or if user-given text (names) is not HTML-escaped"
+  ],
+  "dependsOn": [
+    "F199"
+  ],
+  "state": "passing",
+  "verification": [
+    "backend",
+    "e2e"
+  ],
+  "refs": [
+    "R-80",
+    "R-82"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [
+    "2026-10-15 review pass by independent reviewer: Pass. Ran: go test ./internal/... all ok; e2e gate (-tags e2e ./e2e/) ok 14.4s; pnpm -s lint clean. Logo /icon-192.png served 200 image/png by the dev server. Contrast AA: lowest light pair 5.39 (success badge), lowest dark 8.26; button 15.75. Idempotency key format unchanged; render errors returned before Send and roll back the claim. Escaping: html/template; all hrefs come from PUBLIC_WEB_URL, DB ids/tx hashes or constants; mutation making Value or Lead template.HTML fails TestEmailEscapesTypedNames. Mutations caught: empty HTML, text button URL changed, tx href missing in text, settings link missing in HTML, button href missing. Not caught: (1) email.go:39-41 Resend dropping the html field passes all tests (email_test sends no HTML); fix: set HTML in email_test and assert the body has it. (2) layout.html.tmpl:52 lead paragraph has no word-break: a 60-char name with no spaces (e.g. a typed name that is an email address) makes the 375px email 540px wide (measured with Playwright); details cell wraps fine; fix: add overflow-wrap:anywhere to the lead p and note td. (3) Outlook desktop not verified: button padding is on the <a> (Word ignores it, tight button) and the 600 table uses style width:100% with no MSO ghost table, so it stretches on wide windows; fix: padding on the td, an [if mso] 600px wrapper. (4) With <style> stripped (some Gmail cases) the 32px title breaks at 375 as 'Receipt for INV-' / '0001'. Text part wording changed slightly (View invoice, Email settings, Download receipt (PDF), added details and footer lines); old assertions otherwise unchanged.",
+    "2026-10-15 review pass by independent reviewer: Re-review of 91e0fe3: all four findings fixed. (1) email_test sends HTML and asserts got[html]. (2) overflow-wrap:anywhere + word-break on h1, lead and note; Playwright scrollWidth at 375px is 375 for all 6 samples, with and without the <style> block, including the 58-char unspaced name (receipt-typed-375-light.png checked). (3) button padding on the td; 600px [if mso] wrapper table. (4) keep() runs template.HTMLEscapeString before wrapping INV-\\d+ in a nowrap span; the inserted markup holds only the matched digits, and TestEmailEscapesTypedNames still covers names in the lead. Ran: go test ./internal/notify ./internal/email ok; pnpm -s lint clean. Note: TestEveryEmailHasHTMLWithTheTextLinks now checks the button label instead of the title text (the title now holds a span); fine, not required by the acceptance rows."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-15T12:44:06Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 64.8,
+        "log": "docs/runs/F200-20261015T124406Z-backend.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 204.1,
+        "log": "docs/runs/F200-20261015T124406Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.8,
+        "log": "docs/runs/F200-20261015T124406Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F200-20261015T124406Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.5,
+        "log": "docs/runs/F200-20261015T124406Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F200-20261015T124406Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 70.6,
+        "log": "docs/runs/F200-20261015T124406Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 3.4,
+        "log": "docs/runs/F200-20261015T124406Z-build.log"
+      }
+    ],
+    "taskHash": "b032c2b23f595519",
+    "filesHash": "ec33a456e726290c",
+    "proof": {
+      "1": "backend: TestEveryEmailHasHTMLWithTheTextLinks renders paid, settled, held, both receipts and welcome: each has an HTML part and a text part, and the HTML hrefs equal the text links; email_test checks the html field reaches Resend; dropping the HTML part or a text link fails them",
+      "2": "backend: layout.html.tmpl: hidden preheader, hosted logo with alt text, badge, title, large amount, details table with the explorer link, a table-based button (padding on the cell for Outlook), footer with the reason, email settings (owner emails), support@forwend.com and EMAIL_POSTAL_ADDRESS when set",
+      "3": "backend: 600 px table layout with an Outlook-only fixed-width wrapper, inline styles plus a dark-mode block and color-scheme meta, web-safe font stacks, long words wrap and invoice numbers stay whole, no scripts, pixels or remote assets but the logo; every color pair 5.39:1 or more (WCAG AA)",
+      "4": "backend: docs/runs/F200-emails has 24 screenshots (6 emails x 600/375 x light/dark), none wider than its screen with a 58-character unspaced name; TestEmailEscapesTypedNames fails with text/template"
+    },
+    "review": {
+      "result": "pass",
+      "by": "independent reviewer",
+      "summary": "Re-review of 91e0fe3: all four findings fixed. (1) email_test sends HTML and asserts got[html]. (2) overflow-wrap:anywhere + word-break on h1, lead and note; Playwright scrollWidth at 375px is 375 for all 6 samples, with and without the <style> block, including the 58-char unspaced name (receipt-typed-375-light.png checked). (3) button padding on the td; 600px [if mso] wrapper table. (4) keep() runs template.HTMLEscapeString before wrapping INV-\\d+ in a nowrap span; the inserted markup holds only the matched digits, and TestEmailEscapesTypedNames still covers names in the lead. Ran: go test ./internal/notify ./internal/email ok; pnpm -s lint clean. Note: TestEveryEmailHasHTMLWithTheTextLinks now checks the button label instead of the title text (the title now holds a span); fine, not required by the acceptance rows.",
+      "at": "2026-10-15T12:50:54Z",
+      "filesHash": "ec33a456e726290c"
+    },
+    "commit": "91e0fe3",
+    "doneAt": "2026-10-15T12:51:09Z"
+  },
+  "branch": "feat/f200-every-forwend-email-looks-like-a-real-pr",
+  "baseCommit": "431704b8e03dd02179db4c4c952270b08525465f",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f200-every-forwend-email-looks-like-a-real-pr",
+    "base": "main"
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "id": "F181",
+  "type": "feat",
+  "behavior": "The payer can check the whole address and the token contract before sending (PLAN 9.2)",
+  "acceptance": [
+    "The pay page shows the address in groups of 4 characters, Copy copies it without spaces and screen readers hear it whole (R-78)",
+    "The token line links the token contract on the explorer; Arbitrum says native USDC, not USDC.e; the exchange line says to pick the same network; axe finds 0 serious or critical violations (R-78)"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "e2e",
+    "a11y-e2e"
+  ],
+  "refs": [
+    "R-78",
+    "R-68"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [
+    "2026-10-15 review pass by independent reviewer: PASS. Ran: ui-web test 40/40, web test 124/124, pay.spec e2e 15/15, lint, typecheck; in a scratch copy /kit axe light+dark pass. Copy (Chromium, real pay page, clipboard read back): Copy button, click on select-all p + Cmd+C, double-click a group, triple-click, Range+execCommand all give exactly 0x586134f74b654f5835860ca198ae725344670078; innerText same, so the canary reads one address (contract link text 0x036c…cf7e does not match the 40-hex regex; canary e2e passes). AX: ariaSnapshot reads the paragraph as one string; Chromium exposes 10 StaticText children. 390 px and 320 px: groups wrap on 2 lines at wbr, no group split, no overflow. Pay axe light/dark covers darker ends and the link; link name '0x036c…cf7e on Basescan (opens in a new tab)'. Mutations: space between groups, grouped copy, groups of 5, no darker end, no wbr each fail the unit test. Notes: (1) manual-select copy has no direct test: making the address p 'flex flex-wrap' copies 0x5861\\n34f7\\n... and only the canary e2e catches it (R-78 e2e block in pay.spec.ts ~204 checks textContent); add a select+Cmd+C+clipboard read check there. (2) WebKit/VoiceOver not checked (only Chromium installed); VoiceOver may announce the 10 spans as separate items; do a manual VoiceOver check. (3) docs/web/DESIGN.md:120-123 still lists the send box without the groups of 4, the token contract line and the USDC.e note. (4) /kit (payments-showcase.tsx:72) does not show the NetworkWarning lookalike variant. (5) the commit also adds unrelated queue task F196 to docs/tasks.json. Look-alike note is correct as an instruction on Arbitrum Sepolia and does not claim USDC.e exists there; Arbitrum One will need the same entry when added.",
+    "2026-10-15 review pass by independent reviewer: PASS on e2e36aa. Note 1 fixed: pay.spec.ts:209-212 grants clipboard, clicks [data-address], presses ControlOrMeta+C and expects RECEIVE; no earlier Copy click fills the clipboard, so the check is not vacuous. Mutation in a scratch copy (address p given 'flex flex-wrap') now fails it at pay.spec.ts:212 (clipboard got 10 lines). Note 3 fixed: DESIGN.md send box names the groups of 4, the look-alike line, the short contract link and the exchange network. Note 4 fixed: /kit shows NetworkWarning with lookalike=USDC.e. Ran: pay.spec e2e 15/15 on the branch; a11y.spec + kit.spec 10/10 in the scratch copy; lint, typecheck, check-docs clean. Note 2 (VoiceOver on Safari) is left for a manual check by the owner. Note 5 accepted: the harness commits queued tasks with the next change."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-15T00:36:33Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 66.2,
+        "log": "docs/runs/F181-20261015T003633Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 157.5,
+        "log": "docs/runs/F181-20261015T003633Z-e2e.log"
+      },
+      {
+        "id": "a11y-e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 16.6,
+        "log": "docs/runs/F181-20261015T003633Z-a11y-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.2,
+        "log": "docs/runs/F181-20261015T003633Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F181-20261015T003633Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F181-20261015T003633Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F181-20261015T003633Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 3.8,
+        "log": "docs/runs/F181-20261015T003633Z-build.log"
+      }
+    ],
+    "taskHash": "c8ab119570457718",
+    "filesHash": "38fd3c13d4f0ea4c",
+    "proof": {
+      "1": "unit: ReceiveAddress test shows 10 groups whose text is exactly the address, wbr breaks, darker ends, and Copy writes the address; pay.spec checks [data-address] text, 10 groups, and a manual select-and-copy that reads back exactly the address; the canary still reads only the receive address",
+      "2": "e2e: pay.spec links the token contract on Basescan and Arbiscan, says 'Native USDC, not USDC.e' on Arbitrum only, and 'Withdraw on Base Sepolia' for exchanges; /kit shows the look-alike warning under axe; unit tests cover lookalikeOf and NetworkWarning"
+    },
+    "review": {
+      "result": "pass",
+      "by": "independent reviewer",
+      "summary": "PASS on e2e36aa. Note 1 fixed: pay.spec.ts:209-212 grants clipboard, clicks [data-address], presses ControlOrMeta+C and expects RECEIVE; no earlier Copy click fills the clipboard, so the check is not vacuous. Mutation in a scratch copy (address p given 'flex flex-wrap') now fails it at pay.spec.ts:212 (clipboard got 10 lines). Note 3 fixed: DESIGN.md send box names the groups of 4, the look-alike line, the short contract link and the exchange network. Note 4 fixed: /kit shows NetworkWarning with lookalike=USDC.e. Ran: pay.spec e2e 15/15 on the branch; a11y.spec + kit.spec 10/10 in the scratch copy; lint, typecheck, check-docs clean. Note 2 (VoiceOver on Safari) is left for a manual check by the owner. Note 5 accepted: the harness commits queued tasks with the next change.",
+      "at": "2026-10-15T00:42:31Z",
+      "filesHash": "38fd3c13d4f0ea4c"
+    },
+    "commit": "e2e36aa",
+    "doneAt": "2026-10-15T00:43:04Z"
+  },
+  "branch": "feat/f181-the-payer-can-check-the-whole-address-an",
+  "baseCommit": "0745997a9017307d27b6e77e81c02c566cf964e4",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f181-the-payer-can-check-the-whole-address-an",
+    "base": "main"
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "id": "F182",
+  "type": "feat",
+  "behavior": "The owner can cancel an invoice or request before any money arrives; it never settles and later money is held for the payer (PLAN 9.5)",
+  "acceptance": [
+    "POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel marks an open invoice (every option) with no recorded deposit and an open checkout canceled with its time and answers 409 invoice_not_cancelable otherwise; a canceled invoice never settles and a later deposit is booked as held for the payer; backend tests cover it, including a deposit before the cancel and a payer-chooses invoice (R-79)",
+    "The owner page's quiet Cancel invoice (Cancel request) link opens a confirm dialog naming the number and the consequences, with Keep invoice and a danger Cancel invoice, and a toast after (R-79)",
+    "The pay page says the payee canceled it and not to send money, with no address or QR, and money that still arrives is held for the payer; the Invoices and Requests lists, their Canceled filter, Activity and the invoice PDF (no pay link or code) say Canceled (R-79)"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "backend",
+    "unit",
+    "e2e"
+  ],
+  "refs": [
+    "R-79",
+    "D-79",
+    "D-26"
+  ],
+  "keep": [],
+  "review": true,
+  "notes": [
+    "2026-10-15 review pass by independent reviewer: PASS. Money safe: Final() includes canceled, so Process books every deposit to payer_held (split final=true), status() never leaves canceled, no settlement intent is queued, signer check() refuses non-paid, ProcessChain only picks canceled rows with unbooked confirmed transfers, expiry path skipped, canary query excludes canceled. Option id cannot cancel (coalesce(main_id,id)=option id matches no row -> 404). Ran: go test ./internal/... ok; web vitest 123 ok; ui-web 38 ok; lint, typecheck, check-docs ok. Mutations on a scratch copy: Final without canceled, no status check, no expiry check, no transfer check, update main row only, PDF branch off, filter off -> all caught. Survived: (a) lock query without profile_id -> test still passes because GetOfProfile then 404s, but the other profile's invoice WAS canceled; invoices_cancel_test.go:281 should assert the other invoice is still open. (b) transfer check on the main row only -> no test has a transfer on a second option only. (c) reorged filter removed -> no test. Notes: 1) docs/backend/architecture.md:357 and state diagram still say paid/expired/expired_partially_paid are the only final statuses and the trigger rejects other changes; add canceled and open->canceled (owning-doc rule). 2) invoices.go:85 getProfileInvoice doc comment now sits on cancelInvoice. 3) Race: watcher inserts transfers without locking invoices, so a transfer committed between Cancel's EXISTS check and commit leaves a canceled invoice with a deposit; money is held for the payer, so safe, but R-79's 409 promise is best effort; say so in api.md. 4) Possible deadlock: Cancel locks group rows in scan order (main first likely) while Process(option) locks option then main; Postgres kills one, Cancel may 500. ORDER BY main_id (main last) in the lock query avoids it. 5) Web: on 409 RTK invalidates tags, the refetch hides CancelInvoice and the dialog with its tooLate alert vanishes; after success the dialog unmounts and focus drops to body; mutation error persists on reopen. 6) Pre-existing, not new: a held deposit to a canceled invoice raises the Payment detected toast and sits under Activity Paid filter (deposit status_filter). 7) Down migration fails if canceled rows exist (safe). 8) Property test does not cover canceled; openapi also adds network_unavailable (unrelated drift fix).",
+    "2026-10-15 review pass by independent reviewer: PASS on 97d6c4e. Each earlier note checked: (1) invoices_cancel_test.go:52 checks another profile's invoice stays open; mutation dropping profile_id from the lock query now fails there. (2) TestCancelPayerChoosesInvoice puts a detected transfer on the second option only and expects 409; mutation limiting the transfer check to the main row now fails (line 88). (3) cancel.go lock query ORDER BY main_id IS NULL, id FOR UPDATE locks options then the main row, the same order as ledger Process (option, then main), so no lock cycle. (4) docs/backend/architecture.md lists canceled as final with the owner-only open->canceled step; api.md says a transfer seen at the same moment lands on a canceled invoice and is held. (5) A 409 now also raises a warning toast, which survives the refetch that removes the dialog; after success the effect focuses the status line once canceled has rendered and the dialog is unmounted; e2e asserts it. (6) getProfileInvoice comment is back above its function. Earlier mutations (Final without canceled, no status check) still fail. Ran at 97d6c4e: go test ./internal/invoice ./internal/httpapi/... ./internal/ledger ok; web vitest 123 passed; pnpm lint and typecheck ok; e2e not run by me. Earlier notes 6-8 do not block: 6 (held deposit raises Payment detected toast and sits under Activity Paid) is older behavior shared with expired invoices, worth its own task; 7 (down migration fails with canceled rows) is the safe outcome; 8 (property test without canceled, unrelated openapi network_unavailable enum fix) is minor. Small leftover: on a 409 while the dialog stays open, the user sees both the in-dialog alert and the toast."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-15T00:14:57Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 64.6,
+        "log": "docs/runs/F182-20261015T001457Z-backend.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 65.6,
+        "log": "docs/runs/F182-20261015T001457Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 158.1,
+        "log": "docs/runs/F182-20261015T001457Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.1,
+        "log": "docs/runs/F182-20261015T001457Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F182-20261015T001457Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F182-20261015T001457Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F182-20261015T001457Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 3.6,
+        "log": "docs/runs/F182-20261015T001457Z-build.log"
+      }
+    ],
+    "taskHash": "3ec0f392dce9dd64",
+    "filesHash": "2bb32c3e9ca59f7e",
+    "proof": {
+      "1": "backend: TestCancelInvoice (200 with canceledAt, checkout read canceled, Canceled filter, 409 again, 409 after a detected deposit, 409 when closed, 404 for another profile's invoice which stays open, 403 for Bob, 404 unknown), TestCancelPayerChoosesInvoice (every option canceled; 409 with money on a second option only), TestCanceledInvoiceHoldsEveryDeposit (full payment held, no settlement intent)",
+      "2": "e2e: navigation.spec 'cancels an invoice before any money' opens the dialog, Keep sends nothing, confirm cancels once, toast, Canceled badge, no pay link or cancel link, focus on the status line; axe clean with the dialog open",
+      "3": "e2e: pay.spec canceled shows the canceled line, no Show address, Amount label, and the held line when money arrives; backend TestCanceledInvoicePDF has no pay link, code or total due and a new ETag; unit tests cover the canceled pay state and activity status"
+    },
+    "review": {
+      "result": "pass",
+      "by": "independent reviewer",
+      "summary": "PASS on 97d6c4e. Each earlier note checked: (1) invoices_cancel_test.go:52 checks another profile's invoice stays open; mutation dropping profile_id from the lock query now fails there. (2) TestCancelPayerChoosesInvoice puts a detected transfer on the second option only and expects 409; mutation limiting the transfer check to the main row now fails (line 88). (3) cancel.go lock query ORDER BY main_id IS NULL, id FOR UPDATE locks options then the main row, the same order as ledger Process (option, then main), so no lock cycle. (4) docs/backend/architecture.md lists canceled as final with the owner-only open->canceled step; api.md says a transfer seen at the same moment lands on a canceled invoice and is held. (5) A 409 now also raises a warning toast, which survives the refetch that removes the dialog; after success the effect focuses the status line once canceled has rendered and the dialog is unmounted; e2e asserts it. (6) getProfileInvoice comment is back above its function. Earlier mutations (Final without canceled, no status check) still fail. Ran at 97d6c4e: go test ./internal/invoice ./internal/httpapi/... ./internal/ledger ok; web vitest 123 passed; pnpm lint and typecheck ok; e2e not run by me. Earlier notes 6-8 do not block: 6 (held deposit raises Payment detected toast and sits under Activity Paid) is older behavior shared with expired invoices, worth its own task; 7 (down migration fails with canceled rows) is the safe outcome; 8 (property test without canceled, unrelated openapi network_unavailable enum fix) is minor. Small leftover: on a 409 while the dialog stays open, the user sees both the in-dialog alert and the toast.",
+      "at": "2026-10-15T00:21:04Z",
+      "filesHash": "2bb32c3e9ca59f7e"
+    },
+    "commit": "97d6c4e",
+    "doneAt": "2026-10-15T00:21:22Z"
+  },
+  "branch": "feat/f182-the-owner-can-cancel-an-invoice-or-reque",
+  "baseCommit": "bc0230b01284fbcf6d50a993a385b7ab24332567",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f182-the-owner-can-cancel-an-invoice-or-reque",
+    "base": "main"
+  }
+}

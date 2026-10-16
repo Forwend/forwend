@@ -1,0 +1,102 @@
+{
+  "id": "F203",
+  "type": "fix",
+  "behavior": "The pay page's load error is centered on the page like the rest of the checkout, with its retry button",
+  "acceptance": [
+    "When the invoice cannot be loaded, the message and Try again sit centered in the checkout area (horizontally and in the space above the footer) at 1440 px and 390 px, with an icon and a short heading; screenshots attached; e2e covers the error state"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "e2e"
+  ],
+  "refs": [
+    "R-68"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [
+    "2026-10-15 review fail by independent reviewer: Defect: flex-1 on main (apps/web/src/screens/pay/pay-screen.tsx:22) changes the loaded page at 390 px. The grid's auto rows stretch to fill the taller main (align-content defaults to stretch), so the gap between Summary and the pay box grows with leftover height: open invoice, PayBox moves from y=376 to y=427 (gap 32 -> 83 px); choosing +33 px; paid +8 px. The gap also shifts when the box grows. 1440 px is unchanged (one row, items-start); the footer is unchanged at both widths. Fix idea: keep main from stretching its rows for loaded content (content-start) and center only the error state. Otherwise OK: the error passes axe (0 serious/critical) and shows role=alert with a button. The title is a <p> from the kit EmptyState, not a heading (minor). No reader of the old PAY_COPY.failed text is left; receipt.failed and INVOICES_COPY.failed are separate. The e2e catches a no-op Try again (no reload within 6 s; polling is 15 s) and a non-centered error (y=103 < 120 without flex-1). But it runs only on Desktop Chrome, not at 390. Nit: apps/web/e2e/pay.spec.ts:394, the new test sits between the R-79 comment and the canceled-invoice test it describes. Unit 128/128 pass, lint clean.",
+    "2026-10-15 review pass by independent reviewer: Re-check of c142794. main is now flex-1 content-start, and has-[>[data-load-error]]:content-center (apps/web/src/screens/pay/pay-screen.tsx:22) centers only the load error. Measured on the dev server with mocked invoices: at 390 px the open, choosing and paid states have a 32 px row gap again (open [87-344] [376-670]), the same as before F203. At 1440 px both columns start at y=103. The footer stays at 844 and 804. The mismatch alert still sits at the top (y=103, y=87) because it has no data-load-error. The error is centered: 1440 [282-634] x464, 390 [254-606]. The e2e (apps/web/e2e/pay.spec.ts:394) now checks 1440 and 390, and the R-79 comment is back above its test. Verify e2e passed (docs/runs/F203-20261015T133129Z-e2e.log). Unit 128/128, lint clean. Left as is: the EmptyState title is a <p>, not a heading (minor, axe 0 serious/critical)."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-15T13:31:29Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 71.7,
+        "log": "docs/runs/F203-20261015T133129Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 195.0,
+        "log": "docs/runs/F203-20261015T133129Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.3,
+        "log": "docs/runs/F203-20261015T133129Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F203-20261015T133129Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F203-20261015T133129Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.2,
+        "log": "docs/runs/F203-20261015T133129Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.6,
+        "log": "docs/runs/F203-20261015T133129Z-build.log"
+      }
+    ],
+    "taskHash": "16ea80e1bbd57ea5",
+    "filesHash": "ed11da6f99a95e39",
+    "proof": {
+      "1": "e2e: pay.spec 'a failed load says so in the middle of the page': a 500 shows the EmptyState (icon, 'We could not load this invoice', 'Check your connection and try again.', Try again) centered horizontally and below the top sixth at 1440 and 390 px; Try again loads the invoice. main is content-start and centers only when it holds the load error (data-load-error), so the loaded checkout keeps a 32 px row gap at 390 px and top-aligned columns at 1440 px (measured); screenshots in docs/runs/F203-shots"
+    },
+    "review": {
+      "result": "pass",
+      "by": "independent reviewer",
+      "summary": "Re-check of c142794. main is now flex-1 content-start, and has-[>[data-load-error]]:content-center (apps/web/src/screens/pay/pay-screen.tsx:22) centers only the load error. Measured on the dev server with mocked invoices: at 390 px the open, choosing and paid states have a 32 px row gap again (open [87-344] [376-670]), the same as before F203. At 1440 px both columns start at y=103. The footer stays at 844 and 804. The mismatch alert still sits at the top (y=103, y=87) because it has no data-load-error. The error is centered: 1440 [282-634] x464, 390 [254-606]. The e2e (apps/web/e2e/pay.spec.ts:394) now checks 1440 and 390, and the R-79 comment is back above its test. Verify e2e passed (docs/runs/F203-20261015T133129Z-e2e.log). Unit 128/128, lint clean. Left as is: the EmptyState title is a <p>, not a heading (minor, axe 0 serious/critical).",
+      "at": "2026-10-15T13:36:56Z",
+      "filesHash": "ed11da6f99a95e39"
+    },
+    "commit": "c142794",
+    "doneAt": "2026-10-15T13:37:11Z"
+  },
+  "branch": "fix/f203-the-pay-page-s-load-error-is-centered-on",
+  "baseCommit": "dd4333924d3057acec2401298c8c5e35b57184ff",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f203-the-pay-page-s-load-error-is-centered-on",
+    "base": "main"
+  }
+}

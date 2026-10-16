@@ -1,0 +1,119 @@
+{
+  "id": "F183",
+  "type": "feat",
+  "behavior": "The owner gets one email for each paid, settled and held-money event through Resend and the outbox, and can turn it off per profile (PLAN 9.6)",
+  "acceptance": [
+    "internal/email has the Resend sender; the worker sends one email per paid, settled and held-money event from outbox_events with the outbox id as Idempotency-Key, retries with backoff, gives up after a bounded number of tries, and sends nothing without RESEND_API_KEY; only the worker holds the key; no address or body is logged; RESEND_API_KEY and EMAIL_FROM are listed in apps/backend/.env.example; Go tests use a fake sender (R-80)",
+    "The api stores the account's verified Privy login email once on POST /v1/me; /app/notifications turns the profile's email on or off and shows that address; each email names the invoice number, amount and network and links the invoice page (R-80)"
+  ],
+  "dependsOn": [
+    "F180",
+    "F182"
+  ],
+  "state": "passing",
+  "verification": [
+    "backend",
+    "unit",
+    "e2e"
+  ],
+  "refs": [
+    "R-80",
+    "D-65",
+    "Q-13"
+  ],
+  "keep": [],
+  "review": true,
+  "notes": [
+    "2026-10-15 WIP: migration 00025 (login_email, email_notifications, outbox retry columns), internal/outbox Queue, paid/held queued in ledger.Process, settled in settlement reconcile, document.Amount/NetworkName exported. Left: internal/email Resend sender, internal/notify deliver loop (claim SKIP LOCKED, Idempotency-Key outbox-<id>, backoff, give up), worker wiring + config (RESEND_API_KEY, EMAIL_FROM, PUBLIC_WEB_URL; with-env drops key for api/signer), api POST /v1/me stores Privy login email, GET/PUT notifications, web /app/notifications, tests.",
+    "2026-10-15 review fail by independent reviewer: FAIL, 2 defects. (1) notify.go:86 skips only when login_email IS NULL, but signup.go:83-86 stores '' for an account with no email (passkey only), which is the documented 'checked, none' value. login_email='' scans as a non-nil *string, so the worker sends To \"\": Resend answers 422, the event is retried 10 times over about 4 h, then given up with an error log, for every event of every passkey-only owner. The test hides this because notify_test.go:57 inserts nullif($2,'') (NULL). Proof: change that line to store '' and TestDeliverSkipsWhenOffOrNoAddress/no_login_email fails with 'sent 1, published 1'. Fix: skip when to == nil || *to == \"\", and make the test store '' the way signup does. (2) Not only the worker holds RESEND_API_KEY, which breaks accept 1. scripts/with-env.sh:12-17 unsets it only for api, signer and canary, so 'go test ./...' (pnpm backend test, backend e2e, loadtest) gets the real key from apps/backend/.env. config_test.go:77 and :94 then print the whole Worker config with %+v on failure. Proof: running TestWorkerAndSigner with a fake RESEND_API_KEY and no PUBLIC_WEB_URL prints the key in the failure output. Fix: unset RESEND_API_KEY in a default *) arm so only the worker keeps it, and t.Setenv RESEND_API_KEY to '' in the config test. Minor: (a) Deliver (notify.go:36) keeps sending after a failed send, so a hanging Resend can stall chain rounds for 20 x 20 s per round; stop the batch at the first failure. (b) Idempotency key forwend-outbox-<id> repeats across databases (a local DB reset, or staging and prod on one Resend team), so within 24 h Resend dedupes or returns 409 and the email is lost; add the invoice id or a uuid to the key. (c) The held wording (notify.go:133) does not cover an expired partial payment, which arrived before the checkout closed. (d) A NULL login_email (not read yet) drops the event for good. (e) When the second RPC lags, held can be queued before paid. Checked OK: queue in the same tx (paid once, held once over repeated Process runs, expiry, cancel, superseded option), settled in confirm's tx, crash-between-send-and-commit covered by the key, POST /v1/me stays within the 5 s repair budget, no address, subject, body or key in slog lines or the Resend error, 400/422/403 on the API, web placement and a11y. Mutations killed: key, FOR UPDATE, backoff, cap, give-up, skip off, paid once, held once, held gone, settled gone, read-once, lowercase. Removing only SKIP LOCKED survives, but correctness still holds there. go test ./internal/... ok, web 124 tests ok, lint ok, typecheck ok.",
+    "2026-10-15 review pass by independent reviewer: PASS on 632e012. Both defects fixed. (1) notify.go now skips on to == nil || *to == \"\", and the test stores '' as sign-up does. Removing the empty check makes TestDeliverSkipsWhenOffOrNoAddress fail. (2) with-env.sh has a default *) unset RESEND_API_KEY. Presence check: go test ./..., go test -tags e2e ./e2e/, the api and the signer get no key; only the worker binary and go run ./cmd/worker get it. TestWorkerAndSigner sets RESEND_API_KEY empty. Minor fixes are correct. The Idempotency-Key forwend-<invoiceId>-<eventId> uses the random invoice id, and changing it fails the test. A failed send returns false and ends the round. The held wording now covers an expired partial payment. Notes, not blocking: (a) The round-end test does not catch the change: making the failure path return true again still passes, because the second event's backoff stops the loop anyway. Queue two due events with a failing sender and assert only one was tried. (b) with-env.sh still gives the key to go test ./internal/worker (it matches */worker); nothing there reads it. (c) Left as they are and acceptable: NULL address marked done, held before paid when the second RPC lags, no profile name in the email. go test ./internal/notify ./internal/config ok.",
+    "2026-10-15 review pass by independent reviewer: PASS on 2d17fc4 (a test-only change on top of 632e012). The round-end test now queues two due events and runs Deliver once with a failing sender. It expects one event tried and one still at attempts 0. With the code as committed, go test ./internal/notify passes. The return-true mutation (a failed send no longer ends the round) now fails at notify_test.go:164 with 'a failed send did not end the round', so the earlier test gap is closed. The rest of the 632e012 pass stands. Remaining notes, not blocking: with-env.sh gives the key to go test ./internal/worker (it matches */worker), but nothing there reads it. NULL address marked done, held before paid when the second RPC lags, and no profile name in the email are accepted as they are."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-15T01:51:35Z",
+    "checks": [
+      {
+        "id": "backend",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 62.3,
+        "log": "docs/runs/F183-20261015T015135Z-backend.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 64.5,
+        "log": "docs/runs/F183-20261015T015135Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 156.6,
+        "log": "docs/runs/F183-20261015T015135Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.9,
+        "log": "docs/runs/F183-20261015T015135Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F183-20261015T015135Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F183-20261015T015135Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F183-20261015T015135Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.0,
+        "log": "docs/runs/F183-20261015T015135Z-build.log"
+      }
+    ],
+    "taskHash": "3cde9cf853a9f335",
+    "filesHash": "3e6ed8356230ed43",
+    "proof": {
+      "1": "backend: internal/email tests (keyed request, error names only the status), internal/notify tests (one email per event keyed forwend-<invoice>-<event>, skip when off or no address as sign-up stores it, backoff, a failure ends the round (two due events, one tried), give up after MaxAttempts, two workers send each event once), TestOutboxEventsFollowTheLedger and the signer test (paid, held, settled once each); with-env gives RESEND_API_KEY to the worker only; .env.example lists RESEND_API_KEY and EMAIL_FROM",
+      "2": "e2e: navigation.spec 'turns email notifications off from the account menu' (switch on, address shown, PUT {email:false}, toast; axe clean); TestNotificationsUseTheLoginEmail reads Privy once, lowercases, rejects a body address (400) and other users (403); TestNotificationsWithoutLoginEmail keeps a null address with one read; emails name the number, amount, network and link (notify tests)"
+    },
+    "review": {
+      "result": "pass",
+      "by": "independent reviewer",
+      "summary": "PASS on 2d17fc4 (a test-only change on top of 632e012). The round-end test now queues two due events and runs Deliver once with a failing sender. It expects one event tried and one still at attempts 0. With the code as committed, go test ./internal/notify passes. The return-true mutation (a failed send no longer ends the round) now fails at notify_test.go:164 with 'a failed send did not end the round', so the earlier test gap is closed. The rest of the 632e012 pass stands. Remaining notes, not blocking: with-env.sh gives the key to go test ./internal/worker (it matches */worker), but nothing there reads it. NULL address marked done, held before paid when the second RPC lags, and no profile name in the email are accepted as they are.",
+      "at": "2026-10-15T01:56:51Z",
+      "filesHash": "3e6ed8356230ed43"
+    },
+    "commit": "2d17fc4",
+    "doneAt": "2026-10-15T01:57:07Z"
+  },
+  "branch": "feat/f183-the-owner-gets-one-email-for-each-paid-s",
+  "baseCommit": "b022208bdea6061cfd64a9e88bdd007d9035d3de",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f183-the-owner-gets-one-email-for-each-paid-s",
+    "base": "main"
+  }
+}

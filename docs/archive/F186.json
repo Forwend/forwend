@@ -1,0 +1,117 @@
+{
+  "id": "F186",
+  "type": "test",
+  "behavior": "Exceptions, cancel and email are proven on Anvil: partial top-up, expired partial, late, cancel, and each email once (PLAN 9.8, phase 9 gate)",
+  "acceptance": [
+    "backend-e2e runs partial → top-up → paid → settled; expired partial → held with nothing settled and held equal to the receiver balance; late → held; cancel → later deposit held, nothing settled (R-83)",
+    "Each owner email and the payer receipt reach the fake sender exactly once, also across a worker restart (R-83)"
+  ],
+  "dependsOn": [
+    "F180",
+    "F181",
+    "F182",
+    "F183",
+    "F184",
+    "F185"
+  ],
+  "state": "passing",
+  "verification": [
+    "backend-e2e"
+  ],
+  "refs": [
+    "R-83"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [
+    "2026-10-15 review pass by independent reviewer: Gate proves R-83. Baseline passed 6/6 (~8 s); TestMoneyLoop passes with its 429 and other checks kept. Mutations in a scratch copy, each caught: Canceled removed from ledger.Final (held never booked, timeout); expiry book off (B held 0, timeout); published_at not set after send (98 sends, repeated email); worker clears published_at at start (repeat after restart); no paid after top-up (A never settled); expiry held email dropped (5 of 6, timeout). Restart is real in practice: 4 emails before stop, 2 after, in 5/5 runs. Minor: (1) exceptions_test.go:117 does not wait for any email before stopWorker, so a slower delivery would make the restart prove nothing; add waitFor len(mail.mails())>=3 first. The stop is SIGINT (clean), not a crash between Send and published_at. (2) Changing the Idempotency-Key to a random value per send still passes: mailbox ignores the key; only notify_test.go:117 covers it. Assert keys are unique and stable, or dedupe by key like Resend. (3) Ignoring the late flag in split still passes: C is held through Final(Expired); late alone is covered by ledger unit tests. (4) RESEND_API_URL is not validated; it only matters with a key and env access. (5) gate_test.go:47 append(st.loop, EXECUTOR key) writes into the array the worker's cmd.Env shares (cap 8). The worker already started, so the key does not reach it. Same pattern as before; slices.Clip in newStack would remove it. Scratch removed, no Anvil left.",
+    "2026-10-15 review pass by independent reviewer: Re-review of d9f149b. Gate passed 3/3 with TestMoneyLoop (about 8 s and 5 s). Note 1 fixed: the test waits for 4 emails before stopWorker. With Canceled removed from Final it now fails at that wait (exceptions_test.go:118). A worker that clears published_at when it starts fails with a repeated email. Note 5 fixed: slices.Clip on loop. Note 2 partly fixed. A key with no invoice in it (k-<time>) fails at exceptions_test.go:198. A key without the event id fails, because paid and settled then share a key. My first mutation still PASSES, so the claim that it now fails is wrong. That mutation keeps forwend-<invoice>-<event>-<addr> and adds -<time.Now> on each send. Each send is still unique and has the right prefix, so the gate cannot see that the key changes between attempts. Without a retry, the gate cannot test that. No test anywhere checks that a retry reuses the first attempt's key: notify_test TestDeliverRetriesWithBackoffThenGivesUp checks attempts only. That is R-80 (F183) scope, not R-83, so it does not block this pass. Smallest fix: in TestDeliverRetriesWithBackoffThenGivesUp, record the key of the failed send, then let the retry succeed and check the key is the same. Notes 3 and 4 left as agreed. Scratch removed, no Anvil left, repo unchanged."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-15T03:29:12Z",
+    "checks": [
+      {
+        "id": "backend-e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 13.2,
+        "log": "docs/runs/F186-20261015T032912Z-backend-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.8,
+        "log": "docs/runs/F186-20261015T032912Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F186-20261015T032912Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F186-20261015T032912Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F186-20261015T032912Z-typecheck.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 64.5,
+        "log": "docs/runs/F186-20261015T032912Z-unit.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.0,
+        "log": "docs/runs/F186-20261015T032912Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 161.2,
+        "log": "docs/runs/F186-20261015T032912Z-e2e.log"
+      }
+    ],
+    "taskHash": "39c55b1ffd599a9e",
+    "filesHash": "12f80e0371c4a385",
+    "proof": {
+      "1": "backend-e2e: TestExceptionsCancelAndEmail on Anvil with the real api, worker and signer: A partial -> top-up -> paid -> settled; B expired partial held 1.00 with the receiver holding 1.00; C late deposit held 5.00; D canceled then paid, held 5.00 and still canceled; one settlement intent (A); chain balances equal the ledger's held amounts",
+      "2": "backend-e2e: a fake Resend gets exactly six emails, none twice, each with its own Idempotency-Key naming its invoice; four go out before a worker stop and start, two after; TestMoneyLoop still passes on the shared newStack setup"
+    },
+    "review": {
+      "result": "pass",
+      "by": "independent reviewer",
+      "summary": "Re-review of d9f149b. Gate passed 3/3 with TestMoneyLoop (about 8 s and 5 s). Note 1 fixed: the test waits for 4 emails before stopWorker. With Canceled removed from Final it now fails at that wait (exceptions_test.go:118). A worker that clears published_at when it starts fails with a repeated email. Note 5 fixed: slices.Clip on loop. Note 2 partly fixed. A key with no invoice in it (k-<time>) fails at exceptions_test.go:198. A key without the event id fails, because paid and settled then share a key. My first mutation still PASSES, so the claim that it now fails is wrong. That mutation keeps forwend-<invoice>-<event>-<addr> and adds -<time.Now> on each send. Each send is still unique and has the right prefix, so the gate cannot see that the key changes between attempts. Without a retry, the gate cannot test that. No test anywhere checks that a retry reuses the first attempt's key: notify_test TestDeliverRetriesWithBackoffThenGivesUp checks attempts only. That is R-80 (F183) scope, not R-83, so it does not block this pass. Smallest fix: in TestDeliverRetriesWithBackoffThenGivesUp, record the key of the failed send, then let the retry succeed and check the key is the same. Notes 3 and 4 left as agreed. Scratch removed, no Anvil left, repo unchanged.",
+      "at": "2026-10-15T03:36:28Z",
+      "filesHash": "12f80e0371c4a385"
+    },
+    "commit": "d9f149b",
+    "doneAt": "2026-10-15T03:36:43Z"
+  },
+  "branch": "test/f186-exceptions-cancel-and-email-are-proven-o",
+  "baseCommit": "9d1356ae17fe2bfbfe5344dd424e05087a8b00be",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "test/f186-exceptions-cancel-and-email-are-proven-o",
+    "base": "main"
+  }
+}
