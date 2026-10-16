@@ -412,7 +412,7 @@
         "The date math is unit tested (month and year boundaries, the cap) and the merchant e2e test sees the switch and the warning; axe 0"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -495,11 +495,18 @@
           "summary": "Independent review, two rounds; date math checked every 15 minutes over 2026-2027 in 10 time zones (expiresIn always within 900..31536000 s). Fixed after review: the line and warning sit in a status region kept mounted with empty:sr-only; 60 and 365 come from the constants; PLAN 11.6 names the API default; a due date no longer overwrites the owner's own close (closeBy state) but fills an empty Custom date; the cap names the 365-day limit; the due hint no longer contradicts the warning; the e2e checks the exact date. Left: addDays/DAY_MS repeat the kit's private date helpers.",
           "at": "2026-10-16T23:01:56Z",
           "filesHash": "198234d314b1cf1c"
-        }
+        },
+        "commit": "a05dbb2",
+        "doneAt": "2026-10-16T23:01:59Z"
       },
       "branch": "feat/f213-a-due-date-keeps-the-invoice-s-checkout",
       "baseCommit": "349e42490e22f8ceae3ab706ebac483a3b548035",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f213-a-due-date-keeps-the-invoice-s-checkout",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
