@@ -41,6 +41,8 @@ layers or arbitrary file-size limits. Explain any necessary exception in the tas
 
 In the touched code the reviewer also checks growing folders (flat files that now form a real group), repeated
 definitions of one domain concept where the owning type should be reused, and where unit and browser tests sit.
+For web changes, a new screen or control must start from the closest existing one, or come with the research and the
+DESIGN.md entry that [web/rules.md](web/rules.md) asks for.
 The rules for each are in [web/structure.md](web/structure.md) and [backend/rules.md](backend/rules.md).
 
 For a refactor, acceptance must require unchanged behavior and public contracts, updated imports/exports and
