@@ -149,8 +149,25 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await page.keyboard.press("Enter");
     due = await page.locator('input[name="dueDate"]').inputValue();
     expect(due).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // D-80 (R-87): the checkout then stays open 60 days past the due date; a shorter close is allowed but warned.
+    await expect(page.getByRole("radio", { name: "Custom" })).toBeChecked();
+    const openUntil = new Intl.DateTimeFormat("en-US", {
+      dateStyle: "medium",
+      timeZone: "UTC",
+    }).format(new Date(Date.parse(`${due}T00:00:00Z`) + 60 * 86_400_000));
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: `Open until ${openUntil}, so a client who pays late` }),
+    ).toBeVisible();
     await page.getByText("1 day", { exact: true }).click();
     await expect(page.getByRole("radio", { name: "1 day" })).toBeChecked();
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: `This closes before ${openUntil}, 60 days after the due date.` }),
+    ).toBeVisible();
+    expect(await blockingViolations(page)).toEqual([]);
     await page.getByRole("button", { name: /^Saved client/ }).click();
     await page.getByRole("combobox", { name: /Saved client/ }).fill(clientName);
     await page.getByRole("option", { name: new RegExp(`^${clientName}`) }).click();

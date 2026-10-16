@@ -11,6 +11,7 @@ import {
   TextAreaField,
   TextField,
 } from "@forwend/ui-web";
+import { TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useRef, useState } from "react";
@@ -31,6 +32,8 @@ import { NEW_INVOICE_COPY, NEW_REQUEST_COPY } from "@/features/invoices/constant
 import {
   customExpiresIn,
   decimalText,
+  dueCheckoutDate,
+  dueCheckoutTarget,
   formatDueDate,
   invalidField,
   isReturnLink,
@@ -90,6 +93,8 @@ export function NewInvoiceForm({
   const [expiry, setExpiry] = useState<Expiry>(DEFAULT_EXPIRY);
   const [closesOn, setClosesOn] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null);
+  // D-80: who set the checkout's close. The due date sets it until the owner picks one of their own, which then stays.
+  const [closeBy, setCloseBy] = useState<"default" | "due" | "owner">("default");
   const [errors, setErrors] = useState<Partial<Record<InvoiceField, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -209,6 +214,30 @@ export function NewInvoiceForm({
     }
   };
 
+  // D-80: a close before the due date plus the grace days would turn a late client's payment into money held for them.
+  const closeDay =
+    expiry === CUSTOM_EXPIRY ? closesOn : localDate(Date.now() + EXPIRY_CHOICES[expiry] * 1000);
+  const dueTarget = dueDate ? dueCheckoutTarget(dueDate) : null;
+  const closesEarly = Boolean(dueTarget && closeDay && closeDay < dueTarget);
+  const pickDueDate = (iso: string | null) => {
+    setDueDate(iso);
+    // An empty Custom date has nothing of the owner's to keep, so the due date fills it too.
+    if (iso && (closeBy !== "owner" || (expiry === CUSTOM_EXPIRY && !closesOn))) {
+      setExpiry(CUSTOM_EXPIRY);
+      setClosesOn(dueCheckoutDate(iso, today));
+      setCloseBy("due");
+      clear(INVOICE_FIELDS.expiresIn);
+    } else if (!iso && closeBy === "due") {
+      setExpiry(DEFAULT_EXPIRY);
+      setClosesOn(null);
+      setCloseBy("default");
+    }
+  };
+  const ownClose = () => {
+    setCloseBy("owner");
+    clear(INVOICE_FIELDS.expiresIn);
+  };
+
   const expiryField = (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1.5">
@@ -221,7 +250,7 @@ export function NewInvoiceForm({
           value={expiry}
           onValueChange={(value) => {
             setExpiry(value);
-            clear(INVOICE_FIELDS.expiresIn);
+            ownClose();
           }}
           className="self-start"
           options={[...Object.keys(EXPIRY_CHOICES), CUSTOM_EXPIRY].map((value) => ({
@@ -238,7 +267,7 @@ export function NewInvoiceForm({
             value={closesOn}
             onChange={(iso) => {
               setClosesOn(iso);
-              clear(INVOICE_FIELDS.expiresIn);
+              ownClose();
             }}
             min={today}
             max={localDate(Date.now() + 365 * DAY_MS)}
@@ -249,10 +278,24 @@ export function NewInvoiceForm({
             label={COPY.closesAt}
             name="closesAt"
             defaultValue="17:00"
-            onChange={() => clear(INVOICE_FIELDS.expiresIn)}
+            onChange={ownClose}
           />
         </div>
       ) : null}
+      {/* Always mounted, so a screen reader hears the line when it appears or changes. */}
+      <div role="status" className="empty:sr-only">
+        {closesEarly && dueTarget ? (
+          <p className="flex items-start gap-2 text-sm text-warning">
+            <TriangleAlert aria-hidden className="mt-0.5 size-[var(--fw-icon-sm)] shrink-0" />
+            {/* Set by the due date and still short: only the 365-day limit can have cut it. */}
+            {closeBy === "due"
+              ? COPY.closesAtLimit(formatDueDate(dueTarget))
+              : COPY.closesEarly(formatDueDate(dueTarget))}
+          </p>
+        ) : closeBy === "due" && closesOn ? (
+          <p className="text-sm text-muted">{COPY.followsDue(formatDueDate(closesOn))}</p>
+        ) : null}
+      </div>
     </div>
   );
 
@@ -368,7 +411,7 @@ export function NewInvoiceForm({
               label={COPY.dueLabel}
               name="dueDate"
               value={dueDate}
-              onChange={setDueDate}
+              onChange={pickDueDate}
               min={today}
               clearLabel={COPY.dueClear}
               hint={COPY.dueHint}

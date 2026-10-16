@@ -188,6 +188,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   request, first paid in full, first final money in. Skipped steps and the closed card are remembered per profile in
   the browser; the card hides when closed or when every step left is done.
 - New invoice and Request money: each field group (Amount, Details, Dates, Client) is a panel with its title ruled off.
+  Picking a due date switches Checkout closes after to Custom on the due date plus 60 days (D-80), with one quiet line
+  saying why; a close the owner picks before that day stays allowed, with a warning line (icon and warning text, as on
+  the pay page) that a later payment would be held for the payer.
   From extra-large screens a sticky Preview panel beside the form echoes it in the pay page's order: title, amount with
   how it is paid, then Billed to (Shown as for a request), Due and Checkout closes after as ruled rows, and the note. It
   is hidden from screen readers, since the fields already say all of it.

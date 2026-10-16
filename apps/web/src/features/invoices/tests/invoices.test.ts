@@ -2,8 +2,10 @@ import { PAYMENT_STATUS } from "@forwend/ui-web";
 import { describe, expect, it } from "vitest";
 import { AMOUNT_ERRORS } from "@/features/invoices/constants/invoices";
 import {
+  addDays,
   confirmingProgress,
   decimalText,
+  dueCheckoutDate,
   invoiceException,
   invoiceProgress,
   invoiceStatus,
@@ -171,6 +173,20 @@ describe("form values (R-58)", () => {
       "https://",
     ])
       expect(isReturnLink(bad), bad).toBe(false);
+  });
+});
+
+// D-80: the close a due date sets decides whether a late client's payment is paid or held for them.
+describe("dueCheckoutDate", () => {
+  it("is the due date plus 60 days, across month, year and leap-day boundaries", () => {
+    expect(addDays("2026-01-31", 1)).toBe("2026-02-01");
+    expect(addDays("2028-02-28", 1)).toBe("2028-02-29");
+    expect(dueCheckoutDate("2026-11-15", "2026-10-17")).toBe("2027-01-14");
+    expect(dueCheckoutDate("2027-12-31", "2027-10-17")).toBe("2028-02-29");
+  });
+
+  it("stops at 364 days from today, so the close stays within the 365 days a checkout can last", () => {
+    expect(dueCheckoutDate("2027-09-01", "2026-10-17")).toBe("2027-10-16");
   });
 });
 

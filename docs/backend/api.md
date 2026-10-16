@@ -123,7 +123,8 @@ R-19 and R-42; the full schema is in openapi.yaml.
   in the invoice's own transaction, so a failed create uses no number and a repeated Idempotency-Key returns the
   stored one.
 - Optional create fields: `title` (≤ 200 characters), `note` (≤ 2000), `dueDate` (`YYYY-MM-DD`, shown only; payment
-  still closes at `expiresAt`), `senderName` (≤ 100; the name the payer sees on a request from a profile without
+  still closes at `expiresAt`, which the web form sets to the due date plus 60 days, at most 364 days from today,
+  unless the owner picks another, D-80), `senderName` (≤ 100; the name the payer sees on a request from a profile without
   billing details, D-52), `returnUrl` (an `https` link of ≤ 2000 characters with a host and no user or password, which
   the pay page offers once paid, R-58; part of the idempotency hash only when set, so older requests hash as before)
   and `client` `{ name ≤ 200, email ≤ 254, address ≤ 500, country, taxId ≤ 50 }` (the rules of a saved client, R-86;
