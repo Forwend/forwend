@@ -353,7 +353,7 @@
         "docs/workflow.md's structure review checks that a new screen or control reuses the closest existing one, linking the rule instead of copying it; docs-check passes"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -389,11 +389,18 @@
         "proof": {
           "1": "docs-check: docs/web/rules.md has the reuse-first rule (kit, shared, the screen of the same kind with its DESIGN.md section) and the research-then-build-reusable rule (WAI-ARIA APG, two or three products, ui-web on /kit or apps/web/src/shared, DESIGN.md entry)",
           "2": "docs-check: docs/workflow.md structure review checks web changes against it, linking web/rules.md"
-        }
+        },
+        "commit": "a557947",
+        "doneAt": "2026-10-16T22:30:45Z"
       },
       "branch": "docs/f212-web-rules-say-to-start-every-new-screen",
       "baseCommit": "fb0e1a9477e0030f2c7c4c5d904baf86f0381e4d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f212-web-rules-say-to-start-every-new-screen",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
