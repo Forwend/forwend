@@ -214,6 +214,8 @@ export function restartFrom(
       name: client?.name ?? "",
       email: client?.email ?? "",
       address: client?.address ?? "",
+      country: client?.country ?? "",
+      taxId: client?.taxId ?? "",
     },
   };
 }

@@ -100,6 +100,20 @@ R-43; the full schema is in openapi.yaml. Owner only, like every `{profileId}` r
   so the copy is the details at that moment. Editing them later changes no invoice. A profile without details gives
   `issuer: null`.
 
+## Clients
+
+R-86; the full schema is in openapi.yaml. Owner only, like every `{profileId}` route.
+
+- `GET /v1/profiles/{profileId}/clients` lists the saved clients by name; at most 1000 per profile, so it comes whole.
+- `PUT /v1/profiles/{profileId}/clients/{clientId}` creates or replaces one. The caller picks the id (a lowercase
+  UUID), so no Idempotency-Key is needed: the same body sent twice saves one client, 201 the first time and 200 after.
+  Body: `name` (required, ≤ 200 characters) and optional `email` (≤ 254, the billing email), `address` (≤ 500),
+  `country` (an assigned ISO 3166-1 alpha-2 code) and `taxId` (≤ 50); empty means none and comes back as null. The
+  1001st client is 422; an id that belongs to another profile is 404 `client_not_found`.
+- `DELETE /v1/profiles/{profileId}/clients/{clientId}` answers 204, or 404 `client_not_found`.
+- An invoice holds no link to a saved client: the web copies the client's details into the create request, so editing
+  or deleting a client changes no invoice.
+
 ## Invoices
 
 R-19 and R-42; the full schema is in openapi.yaml.
@@ -112,7 +126,8 @@ R-19 and R-42; the full schema is in openapi.yaml.
   still closes at `expiresAt`), `senderName` (≤ 100; the name the payer sees on a request from a profile without
   billing details, D-52), `returnUrl` (an `https` link of ≤ 2000 characters with a host and no user or password, which
   the pay page offers once paid, R-58; part of the idempotency hash only when set, so older requests hash as before)
-  and `client` `{ name ≤ 200, email ≤ 254, address ≤ 500 }`. Empty means none and is
+  and `client` `{ name ≤ 200, email ≤ 254, address ≤ 500, country, taxId ≤ 50 }` (the rules of a saved client, R-86;
+  `country` and `taxId` are part of the idempotency hash only when set). Empty means none and is
   returned as null. Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken rule is
   422 `invalid_value`; these fields are part of the idempotency hash.
 - The number, these fields and `issuer` never change, like the terms: a database trigger rejects any update.

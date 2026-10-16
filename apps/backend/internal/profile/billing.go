@@ -49,6 +49,11 @@ const countries = "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE B
 
 var countryCode = regexp.MustCompile(`^[A-Z]{2}$`)
 
+// ValidCountry reports whether code is an assigned ISO 3166-1 alpha-2 code in upper case, like DE.
+func ValidCountry(code string) bool {
+	return countryCode.MatchString(code) && strings.Contains(countries, code)
+}
+
 func (d BillingDetails) check() error {
 	for _, f := range []struct{ name, value string }{
 		{"name", d.Name}, {"address", d.Address}, {"country", d.Country}, {"email", d.Email},
@@ -73,7 +78,7 @@ func (d BillingDetails) check() error {
 	if Impersonates(d.Name) {
 		return fmt.Errorf("%w: name can't name Forwend", ErrInvalid)
 	}
-	if !countryCode.MatchString(d.Country) || !strings.Contains(countries, d.Country) {
+	if !ValidCountry(d.Country) {
 		return fmt.Errorf("%w: country must be an ISO 3166-1 alpha-2 code like DE", ErrInvalid)
 	}
 	if a, err := mail.ParseAddress(d.Email); err != nil || a.Address != d.Email {

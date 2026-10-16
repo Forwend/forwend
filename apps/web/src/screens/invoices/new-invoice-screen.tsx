@@ -3,6 +3,7 @@
 import { Button, Skeleton } from "@forwend/ui-web";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
+import { useListClientsQuery } from "@/features/clients/api/clients-api";
 import {
   useGetInvoiceQuery,
   useGetProfileInvoiceQuery,
@@ -43,6 +44,8 @@ export function NewInvoiceScreen() {
   const loadingStart = Boolean(from) && (source.isLoading || owned.isLoading);
   const tokens = balances.currentData?.tokens;
   const request = profile.kind === PROFILE_KINDS.personal;
+  // A request has no client. Without the list the form still works: the picker just doesn't show.
+  const clients = useListClientsQuery(profile.profileId, { skip: request });
   const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
   return (
     <div className="flex max-w-2xl flex-col gap-6 xl:max-w-none">
@@ -68,6 +71,7 @@ export function NewInvoiceScreen() {
           profileId={profile.profileId}
           tokens={tokens}
           start={start}
+          clients={clients.currentData}
           request={
             request
               ? {

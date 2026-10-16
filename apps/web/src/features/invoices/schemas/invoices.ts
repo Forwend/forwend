@@ -4,6 +4,7 @@ import type {
   ApiPaymentStatus,
   ApiSettlementStatus,
 } from "@/features/activity/types/activity";
+import { clientBodySchema } from "@/features/clients/schemas/clients";
 import { SETTLEMENT_WAITS } from "@/features/invoices/constants/invoices";
 import type { InvoiceEventKind } from "@/features/invoices/types/invoices";
 import {
@@ -22,6 +23,8 @@ export const invoiceClientSchema = z.object({
   name: z.string().nullable(),
   email: z.string().nullable(),
   address: z.string().nullable(),
+  country: z.string().nullable(),
+  taxId: z.string().nullable(),
 });
 
 /** The profile's billing details as they were when the invoice was made. */
@@ -153,7 +156,7 @@ export const createInvoiceBodySchema = z.object({
   note: z.string(),
   dueDate: z.string(),
   senderName: z.string(),
-  client: z.object({ name: z.string(), email: z.string(), address: z.string() }),
+  client: clientBodySchema,
 });
 
 /** One of the bell's events (R-81): GET /v1/profiles/{id}/events. */

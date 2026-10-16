@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { TokenBalance } from "@/features/balances/types/balances";
+import type { ClientBody } from "@/features/clients/types/clients";
 import type {
   AMOUNT_ERRORS,
   EXPIRY_CHOICES,
@@ -43,7 +44,7 @@ export interface InvoiceStart {
   payWith: PayWith;
   picked: string;
   amount: string;
-  client: { name: string; email: string; address: string };
+  client: ClientBody;
 }
 
 export type ExpiryChoice = keyof typeof EXPIRY_CHOICES;

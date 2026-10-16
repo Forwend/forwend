@@ -126,6 +126,9 @@ func (e invoiceEnv) do(t *testing.T, req *http.Request) reply {
 		t.Fatal(err)
 	}
 	r := reply{status: res.StatusCode}
+	if res.StatusCode == http.StatusNoContent && len(raw) == 0 {
+		return r
+	}
 	if err := json.Unmarshal(raw, &r.body); err != nil {
 		t.Fatalf("status %d, body not JSON: %s", res.StatusCode, raw)
 	}
@@ -159,7 +162,7 @@ func TestCreateInvoice(t *testing.T) {
 		t.Fatalf("statuses %v", b)
 	}
 	if b["number"] != float64(1) || b["title"] != nil || b["note"] != nil || b["dueDate"] != nil || b["senderName"] != nil ||
-		!reflect.DeepEqual(b["client"], map[string]any{"name": nil, "email": nil, "address": nil}) {
+		!reflect.DeepEqual(b["client"], map[string]any{"name": nil, "email": nil, "address": nil, "country": nil, "taxId": nil}) {
 		t.Fatalf("number and details %v", b)
 	}
 	expiresAt, _ := time.Parse(time.RFC3339, b["expiresAt"].(string))
@@ -208,7 +211,8 @@ func TestCreateInvoice(t *testing.T) {
 
 const detailsBody = `{"chainId": 84532, "token": "` + usdc + `", "amount": "5000000", "title": "Logo design",
 	"note": "Thanks!\nPay within 14 days.", "dueDate": "2026-11-01", "senderName": "Alice Design",
-	"client": {"name": "Bob Ltd", "email": "bob@example.com", "address": "Main St 1\nBerlin"}}`
+	"client": {"name": "Bob Ltd", "email": "bob@example.com", "address": "Main St 1\nBerlin", "country": "DE",
+	"taxId": "DE999999999"}}`
 
 // The details are stored and returned to the owner; the public GET gives the payer the number, title, note, due date
 // and sender name, never the client's contact details.
@@ -220,7 +224,8 @@ func TestCreateInvoiceStoresDetails(t *testing.T) {
 	}
 	want := map[string]any{"number": float64(1), "title": "Logo design", "note": "Thanks!\nPay within 14 days.",
 		"dueDate": "2026-11-01", "senderName": "Alice Design",
-		"client": map[string]any{"name": "Bob Ltd", "email": "bob@example.com", "address": "Main St 1\nBerlin"}}
+		"client": map[string]any{"name": "Bob Ltd", "email": "bob@example.com", "address": "Main St 1\nBerlin",
+			"country": "DE", "taxId": "DE999999999"}}
 	for k, v := range want {
 		if !reflect.DeepEqual(r.body[k], v) {
 			t.Fatalf("%s = %v, want %v", k, r.body[k], v)
@@ -230,7 +235,7 @@ func TestCreateInvoiceStoresDetails(t *testing.T) {
 	if again.status != http.StatusOK || again.body["invoiceId"] != r.body["invoiceId"] || again.body["number"] != float64(1) {
 		t.Fatalf("same key and body: %d %v", again.status, again.body)
 	}
-	for _, edit := range [][2]string{{"Logo", "Icon"}, {"Alice Design", "Alice"}} {
+	for _, edit := range [][2]string{{"Logo", "Icon"}, {"Alice Design", "Alice"}, {`"DE"`, `"FR"`}, {"DE999999999", "DE1"}} {
 		other := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", strings.Replace(detailsBody, edit[0], edit[1], 1))
 		if other.status != http.StatusConflict || errorCode(other) != "idempotency_conflict" {
 			t.Fatalf("same key, %s changed: %d %v", edit[0], other.status, other.body)
@@ -399,6 +404,9 @@ func TestCreateInvoiceErrors(t *testing.T) {
 		{"dueDate not a day", "did:privy:alice", e.aliceProfile, "k31", body(`"amount": "1", "dueDate": "2026-02-30"`), 422, "invalid_value"},
 		{"dueDate with a time", "did:privy:alice", e.aliceProfile, "k32", body(`"amount": "1", "dueDate": "2026-11-01T00:00:00Z"`), 422, "invalid_value"},
 		{"dueDate year 0", "did:privy:alice", e.aliceProfile, "k33", body(`"amount": "1", "dueDate": "0000-01-01"`), 422, "invalid_value"},
+		{"client country lower case", "did:privy:alice", e.aliceProfile, "k37", body(`"amount": "1", "client": {"country": "de"}`), 422, "invalid_value"},
+		{"client country not assigned", "did:privy:alice", e.aliceProfile, "k38", body(`"amount": "1", "client": {"country": "XK"}`), 422, "invalid_value"},
+		{"client taxId over 50", "did:privy:alice", e.aliceProfile, "k39", body(`"amount": "1", "client": {"taxId": "` + strings.Repeat("1", 51) + `"}`), 422, "invalid_value"},
 		{"unknown client field", "did:privy:alice", e.aliceProfile, "k34", body(`"amount": "1", "client": {"phone": "1"}`), 400, "malformed_request"},
 		{"no access token", "", e.aliceProfile, "k18", body(`"amount": "1"`), 401, "unauthorized"},
 		{"another user's profile", "did:privy:bob", e.aliceProfile, "k19", body(`"amount": "1"`), 403, "forbidden"},
@@ -694,7 +702,8 @@ func TestGetProfileInvoice(t *testing.T) {
 			t.Fatalf("%s = %v, public GET gives %v", k, r.body[k], v)
 		}
 	}
-	if want := map[string]any{"name": "Bob Ltd", "email": "bob@example.com", "address": "Main St 1\nBerlin"}; !reflect.DeepEqual(r.body["client"], want) {
+	if want := map[string]any{"name": "Bob Ltd", "email": "bob@example.com", "address": "Main St 1\nBerlin",
+		"country": "DE", "taxId": "DE999999999"}; !reflect.DeepEqual(r.body["client"], want) {
 		t.Fatalf("client %v, want %v", r.body["client"], want)
 	}
 

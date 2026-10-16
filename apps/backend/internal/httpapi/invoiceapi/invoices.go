@@ -28,6 +28,7 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 			ExpiresInSeconds: body.ExpiresIn,
 			Details: invoice.Details{Title: body.Title, Note: body.Note, DueDate: body.DueDate,
 				ClientName: body.Client.Name, ClientEmail: body.Client.Email, ClientAddress: body.Client.Address,
+				ClientCountry: body.Client.Country, ClientTaxID: body.Client.TaxID,
 				SenderName: body.SenderName, ReturnURL: body.ReturnURL},
 		})
 		if err != nil {

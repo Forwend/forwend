@@ -29,7 +29,7 @@ const invoiceColumns = `id, option_id, chosen_id IS NOT NULL,
 	chain_id, token_contract, amount::text, recipient_address, factory_address, receive_address,
 	expires_at, settle_deadline, payment_status, settlement_status, refund_status,
 	coalesce((SELECT tx_hash FROM settlement_intents s WHERE s.invoice_id = invoices.option_id AND s.status = 'confirmed'), ''),
-	created_at,
+	created_at, coalesce(client_country, ''), coalesce(client_tax_id, ''),
 	EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = invoices.option_id AND t.status = 'detected'
 	        AND t.block_time <= invoices.expires_at), ` + ClosedSQL + `, canceled_at`
 
@@ -48,7 +48,7 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 		&inv.ClientEmail, &inv.ClientAddress, &inv.SenderName, &issuerName, &issuer.Address, &issuer.Country, &issuer.TaxID,
 		&issuer.Email, &inv.ReturnURL, &inv.ChainID, &inv.Token, &amount, &inv.Recipient, &inv.Factory,
 		&inv.ReceiveAddress, &expiresAt, &settleDeadline, &inv.PaymentStatus, &inv.SettlementStatus, &inv.RefundStatus,
-		&inv.SettlementTxHash, &inv.CreatedAt, &inv.Confirming, &inv.Closed, &canceledAt}
+		&inv.SettlementTxHash, &inv.CreatedAt, &inv.ClientCountry, &inv.ClientTaxID, &inv.Confirming, &inv.Closed, &canceledAt}
 	if err := row.Scan(dest...); errors.Is(err, pgx.ErrNoRows) {
 		return Invoice{}, ErrNotFound
 	} else if err != nil {

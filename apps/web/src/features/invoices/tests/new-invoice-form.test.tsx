@@ -72,4 +72,46 @@ describe("new invoice form", () => {
     expect(keys[1]).toBe(keys[0]);
     expect(bodies[1]).toBe(bodies[0]);
   });
+
+  // R-86: an invoice keeps a copy of the saved client's details, sent in its create request.
+  it("fills the client from a saved client and sends its details", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (request: Request) => {
+        bodies.push(JSON.parse(await request.text()));
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    const client = {
+      clientId: "11111111-1111-4111-8111-111111111111",
+      name: "Bob Ltd",
+      email: "ap@bob.example",
+      address: "Main St 1\nBerlin",
+      country: "DE",
+      taxId: "DE999999999",
+      updatedAt: "2026-10-16T10:00:00Z",
+    };
+    // jsdom has no layout, and the select's list scrolls its chosen option into view.
+    Element.prototype.scrollIntoView = vi.fn();
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} clients={[client]} />
+      </Provider>,
+    );
+    fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
+    fireEvent.click(screen.getByRole("combobox", { name: "Saved client" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Bob Ltd" }));
+    expect((screen.getByLabelText("Tax or VAT ID") as HTMLInputElement).value).toBe("DE999999999");
+
+    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    await settle();
+    expect(bodies[0]?.client).toEqual({
+      name: "Bob Ltd",
+      email: "ap@bob.example",
+      address: "Main St 1\nBerlin",
+      country: "DE",
+      taxId: "DE999999999",
+    });
+  });
 });

@@ -240,9 +240,14 @@ func start(inv invoice.Invoice, kind string) doc {
 		bottom = max(bottom, d.party(x, top, "From", inv.SenderName, "Name not checked by Forwend"))
 		x += width / 2
 	}
-	// Never the client's email: the PDF is public to anyone with the invoice id.
-	if inv.ClientName != "" || inv.ClientAddress != "" {
-		bottom = max(bottom, d.party(x, top, "Bill to", inv.ClientName, inv.ClientAddress))
+	// Never the client's email: the PDF is public to anyone with the invoice id. A business client's tax ID belongs
+	// on its invoice (VAT Directive art. 226).
+	if inv.ClientName != "" || inv.ClientAddress != "" || inv.ClientCountry != "" || inv.ClientTaxID != "" {
+		tax := ""
+		if inv.ClientTaxID != "" {
+			tax = "Tax ID " + inv.ClientTaxID
+		}
+		bottom = max(bottom, d.party(x, top, "Bill to", inv.ClientName, inv.ClientAddress, inv.ClientCountry, tax))
 	}
 	d.SetXY(margin, bottom+6)
 	return d

@@ -7,10 +7,12 @@ import {
   History,
   LayoutGrid,
   ShoppingBag,
+  Users,
   WalletCards,
 } from "lucide-react";
 import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { CLIENTS_COPY } from "@/features/clients/constants/clients-copy";
 import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import type { ProfileKind } from "@/features/profiles/types/profile";
@@ -32,6 +34,7 @@ export const NAV = {
   invoices: { href: APP_ROUTES.invoices, label: INVOICES_COPY.invoices, icon: FileText },
   // A personal profile's invoices are requests (D-52): the same pages under their own name.
   requests: { href: APP_ROUTES.invoices, label: REQUESTS_COPY.invoices, icon: HandCoins },
+  clients: { href: APP_ROUTES.clients, label: CLIENTS_COPY.title, icon: Users },
   checkout: { href: null, label: "Checkout", icon: ShoppingBag },
   developers: { href: null, label: "Developers", icon: Code },
   analytics: { href: null, label: "Analytics", icon: ChartLine },
@@ -48,12 +51,12 @@ export const APP_NAV: Readonly<Record<ProfileKind, readonly NavGroup[]>> = {
   ],
   [PROFILE_KINDS.freelancer]: [
     MONEY,
-    { label: "Get paid", items: [NAV.invoices, NAV.activity] },
+    { label: "Get paid", items: [NAV.invoices, NAV.clients, NAV.activity] },
     INSIGHTS,
   ],
   [PROFILE_KINDS.merchant]: [
     MONEY,
-    { label: "Payments", items: [NAV.invoices, NAV.checkout, NAV.activity] },
+    { label: "Payments", items: [NAV.invoices, NAV.clients, NAV.checkout, NAV.activity] },
     { label: "Build", items: [NAV.developers] },
     INSIGHTS,
   ],

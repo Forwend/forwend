@@ -146,7 +146,7 @@ func TestInvoicePDF(t *testing.T) {
 	link := webURL + "/pay/" + id
 	mustContain(t, text, "Forwend\nInvoice\nINV-0003",
 		"FROM\nAlice Design GmbH\nHauptstr. 1\n10115 Berlin\nDE\nTax ID DE123456789\nbilling@alice.example",
-		"BILL TO\nBob Ltd\nMain St 1\nBerlin",
+		"BILL TO\nBob Ltd\nMain St 1\nBerlin\nDE\nTax ID DE999999999",
 		"Issued\n"+created.Format("2006-01-02 15:04")+" UTC\nDue date\n2026-11-01\nCheckout closes\n"+
 			expires.Format("2006-01-02 15:04")+" UTC",
 		"Description\nNetwork\nAmount\nLogo design\nBase Sepolia\nChain 84532\n5.00 USDC\nTotal due\n5.00 USDC",

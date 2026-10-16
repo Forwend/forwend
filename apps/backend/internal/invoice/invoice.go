@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"net/mail"
 	"net/url"
 	"regexp"
 	"strings"
@@ -31,13 +30,10 @@ const (
 
 // Longest details, in characters (R-42).
 const (
-	MaxTitle         = 200
-	MaxNote          = 2000
-	MaxClientName    = 200
-	MaxClientEmail   = 254 // the longest address SMTP carries (RFC 5321)
-	MaxClientAddress = 500
-	MaxSenderName    = 100
-	MaxReturnURL     = 2000
+	MaxTitle      = 200
+	MaxNote       = 2000
+	MaxSenderName = 100
+	MaxReturnURL  = 2000
 )
 
 // MaxOpen and MaxPerDay bound a profile's watched receive addresses: each is in every scan until 30 days after its
@@ -85,6 +81,8 @@ type Details struct {
 	ClientName    string
 	ClientEmail   string
 	ClientAddress string
+	ClientCountry string // ISO 3166-1 alpha-2
+	ClientTaxID   string
 	SenderName    string // the name the payer sees when the invoice has no issuer, such as a personal request (D-52)
 	ReturnURL     string // an https link to the creator's site, offered to the payer once paid (R-58)
 }
@@ -237,8 +235,7 @@ func (d Details) check() error {
 		lines       bool
 	}{
 		{"title", d.Title, MaxTitle, false}, {"note", d.Note, MaxNote, true},
-		{"client.name", d.ClientName, MaxClientName, false}, {"client.email", d.ClientEmail, MaxClientEmail, false},
-		{"client.address", d.ClientAddress, MaxClientAddress, true}, {"senderName", d.SenderName, MaxSenderName, false},
+		{"senderName", d.SenderName, MaxSenderName, false},
 	} {
 		// Postgres text can't hold a NUL byte.
 		if !utf8.ValidString(f.value) || utf8.RuneCountInString(f.value) > f.max || !profile.PlainText(f.value, f.lines) {
@@ -248,10 +245,11 @@ func (d Details) check() error {
 	if profile.Impersonates(d.SenderName) {
 		return fmt.Errorf("%w: senderName can't name Forwend", ErrInvalid)
 	}
-	if d.ClientEmail != "" {
-		if a, err := mail.ParseAddress(d.ClientEmail); err != nil || a.Address != d.ClientEmail {
-			return fmt.Errorf("%w: client.email must be an email address like name@example.com", ErrInvalid)
-		}
+	// A saved client's rules (R-86), so a client copied from the list always fits.
+	client := profile.ClientDetails{Name: d.ClientName, Email: d.ClientEmail, Address: d.ClientAddress,
+		Country: d.ClientCountry, TaxID: d.ClientTaxID}
+	if p := client.Problem("client."); p != "" {
+		return fmt.Errorf("%w: %s", ErrInvalid, p)
 	}
 	if d.ReturnURL != "" {
 		u, err := url.Parse(d.ReturnURL)
@@ -277,6 +275,9 @@ func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn ti
 		d.SenderName)
 	if d.ReturnURL != "" { // added only when set, so requests made before it hash as they did
 		b = fmt.Appendf(b, "|%q", d.ReturnURL)
+	}
+	if d.ClientCountry != "" || d.ClientTaxID != "" { // the same for the client's country and tax ID
+		b = fmt.Appendf(b, "|%q|%q", d.ClientCountry, d.ClientTaxID)
 	}
 	h := sha256.Sum256(b)
 	return h[:]
