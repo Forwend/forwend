@@ -27,21 +27,21 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-16T10:36:43Z",
+        "at": "2026-10-16T14:06:57Z",
         "checks": [
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F208-20261016T103643Z-docs-check.log"
+            "seconds": 0.0,
+            "log": "docs/runs/F208-20261016T140657Z-docs-check.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.2,
-            "log": "docs/runs/F208-20261016T103643Z-harness.log"
+            "seconds": 2.1,
+            "log": "docs/runs/F208-20261016T140657Z-harness.log"
           }
         ],
         "taskHash": "e2bbdb6a354e8d3f",
