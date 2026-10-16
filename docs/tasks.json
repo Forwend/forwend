@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 211,
+  "nextId": 212,
   "tasks": [
     {
       "id": "F208",
@@ -236,6 +236,106 @@
         "branch": "docs/f210-plan-phase-10-follows-the-approved-freel",
         "base": "main"
       }
+    },
+    {
+      "id": "F211",
+      "type": "fix",
+      "behavior": "The Clients page follows the app's list page rules (full width, toolbar search, table with initials avatars, the shared empty and no-match states, form pages with breadcrumbs), and long choices (countries, saved clients) are searchable selects from the kit",
+      "acceptance": [
+        "The kit has a ComboboxField (a select with a search box: typing filters labels without regard to accents, arrow keys move, Enter picks, Escape closes) shown on /kit with its states; every country choice (billing details, saved client, invoice client) and the saved-client picker use it",
+        "/app/clients is full width like Invoices: search on the left of the toolbar and Add client at its end (beside the title on phones), a table with the client's initials avatar where a row opens the client, the shared empty state and Nothing matches; new and edit are pages under Clients with breadcrumbs, delete is in the edit page's More actions menu with a confirm dialog, and a toast only follows a save or delete that leaves the page",
+        "axe finds 0 serious or critical violations on the list, the form and the kit; 390 px phones have no sideways scroll on the list and the form"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-86",
+        "R-75",
+        "R-66"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-16 review pass by reviewer: Independent review, two rounds. Fixed after round 1: long countries no longer squeeze names on phone rows; the search panel hangs from the field above its hint or error; client form pages laid out like New invoice (shared FieldGroup panels, More actions at the page's top right); Tab and mouse focus handling, aria-selected on the active row, unused props removed, kit error demo, accent-insensitive list search, ListToolbar without a filter leaves no gap, Clear search label, no 'gone' flash after delete, avatar fallback, structure and design docs. Left: accent-folding helper written twice (kit copy is private), list search not in the URL."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-16T22:13:56Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 89.3,
+            "log": "docs/runs/F211-20261016T221356Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 227.1,
+            "log": "docs/runs/F211-20261016T221356Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.1,
+            "log": "docs/runs/F211-20261016T221356Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F211-20261016T221356Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F211-20261016T221356Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F211-20261016T221356Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.8,
+            "log": "docs/runs/F211-20261016T221356Z-build.log"
+          }
+        ],
+        "taskHash": "100226b7cdd9561f",
+        "filesHash": "4f72677c7f832405",
+        "proof": {
+          "1": "unit: packages/ui-web combobox-field.test: 'nether' lists Netherlands before Caribbean Netherlands, Enter picks NL, 'cote' finds Côte d'Ivoire (fails without the ranking); new-invoice-form.test fills the client from the searchable Saved client picker and sends its details; billing details, client form and invoice client country use ComboboxField, whose panel hangs from the field above its hint or error",
+          "2": "e2e: invoices.spec merchant test: /app/clients full-width list with axe 0, Add client link to /app/clients/new (Contact and Address and tax panels), country search 'germ' leaves one option and Enter picks Germany, Save returns to the list whose table row shows email, Germany and tax ID; the row opens /app/clients/<id>, More actions at the page's top right > Delete client asks in a dialog and returns to the list; screenshots docs/runs/F211-*.png",
+          "3": "e2e: axe 0 on the list, the form with the country search open, and /kit (kit.spec); the phone test opens Clients and its form with the country search open, each with sidewaysScroll <= 0; F211-list-phone.png shows a long country truncating before the name"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Independent review, two rounds. Fixed after round 1: long countries no longer squeeze names on phone rows; the search panel hangs from the field above its hint or error; client form pages laid out like New invoice (shared FieldGroup panels, More actions at the page's top right); Tab and mouse focus handling, aria-selected on the active row, unused props removed, kit error demo, accent-insensitive list search, ListToolbar without a filter leaves no gap, Clear search label, no 'gone' flash after delete, avatar fallback, structure and design docs. Left: accent-folding helper written twice (kit copy is private), list search not in the URL.",
+          "at": "2026-10-16T22:20:58Z",
+          "filesHash": "4f72677c7f832405"
+        }
+      },
+      "branch": "fix/f211-the-clients-page-follows-the-app-s-list",
+      "baseCommit": "d3ef05cdf3c8ead5d3487f8d309d36f3a2a928b0",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

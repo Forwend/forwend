@@ -13,6 +13,7 @@ import {
   ChoiceCard,
   CodeBlock,
   CodeInput,
+  ComboboxField,
   DatePicker,
   Dialog,
   EmailCapture,
@@ -89,6 +90,57 @@ const SAMPLE_TOASTS = [
   },
   { tone: TONES.success, title: "Billing details saved" },
 ] as const;
+
+const SAMPLE_COUNTRIES = [
+  { value: "", label: "No country" },
+  { value: "CI", label: "Côte d'Ivoire" },
+  { value: "CW", label: "Curaçao" },
+  { value: "DE", label: "Germany" },
+  { value: "NL", label: "Netherlands" },
+  { value: "BQ", label: "Caribbean Netherlands" },
+  { value: "GB", label: "United Kingdom" },
+  { value: "US", label: "United States" },
+];
+
+const SAMPLE_CLIENTS = [
+  { value: "1", label: "Brightline Studio", detail: "ap@brightline.example" },
+  { value: "2", label: "Harbour & Co", detail: "finance@harbour.example" },
+  { value: "3", label: "Studio Lumen", detail: "billing@lumen.example" },
+];
+
+// Searchable selects for long lists, each holding its own choice.
+function ComboboxDemo() {
+  const [country, setCountry] = useState("DE");
+  const [client, setClient] = useState("");
+  return (
+    <>
+      <ComboboxField
+        label="Country"
+        options={SAMPLE_COUNTRIES}
+        value={country}
+        onValueChange={setCountry}
+        searchLabel="Search countries"
+        hint="Type to search: “cote” finds Côte d'Ivoire."
+      />
+      <ComboboxField
+        label="Saved client"
+        options={SAMPLE_CLIENTS}
+        value={client}
+        onValueChange={setClient}
+        placeholder="Fill in from a saved client"
+        searchLabel="Search clients"
+      />
+      <ComboboxField
+        label="Billing country"
+        options={SAMPLE_COUNTRIES.filter((c) => c.value)}
+        placeholder="Choose a country"
+        value=""
+        onValueChange={() => {}}
+        error="Choose a country."
+      />
+    </>
+  );
+}
 
 function ToastDemo() {
   const toast = useToast();
@@ -358,6 +410,9 @@ export function ComponentsShowcase() {
               { value: "eurc", label: "EURC" },
             ]}
           />
+        </div>
+        <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-3">
+          <ComboboxDemo />
         </div>
         <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-3">
           <TextAreaField label="Note to the client" hint="Shown on the pay page." />

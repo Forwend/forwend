@@ -100,8 +100,12 @@ describe("new invoice form", () => {
       </Provider>,
     );
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
-    fireEvent.click(screen.getByRole("combobox", { name: "Saved client" }));
-    fireEvent.click(await screen.findByRole("option", { name: "Bob Ltd" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Saved client/ }));
+    // The search box filters the list as it is typed, ignoring letter case.
+    fireEvent.change(screen.getByRole("combobox", { name: /Saved client/ }), {
+      target: { value: "bob" },
+    });
+    fireEvent.click(await screen.findByRole("option", { name: /^Bob Ltd/ }));
     expect((screen.getByLabelText("Tax or VAT ID") as HTMLInputElement).value).toBe("DE999999999");
 
     fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));

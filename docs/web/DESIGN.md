@@ -63,6 +63,10 @@ Every control comes from `@forwend/ui-web`; a link that looks like a button uses
   choice with its icon (and the filter's name from small screens up), opening a menu of every option, each with the
   icon its pill or bell event uses (Open a circle, Paid a check in a circle, Settled a wallet, Expired a clock,
   Canceled a ban).
+- A long list to choose from (a country, a saved client) is a search select (`ComboboxField`): the field looks like a
+  select and opens a panel under it with a search box over the options; typing narrows them, ignoring letter case and
+  accents ("cote" finds Côte d'Ivoire), arrow keys move, Enter picks and Escape closes. A short list (a network, a
+  token) stays a select.
 - Search is a soft filled pill without an outline at rest, with a clear button once it holds text: the list search
   fields and both header search triggers.
 - A list's toolbar (Invoices or Requests, Activity, Transactions): the search on the left, the filter beside it, the
@@ -154,6 +158,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   (Today, Yesterday, then the weekday and date) and are two lines that never cut: the network is its logo on the
   corner of the direction icon (and in words for screen readers), the time and the explorer link sit under the other
   side, and the amount sits on the right.
+- Clients (R-86) is laid out like Invoices: the toolbar's search (name, email, tax ID) with Add client at its end
+  (beside the title on phones), then a table of the client with its initials avatar, billing email, country and tax
+  ID, where a row opens the client (a long country gives way to the name on phones). New client and Edit client are
+  form pages under Clients laid out like New invoice (Contact, and Address and tax, as panels); Delete waits in the
+  More actions menu at the page's top right and asks to confirm in a dialog, as Cancel does on an invoice.
 - Invoices table: the client has a round initials avatar. Phone rows lead with the client (or a request's note) beside
   that avatar carrying the network's logo, with the number and a short due date (no year within this year) under it,
   and the amount over the status pill on the right. From small screens up (and for requests, which have no table) a
@@ -192,7 +201,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   plain text at the end: no badge, no link. A disabled action says why in its accessible name and shows "Coming soon" in a tooltip on
   hover, focus or tap; no notice text is added to the page.
 - A toast is only for an event the user did not just do on that spot: a payment detected or settled while the app is
-  open, or a save that leaves the page (billing details). Errors and anything that needs an answer stay inline beside
+  open, or a save that leaves the page (billing details, a client saved or deleted). Errors and anything that needs an answer stay inline beside
   their field or form. Toasts sit top right on desktop and above the tab bar on phones, as solid surface panels with
   the float shadow; at most three, each gone after 5 s unless hovered, focused or the tab is hidden, with a close
   button. They enter from the edge they sit on and leave faster than they came. Screen readers hear them through a

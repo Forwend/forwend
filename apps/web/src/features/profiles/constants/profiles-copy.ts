@@ -35,6 +35,7 @@ export const BILLING_DETAILS_COPY = {
   address: "Address",
   country: "Country",
   countryPlaceholder: "Choose a country",
+  searchCountries: "Search countries",
   taxId: "Tax ID (optional)",
   email: "Contact email",
   save: "Save details",

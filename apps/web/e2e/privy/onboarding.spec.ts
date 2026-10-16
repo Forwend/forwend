@@ -145,7 +145,8 @@ test("a new user picks what they want to do once and lands on the new profile wi
   await expect(page.getByRole("alert").filter({ hasText: "Choose a country." })).toBeVisible();
   await page.getByRole("textbox", { name: "Name or business name" }).fill("Ada Design");
   await page.getByRole("textbox", { name: "Address" }).fill("Hauptstr. 1, Berlin");
-  await page.getByRole("combobox", { name: "Country" }).click();
+  await page.getByRole("button", { name: /^Country/ }).click();
+  await page.getByRole("combobox", { name: /Country/ }).fill("germany");
   await page.getByRole("option", { name: "Germany" }).click();
   await page.getByRole("textbox", { name: "Contact email" }).fill("ada@example.com");
   expect(await blockingViolations(page)).toEqual([]);

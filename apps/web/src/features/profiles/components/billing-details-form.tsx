@@ -3,8 +3,8 @@
 import {
   Button,
   buttonClasses,
+  ComboboxField,
   Form,
-  SelectField,
   TextAreaField,
   TextField,
   TONES,
@@ -102,10 +102,11 @@ export function BillingDetailsForm({ profileId, saved }: BillingDetailsFormProps
         maxLength={BILLING_LIMITS.address}
         error={errors.address}
       />
-      <SelectField
+      <ComboboxField
         id={COUNTRY_ID}
         label={COPY.country}
         placeholder={COPY.countryPlaceholder}
+        searchLabel={COPY.searchCountries}
         options={countries}
         value={country}
         onValueChange={(value) => {

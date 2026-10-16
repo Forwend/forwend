@@ -2,20 +2,25 @@
 
 import {
   Button,
+  buttonClasses,
+  ComboboxField,
   Form,
-  SelectField,
   TextAreaField,
   TextField,
   TONES,
   useToast,
 } from "@forwend/ui-web";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useSaveClientMutation } from "@/features/clients/api/clients-api";
-import { CLIENT_LIMITS, NO_COUNTRY } from "@/features/clients/constants/clients";
+import { CLIENT_LIMITS } from "@/features/clients/constants/clients";
 import { CLIENTS_COPY as COPY } from "@/features/clients/constants/clients-copy";
 import { clientCountryOptions, invalidClientField } from "@/features/clients/lib/clients";
 import type { Client, ClientBody } from "@/features/clients/types/clients";
+import { FieldGroup } from "@/shared/components/field-group";
+import { APP_ROUTES } from "@/shared/config/routes";
 
 type Field = keyof ClientBody;
 
@@ -23,17 +28,17 @@ export interface ClientFormProps {
   profileId: string;
   /** The client to edit; a new one when left out. */
   client?: Client;
-  onDone: () => void;
 }
 
 // R-86: one PUT replaces every field; the API checks them again. A new client's id is made once, so a retried save
-// after an error makes one client.
-export function ClientForm({ profileId, client, onDone }: ClientFormProps) {
+// after an error makes one client. A save leaves for the list, so a toast says it worked.
+export function ClientForm({ profileId, client }: ClientFormProps) {
   const [save] = useSaveClientMutation();
   const toast = useToast();
+  const router = useRouter();
   const clientId = useRef(client?.clientId ?? crypto.randomUUID());
   const countries = useMemo(() => clientCountryOptions(COPY.noCountry), []);
-  const [country, setCountry] = useState(client?.country ?? NO_COUNTRY);
+  const [country, setCountry] = useState(client?.country ?? "");
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -46,7 +51,7 @@ export function ClientForm({ profileId, client, onDone }: ClientFormProps) {
       name: value("name"),
       email: value("email"),
       address: value("address"),
-      country: country === NO_COUNTRY ? "" : country,
+      country,
       taxId: value("taxId"),
     };
     const shown: Partial<Record<Field, string>> = {};
@@ -64,8 +69,8 @@ export function ClientForm({ profileId, client, onDone }: ClientFormProps) {
     setBusy(true);
     try {
       await save({ profileId, clientId: clientId.current, body }).unwrap();
-      toast({ tone: TONES.success, title: COPY.saved });
-      onDone();
+      toast({ tone: TONES.success, title: COPY.saved(body.name) });
+      router.push(APP_ROUTES.clients);
     } catch (error) {
       const message =
         (error as { data?: { error?: { message?: string } } }).data?.error?.message ?? "";
@@ -79,59 +84,65 @@ export function ClientForm({ profileId, client, onDone }: ClientFormProps) {
   };
 
   return (
-    <Form onSubmit={submit} gap="md">
-      <TextField
-        label={COPY.name}
-        name="name"
-        autoComplete="off"
-        defaultValue={client?.name}
-        maxLength={CLIENT_LIMITS.name}
-        error={errors.name}
-      />
-      <TextField
-        label={COPY.email}
-        name="email"
-        type="email"
-        autoComplete="off"
-        defaultValue={client?.email ?? ""}
-        maxLength={CLIENT_LIMITS.email}
-        hint={COPY.emailHint}
-        error={errors.email}
-      />
-      <TextAreaField
-        label={COPY.address}
-        name="address"
-        defaultValue={client?.address ?? ""}
-        maxLength={CLIENT_LIMITS.address}
-        error={errors.address}
-      />
-      <div className="grid gap-5 sm:grid-cols-2">
-        <SelectField
-          label={COPY.country}
-          options={countries}
-          value={country}
-          onValueChange={(next) => {
-            setCountry(next);
-            setErrors((current) => ({ ...current, country: undefined }));
-          }}
-          error={errors.country}
+    <Form onSubmit={submit}>
+      <FieldGroup title={COPY.contactGroup}>
+        <TextField
+          label={COPY.name}
+          name="name"
+          autoComplete="off"
+          defaultValue={client?.name}
+          maxLength={CLIENT_LIMITS.name}
+          error={errors.name}
         />
         <TextField
-          label={COPY.taxId}
-          name="taxId"
-          defaultValue={client?.taxId ?? ""}
-          maxLength={CLIENT_LIMITS.taxId}
-          hint={COPY.taxIdHint}
-          error={errors.taxId}
+          label={COPY.email}
+          name="email"
+          type="email"
+          autoComplete="off"
+          defaultValue={client?.email ?? ""}
+          maxLength={CLIENT_LIMITS.email}
+          hint={COPY.emailHint}
+          error={errors.email}
         />
-      </div>
+      </FieldGroup>
+      <FieldGroup title={COPY.taxGroup}>
+        <TextAreaField
+          label={COPY.address}
+          name="address"
+          defaultValue={client?.address ?? ""}
+          maxLength={CLIENT_LIMITS.address}
+          error={errors.address}
+        />
+        <div className="grid gap-5 sm:grid-cols-2">
+          <ComboboxField
+            label={COPY.country}
+            options={countries}
+            value={country}
+            onValueChange={(next) => {
+              setCountry(next);
+              setErrors((current) => ({ ...current, country: undefined }));
+            }}
+            placeholder={COPY.noCountry}
+            searchLabel={COPY.searchCountries}
+            error={errors.country}
+          />
+          <TextField
+            label={COPY.taxId}
+            name="taxId"
+            defaultValue={client?.taxId ?? ""}
+            maxLength={CLIENT_LIMITS.taxId}
+            hint={COPY.taxIdHint}
+            error={errors.taxId}
+          />
+        </div>
+      </FieldGroup>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         <Button type="submit" loading={busy}>
           {COPY.save}
         </Button>
-        <Button type="button" variant="ghost" onClick={onDone}>
+        <Link href={APP_ROUTES.clients} className={buttonClasses({ variant: "ghost" })}>
           {COPY.cancel}
-        </Button>
+        </Link>
       </div>
       <p role="alert" className="min-h-5 text-sm text-danger">
         {formError}
