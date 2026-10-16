@@ -247,7 +247,7 @@
         "axe finds 0 serious or critical violations on the list, the form and the kit; 390 px phones have no sideways scroll on the list and the form"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -331,11 +331,18 @@
           "summary": "Independent review, two rounds. Fixed after round 1: long countries no longer squeeze names on phone rows; the search panel hangs from the field above its hint or error; client form pages laid out like New invoice (shared FieldGroup panels, More actions at the page's top right); Tab and mouse focus handling, aria-selected on the active row, unused props removed, kit error demo, accent-insensitive list search, ListToolbar without a filter leaves no gap, Clear search label, no 'gone' flash after delete, avatar fallback, structure and design docs. Left: accent-folding helper written twice (kit copy is private), list search not in the URL.",
           "at": "2026-10-16T22:20:58Z",
           "filesHash": "4f72677c7f832405"
-        }
+        },
+        "commit": "3c6ed33",
+        "doneAt": "2026-10-16T22:21:01Z"
       },
       "branch": "fix/f211-the-clients-page-follows-the-app-s-list",
       "baseCommit": "d3ef05cdf3c8ead5d3487f8d309d36f3a2a928b0",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f211-the-clients-page-follows-the-app-s-list",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
