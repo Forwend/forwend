@@ -75,7 +75,7 @@
       "dependsOn": [
         "F210"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -159,11 +159,18 @@
           "summary": "Independent review: ownership SQL, immutability trigger and view (Up and Down), idempotency hash and PDF privacy correct. Fixed after review: cap race (profile row lock plus a deterministic in-flight test), client_not_found in the spec's error codes, client routes in the cross-user test, web and backend architecture docs, duplicate limits and dead copy, picker clearing unrelated errors, phone width check. Left as nits: duplicate 422 message parser, generic message at the 1000-client cap, second Intl.DisplayNames constant.",
           "at": "2026-10-16T21:30:28Z",
           "filesHash": "73d63854bd9899f2"
-        }
+        },
+        "commit": "0f23878",
+        "doneAt": "2026-10-16T21:30:31Z"
       },
       "branch": "feat/f209-a-freelancer-saves-clients-name-email-co",
       "baseCommit": "4321f9f62b478e47562c215ca9e72007802f060c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f209-a-freelancer-saves-clients-name-email-co",
+        "base": "main"
+      }
     },
     {
       "id": "F210",
