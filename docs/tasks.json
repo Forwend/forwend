@@ -97,7 +97,7 @@
         "docs-check passes"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -138,11 +138,18 @@
           "2": "docs-check: PLAN phase 10 lists 10.1 Clients through 10.6 Records with the new gate row; card-payer spike note under Deferred",
           "3": "docs-check: PROJECT has D-80, D-81, D-82 and the rewritten D-69; owner-research.md has freelancer questions 6-11 and four finance-side questions",
           "4": "docs-check: 0 errors"
-        }
+        },
+        "commit": "dbbd8ac",
+        "doneAt": "2026-10-16T14:08:39Z"
       },
       "branch": "docs/f210-plan-phase-10-follows-the-approved-freel",
       "baseCommit": "1e7246e6e15d1da27524ae94d9a22448dfd675e1",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f210-plan-phase-10-follows-the-approved-freel",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
