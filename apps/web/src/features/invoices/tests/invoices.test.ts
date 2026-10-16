@@ -211,7 +211,13 @@ describe("invoiceException", () => {
 });
 
 describe("restartFrom", () => {
-  const client = { name: "Bob Ltd", email: "bob@example.com", address: null };
+  const client = {
+    name: "Bob Ltd",
+    email: "bob@example.com",
+    address: null,
+    country: null,
+    taxId: null,
+  };
   const option = {
     optionId: open.optionId,
     chainId: open.chainId,
@@ -229,7 +235,7 @@ describe("restartFrom", () => {
     const start = {
       payWith: "fixed",
       picked: `84532:${open.token}`,
-      client: { name: "Bob Ltd", email: "bob@example.com", address: "" },
+      client: { name: "Bob Ltd", email: "bob@example.com", address: "", country: "", taxId: "" },
     };
     expect(restartFrom(partly, client, false)).toEqual({ ...start, amount: "5" });
     expect(restartFrom(partly, client, true)).toEqual({ ...start, amount: "3.75" });
@@ -253,7 +259,7 @@ describe("restartFrom", () => {
     expect(restartFrom(choosing, undefined, false)).toMatchObject({
       payWith: "any",
       amount: "5",
-      client: { name: "", email: "", address: "" },
+      client: { name: "", email: "", address: "", country: "", taxId: "" },
     });
   });
 });

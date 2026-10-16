@@ -68,7 +68,8 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   failed request, shown like any other failure, and logged by endpoint and field, never by value; a body that breaks
   its schema is never sent. `openapi-typescript` is not used: it needs the TypeScript compiler API, which TypeScript 7
   does not have.
-- Features import each other only here: receive → balances; invoices → activity, balances; pay → activity, invoices
+- Features import each other only here: receive → balances; invoices → activity, balances, clients (the client block
+  an invoice copies, R-86); clients → profiles (the country list); pay → activity, invoices
   (including the `check-status` and `invoice-progress` components); onboarding → activity, invoices, profiles,
   transactions; transactions → invoices (the bell's invoice events, R-81). No cycles ([structure.md](structure.md)); money helpers and words that several features show live in
   `shared/lib/money.ts` and `shared/constants/money-copy.ts`. Add no new edge without listing it here.

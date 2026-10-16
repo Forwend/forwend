@@ -12,8 +12,11 @@ import {
 } from "@forwend/ui-web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, type ReactNode, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { NO_COUNTRY } from "@/features/clients/constants/clients";
+import { clientBody, clientCountryOptions } from "@/features/clients/lib/clients";
+import type { Client, ClientBody } from "@/features/clients/types/clients";
 import { useCreateInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { NewInvoicePreview } from "@/features/invoices/components/new-invoice-preview";
 import {
@@ -58,13 +61,23 @@ export interface NewInvoiceFormProps {
   request?: { senderName: string; onCreated: (invoice: Invoice) => void };
   // Filled from a closed invoice (R-77): its client, accepted options and amount.
   start?: InvoiceStart;
+  /** The profile's saved clients (R-86): picking one fills the client fields with a copy of its details. */
+  clients?: readonly Client[];
 }
+
+const NO_CLIENT: ClientBody = { name: "", email: "", address: "", country: "", taxId: "" };
 
 // One idempotency key per filled-in form: a double click, or a retry of the same values after an error, makes one
 // invoice; changed values are a new request with a new key, never a 409. With `request` it is a personal profile's
 // request (D-52): amount, note, expiry, return link and the name the payer sees, handed to onCreated instead of
 // opening the invoice.
-export function NewInvoiceForm({ profileId, tokens, request, start }: NewInvoiceFormProps) {
+export function NewInvoiceForm({
+  profileId,
+  tokens,
+  request,
+  start,
+  clients,
+}: NewInvoiceFormProps) {
   const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
   const [createInvoice] = useCreateInvoiceMutation();
   const router = useRouter();
@@ -79,6 +92,13 @@ export function NewInvoiceForm({ profileId, tokens, request, start }: NewInvoice
   const [errors, setErrors] = useState<Partial<Record<InvoiceField, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
+  // The client fields stay uncontrolled like the others; picking a saved client draws them again with its values.
+  const [fill, setFill] = useState<{ key: string; client: ClientBody }>({
+    key: "",
+    client: start?.client ?? NO_CLIENT,
+  });
+  const [country, setCountry] = useState(fill.client.country || NO_COUNTRY);
+  const countries = useMemo(() => clientCountryOptions(COPY.noCountry), [COPY.noCountry]);
   // The free-text fields stay uncontrolled; the preview reads them as they are typed.
   const [typed, setTyped] = useState({
     title: "",
@@ -151,6 +171,8 @@ export function NewInvoiceForm({ profileId, tokens, request, start }: NewInvoice
         name: text("clientName"),
         email: text("clientEmail"),
         address: text("clientAddress"),
+        country: country === NO_COUNTRY ? "" : country,
+        taxId: text("clientTaxId"),
       },
     };
     setErrors({});
@@ -358,32 +380,79 @@ export function NewInvoiceForm({ profileId, tokens, request, start }: NewInvoice
 
         {request ? null : (
           <Group title={COPY.client}>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <TextField
-                label={COPY.clientName}
-                name="clientName"
-                defaultValue={start?.client.name}
-                autoComplete="off"
-                maxLength={INVOICE_LIMITS.clientName}
-                error={errors[INVOICE_FIELDS.clientName]}
+            {clients?.length ? (
+              <SelectField
+                label={COPY.savedClient}
+                placeholder={COPY.savedClientPlaceholder}
+                options={clients.map((c) => ({ value: c.clientId, label: c.name }))}
+                value={fill.key || undefined}
+                onValueChange={(clientId) => {
+                  const picked = clients.find((c) => c.clientId === clientId);
+                  if (!picked) return;
+                  const values = clientBody(picked);
+                  setFill({ key: clientId, client: values });
+                  setCountry(values.country || NO_COUNTRY);
+                  setTyped((shown) => ({ ...shown, client: values.name }));
+                  // The client fields are drawn again with new values; errors elsewhere stay.
+                  setErrors((shown) => ({
+                    ...shown,
+                    [INVOICE_FIELDS.clientName]: undefined,
+                    [INVOICE_FIELDS.clientEmail]: undefined,
+                    [INVOICE_FIELDS.clientAddress]: undefined,
+                    [INVOICE_FIELDS.clientCountry]: undefined,
+                    [INVOICE_FIELDS.clientTaxId]: undefined,
+                  }));
+                }}
               />
-              <TextField
-                type="email"
-                label={COPY.clientEmail}
-                name="clientEmail"
-                defaultValue={start?.client.email}
-                autoComplete="off"
-                maxLength={INVOICE_LIMITS.clientEmail}
-                error={errors[INVOICE_FIELDS.clientEmail]}
+            ) : null}
+            <div key={fill.key} className="flex flex-col gap-5">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <TextField
+                  label={COPY.clientName}
+                  name="clientName"
+                  defaultValue={fill.client.name}
+                  autoComplete="off"
+                  maxLength={INVOICE_LIMITS.clientName}
+                  error={errors[INVOICE_FIELDS.clientName]}
+                />
+                <TextField
+                  type="email"
+                  label={COPY.clientEmail}
+                  name="clientEmail"
+                  defaultValue={fill.client.email}
+                  autoComplete="off"
+                  maxLength={INVOICE_LIMITS.clientEmail}
+                  error={errors[INVOICE_FIELDS.clientEmail]}
+                />
+              </div>
+              <TextAreaField
+                label={COPY.clientAddress}
+                name="clientAddress"
+                defaultValue={fill.client.address}
+                maxLength={INVOICE_LIMITS.clientAddress}
+                error={errors[INVOICE_FIELDS.clientAddress]}
               />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <SelectField
+                  label={COPY.clientCountry}
+                  options={countries}
+                  value={country}
+                  onValueChange={(next) => {
+                    setCountry(next);
+                    clear(INVOICE_FIELDS.clientCountry);
+                  }}
+                  error={errors[INVOICE_FIELDS.clientCountry]}
+                />
+                <TextField
+                  label={COPY.clientTaxId}
+                  name="clientTaxId"
+                  defaultValue={fill.client.taxId}
+                  autoComplete="off"
+                  maxLength={INVOICE_LIMITS.clientTaxId}
+                  error={errors[INVOICE_FIELDS.clientTaxId]}
+                />
+              </div>
             </div>
-            <TextAreaField
-              label={COPY.clientAddress}
-              name="clientAddress"
-              defaultValue={start?.client.address}
-              maxLength={INVOICE_LIMITS.clientAddress}
-              error={errors[INVOICE_FIELDS.clientAddress]}
-            />
           </Group>
         )}
 

@@ -351,8 +351,20 @@ function Loaded({
                 <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.clientFailed}</p>
               ) : !mine ? (
                 <Skeleton className="m-5 h-16" />
-              ) : client?.name || client?.email || client?.address ? (
-                <Party lines={[client.name, client.email, client.address]} />
+              ) : client?.name ||
+                client?.email ||
+                client?.address ||
+                client?.country ||
+                client?.taxId ? (
+                <Party
+                  lines={[
+                    client.name,
+                    client.email,
+                    client.address,
+                    client.country ? (COUNTRY.of(client.country) ?? client.country) : null,
+                    client.taxId ? `${COPY.taxId} ${client.taxId}` : null,
+                  ]}
+                />
               ) : (
                 <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.noClient}</p>
               )}

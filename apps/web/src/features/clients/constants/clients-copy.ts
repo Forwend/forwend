@@ -1,0 +1,45 @@
+import { CLIENT_LIMITS } from "@/features/clients/constants/clients";
+
+/** /app/clients (R-86). */
+export const CLIENTS_COPY = {
+  title: "Clients",
+  intro:
+    "The people and companies you bill. Pick one on a new invoice to fill in its details. Invoices you already sent keep the details they had.",
+  add: "Add client",
+  addTitle: "New client",
+  edit: (name: string) => `Edit ${name}`,
+  delete: (name: string) => `Delete ${name}`,
+  deleteTitle: (name: string) => `Delete ${name}?`,
+  deleteBody: "Invoices you already sent to this client keep its details.",
+  deleteKeep: "Keep client",
+  deleteConfirm: "Delete client",
+  deleteFailed: "We could not delete the client. Try again.",
+  deleted: "Client deleted",
+  empty: "No clients yet",
+  emptyText: "Save a client once, then pick it on each new invoice.",
+  name: "Name or business name",
+  email: "Billing email (optional)",
+  emailHint: "Where invoices go, often the client's finance team.",
+  address: "Address (optional)",
+  country: "Country (optional)",
+  noCountry: "No country",
+  taxId: "Tax or VAT ID (optional)",
+  taxIdHint: "Shown on the invoice PDF. A business client in the EU or UK usually needs it there.",
+  save: "Save client",
+  cancel: "Cancel",
+  saved: "Client saved",
+  loadFailed: "We could not load your clients.",
+  retry: "Try again",
+  errors: {
+    required: "Fill in this field.",
+    email: "Enter an email like name@example.com.",
+    failed: "We could not save the client. Check the details and try again.",
+    invalid: {
+      name: `Use at most ${CLIENT_LIMITS.name} characters, with no hidden characters.`,
+      email: "Enter an email like name@example.com.",
+      address: `Use at most ${CLIENT_LIMITS.address} characters, with no hidden characters.`,
+      country: "Choose a country.",
+      taxId: `Use at most ${CLIENT_LIMITS.taxId} characters, with no hidden characters.`,
+    },
+  },
+} as const;

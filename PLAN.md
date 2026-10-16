@@ -39,10 +39,11 @@ Freelancer before merchant (D-55). Scope and evidence: [phase 10 research](docs/
 (owner approval 2026-10-16). Freelancers lose the most money on final invoices after delivery and on net-30 clients
 who pay late, so the phase builds deposits, milestones and payment terms as one flow.
 
-- 10.1 Clients: saved clients with legal name, billing email (the finance contact, often not the person who ordered
-  the work), address, country, tax/VAT ID and an optional default PO or reference. An invoice picks a client and
-  copies the details; the copy never changes, like the issuer block (R-43).
-- 10.2 Invoice terms: line items with a description, supply date, PO/reference, duplicate, and an "Agreed value" in
+- 10.1 Clients (R-86): saved clients with legal name, billing email (the finance contact, often not the person who
+  ordered the work), address, country and tax/VAT ID. An invoice picks a client and copies the details; the copy never
+  changes, like the issuer block (R-43).
+- 10.2 Invoice terms: line items with a description, supply date, PO/reference (with a default PO per saved client),
+  duplicate, and an "Agreed value" in
   fiat that the user types (currency, amount and the time). An invoice with a due date keeps its checkout open until
   the due date plus 60 days (D-80); the form warns before saving an earlier close. After 10.1.
 - 10.3 Jobs (D-81): a quote with the work, price and a payment schedule (deposit, milestones, final) and pay dates;

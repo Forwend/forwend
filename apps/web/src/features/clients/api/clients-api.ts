@@ -1,0 +1,46 @@
+import { z } from "zod";
+import { clientBodySchema, clientSchema, clientsSchema } from "@/features/clients/schemas/clients";
+import type { Client, ClientBody } from "@/features/clients/types/clients";
+import { apiSlice } from "@/shared/api/api-slice";
+
+const CLIENTS_TAG = "Clients";
+
+const clientsUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/clients`;
+const clientUrl = (profileId: string, clientId: string) =>
+  `${clientsUrl(profileId)}/${encodeURIComponent(clientId)}`;
+
+export const clientsApi = apiSlice
+  .enhanceEndpoints({ addTagTypes: [CLIENTS_TAG] })
+  .injectEndpoints({
+    endpoints: (build) => ({
+      /** Every saved client of the profile, by name (at most 1000, so one request). */
+      listClients: build.query<Client[], string>({
+        query: (profileId) => clientsUrl(profileId),
+        rawResponseSchema: clientsSchema,
+        transformResponse: (data: { clients: Client[] }) => data.clients,
+        providesTags: [CLIENTS_TAG],
+      }),
+      /** PUT to an id the browser picks, so a retried save makes one client (R-86). */
+      saveClient: build.mutation<Client, { profileId: string; clientId: string; body: ClientBody }>(
+        {
+          query: ({ profileId, clientId, body }) => ({
+            url: clientUrl(profileId, clientId),
+            method: "PUT",
+            body,
+          }),
+          argSchema: z.object({ profileId: z.guid(), clientId: z.guid(), body: clientBodySchema }),
+          responseSchema: clientSchema,
+          invalidatesTags: [CLIENTS_TAG],
+        },
+      ),
+      deleteClient: build.mutation<void, { profileId: string; clientId: string }>({
+        query: ({ profileId, clientId }) => ({
+          url: clientUrl(profileId, clientId),
+          method: "DELETE",
+        }),
+        invalidatesTags: [CLIENTS_TAG],
+      }),
+    }),
+  });
+
+export const { useListClientsQuery, useSaveClientMutation, useDeleteClientMutation } = clientsApi;

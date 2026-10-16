@@ -90,6 +90,24 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   await tab.goto("/app/invoices");
   await isMerchant(tab);
   await tab.close();
+
+  // R-86: a saved client fills the invoice below, which keeps its copy after the client is deleted at the end.
+  const clientName = `E2E client ${Date.now()}`;
+  await sidebar.getByRole("link", { name: "Clients" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Clients" })).toBeAttached();
+  await page.getByRole("button", { name: "Add client" }).first().click();
+  await page.getByRole("textbox", { name: "Name or business name" }).fill(clientName);
+  await page.getByRole("textbox", { name: "Billing email (optional)" }).fill("client@example.com");
+  await page.getByRole("textbox", { name: "Address (optional)" }).fill("1 Test Street\nBerlin");
+  await page.getByRole("combobox", { name: "Country (optional)" }).click();
+  await page.getByRole("option", { name: "Germany" }).click();
+  await page.getByRole("textbox", { name: "Tax or VAT ID (optional)" }).fill("DE123456789");
+  expect(await blockingViolations(page)).toEqual([]);
+  await page.getByRole("button", { name: "Save client" }).click();
+  const clientRow = page.getByRole("listitem").filter({ hasText: clientName });
+  await expect(clientRow).toContainText("client@example.com · Germany · DE123456789");
+  expect(await blockingViolations(page)).toEqual([]);
+  await sidebar.getByRole("link", { name: "Invoices" }).click();
   await page.getByRole("link", { name: "New invoice" }).first().click();
 
   const title = `E2E ${Date.now()}`;
@@ -121,9 +139,10 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     expect(due).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     await page.getByText("1 day", { exact: true }).click();
     await expect(page.getByRole("radio", { name: "1 day" })).toBeChecked();
-    await page.getByRole("textbox", { name: "Name", exact: true }).fill("E2E client");
-    await page.getByRole("textbox", { name: "Email", exact: true }).fill("client@example.com");
-    await page.getByRole("textbox", { name: "Address" }).fill("1 Test Street\nBerlin");
+    await page.getByRole("combobox", { name: "Saved client" }).click();
+    await page.getByRole("option", { name: clientName }).click();
+    await expect(page.getByRole("textbox", { name: "Name", exact: true })).toHaveValue(clientName);
+    await expect(page.getByRole("textbox", { name: "Tax or VAT ID" })).toHaveValue("DE123456789");
   });
   if (invoice) {
     expect(invoice.returnUrl).toBe("https://shop.example/thanks");
@@ -155,8 +174,10 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByRole("main").locator("header [data-status]")).toHaveCount(0);
     await expect(page.getByRole("main").locator("header")).not.toContainText("Checkout closes");
     const client = page.getByRole("region", { name: "Billed to" });
-    await expect(client).toContainText("E2E client");
+    await expect(client).toContainText(clientName);
     await expect(client).toContainText("client@example.com");
+    await expect(client).toContainText("Germany");
+    await expect(client).toContainText("Tax ID DE123456789");
     // The pay link copies whole, from the header's More actions menu, which also opens it.
     const link = `http://localhost:3000/pay/${invoice.invoiceId}`;
     await page
@@ -241,12 +262,31 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await page.getByRole("link", { name: "Invoices" }).first().click();
     const row = page.getByRole("row").filter({ hasText: invoice.number });
     await expect(row).toContainText(title);
-    await expect(row).toContainText("E2E client");
+    await expect(row).toContainText(clientName);
     await expect(row).toContainText(dueText);
     await expect(row).toContainText("12.50 USDC");
     await expect(row).toContainText("Waiting for payment");
     await row.getByRole("link", { name: invoice.number }).click();
     await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
+  }
+
+  await sidebar.getByRole("link", { name: "Clients" }).click();
+  await clientRow.getByRole("button", { name: `Delete ${clientName}` }).click();
+  await page
+    .getByRole("dialog", { name: `Delete ${clientName}?` })
+    .getByRole("button", { name: "Delete client" })
+    .click();
+  await expect(clientRow).toHaveCount(0);
+  if (invoice) {
+    await sidebar.getByRole("link", { name: "Invoices" }).click();
+    await page
+      .getByRole("row")
+      .filter({ hasText: invoice.number })
+      .getByRole("link", { name: invoice.number })
+      .click();
+    await expect(page.getByRole("region", { name: "Billed to" })).toContainText(
+      "Tax ID DE123456789",
+    );
   }
   await context.close();
 });
@@ -272,6 +312,12 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
   await tabs.getByRole("button", { name: "More" }).click();
   await expect(more.getByRole("link", { name: "Activity", exact: true })).toBeVisible();
   await expect(more.getByRole("link", { name: "Billing details", exact: true })).toBeVisible();
+  // R-86: the Clients page and its form fit a phone.
+  await more.getByRole("link", { name: "Clients", exact: true }).click();
+  await page.getByRole("button", { name: "Add client" }).first().click();
+  await expect(page.getByRole("textbox", { name: "Tax or VAT ID (optional)" })).toBeVisible();
+  await fits();
+  await tabs.getByRole("button", { name: "More" }).click();
   await more.getByRole("link", { name: "Invoices", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Invoices" })).toBeVisible();
   await fits();

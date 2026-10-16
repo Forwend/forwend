@@ -22,6 +22,8 @@ type createInvoiceBody struct {
 		Name    string `json:"name"`
 		Email   string `json:"email"`
 		Address string `json:"address"`
+		Country string `json:"country"`
+		TaxID   string `json:"taxId"`
 	} `json:"client"`
 }
 
@@ -59,6 +61,8 @@ type clientJSON struct {
 	Name    *string `json:"name"`
 	Email   *string `json:"email"`
 	Address *string `json:"address"`
+	Country *string `json:"country"`
+	TaxID   *string `json:"taxId"`
 }
 
 // issuerJSON is billing details as an invoice copied them.
@@ -144,7 +148,8 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 	}
 	if withClient {
 		out.Client = &clientJSON{Name: httpio.OrNull(inv.ClientName), Email: httpio.OrNull(inv.ClientEmail),
-			Address: httpio.OrNull(inv.ClientAddress)}
+			Address: httpio.OrNull(inv.ClientAddress), Country: httpio.OrNull(inv.ClientCountry),
+			TaxID: httpio.OrNull(inv.ClientTaxID)}
 	}
 	return out
 }

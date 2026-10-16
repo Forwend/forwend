@@ -3,7 +3,7 @@
 The Go backend in `apps/backend`. Code rules: [rules.md](rules.md).
 Requirements: the task's rows in [PROJECT.md](../PROJECT.md). Whole system: [architecture.md](../architecture.md).
 
-Built: signup and profiles API, billing details, balances, activity, wallet transactions and balance history API, invoice API, invoice and receipt PDFs (`internal/document`, drawn in Go from the stored invoice), Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
+Built: signup and profiles API, billing details, saved clients, balances, activity, wallet transactions and balance history API, invoice API, invoice and receipt PDFs (`internal/document`, drawn in Go from the stored invoice), Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
 (`apps/backend/e2e`, R-23) runs the whole loop. Not built yet: refunds, webhooks, merchants.
 
 ## Processes
@@ -113,7 +113,9 @@ with a test.
 
 - `users(onboarded_at)` (set once by the first-run choice, R-50), `profiles(kind: personal|freelancer|merchant, name, idempotency_key, invoice_seq)` (one personal per user, made at
   signup without a key; other kinds once per user and key, or without a key by the first-run choice), `profile_wallets(provider, provider_wallet_id, address, chain_family)` (one per profile and family),
-  `profile_billing_details(name, address, country, tax_id, contact_email, updated_at)` (at most one per profile, editable; R-43).
+  `profile_billing_details(name, address, country, tax_id, contact_email, updated_at)` (at most one per profile, editable; R-43),
+  `clients(name, email, address, country, tax_id, updated_at)` (a profile's saved clients, editable, at most 1000 per
+  profile, counted under the profile row lock; R-86).
 - Planned (PLAN 11.1, 11.2): `merchants → stores(project_id, branding)`, `team_members(role, store scope)`.
 - `chains(chain_id, chain_family, enabled)`, `tokens(chain_id, contract, decimals, enabled)`. One confirm rule for all
   chains (D-45), so no per-chain rule columns. From `00015` on, migrations add each planned network and its token
@@ -127,7 +129,8 @@ with a test.
   separate **payment**, **settlement** and **refund** status columns, `idempotency_key` unique per profile with a
   SHA-256 `request_hash` of the create request. `number` is unique per profile, taken from `profiles.invoice_seq` by
   the insert trigger (D-50); it and the details (`title`, `note`, `due_date`, `client_name`, `client_email`,
-  `client_address`) never change. The insert trigger also copies the profile's billing details into `issuer_name`,
+  `client_address`, `client_country`, `client_tax_id`) never change. A saved client is copied into these by the
+  create request, not linked, so editing or deleting it changes no invoice (R-86). The insert trigger also copies the profile's billing details into `issuer_name`,
   `issuer_address`, `issuer_country`, `issuer_tax_id` and `issuer_email` (all null without details), which never
   change either. Payer chooses (R-56, migration 00020): each further accepted option is a row with `main_id` = the
   invoice's first row, which must share its profile, recipient, factory, expiry, settle deadline and request; it takes

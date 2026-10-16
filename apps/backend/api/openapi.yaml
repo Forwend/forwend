@@ -229,6 +229,76 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/clients:
+    get:
+      operationId: listClients
+      summary: The profile's saved clients, by name (R-86)
+      description: At most 1000 per profile, so the list comes whole.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: The saved clients
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [clients]
+                properties:
+                  clients:
+                    type: array
+                    items: { $ref: "#/components/schemas/Client" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/clients/{clientId}:
+    put:
+      operationId: putClient
+      summary: Create or replace a saved client
+      description: |
+        The caller picks the id (a lowercase UUID), so the same request sent twice saves one client: 201 when it makes
+        the client, 200 when it replaces every field. A new client is refused with 422 once the profile has 1000. An
+        invoice copies the client's details when it is made (R-86); later edits change no invoice.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/ClientId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClientRequest" }
+      responses:
+        "200":
+          description: Replaced
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Client" }
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Client" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/ClientNotFound" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+    delete:
+      operationId: deleteClient
+      summary: Delete a saved client; invoices keep their copy
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/ClientId"
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/ClientNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/invoices:
     get:
       operationId: listInvoices
@@ -637,6 +707,12 @@ components:
       required: true
       description: A profile the signed-in user owns; any other value is 403.
       schema: { type: string, format: uuid }
+    ClientId:
+      name: clientId
+      in: path
+      required: true
+      description: A saved client of this profile; a client of another profile is 404.
+      schema: { type: string, format: uuid }
     StatusFilter:
       name: status
       in: query
@@ -746,6 +822,38 @@ components:
           minLength: 1
           maxLength: 254
           description: A plain contact address like name@example.com, without a display name.
+    ClientRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      description: Lengths count characters; no NUL. Only name is required; empty means none.
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        email:
+          type: string
+          maxLength: 254
+          description: The billing email, where invoices go; a plain address like name@example.com.
+        address:
+          type: string
+          maxLength: 500
+          description: Postal address; may have line breaks.
+        country:
+          type: string
+          pattern: "^([A-Z]{2})?$"
+          description: An assigned ISO 3166-1 alpha-2 code in upper case, like DE.
+        taxId: { type: string, maxLength: 50, description: The client's tax or VAT ID. }
+    Client:
+      type: object
+      required: [clientId, name, email, address, country, taxId, updatedAt]
+      description: A saved client; a field it doesn't have is null.
+      properties:
+        clientId: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: [string, "null"] }
+        address: { type: [string, "null"] }
+        country: { type: [string, "null"], pattern: "^[A-Z]{2}$" }
+        taxId: { type: [string, "null"] }
+        updatedAt: { type: string, format: date-time }
     Issuer:
       type: object
       required: [name, address, country, taxId, email]
@@ -1043,6 +1151,11 @@ components:
               type: string
               maxLength: 500
               description: Postal address; may have line breaks.
+            country:
+              type: string
+              pattern: "^([A-Z]{2})?$"
+              description: An assigned ISO 3166-1 alpha-2 code in upper case, like DE.
+            taxId: { type: string, maxLength: 50, description: The client's tax or VAT ID; shown on the invoice PDF. }
     Invoices:
       type: object
       required: [items, nextCursor]
@@ -1181,12 +1294,14 @@ components:
           description: The creator's https link for the payer once paid. In every response, the public GET too.
         client:
           type: object
-          required: [name, email, address]
+          required: [name, email, address, country, taxId]
           description: Only in the owner's responses (create, list and the profile's GET); the public GET leaves it out.
           properties:
             name: { type: [string, "null"] }
             email: { type: [string, "null"] }
             address: { type: [string, "null"] }
+            country: { type: [string, "null"] }
+            taxId: { type: [string, "null"] }
         issuer:
           description: |
             The profile's billing details as they were when the invoice was made; null when it had none. Editing the
@@ -1272,8 +1387,8 @@ components:
             code:
               type: string
               enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found,
-                billing_details_not_found, idempotency_conflict, invoice_not_paid, invoice_not_cancelable, receipt_sent,
-                invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
+                billing_details_not_found, client_not_found, idempotency_conflict, invoice_not_paid, invoice_not_cancelable,
+                receipt_sent, invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
   responses:
     MalformedRequest:
@@ -1312,6 +1427,11 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     InvoiceNotFound:
       description: No invoice with this id (invoice_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ClientNotFound:
+      description: The profile has no client with this id (client_not_found)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

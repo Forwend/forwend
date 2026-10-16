@@ -1,3 +1,4 @@
+import { CLIENT_LIMITS } from "@/features/clients/constants/clients";
 import type { ExpiryChoice } from "@/features/invoices/types/invoices";
 
 export const INVOICES_PAGE_SIZE = 20;
@@ -40,9 +41,10 @@ export const RESTART_PARAMS = { from: "from", rest: "rest" } as const;
 export const INVOICE_LIMITS = {
   title: 200,
   note: 2000,
-  clientName: 200,
-  clientEmail: 254,
-  clientAddress: 500,
+  clientName: CLIENT_LIMITS.name,
+  clientEmail: CLIENT_LIMITS.email,
+  clientAddress: CLIENT_LIMITS.address,
+  clientTaxId: CLIENT_LIMITS.taxId,
   senderName: 100,
   returnUrl: 2000,
 } as const;
@@ -56,6 +58,8 @@ export const INVOICE_FIELDS = {
   clientName: "client.name",
   clientEmail: "client.email",
   clientAddress: "client.address",
+  clientCountry: "client.country",
+  clientTaxId: "client.taxId",
   senderName: "senderName",
   amountUsd: "amountUsd",
   expiresIn: "expiresIn",
