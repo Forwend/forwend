@@ -10,8 +10,13 @@ Solidity invoice receivers v1: a factory and one receiver clone per invoice (Fou
 - `node script/rpc.mjs <chain>` prints a working RPC (Infura keys, then public RPCs).
 - Keys only in `packages/contracts/.env` (names in `.env.example`); scripts load it. Never print or commit one.
 
-## Read before writing code
+## What to read
 
-- [docs/contracts/rules.md](../../docs/contracts/rules.md): every binding rule, each with a test.
-- [docs/contracts/architecture.md](../../docs/contracts/architecture.md): parts and why.
-- [docs/contracts/operations.md](../../docs/contracts/operations.md): Safe setup and deploys.
+Always: [docs/contracts/rules.md](../../docs/contracts/rules.md): every binding rule, each with a test.
+
+Then only the rows that match the task:
+
+| The task touches | Read |
+|---|---|
+| How the parts fit, or why they are built this way | [docs/contracts/architecture.md](../../docs/contracts/architecture.md): parts and why |
+| The Safe, deploys, keys, chains | [docs/contracts/operations.md](../../docs/contracts/operations.md): Safe setup and deploys |

@@ -1,0 +1,108 @@
+{
+  "id": "F220",
+  "type": "feat",
+  "behavior": "A freelancer or merchant profile needs billing details before its first invoice, so the payer always sees who bills them",
+  "acceptance": [
+    "Creating an invoice for a freelancer or merchant profile without billing details is 409 billing_details_required, so every business invoice carries an issuer (name, address, country, email); a personal profile's request still needs none and names its sender (D-52).",
+    "New invoice on a freelancer or merchant profile without billing details shows, in place of the form, that the invoice needs them and an Add billing details button; saving them there returns to New invoice with the form.",
+    "axe 0 and no sideways scroll at 390 px on the prompt; the mocked app and the live e2e profiles carry billing details."
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "e2e"
+  ],
+  "refs": [
+    "R-92",
+    "R-43",
+    "D-83",
+    "D-52"
+  ],
+  "keep": [],
+  "review": true,
+  "notes": [
+    "2026-10-17 review pass by reviewer: PASS. Backend: create.go reads kind and billing-details EXISTS in the same SELECT ... FOR UPDATE inside the create transaction, after the idempotency replay, so a replay of an existing invoice still returns it; a refused create returns before any insert and the tx rolls back (TestBusinessInvoiceNeedsBillingDetails proves the same key later makes number 1). Race free: no DELETE of profile_billing_details anywhere, profile kind never changes, profiles are never deleted, and the insert trigger runs with a later snapshot. 409 billing_details_required is in httpio/errors.go, the openapi enum and createInvoice 409 (CreateInvoiceConflict), and api.md. Personal requests still work without details (tested). Only one API caller and one web caller create invoices; invoice, settlement, httpapi and backend e2e gate setups gained details; load_test uses personal profiles and direct SQL. Rewritten tests still test their claims; TestCreateInvoiceRefusesUnsettleableTerms still reaches buildTerms. Web: prompt, skeleton while billing loads, form on GET error (API still checks); ?then= maps only to newInvoice or home, Cancel uses the same next; mock and live helper correct. Old business invoices with no issuer still render. Checks I ran: go test ./internal/... all ok, go vet ./... ok, vitest 87 passed, typecheck ok, biome ok. Minor notes, not blocking: (1) new-invoice-screen.tsx:82 the prompt link drops ?from=, so Duplicate (R-91) or a closed invoice's next step on a profile without details lands on an empty form after saving; (2) pay-invoice.tsx:242 labels any invoice without issuer as Request, so a business invoice made before R-92 reads Request INV-000N (legacy only, pre-existing); (3) create.go:66 hardcodes 'personal' though profile.Personal exists and invoice already imports profile; (4) TestInvoicePDF no longer covers a PDF with neither issuer nor sender (no FROM block), yet its doc comment at invoices_pdf_test.go:119 still claims it; (5) if the billing GET fails the form shows and a 409 becomes the generic 'We could not create the invoice. Try again.'; (6) billing-details-form.tsx:30 prop comment only says what the prop does; sample-api.ts billing is typed object; (7) pre-existing, not this task: list_search_test.go:109 posts to the walletless profile, which has no wallet, so that other-profile invoice is never made."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-17T16:36:00Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 67.6,
+        "log": "docs/runs/F220-20261017T163600Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 223.4,
+        "log": "docs/runs/F220-20261017T163600Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.6,
+        "log": "docs/runs/F220-20261017T163600Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F220-20261017T163600Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F220-20261017T163600Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.2,
+        "log": "docs/runs/F220-20261017T163600Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 5.4,
+        "log": "docs/runs/F220-20261017T163600Z-build.log"
+      }
+    ],
+    "taskHash": "5ff424a8780c5a4e",
+    "filesHash": "3d2e3d5bcf11999b",
+    "proof": {
+      "1": "unit: httpapi TestBusinessInvoiceNeedsBillingDetails: a merchant with a wallet and no billing details gets 409 billing_details_required, and after saving them the same key makes INV-0001 with an issuer (the refused one stored nothing); a personal profile's request is 201 with no issuer and its sender name; TestInvoicePDF prints the request's sender as not checked; invoice, settlement and API test profiles carry billing details",
+      "2": "e2e: navigation 'New invoice asks for billing details first, then comes back to the form' shows the empty state with Add billing details and no Create invoice, saves the details on /app/billing-details?then=new-invoice and lands back on New invoice with the form; the live invoices helper does the same for the shared merchant profile before its first invoice",
+      "3": "e2e: the same navigation test finds no sideways scroll at 390 px and no blocking axe violations on the prompt; sample-api serves billing details for the mocked merchant (null for that test); the live E2E shop profile saved them through the form"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "PASS. Backend: create.go reads kind and billing-details EXISTS in the same SELECT ... FOR UPDATE inside the create transaction, after the idempotency replay, so a replay of an existing invoice still returns it; a refused create returns before any insert and the tx rolls back (TestBusinessInvoiceNeedsBillingDetails proves the same key later makes number 1). Race free: no DELETE of profile_billing_details anywhere, profile kind never changes, profiles are never deleted, and the insert trigger runs with a later snapshot. 409 billing_details_required is in httpio/errors.go, the openapi enum and createInvoice 409 (CreateInvoiceConflict), and api.md. Personal requests still work without details (tested). Only one API caller and one web caller create invoices; invoice, settlement, httpapi and backend e2e gate setups gained details; load_test uses personal profiles and direct SQL. Rewritten tests still test their claims; TestCreateInvoiceRefusesUnsettleableTerms still reaches buildTerms. Web: prompt, skeleton while billing loads, form on GET error (API still checks); ?then= maps only to newInvoice or home, Cancel uses the same next; mock and live helper correct. Old business invoices with no issuer still render. Checks I ran: go test ./internal/... all ok, go vet ./... ok, vitest 87 passed, typecheck ok, biome ok. Minor notes, not blocking: (1) new-invoice-screen.tsx:82 the prompt link drops ?from=, so Duplicate (R-91) or a closed invoice's next step on a profile without details lands on an empty form after saving; (2) pay-invoice.tsx:242 labels any invoice without issuer as Request, so a business invoice made before R-92 reads Request INV-000N (legacy only, pre-existing); (3) create.go:66 hardcodes 'personal' though profile.Personal exists and invoice already imports profile; (4) TestInvoicePDF no longer covers a PDF with neither issuer nor sender (no FROM block), yet its doc comment at invoices_pdf_test.go:119 still claims it; (5) if the billing GET fails the form shows and a 409 becomes the generic 'We could not create the invoice. Try again.'; (6) billing-details-form.tsx:30 prop comment only says what the prop does; sample-api.ts billing is typed object; (7) pre-existing, not this task: list_search_test.go:109 posts to the walletless profile, which has no wallet, so that other-profile invoice is never made.",
+      "at": "2026-10-17T16:46:58Z",
+      "filesHash": "3d2e3d5bcf11999b"
+    },
+    "commit": "62f80e1",
+    "doneAt": "2026-10-17T16:47:25Z"
+  },
+  "branch": "feat/f220-a-freelancer-or-merchant-profile-needs-b",
+  "baseCommit": "34b988c24761a73c61a652c214de203ce2daa790",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f220-a-freelancer-or-merchant-profile-needs-b",
+    "base": "main"
+  }
+}

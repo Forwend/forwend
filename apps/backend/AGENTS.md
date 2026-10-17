@@ -24,9 +24,14 @@ A paid invoice's money waits in its receive contract, shown as "on its way", unt
 profile wallet. Locally that needs `EXECUTOR_PRIVATE_KEY` in `.env`: a funded executor key on the testnet (see
 [money-safety.md](../../docs/backend/money-safety.md)).
 
-## Read before writing code
+## What to read
 
-- [docs/backend/rules.md](../../docs/backend/rules.md): layout, naming, code, tests.
-- [docs/backend/api.md](../../docs/backend/api.md): routes, JSON, errors, auth, idempotency.
-- [docs/backend/money-safety.md](../../docs/backend/money-safety.md): invoices, watcher, signer, checkout.
-- [docs/backend/architecture.md](../../docs/backend/architecture.md): processes, data model, state machine.
+Always: [docs/backend/rules.md](../../docs/backend/rules.md): layout, naming, code, tests.
+
+Then only the rows that match the task:
+
+| The task touches | Read |
+|---|---|
+| Any API route: JSON, errors, auth, idempotency, rate limits, first run, emails and notifications, billing details, clients, invoices, PDFs, wallet transactions | [docs/backend/api.md](../../docs/backend/api.md) |
+| Receive addresses, deciding "paid", checkout, the canary, accepted risks; any invoice, watcher or signer change | [docs/backend/money-safety.md](../../docs/backend/money-safety.md) |
+| Processes, startup, scaling, the load test, the data model, Privy wallets and signup, RPC pools, the watcher, the signer, invoice states | [docs/backend/architecture.md](../../docs/backend/architecture.md): the sections its index names |

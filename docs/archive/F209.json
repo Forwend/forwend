@@ -1,0 +1,109 @@
+{
+  "id": "F209",
+  "type": "feat",
+  "behavior": "A profile keeps saved clients (name, billing email, address, country, tax/VAT ID), and a new invoice picks one and keeps a copy of its details (PLAN 10.1)",
+  "acceptance": [
+    "The api saves, lists and deletes a profile's clients: PUT to a client id saves one client per id (201 then 200), at most 1000 per profile, the invoice client rules apply, another user gets 403 and another profile's client id 404",
+    "An invoice stores the client's country and tax ID as part of its never-changing details; editing or deleting a saved client leaves the invoice as it was; the owner's invoice page and the invoice PDF show them, the PDF never the email",
+    "The Clients page (freelancer and merchant) adds, edits and deletes clients; the new invoice form fills the client from a saved client and sends its details; axe finds 0 serious or critical violations and a 390 px phone has no sideways scroll"
+  ],
+  "dependsOn": [
+    "F210"
+  ],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "e2e"
+  ],
+  "refs": [
+    "R-86",
+    "R-42",
+    "R-43"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [
+    "2026-10-16 review pass by reviewer: Independent review: ownership SQL, immutability trigger and view (Up and Down), idempotency hash and PDF privacy correct. Fixed after review: cap race (profile row lock plus a deterministic in-flight test), client_not_found in the spec's error codes, client routes in the cross-user test, web and backend architecture docs, duplicate limits and dead copy, picker clearing unrelated errors, phone width check. Left as nits: duplicate 422 message parser, generic message at the 1000-client cap, second Intl.DisplayNames constant."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-16T21:26:04Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 67.9,
+        "log": "docs/runs/F209-20261016T212604Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 182.3,
+        "log": "docs/runs/F209-20261016T212604Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.1,
+        "log": "docs/runs/F209-20261016T212604Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F209-20261016T212604Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F209-20261016T212604Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F209-20261016T212604Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.6,
+        "log": "docs/runs/F209-20261016T212604Z-build.log"
+      }
+    ],
+    "taskHash": "6b319be1d0aed78b",
+    "filesHash": "73d63854bd9899f2",
+    "proof": {
+      "1": "unit: TestClients (PUT 201 then 200 per id, list by name, 422 rules, 1001st client 422 while editing works, Bob 403, another profile's client id 404, DELETE 204 then 404); TestProfilesBelongToTheirUser now covers the three client routes; TestSaveClientCapCountsASaveInFlight proves a save waits for one in flight and the cap holds (fails without the profile lock)",
+      "2": "unit: TestInvoiceNumbers rejects updates to client_country and client_tax_id; TestCreateInvoiceStoresDetails stores and returns country and taxId, and a changed country or tax ID is an idempotency conflict; TestInvoicePDF prints 'BILL TO Bob Ltd Main St 1 Berlin DE Tax ID DE999999999' and never the email; TestClients finds the invoice's copy unchanged after its client is edited and deleted",
+      "3": "e2e: invoices.spec merchant test saves a client (axe 0), picks it on New invoice, the invoice page shows Germany and the tax ID and keeps them after the client is deleted; the phone test opens Clients and its form with sidewaysScroll <= 0; new-invoice-form.test sends the saved client's details"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Independent review: ownership SQL, immutability trigger and view (Up and Down), idempotency hash and PDF privacy correct. Fixed after review: cap race (profile row lock plus a deterministic in-flight test), client_not_found in the spec's error codes, client routes in the cross-user test, web and backend architecture docs, duplicate limits and dead copy, picker clearing unrelated errors, phone width check. Left as nits: duplicate 422 message parser, generic message at the 1000-client cap, second Intl.DisplayNames constant.",
+      "at": "2026-10-16T21:30:28Z",
+      "filesHash": "73d63854bd9899f2"
+    },
+    "commit": "0f23878",
+    "doneAt": "2026-10-16T21:30:31Z"
+  },
+  "branch": "feat/f209-a-freelancer-saves-clients-name-email-co",
+  "baseCommit": "4321f9f62b478e47562c215ca9e72007802f060c",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f209-a-freelancer-saves-clients-name-email-co",
+    "base": "main"
+  }
+}

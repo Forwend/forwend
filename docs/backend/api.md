@@ -191,15 +191,15 @@ R-19 and R-42; the full schema is in openapi.yaml.
   terms shown are the first option's; the option whose money came first on chain becomes the invoice's for good
   (`chosen_id`), and money on any other is booked to `payer_held`. A GET with an option's id answers its invoice.
   Lists, activity and search show each invoice once, with the current option (`invoices_current` view).
-- The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due and supply dates, `reference`,
-  `lines`, `agreedValue`, `senderName` and `issuer` (who bills them; the issuer's own business details) but no `client`:
-  the id is a bearer link, so it returns only what the payer needs (OWASP API Security Top 10 2023, API3). Create, list
-  and the profile's GET, which only the owner calls, include `client`.
+- The public `GET /v1/invoices/{invoiceId}` has no `client`: the id is a bearer link, so it returns only what the payer
+  needs (OWASP API Security Top 10 2023, API3). What it returns is listed once, in `getInvoice` in openapi.yaml. Create,
+  list and the profile's GET, which only the owner calls, include `client`.
 
 ## Invoice and receipt PDFs
 
-R-47 and D-51; the full description is in openapi.yaml. Both are public like `GET /v1/invoices/{invoiceId}` and
-answer 404 `invoice_not_found` the same way.
+R-47 and D-51. This section has the full layout. `getInvoicePdf` and `getReceiptPdf` in openapi.yaml also list what each
+PDF prints, so a change updates both. Both are public like `GET /v1/invoices/{invoiceId}` and answer 404
+`invoice_not_found` the same way.
 
 - `internal/document` draws them with `codeberg.org/go-pdf/fpdf` in a fixed layout, from `invoice.Get` only: no
   templates, network or file reads. The font is Noto Sans, embedded (`internal/document/fonts`, SIL OFL 1.1). Long
