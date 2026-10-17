@@ -38,6 +38,9 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 	if inv.Options, err = s.options(ctx, inv.ID); err != nil {
 		return Invoice{}, err
 	}
+	if inv.Lines, err = s.lines(ctx, inv.ID); err != nil {
+		return Invoice{}, err
+	}
 	// The last deposit that booked money to the creator is the one that completed the amount: later ones are held.
 	var paidAt *int64
 	var settledAt *time.Time
@@ -192,5 +195,22 @@ func (s *Service) options(ctx context.Context, id string) ([]Option, error) {
 		err := row.Scan(&o.ID, &o.ChainID, &o.Token, &o.Symbol, &o.Decimals, &o.Network, &amount, &o.ReceiveAddress)
 		o.Amount, _ = new(big.Int).SetString(amount, 10)
 		return o, err
+	})
+}
+
+// lines reads the invoice's line items in order (R-88); none when it has no breakdown.
+func (s *Service) lines(ctx context.Context, id string) ([]Line, error) {
+	rows, err := s.pool.Query(ctx, `SELECT description, quantity::text, unit_price::text, amount::text
+		FROM invoice_lines WHERE invoice_id = $1 ORDER BY position`, id)
+	if err != nil {
+		return nil, fmt.Errorf("read invoice %s lines: %w", id, err)
+	}
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Line, error) {
+		var l Line
+		var unitPrice, amount string
+		err := row.Scan(&l.Description, &l.Quantity, &unitPrice, &amount)
+		l.UnitPrice, _ = new(big.Int).SetString(unitPrice, 10)
+		l.Amount, _ = new(big.Int).SetString(amount, 10)
+		return l, err
 	})
 }

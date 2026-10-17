@@ -9,6 +9,7 @@ import type {
   INVOICE_FIELDS,
   INVOICE_PDFS,
   INVOICE_STEPS,
+  LINE_ERRORS,
   PAY_WITH,
   SETTLEMENT_WAITS,
 } from "@/features/invoices/constants/invoices";
@@ -18,6 +19,7 @@ import type {
   invoiceClientSchema,
   invoiceEventSchema,
   invoiceIssuerSchema,
+  invoiceLineSchema,
   invoiceOptionSchema,
   invoiceSchema,
   invoiceSummarySchema,
@@ -57,6 +59,20 @@ export type InvoicePdf = (typeof INVOICE_PDFS)[keyof typeof INVOICE_PDFS];
 export type InvoiceToken = Pick<TokenBalance, "chainId" | "token" | "symbol" | "decimals">;
 
 export type InvoiceClient = z.infer<typeof invoiceClientSchema>;
+
+export type InvoiceLine = z.infer<typeof invoiceLineSchema>;
+
+/** A line item as the form holds it (R-88): the text typed in its fields. */
+export interface LineDraft {
+  id: string;
+  description: string;
+  quantity: string;
+  price: string;
+}
+
+export type LineField = Exclude<keyof LineDraft, "id">;
+
+export type LineError = (typeof LINE_ERRORS)[keyof typeof LINE_ERRORS];
 
 export type InvoiceIssuer = z.infer<typeof invoiceIssuerSchema>;
 

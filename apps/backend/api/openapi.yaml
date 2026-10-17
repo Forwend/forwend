@@ -1096,6 +1096,25 @@ components:
       additionalProperties: false
       description: Either chainId, token and amount (fixed), or amountUsd alone (payer chooses).
       properties:
+        lines:
+          type: array
+          maxItems: 50
+          description: |
+            Optional line items (R-88) that add up exactly to amount or amountUsd, else 422. unitPrice is in the
+            amount's own unit: base units with amount, a USD decimal with amountUsd; each unitPrice and each
+            quantity times it must be a whole number of the token's smallest unit. Part of the idempotency hash
+            ("7.5" and "7.50" are the same quantity).
+          items:
+            type: object
+            additionalProperties: false
+            required: [description, quantity, unitPrice]
+            properties:
+              description: { type: string, minLength: 1, maxLength: 200 }
+              quantity:
+                type: string
+                pattern: "^[0-9]{1,7}(\\.[0-9]{1,2})?$"
+                description: Above 0 and at most 1000000, with up to 2 decimals.
+              unitPrice: { type: string }
         amountUsd:
           type: string
           pattern: "^[0-9]{1,60}(\\.[0-9]{1,18})?$"
@@ -1171,7 +1190,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/InvoiceSummary"
         - type: object
-          required: [paidAt, settledAt, deposits, options, nextCheckAt]
+          required: [paidAt, settledAt, deposits, options, nextCheckAt, lines]
           properties:
             paidAt:
               type: [string, "null"]
@@ -1199,6 +1218,19 @@ components:
               type: [string, "null"]
               format: date-time
               description: When Check status may run again (R-55); null when it may now.
+            lines:
+              type: array
+              description: |
+                The invoice's line items in order (R-88), empty without a breakdown. Money is in the base units of the
+                option whose optionId is the invoiceId; quantity has 2 decimals ("7.50").
+              items:
+                type: object
+                required: [description, quantity, unitPrice, amount]
+                properties:
+                  description: { type: string }
+                  quantity: { type: string }
+                  unitPrice: { $ref: "#/components/schemas/Uint256" }
+                  amount: { $ref: "#/components/schemas/Uint256" }
             options:
               type: array
               description: |

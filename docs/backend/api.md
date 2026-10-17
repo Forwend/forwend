@@ -131,6 +131,13 @@ R-19 and R-42; the full schema is in openapi.yaml.
   `country` and `taxId` are part of the idempotency hash only when set). Empty means none and is
   returned as null. Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken rule is
   422 `invalid_value`; these fields are part of the idempotency hash.
+- Optional `lines` (R-88, at most 50): `{ description ≤ 200, quantity, unitPrice }`, adding up exactly to `amount` or
+  `amountUsd`. `unitPrice` is in the amount's own unit (base units with `amount`, a USD decimal with `amountUsd`);
+  `quantity` is above 0 and at most 1,000,000 with up to 2 decimals, and each unit price and each quantity times it
+  must be a whole number of the token's smallest unit. A broken rule is 422 `invalid_value`. They are part of the
+  idempotency hash. Reads return them as `lines` in the base units of the option whose `optionId` is the `invoiceId`
+  (the invoice's first option), `quantity` with 2 decimals; Postgres refuses a changed, removed or later line and lines
+  that do not add up to the invoice's amount at commit.
 - The number, these fields and `issuer` never change, like the terms: a database trigger rejects any update.
 - `settlementTxHash` is the signer's settle transaction once the invoice is settled; null before, and when the refund
   authority settled the receiver outside the signer. The activity's invoice items carry it as `txHash`. They also carry `optionCount`: above 1 the client chooses, so

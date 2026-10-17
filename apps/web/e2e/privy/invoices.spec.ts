@@ -370,8 +370,16 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
     await fits();
     choosing = (await page.getByRole("radio", { name: "Client chooses" }).count()) > 0;
     if (choosing) await expect(page.getByRole("radio", { name: "Client chooses" })).toBeChecked();
-    await page.getByRole("textbox", { name: choosing ? "Amount in USD" : "Amount" }).fill("1");
+    await page.getByRole("textbox", { name: choosing ? "Amount in USD" : "Amount" }).fill("0.5");
+    // R-88: the typed amount becomes the first item's price, and the items' total the amount.
+    await page.getByRole("button", { name: "Add item" }).click();
+    await page.getByRole("textbox", { name: "Item 1", exact: true }).fill("E2E logo");
+    await page.getByRole("textbox", { name: "Qty" }).fill("2");
+    await expect(page.getByText("Total", { exact: true }).locator("..")).toHaveText(
+      choosing ? "Total1.00 USD" : "Total1.00 USDC",
+    );
     await page.getByRole("textbox", { name: "Name", exact: true }).fill("E2E phone client");
+    await fits();
     expect(await blockingViolations(page)).toEqual([]);
   });
   if (invoice) {
@@ -382,6 +390,9 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
       expect(invoice.options.length).toBeGreaterThan(1);
       await expect(amount).toContainText(`The client picks one of ${invoice.options.length}`);
     }
+    await expect(page.getByRole("region", { name: "Items" })).toContainText(
+      choosing ? "E2E logo2 × 0.50 USD1.00 USD" : "E2E logo2 × 0.50 USDC1.00 USDC",
+    );
     await fits();
     expect(await blockingViolations(page)).toEqual([]);
     await page.getByRole("link", { name: "Invoices" }).click();

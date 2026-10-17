@@ -37,6 +37,7 @@ const OPEN = {
   senderName: null as string | null,
   returnUrl: null as string | null,
   nextCheckAt: null,
+  lines: [],
   options: [MAIN_OPTION],
   number: 1,
   title: "Logo design",

@@ -23,7 +23,13 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, err)
 			return
 		}
+		lines := make([]invoice.LineRequest, 0, len(body.Lines))
+		for _, l := range body.Lines {
+			lines = append(lines, invoice.LineRequest{Description: l.Description, Quantity: l.Quantity,
+				UnitPrice: l.UnitPrice})
+		}
 		inv, created, err := invoices.Create(r.Context(), r.PathValue("profileId"), key, invoice.Request{
+			Lines:   lines,
 			ChainID: body.ChainID, Token: body.Token, Amount: body.Amount, AmountUSD: body.AmountUSD,
 			ExpiresInSeconds: body.ExpiresIn,
 			Details: invoice.Details{Title: body.Title, Note: body.Note, DueDate: body.DueDate,

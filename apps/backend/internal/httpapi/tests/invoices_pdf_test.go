@@ -358,3 +358,24 @@ func qrDrawn(t *testing.T, pdf []byte) bool {
 		}
 	}
 }
+
+// R-88: an invoice with lines lists each with its quantity and unit price under the title, then the total.
+func TestInvoicePDFLines(t *testing.T) {
+	e := invoiceAPI(t)
+	made := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", `{"chainId": 84532, "token": "`+usdc+`",
+		"amount": "5000000", "title": "Website", "lines": [
+		{"description": "Design", "quantity": "7.5", "unitPrice": "500000"},
+		{"description": "Hosting", "quantity": "1", "unitPrice": "1250000"}]}`).body
+	r := e.pdf(t, made["invoiceId"].(string), "invoice.pdf", "")
+	mustContain(t, pdfText(t, r.body), "Website\nDescription\nNetwork\nAmount\nDesign\n7.5 × 0.50 USDC\nBase Sepolia\n"+
+		"Chain 84532\n3.75 USDC\nHosting\n1 × 1.25 USDC\n1.25 USDC\nTotal due\n5.00 USDC")
+
+	// The longest description the API takes prints whole, even in its widest letters.
+	long := strings.Repeat("WWWWWWWWWWWWW ", 15)[:200]
+	made = e.post(t, "did:privy:alice", e.aliceProfile, "key-2", `{"chainId": 84532, "token": "`+usdc+`",
+		"amount": "5000000", "lines": [{"description": "`+long+`", "quantity": "1", "unitPrice": "5000000"}]}`).body
+	if text := pdfText(t, e.pdf(t, made["invoiceId"].(string), "invoice.pdf", "").body); strings.Contains(text, "…") ||
+		strings.Count(text, "W") != strings.Count(long, "W") {
+		t.Fatalf("a 200-character description is cut:\n%s", text)
+	}
+}

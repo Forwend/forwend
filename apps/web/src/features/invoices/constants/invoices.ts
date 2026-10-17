@@ -67,12 +67,24 @@ export const INVOICE_FIELDS = {
   amountUsd: "amountUsd",
   expiresIn: "expiresIn",
   returnUrl: "returnUrl",
+  // The API's word on the lines as a whole (R-88).
+  lines: "lines",
 } as const;
 
 export const AMOUNT_ERRORS = {
   format: "format",
   decimals: "decimals",
   zero: "zero",
+} as const;
+
+/** R-88: the API's line item limits, and what can be wrong with one line as typed. */
+export const LINE_LIMITS = { count: 50, description: 200, quantityMax: 1_000_000 } as const;
+export const LINE_ERRORS = {
+  description: "description",
+  quantity: "quantity",
+  price: "price",
+  // Quantity times price is not a whole number of the token's smallest unit.
+  exact: "exact",
 } as const;
 
 export const INVOICE_STEPS = {

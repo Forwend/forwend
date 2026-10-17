@@ -19,20 +19,23 @@ type accepted struct {
 	chainID       uint64
 	family, token string
 	amount        *big.Int
+	// scale is the decimals that turn the request's amounts into this token's base units: 0 for a fixed invoice, whose
+	// amounts are base units already; the token's decimals for payer chooses, whose amounts are USD (D-75).
+	scale int
 }
 
 // Create makes the invoice once per (profile, idempotency key). created is false when the same request was already
 // made: the stored invoice is returned. The caller has checked that the user owns the profile.
 func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, r Request) (inv Invoice, created bool, err error) {
-	token, amount, usd, expiresIn, err := r.normalize()
+	token, amount, usd, lines, expiresIn, err := r.normalize()
 	if err != nil {
 		return Invoice{}, false, err
 	}
 	var hash []byte
 	if usd != nil {
-		hash = requestHash(0, "usd", usd, expiresIn, r.Details)
+		hash = requestHash(0, "usd", usd, expiresIn, r.Details, lines)
 	} else {
-		hash = requestHash(r.ChainID, token, amount, expiresIn, r.Details)
+		hash = requestHash(r.ChainID, token, amount, expiresIn, r.Details, lines)
 	}
 	if inv, err := s.replay(ctx, profileID, idempotencyKey, hash); !errors.Is(err, ErrNotFound) {
 		return inv, false, err
@@ -121,6 +124,20 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 			*mainID = hexID(id)
 		}
 	}
+	// Lines are kept in the main option's base units, which its amount converted to exactly; the database checks they
+	// add up to it when the transaction commits (migration 00030).
+	for i, l := range lines {
+		unitPrice := usdUnits(l.price, options[0].scale)
+		amount := usdUnits(new(big.Rat).Mul(l.quantity, l.price), options[0].scale)
+		if unitPrice == nil || amount == nil {
+			return Invoice{}, false, fmt.Errorf("%w: lines need prices the token's decimals can hold", ErrInvalid)
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO invoice_lines (invoice_id, position, description, quantity, unit_price,
+			amount) VALUES ($1, $2, $3, $4, $5, $6)`, *mainID, i+1, l.description, l.quantity.FloatString(2),
+			unitPrice.String(), amount.String()); err != nil {
+			return Invoice{}, false, fmt.Errorf("insert invoice line: %w", err)
+		}
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return Invoice{}, false, fmt.Errorf("insert invoice: %w", err)
 	}
@@ -147,7 +164,7 @@ func (s *Service) accepted(ctx context.Context, chainID uint64, token string, am
 		if !watched {
 			return nil, ErrNotWatched
 		}
-		return []accepted{{chainID, family, token, amount}}, nil
+		return []accepted{{chainID: chainID, family: family, token: token, amount: amount}}, nil
 	}
 	// A chain the worker has not scanned yet is left out: a payment there before its first scan would never be seen
 	// (SEC-02). Only EVM chains for now: one recipient wallet serves them all.
@@ -169,6 +186,7 @@ func (s *Service) accepted(ctx context.Context, chainID uint64, token string, am
 		if err := rows.Scan(&a.chainID, &a.family, &a.token, &symbol, &decimals); err != nil {
 			return nil, fmt.Errorf("read enabled tokens: %w", err)
 		}
+		a.scale = decimals
 		if a.amount = usdUnits(usd, decimals); a.amount == nil {
 			return nil, fmt.Errorf("%w: amountUsd has more decimals than %s (%d) can hold", ErrInvalid, symbol, decimals)
 		}

@@ -19,6 +19,7 @@ import { CheckStatus } from "@/features/invoices/components/check-status";
 import { InvoiceActions } from "@/features/invoices/components/invoice-actions";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { InvoiceDeposits } from "@/features/invoices/components/invoice-deposits";
+import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
 import {
   INVOICE_EXCEPTIONS,
@@ -143,6 +144,8 @@ function Loaded({
     tokens?.find((t) => tokenKey(t) === tokenKey(invoice)) ??
     invoice.options.find((o) => o.optionId === invoice.optionId);
   const amount = BigInt(invoice.amount);
+  // Lines are in the base units of the invoice's own option, whichever option the payer locked (R-88).
+  const main = invoice.options.find((o) => o.optionId === invoice.invoiceId);
   const client = mine?.client;
   const issuer = invoice.issuer;
   // The checkout closes at expiry by the local clock (pay link, Checkout closed in Details); the status follows the
@@ -220,93 +223,103 @@ function Loaded({
 
       {/* minmax(0, 1fr): a long value never widens the column past the screen. */}
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]">
-        <section aria-labelledby="invoice-amount" className={PANEL}>
-          <div className="flex flex-col gap-3 border-b border-line px-4 py-4 sm:px-5">
-            <h2 id="invoice-amount" className="text-sm text-muted">
-              {COPY.amount}
-            </h2>
-            <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-              {token ? (
-                <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-ink">
-                  <span className="text-3xl font-semibold tracking-tight break-all sm:text-4xl">
-                    {formatTokenAmount({
-                      baseUnits: amount,
-                      decimals: token.decimals,
-                      fractionDigits: exactDigits(amount, token.decimals),
-                    })}
-                  </span>{" "}
-                  <span className="text-lg font-medium text-muted">
-                    {choosing ? MONEY_COPY.usd : token.symbol}
-                  </span>
-                </p>
-              ) : (
-                <p className="min-w-0 text-ink">
-                  <InvoiceAmount invoice={invoice} tokens={tokens} />
-                </p>
-              )}
-              {received > 0n && received < amount && token ? (
-                <p className="w-full text-sm text-muted sm:order-last">
-                  {COPY.receivedOf(money(received), money(amount))}
-                </p>
-              ) : null}
-              {choosing ? (
-                <p className="text-sm text-muted">{COPY.clientChooses(invoice.options.length)}</p>
-              ) : token ? (
-                <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
+        <div className="flex min-w-0 flex-col gap-4">
+          <section aria-labelledby="invoice-amount" className={PANEL}>
+            <div className="flex flex-col gap-3 border-b border-line px-4 py-4 sm:px-5">
+              <h2 id="invoice-amount" className="text-sm text-muted">
+                {COPY.amount}
+              </h2>
+              <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+                {token ? (
+                  <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-ink">
+                    <span className="text-3xl font-semibold tracking-tight break-all sm:text-4xl">
+                      {formatTokenAmount({
+                        baseUnits: amount,
+                        decimals: token.decimals,
+                        fractionDigits: exactDigits(amount, token.decimals),
+                      })}
+                    </span>{" "}
+                    <span className="text-lg font-medium text-muted">
+                      {choosing ? MONEY_COPY.usd : token.symbol}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="min-w-0 text-ink">
+                    <InvoiceAmount invoice={invoice} tokens={tokens} />
+                  </p>
+                )}
+                {received > 0n && received < amount && token ? (
+                  <p className="w-full text-sm text-muted sm:order-last">
+                    {COPY.receivedOf(money(received), money(amount))}
+                  </p>
+                ) : null}
+                {choosing ? (
+                  <p className="text-sm text-muted">{COPY.clientChooses(invoice.options.length)}</p>
+                ) : token ? (
+                  <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
+                ) : null}
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 px-4 py-5 sm:px-5">
+              <InvoiceTimeline invoice={invoice} label={COPY.progress} />
+              <p role="status" className="text-sm text-ink empty:sr-only">
+                {current === INVOICE_STEPS.confirming ? (
+                  <ConfirmingStatus blocks={blocksLeft} total={blocksTotal} seconds={secondsLeft} />
+                ) : // The timeline says the state; this line says only why money still waits.
+                wait ? (
+                  COPY.settling[wait.kind](
+                    chainName(invoice.chainId),
+                    wait.secondsLeft ?? 0,
+                    wait.until ? CLOCK.format(new Date(wait.until)) : "",
+                  )
+                ) : null}
+              </p>
+              <InvoiceDeposits
+                invoice={invoice}
+                token={token ?? null}
+                // The invoice's amount goes to the wallet; anything above it stays held for the payer (D-26).
+                settlement={
+                  invoice.settlementTxHash
+                    ? {
+                        txHash: invoice.settlementTxHash,
+                        to: invoice.recipient,
+                        amount,
+                        at: invoice.settledAt,
+                      }
+                    : null
+                }
+              />
+              {/* Money sent to an option the client did not end up paying with is the payer's (D-76). */}
+              {invoice.options
+                .filter((o) => o.optionId !== invoice.optionId)
+                .map((o) => (
+                  <InvoiceDeposits
+                    key={o.optionId}
+                    invoice={o}
+                    token={o}
+                    title={COPY.heldOn(o.symbol, chainName(o.chainId))}
+                  />
+                ))}
+              {/* Only while the checkout can take money: paid, settled or expired has nothing left to look for. */}
+              {payable ? (
+                <CheckStatus
+                  invoiceId={invoice.invoiceId}
+                  network={chainName(invoice.chainId)}
+                  money={money}
+                  nextCheckAt={invoice.nextCheckAt}
+                />
               ) : null}
             </div>
-          </div>
-          <div className="flex flex-col gap-3 px-4 py-5 sm:px-5">
-            <InvoiceTimeline invoice={invoice} label={COPY.progress} />
-            <p role="status" className="text-sm text-ink empty:sr-only">
-              {current === INVOICE_STEPS.confirming ? (
-                <ConfirmingStatus blocks={blocksLeft} total={blocksTotal} seconds={secondsLeft} />
-              ) : // The timeline says the state; this line says only why money still waits.
-              wait ? (
-                COPY.settling[wait.kind](
-                  chainName(invoice.chainId),
-                  wait.secondsLeft ?? 0,
-                  wait.until ? CLOCK.format(new Date(wait.until)) : "",
-                )
-              ) : null}
-            </p>
-            <InvoiceDeposits
-              invoice={invoice}
-              token={token ?? null}
-              // The invoice's amount goes to the wallet; anything above it stays held for the payer (D-26).
-              settlement={
-                invoice.settlementTxHash
-                  ? {
-                      txHash: invoice.settlementTxHash,
-                      to: invoice.recipient,
-                      amount,
-                      at: invoice.settledAt,
-                    }
-                  : null
-              }
+          </section>
+          {main && invoice.lines.length > 0 ? (
+            <InvoiceLines
+              lines={invoice.lines}
+              decimals={main.decimals}
+              unit={invoice.options.length > 1 ? MONEY_COPY.usd : main.symbol}
+              total={BigInt(main.amount)}
             />
-            {/* Money sent to an option the client did not end up paying with is the payer's (D-76). */}
-            {invoice.options
-              .filter((o) => o.optionId !== invoice.optionId)
-              .map((o) => (
-                <InvoiceDeposits
-                  key={o.optionId}
-                  invoice={o}
-                  token={o}
-                  title={COPY.heldOn(o.symbol, chainName(o.chainId))}
-                />
-              ))}
-            {/* Only while the checkout can take money: paid, settled or expired has nothing left to look for. */}
-            {payable ? (
-              <CheckStatus
-                invoiceId={invoice.invoiceId}
-                network={chainName(invoice.chainId)}
-                money={money}
-                nextCheckAt={invoice.nextCheckAt}
-              />
-            ) : null}
-          </div>
-        </section>
+          ) : null}
+        </div>
 
         <div className="flex flex-col gap-4">
           <section aria-labelledby="invoice-details" className={PANEL}>

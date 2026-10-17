@@ -72,6 +72,7 @@ describe("checkedReceiveAddress", () => {
     confirming: false,
     closed: false,
     nextCheckAt: null,
+    lines: [],
     options: [],
     receiveAddress: receiveAddress({
       ...terms,
