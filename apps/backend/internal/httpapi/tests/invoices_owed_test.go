@@ -60,7 +60,7 @@ func TestOwedToYou(t *testing.T) {
 	deposit(canceled, "2000000")
 	paid := create("paid", "2000000", day(-5))
 	deposit(paid, "2000000")
-	// All of it booked, but the second RPC reads less than that, so it waits as partly paid: nothing is left.
+	// All of it booked, but the second RPC reads less than that, so it waits as detected: nothing is left.
 	waiting := create("waiting", "5000000", day(-1))
 	deposit(waiting, "5000000")
 	create("due-today", "5000000", day(0))
