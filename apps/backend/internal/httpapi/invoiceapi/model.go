@@ -16,6 +16,7 @@ type createInvoiceBody struct {
 	Title      string `json:"title"`
 	Note       string `json:"note"`
 	DueDate    string `json:"dueDate"`
+	SupplyDate string `json:"supplyDate"`
 	SenderName string `json:"senderName"`
 	ReturnURL  string `json:"returnUrl"`
 	Lines      []struct {
@@ -43,6 +44,7 @@ type invoiceJSON struct {
 	Title            *string     `json:"title"`
 	Note             *string     `json:"note"`
 	DueDate          *string     `json:"dueDate"`
+	SupplyDate       *string     `json:"supplyDate"`
 	Client           *clientJSON `json:"client,omitempty"` // owner routes only
 	Issuer           *issuerJSON `json:"issuer"`
 	SenderName       *string     `json:"senderName"`
@@ -150,7 +152,7 @@ type depositJSON struct {
 func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 	out := invoiceJSON{
 		InvoiceID: inv.ID, OptionID: inv.OptionID, OptionLocked: inv.OptionLocked, OptionCount: inv.OptionCount, Confirming: inv.Confirming, Closed: inv.Closed, Number: inv.Number, Title: httpio.OrNull(inv.Title), Note: httpio.OrNull(inv.Note),
-		DueDate: httpio.OrNull(inv.DueDate), SenderName: httpio.OrNull(inv.SenderName), ReturnURL: httpio.OrNull(inv.ReturnURL), ChainID: inv.ChainID, Token: inv.Token, Amount: inv.Amount.String(),
+		DueDate: httpio.OrNull(inv.DueDate), SupplyDate: httpio.OrNull(inv.SupplyDate), SenderName: httpio.OrNull(inv.SenderName), ReturnURL: httpio.OrNull(inv.ReturnURL), ChainID: inv.ChainID, Token: inv.Token, Amount: inv.Amount.String(),
 		Recipient: inv.Recipient, Factory: inv.Factory, ReceiveAddress: inv.ReceiveAddress,
 		ExpiresAt: inv.ExpiresAt.Format(time.RFC3339), SettleDeadline: inv.SettleDeadline.Format(time.RFC3339),
 		PaymentStatus: inv.PaymentStatus, SettlementStatus: inv.SettlementStatus, RefundStatus: inv.RefundStatus,

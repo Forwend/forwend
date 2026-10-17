@@ -71,6 +71,8 @@ export const invoiceSummarySchema = z.object({
   note: z.string().nullable(),
   // YYYY-MM-DD; shown only, payment closes at expiresAt.
   dueDate: apiDate.nullable(),
+  // When the work was done or delivered (R-89).
+  supplyDate: apiDate.nullable(),
   // Only in the owner's answers (create, list and the profile's read); the public GET leaves it out.
   client: invoiceClientSchema.optional(),
   issuer: invoiceIssuerSchema.nullable(),
@@ -165,6 +167,7 @@ export const createInvoiceBodySchema = z.object({
   title: z.string(),
   note: z.string(),
   dueDate: z.string(),
+  supplyDate: z.string(),
   senderName: z.string(),
   client: clientBodySchema,
   // R-88: unitPrice in the amount's own unit, base units with amount and a USD decimal with amountUsd.

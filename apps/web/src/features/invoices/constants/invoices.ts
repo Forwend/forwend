@@ -58,6 +58,7 @@ export const INVOICE_FIELDS = {
   title: "title",
   note: "note",
   dueDate: "dueDate",
+  supplyDate: "supplyDate",
   clientName: "client.name",
   clientEmail: "client.email",
   clientAddress: "client.address",

@@ -99,6 +99,7 @@ export function NewInvoiceForm({
   const [expiry, setExpiry] = useState<Expiry>(DEFAULT_EXPIRY);
   const [closesOn, setClosesOn] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null);
+  const [supplyDate, setSupplyDate] = useState<string | null>(null);
   // D-80: who set the checkout's close. The due date sets it until the owner picks one of their own, which then stays.
   const [closeBy, setCloseBy] = useState<"default" | "due" | "owner">("default");
   const [errors, setErrors] = useState<Partial<Record<InvoiceField, string>>>({});
@@ -214,6 +215,7 @@ export function NewInvoiceForm({
       title: text("title"),
       note: text("note"),
       dueDate: text("dueDate"),
+      supplyDate: text("supplyDate"),
       senderName: text("senderName"),
       returnUrl,
       client: {
@@ -509,6 +511,18 @@ export function NewInvoiceForm({
         </FieldGroup>
 
         <FieldGroup title={COPY.datesGroup}>
+          {request ? null : (
+            <DatePicker
+              label={COPY.supplyLabel}
+              name="supplyDate"
+              value={supplyDate}
+              onChange={setSupplyDate}
+              clearLabel={COPY.supplyClear}
+              hint={COPY.supplyHint}
+              error={errors[INVOICE_FIELDS.supplyDate]}
+              className="sm:max-w-xs"
+            />
+          )}
           {request ? null : (
             <DatePicker
               label={COPY.dueLabel}

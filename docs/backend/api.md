@@ -123,14 +123,15 @@ R-19 and R-42; the full schema is in openapi.yaml.
   in the invoice's own transaction, so a failed create uses no number and a repeated Idempotency-Key returns the
   stored one.
 - Optional create fields: `title` (≤ 200 characters), `note` (≤ 2000), `dueDate` (`YYYY-MM-DD`, shown only; payment
-  still closes at `expiresAt`, which the web form sets to the due date plus 60 days, at most 364 days from today,
-  unless the owner picks another, D-80), `senderName` (≤ 100; the name the payer sees on a request from a profile without
+  still closes at `expiresAt`, which the web form sets to the due date plus 60 days, at most 364 days from today, unless
+  the owner picks another, D-80), `supplyDate` (`YYYY-MM-DD`, the day the work was done or delivered, R-89; part of the
+  idempotency hash only when set), `senderName` (≤ 100; the name the payer sees on a request from a profile without
   billing details, D-52), `returnUrl` (an `https` link of ≤ 2000 characters with a host and no user or password, which
-  the pay page offers once paid, R-58; part of the idempotency hash only when set, so older requests hash as before)
-  and `client` `{ name ≤ 200, email ≤ 254, address ≤ 500, country, taxId ≤ 50 }` (the rules of a saved client, R-86;
-  `country` and `taxId` are part of the idempotency hash only when set). Empty means none and is
-  returned as null. Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken rule is
-  422 `invalid_value`; these fields are part of the idempotency hash.
+  the pay page offers once paid, R-58; part of the idempotency hash only when set, so older requests hash as before) and
+  `client` `{ name ≤ 200, email ≤ 254, address ≤ 500, country, taxId ≤ 50 }` (the rules of a saved client, R-86;
+  `country` and `taxId` are part of the idempotency hash only when set). Empty means none and is returned as null.
+  Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken rule is 422 `invalid_value`;
+  these fields are part of the idempotency hash.
 - Optional `lines` (R-88, at most 50): `{ description ≤ 200, quantity, unitPrice }`, adding up exactly to `amount` or
   `amountUsd`. `unitPrice` is in the amount's own unit (base units with `amount`, a USD decimal with `amountUsd`);
   `quantity` is above 0 and at most 1,000,000 with up to 2 decimals, and each unit price and each quantity times it
@@ -180,10 +181,10 @@ R-19 and R-42; the full schema is in openapi.yaml.
   terms shown are the first option's; the option whose money came first on chain becomes the invoice's for good
   (`chosen_id`), and money on any other is booked to `payer_held`. A GET with an option's id answers its invoice.
   Lists, activity and search show each invoice once, with the current option (`invoices_current` view).
-- The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due date, `senderName` and
-  `issuer` (who bills them; the issuer's own business details) but no `client`: the id is a bearer link, so it returns
-  only what the payer needs (OWASP API Security Top 10 2023, API3). Create, list and the profile's GET, which only the
-  owner calls, include `client`.
+- The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due and supply dates, `lines`,
+  `senderName` and `issuer` (who bills them; the issuer's own business details) but no `client`: the id is a bearer
+  link, so it returns only what the payer needs (OWASP API Security Top 10 2023, API3). Create, list and the profile's
+  GET, which only the owner calls, include `client`.
 
 ## Invoice and receipt PDFs
 
@@ -194,20 +195,22 @@ answer 404 `invoice_not_found` the same way.
   templates, network or file reads. The font is Noto Sans, embedded (`internal/document/fonts`, SIL OFL 1.1). Long
   texts wrap and are cut with "…"; characters above U+FFFF (emoji) print as "?".
 - Both look like the product (R-61): the Forwend mark (`internal/document/logo.path`, a copy of
-  `packages/ui-web/src/icons/logo-data.ts`) and the light theme's colors, the kind and number (`INV-0001`), the
-  issuer block from the invoice's copy (left out without one) and "Bill to" with the client's name and address but
-  never the email (the id is a bearer link), a row of dates, then a line table: the title (or "Payment"), the network
-  (name and chain id) and the exact amount with the token's symbol and decimals, never cut. Network names and
-  explorers are a copy of `apps/web/src/shared/constants/chains.ts`; a test fails when either copy changes alone.
-- `invoice.pdf`: created time, due date and checkout expiry, the note, and a box with the pay link
-  `PUBLIC_WEB_URL/pay/<invoiceId>` and its QR code (drawn as vector modules), then the invoice id. A
-  payer-chooses invoice names the network "Any" with the amount and total due in USD, then lists under Pay with each
-  token and its networks ("USDC on Base Sepolia, Arbitrum Sepolia") and says to send only on those (R-70). Amounts
-  group thousands (1,250.00); every page's footer names the document and number and says Page X of Y.
-- `receipt.pdf`: 409 `invoice_not_paid` until `paymentStatus` is `paid` (it stays paid once settled). Adds the paid
-  time; under Payments each confirmed deposit's amount, block time, full tx hash and "View on <explorer>" link; and the
-  pay link with its QR code, since a PDF can be edited. It says nothing about the settlement, the creator's business
-  (R-61). The paid time is the block time of the last deposit the ledger booked to
+  `packages/ui-web/src/icons/logo-data.ts`) and the light theme's colors, the kind and number (`INV-0001`), the issuer
+  block from the invoice's copy (left out without one) and "Bill to" with the client's name and address but never the
+  email (the id is a bearer link), a row of dates (with the supply date when set, R-89), then a line table: the title
+  (or "Payment"), the network (name and chain id) and the exact amount with the token's symbol and decimals, never cut;
+  with line items (R-88) the title heads the table and each item is a row with its quantity and unit price. Network
+  names and explorers are a copy of `apps/web/src/shared/constants/chains.ts`; a test fails when either copy changes
+  alone.
+- `invoice.pdf`: created time, supply date, due date and checkout expiry, the note, and a box with the pay link
+  `PUBLIC_WEB_URL/pay/<invoiceId>` and its QR code (drawn as vector modules), then the invoice id. A payer-chooses
+  invoice names the network "Any" with the amount and total due in USD, then lists under Pay with each token and its
+  networks ("USDC on Base Sepolia, Arbitrum Sepolia") and says to send only on those (R-70). Amounts group thousands
+  (1,250.00); every page's footer names the document and number and says Page X of Y.
+- `receipt.pdf`: 409 `invoice_not_paid` until `paymentStatus` is `paid` (it stays paid once settled). Adds the paid time
+  beside the created time and supply date; under Payments each confirmed deposit's amount, block time, full tx hash and
+  "View on <explorer>" link; and the pay link with its QR code, since a PDF can be edited. It says nothing about the
+  settlement, the creator's business (R-61). The paid time is the block time of the last deposit the ledger booked to
   `recipient_payable`: the one that completed the amount.
 - The same data gives the same bytes (creation date = created or paid time, sorted catalog), so the `ETag` is a hash of
   the file. `Cache-Control: private, no-cache`: a client revalidates and gets 304 while the file is unchanged; a late

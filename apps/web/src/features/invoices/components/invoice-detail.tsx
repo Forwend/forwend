@@ -334,6 +334,9 @@ function Loaded({
                 {TIME.format(new Date(invoice.expiresAt))}
               </Row>
               <Row term={COPY.created}>{TIME.format(new Date(invoice.createdAt))}</Row>
+              {invoice.supplyDate ? (
+                <Row term={COPY.supplyDate}>{formatDueDate(invoice.supplyDate)}</Row>
+              ) : null}
               {invoice.canceledAt ? (
                 <Row term={COPY.canceledOn} ref={canceledRow}>
                   {TIME.format(new Date(invoice.canceledAt))}

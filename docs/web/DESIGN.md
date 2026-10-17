@@ -188,6 +188,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   request, first paid in full, first final money in. Skipped steps and the closed card are remembered per profile in
   the browser; the card hides when closed or when every step left is done.
 - New invoice and Request money: each field group (Amount, Details, Dates, Client) is a panel with its title ruled off.
+  Dates on New invoice holds Supply date (R-89, optional, any day), then Due date, then Checkout closes after, so the
+  due date sits next to the close it moves; the invoice page lists Supply date in Details after Created.
   Picking a due date switches Checkout closes after to Custom on the due date plus 60 days (D-80), with one quiet line
   saying why; a close the owner picks before that day stays allowed, with a warning line (icon and warning text, as on
   the pay page) that a later payment would be held for the payer.

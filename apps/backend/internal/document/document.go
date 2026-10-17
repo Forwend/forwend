@@ -122,7 +122,8 @@ func Invoice(inv invoice.Invoice, payLink string) ([]byte, error) {
 	if canceled {
 		// A canceled invoice keeps its number and PDF as a record (D-79), and never asks for money again: no total
 		// due, no pay link or code.
-		d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Canceled", stamp(inv.CanceledAt)})
+		d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Supply date", inv.SupplyDate},
+			[2]string{"Canceled", stamp(inv.CanceledAt)})
 		d.lines(inv, "Total, canceled", anyOption(inv))
 		d.heading("Canceled")
 		d.SetFont(font, "B", 10)
@@ -132,8 +133,8 @@ func Invoice(inv invoice.Invoice, payLink string) ([]byte, error) {
 		d.footer(inv)
 		return d.output()
 	}
-	d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Due date", inv.DueDate},
-		[2]string{"Checkout closes", stamp(inv.ExpiresAt)})
+	d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Supply date", inv.SupplyDate},
+		[2]string{"Due date", inv.DueDate}, [2]string{"Checkout closes", stamp(inv.ExpiresAt)})
 	d.lines(inv, "Total due", anyOption(inv))
 	help := "Scan the code or open the link. Send only " + inv.Symbol + " on " + networkOf(inv).name + "."
 	if anyOption(inv) {
@@ -160,7 +161,8 @@ func Receipt(inv invoice.Invoice, payLink string) ([]byte, error) {
 	}
 	// The payer's proof of payment: when and how they paid. Settling is the creator's business (R-61).
 	d := start(inv, "Receipt")
-	d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Paid", stamp(inv.PaidAt)})
+	d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Supply date", inv.SupplyDate},
+		[2]string{"Paid", stamp(inv.PaidAt)})
 	d.lines(inv, "Amount paid", false)
 
 	net := networkOf(inv)

@@ -109,6 +109,7 @@ type Details struct {
 	Title         string
 	Note          string
 	DueDate       string // YYYY-MM-DD; only shown: payment still closes at ExpiresAt
+	SupplyDate    string // YYYY-MM-DD: when the work was done or delivered (R-89)
 	ClientName    string
 	ClientEmail   string
 	ClientAddress string
@@ -345,10 +346,10 @@ func (d Details) check() error {
 			return fmt.Errorf("%w: returnUrl must be an https link of at most %d characters", ErrInvalid, MaxReturnURL)
 		}
 	}
-	if d.DueDate != "" {
+	for _, f := range []struct{ name, value string }{{"dueDate", d.DueDate}, {"supplyDate", d.SupplyDate}} {
 		// Postgres has no year 0.
-		if day, err := time.Parse(time.DateOnly, d.DueDate); err != nil || day.Year() < 1 {
-			return fmt.Errorf("%w: dueDate must be a date like 2026-11-01", ErrInvalid)
+		if day, err := time.Parse(time.DateOnly, f.value); f.value != "" && (err != nil || day.Year() < 1) {
+			return fmt.Errorf("%w: %s must be a date like 2026-11-01", ErrInvalid, f.name)
 		}
 	}
 	return nil
@@ -365,6 +366,9 @@ func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn ti
 	}
 	if d.ClientCountry != "" || d.ClientTaxID != "" { // the same for the client's country and tax ID
 		b = fmt.Appendf(b, "|%q|%q", d.ClientCountry, d.ClientTaxID)
+	}
+	if d.SupplyDate != "" { // named, so it can't read as one of the parts above
+		b = fmt.Appendf(b, "|supplyDate=%q", d.SupplyDate)
 	}
 	for _, l := range lines { // and for lines: "7.5" and "7.50" are the same line
 		b = fmt.Appendf(b, "|%q|%s|%s", l.description, l.quantity.RatString(), l.price.RatString())

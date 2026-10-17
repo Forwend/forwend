@@ -43,6 +43,7 @@ const OPEN = {
   title: "Logo design",
   note: "Thanks for the work together.",
   dueDate: "2026-11-01",
+  supplyDate: null,
   issuer: {
     name: "Alice Design GmbH",
     address: "Hauptstr. 1\n10115 Berlin",
