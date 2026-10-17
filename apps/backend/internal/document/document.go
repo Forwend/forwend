@@ -336,10 +336,20 @@ func (d doc) facts(pairs ...[2]string) {
 	d.SetXY(margin, y+2*lineHeight+6)
 }
 
-// lines is the invoice's one line: what it is for, the network and the amount in its token, then the total.
+// lines is the invoice's line table: its items (R-88), or one line for what it is for, with the network beside the
+// first and each amount in its token, then the total.
 func (d doc) lines(inv invoice.Invoice, total string, any bool) {
 	cols := [3]float64{88, 42, 40}
 	const pad = 3.0
+	// With items the title no longer names the one line, so it heads the table.
+	if len(inv.Lines) > 0 && inv.Title != "" {
+		d.text(ink)
+		d.SetFont(font, "B", 11)
+		for _, l := range d.fit(inv.Title, width, 3) {
+			d.CellFormat(width, 6, l, "", 1, "L", false, 0, "")
+		}
+		d.Ln(2)
+	}
 	d.color(surface)
 	d.text(muted)
 	d.SetFont(font, "B", 8.5)
@@ -360,42 +370,60 @@ func (d doc) lines(inv invoice.Invoice, total string, any bool) {
 	d.SetFont(font, "", 10)
 	net := networkOf(inv)
 	network := append(d.fit(net.name, cols[1]-2*pad, 2), "Chain "+strconv.FormatUint(inv.ChainID, 10))
-	price := Amount(inv.Amount, inv.Decimals, inv.Symbol)
+	symbol, decimals := inv.Symbol, inv.Decimals
 	if any {
 		// Every option is the same USD amount at 1 USD per stablecoin (D-75).
 		network = []string{"Any"}
-		price = Amount(inv.Amount, inv.Decimals, "USD")
+		symbol = "USD"
+	}
+	price := Amount(inv.Amount, decimals, symbol)
+	type row struct {
+		what  []string
+		price string
 	}
 	title := inv.Title
 	if title == "" {
 		title = "Payment"
 	}
-	cells := [3][]string{
-		d.fit(title, cols[0]-2*pad, 3),
-		network,
-		d.fit(price, cols[2]-2*pad, 12),
-	}
-	y, x = d.GetY(), margin
-	rows := 0
-	for i, c := range cells {
-		align := "L"
-		if i == 2 {
-			align = "R"
+	rows := []row{{d.fit(title, cols[0]-2*pad, 3), price}}
+	if len(inv.Lines) > 0 {
+		decimals, symbol := lineUnit(inv)
+		rows = rows[:0]
+		for _, l := range inv.Lines {
+			// Never cut: each printed line holds at least one character.
+			what := append(d.fit(l.Description, cols[0]-2*pad, invoice.MaxLineDescription),
+				strings.TrimSuffix(strings.TrimSuffix(l.Quantity, "0"), ".0")+" × "+Amount(l.UnitPrice, decimals, symbol))
+			rows = append(rows, row{what, Amount(l.Amount, decimals, symbol)})
 		}
-		for j, l := range c {
-			d.text(ink)
-			d.SetFont(font, "", 10)
-			if i == 1 && j == len(c)-1 && !any { // the chain id line
-				d.text(subtle)
-				d.SetFont(font, "", 8.5)
+	}
+	for r, item := range rows {
+		cells := [3][]string{item.what, nil, d.fit(item.price, cols[2]-2*pad, 12)}
+		if r == 0 {
+			cells[1] = network
+		}
+		lines := max(len(cells[0]), len(cells[1]), len(cells[2]))
+		d.pageFor(float64(lines)*lineHeight + 2)
+		y, x = d.GetY(), margin
+		for i, c := range cells {
+			align := "L"
+			if i == 2 {
+				align = "R"
 			}
-			d.SetXY(x+pad, y+float64(j)*lineHeight)
-			d.CellFormat(cols[i]-2*pad, lineHeight, l, "", 0, align, false, 0, "")
+			for j, l := range c {
+				d.text(ink)
+				d.SetFont(font, "", 10)
+				// The chain id under the network, and the quantity under an item, are quieter.
+				if (i == 1 && j == len(c)-1 && !any) || (i == 0 && len(inv.Lines) > 0 && j == len(c)-1) {
+					d.text(subtle)
+					d.SetFont(font, "", 8.5)
+				}
+				d.SetXY(x+pad, y+float64(j)*lineHeight)
+				d.CellFormat(cols[i]-2*pad, lineHeight, l, "", 0, align, false, 0, "")
+			}
+			x += cols[i]
 		}
-		rows = max(rows, len(c))
-		x += cols[i]
+		d.SetY(y + float64(lines)*lineHeight + 2)
 	}
-	d.SetY(y + float64(rows)*lineHeight + 2)
 	d.rule()
 	d.Ln(2)
 
@@ -409,6 +437,19 @@ func (d doc) lines(inv invoice.Invoice, total string, any bool) {
 		d.CellFormat(cols[2]-2*pad, 6, l, "", 1, "R", false, 0, "")
 	}
 	d.Ln(6)
+}
+
+// lineUnit is what an invoice's lines (R-88) are in: the main option's base units, which can differ from the paid
+// one's, named USD when the client chooses (D-75), on the receipt too.
+func lineUnit(inv invoice.Invoice) (int, string) {
+	for _, o := range inv.Options {
+		if o.ID == inv.ID && anyOption(inv) {
+			return o.Decimals, "USD"
+		} else if o.ID == inv.ID {
+			return o.Decimals, o.Symbol
+		}
+	}
+	return inv.Decimals, inv.Symbol
 }
 
 func (d doc) heading(text string) {

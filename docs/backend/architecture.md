@@ -130,7 +130,11 @@ with a test.
   SHA-256 `request_hash` of the create request. `number` is unique per profile, taken from `profiles.invoice_seq` by
   the insert trigger (D-50); it and the details (`title`, `note`, `due_date`, `client_name`, `client_email`,
   `client_address`, `client_country`, `client_tax_id`) never change. A saved client is copied into these by the
-  create request, not linked, so editing or deleting it changes no invoice (R-86). The insert trigger also copies the profile's billing details into `issuer_name`,
+  create request, not linked, so editing or deleting it changes no invoice (R-86). `invoice_lines(position,
+  description, quantity, unit_price, amount)` (R-88, migration 00030) break a main row's amount down in its token's base
+  units: inserted only in the transaction that makes the invoice, never updated or deleted, and a deferred constraint
+  trigger checks at commit that they add up to the invoice's amount. The insert trigger also copies the profile's
+  billing details into `issuer_name`,
   `issuer_address`, `issuer_country`, `issuer_tax_id` and `issuer_email` (all null without details), which never
   change either. Payer chooses (R-56, migration 00020): each further accepted option is a row with `main_id` = the
   invoice's first row, which must share its profile, recipient, factory, expiry, settle deadline and request; it takes

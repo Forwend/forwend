@@ -14,6 +14,8 @@ import {
   INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
   INVOICE_TIMELINE,
+  LINE_ERRORS,
+  LINE_LIMITS,
   PAY_WITH,
 } from "@/features/invoices/constants/invoices";
 import type {
@@ -26,6 +28,9 @@ import type {
   InvoicePdf,
   InvoiceStart,
   InvoiceSummary,
+  LineDraft,
+  LineError,
+  LineField,
 } from "@/features/invoices/types/invoices";
 import { API_BASE } from "@/shared/config/api";
 
@@ -68,6 +73,33 @@ export function parseTokenAmount(text: string, decimals: number): bigint | Amoun
   if (fraction.length > decimals) return AMOUNT_ERRORS.decimals;
   const units = BigInt(whole + fraction.padEnd(decimals, "0"));
   return units === 0n ? AMOUNT_ERRORS.zero : units;
+}
+
+/**
+ * One line item as typed (R-88): its unit price and total in base units, or what is wrong with it. The quantity has up
+ * to 2 decimals, so the total is the price in hundredths of a quantity, and it must come out in whole base units. A
+ * price of 0 is a free line.
+ */
+export function lineUnits(
+  line: Pick<LineDraft, "description" | "quantity" | "price">,
+  decimals: number,
+): { price: bigint; units: bigint } | LineError {
+  const description = line.description.trim();
+  if (!description || description.length > LINE_LIMITS.description) return LINE_ERRORS.description;
+  const quantity = /^(\d{1,7})(?:\.(\d{1,2}))?$/.exec(line.quantity.trim());
+  const hundredths = quantity ? BigInt(`${quantity[1]}${(quantity[2] ?? "").padEnd(2, "0")}`) : 0n;
+  if (hundredths === 0n || hundredths > BigInt(LINE_LIMITS.quantityMax) * 100n)
+    return LINE_ERRORS.quantity;
+  const price = parseTokenAmount(line.price, decimals);
+  if (typeof price === "string" && price !== AMOUNT_ERRORS.zero) return LINE_ERRORS.price;
+  const units = typeof price === "string" ? 0n : price;
+  if ((units * hundredths) % 100n !== 0n) return LINE_ERRORS.exact;
+  return { price: units, units: (units * hundredths) / 100n };
+}
+
+/** The field a line's problem belongs to. */
+export function lineErrorField(error: LineError): LineField {
+  return error === LINE_ERRORS.exact ? LINE_ERRORS.price : error;
 }
 
 /** Units with `decimals` as a plain decimal, as the API reads amountUsd: 12500000 at 6 is "12.5". */

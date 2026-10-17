@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 214,
+  "nextId": 215,
   "tasks": [
     {
       "id": "F208",
@@ -507,6 +507,108 @@
         "branch": "feat/f213-a-due-date-keeps-the-invoice-s-checkout",
         "base": "main"
       }
+    },
+    {
+      "id": "F214",
+      "type": "feat",
+      "behavior": "An invoice can list line items (description, quantity, unit price) that add up exactly to its amount, shown on the form, the invoice page and the PDF (PLAN 10.2)",
+      "acceptance": [
+        "The create request takes optional lines (at most 50; description, quantity with up to 2 decimals, unit price in the amount's own unit); the lines must add up exactly to amount or amountUsd, else 422; they are part of the idempotency hash and never change",
+        "invoice_lines stores each line in the invoice's token base units; the database refuses a later insert, any update, and lines that do not sum to the invoice amount at commit",
+        "New invoice has Add item rows with a live total that becomes the amount; the owner's invoice page and the invoice PDF list the items with quantity, unit price and amount; axe 0 and no sideways scroll at 390 px"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-88",
+        "R-42",
+        "R-61"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-17 review fail by reviewer: FAIL. (1) Wrong money on the form: apps/web/src/features/invoices/components/line-items.tsx:39 formats each line amount and the Total with formatTokenAmount default fractionDigits=2, which cuts digits. One token USDC, item Qty 1 x Price 12.345: the row and Total show 12.34 USDC, but the invoice is created for 12345000 (12.345 USDC) and the Preview shows 12.345; Qty 3 x 0.333333 shows 0.99 for 0.999999. Every other invoice money display uses exactDigits (invoice-lines.tsx, preview, detail). (2) DB guard gap vs acceptance 2: migration 00030 has no DELETE guard and the sum check fires only AFTER INSERT, so DELETE FROM invoice_lines WHERE invoice_id=X AND position=2 commits and leaves lines that no longer add up to the amount, against 'refuses lines that do not sum at commit' and 'never change' (api.md, architecture.md, migration comment). The two triggers also lack ENABLE ALWAYS, which every other invoice and ledger guard has, so session_replication_role=replica skips them. Nothing deletes invoices, so a BEFORE DELETE guard is safe. Minor, no fail on their own: (3) line-items.tsx:12,27,35 repeat 'description'|'quantity'|'price' and 'exact' instead of deriving from LINE_ERRORS (AGENTS.md TS rule). (4) Every row's fields share the labels 'Qty' and 'Price (X)'; only the description has the item number, so a screen reader user tabbing does not hear which item. (5) new-invoice-form.tsx:259-263: with items, a 422 mapped to amount/amountUsd sets an error on the hidden amount field; nothing shows. (6) document.go lines(): descriptions are cut to 3 lines in an 82 mm column, so a description over about 130 characters ends with an ellipsis on the PDF, though the API allows 200 (same as the title today). (7) USD lines also need the unit price itself in whole base units of the first option (create.go:127-133); R-88 and api.md state only the qty x price rule (amountUsd 0.000001, 2 x 0.0000005 gets 422). (8) Readers without items: pay page (public read returns lines, UI ignores them), emails, Preview, restart from a closed invoice (R-77 copies the amount, drops the items), lists/search/activity; fine for this acceptance. Checked and correct: Go exact-rational sum, per-line whole base units, USD lines scaled by the first option's decimals so the DB sum equals the main amount for multi-decimal payer-chooses, too-fine USD lines give 422 inside the tx (no 500, number rolled back), INSERT guard (main row, same tx), hash unchanged for requests without lines and 7.5==7.50, reads/JSON/openapi/api.md match, PDF and receipt use the main option's units in USD when the client chooses, invoice page uses the invoice's own option. Tests: go test invoice, httpapi/tests, database, document all ok; vitest src/features/invoices 23 passed.",
+        "2026-10-17 review pass by reviewer: PASS. All 7 fixes are real: (1) line-items.tsx:40-41 formats line amounts and Total with exactDigits (test: 12.345 shows 12.345 USDC). (2) 00030 guard raises on UPDATE and DELETE, FK has no cascade, both triggers ENABLE ALWAYS; database TestInvoiceLines covers delete and replica. (3) LineError from LINE_ERRORS, LineField from LineDraft. (4) Qty/Price aria-labels 'Qty, item N' / 'Price (X), item N' keep the visible label in the name. (5) 422 on amount/amountUsd goes to INVOICE_FIELDS.lines under the items when items exist (test). (6) PDF descriptions get 12 lines. (7) R-88/api.md/openapi state the per-unit-price rule. Checked correct: Go checkLines exact Rat sum, fixed per-line whole units, USD lines scaled by options[0].scale = main row, usdUnits caps at 2^256-1 so oversize prices are 422 not 500; web lineUnits uses min decimals in USD mode so a web-valid line is valid at the main option; body sum equals amount/amountUsd exactly; hash unchanged without lines, line suffix cannot collide with returnUrl/country segments, 7.5==7.50; all reads go through get() so create, owner, public, cancel and PDF return lines; JSON/openapi/api.md/zod match; PDF and receipt use main option units, USD when client chooses; invoice page uses the main option. Tests: go test invoice, httpapi/tests, database, document ok; vitest src/features/invoices 25 passed; e2e phone test ran and passed in the verify log. Minor, no fail: (a) line-items.tsx:28 lineErrorField is a pure helper exported from a component file and used only by new-invoice-form.tsx:173 (structure.md: lib/ or the only user's file). (b) document.go:393 'never cut' is not strictly true: 200 characters of 13-letter W words wrap to 14 lines and end with an ellipsis; real text (11-letter caps words) takes 6 lines. (c) Switching token or pay mode does not clear lineErrors, so an old price error stays until the next item edit or Create. (d) Add item (new-invoice-form.tsx:445-468) and remove unmount the focused button, so keyboard focus drops to the page. (e) Some new comments say what the line does (line-items.tsx:88, new-invoice-form.tsx:410, 455). (f) No TRUNCATE guard on invoice_lines (invoices has none either). (g) Pay page, emails, Preview and R-77 restart still do not show items, accepted for this task.",
+        "2026-10-17 review pass by reviewer: PASS. Post-pass changes are correct. Focus: line-items.tsx:36-38 mount effect focuses Item 1 only when Add item under the amount mounts the list (items start empty; no other path mounts it; request mode hides the button so it never mounts; pay-mode and token switches keep the list mounted, focus not stolen). Footer Add item (flushSync, focusRow(items.length)) lands on the new row; remove (flushSync, focusRow(min(i, n-2))) lands on the row that took its place, else the one before; removing the only item: focusRow(-1) is a no-op and new-invoice-form.tsx:113-116 focuses the amount field by useId id (TextField forwards id). Hooks run before the early return; deps fine. Checked in a scratch test under StrictMode (React 19.3): add x3, remove last of 3, remove middle, remove only, pay-mode switch, request mode, first mount steals no focus: all pass, no React warnings. lineErrorField in lib, line errors cleared on token/pay mode change, PDF descriptions use MaxLineDescription (SplitText uses up >=1 rune per line, API counts runes, so at most 200 lines, never an ellipsis; W test passes). No money regressions. Tests: vitest src/features/invoices 26 passed; go test document, httpapi/tests, invoice, database ok; lint and typecheck ok. Minor, no fail: (1) On a phone, tapping Remove moves focus into a text field (next row's Item, or Amount), so the on-screen keyboard likely opens after the tap. (2) new-invoice-form.tsx:387-391,404-407 clear lineErrors but not errors.lines: a 422 amountUsd message under the items stays after switching to one token, until an edit or Create. (3) new-invoice-form.tsx:418: removing the last item when its line is invalid (total 0) brings back the amount typed before Add item (type 100, Add item, clear price, remove: Amount shows 100); visible, not a money bug. (4) document.go:393 wording: SplitText can return an empty line (two spaces before a word that fills a line); the true reason is each line uses up at least one character. (5) The focus test does not cover removing the last of several rows or StrictMode. (6) new-invoice-form.tsx:110 comment mostly says what the effect does."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-17T10:49:56Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 70.2,
+            "log": "docs/runs/F214-20261017T104956Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 235.5,
+            "log": "docs/runs/F214-20261017T104956Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.0,
+            "log": "docs/runs/F214-20261017T104956Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F214-20261017T104956Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F214-20261017T104956Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F214-20261017T104956Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.1,
+            "log": "docs/runs/F214-20261017T104956Z-build.log"
+          }
+        ],
+        "taskHash": "edb6f432b0e057d3",
+        "filesHash": "59facbcdfd482a46",
+        "proof": {
+          "1": "unit: httpapi/tests/invoices_lines_test.go TestInvoiceLines creates fixed and amountUsd invoices with lines, reads them back in base units on create and public GET, replays '7.5' as '7.50' (200 same invoice), refuses another line under the same key (409) and 10 bad cases with 422 invalid_value (short sum, 51 lines, no or long description, quantity 0/3 decimals/over 1e6, decimal price with amount, half a base unit, a line USDC can't hold)",
+          "2": "unit: database/invoice_lines_test.go TestInvoiceLines: an update, a delete and a later insert raise, an update under session_replication_role=replica still raises (ENABLE ALWAYS; the test fails without it), lines short of the amount fail at COMMIT, a line amount not equal to quantity × unit price fails its check",
+          "3": "e2e: privy invoices.spec phone test types an amount, adds an item (the amount becomes its price), sets Qty 2, sees Total 1.00, creates the invoice, sees the Items region list it, with no sideways scroll at 390 px and no blocking axe violations on the form and the page; unit: new-invoice-form.test sends lines (fixed base units, client-chooses USD), names a line USDC can't hold, shows 12.345 exactly, shows a refused amount under the items, and keeps keyboard focus on the items as they are added and removed; invoice-detail.test lists items in the invoice's own option's USD; httpapi TestInvoicePDFLines (incl. a worst-case 200-character description printed whole) and document TestLineUnit for the PDFs; screenshots docs/runs/F214-*.png"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. Post-pass changes are correct. Focus: line-items.tsx:36-38 mount effect focuses Item 1 only when Add item under the amount mounts the list (items start empty; no other path mounts it; request mode hides the button so it never mounts; pay-mode and token switches keep the list mounted, focus not stolen). Footer Add item (flushSync, focusRow(items.length)) lands on the new row; remove (flushSync, focusRow(min(i, n-2))) lands on the row that took its place, else the one before; removing the only item: focusRow(-1) is a no-op and new-invoice-form.tsx:113-116 focuses the amount field by useId id (TextField forwards id). Hooks run before the early return; deps fine. Checked in a scratch test under StrictMode (React 19.3): add x3, remove last of 3, remove middle, remove only, pay-mode switch, request mode, first mount steals no focus: all pass, no React warnings. lineErrorField in lib, line errors cleared on token/pay mode change, PDF descriptions use MaxLineDescription (SplitText uses up >=1 rune per line, API counts runes, so at most 200 lines, never an ellipsis; W test passes). No money regressions. Tests: vitest src/features/invoices 26 passed; go test document, httpapi/tests, invoice, database ok; lint and typecheck ok. Minor, no fail: (1) On a phone, tapping Remove moves focus into a text field (next row's Item, or Amount), so the on-screen keyboard likely opens after the tap. (2) new-invoice-form.tsx:387-391,404-407 clear lineErrors but not errors.lines: a 422 amountUsd message under the items stays after switching to one token, until an edit or Create. (3) new-invoice-form.tsx:418: removing the last item when its line is invalid (total 0) brings back the amount typed before Add item (type 100, Add item, clear price, remove: Amount shows 100); visible, not a money bug. (4) document.go:393 wording: SplitText can return an empty line (two spaces before a word that fills a line); the true reason is each line uses up at least one character. (5) The focus test does not cover removing the last of several rows or StrictMode. (6) new-invoice-form.tsx:110 comment mostly says what the effect does.",
+          "at": "2026-10-17T11:03:00Z",
+          "filesHash": "59facbcdfd482a46"
+        }
+      },
+      "branch": "feat/f214-an-invoice-can-list-line-items-descripti",
+      "baseCommit": "7e95f0a5c7359233fee5297d71f86d008df4bc4e",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

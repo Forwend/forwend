@@ -7,6 +7,9 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/ensp1re/forwend/apps/backend/internal/chain"
+	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 )
 
 // Amounts are exact: no rounding, trailing zeros trimmed down to 2 decimals.
@@ -54,5 +57,20 @@ func TestCopiesMatchTheWeb(t *testing.T) {
 		if !entry.Match(chains) {
 			t.Errorf("chain %d %+v differs from apps/web/src/shared/constants/chains.ts", id, n)
 		}
+	}
+}
+
+// R-88: lines are in the invoice's own option's units, and in USD when the client chooses, even on a receipt paid with
+// another token.
+func TestLineUnit(t *testing.T) {
+	usdc := invoice.Option{ID: "main", Asset: chain.Asset{Symbol: "USDC", Decimals: 6}}
+	dai := invoice.Option{ID: "other", Asset: chain.Asset{Symbol: "DAI", Decimals: 18}}
+	paidInDai := invoice.Invoice{ID: "main", OptionID: "other", Asset: dai.Asset, Options: []invoice.Option{usdc, dai}}
+	if d, s := lineUnit(paidInDai); d != 6 || s != "USD" {
+		t.Errorf("client chooses, paid in DAI: %d %s, want 6 USD", d, s)
+	}
+	fixed := invoice.Invoice{ID: "main", OptionID: "main", Asset: usdc.Asset, Options: []invoice.Option{usdc}}
+	if d, s := lineUnit(fixed); d != 6 || s != "USDC" {
+		t.Errorf("fixed: %d %s, want 6 USDC", d, s)
 	}
 }

@@ -10,6 +10,7 @@ import {
   INVOICE_LIMITS,
   INVOICE_PDFS,
   INVOICE_STEPS,
+  LINE_LIMITS,
   SETTLEMENT_WAITS,
 } from "@/features/invoices/constants/invoices";
 import type {
@@ -127,6 +128,27 @@ export const NEW_INVOICE_COPY = {
   savedClientPlaceholder: "Fill in from a saved client",
   searchClients: "Search clients",
   searchCountries: "Search countries",
+  items: {
+    add: "Add item",
+    item: (n: number) => `Item ${n}`,
+    description: "Item",
+    quantity: "Qty",
+    // The visible label first, then which item: each row's fields share their visible labels.
+    quantityOf: (n: number) => `Qty, item ${n}`,
+    price: (unit: string) => `Price (${unit})`,
+    priceOf: (unit: string, n: number) => `Price (${unit}), item ${n}`,
+    amount: "Amount",
+    remove: (n: number) => `Remove item ${n}`,
+    total: "Total",
+    errors: {
+      description: `Say what this item is, in at most ${LINE_LIMITS.description} characters.`,
+      quantity: "Enter a quantity above 0, with up to 2 decimals.",
+      price: (unit: string, decimals: number) =>
+        `Enter a price in ${unit}, with up to ${decimals} decimals.`,
+      exact: (unit: string) => `Qty × price needs more decimals than ${unit} has.`,
+      zero: "Give at least one item a price.",
+    },
+  },
   create: "Create invoice",
   cancel: "Cancel",
   fieldErrors: {
@@ -143,6 +165,8 @@ export const NEW_INVOICE_COPY = {
     [INVOICE_FIELDS.amountUsd]: "Enter an amount above 0 that every accepted token can hold.",
     [INVOICE_FIELDS.expiresIn]: "Pick a time from 15 minutes to 365 days from now.",
     [INVOICE_FIELDS.returnUrl]: "Enter an https link, like https://example.com/thanks.",
+    [INVOICE_FIELDS.lines]:
+      "We could not save these items. Check each item's text, quantity and price.",
   },
   failed: "We could not create the invoice. Try again.",
   invalid: "We could not create the invoice with these values. Check them and try again.",
@@ -274,6 +298,8 @@ export const INVOICE_COPY = {
   copied: "Link copied",
   copyFailed: "Copy failed: select the link",
   details: "Details",
+  items: "Items",
+  itemsTotal: "Total",
   dueDate: "Due date",
   expires: "Checkout closes",
   closed: "Checkout closed",

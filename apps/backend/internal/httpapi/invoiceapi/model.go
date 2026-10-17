@@ -18,7 +18,12 @@ type createInvoiceBody struct {
 	DueDate    string `json:"dueDate"`
 	SenderName string `json:"senderName"`
 	ReturnURL  string `json:"returnUrl"`
-	Client     struct {
+	Lines      []struct {
+		Description string `json:"description"`
+		Quantity    string `json:"quantity"`
+		UnitPrice   string `json:"unitPrice"`
+	} `json:"lines"`
+	Client struct {
 		Name    string `json:"name"`
 		Email   string `json:"email"`
 		Address string `json:"address"`
@@ -83,8 +88,17 @@ type invoiceDetailJSON struct {
 	CanceledAt *string       `json:"canceledAt"`
 	Deposits   []depositJSON `json:"deposits"`
 	Options    []optionJSON  `json:"options"`
+	// In the base units of the option whose id is the invoice's (R-88); empty without a breakdown.
+	Lines []lineJSON `json:"lines"`
 	// When Check status may run again; null when it may now (R-55).
 	NextCheckAt *string `json:"nextCheckAt"`
+}
+
+type lineJSON struct {
+	Description string `json:"description"`
+	Quantity    string `json:"quantity"`
+	UnitPrice   string `json:"unitPrice"`
+	Amount      string `json:"amount"`
 }
 
 // optionJSON is one token and network the invoice accepts, with the terms that differ per option.
@@ -157,11 +171,16 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON {
 	out := invoiceDetailJSON{invoiceJSON: toInvoiceJSON(inv, withClient), PaidAt: httpio.OrNullTime(inv.PaidAt),
 		SettledAt: httpio.OrNullTime(inv.SettledAt), CanceledAt: httpio.OrNullTime(inv.CanceledAt), Deposits: []depositJSON{}, Options: []optionJSON{},
+		Lines:       []lineJSON{},
 		NextCheckAt: httpio.OrNullTime(inv.NextCheckAt)}
 	for _, o := range inv.Options {
 		out.Options = append(out.Options, optionJSON{OptionID: o.ID, ChainID: o.ChainID, Network: o.Network,
 			Token: o.Token, Symbol: o.Symbol, Decimals: o.Decimals, Amount: o.Amount.String(),
 			ReceiveAddress: o.ReceiveAddress, Deposits: toDepositsJSON(o.Deposits)})
+	}
+	for _, l := range inv.Lines {
+		out.Lines = append(out.Lines, lineJSON{Description: l.Description, Quantity: l.Quantity,
+			UnitPrice: l.UnitPrice.String(), Amount: l.Amount.String()})
 	}
 	out.Deposits = toDepositsJSON(inv.Deposits)
 	return out

@@ -191,6 +191,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Picking a due date switches Checkout closes after to Custom on the due date plus 60 days (D-80), with one quiet line
   saying why; a close the owner picks before that day stays allowed, with a warning line (icon and warning text, as on
   the pay page) that a later payment would be held for the payer.
+  Add item (secondary, small, under the amount; not on Request money) turns the amount into item rows (R-88), the
+  amount typed so far becoming the first item's price: Item, Qty, Price (in the amount's unit) and the line's amount,
+  with a remove button. From small screens up the rows line up under one header row and the field labels are for
+  screen readers only; on phones each item stacks (description, then Qty and Price with the remove button, then its
+  amount). A ruled footer holds Add item and the Total, which is the invoice's amount; a line the token can't hold
+  shows its error under the field it belongs to. Removing the last item leaves its total as the amount.
+  The invoice page lists the items in an Items panel under Amount: each row the description with "qty × unit price"
+  quietly under it and the line's amount on the right, then a ruled Total row, the same on every width.
   From extra-large screens a sticky Preview panel beside the form echoes it in the pay page's order: title, amount with
   how it is paid, then Billed to (Shown as for a request), Due and Checkout closes after as ruled rows, and the note. It
   is hidden from screen readers, since the fields already say all of it.

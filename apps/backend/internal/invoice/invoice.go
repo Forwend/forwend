@@ -58,6 +58,7 @@ var (
 	evmAddress = regexp.MustCompile(`^0x[0-9a-fA-F]{40}$`)
 	digits     = regexp.MustCompile(`^[0-9]+$`)
 	usdAmount  = regexp.MustCompile(`^[0-9]{1,60}(\.[0-9]{1,18})?$`)
+	quantity   = regexp.MustCompile(`^[0-9]{1,7}(\.[0-9]{1,2})?$`)
 	uint256Max = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(1))
 )
 
@@ -71,6 +72,36 @@ type Request struct {
 	AmountUSD        string
 	ExpiresInSeconds *int64
 	Details
+	// Lines break the amount down (R-88): each UnitPrice is in the amount's own unit, base units with Amount and a USD
+	// decimal with AmountUSD, and the lines add up exactly to it.
+	Lines []LineRequest
+}
+
+type LineRequest struct {
+	Description string
+	Quantity    string // a decimal with up to 2 places, like "7.5"
+	UnitPrice   string
+}
+
+// Line is a stored line, in the base units of the invoice's main option (the one whose id is the invoice's).
+type Line struct {
+	Description string
+	Quantity    string // as stored, with 2 places: "7.50"
+	UnitPrice   *big.Int
+	Amount      *big.Int
+}
+
+// MaxLines and MaxLineDescription bound a request's lines (R-88).
+const (
+	MaxLines           = 50
+	MaxLineDescription = 200
+)
+
+// line is a request line after checking: its quantity and unit price as exact fractions.
+type line struct {
+	description string
+	quantity    *big.Rat
+	price       *big.Rat
 }
 
 // Details are what the invoice says besides its terms; "" means none. Like the terms, they never change.
@@ -91,6 +122,7 @@ type Details struct {
 // several options the terms and statuses are the current option's: the chosen one, else the first.
 type Invoice struct {
 	Details
+	Lines []Line // set by Get
 	// A copy taken at creation; later billing changes don't reach it.
 	Issuer       *profile.Issuer
 	ID           string // the pay link's id: the main row's
@@ -176,46 +208,101 @@ type Deposit struct {
 
 // normalize checks the request values that need no database and returns them in canonical form: token and amount
 // for a fixed invoice, usd for payer chooses.
-func (r Request) normalize() (token string, amount *big.Int, usd *big.Rat, expiresIn time.Duration, err error) {
+func (r Request) normalize() (token string, amount *big.Int, usd *big.Rat, lines []line, expiresIn time.Duration, err error) {
 	if r.AmountUSD != "" {
 		if r.ChainID != 0 || r.Token != "" || r.Amount != "" {
-			return "", nil, nil, 0, fmt.Errorf("%w: send amountUsd alone, or chainId, token and amount", ErrInvalid)
+			return "", nil, nil, nil, 0, fmt.Errorf("%w: send amountUsd alone, or chainId, token and amount", ErrInvalid)
 		}
 		// Pattern first: parsing a huge string costs CPU.
 		if usdAmount.MatchString(r.AmountUSD) {
 			usd, _ = new(big.Rat).SetString(r.AmountUSD)
 		}
 		if usd == nil || usd.Sign() == 0 {
-			return "", nil, nil, 0, fmt.Errorf("%w: amountUsd must be a decimal like 12.50, above 0", ErrInvalid)
+			return "", nil, nil, nil, 0, fmt.Errorf("%w: amountUsd must be a decimal like 12.50, above 0", ErrInvalid)
 		}
 	} else {
 		if r.ChainID == 0 || r.ChainID > math.MaxInt64 { // stored as bigint
-			return "", nil, nil, 0, fmt.Errorf("%w: chainId must be from 1 to 2^63-1", ErrInvalid)
+			return "", nil, nil, nil, 0, fmt.Errorf("%w: chainId must be from 1 to 2^63-1", ErrInvalid)
 		}
 		if !evmAddress.MatchString(r.Token) {
-			return "", nil, nil, 0, fmt.Errorf("%w: token must be a 0x-prefixed 20-byte hex address", ErrInvalid)
+			return "", nil, nil, nil, 0, fmt.Errorf("%w: token must be a 0x-prefixed 20-byte hex address", ErrInvalid)
 		}
 		// Length and digits first: parsing a huge string costs CPU. 2^256-1 has 78 digits.
 		if len(r.Amount) > 78 || !digits.MatchString(r.Amount) {
-			return "", nil, nil, 0, fmt.Errorf("%w: amount must be a decimal string from 1 to 2^256-1", ErrInvalid)
+			return "", nil, nil, nil, 0, fmt.Errorf("%w: amount must be a decimal string from 1 to 2^256-1", ErrInvalid)
 		}
 		amount, _ = new(big.Int).SetString(r.Amount, 10)
 		if amount.Sign() == 0 || amount.Cmp(uint256Max) > 0 {
-			return "", nil, nil, 0, fmt.Errorf("%w: amount must be a decimal string from 1 to 2^256-1", ErrInvalid)
+			return "", nil, nil, nil, 0, fmt.Errorf("%w: amount must be a decimal string from 1 to 2^256-1", ErrInvalid)
 		}
 	}
 	expiresIn = DefaultExpiresIn
 	if r.ExpiresInSeconds != nil {
 		// Checked in seconds first, so a huge value can't overflow the Duration.
 		if s := *r.ExpiresInSeconds; s < int64(MinExpiresIn/time.Second) || s > int64(MaxExpiresIn/time.Second) {
-			return "", nil, nil, 0, fmt.Errorf("%w: expiresIn must be seconds from 900 to 31536000", ErrInvalid)
+			return "", nil, nil, nil, 0, fmt.Errorf("%w: expiresIn must be seconds from 900 to 31536000", ErrInvalid)
 		}
 		expiresIn = time.Duration(*r.ExpiresInSeconds) * time.Second
 	}
 	if err := r.Details.check(); err != nil {
-		return "", nil, nil, 0, err
+		return "", nil, nil, nil, 0, err
 	}
-	return strings.ToLower(r.Token), amount, usd, expiresIn, nil
+	total := usd
+	if total == nil {
+		total = new(big.Rat).SetInt(amount)
+	}
+	if lines, err = checkLines(r.Lines, usd != nil, total); err != nil {
+		return "", nil, nil, nil, 0, err
+	}
+	return strings.ToLower(r.Token), amount, usd, lines, expiresIn, nil
+}
+
+// checkLines parses the lines and checks they add up exactly to total. With usd the unit prices are USD decimals,
+// otherwise base units, so each line's quantity times price must then be whole base units.
+func checkLines(in []LineRequest, usd bool, total *big.Rat) ([]line, error) {
+	if len(in) == 0 {
+		return nil, nil
+	}
+	if len(in) > MaxLines {
+		return nil, fmt.Errorf("%w: lines must be at most %d", ErrInvalid, MaxLines)
+	}
+	sum := new(big.Rat)
+	out := make([]line, 0, len(in))
+	for _, l := range in {
+		if l.Description == "" || !utf8.ValidString(l.Description) ||
+			utf8.RuneCountInString(l.Description) > MaxLineDescription || !profile.PlainText(l.Description, false) {
+			return nil, fmt.Errorf("%w: lines need a description of at most %d characters of plain text", ErrInvalid,
+				MaxLineDescription)
+		}
+		// Patterns first: parsing a huge string costs CPU.
+		var q, p *big.Rat
+		if quantity.MatchString(l.Quantity) {
+			q, _ = new(big.Rat).SetString(l.Quantity)
+		}
+		if q == nil || q.Sign() == 0 || q.Cmp(big.NewRat(1_000_000, 1)) > 0 {
+			return nil, fmt.Errorf("%w: lines need a quantity above 0 and at most 1000000, with up to 2 decimals", ErrInvalid)
+		}
+		if (usd && usdAmount.MatchString(l.UnitPrice)) || (!usd && len(l.UnitPrice) <= 78 && digits.MatchString(l.UnitPrice)) {
+			p, _ = new(big.Rat).SetString(l.UnitPrice)
+		}
+		if p == nil {
+			unit := "base units, like amount"
+			if usd {
+				unit = "a decimal like 12.50, like amountUsd"
+			}
+			return nil, fmt.Errorf("%w: lines need a unitPrice in %s", ErrInvalid, unit)
+		}
+		amount := new(big.Rat).Mul(q, p)
+		if !usd && !amount.IsInt() {
+			return nil, fmt.Errorf("%w: lines need a quantity times unitPrice that is a whole number of base units", ErrInvalid)
+		}
+		sum.Add(sum, amount)
+		out = append(out, line{description: l.Description, quantity: q, price: p})
+	}
+	if sum.Cmp(total) != 0 {
+		return nil, fmt.Errorf("%w: lines must add up exactly to the amount", ErrInvalid)
+	}
+	return out, nil
 }
 
 // usdUnits is usd in a token's base units at 1 USD per token (D-75), or nil when the token's decimals can't hold it
@@ -269,7 +356,7 @@ func (d Details) check() error {
 
 // requestHash fingerprints the canonical request, so the same values sent again match and the body is never stored.
 // %q keeps the texts apart whatever they contain.
-func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn time.Duration, d Details) []byte {
+func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn time.Duration, d Details, lines []line) []byte {
 	b := fmt.Appendf(nil, "%d|%s|%s|%d|%q|%q|%q|%q|%q|%q|%q", chainID, token, amount,
 		int64(expiresIn/time.Second), d.Title, d.Note, d.DueDate, d.ClientName, d.ClientEmail, d.ClientAddress,
 		d.SenderName)
@@ -278,6 +365,9 @@ func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn ti
 	}
 	if d.ClientCountry != "" || d.ClientTaxID != "" { // the same for the client's country and tax ID
 		b = fmt.Appendf(b, "|%q|%q", d.ClientCountry, d.ClientTaxID)
+	}
+	for _, l := range lines { // and for lines: "7.5" and "7.50" are the same line
+		b = fmt.Appendf(b, "|%q|%s|%s", l.description, l.quantity.RatString(), l.price.RatString())
 	}
 	h := sha256.Sum256(b)
 	return h[:]

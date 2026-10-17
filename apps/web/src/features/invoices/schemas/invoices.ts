@@ -115,6 +115,14 @@ export const invoiceOptionSchema = z.object({
   deposits: z.array(depositSchema),
 });
 
+/** One line item (R-88), in the base units of the option whose id is the invoice's; quantity has 2 decimals. */
+export const invoiceLineSchema = z.object({
+  description: z.string(),
+  quantity: z.string(),
+  unitPrice: baseUnits,
+  amount: baseUnits,
+});
+
 /** An invoice read alone or just created. */
 export const invoiceSchema = invoiceSummarySchema.extend({
   // Every accepted option, the shown one included: one for a fixed invoice.
@@ -128,6 +136,8 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   deposits: z.array(depositSchema),
   // When Check status may run again; null when it may now (R-55).
   nextCheckAt: apiTime.nullable(),
+  // Its line items, empty without a breakdown (R-88).
+  lines: z.array(invoiceLineSchema),
   // Only in the owner's reads: null while not paid or once settled.
   settlementWait: settlementWaitSchema.nullable().optional(),
 });
@@ -157,6 +167,10 @@ export const createInvoiceBodySchema = z.object({
   dueDate: z.string(),
   senderName: z.string(),
   client: clientBodySchema,
+  // R-88: unitPrice in the amount's own unit, base units with amount and a USD decimal with amountUsd.
+  lines: z
+    .array(z.object({ description: z.string(), quantity: z.string(), unitPrice: z.string() }))
+    .optional(),
 });
 
 /** One of the bell's events (R-81): GET /v1/profiles/{id}/events. */

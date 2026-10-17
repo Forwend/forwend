@@ -11,16 +11,18 @@ import {
   TextAreaField,
   TextField,
 } from "@forwend/ui-web";
-import { TriangleAlert } from "lucide-react";
+import { Plus, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useMemo, useRef, useState } from "react";
+import { type FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { clientBody, clientCountryOptions } from "@/features/clients/lib/clients";
 import type { Client, ClientBody } from "@/features/clients/types/clients";
 import { useCreateInvoiceMutation } from "@/features/invoices/api/invoices-api";
+import { type LineFieldErrors, LineItems } from "@/features/invoices/components/line-items";
 import { NewInvoicePreview } from "@/features/invoices/components/new-invoice-preview";
 import {
+  AMOUNT_ERRORS,
   CUSTOM_EXPIRY,
   DEFAULT_EXPIRY,
   EXPIRY_CHOICES,
@@ -37,6 +39,8 @@ import {
   formatDueDate,
   invalidField,
   isReturnLink,
+  lineErrorField,
+  lineUnits,
   parseTokenAmount,
   tokenKey,
 } from "@/features/invoices/lib/invoices";
@@ -47,6 +51,8 @@ import type {
   InvoiceField,
   InvoiceStart,
   InvoiceToken,
+  LineDraft,
+  LineError,
   PayWith,
 } from "@/features/invoices/types/invoices";
 import { FieldGroup } from "@/shared/components/field-group";
@@ -98,6 +104,16 @@ export function NewInvoiceForm({
   const [errors, setErrors] = useState<Partial<Record<InvoiceField, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
+  // R-88: with items the amount is their total; the amount field stands in only while there are none.
+  const [items, setItems] = useState<LineDraft[]>([]);
+  const [lineErrors, setLineErrors] = useState<Record<string, LineFieldErrors>>({});
+  // Removing the last item puts the amount field back where the items were, with focus.
+  const amountId = useId();
+  const hadItems = useRef(false);
+  useEffect(() => {
+    if (hadItems.current && items.length === 0) document.getElementById(amountId)?.focus();
+    hadItems.current = items.length > 0;
+  }, [items.length, amountId]);
   // The client fields stay uncontrolled like the others; picking a saved client draws them again with its values.
   const [fill, setFill] = useState<{ key: string; client: ClientBody }>({
     key: "",
@@ -126,7 +142,15 @@ export function NewInvoiceForm({
     return typeof error === "function" ? error(unit, decimals) : error;
   };
   const clear = (field: InvoiceField) => setErrors((shown) => ({ ...shown, [field]: undefined }));
-  const typedUnits = parseTokenAmount(amount, decimals);
+  const itemsTotal = items.reduce((sum, item) => {
+    const line = lineUnits(item, decimals);
+    return typeof line === "string" ? sum : sum + line.units;
+  }, 0n);
+  const typedUnits = items.length > 0 ? itemsTotal : parseTokenAmount(amount, decimals);
+  const lineMessage = (error: LineError) => {
+    const message = COPY.items.errors[error];
+    return typeof message === "function" ? message(unit, decimals) : message;
+  };
   const readTyped = (event: FormEvent<HTMLFormElement>) => {
     const form = new FormData(event.currentTarget);
     const text = (name: string) => String(form.get(name) ?? "").trim();
@@ -146,7 +170,19 @@ export function NewInvoiceForm({
     };
     const form = new FormData(formElement);
     const text = (name: string) => String(form.get(name) ?? "").trim();
-    const units = parseTokenAmount(amount, decimals);
+    const problems: Record<string, LineFieldErrors> = {};
+    const lines = items.map((item) => {
+      const line = lineUnits(item, decimals);
+      if (typeof line === "string")
+        problems[item.id] = { [lineErrorField(line)]: lineMessage(line) };
+      return line;
+    });
+    const units =
+      items.length > 0
+        ? itemsTotal > 0n
+          ? itemsTotal
+          : AMOUNT_ERRORS.zero
+        : parseTokenAmount(amount, decimals);
     const missingName = request && !text("senderName");
     const expiresIn =
       expiry === CUSTOM_EXPIRY
@@ -154,9 +190,16 @@ export function NewInvoiceForm({
         : EXPIRY_CHOICES[expiry];
     const returnUrl = text("returnUrl");
     const badLink = returnUrl !== "" && !isReturnLink(returnUrl);
-    if (typeof units === "string" || missingName || expiresIn === null || badLink) {
+    const badLines = Object.keys(problems).length > 0;
+    flushSync(() => setLineErrors(problems));
+    if (typeof units === "string" || badLines || missingName || expiresIn === null || badLink) {
       showErrors({
-        [INVOICE_FIELDS.amount]: typeof units === "string" ? amountError(amount) : undefined,
+        [INVOICE_FIELDS.amount]:
+          typeof units === "string" && items.length === 0 ? amountError(amount) : undefined,
+        [INVOICE_FIELDS.lines]:
+          typeof units === "string" && items.length > 0 && !badLines
+            ? COPY.items.errors.zero
+            : undefined,
         [INVOICE_FIELDS.senderName]: missingName ? NEW_REQUEST_COPY.senderMissing : undefined,
         [INVOICE_FIELDS.expiresIn]: expiresIn === null ? COPY.customError : undefined,
         [INVOICE_FIELDS.returnUrl]: badLink ? COPY.returnError : undefined,
@@ -180,6 +223,19 @@ export function NewInvoiceForm({
         country,
         taxId: text("clientTaxId"),
       },
+      // Unit prices in the amount's own unit: USD with amountUsd, base units with amount.
+      ...(items.length > 0
+        ? {
+            lines: items.map((item, i) => {
+              const line = lines[i] as { price: bigint };
+              return {
+                description: item.description.trim(),
+                quantity: item.quantity.trim(),
+                unitPrice: any ? decimalText(line.price, decimals) : line.price.toString(),
+              };
+            }),
+          }
+        : {}),
     };
     setErrors({});
     setFormError("");
@@ -203,11 +259,13 @@ export function NewInvoiceForm({
       const failure = error as { status?: unknown; data?: { error?: { message?: string } } };
       const field =
         failure.status === INVALID_VALUE ? invalidField(failure.data?.error?.message ?? "") : null;
-      // The amount field shows the API's word on either amount.
+      // The amount field shows the API's word on either amount, or the items when they stand in for it.
+      const amountField = items.length > 0 ? INVOICE_FIELDS.lines : INVOICE_FIELDS.amount;
       if (field)
         showErrors({
-          [field === INVOICE_FIELDS.amountUsd ? INVOICE_FIELDS.amount : field]:
-            COPY.fieldErrors[field],
+          [field === INVOICE_FIELDS.amountUsd || field === INVOICE_FIELDS.amount
+            ? amountField
+            : field]: COPY.fieldErrors[field],
         });
       else setFormError(failure.status === INVALID_VALUE ? COPY.invalid : COPY.failed);
       setBusy(false);
@@ -329,6 +387,7 @@ export function NewInvoiceForm({
                 onValueChange={(value) => {
                   setPayWith(value);
                   clear(INVOICE_FIELDS.amount);
+                  setLineErrors({});
                 }}
                 className="self-start"
                 options={Object.values(PAY_WITH).map((value) => ({
@@ -342,38 +401,82 @@ export function NewInvoiceForm({
             <SelectField
               label={COPY.tokenLabel}
               value={tokenKey(token)}
-              onValueChange={setPicked}
+              onValueChange={(value) => {
+                setPicked(value);
+                setLineErrors({});
+              }}
               options={tokens.map((t) => ({
                 value: tokenKey(t),
                 label: `${t.symbol} · ${chainName(t.chainId)}`,
               }))}
             />
           )}
-          <TextField
-            label={any ? COPY.amountUsdLabel : COPY.amountLabel}
-            inputMode="decimal"
-            autoComplete="off"
-            placeholder="0.00"
-            value={amount}
-            onChange={(event) => {
-              setAmount(event.target.value);
-              clear(INVOICE_FIELDS.amount);
-            }}
-            // Too many decimals or a comma shows when the field is left, not only on Create; empty waits for submit.
-            onBlur={() =>
-              amount.trim() &&
-              setErrors((shown) => ({ ...shown, [INVOICE_FIELDS.amount]: amountError(amount) }))
-            }
-            hint={
-              any
-                ? COPY.payWithAnyHint(
-                    [...new Set(tokens.map((t) => t.symbol))].join(" or "),
-                    new Set(tokens.map((t) => t.chainId)).size,
-                  )
-                : COPY.amountHint(token.symbol, network, token.decimals)
-            }
-            error={errors[INVOICE_FIELDS.amount]}
-          />
+          {items.length > 0 ? (
+            <LineItems
+              items={items}
+              onChange={(next) => {
+                if (next.length === 0 && itemsTotal > 0n)
+                  setAmount(decimalText(itemsTotal, decimals));
+                setItems(next);
+                setLineErrors({});
+                clear(INVOICE_FIELDS.lines);
+              }}
+              decimals={decimals}
+              unit={unit}
+              errors={lineErrors}
+              error={errors[INVOICE_FIELDS.lines]}
+            />
+          ) : (
+            <>
+              <TextField
+                id={amountId}
+                label={any ? COPY.amountUsdLabel : COPY.amountLabel}
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="0.00"
+                value={amount}
+                onChange={(event) => {
+                  setAmount(event.target.value);
+                  clear(INVOICE_FIELDS.amount);
+                }}
+                // Too many decimals or a comma shows when the field is left, not only on Create; empty waits for submit.
+                onBlur={() =>
+                  amount.trim() &&
+                  setErrors((shown) => ({ ...shown, [INVOICE_FIELDS.amount]: amountError(amount) }))
+                }
+                hint={
+                  any
+                    ? COPY.payWithAnyHint(
+                        [...new Set(tokens.map((t) => t.symbol))].join(" or "),
+                        new Set(tokens.map((t) => t.chainId)).size,
+                      )
+                    : COPY.amountHint(token.symbol, network, token.decimals)
+                }
+                error={errors[INVOICE_FIELDS.amount]}
+              />
+              {request ? null : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="self-start"
+                  onClick={() => {
+                    setItems([
+                      {
+                        id: crypto.randomUUID(),
+                        description: "",
+                        quantity: "1",
+                        price: amount.trim(),
+                      },
+                    ]);
+                    clear(INVOICE_FIELDS.amount);
+                  }}
+                >
+                  <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
+                  {COPY.items.add}
+                </Button>
+              )}
+            </>
+          )}
         </FieldGroup>
 
         <FieldGroup title={COPY.detailsGroup}>

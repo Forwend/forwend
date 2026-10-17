@@ -10,6 +10,7 @@ import {
   invoiceProgress,
   invoiceStatus,
   isReturnLink,
+  lineUnits,
   parseTokenAmount,
   restartFrom,
 } from "@/features/invoices/lib/invoices";
@@ -44,6 +45,7 @@ const open: Invoice = {
   confirming: false,
   closed: false,
   nextCheckAt: null,
+  lines: [],
   options: [],
   number: 1,
   title: null,
@@ -173,6 +175,26 @@ describe("form values (R-58)", () => {
       "https://",
     ])
       expect(isReturnLink(bad), bad).toBe(false);
+  });
+});
+
+// R-88: a line's total is what the invoice charges for it, so it must come out exactly in the token's base units.
+describe("lineUnits", () => {
+  const line = (quantity: string, price: string) =>
+    lineUnits({ description: "Design", quantity, price }, 6);
+  it("multiplies a quantity with up to 2 decimals by the price, exactly", () => {
+    expect(line("7.5", "0.50")).toEqual({ price: 500_000n, units: 3_750_000n });
+    expect(line("1", "1250")).toEqual({ price: 1_250_000_000n, units: 1_250_000_000n });
+    expect(line("3", "0")).toEqual({ price: 0n, units: 0n });
+  });
+
+  it("names what is wrong with a line", () => {
+    expect(lineUnits({ description: " ", quantity: "1", price: "1" }, 6)).toBe("description");
+    expect(line("0", "1")).toBe("quantity");
+    expect(line("1.005", "1")).toBe("quantity");
+    expect(line("1000001", "1")).toBe("quantity");
+    expect(line("1", "1.0000001")).toBe("price");
+    expect(line("0.5", "0.000001")).toBe("exact");
   });
 });
 

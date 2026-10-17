@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { ToastProvider } from "@forwend/ui-web";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InvoiceDetail } from "@/features/invoices/components/invoice-detail";
@@ -39,6 +39,7 @@ const OPEN = {
   senderName: null,
   returnUrl: null,
   nextCheckAt: null,
+  lines: [],
   options: [
     {
       optionId: ID,
@@ -113,5 +114,41 @@ describe("owner's invoice page", () => {
 
     expect(screen.queryByRole("button", { name: "Copy link" })).toBeNull();
     expect(screen.queryByText("Waiting for payment")).toBeNull();
+  });
+
+  // R-88: the items are in the invoice's own option's base units, even once the payer locked another option.
+  it("lists the items in the invoice's own option", async () => {
+    const dai = "0x00000000000000000000000000000000000000da";
+    const other = `0x${"ab".repeat(32)}`;
+    serve({
+      ...OPEN,
+      optionId: other,
+      optionLocked: true,
+      optionCount: 2,
+      token: dai,
+      amount: "1250000000000000000000",
+      options: [
+        ...OPEN.options,
+        {
+          ...OPEN.options[0],
+          optionId: other,
+          token: dai,
+          symbol: "DAI",
+          decimals: 18,
+          amount: "1250000000000000000000",
+        },
+      ],
+      lines: [
+        { description: "Design", quantity: "7.50", unitPrice: "100000000", amount: "750000000" },
+        { description: "Hosting", quantity: "1.00", unitPrice: "500000000", amount: "500000000" },
+      ],
+    });
+    show();
+    await settle();
+    const items = within(screen.getByRole("region", { name: "Items" }));
+    expect(items.getByText("7.5 × 100.00 USD")).toBeTruthy();
+    expect(items.getByText("750.00 USD")).toBeTruthy();
+    expect(items.getByText("1 × 500.00 USD")).toBeTruthy();
+    expect(items.getByText("1,250.00 USD")).toBeTruthy();
   });
 });
