@@ -110,6 +110,7 @@ type Details struct {
 	Note          string
 	DueDate       string // YYYY-MM-DD; only shown: payment still closes at ExpiresAt
 	SupplyDate    string // YYYY-MM-DD: when the work was done or delivered (R-89)
+	Reference     string // the client's PO number or their reference (R-90)
 	ClientName    string
 	ClientEmail   string
 	ClientAddress string
@@ -323,7 +324,7 @@ func (d Details) check() error {
 		lines       bool
 	}{
 		{"title", d.Title, MaxTitle, false}, {"note", d.Note, MaxNote, true},
-		{"senderName", d.SenderName, MaxSenderName, false},
+		{"senderName", d.SenderName, MaxSenderName, false}, {"reference", d.Reference, profile.MaxClientReference, false},
 	} {
 		// Postgres text can't hold a NUL byte.
 		if !utf8.ValidString(f.value) || utf8.RuneCountInString(f.value) > f.max || !profile.PlainText(f.value, f.lines) {
@@ -369,6 +370,9 @@ func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn ti
 	}
 	if d.SupplyDate != "" { // named, so it can't read as one of the parts above
 		b = fmt.Appendf(b, "|supplyDate=%q", d.SupplyDate)
+	}
+	if d.Reference != "" {
+		b = fmt.Appendf(b, "|reference=%q", d.Reference)
 	}
 	for _, l := range lines { // and for lines: "7.5" and "7.50" are the same line
 		b = fmt.Appendf(b, "|%q|%s|%s", l.description, l.quantity.RatString(), l.price.RatString())

@@ -21,6 +21,7 @@ export const CLIENTS_COPY = {
   backToList: "Back to clients",
   contactGroup: "Contact",
   taxGroup: "Address and tax",
+  invoicesGroup: "On invoices",
   name: "Name or business name",
   email: "Billing email (optional)",
   emailHint: "Where invoices go, often the client's finance team.",
@@ -30,6 +31,9 @@ export const CLIENTS_COPY = {
   searchCountries: "Search countries",
   taxId: "Tax or VAT ID (optional)",
   taxIdHint: "Shown on the invoice PDF. A business client in the EU or UK usually needs it there.",
+  reference: "Default PO or reference (optional)",
+  referenceHint:
+    "Filled in on each new invoice for this client. Change it on the invoice when each order has its own PO number.",
   save: "Save client",
   cancel: "Cancel",
   saved: (name: string) => `${name} saved`,
@@ -50,6 +54,7 @@ export const CLIENTS_COPY = {
       address: `Use at most ${CLIENT_LIMITS.address} characters, with no hidden characters.`,
       country: "Choose a country.",
       taxId: `Use at most ${CLIENT_LIMITS.taxId} characters, with no hidden characters.`,
+      reference: `Use at most ${CLIENT_LIMITS.reference} characters on one line, with no hidden characters.`,
     },
   },
 } as const;

@@ -18,6 +18,7 @@ const invoice: Invoice = {
   note: null,
   dueDate: null,
   supplyDate: null,
+  reference: null,
   issuer: null,
   senderName: null,
   returnUrl: null,

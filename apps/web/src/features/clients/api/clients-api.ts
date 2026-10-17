@@ -1,6 +1,10 @@
 import { z } from "zod";
-import { clientBodySchema, clientSchema, clientsSchema } from "@/features/clients/schemas/clients";
-import type { Client, ClientBody } from "@/features/clients/types/clients";
+import {
+  clientSchema,
+  clientsSchema,
+  savedClientBodySchema,
+} from "@/features/clients/schemas/clients";
+import type { Client, SavedClientBody } from "@/features/clients/types/clients";
 import { apiSlice } from "@/shared/api/api-slice";
 
 const CLIENTS_TAG = "Clients";
@@ -21,18 +25,23 @@ export const clientsApi = apiSlice
         providesTags: [CLIENTS_TAG],
       }),
       /** PUT to an id the browser picks, so a retried save makes one client (R-86). */
-      saveClient: build.mutation<Client, { profileId: string; clientId: string; body: ClientBody }>(
-        {
-          query: ({ profileId, clientId, body }) => ({
-            url: clientUrl(profileId, clientId),
-            method: "PUT",
-            body,
-          }),
-          argSchema: z.object({ profileId: z.guid(), clientId: z.guid(), body: clientBodySchema }),
-          responseSchema: clientSchema,
-          invalidatesTags: [CLIENTS_TAG],
-        },
-      ),
+      saveClient: build.mutation<
+        Client,
+        { profileId: string; clientId: string; body: SavedClientBody }
+      >({
+        query: ({ profileId, clientId, body }) => ({
+          url: clientUrl(profileId, clientId),
+          method: "PUT",
+          body,
+        }),
+        argSchema: z.object({
+          profileId: z.guid(),
+          clientId: z.guid(),
+          body: savedClientBodySchema,
+        }),
+        responseSchema: clientSchema,
+        invalidatesTags: [CLIENTS_TAG],
+      }),
       deleteClient: build.mutation<void, { profileId: string; clientId: string }>({
         query: ({ profileId, clientId }) => ({
           url: clientUrl(profileId, clientId),

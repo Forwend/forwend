@@ -100,6 +100,10 @@ export function NewInvoiceForm({
   const [closesOn, setClosesOn] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [supplyDate, setSupplyDate] = useState<string | null>(null);
+  // Picking a saved client fills in its default (R-90), so this one is held here, not read from the form. The default
+  // last filled in is kept too: another client's replaces it, but a reference the owner typed stays.
+  const [reference, setReference] = useState(start?.reference ?? "");
+  const filledReference = useRef("");
   // D-80: who set the checkout's close. The due date sets it until the owner picks one of their own, which then stays.
   const [closeBy, setCloseBy] = useState<"default" | "due" | "owner">("default");
   const [errors, setErrors] = useState<Partial<Record<InvoiceField, string>>>({});
@@ -216,6 +220,7 @@ export function NewInvoiceForm({
       note: text("note"),
       dueDate: text("dueDate"),
       supplyDate: text("supplyDate"),
+      reference: reference.trim(),
       senderName: text("senderName"),
       returnUrl,
       client: {
@@ -491,6 +496,21 @@ export function NewInvoiceForm({
               error={errors[INVOICE_FIELDS.title]}
             />
           )}
+          {request ? null : (
+            <TextField
+              label={COPY.referenceLabel}
+              name="reference"
+              value={reference}
+              onChange={(event) => {
+                setReference(event.target.value);
+                clear(INVOICE_FIELDS.reference);
+              }}
+              autoComplete="off"
+              maxLength={INVOICE_LIMITS.reference}
+              hint={COPY.referenceHint}
+              error={errors[INVOICE_FIELDS.reference]}
+            />
+          )}
           <TextAreaField
             label={COPY.noteLabel}
             name="note"
@@ -557,6 +577,11 @@ export function NewInvoiceForm({
                   if (!picked) return;
                   const values = clientBody(picked);
                   setFill({ key: clientId, client: values });
+                  if (reference === "" || reference === filledReference.current) {
+                    filledReference.current = picked.reference ?? "";
+                    setReference(filledReference.current);
+                    clear(INVOICE_FIELDS.reference);
+                  }
                   setCountry(values.country);
                   setTyped((shown) => ({ ...shown, client: values.name }));
                   // The client fields are drawn again with new values; errors elsewhere stay.

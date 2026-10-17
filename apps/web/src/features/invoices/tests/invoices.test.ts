@@ -52,6 +52,7 @@ const open: Invoice = {
   note: null,
   dueDate: null,
   supplyDate: null,
+  reference: null,
   issuer: null,
   senderName: null,
   returnUrl: null,
@@ -270,10 +271,17 @@ describe("restartFrom", () => {
   };
 
   it("asks again for the whole amount, or only what is left, from the same client in the same token", () => {
-    const partly = { ...open, options: [option], deposits: [{ ...deposit, amount: "1250000" }] };
+    const partly = {
+      ...open,
+      reference: "PO-4500012345",
+      options: [option],
+      deposits: [{ ...deposit, amount: "1250000" }],
+    };
+    // R-90: the same order, so the same PO number.
     const start = {
       payWith: "fixed",
       picked: `84532:${open.token}`,
+      reference: "PO-4500012345",
       client: { name: "Bob Ltd", email: "bob@example.com", address: "", country: "", taxId: "" },
     };
     expect(restartFrom(partly, client, false)).toEqual({ ...start, amount: "5" });

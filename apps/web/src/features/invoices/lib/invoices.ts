@@ -266,6 +266,7 @@ export function restartFrom(
     payWith: inv.options.length > 1 && received === 0n ? PAY_WITH.any : PAY_WITH.fixed,
     picked: tokenKey(inv),
     amount: decimalText(units, decimals),
+    reference: inv.reference ?? "",
     client: {
       name: client?.name ?? "",
       email: client?.email ?? "",

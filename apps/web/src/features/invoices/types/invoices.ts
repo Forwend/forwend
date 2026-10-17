@@ -46,6 +46,7 @@ export interface InvoiceStart {
   payWith: PayWith;
   picked: string;
   amount: string;
+  reference: string;
   client: ClientBody;
 }
 

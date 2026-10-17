@@ -161,8 +161,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Clients (R-86) is laid out like Invoices: the toolbar's search (name, email, tax ID) with Add client at its end
   (beside the title on phones), then a table of the client with its initials avatar, billing email, country and tax
   ID, where a row opens the client (a long country gives way to the name on phones). New client and Edit client are
-  form pages under Clients laid out like New invoice (Contact, and Address and tax, as panels); Delete waits in the
-  More actions menu at the page's top right and asks to confirm in a dialog, as Cancel does on an invoice.
+  form pages under Clients laid out like New invoice (Contact, Address and tax, and On invoices with the default PO
+  or reference, as panels); Delete waits in the More actions menu at the page's top right and asks to confirm in a
+  dialog, as Cancel does on an invoice.
 - Invoices table: the client has a round initials avatar. Phone rows lead with the client (or a request's note) beside
   that avatar carrying the network's logo, with the number and a short due date (no year within this year) under it,
   and the amount over the status pill on the right. From small screens up (and for requests, which have no table) a
@@ -189,7 +190,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   the browser; the card hides when closed or when every step left is done.
 - New invoice and Request money: each field group (Amount, Details, Dates, Client) is a panel with its title ruled off.
   Dates on New invoice holds Supply date (R-89, optional, any day), then Due date, then Checkout closes after, so the
-  due date sits next to the close it moves; the invoice page lists Supply date in Details after Created.
+  due date sits next to the close it moves; the invoice page lists Supply date in Details after Created. Details on
+  New invoice holds PO or reference (R-90) after Title, filled from the saved client's default when the client has
+  one; the invoice page lists Reference first in Details.
   Picking a due date switches Checkout closes after to Custom on the due date plus 60 days (D-80), with one quiet line
   saying why; a close the owner picks before that day stays allowed, with a warning line (icon and warning text, as on
   the pay page) that a later payment would be held for the payer.

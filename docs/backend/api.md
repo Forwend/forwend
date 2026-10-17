@@ -105,11 +105,12 @@ R-43; the full schema is in openapi.yaml. Owner only, like every `{profileId}` r
 R-86; the full schema is in openapi.yaml. Owner only, like every `{profileId}` route.
 
 - `GET /v1/profiles/{profileId}/clients` lists the saved clients by name; at most 1000 per profile, so it comes whole.
-- `PUT /v1/profiles/{profileId}/clients/{clientId}` creates or replaces one. The caller picks the id (a lowercase
-  UUID), so no Idempotency-Key is needed: the same body sent twice saves one client, 201 the first time and 200 after.
-  Body: `name` (required, ≤ 200 characters) and optional `email` (≤ 254, the billing email), `address` (≤ 500),
-  `country` (an assigned ISO 3166-1 alpha-2 code) and `taxId` (≤ 50); empty means none and comes back as null. The
-  1001st client is 422; an id that belongs to another profile is 404 `client_not_found`.
+- `PUT /v1/profiles/{profileId}/clients/{clientId}` creates or replaces one. The caller picks the id (a lowercase UUID),
+  so no Idempotency-Key is needed: the same body sent twice saves one client, 201 the first time and 200 after. Body:
+  `name` (required, ≤ 200 characters) and optional `email` (≤ 254, the billing email), `address` (≤ 500), `country` (an
+  assigned ISO 3166-1 alpha-2 code), `taxId` (≤ 50) and `reference` (≤ 100 on one line, the client's PO number or
+  reference that New invoice fills in, R-90); empty means none and comes back as null. The 1001st client is 422; an id
+  that belongs to another profile is 404 `client_not_found`.
 - `DELETE /v1/profiles/{profileId}/clients/{clientId}` answers 204, or 404 `client_not_found`.
 - An invoice holds no link to a saved client: the web copies the client's details into the create request, so editing
   or deleting a client changes no invoice.
@@ -125,13 +126,14 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - Optional create fields: `title` (≤ 200 characters), `note` (≤ 2000), `dueDate` (`YYYY-MM-DD`, shown only; payment
   still closes at `expiresAt`, which the web form sets to the due date plus 60 days, at most 364 days from today, unless
   the owner picks another, D-80), `supplyDate` (`YYYY-MM-DD`, the day the work was done or delivered, R-89; part of the
-  idempotency hash only when set), `senderName` (≤ 100; the name the payer sees on a request from a profile without
-  billing details, D-52), `returnUrl` (an `https` link of ≤ 2000 characters with a host and no user or password, which
-  the pay page offers once paid, R-58; part of the idempotency hash only when set, so older requests hash as before) and
-  `client` `{ name ≤ 200, email ≤ 254, address ≤ 500, country, taxId ≤ 50 }` (the rules of a saved client, R-86;
-  `country` and `taxId` are part of the idempotency hash only when set). Empty means none and is returned as null.
-  Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken rule is 422 `invalid_value`;
-  these fields are part of the idempotency hash.
+  idempotency hash only when set), `reference` (≤ 100 on one line, the client's PO number or their reference, R-90; part
+  of the idempotency hash only when set, and the invoice list search finds it), `senderName` (≤ 100; the name the payer
+  sees on a request from a profile without billing details, D-52), `returnUrl` (an `https` link of ≤ 2000 characters
+  with a host and no user or password, which the pay page offers once paid, R-58; part of the idempotency hash only when
+  set, so older requests hash as before) and `client` `{ name ≤ 200, email ≤ 254, address ≤ 500, country, taxId ≤ 50 }`
+  (the rules of a saved client, R-86; `country` and `taxId` are part of the idempotency hash only when set). Empty means
+  none and is returned as null. Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken
+  rule is 422 `invalid_value`; these fields are part of the idempotency hash.
 - Optional `lines` (R-88, at most 50): `{ description ≤ 200, quantity, unitPrice }`, adding up exactly to `amount` or
   `amountUsd`. `unitPrice` is in the amount's own unit (base units with `amount`, a USD decimal with `amountUsd`);
   `quantity` is above 0 and at most 1,000,000 with up to 2 decimals, and each unit price and each quantity times it
@@ -181,10 +183,10 @@ R-19 and R-42; the full schema is in openapi.yaml.
   terms shown are the first option's; the option whose money came first on chain becomes the invoice's for good
   (`chosen_id`), and money on any other is booked to `payer_held`. A GET with an option's id answers its invoice.
   Lists, activity and search show each invoice once, with the current option (`invoices_current` view).
-- The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due and supply dates, `lines`,
-  `senderName` and `issuer` (who bills them; the issuer's own business details) but no `client`: the id is a bearer
-  link, so it returns only what the payer needs (OWASP API Security Top 10 2023, API3). Create, list and the profile's
-  GET, which only the owner calls, include `client`.
+- The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due and supply dates, `reference`,
+  `lines`, `senderName` and `issuer` (who bills them; the issuer's own business details) but no `client`: the id is a
+  bearer link, so it returns only what the payer needs (OWASP API Security Top 10 2023, API3). Create, list and the
+  profile's GET, which only the owner calls, include `client`.
 
 ## Invoice and receipt PDFs
 
@@ -195,13 +197,13 @@ answer 404 `invoice_not_found` the same way.
   templates, network or file reads. The font is Noto Sans, embedded (`internal/document/fonts`, SIL OFL 1.1). Long
   texts wrap and are cut with "…"; characters above U+FFFF (emoji) print as "?".
 - Both look like the product (R-61): the Forwend mark (`internal/document/logo.path`, a copy of
-  `packages/ui-web/src/icons/logo-data.ts`) and the light theme's colors, the kind and number (`INV-0001`), the issuer
-  block from the invoice's copy (left out without one) and "Bill to" with the client's name and address but never the
-  email (the id is a bearer link), a row of dates (with the supply date when set, R-89), then a line table: the title
-  (or "Payment"), the network (name and chain id) and the exact amount with the token's symbol and decimals, never cut;
-  with line items (R-88) the title heads the table and each item is a row with its quantity and unit price. Network
-  names and explorers are a copy of `apps/web/src/shared/constants/chains.ts`; a test fails when either copy changes
-  alone.
+  `packages/ui-web/src/icons/logo-data.ts`) and the light theme's colors, the kind and number (`INV-0001`) with the
+  reference under it (R-90), the issuer block from the invoice's copy (left out without one) and "Bill to" with the
+  client's name and address but never the email (the id is a bearer link), a row of dates (with the supply date when
+  set, R-89), then a line table: the title (or "Payment"), the network (name and chain id) and the exact amount with the
+  token's symbol and decimals, never cut; with line items (R-88) the title heads the table and each item is a row with
+  its quantity and unit price. Network names and explorers are a copy of `apps/web/src/shared/constants/chains.ts`; a
+  test fails when either copy changes alone.
 - `invoice.pdf`: created time, supply date, due date and checkout expiry, the note, and a box with the pay link
   `PUBLIC_WEB_URL/pay/<invoiceId>` and its QR code (drawn as vector modules), then the invoice id. A payer-chooses
   invoice names the network "Any" with the amount and total due in USD, then lists under Pay with each token and its

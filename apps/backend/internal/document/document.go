@@ -225,6 +225,13 @@ func start(inv invoice.Invoice, kind string) doc {
 	d.SetFont(font, "", 10)
 	d.text(subtle)
 	d.CellFormat(width/2, lineHeight, Number(inv.Number), "", 1, "R", false, 0, "")
+	// The client's accounts team matches the invoice by it (R-90). Never cut: each line holds at least one byte.
+	if text := "Reference " + inv.Reference; inv.Reference != "" {
+		for _, l := range d.fit(text, width/2, len(text)) {
+			d.SetX(margin + width/2)
+			d.CellFormat(width/2, lineHeight, l, "", 1, "R", false, 0, "")
+		}
+	}
 	d.Ln(4)
 	d.rule()
 	d.Ln(6)

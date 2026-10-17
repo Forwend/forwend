@@ -73,6 +73,8 @@ export const invoiceSummarySchema = z.object({
   dueDate: apiDate.nullable(),
   // When the work was done or delivered (R-89).
   supplyDate: apiDate.nullable(),
+  // The client's PO number or their reference (R-90).
+  reference: z.string().nullable(),
   // Only in the owner's answers (create, list and the profile's read); the public GET leaves it out.
   client: invoiceClientSchema.optional(),
   issuer: invoiceIssuerSchema.nullable(),
@@ -168,6 +170,7 @@ export const createInvoiceBodySchema = z.object({
   note: z.string(),
   dueDate: z.string(),
   supplyDate: z.string(),
+  reference: z.string(),
   senderName: z.string(),
   client: clientBodySchema,
   // R-88: unitPrice in the amount's own unit, base units with amount and a USD decimal with amountUsd.

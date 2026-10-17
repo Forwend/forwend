@@ -90,6 +90,7 @@ describe("new invoice form", () => {
       address: "Main St 1\nBerlin",
       country: "DE",
       taxId: "DE999999999",
+      reference: "PO-4500012345",
       updatedAt: "2026-10-16T10:00:00Z",
     };
     // jsdom has no layout, and the select's list scrolls its chosen option into view.
@@ -107,6 +108,10 @@ describe("new invoice form", () => {
     });
     fireEvent.click(await screen.findByRole("option", { name: /^Bob Ltd/ }));
     expect((screen.getByLabelText("Tax or VAT ID") as HTMLInputElement).value).toBe("DE999999999");
+    // R-90: the client's default PO number fills the invoice's reference.
+    expect((screen.getByLabelText(/^PO or reference/) as HTMLInputElement).value).toBe(
+      "PO-4500012345",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
     await settle();
@@ -117,6 +122,7 @@ describe("new invoice form", () => {
       country: "DE",
       taxId: "DE999999999",
     });
+    expect(bodies[0]?.reference).toBe("PO-4500012345");
   });
 
   // R-88: items replace the amount field, their total becomes the amount, and a line the token can't hold is named.
@@ -250,5 +256,40 @@ describe("new invoice form", () => {
     expect(document.activeElement).toBe(screen.getByLabelText("Item 1"));
     fireEvent.click(screen.getByRole("button", { name: "Remove item 1" }));
     expect(document.activeElement).toBe(screen.getByLabelText(/Amount/));
+  });
+
+  // R-90: the reference follows the picked client's default, but never replaces one the owner typed.
+  it("fills the reference from the picked client without losing a typed one", async () => {
+    const saved = (clientId: string, name: string, reference: string | null) => ({
+      clientId,
+      name,
+      email: null,
+      address: null,
+      country: null,
+      taxId: null,
+      reference,
+      updatedAt: "2026-10-16T10:00:00Z",
+    });
+    const acme = saved("11111111-1111-4111-8111-111111111111", "Acme GmbH", "PO-ACME-1");
+    const bob = saved("22222222-2222-4222-8222-222222222222", "Bob Ltd", null);
+    Element.prototype.scrollIntoView = vi.fn();
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} clients={[acme, bob]} />
+      </Provider>,
+    );
+    const reference = () => (screen.getByLabelText(/^PO or reference/) as HTMLInputElement).value;
+    const pick = async (name: string) => {
+      fireEvent.click(screen.getByRole("button", { name: /^Saved client/ }));
+      fireEvent.click(await screen.findByRole("option", { name: new RegExp(`^${name}`) }));
+    };
+    await pick("Acme GmbH");
+    expect(reference()).toBe("PO-ACME-1");
+    await pick("Bob Ltd");
+    expect(reference()).toBe("");
+
+    fireEvent.change(screen.getByLabelText(/^PO or reference/), { target: { value: "PO-777" } });
+    await pick("Acme GmbH");
+    expect(reference()).toBe("PO-777");
   });
 });

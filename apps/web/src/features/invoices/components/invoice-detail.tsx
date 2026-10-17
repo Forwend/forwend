@@ -327,6 +327,7 @@ function Loaded({
               {COPY.details}
             </h2>
             <dl className="divide-y divide-line">
+              {invoice.reference ? <Row term={COPY.reference}>{invoice.reference}</Row> : null}
               {invoice.dueDate ? (
                 <Row term={COPY.dueDate}>{formatDueDate(invoice.dueDate)}</Row>
               ) : null}

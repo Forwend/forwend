@@ -18,6 +18,8 @@ const (
 	MaxClientEmail   = 254 // the longest address SMTP carries (RFC 5321)
 	MaxClientAddress = 500
 	MaxClientTaxID   = 50
+	// An invoice's reference has the same limit, so a client's default always fits (R-90).
+	MaxClientReference = 100
 )
 
 // MaxClients is per profile; the list is read whole.
@@ -33,6 +35,8 @@ type ClientDetails struct {
 	Address string
 	Country string // ISO 3166-1 alpha-2, upper case
 	TaxID   string
+	// The client's PO number or reference that New invoice fills in (R-90); an invoice keeps its own copy.
+	Reference string
 }
 
 type Client struct {
@@ -51,6 +55,7 @@ func (d ClientDetails) Problem(prefix string) string {
 	}{
 		{"name", d.Name, MaxClientName, false}, {"email", d.Email, MaxClientEmail, false},
 		{"address", d.Address, MaxClientAddress, true}, {"taxId", d.TaxID, MaxClientTaxID, false},
+		{"reference", d.Reference, MaxClientReference, false},
 	} {
 		// Postgres text can't hold a NUL byte.
 		if !utf8.ValidString(f.value) || utf8.RuneCountInString(f.value) > f.max || !PlainText(f.value, f.lines) {
@@ -69,11 +74,11 @@ func (d ClientDetails) Problem(prefix string) string {
 }
 
 const clientColumns = `id::text, name, coalesce(email, ''), coalesce(address, ''), coalesce(country, ''),
-	coalesce(tax_id, ''), updated_at`
+	coalesce(tax_id, ''), coalesce(reference, ''), updated_at`
 
 func scanClient(row pgx.CollectableRow) (Client, error) {
 	var c Client
-	err := row.Scan(&c.ID, &c.Name, &c.Email, &c.Address, &c.Country, &c.TaxID, &c.UpdatedAt)
+	err := row.Scan(&c.ID, &c.Name, &c.Email, &c.Address, &c.Country, &c.TaxID, &c.Reference, &c.UpdatedAt)
 	return c, err
 }
 
@@ -131,15 +136,16 @@ func (s *Service) SaveClient(ctx context.Context, profileID, id string, d Client
 	var c Client
 	var created bool
 	err = tx.QueryRow(ctx, `
-		INSERT INTO clients (id, profile_id, name, email, address, country, tax_id)
-		SELECT $2, $1, $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, '')
+		INSERT INTO clients (id, profile_id, name, email, address, country, tax_id, reference)
+		SELECT $2, $1, $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''), NULLIF($9, '')
 		WHERE (SELECT count(*) FROM clients WHERE profile_id = $1) < $8
 		   OR EXISTS (SELECT 1 FROM clients WHERE id = $2)
 		ON CONFLICT (id) DO UPDATE SET name = excluded.name, email = excluded.email, address = excluded.address,
-		    country = excluded.country, tax_id = excluded.tax_id, updated_at = now()
+		    country = excluded.country, tax_id = excluded.tax_id, reference = excluded.reference, updated_at = now()
 		    WHERE clients.profile_id = excluded.profile_id
-		RETURNING `+clientColumns+`, xmax = 0`, profileID, id, d.Name, d.Email, d.Address, d.Country, d.TaxID, MaxClients).
-		Scan(&c.ID, &c.Name, &c.Email, &c.Address, &c.Country, &c.TaxID, &c.UpdatedAt, &created)
+		RETURNING `+clientColumns+`, xmax = 0`, profileID, id, d.Name, d.Email, d.Address, d.Country, d.TaxID, MaxClients,
+		d.Reference).
+		Scan(&c.ID, &c.Name, &c.Email, &c.Address, &c.Country, &c.TaxID, &c.Reference, &c.UpdatedAt, &created)
 	if errors.Is(err, pgx.ErrNoRows) {
 		var taken bool
 		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM clients WHERE id = $1)`, id).Scan(&taken); err != nil {

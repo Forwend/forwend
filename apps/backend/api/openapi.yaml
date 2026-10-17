@@ -306,7 +306,7 @@ paths:
       description: |
         Each item is the invoice without its deposits; GET /v1/invoices/{invoiceId} adds them. status and q narrow the
         list before paging, so a cursor continues the same filtered list. q looks in the number as shown (INV-0042),
-        title, note, client name and email, receive address and, when it is a number, the amount.
+        title, note, client name and email, receive address, reference and, when it is a number, the amount.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - name: limit
@@ -547,7 +547,7 @@ paths:
       description: |
         Public, so checkout can show the invoice and recompute the receive address from the terms. Anyone with the id
         can read it, so it leaves out the client's name, email and address; the payer sees the number, title, note, due
-        and supply dates, line items, sender name and issuer (who bills them).
+        and supply dates, reference, line items, sender name and issuer (who bills them).
       security: []
       parameters:
         - name: invoiceId
@@ -657,10 +657,10 @@ paths:
       summary: Download the invoice as a PDF
       description: |
         Public like GET /v1/invoices/{invoiceId} (R-47, R-61, D-51). Built on the server from the stored invoice only:
-        the Forwend mark, number, issuer (left out when the profile had no billing details), bill-to with the client's
-        name and address (never the email), created time, supply date, due date, checkout expiry, a line with the title,
-        network and amount with the token's symbol (or one per line item, with the title above them), note, the pay link
-        with its QR code and the invoice id. The same invoice always gives the same bytes.
+        the Forwend mark, number, reference, issuer (left out when the profile had no billing details), bill-to with the
+        client's name and address (never the email), created time, supply date, due date, checkout expiry, a line with
+        the title, network and amount with the token's symbol (or one per line item, with the title above them), note,
+        the pay link with its QR code and the invoice id. The same invoice always gives the same bytes.
       security: []
       parameters:
         - name: invoiceId
@@ -678,11 +678,11 @@ paths:
       summary: Download the receipt of a paid invoice as a PDF
       description: |
         Public like the invoice PDF. 409 until paymentStatus is paid; a paid invoice stays paid, also once settled.
-        Shows the invoice's parties, supply date and line or line items, the paid time (block time of the deposit that
-        completed the amount), each confirmed deposit made before the checkout closed with its full tx hash and a link
-        to the network's explorer, and the pay link with its QR code to check the receipt, since a PDF can be edited. It
-        says nothing about the settlement: the payer only needs to know they paid; moving the money to the creator is
-        the creator's business (R-61, R-68).
+        Shows the invoice's parties, reference, supply date and line or line items, the paid time (block time of the
+        deposit that completed the amount), each confirmed deposit made before the checkout closed with its full tx hash
+        and a link to the network's explorer, and the pay link with its QR code to check the receipt, since a PDF can be
+        edited. It says nothing about the settlement: the payer only needs to know they paid; moving the money to the
+        creator is the creator's business (R-61, R-68).
       security: []
       parameters:
         - name: invoiceId
@@ -844,9 +844,14 @@ components:
           pattern: "^([A-Z]{2})?$"
           description: An assigned ISO 3166-1 alpha-2 code in upper case, like DE.
         taxId: { type: string, maxLength: 50, description: The client's tax or VAT ID. }
+        reference:
+          type: string
+          maxLength: 100
+          description: |
+            The client's PO number or reference that New invoice fills in (R-90); one line. Each invoice keeps its own.
     Client:
       type: object
-      required: [clientId, name, email, address, country, taxId, updatedAt]
+      required: [clientId, name, email, address, country, taxId, reference, updatedAt]
       description: A saved client; a field it doesn't have is null.
       properties:
         clientId: { type: string, format: uuid }
@@ -855,6 +860,7 @@ components:
         address: { type: [string, "null"] }
         country: { type: [string, "null"], pattern: "^[A-Z]{2}$" }
         taxId: { type: [string, "null"] }
+        reference: { type: [string, "null"] }
         updatedAt: { type: string, format: date-time }
     Issuer:
       type: object
@@ -1152,6 +1158,12 @@ components:
           description: |
             Optional day the work was done or delivered (YYYY-MM-DD, R-89), which EU and UK VAT invoices show when it
             differs from the issue date. Part of the idempotency hash only when set.
+        reference:
+          type: string
+          maxLength: 100
+          description: |
+            Optional PO number or reference of the client's (R-90), one line; their accounts team matches the invoice
+            by it. Part of the idempotency hash only when set.
         senderName:
           type: string
           maxLength: 100
@@ -1281,7 +1293,7 @@ components:
                     secondsLeft: { type: [integer, "null"], minimum: 0 }
     InvoiceSummary:
       type: object
-      required: [invoiceId, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, senderName, returnUrl, issuer, chainId,
+      required: [invoiceId, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, senderName, returnUrl, issuer, chainId,
         token, amount, recipient, factory, receiveAddress, expiresAt, settleDeadline, paymentStatus, settlementStatus,
         refundStatus, settlementTxHash, createdAt]
       description: |
@@ -1329,6 +1341,7 @@ components:
         supplyDate:
           type: [string, "null"]
           format: date
+        reference: { type: [string, "null"] }
         senderName:
           type: [string, "null"]
           description: The name the payer sees when there is no issuer. In every response, the public GET too.
