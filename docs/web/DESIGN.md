@@ -340,6 +340,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - While the checkout can take money, a small secondary Send to client button. A day after the last send it returns;
     until then a quiet line says when.
   - Without a client email, while the checkout can take money, one quiet line says it can't be emailed.
+- Payment reminders (R-96) follow Send to client in Billed to, ruled off, as a settings row:
+  - The Payment reminders switch at the row's end, saved when flipped, with a toast.
+  - Under it one quiet line: the schedule, "Reminders need a due date", or when the client stopped them.
+  - Then each reminder: its step and "emailed <time>", "sending…" or "could not be sent".
+  - Stopped by the client, the switch stays off and can't be turned on.
+- The stop reminders page `/reminders/<token>` is public, like the pay page: the logo, then one centered panel.
+  - It asks "Stop payment reminders?" with one primary button, since mail scanners open links.
+  - Once stopped, focus moves to the heading "Reminders stopped", and one line names the invoice and its sender.
 
 ## Emails
 

@@ -480,6 +480,72 @@ paths:
         "409": { $ref: "#/components/responses/SendConflict" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/invoices/{invoiceId}/reminders:
+    put:
+      operationId: setReminders
+      summary: Turn payment reminders on or off for one of the profile's invoices
+      description: |
+        R-96, D-69. While on, the worker emails the invoice's client email at most 3 reminders: 3 days before the due
+        date, on it and 7 days after (UTC days), each once, while the payer can still pay it and something is left. On
+        needs an invoice the payer can still pay, a due date and a client email, and the client must not have stopped
+        them. Off always works. Answers the invoice with its reminders.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [on]
+              properties:
+                on: { type: boolean }
+      responses:
+        "200":
+          description: The invoice
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "409": { $ref: "#/components/responses/RemindersConflict" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/reminders/{token}/stop:
+    post:
+      operationId: stopReminders
+      summary: The client stops an invoice's payment reminders
+      description: |
+        R-96. Public: the token is in the reminder's Stop reminders link and its List-Unsubscribe header. Reads no body,
+        so a mail provider's one-click POST (RFC 8058) works too. Stopping twice answers the same. The owner can't turn
+        them on again.
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[0-9a-f]{64}$" }
+      responses:
+        "200":
+          description: Stopped
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [number, from]
+                properties:
+                  number: { type: integer, minimum: 1 }
+                  from: { type: [string, "null"], description: The issuer's name, else the sender name. }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/balances:
     get:
       operationId: getBalances
@@ -1398,6 +1464,25 @@ components:
                     kind: { type: string, enum: [signing, finalizing, retrying, dailyLimit, refused] }
                     until: { type: [string, "null"], format: date-time }
                     secondsLeft: { type: [integer, "null"], minimum: 0 }
+            reminders:
+              type: object
+              description: |
+                Only in the owner's responses; the public GET leaves it out. The payment reminders (R-96): on, when the
+                client stopped them (null until then), and each reminder queued, oldest first, with its step.
+              required: [on, stoppedAt, emails]
+              properties:
+                on: { type: boolean }
+                stoppedAt: { type: [string, "null"], format: date-time }
+                emails:
+                  type: array
+                  items:
+                    type: object
+                    required: [step, requestedAt, sentAt, failedAt]
+                    properties:
+                      step: { type: string, enum: [before, due, after] }
+                      requestedAt: { type: string, format: date-time }
+                      sentAt: { type: [string, "null"], format: date-time }
+                      failedAt: { type: [string, "null"], format: date-time }
             sends:
               type: array
               description: |
@@ -1574,8 +1659,8 @@ components:
               type: string
               enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found,
                 billing_details_not_found, billing_details_required, client_not_found, idempotency_conflict, invoice_not_paid,
-                invoice_not_cancelable, receipt_sent, client_email_required, invoice_closed, invalid_value, rate_limited,
-                network_not_ready, network_unavailable, internal]
+                invoice_not_cancelable, receipt_sent, client_email_required, invoice_closed, due_date_required,
+                reminders_stopped, invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
   responses:
     MalformedRequest:
@@ -1641,6 +1726,13 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     InvoiceNotCancelable:
       description: Money was seen, the checkout closed, or the invoice is no longer open (invoice_not_cancelable)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RemindersConflict:
+      description: |
+        Turning on needs an invoice the payer can still pay (invoice_closed), a due date (due_date_required) and a client
+        email (client_email_required), and is refused after the client stopped them (reminders_stopped).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

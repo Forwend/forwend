@@ -8,6 +8,7 @@ import {
   invoicesPageSchema,
   owedListSchema,
   recheckSchema,
+  stoppedRemindersSchema,
 } from "@/features/invoices/schemas/invoices";
 import type {
   CreateInvoiceBody,
@@ -16,6 +17,7 @@ import type {
   InvoicesPage,
   Owed,
   Recheck,
+  StoppedReminders,
 } from "@/features/invoices/types/invoices";
 import { apiSlice } from "@/shared/api/api-slice";
 
@@ -108,6 +110,27 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
+      /**
+       * Payment reminders on or off (R-96). On is 409 once the invoice can't be paid, without a due date or client
+       * email, or after the client stopped them.
+       */
+      setReminders: build.mutation<Invoice, { profileId: string; invoiceId: string; on: boolean }>({
+        query: ({ profileId, invoiceId, on }) => ({
+          url: `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}/reminders`,
+          method: "PUT",
+          body: { on },
+        }),
+        responseSchema: invoiceSchema,
+        invalidatesTags: [INVOICES_TAG],
+      }),
+      /** The client's stop link (R-96): public, the same answer twice; 404 for a link that is not one. */
+      stopReminders: build.mutation<StoppedReminders, string>({
+        query: (token) => ({
+          url: `/v1/reminders/${encodeURIComponent(token)}/stop`,
+          method: "POST",
+        }),
+        responseSchema: stoppedRemindersSchema,
+      }),
       /** Check status: public, like the checkout read; the api allows one per invoice every 5 minutes. */
       recheckInvoice: build.mutation<Recheck, string>({
         // Asked too soon is the answer: the page rests until the next check, it does not wait and ask again.
@@ -156,6 +179,8 @@ export const {
   useCreateInvoiceMutation,
   useCancelInvoiceMutation,
   useSendInvoiceMutation,
+  useSetRemindersMutation,
+  useStopRemindersMutation,
   useGetInvoiceEventsQuery,
   useGetOwedQuery,
   useRecheckInvoiceMutation,

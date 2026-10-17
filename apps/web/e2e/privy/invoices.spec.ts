@@ -270,6 +270,17 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     // The button goes, so focus moves to the line that takes its place.
     await expect(client.getByText(/^You can send it again after/)).toBeFocused();
     expect(await blockingViolations(page)).toEqual([]);
+    // R-96: payment reminders, saved when flipped; the due date is a month away, so none goes yet. Off again after.
+    const reminders = client.getByRole("switch", { name: "Payment reminders" });
+    await expect(reminders).not.toBeChecked();
+    await expect(client).toContainText("Emails the client 3 days before the due date");
+    await reminders.click();
+    await expect(page.getByText("Payment reminders on")).toBeVisible();
+    await expect(reminders).toBeChecked();
+    expect(await blockingViolations(page)).toEqual([]);
+    await reminders.click();
+    await expect(page.getByText("Payment reminders off")).toBeVisible();
+    await expect(reminders).not.toBeChecked();
     // The pay link copies whole, from the header's More actions menu, which also opens it.
     const link = `http://localhost:3000/pay/${invoice.invoiceId}`;
     await page

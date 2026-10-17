@@ -6,7 +6,7 @@ import type {
 } from "@/features/activity/types/activity";
 import { clientBodySchema } from "@/features/clients/schemas/clients";
 import { SETTLEMENT_WAITS } from "@/features/invoices/constants/invoices";
-import type { InvoiceEventKind, OwedKind } from "@/features/invoices/types/invoices";
+import type { InvoiceEventKind, OwedKind, ReminderStep } from "@/features/invoices/types/invoices";
 import {
   apiDate,
   apiTime,
@@ -143,6 +143,19 @@ export const invoiceSendSchema = z.object({
   failedAt: apiTime.nullable(),
 });
 
+/** Payment reminders (R-96): stoppedAt is when the client stopped them; each reminder queued, with its step. */
+export const invoiceRemindersSchema = z.object({
+  on: z.boolean(),
+  stoppedAt: apiTime.nullable(),
+  emails: z.array(invoiceSendSchema.extend({ step: openEnum<ReminderStep>() })),
+});
+
+/** POST /v1/reminders/{token}/stop: which invoice the client stopped reminders for, and who sent it. */
+export const stoppedRemindersSchema = z.object({
+  number: z.number().int().positive(),
+  from: z.string().nullable(),
+});
+
 /** An invoice read alone or just created. */
 export const invoiceSchema = invoiceSummarySchema.extend({
   // Every accepted option, the shown one included: one for a fixed invoice.
@@ -162,6 +175,8 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   settlementWait: settlementWaitSchema.nullable().optional(),
   // Only in the owner's reads: each Send to client, oldest first.
   sends: z.array(invoiceSendSchema).optional(),
+  // Only in the owner's reads.
+  reminders: invoiceRemindersSchema.optional(),
 });
 
 /** POST /v1/invoices/{id}/recheck (R-55): what Check status found. Amounts in base units. */

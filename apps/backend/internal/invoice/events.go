@@ -35,7 +35,7 @@ func (s *Service) Events(ctx context.Context, profileID string, limit int) ([]Ev
 		FROM outbox_events e JOIN invoices m ON m.id = e.invoice_id
 		JOIN invoices o ON o.id = e.payload->>'option' JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
 		WHERE m.profile_id = $1 AND m.main_id IS NULL
-		  AND e.kind NOT IN ('invoice.receipt', 'invoice.sent') -- the payer's receipt; the owner's own send, like a cancel
+		  AND e.kind IN ('invoice.paid', 'invoice.settled', 'invoice.held') -- the owner's; not emails to the payer or client
 		ORDER BY e.id DESC LIMIT $2`, profileID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("read events: %w", err)

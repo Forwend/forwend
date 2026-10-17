@@ -170,8 +170,11 @@ with a test.
   the signer in the transaction that makes the change (`internal/outbox`), and `account.welcome` (with `user_id`, no
   invoice) when sign-up stores a new account's login email; sent once by the worker with retries
   ([api.md](api.md#notifications)). `invoice.sent` rows carry the request's `idempotency_key`: the owner sent the
-  invoice to its client (R-94). `users.login_email` and `profiles.email_notifications` decide where and whether;
-  `users.welcome` marks accounts made after welcome emails existed.
+  invoice to its client (R-94). `invoice.reminder` rows carry their `step` in the payload (R-96).
+  `users.login_email` and `profiles.email_notifications` decide where and whether; `users.welcome` marks accounts made
+  after welcome emails existed.
+- `invoice_reminders`: one row per invoice once the owner first turns reminders on, with `enabled`, the client's
+  `stop_token` and `stopped_at`.
 - Planned (PLAN 11.5, 11.10): `refund_intents` (one per approved claim), `refund_claims`, `support_cases` (wrong chain,
   late), `webhook_endpoints`, `webhook_deliveries`.
 - `chain_cursors(chain_id, last_scanned_block, last_finalized_block)`.

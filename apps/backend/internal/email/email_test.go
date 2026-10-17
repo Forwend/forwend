@@ -21,7 +21,7 @@ func TestResendSendsOneKeyedMessage(t *testing.T) {
 	r := NewResend("re_test", "Forwend <notifications@mail.forwend.com>")
 	r.URL = srv.URL
 	err := r.Send(context.Background(), Message{To: "a@example.com", Subject: "INV-0001 paid", Text: "body", HTML: "<p>body</p>",
-		Key: "outbox-7", ReplyTo: "billing@alice.example"})
+		Key: "outbox-7", ReplyTo: "billing@alice.example", Unsubscribe: "https://app.example/api/v1/reminders/ab/stop"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,6 +29,10 @@ func TestResendSendsOneKeyedMessage(t *testing.T) {
 		got["subject"] != "INV-0001 paid" || got["text"] != "body" || got["html"] != "<p>body</p>" ||
 		got["reply_to"] != "billing@alice.example" {
 		t.Fatalf("key %q auth %q body %v", key, auth, got)
+	}
+	if h, _ := got["headers"].(map[string]any); h["List-Unsubscribe"] != "<https://app.example/api/v1/reminders/ab/stop>" ||
+		h["List-Unsubscribe-Post"] != "List-Unsubscribe=One-Click" {
+		t.Fatalf("headers %v", got["headers"])
 	}
 	if to, _ := got["to"].([]any); len(to) != 1 || to[0] != "a@example.com" {
 		t.Fatalf("to %v", got["to"])

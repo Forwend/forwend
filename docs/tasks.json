@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 225,
+  "nextId": 227,
   "tasks": [
     {
       "id": "F222",
@@ -316,12 +316,136 @@
         "branch": "feat/f224-the-business-overview-lists-what-clients",
         "base": "main"
       }
+    },
+    {
+      "id": "F225",
+      "type": "feat",
+      "behavior": "The owner can turn on payment reminders for an invoice: up to three emails to the client, each with a one-click stop (PLAN 10.5, D-69)",
+      "acceptance": [
+        "PUT /v1/profiles/{id}/invoices/{invoiceId}/reminders {on} turns reminders on or off. On needs an invoice the payer can still pay (409 invoice_closed), a due date (409 due_date_required) and a client email (409 client_email_required), and is 409 reminders_stopped after the client stopped them. Another user gets 403. The owner's read returns reminders {on, stoppedAt, emails}.",
+        "Each worker round queues the latest due step (3 days before the due date, on it, 7 days after, UTC days) for invoices with reminders on and not stopped, once per step. The email names the issuer, number, what is left and the due date, links the pay page and PDF, has Reply-To the issuer's email, a Stop reminders link and List-Unsubscribe and List-Unsubscribe-Post headers. At delivery nothing is sent when the invoice is no longer open or reminders are off or stopped.",
+        "POST /v1/reminders/{token}/stop is public, answers the invoice number and issuer, twice the same, and 404 for an unknown token. /reminders/<token> asks to stop and says when done; axe 0 and no sideways scroll at 390 px.",
+        "The invoice page shows a Payment reminders switch under Billed to, each reminder sent, and when the client stopped them; axe 0.",
+        "openapi.yaml, docs/backend/api.md, architecture.md and DESIGN.md describe the routes, the schedule, the email and the pages."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-96",
+        "D-69",
+        "D-65",
+        "R-94"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-17T23:51:27Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 69.7,
+            "log": "docs/runs/F225-20261017T235127Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 196.0,
+            "log": "docs/runs/F225-20261017T235127Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F225-20261017T235127Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F225-20261017T235127Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F225-20261017T235127Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F225-20261017T235127Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.9,
+            "log": "docs/runs/F225-20261017T235127Z-build.log"
+          }
+        ],
+        "taskHash": "d43fbca307ad05b7",
+        "filesHash": "3797ff9e060013e3",
+        "proof": {
+          "1": "unit: httpapi/tests/invoices_reminders_test.go TestPaymentReminders: on and off answer the invoice with reminders.on; on is 409 due_date_required, client_email_required, invoice_closed, and reminders_stopped after the stop link; {} is 422; Bob is 403; unknown invoice 404; the owner's read has reminders.emails with step and stoppedAt, the public read and the bell have none",
+          "2": "unit: TestPaymentReminders queues before (due in 3 days), due (due today and 2 days late), after (7 days late), nothing 4 days early, off, paid or stopped, and a second round adds nothing; notify_test.go TestDeliverSendsTheReminderToTheClient: to the client, Reply-To the issuer, subject and text with what is left and the due date, pay link, Stop reminders link and Unsubscribe URL; nothing sent and nothing waiting once stopped or paid after queueing; email_test.go checks the List-Unsubscribe headers in the Resend body; layout_test renders both reminder views",
+          "3": "e2e: e2e/stop-reminders.spec.ts: opening the link stops nothing, the button POSTs once, focus moves to Reminders stopped and the line names INV-0007 and Alice Design GmbH, axe 0; a 404 says the link stops nothing, fits 390 px, axe 0; a non-token path is 404; unit: TestPaymentReminders stops by token twice with the same answer and 404 for unknown tokens; screenshots docs/runs/F225-stop-done-desk.png, F225-stop-phone.png",
+          "4": "e2e: e2e/privy/invoices.spec.ts: the Payment reminders switch under Billed to starts off with the schedule line, turns on and off with toasts, axe 0; screenshot docs/runs/F225-reminders-desk.png",
+          "5": "docs-check: openapi.yaml adds setReminders, stopReminders (security: []), the owner-only reminders field, RemindersConflict and the two codes; docs/backend/api.md (Invoices and Notifications), architecture.md (outbox_events, invoice_reminders) and DESIGN.md describe them"
+        }
+      },
+      "branch": "feat/f225-the-owner-can-turn-on-payment-reminders",
+      "baseCommit": "3927b29d11f25037e9b421b02c2c6ee7a1c8cc87",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F226",
+      "type": "feat",
+      "behavior": "A saved client can start its new invoices with payment reminders on (PLAN 10.5, D-69)",
+      "acceptance": [
+        "A saved client takes reminders (bool); picking it on New invoice checks Payment reminders, which the owner can change; create with reminders true turns them on as R-96, needs a due date and client email (422), and is in the idempotency hash only when set; Duplicate copies it, the rest of a closed one does not.",
+        "openapi.yaml, docs/backend/api.md and DESIGN.md describe the field and the checkbox; axe 0."
+      ],
+      "dependsOn": [
+        "F225"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-97",
+        "R-96",
+        "R-86",
+        "R-91"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-17T20:38:51Z",
+    "at": "2026-10-17T23:09:05Z",
     "clean": true,
     "problems": [],
-    "note": "F223 Send to client merged (#221): POST .../send, invoice.sent email to the client with Reply-To the issuer, Billed to lists sends. Next in 10.5: the Owed to you list, then reminders (D-69). Open owner points: USD in the email after the client picked a token, 24 h wait after a failed send, sends right after paid or canceled, Resend daily budget vs 20 per profile. The shared E2E shop profile fills toward MaxOpen (1000) again with each e2e run."
+    "note": "F224 Owed to you merged (#222): GET /v1/profiles/{id}/owed and the overview panel (overdue, partly paid, held). Next in 10.5: reminders (D-69). Risks: e2e suite runs near the per-user API limit (one Privy user, 2/s burst 60), it hit 429 once; E2E shop profile fills toward MaxOpen again. Open F223 points: USD in the email after the client picked a token, 24 h wait after a failed send, sends right after paid or canceled, Resend daily budget. Open F224 points: owedCents repeats usdTotal's cents math; no test shows the empty or failed panel."
   }
 }

@@ -25,8 +25,10 @@ var (
 	ErrClosed = errors.New("invoice is closed")
 )
 
-// Send is one Send to client: when the owner asked, and when the worker sent it or gave up; zero until then.
+// Send is one email to the client, a Send to client or a reminder (with its Step): when it was queued, and when the
+// worker sent it or gave up; zero until then.
 type Send struct {
+	Step                          string
 	RequestedAt, SentAt, FailedAt time.Time
 }
 
@@ -98,18 +100,19 @@ func (s *Service) Send(ctx context.Context, profileID, id, key string, allow fun
 	return inv, queued, err
 }
 
-// sends reads the invoice's Send to client rows, oldest first.
-func (s *Service) sends(ctx context.Context, id string) ([]Send, error) {
-	rows, err := s.pool.Query(ctx, `SELECT created_at, published_at, failed_at FROM outbox_events
-		WHERE invoice_id = $1 AND kind = $2 ORDER BY id`, id, outbox.Sent)
+// emails reads the invoice's outbox rows of kind (Send to client or reminders), oldest first.
+func (s *Service) emails(ctx context.Context, id, kind string) ([]Send, error) {
+	rows, err := s.pool.Query(ctx, `SELECT coalesce(payload->>'step', ''), created_at, published_at, failed_at
+		FROM outbox_events WHERE invoice_id = $1 AND kind = $2 ORDER BY id`, id, kind)
 	if err != nil {
-		return nil, fmt.Errorf("read invoice %s sends: %w", id, err)
+		return nil, fmt.Errorf("read invoice %s %s emails: %w", id, kind, err)
 	}
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Send, error) {
+		var step string
 		var requested time.Time
 		var sent, failed *time.Time
-		err := row.Scan(&requested, &sent, &failed)
-		out := Send{RequestedAt: requested.UTC()}
+		err := row.Scan(&step, &requested, &sent, &failed)
+		out := Send{Step: step, RequestedAt: requested.UTC()}
 		if sent != nil {
 			out.SentAt = sent.UTC()
 		}

@@ -21,6 +21,7 @@ import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { InvoiceDeposits } from "@/features/invoices/components/invoice-deposits";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
+import { PaymentReminders } from "@/features/invoices/components/payment-reminders";
 import { SendToClient } from "@/features/invoices/components/send-to-client";
 import {
   INVOICE_EXCEPTIONS,
@@ -43,6 +44,7 @@ import type {
   Invoice,
   InvoiceException,
   InvoicePdf,
+  InvoiceReminders,
   InvoiceSend,
   InvoiceSummary,
   InvoiceToken,
@@ -105,6 +107,7 @@ export function InvoiceDetail({
             mine={mine}
             wait={owned.currentData?.settlementWait ?? null}
             sends={owned.currentData?.sends ?? []}
+            reminders={owned.currentData?.reminders ?? null}
             clientFailed={owned.isError}
             tokens={tokens}
             request={request}
@@ -132,6 +135,7 @@ function Loaded({
   mine,
   wait,
   sends,
+  reminders,
   clientFailed,
   tokens,
   request,
@@ -141,6 +145,7 @@ function Loaded({
   mine: InvoiceSummary | null;
   wait: SettlementWait | null;
   sends: readonly InvoiceSend[];
+  reminders: InvoiceReminders | null;
   clientFailed: boolean;
   tokens: readonly InvoiceToken[] | null;
   request: boolean;
@@ -407,6 +412,16 @@ function Loaded({
                   number={invoiceNumber(invoice.number)}
                   email={client?.email ?? null}
                   sends={sends}
+                  payable={payable}
+                />
+              ) : null}
+              {/* Reminders go to the client's email, so they show only with one (R-96). */}
+              {client?.email && reminders ? (
+                <PaymentReminders
+                  profileId={profileId}
+                  invoiceId={invoice.invoiceId}
+                  reminders={reminders}
+                  hasDueDate={!!invoice.dueDate}
                   payable={payable}
                 />
               ) : null}

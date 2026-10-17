@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 )
 
@@ -25,7 +26,16 @@ func samples() map[string]view {
 		"sent": sent("INV-0004", "1,250.00 USDC", "Base Sepolia", "Alice Design GmbH", "", "2026-11-30",
 			"billing@alice.example", web+"/pay/0xabc", web+"/api/v1/invoices/0xabc/invoice.pdf"),
 		"sent-any": sent("INV-0005", "12.50 USD", "", "", "", "", "", web+"/pay/0xdef", web+"/api/v1/invoices/0xdef/invoice.pdf"),
+		"reminder-before": withStop(reminder(invoice.ReminderBefore, "INV-0006", "500.00 USDC", "Base Sepolia",
+			"Alice Design GmbH", "", "2026-11-30", "billing@alice.example", web+"/pay/0xabc", web+"/api/v1/invoices/0xabc/invoice.pdf")),
+		"reminder-after": withStop(reminder(invoice.ReminderAfter, "INV-0007", "12.50 USD", "", "", "Mara", "2026-11-30",
+			"", web+"/pay/0xdef", web+"/api/v1/invoices/0xdef/invoice.pdf")),
 	}
+}
+
+func withStop(v view) view {
+	v.Stop, v.Unsubscribe = web+"/reminders/"+strings.Repeat("ab", 32), web+"/api/v1/reminders/"+strings.Repeat("ab", 32)+"/stop"
+	return v
 }
 
 var (

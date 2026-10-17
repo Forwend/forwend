@@ -1,5 +1,6 @@
 // Package notify sends the email for each outbox event: the owner's paid, settled and held-money emails (R-80), the
-// payer's receipt (R-82), a new account's welcome (R-84) and the invoice the owner sends to the client (R-94).
+// payer's receipt (R-82), a new account's welcome (R-84), the invoice the owner sends to the client (R-94) and the
+// client's payment reminders (R-96).
 // One worker claims each event once (FOR UPDATE SKIP LOCKED); invoice, event id and address make Resend's
 // Idempotency-Key, the same on every retry, so a retry after a lost answer sends nothing twice. Nothing logs an address, a subject or a body.
 package notify
@@ -17,6 +18,7 @@ import (
 
 	"github.com/ensp1re/forwend/apps/backend/internal/document"
 	"github.com/ensp1re/forwend/apps/backend/internal/email"
+	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -130,6 +132,9 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 	var p outbox.Payload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return view{}, nil, false, err
+	}
+	if kind == outbox.Reminder {
+		return reminderEmail(ctx, tx, invoice, p, webURL)
 	}
 	var (
 		on                   bool
@@ -271,6 +276,87 @@ func sent(number, amount, network, issuer, sender, due, replyTo, pay, pdf string
 	return v
 }
 
+// reminderEmail builds a payment reminder (R-96) for the client's email. It goes only while reminders are on and not
+// stopped and something is left to pay on an invoice the payer can still pay: checked again now, since the invoice
+// may have been paid or the reminders stopped after the step was queued.
+func reminderEmail(ctx context.Context, tx pgx.Tx, id string, p outbox.Payload, webURL string) (view, *string, bool, error) {
+	var (
+		on, locked                       bool
+		to, issuer, sender, replyTo, due string
+		symbol, left, token              string
+		number                           int64
+		decimals, options                int
+		chainID                          uint64
+	)
+	if err := tx.QueryRow(ctx, `SELECT r.enabled AND r.stopped_at IS NULL
+		        AND (SELECT `+invoice.StatusFilterSQL+` FROM invoices_current invoices WHERE invoices.id = m.id) = 'open',
+		    coalesce(m.client_email, ''), coalesce(m.issuer_name, ''), coalesce(m.sender_name, ''),
+		    coalesce(m.issuer_email, ''), coalesce(to_char(m.due_date, 'YYYY-MM-DD'), ''), m.number, t.symbol, t.decimals,
+		    o.chain_id, (o.amount + `+invoice.PaidToOwnerSQL("o.id")+`)::text,
+		    (SELECT count(*) FROM invoices c WHERE c.id = m.id OR c.main_id = m.id), m.chosen_id IS NOT NULL, r.stop_token
+		FROM invoices m JOIN invoice_reminders r ON r.invoice_id = m.id JOIN invoices o ON o.id = $2
+		JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
+		WHERE m.id = $1`, id, p.Option).Scan(&on, &to, &issuer, &sender, &replyTo, &due, &number, &symbol, &decimals,
+		&chainID, &left, &options, &locked, &token); err != nil {
+		return view{}, nil, false, fmt.Errorf("reminder: %w", err)
+	}
+	units, _ := new(big.Int).SetString(left, 10)
+	if units.Sign() <= 0 {
+		on = false
+	}
+	network := document.NetworkName(chainID)
+	if options > 1 && !locked { // the client still chooses the token and network, each at 1 USD (D-75)
+		symbol, network = "USD", ""
+	}
+	v := reminder(p.Step, document.Number(number), document.Amount(units, decimals, symbol), network, issuer, sender, due,
+		replyTo, webURL+"/pay/"+id, webURL+"/api/v1/invoices/"+id+"/invoice.pdf")
+	v.Stop, v.Unsubscribe = webURL+"/reminders/"+token, webURL+"/api/v1/reminders/"+token+"/stop"
+	return v, &to, on, nil
+}
+
+// reminder says what is left to pay on an invoice and by when, before the due date, on it or after it (R-96). network
+// is empty when the client chooses.
+func reminder(step, number, left, network, issuer, sender, due, replyTo, pay, pdf string) view {
+	v := view{Badge: "Reminder", Tone: "neutral", Amount: left, Button: button{"View and pay", pay}, ReplyTo: replyTo,
+		Details: []row{{Label: "Invoice", Value: number}}}
+	from := issuer
+	if from == "" && sender != "" {
+		from, v.Note = sender, "The name is what the invoice's creator gave; Forwend doesn't check it."
+	}
+	who := "This is a reminder that " + number
+	if from != "" {
+		v.Details = append(v.Details, row{Label: "From", Value: from})
+		who = from + " reminds you that " + number
+	}
+	switch step {
+	case invoice.ReminderBefore:
+		v.Subject, v.Title = "Reminder: "+number+" is due on "+due, number+" is due on "+due
+		v.Lead = []string{who + " is due on " + due + ": " + left + " left to pay."}
+	case invoice.ReminderDue:
+		v.Subject, v.Title = "Reminder: "+number+" is due today", number+" is due today"
+		v.Lead = []string{who + " is due today, " + due + ": " + left + " left to pay."}
+	default: // invoice.ReminderAfter
+		v.Subject, v.Title, v.Tone = "Reminder: "+number+" is overdue", number+" is overdue", "warning"
+		v.Lead = []string{who + " was due on " + due + ": " + left + " left to pay."}
+	}
+	if from != "" {
+		v.Subject += " (" + from + ")"
+	}
+	if network == "" {
+		network = "You choose on the payment page"
+	}
+	v.Details = append(v.Details, row{Label: "Due date", Value: due}, row{Label: "Network", Value: network},
+		row{Label: "Invoice PDF", Value: "Download the invoice (PDF)", Href: pdf})
+	v.Lead[0] += " You pay it in stablecoins on the payment page."
+	v.Reason = "You get this reminder because the sender turned on payment reminders for this invoice. At most 3 are " +
+		"sent, and none once it is paid."
+	if replyTo != "" {
+		v.Reason += " Reply to this email to reach them."
+	}
+	v.Preheader = v.Lead[0]
+	return v
+}
+
 // message is the email for a view: the designed HTML part and a plain text part with the same words and links.
 func message(site Site, v view) (email.Message, error) {
 	html, err := render(site, v)
@@ -295,9 +381,12 @@ func message(site Site, v view) (email.Message, error) {
 	if v.Settings != "" {
 		text += " Email settings: " + v.Settings
 	}
+	if v.Stop != "" {
+		text += " Stop reminders: " + v.Stop
+	}
 	text += "\nQuestions? " + Support + "\nForwend: " + site.WebURL + "\n"
 	if site.PostalAddress != "" {
 		text += site.PostalAddress + "\n"
 	}
-	return email.Message{Subject: v.Subject, Text: text, HTML: html, ReplyTo: v.ReplyTo}, nil
+	return email.Message{Subject: v.Subject, Text: text, HTML: html, ReplyTo: v.ReplyTo, Unsubscribe: v.Unsubscribe}, nil
 }

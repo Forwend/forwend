@@ -51,6 +51,10 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusConflict, "client_email_required", "the invoice has no client email to send it to"
 	case errors.Is(err, invoice.ErrClosed):
 		status, code, message = http.StatusConflict, "invoice_closed", "the invoice can no longer be paid, so it can't be sent"
+	case errors.Is(err, invoice.ErrDueDateRequired):
+		status, code, message = http.StatusConflict, "due_date_required", "reminders count from the due date, and the invoice has none"
+	case errors.Is(err, invoice.ErrRemindersStopped):
+		status, code, message = http.StatusConflict, "reminders_stopped", "the client stopped the reminders for this invoice"
 	case errors.Is(err, invoice.ErrBillingDetailsRequired):
 		status, code, message = http.StatusConflict, "billing_details_required",
 			"a freelancer or merchant profile saves its billing details before its first invoice"

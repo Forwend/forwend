@@ -30,6 +30,16 @@ export const INVOICE_EVENTS = {
   held: "invoice.held",
 } as const;
 
+/** Payment reminder steps (R-96), in the order they go out: 3 days before the due date, on it, 7 days after. */
+export const REMINDER_STEPS = {
+  before: "before",
+  due: "due",
+  after: "after",
+} as const;
+
+/** A payment reminder's stop token (R-96): 32 random bytes in lowercase hex. */
+export const STOP_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
+
 /** The rows of Owed to you (R-95), in the API's order. */
 export const OWED_KINDS = {
   overdue: "overdue",
