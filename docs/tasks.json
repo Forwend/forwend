@@ -518,7 +518,7 @@
         "New invoice has Add item rows with a live total that becomes the amount; the owner's invoice page and the invoice PDF list the items with quantity, unit price and amount; axe 0 and no sideways scroll at 390 px"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -604,11 +604,18 @@
           "summary": "PASS. Post-pass changes are correct. Focus: line-items.tsx:36-38 mount effect focuses Item 1 only when Add item under the amount mounts the list (items start empty; no other path mounts it; request mode hides the button so it never mounts; pay-mode and token switches keep the list mounted, focus not stolen). Footer Add item (flushSync, focusRow(items.length)) lands on the new row; remove (flushSync, focusRow(min(i, n-2))) lands on the row that took its place, else the one before; removing the only item: focusRow(-1) is a no-op and new-invoice-form.tsx:113-116 focuses the amount field by useId id (TextField forwards id). Hooks run before the early return; deps fine. Checked in a scratch test under StrictMode (React 19.3): add x3, remove last of 3, remove middle, remove only, pay-mode switch, request mode, first mount steals no focus: all pass, no React warnings. lineErrorField in lib, line errors cleared on token/pay mode change, PDF descriptions use MaxLineDescription (SplitText uses up >=1 rune per line, API counts runes, so at most 200 lines, never an ellipsis; W test passes). No money regressions. Tests: vitest src/features/invoices 26 passed; go test document, httpapi/tests, invoice, database ok; lint and typecheck ok. Minor, no fail: (1) On a phone, tapping Remove moves focus into a text field (next row's Item, or Amount), so the on-screen keyboard likely opens after the tap. (2) new-invoice-form.tsx:387-391,404-407 clear lineErrors but not errors.lines: a 422 amountUsd message under the items stays after switching to one token, until an edit or Create. (3) new-invoice-form.tsx:418: removing the last item when its line is invalid (total 0) brings back the amount typed before Add item (type 100, Add item, clear price, remove: Amount shows 100); visible, not a money bug. (4) document.go:393 wording: SplitText can return an empty line (two spaces before a word that fills a line); the true reason is each line uses up at least one character. (5) The focus test does not cover removing the last of several rows or StrictMode. (6) new-invoice-form.tsx:110 comment mostly says what the effect does.",
           "at": "2026-10-17T11:03:00Z",
           "filesHash": "59facbcdfd482a46"
-        }
+        },
+        "commit": "ea27461",
+        "doneAt": "2026-10-17T11:03:42Z"
       },
       "branch": "feat/f214-an-invoice-can-list-line-items-descripti",
       "baseCommit": "7e95f0a5c7359233fee5297d71f86d008df4bc4e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f214-an-invoice-can-list-line-items-descripti",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
