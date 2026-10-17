@@ -951,7 +951,7 @@
         "A form filled with items shows them without moving focus on load; adding the first item or removing the last still moves focus as before (R-88). axe 0 and no sideways scroll at 390 px."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -1037,11 +1037,18 @@
           "summary": "Pass (re-review after the first pass). The follow-up changes are correct. The new unit test (invoices.test.ts:323-346) matters: I ran a temporary copy of restartFrom that reads line prices in the shown option's decimals (lib/invoices.ts:291 using decimals instead of lineDecimals), and only that test failed (2.5 became 0.0000000000025); temp files deleted. The two stale comments, the long comment line and the shadowed itemId are fixed. The merchant e2e Duplicate step checks the note and return link, and the phone e2e duplicates its invoice and checks the filled form at 390 px with fits() and axe; the verify run at 14:16:50Z is newer than the last source change and both tests passed. Whole change re-checked: restartFrom money is right for fixed, payer chooses, late-locked and on-time-locked options, whole and rest (rest is fixed in the paid token with no items; whole keeps Client chooses when options > 1); with items the amount is always their total. Form fills title, note, return link, reference, client and items, dates empty and expiry at default; the preview reads the filled title and note; filled items take no focus, and add-first / remove-last focus still works (new-invoice-form.test:245-258 and :297). Menu: Duplicate always, separators right for all three cases, cancel focus flow unchanged (dialog still unmounts when cancelable flips; e2e checks focus on Canceled on). invoiceCopyHref and shortQuantity are plain moves with no other copies left. Docs R-91, DESIGN.md and PLAN 10.2 match the code. vitest 87/87, typecheck, lint and docs-check pass. Minor notes, none blocking: (1) invoice-detail.tsx:183-185 comment still lists the header actions as copy, open and cancel, without Duplicate. (2) constants/invoices.ts:40 says ?from fills a new invoice from a closed one; it now fills from any invoice (R-91). (3) The open More actions menu with Duplicate is not axe-checked at 390 px; only the filled form is. (4) Product questions left open as the author said: a request copy uses the profile name as sender, and on a closed unpaid invoice the header's New invoice link and Duplicate open the same URL.",
           "at": "2026-10-17T14:26:55Z",
           "filesHash": "f8ffac0c942c54ef"
-        }
+        },
+        "commit": "ec0f48f",
+        "doneAt": "2026-10-17T14:27:23Z"
       },
       "branch": "feat/f218-the-owner-can-duplicate-an-invoice-new-i",
       "baseCommit": "5f0fe149774233c279e0688dc8da434e99a8cb1e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f218-the-owner-can-duplicate-an-invoice-new-i",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
