@@ -11,6 +11,7 @@ import {
   INVOICE_PDFS,
   INVOICE_STEPS,
   LINE_LIMITS,
+  OWED_KINDS,
   SETTLEMENT_WAITS,
 } from "@/features/invoices/constants/invoices";
 import type {
@@ -18,6 +19,7 @@ import type {
   InvoiceExceptionKind,
   InvoicePdf,
   InvoiceStep,
+  OwedKind,
   PayWith,
   Recheck,
   SettlementWaitKind,
@@ -393,4 +395,21 @@ export const INVOICE_COPY = {
     limited: "You can't send more emails right now. Try again later.",
     error: "We could not send it. Try again.",
   },
+} as const;
+
+// Owed to you on the business overview (R-95).
+export const OWED_COPY = {
+  title: "Owed to you",
+  totalLabel: "Left to pay",
+  // What each row is, after its number; overdue counts the days.
+  kinds: {
+    [OWED_KINDS.overdue]: (days: number) => (days === 1 ? "1 day late" : `${days} days late`),
+    [OWED_KINDS.partlyPaid]: () => "Partly paid",
+    [OWED_KINDS.held]: () => "Held for the payer",
+  } satisfies Record<OwedKind, (days: number) => string>,
+  left: "left to pay",
+  none: "Nothing is overdue, partly paid or held for a payer.",
+  failed: "We could not load what you are owed.",
+  retry: "Try again",
+  showAll: (n: number) => `Show all ${n}`,
 } as const;

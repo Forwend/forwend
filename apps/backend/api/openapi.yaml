@@ -139,6 +139,32 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/owed:
+    get:
+      operationId: listOwed
+      summary: What clients still owe the profile, and money held for payers
+      description: |
+        R-95. The invoices the payer can still pay (the open status filter) that are overdue or partly paid, then each
+        option with money held for the payer (D-26). Overdue rows come first, most days late first; then partly paid;
+        then held.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: The rows
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Owed" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/notifications:
     get:
       operationId: getNotifications
@@ -929,6 +955,36 @@ components:
         at:
           type: string
           format: date-time
+    Owed:
+      type: object
+      required: [kind, invoiceId, number, title, clientName, dueDate, daysLate, optionCount, chainId, token, symbol,
+        decimals, amount]
+      properties:
+        kind:
+          type: string
+          enum: [overdue, partlyPaid, held]
+          description: |
+            overdue: the due date is before today's UTC date. partlyPaid: part is in and it is not overdue. held: money
+            on this option is held for the payer, not the owner's.
+        invoiceId: { $ref: "#/components/schemas/InvoiceId" }
+        number: { type: integer, minimum: 1 }
+        title: { type: [string, "null"] }
+        clientName: { type: [string, "null"] }
+        dueDate: { type: [string, "null"], format: date }
+        daysLate: { type: integer, minimum: 0, description: Whole UTC days past the due date; 0 unless overdue. }
+        optionCount:
+          type: integer
+          minimum: 1
+          description: Above 1 the client chooses the token, so an unpaid row reads in USD at 1 USD per token (D-75).
+        chainId: { type: integer }
+        token: { $ref: "#/components/schemas/Address" }
+        symbol: { type: string }
+        decimals: { type: integer, minimum: 0 }
+        amount:
+          allOf: [{ $ref: "#/components/schemas/Uint256" }]
+          description: |
+            overdue and partlyPaid: what is left to pay, the amount less what the ledger booked to the owner. held: the
+            held amount on this option.
     Notifications:
       type: object
       required: [email, address]

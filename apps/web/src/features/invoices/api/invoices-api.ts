@@ -6,6 +6,7 @@ import {
   invoiceEventsSchema,
   invoiceSchema,
   invoicesPageSchema,
+  owedListSchema,
   recheckSchema,
 } from "@/features/invoices/schemas/invoices";
 import type {
@@ -13,6 +14,7 @@ import type {
   Invoice,
   InvoiceEvent,
   InvoicesPage,
+  Owed,
   Recheck,
 } from "@/features/invoices/types/invoices";
 import { apiSlice } from "@/shared/api/api-slice";
@@ -71,6 +73,13 @@ export const invoicesApi = apiSlice
         }),
         rawResponseSchema: invoiceEventsSchema,
         transformResponse: (data: { items: InvoiceEvent[] }) => data.items,
+      }),
+      /** Owed to you (R-95): overdue and partly paid invoices with what is left, then money held for the payer. */
+      getOwed: build.query<Owed[], string>({
+        query: (profileId) => `/v1/profiles/${encodeURIComponent(profileId)}/owed`,
+        rawResponseSchema: owedListSchema,
+        transformResponse: (data: { items: Owed[] }) => data.items,
+        providesTags: [INVOICES_TAG],
       }),
       /** Cancel before any money (R-79): 409 once money was seen or the checkout closed. */
       cancelInvoice: build.mutation<Invoice, { profileId: string; invoiceId: string }>({
@@ -148,6 +157,7 @@ export const {
   useCancelInvoiceMutation,
   useSendInvoiceMutation,
   useGetInvoiceEventsQuery,
+  useGetOwedQuery,
   useRecheckInvoiceMutation,
   useSetPayerEmailMutation,
 } = invoicesApi;

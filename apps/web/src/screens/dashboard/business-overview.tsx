@@ -19,6 +19,7 @@ import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { historySeries, seriesTotal } from "@/features/balances/lib/balance-history";
 import { formatUsd, usdTotal } from "@/features/balances/lib/balances";
 import type { HistoryRange } from "@/features/balances/types/balance-history";
+import { OwedToYou } from "@/features/invoices/components/owed-to-you";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { profileLabel } from "@/features/profiles/lib/profile";
@@ -144,6 +145,8 @@ export function BusinessOverview() {
           </Figure>
         </dl>
       </section>
+
+      <OwedToYou profileId={profile.profileId} />
 
       {/* Both columns stretch to one height, so their bottom edges line up. */}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">

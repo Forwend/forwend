@@ -515,3 +515,75 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
   }
   await context.close();
 });
+
+test("the overview lists what clients owe, with the total left to pay, and fits a phone", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ storageState: session });
+  const page = await context.newPage();
+  await page.goto("/app");
+  await chooseMerchant(page, () =>
+    page
+      .locator("aside")
+      .getByRole("button", { name: /^Switch profile/ })
+      .click(),
+  );
+  // R-95: the API's own answer first: rows, or the empty state.
+  const owed = page.getByRole("region", { name: "Owed to you" });
+  await expect(
+    owed
+      .getByRole("link")
+      .first()
+      .or(owed.getByText("Nothing is overdue, partly paid or held for a payer.")),
+  ).toBeVisible();
+
+  // Then fixed rows: overdue first, a payer-chooses one in USD, held money out of the total, and Show all past five.
+  const row = (n: number, kind: string, amount: string, more: object = {}) => ({
+    kind,
+    invoiceId: `0x${String(n).repeat(64)}`,
+    number: 9000 + n,
+    title: null,
+    clientName: `Client ${n}`,
+    dueDate: null,
+    daysLate: 0,
+    optionCount: 1,
+    chainId: 84532,
+    token: `0x${"a".repeat(40)}`,
+    symbol: "USDC",
+    decimals: 6,
+    amount,
+    ...more,
+  });
+  const items = [
+    row(1, "overdue", "450500000", { daysLate: 12, dueDate: "2026-01-01" }),
+    row(2, "overdue", "100000000", { daysLate: 1, optionCount: 4 }),
+    row(3, "partlyPaid", "25000000"),
+    row(4, "partlyPaid", "1000000"),
+    row(5, "partlyPaid", "1000000"),
+    row(6, "partlyPaid", "1000000"),
+    row(7, "held", "9000000"),
+  ];
+  await page.route("**/api/v1/profiles/*/owed", (route) => route.fulfill({ json: { items } }));
+  await page.reload();
+  await expect(owed.getByText("Left to pay: 578.50 USD")).toBeAttached();
+  const links = owed.getByRole("link");
+  await expect(links).toHaveCount(5);
+  await expect(links.first()).toContainText("Client 1");
+  await expect(links.first()).toContainText("INV-9001 · 12 days late");
+  await expect(links.first()).toContainText("450.50 USDC");
+  await expect(links.first()).toHaveAttribute("href", `/app/invoices/0x${"1".repeat(64)}`);
+  await expect(links.nth(1)).toContainText("1 day late");
+  await expect(links.nth(1)).toContainText("100.00 USD");
+  expect(await blockingViolations(page)).toEqual([]);
+  await owed.getByRole("button", { name: "Show all 7" }).click();
+  await expect(links).toHaveCount(7);
+  // The button goes, so focus moves to the first row it showed.
+  await expect(links.nth(5)).toBeFocused();
+  await expect(links.last()).toContainText("Held for the payer");
+  await expect(links.last()).not.toContainText("left to pay");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(owed).toBeVisible();
+  expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
+  expect(await blockingViolations(page)).toEqual([]);
+  await context.close();
+});

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 224,
+  "nextId": 225,
   "tasks": [
     {
       "id": "F222",
@@ -205,12 +205,105 @@
         "branch": "feat/f223-the-owner-can-email-an-invoice-to-the-cl",
         "base": "main"
       }
+    },
+    {
+      "id": "F224",
+      "type": "feat",
+      "behavior": "The business overview lists what clients still owe: overdue and partly paid invoices with what is left, and money held for the payer (PLAN 10.5)",
+      "acceptance": [
+        "GET /v1/profiles/{id}/owed returns the profile's invoices the payer can still pay that are past their due date (days late, in UTC days) or partly paid, each with what is left (the amount less what the ledger booked to the owner), and each option with money held for the payer, with the held amount. Order: overdue (most days late first), partly paid, held. Another user gets 403.",
+        "The freelancer and merchant overview has an Owed to you panel: one row per item linking to its invoice, the days late, partly paid or held for the payer, and the amount; a total of what is left at 1 USD per stablecoin without held money; an empty state; a failed read with Try again. axe 0 and no sideways scroll at 390 px.",
+        "openapi.yaml, docs/backend/api.md and DESIGN.md describe the route and the panel."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-95",
+        "R-63",
+        "R-69",
+        "D-26",
+        "D-75"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-17T22:28:32Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 71.7,
+            "log": "docs/runs/F224-20261017T222832Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 196.9,
+            "log": "docs/runs/F224-20261017T222832Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F224-20261017T222832Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F224-20261017T222832Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F224-20261017T222832Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F224-20261017T222832Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.3,
+            "log": "docs/runs/F224-20261017T222832Z-build.log"
+          }
+        ],
+        "taskHash": "654493959cfef5e6",
+        "filesHash": "0d6288b90f39046d",
+        "proof": {
+          "1": "unit: httpapi/tests/invoices_owed_test.go TestOwedToYou: real ledger deposits; overdue 10 days (5.00 left) before overdue 3 days with 1.00 paid (4.00 left), then partly paid not yet due (3.50 left, daysLate 0), then 2.00 held on a canceled invoice; paid, due today, undated and closed-checkout invoices stay out; another user's profile is 403",
+          "2": "e2e: e2e/privy/invoices.spec.ts 'the overview lists what clients owe': the real answer shows rows or the empty line; fixed rows show Client 1 INV-9001 12 days late 450.50 USDC linking to its invoice, a payer-chooses row in USD, total Left to pay 578.50 USD without held money, Show all 7 moving focus to row 6, Held for the payer without left to pay, axe 0 at desktop and 390 px, no sideways scroll; unit: owedCents test; screenshots docs/runs/F224-owed-desk.png, F224-owed-phone.png, F224-owed-phone-dark.png",
+          "3": "docs-check: openapi.yaml adds listOwed and the Owed schema; docs/backend/api.md (Invoices) describes the rows, amounts and order; DESIGN.md describes the Owed to you panel"
+        }
+      },
+      "branch": "feat/f224-the-business-overview-lists-what-clients",
+      "baseCommit": "22f778a9f4bf8d07127a91fc657274047e91f3d6",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-17T19:04:29Z",
+    "at": "2026-10-17T20:38:51Z",
     "clean": true,
     "problems": [],
-    "note": "F222 docs refactor merged (#220): read-when tables, section indexes, one owner for the public GET fields, long rows/bullets split, D-84. Next: 10.5 Getting paid on time or 10.3 Jobs; turn the 44px touch-target rule into a check when it breaks again."
+    "note": "F223 Send to client merged (#221): POST .../send, invoice.sent email to the client with Reply-To the issuer, Billed to lists sends. Next in 10.5: the Owed to you list, then reminders (D-69). Open owner points: USD in the email after the client picked a token, 24 h wait after a failed send, sends right after paid or canceled, Resend daily budget vs 20 per profile. The shared E2E shop profile fills toward MaxOpen (1000) again with each e2e run."
   }
 }

@@ -251,6 +251,27 @@ type recheckJSON struct {
 	Unreadable  []uint64 `json:"unreadable"`
 }
 
+type owedListJSON struct {
+	Items []owedJSON `json:"items"`
+}
+
+// owedJSON is one Owed to you row (R-95): amount is what is left to pay, or the held amount for held.
+type owedJSON struct {
+	Kind        string  `json:"kind"`
+	InvoiceID   string  `json:"invoiceId"`
+	Number      int64   `json:"number"`
+	Title       *string `json:"title"`
+	ClientName  *string `json:"clientName"`
+	DueDate     *string `json:"dueDate"`
+	DaysLate    int     `json:"daysLate"`
+	OptionCount int     `json:"optionCount"`
+	ChainID     uint64  `json:"chainId"`
+	Token       string  `json:"token"`
+	Symbol      string  `json:"symbol"`
+	Decimals    int     `json:"decimals"`
+	Amount      string  `json:"amount"`
+}
+
 type eventsJSON struct {
 	Items []eventJSON `json:"items"`
 }

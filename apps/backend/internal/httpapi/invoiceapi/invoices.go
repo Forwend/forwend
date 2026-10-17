@@ -156,6 +156,26 @@ func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
+// listOwed is GET /v1/profiles/{profileId}/owed (R-95): overdue and partly paid invoices with what is left, then money
+// held for the payer.
+func listOwed(invoices *invoice.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		owed, err := invoices.Owed(r.Context(), r.PathValue("profileId"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		out := owedListJSON{Items: []owedJSON{}}
+		for _, o := range owed {
+			out.Items = append(out.Items, owedJSON{Kind: o.Kind, InvoiceID: o.InvoiceID, Number: o.Number,
+				Title: httpio.OrNull(o.Title), ClientName: httpio.OrNull(o.ClientName), DueDate: httpio.OrNull(o.DueDate),
+				DaysLate: o.DaysLate, OptionCount: o.OptionCount, ChainID: o.ChainID, Token: o.Token, Symbol: o.Symbol,
+				Decimals: o.Decimals, Amount: o.Amount.String()})
+		}
+		httpio.WriteJSON(w, http.StatusOK, out)
+	}
+}
+
 // listEvents is GET /v1/profiles/{profileId}/events?limit= (R-81): the bell's paid, settled and held-money events,
 // newest first.
 func listEvents(invoices *invoice.Service) http.HandlerFunc {

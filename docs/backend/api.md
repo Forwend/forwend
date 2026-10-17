@@ -183,6 +183,12 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - One send per invoice in 24 hours and 20 per profile in 24 hours, counted from `outbox_events` under a profile lock.
   - Sends share the limit for everyone with the payer's receipt address. Past any limit: 429 with Retry-After.
   - The owner's reads return `sends`, oldest first: `{requestedAt, sentAt, failedAt}`. The bell leaves sends out.
+- `GET /v1/profiles/{profileId}/owed` (R-95) lists what clients still owe, for the Owed to you panel.
+  - Unpaid rows: invoices under the `open` status filter that are overdue or partly paid.
+  - Overdue means the due date is before today's UTC date; `daysLate` counts whole UTC days.
+  - `amount` is what is left: the amount less the `recipient_payable` credits. No settlement runs before it is all in.
+  - Held rows: each option with a `payer_held` balance, with that amount. It is the payer's money (D-26).
+  - Order: overdue (most days late first), partly paid, held. It has no pages: unpaid rows are at most `MaxOpen`.
 - `settlementWait` (owner reads and create only) says why a paid invoice's money has not reached the profile wallet
   yet, null when it is not paid or already settled (R-54): `{kind, until, secondsLeft}` with `kind` one of `signing`,
   `finalizing` (`secondsLeft` estimates the chain time until the settle is final), `retrying` and `dailyLimit` (the
