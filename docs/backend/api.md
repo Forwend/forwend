@@ -187,6 +187,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - Unpaid rows: invoices under the `open` status filter that are overdue or partly paid.
   - Overdue means the due date is before today's UTC date; `daysLate` counts whole UTC days.
   - `amount` is what is left: the amount less the `recipient_payable` credits. No settlement runs before it is all in.
+  - A row with nothing left is left out: all of it is booked and waits for the second RPC.
   - Held rows: each option with a `payer_held` balance, with that amount. It is the payer's money (D-26).
   - Order: overdue (most days late first), partly paid, held. It has no pages: unpaid rows are at most `MaxOpen`.
 - `settlementWait` (owner reads and create only) says why a paid invoice's money has not reached the profile wallet

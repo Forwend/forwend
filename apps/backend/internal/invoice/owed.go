@@ -60,6 +60,7 @@ func (s *Service) Owed(ctx context.Context, profileID string) ([]Owed, error) {
 		    GROUP BY m.id, o.id, t.symbol, t.decimals
 		    HAVING sum(e.amount) <> 0
 		) owed
+		WHERE amount > 0 -- paid in full and waiting for the second RPC: nothing is left
 		ORDER BY CASE kind WHEN 'overdue' THEN 0 WHEN 'partlyPaid' THEN 1 ELSE 2 END, days_late DESC, number DESC, token`,
 		profileID)
 	if err != nil {

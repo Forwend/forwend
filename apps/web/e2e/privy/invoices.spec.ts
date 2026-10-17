@@ -573,7 +573,7 @@ test("the overview lists what clients owe, with the total left to pay, and fits 
   await expect(links.first()).toContainText("450.50 USDC");
   await expect(links.first()).toHaveAttribute("href", `/app/invoices/0x${"1".repeat(64)}`);
   await expect(links.nth(1)).toContainText("1 day late");
-  await expect(links.nth(1)).toContainText("100.00 USD");
+  await expect(links.nth(1)).toContainText(/100\.00 USD(?!C)/);
   expect(await blockingViolations(page)).toEqual([]);
   await owed.getByRole("button", { name: "Show all 7" }).click();
   await expect(links).toHaveCount(7);
@@ -582,8 +582,10 @@ test("the overview lists what clients owe, with the total left to pay, and fits 
   await expect(links.last()).toContainText("Held for the payer");
   await expect(links.last()).not.toContainText("left to pay");
   await page.setViewportSize({ width: 390, height: 844 });
+  // The shell swaps the sidebar for the tab bar after the resize; until then the old layout is wider than a phone.
+  await expect(page.locator("aside")).toBeHidden();
   await expect(owed).toBeVisible();
-  expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
+  await expect.poll(() => sidewaysScroll(page)).toBeLessThanOrEqual(0);
   expect(await blockingViolations(page)).toEqual([]);
   await context.close();
 });

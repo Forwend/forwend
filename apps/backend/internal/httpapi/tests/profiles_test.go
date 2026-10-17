@@ -197,6 +197,8 @@ var profileRoutes = []struct{ method, path, body string }{
 	{"PUT", "/v1/profiles/%s/clients/" + clientA, `{"name": "Bob Ltd"}`},
 	{"GET", "/v1/profiles/%s/clients", ""},
 	{"DELETE", "/v1/profiles/%s/clients/" + clientA, ""},
+	{"POST", "/v1/profiles/%s/invoices/0x" + strings.Repeat("0", 64) + "/send", ""},
+	{"GET", "/v1/profiles/%s/owed", ""},
 }
 
 // Bob never sees Alice's profiles and gets 403 on every profile route for them; Alice passes the owner check.
