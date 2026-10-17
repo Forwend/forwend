@@ -122,11 +122,11 @@ func TestInvoicePDF(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	plain := e.post(t, alice, e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
-	request := e.post(t, alice, e.aliceProfile, "key-0", `{"chainId": 84532, "token": "`+usdc+`", "amount": "5000000",
-		"senderName": "Mara Ilić"}`).body["invoiceId"].(string)
-	if r := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/billing-details", alice, "", billingBody); r.status != http.StatusOK {
-		t.Fatalf("PUT billing details: %d %v", r.status, r.body)
-	}
+	// A request comes from a personal profile, which has no billing details (D-52).
+	e.exec(t, `INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
+		VALUES ($1, 'privy', 'wallet-3', 'evm', $2)`, e.bobProfile, "0x"+strings.Repeat("b0", 20))
+	request := e.post(t, "did:privy:bob", e.bobProfile, "key-0", `{"chainId": 84532, "token": "`+usdc+`",
+		"amount": "5000000", "senderName": "Mara Ilić"}`).body["invoiceId"].(string)
 	made := e.post(t, alice, e.aliceProfile, "key-2", detailsBody).body
 	id := made["invoiceId"].(string)
 	expires, _ := time.Parse(time.RFC3339, made["expiresAt"].(string))
@@ -136,7 +136,7 @@ func TestInvoicePDF(t *testing.T) {
 	if r.status != http.StatusOK || r.header.Get("Content-Type") != "application/pdf" || !bytes.HasPrefix(r.body, []byte("%PDF-")) {
 		t.Fatalf("got %d %s %.40q", r.status, r.header.Get("Content-Type"), r.body)
 	}
-	if got := r.header.Get("Content-Disposition"); got != `attachment; filename="forwend-INV-0003-invoice.pdf"` {
+	if got := r.header.Get("Content-Disposition"); got != `attachment; filename="forwend-INV-0002-invoice.pdf"` {
 		t.Fatalf("Content-Disposition %q", got)
 	}
 	if r.header.Get("Cache-Control") != "private, no-cache" || r.header.Get("ETag") == "" {
@@ -144,13 +144,13 @@ func TestInvoicePDF(t *testing.T) {
 	}
 	text := pdfText(t, r.body)
 	link := webURL + "/pay/" + id
-	mustContain(t, text, "Forwend\nInvoice\nINV-0003",
+	mustContain(t, text, "Forwend\nInvoice\nINV-0002",
 		"FROM\nAlice Design GmbH\nHauptstr. 1\n10115 Berlin\nDE\nTax ID DE123456789\nbilling@alice.example",
 		"BILL TO\nBob Ltd\nMain St 1\nBerlin\nDE\nTax ID DE999999999",
-		"INV-0003\nReference PO-4500012345\n", "Issued\n"+created.Format("2006-01-02 15:04")+" UTC\nSupply date\n2026-10-31\nDue date\n2026-11-01\nCheckout closes\n"+
+		"INV-0002\nReference PO-4500012345\n", "Issued\n"+created.Format("2006-01-02 15:04")+" UTC\nSupply date\n2026-10-31\nDue date\n2026-11-01\nCheckout closes\n"+
 			expires.Format("2006-01-02 15:04")+" UTC",
 		"Description\nNetwork\nAmount\nLogo design\nBase Sepolia\nChain 84532\n5.00 USDC\nTotal due\n5.00 USDC",
-		"Invoice INV-0003\nPage 1 of 1",
+		"Invoice INV-0002\nPage 1 of 1",
 		"NOTE\nThanks!\nPay within 14 days.",
 		"Pay this invoice\nScan the code or open the link. Send only USDC on Base Sepolia.\n"+webURL+"/pay/",
 		"Invoice ID\n"+id)
@@ -177,12 +177,12 @@ func TestInvoicePDF(t *testing.T) {
 	mustContain(t, text, "INV-0001", "Description\nNetwork\nAmount\nPayment\nBase Sepolia")
 	mustContain(t, strings.ReplaceAll(text, "\n", ""), webURL+"/pay/"+plain)
 
-	// A request without billing details names its sender, marked as not checked.
+	// A request names its sender, marked as not checked.
 	mustContain(t, pdfText(t, e.pdf(t, request, "invoice.pdf", "").body),
 		"FROM", "Mara Ilić", "Name not checked by Forwend")
-	for _, block := range []string{"FROM", "BILL TO", "Reference", "Supply date", "Due date", "NOTE"} {
+	for _, block := range []string{"BILL TO", "Reference", "Supply date", "Due date", "NOTE"} {
 		if strings.Contains(text, block) {
-			t.Fatalf("an invoice without billing details or client says %q:\n%s", block, text)
+			t.Fatalf("an invoice without a client or details says %q:\n%s", block, text)
 		}
 	}
 }

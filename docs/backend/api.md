@@ -134,6 +134,9 @@ R-19 and R-42; the full schema is in openapi.yaml.
   (the rules of a saved client, R-86; `country` and `taxId` are part of the idempotency hash only when set). Empty means
   none and is returned as null. Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken
   rule is 422 `invalid_value`; these fields are part of the idempotency hash.
+- A freelancer or merchant profile saves its billing details first: without them create is 409
+  `billing_details_required` and makes nothing, so every business invoice names who bills the client (R-92, D-83). A
+  personal profile's request needs none and names its sender (D-52).
 - Optional `lines` (R-88, at most 50): `{ description ≤ 200, quantity, unitPrice }`, adding up exactly to `amount` or
   `amountUsd`. `unitPrice` is in the amount's own unit (base units with `amount`, a USD decimal with `amountUsd`);
   `quantity` is above 0 and at most 1,000,000 with up to 2 decimals, and each unit price and each quantity times it

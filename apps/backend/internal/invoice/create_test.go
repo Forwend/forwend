@@ -19,7 +19,8 @@ import (
 
 const usdc = "0x036cbd53842c5426634e7929541ec2318f3dcf7e"
 
-// open migrates a fresh database with Base Sepolia, enabled USDC and one profile with a wallet.
+// open migrates a fresh database with Base Sepolia, enabled USDC and one freelancer profile with a wallet and billing
+// details (R-92).
 func open(t *testing.T) (*pgxpool.Pool, string) {
 	t.Helper()
 	ctx := context.Background()
@@ -41,7 +42,9 @@ func open(t *testing.T) (*pgxpool.Pool, string) {
 		     u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:alice') RETURNING id),
 		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id),
 		     w AS (INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
-		           SELECT id, 'privy', 'w1', 'evm', '0x1111111111111111111111111111111111111111' FROM p)
+		           SELECT id, 'privy', 'w1', 'evm', '0x1111111111111111111111111111111111111111' FROM p),
+		     b AS (INSERT INTO profile_billing_details (profile_id, name, address, country, contact_email)
+		           SELECT id, 'Alice', 'Main St 1', 'DE', 'alice@example.com' FROM p)
 		SELECT id::text FROM p`, usdc).Scan(&profile)
 	if err != nil {
 		t.Fatal(err)

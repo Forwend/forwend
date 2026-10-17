@@ -246,7 +246,8 @@ const billingBody = `{"name": "Alice Design GmbH", "address": "Hauptstr. 1\n1011
 func TestBillingDetails(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
-	path := "/v1/profiles/" + e.aliceProfile + "/billing-details"
+	// The merchant profile: the freelancer one starts with billing details.
+	path := "/v1/profiles/" + e.walletless + "/billing-details"
 	if r := e.call(t, "GET", path, alice, "", ""); r.status != http.StatusNotFound || errorCode(r) != "billing_details_not_found" {
 		t.Fatalf("GET before PUT: %d %v", r.status, r.body)
 	}

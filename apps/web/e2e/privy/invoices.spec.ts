@@ -23,7 +23,22 @@ async function chooseMerchant(page: Page, open: () => Promise<void>) {
 async function createInvoice(page: Page, fill: () => Promise<void>) {
   await expect(page.getByRole("heading", { level: 1, name: "New invoice" })).toBeVisible();
   const noNetworks = page.getByText("No networks are enabled yet");
-  await expect(noNetworks.or(page.getByRole("button", { name: "Create invoice" }))).toBeVisible();
+  const form = noNetworks.or(page.getByRole("button", { name: "Create invoice" }));
+  // R-92: the shared merchant profile saves its billing details once, before its first invoice.
+  const billing = page.getByRole("main").getByRole("link", { name: "Add billing details" });
+  await expect(form.or(billing)).toBeVisible();
+  if (await billing.isVisible()) {
+    await billing.click();
+    await page.getByRole("textbox", { name: "Name or business name" }).fill("E2E shop GmbH");
+    await page.getByRole("textbox", { name: "Address" }).fill("1 Test Street, Berlin");
+    await page.getByRole("button", { name: /^Country/ }).click();
+    await page.getByRole("combobox", { name: /Country/ }).fill("germ");
+    await page.keyboard.press("Enter");
+    await page.getByRole("textbox", { name: "Contact email" }).fill("billing@e2e.example");
+    await page.getByRole("button", { name: "Save details" }).click();
+    await expect(page).toHaveURL("/app/invoices/new");
+  }
+  await expect(form).toBeVisible();
   if (await noNetworks.isVisible()) {
     expect(await blockingViolations(page)).toEqual([]);
     return null;

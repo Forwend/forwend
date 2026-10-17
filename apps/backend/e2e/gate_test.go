@@ -214,7 +214,9 @@ func newStack(t *testing.T) *stack {
 		     u AS (INSERT INTO users (privy_user_id, login_email) VALUES ('did:privy:gate', 'owner@example.com') RETURNING id),
 		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id),
 		     w AS (INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
-		           SELECT id, 'privy', 'w1', 'evm', $3 FROM p)
+		           SELECT id, 'privy', 'w1', 'evm', $3 FROM p),
+		     b AS (INSERT INTO profile_billing_details (profile_id, name, address, country, contact_email)
+		           SELECT id, 'Gate', 'Main St 1', 'DE', 'owner@example.com' FROM p)
 		SELECT id::text FROM p`, chaintest.ChainID, token, wallet).Scan(&profile)
 	if err != nil {
 		t.Fatal(err)

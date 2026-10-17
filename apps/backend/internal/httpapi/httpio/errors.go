@@ -47,6 +47,9 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, invoice.ErrNotCancelable):
 		status, code, message = http.StatusConflict, "invoice_not_cancelable",
 			"only an open invoice with no payment seen and its checkout still open can be canceled"
+	case errors.Is(err, invoice.ErrBillingDetailsRequired):
+		status, code, message = http.StatusConflict, "billing_details_required",
+			"a freelancer or merchant profile saves its billing details before its first invoice"
 	case errors.Is(err, invoice.ErrConflict), errors.Is(err, profile.ErrConflict):
 		status, code, message = http.StatusConflict, "idempotency_conflict", "Idempotency-Key was used with another request"
 	case errors.Is(err, invoice.ErrInvalid), errors.Is(err, profile.ErrInvalid), errors.Is(err, activity.ErrInvalid),

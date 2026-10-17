@@ -694,6 +694,38 @@ test("the owner's invoice page names the next step of every exception", async ({
   await context.close();
 });
 
+// R-92: a business invoice names who bills the client, so New invoice asks a merchant without billing details for them
+// first, and saving them comes back to the form.
+test("New invoice asks for billing details first, then comes back to the form", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page, undefined, null);
+  await page.goto("/app/invoices/new");
+  const main = page.getByRole("main");
+  await expect(main.getByText("Add your billing details first")).toBeVisible();
+  await expect(main.getByRole("button", { name: "Create invoice" })).toHaveCount(0);
+  expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
+  expect(await blockingViolations(page)).toEqual([]);
+  await main.getByRole("link", { name: "Add billing details" }).click();
+  await expect(page).toHaveURL("/app/billing-details?then=new-invoice");
+  await page.getByRole("textbox", { name: "Name or business name" }).fill("Sample shop GmbH");
+  await page.getByRole("textbox", { name: "Address" }).fill("Hauptstr. 1, Berlin");
+  await page.getByRole("button", { name: /^Country/ }).click();
+  await page.getByRole("combobox", { name: /Country/ }).fill("germ");
+  await page.keyboard.press("Enter");
+  await page.getByRole("textbox", { name: "Contact email" }).fill("billing@shop.example");
+  await page.getByRole("button", { name: "Save details" }).click();
+  await expect(page).toHaveURL("/app/invoices/new");
+  await expect(main.getByRole("button", { name: "Create invoice" })).toBeVisible();
+  await context.close();
+});
+
 // R-79: the owner cancels an invoice that has no money yet, after a confirm that says what canceling means.
 test("the owner cancels an invoice before any money, after confirming", async ({ browser }) => {
   const context = await browser.newContext({

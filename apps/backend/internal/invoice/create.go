@@ -61,8 +61,15 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	}
 	defer tx.Rollback(ctx)
 	// The profile row lock makes concurrent creates count one after another, so none passes a cap on a stale count.
-	if _, err := tx.Exec(ctx, "SELECT 1 FROM profiles WHERE id = $1 FOR UPDATE", profileID); err != nil {
+	// Billing details are never removed, so once there they stay for the insert trigger to copy.
+	var business, billed bool
+	if err := tx.QueryRow(ctx, `SELECT kind <> 'personal',
+		EXISTS (SELECT 1 FROM profile_billing_details WHERE profile_id = $1) FROM profiles WHERE id = $1 FOR UPDATE`,
+		profileID).Scan(&business, &billed); err != nil {
 		return Invoice{}, false, fmt.Errorf("lock profile: %w", err)
+	}
+	if business && !billed {
+		return Invoice{}, false, ErrBillingDetailsRequired
 	}
 	var open, today int
 	if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE expires_at > $2),

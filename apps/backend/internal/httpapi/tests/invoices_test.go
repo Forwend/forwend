@@ -70,6 +70,10 @@ func invoiceAPI(t *testing.T) invoiceEnv {
 		     ap AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM a RETURNING id),
 		     aw AS (INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
 		            SELECT id, 'privy', 'fixture-wallet', 'evm', $2 FROM ap),
+		     -- A business invoice needs the issuer's details (R-92); they are billingBody's.
+		     ab AS (INSERT INTO profile_billing_details (profile_id, name, address, country, tax_id, contact_email)
+		            SELECT id, 'Alice Design GmbH', e'Hauptstr. 1\n10115 Berlin', 'DE', 'DE123456789',
+		                   'billing@alice.example' FROM ap),
 		     a2 AS (INSERT INTO profiles (user_id, kind) SELECT id, 'merchant' FROM a RETURNING id),
 		     bp AS (INSERT INTO profiles (user_id, kind) SELECT id, 'personal' FROM b RETURNING id)
 		SELECT (SELECT id::text FROM ap), (SELECT id::text FROM a2), (SELECT id::text FROM bp)`,
@@ -255,29 +259,21 @@ func TestCreateInvoiceStoresDetails(t *testing.T) {
 	}
 }
 
-// An invoice keeps the billing details the profile had when it was made: editing them later changes no invoice, and a
-// profile without them gives invoices no issuer (R-43).
+// An invoice keeps the billing details the profile had when it was made: editing them later changes no invoice (R-43).
 func TestInvoiceKeepsItsIssuerCopy(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
-	none := e.post(t, alice, e.aliceProfile, "key-1", basicBody)
-	if v, ok := none.body["issuer"]; none.status != http.StatusCreated || !ok || v != nil {
-		t.Fatalf("no billing details: %d %v; want issuer null", none.status, none.body)
-	}
-
-	details := "/v1/profiles/" + e.aliceProfile + "/billing-details"
-	if r := e.call(t, "PUT", details, alice, "", billingBody); r.status != http.StatusOK {
-		t.Fatalf("PUT: %d %v", r.status, r.body)
-	}
+	// The setup's billing details: billingBody's.
 	old := map[string]any{"name": "Alice Design GmbH", "address": "Hauptstr. 1\n10115 Berlin", "country": "DE",
 		"taxId": "DE123456789", "email": "billing@alice.example"}
 	made := e.post(t, alice, e.aliceProfile, "key-2", basicBody)
 	if made.status != http.StatusCreated || !reflect.DeepEqual(made.body["issuer"], old) {
 		t.Fatalf("create: %d issuer %v, want %v", made.status, made.body["issuer"], old)
 	}
+	details := "/v1/profiles/" + e.aliceProfile + "/billing-details"
 	if r := e.call(t, "PUT", details, alice, "", `{"name": "Alice Studio", "address": "Rue 2, Paris", "country": "FR",
 		"email": "studio@alice.example"}`); r.status != http.StatusOK {
-		t.Fatalf("second PUT: %d %v", r.status, r.body)
+		t.Fatalf("PUT: %d %v", r.status, r.body)
 	}
 
 	id := made.body["invoiceId"].(string)
@@ -292,13 +288,39 @@ func TestInvoiceKeepsItsIssuerCopy(t *testing.T) {
 	if got := items[0].(map[string]any)["issuer"]; !reflect.DeepEqual(got, old) {
 		t.Fatalf("list after the edit: issuer %v, want %v", got, old)
 	}
-	if got := items[1].(map[string]any)["issuer"]; got != nil {
-		t.Fatalf("list: the invoice made without details has issuer %v", got)
-	}
 	newer := e.post(t, alice, e.aliceProfile, "key-3", basicBody)
 	if want := map[string]any{"name": "Alice Studio", "address": "Rue 2, Paris", "country": "FR", "taxId": nil,
 		"email": "studio@alice.example"}; !reflect.DeepEqual(newer.body["issuer"], want) {
 		t.Fatalf("invoice after the edit: issuer %v, want %v", newer.body["issuer"], want)
+	}
+}
+
+// R-92: a freelancer or merchant profile saves its billing details before its first invoice, so the payer always sees
+// who bills them; a personal profile's request needs none and names its sender instead (D-52).
+func TestBusinessInvoiceNeedsBillingDetails(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice, bob = "did:privy:alice", "did:privy:bob"
+	wallet := `INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
+		VALUES ($1, 'privy', $2, 'evm', $3)`
+	e.exec(t, wallet, e.walletless, "wallet-2", "0x"+strings.Repeat("a2", 20))
+	if r := e.post(t, alice, e.walletless, "key-1", basicBody); r.status != http.StatusConflict ||
+		errorCode(r) != "billing_details_required" {
+		t.Fatalf("a merchant without billing details: %d %v, want 409", r.status, r.body)
+	}
+	if r := e.call(t, "PUT", "/v1/profiles/"+e.walletless+"/billing-details", alice, "", billingBody); r.status != http.StatusOK {
+		t.Fatalf("PUT: %d %v", r.status, r.body)
+	}
+	// The refused request stored nothing and used no number.
+	if r := e.post(t, alice, e.walletless, "key-1", basicBody); r.status != http.StatusCreated ||
+		r.body["number"] != float64(1) || r.body["issuer"] == nil {
+		t.Fatalf("after saving them: %d %v", r.status, r.body)
+	}
+
+	e.exec(t, wallet, e.bobProfile, "wallet-3", "0x"+strings.Repeat("b0", 20))
+	request := e.post(t, bob, e.bobProfile, "key-1", `{"chainId": 84532, "token": "`+usdc+`", "amount": "5000000",
+		"senderName": "Bob"}`)
+	if request.status != http.StatusCreated || request.body["issuer"] != nil || request.body["senderName"] != "Bob" {
+		t.Fatalf("a personal request: %d %v", request.status, request.body)
 	}
 }
 
@@ -481,6 +503,8 @@ func TestCreateInvoiceRefusesUnsettleableTerms(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	e.exec(t, `INSERT INTO profile_billing_details (profile_id, name, address, country, contact_email)
+		VALUES ($1, 'Alice Shop', 'Main St 1', 'DE', 'shop@alice.example')`, e.walletless)
 	r := e.post(t, "did:privy:alice", e.walletless, "key-1", basicBody)
 	if r.status != http.StatusUnprocessableEntity || errorCode(r) != "invalid_value" {
 		t.Fatalf("got %d %v", r.status, r.body)

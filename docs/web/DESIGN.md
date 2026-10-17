@@ -189,6 +189,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   request, first paid in full, first final money in. Skipped steps and the closed card are remembered per profile in
   the browser; the card hides when closed or when every step left is done.
 - New invoice and Request money: each field group (Amount, Details, Dates, Client) is a panel with its title ruled off.
+  A freelancer or merchant without billing details sees, in place of the form, an empty state that says the invoice
+  needs them with an Add billing details button (R-92); saving them there, or Cancel, comes back to New invoice.
   Dates on New invoice holds Supply date (R-89, optional, any day), then Due date, then Checkout closes after, so the
   due date sits next to the close it moves; the invoice page lists Supply date in Details after Created. Details on
   New invoice holds PO or reference (R-90) after Title, filled from the saved client's default when the client has

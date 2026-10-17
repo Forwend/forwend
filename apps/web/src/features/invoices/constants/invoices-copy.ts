@@ -99,6 +99,11 @@ export const NEW_INVOICE_COPY = {
   returnLabel: "Return link (optional)",
   returnHint: "Your site's https link. The client sees Back to it after paying.",
   returnError: "Enter an https link, like https://example.com/thanks.",
+  billingNeeded: {
+    title: "Add your billing details first",
+    text: "Every invoice shows who bills the client: your name, address, country and email. EU, UK and US invoices need them.",
+    action: "Add billing details",
+  },
   datesGroup: "Dates",
   supplyLabel: "Supply date (optional)",
   supplyHint:
