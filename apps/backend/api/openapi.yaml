@@ -336,14 +336,14 @@ paths:
       summary: Create an invoice once per Idempotency-Key
       description: |
         The recipient is the profile's wallet, never a request field. The receive address is computed from the terms
-        (factory.predict). The same key with the same values returns the stored invoice with 200; with other values, 409.
-        The invoice gets the profile's next number in the same transaction (D-50): no gaps, and a repeat returns the
-        same number. The insert also copies the profile's billing details as issuer (null without them). The number,
-        title, note, due date, sender name, client and issuer never change after creation. Send chainId, token and
-        amount for one fixed token and network, or amountUsd alone to let the payer choose (R-56): the invoice then
-        accepts every enabled token on every chain the worker watches, each as its own option with the amount in its
-        decimals at 1 USD per stablecoin (D-75), its own on-chain id and receive address (D-76). Each option counts
-        toward the profile's limits on open receive addresses.
+        (factory.predict). The same key with the same values returns the stored invoice with 200; with other values,
+        409. The invoice gets the profile's next number in the same transaction (D-50): no gaps, and a repeat returns
+        the same number. The insert also copies the profile's billing details as issuer (null without them). The number,
+        title, note, due and supply dates, line items, sender name, client and issuer never change after creation. Send
+        chainId, token and amount for one fixed token and network, or amountUsd alone to let the payer choose (R-56):
+        the invoice then accepts every enabled token on every chain the worker watches, each as its own option with the
+        amount in its decimals at 1 USD per stablecoin (D-75), its own on-chain id and receive address (D-76). Each
+        option counts toward the profile's limits on open receive addresses.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -546,8 +546,8 @@ paths:
       summary: Read an invoice's terms and statuses
       description: |
         Public, so checkout can show the invoice and recompute the receive address from the terms. Anyone with the id
-        can read it, so it leaves out the client's name, email and address; the payer sees the number, title, note,
-        due date, sender name and issuer (who bills them).
+        can read it, so it leaves out the client's name, email and address; the payer sees the number, title, note, due
+        and supply dates, line items, sender name and issuer (who bills them).
       security: []
       parameters:
         - name: invoiceId
@@ -658,9 +658,9 @@ paths:
       description: |
         Public like GET /v1/invoices/{invoiceId} (R-47, R-61, D-51). Built on the server from the stored invoice only:
         the Forwend mark, number, issuer (left out when the profile had no billing details), bill-to with the client's
-        name and address (never the email), created time, due date, checkout expiry, a line with the title, network and
-        amount with the token's symbol, note, the pay link with its QR code and the invoice id. The same invoice always
-        gives the same bytes.
+        name and address (never the email), created time, supply date, due date, checkout expiry, a line with the title,
+        network and amount with the token's symbol (or one per line item, with the title above them), note, the pay link
+        with its QR code and the invoice id. The same invoice always gives the same bytes.
       security: []
       parameters:
         - name: invoiceId
@@ -678,9 +678,10 @@ paths:
       summary: Download the receipt of a paid invoice as a PDF
       description: |
         Public like the invoice PDF. 409 until paymentStatus is paid; a paid invoice stays paid, also once settled.
-        Shows the invoice's parties and line, the paid time (block time of the deposit that completed the amount) and
-        settled time, each confirmed deposit and the settlement with its full tx hash and a link to the network's
-        explorer, and the pay link with its QR code to check the receipt, since a PDF can be edited.
+        Shows the invoice's parties, supply date and line or line items, the paid time (block time of the deposit that
+        completed the amount) and settled time, each confirmed deposit and the settlement with its full tx hash and a
+        link to the network's explorer, and the pay link with its QR code to check the receipt, since a PDF can be
+        edited.
       security: []
       parameters:
         - name: invoiceId
@@ -1144,6 +1145,12 @@ components:
           type: string
           format: date
           description: Optional date the client should pay by (YYYY-MM-DD). Shown only; payment closes at expiresAt.
+        supplyDate:
+          type: string
+          format: date
+          description: |
+            Optional day the work was done or delivered (YYYY-MM-DD, R-89), which EU and UK VAT invoices show when it
+            differs from the issue date. Part of the idempotency hash only when set.
         senderName:
           type: string
           maxLength: 100
@@ -1273,7 +1280,7 @@ components:
                     secondsLeft: { type: [integer, "null"], minimum: 0 }
     InvoiceSummary:
       type: object
-      required: [invoiceId, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, senderName, returnUrl, issuer, chainId,
+      required: [invoiceId, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, senderName, returnUrl, issuer, chainId,
         token, amount, recipient, factory, receiveAddress, expiresAt, settleDeadline, paymentStatus, settlementStatus,
         refundStatus, settlementTxHash, createdAt]
       description: |
@@ -1316,6 +1323,9 @@ components:
         title: { type: [string, "null"] }
         note: { type: [string, "null"] }
         dueDate:
+          type: [string, "null"]
+          format: date
+        supplyDate:
           type: [string, "null"]
           format: date
         senderName:
@@ -1446,9 +1456,9 @@ components:
     InvalidValue:
       description: |
         A value breaks a rule (invalid_value): amount, expiresIn, a token or chain that is not enabled, a profile with
-        no wallet for the chain, terms the contract would refuse to settle, an invoice title, note, due date or client
-        field, a profile kind or name, a billing details field, a list limit, cursor, status, direction or search (q),
-        or balance-history days.
+        no wallet for the chain, terms the contract would refuse to settle, an invoice title, note, due or supply date,
+        line item or client field, a profile kind or name, a billing details field, a list limit, cursor, status,
+        direction or search (q), or balance-history days.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

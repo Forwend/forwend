@@ -147,7 +147,7 @@ func TestInvoicePDF(t *testing.T) {
 	mustContain(t, text, "Forwend\nInvoice\nINV-0003",
 		"FROM\nAlice Design GmbH\nHauptstr. 1\n10115 Berlin\nDE\nTax ID DE123456789\nbilling@alice.example",
 		"BILL TO\nBob Ltd\nMain St 1\nBerlin\nDE\nTax ID DE999999999",
-		"Issued\n"+created.Format("2006-01-02 15:04")+" UTC\nDue date\n2026-11-01\nCheckout closes\n"+
+		"Issued\n"+created.Format("2006-01-02 15:04")+" UTC\nSupply date\n2026-10-31\nDue date\n2026-11-01\nCheckout closes\n"+
 			expires.Format("2006-01-02 15:04")+" UTC",
 		"Description\nNetwork\nAmount\nLogo design\nBase Sepolia\nChain 84532\n5.00 USDC\nTotal due\n5.00 USDC",
 		"Invoice INV-0003\nPage 1 of 1",
@@ -180,7 +180,7 @@ func TestInvoicePDF(t *testing.T) {
 	// A request without billing details names its sender, marked as not checked.
 	mustContain(t, pdfText(t, e.pdf(t, request, "invoice.pdf", "").body),
 		"FROM", "Mara Ilić", "Name not checked by Forwend")
-	for _, block := range []string{"FROM", "BILL TO", "Due date", "NOTE"} {
+	for _, block := range []string{"FROM", "BILL TO", "Supply date", "Due date", "NOTE"} {
 		if strings.Contains(text, block) {
 			t.Fatalf("an invoice without billing details or client says %q:\n%s", block, text)
 		}
@@ -226,7 +226,7 @@ func TestReceiptPDF(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
 	made := e.post(t, "did:privy:alice", e.aliceProfile, "key-1",
-		`{"chainId": 84532, "token": "`+usdc+`", "amount": "2000000"}`).body
+		`{"chainId": 84532, "token": "`+usdc+`", "amount": "2000000", "supplyDate": "2026-10-01"}`).body
 	id, receive := made["invoiceId"].(string), made["receiveAddress"].(string)
 	expires, _ := time.Parse(time.RFC3339, made["expiresAt"].(string))
 	times := func(when string, paid, settled any) {
@@ -278,7 +278,7 @@ func TestReceiptPDF(t *testing.T) {
 	link := webURL + "/pay/" + id
 	stamp := func(at time.Time) string { return at.UTC().Format("2006-01-02 15:04") + " UTC" }
 	text := pdfText(t, r.body)
-	mustContain(t, text, "Forwend\nReceipt\nINV-0001", "Paid\n"+stamp(paidAt),
+	mustContain(t, text, "Forwend\nReceipt\nINV-0001", "Supply date\n2026-10-01\nPaid\n"+stamp(paidAt),
 		"Base Sepolia\nChain 84532\n2.00 USDC\nAmount paid\n2.00 USDC",
 		"PAYMENTS\n1.50 USDC · "+stamp(paidAt.Add(-time.Minute))+"\n"+first+"\nView on Basescan\n0.50 USDC · "+
 			stamp(paidAt)+"\n"+second+"\nView on Basescan\nCheck this receipt")

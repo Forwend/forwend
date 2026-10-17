@@ -124,6 +124,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
 
   const title = `E2E ${Date.now()}`;
   let due = "";
+  let supplied = "";
   const invoice = await createInvoice(page, async () => {
     await fixUsdcOnBase(page);
     // An amount the token can't hold and a link that is not https are named on their fields before anything is sent;
@@ -143,6 +144,12 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await link.fill("https://shop.example/thanks");
     await page.getByRole("textbox", { name: "Title (optional)" }).fill(title);
     await page.getByRole("textbox", { name: "Note to the client (optional)" }).fill("Thank you");
+    // R-89: the supply date, a month back, the work having been done before the invoice.
+    await page.getByRole("button", { name: /^Supply date \(optional\)/ }).click();
+    await page.keyboard.press("PageUp");
+    await page.keyboard.press("Enter");
+    supplied = await page.locator('input[name="supplyDate"]').inputValue();
+    expect(supplied).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     // The due date comes from the kit calendar (R-59): a month from today.
     await page.getByRole("button", { name: /^Due date \(optional\)/ }).click();
     await page.keyboard.press("PageDown");
@@ -199,6 +206,11 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     const details = page.getByRole("region", { name: "Details" });
     await expect(details).toContainText("Due date");
     await expect(details).toContainText(dueText);
+    await expect(details.locator("div").filter({ hasText: /^Supply date/ })).toContainText(
+      new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" }).format(
+        new Date(`${supplied}T00:00:00Z`),
+      ),
+    );
     await expect(details).toContainText("Checkout closes");
     // R-60: each said once, the status by the timeline and the close time in Details, so the header has neither.
     await expect(page.getByRole("main").locator("header [data-status]")).toHaveCount(0);

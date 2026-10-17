@@ -32,7 +32,7 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 			Lines:   lines,
 			ChainID: body.ChainID, Token: body.Token, Amount: body.Amount, AmountUSD: body.AmountUSD,
 			ExpiresInSeconds: body.ExpiresIn,
-			Details: invoice.Details{Title: body.Title, Note: body.Note, DueDate: body.DueDate,
+			Details: invoice.Details{Title: body.Title, Note: body.Note, DueDate: body.DueDate, SupplyDate: body.SupplyDate,
 				ClientName: body.Client.Name, ClientEmail: body.Client.Email, ClientAddress: body.Client.Address,
 				ClientCountry: body.Client.Country, ClientTaxID: body.Client.TaxID,
 				SenderName: body.SenderName, ReturnURL: body.ReturnURL},
