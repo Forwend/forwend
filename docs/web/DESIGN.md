@@ -5,6 +5,20 @@ Use `/kit` for the implemented components. This file owns visual use; token sour
 [colors and sizes](../../packages/design-tokens/src/tokens.css), [themes](../../packages/design-tokens/src/theme.css),
 [base styles](../../packages/design-tokens/src/base.css). Do not copy token values into documentation.
 
+Read only the sections your change touches. Any new control also needs
+[Theme and behavior](#theme-and-behavior): touch targets, focus and accessibility.
+
+| Section | Covers |
+|---|---|
+| [Composition](#composition) | The landing: hero, sections, steps, glass, phone navigation |
+| [Type and color](#type-and-color) | Fonts, money and address type, role tokens, status colors, surfaces, fields |
+| [Controls](#controls) | Heights, buttons, segmented controls, selects, search, toolbars, forms, settings rows |
+| [App shell](#app-shell) | `/app`: sidebar, header, search, sheets, panels, overviews, charts, lists, tables, first run, onboarding, the invoice forms, money actions, toasts |
+| [Checkout](#checkout) | The pay page `/pay/<id>`, PDF links, the confirming row, the owner's invoice page |
+| [Emails](#emails) | The email layout |
+| [Theme and behavior](#theme-and-behavior) | Empty lists, theme, loading, motion, touch targets, accessibility, width checks |
+| [Interaction and device rules](#interaction-and-device-rules) | Phone titles, filters, Receive, safe areas, skip link |
+
 ## Composition
 
 - Dawn landscape with an open sky and a path toward the horizon. Center the serif headline in the upper third;
@@ -230,36 +244,62 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 
 ## Checkout
 
-- `/pay/<id>` (R-68) is one short screen: the logo (links home), then on wide screens the invoice on the left and how
-  to pay on the right. Left: the payee name (no display serif) beside a square tile with its initial on a bordered
-  surface tile, "Invoice INV-0001" under the name, the amount (Geist, tabular, featured size; USD until the payer picks)
-  and "on <network>": the top says only who asks and how much. Then, as a hosted invoice page lists them, the title,
-  the reference (R-90), the agreed value (R-93), the due date and "Closes in …" as quiet rows with a small icon (no
-  rules), the note, and Download invoice PDF as an
-  underlined link with a file icon. On phones the pay panel comes right after the amount and the title, dates, note and PDF
-  link follow it, so the payer reaches the address first. Right: one panel. While money is due it holds Pay with (the one option as a token mark,
-  or Network and Token selects, which scale to many chains and tokens), a Show address button, then the QR beside the
-  exact amount and the warning line "Send only USDC on Base Sepolia." with a warning icon (the small size on phones, so it
-  stays on one line beside the QR down to 360 px) (plus "Native USDC, not
-  USDC.e." where a bridged look-alike exists), then the address full width, then the token contract as a short explorer
-  link and one exchange hint that names the network to withdraw on. The amount and address sit in boxes on the surface with the fields' quiet edge, with icon-only Copy actions and no nested button outlines. The address is Geist Mono with its first 6 and last 4
-  characters in the ink (medium weight) and the rest quieter, always whole and on one line (R-78): the copy icon sits beside the label so the address keeps its full width on phones and in Receive. Text scales with the field's width; successful copying changes the icon to a check and announces the result. Once money is seen and once paid, the panel's last row is "Email me a receipt" with a mail icon; pressing it
-  opens the optional field there, with Send inside its row and the line that the address is used for this receipt
-  only (R-82). Before any money there is nothing to send a receipt for, so the row is not there. Once the address shows, a picked network and token fold into one row with a quiet Change; it turns
-  into "Confirm change" and only a second press starts over (leaving the button cancels), so a payer who already sent
-  does not switch by accident. Under the address one row: "Waiting for payment…" with a pulsing dot, and Check status on its right; what a check
-  found and when the next check is allowed take their own line under them, so the button never moves; nothing waits before the address shows. Once money is seen the panel keeps its place ("Paying with" while nothing more is due): the steps
-  Detected, Confirming and Paid fade in, the waiting one moving (Partially paid tinted on Paid), one line for what the
-  steps cannot say ("Final check", or what is left to pay), and each payment with its amount, time,
-  short hash and explorer link. The address stays only while money is still due. Closed says so in one line. Paid
-  replaces the panel with a receipt, left aligned: a check that scales in beside "Paid" and "You can close this page.",
-  then ruled label and value rows (Amount, Paid to, Date, and Transaction with a View transaction link to the
-  explorer), then Download receipt as a full-width button (primary, or secondary under a full-width primary Back to
-  <host> when the invoice has a return link). The payer never sees Settled, status pills,
-  testnet notes or an overpaid line (PLAN 11.10.1). Copy names the payee, or "the invoice's creator", never "the
-  sender". The footer is one quiet line: "Payments by" with the mark and Forwend, opening the site in a new tab, and
-  "Need help?", which opens a dialog with the rules (where you are, refunds, scams, the unverified name), so the pay
-  box never grows.
+- `/pay/<id>` (R-68) is one short screen. The logo links home.
+  - Wide screens: the invoice on the left, how to pay on the right.
+  - Phones: the pay panel comes right after the amount; the title, dates, note and PDF link follow it. The payer reaches
+    the address first.
+  - Left, top. It says only who asks and how much:
+    - The payee name (no display serif) beside a square tile with its initial, on a bordered surface tile.
+    - "Invoice INV-0001" under the name.
+    - The amount (Geist, tabular, featured size) and "on <network>". USD until the payer picks.
+  - Left, then, as a hosted invoice page lists them:
+    - Title, reference (R-90), agreed value (R-93), due date and "Closes in …": quiet rows with a small icon, no rules.
+    - The note.
+    - Download invoice PDF: an underlined link with a file icon.
+  - Right: one panel. While money is due, top to bottom:
+    - Pay with: the one option as a token mark, or Network and Token selects (they scale to many chains and tokens).
+    - A Show address button.
+    - The QR, and beside it the exact amount and the warning line "Send only USDC on Base Sepolia." with a warning
+      icon. The warning uses the small size on phones, so it stays on one line beside the QR down to 360 px. Where a
+      bridged look-alike exists, it adds "Native USDC, not USDC.e."
+    - The address, full width.
+    - The token contract as a short explorer link, and one exchange hint that names the network to withdraw on.
+  - Amount and address boxes:
+    - On the surface, with the fields' quiet edge. Icon-only Copy actions. No nested button outlines.
+    - The address is Geist Mono. First 6 and last 4 characters in the ink (medium weight); the rest quieter.
+    - The address is always whole and on one line (R-78). Text scales with the field's width.
+    - The copy icon sits beside the label, so the address keeps its full width on phones and in Receive.
+    - A successful copy turns the icon into a check and announces the result.
+  - After the address shows:
+    - The picked network and token fold into one row with a quiet Change.
+    - Change turns into "Confirm change". Only a second press starts over; leaving the button cancels. A payer who
+      already sent can't switch by accident.
+    - Under the address, one row: "Waiting for payment…" with a pulsing dot, and Check status on its right.
+    - What a check found, and when the next check is allowed, take their own line below. The button never moves.
+    - Nothing waits before the address shows.
+  - Once money is seen:
+    - The panel keeps its place ("Paying with" while nothing more is due).
+    - The steps Detected, Confirming and Paid fade in; the waiting one moves. Partially paid is tinted on Paid.
+    - One line for what the steps can't say: "Final check", or what is left to pay.
+    - Each payment with its amount, time, short hash and explorer link.
+    - The address stays only while money is still due.
+  - Receipt email, once money is seen and once paid:
+    - The panel's last row is "Email me a receipt" with a mail icon.
+    - Pressing it opens the optional field there, with Send inside its row and a line that the address is used for this
+      receipt only (R-82).
+    - Before any money the row is not there: there is nothing to send a receipt for.
+  - Closed: one line that says so.
+  - Paid: a left-aligned receipt replaces the panel.
+    - A check that scales in, beside "Paid" and "You can close this page."
+    - Ruled label and value rows: Amount, Paid to, Date, and Transaction with a View transaction link to the explorer.
+    - Download receipt, a full-width button. Primary; or secondary under a full-width primary Back to <host> when the
+      invoice has a return link.
+  - The payer never sees Settled, status pills, testnet notes or an overpaid line (PLAN 11.10.1).
+  - Copy names the payee, or "the invoice's creator". Never "the sender".
+  - Footer: one quiet line.
+    - "Payments by" with the mark and Forwend, opening the site in a new tab.
+    - "Need help?" opens a dialog with the rules (where you are, refunds, scams, the unverified name), so the pay box
+      never grows.
 - No image and no glass; it follows the system theme. When a refresh fails the page keeps the last read and says it
   may be out of date. The invoice PDF link stays in every state; the receipt link appears once paid.
 - PDFs open through the same-origin `/api` path. The invoice detail lists them under Documents: the invoice PDF

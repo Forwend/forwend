@@ -39,6 +39,7 @@ Read only the task's requirement rows and the relevant package instructions.
   failure and interruption. Verify cleanup and report anything left behind. Preserve files used by running processes,
   shared caches, secrets and persistent data; never blanket-delete `~/.foundry`. Ask before removing pre-existing files.
 - Keep rules in their owning doc; link instead of copying. Update that doc when behavior changes.
+- Write docs in short sentences (at most 25 words), one fact per bullet; split a longer bullet into sub-bullets (D-84).
 - A fix covers every place the same data or behavior shows. Before calling it done, search for the other readers
   (lists, detail pages, activity, search, toasts, PDFs, API reads, owner and payer pages) and fix them or name them.
 - No AI attribution in commits, PRs or comments.

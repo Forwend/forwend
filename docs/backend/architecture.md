@@ -6,6 +6,21 @@ Requirements: the task's rows in [PROJECT.md](../PROJECT.md). Whole system: [arc
 Built: signup and profiles API, billing details, saved clients, balances, activity, wallet transactions and balance history API, invoice API, invoice and receipt PDFs (`internal/document`, drawn in Go from the stored invoice), Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
 (`apps/backend/e2e`, R-23) runs the whole loop. Not built yet: refunds, webhooks, merchants.
 
+Read only the sections your task touches:
+
+| Section | Covers |
+|---|---|
+| [Processes](#processes) | What `api`, `worker`, `signer` and `canary` each do |
+| [Startup](#startup) | What each process checks before it reports ready |
+| [Scaling](#scaling) | Read caches, RPC and Postgres pools, rate limits |
+| [Load test](#load-test) | The load test and what it measured |
+| [Data model](#data-model) | Tables and columns, the `invoices_current` view, amounts, statuses, the ledger |
+| [Privy](#privy) | Profile wallets from Privy; signup and profile creation |
+| [Running the loop](#running-the-loop) | The chain list, RPC pools and roles for `worker` and `signer` |
+| [Watcher](#watcher) | Scanning for deposits and wallet transfers, reorgs, the cursor |
+| [Signer](#signer) | Settling paid invoices: nonces, fees, retries, refusals, [unresolved settles](#unresolved-settles) |
+| [Invoice states](#invoice-states) | Booking deposits, payment and settlement status, final states |
+
 ## Processes
 - `api`: public HTTP API + dashboard API. Verifies Privy tokens, authorizes the active profile,
   creates invoices, serves state. Reads profile wallet balances from each chain's second RPC at its finalized block
@@ -276,49 +291,63 @@ authority's. One invoice's failing rescan does not hold up the others.
 settlement intent (unique per invoice) in the same transaction. Every transaction it signs uses the lower of the
 primary and second RPC's suggested tips (D-15), so one host can't make the executor overpay. For each due intent the
 signer:
-1. If a settle is already saved (`sent`), finishes it first, whatever changed since. The saved bytes must decode to
-   `settle()` on this receiver on this chain with the saved hash. A receipt for the saved hash or any version it
-   replaced (`replaced_hashes`, same nonce, so at most one mines) decides first: status 1 with the receiver's
-   `Settled` log is our settle, which keeps that hash and is never signed again, whatever a lagging node says about
-   `settled()` at latest. Without a receipt, reads at one finalized block decide: the receiver settled there while our
-   nonce is unused there is another settler's work; settled there with our nonce used there can't be resolved yet: the
-   intent stays `sent` with a reason and the growing wait of step 3 ([unresolved settles](#unresolved-settles)); our
-   nonce used there while the receiver is not settled means ours was dropped. Otherwise the saved bytes are sent
-   again while their nonce is free and nobody settled. Once `ReplaceAfter` (3 min) has passed since they were
-   signed (`signed_at`), the same executor signs them again first with the same nonce, a gas limit no lower than the
-   old one or a fresh estimate plus a fifth (on Arbitrum the L1 data cost can grow), and a higher fee: at
-   least an eighth more tip and fee cap (geth wants a tenth) and at least what a new settle gets now, so the settles
-   after it on the chain are not held up. The new version is saved before it is sent, keeping the old hash. A
-   replacement whose fee cap would pass `MaxFeeFactor` (2) times a new settle's is not signed; the saved bytes are
-   sent again as they are. When the executor's next mined nonce has nothing pending and no saved settle holds it (a
-   settle saved but never sent, then settled by the refund authority), a zero-value transfer to the executor fills
-   it, so the settles after it can mine.
+1. If a settle is already saved (`sent`), finishes it first, whatever changed since.
+   - The saved bytes must decode to `settle()` on this receiver on this chain with the saved hash.
+   - A receipt for the saved hash or any version it replaced (`replaced_hashes`, same nonce, so at most one mines)
+     decides first. Status 1 with the receiver's `Settled` log is our settle. It keeps that hash and is never signed
+     again, whatever a lagging node says about `settled()` at latest.
+   - Without a receipt, reads at one finalized block decide:
+     - the receiver settled there while our nonce is unused there: another settler's work;
+     - settled there with our nonce used there: can't be resolved yet. The intent stays `sent` with a reason and the
+       growing wait of step 3 ([unresolved settles](#unresolved-settles));
+     - our nonce used there while the receiver is not settled: ours was dropped.
+   - Otherwise the saved bytes are sent again while their nonce is free and nobody settled.
+   - Once `ReplaceAfter` (3 min) has passed since they were signed (`signed_at`), the same executor signs them again
+     first, with:
+     - the same nonce;
+     - a gas limit no lower than the old one or a fresh estimate plus a fifth (on Arbitrum the L1 data cost can grow);
+     - a higher fee: at least an eighth more tip and fee cap (geth wants a tenth) and at least what a new settle gets
+       now, so the settles after it on the chain are not held up.
+   - The new version is saved before it is sent, keeping the old hash.
+   - A replacement whose fee cap would pass `MaxFeeFactor` (2) times a new settle's is not signed; the saved bytes are
+     sent again as they are.
+   - When the executor's next mined nonce has nothing pending and no saved settle holds it (a settle saved but never
+     sent, then settled by the refund authority), a zero-value transfer to the executor fills it, so the settles after
+     it can mine.
 2. Otherwise re-reads the terms and refuses for good (`refused` with a reason, nothing sent) unless the invoice is
    `paid`, the recipient is the profile's wallet, the factory is the compiled one and the terms recompute the stored
    receive address; also when `factory.status` predicts another address.
-3. Waits and retries (back to `pending` with a reason; 1 min doubling to 1 h) on temporary conditions: wrong chain,
-   balance below the amount, not settleable (paused), a settle that reverted or was dropped while the receiver is
-   not settled at the finalized block, or a settler other than this executor (the deadline passed: it sends nothing
-   and waits for the refund authority's settle). Also when the invoice's user already had `SponsoredPerDay` (50)
-   settlements signed in 24 hours, across all their profiles: tiny invoices paid back and forth would otherwise drain
-   the executor's gas for everyone; this logs an `ALERT`.
-4. Deploys the receiver if needed (`deploy` is idempotent). When a transaction we never saved waits at the executor's
-   next mined nonce (an earlier deploy the fee left behind), the deploy takes that nonce at twice today's fee, so later
-   transactions don't queue behind it. Then waits up to 10 s for the RPC to show the receiver's
-   code at the deploy's block or later (else the attempt ends and is tried again): a node that has not seen the
-   deploy estimates settle as a call to an empty address, which runs out of gas. Signs `settle()` with the chain's
-   own gas estimate, at the deploy's block when it deployed in this attempt (on Arbitrum that estimate counts the L1
-   data gas; a node that can't estimate at a block is asked at latest), at least `SettleGasFloor` (`TempoSettleGasFloor`,
-   580,000, on Tempo), plus a fifth, at
-   the node's pending nonce but never below the one
-   after the deploy it just sent or after the last settle saved for this chain (a lagging node may not count them).
-   Saves sender, nonce, hash and signed bytes, then sends. After a crash it sends the same saved bytes again (same
-   nonce, so at most one settle can be mined). The contract's `AlreadySettled` is a last guard.
-5. Once `settled()` is true at the finalized block (D-45), and for our settle once its receipt's block is final too,
-   and the chain's second RPC also reads `settled()` true at its own finalized block (D-15, as for paid), in one
-   transaction: intent `confirmed`, a `settlement` ledger transaction (receiver and recipient_payable each
-   −amount; one per invoice) and the invoice's `settlement_status` `settled`. A settle a reorg drops before that is
-   reconciled like an unsent one.
+3. Waits and retries (back to `pending` with a reason; 1 min doubling to 1 h) on temporary conditions:
+   - wrong chain;
+   - balance below the amount;
+   - not settleable (paused);
+   - a settle that reverted or was dropped while the receiver is not settled at the finalized block;
+   - a settler other than this executor (the deadline passed: it sends nothing and waits for the refund authority's
+     settle);
+   - the invoice's user already had `SponsoredPerDay` (50) settlements signed in 24 hours, across all their profiles.
+     Tiny invoices paid back and forth would otherwise drain the executor's gas for everyone. This logs an `ALERT`.
+4. Deploys the receiver if needed (`deploy` is idempotent).
+   - When a transaction we never saved waits at the executor's next mined nonce (an earlier deploy the fee left
+     behind), the deploy takes that nonce at twice today's fee, so later transactions don't queue behind it.
+   - Then waits up to 10 s for the RPC to show the receiver's code at the deploy's block or later (else the attempt
+     ends and is tried again). A node that has not seen the deploy estimates settle as a call to an empty address,
+     which runs out of gas.
+   - Signs `settle()` with:
+     - gas: the chain's own gas estimate, at the deploy's block when it deployed in this attempt (on Arbitrum that
+       estimate counts the L1 data gas; a node that can't estimate at a block is asked at latest), at least
+       `SettleGasFloor` (`TempoSettleGasFloor`, 580,000, on Tempo), plus a fifth;
+     - nonce: the node's pending nonce, but never below the one after the deploy it just sent or after the last settle
+       saved for this chain (a lagging node may not count them).
+   - Saves sender, nonce, hash and signed bytes, then sends. After a crash it sends the same saved bytes again (same
+     nonce, so at most one settle can be mined). The contract's `AlreadySettled` is a last guard.
+5. Confirms once all of these hold:
+   - `settled()` is true at the finalized block (D-45);
+   - for our settle, its receipt's block is final too;
+   - the chain's second RPC also reads `settled()` true at its own finalized block (D-15, as for paid).
+
+   Then, in one transaction: intent `confirmed`, a `settlement` ledger transaction (receiver and recipient_payable
+   each −amount; one per invoice) and the invoice's `settlement_status` `settled`. A settle a reorg drops before that
+   is reconciled like an unsent one.
 A waiting intent also stores its wait kind (`retry`, `cap` for the sponsored limit, `unresolved`), cleared when a
 settle is signed, so the invoice API can tell the owner why the money waits (R-54) without reading the reason text.
 Each intent's attempt has a 3-minute limit, so an RPC that stops answering can't stall the others. Before each intent

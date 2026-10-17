@@ -1,0 +1,65 @@
+{
+  "id": "F210",
+  "type": "docs",
+  "behavior": "PLAN phase 10 follows the approved freelancer research: six deeper items, a new gate, and decision rows for checkout terms, jobs, reminders and records",
+  "acceptance": [
+    "docs/research/phase-10-freelancers.md holds the research (sources, evidence table, card payers, law, competitors, proposals) and docs/README.md lists research/",
+    "PLAN phase 10 has items 10.1 Clients, 10.2 Invoice terms, 10.3 Jobs, 10.4 Retainers, 10.5 Getting paid on time, 10.6 Records and the gate quote → deposit → milestone → final paid on testnet with matching records",
+    "PROJECT adds D-80 (checkout stays open to due date + 60 days), D-81 (jobs and payment schedules), D-82 (records value at receipt, ECB rates) and rewrites D-69 (freelancer turns reminders on; no client opt-in); docs/owner-research.md has the new freelancer and finance-side questions",
+    "docs-check passes"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "docs-check"
+  ],
+  "refs": [
+    "D-55",
+    "D-58",
+    "D-66",
+    "D-69"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-16T14:08:29Z",
+    "checks": [
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F210-20261016T140829Z-docs-check.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.0,
+        "log": "docs/runs/F210-20261016T140829Z-harness.log"
+      }
+    ],
+    "taskHash": "6395a6da8178ea6b",
+    "filesHash": "fb2cde6f881ed647",
+    "proof": {
+      "1": "docs-check: docs/research/phase-10-freelancers.md added with method, evidence tables (P1-P10, S1-S5), card payers, law, competitors and approved proposals; README lists research/",
+      "2": "docs-check: PLAN phase 10 lists 10.1 Clients through 10.6 Records with the new gate row; card-payer spike note under Deferred",
+      "3": "docs-check: PROJECT has D-80, D-81, D-82 and the rewritten D-69; owner-research.md has freelancer questions 6-11 and four finance-side questions",
+      "4": "docs-check: 0 errors"
+    },
+    "commit": "dbbd8ac",
+    "doneAt": "2026-10-16T14:08:39Z"
+  },
+  "branch": "docs/f210-plan-phase-10-follows-the-approved-freel",
+  "baseCommit": "1e7246e6e15d1da27524ae94d9a22448dfd675e1",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "docs/f210-plan-phase-10-follows-the-approved-freel",
+    "base": "main"
+  }
+}

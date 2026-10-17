@@ -10,9 +10,17 @@ Next.js app: landing page, private `/kit`, signed-in `/app` and public checkout 
   `apps/web/.env` (copy `.env.example`) and the backend api at `API_URL`.
 - `pnpm --filter @forwend/web test` (Vitest), `e2e` (Playwright), `lighthouse`.
 
-## Read before writing code
+## What to read
 
-- [docs/web/rules.md](../../docs/web/rules.md): code and content rules.
-- [docs/web/DESIGN.md](../../docs/web/DESIGN.md): design system. [docs/web/PRODUCT.md](../../docs/web/PRODUCT.md): product brief.
-- [docs/web/architecture.md](../../docs/web/architecture.md): how the app and UI packages fit.
-- The Impeccable skill reads `PRODUCT.md` and `DESIGN.md` next to the app: both are symlinks to `docs/web/`; edit those.
+Always: [docs/web/rules.md](../../docs/web/rules.md): code and content rules.
+
+Then only the rows that match the task:
+
+| The task touches | Read |
+|---|---|
+| Anything visible: screens, components, styles, motion | [docs/web/DESIGN.md](../../docs/web/DESIGN.md): the design system; its index names the section for each screen |
+| New, moved or renamed files; which shared component to use; requests, hooks, state | [docs/web/structure.md](../../docs/web/structure.md) |
+| The app's parts, sign-in, navigation, API calls, caching, checkout and Receive wiring, security headers, what the app trusts, tests | [docs/web/architecture.md](../../docs/web/architecture.md): how the app and UI packages fit |
+| Any words users read: landing, app, pay page | [docs/web/PRODUCT.md](../../docs/web/PRODUCT.md): product brief |
+
+The Impeccable skill reads `PRODUCT.md` and `DESIGN.md` next to the app: both are symlinks to `docs/web/`; edit those.
