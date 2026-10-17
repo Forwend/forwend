@@ -208,14 +208,15 @@ answer 404 `invoice_not_found` the same way.
   networks ("USDC on Base Sepolia, Arbitrum Sepolia") and says to send only on those (R-70). Amounts group thousands
   (1,250.00); every page's footer names the document and number and says Page X of Y.
 - `receipt.pdf`: 409 `invoice_not_paid` until `paymentStatus` is `paid` (it stays paid once settled). Adds the paid time
-  beside the created time and supply date; under Payments each confirmed deposit's amount, block time, full tx hash and
-  "View on <explorer>" link; and the pay link with its QR code, since a PDF can be edited. It says nothing about the
-  settlement, the creator's business (R-61). The paid time is the block time of the last deposit the ledger booked to
-  `recipient_payable`: the one that completed the amount.
+  beside the created time and supply date; under Payments each confirmed deposit made before the checkout closed, with
+  its amount, block time, full tx hash and "View on <explorer>" link (a late deposit is held for the payer, D-26); and
+  the pay link with its QR code, since a PDF can be edited. It says nothing about the settlement, the creator's business
+  (R-61). The paid time is the block time of the last deposit the ledger booked to `recipient_payable`: the one that
+  completed the amount.
 - The same data gives the same bytes (creation date = created or paid time, sorted catalog), so the `ETag` is a hash of
-  the file. `Cache-Control: private, no-cache`: a client revalidates and gets 304 while the file is unchanged; a late
-  deposit changes the receipt; the settlement does not. `Content-Disposition: attachment;
-  filename="forwend-INV-0001-invoice.pdf"` (or `-receipt.pdf`).
+  the file. `Cache-Control: private, no-cache`: a client revalidates and gets 304 while the file is unchanged; another
+  deposit before the checkout closes changes the receipt; a late deposit and the settlement do not.
+  `Content-Disposition: attachment; filename="forwend-INV-0001-invoice.pdf"` (or `-receipt.pdf`).
 
 ## Wallet transactions and balance history
 

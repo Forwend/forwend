@@ -679,9 +679,10 @@ paths:
       description: |
         Public like the invoice PDF. 409 until paymentStatus is paid; a paid invoice stays paid, also once settled.
         Shows the invoice's parties, supply date and line or line items, the paid time (block time of the deposit that
-        completed the amount) and settled time, each confirmed deposit and the settlement with its full tx hash and a
-        link to the network's explorer, and the pay link with its QR code to check the receipt, since a PDF can be
-        edited.
+        completed the amount), each confirmed deposit made before the checkout closed with its full tx hash and a link
+        to the network's explorer, and the pay link with its QR code to check the receipt, since a PDF can be edited. It
+        says nothing about the settlement: the payer only needs to know they paid; moving the money to the creator is
+        the creator's business (R-61, R-68).
       security: []
       parameters:
         - name: invoiceId
@@ -1507,7 +1508,9 @@ components:
           description: A hash of the bytes; send it as If-None-Match to get 304 while nothing changed.
           schema: { type: string }
         Cache-Control:
-          description: private, no-cache. Revalidate with the ETag; a late deposit or the settlement changes the receipt.
+          description: |
+            private, no-cache. Revalidate with the ETag. Another deposit before the checkout closes changes the receipt;
+            a late deposit (held for the payer) and the settlement do not.
           schema: { type: string }
       content:
         application/pdf:
