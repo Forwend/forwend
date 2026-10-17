@@ -21,6 +21,7 @@ import {
   Copy,
   ExternalLink,
   FileDown,
+  Hash,
   ShieldAlert,
   TriangleAlert,
   WifiOff,
@@ -276,8 +277,15 @@ function Terms({ invoice, pay, now }: { invoice: Invoice; pay: Pay; now: number 
       {invoice.title ? (
         <p className="text-base font-medium break-words text-ink">{invoice.title}</p>
       ) : null}
-      {invoice.dueDate || pay.canSend ? (
-        <ul className="flex flex-col gap-2.5 text-sm text-muted">
+      {invoice.reference || invoice.dueDate || pay.canSend ? (
+        <ul className="flex max-w-full flex-col gap-2.5 text-sm text-muted">
+          {/* The client's accounts team matches the invoice by it (R-90). */}
+          {invoice.reference ? (
+            <li className="flex items-center gap-2.5">
+              <Hash aria-hidden className={ICON} />
+              <span className="min-w-0 break-words">{COPY.reference(invoice.reference)}</span>
+            </li>
+          ) : null}
           {invoice.dueDate ? (
             <li className="flex items-center gap-2.5">
               <CalendarDays aria-hidden className={ICON} />

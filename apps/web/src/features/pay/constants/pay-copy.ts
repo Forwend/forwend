@@ -16,6 +16,7 @@ export const PAY_COPY = {
   amountPaid: "Amount paid",
   leftToPay: "Left to pay",
   on: (network: string) => `on ${network}`,
+  reference: (reference: string) => `Reference ${reference}`,
   due: (date: string) => `Due ${date}`,
   closesIn: (left: string) => `Closes in ${left}`,
   stale: "Can't reach Forwend right now. This page keeps retrying.",

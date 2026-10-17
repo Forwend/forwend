@@ -229,7 +229,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   to pay on the right. Left: the payee name (no display serif) beside a square tile with its initial on a bordered
   surface tile, "Invoice INV-0001" under the name, the amount (Geist, tabular, featured size; USD until the payer picks)
   and "on <network>": the top says only who asks and how much. Then, as a hosted invoice page lists them, the title,
-  the due date and "Closes in …" as quiet rows with a small icon (no rules), the note, and Download invoice PDF as an
+  the reference (R-90), the due date and "Closes in …" as quiet rows with a small icon (no rules), the note, and Download invoice PDF as an
   underlined link with a file icon. On phones the pay panel comes right after the amount and the title, dates, note and PDF
   link follow it, so the payer reaches the address first. Right: one panel. While money is due it holds Pay with (the one option as a token mark,
   or Network and Token selects, which scale to many chains and tokens), a Show address button, then the QR beside the
