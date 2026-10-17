@@ -349,3 +349,60 @@ func TestDeliverSendsTheWelcome(t *testing.T) {
 		t.Fatalf("welcome %+v", m)
 	}
 }
+
+// R-94: the owner's send goes to the client's email whatever the owner's setting, from the issuer, with replies to the
+// issuer's billing email, the pay page and the PDF. A payer-chooses invoice is priced in USD on any network.
+func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
+	pool, id := setup(t, "owner@example.com")
+	exec(t, pool, "UPDATE profiles SET email_notifications = false")
+	exec(t, pool, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard, DISABLE TRIGGER invoices_number")
+	exec(t, pool, `UPDATE invoices SET client_email = 'ap@client.example', issuer_name = 'Alice Design GmbH',
+		issuer_email = 'billing@alice.example', due_date = '2026-11-30' WHERE id = $1`, id)
+	exec(t, pool, "ALTER TABLE invoices ENABLE TRIGGER invoices_guard, ENABLE TRIGGER invoices_number")
+	send := func(invoice, key string) {
+		t.Helper()
+		if err := pgx.BeginFunc(context.Background(), pool, func(tx pgx.Tx) error {
+			return outbox.QueueSend(context.Background(), tx, invoice, key)
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	send(id, "k1")
+	f := &fake{}
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.sent) != 1 {
+		t.Fatalf("sent %d, want the client's email alone", len(f.sent))
+	}
+	m := f.sent[0]
+	if m.To != "ap@client.example" || m.ReplyTo != "billing@alice.example" || m.Subject != "Invoice INV-0001 from Alice Design GmbH" ||
+		!strings.HasPrefix(m.Key, "forwend-"+id+"-1-") {
+		t.Fatalf("email %+v", m)
+	}
+	for _, want := range []string{"Alice Design GmbH sent you INV-0001 for 5.00 USDC.", "Due date: 2026-11-30",
+		"Network: Base Sepolia", "Invoice PDF: " + web + "/api/v1/invoices/" + id + "/invoice.pdf",
+		"View and pay: " + web + "/pay/" + id, "Reply to this email to reach them."} {
+		if !strings.Contains(m.Text, want) {
+			t.Fatalf("text %q lacks %q", m.Text, want)
+		}
+	}
+	if strings.Contains(m.Text, "/app/notifications") {
+		t.Fatal("the client's email links the owner's settings")
+	}
+
+	// A second option: the client chooses, so the email names no token or network.
+	exec(t, pool, `INSERT INTO invoices (id, main_id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
+		    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+		SELECT $2, id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, '0x5555555555555555555555555555555555555555', idempotency_key,
+		    request_hash FROM invoices WHERE id = $1`, id, "0x"+strings.Repeat("cd", 32))
+	send(id, "k2")
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.sent) != 2 || !strings.Contains(f.sent[1].Text, "for 5.00 USD.") ||
+		!strings.Contains(f.sent[1].Text, "Network: You choose on the payment page") {
+		t.Fatalf("payer-chooses email %+v", f.sent[len(f.sent)-1])
+	}
+}

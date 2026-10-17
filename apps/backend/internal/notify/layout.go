@@ -45,6 +45,7 @@ type view struct {
 	Note               string
 	Button             button
 	Reason, Settings   string // why it was sent; the email settings link for owner emails
+	ReplyTo            string // where the recipient's reply goes; Forwend's From address when empty
 }
 
 // render fills the layout; it fails only on a bug in the template, which the tests render for every kind.

@@ -380,4 +380,17 @@ export const INVOICE_COPY = {
     tooLate: "It can't be canceled anymore: money was seen or the checkout closed.",
   },
   noIssuer: "None on this invoice.",
+  // Send to client (R-94), under Billed to.
+  send: {
+    action: "Send to client",
+    noEmail: "No client email on this invoice, so it can't be emailed. Share the pay link instead.",
+    again: (time: string) => `You can send it again after ${time}.`,
+    sent: (email: string, time: string) => `Emailed to ${email} · ${time}`,
+    sending: (email: string) => `Sending to ${email}…`,
+    failed: (email: string, time: string) => `Could not email ${email} · asked ${time}`,
+    done: (number: string, email: string) => `${number} is on its way to ${email}`,
+    closed: "It can't be sent: the invoice can no longer be paid.",
+    limited: "You reached today's limit of emailed invoices. Try again tomorrow.",
+    error: "We could not send it. Try again.",
+  },
 } as const;

@@ -419,6 +419,41 @@ paths:
         "409": { $ref: "#/components/responses/InvoiceNotCancelable" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/invoices/{invoiceId}/send:
+    post:
+      operationId: sendInvoice
+      summary: Email one of the profile's invoices to its client
+      description: |
+        R-94. Queues one email to the invoice's client email, which the worker sends whatever the owner's email
+        setting: the issuer, number, amount, due date, the pay page and the invoice PDF, with Reply-To set to the
+        issuer's billing email. Only while the payer can still pay it (open or partly paid, checkout not closed). One
+        send per invoice in 24 hours and 20 per profile in 24 hours; sends also share the limit for everyone with the
+        payer's receipt address. The same key again answers 200 and queues nothing. Answers the invoice with its sends.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+      responses:
+        "201":
+          description: Queued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+        "200":
+          description: This key already queued it; nothing new is queued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "409": { $ref: "#/components/responses/SendConflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/balances:
     get:
       operationId: getBalances
@@ -1307,6 +1342,18 @@ components:
                     kind: { type: string, enum: [signing, finalizing, retrying, dailyLimit, refused] }
                     until: { type: [string, "null"], format: date-time }
                     secondsLeft: { type: [integer, "null"], minimum: 0 }
+            sends:
+              type: array
+              description: |
+                Only in the owner's responses; the public GET leaves it out. Each Send to client (R-94), oldest first.
+                sentAt is when the worker sent the email and failedAt when it gave up; both null while it waits.
+              items:
+                type: object
+                required: [requestedAt, sentAt, failedAt]
+                properties:
+                  requestedAt: { type: string, format: date-time }
+                  sentAt: { type: [string, "null"], format: date-time }
+                  failedAt: { type: [string, "null"], format: date-time }
     InvoiceSummary:
       type: object
       required: [invoiceId, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, agreedValue, senderName, returnUrl, issuer, chainId,
@@ -1537,6 +1584,14 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     InvoiceNotCancelable:
       description: Money was seen, the checkout closed, or the invoice is no longer open (invoice_not_cancelable)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    SendConflict:
+      description: |
+        The Idempotency-Key was used for another invoice (idempotency_conflict), the invoice has no client email
+        (client_email_required), or the payer can no longer pay it: paid, expired, its checkout closed, or canceled
+        (invoice_closed).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

@@ -73,6 +73,9 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
   invoice); an address given after that queues it at once. The worker sends it to that address whatever the owner's
   setting: the amount, the payee, the transaction and the receipt PDF. Limited per invoice (3, then one per 10 s) and
   for everyone together; per IP belongs to the edge (Q-8).
+- The owner's Send to client (R-94) goes to the invoice's client email whatever the owner's setting. It names the
+  issuer, number, amount and due date, and links the pay page and `invoice.pdf`. A payer-chooses invoice shows USD.
+  Its Reply-To is the issuer's billing email, so a reply reaches the owner.
 - A new account's welcome (R-84): when `POST /v1/me` first stores a non-empty login email for an account made after
   welcome emails existed (`users.welcome`), it queues one `account.welcome` row for the user in the same statement (a
   unique index keeps one per user). The worker sends it whatever the profile setting, with
@@ -173,6 +176,13 @@ R-19 and R-42; the full schema is in openapi.yaml.
   transfer seen in the same moment can land on a canceled invoice: it is held like any later deposit. Canceled is
   final and sets `canceledAt`; the ledger holds any later deposit for the payer (D-26), and `invoice.pdf` drops the pay
   link and code.
+- `POST /v1/profiles/{profileId}/invoices/{invoiceId}/send` (R-94) queues one `invoice.sent` email to the invoice's
+  client email. It needs an Idempotency-Key; the same key again answers 200 and queues nothing.
+  - Only while the payer can still pay it (the `open` status filter); otherwise 409 `invoice_closed`.
+  - Without a client email: 409 `client_email_required`. A key used for another invoice: 409 `idempotency_conflict`.
+  - One send per invoice in 24 hours and 20 per profile in 24 hours, counted from `outbox_events` under a profile lock.
+  - Sends share the limit for everyone with the payer's receipt address. Past any limit: 429 with Retry-After.
+  - The owner's reads return `sends`, oldest first: `{requestedAt, sentAt, failedAt}`. The bell leaves sends out.
 - `settlementWait` (owner reads and create only) says why a paid invoice's money has not reached the profile wallet
   yet, null when it is not paid or already settled (R-54): `{kind, until, secondsLeft}` with `kind` one of `signing`,
   `finalizing` (`secondsLeft` estimates the chain time until the settle is final), `retrying` and `dailyLimit` (the

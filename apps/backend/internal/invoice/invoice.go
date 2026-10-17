@@ -221,6 +221,7 @@ type Invoice struct {
 	// SettlementWait says why a paid invoice's money has not reached the creator yet; nil when it is not waiting.
 	// Set by Get.
 	SettlementWait *SettlementWait
+	Sends          []Send // the owner's Send to client, oldest first (R-94); set by the owner's Get
 }
 
 // Why a paid invoice still waits to settle (R-54).

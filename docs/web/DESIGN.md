@@ -329,6 +329,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   time and hash with its explorer link, no status pill of its own; Details repeats none of them) and Check
   status only while the checkout can take money; beside it the details (empty ones left out), Billed to, and From (or "None on this invoice" with a link to add
   billing details).
+- Billed to ends with Send to client (R-94), ruled off under the client:
+  - Each send in a quiet list: "Emailed to <address> · <time>", "Sending to <address>…" or "Could not email".
+  - While the checkout can take money, a small secondary Send to client button. A day after the last send it returns;
+    until then a quiet line says when.
+  - Without a client email, while the checkout can take money, one quiet line says it can't be emailed.
 
 ## Emails
 

@@ -47,6 +47,10 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, invoice.ErrNotCancelable):
 		status, code, message = http.StatusConflict, "invoice_not_cancelable",
 			"only an open invoice with no payment seen and its checkout still open can be canceled"
+	case errors.Is(err, invoice.ErrNoClientEmail):
+		status, code, message = http.StatusConflict, "client_email_required", "the invoice has no client email to send it to"
+	case errors.Is(err, invoice.ErrClosed):
+		status, code, message = http.StatusConflict, "invoice_closed", "the invoice can no longer be paid, so it can't be sent"
 	case errors.Is(err, invoice.ErrBillingDetailsRequired):
 		status, code, message = http.StatusConflict, "billing_details_required",
 			"a freelancer or merchant profile saves its billing details before its first invoice"

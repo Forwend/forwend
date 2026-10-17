@@ -18,6 +18,7 @@ const (
 	Held    = "invoice.held"    // money held for the payer: an excess, an expired partial payment, a late deposit, one after cancel or on another option
 	Receipt = "invoice.receipt" // the payer's receipt, to the address they gave (R-82); at most one per invoice
 	Welcome = "account.welcome" // a new account's welcome, to its login email (R-84); at most one per user
+	Sent    = "invoice.sent"    // the invoice, to its client's email when the owner presses Send to client (R-94)
 )
 
 // Payload names the option row the event happened on (its token and network) and, for held money, the amount.
@@ -38,6 +39,19 @@ func QueueReceipt(ctx context.Context, tx pgx.Tx, option string) error {
 		WHERE o.id = $2 AND m.payer_email IS NOT NULL
 		ON CONFLICT (invoice_id) WHERE kind = 'invoice.receipt' DO NOTHING`, Receipt, option, payload); err != nil {
 		return fmt.Errorf("queue receipt for %s: %w", option, err)
+	}
+	return nil
+}
+
+// QueueSend adds the owner's Send to client for the invoice's main row, under the request's Idempotency-Key (R-94).
+func QueueSend(ctx context.Context, tx pgx.Tx, invoice, key string) error {
+	payload, err := json.Marshal(Payload{Option: invoice})
+	if err != nil {
+		return fmt.Errorf("queue send for %s: %w", invoice, err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, invoice_id, payload, idempotency_key) VALUES ($1, $2, $3, $4)`,
+		Sent, invoice, payload, key); err != nil {
+		return fmt.Errorf("queue send for %s: %w", invoice, err)
 	}
 	return nil
 }

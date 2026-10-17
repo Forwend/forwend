@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 223,
+  "nextId": 224,
   "tasks": [
     {
       "id": "F222",
@@ -91,12 +91,110 @@
         "branch": "docs/f222-agents-read-less-and-miss-nothing-each-p",
         "base": "main"
       }
+    },
+    {
+      "id": "F223",
+      "type": "feat",
+      "behavior": "The owner can email an invoice to the client's billing email with Send to client, and the invoice page lists each send (PLAN 10.5)",
+      "acceptance": [
+        "POST /v1/profiles/{id}/invoices/{invoiceId}/send queues one outbox email to the invoice's client email when the payer can still pay it (open or partly paid, checkout not closed). A retry with the same Idempotency-Key queues no second one. No client email is 409 client_email_required; a closed invoice is 409 invoice_closed; another user is 403. One send per invoice per 24 h and 20 per profile per day, then 429 rate_limited; sends also count toward the limit for everyone together (R-82).",
+        "The worker sends it to the client whatever the owner's email setting: issuer, invoice number, amount, token and due date, with links to the pay page and the invoice PDF, and Reply-To set to the issuer's billing contact email. Tests use the fake sender; no address is logged.",
+        "The owner's invoice page has Send to client under Billed to; without a client email it says why instead of sending. Billed to lists each send with the address and the time the worker sent it, or Sending before then. axe 0 and no sideways scroll at 390 px.",
+        "openapi.yaml and docs/backend/api.md describe the endpoint, its errors and limits, and the new email."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-94",
+        "D-65",
+        "R-80",
+        "R-82",
+        "R-86",
+        "D-69"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-17 verify 19:31Z: every check passed except e2e. Two invoice e2e tests got 422 on create: the local dev DB's shared 'E2E shop' profile has 1000 open receive addresses (MaxOpen), left by earlier e2e runs. Both tests passed alone at 19:25Z. Waiting on the owner: clean the local data or run e2e on a fresh database."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-17T19:40:39Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 69.4,
+            "log": "docs/runs/F223-20261017T194039Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 207.4,
+            "log": "docs/runs/F223-20261017T194039Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.4,
+            "log": "docs/runs/F223-20261017T194039Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F223-20261017T194039Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F223-20261017T194039Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F223-20261017T194039Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F223-20261017T194039Z-build.log"
+          }
+        ],
+        "taskHash": "0f940609c57c8670",
+        "filesHash": "e685da29f8ca1ebb",
+        "proof": {
+          "1": "unit: httpapi/tests/invoices_send_test.go TestSendInvoiceToClient: 400 without Idempotency-Key, 201 then 200 for the same key with one outbox row, 429 rate_limited within 24 h and after 20 profile sends, 201 again after 25 h, 409 idempotency_conflict for a key of another invoice, 409 client_email_required, 409 invoice_closed for closed, canceled and paid, 403 for another user's profile, 404 unknown; the shared emails bucket is the payer-email one (routes.go)",
+          "2": "unit: notify_test.go TestDeliverSendsTheInvoiceToTheClient: with the owner's email off the email goes to the client, Reply-To the issuer's billing email, subject names the issuer, text has amount, due date, network, pay link and invoice PDF and no settings link; a payer-chooses invoice shows USD and no network; email_test.go checks reply_to in the Resend body; layout_test renders both send views with matching HTML and text links",
+          "3": "e2e: e2e/privy/invoices.spec.ts: Send to client under Billed to answers 201, the toast names the address, Billed to lists Sending to the address and You can send it again after, axe 0; the phone test shows the no-client-email line and fits at 390 px; screenshots docs/runs/F223-send-desk.png, F223-send-desk-dark.png, F223-noemail-phone.png",
+          "4": "docs-check: openapi.yaml adds sendInvoice, SendConflict and the owner-only sends field; docs/backend/api.md (Invoices and Notifications) and architecture.md (outbox_events) name the route, errors, limits and email; DESIGN.md describes the Billed to controls"
+        }
+      },
+      "branch": "feat/f223-the-owner-can-email-an-invoice-to-the-cl",
+      "baseCommit": "bf128247e1ed487fa7fe21f23e46266aaad4fa90",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-17T18:11:37Z",
+    "at": "2026-10-17T19:04:29Z",
     "clean": true,
     "problems": [],
-    "note": "PLAN 10.2 done: line items, supply date, PO/reference, duplicate, billing details before a business invoice, agreed value (F214-F221, PRs #212-#219). Next: 10.5 Getting paid on time or 10.3 Jobs."
+    "note": "F222 docs refactor merged (#220): read-when tables, section indexes, one owner for the public GET fields, long rows/bullets split, D-84. Next: 10.5 Getting paid on time or 10.3 Jobs; turn the 44px touch-target rule into a check when it breaks again."
   }
 }

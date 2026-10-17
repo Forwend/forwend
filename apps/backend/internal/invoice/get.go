@@ -85,7 +85,10 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 		if err != nil {
 			return Invoice{}, err
 		}
-		inv.SettlementWait, err = s.settlementWait(ctx, inv, head)
+		if inv.SettlementWait, err = s.settlementWait(ctx, inv, head); err != nil {
+			return Invoice{}, err
+		}
+		inv.Sends, err = s.sends(ctx, inv.ID)
 		return inv, err
 	}
 	return inv, err

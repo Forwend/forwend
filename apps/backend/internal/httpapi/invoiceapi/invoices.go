@@ -1,12 +1,15 @@
 package invoiceapi
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 )
 
@@ -107,6 +110,37 @@ func cancelInvoice(invoices *invoice.Service) http.HandlerFunc {
 			return
 		}
 		httpio.WriteJSON(w, http.StatusOK, toOwnerInvoiceJSON(inv))
+	}
+}
+
+// sendInvoice is POST /v1/profiles/{profileId}/invoices/{invoiceId}/send (R-94): queues the invoice's email to its
+// client; 201 with the invoice, 200 when the same Idempotency-Key already queued it. 409 client_email_required or
+// invoice_closed; 429 with Retry-After within invoice.SendEvery of the invoice's last send, past the profile's
+// invoice.MaxProfileSends, or past the shared emails budget.
+func sendInvoice(invoices *invoice.Service, emails *mid.Buckets) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		key, err := httpio.IdempotencyKey(r)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		allow := func() time.Duration { return emails.Wait(mid.Everyone(r)) }
+		inv, queued, err := invoices.Send(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"), key, allow)
+		var soon *invoice.TooSoonError
+		if errors.As(err, &soon) {
+			w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))
+			httpio.WriteError(w, r, httpio.ErrRateLimited)
+			return
+		}
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		status := http.StatusOK
+		if queued {
+			status = http.StatusCreated
+		}
+		httpio.WriteJSON(w, status, toOwnerInvoiceJSON(inv))
 	}
 }
 
