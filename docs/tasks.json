@@ -103,7 +103,7 @@
         "openapi.yaml and docs/backend/api.md describe the endpoint, its errors and limits, and the new email."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -182,10 +182,10 @@
         "taskHash": "0f940609c57c8670",
         "filesHash": "73d9f48e1403968a",
         "proof": {
-          "1": "unit: httpapi/tests/invoices_send_test.go TestSendInvoiceToClient: 400 without Idempotency-Key, 201 then 200 for the same key with one outbox row, 429 rate_limited within 24 h and after 20 profile sends, 201 again after 25 h, 409 idempotency_conflict for a key of another invoice, 409 client_email_required, 409 invoice_closed for closed, canceled and paid, 403 for another user's profile, 404 unknown; the shared emails bucket is the payer-email one (routes.go)",
-          "2": "unit: notify_test.go TestDeliverSendsTheInvoiceToTheClient: with the owner's email off the email goes to the client, Reply-To the issuer's billing email, subject names the issuer, text has amount, due date, network, pay link and invoice PDF and no settings link; a payer-chooses invoice shows USD and no network; email_test.go checks reply_to in the Resend body; layout_test renders both send views with matching HTML and text links",
-          "3": "e2e: e2e/privy/invoices.spec.ts: Send to client under Billed to answers 201, the toast names the address, Billed to lists Sending to the address, focus moves to You can send it again after, axe 0; the phone test shows the no-client-email line and fits at 390 px; screenshots docs/runs/F223-send-desk.png, F223-send-desk-dark.png, F223-noemail-phone.png",
-          "4": "docs-check: openapi.yaml adds sendInvoice, SendConflict, the owner-only sends field and client_email_required and invoice_closed in the Error code list; docs/backend/api.md (Invoices and Notifications) and architecture.md (outbox_events) name the route, errors, limits and email; DESIGN.md describes the Billed to controls"
+          "1": "unit: httpapi/tests/invoices_send_test.go TestSendInvoiceToClient",
+          "2": "unit: notify_test.go TestDeliverSendsTheInvoiceToTheClient, email_test.go TestResendSendsOneKeyedMessage",
+          "3": "e2e: e2e/privy/invoices.spec.ts (both invoice tests)",
+          "4": "docs-check: openapi.yaml, docs/backend/api.md, architecture.md, DESIGN.md"
         },
         "review": {
           "result": "pass",
@@ -193,11 +193,18 @@
           "summary": "Re-review of 30f01b4 (git diff 47782f9..HEAD). The blocking finding is fixed: openapi.yaml:1521 now lists client_email_required and invoice_closed in the Error code enum, so every code in httpio/errors.go is in the spec. Note 1 fixed: the 429 copy is generic and true for every limit. Note 3 fixed: after a send, focus moves to the 'You can send it again after' line (tabIndex -1, outline-none, the same pattern as pay-invoice.tsx and receipt-email.tsx); the hooks sit before the early return, and the e2e asserts the focus. Note 6 fixed: architecture.md names invoice.sent in its own short sentence. Notes 2, 4, 5 and 7 are left for the owner, as stated. Nothing new found. Checks run: pnpm lint (638 files, no issues), pnpm --filter @forwend/web test (88 passed), python3 scripts/check-docs.py (0 errors). The verify at 20:21Z shows e2e 38 passed.",
           "at": "2026-10-17T20:26:51Z",
           "filesHash": "73d9f48e1403968a"
-        }
+        },
+        "commit": "e985ba7",
+        "doneAt": "2026-10-17T20:34:00Z"
       },
       "branch": "feat/f223-the-owner-can-email-an-invoice-to-the-cl",
       "baseCommit": "bf128247e1ed487fa7fe21f23e46266aaad4fa90",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f223-the-owner-can-email-an-invoice-to-the-cl",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
