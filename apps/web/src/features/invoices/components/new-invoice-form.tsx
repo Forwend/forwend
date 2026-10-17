@@ -69,7 +69,7 @@ export interface NewInvoiceFormProps {
   profileId: string;
   tokens: readonly InvoiceToken[];
   request?: { senderName: string; onCreated: (invoice: Invoice) => void };
-  // Filled from a closed invoice (R-77): its client, accepted options and amount.
+  // Filled from another invoice (R-91), or with what is left of a closed one (R-77).
   start?: InvoiceStart;
   /** The profile's saved clients (R-86): picking one fills the client fields with a copy of its details. */
   clients?: readonly Client[];
@@ -110,15 +110,19 @@ export function NewInvoiceForm({
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
   // R-88: with items the amount is their total; the amount field stands in only while there are none.
-  const [items, setItems] = useState<LineDraft[]>([]);
+  const [items, setItems] = useState<LineDraft[]>(start?.items ?? []);
   const [lineErrors, setLineErrors] = useState<Record<string, LineFieldErrors>>({});
-  // Removing the last item puts the amount field back where the items were, with focus.
+  // Add item under the amount field and removing the last item swap the amount field and the items, so focus moves to
+  // whichever is shown. Items filled in from another invoice (R-91) take no focus.
   const amountId = useId();
-  const hadItems = useRef(false);
+  const itemsId = useId();
+  const hadItems = useRef(items.length > 0);
   useEffect(() => {
     if (hadItems.current && items.length === 0) document.getElementById(amountId)?.focus();
+    if (!hadItems.current && items.length > 0)
+      document.getElementById(itemsId)?.querySelector("input")?.focus();
     hadItems.current = items.length > 0;
-  }, [items.length, amountId]);
+  }, [items.length, amountId, itemsId]);
   // The client fields stay uncontrolled like the others; picking a saved client draws them again with its values.
   const [fill, setFill] = useState<{ key: string; client: ClientBody }>({
     key: "",
@@ -128,8 +132,8 @@ export function NewInvoiceForm({
   const countries = useMemo(() => clientCountryOptions(COPY.noCountry), [COPY.noCountry]);
   // The free-text fields stay uncontrolled; the preview reads them as they are typed.
   const [typed, setTyped] = useState({
-    title: "",
-    note: "",
+    title: start?.title ?? "",
+    note: start?.note ?? "",
     client: request?.senderName ?? start?.client.name ?? "",
   });
   const token = tokens.find((t) => tokenKey(t) === picked) ?? tokens[0];
@@ -369,6 +373,7 @@ export function NewInvoiceForm({
       type="url"
       label={COPY.returnLabel}
       name="returnUrl"
+      defaultValue={start?.returnUrl}
       inputMode="url"
       autoComplete="url"
       placeholder="https://"
@@ -420,6 +425,7 @@ export function NewInvoiceForm({
           )}
           {items.length > 0 ? (
             <LineItems
+              id={itemsId}
               items={items}
               onChange={(next) => {
                 if (next.length === 0 && itemsTotal > 0n)
@@ -491,6 +497,7 @@ export function NewInvoiceForm({
             <TextField
               label={COPY.titleLabel}
               name="title"
+              defaultValue={start?.title}
               maxLength={INVOICE_LIMITS.title}
               placeholder={COPY.titlePlaceholder}
               error={errors[INVOICE_FIELDS.title]}
@@ -514,6 +521,7 @@ export function NewInvoiceForm({
           <TextAreaField
             label={COPY.noteLabel}
             name="note"
+            defaultValue={start?.note}
             maxLength={INVOICE_LIMITS.note}
             error={errors[INVOICE_FIELDS.note]}
           />

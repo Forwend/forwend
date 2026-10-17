@@ -22,8 +22,9 @@ import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 // The enabled tokens (from the balances) are the networks and tokens an invoice can ask for. A personal profile makes
-// a request here instead (D-52, R-71), then lands on it with its pay link. ?from=<id> fills the form from that closed
-// invoice, read from the cache its page filled; the client comes from the owner's read, never from the URL (R-77).
+// a request here instead (D-52, R-71), then lands on it with its pay link. ?from=<id> fills the form from that invoice
+// (Duplicate, R-91, or a closed one's next step, R-77), read from the cache its page filled; the client comes from the
+// owner's read, never from the URL.
 export function NewInvoiceScreen() {
   const { profile } = useAppSession();
   const router = useRouter();

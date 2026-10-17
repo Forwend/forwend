@@ -239,6 +239,28 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByRole("menuitem", { name: "Link copied" })).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
     await page.keyboard.press("Escape");
+    // R-91: Duplicate opens New invoice filled from this one, with dates of its own.
+    await page
+      .getByRole("main")
+      .locator("header")
+      .getByRole("button", { name: "More actions" })
+      .click();
+    await page.getByRole("menuitem", { name: "Duplicate" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "New invoice" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Title (optional)" })).toHaveValue(title);
+    await expect(page.getByRole("textbox", { name: "PO or reference (optional)" })).toHaveValue(po);
+    await expect(page.getByRole("textbox", { name: "Note to the client (optional)" })).toHaveValue(
+      "Thank you",
+    );
+    await expect(page.getByRole("textbox", { name: "Return link (optional)" })).toHaveValue(
+      "https://shop.example/thanks",
+    );
+    await expect(page.getByRole("textbox", { name: "Name", exact: true })).toHaveValue(clientName);
+    await expect(page.getByRole("textbox", { name: "Amount" })).toHaveValue("12.5");
+    await expect(page.locator('input[name="dueDate"]')).toHaveValue("");
+    await expect(page.locator('input[name="supplyDate"]')).toHaveValue("");
+    await page.goBack();
+    await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
     // The PDFs come through the same-origin /api path; the receipt only once the invoice is paid.
     const pdf = (name: string) => details.getByRole("link", { name });
     const read = `/api/v1/invoices/${invoice.invoiceId}`;
@@ -413,6 +435,20 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
       choosing ? "E2E logo2 × 0.50 USD1.00 USD" : "E2E logo2 × 0.50 USDC1.00 USDC",
     );
     await fits();
+    // R-91: its duplicate's form, items filled in, fits a phone too.
+    await page
+      .getByRole("main")
+      .locator("header")
+      .getByRole("button", { name: "More actions" })
+      .click();
+    await page.getByRole("menuitem", { name: "Duplicate" }).click();
+    await expect(page.getByRole("textbox", { name: "Item 1", exact: true })).toHaveValue(
+      "E2E logo",
+    );
+    await fits();
+    expect(await blockingViolations(page)).toEqual([]);
+    await page.goBack();
+    await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
     expect(await blockingViolations(page)).toEqual([]);
     await page.getByRole("link", { name: "Invoices" }).click();
     // Phone rows lead with the client, then the number.

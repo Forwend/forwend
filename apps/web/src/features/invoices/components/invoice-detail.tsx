@@ -25,11 +25,11 @@ import {
   INVOICE_EXCEPTIONS,
   INVOICE_PDFS,
   INVOICE_STEPS,
-  RESTART_PARAMS,
 } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY as COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
 import {
   formatDueDate,
+  invoiceCopyHref,
   invoiceException,
   invoiceNumber,
   invoicePdfUrl,
@@ -439,8 +439,6 @@ function NextStep({
   // Canceled with nothing sent needs no line: Details says when it was canceled.
   const kind =
     exception.kind === INVOICE_EXCEPTIONS.canceled && received === 0n ? null : exception.kind;
-  const restart = (rest: boolean) =>
-    `${APP_ROUTES.newInvoice}?${RESTART_PARAMS.from}=${invoiceId}${rest ? `&${RESTART_PARAMS.rest}=1` : ""}`;
   if (!kind && late === 0n) return null;
   return (
     <div className="flex flex-col items-start gap-2 text-sm text-ink">
@@ -448,7 +446,7 @@ function NextStep({
       {late > 0n ? <p>{COPY.lateHeld(money(late))}</p> : null}
       {kind === INVOICE_EXCEPTIONS.closedUnpaid || kind === INVOICE_EXCEPTIONS.closedPartial ? (
         <Link
-          href={restart(kind === INVOICE_EXCEPTIONS.closedPartial)}
+          href={invoiceCopyHref(invoiceId, kind === INVOICE_EXCEPTIONS.closedPartial)}
           className={buttonClasses({ variant: "secondary", size: "sm" })}
         >
           {kind === INVOICE_EXCEPTIONS.closedPartial

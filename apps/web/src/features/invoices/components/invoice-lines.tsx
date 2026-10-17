@@ -1,5 +1,6 @@
 import { formatTokenAmount } from "@forwend/ui-web";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
+import { shortQuantity } from "@/features/invoices/lib/invoices";
 import type { InvoiceLine } from "@/features/invoices/types/invoices";
 import { exactDigits } from "@/shared/lib/money";
 
@@ -10,9 +11,6 @@ export interface InvoiceLinesProps {
   unit: string;
   total: bigint;
 }
-
-// "7.50" reads as 7.5, and "2.00" as 2.
-const quantity = (q: string) => q.replace(/\.?0+$/, "");
 
 // R-88: the invoice's items, one row each with its quantity and unit price under the description and its amount on
 // the right, then the total; the same rows on every width, as the PDF lists them.
@@ -34,7 +32,7 @@ export function InvoiceLines({ lines, decimals, unit, total }: InvoiceLinesProps
             <span className="min-w-0">
               <span className="block break-words text-ink">{line.description}</span>
               <span className="block text-xs text-muted tabular-nums">
-                {quantity(line.quantity)} × {money(line.unitPrice)}
+                {shortQuantity(line.quantity)} × {money(line.unitPrice)}
               </span>
             </span>
             <span className="shrink-0 font-medium text-ink tabular-nums">{money(line.amount)}</span>

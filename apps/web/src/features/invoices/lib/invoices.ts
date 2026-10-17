@@ -17,6 +17,7 @@ import {
   LINE_ERRORS,
   LINE_LIMITS,
   PAY_WITH,
+  RESTART_PARAMS,
 } from "@/features/invoices/constants/invoices";
 import type {
   AmountError,
@@ -33,6 +34,7 @@ import type {
   LineField,
 } from "@/features/invoices/types/invoices";
 import { API_BASE } from "@/shared/config/api";
+import { APP_ROUTES } from "@/shared/config/routes";
 
 /** 1 is INV-0001. */
 export function invoiceNumber(n: number): string {
@@ -249,10 +251,22 @@ export function invoiceException(inv: Invoice, status: PaymentStatus): InvoiceEx
   };
 }
 
+/** "7.50" as people write it: 7.5, and "2.00" as 2. The API gives quantities with 2 decimals. */
+export function shortQuantity(quantity: string): string {
+  return quantity.replace(/\.?0+$/, "");
+}
+
+/** New invoice filled from this invoice (R-91), or with only what is left of a closed one (R-77). */
+export function invoiceCopyHref(invoiceId: string, rest: boolean): string {
+  return `${APP_ROUTES.newInvoice}?${RESTART_PARAMS.from}=${invoiceId}${rest ? `&${RESTART_PARAMS.rest}=1` : ""}`;
+}
+
 /**
- * A new invoice's form filled from a closed one: the same client and accepted options, and the whole amount or only
- * what is left. A closed invoice is never reopened (D-25). Payer-chooses amounts are USD at 1 per token (D-75). It stays
- * payer chooses unless money arrived on time: a late payment also locks an option, but the client never paid with it.
+ * A new invoice's form filled from an earlier one (R-91, R-77): its client, reference, title, note, return link and
+ * accepted options, with the whole amount and its items, or only what is left of a closed one and no items, which would
+ * not add up to it. Dates are the new invoice's own. An invoice is never reopened (D-25). Payer-chooses amounts are USD
+ * at 1 per token (D-75). The rest is asked in the token the client paid with on time; a late payment also locks an
+ * option, but the client never paid with it.
  */
 export function restartFrom(
   inv: Invoice,
@@ -262,10 +276,23 @@ export function restartFrom(
   const decimals = inv.options.find((o) => o.optionId === inv.optionId)?.decimals ?? 0;
   const { received, left } = invoiceException(inv, PAYMENT_STATUS.expiredPartiallyPaid);
   const units = rest ? left : BigInt(inv.amount);
+  // Lines are in the base units of the invoice's own option (R-88).
+  const lineDecimals = inv.options.find((o) => o.optionId === inv.invoiceId)?.decimals ?? decimals;
   return {
-    payWith: inv.options.length > 1 && received === 0n ? PAY_WITH.any : PAY_WITH.fixed,
+    payWith: inv.options.length > 1 && !(rest && received > 0n) ? PAY_WITH.any : PAY_WITH.fixed,
     picked: tokenKey(inv),
     amount: decimalText(units, decimals),
+    items: rest
+      ? []
+      : inv.lines.map((line, i) => ({
+          id: String(i),
+          description: line.description,
+          quantity: shortQuantity(line.quantity),
+          price: decimalText(BigInt(line.unitPrice), lineDecimals),
+        })),
+    title: inv.title ?? "",
+    note: inv.note ?? "",
+    returnUrl: inv.returnUrl ?? "",
     reference: inv.reference ?? "",
     client: {
       name: client?.name ?? "",

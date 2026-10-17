@@ -2,7 +2,7 @@
 
 import { Button, formatTokenAmount, IconButton, TextField } from "@forwend/ui-web";
 import { Plus, X } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { flushSync } from "react-dom";
 import { LINE_LIMITS } from "@/features/invoices/constants/invoices";
 import { NEW_INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
@@ -15,6 +15,8 @@ const COPY = NEW_INVOICE_COPY.items;
 export type LineFieldErrors = Partial<Record<LineField, string>>;
 
 export interface LineItemsProps {
+  /** On the list's box, so the form can move focus into it. */
+  id: string;
   items: readonly LineDraft[];
   onChange: (items: LineDraft[]) => void;
   decimals: number;
@@ -29,17 +31,14 @@ export interface LineItemsProps {
 // R-88: the invoice's items, each a description, a quantity and a unit price, with its amount and the total, which
 // becomes the invoice's amount. Phones stack each item; from small screens up the items line up under one header row,
 // so each field's label is for screen readers only there.
-export function LineItems({ items, onChange, decimals, unit, errors, error }: LineItemsProps) {
+export function LineItems({ id, items, onChange, decimals, unit, errors, error }: LineItemsProps) {
   const list = useRef<HTMLUListElement>(null);
   // Add item and the remove buttons take away the button that had focus: it moves to the new row, or to the row that
-  // took the removed one's place (else the one before). Add item under the amount field mounts this list.
-  useEffect(() => {
-    list.current?.querySelector("input")?.focus();
-  }, []);
+  // took the removed one's place (else the one before).
   const focusRow = (row: number) =>
     list.current?.querySelectorAll("li")[row]?.querySelector("input")?.focus();
-  const set = (id: string, field: LineField, value: string) =>
-    onChange(items.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
+  const set = (itemId: string, field: LineField, value: string) =>
+    onChange(items.map((item) => (item.id === itemId ? { ...item, [field]: value } : item)));
   const amounts = items.map((item) => lineUnits(item, decimals));
   const total = amounts.reduce((sum, a) => (typeof a === "string" ? sum : sum + a.units), 0n);
   const money = (units: bigint) =>
@@ -47,7 +46,7 @@ export function LineItems({ items, onChange, decimals, unit, errors, error }: Li
   const grid =
     "grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 sm:grid-cols-[minmax(0,1fr)_4.5rem_7rem_7.5rem_2.5rem]";
   return (
-    <div className="flex flex-col gap-3">
+    <div id={id} className="flex flex-col gap-3">
       <div aria-hidden className={`${grid} max-sm:hidden text-sm font-medium text-ink`}>
         <span>{COPY.description}</span>
         <span>{COPY.quantity}</span>

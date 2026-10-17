@@ -273,19 +273,37 @@ describe("restartFrom", () => {
   it("asks again for the whole amount, or only what is left, from the same client in the same token", () => {
     const partly = {
       ...open,
+      title: "Website",
+      note: "Thanks",
+      returnUrl: "https://shop.example/thanks",
       reference: "PO-4500012345",
+      lines: [
+        { description: "Design", quantity: "7.50", unitPrice: "500000", amount: "3750000" },
+        { description: "Hosting", quantity: "1.00", unitPrice: "1250000", amount: "1250000" },
+      ],
       options: [option],
       deposits: [{ ...deposit, amount: "1250000" }],
     };
-    // R-90: the same order, so the same PO number.
+    // R-91: the same order, so the same PO number, title, note and return link; dates are the new invoice's own.
     const start = {
       payWith: "fixed",
       picked: `84532:${open.token}`,
+      title: "Website",
+      note: "Thanks",
+      returnUrl: "https://shop.example/thanks",
       reference: "PO-4500012345",
       client: { name: "Bob Ltd", email: "bob@example.com", address: "", country: "", taxId: "" },
     };
-    expect(restartFrom(partly, client, false)).toEqual({ ...start, amount: "5" });
-    expect(restartFrom(partly, client, true)).toEqual({ ...start, amount: "3.75" });
+    expect(restartFrom(partly, client, false)).toEqual({
+      ...start,
+      amount: "5",
+      items: [
+        { id: "0", description: "Design", quantity: "7.5", price: "0.5" },
+        { id: "1", description: "Hosting", quantity: "1", price: "1.25" },
+      ],
+    });
+    // The items would not add up to the rest.
+    expect(restartFrom(partly, client, true)).toEqual({ ...start, amount: "3.75", items: [] });
   });
 
   it("keeps payer chooses when only a late payment locked an option", () => {
@@ -299,6 +317,32 @@ describe("restartFrom", () => {
     expect(restartFrom(lateLocked, undefined, false).payWith).toBe("any");
     const onTime = { ...lateLocked, deposits: [{ ...late, late: false, amount: "1000000" }] };
     expect(restartFrom(onTime, undefined, true)).toMatchObject({ payWith: "fixed", amount: "4" });
+    // R-91: a duplicate asks the whole amount again, so the client chooses again.
+    expect(restartFrom(onTime, undefined, false)).toMatchObject({ payWith: "any", amount: "5" });
+  });
+
+  // R-88: lines are in the invoice's own option's base units, which can have other decimals than the option the client
+  // locked; 1 USD per token (D-75), so the copied prices read the same either way.
+  it("copies items in the invoice's own option's decimals when the client locked another", () => {
+    const dai = {
+      ...option,
+      optionId: `0x${"9".repeat(64)}`,
+      decimals: 18,
+      amount: "5000000000000000000",
+    };
+    const locked = {
+      ...open,
+      optionId: dai.optionId,
+      optionLocked: true,
+      amount: dai.amount,
+      options: [option, dai],
+      lines: [{ description: "Design", quantity: "2.00", unitPrice: "2500000", amount: "5000000" }],
+    };
+    expect(restartFrom(locked, undefined, false)).toMatchObject({
+      payWith: "any",
+      amount: "5",
+      items: [{ description: "Design", quantity: "2", price: "2.5" }],
+    });
   });
 
   it("keeps payer chooses while no option took money, and leaves the client empty for a request", () => {

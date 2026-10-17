@@ -292,4 +292,56 @@ describe("new invoice form", () => {
     await pick("Acme GmbH");
     expect(reference()).toBe("PO-777");
   });
+
+  // R-91: a duplicate's form shows the earlier invoice's items without taking focus, and sends what it shows.
+  it("fills from another invoice without moving focus", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (request: Request) => {
+        bodies.push(JSON.parse(await request.text()));
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <NewInvoiceForm
+          profileId={PROFILE}
+          tokens={[TOKEN]}
+          start={{
+            payWith: "fixed",
+            picked: `${TOKEN.chainId}:${TOKEN.token}`,
+            amount: "5",
+            items: [
+              { id: "0", description: "Design", quantity: "7.5", price: "0.5" },
+              { id: "1", description: "Hosting", quantity: "1", price: "1.25" },
+            ],
+            title: "Website",
+            note: "Thanks",
+            returnUrl: "https://shop.example/thanks",
+            reference: "PO-1",
+            client: { name: "Bob Ltd", email: "", address: "", country: "", taxId: "" },
+          }}
+        />
+      </Provider>,
+    );
+    await settle();
+    expect(document.activeElement).toBe(document.body);
+    expect((screen.getByLabelText("Item 2") as HTMLInputElement).value).toBe("Hosting");
+    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    await settle();
+    expect(bodies[0]).toMatchObject({
+      amount: "5000000",
+      title: "Website",
+      note: "Thanks",
+      returnUrl: "https://shop.example/thanks",
+      reference: "PO-1",
+      dueDate: "",
+      supplyDate: "",
+      lines: [
+        { description: "Design", quantity: "7.5", unitPrice: "500000" },
+        { description: "Hosting", quantity: "1", unitPrice: "1250000" },
+      ],
+    });
+  });
 });
