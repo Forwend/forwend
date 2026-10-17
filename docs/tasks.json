@@ -1163,7 +1163,7 @@
         "axe 0 and no sideways scroll at 390 px on the prompt; the mocked app and the live e2e profiles carry billing details."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -1248,11 +1248,18 @@
           "summary": "PASS. Backend: create.go reads kind and billing-details EXISTS in the same SELECT ... FOR UPDATE inside the create transaction, after the idempotency replay, so a replay of an existing invoice still returns it; a refused create returns before any insert and the tx rolls back (TestBusinessInvoiceNeedsBillingDetails proves the same key later makes number 1). Race free: no DELETE of profile_billing_details anywhere, profile kind never changes, profiles are never deleted, and the insert trigger runs with a later snapshot. 409 billing_details_required is in httpio/errors.go, the openapi enum and createInvoice 409 (CreateInvoiceConflict), and api.md. Personal requests still work without details (tested). Only one API caller and one web caller create invoices; invoice, settlement, httpapi and backend e2e gate setups gained details; load_test uses personal profiles and direct SQL. Rewritten tests still test their claims; TestCreateInvoiceRefusesUnsettleableTerms still reaches buildTerms. Web: prompt, skeleton while billing loads, form on GET error (API still checks); ?then= maps only to newInvoice or home, Cancel uses the same next; mock and live helper correct. Old business invoices with no issuer still render. Checks I ran: go test ./internal/... all ok, go vet ./... ok, vitest 87 passed, typecheck ok, biome ok. Minor notes, not blocking: (1) new-invoice-screen.tsx:82 the prompt link drops ?from=, so Duplicate (R-91) or a closed invoice's next step on a profile without details lands on an empty form after saving; (2) pay-invoice.tsx:242 labels any invoice without issuer as Request, so a business invoice made before R-92 reads Request INV-000N (legacy only, pre-existing); (3) create.go:66 hardcodes 'personal' though profile.Personal exists and invoice already imports profile; (4) TestInvoicePDF no longer covers a PDF with neither issuer nor sender (no FROM block), yet its doc comment at invoices_pdf_test.go:119 still claims it; (5) if the billing GET fails the form shows and a 409 becomes the generic 'We could not create the invoice. Try again.'; (6) billing-details-form.tsx:30 prop comment only says what the prop does; sample-api.ts billing is typed object; (7) pre-existing, not this task: list_search_test.go:109 posts to the walletless profile, which has no wallet, so that other-profile invoice is never made.",
           "at": "2026-10-17T16:46:58Z",
           "filesHash": "3d2e3d5bcf11999b"
-        }
+        },
+        "commit": "62f80e1",
+        "doneAt": "2026-10-17T16:47:25Z"
       },
       "branch": "feat/f220-a-freelancer-or-merchant-profile-needs-b",
       "baseCommit": "34b988c24761a73c61a652c214de203ce2daa790",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f220-a-freelancer-or-merchant-profile-needs-b",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
