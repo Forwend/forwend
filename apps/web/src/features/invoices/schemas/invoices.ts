@@ -136,6 +136,13 @@ export const invoiceLineSchema = z.object({
   amount: baseUnits,
 });
 
+/** One Send to client (R-94): sentAt and failedAt stay null while the email waits. */
+export const invoiceSendSchema = z.object({
+  requestedAt: apiTime,
+  sentAt: apiTime.nullable(),
+  failedAt: apiTime.nullable(),
+});
+
 /** An invoice read alone or just created. */
 export const invoiceSchema = invoiceSummarySchema.extend({
   // Every accepted option, the shown one included: one for a fixed invoice.
@@ -153,6 +160,8 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   lines: z.array(invoiceLineSchema),
   // Only in the owner's reads: null while not paid or once settled.
   settlementWait: settlementWaitSchema.nullable().optional(),
+  // Only in the owner's reads: each Send to client, oldest first.
+  sends: z.array(invoiceSendSchema).optional(),
 });
 
 /** POST /v1/invoices/{id}/recheck (R-55): what Check status found. Amounts in base units. */

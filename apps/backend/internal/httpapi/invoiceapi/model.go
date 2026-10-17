@@ -134,10 +134,18 @@ type optionJSON struct {
 }
 
 // ownerInvoiceJSON is an invoice read by its owner: the detail plus why a paid invoice's money has not reached the
-// creator yet (null when it is not waiting). The public read leaves it out.
+// creator yet (null when it is not waiting) and the owner's sends to the client. The public read leaves them out.
 type ownerInvoiceJSON struct {
 	invoiceDetailJSON
 	SettlementWait *settlementWaitJSON `json:"settlementWait"`
+	Sends          []sendJSON          `json:"sends"`
+}
+
+// sendJSON is one Send to client (R-94): sentAt and failedAt stay null while the email waits.
+type sendJSON struct {
+	RequestedAt string  `json:"requestedAt"`
+	SentAt      *string `json:"sentAt"`
+	FailedAt    *string `json:"failedAt"`
 }
 
 type settlementWaitJSON struct {
@@ -220,7 +228,11 @@ func toDepositsJSON(deposits []invoice.Deposit) []depositJSON {
 }
 
 func toOwnerInvoiceJSON(inv invoice.Invoice) ownerInvoiceJSON {
-	out := ownerInvoiceJSON{invoiceDetailJSON: toInvoiceDetailJSON(inv, true)}
+	out := ownerInvoiceJSON{invoiceDetailJSON: toInvoiceDetailJSON(inv, true), Sends: []sendJSON{}}
+	for _, s := range inv.Sends {
+		out.Sends = append(out.Sends, sendJSON{RequestedAt: s.RequestedAt.Format(time.RFC3339),
+			SentAt: httpio.OrNullTime(s.SentAt), FailedAt: httpio.OrNullTime(s.FailedAt)})
+	}
 	if w := inv.SettlementWait; w != nil {
 		out.SettlementWait = &settlementWaitJSON{Kind: w.Kind, Until: httpio.OrNullTime(w.Until)}
 		if w.Kind == invoice.WaitFinalizing {

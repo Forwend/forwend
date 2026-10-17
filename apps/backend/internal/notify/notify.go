@@ -1,5 +1,5 @@
 // Package notify sends the email for each outbox event: the owner's paid, settled and held-money emails (R-80), the
-// payer's receipt (R-82) and a new account's welcome (R-84).
+// payer's receipt (R-82), a new account's welcome (R-84) and the invoice the owner sends to the client (R-94).
 // One worker claims each event once (FOR UPDATE SKIP LOCKED); invoice, event id and address make Resend's
 // Idempotency-Key, the same on every retry, so a retry after a lost answer sends nothing twice. Nothing logs an address, a subject or a body.
 package notify
@@ -124,7 +124,7 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 }
 
 // invoiceEmail builds an invoice event's email and says where it goes: the owner's login email when the profile has
-// email on, or the payer's address for the receipt.
+// email on, the payer's address for the receipt, or the client's email for a send.
 func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload []byte,
 	webURL string) (view, *string, bool, error) {
 	var p outbox.Payload
@@ -137,17 +137,20 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 		number               int64
 		symbol, amount, hash string
 		issuer, typed        string
-		decimals             int
+		client, replyTo, due string
+		decimals, options    int
 		chainID              uint64
 	)
 	if err := tx.QueryRow(ctx, `SELECT p.email_notifications, u.login_email, m.payer_email, m.number,
 		    coalesce(m.issuer_name, ''), coalesce(m.sender_name, ''), t.symbol, t.decimals, o.chain_id, o.amount::text,
 		    coalesce((SELECT d.tx_hash FROM chain_transfers d WHERE d.invoice_id = o.id AND d.status = 'confirmed'
-		              AND d.block_time <= o.expires_at ORDER BY d.block_number DESC, d.log_index DESC LIMIT 1), '')
+		              AND d.block_time <= o.expires_at ORDER BY d.block_number DESC, d.log_index DESC LIMIT 1), ''),
+		    coalesce(m.client_email, ''), coalesce(m.issuer_email, ''), coalesce(m.due_date::text, ''),
+		    (SELECT count(*) FROM invoices x WHERE coalesce(x.main_id, x.id) = m.id)
 		FROM invoices m JOIN profiles p ON p.id = m.profile_id JOIN users u ON u.id = p.user_id
 		JOIN invoices o ON o.id = $2 JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
 		WHERE m.id = $1`, invoice, p.Option).Scan(&on, &to, &payer, &number, &issuer, &typed, &symbol, &decimals, &chainID,
-		&amount, &hash); err != nil {
+		&amount, &hash, &client, &replyTo, &due, &options); err != nil {
 		return view{}, nil, false, fmt.Errorf("invoice: %w", err)
 	}
 	// The payer's receipt goes to the address they gave, whatever the owner's setting (R-82).
@@ -158,6 +161,15 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 		amount = p.Amount
 	}
 	units, _ := new(big.Int).SetString(amount, 10)
+	if kind == outbox.Sent {
+		// The owner sent it, so the owner's setting doesn't apply (R-94).
+		network := document.NetworkName(chainID)
+		if options > 1 { // the client chooses the token and network, each at 1 USD (D-75)
+			symbol, network = "USD", ""
+		}
+		return sent(document.Number(number), document.Amount(units, decimals, symbol), network, issuer, typed, due,
+			replyTo, webURL+"/pay/"+invoice, webURL+"/api/v1/invoices/"+invoice+"/invoice.pdf"), &client, true, nil
+	}
 	if kind == outbox.Receipt {
 		return receipt(document.Number(number), document.Amount(units, decimals, symbol), symbol, document.NetworkName(chainID), issuer, typed,
 			document.TxURL(chainID, hash), webURL+"/api/v1/invoices/"+invoice+"/receipt.pdf"), to, on, nil
@@ -226,6 +238,39 @@ func receipt(number, amount, symbol, network, issuer, sender, tx, pdf string) vi
 	return v
 }
 
+// sent is the invoice the owner sends to the client (R-94): who bills them, how much, by when, the pay page and the
+// PDF. A reply goes to the issuer's billing email, not to Forwend. network is empty when the client chooses.
+func sent(number, amount, network, issuer, sender, due, replyTo, pay, pdf string) view {
+	v := view{Subject: "Invoice " + number, Badge: "Invoice", Tone: "neutral", Title: "Invoice " + number,
+		Amount: amount, Button: button{"View and pay", pay}, ReplyTo: replyTo, Details: []row{{Label: "Invoice", Value: number}}}
+	from := issuer
+	if from == "" && sender != "" {
+		from, v.Note = sender, "The name is what the invoice's creator gave; Forwend doesn't check it."
+	}
+	v.Lead = []string{"You have invoice " + number + " for " + amount + "."}
+	v.Reason = "You get this email because someone sent you this invoice through Forwend."
+	if from != "" {
+		v.Subject += " from " + from
+		v.Details = append(v.Details, row{Label: "From", Value: from})
+		v.Lead[0] = from + " sent you " + number + " for " + amount + "."
+		v.Reason = "You get this email because " + from + " sent you this invoice through Forwend."
+	}
+	v.Lead[0] += " You pay it in stablecoins on the payment page."
+	if due != "" {
+		v.Details = append(v.Details, row{Label: "Due date", Value: due})
+	}
+	if network == "" {
+		network = "You choose on the payment page"
+	}
+	v.Details = append(v.Details, row{Label: "Network", Value: network},
+		row{Label: "Invoice PDF", Value: "Download the invoice (PDF)", Href: pdf})
+	if replyTo != "" {
+		v.Reason += " Reply to this email to reach them."
+	}
+	v.Preheader = v.Lead[0]
+	return v
+}
+
 // message is the email for a view: the designed HTML part and a plain text part with the same words and links.
 func message(site Site, v view) (email.Message, error) {
 	html, err := render(site, v)
@@ -254,5 +299,5 @@ func message(site Site, v view) (email.Message, error) {
 	if site.PostalAddress != "" {
 		text += site.PostalAddress + "\n"
 	}
-	return email.Message{Subject: v.Subject, Text: text, HTML: html}, nil
+	return email.Message{Subject: v.Subject, Text: text, HTML: html, ReplyTo: v.ReplyTo}, nil
 }

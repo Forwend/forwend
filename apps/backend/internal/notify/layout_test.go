@@ -22,6 +22,9 @@ func samples() map[string]view {
 		"receipt":       receipt("INV-0001", "1,250.00 USDC", "USDC", "Base Sepolia", "Alice Design GmbH", "", tx, web+"/api/v1/invoices/0xabc/receipt.pdf"),
 		"receipt-typed": receipt("INV-0003", "40.00 USDC", "USDC", "Base Sepolia", "", "MaraIlicDesignStudioInvoicesForInternationalClientsLimited", "", web+"/api/v1/invoices/0xdef/receipt.pdf"),
 		"welcome":       welcome(web + "/app"),
+		"sent": sent("INV-0004", "1,250.00 USDC", "Base Sepolia", "Alice Design GmbH", "", "2026-11-30",
+			"billing@alice.example", web+"/pay/0xabc", web+"/api/v1/invoices/0xabc/invoice.pdf"),
+		"sent-any": sent("INV-0005", "12.50 USD", "", "", "", "", "", web+"/pay/0xdef", web+"/api/v1/invoices/0xdef/invoice.pdf"),
 	}
 }
 

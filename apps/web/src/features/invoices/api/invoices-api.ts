@@ -81,6 +81,24 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
+      /**
+       * Send to client (R-94): one email per idempotency key. 409 without a client email or once the invoice can't be
+       * paid; 429 within a day of its last send or past the profile's daily sends.
+       */
+      sendInvoice: build.mutation<
+        Invoice,
+        { profileId: string; invoiceId: string; idempotencyKey: string }
+      >({
+        // A day's limit is the answer, not something to wait out.
+        extraOptions: { answerFirst: true },
+        query: ({ profileId, invoiceId, idempotencyKey }) => ({
+          url: `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}/send`,
+          method: "POST",
+          headers: { "Idempotency-Key": idempotencyKey },
+        }),
+        responseSchema: invoiceSchema,
+        invalidatesTags: [INVOICES_TAG],
+      }),
       /** Check status: public, like the checkout read; the api allows one per invoice every 5 minutes. */
       recheckInvoice: build.mutation<Recheck, string>({
         // Asked too soon is the answer: the page rests until the next check, it does not wait and ask again.
@@ -128,6 +146,7 @@ export const {
   useGetProfileInvoiceQuery,
   useCreateInvoiceMutation,
   useCancelInvoiceMutation,
+  useSendInvoiceMutation,
   useGetInvoiceEventsQuery,
   useRecheckInvoiceMutation,
   useSetPayerEmailMutation,

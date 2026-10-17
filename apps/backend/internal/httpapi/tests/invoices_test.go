@@ -205,7 +205,7 @@ func TestCreateInvoice(t *testing.T) {
 		t.Fatalf("GET: %d %v", got.status, got.body)
 	}
 	for k, v := range b {
-		if !reflect.DeepEqual(got.body[k], v) && k != "client" {
+		if !reflect.DeepEqual(got.body[k], v) && k != "client" && k != "sends" { // the owner's only
 			t.Fatalf("GET %s = %v, POST gave %v", k, got.body[k], v)
 		}
 	}

@@ -115,7 +115,10 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   await page.getByRole("link", { name: "Add client" }).first().click();
   await expect(page).toHaveURL("/app/clients/new");
   await page.getByRole("textbox", { name: "Name or business name" }).fill(clientName);
-  await page.getByRole("textbox", { name: "Billing email (optional)" }).fill("client@example.com");
+  // Resend's test inbox: Send to client below queues an email, which a running worker would really send.
+  await page
+    .getByRole("textbox", { name: "Billing email (optional)" })
+    .fill("delivered@resend.dev");
   await page.getByRole("textbox", { name: "Address (optional)" }).fill("1 Test Street\nBerlin");
   // A long list is searched: typing narrows the countries.
   await page.getByRole("button", { name: /^Country \(optional\)/ }).click();
@@ -132,7 +135,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   await page.getByRole("button", { name: "Save client" }).click();
   await expect(page).toHaveURL("/app/clients");
   const clientRow = page.getByRole("row").filter({ hasText: clientName });
-  await expect(clientRow).toContainText("client@example.com");
+  await expect(clientRow).toContainText("delivered@resend.dev");
   await expect(clientRow).toContainText("Germany");
   await expect(clientRow).toContainText("DE123456789");
   expect(await blockingViolations(page)).toEqual([]);
@@ -246,9 +249,27 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByRole("main").locator("header")).not.toContainText("Checkout closes");
     const client = page.getByRole("region", { name: "Billed to" });
     await expect(client).toContainText(clientName);
-    await expect(client).toContainText("client@example.com");
+    await expect(client).toContainText("delivered@resend.dev");
     await expect(client).toContainText("Germany");
     await expect(client).toContainText("Tax ID DE123456789");
+    // R-94: Send to client queues the email to the client's address; the panel then lists it, and the next send waits a
+    // day. The test starts the api alone, so the email waits unless a dev worker runs.
+    const sent = page.waitForResponse(
+      (r) =>
+        r.url().endsWith(`/invoices/${invoice.invoiceId}/send`) && r.request().method() === "POST",
+    );
+    await client.getByRole("button", { name: "Send to client" }).click();
+    expect((await sent).status()).toBe(201);
+    await expect(
+      page.getByText(`${invoice.number} is on its way to delivered@resend.dev`),
+    ).toBeVisible();
+    await expect(client).toContainText(
+      /Sending to delivered@resend\.dev|Emailed to delivered@resend\.dev/,
+    );
+    await expect(client.getByRole("button", { name: "Send to client" })).toHaveCount(0);
+    // The button goes, so focus moves to the line that takes its place.
+    await expect(client.getByText(/^You can send it again after/)).toBeFocused();
+    expect(await blockingViolations(page)).toEqual([]);
     // The pay link copies whole, from the header's More actions menu, which also opens it.
     const link = `http://localhost:3000/pay/${invoice.invoiceId}`;
     await page
@@ -463,6 +484,10 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
     }
     await expect(page.getByRole("region", { name: "Items" })).toContainText(
       choosing ? "E2E logo2 × 0.50 USD1.00 USD" : "E2E logo2 × 0.50 USDC1.00 USDC",
+    );
+    // R-94: a client without an email: the page says why the invoice can't be emailed.
+    await expect(page.getByRole("region", { name: "Billed to" })).toContainText(
+      "No client email on this invoice",
     );
     await fits();
     // R-91: its duplicate's form, items filled in, fits a phone too.

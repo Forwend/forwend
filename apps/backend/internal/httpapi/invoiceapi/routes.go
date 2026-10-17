@@ -16,26 +16,29 @@ import (
 const RecheckRate, RecheckBurst = 1, 10
 
 // The payer's receipt address (R-82) is public like the checkout: a few changes per invoice, and a shared budget for
-// everyone, so the endpoint can't send mail to many addresses. Per IP belongs to the edge (Q-8).
+// everyone, so the endpoint can't send mail to many addresses. Per IP belongs to the edge (Q-8). The owner's Send to
+// client (R-94) takes from the same shared budget.
 const (
 	PayerEmailRate, PayerEmailBurst       = 0.1, 3
 	PayerEmailAllRate, PayerEmailAllBurst = 5, 20
 )
 
-// Routes mounts the invoice endpoints on mux: the owner's create, list, read and cancel behind the profile guard; the
-// checkout's read, Check status and PDFs in public. balances reads wallet balances from each chain's second RPC
+// Routes mounts the invoice endpoints on mux: the owner's create, list, read, cancel and send behind the profile
+// guard; the checkout's read, Check status and PDFs in public. balances reads wallet balances from each chain's second RPC
 // (D-15); webURL is the web app's origin, for the pay link in PDFs.
 func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, balances ledger.BalanceOf, webURL string) {
 	rechecks := mid.NewBuckets(RecheckRate, RecheckBurst)
+	emails := mid.NewBuckets(PayerEmailAllRate, PayerEmailAllBurst)
 	mux.Handle("POST /v1/profiles/{profileId}/invoices", g.ProfileScoped(createInvoice(invoices)))
 	mux.Handle("GET /v1/profiles/{profileId}/invoices", g.ProfileScoped(listInvoices(invoices)))
 	mux.Handle("GET /v1/profiles/{profileId}/invoices/{invoiceId}", g.ProfileScoped(getProfileInvoice(invoices)))
 	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel", g.ProfileScoped(cancelInvoice(invoices)))
+	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/send", g.ProfileScoped(sendInvoice(invoices, emails)))
 	mux.Handle("GET /v1/profiles/{profileId}/events", g.ProfileScoped(listEvents(invoices)))
 	mux.Handle("GET /v1/invoices/{invoiceId}", getInvoice(invoices)) // checkout reads
 	mux.Handle("POST /v1/invoices/{invoiceId}/recheck", recheckInvoice(invoices, balances, rechecks))
 	perInvoice := func(r *http.Request) string { return strings.ToLower(r.PathValue("invoiceId")) }
-	mux.Handle("PUT /v1/invoices/{invoiceId}/payer-email", mid.Limit(mid.NewBuckets(PayerEmailAllRate, PayerEmailAllBurst),
+	mux.Handle("PUT /v1/invoices/{invoiceId}/payer-email", mid.Limit(emails,
 		mid.Everyone, mid.Limit(mid.NewBuckets(PayerEmailRate, PayerEmailBurst), perInvoice, putPayerEmail(invoices))))
 	mux.Handle("GET /v1/invoices/{invoiceId}/invoice.pdf", invoicePDF(invoices, webURL))
 	mux.Handle("GET /v1/invoices/{invoiceId}/receipt.pdf", receiptPDF(invoices, webURL))

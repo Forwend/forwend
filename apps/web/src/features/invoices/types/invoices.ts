@@ -23,6 +23,7 @@ import type {
   invoiceLineSchema,
   invoiceOptionSchema,
   invoiceSchema,
+  invoiceSendSchema,
   invoiceSummarySchema,
   invoicesPageSchema,
   recheckSchema,
@@ -102,6 +103,8 @@ export type SettlementWait = z.infer<typeof settlementWaitSchema>;
 export type InvoiceOption = z.infer<typeof invoiceOptionSchema>;
 
 export type Invoice = z.infer<typeof invoiceSchema>;
+
+export type InvoiceSend = z.infer<typeof invoiceSendSchema>;
 
 export type Recheck = z.infer<typeof recheckSchema>;
 
