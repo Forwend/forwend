@@ -64,7 +64,9 @@ func setup(t *testing.T) env {
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		            VALUES ($1, 'evm', $2, 'USDC', 6, true)),
 		     u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:alice') RETURNING id),
-		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id)
+		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id),
+		     b AS (INSERT INTO profile_billing_details (profile_id, name, address, country, contact_email)
+		           SELECT id, 'Alice', 'Main St 1', 'DE', 'alice@example.com' FROM p)
 		INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
 		SELECT id, 'privy', 'w1', 'evm', $3 FROM p`, chaintest.ChainID, token, wallet)
 	if err != nil {

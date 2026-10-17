@@ -197,9 +197,26 @@ function listPage<T>(
   };
 }
 
-export async function mockApi(page: Page, lists: SampleLists = SAMPLE_LISTS) {
+// The merchant's billing details, which a business invoice needs (R-92).
+const SAMPLE_BILLING = {
+  name: "Sample shop GmbH",
+  address: "Hauptstr. 1\n10115 Berlin",
+  country: "DE",
+  taxId: null,
+  email: "billing@shop.example",
+  updatedAt: "2026-09-02T00:00:00Z",
+};
+
+/** null as billing: a merchant that has not saved them yet. */
+export async function mockApi(
+  page: Page,
+  lists: SampleLists = SAMPLE_LISTS,
+  billing: object | null = SAMPLE_BILLING,
+) {
   // The profile's email setting (R-80), changed by PUT for the rest of the page's life.
   const notifications = { email: true, address: "owner@example.com" };
+  // Saved by PUT for the rest of the page's life, as the notifications are.
+  let details = billing;
   // Our API only: Privy's own API is also under /api/v1.
   await page.route("/api/v1/**", (route) => {
     const url = new URL(route.request().url());
@@ -258,6 +275,16 @@ export async function mockApi(page: Page, lists: SampleLists = SAMPLE_LISTS) {
       return route.fulfill({ json });
     }
     if (what?.startsWith("events")) return route.fulfill({ json: { items: lists.events ?? [] } });
+    if (what === "billing-details") {
+      if (route.request().method() === "PUT")
+        details = { ...route.request().postDataJSON(), updatedAt: "2026-10-17T12:00:00Z" };
+      return details
+        ? route.fulfill({ json: details })
+        : route.fulfill({
+            status: 404,
+            json: { error: { code: "billing_details_not_found", message: "no billing details" } },
+          });
+    }
     if (what === "notifications") {
       if (route.request().method() === "PUT")
         notifications.email = route.request().postDataJSON().email;

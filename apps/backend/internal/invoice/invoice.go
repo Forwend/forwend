@@ -52,6 +52,9 @@ var (
 	// ErrNotWatched: the worker has not scanned the chain yet, and its first scan starts at the finalized block, so a
 	// payment made before it would never be seen (SEC-02).
 	ErrNotWatched = errors.New("network not watched yet")
+	// ErrBillingDetailsRequired: a business invoice names who bills the client (R-92, D-83), so a freelancer or
+	// merchant profile saves its billing details first; a personal request names its sender instead (D-52).
+	ErrBillingDetailsRequired = errors.New("billing details required")
 )
 
 var (

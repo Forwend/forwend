@@ -1,14 +1,23 @@
 "use client";
 
 import { Button, Skeleton } from "@forwend/ui-web";
+import { useSearchParams } from "next/navigation";
 import { useGetBillingDetailsQuery } from "@/features/profiles/api/profiles-api";
 import { BillingDetailsForm } from "@/features/profiles/components/billing-details-form";
+import { BILLING_THEN } from "@/features/profiles/constants/profile";
 import { BILLING_DETAILS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
+import { APP_ROUTES } from "@/shared/config/routes";
 
 export function BillingDetailsScreen() {
   const { profile } = useAppSession();
   const details = useGetBillingDetailsQuery(profile.profileId);
+  // Sent here by New invoice (R-92), saving goes back there; otherwise home. Only known places, never a URL from the
+  // query.
+  const next =
+    useSearchParams().get(BILLING_THEN.param) === BILLING_THEN.newInvoice
+      ? APP_ROUTES.newInvoice
+      : APP_ROUTES.home;
   return (
     <div className="flex max-w-md flex-col gap-8">
       <div className="flex flex-col gap-2">
@@ -31,6 +40,7 @@ export function BillingDetailsScreen() {
           key={profile.profileId}
           profileId={profile.profileId}
           saved={details.currentData}
+          next={next}
         />
       )}
     </div>

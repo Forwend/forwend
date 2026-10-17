@@ -19,7 +19,6 @@ import { BILLING_LIMITS } from "@/features/profiles/constants/billing-details";
 import { BILLING_DETAILS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { countryOptions, invalidBillingField } from "@/features/profiles/lib/billing-details";
 import type { BillingDetails, BillingDetailsBody } from "@/features/profiles/types/billing-details";
-import { APP_ROUTES } from "@/shared/config/routes";
 
 type Field = keyof BillingDetailsBody;
 
@@ -28,10 +27,12 @@ const COUNTRY_ID = "billing-country";
 export interface BillingDetailsFormProps {
   profileId: string;
   saved: BillingDetails | null;
+  /** Where saving or Cancel leads. */
+  next: string;
 }
 
 // R-43: one PUT replaces every field; the API checks them again.
-export function BillingDetailsForm({ profileId, saved }: BillingDetailsFormProps) {
+export function BillingDetailsForm({ profileId, saved, next }: BillingDetailsFormProps) {
   const [save] = useSaveBillingDetailsMutation();
   const toast = useToast();
   const router = useRouter();
@@ -71,7 +72,7 @@ export function BillingDetailsForm({ profileId, saved }: BillingDetailsFormProps
     try {
       await save({ profileId, body }).unwrap();
       toast({ tone: TONES.success, title: COPY.saved });
-      router.push(APP_ROUTES.home);
+      router.push(next);
     } catch (error) {
       const message =
         (error as { data?: { error?: { message?: string } } }).data?.error?.message ?? "";
@@ -135,7 +136,7 @@ export function BillingDetailsForm({ profileId, saved }: BillingDetailsFormProps
         <Button type="submit" loading={busy}>
           {COPY.save}
         </Button>
-        <Link href={APP_ROUTES.home} className={buttonClasses({ variant: "ghost" })}>
+        <Link href={next} className={buttonClasses({ variant: "ghost" })}>
           {COPY.cancel}
         </Link>
       </div>
