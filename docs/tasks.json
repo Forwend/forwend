@@ -13,7 +13,7 @@
         "A fresh agent given the same two sample tasks (backend, web) before and after the change uses fewer tokens and names at least the same key rules."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check",
         "harness"
@@ -68,10 +68,10 @@
         "taskHash": "4a9a6c574131083c",
         "filesHash": "eebcbaaefe056054",
         "proof": {
-          "1": "docs-check: 0 errors; inventory script against base 0c53565: 187 IDs before, 188 after (only D-84 new), none lost, no row title or cell count changed; no ID, quoted text, number, code span or name lost from the docs (api.md's public GET field list now lives only in openapi.yaml getInvoice)",
-          "2": "docs-check: backend, web and contracts AGENTS.md have Always + 'The task touches | Read' tables whose rows name every section topic of the docs they route to (review fixes); DESIGN.md and backend/architecture.md open with section indexes; 28 #anchor links before and after, 0 broken",
-          "3": "harness: 38 harness tests pass; harness.py show prints R-38 (F072), R-39 (F079), R-68 (F146), R-93 (F221) and D-84 (F222) after the rewrite",
-          "4": "docs-check: fresh agents, same prompts, before vs after: backend 157,350 -> 142,361 tokens (49 -> 46 tool uses), 9/9 key rules both times; web 108,448 -> 95,148 tokens (24 -> 26 tool uses), 9/9 both times after the structure.md routing fix (first after-run named 8/9)"
+          "1": "docs-check",
+          "2": "docs-check",
+          "3": "harness",
+          "4": "docs-check"
         },
         "review": {
           "result": "pass",
@@ -79,11 +79,18 @@
           "summary": "Pass. All 3 defects and 5 minor points from the first review are fixed, and no fact is lost or changed. (1)+(2) apps/backend/AGENTS.md:35-37: each row now names every section of its doc. api.md: first run, notifications/emails, billing details, clients, invoices, PDFs, wallet transactions, idempotency, auth, errors, rate limits. money-safety.md: receive address, deciding paid, checkout, canary, accepted risks. architecture.md: all 10 sections. Signer, watcher and email tasks now reach the docs that hold their rules. (3) architecture.md:18 Privy row now matches its section (wallets, signup and profile creation). (4)+(5) apps/web/AGENTS.md: the architecture row covers parts, navigation, Receive wiring and headers; the PRODUCT row is 'Any words users read'. (6) DESIGN.md pay bullet: the QR row now has the amount and the warning line beside the QR, as in pay-invoice.tsx:444-466, with the Native USDC note in the same bullet. (7) api.md:200 now says getInvoicePdf and getReceiptPdf also list each PDF's contents and both must be updated, which matches openapi.yaml. (8) PROJECT.md R-39, R-68 and R-93: word-diffed again; same facts and order of conditions, still one line with 5 cells each. D-84 now says 'app and contracts AGENTS.md', which is accurate. contracts AGENTS.md has the 'Then only the rows' line. architecture.md: the only change since the first review is the Privy row; Signer steps 1-5 are unchanged. Inventory (whitespace-normalized) against 0c53565: nothing lost except api.md's public-GET field names, which are now in openapi.yaml getInvoice and the Invoice schema (checked). check-docs: 0 errors. unittest: OK. show F146 prints R-68, show F221 prints R-93. PLAN.md and the must-not-change paths are unchanged.",
           "at": "2026-10-17T18:58:17Z",
           "filesHash": "eebcbaaefe056054"
-        }
+        },
+        "commit": "7d11e24",
+        "doneAt": "2026-10-17T18:59:23Z"
       },
       "branch": "docs/f222-agents-read-less-and-miss-nothing-each-p",
       "baseCommit": "0c53565d0d006f012a2ed9e59b40742884c7de54",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f222-agents-read-less-and-miss-nothing-each-p",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
