@@ -21,6 +21,7 @@ import {
   Copy,
   ExternalLink,
   FileDown,
+  Handshake,
   Hash,
   ShieldAlert,
   TriangleAlert,
@@ -33,6 +34,7 @@ import { CheckStatus } from "@/features/invoices/components/check-status";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
 import { INVOICE_PDFS, INVOICE_STEPS } from "@/features/invoices/constants/invoices";
 import {
+  formatAgreed,
   formatDueDate,
   invoiceNumber,
   invoicePdfUrl,
@@ -277,13 +279,23 @@ function Terms({ invoice, pay, now }: { invoice: Invoice; pay: Pay; now: number 
       {invoice.title ? (
         <p className="text-base font-medium break-words text-ink">{invoice.title}</p>
       ) : null}
-      {invoice.reference || invoice.dueDate || pay.canSend ? (
+      {invoice.reference || invoice.agreedValue || invoice.dueDate || pay.canSend ? (
         <ul className="flex max-w-full flex-col gap-2.5 text-sm text-muted">
           {/* The client's accounts team matches the invoice by it (R-90). */}
           {invoice.reference ? (
             <li className="flex items-center gap-2.5">
               <Hash aria-hidden className={ICON} />
               <span className="min-w-0 break-words">{COPY.reference(invoice.reference)}</span>
+            </li>
+          ) : null}
+          {/* The price agreed in fiat (R-93); the payer still pays the amount above. */}
+          {invoice.agreedValue ? (
+            <li className="flex items-center gap-2.5">
+              <Handshake aria-hidden className={ICON} />
+              {COPY.agreed(
+                formatAgreed(invoice.agreedValue),
+                formatDueDate(invoice.agreedValue.date),
+              )}
             </li>
           ) : null}
           {invoice.dueDate ? (

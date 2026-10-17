@@ -116,8 +116,8 @@ func mustContain(t *testing.T, text string, want ...string) {
 }
 
 // The invoice PDF is public: the logo, who bills whom from the invoice's copies, the dates, a line with the exact
-// amount, token and network, and the pay link with its QR code; never the client's email. Without billing details it
-// has no issuer block.
+// amount, token and network, the agreed value, and the pay link with its QR code; never the client's email. A request
+// names its sender instead of an issuer (D-52).
 func TestInvoicePDF(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -149,7 +149,8 @@ func TestInvoicePDF(t *testing.T) {
 		"BILL TO\nBob Ltd\nMain St 1\nBerlin\nDE\nTax ID DE999999999",
 		"INV-0002\nReference PO-4500012345\n", "Issued\n"+created.Format("2006-01-02 15:04")+" UTC\nSupply date\n2026-10-31\nDue date\n2026-11-01\nCheckout closes\n"+
 			expires.Format("2006-01-02 15:04")+" UTC",
-		"Description\nNetwork\nAmount\nLogo design\nBase Sepolia\nChain 84532\n5.00 USDC\nTotal due\n5.00 USDC",
+		"Description\nNetwork\nAmount\nLogo design\nBase Sepolia\nChain 84532\n5.00 USDC\nTotal due\n5.00 USDC\n"+
+			"Agreed value 1,000.50 EUR on 2026-10-01",
 		"Invoice INV-0002\nPage 1 of 1",
 		"NOTE\nThanks!\nPay within 14 days.",
 		"Pay this invoice\nScan the code or open the link. Send only USDC on Base Sepolia.\n"+webURL+"/pay/",
@@ -180,7 +181,7 @@ func TestInvoicePDF(t *testing.T) {
 	// A request names its sender, marked as not checked.
 	mustContain(t, pdfText(t, e.pdf(t, request, "invoice.pdf", "").body),
 		"FROM", "Mara Ilić", "Name not checked by Forwend")
-	for _, block := range []string{"BILL TO", "Reference", "Supply date", "Due date", "NOTE"} {
+	for _, block := range []string{"BILL TO", "Reference", "Supply date", "Due date", "Agreed value", "NOTE"} {
 		if strings.Contains(text, block) {
 			t.Fatalf("an invoice without a client or details says %q:\n%s", block, text)
 		}
@@ -226,7 +227,8 @@ func TestReceiptPDF(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
 	made := e.post(t, "did:privy:alice", e.aliceProfile, "key-1",
-		`{"chainId": 84532, "token": "`+usdc+`", "amount": "2000000", "supplyDate": "2026-10-01", "reference": "PO-7"}`).body
+		`{"chainId": 84532, "token": "`+usdc+`", "amount": "2000000", "supplyDate": "2026-10-01", "reference": "PO-7",
+		"agreedValue": {"currency": "JPY", "amount": "300", "date": "2026-10-01"}}`).body
 	id, receive := made["invoiceId"].(string), made["receiveAddress"].(string)
 	expires, _ := time.Parse(time.RFC3339, made["expiresAt"].(string))
 	times := func(when string, paid, settled any) {
@@ -279,7 +281,7 @@ func TestReceiptPDF(t *testing.T) {
 	stamp := func(at time.Time) string { return at.UTC().Format("2006-01-02 15:04") + " UTC" }
 	text := pdfText(t, r.body)
 	mustContain(t, text, "Forwend\nReceipt\nINV-0001\nReference PO-7\n", "Supply date\n2026-10-01\nPaid\n"+stamp(paidAt),
-		"Base Sepolia\nChain 84532\n2.00 USDC\nAmount paid\n2.00 USDC",
+		"Base Sepolia\nChain 84532\n2.00 USDC\nAmount paid\n2.00 USDC\nAgreed value 300 JPY on 2026-10-01",
 		"PAYMENTS\n1.50 USDC · "+stamp(paidAt.Add(-time.Minute))+"\n"+first+"\nView on Basescan\n0.50 USDC · "+
 			stamp(paidAt)+"\n"+second+"\nView on Basescan\nCheck this receipt")
 	mustContain(t, strings.ReplaceAll(text, "\n", ""), link)

@@ -137,6 +137,11 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - A freelancer or merchant profile saves its billing details first: without them create is 409
   `billing_details_required` and makes nothing, so every business invoice names who bills the client (R-92, D-83). A
   personal profile's request needs none and names its sender (D-52).
+- Optional `agreedValue` `{ currency, amount, date }` (R-93): the price agreed with the client in fiat, which the owner
+  types (no exchange-rate API). `currency` is EUR or one the ECB publishes a daily reference rate for (D-82,
+  `invoice.AgreedCurrencies`); `amount` is above 0 with at most 12 whole digits and the currency's ISO 4217 decimals;
+  `date` is the day it was agreed. It is stored in minor units and read back as `{ currency, amount, decimals, date }`,
+  `amount` in minor units; part of the idempotency hash only when set. The PDFs print it under the total.
 - Optional `lines` (R-88, at most 50): `{ description ≤ 200, quantity, unitPrice }`, adding up exactly to `amount` or
   `amountUsd`. `unitPrice` is in the amount's own unit (base units with `amount`, a USD decimal with `amountUsd`);
   `quantity` is above 0 and at most 1,000,000 with up to 2 decimals, and each unit price and each quantity times it
@@ -187,9 +192,9 @@ R-19 and R-42; the full schema is in openapi.yaml.
   (`chosen_id`), and money on any other is booked to `payer_held`. A GET with an option's id answers its invoice.
   Lists, activity and search show each invoice once, with the current option (`invoices_current` view).
 - The public `GET /v1/invoices/{invoiceId}` gives the payer the number, title, note, due and supply dates, `reference`,
-  `lines`, `senderName` and `issuer` (who bills them; the issuer's own business details) but no `client`: the id is a
-  bearer link, so it returns only what the payer needs (OWASP API Security Top 10 2023, API3). Create, list and the
-  profile's GET, which only the owner calls, include `client`.
+  `lines`, `agreedValue`, `senderName` and `issuer` (who bills them; the issuer's own business details) but no `client`:
+  the id is a bearer link, so it returns only what the payer needs (OWASP API Security Top 10 2023, API3). Create, list
+  and the profile's GET, which only the owner calls, include `client`.
 
 ## Invoice and receipt PDFs
 
@@ -204,9 +209,9 @@ answer 404 `invoice_not_found` the same way.
   reference under it (R-90), the issuer block from the invoice's copy (left out without one) and "Bill to" with the
   client's name and address but never the email (the id is a bearer link), a row of dates (with the supply date when
   set, R-89), then a line table: the title (or "Payment"), the network (name and chain id) and the exact amount with the
-  token's symbol and decimals, never cut; with line items (R-88) the title heads the table and each item is a row with
-  its quantity and unit price. Network names and explorers are a copy of `apps/web/src/shared/constants/chains.ts`; a
-  test fails when either copy changes alone.
+  token's symbol and decimals, never cut, and the agreed value (R-93) quietly under the total; with line items (R-88)
+  the title heads the table and each item is a row with its quantity and unit price. Network names and explorers are a
+  copy of `apps/web/src/shared/constants/chains.ts`; a test fails when either copy changes alone.
 - `invoice.pdf`: created time, supply date, due date and checkout expiry, the note, and a box with the pay link
   `PUBLIC_WEB_URL/pay/<invoiceId>` and its QR code (drawn as vector modules), then the invoice id. A payer-chooses
   invoice names the network "Any" with the amount and total due in USD, then lists under Pay with each token and its

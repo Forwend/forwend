@@ -45,6 +45,9 @@ const OPEN = {
   dueDate: "2026-11-01",
   supplyDate: null,
   reference: "PO-4500012345" as string | null,
+  agreedValue: { currency: "EUR", amount: "115000", decimals: 2, date: "2026-10-09" } as
+    | object
+    | null,
   issuer: {
     name: "Alice Design GmbH",
     address: "Hauptstr. 1\n10115 Berlin",
@@ -172,6 +175,10 @@ test.describe("pay page", () => {
     await expect(page.getByText("Logo design", { exact: true })).toBeVisible();
     // R-90: the client's accounts team matches the invoice by its PO number.
     await expect(page.getByText("Reference PO-4500012345", { exact: true })).toBeVisible();
+    // R-93: the price agreed in fiat, beside the amount the payer still sends.
+    await expect(
+      page.getByText("Agreed value €1,150.00 on Oct 9, 2026", { exact: true }),
+    ).toBeVisible();
     await expect(page.locator("[data-money]")).toHaveText("1,250.00 USDC");
     await expect(page.getByText("on Base Sepolia", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Download invoice PDF" })).toHaveAttribute(

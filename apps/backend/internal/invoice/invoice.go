@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -78,6 +79,60 @@ type Request struct {
 	// Lines break the amount down (R-88): each UnitPrice is in the amount's own unit, base units with Amount and a USD
 	// decimal with AmountUSD, and the lines add up exactly to it.
 	Lines []LineRequest
+	// Agreed is the price agreed with the client in fiat (R-93), as typed; Create stores it in Details.Agreed.
+	Agreed *AgreedRequest
+}
+
+type AgreedRequest struct {
+	Currency string
+	Amount   string // a decimal with at most the currency's decimals, like "1000.50"
+	Date     string // YYYY-MM-DD
+}
+
+// AgreedValue is the price agreed with the client in fiat (R-93), in the currency's minor units (cents). Decimals are
+// kept with it, so it reads right even if its currency later leaves AgreedCurrencies.
+type AgreedValue struct {
+	Currency string
+	Amount   int64
+	Decimals int
+	Date     string // YYYY-MM-DD
+}
+
+// AgreedCurrencies are EUR and the currencies the ECB publishes a daily reference rate for (D-82; eurofxref-daily.xml
+// of 2026-10-16), with their ISO 4217 decimals. The web's list is a copy: a test fails when either changes alone.
+var AgreedCurrencies = map[string]int{
+	"EUR": 2, "USD": 2, "GBP": 2, "AUD": 2, "BRL": 2, "CAD": 2, "CHF": 2, "CNY": 2, "CZK": 2, "DKK": 2, "HKD": 2,
+	"HUF": 2, "IDR": 2, "ILS": 2, "INR": 2, "ISK": 0, "JPY": 0, "KRW": 0, "MXN": 2, "MYR": 2, "NOK": 2, "NZD": 2,
+	"PHP": 2, "PLN": 2, "RON": 2, "SEK": 2, "SGD": 2, "THB": 2, "TRY": 2, "ZAR": 2,
+}
+
+// agreedAmount is a decimal of up to 12 whole digits, so its minor units fit an int64.
+var agreedAmount = regexp.MustCompile(`^([0-9]{1,12})(?:\.([0-9]+))?$`)
+
+// parse checks the agreed value as typed and turns its amount into minor units; nil stays nil.
+func (a *AgreedRequest) parse() (*AgreedValue, error) {
+	if a == nil {
+		return nil, nil
+	}
+	digits, ok := AgreedCurrencies[a.Currency]
+	if !ok {
+		return nil, fmt.Errorf("%w: agreedValue.currency must be EUR or a currency the ECB publishes a rate for, like GBP",
+			ErrInvalid)
+	}
+	m := agreedAmount.FindStringSubmatch(a.Amount)
+	if m == nil || len(m[2]) > digits {
+		return nil, fmt.Errorf("%w: agreedValue.amount must be a decimal with at most %d decimals for %s", ErrInvalid,
+			digits, a.Currency)
+	}
+	minor, _ := strconv.ParseInt(m[1]+m[2]+strings.Repeat("0", digits-len(m[2])), 10, 64)
+	if minor == 0 {
+		return nil, fmt.Errorf("%w: agreedValue.amount must be above 0", ErrInvalid)
+	}
+	// Postgres has no year 0.
+	if day, err := time.Parse(time.DateOnly, a.Date); err != nil || day.Year() < 1 {
+		return nil, fmt.Errorf("%w: agreedValue.date must be a date like 2026-10-17", ErrInvalid)
+	}
+	return &AgreedValue{Currency: a.Currency, Amount: minor, Decimals: digits, Date: a.Date}, nil
 }
 
 type LineRequest struct {
@@ -114,6 +169,7 @@ type Details struct {
 	DueDate       string // YYYY-MM-DD; only shown: payment still closes at ExpiresAt
 	SupplyDate    string // YYYY-MM-DD: when the work was done or delivered (R-89)
 	Reference     string // the client's PO number or their reference (R-90)
+	Agreed        *AgreedValue
 	ClientName    string
 	ClientEmail   string
 	ClientAddress string
@@ -376,6 +432,9 @@ func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn ti
 	}
 	if d.Reference != "" {
 		b = fmt.Appendf(b, "|reference=%q", d.Reference)
+	}
+	if a := d.Agreed; a != nil { // in minor units: "1000" and "1000.00" EUR are the same price
+		b = fmt.Appendf(b, "|agreedValue=%q|%d|%q", a.Currency, a.Amount, a.Date)
 	}
 	for _, l := range lines { // and for lines: "7.5" and "7.50" are the same line
 		b = fmt.Appendf(b, "|%q|%s|%s", l.description, l.quantity.RatString(), l.price.RatString())

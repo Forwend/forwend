@@ -53,6 +53,7 @@ const open: Invoice = {
   dueDate: null,
   supplyDate: null,
   reference: null,
+  agreedValue: null,
   issuer: null,
   senderName: null,
   returnUrl: null,
@@ -277,6 +278,7 @@ describe("restartFrom", () => {
       note: "Thanks",
       returnUrl: "https://shop.example/thanks",
       reference: "PO-4500012345",
+      agreedValue: { currency: "EUR", amount: "460", decimals: 2, date: "2026-10-01" },
       lines: [
         { description: "Design", quantity: "7.50", unitPrice: "500000", amount: "3750000" },
         { description: "Hosting", quantity: "1.00", unitPrice: "1250000", amount: "1250000" },
@@ -294,8 +296,11 @@ describe("restartFrom", () => {
       reference: "PO-4500012345",
       client: { name: "Bob Ltd", email: "bob@example.com", address: "", country: "", taxId: "" },
     };
+    // R-93: the price agreed for the whole amount; it does not describe the rest.
+    const agreed = { currency: "EUR", amount: "4.6", date: "2026-10-01" };
     expect(restartFrom(partly, client, false)).toEqual({
       ...start,
+      agreed,
       amount: "5",
       items: [
         { id: "0", description: "Design", quantity: "7.5", price: "0.5" },
@@ -303,7 +308,12 @@ describe("restartFrom", () => {
       ],
     });
     // The items would not add up to the rest.
-    expect(restartFrom(partly, client, true)).toEqual({ ...start, amount: "3.75", items: [] });
+    expect(restartFrom(partly, client, true)).toEqual({
+      ...start,
+      agreed: null,
+      amount: "3.75",
+      items: [],
+    });
   });
 
   it("keeps payer chooses when only a late payment locked an option", () => {

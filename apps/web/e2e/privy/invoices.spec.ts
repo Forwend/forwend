@@ -199,6 +199,12 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByRole("textbox", { name: "Tax or VAT ID" })).toHaveValue("DE123456789");
     // R-90: the saved client's default PO number fills the invoice's reference.
     await expect(page.getByRole("textbox", { name: "PO or reference (optional)" })).toHaveValue(po);
+    // R-93: the price agreed with the client in euros, today.
+    await page.getByRole("button", { name: "Add agreed value" }).click();
+    await page.getByRole("button", { name: /^Agreed in/ }).click();
+    await page.getByRole("combobox", { name: /Agreed in/ }).fill("euro");
+    await page.keyboard.press("Enter");
+    await page.getByRole("textbox", { name: "Agreed amount" }).fill("1150.5");
   });
   if (invoice) {
     expect(invoice.returnUrl).toBe("https://shop.example/thanks");
@@ -231,6 +237,9 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       ),
     );
     await expect(details.locator("div").filter({ hasText: /^Reference/ })).toContainText(po);
+    await expect(details.locator("div").filter({ hasText: /^Agreed value/ })).toContainText(
+      "€1,150.50",
+    );
     await expect(details).toContainText("Checkout closes");
     // R-60: each said once, the status by the timeline and the close time in Details, so the header has neither.
     await expect(page.getByRole("main").locator("header [data-status]")).toHaveCount(0);
@@ -271,9 +280,10 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       "https://shop.example/thanks",
     );
     await expect(page.getByRole("textbox", { name: "Name", exact: true })).toHaveValue(clientName);
-    await expect(page.getByRole("textbox", { name: "Amount" })).toHaveValue("12.5");
+    await expect(page.getByRole("textbox", { name: "Amount", exact: true })).toHaveValue("12.5");
     await expect(page.locator('input[name="dueDate"]')).toHaveValue("");
     await expect(page.locator('input[name="supplyDate"]')).toHaveValue("");
+    await expect(page.getByRole("textbox", { name: "Agreed amount" })).toHaveValue("1150.5");
     await page.goBack();
     await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
     // The PDFs come through the same-origin /api path; the receipt only once the invoice is paid.
@@ -435,6 +445,11 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
       choosing ? "Total1.00 USD" : "Total1.00 USDC",
     );
     await page.getByRole("textbox", { name: "Name", exact: true }).fill("E2E phone client");
+    await page.getByRole("button", { name: "Add agreed value" }).click();
+    await page.getByRole("button", { name: /^Agreed in/ }).click();
+    await page.getByRole("combobox", { name: /Agreed in/ }).fill("pound");
+    await page.keyboard.press("Enter");
+    await page.getByRole("textbox", { name: "Agreed amount" }).fill("0.8");
     await fits();
     expect(await blockingViolations(page)).toEqual([]);
   });

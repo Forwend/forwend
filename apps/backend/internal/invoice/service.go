@@ -32,7 +32,8 @@ const invoiceColumns = `id, option_id, chosen_id IS NOT NULL,
 	created_at, coalesce(client_country, ''), coalesce(client_tax_id, ''),
 	EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = invoices.option_id AND t.status = 'detected'
 	        AND t.block_time <= invoices.expires_at), ` + ClosedSQL + `, canceled_at,
-	coalesce(to_char(supply_date, 'YYYY-MM-DD'), ''), coalesce(reference, '')`
+	coalesce(to_char(supply_date, 'YYYY-MM-DD'), ''), coalesce(reference, ''), agreed_currency, agreed_amount,
+	agreed_decimals, to_char(agreed_date, 'YYYY-MM-DD')`
 
 // invoicesCurrent is the invoices_current view (migration 00020) under the table's name, so filters written for
 // invoices read the same.
@@ -45,12 +46,15 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 	var issuerName *string
 	var canceledAt *time.Time
 	var issuer profile.Issuer
+	var agreedCurrency, agreedDate *string
+	var agreedAmount *int64
+	var agreedDecimals *int
 	dest := []any{&inv.ID, &inv.OptionID, &inv.OptionLocked, &inv.OptionCount, &inv.Number, &inv.Title, &inv.Note, &inv.DueDate, &inv.ClientName,
 		&inv.ClientEmail, &inv.ClientAddress, &inv.SenderName, &issuerName, &issuer.Address, &issuer.Country, &issuer.TaxID,
 		&issuer.Email, &inv.ReturnURL, &inv.ChainID, &inv.Token, &amount, &inv.Recipient, &inv.Factory,
 		&inv.ReceiveAddress, &expiresAt, &settleDeadline, &inv.PaymentStatus, &inv.SettlementStatus, &inv.RefundStatus,
 		&inv.SettlementTxHash, &inv.CreatedAt, &inv.ClientCountry, &inv.ClientTaxID, &inv.Confirming, &inv.Closed, &canceledAt,
-		&inv.SupplyDate, &inv.Reference}
+		&inv.SupplyDate, &inv.Reference, &agreedCurrency, &agreedAmount, &agreedDecimals, &agreedDate}
 	if err := row.Scan(dest...); errors.Is(err, pgx.ErrNoRows) {
 		return Invoice{}, ErrNotFound
 	} else if err != nil {
@@ -59,6 +63,11 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 	if issuerName != nil {
 		issuer.Name = *issuerName
 		inv.Issuer = &issuer
+	}
+	// The table holds all four or none.
+	if agreedCurrency != nil {
+		inv.Agreed = &AgreedValue{Currency: *agreedCurrency, Amount: *agreedAmount, Decimals: *agreedDecimals,
+			Date: *agreedDate}
 	}
 	if canceledAt != nil {
 		inv.CanceledAt = *canceledAt

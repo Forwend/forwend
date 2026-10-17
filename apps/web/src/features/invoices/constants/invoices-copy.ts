@@ -99,6 +99,25 @@ export const NEW_INVOICE_COPY = {
   returnLabel: "Return link (optional)",
   returnHint: "Your site's https link. The client sees Back to it after paying.",
   returnError: "Enter an https link, like https://example.com/thanks.",
+  agreed: {
+    add: "Add agreed value",
+    group: "Agreed value",
+    hint: "The price you agreed with the client in another currency. It shows on the invoice and its PDF; the client still pays the amount above.",
+    currency: "Agreed in",
+    noCurrency: "Choose a currency",
+    searchCurrencies: "Search currencies",
+    amount: "Agreed amount",
+    date: "Agreed on",
+    remove: "Remove agreed value",
+    errors: {
+      currency: "Choose a currency.",
+      amount: (digits: number) =>
+        digits === 0
+          ? "Enter a whole amount above 0."
+          : `Enter an amount above 0 with up to ${digits} decimals.`,
+      date: "Pick the day you agreed it.",
+    },
+  },
   billingNeeded: {
     title: "Add your billing details first",
     text: "Every invoice shows who bills the client: your name, address, country and email. EU, UK and US invoices need them.",
@@ -166,6 +185,9 @@ export const NEW_INVOICE_COPY = {
   fieldErrors: {
     [INVOICE_FIELDS.amount]: "Enter an amount above 0 that the token can hold.",
     [INVOICE_FIELDS.title]: atMost(INVOICE_LIMITS.title),
+    [INVOICE_FIELDS.agreedCurrency]: "Choose a currency from the list.",
+    [INVOICE_FIELDS.agreedAmount]: "Enter an amount above 0 that this currency can hold.",
+    [INVOICE_FIELDS.agreedDate]: "Pick the day you agreed it.",
     [INVOICE_FIELDS.reference]: `Use at most ${INVOICE_LIMITS.reference} characters on one line, with no hidden characters.`,
     [INVOICE_FIELDS.note]: atMost(INVOICE_LIMITS.note),
     [INVOICE_FIELDS.dueDate]: "Enter a date, or leave it empty.",
@@ -317,6 +339,8 @@ export const INVOICE_COPY = {
   dueDate: "Due date",
   supplyDate: "Supply date",
   reference: "Reference",
+  agreedValue: "Agreed value",
+  agreedOn: (value: string, date: string) => `${value} on ${date}`,
   duplicate: "Duplicate",
   expires: "Checkout closes",
   closed: "Checkout closed",

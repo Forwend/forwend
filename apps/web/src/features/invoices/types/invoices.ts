@@ -14,6 +14,7 @@ import type {
   SETTLEMENT_WAITS,
 } from "@/features/invoices/constants/invoices";
 import type {
+  agreedValueSchema,
   createInvoiceBodySchema,
   depositSchema,
   invoiceClientSchema,
@@ -51,6 +52,7 @@ export interface InvoiceStart {
   note: string;
   returnUrl: string;
   reference: string;
+  agreed: AgreedDraft | null;
   client: ClientBody;
 }
 
@@ -66,6 +68,15 @@ export type InvoiceToken = Pick<TokenBalance, "chainId" | "token" | "symbol" | "
 export type InvoiceClient = z.infer<typeof invoiceClientSchema>;
 
 export type InvoiceLine = z.infer<typeof invoiceLineSchema>;
+
+export type AgreedValue = z.infer<typeof agreedValueSchema>;
+
+/** An agreed value as the form holds it (R-93): no currency yet is "". */
+export interface AgreedDraft {
+  currency: string;
+  amount: string;
+  date: string | null;
+}
 
 /** A line item as the form holds it (R-88): the text typed in its fields. */
 export interface LineDraft {

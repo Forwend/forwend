@@ -320,6 +320,7 @@ describe("new invoice form", () => {
             note: "Thanks",
             returnUrl: "https://shop.example/thanks",
             reference: "PO-1",
+            agreed: { currency: "EUR", amount: "4.6", date: "2026-10-01" },
             client: { name: "Bob Ltd", email: "", address: "", country: "", taxId: "" },
           }}
         />
@@ -336,12 +337,59 @@ describe("new invoice form", () => {
       note: "Thanks",
       returnUrl: "https://shop.example/thanks",
       reference: "PO-1",
+      agreedValue: { currency: "EUR", amount: "4.6", date: "2026-10-01" },
       dueDate: "",
       supplyDate: "",
       lines: [
         { description: "Design", quantity: "7.5", unitPrice: "500000" },
         { description: "Hosting", quantity: "1", unitPrice: "1250000" },
       ],
+    });
+  });
+
+  // R-93: the price agreed in fiat, checked in its currency's decimals before it is sent.
+  it("adds an agreed value and names what is missing", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (request: Request) => {
+        bodies.push(JSON.parse(await request.text()));
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    Element.prototype.scrollIntoView = vi.fn();
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
+      </Provider>,
+    );
+    fireEvent.change(screen.getByLabelText(/^Amount/), { target: { value: "100" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add agreed value" }));
+    // The button went away, so focus moved to what it asks for first.
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: /^Agreed in/ }));
+    const create = () => fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    create();
+    await settle();
+    expect(screen.getByText("Choose a currency.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Agreed in/ }));
+    fireEvent.change(screen.getByRole("combobox", { name: /Agreed in/ }), {
+      target: { value: "yen" },
+    });
+    fireEvent.click(await screen.findByRole("option", { name: /^JPY/ }));
+    fireEvent.change(screen.getByLabelText("Agreed amount"), { target: { value: "1.5" } });
+    create();
+    await settle();
+    expect(screen.getByText("Enter a whole amount above 0.")).toBeTruthy();
+    expect(bodies).toHaveLength(0);
+
+    fireEvent.change(screen.getByLabelText("Agreed amount"), { target: { value: "15000" } });
+    create();
+    await settle();
+    expect(bodies[0]?.agreedValue).toMatchObject({
+      currency: "JPY",
+      amount: "15000",
+      date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     });
   });
 });
