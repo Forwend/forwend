@@ -30,6 +30,13 @@ export const INVOICE_EVENTS = {
   held: "invoice.held",
 } as const;
 
+/** The rows of Owed to you (R-95), in the API's order. */
+export const OWED_KINDS = {
+  overdue: "overdue",
+  partlyPaid: "partlyPaid",
+  held: "held",
+} as const;
+
 /** The states whose owner page says what to do next (R-77). */
 export const INVOICE_EXCEPTIONS = {
   canceled: "canceled",

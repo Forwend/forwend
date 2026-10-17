@@ -6,7 +6,7 @@ import type {
 } from "@/features/activity/types/activity";
 import { clientBodySchema } from "@/features/clients/schemas/clients";
 import { SETTLEMENT_WAITS } from "@/features/invoices/constants/invoices";
-import type { InvoiceEventKind } from "@/features/invoices/types/invoices";
+import type { InvoiceEventKind, OwedKind } from "@/features/invoices/types/invoices";
 import {
   apiDate,
   apiTime,
@@ -215,3 +215,24 @@ export const invoiceEventSchema = z.object({
 });
 
 export const invoiceEventsSchema = z.object({ items: z.array(invoiceEventSchema) });
+
+/** One Owed to you row (R-95): amount is what is left to pay, or for held money the held amount. */
+export const owedSchema = z.object({
+  kind: openEnum<OwedKind>(),
+  invoiceId: hash32,
+  number: z.number().int().positive(),
+  title: z.string().nullable(),
+  clientName: z.string().nullable(),
+  dueDate: apiDate.nullable(),
+  // Whole UTC days past the due date; 0 unless overdue.
+  daysLate: count,
+  // Above 1 the client chooses the token, so an unpaid row reads in USD (D-75).
+  optionCount: count,
+  chainId: count,
+  token: evmAddress,
+  symbol: z.string(),
+  decimals: count,
+  amount: baseUnits,
+});
+
+export const owedListSchema = z.object({ items: z.array(owedSchema) });

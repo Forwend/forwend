@@ -6,6 +6,7 @@ import {
   API_SETTLEMENT_STATUSES,
 } from "@/features/activity/constants/activity";
 import { activityStatus } from "@/features/activity/lib/activity";
+import { USD_DECIMALS } from "@/features/balances/constants/balances";
 import {
   AGREED_CURRENCIES,
   AMOUNT_ERRORS,
@@ -17,6 +18,7 @@ import {
   INVOICE_TIMELINE,
   LINE_ERRORS,
   LINE_LIMITS,
+  OWED_KINDS,
   PAY_WITH,
   RESTART_PARAMS,
 } from "@/features/invoices/constants/invoices";
@@ -34,6 +36,7 @@ import type {
   LineDraft,
   LineError,
   LineField,
+  Owed,
 } from "@/features/invoices/types/invoices";
 import { API_BASE } from "@/shared/config/api";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -328,4 +331,17 @@ export function restartFrom(
       taxId: client?.taxId ?? "",
     },
   };
+}
+
+/** What is left on the unpaid Owed to you rows at 1 USD per stablecoin (D-75), in cents cut once, never rounded up. */
+export function owedCents(items: readonly Owed[]): bigint {
+  const unpaid = items.filter((o) => o.kind !== OWED_KINDS.held);
+  if (unpaid.length === 0) return 0n;
+  // Added at the finest decimals of any token, so no cent is lost per row.
+  const finest = Math.max(...unpaid.map((o) => o.decimals));
+  const sum = unpaid.reduce(
+    (s, o) => s + BigInt(o.amount) * 10n ** BigInt(finest - o.decimals),
+    0n,
+  );
+  return (sum * 10n ** BigInt(USD_DECIMALS)) / 10n ** BigInt(finest);
 }

@@ -11,10 +11,11 @@ import {
   invoiceStatus,
   isReturnLink,
   lineUnits,
+  owedCents,
   parseTokenAmount,
   restartFrom,
 } from "@/features/invoices/lib/invoices";
-import type { Deposit, Invoice } from "@/features/invoices/types/invoices";
+import type { Deposit, Invoice, Owed } from "@/features/invoices/types/invoices";
 
 describe("parseTokenAmount", () => {
   it("turns typed USDC amounts into exact base units", () => {
@@ -362,5 +363,34 @@ describe("restartFrom", () => {
       amount: "5",
       client: { name: "", email: "", address: "", country: "", taxId: "" },
     });
+  });
+});
+
+describe("owedCents (R-95)", () => {
+  const row = (kind: string, amount: string, decimals: number): Owed => ({
+    kind,
+    invoiceId: `0x${"ab".repeat(32)}`,
+    number: 1,
+    title: null,
+    clientName: null,
+    dueDate: null,
+    daysLate: 0,
+    optionCount: 1,
+    chainId: 84532,
+    token: `0x${"11".repeat(20)}`,
+    symbol: "USDC",
+    decimals,
+    amount,
+  });
+
+  it("adds what is left at 1 USD per stablecoin across decimals, cut once to cents, without held money", () => {
+    const rows = [
+      row("overdue", "1234567", 6), // 1.234567
+      row("partlyPaid", "1000000000000000005", 18), // 1.000000000000000005
+      row("held", "9000000", 6),
+    ];
+    expect(owedCents(rows)).toBe(223n);
+    expect(owedCents([row("held", "9000000", 6)])).toBe(0n);
+    expect(owedCents([])).toBe(0n);
   });
 });

@@ -147,6 +147,12 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   all. On phones the figures are rows, the label and its note on the left and the value on the right, and the chart is
   shorter. Filters, search and CSV export live on Transactions. A range with nothing received says so in place of an empty
   chart.
+- Owed to you (R-95) sits under Summary on the business overview:
+  - A ruled header with the title and, when something is left, the USD total at its right.
+  - Rows like the invoice list's: the client (or title, or number), then the number and "12 days late" (warning
+    color), "Partly paid" or "Held for the payer".
+  - The amount sits on the right; unpaid rows say "left to pay" under it. Held money is never in the total.
+  - Five rows, then Show all n, which moves focus to the first row it adds. Nothing owed says so in one quiet line.
 - Charts are drawn by us, with no grid lines and no value axis: the readout gives each exact amount and the dates
   (first, middle, last; first and last on phones) sit under the plot. The balance is one smooth ink line (monotone, so
   it never overshoots a real value or dips under zero) over a wash that fades down, from zero with a little headroom;

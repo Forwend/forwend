@@ -10,6 +10,7 @@ import type {
   INVOICE_PDFS,
   INVOICE_STEPS,
   LINE_ERRORS,
+  OWED_KINDS,
   PAY_WITH,
   SETTLEMENT_WAITS,
 } from "@/features/invoices/constants/invoices";
@@ -26,12 +27,15 @@ import type {
   invoiceSendSchema,
   invoiceSummarySchema,
   invoicesPageSchema,
+  owedSchema,
   recheckSchema,
   settlementWaitSchema,
 } from "@/features/invoices/schemas/invoices";
 
 export type PayWith = (typeof PAY_WITH)[keyof typeof PAY_WITH];
 export type InvoiceEventKind = (typeof INVOICE_EVENTS)[keyof typeof INVOICE_EVENTS];
+export type OwedKind = (typeof OWED_KINDS)[keyof typeof OWED_KINDS];
+export type Owed = z.infer<typeof owedSchema>;
 export type InvoiceEvent = z.infer<typeof invoiceEventSchema>;
 export type InvoiceExceptionKind = (typeof INVOICE_EXCEPTIONS)[keyof typeof INVOICE_EXCEPTIONS];
 
