@@ -735,7 +735,7 @@
         "Decision D-83 records that invoice rules follow the EU, the UK and the US first, chosen by the issuer's and the client's countries, with per-country rules for other countries after the MVP; PLAN phase 10 and Deferred point to it."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -819,11 +819,18 @@
           "summary": "All four earlier findings are fixed. 1) Late deposit: openapi.yaml:1512-1513 and docs/backend/api.md:217-218 now say another deposit before the checkout closes changes the receipt and a late deposit and the settlement do not. This matches Receipt() (document.go:171 lists only confirmed && !dep.Late; Late = block time after expiresAt, get.go:158), pdf.go:36-39 (ETag is a hash of the bytes) and invoices_pdf_test.go (304 with the paid ETag after settling; a late deposit is not in the receipt). 2) openapi.yaml:682 and api.md:211-212 now say each confirmed deposit made before the checkout closed. inv.Deposits is the chosen option's deposits only (get.go:75-81), so other-option money is not listed either. 3) D-83 (PROJECT.md:223) now cites NY GBL §1411, §1412 and §1414. Every source it names (VAT Directive art. 91, 220, 226, 230; GOV.UK; HMRC VAT Notice 700; IRS FAQ A10) is in phase-10-freelancers.md:221-228. 4) PRODUCT.md:13-14 now fit 120 characters. Also checked: the pay page shows Paid for paid and settled (pay-invoice.tsx:219,373; pay-copy.ts:57) and never mentions the settlement, so PRODUCT.md:13-14 is right. openapi.yaml still parses (block scalar ok), and the settled time is correctly gone from the receipt description. The word diff shows rewraps changed no meaning. Every added line fits 120 characters (PROJECT.md table rows are long by design). The diff touches only the 6 task files, and tasks.json only adds F216 and nextId. D-83 is cited from PLAN.md:41 and :152. check-docs: 0 errors. Not blocking: (a) PLAN.md:153 leaves a short line before 'Card payers'; this is only style. (b) Money sent after the invoice is paid but before the close is held as excess (R-21), yet the receipt still lists it as a payment. The docs describe this code correctly; whether the receipt should list it is a product question for later.",
           "at": "2026-10-17T12:03:56Z",
           "filesHash": "e367cf0bc06810c1"
-        }
+        },
+        "commit": "a33e98d",
+        "doneAt": "2026-10-17T12:04:15Z"
       },
       "branch": "docs/f216-docs-say-the-receipt-never-shows-the-set",
       "baseCommit": "dc0e6a39deb1653751a70a1c5a219421f1276e2c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f216-docs-say-the-receipt-never-shows-the-set",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
