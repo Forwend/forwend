@@ -7,6 +7,7 @@ import {
 } from "@/features/activity/constants/activity";
 import { activityStatus } from "@/features/activity/lib/activity";
 import {
+  AGREED_CURRENCIES,
   AMOUNT_ERRORS,
   DUE_GRACE_DAYS,
   EXPIRY_BOUNDS_S,
@@ -20,6 +21,7 @@ import {
   RESTART_PARAMS,
 } from "@/features/invoices/constants/invoices";
 import type {
+  AgreedValue,
   AmountError,
   Deposit,
   Invoice,
@@ -102,6 +104,21 @@ export function lineUnits(
 /** The field a line's problem belongs to. */
 export function lineErrorField(error: LineError): LineField {
   return error === LINE_ERRORS.exact ? LINE_ERRORS.price : error;
+}
+
+/** The decimals of a currency an agreed value can be in (R-93), or undefined for any other code. */
+export function agreedDigits(currency: string): number | undefined {
+  return (AGREED_CURRENCIES as Record<string, number>)[currency];
+}
+
+/** "€1,000.50": an agreed value in its own currency (R-93). */
+export function formatAgreed(agreed: AgreedValue): string {
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: agreed.currency,
+    minimumFractionDigits: agreed.decimals,
+    maximumFractionDigits: agreed.decimals,
+  }).format(Number(decimalText(BigInt(agreed.amount), agreed.decimals)));
 }
 
 /** Units with `decimals` as a plain decimal, as the API reads amountUsd: 12500000 at 6 is "12.5". */
@@ -294,6 +311,15 @@ export function restartFrom(
     note: inv.note ?? "",
     returnUrl: inv.returnUrl ?? "",
     reference: inv.reference ?? "",
+    // The price agreed for the whole amount (R-93): it does not describe the rest.
+    agreed:
+      rest || !inv.agreedValue
+        ? null
+        : {
+            currency: inv.agreedValue.currency,
+            amount: decimalText(BigInt(inv.agreedValue.amount), inv.agreedValue.decimals),
+            date: inv.agreedValue.date,
+          },
     client: {
       name: client?.name ?? "",
       email: client?.email ?? "",

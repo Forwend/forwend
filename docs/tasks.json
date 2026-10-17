@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 221,
+  "nextId": 222,
   "tasks": [
     {
       "id": "F208",
@@ -1260,6 +1260,109 @@
         "branch": "feat/f220-a-freelancer-or-merchant-profile-needs-b",
         "base": "main"
       }
+    },
+    {
+      "id": "F221",
+      "type": "feat",
+      "behavior": "An invoice can carry the price agreed with the client in fiat (currency, amount and date), shown on the form, the invoice and pay pages and the PDFs (PLAN 10.2)",
+      "acceptance": [
+        "The create request takes an optional agreedValue {currency, amount, date}: the price agreed with the client in fiat. currency is EUR or one of the currencies the ECB publishes a daily rate for (D-82); amount is above 0 with at most that currency's ISO 4217 decimals; date is YYYY-MM-DD. A broken rule is 422 invalid_value. It is stored in the currency's minor units, never changes, is part of the idempotency hash only when set, and comes back as agreedValue {currency, amount (minor units), decimals, date} or null on the owner's and the public reads.",
+        "New invoice can add an agreed value in the Amount panel (not on Request money); the owner's invoice page and the pay page show it, and the invoice, canceled invoice and receipt PDFs print it under the total; Duplicate copies it, the rest of a closed invoice does not.",
+        "The web's currency list matches the API's (a Go test reads it); axe 0 and no sideways scroll at 390 px."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-93",
+        "D-82",
+        "D-83",
+        "R-91"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-17 review pass by reviewer: Pass. Checked the diff, migration 00033 against 00032, the PDF and screenshots; ran go test ./internal/... (all ok, including the migration roll-back test), vitest 88/88, typecheck, pnpm lint, check-docs and the harness tests. Money: exact parse into minor units, 12 whole digits, zero refused, ISO decimals right; Go and web lists match and the Go test compares them. Hash unchanged without agreedValue, labeled part can't be confused, 1000 = 1000.00. All reads return it or null; openapi and api.md agree. PDF line under the total on invoice, canceled and receipt. Form, Duplicate and rest, Details row and pay row work. Cleanups are right. PLAN 10.2 done with R-88..R-93. Minor notes: (1) model.go:180 and document.go:463 take decimals from the accept list; if a currency is ever removed (the ECB dropped BGN, HRK and RUB before), stored invoices in it read back with 0 decimals and show 100x the price. Keep a separate ISO decimals table or store decimals in the row. (2) lib/invoices.ts:121 formats through Number(); exact within the API cap, but Intl accepts the decimal string directly. (3) The web does not cap 12 whole digits; the API 422 is mapped to the amount field, so this is OK. (4) The PDF agreed line ends about 1.5 mm right of the total amount (pad); cosmetic. (5) No test covers the canceled PDF line (invoices_cancel_test.go:106) or focus going back to Add after Remove. (6) The hint at agreed-value.tsx:71 is not linked by aria-describedby. (7) Request money still sends a hidden agreed value copied by Duplicate from an API-made request (new-invoice-form.tsx:109,257); reference already behaves the same way.",
+        "2026-10-17 review fail by reviewer: Fail, for docs only; the code is right. Checked: migration 00033 Down restores the 00032 view and trigger exactly (diffed), and the columns go last with their CHECKs; the CHECK keeps all four agreed columns null or set together; the trigger and view list all four; every reader (model.go:178, document.go:449, invoice-detail, pay page, restartFrom) uses the stored decimals, and AgreedCurrencies is now read only by parse and the test. The PDF agreed line ends on the amount column's edge (cols add up to width 170; width-pad = the total's right edge; docs/runs/F221-invoice.pdf). The fieldset's name comes from its legend and its description from the hint; the 390 px e2e and axe ran after the change (17:44Z log). Tests pass: go test ./internal/... all ok, vitest 88/88, typecheck, pnpm lint, check-docs. Parsing, the 12-digit cap, zero, ISO decimals, the hash (minor units, labeled, unchanged without it) and the 422 field mapping are right. DEFECT: (1) The public API and PDF docs leave out the agreed value, which AGENTS.md says a change must update ('fix them or name them'), and F215 failed for the same gap. openapi.yaml:549 and docs/backend/api.md:194 list what anyone with the invoice id gets from the public GET ('number, title, note, due and supply dates, reference, line items, sender name and issuer'), but that GET now also returns the owner's agreed fiat price. openapi.yaml:660 (invoice.pdf), :681 (receipt.pdf) and api.md:209-211 list what the PDFs show, but not the agreed line under the total. Add it to these five places, and to openapi.yaml:342 (never change) and :1506 (InvalidValue) while there. MINOR: (2) service.go:67 comment says 'all three or none'; there are four columns now. (3) create.go:70 changes 'personal' to profile.Personal: same behavior, but not part of F221. (4) The 13-digit 422 message (invoice.go:124) says 'at most 2 decimals for EUR' and does not name the 12-digit cap. (5) No test covers focus going back to Add after Remove, or the all-or-none CHECK itself. (6) docs/runs/F221-form-*.png are from before the fieldset change (20:19 vs 20:39 local); the e2e covers the 390 px layout. Known and accepted: Number() formatting, no web 12-digit check, the hidden agreed value on Request money.",
+        "2026-10-17 review pass by reviewer: Pass. The docs defect from the last review is fixed: openapi.yaml:342 (never change), :550 (public GET), :662 (invoice.pdf), :682 (receipt.pdf), :1508 (InvalidValue) and api.md:195 (public GET) and :212 (both PDFs, so the canceled one too) now name the agreed value; service.go:67 says four. git diff --word-diff shows the rewrapped lines only gained the new words. No other list of invoice fields or PDF contents in openapi.yaml or docs/ misses it (searched reference, supply date, line items). Re-checked the code: 00033 Up adds the four columns with an all-or-none CHECK and Down restores the 00032 view and trigger exactly; every reader (model.go, document.go, invoice page, pay page, restartFrom) uses the stored decimals; parse is exact (12 whole digits, ISO decimals, zero and year 0 refused); the hash adds a labeled part in minor units only when set; options rows get no agreed value and the view reads the main row; list, owner and public reads all return it or null. Screenshots F221-form-*.png (20:56) are newer than agreed-value.tsx (20:39) and the verify run (17:56Z) is after the doc edits. Ran: go test ./internal/... all ok; vitest 88/88; check-docs 0 errors; typecheck and lint clean; no Anvil left. Minor notes, not blocking: (1) invoices_test.go:222 comment still lists the public GET fields without the agreed value. (2) invoice.go:124: a 13-digit amount gets 'at most 2 decimals for EUR', which does not name the 12-digit cap. (3) Still known and accepted: Number() in formatAgreed, no web 12-digit check, a hidden agreed value on Request money from a Duplicate of an API-made request, int64/bigint instead of big.Int for this capped fiat amount. (4) create.go:70 profile.Personal is the F220 cleanup, same behavior."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-17T17:56:43Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 68.2,
+            "log": "docs/runs/F221-20261017T175643Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 224.7,
+            "log": "docs/runs/F221-20261017T175643Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.0,
+            "log": "docs/runs/F221-20261017T175643Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F221-20261017T175643Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F221-20261017T175643Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F221-20261017T175643Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.9,
+            "log": "docs/runs/F221-20261017T175643Z-build.log"
+          }
+        ],
+        "taskHash": "60835824d6fb90ca",
+        "filesHash": "04d694e8518dd38f",
+        "proof": {
+          "1": "unit: httpapi TestCreateInvoiceStoresDetails returns agreedValue {EUR, 100050, 2, 2026-10-01} on create and the public GET, replays '1000.50' as the same request as '1000.5', refuses the same key with GBP (409); TestCreateInvoice returns agreedValue null without one; TestCreateInvoiceErrors gives 422 for XXX, lower case eur, 1.005 EUR, 1.5 JPY, 0.00, 13 digits and a missing date; invoice TestAgreedValueParse stores minor units with their decimals (EUR 1000.5 → 100050 at 2, JPY 150000 at 0, ISK 7 at 0), kept in the row so a currency later dropped from the list still reads right; database TestInvoiceNumbers refuses updating the agreed value",
+          "2": "unit: TestInvoicePDF prints 'Total due 5.00 USDC Agreed value 1,000.50 EUR on 2026-10-01' on the amount column's edge and no agreed line without one; TestCanceledInvoicePDF prints 'Total, canceled 5.00 USDC Agreed value 4.00 GBP'; TestReceiptPDF prints 'Agreed value 300 JPY'; invoices.test restartFrom copies it for a whole copy, not the rest; new-invoice-form.test adds one (focus to Agreed in), names a missing currency and decimals JPY can't hold, and sends {JPY, 15000, today}; e2e: the merchant test adds €1,150.50, finds it in Details and in its Duplicate; pay.spec shows 'Agreed value €1,150.00 on Oct 9, 2026'; docs/runs/F221-invoice.pdf",
+          "3": "unit: invoice TestAgreedCurrenciesMatchTheWeb reads AGREED_CURRENCIES in apps/web and fails on any difference (checked by changing ISK); e2e: the phone test fills an agreed value and fits 390 px with no blocking axe violations (the fields are one fieldset described by the hint); pay.spec axe in both themes and the 390 px test run with the agreed row; screenshots docs/runs/F221-*.png"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. The docs defect from the last review is fixed: openapi.yaml:342 (never change), :550 (public GET), :662 (invoice.pdf), :682 (receipt.pdf), :1508 (InvalidValue) and api.md:195 (public GET) and :212 (both PDFs, so the canceled one too) now name the agreed value; service.go:67 says four. git diff --word-diff shows the rewrapped lines only gained the new words. No other list of invoice fields or PDF contents in openapi.yaml or docs/ misses it (searched reference, supply date, line items). Re-checked the code: 00033 Up adds the four columns with an all-or-none CHECK and Down restores the 00032 view and trigger exactly; every reader (model.go, document.go, invoice page, pay page, restartFrom) uses the stored decimals; parse is exact (12 whole digits, ISO decimals, zero and year 0 refused); the hash adds a labeled part in minor units only when set; options rows get no agreed value and the view reads the main row; list, owner and public reads all return it or null. Screenshots F221-form-*.png (20:56) are newer than agreed-value.tsx (20:39) and the verify run (17:56Z) is after the doc edits. Ran: go test ./internal/... all ok; vitest 88/88; check-docs 0 errors; typecheck and lint clean; no Anvil left. Minor notes, not blocking: (1) invoices_test.go:222 comment still lists the public GET fields without the agreed value. (2) invoice.go:124: a 13-digit amount gets 'at most 2 decimals for EUR', which does not name the 12-digit cap. (3) Still known and accepted: Number() in formatAgreed, no web 12-digit check, a hidden agreed value on Request money from a Duplicate of an API-made request, int64/bigint instead of big.Int for this capped fiat amount. (4) create.go:70 profile.Personal is the F220 cleanup, same behavior.",
+          "at": "2026-10-17T18:05:54Z",
+          "filesHash": "04d694e8518dd38f"
+        }
+      },
+      "branch": "feat/f221-an-invoice-can-carry-the-price-agreed-wi",
+      "baseCommit": "f278eddd90515d0eba19ae3b4b591816b4f5c36c",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

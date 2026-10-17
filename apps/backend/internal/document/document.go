@@ -445,6 +445,15 @@ func (d doc) lines(inv invoice.Invoice, total string, any bool) {
 		d.SetX(margin + cols[0] + cols[1] + pad)
 		d.CellFormat(cols[2]-2*pad, 6, l, "", 1, "R", false, 0, "")
 	}
+	// The price agreed with the client in fiat (R-93), quietly under the total the invoice asks for, on its edge.
+	if a := inv.Agreed; a != nil {
+		d.Ln(2)
+		d.text(muted)
+		d.SetFont(font, "", 9)
+		text := "Agreed value " + Amount(big.NewInt(a.Amount), a.Decimals, a.Currency) + " on " + a.Date
+		d.CellFormat(width-pad, lineHeight, text, "", 1, "R", false, 0, "")
+		d.text(ink)
+	}
 	d.Ln(6)
 }
 

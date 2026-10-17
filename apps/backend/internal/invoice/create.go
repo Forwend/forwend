@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/address"
+	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -29,6 +30,9 @@ type accepted struct {
 func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, r Request) (inv Invoice, created bool, err error) {
 	token, amount, usd, lines, expiresIn, err := r.normalize()
 	if err != nil {
+		return Invoice{}, false, err
+	}
+	if r.Details.Agreed, err = r.Agreed.parse(); err != nil {
 		return Invoice{}, false, err
 	}
 	var hash []byte
@@ -63,9 +67,9 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	// The profile row lock makes concurrent creates count one after another, so none passes a cap on a stale count.
 	// Billing details are never removed, so once there they stay for the insert trigger to copy.
 	var business, billed bool
-	if err := tx.QueryRow(ctx, `SELECT kind <> 'personal',
+	if err := tx.QueryRow(ctx, `SELECT kind <> $2,
 		EXISTS (SELECT 1 FROM profile_billing_details WHERE profile_id = $1) FROM profiles WHERE id = $1 FOR UPDATE`,
-		profileID).Scan(&business, &billed); err != nil {
+		profileID, profile.Personal).Scan(&business, &billed); err != nil {
 		return Invoice{}, false, fmt.Errorf("lock profile: %w", err)
 	}
 	if business && !billed {
@@ -104,18 +108,26 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		if mainID != nil {
 			details = Details{}
 		}
+		var agreedCurrency, agreedDate *string
+		var agreedAmount *int64
+		var agreedDecimals *int
+		if a := details.Agreed; a != nil {
+			agreedCurrency, agreedAmount, agreedDecimals, agreedDate = &a.Currency, &a.Amount, &a.Decimals, &a.Date
+		}
 		_, err = tx.Exec(ctx, `
 			INSERT INTO invoices (id, main_id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
 			    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
 			    request_hash, title, note, due_date, client_name, client_email, client_address, sender_name, return_url,
-			    client_country, client_tax_id, supply_date, reference)
+			    client_country, client_tax_id, supply_date, reference, agreed_currency, agreed_amount, agreed_decimals,
+			    agreed_date)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'evm_create2', $11, $12, $13, $14, NULLIF($15, ''),
 			    NULLIF($16, ''), NULLIF($17, '')::date, NULLIF($18, ''), NULLIF($19, ''), NULLIF($20, ''), NULLIF($21, ''),
-			    NULLIF($22, ''), NULLIF($23, ''), NULLIF($24, ''), NULLIF($25, '')::date, NULLIF($26, ''))`,
+			    NULLIF($22, ''), NULLIF($23, ''), NULLIF($24, ''), NULLIF($25, '')::date, NULLIF($26, ''), $27, $28, $29, $30::date)`,
 			hexID(id), mainID, profileID, o.chainID, o.family, o.token, o.amount.String(), expiresAt.Unix(),
 			settleDeadline.Unix(), recipient, hexAddress(address.Factory), receive, idempotencyKey, hash, details.Title,
 			details.Note, details.DueDate, details.ClientName, details.ClientEmail, details.ClientAddress, details.SenderName,
-			details.ReturnURL, details.ClientCountry, details.ClientTaxID, details.SupplyDate, details.Reference)
+			details.ReturnURL, details.ClientCountry, details.ClientTaxID, details.SupplyDate, details.Reference,
+			agreedCurrency, agreedAmount, agreedDecimals, agreedDate)
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.ConstraintName == "invoices_profile_idempotency_key" {
 			// A concurrent request with the same key won the insert.

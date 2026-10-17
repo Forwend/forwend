@@ -339,11 +339,11 @@ paths:
         (factory.predict). The same key with the same values returns the stored invoice with 200; with other values,
         409. The invoice gets the profile's next number in the same transaction (D-50): no gaps, and a repeat returns
         the same number. The insert also copies the profile's billing details as issuer (null without them). The number,
-        title, note, due and supply dates, line items, sender name, client and issuer never change after creation. Send
-        chainId, token and amount for one fixed token and network, or amountUsd alone to let the payer choose (R-56):
-        the invoice then accepts every enabled token on every chain the worker watches, each as its own option with the
-        amount in its decimals at 1 USD per stablecoin (D-75), its own on-chain id and receive address (D-76). Each
-        option counts toward the profile's limits on open receive addresses.
+        title, note, due and supply dates, line items, agreed value, sender name, client and issuer never change after
+        creation. Send chainId, token and amount for one fixed token and network, or amountUsd alone to let the payer
+        choose (R-56): the invoice then accepts every enabled token on every chain the worker watches, each as its own
+        option with the amount in its decimals at 1 USD per stablecoin (D-75), its own on-chain id and receive address
+        (D-76). Each option counts toward the profile's limits on open receive addresses.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -547,7 +547,7 @@ paths:
       description: |
         Public, so checkout can show the invoice and recompute the receive address from the terms. Anyone with the id
         can read it, so it leaves out the client's name, email and address; the payer sees the number, title, note, due
-        and supply dates, reference, line items, sender name and issuer (who bills them).
+        and supply dates, reference, line items, agreed value, sender name and issuer (who bills them).
       security: []
       parameters:
         - name: invoiceId
@@ -659,8 +659,9 @@ paths:
         Public like GET /v1/invoices/{invoiceId} (R-47, R-61, D-51). Built on the server from the stored invoice only:
         the Forwend mark, number, reference, issuer (left out when the profile had no billing details), bill-to with the
         client's name and address (never the email), created time, supply date, due date, checkout expiry, a line with
-        the title, network and amount with the token's symbol (or one per line item, with the title above them), note,
-        the pay link with its QR code and the invoice id. The same invoice always gives the same bytes.
+        the title, network and amount with the token's symbol (or one per line item, with the title above them), the
+        agreed value under the total, note, the pay link with its QR code and the invoice id. The same invoice always
+        gives the same bytes.
       security: []
       parameters:
         - name: invoiceId
@@ -678,11 +679,11 @@ paths:
       summary: Download the receipt of a paid invoice as a PDF
       description: |
         Public like the invoice PDF. 409 until paymentStatus is paid; a paid invoice stays paid, also once settled.
-        Shows the invoice's parties, reference, supply date and line or line items, the paid time (block time of the
-        deposit that completed the amount), each confirmed deposit made before the checkout closed with its full tx hash
-        and a link to the network's explorer, and the pay link with its QR code to check the receipt, since a PDF can be
-        edited. It says nothing about the settlement: the payer only needs to know they paid; moving the money to the
-        creator is the creator's business (R-61, R-68).
+        Shows the invoice's parties, reference, supply date, line or line items and agreed value, the paid time (block
+        time of the deposit that completed the amount), each confirmed deposit made before the checkout closed with its
+        full tx hash and a link to the network's explorer, and the pay link with its QR code to check the receipt, since
+        a PDF can be edited. It says nothing about the settlement: the payer only needs to know they paid; moving the
+        money to the creator is the creator's business (R-61, R-68).
       security: []
       parameters:
         - name: invoiceId
@@ -1164,6 +1165,21 @@ components:
           description: |
             Optional PO number or reference of the client's (R-90), one line; their accounts team matches the invoice
             by it. Part of the idempotency hash only when set.
+        agreedValue:
+          type: object
+          additionalProperties: false
+          required: [currency, amount, date]
+          description: |
+            Optional price agreed with the client in fiat (R-93), typed by the owner (no exchange-rate API). currency
+            is EUR or one the ECB publishes a daily reference rate for (D-82): AUD, BRL, CAD, CHF, CNY, CZK, DKK, GBP,
+            HKD, HUF, IDR, ILS, INR, ISK, JPY, KRW, MXN, MYR, NOK, NZD, PHP, PLN, RON, SEK, SGD, THB, TRY, USD, ZAR.
+            Part of the idempotency hash only when set, in minor units ("1000" and "1000.00" EUR are the same).
+          properties:
+            currency: { type: string, pattern: "^[A-Z]{3}$" }
+            amount:
+              type: string
+              description: Above 0, at most 12 whole digits and the currency's ISO 4217 decimals (0 for ISK, JPY, KRW).
+            date: { type: string, format: date }
         senderName:
           type: string
           maxLength: 100
@@ -1293,7 +1309,7 @@ components:
                     secondsLeft: { type: [integer, "null"], minimum: 0 }
     InvoiceSummary:
       type: object
-      required: [invoiceId, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, senderName, returnUrl, issuer, chainId,
+      required: [invoiceId, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, agreedValue, senderName, returnUrl, issuer, chainId,
         token, amount, recipient, factory, receiveAddress, expiresAt, settleDeadline, paymentStatus, settlementStatus,
         refundStatus, settlementTxHash, createdAt]
       description: |
@@ -1342,6 +1358,17 @@ components:
           type: [string, "null"]
           format: date
         reference: { type: [string, "null"] }
+        agreedValue:
+          description: The price agreed with the client in fiat (R-93); null without one.
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [currency, amount, decimals, date]
+              properties:
+                currency: { type: string }
+                amount: { type: string, pattern: "^[0-9]+$", description: In the currency's minor units, like cents. }
+                decimals: { type: integer, minimum: 0, description: The currency's ISO 4217 decimals. }
+                date: { type: string, format: date }
         senderName:
           type: [string, "null"]
           description: The name the payer sees when there is no issuer. In every response, the public GET too.
@@ -1478,8 +1505,8 @@ components:
       description: |
         A value breaks a rule (invalid_value): amount, expiresIn, a token or chain that is not enabled, a profile with
         no wallet for the chain, terms the contract would refuse to settle, an invoice title, note, due or supply date,
-        line item or client field, a profile kind or name, a billing details field, a list limit, cursor, status,
-        direction or search (q), or balance-history days.
+        line item, agreed value or client field, a profile kind or name, a billing details field, a list limit, cursor,
+        status, direction or search (q), or balance-history days.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

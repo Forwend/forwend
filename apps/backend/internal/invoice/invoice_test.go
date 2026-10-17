@@ -3,6 +3,9 @@ package invoice
 import (
 	"errors"
 	"math/big"
+	"os"
+	"reflect"
+	"regexp"
 	"testing"
 	"time"
 
@@ -42,5 +45,39 @@ func TestDetailsRefuseHiddenTextAndForwendNames(t *testing.T) {
 	}
 	if err := (Details{Note: "Thanks!\nSee you", ClientAddress: "1 Test Street\nBerlin"}).check(); err != nil {
 		t.Errorf("line breaks in a note and an address: %v", err)
+	}
+}
+
+// R-93: an agreed value is stored in its currency's minor units, whatever the currency's decimals.
+func TestAgreedValueParse(t *testing.T) {
+	for _, c := range []struct {
+		currency, amount string
+		want             int64
+		decimals         int
+	}{{"EUR", "1000.5", 100050, 2}, {"EUR", "1000", 100000, 2}, {"JPY", "150000", 150000, 0}, {"ISK", "7", 7, 0}} {
+		got, err := (&AgreedRequest{Currency: c.currency, Amount: c.amount, Date: "2026-10-01"}).parse()
+		if err != nil || got.Amount != c.want || got.Decimals != c.decimals {
+			t.Errorf("%s %s: %v %v, want %d at %d decimals", c.amount, c.currency, got, err, c.want, c.decimals)
+		}
+	}
+}
+
+// The web's list (apps/web/src/features/invoices/constants/invoices.ts, AGREED_CURRENCIES) is a copy of
+// AgreedCurrencies: the form must offer what the API takes, with the same decimals.
+func TestAgreedCurrenciesMatchTheWeb(t *testing.T) {
+	src, err := os.ReadFile("../../../web/src/features/invoices/constants/invoices.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	list := regexp.MustCompile(`(?s)AGREED_CURRENCIES = \{(.*?)\}`).FindSubmatch(src)
+	if list == nil {
+		t.Fatal("AGREED_CURRENCIES not found")
+	}
+	web := map[string]int{}
+	for _, m := range regexp.MustCompile(`([A-Z]{3}): ([0-9])`).FindAllSubmatch(list[1], -1) {
+		web[string(m[1])] = int(m[2][0] - '0')
+	}
+	if !reflect.DeepEqual(web, AgreedCurrencies) {
+		t.Fatalf("the web offers %v, the API takes %v", web, AgreedCurrencies)
 	}
 }

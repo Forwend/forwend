@@ -28,6 +28,7 @@ import {
 } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY as COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
 import {
+  formatAgreed,
   formatDueDate,
   invoiceCopyHref,
   invoiceException,
@@ -182,7 +183,8 @@ function Loaded({
     <>
       {/* Each thing said once (R-60): the timeline says the status and Details the times (when the checkout closes,
           when it was canceled), so the header only names the invoice. Its actions (copy and open the pay link while it
-          takes money, cancel before any money) wait behind one More actions menu at the header's top right. */}
+          takes money, duplicate it, cancel before any money) wait behind one More actions menu at the header's top
+          right. */}
       <header className="flex items-start justify-between gap-3 lg:items-center">
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           {/* Above a title the number is a quiet label on phones, so the title reads as the heading; on desktop the
@@ -337,6 +339,14 @@ function Loaded({
               <Row term={COPY.created}>{TIME.format(new Date(invoice.createdAt))}</Row>
               {invoice.supplyDate ? (
                 <Row term={COPY.supplyDate}>{formatDueDate(invoice.supplyDate)}</Row>
+              ) : null}
+              {invoice.agreedValue ? (
+                <Row term={COPY.agreedValue}>
+                  {COPY.agreedOn(
+                    formatAgreed(invoice.agreedValue),
+                    formatDueDate(invoice.agreedValue.date),
+                  )}
+                </Row>
               ) : null}
               {invoice.canceledAt ? (
                 <Row term={COPY.canceledOn} ref={canceledRow}>

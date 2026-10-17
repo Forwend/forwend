@@ -37,8 +37,49 @@ export const INVOICE_EXCEPTIONS = {
   closedPartial: "closedPartial",
 } as const;
 
-/** `?from=<invoiceId>` fills a new invoice from a closed one; `rest` asks only for what is left (R-77, D-25). */
+/**
+ * `?from=<invoiceId>` fills a new invoice from that one (R-91); `rest` asks only for what is left of a closed one (R-77,
+ * D-25).
+ */
 export const RESTART_PARAMS = { from: "from", rest: "rest" } as const;
+
+/**
+ * The currencies an agreed value can be in (R-93), with their ISO 4217 decimals: EUR and the ones the ECB publishes a
+ * daily reference rate for (D-82). A copy of the API's invoice.AgreedCurrencies; a Go test fails when either changes
+ * alone.
+ */
+export const AGREED_CURRENCIES = {
+  EUR: 2,
+  USD: 2,
+  GBP: 2,
+  AUD: 2,
+  BRL: 2,
+  CAD: 2,
+  CHF: 2,
+  CNY: 2,
+  CZK: 2,
+  DKK: 2,
+  HKD: 2,
+  HUF: 2,
+  IDR: 2,
+  ILS: 2,
+  INR: 2,
+  ISK: 0,
+  JPY: 0,
+  KRW: 0,
+  MXN: 2,
+  MYR: 2,
+  NOK: 2,
+  NZD: 2,
+  PHP: 2,
+  PLN: 2,
+  RON: 2,
+  SEK: 2,
+  SGD: 2,
+  THB: 2,
+  TRY: 2,
+  ZAR: 2,
+} as const;
 
 /** The API's text limits in characters (openapi.yaml, CreateInvoiceRequest). */
 export const INVOICE_LIMITS = {
@@ -61,6 +102,10 @@ export const INVOICE_FIELDS = {
   dueDate: "dueDate",
   supplyDate: "supplyDate",
   reference: "reference",
+  // The API names them so in its 422 (R-93).
+  agreedCurrency: "agreedValue.currency",
+  agreedAmount: "agreedValue.amount",
+  agreedDate: "agreedValue.date",
   clientName: "client.name",
   clientEmail: "client.email",
   clientAddress: "client.address",

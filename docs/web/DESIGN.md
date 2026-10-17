@@ -194,7 +194,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Dates on New invoice holds Supply date (R-89, optional, any day), then Due date, then Checkout closes after, so the
   due date sits next to the close it moves; the invoice page lists Supply date in Details after Created. Details on
   New invoice holds PO or reference (R-90) after Title, filled from the saved client's default when the client has
-  one; the invoice page lists Reference first in Details.
+  one; the invoice page lists Reference first in Details. Add agreed value (secondary, small, last in Amount; not on
+  Request money) shows Agreed in (a searchable currency list), Agreed amount and Agreed on (today, no later day) in
+  one row from small screens up, with a remove button and a quiet line that the client still pays the amount above
+  (R-93); the invoice page lists Agreed value in Details after Supply date.
   Picking a due date switches Checkout closes after to Custom on the due date plus 60 days (D-80), with one quiet line
   saying why; a close the owner picks before that day stays allowed, with a warning line (icon and warning text, as on
   the pay page) that a later payment would be held for the payer.
@@ -231,7 +234,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   to pay on the right. Left: the payee name (no display serif) beside a square tile with its initial on a bordered
   surface tile, "Invoice INV-0001" under the name, the amount (Geist, tabular, featured size; USD until the payer picks)
   and "on <network>": the top says only who asks and how much. Then, as a hosted invoice page lists them, the title,
-  the reference (R-90), the due date and "Closes in …" as quiet rows with a small icon (no rules), the note, and Download invoice PDF as an
+  the reference (R-90), the agreed value (R-93), the due date and "Closes in …" as quiet rows with a small icon (no
+  rules), the note, and Download invoice PDF as an
   underlined link with a file icon. On phones the pay panel comes right after the amount and the title, dates, note and PDF
   link follow it, so the payer reaches the address first. Right: one panel. While money is due it holds Pay with (the one option as a token mark,
   or Network and Token selects, which scale to many chains and tokens), a Show address button, then the QR beside the

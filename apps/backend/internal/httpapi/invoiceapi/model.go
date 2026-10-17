@@ -1,6 +1,7 @@
 package invoiceapi
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
@@ -25,6 +26,11 @@ type createInvoiceBody struct {
 		Quantity    string `json:"quantity"`
 		UnitPrice   string `json:"unitPrice"`
 	} `json:"lines"`
+	AgreedValue *struct {
+		Currency string `json:"currency"`
+		Amount   string `json:"amount"`
+		Date     string `json:"date"`
+	} `json:"agreedValue"`
 	Client struct {
 		Name    string `json:"name"`
 		Email   string `json:"email"`
@@ -47,6 +53,7 @@ type invoiceJSON struct {
 	DueDate          *string     `json:"dueDate"`
 	SupplyDate       *string     `json:"supplyDate"`
 	Reference        *string     `json:"reference"`
+	AgreedValue      *agreedJSON `json:"agreedValue"`
 	Client           *clientJSON `json:"client,omitempty"` // owner routes only
 	Issuer           *issuerJSON `json:"issuer"`
 	SenderName       *string     `json:"senderName"`
@@ -96,6 +103,14 @@ type invoiceDetailJSON struct {
 	Lines []lineJSON `json:"lines"`
 	// When Check status may run again; null when it may now (R-55).
 	NextCheckAt *string `json:"nextCheckAt"`
+}
+
+// agreedJSON is the price agreed with the client in fiat (R-93): Amount in the currency's minor units.
+type agreedJSON struct {
+	Currency string `json:"currency"`
+	Amount   string `json:"amount"`
+	Decimals int    `json:"decimals"`
+	Date     string `json:"date"`
 }
 
 type lineJSON struct {
@@ -159,6 +174,10 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 		ExpiresAt: inv.ExpiresAt.Format(time.RFC3339), SettleDeadline: inv.SettleDeadline.Format(time.RFC3339),
 		PaymentStatus: inv.PaymentStatus, SettlementStatus: inv.SettlementStatus, RefundStatus: inv.RefundStatus,
 		SettlementTxHash: httpio.OrNull(inv.SettlementTxHash), CreatedAt: inv.CreatedAt.UTC().Format(time.RFC3339),
+	}
+	if a := inv.Agreed; a != nil {
+		out.AgreedValue = &agreedJSON{Currency: a.Currency, Amount: strconv.FormatInt(a.Amount, 10),
+			Decimals: a.Decimals, Date: a.Date}
 	}
 	if i := inv.Issuer; i != nil {
 		out.Issuer = &issuerJSON{Name: i.Name, Address: i.Address, Country: i.Country, TaxID: httpio.OrNull(i.TaxID),

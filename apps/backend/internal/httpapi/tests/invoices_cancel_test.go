@@ -93,7 +93,8 @@ func TestCancelPayerChoosesInvoice(t *testing.T) {
 func TestCanceledInvoicePDF(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1",
-		strings.Replace(basicBody, "{", `{"supplyDate": "2026-10-01", "reference": "PO-7", `, 1)).body["invoiceId"].(string)
+		strings.Replace(basicBody, "{", `{"supplyDate": "2026-10-01", "reference": "PO-7",
+		"agreedValue": {"currency": "GBP", "amount": "4", "date": "2026-10-01"}, `, 1)).body["invoiceId"].(string)
 	before := e.pdf(t, id, "invoice.pdf", "")
 	if r := e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/invoices/"+id+"/cancel", "did:privy:alice", "", ""); r.status != http.StatusOK {
 		t.Fatalf("cancel: %d %v", r.status, r.body)
@@ -103,7 +104,8 @@ func TestCanceledInvoicePDF(t *testing.T) {
 		t.Fatalf("a canceled invoice's PDF must not answer 304 for the payable one: %d", r.status)
 	}
 	text := pdfText(t, r.body)
-	mustContain(t, text, "Forwend\nInvoice\nINV-0001\nReference PO-7\n", "Supply date\n2026-10-01\nCanceled", "Total, canceled",
+	mustContain(t, text, "Forwend\nInvoice\nINV-0001\nReference PO-7\n", "Supply date\n2026-10-01\nCanceled",
+		"Total, canceled\n5.00 USDC\nAgreed value 4.00 GBP on 2026-10-01",
 		"CANCELED\nThis invoice was canceled. Do not pay it.")
 	for _, gone := range []string{"Pay this invoice", "/pay/", "Total due", "Checkout closes"} {
 		if strings.Contains(text, gone) {

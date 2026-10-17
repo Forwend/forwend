@@ -87,6 +87,7 @@ describe("checkedReceiveAddress", () => {
     dueDate: null,
     supplyDate: null,
     reference: null,
+    agreedValue: null,
     issuer: null,
     senderName: null,
     returnUrl: null,

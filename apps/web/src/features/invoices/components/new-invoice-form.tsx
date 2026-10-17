@@ -19,6 +19,7 @@ import { flushSync } from "react-dom";
 import { clientBody, clientCountryOptions } from "@/features/clients/lib/clients";
 import type { Client, ClientBody } from "@/features/clients/types/clients";
 import { useCreateInvoiceMutation } from "@/features/invoices/api/invoices-api";
+import { AgreedValueFields } from "@/features/invoices/components/agreed-value";
 import { type LineFieldErrors, LineItems } from "@/features/invoices/components/line-items";
 import { NewInvoicePreview } from "@/features/invoices/components/new-invoice-preview";
 import {
@@ -32,6 +33,7 @@ import {
 } from "@/features/invoices/constants/invoices";
 import { NEW_INVOICE_COPY, NEW_REQUEST_COPY } from "@/features/invoices/constants/invoices-copy";
 import {
+  agreedDigits,
   customExpiresIn,
   decimalText,
   dueCheckoutDate,
@@ -45,6 +47,7 @@ import {
   tokenKey,
 } from "@/features/invoices/lib/invoices";
 import type {
+  AgreedDraft,
   CreateInvoiceBody,
   ExpiryChoice,
   Invoice,
@@ -103,6 +106,8 @@ export function NewInvoiceForm({
   // Picking a saved client fills in its default (R-90), so this one is held here, not read from the form. The default
   // last filled in is kept too: another client's replaces it, but a reference the owner typed stays.
   const [reference, setReference] = useState(start?.reference ?? "");
+  const [agreed, setAgreed] = useState<AgreedDraft | null>(start?.agreed ?? null);
+  const agreedId = useId();
   const filledReference = useRef("");
   // D-80: who set the checkout's close. The due date sets it until the owner picks one of their own, which then stays.
   const [closeBy, setCloseBy] = useState<"default" | "due" | "owner">("default");
@@ -201,8 +206,32 @@ export function NewInvoiceForm({
     const badLink = returnUrl !== "" && !isReturnLink(returnUrl);
     const badLines = Object.keys(problems).length > 0;
     flushSync(() => setLineErrors(problems));
-    if (typeof units === "string" || badLines || missingName || expiresIn === null || badLink) {
+    // R-93: the agreed value as the API reads it, or what is wrong with it.
+    const digits = agreed ? agreedDigits(agreed.currency) : undefined;
+    const agreedUnits =
+      agreed && digits !== undefined ? parseTokenAmount(agreed.amount, digits) : undefined;
+    const agreedValue =
+      agreed && digits !== undefined && typeof agreedUnits === "bigint" && agreed.date
+        ? { currency: agreed.currency, amount: decimalText(agreedUnits, digits), date: agreed.date }
+        : undefined;
+    const badAgreed = agreed !== null && !agreedValue;
+    if (
+      typeof units === "string" ||
+      badLines ||
+      badAgreed ||
+      missingName ||
+      expiresIn === null ||
+      badLink
+    ) {
       showErrors({
+        [INVOICE_FIELDS.agreedCurrency]:
+          badAgreed && digits === undefined ? COPY.agreed.errors.currency : undefined,
+        [INVOICE_FIELDS.agreedAmount]:
+          badAgreed && digits !== undefined && typeof agreedUnits === "string"
+            ? COPY.agreed.errors.amount(digits)
+            : undefined,
+        [INVOICE_FIELDS.agreedDate]:
+          badAgreed && !agreed?.date ? COPY.agreed.errors.date : undefined,
         [INVOICE_FIELDS.amount]:
           typeof units === "string" && items.length === 0 ? amountError(amount) : undefined,
         [INVOICE_FIELDS.lines]:
@@ -225,6 +254,7 @@ export function NewInvoiceForm({
       dueDate: text("dueDate"),
       supplyDate: text("supplyDate"),
       reference: reference.trim(),
+      ...(agreedValue ? { agreedValue } : {}),
       senderName: text("senderName"),
       returnUrl,
       client: {
@@ -489,6 +519,44 @@ export function NewInvoiceForm({
                 </Button>
               )}
             </>
+          )}
+          {request ? null : agreed ? (
+            <AgreedValueFields
+              id={agreedId}
+              value={agreed}
+              today={today}
+              errors={{
+                currency: errors[INVOICE_FIELDS.agreedCurrency],
+                amount: errors[INVOICE_FIELDS.agreedAmount],
+                date: errors[INVOICE_FIELDS.agreedDate],
+              }}
+              onChange={(next) => {
+                // Remove takes away the button that had focus: it goes back to Add agreed value.
+                flushSync(() => setAgreed(next));
+                if (!next) document.getElementById(agreedId)?.focus();
+                setErrors((shown) => ({
+                  ...shown,
+                  [INVOICE_FIELDS.agreedCurrency]: undefined,
+                  [INVOICE_FIELDS.agreedAmount]: undefined,
+                  [INVOICE_FIELDS.agreedDate]: undefined,
+                }));
+              }}
+            />
+          ) : (
+            <Button
+              id={agreedId}
+              variant="secondary"
+              size="sm"
+              className="self-start"
+              onClick={() => {
+                // The button goes away: focus moves to the currency it asks for first.
+                flushSync(() => setAgreed({ currency: "", amount: "", date: today }));
+                document.getElementById(agreedId)?.focus();
+              }}
+            >
+              <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
+              {COPY.agreed.add}
+            </Button>
           )}
         </FieldGroup>
 

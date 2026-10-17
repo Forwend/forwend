@@ -52,6 +52,14 @@ export const depositSchema = z.object({
   secondsLeft: count,
 });
 
+/** The price agreed with the client in fiat (R-93): amount in the currency's minor units (cents). */
+export const agreedValueSchema = z.object({
+  currency: z.string(),
+  amount: baseUnits,
+  decimals: count,
+  date: apiDate,
+});
+
 /** openapi.yaml, InvoiceSummary. */
 export const invoiceSummarySchema = z.object({
   // The pay link's id.
@@ -75,6 +83,7 @@ export const invoiceSummarySchema = z.object({
   supplyDate: apiDate.nullable(),
   // The client's PO number or their reference (R-90).
   reference: z.string().nullable(),
+  agreedValue: agreedValueSchema.nullable(),
   // Only in the owner's answers (create, list and the profile's read); the public GET leaves it out.
   client: invoiceClientSchema.optional(),
   issuer: invoiceIssuerSchema.nullable(),
@@ -171,6 +180,8 @@ export const createInvoiceBodySchema = z.object({
   dueDate: z.string(),
   supplyDate: z.string(),
   reference: z.string(),
+  // R-93: amount as a decimal in the currency's own decimals.
+  agreedValue: z.object({ currency: z.string(), amount: z.string(), date: z.string() }).optional(),
   senderName: z.string(),
   client: clientBodySchema,
   // R-88: unitPrice in the amount's own unit, base units with amount and a USD decimal with amountUsd.
