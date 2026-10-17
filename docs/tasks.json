@@ -627,7 +627,7 @@
         "New invoice has an optional Supply date picker in the Dates panel (not on Request money) and the owner's invoice page shows it in Details; axe 0 and no sideways scroll at 390 px."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -712,11 +712,18 @@
           "summary": "Both earlier findings are fixed. (1) Refs now R-89, R-42, R-61; show F215 prints the R-89 row; evidence is not stale. (2) openapi.yaml :342 (fields that never change), :550 (public GET), :661 (invoice.pdf), :681 (receipt), :1459 (InvalidValue) and docs/backend/api.md :184, :200, :205, :211 now name the supply date, and the same sentences now also name the R-88 line items, which matches the code (public GET returns lines; PDFs draw the title over the item rows). git diff --word-diff shows the rewrapped doc lines only gain words; nothing else changed in meaning. I searched docs/ and openapi.yaml for other lists of invoice details or PDF contents: the older PROJECT rows R-42, R-47, R-61 are history and R-89 extends them; DESIGN.md:205 (form preview) and the pay page do not show it, which R-89 does not ask for. Rechecked the code: migration 00031 Up trigger and view equal 00029 plus supply_date, Down equals 00029 (diffed), and migrations_down_test passes; the hash is byte-for-byte the same without supplyDate, and '|supplyDate=' cannot be read as the other optional parts, which start with '|\"'; validation gives 422 for 2026-02-30 and 31.10.2026 and refuses year 0; every read uses invoiceColumns over invoices_current (get, list, create replay), null when unset; the PDF facts row holds at most 4 (width/4); the web form sends supplyDate (empty on Request money, where the picker is hidden), a 422 maps to the field through INVOICE_FIELDS, Details shows it after Created; screenshots docs/runs/F215-dates-desk.png, -dates-phone.png and -details-desk.png look right; e2e log shows the privy merchant test ran and passed. Tests I ran: go test invoice, httpapi/tests, database, document all ok; web vitest 84 passed; check-docs 0 errors. Minor, not blocking: formatDueDate also formats the supply date (a name like formatDay would fit); two adjacent '{request ? null : ...}' blocks; name=\"supplyDate\"/text(\"supplyDate\") repeat INVOICE_FIELDS.supplyDate as the dueDate code does. Already there before this task and outside it: openapi.yaml:681-683 says receipt.pdf shows the settled time and the settlement tx hash, but Receipt() and R-61 show nothing about settlement, and api.md:212 says so; PLAN.md 10.2 still lists line items and supply date as future work (F214 left it the same way).",
           "at": "2026-10-17T11:40:19Z",
           "filesHash": "d7efa39437b42032"
-        }
+        },
+        "commit": "3dc41a1",
+        "doneAt": "2026-10-17T11:40:42Z"
       },
       "branch": "feat/f215-an-invoice-can-carry-a-supply-date-when",
       "baseCommit": "89092e60772a5562f1d4f3d1f420699e76e2e60d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f215-an-invoice-can-carry-a-supply-date-when",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
