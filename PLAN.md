@@ -43,8 +43,7 @@ invoice says, the phase follows EU, UK and US rules first (D-83).
 - 10.1 Clients (R-86): saved clients with legal name, billing email (the finance contact, often not the person who
   ordered the work), address, country and tax/VAT ID. An invoice picks a client and copies the details; the copy never
   changes, like the issuer block (R-43).
-- 10.2 Invoice terms: duplicate, and an "Agreed value" in fiat that the user types (currency, amount and the time).
-  After 10.1.
+- 10.2 Invoice terms: an "Agreed value" in fiat that the user types (currency, amount and the time). After 10.1.
 - 10.3 Jobs (D-81): a quote with the work, price and a payment schedule (deposit, milestones, final) and pay dates;
   the client accepts it on `/w/<token>` with a typed name and email. Acceptance issues the deposit invoice; each
   milestone invoice goes out when the freelancer marks the step done; the final invoice lists earlier payments and

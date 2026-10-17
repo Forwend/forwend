@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 218,
+  "nextId": 219,
   "tasks": [
     {
       "id": "F208",
@@ -938,6 +938,115 @@
       "delivery": {
         "mode": "pr",
         "branch": "feat/f217-an-invoice-can-carry-the-client-s-po-num",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F218",
+      "type": "feat",
+      "behavior": "The owner can duplicate an invoice: New invoice opens filled with its client, reference, title, note, return link, pay mode, amount and items, with new dates (PLAN 10.2)",
+      "acceptance": [
+        "The owner's invoice page has Duplicate in More actions, for every invoice and request; it opens New invoice filled from that invoice: the client, the PO or reference, the title, note and return link, the pay mode (the client chooses again when the original let them) with the same token, and the same amount with its line items. Dates are not copied: the due and supply dates start empty and the checkout close at its default.",
+        "The new invoice from a closed one (R-77) fills the same way; for the rest of a partly paid one it leaves the items out, since they would not add up to the rest, and keeps the token that was paid.",
+        "A form filled with items shows them without moving focus on load; adding the first item or removing the last still moves focus as before (R-88). axe 0 and no sideways scroll at 390 px."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-91",
+        "R-77",
+        "R-88",
+        "R-90"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-17 review pass by reviewer: Pass. Money is correct: restartFrom reads line prices in the decimals of the option whose id is the invoice id (R-88) and the amount in the shown option's decimals. I checked this with a temporary test (since deleted): USDC 6 as the invoice's own option with DAI 18 locked and paid 1 on time gives a copy of Client chooses, amount 5, prices 0.5 and 1.25 (they add up to 5 at 6 decimals), and the rest gives One token, DAI, amount 4, no items. The opposite case (own option 18, shown option 6) is also correct. With items, the amount is always the items' total, so a copy can't send items that disagree with the amount. A temporary form test showed that a Client chooses copy sends amountUsd 5 with USD unit prices, that removing all filled items focuses Amount with 3.75, and that a Request money copy sends the note, return link and amount. The menu, separators, cancel flow and the invoiceCopyHref and shortQuantity reuse are fine. vitest, typecheck and lint pass. Notes, none blocking: (1) No kept unit test has the shown option differ from the invoice's own option with different decimals, so changing lineDecimals at lib/invoices.ts:280 to decimals would still pass every test. Add the USDC 6 / DAI 18 locked case. (2) Comments now out of date: new-invoice-form.tsx:72 still says the start prop is only from a closed invoice (client, options, amount); invoice-actions.tsx:68 says a refetch can remove the menu, but the menu now always stays. (3) invoice-actions.tsx:41 is a 138-character comment line, not rewrapped. (4) The e2e Duplicate check (invoices.spec.ts:242) does not check the note or return link, which only the unit test covers. (5) Accept 3 (axe 0 and no sideways scroll at 390 px) is not run on a form filled by Duplicate or on the menu with Duplicate; only the existing 390 px Add item test covers it indirectly. (6) A request copy takes the profile name as senderName, not the original's. R-91 does not ask for it, so this is a product question. (7) On a closed unpaid invoice, the header's New invoice link and Duplicate open the same URL. (8) line-items.tsx:40: the set callback's id parameter shadows the new id prop.",
+        "2026-10-17 review pass by reviewer: Pass (re-review after the first pass). The follow-up changes are correct. The new unit test (invoices.test.ts:323-346) matters: I ran a temporary copy of restartFrom that reads line prices in the shown option's decimals (lib/invoices.ts:291 using decimals instead of lineDecimals), and only that test failed (2.5 became 0.0000000000025); temp files deleted. The two stale comments, the long comment line and the shadowed itemId are fixed. The merchant e2e Duplicate step checks the note and return link, and the phone e2e duplicates its invoice and checks the filled form at 390 px with fits() and axe; the verify run at 14:16:50Z is newer than the last source change and both tests passed. Whole change re-checked: restartFrom money is right for fixed, payer chooses, late-locked and on-time-locked options, whole and rest (rest is fixed in the paid token with no items; whole keeps Client chooses when options > 1); with items the amount is always their total. Form fills title, note, return link, reference, client and items, dates empty and expiry at default; the preview reads the filled title and note; filled items take no focus, and add-first / remove-last focus still works (new-invoice-form.test:245-258 and :297). Menu: Duplicate always, separators right for all three cases, cancel focus flow unchanged (dialog still unmounts when cancelable flips; e2e checks focus on Canceled on). invoiceCopyHref and shortQuantity are plain moves with no other copies left. Docs R-91, DESIGN.md and PLAN 10.2 match the code. vitest 87/87, typecheck, lint and docs-check pass. Minor notes, none blocking: (1) invoice-detail.tsx:183-185 comment still lists the header actions as copy, open and cancel, without Duplicate. (2) constants/invoices.ts:40 says ?from fills a new invoice from a closed one; it now fills from any invoice (R-91). (3) The open More actions menu with Duplicate is not axe-checked at 390 px; only the filled form is. (4) Product questions left open as the author said: a request copy uses the profile name as sender, and on a closed unpaid invoice the header's New invoice link and Duplicate open the same URL."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-17T14:16:50Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 67.8,
+            "log": "docs/runs/F218-20261017T141650Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 216.6,
+            "log": "docs/runs/F218-20261017T141650Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.8,
+            "log": "docs/runs/F218-20261017T141650Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F218-20261017T141650Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F218-20261017T141650Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F218-20261017T141650Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.5,
+            "log": "docs/runs/F218-20261017T141650Z-build.log"
+          }
+        ],
+        "taskHash": "254e3560a5a64d6b",
+        "filesHash": "f8ffac0c942c54ef",
+        "proof": {
+          "1": "e2e: privy merchant test opens More actions on its invoice, picks Duplicate and finds New invoice filled with the title, PO, note, return link, client name and amount 12.5, with empty due and supply dates; navigation tests show a paid, a closed and a canceled invoice offer Duplicate in More actions; unit: invoices.test restartFrom copies title, note, return link, reference, client and the items (7.50 → 7.5, 500000 → 0.5), keeps payer chooses for a whole-amount copy even after money came, and reads item prices in the invoice's own option's decimals when the client locked a token with other decimals (fails if they are read in the shown option's); new-invoice-form.test sends the filled title, note, return link, reference and lines with empty dates",
+          "2": "unit: invoices.test restartFrom for the rest of a partly paid invoice leaves the items out (amount 3.75) and keeps the paid token (payWith fixed, amount 4); e2e: navigation test still opens New invoice from a closed invoice's next step",
+          "3": "e2e: privy phone test duplicates its invoice with an item and checks the filled form fits 390 px with no sideways scroll and no blocking axe violations; unit: new-invoice-form.test 'fills from another invoice without moving focus' and 'keeps keyboard focus on the items as they are added and removed'; screenshots docs/runs/F218-*.png"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass (re-review after the first pass). The follow-up changes are correct. The new unit test (invoices.test.ts:323-346) matters: I ran a temporary copy of restartFrom that reads line prices in the shown option's decimals (lib/invoices.ts:291 using decimals instead of lineDecimals), and only that test failed (2.5 became 0.0000000000025); temp files deleted. The two stale comments, the long comment line and the shadowed itemId are fixed. The merchant e2e Duplicate step checks the note and return link, and the phone e2e duplicates its invoice and checks the filled form at 390 px with fits() and axe; the verify run at 14:16:50Z is newer than the last source change and both tests passed. Whole change re-checked: restartFrom money is right for fixed, payer chooses, late-locked and on-time-locked options, whole and rest (rest is fixed in the paid token with no items; whole keeps Client chooses when options > 1); with items the amount is always their total. Form fills title, note, return link, reference, client and items, dates empty and expiry at default; the preview reads the filled title and note; filled items take no focus, and add-first / remove-last focus still works (new-invoice-form.test:245-258 and :297). Menu: Duplicate always, separators right for all three cases, cancel focus flow unchanged (dialog still unmounts when cancelable flips; e2e checks focus on Canceled on). invoiceCopyHref and shortQuantity are plain moves with no other copies left. Docs R-91, DESIGN.md and PLAN 10.2 match the code. vitest 87/87, typecheck, lint and docs-check pass. Minor notes, none blocking: (1) invoice-detail.tsx:183-185 comment still lists the header actions as copy, open and cancel, without Duplicate. (2) constants/invoices.ts:40 says ?from fills a new invoice from a closed one; it now fills from any invoice (R-91). (3) The open More actions menu with Duplicate is not axe-checked at 390 px; only the filled form is. (4) Product questions left open as the author said: a request copy uses the profile name as sender, and on a closed unpaid invoice the header's New invoice link and Duplicate open the same URL.",
+          "at": "2026-10-17T14:26:55Z",
+          "filesHash": "f8ffac0c942c54ef"
+        },
+        "commit": "ec0f48f",
+        "doneAt": "2026-10-17T14:27:23Z"
+      },
+      "branch": "feat/f218-the-owner-can-duplicate-an-invoice-new-i",
+      "baseCommit": "5f0fe149774233c279e0688dc8da434e99a8cb1e",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f218-the-owner-can-duplicate-an-invoice-new-i",
         "base": "main"
       }
     }

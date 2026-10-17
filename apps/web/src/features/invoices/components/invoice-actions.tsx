@@ -15,10 +15,12 @@ import {
   useCopy,
   useToast,
 } from "@forwend/ui-web";
-import { Ban, Check, Copy, Ellipsis, ExternalLink } from "lucide-react";
+import { Ban, Check, Copy, CopyPlus, Ellipsis, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { useRef } from "react";
 import { useCancelInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
+import { invoiceCopyHref } from "@/features/invoices/lib/invoices";
 
 const CONFLICT = 409;
 
@@ -35,10 +37,10 @@ export interface InvoiceActionsProps {
   onCanceled: () => void;
 }
 
-// The invoice's actions behind one More actions menu: copy and open the pay link while it takes money, and cancel
-// before any money (R-79, D-79), confirmed in a dialog because it can't be undone. Copying keeps the menu open, so the
-// item itself says it worked; if the clipboard refuses, the whole link shows there to select. Keep closes the native
-// dialog through its form; a canceled invoice offers nothing here, so the menu leaves with it.
+// The invoice's actions behind one More actions menu: copy and open the pay link while it takes money, duplicate it
+// (R-91), and cancel before any money (R-79, D-79), confirmed in a dialog because it can't be undone. Copying keeps the
+// menu open, so the item itself says it worked; if the clipboard refuses, the whole link shows there to select. Keep
+// closes the native dialog through its form.
 export function InvoiceActions({
   profileId,
   invoiceId,
@@ -56,7 +58,6 @@ export function InvoiceActions({
   const status = (error as { status?: unknown } | undefined)?.status;
   // The dialog opens once the menu has closed, so the menu does not hand focus back to its trigger over the dialog.
   const chosen = useRef(false);
-  if (!payable && !cancelable) return null;
 
   const confirm = async () => {
     try {
@@ -64,7 +65,7 @@ export function InvoiceActions({
       toast({ tone: TONES.success, title: COPY.cancel.done(number) });
       onCanceled();
     } catch (failure) {
-      // Too late: the refetch that follows can take this menu, and the dialog with it, away; the toast stays.
+      // Too late: the refetch that follows can end the cancel, and the dialog with it; the toast stays.
       if ((failure as { status?: unknown }).status === CONFLICT) {
         toast({ tone: TONES.warning, title: COPY.cancel.tooLate });
       }
@@ -124,7 +125,14 @@ export function InvoiceActions({
               </MenuItem>
             </>
           ) : null}
-          {payable && cancelable ? <MenuSeparator /> : null}
+          {payable ? <MenuSeparator /> : null}
+          <MenuItem asChild>
+            <Link href={invoiceCopyHref(invoiceId, false)}>
+              <CopyPlus aria-hidden className="size-[var(--fw-icon-sm)]" />
+              {COPY.duplicate}
+            </Link>
+          </MenuItem>
+          {cancelable ? <MenuSeparator /> : null}
           {cancelable ? (
             <MenuItem
               className="text-danger data-[highlighted]:bg-danger-soft"

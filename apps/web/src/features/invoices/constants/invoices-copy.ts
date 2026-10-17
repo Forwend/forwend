@@ -312,6 +312,7 @@ export const INVOICE_COPY = {
   dueDate: "Due date",
   supplyDate: "Supply date",
   reference: "Reference",
+  duplicate: "Duplicate",
   expires: "Checkout closes",
   closed: "Checkout closed",
   created: "Created",

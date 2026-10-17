@@ -273,9 +273,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - The invoice page (R-60) says each thing once: the header only names the invoice (its title, or its number when there
   is none); the timeline says the status, and Details the times: when the checkout closes ("Checkout closed" once
   past) and, once canceled, Canceled on. So the header has no status pill or time. At its top right sits one More
-  actions menu: Copy link and Open pay page (a new tab) while the checkout can take money, and while it can still be canceled, Cancel in
+  actions menu: Copy link and Open pay page (a new tab) while the checkout can take money, Duplicate always (New
+  invoice filled from this one, R-91), and while it can still be canceled, Cancel in
   the danger color, which asks to confirm in a dialog. Copying keeps the menu open and the item says Link copied; if
-  the clipboard refuses, the whole link shows there to select. With nothing to offer, there is no menu. Below, two columns from large screens up: the
+  the clipboard refuses, the whole link shows there to select. Below, two columns from large screens up: the
   amount ("Received X of Y" under it when partly paid) with the timeline, where the Paid step reads "Partially paid"
   as a warning-tinted label when partly paid, the status line (only the confirming count or why settling waits; the
   state itself is the timeline's), one Transactions list (each payment, then the settlement to the wallet, later refunds: kind, amount, the other side,

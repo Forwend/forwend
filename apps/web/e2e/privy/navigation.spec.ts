@@ -555,8 +555,10 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(progress.getByRole("listitem").nth(2)).toHaveText(/^Confirmed/);
   await expect(current.locator("[class*='fw-progress']")).toHaveCount(1);
   await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
-  // Paid takes no more money and can't be canceled: no actions are left to offer.
-  await expect(main.getByRole("button", { name: "More actions" })).toHaveCount(0);
+  // Paid takes no more money and can't be canceled: More actions only offers Duplicate (R-91).
+  await main.getByRole("button", { name: "More actions" }).click();
+  await expect(page.getByRole("menuitem")).toHaveText(["Duplicate"]);
+  await page.keyboard.press("Escape");
 
   // Settled: one Transactions list holds the payment and the settlement to the wallet; Details repeats neither (R-69).
   const settleTx = hash("5");
@@ -651,7 +653,9 @@ test("the owner's invoice page names the next step of every exception", async ({
   await expect(header).toContainText(
     "The checkout closed with nothing paid. A closed invoice can't take money again.",
   );
-  await expect(header.getByRole("button", { name: "More actions" })).toHaveCount(0);
+  await header.getByRole("button", { name: "More actions" }).click();
+  await expect(page.getByRole("menuitem")).toHaveText(["Duplicate"]);
+  await page.keyboard.press("Escape");
   await header.getByRole("link", { name: "New invoice" }).click();
   await expect(page).toHaveURL(`/app/invoices/new?from=${OPEN_INVOICE.invoiceId}`);
   await expect(main.getByLabel("Amount")).toHaveValue("2");
@@ -750,7 +754,9 @@ test("the owner cancels an invoice before any money, after confirming", async ({
   await expect(header).not.toContainText("Canceled");
   // The dialog and its trigger are gone, so keyboard focus moves to that row, not to the page body.
   await expect(canceledRow).toBeFocused();
-  await expect(header.getByRole("button", { name: "More actions" })).toHaveCount(0);
+  // A canceled invoice can still be duplicated, to send a corrected one (R-91).
+  await header.getByRole("button", { name: "More actions" }).click();
+  await expect(page.getByRole("menuitem")).toHaveText(["Duplicate"]);
   await context.close();
 });
 
