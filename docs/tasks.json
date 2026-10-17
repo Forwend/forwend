@@ -1271,7 +1271,7 @@
         "The web's currency list matches the API's (a Go test reads it); axe 0 and no sideways scroll at 390 px."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -1358,11 +1358,18 @@
           "summary": "Pass. The docs defect from the last review is fixed: openapi.yaml:342 (never change), :550 (public GET), :662 (invoice.pdf), :682 (receipt.pdf), :1508 (InvalidValue) and api.md:195 (public GET) and :212 (both PDFs, so the canceled one too) now name the agreed value; service.go:67 says four. git diff --word-diff shows the rewrapped lines only gained the new words. No other list of invoice fields or PDF contents in openapi.yaml or docs/ misses it (searched reference, supply date, line items). Re-checked the code: 00033 Up adds the four columns with an all-or-none CHECK and Down restores the 00032 view and trigger exactly; every reader (model.go, document.go, invoice page, pay page, restartFrom) uses the stored decimals; parse is exact (12 whole digits, ISO decimals, zero and year 0 refused); the hash adds a labeled part in minor units only when set; options rows get no agreed value and the view reads the main row; list, owner and public reads all return it or null. Screenshots F221-form-*.png (20:56) are newer than agreed-value.tsx (20:39) and the verify run (17:56Z) is after the doc edits. Ran: go test ./internal/... all ok; vitest 88/88; check-docs 0 errors; typecheck and lint clean; no Anvil left. Minor notes, not blocking: (1) invoices_test.go:222 comment still lists the public GET fields without the agreed value. (2) invoice.go:124: a 13-digit amount gets 'at most 2 decimals for EUR', which does not name the 12-digit cap. (3) Still known and accepted: Number() in formatAgreed, no web 12-digit check, a hidden agreed value on Request money from a Duplicate of an API-made request, int64/bigint instead of big.Int for this capped fiat amount. (4) create.go:70 profile.Personal is the F220 cleanup, same behavior.",
           "at": "2026-10-17T18:05:54Z",
           "filesHash": "04d694e8518dd38f"
-        }
+        },
+        "commit": "e15d7dd",
+        "doneAt": "2026-10-17T18:06:19Z"
       },
       "branch": "feat/f221-an-invoice-can-carry-the-price-agreed-wi",
       "baseCommit": "f278eddd90515d0eba19ae3b4b591816b4f5c36c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f221-an-invoice-can-carry-the-price-agreed-wi",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
