@@ -44,7 +44,7 @@ const OPEN = {
   note: "Thanks for the work together.",
   dueDate: "2026-11-01",
   supplyDate: null,
-  reference: null,
+  reference: "PO-4500012345" as string | null,
   issuer: {
     name: "Alice Design GmbH",
     address: "Hauptstr. 1\n10115 Berlin",
@@ -170,6 +170,8 @@ test.describe("pay page", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Alice Design GmbH");
     await expect(page.getByText("Invoice INV-0001", { exact: true })).toBeVisible();
     await expect(page.getByText("Logo design", { exact: true })).toBeVisible();
+    // R-90: the client's accounts team matches the invoice by its PO number.
+    await expect(page.getByText("Reference PO-4500012345", { exact: true })).toBeVisible();
     await expect(page.locator("[data-money]")).toHaveText("1,250.00 USDC");
     await expect(page.getByText("on Base Sepolia", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Download invoice PDF" })).toHaveAttribute(
@@ -449,6 +451,8 @@ test.describe("pay page", () => {
     page,
   }) => {
     let call = 0;
+    // OPEN's checkout closes at a fixed time, so the page must read it at NOW, as openPay does.
+    await page.clock.install({ time: NOW });
     await page.route("**/api/v1/invoices/*", (route) =>
       call++ === 0 ? route.fulfill({ status: 500, json: {} }) : route.fulfill({ json: OPEN }),
     );
@@ -693,7 +697,8 @@ test.describe("pay page", () => {
 
   test("fits a 390 px phone in one column without sideways scrolling", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await openPay(page, OPEN);
+    // The longest reference the API takes, with no space to break at.
+    await openPay(page, { ...OPEN, reference: `PO-${"4".repeat(97)}` });
     await showAddress(page).click();
     await expect(page.getByText(RECEIVE)).toBeVisible();
     const overflow = () => sidewaysScroll(page);
