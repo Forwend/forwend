@@ -267,7 +267,8 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       /Sending to delivered@resend\.dev|Emailed to delivered@resend\.dev/,
     );
     await expect(client.getByRole("button", { name: "Send to client" })).toHaveCount(0);
-    await expect(client).toContainText("You can send it again after");
+    // The button goes, so focus moves to the line that takes its place.
+    await expect(client.getByText(/^You can send it again after/)).toBeFocused();
     expect(await blockingViolations(page)).toEqual([]);
     // The pay link copies whole, from the header's More actions menu, which also opens it.
     const link = `http://localhost:3000/pay/${invoice.invoiceId}`;

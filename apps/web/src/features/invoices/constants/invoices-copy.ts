@@ -390,7 +390,7 @@ export const INVOICE_COPY = {
     failed: (email: string, time: string) => `Could not email ${email} · asked ${time}`,
     done: (number: string, email: string) => `${number} is on its way to ${email}`,
     closed: "It can't be sent: the invoice can no longer be paid.",
-    limited: "You reached today's limit of emailed invoices. Try again tomorrow.",
+    limited: "You can't send more emails right now. Try again later.",
     error: "We could not send it. Try again.",
   },
 } as const;

@@ -168,9 +168,9 @@ with a test.
   reconcile before any retry.
 - `outbox_events`: `invoice.paid`, `invoice.held`, `invoice.settled` and `invoice.receipt`, queued by the ledger and
   the signer in the transaction that makes the change (`internal/outbox`), and `account.welcome` (with `user_id`, no
-  invoice) when sign-up stores a new account's login email, and `invoice.sent` (with the request's `idempotency_key`)
-  when the owner sends an invoice to its client (R-94); sent once by the worker with retries
-  ([api.md](api.md#notifications)). `users.login_email` and `profiles.email_notifications` decide where and whether;
+  invoice) when sign-up stores a new account's login email; sent once by the worker with retries
+  ([api.md](api.md#notifications)). `invoice.sent` rows carry the request's `idempotency_key`: the owner sent the
+  invoice to its client (R-94). `users.login_email` and `profiles.email_notifications` decide where and whether;
   `users.welcome` marks accounts made after welcome emails existed.
 - Planned (PLAN 11.5, 11.10): `refund_intents` (one per approved claim), `refund_claims`, `support_cases` (wrong chain,
   late), `webhook_endpoints`, `webhook_deliveries`.

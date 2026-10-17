@@ -2,6 +2,7 @@
 
 import { BUTTON_VARIANTS, Button, TONES, useToast } from "@forwend/ui-web";
 import { Send } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useSendInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import type { InvoiceSend } from "@/features/invoices/types/invoices";
@@ -35,18 +36,29 @@ export function SendToClient({
 }: SendToClientProps) {
   const [send, { isLoading }] = useSendInvoiceMutation();
   const toast = useToast();
+  const last = sends.at(-1);
+  const next = last ? Date.parse(last.requestedAt) + SEND_EVERY_MS : 0;
+  const waiting = payable && next > Date.now();
+  // The button goes once sent: focus moves to the line that takes its place, when the refetch shows it.
+  const again = useRef<HTMLParagraphElement>(null);
+  const [sent, setSent] = useState(false);
+  useEffect(() => {
+    if (sent && waiting) {
+      again.current?.focus();
+      setSent(false);
+    }
+  }, [sent, waiting]);
   if (!email) {
     return payable ? (
       <p className="px-4 pb-4 text-sm text-muted sm:px-5">{COPY.send.noEmail}</p>
     ) : null;
   }
-  const last = sends.at(-1);
-  const next = last ? Date.parse(last.requestedAt) + SEND_EVERY_MS : 0;
 
   const onSend = async () => {
     try {
       await send({ profileId, invoiceId, idempotencyKey: crypto.randomUUID() }).unwrap();
       toast({ tone: TONES.success, title: COPY.send.done(number, email) });
+      setSent(true);
     } catch (failure) {
       const status = (failure as { status?: unknown }).status;
       toast({
@@ -77,14 +89,16 @@ export function SendToClient({
           ))}
         </ul>
       ) : null}
-      {!payable ? null : next > Date.now() ? (
-        <p className="text-sm text-muted">{COPY.send.again(TIME.format(new Date(next)))}</p>
-      ) : (
+      {waiting ? (
+        <p ref={again} tabIndex={-1} className="text-sm text-muted outline-none">
+          {COPY.send.again(TIME.format(new Date(next)))}
+        </p>
+      ) : payable ? (
         <Button size="sm" variant={BUTTON_VARIANTS.secondary} loading={isLoading} onClick={onSend}>
           <Send aria-hidden className="size-[var(--fw-icon-sm)]" />
           {COPY.send.action}
         </Button>
-      )}
+      ) : null}
     </div>
   );
 }

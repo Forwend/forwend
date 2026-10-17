@@ -119,71 +119,72 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-10-17 verify 19:31Z: every check passed except e2e. Two invoice e2e tests got 422 on create: the local dev DB's shared 'E2E shop' profile has 1000 open receive addresses (MaxOpen), left by earlier e2e runs. Both tests passed alone at 19:25Z. Waiting on the owner: clean the local data or run e2e on a fresh database."
+        "2026-10-17 verify 19:31Z: every check passed except e2e. Two invoice e2e tests got 422 on create: the local dev DB's shared 'E2E shop' profile has 1000 open receive addresses (MaxOpen), left by earlier e2e runs. Both tests passed alone at 19:25Z. Waiting on the owner: clean the local data or run e2e on a fresh database.",
+        "2026-10-17 review fail by reviewer: Blocking: apps/backend/api/openapi.yaml:1519-1521. The Error schema's code enum lacks the two new codes, client_email_required and invoice_closed (httpio/errors.go:51,53). Every other code in errors.go is in that enum, and api.md Errors says codes are listed in the spec. So the 409 bodies of the new endpoint break the documented contract (acceptance 4). Add both codes to the enum. Everything else checks out: idempotent replay and cross-invoice conflict, the open status rule, the 24 h and 20/day limits with Retry-After, the profile row lock, the shared bucket taken only after the rules pass, migration Up/Down (matches 00028; the down test passes), recipient and Reply-To, no address logged, bell and public GET leave sends out. Non-blocking notes: (1) send-to-client.tsx:57 with invoices-copy.ts:393 shows 'today's limit, try again tomorrow' for every 429, also for the shared bucket that refills in seconds. (2) notify.go:167 uses options > 1 only, so a payer-chooses invoice already locked to one option is emailed as USD with 'You choose on the payment page'; a partly paid one shows the full amount. (3) After a send the button unmounts and focus drops to the body; cancel moves focus on purpose. (4) A send the worker gave up on still blocks the next send for 24 h. (5) The invoice status is read without a lock and the worker does not check it again, so an invoice paid or canceled seconds later is still emailed. (6) docs/backend/architecture.md:169-173 makes an already long sentence longer (D-84); a separate sentence for invoice.sent fixes it. (7) send.go:15 says the limits keep the Resend budget for paid emails, but 5 profiles at 20 a day use the whole 100/day free tier. (8) The 19:31Z task note about e2e 422 is stale; verify at 19:40Z passed e2e. Checks run: backend test, web test (88), lint, typecheck --force and check-docs all pass; no anvil left."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-17T19:40:39Z",
+        "at": "2026-10-17T20:21:14Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 69.4,
-            "log": "docs/runs/F223-20261017T194039Z-unit.log"
+            "seconds": 75.6,
+            "log": "docs/runs/F223-20261017T202114Z-unit.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 207.4,
-            "log": "docs/runs/F223-20261017T194039Z-e2e.log"
+            "seconds": 211.2,
+            "log": "docs/runs/F223-20261017T202114Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.4,
-            "log": "docs/runs/F223-20261017T194039Z-harness.log"
+            "seconds": 2.3,
+            "log": "docs/runs/F223-20261017T202114Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F223-20261017T194039Z-docs-check.log"
+            "log": "docs/runs/F223-20261017T202114Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F223-20261017T194039Z-lint.log"
+            "log": "docs/runs/F223-20261017T202114Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F223-20261017T194039Z-typecheck.log"
+            "seconds": 1.1,
+            "log": "docs/runs/F223-20261017T202114Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.7,
-            "log": "docs/runs/F223-20261017T194039Z-build.log"
+            "seconds": 5.0,
+            "log": "docs/runs/F223-20261017T202114Z-build.log"
           }
         ],
         "taskHash": "0f940609c57c8670",
-        "filesHash": "e685da29f8ca1ebb",
+        "filesHash": "73d9f48e1403968a",
         "proof": {
           "1": "unit: httpapi/tests/invoices_send_test.go TestSendInvoiceToClient: 400 without Idempotency-Key, 201 then 200 for the same key with one outbox row, 429 rate_limited within 24 h and after 20 profile sends, 201 again after 25 h, 409 idempotency_conflict for a key of another invoice, 409 client_email_required, 409 invoice_closed for closed, canceled and paid, 403 for another user's profile, 404 unknown; the shared emails bucket is the payer-email one (routes.go)",
           "2": "unit: notify_test.go TestDeliverSendsTheInvoiceToTheClient: with the owner's email off the email goes to the client, Reply-To the issuer's billing email, subject names the issuer, text has amount, due date, network, pay link and invoice PDF and no settings link; a payer-chooses invoice shows USD and no network; email_test.go checks reply_to in the Resend body; layout_test renders both send views with matching HTML and text links",
-          "3": "e2e: e2e/privy/invoices.spec.ts: Send to client under Billed to answers 201, the toast names the address, Billed to lists Sending to the address and You can send it again after, axe 0; the phone test shows the no-client-email line and fits at 390 px; screenshots docs/runs/F223-send-desk.png, F223-send-desk-dark.png, F223-noemail-phone.png",
-          "4": "docs-check: openapi.yaml adds sendInvoice, SendConflict and the owner-only sends field; docs/backend/api.md (Invoices and Notifications) and architecture.md (outbox_events) name the route, errors, limits and email; DESIGN.md describes the Billed to controls"
+          "3": "e2e: e2e/privy/invoices.spec.ts: Send to client under Billed to answers 201, the toast names the address, Billed to lists Sending to the address, focus moves to You can send it again after, axe 0; the phone test shows the no-client-email line and fits at 390 px; screenshots docs/runs/F223-send-desk.png, F223-send-desk-dark.png, F223-noemail-phone.png",
+          "4": "docs-check: openapi.yaml adds sendInvoice, SendConflict, the owner-only sends field and client_email_required and invoice_closed in the Error code list; docs/backend/api.md (Invoices and Notifications) and architecture.md (outbox_events) name the route, errors, limits and email; DESIGN.md describes the Billed to controls"
         }
       },
       "branch": "feat/f223-the-owner-can-email-an-invoice-to-the-cl",
