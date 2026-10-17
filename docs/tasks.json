@@ -842,7 +842,7 @@
         "New invoice has a PO or reference field in Details; the owner's invoice page shows it in Details; the invoice, canceled invoice and receipt PDFs show it under the number; a new invoice started from a closed one keeps it. axe 0 and no sideways scroll at 390 px."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -928,11 +928,18 @@
           "summary": "PASS. The earlier defect is fixed: new-invoice-form.tsx:580 fills from a picked client only when the field is empty or still holds the last filled default, clears it when the new client has none, and clears a shown reference error. Checked with scratch vitests (deleted after): Acme->Carol->Bob->Carol gives PO-ACME-1, PO-CAROL, empty, PO-CAROL; a typed PO-777 survives a pick; a cleared field refills; a start.reference shows and is kept; '  PO-9  ' is sent as PO-9; Request money has no field and sends ''; a 422 'reference must ...' shows under the field and a later fill clears it. Backend tests (invoice, httpapi/tests, database, document, profile) and web vitest (85) pass; docs-check, typecheck, lint pass. Migration 00032 = 00031 trigger/view + reference, index = 00014 + reference, Down restores both; searchText matches the index; hash unchanged without reference; one shared 100-rune one-line limit; all reads via OrNull; PDFs never cut it; no duplicate test keys. Minor notes, no change needed: 1) new-invoice-form.tsx:580 an owner-edited default (pick Acme, change PO-ACME-1 to PO-ACME-2, switch to Bob) stays on Bob's invoice; this follows the 'typed value stays' rule, but the field sits above Client, so the owner may not see it. 2) A reference from a closed invoice (start.reference) counts as typed: switching to another saved client keeps the old PO; rare on a restart. 3) The pay page, list rows, preview, clients table and client search do not show or search the reference; fine for R-90, the pay page is worth a follow-up. 4) invoices_test.go k34/k35 -> k40/k41 fixes duplicate keys from F215, outside this task.",
           "at": "2026-10-17T12:55:00Z",
           "filesHash": "c73ab4a91a162ce8"
-        }
+        },
+        "commit": "bfb95bf",
+        "doneAt": "2026-10-17T12:55:24Z"
       },
       "branch": "feat/f217-an-invoice-can-carry-the-client-s-po-num",
       "baseCommit": "c47f731a0af65152d73a2f6da08ab4b2dad4b514",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f217-an-invoice-can-carry-the-client-s-po-num",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
