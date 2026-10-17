@@ -58,6 +58,7 @@ const OPEN = {
   note: null,
   dueDate: null,
   supplyDate: null,
+  reference: null,
   client: { name: "Acme", email: null, address: null, country: null, taxId: null },
   issuer: null,
   chainId: 84532,

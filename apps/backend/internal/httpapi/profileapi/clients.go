@@ -35,7 +35,7 @@ func putClient(profiles *profile.Service) http.HandlerFunc {
 		}
 		c, created, err := profiles.SaveClient(r.Context(), r.PathValue("profileId"), r.PathValue("clientId"),
 			profile.ClientDetails{Name: body.Name, Email: body.Email, Address: body.Address, Country: body.Country,
-				TaxID: body.TaxID})
+				TaxID: body.TaxID, Reference: body.Reference})
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

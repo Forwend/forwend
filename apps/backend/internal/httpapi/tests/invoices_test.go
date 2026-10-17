@@ -162,7 +162,7 @@ func TestCreateInvoice(t *testing.T) {
 		t.Fatalf("statuses %v", b)
 	}
 	if b["number"] != float64(1) || b["title"] != nil || b["note"] != nil || b["dueDate"] != nil || b["supplyDate"] != nil ||
-		b["senderName"] != nil ||
+		b["reference"] != nil || b["senderName"] != nil ||
 		!reflect.DeepEqual(b["client"], map[string]any{"name": nil, "email": nil, "address": nil, "country": nil, "taxId": nil}) {
 		t.Fatalf("number and details %v", b)
 	}
@@ -212,11 +212,11 @@ func TestCreateInvoice(t *testing.T) {
 
 const detailsBody = `{"chainId": 84532, "token": "` + usdc + `", "amount": "5000000", "title": "Logo design",
 	"note": "Thanks!\nPay within 14 days.", "dueDate": "2026-11-01", "supplyDate": "2026-10-31",
-	"senderName": "Alice Design", "client": {"name": "Bob Ltd", "email": "bob@example.com", "address": "Main St 1\nBerlin", "country": "DE",
+	"reference": "PO-4500012345", "senderName": "Alice Design", "client": {"name": "Bob Ltd", "email": "bob@example.com", "address": "Main St 1\nBerlin", "country": "DE",
 	"taxId": "DE999999999"}}`
 
 // The details are stored and returned to the owner; the public GET gives the payer the number, title, note, due and
-// supply dates and sender name, never the client's contact details.
+// supply dates, reference and sender name, never the client's contact details.
 func TestCreateInvoiceStoresDetails(t *testing.T) {
 	e := invoiceAPI(t)
 	r := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", detailsBody)
@@ -224,7 +224,7 @@ func TestCreateInvoiceStoresDetails(t *testing.T) {
 		t.Fatalf("got %d %v", r.status, r.body)
 	}
 	want := map[string]any{"number": float64(1), "title": "Logo design", "note": "Thanks!\nPay within 14 days.",
-		"dueDate": "2026-11-01", "supplyDate": "2026-10-31", "senderName": "Alice Design",
+		"dueDate": "2026-11-01", "supplyDate": "2026-10-31", "reference": "PO-4500012345", "senderName": "Alice Design",
 		"client": map[string]any{"name": "Bob Ltd", "email": "bob@example.com", "address": "Main St 1\nBerlin",
 			"country": "DE", "taxId": "DE999999999"}}
 	for k, v := range want {
@@ -237,7 +237,7 @@ func TestCreateInvoiceStoresDetails(t *testing.T) {
 		t.Fatalf("same key and body: %d %v", again.status, again.body)
 	}
 	for _, edit := range [][2]string{{"Logo", "Icon"}, {"Alice Design", "Alice"}, {`"DE"`, `"FR"`}, {"DE999999999", "DE1"},
-		{"2026-10-31", "2026-10-30"}} {
+		{"2026-10-31", "2026-10-30"}, {"PO-4500012345", "PO-1"}} {
 		other := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", strings.Replace(detailsBody, edit[0], edit[1], 1))
 		if other.status != http.StatusConflict || errorCode(other) != "idempotency_conflict" {
 			t.Fatalf("same key, %s changed: %d %v", edit[0], other.status, other.body)
@@ -406,8 +406,10 @@ func TestCreateInvoiceErrors(t *testing.T) {
 		{"dueDate not a day", "did:privy:alice", e.aliceProfile, "k31", body(`"amount": "1", "dueDate": "2026-02-30"`), 422, "invalid_value"},
 		{"dueDate with a time", "did:privy:alice", e.aliceProfile, "k32", body(`"amount": "1", "dueDate": "2026-11-01T00:00:00Z"`), 422, "invalid_value"},
 		{"dueDate year 0", "did:privy:alice", e.aliceProfile, "k33", body(`"amount": "1", "dueDate": "0000-01-01"`), 422, "invalid_value"},
-		{"supplyDate not a day", "did:privy:alice", e.aliceProfile, "k34", body(`"amount": "1", "supplyDate": "2026-02-30"`), 422, "invalid_value"},
-		{"supplyDate written another way", "did:privy:alice", e.aliceProfile, "k35", body(`"amount": "1", "supplyDate": "31.10.2026"`), 422, "invalid_value"},
+		{"supplyDate not a day", "did:privy:alice", e.aliceProfile, "k40", body(`"amount": "1", "supplyDate": "2026-02-30"`), 422, "invalid_value"},
+		{"supplyDate written another way", "did:privy:alice", e.aliceProfile, "k41", body(`"amount": "1", "supplyDate": "31.10.2026"`), 422, "invalid_value"},
+		{"reference too long", "did:privy:alice", e.aliceProfile, "k42", body(`"amount": "1", "reference": "` + strings.Repeat("é", 101) + `"`), 422, "invalid_value"},
+		{"reference on two lines", "did:privy:alice", e.aliceProfile, "k43", body(`"amount": "1", "reference": "PO\n1"`), 422, "invalid_value"},
 		{"client country lower case", "did:privy:alice", e.aliceProfile, "k37", body(`"amount": "1", "client": {"country": "de"}`), 422, "invalid_value"},
 		{"client country not assigned", "did:privy:alice", e.aliceProfile, "k38", body(`"amount": "1", "client": {"country": "XK"}`), 422, "invalid_value"},
 		{"client taxId over 50", "did:privy:alice", e.aliceProfile, "k39", body(`"amount": "1", "client": {"taxId": "` + strings.Repeat("1", 51) + `"}`), 422, "invalid_value"},

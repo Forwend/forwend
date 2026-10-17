@@ -93,6 +93,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
 
   // R-86: a saved client fills the invoice below, which keeps its copy after the client is deleted at the end.
   const clientName = `E2E client ${Date.now()}`;
+  const po = `PO-${Date.now()}`;
   await sidebar.getByRole("link", { name: "Clients" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Clients" })).toBeAttached();
   expect(await blockingViolations(page)).toEqual([]);
@@ -111,6 +112,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     "Germany",
   );
   await page.getByRole("textbox", { name: "Tax or VAT ID (optional)" }).fill("DE123456789");
+  await page.getByRole("textbox", { name: "Default PO or reference (optional)" }).fill(po);
   expect(await blockingViolations(page)).toEqual([]);
   await page.getByRole("button", { name: "Save client" }).click();
   await expect(page).toHaveURL("/app/clients");
@@ -180,6 +182,8 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await page.getByRole("option", { name: new RegExp(`^${clientName}`) }).click();
     await expect(page.getByRole("textbox", { name: "Name", exact: true })).toHaveValue(clientName);
     await expect(page.getByRole("textbox", { name: "Tax or VAT ID" })).toHaveValue("DE123456789");
+    // R-90: the saved client's default PO number fills the invoice's reference.
+    await expect(page.getByRole("textbox", { name: "PO or reference (optional)" })).toHaveValue(po);
   });
   if (invoice) {
     expect(invoice.returnUrl).toBe("https://shop.example/thanks");
@@ -211,6 +215,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
         new Date(`${supplied}T00:00:00Z`),
       ),
     );
+    await expect(details.locator("div").filter({ hasText: /^Reference/ })).toContainText(po);
     await expect(details).toContainText("Checkout closes");
     // R-60: each said once, the status by the timeline and the close time in Details, so the header has neither.
     await expect(page.getByRole("main").locator("header [data-status]")).toHaveCount(0);
@@ -300,8 +305,10 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     expect(await blockingViolations(page)).toEqual([]);
     await page.unroute(`**/api/v1/**/invoices/${invoice.invoiceId}`);
 
-    // Back in the list, newest first.
+    // Back in the list, newest first; the client's PO number finds the invoice (R-90).
     await page.getByRole("link", { name: "Invoices" }).first().click();
+    await page.getByRole("main").getByRole("searchbox", { name: "Search invoices" }).fill(po);
+    await expect(page.getByRole("row")).toHaveCount(2);
     const row = page.getByRole("row").filter({ hasText: invoice.number });
     await expect(row).toContainText(title);
     await expect(row).toContainText(clientName);

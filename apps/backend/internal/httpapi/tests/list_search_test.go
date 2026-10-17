@@ -93,7 +93,7 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 	for i, b := range []string{
 		body("5000000", `, "title": "Logo design", "client": {"name": "Bob Ltd", "email": "bob@example.com"}`),
 		body("1250500000", ""),
-		body("7000000", `, "title": "Website", "client": {"name": "Kettle & Co.", "email": "kettle@example.org"}`),
+		body("7000000", `, "title": "Website", "reference": "PO-4500012345", "client": {"name": "Kettle & Co.", "email": "kettle@example.org"}`),
 		body("2000000", `, "note": "50% now, rest_later"`),
 		body("3000000", ""),
 	} {
@@ -122,6 +122,7 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 		{"q=_", []any{4.0}},             // a character, not LIKE's wildcard
 		{"q=kettle", []any{3.0}},        // client name
 		{"q=bob%40example", []any{1.0}}, // client email
+		{"q=po-45000", []any{3.0}},      // reference
 		{"q=" + strings.ToUpper(receive[10:30]), []any{5.0}},
 		{"q=1%2C250.50", []any{2.0}}, // amount: 1,250.50 USDC exactly
 		{"q=1250.5", []any{2.0}},

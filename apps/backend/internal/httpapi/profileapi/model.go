@@ -56,11 +56,12 @@ func toBillingDetailsJSON(d profile.BillingDetails) billingDetailsJSON {
 
 // clientBody is the PUT /v1/profiles/{profileId}/clients/{clientId} body (R-86); empty means none.
 type clientBody struct {
-	Name    string `json:"name"`
-	Email   string `json:"email"`
-	Address string `json:"address"`
-	Country string `json:"country"`
-	TaxID   string `json:"taxId"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	Address   string `json:"address"`
+	Country   string `json:"country"`
+	TaxID     string `json:"taxId"`
+	Reference string `json:"reference"`
 }
 
 // clientJSON is a saved client; a field it doesn't have is null.
@@ -71,13 +72,14 @@ type clientJSON struct {
 	Address   *string `json:"address"`
 	Country   *string `json:"country"`
 	TaxID     *string `json:"taxId"`
+	Reference *string `json:"reference"`
 	UpdatedAt string  `json:"updatedAt"`
 }
 
 func toClientJSON(c profile.Client) clientJSON {
 	return clientJSON{
 		ClientID: c.ID, Name: c.Name, Email: httpio.OrNull(c.Email), Address: httpio.OrNull(c.Address),
-		Country: httpio.OrNull(c.Country), TaxID: httpio.OrNull(c.TaxID), UpdatedAt: c.UpdatedAt.UTC().Format(time.RFC3339),
+		Country: httpio.OrNull(c.Country), TaxID: httpio.OrNull(c.TaxID), Reference: httpio.OrNull(c.Reference), UpdatedAt: c.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 }
 

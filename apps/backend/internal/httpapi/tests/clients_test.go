@@ -27,14 +27,14 @@ func TestClients(t *testing.T) {
 		t.Fatalf("empty list: %d %v", r.status, r.body)
 	}
 	full := `{"name": "Bob Ltd", "email": "ap@bob.example", "address": "Main St 1\nBerlin", "country": "DE",
-		"taxId": "DE999999999"}`
+		"taxId": "DE999999999", "reference": "PO-4500012345"}`
 	made := e.call(t, "PUT", path+"/"+clientB, alice, "", full)
 	if made.status != http.StatusCreated {
 		t.Fatalf("PUT new: %d %v", made.status, made.body)
 	}
 	delete(made.body, "updatedAt")
 	want := map[string]any{"clientId": clientB, "name": "Bob Ltd", "email": "ap@bob.example",
-		"address": "Main St 1\nBerlin", "country": "DE", "taxId": "DE999999999"}
+		"address": "Main St 1\nBerlin", "country": "DE", "taxId": "DE999999999", "reference": "PO-4500012345"}
 	if !reflect.DeepEqual(made.body, want) {
 		t.Fatalf("PUT returned %v, want %v", made.body, want)
 	}
@@ -43,7 +43,7 @@ func TestClients(t *testing.T) {
 		t.Fatalf("PUT again: %d %v", again.status, again.body)
 	}
 	if r := e.call(t, "PUT", path+"/"+clientA, alice, "", `{"name": "anna"}`); r.status != http.StatusCreated ||
-		r.body["email"] != nil || r.body["country"] != nil || r.body["taxId"] != nil {
+		r.body["email"] != nil || r.body["country"] != nil || r.body["taxId"] != nil || r.body["reference"] != nil {
 		t.Fatalf("PUT name only: %d %v", r.status, r.body)
 	}
 	if got := clients(list(alice)); len(got) != 2 || got[0].(map[string]any)["name"] != "anna" ||
@@ -53,7 +53,7 @@ func TestClients(t *testing.T) {
 
 	// An invoice copies the client's details; editing and deleting the client leave it as it was.
 	invoice := e.post(t, alice, e.aliceProfile, "key-1", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1",
-		"client": `+full+`}`)
+		"client": `+strings.Replace(full, `, "reference": "PO-4500012345"`, "", 1)+`}`)
 	if invoice.status != http.StatusCreated {
 		t.Fatalf("invoice: %d %v", invoice.status, invoice.body)
 	}
@@ -109,6 +109,8 @@ func TestClients(t *testing.T) {
 		{"country", `"de"`, "invalid_value", http.StatusUnprocessableEntity},
 		{"country", `"XK"`, "invalid_value", http.StatusUnprocessableEntity},
 		{"taxId", `"` + strings.Repeat("1", 51) + `"`, "invalid_value", http.StatusUnprocessableEntity},
+		{"reference", `"` + strings.Repeat("1", 101) + `"`, "invalid_value", http.StatusUnprocessableEntity},
+		{"reference", `"PO\n1"`, "invalid_value", http.StatusUnprocessableEntity},
 		{"phone", `"123"`, "malformed_request", http.StatusBadRequest},
 	} {
 		body := map[string]json.RawMessage{"name": json.RawMessage(`"Carol"`)}

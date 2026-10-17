@@ -4,4 +4,5 @@ export const CLIENT_LIMITS = {
   email: 254,
   address: 500,
   taxId: 50,
+  reference: 100,
 } as const;

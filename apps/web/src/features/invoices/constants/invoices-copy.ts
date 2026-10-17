@@ -91,6 +91,9 @@ export const NEW_INVOICE_COPY = {
   },
   titleLabel: "Title (optional)",
   titlePlaceholder: "Website, October",
+  referenceLabel: "PO or reference (optional)",
+  referenceHint:
+    "Your client's purchase order (PO) number or their reference. Shown on the invoice and its PDF.",
   noteLabel: "Note to the client (optional)",
   detailsGroup: "Details",
   returnLabel: "Return link (optional)",
@@ -158,6 +161,7 @@ export const NEW_INVOICE_COPY = {
   fieldErrors: {
     [INVOICE_FIELDS.amount]: "Enter an amount above 0 that the token can hold.",
     [INVOICE_FIELDS.title]: atMost(INVOICE_LIMITS.title),
+    [INVOICE_FIELDS.reference]: `Use at most ${INVOICE_LIMITS.reference} characters on one line, with no hidden characters.`,
     [INVOICE_FIELDS.note]: atMost(INVOICE_LIMITS.note),
     [INVOICE_FIELDS.dueDate]: "Enter a date, or leave it empty.",
     [INVOICE_FIELDS.supplyDate]: "Enter a date, or leave it empty.",
@@ -307,6 +311,7 @@ export const INVOICE_COPY = {
   itemsTotal: "Total",
   dueDate: "Due date",
   supplyDate: "Supply date",
+  reference: "Reference",
   expires: "Checkout closes",
   closed: "Checkout closed",
   created: "Created",

@@ -37,6 +37,7 @@ export const sampleInvoice = (
   note: null,
   dueDate: null,
   supplyDate: null,
+  reference: null,
   client: { name: client, email: null, address: null, country: null, taxId: null },
   issuer: null,
   senderName: null,

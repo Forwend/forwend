@@ -18,11 +18,11 @@ import { useSaveClientMutation } from "@/features/clients/api/clients-api";
 import { CLIENT_LIMITS } from "@/features/clients/constants/clients";
 import { CLIENTS_COPY as COPY } from "@/features/clients/constants/clients-copy";
 import { clientCountryOptions, invalidClientField } from "@/features/clients/lib/clients";
-import type { Client, ClientBody } from "@/features/clients/types/clients";
+import type { Client, SavedClientBody } from "@/features/clients/types/clients";
 import { FieldGroup } from "@/shared/components/field-group";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-type Field = keyof ClientBody;
+type Field = keyof SavedClientBody;
 
 export interface ClientFormProps {
   profileId: string;
@@ -47,12 +47,13 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
     event.preventDefault();
     const form = event.currentTarget;
     const value = (name: Field) => String(new FormData(form).get(name) ?? "").trim();
-    const body: ClientBody = {
+    const body: SavedClientBody = {
       name: value("name"),
       email: value("email"),
       address: value("address"),
       country,
       taxId: value("taxId"),
+      reference: value("reference"),
     };
     const shown: Partial<Record<Field, string>> = {};
     if (!body.name) shown.name = COPY.errors.required;
@@ -135,6 +136,17 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
             error={errors.taxId}
           />
         </div>
+      </FieldGroup>
+      <FieldGroup title={COPY.invoicesGroup}>
+        <TextField
+          label={COPY.reference}
+          name="reference"
+          autoComplete="off"
+          defaultValue={client?.reference ?? ""}
+          maxLength={CLIENT_LIMITS.reference}
+          hint={COPY.referenceHint}
+          error={errors.reference}
+        />
       </FieldGroup>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         <Button type="submit" loading={busy}>

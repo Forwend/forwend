@@ -48,6 +48,7 @@ export const INVOICE_LIMITS = {
   clientEmail: CLIENT_LIMITS.email,
   clientAddress: CLIENT_LIMITS.address,
   clientTaxId: CLIENT_LIMITS.taxId,
+  reference: CLIENT_LIMITS.reference,
   senderName: 100,
   returnUrl: 2000,
 } as const;
@@ -59,6 +60,7 @@ export const INVOICE_FIELDS = {
   note: "note",
   dueDate: "dueDate",
   supplyDate: "supplyDate",
+  reference: "reference",
   clientName: "client.name",
   clientEmail: "client.email",
   clientAddress: "client.address",

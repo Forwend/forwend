@@ -1,7 +1,14 @@
-import type { Client, ClientBody } from "@/features/clients/types/clients";
+import type { Client, ClientBody, SavedClientBody } from "@/features/clients/types/clients";
 import { countryOptions } from "@/features/profiles/lib/billing-details";
 
-const FIELDS: (keyof ClientBody)[] = ["name", "email", "address", "country", "taxId"];
+const FIELDS: (keyof SavedClientBody)[] = [
+  "name",
+  "email",
+  "address",
+  "country",
+  "taxId",
+  "reference",
+];
 
 /** A saved client as form values: a field it doesn't have is empty. */
 export function clientBody(client: Client): ClientBody {
@@ -15,7 +22,7 @@ export function clientBody(client: Client): ClientBody {
 }
 
 /** The field a refused save names: the API's message reads "invalid profile request: email must be …". */
-export function invalidClientField(message: string): keyof ClientBody | null {
+export function invalidClientField(message: string): keyof SavedClientBody | null {
   const name = message.split(": ")[1]?.split(" ")[0];
   return FIELDS.find((field) => field === name) ?? null;
 }

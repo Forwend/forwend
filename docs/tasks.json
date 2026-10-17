@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 217,
+  "nextId": 218,
   "tasks": [
     {
       "id": "F208",
@@ -829,6 +829,115 @@
       "delivery": {
         "mode": "pr",
         "branch": "docs/f216-docs-say-the-receipt-never-shows-the-set",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F217",
+      "type": "feat",
+      "behavior": "An invoice can carry the client's PO number or reference, with a default per saved client, shown on the form, the invoice page and the PDFs (PLAN 10.2)",
+      "acceptance": [
+        "The create request takes an optional reference (the client's PO number or their reference, at most 100 characters of plain text on one line); a broken rule is 422 invalid_value. It is part of the idempotency hash only when set, never changes, comes back as reference (null when unset) on the owner's and the public reads, and the invoice list search finds an invoice by it.",
+        "A saved client has an optional default reference (same rules) on PUT and GET; picking that client on New invoice fills the invoice's reference with it, and it can still be changed.",
+        "New invoice has a PO or reference field in Details; the owner's invoice page shows it in Details; the invoice, canceled invoice and receipt PDFs show it under the number; a new invoice started from a closed one keeps it. axe 0 and no sideways scroll at 390 px."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-90",
+        "R-86",
+        "R-42",
+        "R-61"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-17 review fail by reviewer: FAIL. 1) new-invoice-form.tsx:578 'if (picked.reference) setReference(picked.reference)' lets the reference get out of step with the picked client. (a) Pick Acme (default PO-ACME-1), then switch to Bob (no default): all client fields are replaced (tax ID cleared) but the reference stays; the body sent is {client: Bob Ltd, reference: PO-ACME-1}. Invoice details never change, so Bob's invoice page and PDFs carry Acme's PO for good. (b) Owner types PO-777 in Details (above Client), then picks a client with a default: PO-777 is silently replaced by the default. Both reproduced with a scratch vitest. Fix: fill from a client only when the field is empty or still holds the last filled default, and clear it when the new client has none; add a unit test for both cases. Minor: 2) docs/backend/api.md:186, openapi.yaml:549 (getInvoice description) and the invoices_test.go:218 comment list what the public GET gives the payer without reference. 3) A client fill does not clear a shown reference error. 4) invoices_test.go renames k34/k35 to k40/k41 (an old duplicate-key fix, outside this task). 5) The pay page, list rows, preview, clients table and emails do not show the reference. That is fine for R-90; the pay page is worth a follow-up. 6) DESIGN.md:165 rewrap leaves a short line. Checked OK: migration 00032 trigger/view = 00031 + reference, index = 00014 + reference, Down restores the exact state; TestSearchCanUseItsIndex fails with the old searchText (go -overlay) and passed 5 of 5 runs; hash unchanged without reference, the labeled part cannot be confused with other parts; 100 runes, one line, PlainText, with one shared limit; the invoice client block refuses reference; all reads go through OrNull; the 3 PDFs never cut the reference; backend and web unit tests pass.",
+        "2026-10-17 review pass by reviewer: PASS. The earlier defect is fixed: new-invoice-form.tsx:580 fills from a picked client only when the field is empty or still holds the last filled default, clears it when the new client has none, and clears a shown reference error. Checked with scratch vitests (deleted after): Acme->Carol->Bob->Carol gives PO-ACME-1, PO-CAROL, empty, PO-CAROL; a typed PO-777 survives a pick; a cleared field refills; a start.reference shows and is kept; '  PO-9  ' is sent as PO-9; Request money has no field and sends ''; a 422 'reference must ...' shows under the field and a later fill clears it. Backend tests (invoice, httpapi/tests, database, document, profile) and web vitest (85) pass; docs-check, typecheck, lint pass. Migration 00032 = 00031 trigger/view + reference, index = 00014 + reference, Down restores both; searchText matches the index; hash unchanged without reference; one shared 100-rune one-line limit; all reads via OrNull; PDFs never cut it; no duplicate test keys. Minor notes, no change needed: 1) new-invoice-form.tsx:580 an owner-edited default (pick Acme, change PO-ACME-1 to PO-ACME-2, switch to Bob) stays on Bob's invoice; this follows the 'typed value stays' rule, but the field sits above Client, so the owner may not see it. 2) A reference from a closed invoice (start.reference) counts as typed: switching to another saved client keeps the old PO; rare on a restart. 3) The pay page, list rows, preview, clients table and client search do not show or search the reference; fine for R-90, the pay page is worth a follow-up. 4) invoices_test.go k34/k35 -> k40/k41 fixes duplicate keys from F215, outside this task."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-17T12:44:48Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 71.8,
+            "log": "docs/runs/F217-20261017T124448Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 230.5,
+            "log": "docs/runs/F217-20261017T124448Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.5,
+            "log": "docs/runs/F217-20261017T124448Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F217-20261017T124448Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F217-20261017T124448Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F217-20261017T124448Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.8,
+            "log": "docs/runs/F217-20261017T124448Z-build.log"
+          }
+        ],
+        "taskHash": "61df6cd771e84ad2",
+        "filesHash": "c73ab4a91a162ce8",
+        "proof": {
+          "1": "unit: httpapi/tests TestCreateInvoiceStoresDetails returns reference PO-4500012345 on create and the public GET and refuses the same key with another reference (409); TestCreateInvoice returns reference null without one; TestCreateInvoiceErrors gives 422 for 101 characters and for two lines; TestListInvoicesFilterAndSearch finds invoice 3 by q=po-45000; invoice TestSearchCanUseItsIndex shows the list search can use invoices_search (and fails when searchText drifts from the index); database TestInvoiceNumbers refuses UPDATE reference",
+          "2": "unit: httpapi TestClients saves and returns reference on PUT and GET, null without one, 422 for 101 characters or two lines; web new-invoice-form.test: picking a saved client fills PO or reference with its default and sends it, switching to a client without one clears it, and a typed reference is never replaced; e2e: privy merchant test saves a client with a default PO, picks it on New invoice and sees the PO filled in",
+          "3": "e2e: privy merchant test sees the PO in the invoice page Details and finds the invoice by it in the list search; phone test fits 390 px with no sideways scroll and no blocking axe violations on the client form and New invoice; unit: TestInvoicePDF, TestReceiptPDF and TestCanceledInvoicePDF print 'INV-… Reference PO-…' under the number; invoices.test restartFrom keeps the reference; screenshots docs/runs/F217-*.png"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. The earlier defect is fixed: new-invoice-form.tsx:580 fills from a picked client only when the field is empty or still holds the last filled default, clears it when the new client has none, and clears a shown reference error. Checked with scratch vitests (deleted after): Acme->Carol->Bob->Carol gives PO-ACME-1, PO-CAROL, empty, PO-CAROL; a typed PO-777 survives a pick; a cleared field refills; a start.reference shows and is kept; '  PO-9  ' is sent as PO-9; Request money has no field and sends ''; a 422 'reference must ...' shows under the field and a later fill clears it. Backend tests (invoice, httpapi/tests, database, document, profile) and web vitest (85) pass; docs-check, typecheck, lint pass. Migration 00032 = 00031 trigger/view + reference, index = 00014 + reference, Down restores both; searchText matches the index; hash unchanged without reference; one shared 100-rune one-line limit; all reads via OrNull; PDFs never cut it; no duplicate test keys. Minor notes, no change needed: 1) new-invoice-form.tsx:580 an owner-edited default (pick Acme, change PO-ACME-1 to PO-ACME-2, switch to Bob) stays on Bob's invoice; this follows the 'typed value stays' rule, but the field sits above Client, so the owner may not see it. 2) A reference from a closed invoice (start.reference) counts as typed: switching to another saved client keeps the old PO; rare on a restart. 3) The pay page, list rows, preview, clients table and client search do not show or search the reference; fine for R-90, the pay page is worth a follow-up. 4) invoices_test.go k34/k35 -> k40/k41 fixes duplicate keys from F215, outside this task.",
+          "at": "2026-10-17T12:55:00Z",
+          "filesHash": "c73ab4a91a162ce8"
+        },
+        "commit": "bfb95bf",
+        "doneAt": "2026-10-17T12:55:24Z"
+      },
+      "branch": "feat/f217-an-invoice-can-carry-the-client-s-po-num",
+      "baseCommit": "c47f731a0af65152d73a2f6da08ab4b2dad4b514",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f217-an-invoice-can-carry-the-client-s-po-num",
         "base": "main"
       }
     }

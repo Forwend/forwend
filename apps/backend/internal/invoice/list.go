@@ -37,12 +37,12 @@ const StatusFilterSQL = `CASE WHEN settlement_status = 'settled' THEN 'settled' 
 	WHEN payment_status IN ('expired', 'expired_partially_paid') OR ` + ClosedSQL + ` THEN 'expired'
 	ELSE 'open' END`
 
-// searchText is what a search looks in: the number as shown (INV-0042), title, note, client name and email and
-// the main row's receive address. Read through invoicesCurrent, it must stay the expression of the invoices_search
-// trigram index (migration 00014) on the main row's columns.
+// searchText is what a search looks in: the number as shown (INV-0042), title, note, client name and email, the main
+// row's receive address and the reference. Read through invoicesCurrent, it must stay the expression of the
+// invoices_search trigram index (migration 00032) on the main row's columns.
 const searchText = `('INV-' || lpad(number::text, greatest(length(number::text), 4), '0') || ' ' || coalesce(title, '')
 	|| ' ' || coalesce(note, '') || ' ' || coalesce(client_name, '') || ' ' || coalesce(client_email, '') || ' '
-	|| main_receive_address)`
+	|| main_receive_address || ' ' || coalesce(reference, ''))`
 
 // Page is one page of invoices without deposits; NextCursor is "" on the last one.
 type Page struct {
