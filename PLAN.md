@@ -37,15 +37,14 @@ Phases 1–9 are done; their requirements are PROJECT R-1…R-85 and their recor
 
 Freelancer before merchant (D-55). Scope and evidence: [phase 10 research](docs/research/phase-10-freelancers.md)
 (owner approval 2026-10-16). Freelancers lose the most money on final invoices after delivery and on net-30 clients
-who pay late, so the phase builds deposits, milestones and payment terms as one flow.
+who pay late, so the phase builds deposits, milestones and payment terms as one flow. Where the law decides what an
+invoice says, the phase follows EU, UK and US rules first (D-83).
 
 - 10.1 Clients (R-86): saved clients with legal name, billing email (the finance contact, often not the person who
   ordered the work), address, country and tax/VAT ID. An invoice picks a client and copies the details; the copy never
   changes, like the issuer block (R-43).
-- 10.2 Invoice terms: line items with a description, supply date, PO/reference (with a default PO per saved client),
-  duplicate, and an "Agreed value" in
-  fiat that the user types (currency, amount and the time). An invoice with a due date keeps its checkout open until
-  the due date plus 60 days (D-80); the form warns before saving an earlier close. After 10.1.
+- 10.2 Invoice terms: PO/reference (with a default PO per saved client), duplicate, and an "Agreed value" in fiat that
+  the user types (currency, amount and the time). After 10.1.
 - 10.3 Jobs (D-81): a quote with the work, price and a payment schedule (deposit, milestones, final) and pay dates;
   the client accepts it on `/w/<token>` with a typed name and email. Acceptance issues the deposit invoice; each
   milestone invoice goes out when the freelancer marks the step done; the final invoice lists earlier payments and
@@ -150,7 +149,8 @@ who pay late, so the phase builds deposits, milestones and payment terms as one 
 Mobile; optional BNB and non-EVM networks; HD-wallet receive methods; cross-chain sends; automatic wallet billing;
 full accounting page and Koinly export; opt-in escrow; bank/card on-ramp; public developer sandbox; custom checkout
 domains; platform fees and the business model (D-56, Q-10); external payout address (D-62); file delivery storage
-(D-66). Each new chain or receive method needs its own spike. Planned Base/Arbitrum/Arc/Tempo expansion stays gated
-by D-38. Card payers (card, Apple Pay or Google Pay in, USDC to the invoice) need a card-acquirer spike first:
+(D-66); invoice and tax rules for countries beyond the EU, the UK and the US (D-83). Each new chain or receive
+method needs its own spike. Planned Base/Arbitrum/Arc/Tempo expansion stays gated by D-38.
+Card payers (card, Apple Pay or Google Pay in, USDC to the invoice) need a card-acquirer spike first:
 the consumer on-ramps forbid buying for another person's address, and card payments bring chargebacks back
 ([research](docs/research/phase-10-freelancers.md#card-payers-paying-by-card-receiving-stablecoins)).
