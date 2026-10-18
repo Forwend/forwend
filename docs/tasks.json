@@ -1033,7 +1033,7 @@
         "DESIGN.md describes Jobs, New job and the job page; openapi.yaml and api.md describe the delete route."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
@@ -1120,11 +1120,18 @@
           "summary": "PASS on re-review. Both blocking findings are fixed. 1) apps/backend/internal/job/accept.go: when the UPDATE changes 0 rows, the hook checks in the same transaction whether the job still exists. Gone is ErrNotFound; still there means another accept won, and that accept answers the same (R-100). New TestConcurrentAcceptsWithoutDeposit (accept_test.go) holds two no-deposit accepts behind a job row lock; both pass. Mutation check in a scratch copy: with the old guard it fails with 'accept job: job not found'. TestAcceptOfADeletedJobMakesNoInvoice still passes. The deposit path can't reach the hook twice for one job, because the invoice key replays, so the 'exists' branch never re-links an invoice. 2) The 409 on delete now follows invoice cancel. job-actions.tsx:52-57 shows a warning toast and calls onTooLate. job-screen.tsx:34-39 moves focus to the h1 (tabIndex -1) once the refetch shows acceptedAt; this works whichever comes first. The dialog alert covers only other errors (job-actions.tsx:96). Minor points from round 1 are fixed: job-detail.tsx announces a failed copy in its status region; createJob has an argSchema with createJobBodySchema (jobs-api.ts); DESIGN.md has stacked rows below xl with the total, separate bullets, and the too-late toast. Known limits, not blocking: (a) if a live poll sees an acceptance while the delete dialog is open, the dialog goes away without a message, and focus drops to the body; the page then shows 'Accepted by'. (b) The e2e checks 390 px for the list and New job, not the job page; F231-job-phone-dark.png covers the job page. (c) The api.md wording 'An accept that read the job just before makes no invoice' could add that this accept is 404 job_not_found. Checks run: go test ./internal/job ./internal/httpapi/tests passes. vitest jobs, clients and invoices: 37 passed. typecheck passes. check-docs: 0 errors. The dev DB has 0 jobs and 0 job_payments.",
           "at": "2026-10-18T13:52:08Z",
           "filesHash": "a4ac33cdb3ba380d"
-        }
+        },
+        "commit": "437cbbb",
+        "doneAt": "2026-10-18T13:52:27Z"
       },
       "branch": "feat/f231-a-freelancer-can-create-list-open-and-de",
       "baseCommit": "efd51dba28fccaf529966bc6526121aa3b08d10b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f231-a-freelancer-can-create-list-open-and-de",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
