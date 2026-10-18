@@ -5,6 +5,7 @@ export const JOB_LIMITS = {
   payments: 10,
   paymentTitle: 100,
   dueDays: 90,
+  deliveryLink: 2000,
 } as const;
 
 /** Fields the API names in a 422, as its messages start (R-100). */

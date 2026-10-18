@@ -196,6 +196,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Without billing details it shows the same empty state as New invoice, which comes back here.
 - A job's page has the title as its heading and, until the client accepts, Delete job in the More actions menu.
   - A delete the client's acceptance beat says so in a toast, and focus moves to the heading.
+  - Once accepted, the next payment without an invoice has a small secondary Mark done button (R-103).
+  - It opens a dialog: what it bills and to whom, an optional delivery link, Not yet and Mark done and send.
+  - Marked done, focus moves to the new invoice's number, and a toast says whether the email went.
+  - A payment marked done shows "Done <day>" and its Delivery link, which opens in a new tab.
   - Payments (left) list how each is invoiced and its due days, then its invoice number and status pill.
   - Scope follows Payments when there is one.
   - Client's link (right) says who has to accept or who accepted, and shows the link with Copy link and an open link.
@@ -382,6 +386,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Once accepted, Quote accepted comes first and takes focus: who accepted and when.
   - Pay the deposit is then the page's main button.
   - Another made payment shows a small Pay button while it takes money, else its number and status pill.
+  - A delivered step links "See the delivered work" under its line.
 
 ## Emails
 

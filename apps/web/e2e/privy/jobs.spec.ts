@@ -125,6 +125,48 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   await expect(row).toContainText("Waiting for acceptance");
   expect(await blockingViolations(page)).toEqual([]);
 
+  // R-103: once accepted, the next step can be marked done. The job reads as accepted here: a real acceptance makes a
+  // deposit invoice open 60 days and a job that can't be deleted (D-85). The Go tests cover the real rules.
+  const read = /\/api\/v1\/profiles\/[^/]+\/jobs\/[0-9a-f-]{36}$/;
+  await page.route(read, async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    await route.fulfill({
+      response,
+      json: {
+        ...body,
+        acceptedName: "Jane Doe",
+        acceptedEmail: "jane@client.example",
+        acceptedAt: new Date().toISOString(),
+        payments: [
+          { ...body.payments[0], invoiceId: `0x${"9".repeat(64)}`, number: 9001, status: "open" },
+          body.payments[1],
+        ],
+      },
+    });
+  });
+  await row.getByRole("link", { name: title }).click();
+  // The page shows the job it read before; it reads it again when the window gets focus, unless a read is under way.
+  const readsAgain = (text: string) =>
+    expect(async () => {
+      await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+      await expect(link).toContainText(text, { timeout: 1000 });
+    }).toPass();
+  await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
+  await readsAgain("Accepted by Jane Doe");
+  await payments.getByRole("button", { name: "Mark done" }).click();
+  const markDone = page.getByRole("dialog", { name: "Mark Final payment done?" });
+  await expect(markDone).toContainText("emailed to delivered@resend.dev");
+  await expect(
+    markDone.getByRole("textbox", { name: "Link to the delivered work (optional)" }),
+  ).toBeVisible();
+  expect(await blockingViolations(page)).toEqual([]);
+  await markDone.getByRole("button", { name: "Not yet" }).click();
+  await expect(markDone).toBeHidden();
+  await page.unroute(read);
+  await readsAgain("Waiting for E2E client to accept.");
+  await page.goBack();
+
   // Deleted before the client accepts, after asking.
   await row.getByRole("link", { name: title }).click();
   await page.getByRole("main").getByRole("button", { name: "More actions" }).click();

@@ -39,6 +39,10 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusNotFound, "job_not_found", "job not found"
 	case errors.Is(err, job.ErrAccepted):
 		status, code, message = http.StatusConflict, "job_accepted", "the client accepted the job, so it can't be deleted"
+	case errors.Is(err, job.ErrNotAccepted):
+		status, code, message = http.StatusConflict, "job_not_accepted", "a step is marked done once the client accepted the job"
+	case errors.Is(err, job.ErrOutOfOrder):
+		status, code, message = http.StatusConflict, "payment_out_of_order", "mark the earlier payments done first"
 	case errors.Is(err, profile.ErrNoBillingDetails):
 		status, code, message = http.StatusNotFound, "billing_details_not_found", "the profile has no billing details yet"
 	case errors.Is(err, profile.ErrClientNotFound):

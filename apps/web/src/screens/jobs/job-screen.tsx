@@ -57,7 +57,7 @@ export function JobScreen({ jobId }: JobScreenProps) {
         ) : null}
       </header>
       {data && !deleted ? (
-        <JobDetail job={data} />
+        <JobDetail profileId={profile.profileId} job={data} />
       ) : status === NOT_FOUND && !deleted ? (
         <div className="flex flex-col items-start gap-3 text-sm text-muted">
           {COPY.gone}

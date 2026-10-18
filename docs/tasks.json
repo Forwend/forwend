@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 233,
+  "nextId": 234,
   "tasks": [
     {
       "id": "F222",
@@ -1252,6 +1252,121 @@
       "delivery": {
         "mode": "pr",
         "branch": "feat/f232-the-client-reads-a-job-s-quote-at-w-toke",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F233",
+      "type": "feat",
+      "behavior": "A freelancer marks each step of an accepted job done: its invoice is made and emailed, the final one lists earlier payments, and a delivery link is kept",
+      "acceptance": [
+        "POST /v1/profiles/{id}/jobs/{jobId}/payments/{position}/done makes that payment's invoice like the deposit (payer chooses, the job's title and client, one line, due its days after the UTC day, checkout 60 days past), records the time and an optional https deliveryLink; in order only (409 payment_out_of_order), after acceptance only (409 job_not_accepted); a payment that has its invoice answers the same; concurrent calls make one invoice; another user 403.",
+        "The last payment's invoice note gives the job's total and each earlier payment with its invoice number, amount and whether it is paid.",
+        "The job page shows Mark done on the next payment of an accepted job; a dialog takes an optional delivery link, marks it done, then emails the invoice with Send to client and says whether it went; delivery links show on the job page and the quote page.",
+        "Tests: Go tests for the route rules, the final note and concurrency; a web unit test for the request bodies; the live e2e opens the dialog on an accepted job read from fixed answers (real milestone invoices would stay open 60 days, D-85) with axe clean.",
+        "openapi.yaml, docs/backend/api.md, architecture.md and DESIGN.md describe the route, the note and the UI.",
+        "The live e2e's api runs with API_USER_BURST=1000 (unset keeps 60; 0 or a non-number is a startup error), so the suite's one test user no longer runs out of requests (D-85)."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "R-103",
+        "R-100",
+        "D-66"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-18 review fail by reviewer: FAIL. One blocking defect, two fixes to make in the same pass, then minor points.\n\nBlocking:\n1. An https link with an upper-case scheme returns 500. apps/backend/internal/job/done.go:26 checks u.Scheme, but Go's url.Parse lowercases the scheme. The migration check (00039_job_payment_done.sql:7, LIKE 'https://%') is case-sensitive and refuses the row. Reproduced with a go test -overlay probe: MarkDone(..., \"HTTPS://drive.example/logo\") returned \"violates check constraint job_payments_delivery_link_check\", which is not ErrInvalid, so WriteError answers 500 internal and logs it. openapi promises 422 for a bad link, and acceptance 1 says an https link is kept. Fix: make the Go rule match the database (for example require strings.HasPrefix(link, \"https://\")) and add \"HTTPS://...\" to the TestMarkDone table (done_test.go:42). invoice/invoice.go:417 has the same gap for returnUrl (pre-existing, not part of this task).\n\nFix in the same pass:\n2. apps/web/src/features/jobs/components/mark-done.tsx:49 shows every 422 as the link field's error (\"Enter an https link\"). invoice.Create also answers 422 for the profile's receive-address caps (MaxOpen 1000, MaxPerDay 500), so an empty link field can show a wrong error. Name the link only when the 422 message names deliveryLink, as job-form.tsx and job-quote.tsx do with their field names. Otherwise show markDoneFailed or the API message.\n3. The new delivery links open a new tab without saying so: job-detail.tsx:84-92 and job-quote.tsx:165-173. The client's link on the same page does say so (job-detail.tsx:167, sr-only COPY.inNewTab). Reuse that pattern on both pages.\n\nMinor (not blocking):\n- docs/runs/F233-job-accepted.png predates linkHintAccepted: it shows the old hint on an accepted job. No screenshot or test shows the quote page's \"See the delivered work\" link, although proof 3 claims it. Retake the job page and add a quote-page screenshot.\n- The R-103 row (docs/PROJECT.md:152) has one 28-word sentence (\"The last payment's invoice is the final one: ...\"). D-84 allows at most 25.\n- mark-done.tsx:96 hard-codes maxLength={2000}. JOB_LIMITS in features/jobs/constants/jobs.ts holds the API limits.\n- Accepted risks to note: the key job:<id>:<n> shares a namespace with owner-chosen Idempotency-Keys (the owner can only block their own MarkDone; same pattern as accept.go). The final note's paid status is fixed when the invoice is made.\n\nChecked and OK:\n- Due date and checkout close: reuses paymentRequest.\n- Idempotency key job:<id>:<position> and the ErrConflict re-read (done.go:63). The concurrency test holds the profile lock.\n- Order and acceptance rules, 404 for a missing position, profileRoutes 403.\n- Status words.\n- Final note length at the largest inputs: 1816 runes (title 200, 9 earlier payments with 100-character titles, 10-digit amounts and numbers). That is under MaxNote 2000, and PlainText passes.\n- rel noopener noreferrer nofollow on both pages. noreferrer keeps the /w/<token> secret out of Referer.\n- The web schema matches openapi and model.go.\n- MarkDone flow: send is dispatched before the refetch can unmount the dialog. The RTK trigger and the toast still work after unmount. Focus moves to the new invoice's number.\n- The e2e route mock plus toPass() around focus events is sound. The job page uses LIVE_QUERY, which skips polling while unfocused and reads again on focus. It hides no bug.\n- API_USER_BURST: must be a whole number of at least 1. Unset keeps 60. It is documented as e2e-only in .env.example, api.md, D-85 and the config comment.\n- Docs: api.md, architecture.md, DESIGN.md, web architecture.md and openapi are accurate.\n\nChecks run:\n- go test ./internal/job ./internal/config ./internal/httpapi/tests: ok.\n- vitest src/features/jobs: 5 passed.\n- typecheck: ok.\n- e2e job-quote.spec: 2 passed.\n- check-docs: 0 errors.\n- The verify log shows the full privy suite passed (40).",
+        "2026-10-18 review pass by reviewer: PASS. The three points from the first review are fixed. The minor points are fixed or recorded as accepted risks.\n\nFixes checked:\n- apps/backend/internal/job/done.go:27 now requires strings.HasPrefix(link, \"https://\"), which matches the database check in 00039_job_payment_done.sql:7. TestMarkDone has an \"HTTPS://drive.example/logo\" case that wants ErrInvalid (done_test.go:46), and it passes. An upper-case link now gets 422, not 500.\n- mark-done.tsx marks the link field only when namedField finds deliveryLink in the 422 message. Every other 422 shows markDoneFailed. The link error is the bare \"invalid job request: deliveryLink ...\" message, so namedField finds it. The caps error is wrapped as \"mark job ... done: invalid invoice request: ...\", so it does not match. Both paths are correct.\n- Both delivery links now carry a screen-reader-only \"(opens in a new tab)\": job-detail.tsx:91 with the existing detail inNewTab, and job-quote.tsx:173 with the new QUOTE_COPY.inNewTab. This matches the client's link on the same page.\n- docs/runs/F233-job-accepted.png now shows the after-acceptance hint. The new F233-quote-delivered.png shows \"See the delivered work\" above Pay INV-0015 on the quote page.\n- The long sentence in R-103 is split. No sentence added in this task is over 25 words (D-84).\n- maxLength comes from JOB_LIMITS.deliveryLink.\n\nStill true from the first review:\n- Money: the due date and checkout close reuse paymentRequest.\n- Data: the key job:<id>:<position> and the ErrConflict re-read work. The concurrency test holds the profile lock.\n- The order and acceptance rules and their error codes, and profileRoutes 403.\n- The final note fits invoice MaxNote at the largest inputs: 1816 runes.\n- rel noopener noreferrer nofollow on both pages.\n- The web schema matches openapi and model.go.\n- The MarkDone send still runs if the dialog unmounts, and focus moves to the new invoice.\n- The e2e focus-refetch with toPass() is sound.\n- API_USER_BURST: must be a whole number of at least 1, unset keeps 60, and it is documented as e2e-only.\n- The docs are accurate.\n\nMinor, not blocking:\n- mark-done.tsx writes \"deliveryLink\" inline in the namedField call. A constant beside JOB_FIELDS would fit D-11.\n- No unit test covers the new 422 mapping.\n- Accepted risks: the job:<id>:<n> key namespace, and the final note's paid status fixed when the invoice is made.\n\nChecks run:\n- go test ./internal/job ./internal/config ./internal/httpapi/tests: ok.\n- vitest src/features/jobs: 5 passed.\n- typecheck: ok.\n- e2e job-quote.spec: 2 passed.\n- check-docs: 0 errors.\n- The verify at 15:02Z passed all 7 checks."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-18T15:02:04Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 72.8,
+            "log": "docs/runs/F233-20261018T150204Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 215.0,
+            "log": "docs/runs/F233-20261018T150204Z-e2e.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F233-20261018T150204Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F233-20261018T150204Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F233-20261018T150204Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F233-20261018T150204Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.9,
+            "log": "docs/runs/F233-20261018T150204Z-build.log"
+          }
+        ],
+        "taskHash": "e9745694cb1a82a5",
+        "filesHash": "606713bf50e01435",
+        "proof": {
+          "1": "unit: TestMarkDone: before acceptance ErrNotAccepted; the final before the milestone ErrOutOfOrder; position 0/4 ErrNotFound; http, bare https and HTTPS:// links ErrInvalid (HTTPS:// was a 500 from the database check before the fix); two clicks held on the profile lock make one invoice with the link and doneAt; the milestone invoice is 400 USDC payer chooses, due today+14, line 'Design approved', no note; marking again keeps the first invoice and link. TestJobs: 404 for payment 9, 422 for an http link, 200 with invoiceId, doneAt, deliveryLink and status open, the public read shows deliveryLink, 409 job_not_accepted, and the route is in profileRoutes (403).",
+          "2": "unit: TestMarkDone: after the deposit is paid, the final invoice note is exactly 'Final invoice for Logo design. Job total: 1000.50 USD.\\nEarlier payments:\\n- Deposit (INV-0001): 300.00 USD, paid\\n- Design approved (INV-0002): 400.00 USD, not paid yet\\nThis invoice: Final delivery, 300.50 USD.'",
+          "3": "unit: mark-done.test: the dialog posts {deliveryLink} to .../payments/2/done, then .../invoices/<id>/send with an Idempotency-Key, calls onDone(2), and a failed send toasts 'INV-0002 is made, but it could not be emailed now'; a 422 marks the link only when it names deliveryLink. e2e: jobs.spec shows the job accepted (mocked read), Mark done opens 'Mark Final payment done?' naming delivered@resend.dev with the link field. Delivery links on the job and quote pages say they open a new tab. Screenshots docs/runs/F233-job-accepted.png, F233-mark-done.png, F233-quote-delivered.png.",
+          "4": "e2e: jobs.spec opens the dialog on an accepted job read from a route mock, axe clean, closes it with Not yet, reads the real job again (focus refetch retried until it lands) and deletes it; Go tests cover the real rules; the dev DB keeps 0 jobs.",
+          "5": "docs-check: openapi.yaml has markPaymentDone, doneAt and deliveryLink, MarkDoneConflict and the two codes; api.md has the route rules and the final note; architecture.md has done_at and delivery_link; DESIGN.md has Mark done and the delivery links; docs-check passes.",
+          "6": "unit: TestAPI: API_USER_BURST unset gives 0 (mid.UserBurst 60 stays), 1000 gives 1000, and 0, -5 and 'many' fail with 'API_USER_BURST (a whole number above 0)'; NewGuards takes it; TestUserRateLimit still sees 429 after 60. e2e: playwright.privy.config.ts starts the api with API_USER_BURST=1000 and the full privy suite passes; api.md, .env.example, D-85 and web architecture.md say so."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. The three points from the first review are fixed. The minor points are fixed or recorded as accepted risks.\n\nFixes checked:\n- apps/backend/internal/job/done.go:27 now requires strings.HasPrefix(link, \"https://\"), which matches the database check in 00039_job_payment_done.sql:7. TestMarkDone has an \"HTTPS://drive.example/logo\" case that wants ErrInvalid (done_test.go:46), and it passes. An upper-case link now gets 422, not 500.\n- mark-done.tsx marks the link field only when namedField finds deliveryLink in the 422 message. Every other 422 shows markDoneFailed. The link error is the bare \"invalid job request: deliveryLink ...\" message, so namedField finds it. The caps error is wrapped as \"mark job ... done: invalid invoice request: ...\", so it does not match. Both paths are correct.\n- Both delivery links now carry a screen-reader-only \"(opens in a new tab)\": job-detail.tsx:91 with the existing detail inNewTab, and job-quote.tsx:173 with the new QUOTE_COPY.inNewTab. This matches the client's link on the same page.\n- docs/runs/F233-job-accepted.png now shows the after-acceptance hint. The new F233-quote-delivered.png shows \"See the delivered work\" above Pay INV-0015 on the quote page.\n- The long sentence in R-103 is split. No sentence added in this task is over 25 words (D-84).\n- maxLength comes from JOB_LIMITS.deliveryLink.\n\nStill true from the first review:\n- Money: the due date and checkout close reuse paymentRequest.\n- Data: the key job:<id>:<position> and the ErrConflict re-read work. The concurrency test holds the profile lock.\n- The order and acceptance rules and their error codes, and profileRoutes 403.\n- The final note fits invoice MaxNote at the largest inputs: 1816 runes.\n- rel noopener noreferrer nofollow on both pages.\n- The web schema matches openapi and model.go.\n- The MarkDone send still runs if the dialog unmounts, and focus moves to the new invoice.\n- The e2e focus-refetch with toPass() is sound.\n- API_USER_BURST: must be a whole number of at least 1, unset keeps 60, and it is documented as e2e-only.\n- The docs are accurate.\n\nMinor, not blocking:\n- mark-done.tsx writes \"deliveryLink\" inline in the namedField call. A constant beside JOB_FIELDS would fit D-11.\n- No unit test covers the new 422 mapping.\n- Accepted risks: the job:<id>:<n> key namespace, and the final note's paid status fixed when the invoice is made.\n\nChecks run:\n- go test ./internal/job ./internal/config ./internal/httpapi/tests: ok.\n- vitest src/features/jobs: 5 passed.\n- typecheck: ok.\n- e2e job-quote.spec: 2 passed.\n- check-docs: 0 errors.\n- The verify at 15:02Z passed all 7 checks.",
+          "at": "2026-10-18T15:08:16Z",
+          "filesHash": "606713bf50e01435"
+        },
+        "commit": "6cdca93",
+        "doneAt": "2026-10-18T15:08:33Z"
+      },
+      "branch": "feat/f233-a-freelancer-marks-each-step-of-an-accep",
+      "baseCommit": "21a30732ff1deb545da4b3d571fb1058a06a6952",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f233-a-freelancer-marks-each-step-of-an-accep",
         "base": "main"
       }
     }

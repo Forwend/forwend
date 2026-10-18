@@ -6,7 +6,10 @@ import { apiTime, hash32, openEnum } from "@/shared/schemas/api";
 
 const usdCents = z.string().regex(/^\d+\.\d{2}$/);
 
-/** One payment of the schedule (R-100); invoiceId, number and status are null until its invoice is made. */
+/**
+ * One payment of the schedule (R-100); invoiceId, number and status are null until its invoice is made, doneAt and
+ * deliveryLink until the owner marks its step done (R-103).
+ */
 export const jobPaymentSchema = z.object({
   position: z.number().int().positive(),
   title: z.string(),
@@ -16,6 +19,8 @@ export const jobPaymentSchema = z.object({
   invoiceId: hash32.nullable(),
   number: z.number().int().positive().nullable(),
   status: openEnum<JobPaymentStatus>().nullable(),
+  doneAt: apiTime.nullable(),
+  deliveryLink: z.string().nullable(),
 });
 
 /** GET /v1/jobs/{token}: the job as its client's link shows it. */

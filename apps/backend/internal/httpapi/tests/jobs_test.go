@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -27,9 +28,9 @@ func TestJobs(t *testing.T) {
 	id, token := r.body["jobId"].(string), r.body["token"].(string)
 	payments := []any{
 		map[string]any{"position": float64(1), "title": "Deposit", "amountUsd": "300.00", "dueDays": float64(7),
-			"onAccept": true, "invoiceId": nil, "number": nil, "status": nil},
+			"onAccept": true, "invoiceId": nil, "number": nil, "status": nil, "doneAt": nil, "deliveryLink": nil},
 		map[string]any{"position": float64(2), "title": "Final delivery", "amountUsd": "700.50", "dueDays": float64(14),
-			"onAccept": false, "invoiceId": nil, "number": nil, "status": nil},
+			"onAccept": false, "invoiceId": nil, "number": nil, "status": nil, "doneAt": nil, "deliveryLink": nil},
 	}
 	if !reflect.DeepEqual(r.body["payments"], payments) {
 		t.Fatalf("payments %v", r.body["payments"])
@@ -96,6 +97,31 @@ func TestJobs(t *testing.T) {
 			t.Fatalf("accept answers the typed email: %v", r.body)
 		}
 	}
+
+	// R-103: the next step marked done makes its invoice and keeps the delivery link, which the client's link shows.
+	done := func(id string, position int, body string) reply {
+		return e.call(t, "POST", fmt.Sprintf("%s/%s/payments/%d/done", jobs, id, position), alice, "", body)
+	}
+	if r := done(id, 9, `{}`); r.status != http.StatusNotFound {
+		t.Fatalf("payment 9: %d %v, want 404", r.status, r.body)
+	}
+	if r := done(id, 2, `{"deliveryLink": "http://drive.example"}`); r.status != http.StatusUnprocessableEntity {
+		t.Fatalf("http link: %d %v, want 422", r.status, r.body)
+	}
+	marked := done(id, 2, `{"deliveryLink": "https://drive.example/logo"}`)
+	final := marked.body["payments"].([]any)[1].(map[string]any)
+	if marked.status != http.StatusOK || final["invoiceId"] == nil || final["doneAt"] == nil ||
+		final["deliveryLink"] != "https://drive.example/logo" || final["status"] != "open" {
+		t.Fatalf("mark done: %d %v", marked.status, marked.body)
+	}
+	if link := e.call(t, "GET", "/v1/jobs/"+token, "", "", "").body["payments"].([]any)[1].(map[string]any)["deliveryLink"]; link != "https://drive.example/logo" {
+		t.Fatalf("the client's link shows delivery %v", link)
+	}
+	waiting := e.call(t, "POST", jobs, alice, "job-5", jobBody).body["jobId"].(string)
+	if r := done(waiting, 2, `{}`); r.status != http.StatusConflict || errorCode(r) != "job_not_accepted" {
+		t.Fatalf("before acceptance: %d %v, want 409 job_not_accepted", r.status, r.body)
+	}
+	e.call(t, "DELETE", jobs+"/"+waiting, alice, "", "")
 
 	// R-101: an accepted job can't be deleted; one not accepted can, once.
 	if r := e.call(t, "DELETE", jobs+"/"+id, alice, "", ""); r.status != http.StatusConflict || errorCode(r) != "job_accepted" {

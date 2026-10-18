@@ -51,16 +51,19 @@ type jobJSON struct {
 	AcceptedEmail *string    `json:"acceptedEmail"`
 }
 
-// paymentJSON is one payment; invoiceId, number and status are null until its invoice is made.
+// paymentJSON is one payment; invoiceId, number and status are null until its invoice is made, doneAt and
+// deliveryLink until the owner marks the step done.
 type paymentJSON struct {
-	Position  int     `json:"position"`
-	Title     string  `json:"title"`
-	AmountUSD string  `json:"amountUsd"`
-	DueDays   int     `json:"dueDays"`
-	OnAccept  bool    `json:"onAccept"`
-	InvoiceID *string `json:"invoiceId"`
-	Number    *int64  `json:"number"`
-	Status    *string `json:"status"`
+	Position     int     `json:"position"`
+	Title        string  `json:"title"`
+	AmountUSD    string  `json:"amountUsd"`
+	DueDays      int     `json:"dueDays"`
+	OnAccept     bool    `json:"onAccept"`
+	InvoiceID    *string `json:"invoiceId"`
+	Number       *int64  `json:"number"`
+	Status       *string `json:"status"`
+	DoneAt       *string `json:"doneAt"`
+	DeliveryLink *string `json:"deliveryLink"`
 }
 
 type issuerJSON struct {
@@ -98,7 +101,8 @@ func toPublicJobJSON(j job.Job) publicJobJSON {
 		CreatedAt: j.CreatedAt.Format(time.RFC3339), Payments: []paymentJSON{}}
 	for _, p := range j.Payments {
 		pj := paymentJSON{Position: p.Position, Title: p.Title, AmountUSD: job.USD(p.AmountCents), DueDays: p.DueDays,
-			OnAccept: p.OnAccept, InvoiceID: httpio.OrNull(p.InvoiceID), Status: httpio.OrNull(p.Status)}
+			OnAccept: p.OnAccept, InvoiceID: httpio.OrNull(p.InvoiceID), Status: httpio.OrNull(p.Status),
+			DoneAt: httpio.OrNullTime(p.DoneAt), DeliveryLink: httpio.OrNull(p.DeliveryLink)}
 		if p.InvoiceID != "" {
 			pj.Number = &p.Number
 		}

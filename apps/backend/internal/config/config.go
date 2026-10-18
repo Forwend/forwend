@@ -34,6 +34,9 @@ type API struct {
 	RPCRate    float64
 	// PublicWebURL is the web app's origin, such as https://forwend.app: PDFs link to its /pay/<invoiceId> page.
 	PublicWebURL string
+	// UserBurst is each signed-in user's burst of requests; 0 keeps the default (mid.UserBurst). Only the live e2e,
+	// whose tests all run as one user, sets it.
+	UserBurst int
 }
 
 // Worker is what cmd/worker needs.
@@ -85,7 +88,7 @@ func LoadAPI() (API, error) {
 	c := API{DatabaseURL: r.get("DATABASE_URL"), Addr: r.get("API_ADDR"),
 		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyJWKSURL: r.keysURL("PRIVY_JWKS_URL"), PrivyAppSecret: r.get("PRIVY_APP_SECRET"),
 		ChainsFile: r.get("CHAINS_FILE"), InfuraKeys: r.infuraKeys(), RPCRate: r.rate(),
-		PublicWebURL: r.origin("PUBLIC_WEB_URL")}
+		PublicWebURL: r.origin("PUBLIC_WEB_URL"), UserBurst: r.count("API_USER_BURST")}
 	return c, r.err()
 }
 
@@ -234,6 +237,19 @@ func (r *reader) rate() float64 {
 	v, err := strconv.ParseFloat(raw, 64)
 	if err != nil || !(v > 0) || math.IsInf(v, 1) {
 		r.invalid = append(r.invalid, "RPC_RATE_PER_SECOND (calls per second, such as 10)")
+	}
+	return v
+}
+
+// count is an optional whole number above 0; 0 when unset.
+func (r *reader) count(name string) int {
+	raw := os.Getenv(name)
+	if raw == "" {
+		return 0
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil || v < 1 {
+		r.invalid = append(r.invalid, name+" (a whole number above 0)")
 	}
 	return v
 }

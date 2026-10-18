@@ -67,6 +67,19 @@ export const jobsApi = apiSlice
         responseSchema: publicJobSchema,
         invalidatesTags: [PUBLIC_JOB_TAG],
       }),
+      /** Marks a step of an accepted job done, which makes its invoice (R-103); in order, the same answer twice. */
+      markPaymentDone: build.mutation<
+        Job,
+        { profileId: string; jobId: string; position: number; deliveryLink: string }
+      >({
+        query: ({ profileId, jobId, position, deliveryLink }) => ({
+          url: `${jobUrl(profileId, jobId)}/payments/${position}/done`,
+          method: "POST",
+          body: { deliveryLink },
+        }),
+        responseSchema: jobSchema,
+        invalidatesTags: [JOBS_TAG],
+      }),
       /** Before the client accepts (R-101); 409 job_accepted after. */
       deleteJob: build.mutation<void, { profileId: string; jobId: string }>({
         query: ({ profileId, jobId }) => ({ url: jobUrl(profileId, jobId), method: "DELETE" }),
@@ -80,6 +93,7 @@ export const {
   useGetJobQuery,
   useCreateJobMutation,
   useDeleteJobMutation,
+  useMarkPaymentDoneMutation,
   useGetPublicJobQuery,
   useAcceptJobMutation,
 } = jobsApi;

@@ -178,6 +178,7 @@ with a test.
   `stop_token` and `stopped_at`.
 - `jobs` (R-100): a quote with its link `token`, title, scope, a client copy and an issuer copy from billing details.
   It keeps the client's typed `accepted_name` and `accepted_email`, with `accepted_at`. `job_payments` is its schedule in cents.
+  A payment marked done keeps `done_at` and an optional `delivery_link` (R-103).
   Each payment row gets its `invoice_id` once that invoice is made.
 - `retainers` (R-98): an invoice that repeats every month, with the create `request` as JSON, `first_due`, `end_date`
   and `stopped_at`. `retainer_invoices` numbers each month's invoice from 0, so each month is made once.
