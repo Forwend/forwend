@@ -329,7 +329,7 @@
         "openapi.yaml, docs/backend/api.md, architecture.md and DESIGN.md describe the routes, the schedule, the email and the pages."
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit",
         "e2e"
@@ -349,73 +349,66 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-17T23:51:27Z",
+        "at": "2026-10-18T03:11:43Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 69.7,
-            "log": "docs/runs/F225-20261017T235127Z-unit.log"
+            "seconds": 66.8,
+            "log": "docs/runs/F225-20261018T031143Z-unit.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 196.0,
-            "log": "docs/runs/F225-20261017T235127Z-e2e.log"
+            "seconds": 192.9,
+            "log": "docs/runs/F225-20261018T031143Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.0,
-            "log": "docs/runs/F225-20261017T235127Z-harness.log"
+            "seconds": 1.9,
+            "log": "docs/runs/F225-20261018T031143Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F225-20261017T235127Z-docs-check.log"
+            "log": "docs/runs/F225-20261018T031143Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.5,
-            "log": "docs/runs/F225-20261017T235127Z-lint.log"
+            "seconds": 0.4,
+            "log": "docs/runs/F225-20261018T031143Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F225-20261017T235127Z-typecheck.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F225-20261018T031143Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.9,
-            "log": "docs/runs/F225-20261017T235127Z-build.log"
+            "seconds": 4.0,
+            "log": "docs/runs/F225-20261018T031143Z-build.log"
           }
         ],
         "taskHash": "d43fbca307ad05b7",
-        "filesHash": "3797ff9e060013e3",
+        "filesHash": "0e7d2c6a3671ab98",
         "proof": {
           "1": "unit: httpapi/tests/invoices_reminders_test.go TestPaymentReminders: on and off answer the invoice with reminders.on; on is 409 due_date_required, client_email_required, invoice_closed, and reminders_stopped after the stop link; {} is 422; Bob is 403; unknown invoice 404; the owner's read has reminders.emails with step and stoppedAt, the public read and the bell have none",
           "2": "unit: TestPaymentReminders queues before (due in 3 days), due (due today and 2 days late), after (7 days late), nothing 4 days early, off, paid or stopped, and a second round adds nothing; notify_test.go TestDeliverSendsTheReminderToTheClient: to the client, Reply-To the issuer, subject and text with what is left and the due date, pay link, Stop reminders link and Unsubscribe URL; nothing sent and nothing waiting once stopped or paid after queueing; email_test.go checks the List-Unsubscribe headers in the Resend body; layout_test renders both reminder views",
           "3": "e2e: e2e/stop-reminders.spec.ts: opening the link stops nothing, the button POSTs once, focus moves to Reminders stopped and the line names INV-0007 and Alice Design GmbH, axe 0; a 404 says the link stops nothing, fits 390 px, axe 0; a non-token path is 404; unit: TestPaymentReminders stops by token twice with the same answer and 404 for unknown tokens; screenshots docs/runs/F225-stop-done-desk.png, F225-stop-phone.png",
           "4": "e2e: e2e/privy/invoices.spec.ts: the Payment reminders switch under Billed to starts off with the schedule line, turns on and off with toasts, axe 0; screenshot docs/runs/F225-reminders-desk.png",
-          "5": "docs-check: openapi.yaml adds setReminders, stopReminders (security: []), the owner-only reminders field, RemindersConflict and the two codes; docs/backend/api.md (Invoices and Notifications), architecture.md (outbox_events, invoice_reminders) and DESIGN.md describe them"
-        },
-        "review": {
-          "result": "fail",
-          "by": "reviewer",
-          "summary": "The code works and the checks pass, but the route contract and route docs do not match the code.\n\nBlocking:\n1. apps/backend/api/openapi.yaml:547 lists 429 RateLimited for POST /v1/reminders/{token}/stop. The route has no limiter (apps/backend/internal/httpapi/invoiceapi/routes.go:45), so it never answers 429. docs/backend/api.md:334 (Rate limits) names the public routes with no limit in the api and leaves this new public route out. Remove the 429 and add the stop route to that line, or add a real limit and document it.\n2. The new public page /reminders/<token> is missing from the docs that list the web surfaces and the public store: docs/web/architecture.md:3-4 and :13 (every surface: /, /kit, /app, /pay), docs/web/structure.md:114 (public-store-provider is for /pay), apps/web/AGENTS.md:3. Add it there: outside the (app) group, no Privy, noindex, public store, 404 for a non-token path.\n\nNon-blocking notes:\n- A reminder skipped at delivery (stopped, paid or turned off after it was queued) gets published_at, so the owner page shows it as emailed (notify.go skip path, send.go emails reads published_at as sentAt). Same as F223 sends; it only happens when delivery is delayed.\n- The open filter includes detected, so a reminder can go while a full payment is still confirming.\n- Payer-chooses: if the client picks a token between queue and delivery, the email uses the queued option (the main row). The window is short.\n- With no Resend key, all three steps can wait and then go at once. A delayed before reminder is not checked against the current step.\n- Reminders share the Resend daily budget (D-65) with no per-profile cap.\n- On a 500, httpio/errors.go:74 logs the path, which holds the stop token.\n- PaidToOwnerSQL lives in reminders.go, but owed.go and notify also use it. owed.go is its natural owner.\n- The switch hint is not linked with aria-describedby, and the switch loses focus while saving. NotificationsForm has the same pattern.\n\nChecked and correct: SetReminders rules, row lock and stable 32-byte stop token; idempotent StopReminders that returns only number and sender; QueueReminders UTC windows, latest step only, ON CONFLICT matching the 00035 unique index, open filter, client email, on and not stopped; the 00035 Down restores the 00034 kind check; the re-check at delivery, what is left, USD only while unchosen, Reply-To, the stop link and the List-Unsubscribe headers sent as Resend headers; the send.go and owed.go refactors keep F223 and F224 behavior; the bell lists only paid, settled and held; the web switch and stop page follow the pay page and the settings row; tests follow Which tests to keep.\n\nRan: pnpm --filter @forwend/backend test (exit 0, all packages ok, migrations down test included); pnpm --filter @forwend/web test (89 passed); pnpm lint (exit 0); pnpm typecheck --force (exit 0); python3 scripts/check-docs.py (0 errors); pgrep -fl anvil (none).",
-          "at": "2026-10-18T00:03:52Z",
-          "filesHash": "3797ff9e060013e3"
+          "5": "docs-check: openapi.yaml adds setReminders, stopReminders (security: [], no 429), the owner-only reminders field, RemindersConflict and the two codes; docs/backend/api.md (Invoices, Notifications, public routes without a limit), architecture.md (outbox_events, invoice_reminders), docs/web/architecture.md, structure.md, apps/web/AGENTS.md (the /reminders page) and DESIGN.md describe them"
         }
       },
       "branch": "feat/f225-the-owner-can-turn-on-payment-reminders",
