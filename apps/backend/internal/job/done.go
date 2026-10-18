@@ -44,13 +44,21 @@ func (s *Service) MarkDone(ctx context.Context, profileID, id string, position i
 	if j.AcceptedAt.IsZero() {
 		return Job{}, ErrNotAccepted
 	}
+	if !p.ProposedAt.IsZero() && p.AcceptedAt.IsZero() {
+		return Job{}, ErrChangeNotAccepted
+	}
 	for _, earlier := range j.Payments[:position-1] {
 		if earlier.InvoiceID == "" {
 			return Job{}, ErrOutOfOrder
 		}
 	}
 	r := s.paymentRequest(j, p)
-	if position == len(j.Payments) && position > 1 {
+	// The final invoice is the last payment the client agreed to: a change still waiting after it doesn't count (R-105).
+	last := len(j.Payments)
+	if pending := j.Payments[last-1]; !pending.ProposedAt.IsZero() && pending.AcceptedAt.IsZero() {
+		last--
+	}
+	if position == last && position > 1 {
 		r.Note = finalNote(j, p)
 	}
 	r.After = func(ctx context.Context, tx pgx.Tx, invoiceID string) error {

@@ -45,8 +45,13 @@ func (r Request) check() ([]int64, error) {
 	if len(r.Payments) == 0 || len(r.Payments) > MaxPayments {
 		return nil, fmt.Errorf("%w: payments must list 1 to %d payments", ErrInvalid, MaxPayments)
 	}
-	cents := make([]int64, len(r.Payments))
-	for i, p := range r.Payments {
+	return checkPayments(r.Payments)
+}
+
+// checkPayments returns the payments in cents, or what breaks a rule: a quote's schedule or a scope change.
+func checkPayments(payments []PaymentRequest) ([]int64, error) {
+	cents := make([]int64, len(payments))
+	for i, p := range payments {
 		if p.Title == "" || !utf8.ValidString(p.Title) || utf8.RuneCountInString(p.Title) > MaxPaymentTitle ||
 			!profile.PlainText(p.Title, false) {
 			return nil, fmt.Errorf("%w: payments need a title of at most %d characters of plain text", ErrInvalid,

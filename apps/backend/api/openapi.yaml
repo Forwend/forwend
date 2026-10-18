@@ -683,6 +683,73 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
         "503": { $ref: "#/components/responses/NetworkNotReady" }
+  /v1/profiles/{profileId}/jobs/{jobId}/payments:
+    post:
+      operationId: proposeChange
+      summary: Propose a scope change on an accepted job, a new payment at the end (R-105)
+      description: |
+        The client accepts it by the job's link before it can be marked done; it counts in the total once accepted.
+        A job has at most 10 payments. The same request sent again with the same key returns the job (200).
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [title, amountUsd, dueDays]
+              properties:
+                title: { type: string, minLength: 1, maxLength: 100 }
+                amountUsd: { type: string, pattern: "^[0-9]{1,10}(\\.[0-9]{1,2})?$", description: "Above 0" }
+                dueDays: { type: integer, minimum: 0, maximum: 90 }
+      responses:
+        "200":
+          description: The same request was already made
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/JobNotFound" }
+        "409": { $ref: "#/components/responses/ChangeConflict" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/jobs/{jobId}/payments/{position}:
+    delete:
+      operationId: withdrawChange
+      summary: Withdraw the change waiting for the client, always the last payment (R-105)
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: position
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 10 }
+      responses:
+        "204": { description: Withdrawn }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/JobNotFound" }
+        "409": { $ref: "#/components/responses/NotWithdrawable" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/reminders/{token}/stop:
     post:
       operationId: stopReminders
@@ -882,6 +949,46 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
         "503": { $ref: "#/components/responses/NetworkNotReady" }
+  /v1/jobs/{token}/payments/{position}/accept:
+    post:
+      operationId: acceptChange
+      summary: The client accepts a scope change with a typed name and email (R-105)
+      description: |
+        Public. Keeps the name, email and time on the change; an accepted change answers the same. A payment that is
+        not a change, or one withdrawn, is 404. Limited per link and for everyone together, like acceptJob.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/JobToken"
+        - name: position
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 10 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name, email, proposedAt]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 200 }
+                email: { type: string, maxLength: 254 }
+                proposedAt:
+                  type: string
+                  format: date-time
+                  description: The change's proposedAt as read, with its microseconds; another change at the position is 404
+      responses:
+        "200":
+          description: The job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicJob" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "404": { $ref: "#/components/responses/JobNotFound" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/invoices/{invoiceId}:
     get:
       operationId: getInvoice
@@ -1652,7 +1759,7 @@ components:
     JobPayment:
       type: object
       required: [position, title, amountUsd, dueDays, onAccept, invoiceId, number, status, doneAt, deliveryLink, invoicedAt,
-        paidAt]
+        paidAt, proposedAt, acceptedName, acceptedAt]
       description: |
         One payment; invoiceId, number, status and invoicedAt are null until its invoice is made, doneAt and
         deliveryLink until the owner marks its step done (the deposit is made at acceptance, so it has neither), and
@@ -1673,6 +1780,12 @@ components:
           type: [string, "null"]
           format: date-time
           description: The invoice's paidAt (R-104), the block time of the transfer that completed it; null until paid
+        proposedAt:
+          type: [string, "null"]
+          format: date-time
+          description: When the owner proposed it as a scope change (R-105), with microseconds; null for the quote's payments
+        acceptedName: { type: [string, "null"], description: "The client's typed name, once they accepted the change" }
+        acceptedAt: { type: [string, "null"], format: date-time }
     PublicJob:
       type: object
       required: [title, scope, issuer, payments, totalUsd, acceptedName, acceptedAt, createdAt]
@@ -1684,7 +1797,7 @@ components:
         payments:
           type: array
           items: { $ref: "#/components/schemas/JobPayment" }
-        totalUsd: { type: string, description: "The sum of the payments, with 2 decimals" }
+        totalUsd: { type: string, description: "The sum of the payments the client agreed to, with 2 decimals (R-105)" }
         acceptedName: { type: [string, "null"], description: "The client's typed name, once accepted" }
         acceptedAt: { type: [string, "null"], format: date-time }
         createdAt: { type: string, format: date-time }
@@ -1707,6 +1820,16 @@ components:
                 country: { type: [string, "null"], pattern: "^[A-Z]{2}$" }
                 taxId: { type: [string, "null"] }
             acceptedEmail: { type: [string, "null"] }
+            payments:
+              type: array
+              description: The payments, each with the email the client typed to accept it when it is a change.
+              items:
+                allOf:
+                  - $ref: "#/components/schemas/JobPayment"
+                  - type: object
+                    required: [acceptedEmail]
+                    properties:
+                      acceptedEmail: { type: [string, "null"] }
     JobSummary:
       type: object
       required: [jobId, title, clientName, totalUsd, payments, paid, acceptedAt, createdAt]
@@ -1715,7 +1838,7 @@ components:
         title: { type: string }
         clientName: { type: string }
         totalUsd: { type: string }
-        payments: { type: integer, description: "How many payments the schedule has" }
+        payments: { type: integer, description: "How many payments the client agreed to (R-105)" }
         paid: { type: integer, description: "How many of them are paid or settled" }
         acceptedAt: { type: [string, "null"], format: date-time }
         createdAt: { type: string, format: date-time }
@@ -2022,7 +2145,7 @@ components:
           properties:
             code:
               type: string
-              enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found, job_not_found, job_accepted, job_not_accepted, payment_out_of_order,
+              enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found, job_not_found, job_accepted, job_not_accepted, payment_out_of_order, change_not_accepted, change_pending, payment_not_withdrawable,
                 billing_details_not_found, billing_details_required, client_not_found, idempotency_conflict, invoice_not_paid,
                 invoice_not_cancelable, receipt_sent, client_email_required, invoice_closed, due_date_required,
                 reminders_stopped, invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
@@ -2082,8 +2205,20 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     MarkDoneConflict:
       description: |
-        The client has not accepted the job yet (job_not_accepted), or an earlier payment has no invoice yet
-        (payment_out_of_order).
+        The client has not accepted the job yet (job_not_accepted), an earlier payment has no invoice yet
+        (payment_out_of_order), or the client has not accepted this change yet (change_not_accepted).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ChangeConflict:
+      description: |
+        The Idempotency-Key was used with another change (idempotency_conflict), the client has not accepted the job yet
+        (job_not_accepted), or a change already waits for the client (change_pending).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotWithdrawable:
+      description: Only the last payment, a change the client has not accepted, can be withdrawn (payment_not_withdrawable)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

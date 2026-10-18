@@ -309,7 +309,20 @@ R-100, D-81; the full schema is in openapi.yaml. A job is a quote with a payment
   - After acceptance only (409 `job_not_accepted`), in order (409 `payment_out_of_order`).
   - A payment that has its invoice answers the same; clicks at once replay one invoice.
   - The last payment's invoice note gives the job's total and each earlier payment, its invoice, amount and if it is paid.
+  - A change still waiting for the client doesn't count as the last payment (R-105).
   - Nothing is emailed: the job page then calls Send to client, with its limits (R-94).
+- `POST /v1/profiles/{profileId}/jobs/{jobId}/payments` (R-105) proposes a scope change, with an Idempotency-Key.
+  - Body: `title`, `amountUsd` and `dueDays`, as a payment. It goes at the end of an accepted job's schedule.
+  - A job not accepted yet is 409 `job_not_accepted`; past 10 payments it is 422.
+  - One change waits at a time: another before the client accepts it is 409 `change_pending`.
+  - Until the client accepts it, marking it done is 409 `change_not_accepted`, and it doesn't count in the total.
+- `POST /v1/jobs/{token}/payments/{position}/accept` is the client's accept of a change: `{name, email, proposedAt}`.
+  - `proposedAt` is the change's, with its microseconds, so consent can't land on a change proposed after it.
+  - It keeps the name, email and time once. Another change, or a payment that is not one, is 404 `job_not_found`.
+- `DELETE /v1/profiles/{profileId}/jobs/{jobId}/payments/{position}` withdraws the change waiting for the client.
+  - It is always the last payment, so positions keep no gap. Anything else is 409 `payment_not_withdrawable`.
+- Each payment has `proposedAt`, `acceptedName` and `acceptedAt`, null for the quote's payments.
+  - The owner's read adds `acceptedEmail`; the client's read never shows it.
 - `GET /v1/jobs/{token}` is the client's read, public like the checkout: no client block, typed email, job id or token.
 - `POST /v1/jobs/{token}/accept` is public: `{name, email}`, typed by the client.
   - It keeps them with the time, once; an accepted job answers the same, whoever accepts again.
@@ -392,7 +405,8 @@ seconds (when the next token is back) and runs nothing else.
   read and no other holds unrecorded money, it is 503: another option's empty read never answers for it. A rescan is asked only when the address holds more than is
   recorded and no rescan finished in the last 10 minutes, so money no log explains (Arc native USDC) doesn't start a
   full rescan on every press.
-- `POST /v1/jobs/{token}/accept` makes an invoice, so it has limits in `jobapi/routes.go`.
+- `POST /v1/jobs/{token}/accept` makes an invoice, so it has limits in `jobapi/routes.go`. Accepting a change has its
+  own per-link limit and shares the one for everyone.
   - Per link: 3 at once, then one every 10 s.
   - For everyone together: 20 at once, then 5 a second.
 - The other public routes (`GET /v1/invoices/{invoiceId}`, `GET /v1/jobs/{token}`, both PDFs and `POST /v1/reminders/{token}/stop`) have no limit in the api. Next's `/api` rewrite adds

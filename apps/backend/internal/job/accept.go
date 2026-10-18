@@ -16,12 +16,8 @@ import (
 // Accept records the client's acceptance of the job its link names, with their typed name and email (R-100). A job
 // with a deposit makes its invoice in the same transaction. An accepted job answers the same, whoever accepts again.
 func (s *Service) Accept(ctx context.Context, token, name, email string) (Job, error) {
-	if name == "" || !utf8.ValidString(name) || utf8.RuneCountInString(name) > profile.MaxClientName ||
-		!profile.PlainText(name, false) {
-		return Job{}, fmt.Errorf("%w: name must be 1 to %d characters of plain text", ErrInvalid, profile.MaxClientName)
-	}
-	if a, err := mail.ParseAddress(email); err != nil || a.Address != email || len(email) > profile.MaxClientEmail {
-		return Job{}, fmt.Errorf("%w: email must be an email address like name@example.com", ErrInvalid)
+	if err := checkTyped(name, email); err != nil {
+		return Job{}, err
 	}
 	j, err := s.ByToken(ctx, token)
 	if err != nil || !j.AcceptedAt.IsZero() {
@@ -77,6 +73,18 @@ func (s *Service) accept(ctx context.Context, j Job, name, email string) (Job, e
 		return Job{}, fmt.Errorf("accept job: %w", err)
 	}
 	return s.ByToken(ctx, j.Token)
+}
+
+// checkTyped refuses the client's typed name and email unless they are plain text and an address.
+func checkTyped(name, email string) error {
+	if name == "" || !utf8.ValidString(name) || utf8.RuneCountInString(name) > profile.MaxClientName ||
+		!profile.PlainText(name, false) {
+		return fmt.Errorf("%w: name must be 1 to %d characters of plain text", ErrInvalid, profile.MaxClientName)
+	}
+	if a, err := mail.ParseAddress(email); err != nil || a.Address != email || len(email) > profile.MaxClientEmail {
+		return fmt.Errorf("%w: email must be an email address like name@example.com", ErrInvalid)
+	}
+	return nil
 }
 
 // paymentRequest is the invoice for one payment: payer chooses in USD (D-75), the job's title and client, one line for

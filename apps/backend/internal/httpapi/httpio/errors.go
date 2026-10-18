@@ -40,9 +40,16 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, job.ErrAccepted):
 		status, code, message = http.StatusConflict, "job_accepted", "the client accepted the job, so it can't be deleted"
 	case errors.Is(err, job.ErrNotAccepted):
-		status, code, message = http.StatusConflict, "job_not_accepted", "a step is marked done once the client accepted the job"
+		status, code, message = http.StatusConflict, "job_not_accepted", "the client has not accepted the job yet"
 	case errors.Is(err, job.ErrOutOfOrder):
 		status, code, message = http.StatusConflict, "payment_out_of_order", "mark the earlier payments done first"
+	case errors.Is(err, job.ErrChangeNotAccepted):
+		status, code, message = http.StatusConflict, "change_not_accepted", "the client has not accepted this change yet"
+	case errors.Is(err, job.ErrChangePending):
+		status, code, message = http.StatusConflict, "change_pending", "a change waits for the client's acceptance"
+	case errors.Is(err, job.ErrNotWithdrawable):
+		status, code, message = http.StatusConflict, "payment_not_withdrawable",
+			"only the last payment, a change the client has not accepted, can be withdrawn"
 	case errors.Is(err, profile.ErrNoBillingDetails):
 		status, code, message = http.StatusNotFound, "billing_details_not_found", "the profile has no billing details yet"
 	case errors.Is(err, profile.ErrClientNotFound):
