@@ -329,7 +329,7 @@
         "openapi.yaml, docs/backend/api.md, architecture.md and DESIGN.md describe the routes, the schedule, the email and the pages."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -405,11 +405,11 @@
         "taskHash": "d43fbca307ad05b7",
         "filesHash": "0e7d2c6a3671ab98",
         "proof": {
-          "1": "unit: httpapi/tests/invoices_reminders_test.go TestPaymentReminders: on and off answer the invoice with reminders.on; on is 409 due_date_required, client_email_required, invoice_closed, and reminders_stopped after the stop link; {} is 422; Bob is 403; unknown invoice 404; the owner's read has reminders.emails with step and stoppedAt, the public read and the bell have none",
-          "2": "unit: TestPaymentReminders queues before (due in 3 days), due (due today and 2 days late), after (7 days late), nothing 4 days early, off, paid or stopped, and a second round adds nothing; notify_test.go TestDeliverSendsTheReminderToTheClient: to the client, Reply-To the issuer, subject and text with what is left and the due date, pay link, Stop reminders link and Unsubscribe URL; nothing sent and nothing waiting once stopped or paid after queueing; email_test.go checks the List-Unsubscribe headers in the Resend body; layout_test renders both reminder views",
-          "3": "e2e: e2e/stop-reminders.spec.ts: opening the link stops nothing, the button POSTs once, focus moves to Reminders stopped and the line names INV-0007 and Alice Design GmbH, axe 0; a 404 says the link stops nothing, fits 390 px, axe 0; a non-token path is 404; unit: TestPaymentReminders stops by token twice with the same answer and 404 for unknown tokens; screenshots docs/runs/F225-stop-done-desk.png, F225-stop-phone.png",
-          "4": "e2e: e2e/privy/invoices.spec.ts: the Payment reminders switch under Billed to starts off with the schedule line, turns on and off with toasts, axe 0; screenshot docs/runs/F225-reminders-desk.png",
-          "5": "docs-check: openapi.yaml adds setReminders, stopReminders (security: [], no 429), the owner-only reminders field, RemindersConflict and the two codes; docs/backend/api.md (Invoices, Notifications, public routes without a limit), architecture.md (outbox_events, invoice_reminders), docs/web/architecture.md, structure.md, apps/web/AGENTS.md (the /reminders page) and DESIGN.md describe them"
+          "1": "unit: httpapi/tests/invoices_reminders_test.go TestPaymentReminders",
+          "2": "unit: TestPaymentReminders; notify_test.go TestDeliverSendsTheReminderToTheClient; email_test.go TestResendSendsOneKeyedMessage",
+          "3": "e2e: e2e/stop-reminders.spec.ts",
+          "4": "e2e: e2e/privy/invoices.spec.ts (Payment reminders switch)",
+          "5": "docs-check: openapi.yaml, docs/backend/api.md, architecture.md, docs/web/architecture.md, structure.md, apps/web/AGENTS.md, DESIGN.md"
         },
         "review": {
           "result": "pass",
@@ -417,11 +417,18 @@
           "summary": "Both blocking findings are fixed in 9fc15b2, a docs-only commit. openapi.yaml no longer lists 429 for POST /v1/reminders/{token}/stop. docs/backend/api.md names that route among the public routes with no limit in the api. docs/web/architecture.md (intro and the apps/web row), docs/web/structure.md (public store provider) and apps/web/AGENTS.md now name the public /reminders/<token> page. The commit after it changes only the F225 record in docs/tasks.json: the review note, the new verify time and the proof text. No code changed since the first review. Verify passed again at 2026-10-18T03:11:43Z with all 7 checks.\n\nNon-blocking notes from the first review stay open for the owner:\n- A reminder skipped at delivery gets published_at, so the owner page shows it as emailed (same as F223 sends).\n- The open filter includes detected, so a reminder can go while a full payment confirms.\n- Payer-chooses: a token picked between queue and delivery is not used in the email.\n- With no Resend key, all three steps can wait and go at once.\n- Reminders share the Resend daily budget (D-65) with no per-profile cap.\n- On a 500, httpio/errors.go:74 logs the path, which holds the stop token.\n- PaidToOwnerSQL lives in reminders.go; owed.go is its natural owner.\n- The switch hint has no aria-describedby, and the switch loses focus while saving (same as NotificationsForm).\n\nRan: git diff 0a24304..HEAD (6 files, docs and tasks.json only); python3 scripts/check-docs.py (0 errors); pgrep -fl anvil (none); git status (clean).",
           "at": "2026-10-18T03:16:34Z",
           "filesHash": "0e7d2c6a3671ab98"
-        }
+        },
+        "commit": "d1a82f4",
+        "doneAt": "2026-10-18T03:16:46Z"
       },
       "branch": "feat/f225-the-owner-can-turn-on-payment-reminders",
       "baseCommit": "3927b29d11f25037e9b421b02c2c6ee7a1c8cc87",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f225-the-owner-can-turn-on-payment-reminders",
+        "base": "main"
+      }
     },
     {
       "id": "F226",
