@@ -110,8 +110,12 @@ export function NewInvoiceForm({
   const [agreed, setAgreed] = useState<AgreedDraft | null>(start?.agreed ?? null);
   // Payment reminders (R-97): filled from the picked saved client or the copied invoice; the owner can change it.
   const [reminders, setReminders] = useState(start?.reminders ?? false);
+  // Repeat every month (R-99), with an optional last due date; a duplicate starts without it.
+  const [repeat, setRepeat] = useState(false);
+  const [repeatEnd, setRepeatEnd] = useState<string | null>(null);
   const agreedId = useId();
   const remindersId = useId();
+  const repeatId = useId();
   const filledReference = useRef("");
   // D-80: who set the checkout's close. The due date sets it until the owner picks one of their own, which then stays.
   const [closeBy, setCloseBy] = useState<"default" | "due" | "owner">("default");
@@ -220,11 +224,15 @@ export function NewInvoiceForm({
         : undefined;
     const badAgreed = agreed !== null && !agreedValue;
     const badReminders = reminders && (!text("dueDate") || !text("clientEmail"));
+    const badRepeat = repeat && (!text("dueDate") || !text("clientEmail"));
+    const badRepeatEnd = repeat && !!repeatEnd && repeatEnd < text("dueDate");
     if (
       typeof units === "string" ||
       badLines ||
       badAgreed ||
       badReminders ||
+      badRepeat ||
+      badRepeatEnd ||
       missingName ||
       expiresIn === null ||
       badLink
@@ -250,6 +258,10 @@ export function NewInvoiceForm({
         [INVOICE_FIELDS.reminders]: badReminders
           ? COPY.fieldErrors[INVOICE_FIELDS.reminders]
           : undefined,
+        [INVOICE_FIELDS.repeat]: badRepeat ? COPY.fieldErrors[INVOICE_FIELDS.repeat] : undefined,
+        [INVOICE_FIELDS.repeatEndDate]: badRepeatEnd
+          ? COPY.fieldErrors[INVOICE_FIELDS.repeatEndDate]
+          : undefined,
       });
       return;
     }
@@ -265,6 +277,7 @@ export function NewInvoiceForm({
       reference: reference.trim(),
       ...(agreedValue ? { agreedValue } : {}),
       ...(reminders ? { reminders: true as const } : {}),
+      ...(repeat ? { repeat: repeatEnd ? { endDate: repeatEnd } : {} } : {}),
       senderName: text("senderName"),
       returnUrl,
       client: {
@@ -664,6 +677,44 @@ export function NewInvoiceForm({
               </p>
             </div>
           )}
+          {request ? null : (
+            <div className="flex flex-col">
+              <Checkbox
+                label={COPY.repeatLabel}
+                checked={repeat}
+                onChange={(event) => {
+                  setRepeat(event.target.checked);
+                  clear(INVOICE_FIELDS.repeat);
+                  clear(INVOICE_FIELDS.repeatEndDate);
+                }}
+                aria-invalid={errors[INVOICE_FIELDS.repeat] ? true : undefined}
+                aria-describedby={repeatId}
+              />
+              <p id={repeatId} className="text-sm text-muted">
+                {errors[INVOICE_FIELDS.repeat] ? (
+                  <span className="text-danger">{errors[INVOICE_FIELDS.repeat]}</span>
+                ) : (
+                  COPY.repeatHint
+                )}
+              </p>
+            </div>
+          )}
+          {repeat ? (
+            <DatePicker
+              label={COPY.repeatEndLabel}
+              name="repeatEndDate"
+              value={repeatEnd}
+              onChange={(iso) => {
+                setRepeatEnd(iso);
+                clear(INVOICE_FIELDS.repeatEndDate);
+              }}
+              min={dueDate ?? today}
+              clearLabel={COPY.repeatEndClear}
+              hint={COPY.repeatEndHint}
+              error={errors[INVOICE_FIELDS.repeatEndDate]}
+              className="sm:max-w-xs"
+            />
+          ) : null}
         </FieldGroup>
 
         {request ? null : (

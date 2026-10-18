@@ -123,6 +123,15 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
+      /** Stops the retainer the invoice belongs to (R-98): the same answer twice, and for an invoice that doesn't repeat. */
+      stopRepeat: build.mutation<Invoice, { profileId: string; invoiceId: string }>({
+        query: ({ profileId, invoiceId }) => ({
+          url: `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}/repeat/stop`,
+          method: "POST",
+        }),
+        responseSchema: invoiceSchema,
+        invalidatesTags: [INVOICES_TAG],
+      }),
       /** The client's stop link (R-96): public, the same answer twice; 404 for a link that is not one. */
       stopReminders: build.mutation<StoppedReminders, string>({
         query: (token) => ({
@@ -180,6 +189,7 @@ export const {
   useCancelInvoiceMutation,
   useSendInvoiceMutation,
   useSetRemindersMutation,
+  useStopRepeatMutation,
   useStopRemindersMutation,
   useGetInvoiceEventsQuery,
   useGetOwedQuery,

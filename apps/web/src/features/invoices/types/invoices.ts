@@ -25,6 +25,7 @@ import type {
   invoiceLineSchema,
   invoiceOptionSchema,
   invoiceRemindersSchema,
+  invoiceRetainerSchema,
   invoiceSchema,
   invoiceSendSchema,
   invoiceSummarySchema,
@@ -40,6 +41,7 @@ export type InvoiceEventKind = (typeof INVOICE_EVENTS)[keyof typeof INVOICE_EVEN
 export type OwedKind = (typeof OWED_KINDS)[keyof typeof OWED_KINDS];
 export type ReminderStep = (typeof REMINDER_STEPS)[keyof typeof REMINDER_STEPS];
 export type InvoiceReminders = z.infer<typeof invoiceRemindersSchema>;
+export type InvoiceRetainer = z.infer<typeof invoiceRetainerSchema>;
 export type StoppedReminders = z.infer<typeof stoppedRemindersSchema>;
 export type Owed = z.infer<typeof owedSchema>;
 export type InvoiceEvent = z.infer<typeof invoiceEventSchema>;

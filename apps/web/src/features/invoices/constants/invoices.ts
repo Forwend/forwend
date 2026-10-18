@@ -17,6 +17,9 @@ export const DEFAULT_EXPIRY: ExpiryChoice = "week";
 export const CUSTOM_EXPIRY = "custom";
 export const EXPIRY_BOUNDS_S = { min: 900, max: 31_536_000 } as const;
 
+/** R-98: each later month's invoice is made and emailed this many days before its due date (the API's RetainerLead). */
+export const RETAINER_LEAD_DAYS = 7;
+
 /** D-80: with a due date the checkout stays open this many days past it, so a client who pays late still pays. */
 export const DUE_GRACE_DAYS = 60;
 
@@ -135,6 +138,8 @@ export const INVOICE_FIELDS = {
   // The API's word on the lines as a whole (R-88).
   lines: "lines",
   reminders: "reminders",
+  repeat: "repeat",
+  repeatEndDate: "repeat.endDate",
 } as const;
 
 export const AMOUNT_ERRORS = {

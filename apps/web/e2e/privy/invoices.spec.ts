@@ -149,6 +149,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   const title = `E2E ${Date.now()}`;
   let due = "";
   let supplied = "";
+  let lastDue = "";
   const invoice = await createInvoice(page, async () => {
     await fixUsdcOnBase(page);
     // An amount the token can't hold and a link that is not https are named on their fields before anything is sent;
@@ -207,6 +208,15 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     // R-90: the saved client's default PO number fills the invoice's reference.
     await expect(page.getByRole("textbox", { name: "PO or reference (optional)" })).toHaveValue(po);
     await expect(page.getByRole("checkbox", { name: "Send payment reminders" })).toBeChecked();
+    // R-99: a retainer; the test stops it below, so no run leaves one running (D-85).
+    await page.getByRole("checkbox", { name: "Repeat every month" }).check();
+    // A last due date two months on caps a retainer that a failed run leaves running.
+    await page.getByRole("button", { name: /^Last due date \(optional\)/ }).click();
+    await page.keyboard.press("PageDown");
+    await page.keyboard.press("PageDown");
+    await page.keyboard.press("Enter");
+    lastDue = await page.locator('input[name="repeatEndDate"]').inputValue();
+    expect(lastDue > due).toBe(true);
     // R-93: the price agreed with the client in euros, today.
     await page.getByRole("button", { name: "Add agreed value" }).click();
     await page.getByRole("button", { name: /^Agreed in/ }).click();
@@ -305,6 +315,20 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByText("Payment reminders on")).toBeVisible();
     await expect(reminders).toBeChecked();
     expect(await blockingViolations(page)).toEqual([]);
+    // R-99: the retainer's next invoice, then Stop repeating, which asks first; focus moves to the line that says so.
+    await expect(client).toContainText("Repeats every month");
+    await expect(client).toContainText(/Next invoice due .+, emailed to the client on /);
+    await expect(client).toContainText(
+      `No invoice is due after ${new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(`${lastDue}T00:00:00Z`))}.`,
+    );
+    await client.getByRole("button", { name: "Stop repeating" }).click();
+    const stopDialog = page.getByRole("dialog", { name: "Stop repeating?" });
+    expect(await blockingViolations(page)).toEqual([]);
+    await stopDialog.getByRole("button", { name: "Stop repeating" }).click();
+    await expect(page.getByText("Stopped repeating", { exact: true })).toBeVisible();
+    await expect(client.getByText(/^Stopped on /)).toBeFocused();
+    await expect(client.getByRole("button", { name: "Stop repeating" })).toHaveCount(0);
+    expect(await blockingViolations(page)).toEqual([]);
     // The pay link copies whole, from the header's More actions menu, which also opens it.
     const link = `http://localhost:3000/pay/${invoice.invoiceId}`;
     await page
@@ -340,8 +364,9 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.locator('input[name="dueDate"]')).toHaveValue("");
     await expect(page.locator('input[name="supplyDate"]')).toHaveValue("");
     await expect(page.getByRole("textbox", { name: "Agreed amount" })).toHaveValue("1150.5");
-    // R-97: the reminders the owner had on are copied too.
+    // R-97: the reminders the owner had on are copied too; R-99: a duplicate doesn't repeat.
     await expect(page.getByRole("checkbox", { name: "Send payment reminders" })).toBeChecked();
+    await expect(page.getByRole("checkbox", { name: "Repeat every month" })).not.toBeChecked();
     await page.goBack();
     await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
     // The PDFs come through the same-origin /api path; the receipt only once the invoice is paid.

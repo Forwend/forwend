@@ -13,6 +13,7 @@ import {
   LINE_LIMITS,
   OWED_KINDS,
   REMINDER_STEPS,
+  RETAINER_LEAD_DAYS,
   SETTLEMENT_WAITS,
 } from "@/features/invoices/constants/invoices";
 import type {
@@ -138,6 +139,12 @@ export const NEW_INVOICE_COPY = {
   remindersLabel: "Send payment reminders",
   remindersHint:
     "Emails the client 3 days before the due date, on it and 7 days after, until it is paid. Needs a due date and a client email.",
+  // Repeat every month (R-99): a retainer.
+  repeatLabel: "Repeat every month",
+  repeatHint: `Each month a new invoice is due on the due date's day (the last day in a shorter month) and emailed to the client ${RETAINER_LEAD_DAYS} days before. Needs a due date and a client email.`,
+  repeatEndLabel: "Last due date (optional)",
+  repeatEndHint: "No invoice is due after it. Leave it empty to repeat until you stop it.",
+  repeatEndClear: "Clear last due date",
   dueClear: "Clear due date",
   expiryLabel: "Checkout closes after",
   expiryHint: "After this the pay link takes no more payments.",
@@ -212,6 +219,8 @@ export const NEW_INVOICE_COPY = {
     [INVOICE_FIELDS.lines]:
       "We could not save these items. Check each item's text, quantity and price.",
     [INVOICE_FIELDS.reminders]: "Reminders need a due date and a client email.",
+    [INVOICE_FIELDS.repeat]: "Repeating needs a due date and a client email.",
+    [INVOICE_FIELDS.repeatEndDate]: "Pick a day on or after the due date.",
   },
   failed: "We could not create the invoice. Try again.",
   invalid: "We could not create the invoice with these values. Check them and try again.",
@@ -419,6 +428,21 @@ export const INVOICE_COPY = {
     saved: (on: boolean) => (on ? "Payment reminders on" : "Payment reminders off"),
     conflict: "Reminders can't be turned on for this invoice now.",
     error: "We could not save it. Try again.",
+  },
+  // A retainer (R-99), under Payment reminders.
+  repeat: {
+    title: "Repeats every month",
+    next: (due: string, on: string) => `Next invoice due ${due}, emailed to the client on ${on}.`,
+    last: (day: string) => ` No invoice is due after ${day}.`,
+    ended: (day: string) => `No more invoices are made: none is due after ${day}.`,
+    stopped: (time: string) => `Stopped on ${time}. Invoices already made stay.`,
+    stop: "Stop repeating",
+    stopTitle: "Stop repeating?",
+    stopBody:
+      "No more invoices are made or emailed. Invoices already made stay, and the client can still pay them.",
+    keep: "Keep repeating",
+    done: "Stopped repeating",
+    error: "We could not stop it. Try again.",
   },
 } as const;
 

@@ -150,6 +150,14 @@ export const invoiceRemindersSchema = z.object({
   emails: z.array(invoiceSendSchema.extend({ step: openEnum<ReminderStep>() })),
 });
 
+/** The retainer an invoice belongs to (R-98): the next due date and the day it is emailed, null once ended or stopped. */
+export const invoiceRetainerSchema = z.object({
+  endDate: apiDate.nullable(),
+  nextDueDate: apiDate.nullable(),
+  nextOn: apiDate.nullable(),
+  stoppedAt: apiTime.nullable(),
+});
+
 /** POST /v1/reminders/{token}/stop: which invoice the client stopped reminders for, and who sent it. */
 export const stoppedRemindersSchema = z.object({
   number: z.number().int().positive(),
@@ -177,6 +185,8 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   sends: z.array(invoiceSendSchema).optional(),
   // Only in the owner's reads.
   reminders: invoiceRemindersSchema.optional(),
+  // Only in the owner's reads: null when it doesn't repeat.
+  retainer: invoiceRetainerSchema.nullable().optional(),
 });
 
 /** POST /v1/invoices/{id}/recheck (R-55): what Check status found. Amounts in base units. */
@@ -208,6 +218,8 @@ export const createInvoiceBodySchema = z.object({
   agreedValue: z.object({ currency: z.string(), amount: z.string(), date: z.string() }).optional(),
   // Payment reminders on at once (R-97); sent only when true.
   reminders: z.literal(true).optional(),
+  // Repeat every month (R-98); sent only when checked, with endDate only when picked.
+  repeat: z.object({ endDate: z.string().optional() }).optional(),
   senderName: z.string(),
   client: clientBodySchema,
   // R-88: unitPrice in the amount's own unit, base units with amount and a USD decimal with amountUsd.

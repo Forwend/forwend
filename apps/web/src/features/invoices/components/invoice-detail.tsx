@@ -22,6 +22,7 @@ import { InvoiceDeposits } from "@/features/invoices/components/invoice-deposits
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
 import { PaymentReminders } from "@/features/invoices/components/payment-reminders";
+import { RepeatsMonthly } from "@/features/invoices/components/repeats-monthly";
 import { SendToClient } from "@/features/invoices/components/send-to-client";
 import {
   INVOICE_EXCEPTIONS,
@@ -45,6 +46,7 @@ import type {
   InvoiceException,
   InvoicePdf,
   InvoiceReminders,
+  InvoiceRetainer,
   InvoiceSend,
   InvoiceSummary,
   InvoiceToken,
@@ -108,6 +110,7 @@ export function InvoiceDetail({
             wait={owned.currentData?.settlementWait ?? null}
             sends={owned.currentData?.sends ?? []}
             reminders={owned.currentData?.reminders ?? null}
+            retainer={owned.currentData?.retainer ?? null}
             clientFailed={owned.isError}
             tokens={tokens}
             request={request}
@@ -136,6 +139,7 @@ function Loaded({
   wait,
   sends,
   reminders,
+  retainer,
   clientFailed,
   tokens,
   request,
@@ -146,6 +150,7 @@ function Loaded({
   wait: SettlementWait | null;
   sends: readonly InvoiceSend[];
   reminders: InvoiceReminders | null;
+  retainer: InvoiceRetainer | null;
   clientFailed: boolean;
   tokens: readonly InvoiceToken[] | null;
   request: boolean;
@@ -423,6 +428,13 @@ function Loaded({
                   reminders={reminders}
                   hasDueDate={!!invoice.dueDate}
                   payable={payable}
+                />
+              ) : null}
+              {retainer ? (
+                <RepeatsMonthly
+                  profileId={profileId}
+                  invoiceId={invoice.invoiceId}
+                  retainer={retainer}
                 />
               ) : null}
             </section>
