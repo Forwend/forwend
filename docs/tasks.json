@@ -1975,7 +1975,7 @@
         "Due days read 'due 1 day after' for one day on the job page, the quote page and Mark done; DESIGN.md, R-106, api.md and openapi.yaml describe the changes."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
@@ -2072,11 +2072,18 @@
           "summary": "PASS. The blocker and all five minor points are fixed.\n\nBLOCKER 1, fixed: propose-change.tsx:69-78 handles 409 change_pending and job_finished, and mark-done.tsx:57-62 handles change_pending. Each closes its own dialog, focuses #job-payments, then shows a warning toast. The toast sits in ToastProvider, so it survives the re-read that unmounts the component. Focus is already outside the unmounted part. close() runs before focus(), so the dialog's own focus return can't undo it. The kit Dialog keeps no open state, so an outside close() is safe. Other errors stay in the dialog. The new test in changes.test.tsx covers Propose job_finished and change_pending, and Mark done change_pending. It checks the text and that the dialog closed. Reverting to the in-dialog message leaves the dialog open, so the test fails.\n\nMINOR, all fixed: (a) A new JobDetail case (deposit, Design, Final, waiting change 4) keeps Mark done on Design with no hint. It fails without 'p === final'. (b) job-quote.spec.ts checks the notice is still focused after the form is gone. (c) The gone notice drops role=alert; focus reads it. (d) ConsentForm's notFound is optional; a 404 without it falls back to the failed message. AcceptChange no longer passes it. (e) Proof 5 is labelled unit.\n\nNIT, not blocking: the new test renders ProposeChange and MarkDone alone, so it doesn't check focus on the Payments heading. The Withdraw test checks the same focus move.\n\nRan: vitest src/features/jobs 15 passed; typecheck clean; biome clean; docs-check 0 errors. Verify at 19:36:19Z covers the current files (no 'files changed after verify'). Its e2e log shows 48 and 40 passed, including the withdrawn-change and live jobs tests. The new DESIGN.md line has 21 words (D-84).",
           "at": "2026-10-18T19:42:36Z",
           "filesHash": "a57155bda24d9025"
-        }
+        },
+        "commit": "e2832f7",
+        "doneAt": "2026-10-18T19:42:51Z"
       },
       "branch": "fix/f239-job-page-and-quote-page-follow-the-chang",
       "baseCommit": "c9de04a8d958480a4d75fb5640311e530d6dbe4a",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f239-job-page-and-quote-page-follow-the-chang",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
