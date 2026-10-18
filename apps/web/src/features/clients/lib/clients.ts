@@ -1,5 +1,6 @@
 import type { Client, ClientBody, ClientTextField } from "@/features/clients/types/clients";
 import { countryOptions } from "@/features/profiles/lib/billing-details";
+import { foldText } from "@/shared/lib/search";
 
 const FIELDS: ClientTextField[] = ["name", "email", "address", "country", "taxId", "reference"];
 
@@ -25,16 +26,9 @@ export function clientCountryOptions(noCountry: string): { value: string; label:
   return [{ value: "", label: noCountry }, ...countryOptions()];
 }
 
-// Lower case without accents, as the search selects compare, so "zur" finds Zürich here too.
-const fold = (text: string) =>
-  text
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
-
 /** Whether a client matches the list's search: its name, email or tax ID, ignoring case and accents. */
 export function matchesClient(client: Client, search: string): boolean {
-  return fold(`${client.name} ${client.email ?? ""} ${client.taxId ?? ""}`).includes(
-    fold(search.trim()),
+  return foldText(`${client.name} ${client.email ?? ""} ${client.taxId ?? ""}`).includes(
+    foldText(search.trim()),
   );
 }

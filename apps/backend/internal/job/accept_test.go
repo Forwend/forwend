@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"sync"
 	"testing"
@@ -191,6 +192,69 @@ func TestAcceptAcrossMidnight(t *testing.T) {
 	for i := range 2 {
 		if errs[i] != nil || got[i].Payments[0].InvoiceID == "" || got[i].Payments[0].InvoiceID != got[0].Payments[0].InvoiceID {
 			t.Fatalf("accept %d: %+v %v", i, got[i].Payments, errs[i])
+		}
+	}
+}
+
+// R-101: an accept that reads the job just before the owner deletes it makes no deposit invoice.
+func TestAcceptOfADeletedJobMakesNoInvoice(t *testing.T) {
+	ctx := context.Background()
+	pool, profileID := open(t)
+	s := NewService(pool, invoice.NewService(pool))
+	j, _, err := s.Create(ctx, profileID, "k1", quote(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Delete(ctx, profileID, j.ID); err != nil {
+		t.Fatal(err)
+	}
+	// j is the read an accept made before the delete.
+	accepted, err := s.accept(ctx, j, "Jane Doe", "jane@bob.example")
+	if !errors.Is(err, ErrNotFound) || accepted.ID != "" {
+		t.Fatalf("accept after delete: %+v %v, want ErrNotFound", accepted, err)
+	}
+	var made int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM invoices").Scan(&made); err != nil || made != 0 {
+		t.Fatalf("%d invoices %v, want none", made, err)
+	}
+}
+
+// R-100: clients accepting a job without a deposit at once both get the accepted job: the later one finds it accepted,
+// not gone.
+func TestConcurrentAcceptsWithoutDeposit(t *testing.T) {
+	ctx := context.Background()
+	pool, profileID := open(t)
+	s := NewService(pool, invoice.NewService(pool))
+	j, _, err := s.Create(ctx, profileID, "k1", quote(false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	hold, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := hold.Exec(ctx, "SELECT 1 FROM jobs WHERE id = $1 FOR UPDATE", j.ID); err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	got := make([]Job, 2)
+	errs := make([]error, 2)
+	for i := range 2 {
+		wg.Go(func() { got[i], errs[i] = s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example") })
+	}
+	for waiting := 0; waiting < 2; {
+		if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'
+			AND datname = current_database()`).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := hold.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	wg.Wait()
+	for i := range 2 {
+		if errs[i] != nil || got[i].AcceptedAt.IsZero() {
+			t.Fatalf("accept %d: %v %v", i, got[i].AcceptedAt, errs[i])
 		}
 	}
 }

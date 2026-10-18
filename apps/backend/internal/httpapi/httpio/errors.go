@@ -37,6 +37,8 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusNotFound, "invoice_not_found", "invoice not found"
 	case errors.Is(err, job.ErrNotFound):
 		status, code, message = http.StatusNotFound, "job_not_found", "job not found"
+	case errors.Is(err, job.ErrAccepted):
+		status, code, message = http.StatusConflict, "job_accepted", "the client accepted the job, so it can't be deleted"
 	case errors.Is(err, profile.ErrNoBillingDetails):
 		status, code, message = http.StatusNotFound, "billing_details_not_found", "the profile has no billing details yet"
 	case errors.Is(err, profile.ErrClientNotFound):

@@ -53,6 +53,7 @@ import type {
   SettlementWait,
 } from "@/features/invoices/types/invoices";
 import { TokenMark } from "@/shared/components/chains/token-mark";
+import { Party } from "@/shared/components/party";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
@@ -551,19 +552,5 @@ function PdfLink({ invoiceId, pdf }: { invoiceId: string; pdf: InvoicePdf }) {
       <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
       {COPY.pdf[pdf]}
     </a>
-  );
-}
-
-function Party({ lines }: { lines: (string | null)[] }) {
-  const [first, ...rest] = lines.filter(Boolean);
-  return (
-    <div className="px-4 py-3 text-sm break-words whitespace-pre-line sm:px-5">
-      <p className="font-medium text-ink">{first}</p>
-      {rest.map((line) => (
-        <p key={line} className="mt-0.5 text-muted">
-          {line}
-        </p>
-      ))}
-    </div>
   );
 }
