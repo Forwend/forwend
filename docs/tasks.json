@@ -2097,7 +2097,7 @@
         "R-108, api.md, architecture.md (transfer_labels) and openapi.yaml describe it; the new routes are in the 403 test."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "docs-check"
@@ -2193,11 +2193,18 @@
           "summary": "Re-review after the fail. All three blockers are fixed.\n1. Items now carry labelable from Transfer.Labelable(): money in, with no invoice and not an own transfer. SetLabel uses the same method. It is in openapi (required), api.md and R-108. The tests check it on every row and after labelling.\n2. TestTransferClassification adds rows for another user's wallet, the other profile's invoice and a second option row. I checked the mutations with go test -overlay, without editing files. Dropping op.user_id = p.user_id fails the test: Bob's money becomes own_transfer. Dropping m.profile_id = p.id fails it too: the other profile's invoice becomes invoice. The option row maps to the main id and number 1.\n3. architecture.md lists transfer_labels.\nThe minor points are also fixed:\n- ParseUint uses bitSize 63; chainId or logIndex 2^63 is 404, and a test covers it.\n- USDValue (D-82) moved to activity.\n- The CSV Amount column uses tokenAmount.\n- invoice.number is a non-null integer.\n- Acceptance 4 says returns.\n- openapi says to is absent for no end.\n- The api.md bullets are split.\nRan: go test for activity, httpapi and database, -count=1: all ok. gofmt -l is clean and go vet is ok.\nNits, not blocking:\n- moneyapi tokenAmount repeats the 10^decimals math of Transfer.USDValue.\n- A reorg that shifts log_index orphans a label; accepted.\n- The CSV holds all rows in memory; fine until merchant volume (PLAN 11.7).\nWeb for F241:\n- The zod schema adds usdValue, classification as an openEnum of 7, labelable, and invoice {invoiceId, number, clientName nullable} or null.\n- Add a PUT label mutation that invalidates the list.\n- Replace the client CSV (shown rows only) with an authenticated fetch of transactions.csv, with from and to days.\n- Add copy for not_labelable and transaction_not_found.",
           "at": "2026-10-18T20:10:45Z",
           "filesHash": "e20b86dc167b1eca"
-        }
+        },
+        "commit": "0a37db8",
+        "doneAt": "2026-10-18T20:11:01Z"
       },
       "branch": "feat/f240-each-wallet-transaction-carries-its-usd",
       "baseCommit": "7916f1f55c731a07fd9fc1d175dced0aacac64d9",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f240-each-wallet-transaction-carries-its-usd",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
