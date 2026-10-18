@@ -1,11 +1,40 @@
+import { formatUsd } from "@/features/balances/lib/balances";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { RECORD_EVENTS } from "@/features/jobs/constants/jobs";
 import { RECORD_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
-import { jobRecord } from "@/features/jobs/lib/jobs";
+import { apiCents, jobRecord } from "@/features/jobs/lib/jobs";
 import type { PublicJob, RecordEvent } from "@/features/jobs/types/jobs";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 const number = (event: RecordEvent) => invoiceNumber(event.payment?.number ?? 0);
+const amount = (event: RecordEvent) =>
+  `${formatUsd(apiCents(event.payment?.amountUsd ?? "0.00"))} ${MONEY_COPY.usd}`;
+// Only the owner's read gives the email the client typed to accept a change.
+const changeEmail = (event: RecordEvent) =>
+  event.payment && "acceptedEmail" in event.payment
+    ? (event.payment.acceptedEmail as string | null)
+    : null;
+
+function describe(event: RecordEvent, job: PublicJob, acceptedEmail: string | null): string {
+  const title = event.payment?.title ?? "";
+  switch (event.kind) {
+    case RECORD_EVENTS.created:
+      return COPY.created;
+    case RECORD_EVENTS.accepted:
+      return COPY.accepted(job.acceptedName ?? "", acceptedEmail);
+    case RECORD_EVENTS.proposed:
+      return COPY.proposed(title, amount(event));
+    case RECORD_EVENTS.changeAccepted:
+      return COPY.changeAccepted(title, event.payment?.acceptedName ?? "", changeEmail(event));
+    case RECORD_EVENTS.done:
+      return COPY.done(title);
+    case RECORD_EVENTS.invoiced:
+      return COPY.invoiced(number(event), title);
+    default:
+      return COPY.paid(number(event));
+  }
+}
 
 export interface JobRecordProps {
   job: PublicJob;
@@ -31,15 +60,7 @@ export function JobRecord({ job, acceptedEmail = null }: JobRecordProps) {
               {TIME.format(new Date(event.at))}
             </time>
             <span className="min-w-0 break-words text-ink">
-              {event.kind === RECORD_EVENTS.created
-                ? COPY.created
-                : event.kind === RECORD_EVENTS.accepted
-                  ? COPY.accepted(job.acceptedName ?? "", acceptedEmail)
-                  : event.kind === RECORD_EVENTS.done
-                    ? COPY.done(event.payment?.title ?? "")
-                    : event.kind === RECORD_EVENTS.invoiced
-                      ? COPY.invoiced(number(event), event.payment?.title ?? "")
-                      : COPY.paid(number(event))}
+              {describe(event, job, acceptedEmail)}
               {event.kind === RECORD_EVENTS.done && event.payment?.deliveryLink ? (
                 <>
                   {" · "}

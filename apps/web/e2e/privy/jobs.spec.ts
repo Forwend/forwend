@@ -132,6 +132,7 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   // R-103: once accepted, the next step can be marked done. The job reads as accepted here: a real acceptance makes a
   // deposit invoice open 60 days and a job that can't be deleted (D-85). The Go tests cover the real rules.
   const read = /\/api\/v1\/profiles\/[^/]+\/jobs\/[0-9a-f-]{36}$/;
+  let changeWaits = true;
   await page.route(read, async (route) => {
     const response = await route.fetch();
     const body = await response.json();
@@ -151,6 +152,18 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
             invoicedAt: new Date().toISOString(),
           },
           body.payments[1],
+          // R-106: a scope change waiting for the client, until the step below takes it away.
+          ...(changeWaits
+            ? [
+                {
+                  ...body.payments[1],
+                  position: 3,
+                  title: "Extra page",
+                  amountUsd: "150.00",
+                  proposedAt: new Date().toISOString(),
+                },
+              ]
+            : []),
         ],
       },
     });
@@ -167,6 +180,22 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   await expect(page.getByRole("region", { name: "Record" })).toContainText(
     "Accepted by Jane Doe (jane@client.example)",
   );
+  // The waiting change says so, stays out of the total and of Mark done, and can be withdrawn.
+  await expect(payments).toContainText("Change · Waiting for the client to accept.");
+  await expect(payments).toContainText("1,000.50 USD");
+  await expect(payments.getByRole("button", { name: "Withdraw" })).toBeVisible();
+  await expect(payments.getByRole("button", { name: "Mark done" })).toHaveCount(1);
+  await expect(payments.getByRole("button", { name: "Propose a change" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Record" })).toContainText(
+    "Change proposed: Extra page, 150.00 USD",
+  );
+  expect(await blockingViolations(page)).toEqual([]);
+  const desktop = page.viewportSize() ?? { width: 1280, height: 720 };
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(sidebar).toBeHidden();
+  await expect.poll(() => sidewaysScroll(page)).toBeLessThanOrEqual(0);
+  await page.setViewportSize(desktop);
+  await expect(sidebar).toBeVisible();
   await payments.getByRole("button", { name: "Mark done" }).click();
   const markDone = page.getByRole("dialog", { name: "Mark Final payment done?" });
   await expect(markDone).toContainText("emailed to delivered@resend.dev");
@@ -176,6 +205,19 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   expect(await blockingViolations(page)).toEqual([]);
   await markDone.getByRole("button", { name: "Not yet" }).click();
   await expect(markDone).toBeHidden();
+  // With no change waiting, the owner can propose one. The dialog is checked, not sent: the job isn't really accepted.
+  changeWaits = false;
+  const proposeButton = payments.getByRole("button", { name: "Propose a change" });
+  await expect(async () => {
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await expect(proposeButton).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  await proposeButton.click();
+  const propose = page.getByRole("dialog", { name: "Propose a change" });
+  await expect(propose.getByRole("textbox", { name: "What the change is for" })).toBeVisible();
+  expect(await blockingViolations(page)).toEqual([]);
+  await propose.getByRole("button", { name: "Cancel" }).click();
+  await expect(propose).toBeHidden();
   await page.unroute(read);
   await readsAgain("Waiting for E2E client to accept.");
   await page.goBack();

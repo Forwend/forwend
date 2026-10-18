@@ -122,6 +122,24 @@ export const JOBS_COPY = {
     markDoneFailed: "We could not mark it done. Try again.",
     markDoneOrder: "Mark the earlier payments done first.",
     markDoneLinkError: "Enter an https link, like https://drive.example/work.",
+    change: "Change",
+    changeWaiting: "Waiting for the client to accept. It isn't in the total yet.",
+    changeAccepted: (name: string, time: string) => `Accepted by ${name} on ${time}`,
+    withdraw: "Withdraw",
+    withdrawn: (title: string) => `${title} withdrawn`,
+    withdrawFailed: "We could not withdraw it. Try again.",
+    withdrawGone: "The client already accepted this change, or it was withdrawn.",
+    propose: "Propose a change",
+    proposeBody:
+      "A new payment at the end, for work outside the quote. The client accepts it on the quote's link before you can bill it.",
+    proposeTitleLabel: "What the change is for",
+    proposeConfirm: "Propose change",
+    proposeKeep: "Cancel",
+    proposed: (title: string) =>
+      `${title} proposed. Send the client the quote's link to accept it.`,
+    proposeFailed: "We could not propose it. Try again.",
+    proposeInvalid: "Check the title, amount and days to pay.",
+    proposePending: "A change already waits for the client.",
     sent: (number: string, email: string) => `${number} is on its way to ${email}`,
     notSent: (number: string) =>
       `${number} is made, but it could not be emailed now. Send it from its page.`,
@@ -143,6 +161,16 @@ export const QUOTE_COPY = {
   pay: (number: string) => `Pay ${number}`,
   payDeposit: "Pay the deposit",
   delivered: "See the delivered work",
+  change: {
+    label: "Change",
+    waiting:
+      "Proposed after you accepted the quote. It isn't in the total or billed until you accept it.",
+    title: (title: string) => `Accept ${title}`,
+    text: "By accepting you agree to this change and its payment. Your name, your email and the time are kept.",
+    action: "Accept change",
+    accepted: (name: string, time: string) => `Accepted by ${name} on ${time}.`,
+    gone: "This change was withdrawn or replaced. The page now shows the current one.",
+  },
   inNewTab: "(opens in a new tab)",
   accept: {
     title: "Accept this quote",
@@ -180,6 +208,9 @@ export const RECORD_COPY = {
   done: (title: string) => `${title} marked done`,
   deliveryLink: "Delivery link",
   invoiced: (number: string, title: string) => `${number} made for ${title}`,
+  proposed: (title: string, amount: string) => `Change proposed: ${title}, ${amount}`,
+  changeAccepted: (title: string, name: string, email: string | null) =>
+    email ? `${title} accepted by ${name} (${email})` : `${title} accepted by ${name}`,
   paid: (number: string) => `${number} paid`,
   inNewTab: "(opens in a new tab)",
 } as const;
