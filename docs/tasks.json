@@ -1854,7 +1854,7 @@
         "The email has an HTML part with the same links as its text part, like every email; R-107, api.md, architecture.md, openapi.yaml and the notify comments describe it."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "docs-check"
@@ -1950,11 +1950,18 @@
           "summary": "PASS. All earlier points are fixed. (1) The api.md Scope change block now sits after the reminders' List-Unsubscribe line, with one fact per bullet; the propose bullet is split. (2) change() says \"due the day it is invoiced\" for 0 days and \"due 1 day after\" for 1; TestChangeEmailSaysWhenItIsDue covers 0, 1 and 7. (3) The caps run in any 24 hours, and withdrawn changes count. (4) The notify comments name the job. (5) A per-profile cap of 20 is added. ProposeChange locks profile then job. invoice.Create also locks the profile, then its After hook locks the job (MarkDone, Accept). Withdraw, Delete and Accept without a deposit lock only the job. So the lock order is the same everywhere and cannot deadlock. One query gives both counts. TestChangeEmailsPerDay covers both caps. (6) The owner's read has clientEmailed: an EXISTS on job_id, kind and the change key. It is false for quote payments (NULL key) and absent from the public read; TestJobs checks it. openapi.yaml and R-107 describe it.\nRun: go test notify, job, invoice, database and httpapi/...: all ok. check-docs: 0 errors.\nMINOR, not blocking: (a) api.md:340, the reads bullet, lists acceptedEmail but not clientEmailed (it is at line 91). (b) The openapi clientEmailed description says \"past the daily caps\"; the caps are any 24 hours. (c) clientEmailed means queued: it stays true when the worker skips a change accepted first or gives up after 10 tries. F239 copy should say the email was sent to acceptedEmail, not that it was delivered. (d) There is still no stop link. Accepted: it is a capped, transactional email about a job the client accepted.",
           "at": "2026-10-18T19:12:40Z",
           "filesHash": "c20ae27196afd2a7"
-        }
+        },
+        "commit": "70040a9",
+        "doneAt": "2026-10-18T19:12:58Z"
       },
       "branch": "feat/f238-the-client-gets-an-email-when-the-owner",
       "baseCommit": "6dca33c3686107d87e5987ccddc952ceef9d2923",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f238-the-client-gets-an-email-when-the-owner",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
