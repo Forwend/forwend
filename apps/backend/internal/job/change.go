@@ -8,7 +8,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
+)
+
+// Change email caps (R-107), in any 24 hours: per job, so a change proposed and withdrawn again and again doesn't flood
+// its client, and per profile, as Send to client (R-94), since the owner can accept their own link with any address.
+const (
+	MaxChangeEmails        = 5
+	MaxProfileChangeEmails = 20
 )
 
 // ProposeChange adds a scope change to the profile's accepted job (R-105): a payment at the end of its schedule that
@@ -29,6 +37,10 @@ func (s *Service) ProposeChange(ctx context.Context, profileID, id, key string, 
 	hash := sha256.Sum256(fmt.Appendf(nil, "%q|%d|%d", r.Title, cents[0], r.DueDays))
 	created := false
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		// The profile row first, as an invoice locks it, so the profile's change emails count one after the other.
+		if _, err := tx.Exec(ctx, "SELECT 1 FROM profiles WHERE id = $1 FOR UPDATE", profileID); err != nil {
+			return fmt.Errorf("lock profile %s: %w", profileID, err)
+		}
 		// The job row lock orders proposals, withdrawals and the client's accept of the job.
 		var accepted bool
 		err := tx.QueryRow(ctx, "SELECT accepted_at IS NOT NULL FROM jobs WHERE id = $1 AND profile_id = $2 FOR UPDATE",
@@ -82,7 +94,17 @@ func (s *Service) ProposeChange(ctx context.Context, profileID, id, key string, 
 			return fmt.Errorf("add job %s change: %w", id, err)
 		}
 		created = true
-		return nil
+		var job, profile int
+		if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE e.job_id = $1), count(*)
+			FROM outbox_events e JOIN jobs j ON j.id = e.job_id
+			WHERE j.profile_id = $2 AND e.kind = $3 AND e.created_at > now() - interval '24 hours'`,
+			id, profileID, outbox.Change).Scan(&job, &profile); err != nil {
+			return fmt.Errorf("count job %s change emails: %w", id, err)
+		}
+		if job >= MaxChangeEmails || profile >= MaxProfileChangeEmails {
+			return nil
+		}
+		return outbox.QueueChange(ctx, tx, id, key)
 	})
 	if err != nil {
 		return Job{}, false, err

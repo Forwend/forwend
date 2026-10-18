@@ -1,7 +1,7 @@
 // Package notify sends the email for each outbox event: the owner's paid, settled and held-money emails (R-80), the
-// payer's receipt (R-82), a new account's welcome (R-84), the invoice the owner sends to the client (R-94) and the
-// client's payment reminders (R-96).
-// One worker claims each event once (FOR UPDATE SKIP LOCKED); invoice, event id and address make Resend's
+// payer's receipt (R-82), a new account's welcome (R-84), the invoice the owner sends to the client (R-94), the
+// client's payment reminders (R-96) and a job's scope changes (R-107).
+// One worker claims each event once (FOR UPDATE SKIP LOCKED); invoice, user or job, event id and address make Resend's
 // Idempotency-Key, the same on every retry, so a retry after a lost answer sends nothing twice. Nothing logs an address, a subject or a body.
 package notify
 
@@ -55,14 +55,15 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 	}
 	defer tx.Rollback(ctx)
 	var (
-		id                  int64
-		kind, invoice, user string
-		payload             []byte
-		attempts            int
+		id                       int64
+		kind, invoice, user, job string
+		payload                  []byte
+		attempts                 int
 	)
-	err = tx.QueryRow(ctx, `SELECT id, kind, coalesce(invoice_id, ''), coalesce(user_id::text, ''), payload, attempts
+	err = tx.QueryRow(ctx, `SELECT id, kind, coalesce(invoice_id, ''), coalesce(user_id::text, ''),
+		    coalesce(job_id::text, ''), payload, attempts
 		FROM outbox_events WHERE published_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()
-		ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED`).Scan(&id, &kind, &invoice, &user, &payload, &attempts)
+		ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED`).Scan(&id, &kind, &invoice, &user, &job, &payload, &attempts)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	} else if err != nil {
@@ -74,13 +75,19 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 		on    bool
 		scope string // what the event is about, for the Idempotency-Key
 	)
-	if kind == outbox.Welcome {
+	switch kind {
+	case outbox.Welcome:
 		// About the account, not a profile's invoices: the profile's email setting doesn't apply (R-84).
 		on, scope, v = true, "user-"+user, welcome(site.WebURL+"/app")
 		if err := tx.QueryRow(ctx, "SELECT login_email FROM users WHERE id = $1", user).Scan(&to); err != nil {
 			return false, fmt.Errorf("read email event %d user: %w", id, err)
 		}
-	} else {
+	case outbox.Change:
+		scope = "job-" + job
+		if v, to, on, err = changeEmail(ctx, tx, job, payload, site.WebURL); err != nil {
+			return false, fmt.Errorf("read email event %d: %w", id, err)
+		}
+	default:
 		scope = invoice
 		if v, to, on, err = invoiceEmail(ctx, tx, kind, invoice, payload, site.WebURL); err != nil {
 			return false, fmt.Errorf("read email event %d: %w", id, err)
@@ -94,7 +101,7 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 		}
 		return true, tx.Commit(ctx)
 	}
-	// The invoice or user id too: event ids start again in another database (a reset, staging) that may share the
+	// The invoice, user or job id too: event ids start again in another database (a reset, staging) that may share the
 	// Resend team. And the address: a receipt sent again to a changed address is a new request, which Resend would
 	// refuse under a key it already saw with another body.
 	m, err := message(site, v)
@@ -274,6 +281,52 @@ func sent(number, amount, network, issuer, sender, due, replyTo, pay, pdf string
 	}
 	v.Preheader = v.Lead[0]
 	return v
+}
+
+// changeEmail builds a scope change's email (R-107) for the address the client typed accepting the job. It goes only
+// while the change waits for them: checked again now, since the owner may have withdrawn it or the client accepted it.
+func changeEmail(ctx context.Context, tx pgx.Tx, job string, payload []byte, webURL string) (view, *string, bool, error) {
+	var p outbox.Payload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return view{}, nil, false, err
+	}
+	var (
+		to                                   *string
+		title, token, issuer, replyTo, named string
+		cents                                int64
+		days                                 int
+	)
+	err := tx.QueryRow(ctx, `SELECT j.accepted_email, j.title, j.token, j.issuer_name, j.issuer_email, c.title,
+		    c.amount_cents, c.due_days
+		FROM jobs j JOIN job_payments c ON c.job_id = j.id
+		WHERE j.id = $1 AND c.change_key = $2 AND c.accepted_at IS NULL`, job, p.Change).Scan(&to, &title, &token,
+		&issuer, &replyTo, &named, &cents, &days)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return view{}, nil, false, nil
+	} else if err != nil {
+		return view{}, nil, false, fmt.Errorf("job change: %w", err)
+	}
+	return change(issuer, title, named, document.Amount(big.NewInt(cents), 2, "USD"), days, replyTo, webURL+"/w/"+token),
+		to, true, nil
+}
+
+// change tells the client who proposes what change to the job and for how much, with the job's page to accept it
+// (R-107).
+func change(issuer, job, title, amount string, days int, replyTo, link string) view {
+	due := fmt.Sprintf("due %d days after", days)
+	switch days {
+	case 0:
+		due = "due the day it is invoiced"
+	case 1:
+		due = "due 1 day after"
+	}
+	lead := issuer + " proposed a change to " + job + ": " + title + " for " + amount + "."
+	return view{Subject: "A change to " + job + " from " + issuer, Preheader: lead, Badge: "Change", Tone: "neutral",
+		Title: "A change to " + job, Amount: amount, Button: button{"Review the change", link}, ReplyTo: replyTo,
+		Lead:    []string{lead, "It is billed only if you accept it: its invoice comes when the work is done, " + due + "."},
+		Details: []row{{Label: "Job", Value: job}, {Label: "Change", Value: title}, {Label: "From", Value: issuer}},
+		Reason: "You get this email because you accepted " + issuer + "'s quote for " + job + " through Forwend. " +
+			"Reply to this email to reach them."}
 }
 
 // reminderEmail builds a payment reminder (R-96) for the client's email. It goes only while reminders are on and not

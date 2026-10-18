@@ -460,3 +460,66 @@ func TestDeliverSendsTheReminderToTheClient(t *testing.T) {
 			count(t, pool, "published_at IS NULL"))
 	}
 }
+
+// R-107: a scope change goes to the email the client typed accepting the job, whatever the owner's setting, with the
+// job's link and Reply-To the issuer; none goes for a change withdrawn or accepted before the worker sends it.
+func TestDeliverSendsTheChangeToTheClient(t *testing.T) {
+	pool, _ := setup(t, "owner@example.com")
+	exec(t, pool, "UPDATE profiles SET email_notifications = false")
+	job, token := "6f9619ff-8b86-4011-b42d-00c04fc964ff", strings.Repeat("cd", 32)
+	exec(t, pool, `INSERT INTO jobs (id, profile_id, token, idempotency_key, request_hash, title, client_name, client_email,
+		    issuer_name, issuer_address, issuer_country, issuer_email, accepted_name, accepted_email, accepted_at)
+		SELECT $1, id, $2, 'k', decode(repeat('00', 32), 'hex'), 'Logo design', 'Bob Ltd', 'ap@bob.example',
+		    'Alice Design GmbH', 'Hauptstr. 1', 'DE', 'billing@alice.example', 'Jane Doe', 'jane@bob.example', now()
+		FROM profiles`, job, token)
+	exec(t, pool, `INSERT INTO job_payments (job_id, position, title, amount_cents, due_days, on_accept)
+		VALUES ($1, 1, 'Logo', 100000, 14, false)`, job)
+	exec(t, pool, `INSERT INTO job_payments (job_id, position, title, amount_cents, due_days, on_accept, proposed_at,
+		    change_key, change_hash) VALUES ($1, 2, 'Extra page', 15000, 7, false, now(), 'c1', decode(repeat('00', 32), 'hex'))`, job)
+	f := &fake{}
+	change := func(key string) {
+		t.Helper()
+		if err := pgx.BeginFunc(context.Background(), pool, func(tx pgx.Tx) error {
+			return outbox.QueueChange(context.Background(), tx, job, key)
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if err := Deliver(context.Background(), pool, f, site); err != nil {
+			t.Fatal(err)
+		}
+	}
+	change("c1")
+	if len(f.sent) != 1 {
+		t.Fatalf("sent %d, want the client's email alone", len(f.sent))
+	}
+	m := f.sent[0]
+	if m.To != "jane@bob.example" || m.ReplyTo != "billing@alice.example" ||
+		m.Subject != "A change to Logo design from Alice Design GmbH" || !strings.HasPrefix(m.Key, "forwend-job-"+job+"-") {
+		t.Fatalf("email %+v", m)
+	}
+	for _, want := range []string{"Alice Design GmbH proposed a change to Logo design: Extra page for 150.00 USD.",
+		"due 7 days after.", "Review the change: " + web + "/w/" + token, "Reply to this email to reach them."} {
+		if !strings.Contains(m.Text, want) {
+			t.Fatalf("text %q lacks %q", m.Text, want)
+		}
+	}
+	if strings.Contains(m.Text, "/app/notifications") {
+		t.Fatal("the client's email links the owner's settings")
+	}
+	change("withdrawn")
+	exec(t, pool, `UPDATE job_payments SET accepted_name = 'Jane Doe', accepted_email = 'jane@bob.example',
+		accepted_at = now() WHERE job_id = $1 AND position = 2`, job)
+	change("c1")
+	if len(f.sent) != 1 || count(t, pool, "kind = 'job.change' AND published_at IS NOT NULL") != 3 {
+		t.Fatalf("sent %d for a withdrawn or accepted change", len(f.sent)-1)
+	}
+}
+
+// R-107: the change email says when its invoice is due as the job page does.
+func TestChangeEmailSaysWhenItIsDue(t *testing.T) {
+	for days, want := range map[int]string{0: "due the day it is invoiced.", 1: "due 1 day after.", 7: "due 7 days after."} {
+		if lead := change("Alice", "Logo", "Extra", "1.00 USD", days, "", "link").Lead[1]; !strings.HasSuffix(lead, want) {
+			t.Fatalf("%d days: %q, want it to end %q", days, lead, want)
+		}
+	}
+}

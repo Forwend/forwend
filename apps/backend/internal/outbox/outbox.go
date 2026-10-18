@@ -21,14 +21,16 @@ const (
 	Sent    = "invoice.sent"    // the invoice, to its client's email when the owner presses Send to client (R-94)
 	// A payment reminder to the client's email (R-96); at most one per invoice and step.
 	Reminder = "invoice.reminder"
+	Change   = "job.change" // a scope change, to the email the client typed accepting the job (R-107)
 )
 
-// Payload names the option row the event happened on (its token and network), for held money the amount, and for a
-// reminder its step.
+// Payload names the option row the event happened on (its token and network), for held money the amount, for a
+// reminder its step, and for a scope change its key.
 type Payload struct {
 	Option string `json:"option"`
 	Amount string `json:"amount,omitempty"`
 	Step   string `json:"step,omitempty"`
+	Change string `json:"change,omitempty"`
 }
 
 // QueueReceipt adds the payer's receipt for the invoice that option belongs to, when the payer gave an address and no
@@ -73,6 +75,19 @@ func Queue(ctx context.Context, tx pgx.Tx, kind, option string, amount *big.Int)
 	if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, invoice_id, payload)
 		SELECT $1, coalesce(main_id, id), $3 FROM invoices WHERE id = $2`, kind, option, payload); err != nil {
 		return fmt.Errorf("queue %s for %s: %w", kind, option, err)
+	}
+	return nil
+}
+
+// QueueChange adds the email of the job's scope change under key (R-107).
+func QueueChange(ctx context.Context, tx pgx.Tx, job, key string) error {
+	payload, err := json.Marshal(Payload{Change: key})
+	if err != nil {
+		return fmt.Errorf("queue change for job %s: %w", job, err)
+	}
+	if _, err := tx.Exec(ctx, "INSERT INTO outbox_events (kind, job_id, payload) VALUES ($1, $2, $3)", Change, job,
+		payload); err != nil {
+		return fmt.Errorf("queue change for job %s: %w", job, err)
 	}
 	return nil
 }

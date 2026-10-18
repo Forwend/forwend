@@ -81,6 +81,14 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
   - The email names the issuer, number, what is left and the due date, with the pay page and `invoice.pdf`.
   - Reply-To is the issuer's billing email. The footer links `/reminders/<token>`.
   - `List-Unsubscribe` and `List-Unsubscribe-Post` headers point at the stop route (RFC 8058).
+- Scope change emails (R-107): a proposed change queues one `job.change` row with the job and the change's key.
+  - It goes to the email the client typed accepting the job, whatever the owner's setting.
+  - It names the issuer, the job, the change, its amount and days to pay, with a button to `/w/<token>`.
+  - Reply-To is the issuer's billing email.
+  - The Idempotency-Key starts `forwend-job-<jobId>`.
+  - At delivery a change withdrawn or accepted sends nothing.
+  - In any 24 hours a job queues at most 5, and a profile at most 20; withdrawn changes count too.
+  - Past a cap the change is still added, and the owner's read has `clientEmailed: false` for it.
 - Retainers (R-98): each worker round (`invoice.MakeRetainerInvoices`) makes a running retainer's next invoice.
   - Each later month is due on the first due date's day, or the month's last day when it is shorter.
   - It is made 7 UTC days before that due date, from the stored request, with its own number and receive address.
@@ -316,6 +324,8 @@ R-100, D-81; the full schema is in openapi.yaml. A job is a quote with a payment
   - Body: `title`, `amountUsd` and `dueDays`, as a payment. It goes at the end of an accepted job's schedule.
   - A job not accepted yet is 409 `job_not_accepted`; past 10 payments it is 422.
   - One change waits at a time: another before the client accepts it is 409 `change_pending`.
+  - The client gets an email about it (R-107).
+  - A replay sends no second email.
   - Once the last payment is done, the job is finished: a change is 409 `job_finished`.
   - A job paid in full by its deposit never finishes this way: the deposit is invoiced at acceptance, not marked done.
   - A withdrawn change keeps its key: the same request again answers 200 and adds nothing.

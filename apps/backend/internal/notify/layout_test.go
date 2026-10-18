@@ -30,6 +30,8 @@ func samples() map[string]view {
 			"Alice Design GmbH", "", "2026-11-30", "billing@alice.example", web+"/pay/0xabc", web+"/api/v1/invoices/0xabc/invoice.pdf")),
 		"reminder-after": withStop(reminder(invoice.ReminderAfter, "INV-0007", "12.50 USD", "", "", "Mara", "2026-11-30",
 			"", web+"/pay/0xdef", web+"/api/v1/invoices/0xdef/invoice.pdf")),
+		"change": change("Alice Design GmbH", "Logo design", "Extra page", "150.00 USD", 7, "billing@alice.example",
+			web+"/w/"+strings.Repeat("cd", 32)),
 	}
 }
 

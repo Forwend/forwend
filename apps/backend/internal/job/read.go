@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
+	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -59,9 +60,11 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 		    CASE WHEN invoices.id IS NULL THEN '' ELSE `+invoice.StatusFilterSQL+` END, p.done_at,
 		    coalesce(p.delivery_link, ''), invoices.created_at,
 		    CASE WHEN invoices.payment_status = 'paid' THEN `+invoice.PaidAtSQL("invoices.option_id")+` END,
-		    p.proposed_at, coalesce(p.accepted_name, ''), coalesce(p.accepted_email, ''), p.accepted_at
+		    p.proposed_at, coalesce(p.accepted_name, ''), coalesce(p.accepted_email, ''), p.accepted_at,
+		    EXISTS (SELECT 1 FROM outbox_events e WHERE e.job_id = p.job_id AND e.kind = $2
+		            AND e.payload->>'change' = p.change_key)
 		FROM job_payments p LEFT JOIN invoices_current invoices ON invoices.id = p.invoice_id
-		WHERE p.job_id = $1 ORDER BY p.position`, j.ID)
+		WHERE p.job_id = $1 ORDER BY p.position`, j.ID, outbox.Change)
 	if err != nil {
 		return Job{}, fmt.Errorf("read job %s payments: %w", j.ID, err)
 	}
@@ -70,7 +73,8 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 		var done, invoiced, proposed, accepted *time.Time
 		var paid *int64
 		err := row.Scan(&p.Position, &p.Title, &p.AmountCents, &p.DueDays, &p.OnAccept, &p.InvoiceID, &p.Number,
-			&p.Status, &done, &p.DeliveryLink, &invoiced, &paid, &proposed, &p.AcceptedName, &p.AcceptedEmail, &accepted)
+			&p.Status, &done, &p.DeliveryLink, &invoiced, &paid, &proposed, &p.AcceptedName, &p.AcceptedEmail, &accepted,
+			&p.ClientEmailed)
 		if proposed != nil {
 			p.ProposedAt = proposed.UTC()
 		}
