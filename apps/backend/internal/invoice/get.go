@@ -92,7 +92,10 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 		if inv.Sends, err = s.emails(ctx, inv.ID, outbox.Sent); err != nil {
 			return Invoice{}, err
 		}
-		inv.Reminders, err = s.reminders(ctx, inv.ID)
+		if inv.Reminders, err = s.reminders(ctx, inv.ID); err != nil {
+			return Invoice{}, err
+		}
+		inv.Retainer, err = s.retainer(ctx, inv.ID)
 		return inv, err
 	}
 	return inv, err

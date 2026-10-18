@@ -32,6 +32,9 @@ type createInvoiceBody struct {
 		Amount   string `json:"amount"`
 		Date     string `json:"date"`
 	} `json:"agreedValue"`
+	Repeat *struct {
+		EndDate string `json:"endDate"`
+	} `json:"repeat"`
 	Client struct {
 		Name    string `json:"name"`
 		Email   string `json:"email"`
@@ -141,6 +144,15 @@ type ownerInvoiceJSON struct {
 	SettlementWait *settlementWaitJSON `json:"settlementWait"`
 	Sends          []sendJSON          `json:"sends"`
 	Reminders      remindersJSON       `json:"reminders"`
+	Retainer       *retainerJSON       `json:"retainer"`
+}
+
+// retainerJSON is the retainer the invoice belongs to (R-98): nextDueDate and nextOn are null once it ended or stopped.
+type retainerJSON struct {
+	EndDate     *string `json:"endDate"`
+	NextDueDate *string `json:"nextDueDate"`
+	NextOn      *string `json:"nextOn"`
+	StoppedAt   *string `json:"stoppedAt"`
 }
 
 // sendJSON is one email to the client (R-94, R-96): sentAt and failedAt stay null while the email waits.
@@ -255,6 +267,10 @@ func toOwnerInvoiceJSON(inv invoice.Invoice) ownerInvoiceJSON {
 	}
 	for _, r := range inv.Reminders.Emails {
 		out.Reminders.Emails = append(out.Reminders.Emails, reminderJSON{Step: r.Step, sendJSON: toSendJSON(r)})
+	}
+	if r := inv.Retainer; r != nil {
+		out.Retainer = &retainerJSON{EndDate: httpio.OrNull(r.EndDate), NextDueDate: httpio.OrNull(r.NextDue),
+			NextOn: httpio.OrNull(r.NextOn), StoppedAt: httpio.OrNullTime(r.StoppedAt)}
 	}
 	if w := inv.SettlementWait; w != nil {
 		out.SettlementWait = &settlementWaitJSON{Kind: w.Kind, Until: httpio.OrNullTime(w.Until)}

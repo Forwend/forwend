@@ -83,6 +83,9 @@ type Request struct {
 	Agreed *AgreedRequest
 	// Reminders turns payment reminders on at once (R-97), as SetReminders does; it needs a due date and a client email.
 	Reminders bool
+	// Repeat makes the invoice repeat every month (R-98); it needs a due date and a client email.
+	Repeat *Repeat
+	cycle  *cycle // set by MakeRetainerInvoices
 }
 
 type AgreedRequest struct {
@@ -225,6 +228,7 @@ type Invoice struct {
 	SettlementWait *SettlementWait
 	Sends          []Send    // the owner's Send to client, oldest first (R-94); set by the owner's Get
 	Reminders      Reminders // payment reminders (R-96); set by the owner's Get
+	Retainer       *Retainer // the retainer it belongs to (R-98), nil when it doesn't repeat; set by the owner's Get
 }
 
 // Why a paid invoice still waits to settle (R-54).
@@ -422,7 +426,7 @@ func (d Details) check() error {
 // requestHash fingerprints the canonical request, so the same values sent again match and the body is never stored.
 // %q keeps the texts apart whatever they contain.
 func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn time.Duration, d Details, lines []line,
-	reminders bool) []byte {
+	reminders bool, repeat *Repeat) []byte {
 	b := fmt.Appendf(nil, "%d|%s|%s|%d|%q|%q|%q|%q|%q|%q|%q", chainID, token, amount,
 		int64(expiresIn/time.Second), d.Title, d.Note, d.DueDate, d.ClientName, d.ClientEmail, d.ClientAddress,
 		d.SenderName)
@@ -443,6 +447,9 @@ func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn ti
 	}
 	if reminders {
 		b = fmt.Appendf(b, "|reminders")
+	}
+	if repeat != nil {
+		b = fmt.Appendf(b, "|repeat=%q", repeat.EndDate)
 	}
 	for _, l := range lines { // and for lines: "7.5" and "7.50" are the same line
 		b = fmt.Appendf(b, "|%q|%s|%s", l.description, l.quantity.RatString(), l.price.RatString())

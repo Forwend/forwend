@@ -35,10 +35,15 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 		if a := body.AgreedValue; a != nil {
 			agreed = &invoice.AgreedRequest{Currency: a.Currency, Amount: a.Amount, Date: a.Date}
 		}
+		var repeat *invoice.Repeat
+		if body.Repeat != nil {
+			repeat = &invoice.Repeat{EndDate: body.Repeat.EndDate}
+		}
 		inv, created, err := invoices.Create(r.Context(), r.PathValue("profileId"), key, invoice.Request{
 			Lines:     lines,
 			Agreed:    agreed,
 			Reminders: body.Reminders,
+			Repeat:    repeat,
 			ChainID:   body.ChainID, Token: body.Token, Amount: body.Amount, AmountUSD: body.AmountUSD,
 			ExpiresInSeconds: body.ExpiresIn,
 			Details: invoice.Details{Title: body.Title, Note: body.Note, DueDate: body.DueDate, SupplyDate: body.SupplyDate,
@@ -161,6 +166,19 @@ func putReminders(invoices *invoice.Service) http.HandlerFunc {
 			return
 		}
 		inv, err := invoices.SetReminders(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"), *body.On)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, toOwnerInvoiceJSON(inv))
+	}
+}
+
+// stopRepeat is POST /v1/profiles/{profileId}/invoices/{invoiceId}/repeat/stop (R-98): stops the retainer the invoice
+// belongs to; 200 with the invoice, the same when already stopped or not repeating.
+func stopRepeat(invoices *invoice.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		inv, err := invoices.StopRetainer(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"))
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

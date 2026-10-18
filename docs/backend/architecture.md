@@ -30,7 +30,8 @@ Read only the sections your task touches:
   URL uses `sslmode=verify-full`.
 - `worker`: chain watcher (block cursor per chain, `eth_getLogs` for allowlisted tokens filtered
   to active receiver addresses), confirmation/finality tracking, reorg handling, invoice state
-  machine and ledger booking, Check status rescans, and the email from `outbox_events` after each round
+  machine and ledger booking, Check status rescans, payment reminders and retainer invoices (R-96, R-98), and the
+  email from `outbox_events` after each round
   (`internal/notify`, R-80, R-82, R-84; only the worker holds `RESEND_API_KEY`, and without it nothing is sent). Webhooks come in
   PLAN 11.5.
 - `signer`: separate process, own credentials, no public routes, no user sessions. Accepts only
@@ -175,6 +176,8 @@ with a test.
   after welcome emails existed.
 - `invoice_reminders`: one row per invoice once the owner first turns reminders on, with `enabled`, the client's
   `stop_token` and `stopped_at`.
+- `retainers` (R-98): an invoice that repeats every month, with the create `request` as JSON, `first_due`, `end_date`
+  and `stopped_at`. `retainer_invoices` numbers each month's invoice from 0, so each month is made once.
 - Planned (PLAN 11.5, 11.10): `refund_intents` (one per approved claim), `refund_claims`, `support_cases` (wrong chain,
   late), `webhook_endpoints`, `webhook_deliveries`.
 - `chain_cursors(chain_id, last_scanned_block, last_finalized_block)`.

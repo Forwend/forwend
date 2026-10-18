@@ -81,6 +81,15 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
   - The email names the issuer, number, what is left and the due date, with the pay page and `invoice.pdf`.
   - Reply-To is the issuer's billing email. The footer links `/reminders/<token>`.
   - `List-Unsubscribe` and `List-Unsubscribe-Post` headers point at the stop route (RFC 8058).
+- Retainers (R-98): each worker round (`invoice.MakeRetainerInvoices`) makes a running retainer's next invoice.
+  - Each later month is due on the first due date's day, or the month's last day when it is shorter.
+  - It is made 7 UTC days before that due date, from the stored request, with its own number and receive address.
+  - A month whose due date passed unmade is skipped: a past first due date or an outage sends no late invoices.
+  - Its checkout stays open to the end of the 60th day after the due date (D-80).
+  - It has reminders on when the first invoice was created with them, unless the client stopped them on any month.
+  - In the same transaction it queues one `invoice.sent` row, so the client gets it as from Send to client.
+  - That send counts toward Send to client's limits for the invoice and the profile.
+  - One month per retainer per round; a stop that lands first makes nothing (a row lock on the retainer).
 - The owner's Send to client (R-94) goes to the invoice's client email whatever the owner's setting. It names the
   issuer, number, amount and due date, and links the pay page and `invoice.pdf`. A payer-chooses invoice shows USD.
   Its Reply-To is the issuer's billing email, so a reply reaches the owner.
@@ -149,6 +158,10 @@ R-19 and R-42; the full schema is in openapi.yaml.
   rule is 422 `invalid_value`; these fields are part of the idempotency hash.
 - Optional `reminders: true` (R-97) turns payment reminders on with the invoice, as the reminders route does. It needs
   `dueDate` and `client.email`, otherwise 422 `invalid_value`. It is part of the idempotency hash only when true.
+- Optional `repeat` `{ endDate? }` (R-98, D-58) makes the invoice repeat every month: a retainer.
+  - It needs `dueDate` and `client.email`; `endDate` is a date on or after `dueDate`. Otherwise 422 `invalid_value`.
+  - The invoice and its `retainers` row are saved together. A profile has at most 50 running retainers, then 422.
+  - It is part of the idempotency hash only when set.
 - A freelancer or merchant profile saves its billing details first: without them create is 409
   `billing_details_required` and makes nothing, so every business invoice names who bills the client (R-92, D-83). A
   personal profile's request needs none and names its sender (D-52).
@@ -202,6 +215,10 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - The first call, or a create with `reminders: true` (R-97), makes the row in `invoice_reminders`.
   - The row holds a random 32-byte stop token.
   - The owner's reads return `reminders`: `{on, stoppedAt, emails}`, each email with its `step`.
+- `POST /v1/profiles/{profileId}/invoices/{invoiceId}/repeat/stop` (R-98) stops the invoice's retainer.
+  - It answers the invoice, the same when already stopped or not repeating. Invoices already made stay.
+  - The owner's reads return `retainer` on each of its invoices, else null.
+  - `retainer` is `{endDate, nextDueDate, nextOn, stoppedAt}`; the next two are null once it ended or stopped.
 - `POST /v1/reminders/{token}/stop` is public: the client's stop link and one-click List-Unsubscribe-Post.
   - It reads no body, sets `stopped_at` once and answers `{number, from}`, the same when already stopped.
   - An unknown token is 404 `invoice_not_found`.
