@@ -12,6 +12,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/balance"
 	"github.com/ensp1re/forwend/apps/backend/internal/document"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
+	"github.com/ensp1re/forwend/apps/backend/internal/job"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 	"github.com/ensp1re/forwend/apps/backend/internal/search"
 )
@@ -34,6 +35,8 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusForbidden, "forbidden", "not allowed for this profile"
 	case errors.Is(err, invoice.ErrNotFound):
 		status, code, message = http.StatusNotFound, "invoice_not_found", "invoice not found"
+	case errors.Is(err, job.ErrNotFound):
+		status, code, message = http.StatusNotFound, "job_not_found", "job not found"
 	case errors.Is(err, profile.ErrNoBillingDetails):
 		status, code, message = http.StatusNotFound, "billing_details_not_found", "the profile has no billing details yet"
 	case errors.Is(err, profile.ErrClientNotFound):
@@ -58,9 +61,10 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, invoice.ErrBillingDetailsRequired):
 		status, code, message = http.StatusConflict, "billing_details_required",
 			"a freelancer or merchant profile saves its billing details before its first invoice"
-	case errors.Is(err, invoice.ErrConflict), errors.Is(err, profile.ErrConflict):
+	case errors.Is(err, invoice.ErrConflict), errors.Is(err, profile.ErrConflict), errors.Is(err, job.ErrConflict):
 		status, code, message = http.StatusConflict, "idempotency_conflict", "Idempotency-Key was used with another request"
-	case errors.Is(err, invoice.ErrInvalid), errors.Is(err, profile.ErrInvalid), errors.Is(err, activity.ErrInvalid),
+	case errors.Is(err, invoice.ErrInvalid), errors.Is(err, profile.ErrInvalid), errors.Is(err, job.ErrInvalid),
+		errors.Is(err, activity.ErrInvalid),
 		errors.Is(err, balance.ErrInvalid), errors.Is(err, search.ErrInvalid):
 		status, code, message = http.StatusUnprocessableEntity, "invalid_value", err.Error()
 	case errors.Is(err, invoice.ErrNotWatched):

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 230,
+  "nextId": 231,
   "tasks": [
     {
       "id": "F222",
@@ -900,12 +900,125 @@
         "branch": "feat/f229-the-owner-can-make-a-new-invoice-repeat",
         "base": "main"
       }
+    },
+    {
+      "id": "F230",
+      "type": "feat",
+      "behavior": "A freelancer can create a job: a quote with a payment schedule that the client accepts by link, which makes the deposit invoice",
+      "acceptance": [
+        "POST /v1/profiles/{id}/jobs with an Idempotency-Key saves a job (title, scope, client name and email, 1-10 payments of title, USD amount with at most 2 decimals and days to pay; only the first may be on acceptance) with a link token and a copy of the issuer's billing details; the same request replays, another with the same key is 409; invalid input is 422; no billing details is 409 billing_details_required; another user is 403.",
+        "GET /v1/jobs/{token} is public and leaves out the client block; POST /v1/jobs/{token}/accept with a name and email records them and the time once, answers the same twice, and with a deposit makes exactly one invoice in the same transaction (payer chooses, the job title and client, one line for the payment, due the payment's days after the UTC day, checkout open 60 days past it); concurrent accepts make one invoice; an unknown token is 404 job_not_found.",
+        "GET /v1/profiles/{id}/jobs and /jobs/{jobId} list and read the owner's jobs with each payment's invoice id, number and status.",
+        "openapi.yaml, docs/backend/api.md and docs/backend/architecture.md describe the routes, rules and tables."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-100",
+        "D-81",
+        "D-80"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/*"
+      ],
+      "review": false,
+      "notes": [
+        "2026-10-18 review fail by reviewer: FAIL: one contract mismatch, plus three doc fixes to make in the same pass.\n\nBlocking:\n1. apps/backend/api/openapi.yaml:771 (GET /v1/jobs/{token}) and :786 (POST /v1/jobs/{token}/accept) have no `security: []`. The file's global security (line 11) asks for the Privy bearer token. So the spec says these routes need sign-in, but jobapi/routes.go:25-28 serves them in public. Every other public route has `security: []` (for example stopReminders at :630), and docs/backend/api.md (Auth) says public routes are marked that way.\n\nFix in the same pass (doc or contract accuracy):\n2. Concurrent accepts across UTC midnight. job/accept.go:62 takes the due date from s.now(), and the invoice hash includes DueDate. Two clicks that land on both sides of 00:00 UTC get different hashes. The second one gets invoice.ErrConflict, wrapped at accept.go:52, so the client sees 409 idempotency_conflict. openapi does not list 409 for acceptJob. Data stays correct: the unique key still allows one invoice and one acceptance. Suggested fix: on invoice.ErrConflict, read ByToken again and return the job if it is accepted. Same day is proven by accept_test.go:96-133. Also docs/backend/api.md:308 says \"That close is the same for every accept the same day\". Only the offset (dueDays+61 days) and the due date are the same. The close time is the accept time plus that offset. Say that, and name the midnight case.\n3. docs/backend/api.md:330 (Idempotency) says every POST that creates something needs an Idempotency-Key. The accept route creates an invoice without one. Add it to the exceptions: the link token and the key job:<jobId>:1 make it idempotent.\n4. docs/backend/api.md:302 says the public read has no \"ids\". It returns payments[].invoiceId. Say \"no job id or token\".\n\nMinor, not blocking:\n- accept.go:52 adds \"accept job <uuid>: \" in front of invoice errors. httpio puts err.Error() into the 422 message, so a public client can see the internal job id and the owner's limit state (for example \"a profile has at most 1000 receive addresses open at once\", or no wallet).\n- D-84 (sentences of at most 25 words): api.md:380-381 is 28 words; architecture.md:179-180's first sentence is 27.\n- profiles_test.go round-robin is fine. The owner check is the same middleware on every route. Each of the 18 routes is checked once, and each of Alice's 4 profiles at least once. 18 x 4 calls would go over the 60 burst. Five {profileId} routes were already missing before this task and are still not listed: GET events, GET invoices/{invoiceId}, POST invoices/{invoiceId}/cancel, and GET and PUT notifications. Each has its own 403 test. But api.md:353 says every route is listed.\n- jobs_test.go checks the unknown-token 404 only on GET, not on accept. Acceptance 3 says \"list ... with each payment's invoice\". The list returns counts (payments, paid); only the read returns each payment's invoice. That is fine if intended.\n- The USD formatting is written twice: job/accept.go:61 and jobapi/model.go:95.\n- httpio/errors.go:78 logs r.URL.Path on a 500, and that path includes the job link token. The reminder stop token already works this way.\n\nFor the later 10.3 tasks (not defects now):\n- create.go:83-92 hashes json.Marshal(job.Request), which includes the shared profile.ClientDetails. Adding a field to either type changes every stored hash. invoice.requestHash uses a fixed format to avoid that.\n- The key job:<id>:<position> cannot make a new invoice after that payment's invoice expires or is canceled.\n- The position <= 10 CHECK and the single set of accepted_* columns mean a scope-change milestone that the client accepts (PLAN 10.3) needs a migration.\n- The owner can use the key job:<id>:1 on invoice create first, which blocks acceptance. This only hurts the owner.\n- MaxJobs 1000 counts every job ever made, and jobs cannot be deleted.\n\nChecked and correct:\n- Cents parsing: the regex, int64 range, and \"300\" equal to \"300.00\".\n- The deposit invoice: payer chooses, USD with 2 decimals, and one line that sums exactly. The test checks 300000000 USDC base units.\n- Due date and close: due is today UTC + dueDays, close is now + (dueDays+61) days, so the checkout stays open at least 60 days past the due date.\n- After runs only inside the inserting transaction, never on a replay or on the unique-key race path.\n- json:\"-\" is required: startRetainer marshals Request, and a func field would make that fail. cycle is not exported, so it is not marshaled.\n- The job create race path checks the right constraint name (jobs_profile_id_idempotency_key_key).\n- Locks: the profile row is locked first in both job create and accept, so there is no deadlock.\n- Error mapping: 404 job_not_found, 409 idempotency_conflict and billing_details_required, 422 invalid_value.\n- Model JSON matches openapi field for field.\n- The public read leaves out client, acceptedEmail, jobId and token.\n- Tokens are 32 random bytes.\n- Rate limits and sweep follow the payer-email pattern.\n- Nothing is emailed on accept.\n- Layout and dependencies follow rules.md.\n\nRan:\n- `python3 scripts/check-docs.py`: 0 errors.\n- `sh scripts/with-env.sh go test ./internal/job/ ./internal/invoice/ ./internal/httpapi/tests/ -count=1`: all ok.",
+        "2026-10-18 review pass by reviewer: PASS. Every finding from the first review is fixed, and all four acceptance lines hold.\n\nFixed and checked:\n1. apps/backend/api/openapi.yaml:775 and :795 now mark GET /v1/jobs/{token} and POST /v1/jobs/{token}/accept with `security: []`. That matches jobapi/routes.go:25-28 and api.md (Auth).\n2. Midnight case. job/accept.go:51-55 treats invoice.ErrConflict as a sign that another accept already made the deposit, then reads the job again. If the job is accepted, it returns that job.\n   - The ErrConflict can only come from a committed row: the replay read, or the unique-key wait. So the winner's acceptance, made in the same transaction, is already visible.\n   - TestAcceptAcrossMidnight (accept_test.go:155-198) holds two accepts on the profile lock, one second before and one second after UTC midnight. Both get the same deposit.\n   - If the key was taken some other way (only the owner could do that) and the job is not accepted, it still answers 409. This harms only the owner.\n3. The api.md Idempotency section (line 333) names the accept route as an exception.\n4. api.md:302 says the public read has no \"client block, typed email, job id or token\".\n\nMinor points from the first review, now fixed:\n- The accept error text no longer has the job id (accept.go:59).\n- The rate-limit text is split into short bullets (api.md:383-385), and the architecture.md:179-181 jobs row is split into short sentences.\n- jobs_test.go:81-84 checks the 404 job_not_found on accept.\n- One job.USD (job.go:79) is used by accept.go and jobapi/model.go.\n- The job request hash (create.go:81-87) is now a fixed format: %q-quoted strings, then cents, dueDays and onAccept for each payment. A new ClientDetails field can no longer change stored hashes.\n\nStill open, not blocking:\n- Five {profileId} routes were already missing from profileRoutes before this task: GET events, GET invoices/{invoiceId}, POST invoices/{invoiceId}/cancel, and GET and PUT notifications. Each has its own 403 test. But api.md:353 says every route is listed. The coordinator will report this to the user.\n- A public 422 on accept can still show the owner's limit state, for example the open receive address cap. It no longer shows any id.\n- httpio/errors.go:78 logs the request path on a 500, and that path includes the link token. The reminder stop token already works this way.\n- For later 10.3 tasks:\n  - The key job:<id>:<position> cannot make a new invoice after that payment's invoice expires or is canceled.\n  - The position <= 10 CHECK and the single set of accepted_* columns mean scope-change milestones need a migration.\n  - MaxJobs 1000 counts every job ever made, with no delete.\n\nRan:\n- `python3 scripts/check-docs.py`: 0 errors.\n- gofmt -l and go vet on job, httpapi and tests: clean.\n- `sh scripts/with-env.sh go test -race ./internal/job/ ./internal/invoice/ ./internal/httpapi/tests/ -count=1`: all ok."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-18T12:57:05Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 76.5,
+            "log": "docs/runs/F230-20261018T125705Z-unit.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F230-20261018T125705Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.5,
+            "log": "docs/runs/F230-20261018T125705Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F230-20261018T125705Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F230-20261018T125705Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.8,
+            "log": "docs/runs/F230-20261018T125705Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 200.0,
+            "log": "docs/runs/F230-20261018T125705Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F230-20261018T125705Z-keep.log"
+          }
+        ],
+        "taskHash": "d46a9e95deb759d4",
+        "filesHash": "fca296c6ec8c85d5",
+        "proof": {
+          "1": "unit: TestJobs: create is 201 with totalUsd 1000.50, the issuer copied from billing details, the client, null invoices; the same body with 300.00 for 300 replays 200 (fixed-format hash in cents); another amount under the key is 409; an empty title or email, 300.001, 0, dueDays 91, onAccept on the second payment and no payments are each 422; no billing details is 409 billing_details_required; Bob's profile is 403, and every job route is in profileRoutes.",
+          "2": "unit: TestJobs: the public read has no client, acceptedEmail, jobId or token; unknown and malformed tokens are 404 job_not_found on read and accept; a bad email is 422; two accepts answer the same. TestAcceptMakesTheDepositOnce: the deposit is 300 USDC payer chooses, the job title and client, one line Deposit × 1.00, due today+7 UTC, closing in 68 days; a second accept keeps the first name; 5 accepts released together make one invoice. TestAcceptAcrossMidnight: accepts on both sides of UTC midnight both answer the one deposit; both race tests fail when their fix is removed (checked by mutation). TestAcceptWithoutDepositMakesNoInvoice. openapi marks both public routes security: [].",
+          "3": "unit: TestJobs: the owner's read has acceptedEmail, the token and each payment's invoiceId, number and status; Bob is 403 and an unknown id 404; the list item is {jobId, title, clientName, totalUsd, payments 2, paid 0, acceptedAt, createdAt}, and paid becomes 1 once the deposit invoice is paid.",
+          "4": "docs-check: openapi.yaml has the 5 job routes (the 2 public ones with security: []), the job schemas and job_not_found; api.md has a Jobs section, the accept limits and the Idempotency exception; architecture.md has jobs and job_payments; rules.md layout lists job/ and jobapi/; docs-check passes."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. Every finding from the first review is fixed, and all four acceptance lines hold.\n\nFixed and checked:\n1. apps/backend/api/openapi.yaml:775 and :795 now mark GET /v1/jobs/{token} and POST /v1/jobs/{token}/accept with `security: []`. That matches jobapi/routes.go:25-28 and api.md (Auth).\n2. Midnight case. job/accept.go:51-55 treats invoice.ErrConflict as a sign that another accept already made the deposit, then reads the job again. If the job is accepted, it returns that job.\n   - The ErrConflict can only come from a committed row: the replay read, or the unique-key wait. So the winner's acceptance, made in the same transaction, is already visible.\n   - TestAcceptAcrossMidnight (accept_test.go:155-198) holds two accepts on the profile lock, one second before and one second after UTC midnight. Both get the same deposit.\n   - If the key was taken some other way (only the owner could do that) and the job is not accepted, it still answers 409. This harms only the owner.\n3. The api.md Idempotency section (line 333) names the accept route as an exception.\n4. api.md:302 says the public read has no \"client block, typed email, job id or token\".\n\nMinor points from the first review, now fixed:\n- The accept error text no longer has the job id (accept.go:59).\n- The rate-limit text is split into short bullets (api.md:383-385), and the architecture.md:179-181 jobs row is split into short sentences.\n- jobs_test.go:81-84 checks the 404 job_not_found on accept.\n- One job.USD (job.go:79) is used by accept.go and jobapi/model.go.\n- The job request hash (create.go:81-87) is now a fixed format: %q-quoted strings, then cents, dueDays and onAccept for each payment. A new ClientDetails field can no longer change stored hashes.\n\nStill open, not blocking:\n- Five {profileId} routes were already missing from profileRoutes before this task: GET events, GET invoices/{invoiceId}, POST invoices/{invoiceId}/cancel, and GET and PUT notifications. Each has its own 403 test. But api.md:353 says every route is listed. The coordinator will report this to the user.\n- A public 422 on accept can still show the owner's limit state, for example the open receive address cap. It no longer shows any id.\n- httpio/errors.go:78 logs the request path on a 500, and that path includes the link token. The reminder stop token already works this way.\n- For later 10.3 tasks:\n  - The key job:<id>:<position> cannot make a new invoice after that payment's invoice expires or is canceled.\n  - The position <= 10 CHECK and the single set of accepted_* columns mean scope-change milestones need a migration.\n  - MaxJobs 1000 counts every job ever made, with no delete.\n\nRan:\n- `python3 scripts/check-docs.py`: 0 errors.\n- gofmt -l and go vet on job, httpapi and tests: clean.\n- `sh scripts/with-env.sh go test -race ./internal/job/ ./internal/invoice/ ./internal/httpapi/tests/ -count=1`: all ok.",
+          "at": "2026-10-18T13:03:07Z",
+          "filesHash": "fca296c6ec8c85d5"
+        }
+      },
+      "branch": "feat/f230-a-freelancer-can-create-a-job-a-quote-wi",
+      "baseCommit": "121bf061035e05ac6547ee3a7815bc2e5dcde453",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-18T10:47:58Z",
+    "at": "2026-10-18T12:03:31Z",
     "clean": true,
     "problems": [],
-    "note": "F227 merged (#225): the live e2e suite no longer piles up toward the shared test profile's caps (D-85). Left: the phone invoice still makes ~4 addresses per run against MaxPerDay 500; failed runs leave their saved client behind; runs from several worktrees share one api rate-limit bucket. Next: PLAN 10.4 Retainers, then 10.3 Jobs."
+    "note": "PLAN 10.4 Retainers done: F228 (#226) API and worker, F229 (#227) web. Open: canceling a retainer invoice does not stop the retainer; a retainer that keeps failing logs every round and its months pass silently; the 50-retainer 422 shows the general form error; no list of running retainers. Next: PLAN 10.3 Jobs."
   }
 }

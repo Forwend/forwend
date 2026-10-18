@@ -176,6 +176,9 @@ with a test.
   after welcome emails existed.
 - `invoice_reminders`: one row per invoice once the owner first turns reminders on, with `enabled`, the client's
   `stop_token` and `stopped_at`.
+- `jobs` (R-100): a quote with its link `token`, title, scope, a client copy and an issuer copy from billing details.
+  It keeps the client's typed `accepted_name` and `accepted_email`, with `accepted_at`. `job_payments` is its schedule in cents.
+  Each payment row gets its `invoice_id` once that invoice is made.
 - `retainers` (R-98): an invoice that repeats every month, with the create `request` as JSON, `first_due`, `end_date`
   and `stopped_at`. `retainer_invoices` numbers each month's invoice from 0, so each month is made once.
 - Planned (PLAN 11.5, 11.10): `refund_intents` (one per approved claim), `refund_claims`, `support_cases` (wrong chain,

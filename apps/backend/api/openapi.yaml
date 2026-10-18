@@ -542,6 +542,83 @@ paths:
         "404": { $ref: "#/components/responses/InvoiceNotFound" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/jobs:
+    post:
+      operationId: createJob
+      summary: Create a job, a quote with a payment schedule (R-100, D-81)
+      description: |
+        Saved with a link token for the client, /w/<token>, and a copy of the profile's billing details as the issuer.
+        The same request sent again with the same key returns the job (200); amounts compare in cents. A profile has at
+        most 1000 jobs.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateJobRequest" }
+      responses:
+        "200":
+          description: The same request was already made
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/CreateJobConflict" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+    get:
+      operationId: listJobs
+      summary: The profile's jobs, newest first
+      description: At most 1000 per profile, so the list comes whole.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: The jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/JobSummary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/jobs/{jobId}:
+    get:
+      operationId: getJob
+      summary: One of the profile's jobs, with the client and the link token
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/JobNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/reminders/{token}/stop:
     post:
       operationId: stopReminders
@@ -690,6 +767,57 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/jobs/{token}:
+    get:
+      operationId: getPublicJob
+      summary: The job its client's link names
+      description: Public, like the checkout. It leaves out the client block and the typed email.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/JobToken"
+      responses:
+        "200":
+          description: The job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicJob" }
+        "404": { $ref: "#/components/responses/JobNotFound" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/jobs/{token}/accept:
+    post:
+      operationId: acceptJob
+      summary: The client accepts the job with a typed name and email (R-100)
+      description: |
+        Public. Keeps the name, email and time. With a deposit (the first payment, onAccept) it makes the deposit
+        invoice in the same transaction: payer chooses, the job's title and client, one line for the payment, due
+        dueDays after the UTC day, its checkout open 60 days past that (D-80). An accepted job answers the same.
+        Limited per link and for everyone together.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/JobToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name, email]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 200 }
+                email: { type: string, maxLength: 254 }
+      responses:
+        "200":
+          description: The accepted job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicJob" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "404": { $ref: "#/components/responses/JobNotFound" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "503": { $ref: "#/components/responses/NetworkNotReady" }
   /v1/invoices/{invoiceId}:
     get:
       operationId: getInvoice
@@ -884,6 +1012,12 @@ components:
         thousands commas allowed) also matches an amount equal to it in whole tokens, exactly: "1,250.5" finds
         1250500000 base units of a 6-decimals token, never 1250500001.
       schema: { type: string, minLength: 1, maxLength: 100 }
+    JobToken:
+      name: token
+      in: path
+      required: true
+      description: The secret in the client's link /w/<token>
+      schema: { type: string, pattern: "^[0-9a-f]{64}$" }
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -1414,6 +1548,102 @@ components:
               pattern: "^([A-Z]{2})?$"
               description: An assigned ISO 3166-1 alpha-2 code in upper case, like DE.
             taxId: { type: string, maxLength: 50, description: The client's tax or VAT ID; shown on the invoice PDF. }
+    CreateJobRequest:
+      type: object
+      additionalProperties: false
+      required: [title, client, payments]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        scope:
+          type: string
+          maxLength: 5000
+          description: Optional; the work, in plain text with line breaks. Empty means none.
+        client:
+          type: object
+          additionalProperties: false
+          required: [name, email]
+          description: Who pays; the rules of a saved client (R-86). Payments are billed to email.
+          properties:
+            name: { type: string, minLength: 1, maxLength: 200 }
+            email: { type: string, minLength: 1, maxLength: 254 }
+            address: { type: string, maxLength: 500 }
+            country: { type: string, description: "An assigned ISO 3166-1 alpha-2 code; empty means none" }
+            taxId: { type: string, maxLength: 50 }
+        payments:
+          type: array
+          minItems: 1
+          maxItems: 10
+          description: The schedule, in order. The total is their sum.
+          items:
+            type: object
+            additionalProperties: false
+            required: [title, amountUsd, dueDays]
+            properties:
+              title: { type: string, minLength: 1, maxLength: 100 }
+              amountUsd: { type: string, pattern: "^[0-9]{1,10}(\\.[0-9]{1,2})?$", description: "Above 0" }
+              dueDays: { type: integer, minimum: 0, maximum: 90, description: "Days to pay after the invoice is made" }
+              onAccept:
+                type: boolean
+                description: The deposit, made when the client accepts; only the first payment can be.
+    JobPayment:
+      type: object
+      required: [position, title, amountUsd, dueDays, onAccept, invoiceId, number, status]
+      description: One payment; invoiceId, number and status are null until its invoice is made.
+      properties:
+        position: { type: integer, minimum: 1, maximum: 10 }
+        title: { type: string }
+        amountUsd: { type: string, description: "With 2 decimals, like 300.00" }
+        dueDays: { type: integer }
+        onAccept: { type: boolean }
+        invoiceId: { oneOf: [{ $ref: "#/components/schemas/InvoiceId" }, { type: "null" }] }
+        number: { type: [integer, "null"] }
+        status: { type: [string, "null"], enum: [open, paid, settled, expired, canceled, null] }
+    PublicJob:
+      type: object
+      required: [title, scope, issuer, payments, totalUsd, acceptedName, acceptedAt, createdAt]
+      description: A job as its client's link shows it.
+      properties:
+        title: { type: string }
+        scope: { type: [string, "null"] }
+        issuer: { $ref: "#/components/schemas/Issuer" }
+        payments:
+          type: array
+          items: { $ref: "#/components/schemas/JobPayment" }
+        totalUsd: { type: string, description: "The sum of the payments, with 2 decimals" }
+        acceptedName: { type: [string, "null"], description: "The client's typed name, once accepted" }
+        acceptedAt: { type: [string, "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    Job:
+      description: A job read by its owner, with its id, link token, client and the client's typed email.
+      allOf:
+        - $ref: "#/components/schemas/PublicJob"
+        - type: object
+          required: [jobId, token, client, acceptedEmail]
+          properties:
+            jobId: { type: string, format: uuid }
+            token: { type: string, pattern: "^[0-9a-f]{64}$" }
+            client:
+              type: object
+              required: [name, email, address, country, taxId]
+              properties:
+                name: { type: string }
+                email: { type: string }
+                address: { type: [string, "null"] }
+                country: { type: [string, "null"], pattern: "^[A-Z]{2}$" }
+                taxId: { type: [string, "null"] }
+            acceptedEmail: { type: [string, "null"] }
+    JobSummary:
+      type: object
+      required: [jobId, title, clientName, totalUsd, payments, paid, acceptedAt, createdAt]
+      properties:
+        jobId: { type: string, format: uuid }
+        title: { type: string }
+        clientName: { type: string }
+        totalUsd: { type: string }
+        payments: { type: integer, description: "How many payments the schedule has" }
+        paid: { type: integer, description: "How many of them are paid or settled" }
+        acceptedAt: { type: [string, "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
     Invoices:
       type: object
       required: [items, nextCursor]
@@ -1717,7 +1947,7 @@ components:
           properties:
             code:
               type: string
-              enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found,
+              enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found, job_not_found,
                 billing_details_not_found, billing_details_required, client_not_found, idempotency_conflict, invoice_not_paid,
                 invoice_not_cancelable, receipt_sent, client_email_required, invoice_closed, due_date_required,
                 reminders_stopped, invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
@@ -1754,8 +1984,9 @@ components:
       description: |
         A value breaks a rule (invalid_value): amount, expiresIn, a token or chain that is not enabled, a profile with
         no wallet for the chain, terms the contract would refuse to settle, an invoice title, note, due or supply date,
-        line item, agreed value or client field, a profile kind or name, a billing details field, a list limit, cursor,
-        status, direction or search (q), or balance-history days.
+        line item, agreed value or client field, a job field or payment, a typed name or email on acceptance, a
+        profile kind or name, a billing details field, a list limit, cursor, status, direction or search (q), or
+        balance-history days.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -1766,6 +1997,18 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     InvoiceNotFound:
       description: No invoice with this id (invoice_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    JobNotFound:
+      description: No job with this id or link token (job_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    CreateJobConflict:
+      description: |
+        The Idempotency-Key was used with other values (idempotency_conflict), or the profile has no billing details
+        yet (billing_details_required): the job copies them as the issuer.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

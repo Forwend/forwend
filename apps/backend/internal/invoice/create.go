@@ -183,6 +183,11 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 			return Invoice{}, false, err
 		}
 	}
+	if r.After != nil {
+		if err := r.After(ctx, tx, *mainID); err != nil {
+			return Invoice{}, false, err
+		}
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return Invoice{}, false, fmt.Errorf("insert invoice: %w", err)
 	}

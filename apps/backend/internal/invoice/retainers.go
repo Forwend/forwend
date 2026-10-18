@@ -17,8 +17,8 @@ const (
 	RetainerLead = 7
 	// MaxRetainers bounds a profile's running retainers: each emails a client every month without the owner's click.
 	MaxRetainers = 50
-	// dueGraceDays is how long past its due date a checkout stays open (D-80), as the web form sets it.
-	dueGraceDays = 60
+	// DueGraceDays is how long past its due date a checkout stays open (D-80), as the web form sets it.
+	DueGraceDays = 60
 )
 
 // errRetainerStopped: the owner stopped the retainer while the worker was making its next invoice.
@@ -151,7 +151,7 @@ func (s *Service) MakeRetainerInvoices(ctx context.Context) error {
 			continue
 		}
 		// D-80: the checkout stays open to the end of the 60th day after the due date, in whole seconds rounded up.
-		seconds := int64((m.due.AddDate(0, 0, dueGraceDays+1).Sub(s.now()) + time.Second - 1) / time.Second)
+		seconds := int64((m.due.AddDate(0, 0, DueGraceDays+1).Sub(s.now()) + time.Second - 1) / time.Second)
 		r.DueDate, r.ExpiresInSeconds = m.due.Format(time.DateOnly), &seconds
 		r.Reminders = r.Reminders && !m.remindersStopped
 		r.cycle = &cycle{retainer: m.retainer, n: m.n}

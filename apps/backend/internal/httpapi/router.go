@@ -1,5 +1,5 @@
 // Package httpapi is the api process's HTTP server. NewMux is the one place that mounts every module's routes behind
-// the shared middleware; each module (healthapi, profileapi, invoiceapi, moneyapi) lists its own routes in routes.go.
+// the shared middleware; each module (healthapi, profileapi, invoiceapi, jobapi, moneyapi) lists its own routes in routes.go.
 package httpapi
 
 import (
@@ -10,10 +10,12 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/balance"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/healthapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/invoiceapi"
+	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/jobapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/moneyapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/profileapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
+	"github.com/ensp1re/forwend/apps/backend/internal/job"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 	"github.com/ensp1re/forwend/apps/backend/internal/privy"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
@@ -28,7 +30,9 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 	mux := http.NewServeMux()
 	healthapi.Routes(mux, pool)
 	profileapi.Routes(mux, guards, profile.NewService(pool, wallets))
-	invoiceapi.Routes(mux, guards, invoice.NewService(pool), balances, webURL)
+	invoices := invoice.NewService(pool)
+	invoiceapi.Routes(mux, guards, invoices, balances, webURL)
+	jobapi.Routes(mux, guards, job.NewService(pool, invoices))
 	moneyapi.Routes(mux, guards, balance.NewService(pool, balances), activity.NewService(pool))
 	return mid.SecureHeaders(mux)
 }
