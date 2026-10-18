@@ -12,12 +12,15 @@ import { APP_ROUTES } from "@/shared/config/routes";
 export function BillingDetailsScreen() {
   const { profile } = useAppSession();
   const details = useGetBillingDetailsQuery(profile.profileId);
-  // Sent here by New invoice (R-92), saving goes back there; otherwise home. Only known places, never a URL from the
-  // query.
+  // Sent here by New invoice (R-92) or New job (R-101), saving goes back there; otherwise home. Only known places, never
+  // a URL from the query.
+  const then = useSearchParams().get(BILLING_THEN.param);
   const next =
-    useSearchParams().get(BILLING_THEN.param) === BILLING_THEN.newInvoice
+    then === BILLING_THEN.newInvoice
       ? APP_ROUTES.newInvoice
-      : APP_ROUTES.home;
+      : then === BILLING_THEN.newJob
+        ? APP_ROUTES.newJob
+        : APP_ROUTES.home;
   return (
     <div className="flex max-w-md flex-col gap-8">
       <div className="flex flex-col gap-2">

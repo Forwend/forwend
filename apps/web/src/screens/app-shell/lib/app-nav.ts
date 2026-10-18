@@ -1,5 +1,6 @@
 import { CLIENTS_COPY } from "@/features/clients/constants/clients-copy";
 import { NEW_INVOICE_COPY, NEW_REQUEST_COPY } from "@/features/invoices/constants/invoices-copy";
+import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import {
   BILLING_DETAILS_COPY,
@@ -63,6 +64,19 @@ export function breadcrumb(
         crumb,
         {
           label: pathname === APP_ROUTES.newClient ? CLIENTS_COPY.newTitle : CLIENTS_COPY.editTitle,
+          href: pathname,
+        },
+      ],
+      invoiceId: null,
+    };
+  }
+  // A job's pages sit under Jobs: New job, or a job's own page.
+  if (page.href === APP_ROUTES.jobs && pathname !== APP_ROUTES.jobs) {
+    return {
+      trail: [
+        crumb,
+        {
+          label: pathname === APP_ROUTES.newJob ? JOBS_COPY.newTitle : JOBS_COPY.detailTitle,
           href: pathname,
         },
       ],

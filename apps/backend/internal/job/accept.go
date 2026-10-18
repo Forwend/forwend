@@ -27,10 +27,28 @@ func (s *Service) Accept(ctx context.Context, token, name, email string) (Job, e
 	if err != nil || !j.AcceptedAt.IsZero() {
 		return j, err
 	}
+	return s.accept(ctx, j, name, email)
+}
+
+// accept records the acceptance of the job as read, and makes its deposit. A job deleted since that read is
+// ErrNotFound, and its deposit invoice is not made.
+func (s *Service) accept(ctx context.Context, j Job, name, email string) (Job, error) {
+	var err error
 	accept := func(ctx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(ctx, `UPDATE jobs SET accepted_name = $2, accepted_email = $3, accepted_at = now()
+		tag, err := tx.Exec(ctx, `UPDATE jobs SET accepted_name = $2, accepted_email = $3, accepted_at = now()
 			WHERE id = $1 AND accepted_at IS NULL`, j.ID, name, email)
-		return err
+		if err != nil || tag.RowsAffected() == 1 {
+			return err
+		}
+		// Nothing changed: another accept won, which answers the same, or the owner deleted the job.
+		var exists bool
+		if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM jobs WHERE id = $1)", j.ID).Scan(&exists); err != nil {
+			return err
+		}
+		if !exists {
+			return ErrNotFound
+		}
+		return nil
 	}
 	deposit := j.Payments[0]
 	if !deposit.OnAccept {
@@ -49,7 +67,7 @@ func (s *Service) Accept(ctx context.Context, token, name, email string) (Job, e
 		// One across midnight has another due date: its key is taken, and the job reads as accepted.
 		_, _, err = s.invoices.Create(ctx, j.profileID, fmt.Sprintf("job:%s:%d", j.ID, deposit.Position), r)
 		if errors.Is(err, invoice.ErrConflict) {
-			if again, readErr := s.ByToken(ctx, token); readErr == nil && !again.AcceptedAt.IsZero() {
+			if again, readErr := s.ByToken(ctx, j.Token); readErr == nil && !again.AcceptedAt.IsZero() {
 				return again, nil
 			}
 		}
@@ -58,7 +76,7 @@ func (s *Service) Accept(ctx context.Context, token, name, email string) (Job, e
 		// The client sees a 422's text: it names no job id.
 		return Job{}, fmt.Errorf("accept job: %w", err)
 	}
-	return s.ByToken(ctx, token)
+	return s.ByToken(ctx, j.Token)
 }
 
 // paymentRequest is the invoice for one payment: payer chooses in USD (D-75), the job's title and client, one line for

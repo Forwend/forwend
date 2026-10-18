@@ -68,6 +68,18 @@ func getJob(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
+// deleteJob is DELETE /v1/profiles/{profileId}/jobs/{jobId} (R-101): 204 before the client accepts it, 409
+// job_accepted after.
+func deleteJob(jobs *job.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := jobs.Delete(r.Context(), r.PathValue("profileId"), r.PathValue("jobId")); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 // getPublicJob is GET /v1/jobs/{token}: the client's read, public like the checkout.
 func getPublicJob(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

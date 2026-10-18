@@ -299,6 +299,8 @@ R-100, D-81; the full schema is in openapi.yaml. A job is a quote with a payment
 - `GET /v1/profiles/{profileId}/jobs` lists them newest first, with the total and how many payments are paid.
 - `GET /v1/profiles/{profileId}/jobs/{jobId}` reads one: the client, the token, and each payment's invoice.
   - A payment's `invoiceId`, `number` and `status` (the invoice's status filter) are null until it is made.
+- `DELETE /v1/profiles/{profileId}/jobs/{jobId}` (R-101) deletes a job the client has not accepted: 204, and its link
+  stops working. An accepted job is 409 `job_accepted`. An accept that read the job just before makes no invoice.
 - `GET /v1/jobs/{token}` is the client's read, public like the checkout: no client block, typed email, job id or token.
 - `POST /v1/jobs/{token}/accept` is public: `{name, email}`, typed by the client.
   - It keeps them with the time, once; an accepted job answers the same, whoever accepts again.

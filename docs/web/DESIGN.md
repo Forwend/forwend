@@ -184,6 +184,22 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   form pages under Clients laid out like New invoice (Contact, Address and tax, and On invoices with the default PO
   or reference and the payment reminders default (R-97), as panels); Delete waits in the More actions menu at the page's top right and asks to confirm in a
   dialog, as Cancel does on an invoice.
+- Jobs (R-101) sits in a freelancer's Get paid group after Invoices. It is laid out like Clients:
+  - The toolbar searches the title and client, with New job at its end (beside the title on phones).
+  - The table shows the job, client, total, state and created day.
+  - Below xl the rows stack, as on Clients: the title, then the client and state, with the total on the right.
+  - The state is "Waiting for acceptance" or "Accepted · 1 of 3 paid".
+- New job is a form page under Jobs, laid out like New invoice, with Work, Client and Payments panels.
+  - Client works as on New invoice: a saved client fills the fields, and Name and Billing email are required.
+  - Payments are rows like an invoice's items: title, Amount in USD and Days to pay, with a remove button each.
+  - Add payment and the total follow the rows; a checkbox makes the first payment the deposit.
+  - Without billing details it shows the same empty state as New invoice, which comes back here.
+- A job's page has the title as its heading and, until the client accepts, Delete job in the More actions menu.
+  - A delete the client's acceptance beat says so in a toast, and focus moves to the heading.
+  - Payments (left) list how each is invoiced and its due days, then its invoice number and status pill.
+  - Scope follows Payments when there is one.
+  - Client's link (right) says who has to accept or who accepted, and shows the link with Copy link and an open link.
+  - Billed to follows it, like an invoice's.
 - Invoices table: the client has a round initials avatar. Phone rows lead with the client (or a request's note) beside
   that avatar carrying the network's logo, with the number and a short due date (no year within this year) under it,
   and the amount over the status pill on the right. From small screens up (and for requests, which have no table) a

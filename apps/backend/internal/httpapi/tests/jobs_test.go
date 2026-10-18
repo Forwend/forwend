@@ -12,7 +12,7 @@ const jobBody = `{"title": "Logo design", "scope": "Three logo ideas, two rounds
 	"payments": [{"title": "Deposit", "amountUsd": "300", "dueDays": 7, "onAccept": true},
 	             {"title": "Final delivery", "amountUsd": "700.50", "dueDays": 14}]}`
 
-// R-100: the owner creates a job once per Idempotency-Key with a copy of the billing details; the client reads it by
+// R-100, R-101: the owner creates a job once per Idempotency-Key with a copy of the billing details; the client reads it by
 // its link without the client block and accepts it once; the owner's list and read show each payment's invoice.
 func TestJobs(t *testing.T) {
 	e := invoiceAPI(t)
@@ -94,6 +94,20 @@ func TestJobs(t *testing.T) {
 		}
 		if _, ok := r.body["acceptedEmail"]; ok {
 			t.Fatalf("accept answers the typed email: %v", r.body)
+		}
+	}
+
+	// R-101: an accepted job can't be deleted; one not accepted can, once.
+	if r := e.call(t, "DELETE", jobs+"/"+id, alice, "", ""); r.status != http.StatusConflict || errorCode(r) != "job_accepted" {
+		t.Fatalf("delete an accepted job: %d %v, want 409 job_accepted", r.status, r.body)
+	}
+	withdrawn := e.call(t, "POST", jobs, alice, "job-4", jobBody).body["jobId"].(string)
+	if r := e.call(t, "DELETE", jobs+"/"+withdrawn, alice, "", ""); r.status != http.StatusNoContent {
+		t.Fatalf("delete: %d %v, want 204", r.status, r.body)
+	}
+	for _, method := range []string{"GET", "DELETE"} {
+		if r := e.call(t, method, jobs+"/"+withdrawn, alice, "", ""); r.status != http.StatusNotFound || errorCode(r) != "job_not_found" {
+			t.Fatalf("%s after delete: %d %v, want 404", method, r.status, r.body)
 		}
 	}
 

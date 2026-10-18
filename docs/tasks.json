@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 231,
+  "nextId": 232,
   "tasks": [
     {
       "id": "F222",
@@ -1020,6 +1020,111 @@
         "branch": "feat/f230-a-freelancer-can-create-a-job-a-quote-wi",
         "base": "main"
       }
+    },
+    {
+      "id": "F231",
+      "type": "feat",
+      "behavior": "A freelancer can create, list, open and delete jobs in the app: Jobs in the sidebar, a New job form with the payment schedule, and a job page with the client's link",
+      "acceptance": [
+        "Jobs (freelancer sidebar) lists the profile's jobs newest first with title, client, total and state (waiting for acceptance, or accepted with paid count); an empty list offers New job; the list fits a 390 px phone.",
+        "New job takes a title, optional scope, the client (a saved client fills it) and 1-10 payments (title, USD amount, days to pay; the first can be the deposit), shows the total as typed, sends one POST per filled form with an Idempotency-Key, names a refused field on that field, and opens the job's page.",
+        "The job page shows the title, the client's link /w/<token> with Copy, the acceptance, the client, the scope and each payment with its invoice link and status; before acceptance Delete job asks to confirm and calls DELETE /v1/profiles/{id}/jobs/{jobId} (204; 409 job_accepted after acceptance; another user 403).",
+        "The live e2e creates a job, opens it, copies the link and deletes it, so no run leaves a job behind (D-85); axe finds no serious or critical violations.",
+        "DESIGN.md describes Jobs, New job and the job page; openapi.yaml and api.md describe the delete route."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "R-101",
+        "R-100"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-18 review fail by reviewer: FAIL. 1) Backend regression of R-100 'a second accept answers the same' (apps/backend/internal/job/accept.go:40). The new guard returns ErrNotFound whenever the UPDATE ... WHERE accepted_at IS NULL hits 0 rows. That also happens when two accepts of a job without a deposit both read it before either commits: the second now gets 404 job_not_found for a job that exists and is accepted. Reproduced in a scratch copy: two concurrent Accept calls on quote(false) behind a held row lock give [nil, 'accept job: job not found'] on this branch and [nil, nil] with main's accept.go. Fix: on 0 rows, re-read the job; answer ErrNotFound only when it is gone, and return it when it is accepted. Add that concurrent no-deposit case as a test. The deposit path is fine: the profile lock and the invoice key replay mean After never runs twice. 2) Job page, 409 job_accepted (apps/web/src/features/jobs/components/job-actions.tsx:89-93). RTK Query invalidates tags on a rejected mutation too (rtk-query.modern.mjs:2462), so deleteJob's invalidatesTags (jobs-api.ts:41-45) refetches the job. job-screen.tsx:35 then unmounts JobActions once acceptedAt is set, so the dialog and its deleteTooLate alert vanish and focus falls to the body. The same happens when a live poll sees an acceptance while the dialog is open. Invoice cancel already handles this case with a toast (invoice-actions.tsx:66-70); follow that pattern. Minor, not blocking alone: (a) job-detail.tsx:129-131 announces only 'Link copied'; a failed copy is not announced, unlike the pay page (pay-invoice.tsx, status region shows any non-idle label). The link it asks to select is truncated. (b) createJob has no argSchema (jobs-api.ts:27), unlike createInvoice, createProfile and saveClient; createJobBodySchema is used only for the type. (c) DESIGN.md:189 says phone rows show the title, client and state, but they also show the total, and they stack below xl, not only on phones. The bullet also holds two facts (D-84). (d) The e2e checks width on the list and New job but not the job page at 390 px; the screenshot F231-job-phone-dark.png covers it. Checked and fine: zod schemas match openapi.yaml and jobapi/model.go. The body's keys match DisallowUnknownFields. invalidJobField maps the backend's field prefixes. There is one Idempotency-Key per filled-in form, and the unit test proves the retry reuses it. usdCents, centsText, apiCents and the total are exact bigint and match the backend regex. Delete takes a FOR UPDATE lock, gives 409 job_accepted and 404 after delete, and profileRoutes covers 403. The accept-after-delete test makes no invoice. Payment rows copy LineItems, and labels pass label-in-name at both widths. Add/remove focus, submit focus and the delete dialog copy ClientActions. Party and foldText moved without behavior change. The breadcrumb, nav and BILLING_THEN.newJob are correct. The dev DB has 0 jobs and one E2E studio profile, by design. check-docs passes: 0 errors. vitest: 37 passed. typecheck passes. go test ./internal/job ./internal/httpapi/tests passes.",
+        "2026-10-18 review pass by reviewer: PASS on re-review. Both blocking findings are fixed. 1) apps/backend/internal/job/accept.go: when the UPDATE changes 0 rows, the hook checks in the same transaction whether the job still exists. Gone is ErrNotFound; still there means another accept won, and that accept answers the same (R-100). New TestConcurrentAcceptsWithoutDeposit (accept_test.go) holds two no-deposit accepts behind a job row lock; both pass. Mutation check in a scratch copy: with the old guard it fails with 'accept job: job not found'. TestAcceptOfADeletedJobMakesNoInvoice still passes. The deposit path can't reach the hook twice for one job, because the invoice key replays, so the 'exists' branch never re-links an invoice. 2) The 409 on delete now follows invoice cancel. job-actions.tsx:52-57 shows a warning toast and calls onTooLate. job-screen.tsx:34-39 moves focus to the h1 (tabIndex -1) once the refetch shows acceptedAt; this works whichever comes first. The dialog alert covers only other errors (job-actions.tsx:96). Minor points from round 1 are fixed: job-detail.tsx announces a failed copy in its status region; createJob has an argSchema with createJobBodySchema (jobs-api.ts); DESIGN.md has stacked rows below xl with the total, separate bullets, and the too-late toast. Known limits, not blocking: (a) if a live poll sees an acceptance while the delete dialog is open, the dialog goes away without a message, and focus drops to the body; the page then shows 'Accepted by'. (b) The e2e checks 390 px for the list and New job, not the job page; F231-job-phone-dark.png covers the job page. (c) The api.md wording 'An accept that read the job just before makes no invoice' could add that this accept is 404 job_not_found. Checks run: go test ./internal/job ./internal/httpapi/tests passes. vitest jobs, clients and invoices: 37 passed. typecheck passes. check-docs: 0 errors. The dev DB has 0 jobs and 0 job_payments."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-18T13:45:29Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 72.4,
+            "log": "docs/runs/F231-20261018T134529Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 233.5,
+            "log": "docs/runs/F231-20261018T134529Z-e2e.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F231-20261018T134529Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F231-20261018T134529Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F231-20261018T134529Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F231-20261018T134529Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.2,
+            "log": "docs/runs/F231-20261018T134529Z-build.log"
+          }
+        ],
+        "taskHash": "f9f6b0939a27932d",
+        "filesHash": "a4ac33cdb3ba380d",
+        "proof": {
+          "1": "e2e: jobs.spec opens Jobs from the freelancer sidebar (heading, table or 'No jobs yet', axe clean), finds the new job by search with its client, 1,000.50 USD and 'Waiting for acceptance'; resized to 390 px in the dark theme, Jobs opens from More and the list fits. Screenshot docs/runs/F231-jobs.png.",
+          "2": "unit: job-form.test: Create with nothing typed sends nothing and focuses Title; with values the body is {title, scope, client, payments [Deposit 300.00 7 onAccept true, Final payment 700.50 14 onAccept false]}, the total reads 1,000.50 USD, and a retry keeps the Idempotency-Key; createJob checks its argument with createJobBodySchema. jobs.test: usdCents is exact and refuses 3 decimals, commas, 0 and 11 digits; invalidJobField names client.email and payments. e2e: the created job opens /app/jobs/<id>, and New job fits 390 px; docs/runs/F231-new-job.png.",
+          "3": "e2e: the job page shows the payments with 'Invoiced when the client accepts, due 7 days after', 'Not invoiced yet' ×2, the total, 'Waiting for E2E client to accept.', Copy link puts http://localhost:3000/w/<64 hex> on the clipboard (a failed copy is announced too), Billed to and Scope; More actions > Delete job asks in a dialog, deletes, lands on /app/jobs with the toast and no row. A one-off spec with DELETE answered 409 and the read accepted showed the 'already accepted' toast, focus on the heading and no menu. unit: TestJobs DELETE 204, then 404, 409 job_accepted; TestAcceptOfADeletedJobMakesNoInvoice and TestConcurrentAcceptsWithoutDeposit each fail without their fix (mutation).",
+          "4": "e2e: jobs.spec deletes its job at the end; the dev DB shows 0 jobs after the runs (SQL); the job test switches profile once, so the suite stays within the user's API limit; axe on the list, form, job page and delete dialog has no serious or critical violations.",
+          "5": "docs-check: DESIGN.md describes Jobs (rows below xl), New job, the job page and the too-late toast; openapi.yaml has deleteJob, JobAccepted and job_accepted; api.md has the DELETE route; docs-check passes."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS on re-review. Both blocking findings are fixed. 1) apps/backend/internal/job/accept.go: when the UPDATE changes 0 rows, the hook checks in the same transaction whether the job still exists. Gone is ErrNotFound; still there means another accept won, and that accept answers the same (R-100). New TestConcurrentAcceptsWithoutDeposit (accept_test.go) holds two no-deposit accepts behind a job row lock; both pass. Mutation check in a scratch copy: with the old guard it fails with 'accept job: job not found'. TestAcceptOfADeletedJobMakesNoInvoice still passes. The deposit path can't reach the hook twice for one job, because the invoice key replays, so the 'exists' branch never re-links an invoice. 2) The 409 on delete now follows invoice cancel. job-actions.tsx:52-57 shows a warning toast and calls onTooLate. job-screen.tsx:34-39 moves focus to the h1 (tabIndex -1) once the refetch shows acceptedAt; this works whichever comes first. The dialog alert covers only other errors (job-actions.tsx:96). Minor points from round 1 are fixed: job-detail.tsx announces a failed copy in its status region; createJob has an argSchema with createJobBodySchema (jobs-api.ts); DESIGN.md has stacked rows below xl with the total, separate bullets, and the too-late toast. Known limits, not blocking: (a) if a live poll sees an acceptance while the delete dialog is open, the dialog goes away without a message, and focus drops to the body; the page then shows 'Accepted by'. (b) The e2e checks 390 px for the list and New job, not the job page; F231-job-phone-dark.png covers the job page. (c) The api.md wording 'An accept that read the job just before makes no invoice' could add that this accept is 404 job_not_found. Checks run: go test ./internal/job ./internal/httpapi/tests passes. vitest jobs, clients and invoices: 37 passed. typecheck passes. check-docs: 0 errors. The dev DB has 0 jobs and 0 job_payments.",
+          "at": "2026-10-18T13:52:08Z",
+          "filesHash": "a4ac33cdb3ba380d"
+        }
+      },
+      "branch": "feat/f231-a-freelancer-can-create-list-open-and-de",
+      "baseCommit": "efd51dba28fccaf529966bc6526121aa3b08d10b",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

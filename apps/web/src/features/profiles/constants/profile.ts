@@ -12,7 +12,11 @@ export const PROFILE_KIND_LABELS = {
 } as const;
 
 /** ?then= on the billing details page: where saving them leads instead of home (R-92). */
-export const BILLING_THEN = { param: "then", newInvoice: "new-invoice" } as const;
+export const BILLING_THEN = {
+  param: "then",
+  newInvoice: "new-invoice",
+  newJob: "new-job",
+} as const;
 
 /** Profiles a user can create; the personal one is made at signup. */
 export const NEW_PROFILE_KINDS = [PROFILE_KINDS.freelancer, PROFILE_KINDS.merchant] as const;

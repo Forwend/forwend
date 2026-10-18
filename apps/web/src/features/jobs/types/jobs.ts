@@ -1,0 +1,33 @@
+import type { PaymentStatus } from "@forwend/ui-web";
+import type { z } from "zod";
+import type { JOB_FIELDS, PAYMENT_FIELDS } from "@/features/jobs/constants/jobs";
+import type {
+  createJobBodySchema,
+  jobPaymentSchema,
+  jobSchema,
+  jobSummarySchema,
+  publicJobSchema,
+} from "@/features/jobs/schemas/jobs";
+
+export type Job = z.infer<typeof jobSchema>;
+export type PublicJob = z.infer<typeof publicJobSchema>;
+export type JobPayment = z.infer<typeof jobPaymentSchema>;
+export type JobSummary = z.infer<typeof jobSummarySchema>;
+export type CreateJobBody = z.infer<typeof createJobBodySchema>;
+
+/** A payment's invoice status: the API's invoice status filter, which names a status pill. */
+export type JobPaymentStatus = Extract<
+  PaymentStatus,
+  "open" | "paid" | "settled" | "expired" | "canceled"
+>;
+
+export type JobField = (typeof JOB_FIELDS)[keyof typeof JOB_FIELDS];
+export type PaymentField = (typeof PAYMENT_FIELDS)[keyof typeof PAYMENT_FIELDS];
+
+/** A payment row as typed on New job. */
+export interface PaymentDraft {
+  id: string;
+  title: string;
+  amount: string;
+  dueDays: string;
+}

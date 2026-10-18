@@ -28,6 +28,8 @@ var (
 	ErrInvalid = errors.New("invalid job request")
 	// ErrConflict means the idempotency key was used with another request.
 	ErrConflict = errors.New("idempotency key reused with another request")
+	// ErrAccepted: the client accepted the job, so it can't be deleted.
+	ErrAccepted = errors.New("the client accepted the job")
 )
 
 // Request is a new job as the owner sends it. Client needs a name and an email: payments are billed there.

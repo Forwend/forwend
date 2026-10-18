@@ -95,3 +95,31 @@ func (s *Service) List(ctx context.Context, profileID string) ([]Summary, error)
 		return s, err
 	})
 }
+
+// Delete removes the profile's job while the client has not accepted it: a withdrawn quote. An accepted job is
+// ErrAccepted; its invoices and the record of acceptance stay. The row lock orders it with an accept.
+func (s *Service) Delete(ctx context.Context, profileID, id string) error {
+	if !jobID.MatchString(id) {
+		return ErrNotFound
+	}
+	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		var accepted bool
+		err := tx.QueryRow(ctx, "SELECT accepted_at IS NOT NULL FROM jobs WHERE id = $1 AND profile_id = $2 FOR UPDATE",
+			id, profileID).Scan(&accepted)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		} else if err != nil {
+			return fmt.Errorf("read job %s: %w", id, err)
+		}
+		if accepted {
+			return ErrAccepted
+		}
+		if _, err := tx.Exec(ctx, "DELETE FROM job_payments WHERE job_id = $1", id); err != nil {
+			return fmt.Errorf("delete job %s payments: %w", id, err)
+		}
+		if _, err := tx.Exec(ctx, "DELETE FROM jobs WHERE id = $1", id); err != nil {
+			return fmt.Errorf("delete job %s: %w", id, err)
+		}
+		return nil
+	})
+}
