@@ -518,6 +518,30 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/invoices/{invoiceId}/repeat/stop:
+    post:
+      operationId: stopRepeat
+      summary: Stop the retainer one of the profile's invoices belongs to
+      description: |
+        R-98. No later month's invoice is made; invoices already made stay. Answers the invoice, the same when it was
+        already stopped or the invoice doesn't repeat.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+      responses:
+        "200":
+          description: The invoice
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/reminders/{token}/stop:
     post:
       operationId: stopReminders
@@ -1357,6 +1381,20 @@ components:
           description: |
             Optional. true turns payment reminders on at once, as setReminders does (R-97); it needs dueDate and
             client.email, otherwise 422. Part of the idempotency hash only when true.
+        repeat:
+          type: object
+          additionalProperties: false
+          description: |
+            Optional. Makes the invoice repeat every month (R-98, D-58): each later month's invoice is due on the
+            dueDate's day (the month's last day when shorter). The worker makes it 7 UTC days before that due date,
+            with the checkout open 60 days past it (D-80), and emails it to client.email. A month whose due date
+            passed unmade is skipped. It needs dueDate and client.email, otherwise 422; a profile has at most 50
+            running. Part of the idempotency hash only when set.
+          properties:
+            endDate:
+              type: string
+              format: date
+              description: Optional last due date a month may have, on or after dueDate; empty or left out repeats until stopped.
         client:
           type: object
           additionalProperties: false
@@ -1491,6 +1529,20 @@ components:
                       requestedAt: { type: string, format: date-time }
                       sentAt: { type: [string, "null"], format: date-time }
                       failedAt: { type: [string, "null"], format: date-time }
+            retainer:
+              description: |
+                Only in the owner's responses; the public GET leaves it out. The retainer the invoice belongs to
+                (R-98), on each of its invoices; null when it doesn't repeat. nextDueDate is the next invoice's due
+                date and nextOn the UTC day the worker makes and emails it; both null once it ended or stopped.
+              oneOf:
+                - type: "null"
+                - type: object
+                  required: [endDate, nextDueDate, nextOn, stoppedAt]
+                  properties:
+                    endDate: { type: [string, "null"], format: date }
+                    nextDueDate: { type: [string, "null"], format: date }
+                    nextOn: { type: [string, "null"], format: date }
+                    stoppedAt: { type: [string, "null"], format: date-time }
             sends:
               type: array
               description: |

@@ -38,11 +38,14 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	if r.Reminders && (r.DueDate == "" || r.ClientEmail == "") {
 		return Invoice{}, false, fmt.Errorf("%w: reminders need a dueDate and a client.email", ErrInvalid)
 	}
+	if err := checkRepeat(r); err != nil {
+		return Invoice{}, false, err
+	}
 	var hash []byte
 	if usd != nil {
-		hash = requestHash(0, "usd", usd, expiresIn, r.Details, lines, r.Reminders)
+		hash = requestHash(0, "usd", usd, expiresIn, r.Details, lines, r.Reminders, r.Repeat)
 	} else {
-		hash = requestHash(r.ChainID, token, amount, expiresIn, r.Details, lines, r.Reminders)
+		hash = requestHash(r.ChainID, token, amount, expiresIn, r.Details, lines, r.Reminders, r.Repeat)
 	}
 	if inv, err := s.replay(ctx, profileID, idempotencyKey, hash); !errors.Is(err, ErrNotFound) {
 		return inv, false, err
@@ -168,6 +171,16 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		if _, err := tx.Exec(ctx, "INSERT INTO invoice_reminders (invoice_id, enabled, stop_token) VALUES ($1, true, $2)",
 			*mainID, token); err != nil {
 			return Invoice{}, false, fmt.Errorf("turn on invoice reminders: %w", err)
+		}
+	}
+	if r.Repeat != nil {
+		if err := s.startRetainer(ctx, tx, profileID, *mainID, r); err != nil {
+			return Invoice{}, false, err
+		}
+	}
+	if r.cycle != nil {
+		if err := addCycle(ctx, tx, *r.cycle, *mainID, idempotencyKey); err != nil {
+			return Invoice{}, false, err
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {

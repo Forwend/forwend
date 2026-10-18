@@ -80,6 +80,9 @@ func run() error {
 		if err := invoices.QueueReminders(ctx); err != nil {
 			slog.Error("queue reminders", "err", err)
 		}
+		if err := invoices.MakeRetainerInvoices(ctx); err != nil {
+			slog.Error("make retainer invoices", "err", err)
+		}
 		if sender != nil {
 			if err := notify.Deliver(ctx, pool, sender, notify.Site{WebURL: cfg.Email.PublicWebURL, PostalAddress: cfg.Email.PostalAddress}); err != nil {
 				slog.Error("deliver email", "err", err)

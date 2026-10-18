@@ -71,7 +71,7 @@ func TestCreateLosesTheInsertRaceToTheSameKey(t *testing.T) {
 		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
 		VALUES ($1, $2, 84532, 'evm', $3, 5000000, 1800000000, 1800086400, '0x1111111111111111111111111111111111111111',
 		    'evm_create2', '0x2222222222222222222222222222222222222222', '0x3333333333333333333333333333333333333333',
-		    'key-1', $4)`, winner, profile, usdc, requestHash(84532, usdc, big.NewInt(5000000), DefaultExpiresIn, Details{}, nil, false))
+		    'key-1', $4)`, winner, profile, usdc, requestHash(84532, usdc, big.NewInt(5000000), DefaultExpiresIn, Details{}, nil, false, nil))
 	if err != nil {
 		t.Fatal(err)
 	}
