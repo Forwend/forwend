@@ -15,4 +15,7 @@ func Routes(mux *http.ServeMux, g mid.Guards, balances *balance.Service, activit
 	mux.Handle("GET /v1/profiles/{profileId}/balance-history", g.ProfileScoped(getBalanceHistory(balances)))
 	mux.Handle("GET /v1/profiles/{profileId}/activity", g.ProfileScoped(getActivity(activities)))
 	mux.Handle("GET /v1/profiles/{profileId}/transactions", g.ProfileScoped(getTransactions(activities)))
+	mux.Handle("GET /v1/profiles/{profileId}/transactions.csv", g.ProfileScoped(getTransactionsCSV(activities)))
+	mux.Handle("PUT /v1/profiles/{profileId}/transactions/{chainId}/{txHash}/{logIndex}/label",
+		g.ProfileScoped(putTransactionLabel(activities)))
 }

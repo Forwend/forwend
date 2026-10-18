@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -107,7 +108,8 @@ func TestGetTransactions(t *testing.T) {
 	cursor, _ := page.body["nextCursor"].(string)
 	want := map[string]any{"chainId": float64(84532), "token": usdc, "symbol": "USDC", "decimals": float64(6),
 		"direction": "out", "amount": "1000000", "counterparty": counterparty, "txHash": hash(2), "logIndex": float64(0),
-		"blockNumber": float64(2), "at": "2025-10-09T08:54:20Z", "status": "detected"}
+		"blockNumber": float64(2), "at": "2025-10-09T08:54:20Z", "status": "detected", "usdValue": "1.000000",
+		"classification": "sent", "labelable": false, "invoice": nil}
 	if page.status != http.StatusOK || len(items) != 1 || cursor == "" || !reflect.DeepEqual(items[0], want) {
 		t.Fatalf("page 1: %d %v\nwant item %v", page.status, page.body, want)
 	}
@@ -180,5 +182,92 @@ func TestGetBalanceHistory(t *testing.T) {
 	}
 	if r := e.call(t, "GET", path, "", "", ""); r.status != http.StatusUnauthorized {
 		t.Fatalf("without a token: %d", r.status)
+	}
+}
+
+// R-108: each transaction says what it was, with its USD value; the user labels money in that Forwend can't classify,
+// and the export lists every transaction with those columns.
+func TestTransactionRecords(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice, stranger = "did:privy:alice", "0x5555555555555555555555555555555555555555"
+	path := "/v1/profiles/" + e.aliceProfile + "/transactions"
+	made := e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/invoices", alice, "inv-1",
+		`{"chainId": 84532, "token": "`+usdc+`", "amount": "5000000", "client": {"name": "=Bob Ltd"}}`)
+	if made.status != http.StatusCreated {
+		t.Fatalf("invoice: %d %v", made.status, made.body)
+	}
+	invoice := made.body["invoiceId"].(string)
+	hash := func(n int) string { return fmt.Sprintf("0x%064x", n) }
+	for _, row := range []struct {
+		n            int
+		counterparty string
+		amount       string
+	}{{1, made.body["receiveAddress"].(string), "5000000"}, {2, stranger, "1500000"}} {
+		if _, err := e.pool.Exec(context.Background(), `INSERT INTO wallet_transfers (chain_id, chain_family,
+			    token_contract, wallet_address, direction, counterparty, tx_hash, log_index, block_hash, block_number,
+			    block_time, amount, status)
+			VALUES (84532, 'evm', $1, $2, 'in', $3, $4, 0, $4, $5, 1760000000 + $5::bigint, $6, 'confirmed')`,
+			usdc, aliceWallet, row.counterparty, hash(row.n), row.n, row.amount); err != nil {
+			t.Fatal(err)
+		}
+	}
+	items := e.call(t, "GET", path, alice, "", "").body["items"].([]any)
+	paid, other := items[1].(map[string]any), items[0].(map[string]any)
+	if paid["classification"] != "invoice" || paid["usdValue"] != "5.000000" || paid["labelable"] != false ||
+		!reflect.DeepEqual(paid["invoice"],
+			map[string]any{"invoiceId": invoice, "number": float64(1), "clientName": "=Bob Ltd"}) {
+		t.Fatalf("the invoice payment %v", paid)
+	}
+	if other["classification"] != "unclassified" || other["usdValue"] != "1.500000" || other["labelable"] != true ||
+		other["invoice"] != nil {
+		t.Fatalf("money in from a stranger %v", other)
+	}
+
+	label := func(n int, body string) reply {
+		return e.call(t, "PUT", fmt.Sprintf("%s/84532/%s/0/label", path, hash(n)), alice, "", body)
+	}
+	if r := label(2, `{"label": "income"}`); r.status != http.StatusNoContent {
+		t.Fatalf("label: %d %v", r.status, r.body)
+	}
+	if got := e.call(t, "GET", path, alice, "", "").body["items"].([]any)[0].(map[string]any); got["classification"] != "income" ||
+		got["labelable"] != true {
+		t.Fatalf("labelled %v, want income and still labelable", got)
+	}
+	for _, c := range []struct {
+		n          int
+		body, code string
+		status     int
+	}{
+		{1, `{"label": "income"}`, "not_labelable", http.StatusConflict},
+		{9, `{"label": "income"}`, "transaction_not_found", http.StatusNotFound},
+		{2, `{"label": "salary"}`, "invalid_value", http.StatusUnprocessableEntity},
+	} {
+		if r := label(c.n, c.body); r.status != c.status || errorCode(r) != c.code {
+			t.Fatalf("label %d %s: %d %v, want %d %s", c.n, c.body, r.status, r.body, c.status, c.code)
+		}
+	}
+	for _, bad := range []string{"/x/" + hash(2) + "/0", "/9223372036854775808/" + hash(2) + "/0",
+		"/84532/" + hash(2) + "/9223372036854775808"} {
+		if r := e.call(t, "PUT", path+bad+"/label", alice, "", `{"label": null}`); r.status != http.StatusNotFound {
+			t.Fatalf("%s: %d %v, want 404", bad, r.status, r.body)
+		}
+	}
+
+	export := e.call(t, "GET", path+".csv", alice, "", "")
+	want := "Date (UTC),Direction,Amount,Token,Network,Counterparty,Transaction,Status,USD value,Classification,Invoice,Client\r\n" +
+		"2025-10-09T08:53:22Z,in,1.500000,USDC,Base Sepolia," + stranger + "," + hash(2) + ",confirmed,1.500000,income,,\r\n" +
+		"2025-10-09T08:53:21Z,in,5.000000,USDC,Base Sepolia," + made.body["receiveAddress"].(string) + "," + hash(1) +
+		",confirmed,5.000000,invoice,INV-0001,'=Bob Ltd\r\n"
+	if export.status != http.StatusOK || export.raw != want {
+		t.Fatalf("export: %d\n%s\nwant\n%s", export.status, export.raw, want)
+	}
+	if r := e.call(t, "GET", path+".csv?from=2025-10-10", alice, "", ""); r.status != http.StatusOK ||
+		strings.Count(r.raw, "\r\n") != 1 {
+		t.Fatalf("export from the next day: %d %q, want the header alone", r.status, r.raw)
+	}
+	for _, query := range []string{"?from=x", "?to=2025-13-01", "?from=2025-10-10&to=2025-10-09"} {
+		if r := e.call(t, "GET", path+".csv"+query, alice, "", ""); r.status != http.StatusUnprocessableEntity {
+			t.Fatalf("export %s: %d %v, want 422", query, r.status, r.body)
+		}
 	}
 }

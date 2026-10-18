@@ -357,6 +357,22 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   time first, reorged transfers left out. An item: `chainId`, `token`, `symbol`, `decimals`, `direction` (`in` | `out`), `amount`,
   `counterparty` (sender for in, receiver for out), `txHash`, `logIndex`, `blockNumber`, `at` (block time), `status`
   (`detected` | `confirmed`, as for deposits).
+- Records (R-108): each transaction adds `usdValue` and `classification`, and `invoice` for an invoice payment.
+  - `usdValue` is the amount at 1 USD per USD stablecoin (D-75, D-82), with every decimal of the token.
+  - Money in from one of the profile's invoice receive addresses is `invoice`, with `{invoiceId, number, clientName}`.
+  - Money between the user's own profiles is `own_transfer`, either way.
+  - Other money out is `sent`.
+  - Other money in is `unclassified` until labelled `income`, `own_transfer`, `refund` or `other`.
+  - `labelable` is true for that money in, labelled or not, and false for anything else.
+- `PUT /v1/profiles/{profileId}/transactions/{chainId}/{txHash}/{logIndex}/label` takes `{"label": ...}`; null clears it.
+  - Only money in that Forwend can't classify takes a label; anything else is 409 `not_labelable`.
+  - A transfer the profile's wallet lacks is 404 `transaction_not_found`.
+- `GET /v1/profiles/{profileId}/transactions.csv?from=&to=` exports every transaction in those UTC days, newest first.
+  - Both days are optional and included.
+  - A bad day, or from after to, is 422.
+  - Columns: date (UTC), direction, amount, token, network, counterparty, transaction, status, USD value.
+  - Then the classification, invoice number and client.
+  - A cell starting like a formula gets a leading apostrophe.
 - `GET /v1/profiles/{profileId}/balance-history?days=N`: N is 1–365, default 30 (not a number: 400; out of range: 422).
   One point per UTC day, today included, oldest first: `points[i]` is `{ at, estimatedUsd, receivedUsd, sentUsd }`,
   and `tokens[j]` is `{ chainId, token, symbol, decimals, balances, received, sent }`, where each array holds one

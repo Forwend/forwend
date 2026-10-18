@@ -164,6 +164,8 @@ with a test.
 - `wallet_transfers` (R-38): enabled-token `Transfer` logs from or to a profile wallet, one row per wallet and direction
   (`in`|`out`) with the counterparty, so a transfer between two profile wallets is out for one and in for the other.
   Block fields, statuses and identity rules as in `chain_transfers`, with the wallet and direction in each key.
+- `transfer_labels` (R-108): the user's label for money in that Forwend can't classify, one per profile and transfer
+  log (chain, transaction, log index).
 - `ledger_transactions` + `ledger_entries`: double-entry, append-only (below).
 - `settlement_intents` (unique per invoice): nonce and tx hash tracked, with the hashes a fee replacement replaced;
   reconcile before any retry.

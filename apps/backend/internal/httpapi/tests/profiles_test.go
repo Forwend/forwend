@@ -195,6 +195,8 @@ var profileRoutes = []struct{ method, path, body string }{
 	{"GET", "/v1/profiles/%s/balances", ""},
 	{"GET", "/v1/profiles/%s/activity", ""},
 	{"GET", "/v1/profiles/%s/transactions", ""},
+	{"GET", "/v1/profiles/%s/transactions.csv", ""},
+	{"PUT", "/v1/profiles/%s/transactions/84532/0x" + strings.Repeat("0", 64) + "/0/label", `{"label": "income"}`},
 	{"GET", "/v1/profiles/%s/balance-history", ""},
 	{"PUT", "/v1/profiles/%s/clients/" + clientA, `{"name": "Bob Ltd"}`},
 	{"GET", "/v1/profiles/%s/clients", ""},

@@ -2,8 +2,11 @@ package moneyapi
 
 import (
 	"math/big"
+	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/activity"
 	"github.com/ensp1re/forwend/apps/backend/internal/chain"
+	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
 )
 
 type tokenJSON struct {
@@ -56,14 +59,42 @@ type transactionsJSON struct {
 
 type transactionJSON struct {
 	tokenJSON
-	Direction    string `json:"direction"`
-	Amount       string `json:"amount"`
-	Counterparty string `json:"counterparty"`
-	TxHash       string `json:"txHash"`
-	LogIndex     uint64 `json:"logIndex"`
-	BlockNumber  uint64 `json:"blockNumber"`
-	At           string `json:"at"`
-	Status       string `json:"status"`
+	Direction      string                  `json:"direction"`
+	Amount         string                  `json:"amount"`
+	Counterparty   string                  `json:"counterparty"`
+	TxHash         string                  `json:"txHash"`
+	LogIndex       uint64                  `json:"logIndex"`
+	BlockNumber    uint64                  `json:"blockNumber"`
+	At             string                  `json:"at"`
+	Status         string                  `json:"status"`
+	UsdValue       string                  `json:"usdValue"`
+	Classification string                  `json:"classification"`
+	Labelable      bool                    `json:"labelable"`
+	Invoice        *transactionInvoiceJSON `json:"invoice"`
+}
+
+// transactionInvoiceJSON is the invoice money in paid (R-108); clientName is null when it has none.
+type transactionInvoiceJSON struct {
+	InvoiceID  string  `json:"invoiceId"`
+	Number     int64   `json:"number"`
+	ClientName *string `json:"clientName"`
+}
+
+func toTransactionJSON(t activity.Transfer) transactionJSON {
+	out := transactionJSON{tokenJSON: toTokenJSON(t.Asset), Direction: t.Direction, Amount: t.Amount.String(),
+		Counterparty: t.Counterparty, TxHash: t.TxHash, LogIndex: t.LogIndex, BlockNumber: t.BlockNumber,
+		At: t.At.Format(time.RFC3339), Status: t.Status, UsdValue: t.USDValue().FloatString(t.Decimals),
+		Classification: t.Classification(), Labelable: t.Labelable()}
+	if i := t.Invoice; i != nil {
+		out.Invoice = &transactionInvoiceJSON{InvoiceID: i.ID, Number: i.Number, ClientName: httpio.OrNull(i.ClientName)}
+	}
+	return out
+}
+
+// tokenAmount is the amount in the token's units, with every decimal.
+func tokenAmount(t activity.Transfer) string {
+	return new(big.Rat).SetFrac(t.Amount, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(t.Decimals)), nil)).
+		FloatString(t.Decimals)
 }
 
 type balanceHistoryJSON struct {
