@@ -182,7 +182,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   (beside the title on phones), then a table of the client with its initials avatar, billing email, country and tax
   ID, where a row opens the client (a long country gives way to the name on phones). New client and Edit client are
   form pages under Clients laid out like New invoice (Contact, Address and tax, and On invoices with the default PO
-  or reference, as panels); Delete waits in the More actions menu at the page's top right and asks to confirm in a
+  or reference and the payment reminders default (R-97), as panels); Delete waits in the More actions menu at the page's top right and asks to confirm in a
   dialog, as Cancel does on an invoice.
 - Invoices table: the client has a round initials avatar. Phone rows lead with the client (or a request's note) beside
   that avatar carrying the network's logo, with the number and a short due date (no year within this year) under it,
@@ -212,7 +212,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   A freelancer or merchant without billing details sees, in place of the form, an empty state that says the invoice
   needs them with an Add billing details button (R-92); saving them there, or Cancel, comes back to New invoice.
   Dates on New invoice holds Supply date (R-89, optional, any day), then Due date, then Checkout closes after, so the
-  due date sits next to the close it moves; the invoice page lists Supply date in Details after Created. Details on
+  due date sits next to the close it moves; the invoice page lists Supply date in Details after Created. Last in
+  Dates, a Send payment reminders checkbox with a quiet line under it (R-97): a saved client sets it from its
+  default, Duplicate copies it unless the client stopped them, and checked without a due date or client email it
+  shows an error there. Details on
   New invoice holds PO or reference (R-90) after Title, filled from the saved client's default when the client has
   one; the invoice page lists Reference first in Details. Add agreed value (secondary, small, last in Amount; not on
   Request money) shows Agreed in (a searchable currency list), Agreed amount and Agreed on (today, no later day) in
@@ -340,9 +343,6 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - While the checkout can take money, a small secondary Send to client button. A day after the last send it returns;
     until then a quiet line says when.
   - Without a client email, while the checkout can take money, one quiet line says it can't be emailed.
-- New invoice has a Send payment reminders checkbox in Dates, after Due date, with a quiet line under it (R-97). Picking
-  a saved client sets it from the client's default; Duplicate copies it unless the client stopped them. Checked
-  without a due date or a client email, it shows an error there. The client form has the default under On invoices.
 - Payment reminders (R-96) follow Send to client in Billed to, ruled off, as a settings row:
   - The Payment reminders switch at the row's end, saved when flipped, with a toast.
   - Under it one quiet line: the schedule, "Reminders need a due date", or when the client stopped them.

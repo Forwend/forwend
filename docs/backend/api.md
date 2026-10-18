@@ -120,10 +120,10 @@ R-86; the full schema is in openapi.yaml. Owner only, like every `{profileId}` r
   so no Idempotency-Key is needed: the same body sent twice saves one client, 201 the first time and 200 after. Body:
   `name` (required, ≤ 200 characters) and optional `email` (≤ 254, the billing email), `address` (≤ 500), `country` (an
   assigned ISO 3166-1 alpha-2 code), `taxId` (≤ 50) and `reference` (≤ 100 on one line, the client's PO number or
-  reference that New invoice fills in, R-90); empty means none and comes back as null.
-- A saved client also takes `reminders` (R-97): New invoice starts with payment reminders on for it. False when left
-  out. The 1001st client is 422; an id
+  reference that New invoice fills in, R-90); empty means none and comes back as null. The 1001st client is 422; an id
   that belongs to another profile is 404 `client_not_found`.
+- A saved client also takes `reminders` (R-97): New invoice starts with payment reminders on for it. False when left
+  out.
 - `DELETE /v1/profiles/{profileId}/clients/{clientId}` answers 204, or 404 `client_not_found`.
 - An invoice holds no link to a saved client: the web copies the client's details into the create request, so editing
   or deleting a client changes no invoice.
@@ -199,7 +199,8 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - On needs the `open` status filter, a due date and a client email. Otherwise 409 `invoice_closed`,
     `due_date_required` or `client_email_required`.
   - After the client stopped them, on is 409 `reminders_stopped`. Off always works.
-  - The first call makes the row in `invoice_reminders` with a random 32-byte stop token.
+  - The first call, or a create with `reminders: true` (R-97), makes the row in `invoice_reminders`.
+  - The row holds a random 32-byte stop token.
   - The owner's reads return `reminders`: `{on, stoppedAt, emails}`, each email with its `step`.
 - `POST /v1/reminders/{token}/stop` is public: the client's stop link and one-click List-Unsubscribe-Post.
   - It reads no body, sets `stopped_at` once and answers `{number, from}`, the same when already stopped.

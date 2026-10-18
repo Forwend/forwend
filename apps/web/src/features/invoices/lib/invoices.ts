@@ -283,8 +283,8 @@ export function invoiceCopyHref(invoiceId: string, rest: boolean): string {
 }
 
 /**
- * A new invoice's form filled from an earlier one (R-91, R-77): its client, reference, title, note, return link and
- * accepted options, with the whole amount and its items, or only what is left of a closed one and no items, which would
+ * A new invoice's form filled from an earlier one (R-91, R-77): its client, reference, title, note, return link,
+ * payment reminders unless the client stopped them (R-97) and accepted options, with the whole amount and its items, or only what is left of a closed one and no items, which would
  * not add up to it. Dates are the new invoice's own. An invoice is never reopened (D-25). Payer-chooses amounts are USD
  * at 1 per token (D-75). The rest is asked in the token the client paid with on time; a late payment also locks an
  * option, but the client never paid with it.

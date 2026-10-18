@@ -642,6 +642,7 @@ export function NewInvoiceForm({
               className="sm:max-w-xs"
             />
           )}
+          {expiryField}
           {request ? null : (
             <div className="flex flex-col">
               <Checkbox
@@ -663,7 +664,6 @@ export function NewInvoiceForm({
               </p>
             </div>
           )}
-          {expiryField}
         </FieldGroup>
 
         {request ? null : (
