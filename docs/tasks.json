@@ -2218,7 +2218,7 @@
         "The overview's preview is unchanged; unit tests cover the select's request and the export's query; the live e2e shows the types and labels a row on mocked answers, exports through the dialog, axe clean, 390 px fit; DESIGN.md describes it."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
@@ -2316,11 +2316,18 @@
           "summary": "Third review. The last blocker is resolved: From and To are the browser's date fields again (TextField type=date, min/max tied to each other), which the first review allowed. The browser draws its date picker outside the page, so the dialog can't clip it. The exception is in DESIGN.md (two bullets under the export dialog line) and in the component comment. The kit is unchanged; a DatePicker that works inside a dialog waits for a second dialog that needs a date. Earlier fixes still hold: props interfaces; Export disabled only when the list is unfiltered and empty; classes uses satisfies; the select's name carries the exact amount; the select keeps focus and clears 'chosen' once the list read matches; the dialog clears its error on open and says UTC; failed-export and anchor-download unit tests; the e2e counts list reads that start after the PUT and checks that the overview preview has no Type column. The unused exportClear copy is gone. Minor, no change needed: transaction-type.tsx keeps 'chosen' when a later read shows a different value, for example two quick choices whose PUTs land out of order; clearing it on the first read after the save would cover that. Ran: vitest src/features/transactions 3 passed, pnpm typecheck ok, biome check src e2e ok, check-docs 0 errors; the e2e log F241-20261018T204522Z shows records.spec.ts passed (not rerun).",
           "at": "2026-10-18T20:51:39Z",
           "filesHash": "71af9522cdb02d45"
-        }
+        },
+        "commit": "157ef20",
+        "doneAt": "2026-10-18T20:51:53Z"
       },
       "branch": "feat/f241-the-transactions-page-shows-each-transac",
       "baseCommit": "f4c6632e3417ed9272d2144d3b4a5633d8c18b3b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f241-the-transactions-page-shows-each-transac",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
