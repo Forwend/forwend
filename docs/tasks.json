@@ -2341,7 +2341,7 @@
         "R-110, api.md, architecture.md, openapi.yaml and .env.example (ECB_RATES_URL) describe it; the new route is in the 403 test."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "docs-check"
@@ -2437,11 +2437,18 @@
           "summary": "Re-review after the first fail. All 3 blockers are fixed.\n1. transfers.go: the LATERAL adds u.day > <UTC day> - 7. The ECB's longest closure (4 days, Easter) stays inside it, and an older rate gives null. TestRecordsValue covers it with the 2026-10-27 transfer against the 2026-10-20 rate. Without the limit the EUR case fails. R-110, api.md and openapi say 'within 7 days'.\n2. e2e/gate_test.go: newStack runs an httptest fake ECB, and every worker start (gate and exceptions) gets ECB_RATES_URL from st.loop. TestMoneyLoop waits for an ecb_rates row, which tests the cmd/worker wiring. The e2e log shows TestMoneyLoop and TestExceptionsCancelAndEmail pass. Web e2e starts no worker. The .env.example and config.go comments are now true.\n3. architecture.md: the worker sentence is back to the original. Three short sub-bullets cover the schedule, the 90-day-file limit and the test-only URL. The ecb_rates and records_currency bullets are split.\nThe minor points are fixed too. The CHECK is per_eur > 0 AND per_eur < 1e12, which refuses NaN and Infinity and matches the parser's 12-digit limit. The parse error uses %q. The USD-only day test gives EUR a value and none for GBP and JPY. api.md says a day's transfers use the earlier rate until that day's rate is read.\nRe-ran the Go tests for ecb, activity, httpapi, database and config: all pass. gofmt is clean.\nOpen for the owner, not blocking: D-82 'that day's rate' vs art. 91(2) 'latest published at the time'. PUT {} clears the currency, the same as the label route.\nWeb next task: recordsValue in transactionSchema, a records-currency select in settings, and the value and rate date on each row.",
           "at": "2026-10-18T21:18:28Z",
           "filesHash": "2c873c872e345f1e"
-        }
+        },
+        "commit": "66f4330",
+        "doneAt": "2026-10-18T21:18:43Z"
       },
       "branch": "feat/f242-a-profile-can-value-its-records-in-an-ec",
       "baseCommit": "c805c5ec55e02e88d26e62cfc9c0485108dc6479",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f242-a-profile-can-value-its-records-in-an-ec",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
