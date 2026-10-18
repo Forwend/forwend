@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { apiCents, centsText, dueDays, invalidJobField, usdCents } from "@/features/jobs/lib/jobs";
+import {
+  apiCents,
+  centsText,
+  dueDays,
+  invalidJobField,
+  jobRecord,
+  usdCents,
+} from "@/features/jobs/lib/jobs";
 
 describe("job amounts", () => {
   // R-100: the API takes at most 2 decimals and 10 whole digits; anything else is named on the field, never rounded.
@@ -29,5 +36,56 @@ describe("job amounts", () => {
       "payments",
     );
     expect(invalidJobField("invalid job request: a profile has at most 1000 jobs")).toBeNull();
+  });
+});
+
+describe("job record", () => {
+  // R-104: dispute evidence reads in the order things happened; acceptance and its deposit share a time.
+  it("lists the events oldest first, acceptance before the invoice it made", () => {
+    const payment = (position: number, more: object) => ({
+      position,
+      title: `Step ${position}`,
+      amountUsd: "100.00",
+      dueDays: 7,
+      onAccept: position === 1,
+      invoiceId: null,
+      number: null,
+      status: null,
+      doneAt: null,
+      deliveryLink: null,
+      invoicedAt: null,
+      paidAt: null,
+      ...more,
+    });
+    const job = {
+      title: "Logo",
+      scope: null,
+      issuer: { name: "Alice", address: "x", country: "DE", taxId: null, email: "a@x.example" },
+      totalUsd: "200.00",
+      acceptedName: "Jane Doe",
+      acceptedAt: "2026-10-02T10:00:00Z",
+      createdAt: "2026-10-01T10:00:00Z",
+      payments: [
+        payment(1, {
+          number: 7,
+          invoicedAt: "2026-10-02T10:00:00Z",
+          paidAt: "2026-10-03T09:00:00Z",
+        }),
+        payment(2, {
+          number: 9,
+          doneAt: "2026-10-05T12:00:00Z",
+          deliveryLink: "https://drive.example",
+          invoicedAt: "2026-10-05T12:00:00Z",
+        }),
+      ],
+    };
+    expect(jobRecord(job).map((e) => `${e.kind}${e.payment?.position ?? ""}`)).toEqual([
+      "created",
+      "accepted",
+      "invoiced1",
+      "paid1",
+      "done2",
+      "invoiced2",
+    ]);
   });
 });

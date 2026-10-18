@@ -1,5 +1,5 @@
-import { JOB_FIELDS, JOB_LIMITS } from "@/features/jobs/constants/jobs";
-import type { JobField, JobSummary } from "@/features/jobs/types/jobs";
+import { JOB_FIELDS, JOB_LIMITS, RECORD_EVENTS } from "@/features/jobs/constants/jobs";
+import type { JobField, JobSummary, PublicJob, RecordEvent } from "@/features/jobs/types/jobs";
 import { foldText } from "@/shared/lib/search";
 
 /**
@@ -43,4 +43,28 @@ export function invalidJobField(message: string): JobField | null {
 /** Whether a job matches the list's search: its title or client, ignoring case and accents. */
 export function matchesJob(job: JobSummary, search: string): boolean {
   return foldText(`${job.title} ${job.clientName}`).includes(foldText(search.trim()));
+}
+
+const RECORD_ORDER = Object.values(RECORD_EVENTS);
+
+/**
+ * A job's record (R-104): the quote made, its acceptance, then each payment's step done, invoice made and payment, by
+ * time, oldest first. Events at the same time keep the order they happen in: acceptance or a step done makes its
+ * invoice in the same transaction.
+ */
+export function jobRecord(job: PublicJob): RecordEvent[] {
+  const events: RecordEvent[] = [{ kind: RECORD_EVENTS.created, at: job.createdAt }];
+  if (job.acceptedAt) events.push({ kind: RECORD_EVENTS.accepted, at: job.acceptedAt });
+  for (const payment of job.payments) {
+    if (payment.doneAt) events.push({ kind: RECORD_EVENTS.done, at: payment.doneAt, payment });
+    if (payment.invoicedAt)
+      events.push({ kind: RECORD_EVENTS.invoiced, at: payment.invoicedAt, payment });
+    if (payment.paidAt) events.push({ kind: RECORD_EVENTS.paid, at: payment.paidAt, payment });
+  }
+  return events.sort(
+    (a, b) =>
+      Date.parse(a.at) - Date.parse(b.at) ||
+      RECORD_ORDER.indexOf(a.kind) - RECORD_ORDER.indexOf(b.kind) ||
+      (a.payment?.position ?? 0) - (b.payment?.position ?? 0),
+  );
 }

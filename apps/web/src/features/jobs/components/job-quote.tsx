@@ -14,6 +14,7 @@ import { flushSync } from "react-dom";
 import { formatUsd } from "@/features/balances/lib/balances";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { useAcceptJobMutation, useGetPublicJobQuery } from "@/features/jobs/api/jobs-api";
+import { JobRecord } from "@/features/jobs/components/job-record";
 import { ACCEPT_FIELDS, EMAIL_PATTERN } from "@/features/jobs/constants/jobs";
 import { QUOTE_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
 import { apiCents, namedField } from "@/features/jobs/lib/jobs";
@@ -209,6 +210,8 @@ export function JobQuote({ token }: { token: string }) {
           </p>
         </section>
       ) : null}
+
+      <JobRecord job={job} />
 
       <section aria-labelledby="quote-issuer" className={PANEL}>
         <h2 id="quote-issuer" className={PANEL_TITLE}>

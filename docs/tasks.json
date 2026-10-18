@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 234,
+  "nextId": 235,
   "tasks": [
     {
       "id": "F222",
@@ -1369,6 +1369,109 @@
         "branch": "feat/f233-a-freelancer-marks-each-step-of-an-accep",
         "base": "main"
       }
+    },
+    {
+      "id": "F234",
+      "type": "feat",
+      "behavior": "A job shows a dated record of the quote, its acceptance, each invoice, each step done with its delivery link, and each payment, on the job page and the quote page",
+      "acceptance": [
+        "The owner's and the public job reads give each payment's invoicedAt (when its invoice was made) and paidAt (the block time of the payment that completed it, null until paid).",
+        "The job page and the quote page show a Record panel listing, oldest first: quote made, accepted (the owner also sees the email), each invoice made, each step marked done with its delivery link, each invoice paid; times come from the server.",
+        "Tests: a Go test for invoicedAt and paidAt; a web unit test for the record's events and order; the e2e sees the record on a real job and on the mocked quote page; axe finds no serious or critical violations.",
+        "openapi.yaml, api.md and DESIGN.md describe the fields and the panel."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "R-104",
+        "R-103"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-18 review fail by reviewer: FAIL: one inaccurate doc. The code, the contract, privacy and the tests hold.\n\nBlocking:\n1. docs/web/DESIGN.md:203 and :209 no longer match the job page. Its right column is now Client's link, Record, Billed to (job-detail.tsx:181). Line 209 still says Billed to follows Client's link (it), and line 203 says Record follows Client's link. Line 203 also sits among the Mark done bullets, before the Client's link bullet it refers to. Fix: move the two Record bullets after line 208 and make Billed to follow Record.\n\nChecked and correct:\n- paidAt SQL (apps/backend/internal/job/read.go:61-65) matches invoice/get.go:46-61. It uses the same option_id (the chosen option, from invoices_current) and the same recipient_payable rule. It applies only when payment_status is 'paid'. That status stays 'paid' once settled, so a settled payment keeps paidAt. block_time is bigint seconds, read with time.Unix.\n- invoicedAt (read.go:60) is invoices_current.created_at, which is the main row's m.created_at (migration 00033).\n- Ties: accept.go:38 and done.go:57 write now() in the same transaction as the invoice insert (created_at defaults to now()), so the times are equal. RECORD_EVENTS order (constants/jobs.ts:27) puts acceptance before its deposit invoice and a step done before its invoice. tests/jobs.test.ts:42 covers both ties.\n- Privacy: the quote page passes no email (job-quote.tsx:214). The public JSON has no client block or typed email. The public e2e asserts /Accepted by Jane Doe$/.\n- Delivery link (job-record.tsx:46-54): target _blank, rel noopener noreferrer nofollow, and sr-only \"(opens in a new tab)\". The server stores only https:// links.\n- Accessibility: a section named by its h2 (a region), ol/li, <time dateTime> with RFC3339. axe runs after acceptance in the public suite.\n- Contract: openapi JobPayment, jobapi/model.go paymentJSON and the zod jobPaymentSchema agree: both fields required, nullable date-time. The job-quote.spec.ts fixtures match the real shape: the deposit's invoicedAt equals acceptedAt, and paidAt is null while open.\n- Ran: go test ./internal/job/ ./internal/httpapi/tests/ ok; vitest src/features/jobs 6 passed; pnpm typecheck ok; check-docs 0 errors; pnpm e2e e2e/job-quote.spec.ts 2 passed. The verify log shows privy/jobs.spec.ts passed.\n\nNon-blocking (fix while there):\n- openapi.yaml:1657: the JobPayment description lists when each field is null, but not invoicedAt and paidAt. paidAt (openapi.yaml:1674) says \"deposit\", meaning a chain transfer, which reads like the job's deposit payment. It should also say null until paid.\n- docs/backend/api.md:302 puts two facts in one bullet (D-84). Split invoicedAt and paidAt.\n- read.go:62-65 copies the subquery in invoice/get.go:49-52. A shared SQL constant, like StatusFilterSQL, would keep this money rule in one place.\n- The API sends times in whole seconds. Events of different payments in the same second sort by kind, not by real order. This is rare.\n- e2e/privy/jobs.spec.ts:146 mocks a deposit with an invoice but no invoicedAt, unlike a real read.\n- docs/runs/F234-record.png shows the panel only. The event text does not line up because the time column has no fixed width.\n- No test checks the delivery link in the Record; only the screenshot shows it.",
+        "2026-10-18 review pass by reviewer: PASS on re-review. The blocking doc point is fixed, and the code, contract, privacy and tests hold.\n\nFixed since the first review:\n- docs/web/DESIGN.md:203-209 now follows the page: Payments, Scope, Client's link, Record, then \"Billed to follows Record\". The Record bullets left the Mark done group. This matches job-detail.tsx:181.\n- openapi.yaml:1657-1659 says when invoicedAt and paidAt are null. paidAt (openapi.yaml:1675) names the transfer and says null until paid.\n- docs/backend/api.md:302-303 splits invoicedAt and paidAt into two bullets (D-84).\n- invoice.PaidAtSQL (apps/backend/internal/invoice/get.go:100-107) holds the paid-time subquery once. get.go:48 passes \"$3\" and job/read.go:61 passes \"invoices.option_id\", so the money rule lives in one place. The SQL is unchanged, and the argument is always a constant SQL expression, never input.\n- e2e/privy/jobs.spec.ts:146-152 gives the mocked deposit an invoicedAt, like a real read.\n\nChecked and still correct:\n- paidAt: only when payment_status is 'paid', which stays 'paid' once settled. It uses the chosen option and recipient_payable bookings. block_time is unix seconds, read with time.Unix.\n- invoicedAt is invoices_current.created_at, the main row's created_at (migration 00033).\n- Ties: acceptance and its deposit, and a step done and its invoice, share now() in one transaction. The RECORD_EVENTS order puts acceptance and done first, and tests/jobs.test.ts:42 covers both.\n- Privacy: the quote page passes no email (job-quote.tsx:214), and the public JSON has no client block or typed email.\n- Delivery link (job-record.tsx:46-54): target _blank, rel noopener noreferrer nofollow, sr-only new-tab text. The server keeps https:// links only.\n- Accessibility: a region named by its h2, ol/li, and <time dateTime>. axe passes on both suites.\n- Contract: openapi, jobapi/model.go and the zod schema agree. The job-quote.spec.ts fixtures match the real shape.\n- Ran: gofmt clean; go vet ok; go test ./internal/job/ ./internal/invoice/... ./internal/httpapi/tests/ ok; vitest src/features/jobs 6 passed; pnpm typecheck ok; check-docs 0 errors; pnpm e2e e2e/job-quote.spec.ts 2 passed. The verify log from 15:24:30Z shows privy/jobs.spec.ts passed.\n\nMinor, not blocking:\n- docs/runs/F234-record.png (18:12) is older than the sm:w-44 time column (job-record.tsx:30), so no screenshot shows that change. A long locale date could pass 11rem, since the time does not shrink.\n- Times are whole seconds, so events of different payments in the same second sort by kind, not by real order. This is rare.\n- No test checks the Record's delivery link; the screenshot shows it.\n- get.go:45 keeps its old comment above the query, which now repeats the PaidAtSQL doc comment."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-18T15:24:30Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 77.6,
+            "log": "docs/runs/F234-20261018T152430Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 213.2,
+            "log": "docs/runs/F234-20261018T152430Z-e2e.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F234-20261018T152430Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.2,
+            "log": "docs/runs/F234-20261018T152430Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F234-20261018T152430Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F234-20261018T152430Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.9,
+            "log": "docs/runs/F234-20261018T152430Z-build.log"
+          }
+        ],
+        "taskHash": "20173ba976dddfa9",
+        "filesHash": "ae9652915925fbff",
+        "proof": {
+          "1": "unit: TestRecordTimes: after acceptance the deposit's invoicedAt equals its invoice's createdAt and paidAt is zero (and payment 2 has no invoicedAt); after a confirmed deposit booked by the ledger the status is paid and paidAt equals the block time. The paid time SQL is now invoice.PaidAtSQL, shared by the invoice read (the PDF test's paidAt still passes) and the job read. TestJobs: the owner's payments carry invoicedAt and paidAt as null before any invoice; openapi JobPayment lists both.",
+          "2": "unit: jobs.test 'job record' orders created, accepted, invoiced1, paid1, done2, invoiced2 when acceptance and the deposit share a time and a step done and its invoice share a time. e2e: the live job page's Record lists 'Quote made'; with the job read as accepted it says 'Accepted by Jane Doe (jane@client.example)'; the public quote after accepting lists Quote made, Accepted by Jane Doe (no email) and INV-0012 made for Deposit. Screenshot docs/runs/F234-record.png.",
+          "3": "e2e: jobs.spec and job-quote.spec check the record as above; axe on both pages (with the record) has no serious or critical violations; TestRecordTimes covers paidAt with a real ledger booking.",
+          "4": "docs-check: openapi.yaml has invoicedAt and paidAt with when each is null; api.md says what they are in two bullets; DESIGN.md has Record after Client's link and Billed to after Record on the job page, and Record on the quote page; docs-check passes."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS on re-review. The blocking doc point is fixed, and the code, contract, privacy and tests hold.\n\nFixed since the first review:\n- docs/web/DESIGN.md:203-209 now follows the page: Payments, Scope, Client's link, Record, then \"Billed to follows Record\". The Record bullets left the Mark done group. This matches job-detail.tsx:181.\n- openapi.yaml:1657-1659 says when invoicedAt and paidAt are null. paidAt (openapi.yaml:1675) names the transfer and says null until paid.\n- docs/backend/api.md:302-303 splits invoicedAt and paidAt into two bullets (D-84).\n- invoice.PaidAtSQL (apps/backend/internal/invoice/get.go:100-107) holds the paid-time subquery once. get.go:48 passes \"$3\" and job/read.go:61 passes \"invoices.option_id\", so the money rule lives in one place. The SQL is unchanged, and the argument is always a constant SQL expression, never input.\n- e2e/privy/jobs.spec.ts:146-152 gives the mocked deposit an invoicedAt, like a real read.\n\nChecked and still correct:\n- paidAt: only when payment_status is 'paid', which stays 'paid' once settled. It uses the chosen option and recipient_payable bookings. block_time is unix seconds, read with time.Unix.\n- invoicedAt is invoices_current.created_at, the main row's created_at (migration 00033).\n- Ties: acceptance and its deposit, and a step done and its invoice, share now() in one transaction. The RECORD_EVENTS order puts acceptance and done first, and tests/jobs.test.ts:42 covers both.\n- Privacy: the quote page passes no email (job-quote.tsx:214), and the public JSON has no client block or typed email.\n- Delivery link (job-record.tsx:46-54): target _blank, rel noopener noreferrer nofollow, sr-only new-tab text. The server keeps https:// links only.\n- Accessibility: a region named by its h2, ol/li, and <time dateTime>. axe passes on both suites.\n- Contract: openapi, jobapi/model.go and the zod schema agree. The job-quote.spec.ts fixtures match the real shape.\n- Ran: gofmt clean; go vet ok; go test ./internal/job/ ./internal/invoice/... ./internal/httpapi/tests/ ok; vitest src/features/jobs 6 passed; pnpm typecheck ok; check-docs 0 errors; pnpm e2e e2e/job-quote.spec.ts 2 passed. The verify log from 15:24:30Z shows privy/jobs.spec.ts passed.\n\nMinor, not blocking:\n- docs/runs/F234-record.png (18:12) is older than the sm:w-44 time column (job-record.tsx:30), so no screenshot shows that change. A long locale date could pass 11rem, since the time does not shrink.\n- Times are whole seconds, so events of different payments in the same second sort by kind, not by real order. This is rare.\n- No test checks the Record's delivery link; the screenshot shows it.\n- get.go:45 keeps its old comment above the query, which now repeats the PaidAtSQL doc comment.",
+          "at": "2026-10-18T15:30:49Z",
+          "filesHash": "ae9652915925fbff"
+        }
+      },
+      "branch": "feat/f234-a-job-shows-a-dated-record-of-the-quote",
+      "baseCommit": "a863b355898244462b60d6f69c7f552b1a1d5d60",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

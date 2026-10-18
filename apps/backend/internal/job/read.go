@@ -57,7 +57,8 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 	rows, err := s.pool.Query(ctx, `SELECT p.position, p.title, p.amount_cents, p.due_days, p.on_accept,
 		    coalesce(p.invoice_id, ''), coalesce(invoices.number, 0),
 		    CASE WHEN invoices.id IS NULL THEN '' ELSE `+invoice.StatusFilterSQL+` END, p.done_at,
-		    coalesce(p.delivery_link, '')
+		    coalesce(p.delivery_link, ''), invoices.created_at,
+		    CASE WHEN invoices.payment_status = 'paid' THEN `+invoice.PaidAtSQL("invoices.option_id")+` END
 		FROM job_payments p LEFT JOIN invoices_current invoices ON invoices.id = p.invoice_id
 		WHERE p.job_id = $1 ORDER BY p.position`, j.ID)
 	if err != nil {
@@ -65,11 +66,18 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 	}
 	j.Payments, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (Payment, error) {
 		var p Payment
-		var done *time.Time
+		var done, invoiced *time.Time
+		var paid *int64
 		err := row.Scan(&p.Position, &p.Title, &p.AmountCents, &p.DueDays, &p.OnAccept, &p.InvoiceID, &p.Number,
-			&p.Status, &done, &p.DeliveryLink)
+			&p.Status, &done, &p.DeliveryLink, &invoiced, &paid)
 		if done != nil {
 			p.DoneAt = done.UTC()
+		}
+		if invoiced != nil {
+			p.InvoicedAt = invoiced.UTC()
+		}
+		if paid != nil {
+			p.PaidAt = time.Unix(*paid, 0).UTC()
 		}
 		return p, err
 	})

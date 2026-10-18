@@ -23,6 +23,8 @@ const payment = (position: number, title: string, amountUsd: string, more: objec
   status: null,
   doneAt: null,
   deliveryLink: null,
+  invoicedAt: null,
+  paidAt: null,
   ...more,
 });
 const quote = {
@@ -49,7 +51,13 @@ const accepted = {
   acceptedName: "Jane Doe",
   acceptedAt: "2026-10-18T12:00:00Z",
   payments: [
-    { ...quote.payments[0], invoiceId: DEPOSIT, number: 12, status: "open" },
+    {
+      ...quote.payments[0],
+      invoiceId: DEPOSIT,
+      number: 12,
+      status: "open",
+      invoicedAt: "2026-10-18T12:00:00Z",
+    },
     quote.payments[1],
   ],
 };
@@ -88,6 +96,13 @@ test.describe("job quote page", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Quote accepted" })).toBeFocused();
     expect(accepts).toEqual([{ name: "Jane Doe", email: "jane@bob.example" }]);
     await expect(page.getByRole("status")).toContainText("Accepted by Jane Doe on");
+    // R-104: the record lists the acceptance and the deposit it made, without the typed email.
+    const record = page.getByRole("region", { name: "Record" });
+    await expect(record.getByRole("listitem")).toHaveText([
+      /Quote made$/,
+      /Accepted by Jane Doe$/,
+      /INV-0012 made for Deposit$/,
+    ]);
     await expect(page.getByRole("link", { name: "Pay the deposit" })).toHaveAttribute(
       "href",
       `/pay/${DEPOSIT}`,
