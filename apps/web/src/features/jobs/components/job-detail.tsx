@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatUsd } from "@/features/balances/lib/balances";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
+import { JobRecord } from "@/features/jobs/components/job-record";
 import { MarkDone } from "@/features/jobs/components/mark-done";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
 import { apiCents } from "@/features/jobs/lib/jobs";
@@ -177,6 +178,7 @@ export function JobDetail({ profileId, job }: JobDetailProps) {
             </p>
           </div>
         </section>
+        <JobRecord job={job} acceptedEmail={job.acceptedEmail} />
         <section aria-labelledby="job-client" className={PANEL}>
           <h2 id="job-client" className={PANEL_TITLE}>
             {COPY.client}

@@ -203,7 +203,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Payments (left) list how each is invoiced and its due days, then its invoice number and status pill.
   - Scope follows Payments when there is one.
   - Client's link (right) says who has to accept or who accepted, and shows the link with Copy link and an open link.
-  - Billed to follows it, like an invoice's.
+  - Record (R-104) follows Client's link: one line per event, oldest first, the time in quiet text before what happened.
+  - Its events: Quote made, Accepted by (with the email here), each step marked done with its Delivery link, each
+    invoice made, each invoice paid.
+  - Billed to follows Record, like an invoice's.
 - Invoices table: the client has a round initials avatar. Phone rows lead with the client (or a request's note) beside
   that avatar carrying the network's logo, with the number and a short due date (no year within this year) under it,
   and the amount over the status pill on the right. From small screens up (and for requests, which have no table) a
@@ -387,6 +390,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Pay the deposit is then the page's main button.
   - Another made payment shows a small Pay button while it takes money, else its number and status pill.
   - A delivered step links "See the delivered work" under its line.
+  - Record follows The work, as on the job page, without the client's email.
 
 ## Emails
 

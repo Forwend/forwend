@@ -299,6 +299,8 @@ R-100, D-81; the full schema is in openapi.yaml. A job is a quote with a payment
 - `GET /v1/profiles/{profileId}/jobs` lists them newest first, with the total and how many payments are paid.
 - `GET /v1/profiles/{profileId}/jobs/{jobId}` reads one: the client, the token, and each payment's invoice.
   - A payment's `invoiceId`, `number` and `status` (the invoice's status filter) are null until it is made.
+  - For the job's record (R-104), `invoicedAt` is when its invoice was made.
+  - `paidAt` is the invoice's `paidAt`: the block time of the transfer that completed it, null until paid.
 - `DELETE /v1/profiles/{profileId}/jobs/{jobId}` (R-101) deletes a job the client has not accepted: 204, and its link
   stops working. An accepted job is 409 `job_accepted`. An accept that read the job just before makes no invoice.
 - `POST /v1/profiles/{profileId}/jobs/{jobId}/payments/{position}/done` (R-103) marks a step done.

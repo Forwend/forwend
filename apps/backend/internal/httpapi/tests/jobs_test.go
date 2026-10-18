@@ -28,9 +28,11 @@ func TestJobs(t *testing.T) {
 	id, token := r.body["jobId"].(string), r.body["token"].(string)
 	payments := []any{
 		map[string]any{"position": float64(1), "title": "Deposit", "amountUsd": "300.00", "dueDays": float64(7),
-			"onAccept": true, "invoiceId": nil, "number": nil, "status": nil, "doneAt": nil, "deliveryLink": nil},
+			"onAccept": true, "invoiceId": nil, "number": nil, "status": nil, "doneAt": nil, "deliveryLink": nil,
+			"invoicedAt": nil, "paidAt": nil},
 		map[string]any{"position": float64(2), "title": "Final delivery", "amountUsd": "700.50", "dueDays": float64(14),
-			"onAccept": false, "invoiceId": nil, "number": nil, "status": nil, "doneAt": nil, "deliveryLink": nil},
+			"onAccept": false, "invoiceId": nil, "number": nil, "status": nil, "doneAt": nil, "deliveryLink": nil,
+			"invoicedAt": nil, "paidAt": nil},
 	}
 	if !reflect.DeepEqual(r.body["payments"], payments) {
 		t.Fatalf("payments %v", r.body["payments"])

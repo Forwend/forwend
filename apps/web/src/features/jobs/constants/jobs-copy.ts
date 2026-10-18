@@ -170,3 +170,16 @@ export const QUOTE_COPY = {
     },
   },
 } as const;
+
+/** A job's record (R-104), on the job page and the quote page. */
+export const RECORD_COPY = {
+  title: "Record",
+  created: "Quote made",
+  accepted: (name: string, email: string | null) =>
+    email ? `Accepted by ${name} (${email})` : `Accepted by ${name}`,
+  done: (title: string) => `${title} marked done`,
+  deliveryLink: "Delivery link",
+  invoiced: (number: string, title: string) => `${number} made for ${title}`,
+  paid: (number: string) => `${number} paid`,
+  inNewTab: "(opens in a new tab)",
+} as const;

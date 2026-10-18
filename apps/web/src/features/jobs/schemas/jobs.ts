@@ -21,6 +21,9 @@ export const jobPaymentSchema = z.object({
   status: openEnum<JobPaymentStatus>().nullable(),
   doneAt: apiTime.nullable(),
   deliveryLink: z.string().nullable(),
+  // For the record (R-104): when its invoice was made, and when it was paid.
+  invoicedAt: apiTime.nullable(),
+  paidAt: apiTime.nullable(),
 });
 
 /** GET /v1/jobs/{token}: the job as its client's link shows it. */

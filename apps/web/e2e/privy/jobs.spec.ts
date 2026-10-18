@@ -114,6 +114,10 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
     "delivered@resend.dev",
   );
   await expect(page.getByRole("region", { name: "Scope" })).toContainText("A logo in three ideas.");
+  // R-104: the record starts with the quote, at the server's time.
+  await expect(page.getByRole("region", { name: "Record" }).getByRole("listitem")).toHaveText([
+    /Quote made$/,
+  ]);
   expect(await blockingViolations(page)).toEqual([]);
 
   // In the list, waiting for acceptance.
@@ -139,7 +143,13 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
         acceptedEmail: "jane@client.example",
         acceptedAt: new Date().toISOString(),
         payments: [
-          { ...body.payments[0], invoiceId: `0x${"9".repeat(64)}`, number: 9001, status: "open" },
+          {
+            ...body.payments[0],
+            invoiceId: `0x${"9".repeat(64)}`,
+            number: 9001,
+            status: "open",
+            invoicedAt: new Date().toISOString(),
+          },
           body.payments[1],
         ],
       },
@@ -154,6 +164,9 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
     }).toPass();
   await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
   await readsAgain("Accepted by Jane Doe");
+  await expect(page.getByRole("region", { name: "Record" })).toContainText(
+    "Accepted by Jane Doe (jane@client.example)",
+  );
   await payments.getByRole("button", { name: "Mark done" }).click();
   const markDone = page.getByRole("dialog", { name: "Mark Final payment done?" });
   await expect(markDone).toContainText("emailed to delivered@resend.dev");

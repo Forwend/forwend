@@ -1651,10 +1651,12 @@ components:
                 description: The deposit, made when the client accepts; only the first payment can be.
     JobPayment:
       type: object
-      required: [position, title, amountUsd, dueDays, onAccept, invoiceId, number, status, doneAt, deliveryLink]
+      required: [position, title, amountUsd, dueDays, onAccept, invoiceId, number, status, doneAt, deliveryLink, invoicedAt,
+        paidAt]
       description: |
-        One payment; invoiceId, number and status are null until its invoice is made, doneAt and deliveryLink until
-        the owner marks its step done (the deposit is made at acceptance, so it has neither).
+        One payment; invoiceId, number, status and invoicedAt are null until its invoice is made, doneAt and
+        deliveryLink until the owner marks its step done (the deposit is made at acceptance, so it has neither), and
+        paidAt until its invoice is paid.
       properties:
         position: { type: integer, minimum: 1, maximum: 10 }
         title: { type: string }
@@ -1666,6 +1668,11 @@ components:
         status: { type: [string, "null"], enum: [open, paid, settled, expired, canceled, null] }
         doneAt: { type: [string, "null"], format: date-time }
         deliveryLink: { type: [string, "null"] }
+        invoicedAt: { type: [string, "null"], format: date-time, description: "When its invoice was made (R-104)" }
+        paidAt:
+          type: [string, "null"]
+          format: date-time
+          description: The invoice's paidAt (R-104), the block time of the transfer that completed it; null until paid
     PublicJob:
       type: object
       required: [title, scope, issuer, payments, totalUsd, acceptedName, acceptedAt, createdAt]

@@ -51,8 +51,8 @@ type jobJSON struct {
 	AcceptedEmail *string    `json:"acceptedEmail"`
 }
 
-// paymentJSON is one payment; invoiceId, number and status are null until its invoice is made, doneAt and
-// deliveryLink until the owner marks the step done.
+// paymentJSON is one payment; invoiceId, number, status and invoicedAt are null until its invoice is made, doneAt and
+// deliveryLink until the owner marks the step done, paidAt until it is paid.
 type paymentJSON struct {
 	Position     int     `json:"position"`
 	Title        string  `json:"title"`
@@ -64,6 +64,8 @@ type paymentJSON struct {
 	Status       *string `json:"status"`
 	DoneAt       *string `json:"doneAt"`
 	DeliveryLink *string `json:"deliveryLink"`
+	InvoicedAt   *string `json:"invoicedAt"`
+	PaidAt       *string `json:"paidAt"`
 }
 
 type issuerJSON struct {
@@ -102,7 +104,8 @@ func toPublicJobJSON(j job.Job) publicJobJSON {
 	for _, p := range j.Payments {
 		pj := paymentJSON{Position: p.Position, Title: p.Title, AmountUSD: job.USD(p.AmountCents), DueDays: p.DueDays,
 			OnAccept: p.OnAccept, InvoiceID: httpio.OrNull(p.InvoiceID), Status: httpio.OrNull(p.Status),
-			DoneAt: httpio.OrNullTime(p.DoneAt), DeliveryLink: httpio.OrNull(p.DeliveryLink)}
+			DoneAt: httpio.OrNullTime(p.DoneAt), DeliveryLink: httpio.OrNull(p.DeliveryLink),
+			InvoicedAt: httpio.OrNullTime(p.InvoicedAt), PaidAt: httpio.OrNullTime(p.PaidAt)}
 		if p.InvoiceID != "" {
 			pj.Number = &p.Number
 		}

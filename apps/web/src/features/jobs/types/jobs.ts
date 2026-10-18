@@ -1,6 +1,6 @@
 import type { PaymentStatus } from "@forwend/ui-web";
 import type { z } from "zod";
-import type { JOB_FIELDS, PAYMENT_FIELDS } from "@/features/jobs/constants/jobs";
+import type { JOB_FIELDS, PAYMENT_FIELDS, RECORD_EVENTS } from "@/features/jobs/constants/jobs";
 import type {
   createJobBodySchema,
   jobPaymentSchema,
@@ -22,6 +22,14 @@ export type JobPaymentStatus = Extract<
 >;
 
 export type JobField = (typeof JOB_FIELDS)[keyof typeof JOB_FIELDS];
+export type RecordEventKind = (typeof RECORD_EVENTS)[keyof typeof RECORD_EVENTS];
+
+/** One dated event of a job's record (R-104); payment is set for the events of one payment. */
+export interface RecordEvent {
+  kind: RecordEventKind;
+  at: string;
+  payment?: JobPayment;
+}
 export type PaymentField = (typeof PAYMENT_FIELDS)[keyof typeof PAYMENT_FIELDS];
 
 /** A payment row as typed on New job. */

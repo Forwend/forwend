@@ -23,6 +23,15 @@ export const JOB_FIELDS = {
 /** An email as the forms check it before sending; the API checks it again. */
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** What a job's record lists (R-104), in the order events at the same time happened. */
+export const RECORD_EVENTS = {
+  created: "created",
+  accepted: "accepted",
+  done: "done",
+  invoiced: "invoiced",
+  paid: "paid",
+} as const;
+
 /** A job's link token: the secret in /w/<token> (R-102). */
 export const JOB_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
 

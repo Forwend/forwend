@@ -67,6 +67,10 @@ type Payment struct {
 	// deposit is made at acceptance, so it has neither.
 	DoneAt       time.Time
 	DeliveryLink string
+	// For the job's record (R-104): when its invoice was made, and the block time of the payment that completed it;
+	// zero until then.
+	InvoicedAt time.Time
+	PaidAt     time.Time
 }
 
 // Job is a quote and what came of it. The client's typed name and email are set once accepted.
