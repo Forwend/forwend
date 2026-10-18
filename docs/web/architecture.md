@@ -97,4 +97,5 @@ test account: the real Privy app and backend api, on `http://localhost:3000` (th
 sign-ins, so a setup project (`e2e/privy/session.setup.ts`) signs in once and saves the session in the ignored
 `test-results/`; the spec files, one per behavior, reuse it and run in one worker in name order.
 Every run shares that account and the dev database, so its data must not pile up toward a profile cap (D-85).
-Its invoices and requests close within 2 days, and Send to client is mocked. What is worth a test: [rules.md](rules.md).
+Its invoices and requests close within 2 days, and Send to client is mocked.
+A repeating invoice is stopped in the same test. What is worth a test: [rules.md](rules.md).

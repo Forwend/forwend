@@ -395,4 +395,49 @@ describe("new invoice form", () => {
       date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     });
   });
+
+  // R-99: repeat needs a due date and a client email, and sends the last due date when one is picked.
+  it("repeats every month only with a due date and a client email", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-14T10:00:00Z"));
+    const bodies: Record<string, unknown>[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (request: Request) => {
+        bodies.push(JSON.parse(await request.text()));
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
+      </Provider>,
+    );
+    fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
+    const repeat = screen.getByRole("checkbox", { name: "Repeat every month" });
+    fireEvent.click(repeat);
+    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    await settle();
+    expect(bodies).toHaveLength(0);
+    expect(screen.getByText("Repeating needs a due date and a client email.")).toBeTruthy();
+    expect(document.activeElement).toBe(repeat);
+
+    const pick = (field: RegExp, day: (enabled: HTMLElement[]) => HTMLElement) => {
+      fireEvent.click(screen.getByRole("button", { name: field }));
+      const days = within(screen.getByRole("grid"))
+        .getAllByRole("button")
+        .filter((b) => b.getAttribute("aria-disabled") !== "true");
+      fireEvent.click(day(days));
+    };
+    pick(/^Due date/, (days) => days[10] as HTMLElement);
+    pick(/^Last due date/, (days) => days.at(-1) as HTMLElement);
+    fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: "ap@bob.example" } });
+    const due = (document.querySelector('input[name="dueDate"]') as HTMLInputElement).value;
+    const end = (document.querySelector('input[name="repeatEndDate"]') as HTMLInputElement).value;
+    expect(end > due).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    await settle();
+    expect(bodies[0]?.dueDate).toBe(due);
+    expect(bodies[0]?.repeat).toEqual({ endDate: end });
+  });
 });

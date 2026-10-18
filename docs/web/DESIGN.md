@@ -215,7 +215,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   due date sits next to the close it moves; the invoice page lists Supply date in Details after Created. Last in
   Dates, a Send payment reminders checkbox with a quiet line under it (R-97): a saved client sets it from its
   default, Duplicate copies it unless the client stopped them, and checked without a due date or client email it
-  shows an error there. Details on
+  shows an error there. Then Repeat every month (R-99), the same kind of checkbox and line; checked, it shows Last
+  due date (optional, from the due date on). Duplicate leaves it unchecked. Details on
   New invoice holds PO or reference (R-90) after Title, filled from the saved client's default when the client has
   one; the invoice page lists Reference first in Details. Add agreed value (secondary, small, last in Amount; not on
   Request money) shows Agreed in (a searchable currency list), Agreed amount and Agreed on (today, no later day) in
@@ -348,6 +349,12 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Under it one quiet line: the schedule, "Reminders need a due date", or when the client stopped them.
   - Then each reminder: its step and "emailed <time>", "sending…" or "could not be sent".
   - Stopped by the client, the switch stays off and can't be turned on.
+- Repeats every month (R-99) follows Payment reminders on each invoice of a retainer, ruled off:
+  - Under its title one quiet line: the next due date and the day it is emailed.
+  - With a Last due date, the line adds that no invoice is due after it.
+  - Once no more invoices are made, the line says so; once stopped, it says when.
+  - While it runs, a small secondary Stop repeating button. It asks in a dialog, since it can't be undone.
+  - Once stopped, focus moves to that line.
 - The stop reminders page `/reminders/<token>` is public, like the pay page: the logo, then one centered panel.
   - It asks "Stop payment reminders?" with one primary button, since mail scanners open links.
   - Once stopped, focus moves to the heading "Reminders stopped", and one line names the invoice and its sender.
