@@ -30,11 +30,11 @@ func TestJobs(t *testing.T) {
 		map[string]any{"position": float64(1), "title": "Deposit", "amountUsd": "300.00", "dueDays": float64(7),
 			"onAccept": true, "invoiceId": nil, "number": nil, "status": nil, "doneAt": nil, "deliveryLink": nil,
 			"invoicedAt": nil, "paidAt": nil, "proposedAt": nil, "acceptedName": nil, "acceptedAt": nil,
-			"acceptedEmail": nil},
+			"acceptedEmail": nil, "clientEmailed": false},
 		map[string]any{"position": float64(2), "title": "Final delivery", "amountUsd": "700.50", "dueDays": float64(14),
 			"onAccept": false, "invoiceId": nil, "number": nil, "status": nil, "doneAt": nil, "deliveryLink": nil,
 			"invoicedAt": nil, "paidAt": nil, "proposedAt": nil, "acceptedName": nil, "acceptedAt": nil,
-			"acceptedEmail": nil},
+			"acceptedEmail": nil, "clientEmailed": false},
 	}
 	if !reflect.DeepEqual(r.body["payments"], payments) {
 		t.Fatalf("payments %v", r.body["payments"])
@@ -115,7 +115,8 @@ func TestJobs(t *testing.T) {
 	}
 	proposed := e.call(t, "POST", jobs+"/"+id+"/payments", alice, "change-1", change)
 	third := proposed.body["payments"].([]any)[2].(map[string]any)
-	if proposed.status != http.StatusCreated || third["proposedAt"] == nil || third["acceptedAt"] != nil {
+	if proposed.status != http.StatusCreated || third["proposedAt"] == nil || third["acceptedAt"] != nil ||
+		third["clientEmailed"] != true {
 		t.Fatalf("propose: %d %v", proposed.status, proposed.body)
 	}
 	if again := e.call(t, "POST", jobs+"/"+id+"/payments", alice, "change-1", change); again.status != http.StatusOK {
@@ -144,7 +145,8 @@ func TestJobs(t *testing.T) {
 	}
 	changed := acceptChange(3)
 	changeRead := changed.body["payments"].([]any)[2].(map[string]any)
-	if _, ok := changeRead["acceptedEmail"]; changed.status != http.StatusOK || ok || changeRead["acceptedName"] != "Jane Doe" {
+	_, emailed := changeRead["clientEmailed"]
+	if _, ok := changeRead["acceptedEmail"]; changed.status != http.StatusOK || ok || emailed || changeRead["acceptedName"] != "Jane Doe" {
 		t.Fatalf("accept the change: %d %v", changed.status, changed.body)
 	}
 	owner := e.call(t, "GET", jobs+"/"+id, alice, "", "").body["payments"].([]any)[2].(map[string]any)

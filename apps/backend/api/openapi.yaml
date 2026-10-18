@@ -1824,14 +1824,19 @@ components:
             acceptedEmail: { type: [string, "null"] }
             payments:
               type: array
-              description: The payments, each with the email the client typed to accept it when it is a change.
+              description: |
+                The payments, each with the email the client typed to accept it when it is a change, and whether the
+                client was emailed about the change (R-107).
               items:
                 allOf:
                   - $ref: "#/components/schemas/JobPayment"
                   - type: object
-                    required: [acceptedEmail]
+                    required: [acceptedEmail, clientEmailed]
                     properties:
                       acceptedEmail: { type: [string, "null"] }
+                      clientEmailed:
+                        type: boolean
+                        description: An email about this change was queued for the client; false for the quote's payments and past the daily caps
     JobSummary:
       type: object
       required: [jobId, title, clientName, totalUsd, payments, paid, acceptedAt, createdAt]

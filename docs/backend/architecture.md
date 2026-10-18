@@ -171,7 +171,8 @@ with a test.
   the signer in the transaction that makes the change (`internal/outbox`), and `account.welcome` (with `user_id`, no
   invoice) when sign-up stores a new account's login email; sent once by the worker with retries
   ([api.md](api.md#notifications)). `invoice.sent` rows carry the request's `idempotency_key`: the owner sent the
-  invoice to its client (R-94). `invoice.reminder` rows carry their `step` in the payload (R-96).
+  invoice to its client (R-94). `invoice.reminder` rows carry their `step` in the payload (R-96). `job.change` rows
+  name a `job_id` (no invoice) and carry the change's key in the payload (R-107).
   `users.login_email` and `profiles.email_notifications` decide where and whether; `users.welcome` marks accounts made
   after welcome emails existed.
 - `invoice_reminders`: one row per invoice once the owner first turns reminders on, with `enabled`, the client's

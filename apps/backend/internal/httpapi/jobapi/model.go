@@ -74,10 +74,12 @@ type paymentJSON struct {
 	AcceptedAt   *string `json:"acceptedAt"`
 }
 
-// ownerPaymentJSON adds the client's typed email on an accepted change, for the owner only.
+// ownerPaymentJSON adds, for the owner only, the client's typed email on an accepted change and whether the client
+// was emailed about the change (R-107).
 type ownerPaymentJSON struct {
 	paymentJSON
 	AcceptedEmail *string `json:"acceptedEmail"`
+	ClientEmailed bool    `json:"clientEmailed"`
 }
 
 type issuerJSON struct {
@@ -144,7 +146,7 @@ func toJobJSON(j job.Job) jobJSON {
 		AcceptedEmail: httpio.OrNull(j.AcceptedEmail)}
 	for i, p := range out.publicJobJSON.Payments {
 		out.Payments = append(out.Payments, ownerPaymentJSON{paymentJSON: p,
-			AcceptedEmail: httpio.OrNull(j.Payments[i].AcceptedEmail)})
+			AcceptedEmail: httpio.OrNull(j.Payments[i].AcceptedEmail), ClientEmailed: j.Payments[i].ClientEmailed})
 	}
 	return out
 }

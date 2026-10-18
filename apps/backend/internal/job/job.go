@@ -86,6 +86,8 @@ type Payment struct {
 	AcceptedName  string
 	AcceptedEmail string
 	AcceptedAt    time.Time
+	// ClientEmailed: an email about this change was queued for the client (R-107); false past the daily caps.
+	ClientEmailed bool
 }
 
 // Job is a quote and what came of it. The client's typed name and email are set once accepted.

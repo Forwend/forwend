@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 238,
+  "nextId": 239,
   "tasks": [
     {
       "id": "F222",
@@ -1839,6 +1839,127 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f237-job-changes-a-withdrawn-change-s-retry-r",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F238",
+      "type": "feat",
+      "behavior": "The client gets an email when the owner proposes a scope change",
+      "acceptance": [
+        "Proposing a change queues one job.change outbox event in the same transaction; a replay queues none; in any 24 hours a job queues at most 5 and a profile at most 20, and past a cap the change is still added without one.",
+        "The worker emails the address the client typed when accepting: who proposes it, the job, the change's title, amount and when it is due (0 days: the day it is invoiced), a Review the change button to /w/<token>, Reply-To the issuer's billing email.",
+        "No email goes when the change was withdrawn or accepted before the worker sends it; the event is marked done.",
+        "The owner's read gives each payment clientEmailed (true when an email about the change was queued); the public read doesn't.",
+        "The email has an HTML part with the same links as its text part, like every email; R-107, api.md, architecture.md, openapi.yaml and the notify comments describe it."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-107",
+        "R-105"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [
+        "2026-10-18 review fail by reviewer: BLOCKER 1: docs/backend/api.md:83-88. The new \"Scope change emails\" block was inserted above the reminders' last sub-bullet. So \"List-Unsubscribe and List-Unsubscribe-Post headers point at the stop route (RFC 8058)\" (line 88) now sits under change emails. Change emails send no such header: view.Unsubscribe is empty and message() sets it only from there. Reminders lose the line. Fix: move the 5-line block below line 88.\nSHOULD FIX IN THIS ROUND: notify.go change(): dueDays 0 renders \"due 0 days after.\" The web says \"due the day it is invoiced\" for 0 (apps/web/src/features/jobs/constants/jobs-copy.ts:97,159). Fix: same wording for 0, plus a test case.\nMINOR: (a) api.md:86-87 and the propose bullet (~324) hold two facts per bullet (D-84); split them. \"At most 5 a day\" is a rolling 24 h counted at queue time, so events withdrawn before sending count too; say \"in any 24 h\". (b) notify.go:4 package comment and the comment above the key (~102) say invoice/user id + event id + address; add job. (c) Safety follow-up, not blocking: there is no per-profile or global cap on change emails. An owner can accept their own job link with any address, then propose and withdraw: 5 emails a day per job, unlimited jobs, owner-typed text and Reply-To, no stop link. R-94 caps sends at 20 per profile per day plus a global limit; reminders (R-96) have the same gap. Suggest a follow-up requirement. (d) Small race: a withdraw that commits while the worker sends can still email a withdrawn change. Acceptable, since the link shows the current state.\nCHECKED OK: The address is jobs.accepted_email, as R-107 says, and the Reason text matches. The owner setting is ignored (tested). No new logs. Typed titles go through html/template and keep() escaping, after the PlainText check. Every outbox reader (events.go, send.go, payer_email.go, reminders.go, signup.go) filters by invoice_id or JOINs invoices, so job rows never appear. The key forwend-job-<uuid>-<eventId>-<hash> cannot collide with invoice (0x...) or user- scopes. The cap runs in the same tx after jobs FOR UPDATE. The partial index (job_id, created_at) serves the count and the FK check on job delete. A replay returns before the insert, and a concurrent proposal gets change_pending. Migration Up/Down: TestMigrationsRollBackAndReapply passes. go test notify/job/invoice/database/httpapi: ok.\nF239 NEEDS: The owner read has a job-level acceptedEmail to name the address. No field says whether a change's email was queued (cap) or sent/failed. Either add a per-change email status to the owner read, like invoice sends, or word the copy as conditional.",
+        "2026-10-18 review pass by reviewer: PASS. All earlier points are fixed. (1) The api.md Scope change block now sits after the reminders' List-Unsubscribe line, with one fact per bullet; the propose bullet is split. (2) change() says \"due the day it is invoiced\" for 0 days and \"due 1 day after\" for 1; TestChangeEmailSaysWhenItIsDue covers 0, 1 and 7. (3) The caps run in any 24 hours, and withdrawn changes count. (4) The notify comments name the job. (5) A per-profile cap of 20 is added. ProposeChange locks profile then job. invoice.Create also locks the profile, then its After hook locks the job (MarkDone, Accept). Withdraw, Delete and Accept without a deposit lock only the job. So the lock order is the same everywhere and cannot deadlock. One query gives both counts. TestChangeEmailsPerDay covers both caps. (6) The owner's read has clientEmailed: an EXISTS on job_id, kind and the change key. It is false for quote payments (NULL key) and absent from the public read; TestJobs checks it. openapi.yaml and R-107 describe it.\nRun: go test notify, job, invoice, database and httpapi/...: all ok. check-docs: 0 errors.\nMINOR, not blocking: (a) api.md:340, the reads bullet, lists acceptedEmail but not clientEmailed (it is at line 91). (b) The openapi clientEmailed description says \"past the daily caps\"; the caps are any 24 hours. (c) clientEmailed means queued: it stays true when the worker skips a change accepted first or gives up after 10 tries. F239 copy should say the email was sent to acceptedEmail, not that it was delivered. (d) There is still no stop link. Accepted: it is a capped, transactional email about a job the client accepted."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-18T19:06:14Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 69.3,
+            "log": "docs/runs/F238-20261018T190614Z-unit.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F238-20261018T190614Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F238-20261018T190614Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F238-20261018T190614Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F238-20261018T190614Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.7,
+            "log": "docs/runs/F238-20261018T190614Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 233.4,
+            "log": "docs/runs/F238-20261018T190614Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F238-20261018T190614Z-keep.log"
+          }
+        ],
+        "taskHash": "9da4088797f2bac6",
+        "filesHash": "c20ae27196afd2a7",
+        "proof": {
+          "1": "unit: TestScopeChange counts one job.change event after the proposal and still one after the replay; TestChangeEmailsPerDay proposes and withdraws 6 changes, all added, and finds 5 events (fails without the cap: 6); with 20 events on the profile another job's change is added with clientEmailed false.",
+          "2": "unit: TestDeliverSendsTheChangeToTheClient (owner email off) sends one email to jane@bob.example, Reply-To billing@alice.example, subject 'A change to Logo design from Alice Design GmbH', key forwend-job-<jobId>-, text with 'Extra page for 150.00 USD', 'due 7 days after.' and 'Review the change: <web>/w/<token>'. TestChangeEmailSaysWhenItIsDue: 0 days 'due the day it is invoiced.', 1 'due 1 day after.'.",
+          "3": "unit: the same delivery test queues a key with no change (withdrawn) and the accepted change: nothing more is sent and all 3 events are marked done (fails without the accepted filter: 'sent 1').",
+          "4": "unit: TestJobs: the propose answer's change has clientEmailed true, the quote's payments false, and the public accept's read has no clientEmailed; TestScopeChange: the change is ClientEmailed and payment 2 is not.",
+          "5": "docs-check: TestEveryEmailHasHTMLWithTheTextLinks covers the change sample; R-107, api.md (Scope change emails after the reminders, one fact per bullet), architecture.md, openapi.yaml (clientEmailed) and the notify comments describe it; docs-check passes."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. All earlier points are fixed. (1) The api.md Scope change block now sits after the reminders' List-Unsubscribe line, with one fact per bullet; the propose bullet is split. (2) change() says \"due the day it is invoiced\" for 0 days and \"due 1 day after\" for 1; TestChangeEmailSaysWhenItIsDue covers 0, 1 and 7. (3) The caps run in any 24 hours, and withdrawn changes count. (4) The notify comments name the job. (5) A per-profile cap of 20 is added. ProposeChange locks profile then job. invoice.Create also locks the profile, then its After hook locks the job (MarkDone, Accept). Withdraw, Delete and Accept without a deposit lock only the job. So the lock order is the same everywhere and cannot deadlock. One query gives both counts. TestChangeEmailsPerDay covers both caps. (6) The owner's read has clientEmailed: an EXISTS on job_id, kind and the change key. It is false for quote payments (NULL key) and absent from the public read; TestJobs checks it. openapi.yaml and R-107 describe it.\nRun: go test notify, job, invoice, database and httpapi/...: all ok. check-docs: 0 errors.\nMINOR, not blocking: (a) api.md:340, the reads bullet, lists acceptedEmail but not clientEmailed (it is at line 91). (b) The openapi clientEmailed description says \"past the daily caps\"; the caps are any 24 hours. (c) clientEmailed means queued: it stays true when the worker skips a change accepted first or gives up after 10 tries. F239 copy should say the email was sent to acceptedEmail, not that it was delivered. (d) There is still no stop link. Accepted: it is a capped, transactional email about a job the client accepted.",
+          "at": "2026-10-18T19:12:40Z",
+          "filesHash": "c20ae27196afd2a7"
+        },
+        "commit": "70040a9",
+        "doneAt": "2026-10-18T19:12:58Z"
+      },
+      "branch": "feat/f238-the-client-gets-an-email-when-the-owner",
+      "baseCommit": "6dca33c3686107d87e5987ccddc952ceef9d2923",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f238-the-client-gets-an-email-when-the-owner",
         "base": "main"
       }
     }

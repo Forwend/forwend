@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -37,6 +38,18 @@ func TestScopeChange(t *testing.T) {
 	if proposed.TotalCents() != 100050 {
 		t.Fatalf("total with a change not accepted: %d, want the quote's 100050", proposed.TotalCents())
 	}
+	emails := func() int {
+		t.Helper()
+		var n int
+		if err := pool.QueryRow(ctx, "SELECT count(*) FROM outbox_events WHERE job_id = $1 AND kind = 'job.change'",
+			j.ID).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	if emails() != 1 || !change.ClientEmailed || proposed.Payments[1].ClientEmailed {
+		t.Fatalf("change emails %d, clientEmailed %v, want 1 on the change alone (R-107)", emails(), change.ClientEmailed)
+	}
 	if again, created, err := s.ProposeChange(ctx, profileID, j.ID, "c1", PaymentRequest{Title: "Extra page",
 		AmountUSD: "150.00", DueDays: 7}); err != nil || created || len(again.Payments) != 3 {
 		t.Fatalf("same request: %d payments, created %v, %v", len(again.Payments), created, err)
@@ -44,6 +57,9 @@ func TestScopeChange(t *testing.T) {
 	if _, _, err := s.ProposeChange(ctx, profileID, j.ID, "c1", PaymentRequest{Title: "Other", AmountUSD: "1",
 		DueDays: 7}); !errors.Is(err, ErrConflict) {
 		t.Fatalf("same key, other change: %v, want ErrConflict", err)
+	}
+	if emails() != 1 {
+		t.Fatalf("change emails after a replay %d, want 1", emails())
 	}
 	if _, _, err := s.ProposeChange(ctx, profileID, j.ID, "c2", PaymentRequest{Title: "Extra", AmountUSD: "1",
 		DueDays: 7, OnAccept: true}); !errors.Is(err, ErrInvalid) {
@@ -279,5 +295,53 @@ func TestDepositOnlyJobTakesAChange(t *testing.T) {
 	}
 	if _, _, err := s.ProposeChange(ctx, profileID, j.ID, "c2", PaymentRequest{Title: "More", AmountUSD: "1", DueDays: 7}); !errors.Is(err, ErrJobFinished) {
 		t.Fatalf("a change after the change's final: %v, want ErrJobFinished", err)
+	}
+}
+
+// R-107: a job sends its client at most MaxChangeEmails change emails in a day, and a profile MaxProfileChangeEmails;
+// past that the change is still added, and the owner's read says no email went.
+func TestChangeEmailsPerDay(t *testing.T) {
+	ctx := context.Background()
+	pool, profileID := open(t)
+	s := NewService(pool, invoice.NewService(pool))
+	j, _, err := s.Create(ctx, profileID, "k1", quote(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example"); err != nil {
+		t.Fatal(err)
+	}
+	for i := range MaxChangeEmails + 1 {
+		proposed, created, err := s.ProposeChange(ctx, profileID, j.ID, fmt.Sprint("c", i), PaymentRequest{Title: "Extra",
+			AmountUSD: "150", DueDays: 7})
+		if err != nil || !created || len(proposed.Payments) != 3 || proposed.Payments[2].ClientEmailed != (i < MaxChangeEmails) {
+			t.Fatalf("change %d: %v %+v %v", i, created, proposed.Payments, err)
+		}
+		if err := s.WithdrawChange(ctx, profileID, j.ID, 3); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var n int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM outbox_events WHERE job_id = $1", j.ID).Scan(&n); err != nil ||
+		n != MaxChangeEmails {
+		t.Fatalf("change emails %d %v, want %d", n, err, MaxChangeEmails)
+	}
+
+	// The profile's other jobs count too.
+	other, _, err := s.Create(ctx, profileID, "k2", quote(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Accept(ctx, other.Token, "Jane Doe", "jane@bob.example"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO outbox_events (kind, job_id, payload)
+		SELECT 'job.change', $1, '{}' FROM generate_series(1, $2)`, j.ID, MaxProfileChangeEmails-MaxChangeEmails); err != nil {
+		t.Fatal(err)
+	}
+	proposed, created, err := s.ProposeChange(ctx, profileID, other.ID, "c", PaymentRequest{Title: "Extra", AmountUSD: "150",
+		DueDays: 7})
+	if err != nil || !created || proposed.Payments[2].ClientEmailed {
+		t.Fatalf("a change past the profile's cap: %v %+v %v", created, proposed.Payments, err)
 	}
 }
