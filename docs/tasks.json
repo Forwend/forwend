@@ -1145,7 +1145,7 @@
         "DESIGN.md describes the page; apps/web/AGENTS.md lists the public route."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
@@ -1242,11 +1242,18 @@
           "summary": "PASS on re-review. The blocking doc gaps are fixed, and the minor points are addressed.\n\nFixed:\n- docs/web/architecture.md:3-5 now lists /w/<token> among the surfaces, citing R-102. Line 14 (apps/web row) adds /w.\n- docs/web/structure.md:114-115 names /pay, /reminders/<token> and /w/<token> for public-store-provider.tsx.\n- lib/jobs.ts:33-36: namedField(message, fields) now serves invalidJobField and the accept form (job-quote.tsx:98). jobs.test.ts:25-31 still covers it through invalidJobField.\n- constants/jobs.ts:23: EMAIL_PATTERN is now shared by job-form.tsx:101 and job-quote.tsx:84. schemas/jobs.ts:42 uses JOB_TOKEN_PATTERN.\n- jobs-copy.ts:138 now reads 'The deposit's invoice is ready to pay.' It no longer makes a promise about the work.\n- job-quote.tsx:54-73: the loading, not-found and failed states now have an h1 'Quote'.\n- e2e/privy/jobs.spec.ts:24-25: openNewJob now clicks the in-app New job link instead of a full page load. This saves API calls under the shared user limit. It matches the phone step at :152, and the test still checks the same things.\n\nRe-checked: the contract, privacy, noindex, the public store without sign-in, the PAYMENT_STATUS.open check, focus and errors, and the e2e mocks are unchanged from my first review and still correct.\n\nRuns: check-docs gave 0 errors. vitest src/features/jobs gave 4 passed. typecheck passed. pnpm e2e e2e/job-quote.spec.ts gave 2 passed. The verify log F232-20261018T141608Z-e2e.log shows 46 public and 40 live tests passed, including privy/jobs.spec.ts.\n\nLeft for later (not blocking):\n- DESIGN.md calls Pay the deposit a 'main button'. It is a link styled as a button, which is correct per structure.md.\n- acceptJob invalidates PUBLIC_JOB_TAG, so the quote is fetched once more after accept. This is harmless.\n- Pre-existing and outside this task (backend): httpio/errors.go:80 logs r.URL.Path on a 500, which holds the job token for /v1/jobs/{token}. It needs its own follow-up task.",
           "at": "2026-10-18T14:21:52Z",
           "filesHash": "dbf67b22adb13e4e"
-        }
+        },
+        "commit": "b1a1584",
+        "doneAt": "2026-10-18T14:22:08Z"
       },
       "branch": "feat/f232-the-client-reads-a-job-s-quote-at-w-toke",
       "baseCommit": "e4dc996d94368bce29d673c9905ecbd84d02ec5e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f232-the-client-reads-a-job-s-quote-at-w-toke",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
