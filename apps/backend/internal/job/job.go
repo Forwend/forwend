@@ -36,8 +36,11 @@ var (
 	ErrOutOfOrder = errors.New("an earlier payment has no invoice yet")
 	// ErrChangeNotAccepted: a scope change is marked done only once the client accepted it.
 	ErrChangeNotAccepted = errors.New("the client has not accepted this change")
-	// ErrChangePending: one change waits for the client at a time, so each is accepted in order.
+	// ErrChangePending: one change waits for the client at a time, so each is accepted in order, and the final invoice
+	// waits until no change does.
 	ErrChangePending = errors.New("a change waits for the client's acceptance")
+	// ErrJobFinished: the last payment is done, so more work is a new job.
+	ErrJobFinished = errors.New("the job's last payment is done")
 	// ErrNotWithdrawable: only the last payment, a change the client has not accepted, can be withdrawn.
 	ErrNotWithdrawable = errors.New("only the last payment, a change not accepted yet, can be withdrawn")
 )

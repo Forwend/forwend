@@ -12,8 +12,9 @@ import (
 )
 
 // ProposeChange adds a scope change to the profile's accepted job (R-105): a payment at the end of its schedule that
-// the client accepts by the job's link. It is made once per (job, idempotency key): created is false when the same
-// request was already made, and another request under the key is ErrConflict.
+// the client accepts by the job's link. It is made once per (job, idempotency key), withdrawn or not: created is false
+// when the same request was already made, and another request under the key is ErrConflict. A job whose last payment
+// is done is ErrJobFinished.
 func (s *Service) ProposeChange(ctx context.Context, profileID, id, key string, r PaymentRequest) (Job, bool, error) {
 	if !jobID.MatchString(id) {
 		return Job{}, false, ErrNotFound
@@ -38,7 +39,8 @@ func (s *Service) ProposeChange(ctx context.Context, profileID, id, key string, 
 			return fmt.Errorf("lock job %s: %w", id, err)
 		}
 		var stored []byte
-		err = tx.QueryRow(ctx, "SELECT change_hash FROM job_payments WHERE job_id = $1 AND change_key = $2", id,
+		err = tx.QueryRow(ctx, `SELECT change_hash FROM job_payments WHERE job_id = $1 AND change_key = $2
+			UNION ALL SELECT change_hash FROM job_withdrawn_changes WHERE job_id = $1 AND change_key = $2`, id,
 			key).Scan(&stored)
 		if err == nil {
 			if !bytes.Equal(stored, hash[:]) {
@@ -59,9 +61,17 @@ func (s *Service) ProposeChange(ctx context.Context, profileID, id, key string, 
 		if pending {
 			return ErrChangePending
 		}
-		var last int
-		if err := tx.QueryRow(ctx, "SELECT max(position) FROM job_payments WHERE job_id = $1", id).Scan(&last); err != nil {
+		// No change waits, so the last payment is the final one the client agreed to.
+		var (
+			last     int
+			finished bool
+		)
+		if err := tx.QueryRow(ctx, `SELECT position, done_at IS NOT NULL FROM job_payments WHERE job_id = $1
+			ORDER BY position DESC LIMIT 1`, id).Scan(&last, &finished); err != nil {
 			return fmt.Errorf("read job %s payments: %w", id, err)
+		}
+		if finished {
+			return ErrJobFinished
 		}
 		if last >= MaxPayments {
 			return fmt.Errorf("%w: a job has at most %d payments", ErrInvalid, MaxPayments)
@@ -126,9 +136,12 @@ func (s *Service) WithdrawChange(ctx context.Context, profileID, id string, posi
 		} else if err != nil {
 			return fmt.Errorf("lock job %s: %w", id, err)
 		}
-		tag, err := tx.Exec(ctx, `DELETE FROM job_payments WHERE job_id = $1 AND position = $2 AND proposed_at IS NOT NULL
-			AND accepted_at IS NULL AND invoice_id IS NULL
-			AND position = (SELECT max(position) FROM job_payments WHERE job_id = $1)`, id, position)
+		// The change's key stays used, so a late retry of its proposal replays instead of adding it again.
+		tag, err := tx.Exec(ctx, `WITH gone AS (DELETE FROM job_payments WHERE job_id = $1 AND position = $2
+			AND proposed_at IS NOT NULL AND accepted_at IS NULL AND invoice_id IS NULL
+			AND position = (SELECT max(position) FROM job_payments WHERE job_id = $1)
+			RETURNING job_id, change_key, change_hash)
+			INSERT INTO job_withdrawn_changes (job_id, change_key, change_hash) SELECT * FROM gone`, id, position)
 		if err != nil {
 			return fmt.Errorf("withdraw job %s change: %w", id, err)
 		}

@@ -16,10 +16,13 @@ import (
 // MaxDeliveryLink is the longest delivery link, like an invoice's return link.
 const MaxDeliveryLink = 2000
 
+// errScheduleChanged rolls back an invoice made for a schedule a change altered meanwhile.
+var errScheduleChanged = errors.New("the job's payments changed")
+
 // MarkDone marks the profile's job's payment at position done and makes its invoice, like the deposit's (R-103). The
 // steps go in order, after acceptance; a payment that has its invoice answers the same. link is "" or an https link to
 // the delivered work, kept with the time (D-66). The last payment's invoice is the final one: its note lists the
-// earlier payments.
+// earlier payments, and it waits until no change does (ErrChangePending), so a change can't come after it.
 func (s *Service) MarkDone(ctx context.Context, profileID, id string, position int, link string) (Job, error) {
 	if link != "" {
 		// url.Parse lowers the scheme; the database takes only "https://" as written.
@@ -53,15 +56,30 @@ func (s *Service) MarkDone(ctx context.Context, profileID, id string, position i
 		}
 	}
 	r := s.paymentRequest(j, p)
-	// The final invoice is the last payment the client agreed to: a change still waiting after it doesn't count (R-105).
+	// The final invoice is the last payment the client agreed to; a change still waiting comes first (R-105).
 	last := len(j.Payments)
 	if pending := j.Payments[last-1]; !pending.ProposedAt.IsZero() && pending.AcceptedAt.IsZero() {
+		if position == last-1 {
+			return Job{}, ErrChangePending
+		}
 		last--
 	}
 	if position == last && position > 1 {
 		r.Note = finalNote(j, p)
 	}
 	r.After = func(ctx context.Context, tx pgx.Tx, invoiceID string) error {
+		// The job row lock orders this with a proposal: a schedule that changed since the read is read again. The count
+		// is its own statement, so it sees what committed while the lock waited.
+		if _, err := tx.Exec(ctx, "SELECT 1 FROM jobs WHERE id = $1 FOR UPDATE", j.ID); err != nil {
+			return err
+		}
+		var n int
+		if err := tx.QueryRow(ctx, "SELECT count(*) FROM job_payments WHERE job_id = $1", j.ID).Scan(&n); err != nil {
+			return err
+		}
+		if n != len(j.Payments) {
+			return errScheduleChanged
+		}
 		_, err := tx.Exec(ctx, `UPDATE job_payments SET invoice_id = $3, done_at = now(), delivery_link = NULLIF($4, '')
 			WHERE job_id = $1 AND position = $2`, j.ID, position, invoiceID, link)
 		return err
@@ -69,6 +87,9 @@ func (s *Service) MarkDone(ctx context.Context, profileID, id string, position i
 	// A concurrent call the same UTC day makes the same request with the same key, so it gets this invoice back; one
 	// with other values (a payment paid in between changes the final note) finds the invoice made.
 	_, _, err = s.invoices.Create(ctx, profileID, fmt.Sprintf("job:%s:%d", j.ID, position), r)
+	if errors.Is(err, errScheduleChanged) {
+		return s.MarkDone(ctx, profileID, id, position, link)
+	}
 	if errors.Is(err, invoice.ErrConflict) {
 		if again, readErr := s.Get(ctx, profileID, id); readErr == nil && again.Payments[position-1].InvoiceID != "" {
 			return again, nil

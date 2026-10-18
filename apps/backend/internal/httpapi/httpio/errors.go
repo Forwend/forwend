@@ -47,6 +47,8 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusConflict, "change_not_accepted", "the client has not accepted this change yet"
 	case errors.Is(err, job.ErrChangePending):
 		status, code, message = http.StatusConflict, "change_pending", "a change waits for the client's acceptance"
+	case errors.Is(err, job.ErrJobFinished):
+		status, code, message = http.StatusConflict, "job_finished", "the job's last payment is done: more work is a new job"
 	case errors.Is(err, job.ErrNotWithdrawable):
 		status, code, message = http.StatusConflict, "payment_not_withdrawable",
 			"only the last payment, a change the client has not accepted, can be withdrawn"
@@ -88,7 +90,8 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, ErrRateLimited):
 		status, code, message = http.StatusTooManyRequests, "rate_limited", "too many requests: wait Retry-After seconds"
 	default:
-		slog.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
+		// The route, not the path: a link token in the path must never reach the log.
+		slog.Error("request failed", "route", r.Pattern, "err", err)
 	}
 	WriteJSON(w, status, map[string]map[string]string{"error": {"code": code, "message": message}})
 }

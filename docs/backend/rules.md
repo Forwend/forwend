@@ -105,6 +105,7 @@ Other packages under `internal/`: `auth`, `address`, `finality`, `search`, `docu
   interface packages or a service/repository interface pair for every domain.
 - Money: decimal strings in JSON, never `float64` (the root AGENTS.md money rule).
 - Logs: `log/slog` (the root AGENTS.md secret rule applies).
+  - A request logs its route pattern (`r.Pattern`), never its path: a path can carry a link token.
 - New dependency only when stdlib can't do it in a few lines; say why in the PR.
 - HTTP API: [api.md](api.md). Money and chain code: [money-safety.md](money-safety.md).
 

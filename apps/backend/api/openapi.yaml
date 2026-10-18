@@ -645,7 +645,8 @@ paths:
         The invoice is made like the deposit: payer chooses, the job's title and client, one line, due dueDays after
         the UTC day, its checkout open 60 days past that (D-80). Steps go in order. The last payment's invoice is the
         final one: its note gives the job's total and each earlier payment with its invoice, amount and whether it is
-        paid. A payment that has its invoice answers the same. Nothing is emailed: Send to client does that (R-94).
+        paid. It waits until no change waits (change_pending, R-105). A payment that has its invoice answers the same.
+        Nothing is emailed: Send to client does that (R-94).
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - name: jobId
@@ -689,7 +690,8 @@ paths:
       summary: Propose a scope change on an accepted job, a new payment at the end (R-105)
       description: |
         The client accepts it by the job's link before it can be marked done; it counts in the total once accepted.
-        A job has at most 10 payments. The same request sent again with the same key returns the job (200).
+        A job has at most 10 payments. The same request sent again with the same key returns the job (200), also once
+        the change is withdrawn: it is not added again.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - name: jobId
@@ -2145,7 +2147,7 @@ components:
           properties:
             code:
               type: string
-              enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found, job_not_found, job_accepted, job_not_accepted, payment_out_of_order, change_not_accepted, change_pending, payment_not_withdrawable,
+              enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found, job_not_found, job_accepted, job_not_accepted, payment_out_of_order, change_not_accepted, change_pending, job_finished, payment_not_withdrawable,
                 billing_details_not_found, billing_details_required, client_not_found, idempotency_conflict, invoice_not_paid,
                 invoice_not_cancelable, receipt_sent, client_email_required, invoice_closed, due_date_required,
                 reminders_stopped, invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
@@ -2206,14 +2208,16 @@ components:
     MarkDoneConflict:
       description: |
         The client has not accepted the job yet (job_not_accepted), an earlier payment has no invoice yet
-        (payment_out_of_order), or the client has not accepted this change yet (change_not_accepted).
+        (payment_out_of_order), the client has not accepted this change yet (change_not_accepted), or the final payment
+        waits for a change the client has not accepted (change_pending).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     ChangeConflict:
       description: |
         The Idempotency-Key was used with another change (idempotency_conflict), the client has not accepted the job yet
-        (job_not_accepted), or a change already waits for the client (change_pending).
+        (job_not_accepted), a change already waits for the client (change_pending), or the job's last payment is done
+        (job_finished).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
