@@ -1612,7 +1612,7 @@
         "DESIGN.md describes the change UI on both pages."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
@@ -1709,11 +1709,18 @@
           "summary": "All three blockers are fixed. (1)+(2) changes.test.tsx renders JobDetail with both agreed payments invoiced and a change waiting: no Mark done, no Propose a change; Withdraw sends DELETE /api/v1/profiles/<p>/jobs/<id>/payments/3, toasts 'Extra page withdrawn' and focuses the Payments heading. Without !isPendingChange in next (job-detail.tsx:53), the change would get Mark done and the test fails. (3) job-quote.spec.ts sets 390x844 while the Accept change form shows and asserts no sideways scroll; the rest of that test runs at phone width. Fixed minors checked: AcceptField is one type in types/jobs.ts; ProposeChange errors are keyed by PaymentField and focus the first wrong field; withdraw 409/404 says the client accepted it or it is gone, and the array invalidatesTags reads the job again on failure; the comment is gone; R-106 Given sentence is 23 words. Earlier confirmations still hold: proposedAt is sent as the read's string, keys are reused per filled-in form, Propose gating matches the backend limit, focus targets have tabIndex -1, no web reader counts a waiting change, the live e2e sends no write (D-85). Remaining minor, not blocking: the quote and change accept forms still repeat the same submit logic; when a client's accept gets 404 for a withdrawn change, the re-read removes the form, so its 'gone' alert disappears and focus falls to the body; privy/jobs.spec.ts:106 Mark done count stays vacuous there (the unit test now covers it). Ran: vitest jobs 10/10, web typecheck, biome; verify 16:17:30Z passed 8 checks (e2e 47 + 40).",
           "at": "2026-10-18T16:23:16Z",
           "filesHash": "bb2fe20f9cb7142e"
-        }
+        },
+        "commit": "380a1ac",
+        "doneAt": "2026-10-18T16:23:32Z"
       },
       "branch": "feat/f236-the-owner-proposes-and-withdraws-scope-c",
       "baseCommit": "7c5cb69d42021b62d57397a8dcb2afe55166baf7",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f236-the-owner-proposes-and-withdraws-scope-c",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
