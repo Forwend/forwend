@@ -81,6 +81,8 @@ type Request struct {
 	Lines []LineRequest
 	// Agreed is the price agreed with the client in fiat (R-93), as typed; Create stores it in Details.Agreed.
 	Agreed *AgreedRequest
+	// Reminders turns payment reminders on at once (R-97), as SetReminders does; it needs a due date and a client email.
+	Reminders bool
 }
 
 type AgreedRequest struct {
@@ -419,7 +421,8 @@ func (d Details) check() error {
 
 // requestHash fingerprints the canonical request, so the same values sent again match and the body is never stored.
 // %q keeps the texts apart whatever they contain.
-func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn time.Duration, d Details, lines []line) []byte {
+func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn time.Duration, d Details, lines []line,
+	reminders bool) []byte {
 	b := fmt.Appendf(nil, "%d|%s|%s|%d|%q|%q|%q|%q|%q|%q|%q", chainID, token, amount,
 		int64(expiresIn/time.Second), d.Title, d.Note, d.DueDate, d.ClientName, d.ClientEmail, d.ClientAddress,
 		d.SenderName)
@@ -437,6 +440,9 @@ func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn ti
 	}
 	if a := d.Agreed; a != nil { // in minor units: "1000" and "1000.00" EUR are the same price
 		b = fmt.Appendf(b, "|agreedValue=%q|%d|%q", a.Currency, a.Amount, a.Date)
+	}
+	if reminders {
+		b = fmt.Appendf(b, "|reminders")
 	}
 	for _, l := range lines { // and for lines: "7.5" and "7.50" are the same line
 		b = fmt.Appendf(b, "|%q|%s|%s", l.description, l.quantity.RatString(), l.price.RatString())

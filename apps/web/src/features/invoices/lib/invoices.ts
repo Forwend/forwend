@@ -31,6 +31,7 @@ import type {
   InvoiceException,
   InvoiceField,
   InvoicePdf,
+  InvoiceReminders,
   InvoiceStart,
   InvoiceSummary,
   LineDraft,
@@ -282,8 +283,8 @@ export function invoiceCopyHref(invoiceId: string, rest: boolean): string {
 }
 
 /**
- * A new invoice's form filled from an earlier one (R-91, R-77): its client, reference, title, note, return link and
- * accepted options, with the whole amount and its items, or only what is left of a closed one and no items, which would
+ * A new invoice's form filled from an earlier one (R-91, R-77): its client, reference, title, note, return link,
+ * payment reminders unless the client stopped them (R-97) and accepted options, with the whole amount and its items, or only what is left of a closed one and no items, which would
  * not add up to it. Dates are the new invoice's own. An invoice is never reopened (D-25). Payer-chooses amounts are USD
  * at 1 per token (D-75). The rest is asked in the token the client paid with on time; a late payment also locks an
  * option, but the client never paid with it.
@@ -292,6 +293,7 @@ export function restartFrom(
   inv: Invoice,
   client: InvoiceClient | undefined,
   rest: boolean,
+  reminders: InvoiceReminders | undefined,
 ): InvoiceStart {
   const decimals = inv.options.find((o) => o.optionId === inv.optionId)?.decimals ?? 0;
   const { received, left } = invoiceException(inv, PAYMENT_STATUS.expiredPartiallyPaid);
@@ -323,6 +325,8 @@ export function restartFrom(
             amount: decimalText(BigInt(inv.agreedValue.amount), inv.agreedValue.decimals),
             date: inv.agreedValue.date,
           },
+    // Reminders the client stopped stay off on the copy (R-97); the rest of a closed invoice starts without them.
+    reminders: !rest && !!reminders?.on && !reminders.stoppedAt,
     client: {
       name: client?.name ?? "",
       email: client?.email ?? "",

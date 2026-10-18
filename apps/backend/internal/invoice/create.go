@@ -35,11 +35,14 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	if r.Details.Agreed, err = r.Agreed.parse(); err != nil {
 		return Invoice{}, false, err
 	}
+	if r.Reminders && (r.DueDate == "" || r.ClientEmail == "") {
+		return Invoice{}, false, fmt.Errorf("%w: reminders need a dueDate and a client.email", ErrInvalid)
+	}
 	var hash []byte
 	if usd != nil {
-		hash = requestHash(0, "usd", usd, expiresIn, r.Details, lines)
+		hash = requestHash(0, "usd", usd, expiresIn, r.Details, lines, r.Reminders)
 	} else {
-		hash = requestHash(r.ChainID, token, amount, expiresIn, r.Details, lines)
+		hash = requestHash(r.ChainID, token, amount, expiresIn, r.Details, lines, r.Reminders)
 	}
 	if inv, err := s.replay(ctx, profileID, idempotencyKey, hash); !errors.Is(err, ErrNotFound) {
 		return inv, false, err
@@ -155,6 +158,16 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 			amount) VALUES ($1, $2, $3, $4, $5, $6)`, *mainID, i+1, l.description, l.quantity.FloatString(2),
 			unitPrice.String(), amount.String()); err != nil {
 			return Invoice{}, false, fmt.Errorf("insert invoice line: %w", err)
+		}
+	}
+	if r.Reminders {
+		token, err := newStopToken()
+		if err != nil {
+			return Invoice{}, false, err
+		}
+		if _, err := tx.Exec(ctx, "INSERT INTO invoice_reminders (invoice_id, enabled, stop_token) VALUES ($1, true, $2)",
+			*mainID, token); err != nil {
+			return Invoice{}, false, fmt.Errorf("turn on invoice reminders: %w", err)
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {

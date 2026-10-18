@@ -62,6 +62,7 @@ type clientBody struct {
 	Country   string `json:"country"`
 	TaxID     string `json:"taxId"`
 	Reference string `json:"reference"`
+	Reminders bool   `json:"reminders"`
 }
 
 // clientJSON is a saved client; a field it doesn't have is null.
@@ -73,13 +74,14 @@ type clientJSON struct {
 	Country   *string `json:"country"`
 	TaxID     *string `json:"taxId"`
 	Reference *string `json:"reference"`
+	Reminders bool    `json:"reminders"`
 	UpdatedAt string  `json:"updatedAt"`
 }
 
 func toClientJSON(c profile.Client) clientJSON {
 	return clientJSON{
 		ClientID: c.ID, Name: c.Name, Email: httpio.OrNull(c.Email), Address: httpio.OrNull(c.Address),
-		Country: httpio.OrNull(c.Country), TaxID: httpio.OrNull(c.TaxID), Reference: httpio.OrNull(c.Reference), UpdatedAt: c.UpdatedAt.UTC().Format(time.RFC3339),
+		Country: httpio.OrNull(c.Country), TaxID: httpio.OrNull(c.TaxID), Reference: httpio.OrNull(c.Reference), Reminders: c.Reminders, UpdatedAt: c.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 }
 

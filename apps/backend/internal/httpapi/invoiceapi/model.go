@@ -21,6 +21,7 @@ type createInvoiceBody struct {
 	Reference  string `json:"reference"`
 	SenderName string `json:"senderName"`
 	ReturnURL  string `json:"returnUrl"`
+	Reminders  bool   `json:"reminders"`
 	Lines      []struct {
 		Description string `json:"description"`
 		Quantity    string `json:"quantity"`

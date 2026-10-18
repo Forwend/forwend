@@ -296,10 +296,11 @@ describe("restartFrom", () => {
       returnUrl: "https://shop.example/thanks",
       reference: "PO-4500012345",
       client: { name: "Bob Ltd", email: "bob@example.com", address: "", country: "", taxId: "" },
+      reminders: false,
     };
     // R-93: the price agreed for the whole amount; it does not describe the rest.
     const agreed = { currency: "EUR", amount: "4.6", date: "2026-10-01" };
-    expect(restartFrom(partly, client, false)).toEqual({
+    expect(restartFrom(partly, client, false, undefined)).toEqual({
       ...start,
       agreed,
       amount: "5",
@@ -309,12 +310,23 @@ describe("restartFrom", () => {
       ],
     });
     // The items would not add up to the rest.
-    expect(restartFrom(partly, client, true)).toEqual({
+    expect(restartFrom(partly, client, true, undefined)).toEqual({
       ...start,
       agreed: null,
       amount: "3.75",
       items: [],
     });
+  });
+
+  // R-97: a duplicate keeps reminders the owner had on, unless the client stopped them; the rest starts without.
+  it("copies reminders that are on and not stopped, only to a duplicate", () => {
+    const on = { on: true, stoppedAt: null, emails: [] };
+    expect(restartFrom(open, undefined, false, on).reminders).toBe(true);
+    expect(restartFrom(open, undefined, true, on).reminders).toBe(false);
+    expect(
+      restartFrom(open, undefined, false, { ...on, stoppedAt: "2026-10-18T00:00:00Z" }).reminders,
+    ).toBe(false);
+    expect(restartFrom(open, undefined, false, { ...on, on: false }).reminders).toBe(false);
   });
 
   it("keeps payer chooses when only a late payment locked an option", () => {
@@ -325,11 +337,17 @@ describe("restartFrom", () => {
       options: [option, { ...option, optionId: `0x${"9".repeat(64)}` }],
       deposits: [late],
     };
-    expect(restartFrom(lateLocked, undefined, false).payWith).toBe("any");
+    expect(restartFrom(lateLocked, undefined, false, undefined).payWith).toBe("any");
     const onTime = { ...lateLocked, deposits: [{ ...late, late: false, amount: "1000000" }] };
-    expect(restartFrom(onTime, undefined, true)).toMatchObject({ payWith: "fixed", amount: "4" });
+    expect(restartFrom(onTime, undefined, true, undefined)).toMatchObject({
+      payWith: "fixed",
+      amount: "4",
+    });
     // R-91: a duplicate asks the whole amount again, so the client chooses again.
-    expect(restartFrom(onTime, undefined, false)).toMatchObject({ payWith: "any", amount: "5" });
+    expect(restartFrom(onTime, undefined, false, undefined)).toMatchObject({
+      payWith: "any",
+      amount: "5",
+    });
   });
 
   // R-88: lines are in the invoice's own option's base units, which can have other decimals than the option the client
@@ -349,7 +367,7 @@ describe("restartFrom", () => {
       options: [option, dai],
       lines: [{ description: "Design", quantity: "2.00", unitPrice: "2500000", amount: "5000000" }],
     };
-    expect(restartFrom(locked, undefined, false)).toMatchObject({
+    expect(restartFrom(locked, undefined, false, undefined)).toMatchObject({
       payWith: "any",
       amount: "5",
       items: [{ description: "Design", quantity: "2", price: "2.5" }],
@@ -358,7 +376,7 @@ describe("restartFrom", () => {
 
   it("keeps payer chooses while no option took money, and leaves the client empty for a request", () => {
     const choosing = { ...open, options: [option, { ...option, optionId: `0x${"9".repeat(64)}` }] };
-    expect(restartFrom(choosing, undefined, false)).toMatchObject({
+    expect(restartFrom(choosing, undefined, false, undefined)).toMatchObject({
       payWith: "any",
       amount: "5",
       client: { name: "", email: "", address: "", country: "", taxId: "" },

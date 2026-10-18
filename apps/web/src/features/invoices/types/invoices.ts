@@ -65,6 +65,7 @@ export interface InvoiceStart {
   reference: string;
   agreed: AgreedDraft | null;
   client: ClientBody;
+  reminders: boolean;
 }
 
 export type ExpiryChoice = keyof typeof EXPIRY_CHOICES;

@@ -134,6 +134,10 @@ export const NEW_INVOICE_COPY = {
   supplyClear: "Clear supply date",
   dueLabel: "Due date (optional)",
   dueHint: `Shown to the client. Picking one sets the checkout to close ${DUE_GRACE_DAYS} days after it.`,
+  // Payment reminders (R-97): on at once when the invoice is made.
+  remindersLabel: "Send payment reminders",
+  remindersHint:
+    "Emails the client 3 days before the due date, on it and 7 days after, until it is paid. Needs a due date and a client email.",
   dueClear: "Clear due date",
   expiryLabel: "Checkout closes after",
   expiryHint: "After this the pay link takes no more payments.",
@@ -207,6 +211,7 @@ export const NEW_INVOICE_COPY = {
     [INVOICE_FIELDS.returnUrl]: "Enter an https link, like https://example.com/thanks.",
     [INVOICE_FIELDS.lines]:
       "We could not save these items. Check each item's text, quantity and price.",
+    [INVOICE_FIELDS.reminders]: "Reminders need a due date and a client email.",
   },
   failed: "We could not create the invoice. Try again.",
   invalid: "We could not create the invoice with these values. Check them and try again.",

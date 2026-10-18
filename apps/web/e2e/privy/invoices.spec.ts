@@ -131,6 +131,10 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   );
   await page.getByRole("textbox", { name: "Tax or VAT ID (optional)" }).fill("DE123456789");
   await page.getByRole("textbox", { name: "Default PO or reference (optional)" }).fill(po);
+  // R-97: this client's new invoices start with payment reminders on.
+  await page
+    .getByRole("checkbox", { name: "Start new invoices with payment reminders on" })
+    .check();
   expect(await blockingViolations(page)).toEqual([]);
   await page.getByRole("button", { name: "Save client" }).click();
   await expect(page).toHaveURL("/app/clients");
@@ -202,6 +206,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByRole("textbox", { name: "Tax or VAT ID" })).toHaveValue("DE123456789");
     // R-90: the saved client's default PO number fills the invoice's reference.
     await expect(page.getByRole("textbox", { name: "PO or reference (optional)" })).toHaveValue(po);
+    await expect(page.getByRole("checkbox", { name: "Send payment reminders" })).toBeChecked();
     // R-93: the price agreed with the client in euros, today.
     await page.getByRole("button", { name: "Add agreed value" }).click();
     await page.getByRole("button", { name: /^Agreed in/ }).click();
@@ -270,17 +275,18 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     // The button goes, so focus moves to the line that takes its place.
     await expect(client.getByText(/^You can send it again after/)).toBeFocused();
     expect(await blockingViolations(page)).toEqual([]);
-    // R-96: payment reminders, saved when flipped; the due date is a month away, so none goes yet. Off again after.
+    // R-96, R-97: the invoice starts with payment reminders on from its saved client; the switch saves when flipped.
+    // The due date is a month away and the checkout closes tomorrow, so no reminder goes.
     const reminders = client.getByRole("switch", { name: "Payment reminders" });
-    await expect(reminders).not.toBeChecked();
+    await expect(reminders).toBeChecked();
     await expect(client).toContainText("Emails the client 3 days before the due date");
+    await reminders.click();
+    await expect(page.getByText("Payment reminders off")).toBeVisible();
+    await expect(reminders).not.toBeChecked();
     await reminders.click();
     await expect(page.getByText("Payment reminders on")).toBeVisible();
     await expect(reminders).toBeChecked();
     expect(await blockingViolations(page)).toEqual([]);
-    await reminders.click();
-    await expect(page.getByText("Payment reminders off")).toBeVisible();
-    await expect(reminders).not.toBeChecked();
     // The pay link copies whole, from the header's More actions menu, which also opens it.
     const link = `http://localhost:3000/pay/${invoice.invoiceId}`;
     await page
@@ -316,6 +322,8 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.locator('input[name="dueDate"]')).toHaveValue("");
     await expect(page.locator('input[name="supplyDate"]')).toHaveValue("");
     await expect(page.getByRole("textbox", { name: "Agreed amount" })).toHaveValue("1150.5");
+    // R-97: the reminders the owner had on are copied too.
+    await expect(page.getByRole("checkbox", { name: "Send payment reminders" })).toBeChecked();
     await page.goBack();
     await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
     // The PDFs come through the same-origin /api path; the receipt only once the invoice is paid.

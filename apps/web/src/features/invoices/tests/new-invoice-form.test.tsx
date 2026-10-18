@@ -91,6 +91,7 @@ describe("new invoice form", () => {
       country: "DE",
       taxId: "DE999999999",
       reference: "PO-4500012345",
+      reminders: false,
       updatedAt: "2026-10-16T10:00:00Z",
     };
     // jsdom has no layout, and the select's list scrolls its chosen option into view.
@@ -268,6 +269,7 @@ describe("new invoice form", () => {
       country: null,
       taxId: null,
       reference,
+      reminders: false,
       updatedAt: "2026-10-16T10:00:00Z",
     });
     const acme = saved("11111111-1111-4111-8111-111111111111", "Acme GmbH", "PO-ACME-1");
@@ -311,6 +313,7 @@ describe("new invoice form", () => {
           start={{
             payWith: "fixed",
             picked: `${TOKEN.chainId}:${TOKEN.token}`,
+            reminders: false,
             amount: "5",
             items: [
               { id: "0", description: "Design", quantity: "7.5", price: "0.5" },

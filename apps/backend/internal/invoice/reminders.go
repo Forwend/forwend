@@ -75,12 +75,12 @@ func (s *Service) SetReminders(ctx context.Context, profileID, id string, on boo
 		case email == "":
 			return ErrNoClientEmail
 		}
-		token := make([]byte, 32)
-		if _, err := rand.Read(token); err != nil {
-			return fmt.Errorf("make stop token: %w", err)
+		token, err := newStopToken()
+		if err != nil {
+			return err
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO invoice_reminders (invoice_id, enabled, stop_token) VALUES ($1, $2, $3)
-			ON CONFLICT (invoice_id) DO UPDATE SET enabled = $2`, id, on, hex.EncodeToString(token)); err != nil {
+			ON CONFLICT (invoice_id) DO UPDATE SET enabled = $2`, id, on, token); err != nil {
 			return fmt.Errorf("save invoice %s reminders: %w", id, err)
 		}
 		return nil
@@ -89,6 +89,15 @@ func (s *Service) SetReminders(ctx context.Context, profileID, id string, on boo
 		return Invoice{}, err
 	}
 	return s.GetOfProfile(ctx, profileID, id)
+}
+
+// newStopToken is the secret in the client's stop link: 32 random bytes in hex.
+func newStopToken() (string, error) {
+	token := make([]byte, 32)
+	if _, err := rand.Read(token); err != nil {
+		return "", fmt.Errorf("make stop token: %w", err)
+	}
+	return hex.EncodeToString(token), nil
 }
 
 // StopReminders stops an invoice's reminders for good, by the token of the client's stop link (R-96). It answers the

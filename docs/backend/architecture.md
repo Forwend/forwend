@@ -129,7 +129,7 @@ with a test.
 - `users(onboarded_at)` (set once by the first-run choice, R-50), `profiles(kind: personal|freelancer|merchant, name, idempotency_key, invoice_seq)` (one personal per user, made at
   signup without a key; other kinds once per user and key, or without a key by the first-run choice), `profile_wallets(provider, provider_wallet_id, address, chain_family)` (one per profile and family),
   `profile_billing_details(name, address, country, tax_id, contact_email, updated_at)` (at most one per profile, editable; R-43),
-  `clients(name, email, address, country, tax_id, reference, updated_at)` (a profile's saved clients, editable, at
+  `clients(name, email, address, country, tax_id, reference, reminders, updated_at)` (a profile's saved clients, editable, at
   most 1000 per profile, counted under the profile row lock; R-86).
 - Planned (PLAN 11.1, 11.2): `merchants → stores(project_id, branding)`, `team_members(role, store scope)`.
 - `chains(chain_id, chain_family, enabled)`, `tokens(chain_id, contract, decimals, enabled)`. One confirm rule for all

@@ -10,3 +10,6 @@ export type Client = z.infer<typeof clientSchema>;
 export type ClientBody = z.infer<typeof clientBodySchema>;
 
 export type SavedClientBody = z.infer<typeof savedClientBodySchema>;
+
+/** The saved client's typed fields, which the API may name as invalid; reminders is a checkbox. */
+export type ClientTextField = Exclude<keyof SavedClientBody, "reminders">;

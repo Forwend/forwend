@@ -122,6 +122,8 @@ R-86; the full schema is in openapi.yaml. Owner only, like every `{profileId}` r
   assigned ISO 3166-1 alpha-2 code), `taxId` (≤ 50) and `reference` (≤ 100 on one line, the client's PO number or
   reference that New invoice fills in, R-90); empty means none and comes back as null. The 1001st client is 422; an id
   that belongs to another profile is 404 `client_not_found`.
+- A saved client also takes `reminders` (R-97): New invoice starts with payment reminders on for it. False when left
+  out.
 - `DELETE /v1/profiles/{profileId}/clients/{clientId}` answers 204, or 404 `client_not_found`.
 - An invoice holds no link to a saved client: the web copies the client's details into the create request, so editing
   or deleting a client changes no invoice.
@@ -145,6 +147,8 @@ R-19 and R-42; the full schema is in openapi.yaml.
   (the rules of a saved client, R-86; `country` and `taxId` are part of the idempotency hash only when set). Empty means
   none and is returned as null. Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken
   rule is 422 `invalid_value`; these fields are part of the idempotency hash.
+- Optional `reminders: true` (R-97) turns payment reminders on with the invoice, as the reminders route does. It needs
+  `dueDate` and `client.email`, otherwise 422 `invalid_value`. It is part of the idempotency hash only when true.
 - A freelancer or merchant profile saves its billing details first: without them create is 409
   `billing_details_required` and makes nothing, so every business invoice names who bills the client (R-92, D-83). A
   personal profile's request needs none and names its sender (D-52).
@@ -195,7 +199,8 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - On needs the `open` status filter, a due date and a client email. Otherwise 409 `invoice_closed`,
     `due_date_required` or `client_email_required`.
   - After the client stopped them, on is 409 `reminders_stopped`. Off always works.
-  - The first call makes the row in `invoice_reminders` with a random 32-byte stop token.
+  - The first call, or a create with `reminders: true` (R-97), makes the row in `invoice_reminders`.
+  - The row holds a random 32-byte stop token.
   - The owner's reads return `reminders`: `{on, stoppedAt, emails}`, each email with its `step`.
 - `POST /v1/reminders/{token}/stop` is public: the client's stop link and one-click List-Unsubscribe-Post.
   - It reads no body, sets `stopped_at` once and answers `{number, from}`, the same when already stopped.

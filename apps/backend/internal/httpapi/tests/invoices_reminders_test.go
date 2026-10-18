@@ -143,3 +143,42 @@ func TestPaymentReminders(t *testing.T) {
 		t.Fatalf("unknown invoice: %d %v, want 404", r.status, r.body)
 	}
 }
+
+// R-97: a saved client keeps whether its new invoices start with reminders on; a create with reminders turns them on
+// at once, needs a due date and a client email, and the choice is part of the request an Idempotency-Key names.
+func TestRemindersFromCreate(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	clients := "/v1/profiles/" + e.aliceProfile + "/clients/"
+	if r := e.call(t, "PUT", clients+clientA, alice, "", `{"name": "Bob Ltd", "reminders": true}`); r.status != http.StatusCreated ||
+		r.body["reminders"] != true {
+		t.Fatalf("save client: %d %v", r.status, r.body)
+	}
+	if r := e.call(t, "PUT", clients+clientA, alice, "", `{"name": "Bob Ltd"}`); r.status != http.StatusOK || r.body["reminders"] != false {
+		t.Fatalf("left out: %d %v, want false", r.status, r.body)
+	}
+
+	due := time.Now().UTC().AddDate(0, 0, 30).Format(time.DateOnly)
+	base := `{"chainId": 84532, "token": "` + usdc + `", "amount": "5000000", "dueDate": "` + due +
+		`", "client": {"name": "Bob Ltd", "email": "ap@bob.example"}`
+	r := e.post(t, alice, e.aliceProfile, "key-1", base+`, "reminders": true}`)
+	if r.status != http.StatusCreated || r.body["reminders"].(map[string]any)["on"] != true {
+		t.Fatalf("create with reminders: %d %v", r.status, r.body)
+	}
+	if again := e.post(t, alice, e.aliceProfile, "key-1", base+`, "reminders": true}`); again.status != http.StatusOK ||
+		again.body["invoiceId"] != r.body["invoiceId"] {
+		t.Fatalf("same request: %d %v", again.status, again.body)
+	}
+	if other := e.post(t, alice, e.aliceProfile, "key-1", base+"}"); other.status != http.StatusConflict ||
+		errorCode(other) != "idempotency_conflict" {
+		t.Fatalf("same key without reminders: %d %v, want 409", other.status, other.body)
+	}
+	for _, body := range []string{
+		`{"chainId": 84532, "token": "` + usdc + `", "amount": "5000000", "client": {"name": "Bob Ltd", "email": "ap@bob.example"}, "reminders": true}`,
+		`{"chainId": 84532, "token": "` + usdc + `", "amount": "5000000", "dueDate": "` + due + `", "reminders": true}`,
+	} {
+		if r := e.post(t, alice, e.aliceProfile, "key-2", body); r.status != http.StatusUnprocessableEntity {
+			t.Fatalf("%s: %d %v, want 422", body, r.status, r.body)
+		}
+	}
+}

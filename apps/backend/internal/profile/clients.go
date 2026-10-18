@@ -37,6 +37,8 @@ type ClientDetails struct {
 	TaxID   string
 	// The client's PO number or reference that New invoice fills in (R-90); an invoice keeps its own copy.
 	Reference string
+	// New invoice starts with payment reminders on for this client (R-97); each invoice keeps its own setting.
+	Reminders bool
 }
 
 type Client struct {
@@ -74,11 +76,11 @@ func (d ClientDetails) Problem(prefix string) string {
 }
 
 const clientColumns = `id::text, name, coalesce(email, ''), coalesce(address, ''), coalesce(country, ''),
-	coalesce(tax_id, ''), coalesce(reference, ''), updated_at`
+	coalesce(tax_id, ''), coalesce(reference, ''), reminders, updated_at`
 
 func scanClient(row pgx.CollectableRow) (Client, error) {
 	var c Client
-	err := row.Scan(&c.ID, &c.Name, &c.Email, &c.Address, &c.Country, &c.TaxID, &c.Reference, &c.UpdatedAt)
+	err := row.Scan(&c.ID, &c.Name, &c.Email, &c.Address, &c.Country, &c.TaxID, &c.Reference, &c.Reminders, &c.UpdatedAt)
 	return c, err
 }
 
@@ -136,16 +138,17 @@ func (s *Service) SaveClient(ctx context.Context, profileID, id string, d Client
 	var c Client
 	var created bool
 	err = tx.QueryRow(ctx, `
-		INSERT INTO clients (id, profile_id, name, email, address, country, tax_id, reference)
-		SELECT $2, $1, $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''), NULLIF($9, '')
+		INSERT INTO clients (id, profile_id, name, email, address, country, tax_id, reference, reminders)
+		SELECT $2, $1, $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''), NULLIF($9, ''), $10
 		WHERE (SELECT count(*) FROM clients WHERE profile_id = $1) < $8
 		   OR EXISTS (SELECT 1 FROM clients WHERE id = $2)
 		ON CONFLICT (id) DO UPDATE SET name = excluded.name, email = excluded.email, address = excluded.address,
-		    country = excluded.country, tax_id = excluded.tax_id, reference = excluded.reference, updated_at = now()
+		    country = excluded.country, tax_id = excluded.tax_id, reference = excluded.reference,
+		    reminders = excluded.reminders, updated_at = now()
 		    WHERE clients.profile_id = excluded.profile_id
 		RETURNING `+clientColumns+`, xmax = 0`, profileID, id, d.Name, d.Email, d.Address, d.Country, d.TaxID, MaxClients,
-		d.Reference).
-		Scan(&c.ID, &c.Name, &c.Email, &c.Address, &c.Country, &c.TaxID, &c.Reference, &c.UpdatedAt, &created)
+		d.Reference, d.Reminders).
+		Scan(&c.ID, &c.Name, &c.Email, &c.Address, &c.Country, &c.TaxID, &c.Reference, &c.Reminders, &c.UpdatedAt, &created)
 	if errors.Is(err, pgx.ErrNoRows) {
 		var taken bool
 		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM clients WHERE id = $1)`, id).Scan(&taken); err != nil {
