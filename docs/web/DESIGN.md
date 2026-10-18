@@ -201,10 +201,15 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Marked done, focus moves to the new invoice's number, and a toast says whether the email went.
   - A payment marked done shows "Done <day>" and its Delivery link, which opens in a new tab.
   - Once accepted, a secondary Propose a change button sits under the total while no change waits (R-106).
+  - It is gone once the job is finished: the last agreed payment is done. A deposit-only job keeps it.
   - It opens a dialog: what the change is for, Amount in USD, Days to pay, then Cancel and Propose change.
   - A change's line adds "Change ·" and either that it waits for the client, out of the total, or who accepted it.
+  - A waiting change the client was emailed about adds where its link was sent.
   - A waiting change has a small secondary Withdraw instead of Mark done; focus moves to it once proposed.
   - Withdrawn, a toast says so and focus moves to the Payments heading.
+  - While a change waits, the final payment says in quiet text that its invoice waits for the change, instead of Mark done.
+  - Proposed, the toast names the address the link went to, or says to send the link when no email went.
+  - Refused because a change waits or the job is finished: the dialog closes, a warning toast says why, focus goes to Payments.
   - Payments (left) list how each is invoiced and its due days, then its invoice number and status pill.
   - Scope follows Payments when there is one.
   - Client's link (right) says who has to accept or who accepted, and shows the link with Copy link and an open link.
@@ -399,6 +404,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A change's line adds "Change ·" and either that it waits, out of the total, or who accepted it and when.
   - A waiting change has its own bordered form under its line: what accepting agrees to, the name, email, Accept change.
   - Accepted, focus moves to the change's line, which now says who accepted it.
+  - A change withdrawn before the accept: a notice in danger text opens the Payments panel and takes focus.
+  - The quote's and the change's forms are one consent form: the change's is the compact one.
   - Record follows The work, as on the job page, without the client's email.
 
 ## Emails

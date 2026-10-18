@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { JOBS_COPY, QUOTE_COPY } from "@/features/jobs/constants/jobs-copy";
 import {
   apiCents,
   centsText,
@@ -140,5 +141,18 @@ describe("job record", () => {
       "done2",
       "invoiced2",
     ]);
+  });
+});
+
+describe("job copy", () => {
+  // The job page, the quote page and the change email say when a payment is due the same way.
+  it("says when a payment is due, with one day singular", () => {
+    for (const due of [JOBS_COPY.detail.dueDays, QUOTE_COPY.dueDays]) {
+      expect([0, 1, 7].map(due)).toEqual([
+        "due the day it is invoiced",
+        "due 1 day after",
+        "due 7 days after",
+      ]);
+    }
   });
 });

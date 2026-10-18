@@ -50,8 +50,10 @@ export const publicJobSchema = z.object({
 
 /** The owner's read: the public view plus its id, link token, client and the client's typed email. */
 export const jobSchema = publicJobSchema.extend({
-  // Each change's typed email, for the owner only.
-  payments: z.array(jobPaymentSchema.extend({ acceptedEmail: z.string().nullable() })),
+  // Each change's typed email and whether the client was emailed about it, for the owner only.
+  payments: z.array(
+    jobPaymentSchema.extend({ acceptedEmail: z.string().nullable(), clientEmailed: z.boolean() }),
+  ),
   jobId: z.guid(),
   token: z.string().regex(JOB_TOKEN_PATTERN),
   client: z.object({

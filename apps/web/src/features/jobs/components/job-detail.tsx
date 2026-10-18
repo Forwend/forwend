@@ -55,8 +55,13 @@ export function JobDetail({ profileId, job }: JobDetailProps) {
     ? job.payments.find((p) => !p.invoiceId && !isPendingChange(p))
     : undefined;
   const pending = job.payments.find(isPendingChange);
+  // The final is the last payment the client agreed to; once it is done the job takes no change (R-105).
+  const final = job.payments.at(pending ? -2 : -1);
   const canPropose =
-    Boolean(job.acceptedAt) && !pending && job.payments.length < JOB_LIMITS.payments;
+    Boolean(job.acceptedAt) &&
+    !pending &&
+    !final?.doneAt &&
+    job.payments.length < JOB_LIMITS.payments;
   const [withdraw, withdrawing] = useWithdrawChangeMutation();
   const toast = useToast();
   // Proposing takes its button away: focus moves to the change's Withdraw once the job shows it.
@@ -101,6 +106,9 @@ export function JobDetail({ profileId, job }: JobDetailProps) {
                       {p.acceptedAt && p.acceptedName
                         ? COPY.changeAccepted(p.acceptedName, TIME.format(new Date(p.acceptedAt)))
                         : COPY.changeWaiting}
+                      {p === pending && p.clientEmailed && job.acceptedEmail
+                        ? ` ${COPY.changeEmailed(job.acceptedEmail)}`
+                        : null}
                     </p>
                   ) : null}
                   {p === pending ? (
@@ -164,7 +172,9 @@ export function JobDetail({ profileId, job }: JobDetailProps) {
                       ) : null}
                     </p>
                   ) : null}
-                  {p === next ? (
+                  {p === next && pending && p === final ? (
+                    <p className="text-sm text-muted">{COPY.finalWaits}</p>
+                  ) : p === next ? (
                     <MarkDone
                       profileId={profileId}
                       job={job}

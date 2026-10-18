@@ -5,14 +5,13 @@ import { Plus } from "lucide-react";
 import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useProposeChangeMutation } from "@/features/jobs/api/jobs-api";
-import { JOB_LIMITS } from "@/features/jobs/constants/jobs";
+import { CHANGE_ERRORS, JOB_LIMITS } from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
 import { centsText, dueDays, usdCents } from "@/features/jobs/lib/jobs";
 import type { PaymentField } from "@/features/jobs/types/jobs";
 
 const COPY = JOBS_COPY.detail;
 const FORM = JOBS_COPY.form;
-const CONFLICT = 409;
 const INVALID_VALUE = 422;
 
 export interface ProposeChangeProps {
@@ -28,6 +27,7 @@ export function ProposeChange({ profileId, jobId, onProposed }: ProposeChangePro
   const [propose, { isLoading }] = useProposeChangeMutation();
   const toast = useToast();
   const keys = useRef(new Map<string, string>());
+  const actions = useRef<HTMLFormElement>(null);
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [days, setDays] = useState("14");
@@ -53,18 +53,30 @@ export function ProposeChange({ profileId, jobId, onProposed }: ProposeChangePro
     const key = keys.current.get(values) ?? crypto.randomUUID();
     keys.current.set(values, key);
     try {
-      await propose({ profileId, jobId, idempotencyKey: key, body }).unwrap();
-      toast({ tone: TONES.success, title: COPY.proposed(body.title) });
+      const made = await propose({ profileId, jobId, idempotencyKey: key, body }).unwrap();
+      const email = made.payments.at(-1)?.clientEmailed ? made.acceptedEmail : null;
+      toast({
+        tone: TONES.success,
+        title: email ? COPY.proposedEmailed(body.title, email) : COPY.proposed(body.title),
+      });
       onProposed();
     } catch (failure) {
-      const status = (failure as { status?: unknown }).status;
-      setError(
-        status === CONFLICT
-          ? COPY.proposePending
-          : status === INVALID_VALUE
-            ? COPY.proposeInvalid
-            : COPY.proposeFailed,
-      );
+      const { status, data } = failure as {
+        status?: unknown;
+        data?: { error?: { code?: string } };
+      };
+      const code = data?.error?.code;
+      // The job is read again after a 409, which takes this dialog away: the reason goes in a toast, which stays.
+      if (code === CHANGE_ERRORS.pending || code === CHANGE_ERRORS.finished) {
+        actions.current?.closest("dialog")?.close();
+        document.getElementById("job-payments")?.focus();
+        toast({
+          tone: TONES.warning,
+          title: code === CHANGE_ERRORS.pending ? COPY.proposePending : COPY.proposeFinished,
+        });
+        return;
+      }
+      setError(status === INVALID_VALUE ? COPY.proposeInvalid : COPY.proposeFailed);
     }
   };
 
@@ -114,7 +126,7 @@ export function ProposeChange({ profileId, jobId, onProposed }: ProposeChangePro
           {error}
         </p>
       ) : null}
-      <form method="dialog" className="mt-5 flex flex-wrap justify-end gap-2">
+      <form ref={actions} method="dialog" className="mt-5 flex flex-wrap justify-end gap-2">
         <Button type="submit" variant={BUTTON_VARIANTS.secondary}>
           {COPY.proposeKeep}
         </Button>

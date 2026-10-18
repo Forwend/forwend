@@ -162,6 +162,35 @@ test.describe("job quote page", () => {
     expect(await blocking(page)).toEqual([]);
   });
 
+  // R-106: a change withdrawn before the client accepts it: the page reads the job again, which takes the form away,
+  // and says so where the payments start.
+  test("says when the change the client read was withdrawn", async ({ page }) => {
+    const change = payment(3, "Extra page", "150.00", {
+      dueDays: 7,
+      proposedAt: "2026-10-19T09:00:00.123456Z",
+    });
+    let body: object = { ...accepted, payments: [...accepted.payments, change] };
+    await page.route(`**/api/v1/jobs/${TOKEN}`, (route) => route.fulfill({ json: body }));
+    await page.route(`**/api/v1/jobs/${TOKEN}/payments/3/accept`, (route) => {
+      body = accepted;
+      return route.fulfill({
+        status: 404,
+        json: { error: { code: "job_not_found", message: "job not found" } },
+      });
+    });
+    await page.goto(`/w/${TOKEN}`);
+    const form = page.getByRole("form", { name: "Accept Extra page" });
+    await form.getByRole("textbox", { name: "Your name" }).fill("Jane Doe");
+    await form.getByRole("textbox", { name: "Your email" }).fill("jane@bob.example");
+    await form.getByRole("button", { name: "Accept change" }).click();
+    const notice = page.getByText(/^This change was withdrawn or replaced\./);
+    await expect(notice).toBeFocused();
+    await expect(form).toHaveCount(0);
+    await expect(notice).toBeFocused();
+    await expect(page.getByRole("region", { name: "Payments" })).not.toContainText("Extra page");
+    expect(await blocking(page)).toEqual([]);
+  });
+
   test("names a refused email, says when the link opens nothing, and fits a phone", async ({
     browser,
   }) => {

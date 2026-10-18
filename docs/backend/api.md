@@ -338,6 +338,7 @@ R-100, D-81; the full schema is in openapi.yaml. A job is a quote with a payment
   - A position that doesn't exist is 404 `job_not_found`.
 - Each payment has `proposedAt`, `acceptedName` and `acceptedAt`, null for the quote's payments.
   - The owner's read adds `acceptedEmail`; the client's read never shows it.
+  - The owner's read also adds `clientEmailed`: whether an email about the change was queued (R-107).
 - `GET /v1/jobs/{token}` is the client's read, public like the checkout: no client block, typed email, job id or token.
 - `POST /v1/jobs/{token}/accept` is public: `{name, email}`, typed by the client.
   - It keeps them with the time, once; an accepted job answers the same, whoever accepts again.

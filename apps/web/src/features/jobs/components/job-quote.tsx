@@ -1,25 +1,16 @@
 "use client";
 
-import {
-  Button,
-  buttonClasses,
-  Form,
-  PAYMENT_STATUS,
-  Skeleton,
-  StatusPill,
-  TextField,
-} from "@forwend/ui-web";
-import { type FormEvent, useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
+import { Button, buttonClasses, PAYMENT_STATUS, Skeleton, StatusPill } from "@forwend/ui-web";
+import { useEffect, useRef, useState } from "react";
 import { formatUsd } from "@/features/balances/lib/balances";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { useAcceptJobMutation, useGetPublicJobQuery } from "@/features/jobs/api/jobs-api";
 import { AcceptChange } from "@/features/jobs/components/accept-change";
+import { ConsentForm } from "@/features/jobs/components/consent-form";
 import { JobRecord } from "@/features/jobs/components/job-record";
-import { ACCEPT_FIELDS, EMAIL_PATTERN } from "@/features/jobs/constants/jobs";
 import { QUOTE_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
-import { apiCents, isPendingChange, namedField } from "@/features/jobs/lib/jobs";
-import type { AcceptField, JobPayment, JobPaymentStatus } from "@/features/jobs/types/jobs";
+import { apiCents, isPendingChange } from "@/features/jobs/lib/jobs";
+import type { JobPayment, JobPaymentStatus } from "@/features/jobs/types/jobs";
 import { Party } from "@/shared/components/party";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 
@@ -28,8 +19,6 @@ const COUNTRY = new Intl.DisplayNames(undefined, { type: "region" });
 const PANEL = "fw-panel";
 const PANEL_TITLE = "fw-panel-head text-base font-semibold text-ink";
 const NOT_FOUND = 404;
-const INVALID_VALUE = 422;
-const TOO_MANY = 429;
 const usd = (amountUsd: string) => `${formatUsd(apiCents(amountUsd))} ${MONEY_COPY.usd}`;
 const payHref = (p: JobPayment) => `/pay/${p.invoiceId}`;
 // A made payment the client can still pay: its pay page takes money.
@@ -41,8 +30,6 @@ const payable = (p: JobPayment) => p.invoiceId !== null && p.status === PAYMENT_
 export function JobQuote({ token }: { token: string }) {
   const query = useGetPublicJobQuery(token);
   const [accept, accepted] = useAcceptJobMutation();
-  const [errors, setErrors] = useState<Partial<Record<AcceptField, string>>>({});
-  const [formError, setFormError] = useState("");
   const heading = useRef<HTMLHeadingElement>(null);
   const [justAccepted, setJustAccepted] = useState(false);
   // The accept's answer until the read shows the acceptance; then the read, which also follows the changes.
@@ -62,6 +49,13 @@ export function JobQuote({ token }: { token: string }) {
       setFocusChange(null);
     }
   }, [focusChange, changeAccepted]);
+
+  // A change withdrawn or replaced before the client's accept: the read takes its form away, so the page says so.
+  const [gone, setGone] = useState(0);
+  const goneNotice = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (gone) goneNotice.current?.focus();
+  }, [gone]);
 
   if (!job) {
     return (
@@ -84,43 +78,6 @@ export function JobQuote({ token }: { token: string }) {
       </div>
     );
   }
-
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const data = new FormData(form);
-    const name = String(data.get("name") ?? "").trim();
-    const email = String(data.get("email") ?? "").trim();
-    const shown: Partial<Record<AcceptField, string>> = {};
-    if (!name) shown.name = COPY.errors.required;
-    if (!EMAIL_PATTERN.test(email)) shown.email = COPY.errors.email;
-    flushSync(() => {
-      setErrors(shown);
-      setFormError("");
-    });
-    if (Object.keys(shown).length > 0) {
-      form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
-      return;
-    }
-    try {
-      await accept({ token, name, email }).unwrap();
-      setJustAccepted(true);
-    } catch (error) {
-      const failure = error as { status?: unknown; data?: { error?: { message?: string } } };
-      const field = namedField(failure.data?.error?.message ?? "", Object.values(ACCEPT_FIELDS));
-      if (failure.status === INVALID_VALUE && field) {
-        flushSync(() => setErrors({ [field]: COPY.errors.invalid[field] }));
-        form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
-      } else
-        setFormError(
-          failure.status === NOT_FOUND
-            ? COPY.notFound
-            : failure.status === TOO_MANY
-              ? COPY.errors.tooMany
-              : COPY.errors.failed,
-        );
-    }
-  };
 
   const deposit = job.payments.find((p) => p.onAccept && payable(p));
   const i = job.issuer;
@@ -163,6 +120,15 @@ export function JobQuote({ token }: { token: string }) {
         <h2 id="quote-payments" className={PANEL_TITLE}>
           {COPY.payments}
         </h2>
+        {gone ? (
+          <p
+            ref={goneNotice}
+            tabIndex={-1}
+            className="border-b border-line px-4 py-3 text-sm text-danger outline-none sm:px-5"
+          >
+            {COPY.change.gone}
+          </p>
+        ) : null}
         <ol className="divide-y divide-line">
           {job.payments.map((p) => (
             <li
@@ -188,7 +154,15 @@ export function JobQuote({ token }: { token: string }) {
                   </p>
                 ) : null}
                 {isPendingChange(p) ? (
-                  <AcceptChange token={token} change={p} onAccepted={setFocusChange} />
+                  <AcceptChange
+                    token={token}
+                    change={p}
+                    onAccepted={(position) => {
+                      setGone(0);
+                      setFocusChange(position);
+                    }}
+                    onGone={() => setGone((n) => n + 1)}
+                  />
                 ) : null}
                 {p.deliveryLink ? (
                   <a
@@ -260,32 +234,17 @@ export function JobQuote({ token }: { token: string }) {
           <h2 id="quote-accept" className={PANEL_TITLE}>
             {COPY.accept.title}
           </h2>
-          <Form onSubmit={submit} className="px-4 py-4 sm:px-5">
-            <p className="text-sm text-muted">{COPY.accept.text}</p>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <TextField
-                label={COPY.accept.name}
-                name="name"
-                autoComplete="name"
-                maxLength={200}
-                error={errors.name}
-              />
-              <TextField
-                type="email"
-                label={COPY.accept.email}
-                name="email"
-                autoComplete="email"
-                maxLength={254}
-                error={errors.email}
-              />
-            </div>
-            <Button type="submit" loading={accepted.isLoading} className="self-start">
-              {COPY.accept.action}
-            </Button>
-            <p role="alert" className="min-h-5 text-sm text-danger">
-              {formError}
-            </p>
-          </Form>
+          <ConsentForm
+            text={COPY.accept.text}
+            action={COPY.accept.action}
+            notFound={COPY.notFound}
+            loading={accepted.isLoading}
+            className="px-4 py-4 sm:px-5"
+            onConsent={async (name, email) => {
+              await accept({ token, name, email }).unwrap();
+              setJustAccepted(true);
+            }}
+          />
         </section>
       )}
     </div>
