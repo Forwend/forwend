@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { clientBodySchema } from "@/features/clients/schemas/clients";
+import { JOB_TOKEN_PATTERN } from "@/features/jobs/constants/jobs";
 import type { JobPaymentStatus } from "@/features/jobs/types/jobs";
 import { apiTime, hash32, openEnum } from "@/shared/schemas/api";
 
@@ -38,7 +39,7 @@ export const publicJobSchema = z.object({
 /** The owner's read: the public view plus its id, link token, client and the client's typed email. */
 export const jobSchema = publicJobSchema.extend({
   jobId: z.guid(),
-  token: z.string().regex(/^[0-9a-f]{64}$/),
+  token: z.string().regex(JOB_TOKEN_PATTERN),
   client: z.object({
     name: z.string(),
     email: z.string(),

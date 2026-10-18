@@ -18,9 +18,11 @@ async function chooseFreelancer(page: Page, open: () => Promise<void>) {
   await expect(page).toHaveURL("/app");
 }
 
-// New job; a quote names who bills the client, so the shared profile saves its billing details once, first (R-92).
+// New job from the Jobs list, inside the app: a full page load would read the shell's data again, and the suite shares
+// one user's API limit. A quote names who bills the client, so the shared profile saves its billing details once,
+// first (R-92).
 async function openNewJob(page: Page) {
-  await page.goto("/app/jobs/new");
+  await page.getByRole("main").getByRole("link", { name: "New job" }).first().click();
   const form = page.getByRole("button", { name: "Create job" });
   const billing = page.getByRole("main").getByRole("link", { name: "Add billing details" });
   await expect(form.or(billing)).toBeVisible();
@@ -95,9 +97,19 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   await expect(link).toContainText("Waiting for E2E client to accept.");
   await link.getByRole("button", { name: "Copy link" }).click();
   await expect(link.getByRole("button", { name: "Link copied" })).toBeVisible();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(
-    /^http:\/\/localhost:3000\/w\/[0-9a-f]{64}$/,
-  );
+  const quoteLink = await page.evaluate(() => navigator.clipboard.readText());
+  expect(quoteLink).toMatch(/^http:\/\/localhost:3000\/w\/[0-9a-f]{64}$/);
+  // R-102: the client opens it without an account and reads the real quote. Accepting stays in the mocked public
+  // suite: a real accept makes a deposit open 60 days and a job that can't be deleted (D-85).
+  const client = await browser.newContext();
+  const quote = await client.newPage();
+  await quote.goto(quoteLink);
+  await expect(quote.getByRole("heading", { level: 1, name: title })).toBeVisible();
+  await expect(quote.getByText("Quote from E2E studio Ltd")).toBeVisible();
+  await expect(quote.getByRole("region", { name: "Payments" })).toContainText("1,000.50 USD");
+  await expect(quote.getByRole("button", { name: "Accept quote" })).toBeVisible();
+  expect(await blockingViolations(quote)).toEqual([]);
+  await client.close();
   await expect(page.getByRole("region", { name: "Billed to" })).toContainText(
     "delivered@resend.dev",
   );
