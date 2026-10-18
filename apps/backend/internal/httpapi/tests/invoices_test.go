@@ -92,6 +92,7 @@ func invoiceAPI(t *testing.T) invoiceEnv {
 type reply struct {
 	status int
 	body   map[string]any
+	raw    string // a CSV body
 }
 
 func (e invoiceEnv) post(t *testing.T, user, profile, key, body string) reply {
@@ -131,6 +132,10 @@ func (e invoiceEnv) do(t *testing.T, req *http.Request) reply {
 	}
 	r := reply{status: res.StatusCode}
 	if res.StatusCode == http.StatusNoContent && len(raw) == 0 {
+		return r
+	}
+	if strings.HasPrefix(res.Header.Get("Content-Type"), "text/csv") {
+		r.raw = string(raw)
 		return r
 	}
 	if err := json.Unmarshal(raw, &r.body); err != nil {

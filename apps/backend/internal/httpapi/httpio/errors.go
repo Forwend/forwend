@@ -35,6 +35,11 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusForbidden, "forbidden", "not allowed for this profile"
 	case errors.Is(err, invoice.ErrNotFound):
 		status, code, message = http.StatusNotFound, "invoice_not_found", "invoice not found"
+	case errors.Is(err, activity.ErrNotFound):
+		status, code, message = http.StatusNotFound, "transaction_not_found", "transaction not found"
+	case errors.Is(err, activity.ErrNotLabelable):
+		status, code, message = http.StatusConflict, "not_labelable",
+			"only money in that is neither an invoice payment nor an own transfer takes a label"
 	case errors.Is(err, job.ErrNotFound):
 		status, code, message = http.StatusNotFound, "job_not_found", "job not found"
 	case errors.Is(err, job.ErrAccepted):

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 240,
+  "nextId": 241,
   "tasks": [
     {
       "id": "F222",
@@ -2084,6 +2084,120 @@
         "branch": "fix/f239-job-page-and-quote-page-follow-the-chang",
         "base": "main"
       }
+    },
+    {
+      "id": "F240",
+      "type": "feat",
+      "behavior": "Each wallet transaction carries its USD value and classification (invoice payment with invoice and client, own transfer, sent, or unclassified until labelled), with a label route and a full CSV export",
+      "acceptance": [
+        "GET /v1/profiles/{id}/transactions items add usdValue (1 USD per USD stablecoin), classification, labelable and invoice {invoiceId, number, clientName} or null.",
+        "Money in from one of the profile's invoice receive addresses (any option, mapped to the main invoice) is invoice; money between the user's profiles is own_transfer both ways; other money out is sent; other money in is unclassified or its label; another user's wallet or another profile's invoice is not matched.",
+        "PUT /v1/profiles/{id}/transactions/{chainId}/{txHash}/{logIndex}/label sets income, own_transfer, refund or other, and null clears it; an invoice payment, an automatic own transfer or money out is 409 not_labelable; a transaction the profile doesn't have, or a chain or log index past bigint, is 404; another user 403.",
+        "GET /v1/profiles/{id}/transactions.csv?from=&to= returns every transaction in those UTC days, newest first, with amount, USD value, classification, invoice number and client columns, formula cells guarded; bad dates are 422.",
+        "R-108, api.md, architecture.md (transfer_labels) and openapi.yaml describe it; the new routes are in the 403 test."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-108",
+        "D-82"
+      ],
+      "keep": [
+        "apps/web/*",
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [
+        "2026-10-18 review fail by subagent: Blockers:\n1. apps/backend/internal/httpapi/moneyapi/model.go:71 and internal/activity/records.go:44. A transfer the user labelled own_transfer reads exactly like an automatic own transfer. The web (F241) cannot tell which rows take a label, so a wrong own_transfer label cannot be changed or cleared from the UI. Fix: add label (string|null) or labelable (bool) to the item, in openapi.yaml, api.md and R-108, with a test.\n2. internal/activity/records_test.go. The privacy and matching filters have no test. Removing op.user_id = p.user_id (own-transfer EXISTS) or m.profile_id = p.id (invoice LATERAL) in transfers.go fails nothing. The option row to main invoice mapping (coalesce(main_id, id)) is not tested either. Fix: add three table rows: money in from another user's profile wallet is unclassified; money in from another profile's invoice receive address is unclassified with invoice null; money in from an option row's receive address is invoice with the main row's id, number and client.\n3. docs/backend/architecture.md:164. The data model lists every table but not the new transfer_labels (key, label values, money in only). Add one bullet.\nMinor:\n- moneyapi/activity.go:157,162: ParseUint(...,64) accepts values above 2^63-1; pgx then fails to encode int8 and the route answers 500, not 404. Use bitSize 63.\n- moneyapi/activity.go:111: the Amount column uses usdValue(t). Same digits today, but wrong once a non-USD token exists. Format the token amount separately. usdValue is the D-82 rule; it belongs in activity beside Classification, not in the HTTP model.\n- transfers.go:70 and openapi.yaml:1625: invoices.number is NOT NULL, so the nil branch and the nullable number are dead.\n- Acceptance 4 says streams; AllTransfers loads all rows into memory. Fine at freelancer scale and it frees the DB connection before the 30 s write. Fix the wording, or stream when merchant volume arrives (PLAN 11.7).\n- openapi.yaml:887 says to is absent for today; the code has no upper bound.\n- api.md:363 and :371 each hold two facts in one bullet (D-84).\n- A reorg that changes log_index orphans a label; acceptable. A re-mined tx with shifted logs can move a label to a sibling log of the same tx; rare.\nChecked and correct: InvoiceReceiver.settle() transfers from the receiver clone, and the watcher stores from as the counterparty for money in, both lowercase. A payer who pays the wallet directly is unclassified and can be labelled. The lookups are indexed: UNIQUE(chain_id, receive_address), UNIQUE(chain_family, address), the profiles PK and the labels PK. A wallet address belongs to one profile, so an own transfer cannot match across users. The 404, 409 and 403 cases behave as specified. The formula guard covers = + - @ tab CR on every cell; client name is the only typed cell. Go tests for activity, httpapi and database pass.\nWeb for F241: the zod schema adds usdValue (usdAmount), classification (openEnum of the 7 values, from a constant), invoice {invoiceId: hash32, number: count, clientName: nullable} or null, and the label field from blocker 1. Add a PUT label mutation that invalidates the list. Replace the client-side transactionsCsv, which exports at most 100 shown rows, with a fetch of transactions.csv that sends the bearer token and saves a blob, with from and to day inputs. Add copy for not_labelable and transaction_not_found.",
+        "2026-10-18 review pass by subagent: Re-review after the fail. All three blockers are fixed.\n1. Items now carry labelable from Transfer.Labelable(): money in, with no invoice and not an own transfer. SetLabel uses the same method. It is in openapi (required), api.md and R-108. The tests check it on every row and after labelling.\n2. TestTransferClassification adds rows for another user's wallet, the other profile's invoice and a second option row. I checked the mutations with go test -overlay, without editing files. Dropping op.user_id = p.user_id fails the test: Bob's money becomes own_transfer. Dropping m.profile_id = p.id fails it too: the other profile's invoice becomes invoice. The option row maps to the main id and number 1.\n3. architecture.md lists transfer_labels.\nThe minor points are also fixed:\n- ParseUint uses bitSize 63; chainId or logIndex 2^63 is 404, and a test covers it.\n- USDValue (D-82) moved to activity.\n- The CSV Amount column uses tokenAmount.\n- invoice.number is a non-null integer.\n- Acceptance 4 says returns.\n- openapi says to is absent for no end.\n- The api.md bullets are split.\nRan: go test for activity, httpapi and database, -count=1: all ok. gofmt -l is clean and go vet is ok.\nNits, not blocking:\n- moneyapi tokenAmount repeats the 10^decimals math of Transfer.USDValue.\n- A reorg that shifts log_index orphans a label; accepted.\n- The CSV holds all rows in memory; fine until merchant volume (PLAN 11.7).\nWeb for F241:\n- The zod schema adds usdValue, classification as an openEnum of 7, labelable, and invoice {invoiceId, number, clientName nullable} or null.\n- Add a PUT label mutation that invalidates the list.\n- Replace the client CSV (shown rows only) with an authenticated fetch of transactions.csv, with from and to days.\n- Add copy for not_labelable and transaction_not_found."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-18T20:04:19Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 75.6,
+            "log": "docs/runs/F240-20261018T200419Z-unit.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F240-20261018T200419Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F240-20261018T200419Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F240-20261018T200419Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F240-20261018T200419Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.7,
+            "log": "docs/runs/F240-20261018T200419Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 236.3,
+            "log": "docs/runs/F240-20261018T200419Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F240-20261018T200419Z-keep.log"
+          }
+        ],
+        "taskHash": "b3590bddba059170",
+        "filesHash": "e20b86dc167b1eca",
+        "proof": {
+          "1": "unit: TestGetTransactions expects usdValue 1.000000, classification sent, labelable false and invoice null on money out; TestTransactionRecords: the invoice payment has usdValue 5.000000, labelable false and invoice {invoiceId, number 1, clientName '=Bob Ltd'}; money from a stranger is unclassified and labelable.",
+          "2": "unit: TestTransferClassification: money in from the invoice's receive address and from its second option's both map to the main invoice, number 1; in and out with the user's other profile wallet are own_transfer; another user's wallet and the other profile's invoice stay unclassified (each fails without its filter); other out is sent; Labelable matches; AllTransfers keeps [from, to).",
+          "3": "unit: TestTransferClassification: labelling sets income (an upper-case hash too) and \"\" clears it; the invoice payment, own transfers and money out are ErrNotLabelable; a bad label ErrInvalid; another profile or an unknown hash ErrNotFound. TestTransactionRecords: 204, then income and still labelable; 409, 404 for an unknown transfer, chain x and numbers past bigint, 422; the routes are in profileRoutes (403).",
+          "4": "unit: TestTransactionRecords: the CSV equals the header and two rows newest first with amount, USD value, classification, INV-0001 and the client guarded as \"'=Bob Ltd\" (fails without the guard); from the next day only the header; from=x, a 13th month and from after to are 422.",
+          "5": "docs-check: R-108, api.md (one fact per bullet), architecture.md (transfer_labels) and openapi.yaml (labelable, number, the to wording, the routes and error codes) describe it; docs-check passes."
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Re-review after the fail. All three blockers are fixed.\n1. Items now carry labelable from Transfer.Labelable(): money in, with no invoice and not an own transfer. SetLabel uses the same method. It is in openapi (required), api.md and R-108. The tests check it on every row and after labelling.\n2. TestTransferClassification adds rows for another user's wallet, the other profile's invoice and a second option row. I checked the mutations with go test -overlay, without editing files. Dropping op.user_id = p.user_id fails the test: Bob's money becomes own_transfer. Dropping m.profile_id = p.id fails it too: the other profile's invoice becomes invoice. The option row maps to the main id and number 1.\n3. architecture.md lists transfer_labels.\nThe minor points are also fixed:\n- ParseUint uses bitSize 63; chainId or logIndex 2^63 is 404, and a test covers it.\n- USDValue (D-82) moved to activity.\n- The CSV Amount column uses tokenAmount.\n- invoice.number is a non-null integer.\n- Acceptance 4 says returns.\n- openapi says to is absent for no end.\n- The api.md bullets are split.\nRan: go test for activity, httpapi and database, -count=1: all ok. gofmt -l is clean and go vet is ok.\nNits, not blocking:\n- moneyapi tokenAmount repeats the 10^decimals math of Transfer.USDValue.\n- A reorg that shifts log_index orphans a label; accepted.\n- The CSV holds all rows in memory; fine until merchant volume (PLAN 11.7).\nWeb for F241:\n- The zod schema adds usdValue, classification as an openEnum of 7, labelable, and invoice {invoiceId, number, clientName nullable} or null.\n- Add a PUT label mutation that invalidates the list.\n- Replace the client CSV (shown rows only) with an authenticated fetch of transactions.csv, with from and to days.\n- Add copy for not_labelable and transaction_not_found.",
+          "at": "2026-10-18T20:10:45Z",
+          "filesHash": "e20b86dc167b1eca"
+        }
+      },
+      "branch": "feat/f240-each-wallet-transaction-carries-its-usd",
+      "baseCommit": "7916f1f55c731a07fd9fc1d175dced0aacac64d9",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

@@ -869,6 +869,74 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/transactions.csv:
+    get:
+      operationId: exportTransactions
+      summary: Every transaction of the profile wallet in the UTC days given, newest first, as CSV (R-108)
+      description: |
+        The columns are the date (UTC), direction, amount, token, network, counterparty, transaction, status, USD value,
+        classification, invoice number and client. A cell a spreadsheet would run as a formula starts with an apostrophe.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: from
+          in: query
+          description: The first UTC day (YYYY-MM-DD); absent for the first transaction.
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          description: The last UTC day, included; absent for no end. Before from is 422.
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: The CSV, a header row then one row per transaction
+          content:
+            text/csv:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/transactions/{chainId}/{txHash}/{logIndex}/label:
+    put:
+      operationId: labelTransaction
+      summary: Label money in that Forwend can't classify, or clear the label (R-108)
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: chainId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: txHash
+          in: path
+          required: true
+          schema: { type: string, pattern: "^0x[0-9a-fA-F]{64}$" }
+        - name: logIndex
+          in: path
+          required: true
+          schema: { type: integer, minimum: 0 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                label:
+                  type: [string, "null"]
+                  enum: [income, own_transfer, refund, other, null]
+                  description: null or left out clears the label
+      responses:
+        "204": { description: Labelled }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/TransactionNotFound" }
+        "409": { $ref: "#/components/responses/NotLabelable" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/balance-history:
     get:
       operationId: getBalanceHistory
@@ -1512,7 +1580,7 @@ components:
     Transaction:
       type: object
       required: [chainId, token, symbol, decimals, direction, amount, counterparty, txHash, logIndex, blockNumber, at,
-        status]
+        status, usdValue, classification, labelable, invoice]
       properties:
         chainId: { type: integer }
         token: { $ref: "#/components/schemas/Address" }
@@ -1539,6 +1607,26 @@ components:
           type: string
           enum: [detected, confirmed]
           description: confirmed once the block is at or below the chain's finalized block (D-45).
+        usdValue:
+          type: string
+          description: The value at receipt, 1 USD per USD stablecoin (D-75, D-82), with every decimal of the token.
+        classification:
+          type: string
+          enum: [invoice, own_transfer, sent, unclassified, income, refund, other]
+          description: |
+            invoice for money in from one of the profile's invoice receive addresses; own_transfer between the user's
+            profiles; sent for other money out; other money in is unclassified or the user's label (R-108).
+        labelable:
+          type: boolean
+          description: True for money in that Forwend can't classify, labelled or not; only those take a label.
+        invoice:
+          type: [object, "null"]
+          description: The invoice money in paid; null for anything else.
+          required: [invoiceId, number, clientName]
+          properties:
+            invoiceId: { type: string }
+            number: { type: integer }
+            clientName: { type: [string, "null"] }
     BalanceHistory:
       type: object
       required: [points, tokens]
@@ -2152,7 +2240,7 @@ components:
           properties:
             code:
               type: string
-              enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found, job_not_found, job_accepted, job_not_accepted, payment_out_of_order, change_not_accepted, change_pending, job_finished, payment_not_withdrawable,
+              enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found, job_not_found, job_accepted, job_not_accepted, payment_out_of_order, change_not_accepted, change_pending, job_finished, payment_not_withdrawable, transaction_not_found, not_labelable,
                 billing_details_not_found, billing_details_required, client_not_found, idempotency_conflict, invoice_not_paid,
                 invoice_not_cancelable, receipt_sent, client_email_required, invoice_closed, due_date_required,
                 reminders_stopped, invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
@@ -2202,6 +2290,16 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     InvoiceNotFound:
       description: No invoice with this id (invoice_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TransactionNotFound:
+      description: The profile's wallet has no such transfer (transaction_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotLabelable:
+      description: An invoice payment, a transfer between the user's profiles or money out takes no label (not_labelable)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
