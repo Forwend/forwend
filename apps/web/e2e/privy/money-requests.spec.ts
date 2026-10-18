@@ -170,6 +170,8 @@ test("on a phone a personal profile requests money from the round actions withou
     const sheet = page.getByRole("main");
     await sheet.getByRole("textbox", { name: "Amount" }).fill("1");
     await sheet.getByRole("textbox", { name: "Your name (shown to the payer)" }).fill("E2E Phone");
+    // It stops counting toward the shared profile's open cap within the hour (D-85).
+    await sheet.getByText("1 hour", { exact: true }).click();
     const request = await createRequest(page);
     await page
       .getByRole("main")

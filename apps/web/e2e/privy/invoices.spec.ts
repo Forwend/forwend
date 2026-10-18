@@ -115,7 +115,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   await page.getByRole("link", { name: "Add client" }).first().click();
   await expect(page).toHaveURL("/app/clients/new");
   await page.getByRole("textbox", { name: "Name or business name" }).fill(clientName);
-  // Resend's test inbox: Send to client below queues an email, which a running worker would really send.
+  // Resend's test inbox, so an email from a test never reaches a real person.
   await page
     .getByRole("textbox", { name: "Billing email (optional)" })
     .fill("delivered@resend.dev");
@@ -258,19 +258,37 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(client).toContainText("Germany");
     await expect(client).toContainText("Tax ID DE123456789");
     // R-94: Send to client queues the email to the client's address; the panel then lists it, and the next send waits a
-    // day. The test starts the api alone, so the email waits unless a dev worker runs.
-    const sent = page.waitForResponse(
-      (r) =>
-        r.url().endsWith(`/invoices/${invoice.invoiceId}/send`) && r.request().method() === "POST",
+    // day. The API's answer is mocked: every run sends from this one profile, whose 20 sends a day would run out (D-85).
+    const owned = `**/api/v1/profiles/*/invoices/${invoice.invoiceId}`;
+    const queued = { requestedAt: new Date().toISOString(), sentAt: null, failedAt: null };
+    await page.route(`${owned}/send`, async (route) => {
+      const url = route
+        .request()
+        .url()
+        .replace(/\/send$/, "");
+      const response = await route.fetch({ url, method: "GET" });
+      // From now on the owner's reads list the send, as the API's would.
+      await page.route(owned, async (read) => {
+        const answer = await read.fetch();
+        await read.fulfill({
+          response: answer,
+          json: { ...(await answer.json()), sends: [queued] },
+        });
+      });
+      await route.fulfill({ status: 201, json: { ...(await response.json()), sends: [queued] } });
+    });
+    const sent = page.waitForRequest(
+      (r) => r.url().endsWith(`/invoices/${invoice.invoiceId}/send`) && r.method() === "POST",
     );
     await client.getByRole("button", { name: "Send to client" }).click();
-    expect((await sent).status()).toBe(201);
+    // The API turns away a send without its key; the mock doesn't, so the key is checked here.
+    expect(await (await sent).headerValue("idempotency-key")).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
     await expect(
       page.getByText(`${invoice.number} is on its way to delivered@resend.dev`),
     ).toBeVisible();
-    await expect(client).toContainText(
-      /Sending to delivered@resend\.dev|Emailed to delivered@resend\.dev/,
-    );
+    await expect(client).toContainText("Sending to delivered@resend.dev");
     await expect(client.getByRole("button", { name: "Send to client" })).toHaveCount(0);
     // The button goes, so focus moves to the line that takes its place.
     await expect(client.getByText(/^You can send it again after/)).toBeFocused();
@@ -477,6 +495,8 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
     choosing = (await page.getByRole("radio", { name: "Client chooses" }).count()) > 0;
     if (choosing) await expect(page.getByRole("radio", { name: "Client chooses" })).toBeChecked();
     await page.getByRole("textbox", { name: choosing ? "Amount in USD" : "Amount" }).fill("0.5");
+    // Its addresses stop counting toward the shared profile's open cap within the hour (D-85).
+    await page.getByText("1 hour", { exact: true }).click();
     // R-88: the typed amount becomes the first item's price, and the items' total the amount.
     await page.getByRole("button", { name: "Add item" }).click();
     await page.getByRole("textbox", { name: "Item 1", exact: true }).fill("E2E logo");
