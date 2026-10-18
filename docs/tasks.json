@@ -549,7 +549,7 @@
         "D-85 records the rule and docs/web/architecture.md Tests says it; docs-check passes."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e",
         "unit",
@@ -644,11 +644,18 @@
           "summary": "PASS. The earlier blocking point is fixed, and acceptance 1, 2 and 3 hold.\n\nFixed: apps/web/e2e/privy/invoices.spec.ts:280-288 now waits for the POST /send request and checks that its Idempotency-Key is a UUID. If sendInvoice (apps/web/src/features/invoices/api/invoices-api.ts:99-112) dropped the header, this would fail. The API side stays covered: invoices_send_test.go:28-29 (400 without the key). That is the correct line; my first review said :27. The tautological 201 check is gone.\n\nFixed (minor): the owner-read mock is now registered inside the /send handler (:271-277), before the 201 reply. Reads before the click are real, and the refetch after the send lists it. So the Sending line, the hidden button and the focus move need a real click, a successful mutation and the refetch. Later steps (reminders, duplicate, held money, final Billed to check) only get sends replaced, so no later assertion is hidden.\n\nChecked:\n- Accept 1: dev DB rows from the new verify run (10:38-10:39 UTC) close after 24 h (desktop invoice), 1 h (phone invoice, 4 addresses), 27.3 h (desktop request) and 1 h (phone request). The e2e log docs/runs/F227-20261018T103727Z-e2e.log has all privy specs passing (39 passed).\n- Accept 2: no outbox_events rows of any kind since 10:00 UTC, across both runs today. TestSendInvoiceToClient still runs in unit.\n- Accept 3: D-85 and docs/web/architecture.md:99-100 are unchanged and accurate; check-docs.py: 0 errors.\n- Diff scope is the same 4 files; no path under apps/web/src, apps/backend or packages changed.\n\nMinor, not blocking:\n- docs/web/architecture.md:100 repeats D-85's two rules beside the link; acceptance line 3 asks for it.\n- invoices.spec.ts:261 is 121 characters, like the existing line 21.\n- The owner-read mock is never unrouted; harmless now that it starts only after the send.",
           "at": "2026-10-18T10:42:46Z",
           "filesHash": "82110ce5569c3fea"
-        }
+        },
+        "commit": "ea5098d",
+        "doneAt": "2026-10-18T10:43:05Z"
       },
       "branch": "test/f227-the-live-e2e-suite-stops-piling-up-data",
       "baseCommit": "78f9e49fdcca600d644fcd3304d223cf9bbb9951",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "test/f227-the-live-e2e-suite-stops-piling-up-data",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
