@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 241,
+  "nextId": 242,
   "tasks": [
     {
       "id": "F222",
@@ -2205,6 +2205,122 @@
         "branch": "feat/f240-each-wallet-transaction-carries-its-usd",
         "base": "main"
       }
+    },
+    {
+      "id": "F241",
+      "type": "feat",
+      "behavior": "The Transactions page shows each transaction's type with its invoice, lets the user label money in, and exports every transaction for chosen days",
+      "acceptance": [
+        "The transactions schema reads usdValue, classification (an open enum from constants), labelable and invoice.",
+        "On /app/transactions a Type column (under the row on phones) shows the invoice payment as INV-number and client linking the invoice, Own transfer or Sent as text, and a select for labelable money in.",
+        "Choosing a label sends PUT .../label (null for Unclassified) and the list reads it back; a 409 or failure says so in a warning toast.",
+        "Export CSV opens a dialog with optional From and To days; Download fetches transactions.csv with them and saves it; the browser-built CSV is gone.",
+        "The overview's preview is unchanged; unit tests cover the select's request and the export's query; the live e2e shows the types and labels a row on mocked answers, exports through the dialog, axe clean, 390 px fit; DESIGN.md describes it."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "R-109",
+        "R-108"
+      ],
+      "keep": [
+        "apps/backend/*",
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [
+        "2026-10-18 review fail by reviewer: Blockers: (1) apps/web/src/features/transactions/components/export-transactions.tsx:61-74: From and To are native date inputs (TextField type=date). Every other date in the app uses the kit DatePicker (new invoice, agreed value, /kit). This breaks web/rules.md rule 1 and records no exception. Fix: use DatePicker (null when empty, clearLabel, min/max), or record in DESIGN.md why the native input is the exception. (2) transactions-table.tsx:178: disabled={rows.length === 0} fit the old CSV of shown rows. The server export ignores direction and search, so a filter or search with no match blocks export for a profile that has transactions. Fix: disable only when the unfiltered list is empty (!filtered && rows.length === 0). (3) transaction-type.tsx:24 and export-transactions.tsx:10-16: exported components type props inline. structure.md asks for interface <Component>Props, as MarkDone and ProposeChange do. Fix: add TransactionTypeProps and ExportTransactionsProps. Minor: transactions-copy.ts:47 uses 'as Record<string, string>', which drops the completeness check; use 'satisfies Record<TransactionClass, string>' as invoices-copy.ts:283 does; the '?? value' at transaction-type.tsx:19 is then dead. transaction-type.tsx:40: the select name repeats for two rows from one sender; add the amount or time. transaction-type.tsx:44: disabling the focused select while saving drops keyboard focus to body, and the select shows the old value until the refetch lands (same as the PaymentReminders switch). Export: an error stays after close and reopen; the failure path has no unit test; the dialog does not say the days are UTC, but the page groups by local day. The file is saved as forwend-transactions.csv, while R-109 and the server's Content-Disposition say transactions.csv; align them. No test shows the list reads a label back (accept 3), but invalidatesTags is correct by reading. Proof 5 cites docs-check for the unchanged preview; by reading, the preview is unchanged (size-9 icon + gap-3 = pl-12, same row height). records.test.tsx prints jsdom 'Not implemented: navigation to another Document'; stub the anchor click. docs/web/architecture.md:75 gives the transactions -> invoices edge only for the bell; add R-109. navigation.spec.ts:199 forces direction in on transfers classified sent (harmless). Checked OK: null label for Unclassified, the PUT URL, Transactions tag invalidation, empty days left out of the export query, blob download, close only on success, role=alert error inside the dialog, the dialog's aria-label, labelled date fields, focus back to the trigger on native close, the aria-live toast, axe at 3 points. Nothing else uses transactionsCsv; the Go test money_test.go:256-271 covers the formula guard. The command menu, notifications, overview, checklist and onboarding read no new fields. Ran: vitest src/features/transactions 3 passed, pnpm typecheck ok, biome check src e2e ok.",
+        "2026-10-18 review fail by reviewer: Re-review. Fixed: props interfaces; Export disabled only when unfiltered and empty, with a comment; classes uses 'satisfies Record<TransactionClass, string>' and CHOICES has no fallback; the select name has the amount; the select keeps focus; the error clears on open; the dialog says UTC; the failed-export unit test; the anchor stub; the e2e read after the PUT and the overview preview check; architecture.md R-109; R-109 file wording. Blocker: export-transactions.tsx:63-76 plus packages/ui-web date-picker.tsx:112 and dialog.tsx:47. The kit DatePicker opens its calendar as an absolute popup, and the Dialog is overflow-y-auto, so the dialog clips the calendar. I measured a copy of the dialog markup with the app's built CSS in Chromium. At 1440x900 the dialog is 313 px tall, and the calendar ends 255 px below it. Only the month row and weekday names show; the days need a scroll inside the dialog. The To calendar also runs 83 px past the right edge (scrollWidth 593 vs 510), which adds a sideways scroll. At 390 px both calendars run past the bottom (scrollHeight 591/677 vs 421). The e2e passes because Enter acts on the focused day even when it is clipped. So 'the calendar fits inside the dialog' is not true. Fix: let the kit DatePicker escape a scrolling ancestor, for example with the popover attribute (top layer) or a fixed position from the trigger's rect. Also keep the popup inside the viewport by aligning its right edge when needed. Add a DatePicker-in-Dialog example on /kit. In records.spec.ts, assert dialog.getByRole('grid') toBeInViewport({ ratio: 1 }) for From and To. Minor: transaction-type.tsx:38/62: 'chosen' is never cleared after a successful save. The select then ignores later reads, such as a label set on another device or out-of-order PUTs now that it stays enabled. The comment says the list read confirms the choice, but it can't. Fix: clear it in render once t.classification equals it. transaction-type.tsx:57: the name rounds to 2 decimals; other amount text uses fractionDigits: exactDigits(...). records.spec.ts:32/44: the bell's first read or a 15 s poll can also raise 'reads'; check that a read starts after the PUT. Ran: vitest src/features/transactions 3 passed, pnpm typecheck ok, biome check src e2e ok, check-docs 0 errors; no e2e.",
+        "2026-10-18 review pass by reviewer: Third review. The last blocker is resolved: From and To are the browser's date fields again (TextField type=date, min/max tied to each other), which the first review allowed. The browser draws its date picker outside the page, so the dialog can't clip it. The exception is in DESIGN.md (two bullets under the export dialog line) and in the component comment. The kit is unchanged; a DatePicker that works inside a dialog waits for a second dialog that needs a date. Earlier fixes still hold: props interfaces; Export disabled only when the list is unfiltered and empty; classes uses satisfies; the select's name carries the exact amount; the select keeps focus and clears 'chosen' once the list read matches; the dialog clears its error on open and says UTC; failed-export and anchor-download unit tests; the e2e counts list reads that start after the PUT and checks that the overview preview has no Type column. The unused exportClear copy is gone. Minor, no change needed: transaction-type.tsx keeps 'chosen' when a later read shows a different value, for example two quick choices whose PUTs land out of order; clearing it on the first read after the save would cover that. Ran: vitest src/features/transactions 3 passed, pnpm typecheck ok, biome check src e2e ok, check-docs 0 errors; the e2e log F241-20261018T204522Z shows records.spec.ts passed (not rerun)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-18T20:45:22Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 74.6,
+            "log": "docs/runs/F241-20261018T204522Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 248.4,
+            "log": "docs/runs/F241-20261018T204522Z-e2e.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F241-20261018T204522Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.7,
+            "log": "docs/runs/F241-20261018T204522Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F241-20261018T204522Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F241-20261018T204522Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.6,
+            "log": "docs/runs/F241-20261018T204522Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F241-20261018T204522Z-keep.log"
+          }
+        ],
+        "taskHash": "e783923ebb2fd9a6",
+        "filesHash": "71af9522cdb02d45",
+        "proof": {
+          "1": "unit: records.test.tsx builds Transactions with usdValue, classification, labelable and invoice; the live specs' sample transfers carry them, and navigation.spec.ts and onboarding.spec.ts pass on the new schema.",
+          "2": "e2e: records.spec.ts on fixed answers: the Type column, an INV-number link, Sent as text, a select named 'Type of <exact amount> USDC in from 0x01…', axe clean; at 390 px the type sits under the row with no sideways scroll; the overview's Payments preview has no Type column or select.",
+          "3": "e2e: records.spec.ts captures the PUT with {label: income} and a list read that starts after it. Unit: Income sends {\"label\":\"income\"}, Unclassified {\"label\":null}, a 409 toasts 'This transaction takes no type any more.'.",
+          "4": "unit: records.test.tsx fills From 2026-10-01, asks transactions.csv?from=2026-10-01, saves the API's text as forwend-transactions.csv and closes the dialog; a 500 shows the error in the open dialog, cleared when it opens again. E2E: From filled, Download, the file name, axe clean.",
+          "5": "docs-check: DESIGN.md (Type column, select, toast, export dialog and why its days are the browser's date fields), R-109 and docs/web/architecture.md describe it; docs-check passes."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Third review. The last blocker is resolved: From and To are the browser's date fields again (TextField type=date, min/max tied to each other), which the first review allowed. The browser draws its date picker outside the page, so the dialog can't clip it. The exception is in DESIGN.md (two bullets under the export dialog line) and in the component comment. The kit is unchanged; a DatePicker that works inside a dialog waits for a second dialog that needs a date. Earlier fixes still hold: props interfaces; Export disabled only when the list is unfiltered and empty; classes uses satisfies; the select's name carries the exact amount; the select keeps focus and clears 'chosen' once the list read matches; the dialog clears its error on open and says UTC; failed-export and anchor-download unit tests; the e2e counts list reads that start after the PUT and checks that the overview preview has no Type column. The unused exportClear copy is gone. Minor, no change needed: transaction-type.tsx keeps 'chosen' when a later read shows a different value, for example two quick choices whose PUTs land out of order; clearing it on the first read after the save would cover that. Ran: vitest src/features/transactions 3 passed, pnpm typecheck ok, biome check src e2e ok, check-docs 0 errors; the e2e log F241-20261018T204522Z shows records.spec.ts passed (not rerun).",
+          "at": "2026-10-18T20:51:39Z",
+          "filesHash": "71af9522cdb02d45"
+        }
+      },
+      "branch": "feat/f241-the-transactions-page-shows-each-transac",
+      "baseCommit": "f4c6632e3417ed9272d2144d3b4a5633d8c18b3b",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

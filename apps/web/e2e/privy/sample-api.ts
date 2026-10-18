@@ -127,20 +127,35 @@ const ACTIVITY = INVOICES.flatMap((inv) => [
   ),
   activityItem(inv),
 ]);
-export const sampleTransfer = (i: number) => ({
-  chainId: 84532,
-  token: USDC,
-  symbol: "USDC",
-  decimals: 6,
-  direction: i % 4 === 3 ? "out" : "in",
-  amount: `${(i + 1) * 1_000_000}`,
-  counterparty: `0x${String(i).padStart(2, "0")}${"b".repeat(38)}`,
-  txHash: `0x${String(i).padStart(2, "0")}${"9".repeat(62)}`,
-  logIndex: 0,
-  blockNumber: 1000 - i,
-  at: new Date(NOW - i * 7_200_000).toISOString(),
-  status: "confirmed",
-});
+export const sampleTransfer = (i: number) => {
+  const out = i % 4 === 3;
+  // R-108: every fifth transfer in paid an invoice; the rest in is money Forwend can't classify.
+  const paid = !out && i % 5 === 0;
+  return {
+    chainId: 84532,
+    token: USDC,
+    symbol: "USDC",
+    decimals: 6,
+    direction: out ? "out" : "in",
+    amount: `${(i + 1) * 1_000_000}`,
+    counterparty: `0x${String(i).padStart(2, "0")}${"b".repeat(38)}`,
+    txHash: `0x${String(i).padStart(2, "0")}${"9".repeat(62)}`,
+    logIndex: 0,
+    blockNumber: 1000 - i,
+    at: new Date(NOW - i * 7_200_000).toISOString(),
+    status: "confirmed",
+    usdValue: `${i + 1}.000000`,
+    classification: out ? "sent" : paid ? "invoice" : "unclassified",
+    labelable: !out && !paid,
+    invoice: paid
+      ? {
+          invoiceId: CONFIRMING_INVOICE.invoiceId,
+          number: CONFIRMING_INVOICE.number,
+          clientName: CONFIRMING_INVOICE.client.name,
+        }
+      : null,
+  };
+};
 export const TRANSFERS = Array.from({ length: 30 }, (_, i) => sampleTransfer(i));
 
 type SampleInvoice = typeof CONFIRMING_INVOICE;
@@ -275,6 +290,11 @@ export async function mockApi(
       );
       return route.fulfill({ json });
     }
+    // R-108: a label is saved; the export is a header-only CSV.
+    if (what?.startsWith("transactions/") && what.endsWith("/label"))
+      return route.fulfill({ status: 204 });
+    if (what === "transactions.csv")
+      return route.fulfill({ contentType: "text/csv", body: "Date (UTC),Direction\r\n" });
     if (what?.startsWith("events")) return route.fulfill({ json: { items: lists.events ?? [] } });
     if (what === "billing-details") {
       if (route.request().method() === "PUT")
