@@ -14,11 +14,12 @@ import { flushSync } from "react-dom";
 import { formatUsd } from "@/features/balances/lib/balances";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { useAcceptJobMutation, useGetPublicJobQuery } from "@/features/jobs/api/jobs-api";
+import { AcceptChange } from "@/features/jobs/components/accept-change";
 import { JobRecord } from "@/features/jobs/components/job-record";
 import { ACCEPT_FIELDS, EMAIL_PATTERN } from "@/features/jobs/constants/jobs";
 import { QUOTE_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
-import { apiCents, namedField } from "@/features/jobs/lib/jobs";
-import type { JobPayment, JobPaymentStatus } from "@/features/jobs/types/jobs";
+import { apiCents, isPendingChange, namedField } from "@/features/jobs/lib/jobs";
+import type { AcceptField, JobPayment, JobPaymentStatus } from "@/features/jobs/types/jobs";
 import { Party } from "@/shared/components/party";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 
@@ -34,8 +35,6 @@ const payHref = (p: JobPayment) => `/pay/${p.invoiceId}`;
 // A made payment the client can still pay: its pay page takes money.
 const payable = (p: JobPayment) => p.invoiceId !== null && p.status === PAYMENT_STATUS.open;
 
-type AcceptField = keyof typeof ACCEPT_FIELDS;
-
 // The client's quote (R-102): who sends it, the work and the payments, then Accept with a typed name and email. Once
 // accepted the form gives way to who accepted and when, and focus moves there; the deposit's pay link is the main
 // action. A made payment links its pay page while it takes money.
@@ -46,11 +45,23 @@ export function JobQuote({ token }: { token: string }) {
   const [formError, setFormError] = useState("");
   const heading = useRef<HTMLHeadingElement>(null);
   const [justAccepted, setJustAccepted] = useState(false);
-  const job = accepted.data ?? query.currentData;
+  // The accept's answer until the read shows the acceptance; then the read, which also follows the changes.
+  const job = query.currentData?.acceptedAt
+    ? query.currentData
+    : (accepted.data ?? query.currentData);
   const status = (query.error as { status?: unknown } | undefined)?.status;
   useEffect(() => {
     if (justAccepted) heading.current?.focus();
   }, [justAccepted]);
+  // An accepted change's form goes: focus moves to the line that says it is accepted, once the job shows it.
+  const [focusChange, setFocusChange] = useState<number | null>(null);
+  const changeAccepted = focusChange ? Boolean(job?.payments[focusChange - 1]?.acceptedAt) : false;
+  useEffect(() => {
+    if (focusChange && changeAccepted) {
+      document.getElementById(`quote-change-${focusChange}`)?.focus();
+      setFocusChange(null);
+    }
+  }, [focusChange, changeAccepted]);
 
   if (!job) {
     return (
@@ -163,6 +174,22 @@ export function JobQuote({ token }: { token: string }) {
                 <p className="text-sm text-muted">
                   {p.onAccept ? COPY.onAccept : COPY.afterDone}, {COPY.dueDays(p.dueDays)}
                 </p>
+                {p.proposedAt ? (
+                  <p
+                    id={`quote-change-${p.position}`}
+                    tabIndex={-1}
+                    className="text-sm text-muted outline-none"
+                  >
+                    <span className="font-medium text-ink">{COPY.change.label}</span>
+                    {" · "}
+                    {p.acceptedAt && p.acceptedName
+                      ? COPY.change.accepted(p.acceptedName, TIME.format(new Date(p.acceptedAt)))
+                      : COPY.change.waiting}
+                  </p>
+                ) : null}
+                {isPendingChange(p) ? (
+                  <AcceptChange token={token} change={p} onAccepted={setFocusChange} />
+                ) : null}
                 {p.deliveryLink ? (
                   <a
                     href={p.deliveryLink}

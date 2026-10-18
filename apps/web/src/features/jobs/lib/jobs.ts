@@ -1,5 +1,11 @@
 import { JOB_FIELDS, JOB_LIMITS, RECORD_EVENTS } from "@/features/jobs/constants/jobs";
-import type { JobField, JobSummary, PublicJob, RecordEvent } from "@/features/jobs/types/jobs";
+import type {
+  JobField,
+  JobPayment,
+  JobSummary,
+  PublicJob,
+  RecordEvent,
+} from "@/features/jobs/types/jobs";
 import { foldText } from "@/shared/lib/search";
 
 /**
@@ -56,6 +62,10 @@ export function jobRecord(job: PublicJob): RecordEvent[] {
   const events: RecordEvent[] = [{ kind: RECORD_EVENTS.created, at: job.createdAt }];
   if (job.acceptedAt) events.push({ kind: RECORD_EVENTS.accepted, at: job.acceptedAt });
   for (const payment of job.payments) {
+    if (payment.proposedAt)
+      events.push({ kind: RECORD_EVENTS.proposed, at: payment.proposedAt, payment });
+    if (payment.proposedAt && payment.acceptedAt)
+      events.push({ kind: RECORD_EVENTS.changeAccepted, at: payment.acceptedAt, payment });
     if (payment.doneAt) events.push({ kind: RECORD_EVENTS.done, at: payment.doneAt, payment });
     if (payment.invoicedAt)
       events.push({ kind: RECORD_EVENTS.invoiced, at: payment.invoicedAt, payment });
@@ -67,4 +77,9 @@ export function jobRecord(job: PublicJob): RecordEvent[] {
       RECORD_ORDER.indexOf(a.kind) - RECORD_ORDER.indexOf(b.kind) ||
       (a.payment?.position ?? 0) - (b.payment?.position ?? 0),
   );
+}
+
+/** A scope change the client has not accepted yet (R-105): it can't be marked done and stays out of the total. */
+export function isPendingChange(payment: JobPayment): boolean {
+  return payment.proposedAt !== null && payment.acceptedAt === null;
 }

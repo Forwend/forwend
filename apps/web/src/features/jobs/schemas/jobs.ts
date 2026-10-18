@@ -24,6 +24,10 @@ export const jobPaymentSchema = z.object({
   // For the record (R-104): when its invoice was made, and when it was paid.
   invoicedAt: apiTime.nullable(),
   paidAt: apiTime.nullable(),
+  // A scope change (R-105): proposedAt keeps its microseconds, and the accept sends it back as this exact string.
+  proposedAt: apiTime.nullable(),
+  acceptedName: z.string().nullable(),
+  acceptedAt: apiTime.nullable(),
 });
 
 /** GET /v1/jobs/{token}: the job as its client's link shows it. */
@@ -46,6 +50,8 @@ export const publicJobSchema = z.object({
 
 /** The owner's read: the public view plus its id, link token, client and the client's typed email. */
 export const jobSchema = publicJobSchema.extend({
+  // Each change's typed email, for the owner only.
+  payments: z.array(jobPaymentSchema.extend({ acceptedEmail: z.string().nullable() })),
   jobId: z.guid(),
   token: z.string().regex(JOB_TOKEN_PATTERN),
   client: z.object({

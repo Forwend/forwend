@@ -80,6 +80,46 @@ export const jobsApi = apiSlice
         responseSchema: jobSchema,
         invalidatesTags: [JOBS_TAG],
       }),
+      /** Proposes a scope change at the end of an accepted job (R-105); one key per filled-in form. */
+      proposeChange: build.mutation<
+        Job,
+        {
+          profileId: string;
+          jobId: string;
+          idempotencyKey: string;
+          body: { title: string; amountUsd: string; dueDays: number };
+        }
+      >({
+        query: ({ profileId, jobId, idempotencyKey, body }) => ({
+          url: `${jobUrl(profileId, jobId)}/payments`,
+          method: "POST",
+          headers: { "Idempotency-Key": idempotencyKey },
+          body,
+        }),
+        responseSchema: jobSchema,
+        invalidatesTags: [JOBS_TAG],
+      }),
+      /** Withdraws the change waiting for the client (R-105). */
+      withdrawChange: build.mutation<void, { profileId: string; jobId: string; position: number }>({
+        query: ({ profileId, jobId, position }) => ({
+          url: `${jobUrl(profileId, jobId)}/payments/${position}`,
+          method: "DELETE",
+        }),
+        invalidatesTags: [JOBS_TAG],
+      }),
+      /** The client accepts a change: proposedAt is the read's string, untouched, so it names that exact change. */
+      acceptChange: build.mutation<
+        PublicJob,
+        { token: string; position: number; proposedAt: string; name: string; email: string }
+      >({
+        query: ({ token, position, proposedAt, name, email }) => ({
+          url: `/v1/jobs/${encodeURIComponent(token)}/payments/${position}/accept`,
+          method: "POST",
+          body: { name, email, proposedAt },
+        }),
+        responseSchema: publicJobSchema,
+        invalidatesTags: [PUBLIC_JOB_TAG],
+      }),
       /** Before the client accepts (R-101); 409 job_accepted after. */
       deleteJob: build.mutation<void, { profileId: string; jobId: string }>({
         query: ({ profileId, jobId }) => ({ url: jobUrl(profileId, jobId), method: "DELETE" }),
@@ -94,6 +134,9 @@ export const {
   useCreateJobMutation,
   useDeleteJobMutation,
   useMarkPaymentDoneMutation,
+  useProposeChangeMutation,
+  useWithdrawChangeMutation,
   useGetPublicJobQuery,
   useAcceptJobMutation,
+  useAcceptChangeMutation,
 } = jobsApi;

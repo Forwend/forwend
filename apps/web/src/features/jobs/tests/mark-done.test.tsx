@@ -37,6 +37,10 @@ const payment = (position: number, more: object = {}) => ({
   deliveryLink: null,
   invoicedAt: null,
   paidAt: null,
+  proposedAt: null,
+  acceptedName: null,
+  acceptedAt: null,
+  acceptedEmail: null,
   ...more,
 });
 const job: Job = {

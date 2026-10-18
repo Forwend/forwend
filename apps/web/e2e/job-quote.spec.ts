@@ -25,6 +25,9 @@ const payment = (position: number, title: string, amountUsd: string, more: objec
   deliveryLink: null,
   invoicedAt: null,
   paidAt: null,
+  proposedAt: null,
+  acceptedName: null,
+  acceptedAt: null,
   ...more,
 });
 const quote = {
@@ -108,6 +111,54 @@ test.describe("job quote page", () => {
       `/pay/${DEPOSIT}`,
     );
     await expect(page.getByRole("button", { name: "Accept quote" })).toHaveCount(0);
+    expect(await blocking(page)).toEqual([]);
+  });
+
+  // R-106: a change the freelancer proposed after acceptance; the client accepts it with the proposedAt the page read.
+  test("accepts a waiting change with the change's proposedAt, then shows it accepted", async ({
+    page,
+  }) => {
+    const proposedAt = "2026-10-19T09:00:00.123456Z";
+    const change = payment(3, "Extra page", "150.00", { dueDays: 7, proposedAt });
+    const waiting = { ...accepted, payments: [...accepted.payments, change] };
+    const done = {
+      ...waiting,
+      totalUsd: "2150.00",
+      payments: [
+        ...accepted.payments,
+        { ...change, acceptedName: "Jane Doe", acceptedAt: "2026-10-19T10:00:00Z" },
+      ],
+    };
+    const posts: unknown[] = [];
+    let body: object = waiting;
+    await page.route(`**/api/v1/jobs/${TOKEN}`, (route) => route.fulfill({ json: body }));
+    await page.route(`**/api/v1/jobs/${TOKEN}/payments/3/accept`, async (route) => {
+      posts.push(route.request().postDataJSON());
+      body = done;
+      return route.fulfill({ json: done });
+    });
+    await page.goto(`/w/${TOKEN}`);
+    const payments = page.getByRole("region", { name: "Payments" });
+    await expect(payments).toContainText("Change · Proposed after you accepted the quote.");
+    // The waiting change is not in the total until accepted.
+    await expect(payments).toContainText("2,000.00 USD");
+    const form = page.getByRole("form", { name: "Accept Extra page" });
+    expect(await blocking(page)).toEqual([]);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(form).toBeVisible();
+    await expect.poll(() => sidewaysScroll(page)).toBeLessThanOrEqual(0);
+    await form.getByRole("textbox", { name: "Your name" }).fill("Jane Doe");
+    await form.getByRole("textbox", { name: "Your email" }).fill("jane@bob.example");
+    await form.getByRole("button", { name: "Accept change" }).click();
+    await expect(page.getByText(/^Change · Accepted by Jane Doe on/)).toBeFocused();
+    expect(posts).toEqual([{ name: "Jane Doe", email: "jane@bob.example", proposedAt }]);
+    await expect(payments).toContainText("2,150.00 USD");
+    await expect(page.getByRole("region", { name: "Record" })).toContainText(
+      "Change proposed: Extra page, 150.00 USD",
+    );
+    await expect(page.getByRole("region", { name: "Record" })).toContainText(
+      "Extra page accepted by Jane Doe",
+    );
     expect(await blocking(page)).toEqual([]);
   });
 

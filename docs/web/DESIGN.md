@@ -200,12 +200,18 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - It opens a dialog: what it bills and to whom, an optional delivery link, Not yet and Mark done and send.
   - Marked done, focus moves to the new invoice's number, and a toast says whether the email went.
   - A payment marked done shows "Done <day>" and its Delivery link, which opens in a new tab.
+  - Once accepted, a secondary Propose a change button sits under the total while no change waits (R-106).
+  - It opens a dialog: what the change is for, Amount in USD, Days to pay, then Cancel and Propose change.
+  - A change's line adds "Change ·" and either that it waits for the client, out of the total, or who accepted it.
+  - A waiting change has a small secondary Withdraw instead of Mark done; focus moves to it once proposed.
+  - Withdrawn, a toast says so and focus moves to the Payments heading.
   - Payments (left) list how each is invoiced and its due days, then its invoice number and status pill.
   - Scope follows Payments when there is one.
   - Client's link (right) says who has to accept or who accepted, and shows the link with Copy link and an open link.
   - Record (R-104) follows Client's link: one line per event, oldest first, the time in quiet text before what happened.
   - Its events: Quote made, Accepted by (with the email here), each step marked done with its Delivery link, each
     invoice made, each invoice paid.
+  - A change adds Change proposed (its title and amount) and its acceptance (with the client's email here).
   - Billed to follows Record, like an invoice's.
 - Invoices table: the client has a round initials avatar. Phone rows lead with the client (or a request's note) beside
   that avatar carrying the network's logo, with the number and a short due date (no year within this year) under it,
@@ -390,6 +396,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Pay the deposit is then the page's main button.
   - Another made payment shows a small Pay button while it takes money, else its number and status pill.
   - A delivered step links "See the delivered work" under its line.
+  - A change's line adds "Change ·" and either that it waits, out of the total, or who accepted it and when.
+  - A waiting change has its own bordered form under its line: what accepting agrees to, the name, email, Accept change.
+  - Accepted, focus moves to the change's line, which now says who accepted it.
   - Record follows The work, as on the job page, without the client's email.
 
 ## Emails

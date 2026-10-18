@@ -55,6 +55,9 @@ describe("job record", () => {
       deliveryLink: null,
       invoicedAt: null,
       paidAt: null,
+      proposedAt: null,
+      acceptedName: null,
+      acceptedAt: null,
       ...more,
     });
     const job = {
@@ -84,6 +87,56 @@ describe("job record", () => {
       "accepted",
       "invoiced1",
       "paid1",
+      "done2",
+      "invoiced2",
+    ]);
+  });
+
+  // R-106: a scope change is proposed, then accepted, then billed like any payment.
+  it("lists a change's proposal and acceptance in time order", () => {
+    const base = {
+      dueDays: 7,
+      onAccept: false,
+      invoiceId: null,
+      number: null,
+      status: null,
+      doneAt: null,
+      deliveryLink: null,
+      invoicedAt: null,
+      paidAt: null,
+      acceptedName: null,
+      acceptedAt: null,
+      proposedAt: null,
+    };
+    const job = {
+      title: "Logo",
+      scope: null,
+      issuer: { name: "Alice", address: "x", country: "DE", taxId: null, email: "a@x.example" },
+      totalUsd: "250.00",
+      acceptedName: "Jane Doe",
+      acceptedAt: "2026-10-02T10:00:00Z",
+      createdAt: "2026-10-01T10:00:00Z",
+      payments: [
+        { ...base, position: 1, title: "Logo", amountUsd: "100.00" },
+        {
+          ...base,
+          position: 2,
+          title: "Extra page",
+          amountUsd: "150.00",
+          proposedAt: "2026-10-04T09:00:00.123456Z",
+          acceptedName: "Jane Doe",
+          acceptedAt: "2026-10-05T09:00:00Z",
+          number: 3,
+          invoicedAt: "2026-10-06T09:00:00Z",
+          doneAt: "2026-10-06T09:00:00Z",
+        },
+      ],
+    };
+    expect(jobRecord(job).map((e) => `${e.kind}${e.payment?.position ?? ""}`)).toEqual([
+      "created",
+      "accepted",
+      "proposed2",
+      "changeAccepted2",
       "done2",
       "invoiced2",
     ]);

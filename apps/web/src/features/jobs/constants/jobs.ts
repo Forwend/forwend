@@ -27,6 +27,8 @@ export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const RECORD_EVENTS = {
   created: "created",
   accepted: "accepted",
+  proposed: "proposed",
+  changeAccepted: "changeAccepted",
   done: "done",
   invoiced: "invoiced",
   paid: "paid",
