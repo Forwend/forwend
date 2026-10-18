@@ -1734,7 +1734,7 @@
         "R-105, R-103, api.md, openapi.yaml and backend rules describe job_finished, the final waiting for a change, the replay after a withdraw, 404 for a missing position and the route-only log."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "docs-check"
@@ -1829,11 +1829,18 @@
           "summary": "Re-review after the follow-up changes: no blockers. (1) profiles_test.go guard: the regex is now mux\\.Handle(?:Func)?\\( and the files include ../router.go, so a HandleFunc route or a route in router.go is caught too. (2) TestFinalWaitsForAChangeInFlight: the poll now needs pid <> pg_backend_pid() and the After hook's exact statement, so no stray lock wait can let it commit early. If that SQL is reworded, the poll times out and fails; it can't pass by mistake. Mutation on a scratch copy (lock kept, count removed) still fails, in 0.8s, on the real assertion (nil, want ErrChangePending), so the poll finds the wait. (3) TestDepositOnlyJobTakesAChange: a deposit-only job takes a change after acceptance, the accepted change gets the final note, and then ProposeChange is ErrJobFinished. R-105 and api.md say a job paid in full by its deposit never finishes that way. Both new sentences are under 25 words. Ran: go test job, httpapi, database all pass; the race, deposit-only and scope change tests pass 30 times under -race (31s). The earlier concurrency, lock order, migration and docs findings still hold. Left as is: the lock and count run for every position, not only the final; harmless. The retry has no cap; bounded in practice. Web gaps for F239 are unchanged: job-detail.tsx:58 shows Propose on a finished job; propose-change.tsx:62 shows every 409 as 'A change already waits for the client.'; job-detail.tsx:53 offers Mark done on the final while a change waits; mark-done.tsx:56 shows change_pending as 'Mark the earlier payments done first.' F239 should treat a job as finished from the last payment's doneAt, so a deposit-only job keeps Propose.",
           "at": "2026-10-18T18:49:25Z",
           "filesHash": "9aa822548c114d30"
-        }
+        },
+        "commit": "cd1e916",
+        "doneAt": "2026-10-18T18:49:39Z"
       },
       "branch": "fix/f237-job-changes-a-withdrawn-change-s-retry-r",
       "baseCommit": "0fbdd42b6fe69f9a6c59943fe13ead29e66543bf",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f237-job-changes-a-withdrawn-change-s-retry-r",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
