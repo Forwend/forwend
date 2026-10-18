@@ -29,10 +29,15 @@ export function apiCents(amountUsd: string): bigint {
   return BigInt(amountUsd.replace(".", ""));
 }
 
-/** The field a refused create names: the API's message reads "invalid job request: client.email must be …". */
-export function invalidJobField(message: string): JobField | null {
+/** The field of fields a refused request names: the API's message reads "invalid job request: email must be …". */
+export function namedField<F extends string>(message: string, fields: readonly F[]): F | null {
   const name = message.split(": ")[1]?.split(" ")[0];
-  return Object.values(JOB_FIELDS).find((field) => field === name) ?? null;
+  return fields.find((field) => field === name) ?? null;
+}
+
+/** The field a refused create names. */
+export function invalidJobField(message: string): JobField | null {
+  return namedField(message, Object.values(JOB_FIELDS));
 }
 
 /** Whether a job matches the list's search: its title or client, ignoring case and accents. */

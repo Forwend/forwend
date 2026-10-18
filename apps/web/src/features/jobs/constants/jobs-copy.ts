@@ -110,3 +110,44 @@ export const JOBS_COPY = {
     deleteTooLate: "The client already accepted it, so it can't be deleted.",
   },
 } as const;
+
+/** The client's quote page /w/<token> (R-102). */
+export const QUOTE_COPY = {
+  title: "Quote",
+  from: (issuer: string) => `Quote from ${issuer}`,
+  issuer: "From",
+  taxId: "Tax ID",
+  scope: "The work",
+  payments: "Payments",
+  onAccept: "Invoiced when you accept",
+  afterDone: "Invoiced as each step is done",
+  dueDays: (days: number) => (days === 0 ? "due the day it is invoiced" : `due ${days} days after`),
+  total: "Total",
+  pay: (number: string) => `Pay ${number}`,
+  payDeposit: "Pay the deposit",
+  accept: {
+    title: "Accept this quote",
+    text: "By accepting you agree to the work and the payments above. Your name, your email and the time are kept as the record.",
+    name: "Your name",
+    email: "Your email",
+    action: "Accept quote",
+  },
+  accepted: {
+    title: "Quote accepted",
+    by: (name: string, time: string) => `Accepted by ${name} on ${time}.`,
+    deposit: "The deposit's invoice is ready to pay.",
+  },
+  notFound: "This quote isn't here. The link may be wrong, or the sender withdrew it.",
+  failed: "We could not load this quote.",
+  retry: "Try again",
+  errors: {
+    required: "Fill in this field.",
+    email: "Enter an email like name@example.com.",
+    failed: "We could not accept it. Try again.",
+    tooMany: "Too many tries. Wait a minute and try again.",
+    invalid: {
+      name: "Use at most 200 characters on one line, with no hidden characters.",
+      email: "Enter an email like name@example.com.",
+    },
+  },
+} as const;

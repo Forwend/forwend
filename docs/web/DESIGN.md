@@ -374,6 +374,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - The stop reminders page `/reminders/<token>` is public, like the pay page: the logo, then one centered panel.
   - It asks "Stop payment reminders?" with one primary button, since mail scanners open links.
   - Once stopped, focus moves to the heading "Reminders stopped", and one line names the invoice and its sender.
+- The quote page `/w/<token>` (R-102) is public too: the logo, then one column of panels, like the stop reminders page.
+  - "Quote from" the issuer in quiet text over the job's title as the heading.
+  - Payments list how each is invoiced, its due days and amount, with the total under them.
+  - The work (the scope) and From (the issuer, as an invoice shows it) follow.
+  - Before acceptance, Accept this quote ends the page: what accepting agrees to, Your name, Your email, Accept quote.
+  - Once accepted, Quote accepted comes first and takes focus: who accepted and when.
+  - Pay the deposit is then the page's main button.
+  - Another made payment shows a small Pay button while it takes money, else its number and status pill.
 
 ## Emails
 

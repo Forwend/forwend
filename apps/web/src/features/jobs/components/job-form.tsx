@@ -20,7 +20,12 @@ import { CLIENT_LIMITS } from "@/features/clients/constants/clients";
 import { clientBody, clientCountryOptions } from "@/features/clients/lib/clients";
 import type { Client, ClientBody } from "@/features/clients/types/clients";
 import { useCreateJobMutation } from "@/features/jobs/api/jobs-api";
-import { JOB_FIELDS, JOB_LIMITS, PAYMENT_FIELDS } from "@/features/jobs/constants/jobs";
+import {
+  EMAIL_PATTERN,
+  JOB_FIELDS,
+  JOB_LIMITS,
+  PAYMENT_FIELDS,
+} from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
 import { centsText, dueDays, invalidJobField, usdCents } from "@/features/jobs/lib/jobs";
 import type {
@@ -36,7 +41,6 @@ import { MONEY_COPY } from "@/shared/constants/money-copy";
 const COPY = JOBS_COPY.form;
 const INVALID_VALUE = 422;
 const NO_CLIENT: ClientBody = { name: "", email: "", address: "", country: "", taxId: "" };
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const draft = (title: string, days: string): PaymentDraft => ({
   id: crypto.randomUUID(),
   title,
@@ -94,7 +98,7 @@ export function JobForm({ profileId, clients }: JobFormProps) {
     const shown: Partial<Record<JobField, string>> = {};
     if (!text("title")) shown[JOB_FIELDS.title] = COPY.errors.required;
     if (!text("clientName")) shown[JOB_FIELDS.clientName] = COPY.errors.required;
-    if (!EMAIL.test(text("clientEmail"))) shown[JOB_FIELDS.clientEmail] = COPY.errors.email;
+    if (!EMAIL_PATTERN.test(text("clientEmail"))) shown[JOB_FIELDS.clientEmail] = COPY.errors.email;
     const rows: typeof paymentErrors = {};
     for (const p of payments) {
       const row: Partial<Record<PaymentField, string>> = {};
