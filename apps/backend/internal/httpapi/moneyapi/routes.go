@@ -18,4 +18,6 @@ func Routes(mux *http.ServeMux, g mid.Guards, balances *balance.Service, activit
 	mux.Handle("GET /v1/profiles/{profileId}/transactions.csv", g.ProfileScoped(getTransactionsCSV(activities)))
 	mux.Handle("PUT /v1/profiles/{profileId}/transactions/{chainId}/{txHash}/{logIndex}/label",
 		g.ProfileScoped(putTransactionLabel(activities)))
+	mux.Handle("GET /v1/profiles/{profileId}/records-currency", g.ProfileScoped(getRecordsCurrency(activities)))
+	mux.Handle("PUT /v1/profiles/{profileId}/records-currency", g.ProfileScoped(putRecordsCurrency(activities)))
 }

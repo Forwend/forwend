@@ -44,6 +44,8 @@ type Worker struct {
 	DatabaseURL string
 	Chains      Chains
 	Email       Email
+	// RatesURL is the ECB's reference rates file (R-110); ECB_RATES_URL is set only by tests that run a fake.
+	RatesURL string
 }
 
 // Email is the owner's email (R-80, D-65). Without ResendKey the worker sends nothing and the events wait.
@@ -55,6 +57,10 @@ type Email struct {
 	// PostalAddress is the sender's address for each email's footer; empty leaves it out (Q-13).
 	PostalAddress string
 }
+
+// DefaultRatesURL is the ECB's file of the last 90 days of euro reference rates: a wallet made after the worker's first
+// read has no older transfers.
+const DefaultRatesURL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml"
 
 // DefaultEmailFrom is the sender when EMAIL_FROM is left out.
 const DefaultEmailFrom = "Forwend <notifications@mail.forwend.com>"
@@ -100,6 +106,9 @@ func LoadWorker() (Worker, error) {
 			From:          os.Getenv("EMAIL_FROM")}}
 	if c.Email.From == "" {
 		c.Email.From = DefaultEmailFrom
+	}
+	if c.RatesURL = os.Getenv("ECB_RATES_URL"); c.RatesURL == "" {
+		c.RatesURL = DefaultRatesURL
 	}
 	if c.Email.ResendKey != "" {
 		c.Email.PublicWebURL = r.origin("PUBLIC_WEB_URL")

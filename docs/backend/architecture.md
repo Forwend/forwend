@@ -34,6 +34,9 @@ Read only the sections your task touches:
   email from `outbox_events` after each round
   (`internal/notify`, R-80, R-82, R-84; only the worker holds `RESEND_API_KEY`, and without it nothing is sent). Webhooks come in
   PLAN 11.5.
+  - It also keeps the ECB's reference rates (`internal/ecb`, R-110): at start, every 6 hours, 10 minutes after a failure.
+  - It reads the ECB's 90-day file only, so rates from before its first read, or gaps over 90 days, never arrive.
+  - Only tests set `ECB_RATES_URL`: the e2e gate points the worker at a fake ECB.
 - `signer`: separate process, own credentials, no public routes, no user sessions. Accepts only
   typed intents ("settle invoice X") and signs only `factory.deploy` and `receiver.settle`. Refunds are never signed
   here: they will be Safe transactions the multisig owners approve (PLAN 11.10.3). Re-reads the ledger and the chain
@@ -166,6 +169,9 @@ with a test.
   Block fields, statuses and identity rules as in `chain_transfers`, with the wallet and direction in each key.
 - `transfer_labels` (R-108): the user's label for money in that Forwend can't classify, one per profile and transfer
   log (chain, transaction, log index).
+- `ecb_rates` (R-110, D-82): the ECB's daily euro reference rates, units per 1 EUR, one per currency and day.
+  - A rate the ECB corrects replaces the kept one.
+- `profiles.records_currency` is the profile's other records currency (R-110), null for none.
 - `ledger_transactions` + `ledger_entries`: double-entry, append-only (below).
 - `settlement_intents` (unique per invoice): nonce and tx hash tracked, with the hashes a fee replacement replaced;
   reconcile before any retry.

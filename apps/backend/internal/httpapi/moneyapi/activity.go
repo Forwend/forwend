@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -95,11 +96,20 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, err)
 			return
 		}
+		currency, err := activities.RecordsCurrency(r.Context(), r.PathValue("profileId"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		header := transactionsCSVHeader
+		if currency != "" {
+			header = append(slices.Clip(header), currency+" value", "ECB rate date")
+		}
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 		w.Header().Set("Content-Disposition", `attachment; filename="transactions.csv"`)
 		out := csv.NewWriter(w)
 		out.UseCRLF = true
-		_ = out.Write(transactionsCSVHeader)
+		_ = out.Write(header)
 		for _, t := range items {
 			invoice, client := "", ""
 			if t.Invoice != nil {
@@ -108,6 +118,14 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 			row := []string{t.At.Format(time.RFC3339), t.Direction, tokenAmount(t), t.Symbol,
 				document.NetworkName(t.ChainID), t.Counterparty, t.TxHash, t.Status, t.USDValue().FloatString(t.Decimals),
 				t.Classification(), invoice, client}
+			if currency != "" {
+				amount, day, ok := t.RecordsValue()
+				if ok {
+					row = append(row, amount, day.Format(time.DateOnly))
+				} else {
+					row = append(row, "", "")
+				}
+			}
 			for i, cell := range row {
 				// A spreadsheet runs a cell that starts like a formula; an apostrophe makes it text.
 				if cell != "" && strings.ContainsRune("=+-@\t\r", rune(cell[0])) {
@@ -173,5 +191,41 @@ func putTransactionLabel(activities *activity.Service) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+type recordsCurrencyJSON struct {
+	Currency *string `json:"currency"`
+}
+
+// getRecordsCurrency is GET /v1/profiles/{profileId}/records-currency (R-110).
+func getRecordsCurrency(activities *activity.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		currency, err := activities.RecordsCurrency(r.Context(), r.PathValue("profileId"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, recordsCurrencyJSON{Currency: httpio.OrNull(currency)})
+	}
+}
+
+// putRecordsCurrency is PUT /v1/profiles/{profileId}/records-currency with {"currency": "EUR"|...|null} (R-110).
+func putRecordsCurrency(activities *activity.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body recordsCurrencyJSON
+		if err := httpio.DecodeJSON(w, r, &body); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		currency := ""
+		if body.Currency != nil {
+			currency = *body.Currency
+		}
+		if err := activities.SetRecordsCurrency(r.Context(), r.PathValue("profileId"), currency); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, recordsCurrencyJSON{Currency: httpio.OrNull(currency)})
 	}
 }

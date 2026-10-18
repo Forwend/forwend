@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -49,6 +50,18 @@ func (t Transfer) Labelable() bool {
 // USDValue is the amount at receipt in USD: 1 USD per USD stablecoin (D-75, D-82).
 func (t Transfer) USDValue() *big.Rat {
 	return new(big.Rat).SetFrac(t.Amount, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(t.Decimals)), nil))
+}
+
+// RecordsValue is the value at receipt in the profile's records currency (R-110): the USD value at the ECB's rates of
+// the latest day on or before the transfer's UTC day, within 7 days, rounded half up to the currency's decimals. ok is
+// false without a records currency or such a rate.
+func (t Transfer) RecordsValue() (amount string, day time.Time, ok bool) {
+	if t.RecordsCurrency == "" || t.fx == nil {
+		return "", time.Time{}, false
+	}
+	v := new(big.Rat).Quo(t.USDValue(), t.fx.usd)
+	// FloatString rounds halves away from zero, which for a value at or above 0 is half up.
+	return v.Mul(v, t.fx.cur).FloatString(invoice.AgreedCurrencies[t.RecordsCurrency]), t.fx.day, true
 }
 
 // Classification says what the transfer was (R-108).
@@ -114,6 +127,29 @@ func (s *Service) SetLabel(ctx context.Context, profileID string, chainID uint64
 	}
 	if err != nil {
 		return fmt.Errorf("label wallet transfer: %w", err)
+	}
+	return nil
+}
+
+// RecordsCurrency is the profile's other records currency (R-110), "" for none.
+func (s *Service) RecordsCurrency(ctx context.Context, profileID string) (string, error) {
+	var currency string
+	if err := s.pool.QueryRow(ctx, "SELECT coalesce(records_currency, '') FROM profiles WHERE id = $1", profileID).
+		Scan(&currency); err != nil {
+		return "", fmt.Errorf("read records currency: %w", err)
+	}
+	return currency, nil
+}
+
+// SetRecordsCurrency sets the profile's other records currency: EUR or one the ECB publishes a rate for, other than
+// USD, which every record has already; "" clears it.
+func (s *Service) SetRecordsCurrency(ctx context.Context, profileID, currency string) error {
+	if _, ok := invoice.AgreedCurrencies[currency]; currency != "" && (!ok || currency == "USD") {
+		return fmt.Errorf("%w: currency must be EUR or a currency the ECB publishes a rate for, other than USD", ErrInvalid)
+	}
+	if _, err := s.pool.Exec(ctx, "UPDATE profiles SET records_currency = NULLIF($2, '') WHERE id = $1", profileID,
+		currency); err != nil {
+		return fmt.Errorf("save records currency: %w", err)
 	}
 	return nil
 }

@@ -373,6 +373,14 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   - Columns: date (UTC), direction, amount, token, network, counterparty, transaction, status, USD value.
   - Then the classification, invoice number and client.
   - A cell starting like a formula gets a leading apostrophe.
+  - With a records currency it adds `<currency> value` and `ECB rate date` columns (R-110).
+- `GET` and `PUT /v1/profiles/{profileId}/records-currency` read and set `{"currency": ...}` (R-110).
+  - It is EUR or a currency the ECB publishes a rate for, other than USD; null clears it.
+  - Another value is 422 `invalid_value`.
+- Each transaction adds `recordsValue` `{currency, amount, rateDate}`, null without a currency or a rate.
+  - `rateDate` is the latest ECB day on or before the transfer's UTC day, within 7 days; an older rate gives null.
+  - Until the ECB publishes a day's rates and the worker reads them, that day's transfers use the day before.
+  - `amount` is the USD value / USD rate × the currency's rate, rounded half up to its decimals; EUR's rate is 1.
 - `GET /v1/profiles/{profileId}/balance-history?days=N`: N is 1–365, default 30 (not a number: 400; out of range: 422).
   One point per UTC day, today included, oldest first: `points[i]` is `{ at, estimatedUsd, receivedUsd, sentUsd }`,
   and `tokens[j]` is `{ chainId, token, symbol, decimals, balances, received, sent }`, where each array holds one
