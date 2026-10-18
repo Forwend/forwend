@@ -40,5 +40,8 @@ export const JOB_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
 /** The accept form's fields, as the API's 422 names them. */
 export const ACCEPT_FIELDS = { name: "name", email: "email" } as const;
 
+/** The API's error codes a scope change's 409 can carry (R-105). */
+export const CHANGE_ERRORS = { pending: "change_pending", finished: "job_finished" } as const;
+
 /** A payment row's fields, each named on its own input when wrong. */
 export const PAYMENT_FIELDS = { title: "title", amount: "amount", dueDays: "dueDays" } as const;

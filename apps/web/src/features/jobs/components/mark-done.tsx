@@ -1,12 +1,12 @@
 "use client";
 
 import { BUTTON_VARIANTS, Button, Dialog, TextField, TONES, useToast } from "@forwend/ui-web";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { formatUsd } from "@/features/balances/lib/balances";
 import { useSendInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { useMarkPaymentDoneMutation } from "@/features/jobs/api/jobs-api";
-import { JOB_LIMITS } from "@/features/jobs/constants/jobs";
+import { CHANGE_ERRORS, JOB_LIMITS } from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
 import { apiCents, namedField } from "@/features/jobs/lib/jobs";
 import type { Job, JobPayment } from "@/features/jobs/types/jobs";
@@ -33,6 +33,7 @@ export function MarkDone({ profileId, job, payment, onDone }: MarkDoneProps) {
   const [link, setLink] = useState("");
   const [error, setError] = useState("");
   const [linkError, setLinkError] = useState("");
+  const actions = useRef<HTMLFormElement>(null);
 
   const confirm = async () => {
     setError("");
@@ -48,12 +49,17 @@ export function MarkDone({ profileId, job, payment, onDone }: MarkDoneProps) {
     } catch (failure) {
       const { status, data } = failure as {
         status?: unknown;
-        data?: { error?: { message?: string } };
+        data?: { error?: { code?: string; message?: string } };
       };
       // A 422 names the link only when the link is wrong; the profile's limits on new invoices are 422 too.
       if (status === INVALID_VALUE && namedField(data?.error?.message ?? "", ["deliveryLink"]))
         setLinkError(COPY.markDoneLinkError);
-      else setError(status === CONFLICT ? COPY.markDoneOrder : COPY.markDoneFailed);
+      else if (data?.error?.code === CHANGE_ERRORS.pending) {
+        // The job is read again, which takes this step's button and dialog away: the reason goes in a toast.
+        actions.current?.closest("dialog")?.close();
+        document.getElementById("job-payments")?.focus();
+        toast({ tone: TONES.warning, title: COPY.markDoneChangeWaits });
+      } else setError(status === CONFLICT ? COPY.markDoneOrder : COPY.markDoneFailed);
       return;
     }
     const invoice = made.payments[payment.position - 1];
@@ -109,7 +115,7 @@ export function MarkDone({ profileId, job, payment, onDone }: MarkDoneProps) {
           {error}
         </p>
       ) : null}
-      <form method="dialog" className="mt-5 flex flex-wrap justify-end gap-2">
+      <form ref={actions} method="dialog" className="mt-5 flex flex-wrap justify-end gap-2">
         <Button type="submit" variant={BUTTON_VARIANTS.secondary}>
           {COPY.markDoneKeep}
         </Button>

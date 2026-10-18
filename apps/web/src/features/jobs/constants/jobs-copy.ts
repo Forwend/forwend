@@ -1,5 +1,12 @@
 import { JOB_LIMITS } from "@/features/jobs/constants/jobs";
 
+const dueAfter = (days: number) =>
+  days === 0
+    ? "due the day it is invoiced"
+    : days === 1
+      ? "due 1 day after"
+      : `due ${days} days after`;
+
 /** /app/jobs, New job and a job's page (R-101). */
 export const JOBS_COPY = {
   title: "Jobs",
@@ -94,8 +101,7 @@ export const JOBS_COPY = {
     payments: "Payments",
     onAccept: "Invoiced when the client accepts",
     afterDone: "Invoiced when you finish this step",
-    dueDays: (days: number) =>
-      days === 0 ? "due the day it is invoiced" : `due ${days} days after`,
+    dueDays: dueAfter,
     notInvoiced: "Not invoiced yet",
     total: "Total",
     scope: "Scope",
@@ -121,9 +127,14 @@ export const JOBS_COPY = {
     markDoneKeep: "Not yet",
     markDoneFailed: "We could not mark it done. Try again.",
     markDoneOrder: "Mark the earlier payments done first.",
+    markDoneChangeWaits:
+      "A change waits for the client. Withdraw it, or wait for the client to accept it.",
     markDoneLinkError: "Enter an https link, like https://drive.example/work.",
     change: "Change",
     changeWaiting: "Waiting for the client to accept. It isn't in the total yet.",
+    changeEmailed: (email: string) => `The link was sent to ${email}.`,
+    finalWaits:
+      "The final invoice waits for the change: withdraw it, or wait for the client to accept it.",
     changeAccepted: (name: string, time: string) => `Accepted by ${name} on ${time}`,
     withdraw: "Withdraw",
     withdrawn: (title: string) => `${title} withdrawn`,
@@ -131,12 +142,15 @@ export const JOBS_COPY = {
     withdrawGone: "The client already accepted this change, or it was withdrawn.",
     propose: "Propose a change",
     proposeBody:
-      "A new payment at the end, for work outside the quote. The client accepts it on the quote's link before you can bill it.",
+      "A new payment at the end, for work outside the quote. The client gets an email with the quote's link and accepts it there before you can bill it.",
     proposeTitleLabel: "What the change is for",
     proposeConfirm: "Propose change",
     proposeKeep: "Cancel",
     proposed: (title: string) =>
       `${title} proposed. Send the client the quote's link to accept it.`,
+    proposedEmailed: (title: string, email: string) =>
+      `${title} proposed. The link to accept it is on its way to ${email}.`,
+    proposeFinished: "The last payment is done. Start a new job for more work.",
     proposeFailed: "We could not propose it. Try again.",
     proposeInvalid: "Check the title, amount and days to pay.",
     proposePending: "A change already waits for the client.",
@@ -156,7 +170,7 @@ export const QUOTE_COPY = {
   payments: "Payments",
   onAccept: "Invoiced when you accept",
   afterDone: "Invoiced as each step is done",
-  dueDays: (days: number) => (days === 0 ? "due the day it is invoiced" : `due ${days} days after`),
+  dueDays: dueAfter,
   total: "Total",
   pay: (number: string) => `Pay ${number}`,
   payDeposit: "Pay the deposit",

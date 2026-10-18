@@ -184,7 +184,8 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   await expect(payments).toContainText("Change · Waiting for the client to accept.");
   await expect(payments).toContainText("1,000.50 USD");
   await expect(payments.getByRole("button", { name: "Withdraw" })).toBeVisible();
-  await expect(payments.getByRole("button", { name: "Mark done" })).toHaveCount(1);
+  await expect(payments.getByRole("button", { name: "Mark done" })).toHaveCount(0);
+  await expect(payments).toContainText("The final invoice waits for the change");
   await expect(payments.getByRole("button", { name: "Propose a change" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Record" })).toContainText(
     "Change proposed: Extra page, 150.00 USD",
@@ -196,15 +197,6 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   await expect.poll(() => sidewaysScroll(page)).toBeLessThanOrEqual(0);
   await page.setViewportSize(desktop);
   await expect(sidebar).toBeVisible();
-  await payments.getByRole("button", { name: "Mark done" }).click();
-  const markDone = page.getByRole("dialog", { name: "Mark Final payment done?" });
-  await expect(markDone).toContainText("emailed to delivered@resend.dev");
-  await expect(
-    markDone.getByRole("textbox", { name: "Link to the delivered work (optional)" }),
-  ).toBeVisible();
-  expect(await blockingViolations(page)).toEqual([]);
-  await markDone.getByRole("button", { name: "Not yet" }).click();
-  await expect(markDone).toBeHidden();
   // With no change waiting, the owner can propose one. The dialog is checked, not sent: the job isn't really accepted.
   changeWaits = false;
   const proposeButton = payments.getByRole("button", { name: "Propose a change" });
@@ -218,6 +210,16 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   expect(await blockingViolations(page)).toEqual([]);
   await propose.getByRole("button", { name: "Cancel" }).click();
   await expect(propose).toBeHidden();
+  // With no change waiting, the final step can be marked done.
+  await payments.getByRole("button", { name: "Mark done" }).click();
+  const markDone = page.getByRole("dialog", { name: "Mark Final payment done?" });
+  await expect(markDone).toContainText("emailed to delivered@resend.dev");
+  await expect(
+    markDone.getByRole("textbox", { name: "Link to the delivered work (optional)" }),
+  ).toBeVisible();
+  expect(await blockingViolations(page)).toEqual([]);
+  await markDone.getByRole("button", { name: "Not yet" }).click();
+  await expect(markDone).toBeHidden();
   await page.unroute(read);
   await readsAgain("Waiting for E2E client to accept.");
   await page.goBack();

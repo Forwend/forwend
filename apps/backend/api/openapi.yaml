@@ -1836,7 +1836,7 @@ components:
                       acceptedEmail: { type: [string, "null"] }
                       clientEmailed:
                         type: boolean
-                        description: An email about this change was queued for the client; false for the quote's payments and past the daily caps
+                        description: An email about this change was queued for the client; false for the quote's payments and past a cap in any 24 hours
     JobSummary:
       type: object
       required: [jobId, title, clientName, totalUsd, payments, paid, acceptedAt, createdAt]

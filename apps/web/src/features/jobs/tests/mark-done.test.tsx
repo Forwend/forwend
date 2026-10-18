@@ -41,6 +41,7 @@ const payment = (position: number, more: object = {}) => ({
   acceptedName: null,
   acceptedAt: null,
   acceptedEmail: null,
+  clientEmailed: false,
   ...more,
 });
 const job: Job = {
