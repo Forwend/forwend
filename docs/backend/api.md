@@ -301,6 +301,13 @@ R-100, D-81; the full schema is in openapi.yaml. A job is a quote with a payment
   - A payment's `invoiceId`, `number` and `status` (the invoice's status filter) are null until it is made.
 - `DELETE /v1/profiles/{profileId}/jobs/{jobId}` (R-101) deletes a job the client has not accepted: 204, and its link
   stops working. An accepted job is 409 `job_accepted`. An accept that read the job just before makes no invoice.
+- `POST /v1/profiles/{profileId}/jobs/{jobId}/payments/{position}/done` (R-103) marks a step done.
+  - It makes that payment's invoice like the deposit, due `dueDays` after the UTC day, with the key `job:<jobId>:<position>`.
+  - It takes an optional https `deliveryLink` (D-66), kept with the time; both show in the owner's and the client's read.
+  - After acceptance only (409 `job_not_accepted`), in order (409 `payment_out_of_order`).
+  - A payment that has its invoice answers the same; clicks at once replay one invoice.
+  - The last payment's invoice note gives the job's total and each earlier payment, its invoice, amount and if it is paid.
+  - Nothing is emailed: the job page then calls Send to client, with its limits (R-94).
 - `GET /v1/jobs/{token}` is the client's read, public like the checkout: no client block, typed email, job id or token.
 - `POST /v1/jobs/{token}/accept` is public: `{name, email}`, typed by the client.
   - It keeps them with the time, once; an accepted job answers the same, whoever accepts again.
@@ -373,6 +380,7 @@ come back at a fixed rate up to the burst size. An empty bucket answers 429 `rat
 seconds (when the next token is back) and runs nothing else.
 
 - Routes that need a token: per Privy user, after the token is checked; 2 requests a second, 60 at once.
+  - `API_USER_BURST` raises the 60. Only the live e2e sets it (1000): all its tests sign in as one user (D-85).
 - `POST /v1/invoices/{invoiceId}/recheck` (Check status, R-55) reads a chain RPC, so it is limited in the api: one
   check per invoice every 5 minutes (the invoice read gives `nextCheckAt`, so a reloaded page still waits), kept in Postgres so every replica agrees (`invoice_rechecks.checked_at`), and a
   per-process bucket of 1 a second, 10 at once, for everyone together. Both answer 429 with `Retry-After`. A chain that

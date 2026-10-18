@@ -21,15 +21,28 @@ func TestAPI(t *testing.T) {
 	t.Setenv("INFURA_API_KEYS", "a, b,")
 	t.Setenv("RPC_RATE_PER_SECOND", "2.5")
 	t.Setenv("PUBLIC_WEB_URL", "https://forwend.app/")
+	t.Setenv("API_USER_BURST", "")
 	got, err := config.LoadAPI()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.DatabaseURL != "postgres://x" || got.Addr != ":9" || got.PrivyAppID != "app" || got.PrivyJWKSURL != "https://jwks" ||
 		got.PrivyAppSecret != "secret" || got.ChainsFile != "chains.json" || !slices.Equal(got.InfuraKeys, []string{"a", "b"}) ||
-		got.RPCRate != 2.5 || got.PublicWebURL != "https://forwend.app" {
+		got.RPCRate != 2.5 || got.PublicWebURL != "https://forwend.app" || got.UserBurst != 0 {
 		t.Fatalf("got %+v", got)
 	}
+	// The live e2e's api raises each user's burst; unset keeps the default.
+	t.Setenv("API_USER_BURST", "1000")
+	if got, err := config.LoadAPI(); err != nil || got.UserBurst != 1000 {
+		t.Fatalf("API_USER_BURST=1000: %d %v", got.UserBurst, err)
+	}
+	for _, bad := range []string{"0", "-5", "many"} {
+		t.Setenv("API_USER_BURST", bad)
+		if _, err := config.LoadAPI(); err == nil || !strings.Contains(err.Error(), "API_USER_BURST (a whole number above 0)") {
+			t.Fatalf("API_USER_BURST=%s: got %v", bad, err)
+		}
+	}
+	t.Setenv("API_USER_BURST", "")
 	t.Setenv("PRIVY_JWKS_URL", "http://jwks.example")
 	if _, err := config.LoadAPI(); err == nil || !strings.Contains(err.Error(), "PRIVY_JWKS_URL (an https URL)") {
 		t.Fatalf("plain-http PRIVY_JWKS_URL: got %v", err)

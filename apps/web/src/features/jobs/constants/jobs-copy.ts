@@ -82,6 +82,7 @@ export const JOBS_COPY = {
   detail: {
     linkGroup: "Client's link",
     linkHint: "Send it to the client. They read the quote there and accept it.",
+    linkHintAccepted: "The client finds each payment's invoice there.",
     copy: "Copy link",
     copied: "Link copied",
     copyFailed: "Select the link to copy it",
@@ -108,6 +109,22 @@ export const JOBS_COPY = {
     deleted: (title: string) => `${title} deleted`,
     deleteFailed: "We could not delete the job. Try again.",
     deleteTooLate: "The client already accepted it, so it can't be deleted.",
+    done: (time: string) => `Done ${time}`,
+    deliveryLink: "Delivery link",
+    markDone: "Mark done",
+    markDoneTitle: (title: string) => `Mark ${title} done?`,
+    markDoneBody: (amount: string, days: string, email: string) =>
+      `Its invoice for ${amount} is made, ${days}, and emailed to ${email}.`,
+    markDoneLink: "Link to the delivered work (optional)",
+    markDoneLinkHint: "An https link to where the work is. Forwend keeps the link, not the files.",
+    markDoneConfirm: "Mark done and send",
+    markDoneKeep: "Not yet",
+    markDoneFailed: "We could not mark it done. Try again.",
+    markDoneOrder: "Mark the earlier payments done first.",
+    markDoneLinkError: "Enter an https link, like https://drive.example/work.",
+    sent: (number: string, email: string) => `${number} is on its way to ${email}`,
+    notSent: (number: string) =>
+      `${number} is made, but it could not be emailed now. Send it from its page.`,
   },
 } as const;
 
@@ -125,6 +142,8 @@ export const QUOTE_COPY = {
   total: "Total",
   pay: (number: string) => `Pay ${number}`,
   payDeposit: "Pay the deposit",
+  delivered: "See the delivered work",
+  inNewTab: "(opens in a new tab)",
   accept: {
     title: "Accept this quote",
     text: "By accepting you agree to the work and the payments above. Your name, your email and the time are kept as the record.",

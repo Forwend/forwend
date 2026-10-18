@@ -21,6 +21,8 @@ const payment = (position: number, title: string, amountUsd: string, more: objec
   invoiceId: null,
   number: null,
   status: null,
+  doneAt: null,
+  deliveryLink: null,
   ...more,
 });
 const quote = {

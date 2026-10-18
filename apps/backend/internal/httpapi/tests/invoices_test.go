@@ -84,7 +84,7 @@ func invoiceAPI(t *testing.T) invoiceEnv {
 	e.srv = httptest.NewServer(httpapi.NewMux(pool, verifier, privy.NewClient(privytest.AppID, privytest.AppSecret, e.wallets.URL),
 		func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 			return big.NewInt(2500000), 100, nil
-		}, webURL))
+		}, webURL, 0))
 	t.Cleanup(e.srv.Close)
 	return e
 }

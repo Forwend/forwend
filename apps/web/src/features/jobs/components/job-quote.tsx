@@ -162,6 +162,17 @@ export function JobQuote({ token }: { token: string }) {
                 <p className="text-sm text-muted">
                   {p.onAccept ? COPY.onAccept : COPY.afterDone}, {COPY.dueDays(p.dueDays)}
                 </p>
+                {p.deliveryLink ? (
+                  <a
+                    href={p.deliveryLink}
+                    target="_blank"
+                    rel="noopener noreferrer nofollow"
+                    className="self-start text-sm text-ink underline underline-offset-2"
+                  >
+                    {COPY.delivered}
+                    <span className="sr-only"> {COPY.inNewTab}</span>
+                  </a>
+                ) : null}
                 {p.invoiceId && p.number ? (
                   payable(p) && p !== deposit ? (
                     <a

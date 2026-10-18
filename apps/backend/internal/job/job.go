@@ -30,6 +30,10 @@ var (
 	ErrConflict = errors.New("idempotency key reused with another request")
 	// ErrAccepted: the client accepted the job, so it can't be deleted.
 	ErrAccepted = errors.New("the client accepted the job")
+	// ErrNotAccepted: a step is marked done only once the client accepted the job.
+	ErrNotAccepted = errors.New("the client has not accepted the job")
+	// ErrOutOfOrder: the steps are marked done in order, and an earlier payment has no invoice yet.
+	ErrOutOfOrder = errors.New("an earlier payment has no invoice yet")
 )
 
 // Request is a new job as the owner sends it. Client needs a name and an email: payments are billed there.
@@ -59,6 +63,10 @@ type Payment struct {
 	InvoiceID   string // "" until made
 	Number      int64
 	Status      string // the invoice's status filter (invoice.StatusFilterSQL); "" until made
+	// When the owner marked the step done, and the link to what was delivered (R-103); zero and "" until then. The
+	// deposit is made at acceptance, so it has neither.
+	DoneAt       time.Time
+	DeliveryLink string
 }
 
 // Job is a quote and what came of it. The client's typed name and email are set once accepted.

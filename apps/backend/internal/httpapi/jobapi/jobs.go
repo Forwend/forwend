@@ -2,6 +2,7 @@ package jobapi
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/ensp1re/forwend/apps/backend/internal/job"
@@ -77,6 +78,31 @@ func deleteJob(jobs *job.Service) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// markDone is POST /v1/profiles/{profileId}/jobs/{jobId}/payments/{position}/done (R-103): {"deliveryLink"}; 200 with
+// the job, the same when the payment already has its invoice.
+func markDone(jobs *job.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			DeliveryLink string `json:"deliveryLink"`
+		}
+		if err := httpio.DecodeJSON(w, r, &body); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		position, err := strconv.Atoi(r.PathValue("position"))
+		if err != nil {
+			httpio.WriteError(w, r, job.ErrNotFound)
+			return
+		}
+		j, err := jobs.MarkDone(r.Context(), r.PathValue("profileId"), r.PathValue("jobId"), position, body.DeliveryLink)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, toJobJSON(j))
 	}
 }
 

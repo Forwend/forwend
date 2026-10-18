@@ -56,7 +56,8 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 	j.CreatedAt = j.CreatedAt.UTC()
 	rows, err := s.pool.Query(ctx, `SELECT p.position, p.title, p.amount_cents, p.due_days, p.on_accept,
 		    coalesce(p.invoice_id, ''), coalesce(invoices.number, 0),
-		    CASE WHEN invoices.id IS NULL THEN '' ELSE `+invoice.StatusFilterSQL+` END
+		    CASE WHEN invoices.id IS NULL THEN '' ELSE `+invoice.StatusFilterSQL+` END, p.done_at,
+		    coalesce(p.delivery_link, '')
 		FROM job_payments p LEFT JOIN invoices_current invoices ON invoices.id = p.invoice_id
 		WHERE p.job_id = $1 ORDER BY p.position`, j.ID)
 	if err != nil {
@@ -64,8 +65,13 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 	}
 	j.Payments, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (Payment, error) {
 		var p Payment
-		return p, row.Scan(&p.Position, &p.Title, &p.AmountCents, &p.DueDays, &p.OnAccept, &p.InvoiceID, &p.Number,
-			&p.Status)
+		var done *time.Time
+		err := row.Scan(&p.Position, &p.Title, &p.AmountCents, &p.DueDays, &p.OnAccept, &p.InvoiceID, &p.Number,
+			&p.Status, &done, &p.DeliveryLink)
+		if done != nil {
+			p.DoneAt = done.UTC()
+		}
+		return p, err
 	})
 	if err != nil {
 		return Job{}, fmt.Errorf("read job %s payments: %w", j.ID, err)

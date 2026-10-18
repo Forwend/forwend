@@ -637,6 +637,52 @@ paths:
         "409": { $ref: "#/components/responses/JobAccepted" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/jobs/{jobId}/payments/{position}/done:
+    post:
+      operationId: markPaymentDone
+      summary: Mark a step of an accepted job done, which makes its payment's invoice (R-103)
+      description: |
+        The invoice is made like the deposit: payer chooses, the job's title and client, one line, due dueDays after
+        the UTC day, its checkout open 60 days past that (D-80). Steps go in order. The last payment's invoice is the
+        final one: its note gives the job's total and each earlier payment with its invoice, amount and whether it is
+        paid. A payment that has its invoice answers the same. Nothing is emailed: Send to client does that (R-94).
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: position
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 10 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                deliveryLink:
+                  type: string
+                  maxLength: 2000
+                  description: Optional https link to the delivered work (D-66); empty or left out means none.
+      responses:
+        "200":
+          description: The job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/JobNotFound" }
+        "409": { $ref: "#/components/responses/MarkDoneConflict" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "503": { $ref: "#/components/responses/NetworkNotReady" }
   /v1/reminders/{token}/stop:
     post:
       operationId: stopReminders
@@ -1605,8 +1651,10 @@ components:
                 description: The deposit, made when the client accepts; only the first payment can be.
     JobPayment:
       type: object
-      required: [position, title, amountUsd, dueDays, onAccept, invoiceId, number, status]
-      description: One payment; invoiceId, number and status are null until its invoice is made.
+      required: [position, title, amountUsd, dueDays, onAccept, invoiceId, number, status, doneAt, deliveryLink]
+      description: |
+        One payment; invoiceId, number and status are null until its invoice is made, doneAt and deliveryLink until
+        the owner marks its step done (the deposit is made at acceptance, so it has neither).
       properties:
         position: { type: integer, minimum: 1, maximum: 10 }
         title: { type: string }
@@ -1616,6 +1664,8 @@ components:
         invoiceId: { oneOf: [{ $ref: "#/components/schemas/InvoiceId" }, { type: "null" }] }
         number: { type: [integer, "null"] }
         status: { type: [string, "null"], enum: [open, paid, settled, expired, canceled, null] }
+        doneAt: { type: [string, "null"], format: date-time }
+        deliveryLink: { type: [string, "null"] }
     PublicJob:
       type: object
       required: [title, scope, issuer, payments, totalUsd, acceptedName, acceptedAt, createdAt]
@@ -1965,7 +2015,7 @@ components:
           properties:
             code:
               type: string
-              enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found, job_not_found, job_accepted,
+              enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found, job_not_found, job_accepted, job_not_accepted, payment_out_of_order,
                 billing_details_not_found, billing_details_required, client_not_found, idempotency_conflict, invoice_not_paid,
                 invoice_not_cancelable, receipt_sent, client_email_required, invoice_closed, due_date_required,
                 reminders_stopped, invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
@@ -2020,6 +2070,13 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     JobNotFound:
       description: No job with this id or link token (job_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    MarkDoneConflict:
+      description: |
+        The client has not accepted the job yet (job_not_accepted), or an earlier payment has no invoice yet
+        (payment_out_of_order).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

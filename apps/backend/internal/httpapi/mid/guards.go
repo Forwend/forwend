@@ -14,9 +14,13 @@ type Guards struct {
 	ProfileScoped func(http.Handler) http.Handler
 }
 
-// NewGuards builds the guards over one Privy verifier and the profile owners.
-func NewGuards(verifier *auth.Verifier, owners *auth.Service) Guards {
-	users := NewBuckets(UserRate, UserBurst)
+// NewGuards builds the guards over one Privy verifier and the profile owners. userBurst is each user's burst; 0 keeps
+// UserBurst.
+func NewGuards(verifier *auth.Verifier, owners *auth.Service, userBurst int) Guards {
+	if userBurst == 0 {
+		userBurst = UserBurst
+	}
+	users := NewBuckets(UserRate, float64(userBurst))
 	signedIn := func(h http.Handler) http.Handler { return RequireUser(verifier, Limit(users, SignedInUser, h)) }
 	return Guards{
 		SignedIn:      signedIn,

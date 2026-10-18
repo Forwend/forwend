@@ -16,13 +16,14 @@ const (
 	AcceptAllRate, AcceptAllBurst = 5, 20
 )
 
-// Routes mounts the job endpoints on mux: the owner's create, list, read and delete behind the profile guard; the client's read
+// Routes mounts the job endpoints on mux: the owner's create, list, read, delete and mark done behind the profile guard; the client's read
 // and accept by the link's token in public.
 func Routes(mux *http.ServeMux, g mid.Guards, jobs *job.Service) {
 	mux.Handle("POST /v1/profiles/{profileId}/jobs", g.ProfileScoped(createJob(jobs)))
 	mux.Handle("GET /v1/profiles/{profileId}/jobs", g.ProfileScoped(listJobs(jobs)))
 	mux.Handle("GET /v1/profiles/{profileId}/jobs/{jobId}", g.ProfileScoped(getJob(jobs)))
 	mux.Handle("DELETE /v1/profiles/{profileId}/jobs/{jobId}", g.ProfileScoped(deleteJob(jobs)))
+	mux.Handle("POST /v1/profiles/{profileId}/jobs/{jobId}/payments/{position}/done", g.ProfileScoped(markDone(jobs)))
 	mux.Handle("GET /v1/jobs/{token}", getPublicJob(jobs))
 	perJob := func(r *http.Request) string { return r.PathValue("token") }
 	mux.Handle("POST /v1/jobs/{token}/accept", mid.Limit(mid.NewBuckets(AcceptAllRate, AcceptAllBurst), mid.Everyone,

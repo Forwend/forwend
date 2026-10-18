@@ -99,4 +99,5 @@ sign-ins, so a setup project (`e2e/privy/session.setup.ts`) signs in once and sa
 Every run shares that account and the dev database, so its data must not pile up toward a profile cap (D-85).
 Its invoices and requests close within 2 days, and Send to client is mocked.
 A repeating invoice is stopped, and a job deleted, in the same test.
+The api it starts has `API_USER_BURST=1000`: every test signs in as one user, so a person's limit would run out.
 What is worth a test: [rules.md](rules.md).
