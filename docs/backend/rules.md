@@ -21,6 +21,7 @@ apps/backend/
       mid/                middleware: sign-in, profile ownership (Guards), rate limits, security headers
       httpio/             JSON in and out, the error shape and its codes, query parsing
       invoiceapi/         one package per module: routes.go (its routes), model.go (its JSON), handler files
+      jobapi/
       profileapi/
       moneyapi/
       healthapi/
@@ -31,6 +32,7 @@ apps/backend/
       signup.go           one substantial operation and its private helpers
       signup_test.go
     invoice/              same ownership rule for invoices
+    job/                  jobs: quotes with a payment schedule, each payment an invoice
     balance/
     activity/
     ledger/

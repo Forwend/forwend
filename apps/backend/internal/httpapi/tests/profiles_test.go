@@ -198,7 +198,12 @@ var profileRoutes = []struct{ method, path, body string }{
 	{"GET", "/v1/profiles/%s/clients", ""},
 	{"DELETE", "/v1/profiles/%s/clients/" + clientA, ""},
 	{"POST", "/v1/profiles/%s/invoices/0x" + strings.Repeat("0", 64) + "/send", ""},
+	{"PUT", "/v1/profiles/%s/invoices/0x" + strings.Repeat("0", 64) + "/reminders", `{"on": false}`},
+	{"POST", "/v1/profiles/%s/invoices/0x" + strings.Repeat("0", 64) + "/repeat/stop", ""},
 	{"GET", "/v1/profiles/%s/owed", ""},
+	{"POST", "/v1/profiles/%s/jobs", jobBody},
+	{"GET", "/v1/profiles/%s/jobs", ""},
+	{"GET", "/v1/profiles/%s/jobs/00000000-0000-0000-0000-000000000000", ""},
 }
 
 // Bob never sees Alice's profiles and gets 403 on every profile route for them; Alice passes the owner check.
@@ -228,15 +233,16 @@ func TestProfilesBelongToTheirUser(t *testing.T) {
 		t.Fatalf("Bob with Alice's key: %d %v", r.status, r.body)
 	}
 
-	for _, route := range profileRoutes {
-		for _, id := range alices {
-			path := fmt.Sprintf(route.path, id)
-			if r := e.call(t, route.method, path, bob, "bob-key", route.body); r.status != http.StatusForbidden {
-				t.Fatalf("Bob %s %s: %d %v, want 403", route.method, path, r.status, r.body)
-			}
-			if r := e.call(t, route.method, path, alice, "alice-key-"+id, route.body); r.status == http.StatusForbidden {
-				t.Fatalf("Alice %s %s: 403 on her own profile", route.method, path)
-			}
+	// Each route on one of Alice's profiles in turn, so every route and every profile is checked: each user's limit
+	// (60 requests at once) can't take every pair.
+	for i, route := range profileRoutes {
+		id := alices[i%len(alices)]
+		path := fmt.Sprintf(route.path, id)
+		if r := e.call(t, route.method, path, bob, "bob-key", route.body); r.status != http.StatusForbidden {
+			t.Fatalf("Bob %s %s: %d %v, want 403", route.method, path, r.status, r.body)
+		}
+		if r := e.call(t, route.method, path, alice, "alice-key-"+id, route.body); r.status == http.StatusForbidden {
+			t.Fatalf("Alice %s %s: 403 on her own profile", route.method, path)
 		}
 	}
 }

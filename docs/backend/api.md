@@ -284,6 +284,31 @@ PDF prints, so a change updates both. Both are public like `GET /v1/invoices/{in
   deposit before the checkout closes changes the receipt; a late deposit and the settlement do not.
   `Content-Disposition: attachment; filename="forwend-INV-0001-invoice.pdf"` (or `-receipt.pdf`).
 
+## Jobs
+
+R-100, D-81; the full schema is in openapi.yaml. A job is a quote with a payment schedule; each payment becomes an invoice.
+
+- `POST /v1/profiles/{profileId}/jobs` needs an Idempotency-Key, like invoice create.
+  - Body: `title` (≤ 200), optional `scope` (≤ 5000, with line breaks), `client` and 1 to 10 `payments`.
+  - `client` follows a saved client's rules (R-86), and needs `name` and `email`: payments are billed there.
+  - Each payment has a `title` (≤ 100), `amountUsd` (above 0, at most 2 decimals) and `dueDays` (0 to 90).
+  - Only the first may have `onAccept: true`: the deposit. The total is the sum.
+  - The same body again replays (200); amounts compare in cents. Other values under the key are 409.
+  - It copies the billing details as `issuer`, so no billing details is 409 `billing_details_required`.
+  - The job gets a random 32-byte link token. A profile has at most 1000 jobs.
+- `GET /v1/profiles/{profileId}/jobs` lists them newest first, with the total and how many payments are paid.
+- `GET /v1/profiles/{profileId}/jobs/{jobId}` reads one: the client, the token, and each payment's invoice.
+  - A payment's `invoiceId`, `number` and `status` (the invoice's status filter) are null until it is made.
+- `GET /v1/jobs/{token}` is the client's read, public like the checkout: no client block, typed email, job id or token.
+- `POST /v1/jobs/{token}/accept` is public: `{name, email}`, typed by the client.
+  - It keeps them with the time, once; an accepted job answers the same, whoever accepts again.
+  - With a deposit it makes the deposit invoice in the same transaction, with the key `job:<jobId>:1`.
+  - The invoice is payer chooses, with the job's title and client and one line for the payment.
+  - It is due `dueDays` after the UTC day, and its checkout closes `dueDays` + 61 days after the accept (D-80).
+  - Clicks the same UTC day send the same request, so they replay one invoice.
+  - A click just after midnight has another due date: its key is taken, so it answers the accepted job.
+  - Nothing is emailed: the client is on the page, which links the invoice.
+
 ## Wallet transactions and balance history
 
 Both read the transfers the worker records for profile wallets (R-38); the full schema is in openapi.yaml.
@@ -305,6 +330,8 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
 
 - Every `POST` that creates something or moves money needs an `Idempotency-Key` header. Exceptions: `POST /v1/me`
   (signup) and `POST /v1/me/onboarding` happen once per user, so the user's token is the key.
+- `POST /v1/jobs/{token}/accept` is public and takes no key: a job is accepted once, and its deposit has the key
+  `job:<jobId>:1`.
 - First call: 201. Same key and body again: 200 with the same resource. Same key, other body: 409.
 - Keys are unique per profile (per user for `POST /v1/profiles`), 1–255 bytes of UTF-8; a missing or longer key is 400. The server stores a SHA-256 of the
   normalized values, never the body, so field order, spacing and address letter case don't matter. A request that
@@ -353,7 +380,10 @@ seconds (when the next token is back) and runs nothing else.
   read and no other holds unrecorded money, it is 503: another option's empty read never answers for it. A rescan is asked only when the address holds more than is
   recorded and no rescan finished in the last 10 minutes, so money no log explains (Arc native USDC) doesn't start a
   full rescan on every press.
-- The other public routes (`GET /v1/invoices/{invoiceId}`, both PDFs and `POST /v1/reminders/{token}/stop`) have no limit in the api. Next's `/api` rewrite adds
+- `POST /v1/jobs/{token}/accept` makes an invoice, so it has limits in `jobapi/routes.go`.
+  - Per link: 3 at once, then one every 10 s.
+  - For everyone together: 20 at once, then 5 a second.
+- The other public routes (`GET /v1/invoices/{invoiceId}`, `GET /v1/jobs/{token}`, both PDFs and `POST /v1/reminders/{token}/stop`) have no limit in the api. Next's `/api` rewrite adds
   no `X-Forwarded-For` of its own and passes a client's header through unchanged (measured 2026-10-15 with a stub
   behind `next start`: no header without one, a sent `1.2.3.4` arrived as is), so the api sees one address for every
   payer and cannot trust the header. Limit them

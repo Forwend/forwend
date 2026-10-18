@@ -32,6 +32,6 @@ Then only the rows that match the task:
 
 | The task touches | Read |
 |---|---|
-| Any API route: JSON, errors, auth, idempotency, rate limits, first run, emails and notifications, billing details, clients, invoices, PDFs, wallet transactions | [docs/backend/api.md](../../docs/backend/api.md) |
+| Any API route: JSON, errors, auth, idempotency, rate limits, first run, emails and notifications, billing details, clients, invoices, PDFs, jobs, wallet transactions | [docs/backend/api.md](../../docs/backend/api.md) |
 | Receive addresses, deciding "paid", checkout, the canary, accepted risks; any invoice, watcher or signer change | [docs/backend/money-safety.md](../../docs/backend/money-safety.md) |
 | Processes, startup, scaling, the load test, the data model, Privy wallets and signup, RPC pools, the watcher, the signer, invoice states | [docs/backend/architecture.md](../../docs/backend/architecture.md): the sections its index names |
