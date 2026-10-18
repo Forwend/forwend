@@ -71,6 +71,14 @@ type transactionJSON struct {
 	Classification string                  `json:"classification"`
 	Labelable      bool                    `json:"labelable"`
 	Invoice        *transactionInvoiceJSON `json:"invoice"`
+	RecordsValue   *recordsValueJSON       `json:"recordsValue"`
+}
+
+// recordsValueJSON is the value in the profile's other records currency at the ECB rate of rateDate (R-110).
+type recordsValueJSON struct {
+	Currency string `json:"currency"`
+	Amount   string `json:"amount"`
+	RateDate string `json:"rateDate"`
 }
 
 // transactionInvoiceJSON is the invoice money in paid (R-108); clientName is null when it has none.
@@ -87,6 +95,9 @@ func toTransactionJSON(t activity.Transfer) transactionJSON {
 		Classification: t.Classification(), Labelable: t.Labelable()}
 	if i := t.Invoice; i != nil {
 		out.Invoice = &transactionInvoiceJSON{InvoiceID: i.ID, Number: i.Number, ClientName: httpio.OrNull(i.ClientName)}
+	}
+	if amount, day, ok := t.RecordsValue(); ok {
+		out.RecordsValue = &recordsValueJSON{Currency: t.RecordsCurrency, Amount: amount, RateDate: day.Format(time.DateOnly)}
 	}
 	return out
 }

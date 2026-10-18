@@ -875,7 +875,8 @@ paths:
       summary: Every transaction of the profile wallet in the UTC days given, newest first, as CSV (R-108)
       description: |
         The columns are the date (UTC), direction, amount, token, network, counterparty, transaction, status, USD value,
-        classification, invoice number and client. A cell a spreadsheet would run as a formula starts with an apostrophe.
+        classification, invoice number and client. With a records currency (R-110) they add its value and the ECB rate
+        date. A cell a spreadsheet would run as a formula starts with an apostrophe.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - name: from
@@ -892,6 +893,45 @@ paths:
           content:
             text/csv:
               schema: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/records-currency:
+    get:
+      operationId: getRecordsCurrency
+      summary: The profile's other records currency, besides USD (R-110)
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: The currency, null for none
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecordsCurrency" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+    put:
+      operationId: setRecordsCurrency
+      summary: Set or clear the profile's other records currency (R-110)
+      description: EUR or a currency the ECB publishes a reference rate for, other than USD; null clears it.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecordsCurrency" }
+      responses:
+        "200":
+          description: The currency kept
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecordsCurrency" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/InvalidValue" }
@@ -1580,7 +1620,7 @@ components:
     Transaction:
       type: object
       required: [chainId, token, symbol, decimals, direction, amount, counterparty, txHash, logIndex, blockNumber, at,
-        status, usdValue, classification, labelable, invoice]
+        status, usdValue, classification, labelable, invoice, recordsValue]
       properties:
         chainId: { type: integer }
         token: { $ref: "#/components/schemas/Address" }
@@ -1627,6 +1667,22 @@ components:
             invoiceId: { type: string }
             number: { type: integer }
             clientName: { type: [string, "null"] }
+        recordsValue:
+          type: [object, "null"]
+          description: |
+            The value in the profile's other records currency (R-110): the USD value at the ECB rates of rateDate, the
+            latest ECB day on or before the transfer's UTC day within 7 days, rounded half up. Null without a currency or
+            such a rate.
+          required: [currency, amount, rateDate]
+          properties:
+            currency: { type: string, pattern: "^[A-Z]{3}$" }
+            amount: { type: string }
+            rateDate: { type: string, format: date }
+    RecordsCurrency:
+      type: object
+      additionalProperties: false
+      properties:
+        currency: { type: [string, "null"], pattern: "^[A-Z]{3}$" }
     BalanceHistory:
       type: object
       required: [points, tokens]

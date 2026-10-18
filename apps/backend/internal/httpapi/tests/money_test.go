@@ -109,7 +109,7 @@ func TestGetTransactions(t *testing.T) {
 	want := map[string]any{"chainId": float64(84532), "token": usdc, "symbol": "USDC", "decimals": float64(6),
 		"direction": "out", "amount": "1000000", "counterparty": counterparty, "txHash": hash(2), "logIndex": float64(0),
 		"blockNumber": float64(2), "at": "2025-10-09T08:54:20Z", "status": "detected", "usdValue": "1.000000",
-		"classification": "sent", "labelable": false, "invoice": nil}
+		"classification": "sent", "labelable": false, "invoice": nil, "recordsValue": nil}
 	if page.status != http.StatusOK || len(items) != 1 || cursor == "" || !reflect.DeepEqual(items[0], want) {
 		t.Fatalf("page 1: %d %v\nwant item %v", page.status, page.body, want)
 	}
@@ -269,5 +269,33 @@ func TestTransactionRecords(t *testing.T) {
 		if r := e.call(t, "GET", path+".csv"+query, alice, "", ""); r.status != http.StatusUnprocessableEntity {
 			t.Fatalf("export %s: %d %v, want 422", query, r.status, r.body)
 		}
+	}
+
+	// R-110: in EUR too, at the ECB's rate of the latest day on or before each transfer's.
+	e.exec(t, "INSERT INTO ecb_rates (currency, day, per_eur) VALUES ('USD', '2025-10-08', 1.25)")
+	currency := "/v1/profiles/" + e.aliceProfile + "/records-currency"
+	if r := e.call(t, "GET", currency, alice, "", ""); r.status != http.StatusOK || r.body["currency"] != nil {
+		t.Fatalf("records currency before: %d %v", r.status, r.body)
+	}
+	for _, bad := range []string{`{"currency": "USD"}`, `{"currency": "XXX"}`} {
+		if r := e.call(t, "PUT", currency, alice, "", bad); r.status != http.StatusUnprocessableEntity {
+			t.Fatalf("%s: %d %v, want 422", bad, r.status, r.body)
+		}
+	}
+	if r := e.call(t, "PUT", currency, alice, "", `{"currency": "EUR"}`); r.status != http.StatusOK || r.body["currency"] != "EUR" {
+		t.Fatalf("set EUR: %d %v", r.status, r.body)
+	}
+	valued := e.call(t, "GET", path, alice, "", "").body["items"].([]any)
+	if got := valued[1].(map[string]any)["recordsValue"]; !reflect.DeepEqual(got,
+		map[string]any{"currency": "EUR", "amount": "4.00", "rateDate": "2025-10-08"}) {
+		t.Fatalf("the invoice payment in EUR %v", got)
+	}
+	inEUR := e.call(t, "GET", path+".csv", alice, "", "").raw
+	if lines := strings.Split(inEUR, "\r\n"); !strings.HasSuffix(lines[0], ",Client,EUR value,ECB rate date") ||
+		!strings.HasSuffix(lines[1], ",income,,,1.20,2025-10-08") {
+		t.Fatalf("export in EUR:\n%s", inEUR)
+	}
+	if r := e.call(t, "PUT", currency, alice, "", `{"currency": null}`); r.status != http.StatusOK || r.body["currency"] != nil {
+		t.Fatalf("clear: %d %v", r.status, r.body)
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -47,6 +48,10 @@ func TestMoneyLoop(t *testing.T) {
 	start(t, st.bin, "worker", st.loop)
 	start(t, st.bin, "signer", append(st.loop, "EXECUTOR_PRIVATE_KEY="+chaintest.Key))
 	st.waitScanned(t)
+	waitFor(t, "the worker's ECB rates", func() bool {
+		var n int
+		return conn.QueryRow(ctx, "SELECT count(*) FROM ecb_rates").Scan(&n) == nil && n > 0
+	})
 
 	body := fmt.Sprintf(`{"chainId": %d, "token": %q, "amount": %q}`, chaintest.ChainID, token, amount)
 	status, created := post(t, api+"/v1/profiles/"+profile+"/invoices", privy, "gate-1", body)
@@ -186,6 +191,11 @@ func newStack(t *testing.T) *stack {
 		chaintest.ChainID, limited.URL, anvil.URL, second), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	// The worker reads the ECB's rates (R-110) from this fake, never from the ECB.
+	ecbFake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `<Envelope><Cube><Cube time="2026-10-16"><Cube currency="USD" rate="1.1253"/></Cube></Cube></Envelope>`)
+	}))
+	t.Cleanup(ecbFake.Close)
 	apiAddr := freeAddr(t)
 	common := []string{"DATABASE_URL=" + dbURL}
 	rpcs := []string{"CHAINS_FILE=" + chains, "INFURA_API_KEYS=", "RPC_RATE_PER_SECOND=100"}
@@ -223,7 +233,8 @@ func newStack(t *testing.T) *stack {
 	}
 	return &stack{anvil: anvil, limited: limited, privy: privy, conn: conn, bin: bin, api: api, token: token,
 		// Clipped: an append for one binary must never write into another's environment.
-		profile: profile, loop: slices.Clip(append(append(common, rpcs...), "POLL_INTERVAL=200ms"))}
+		profile: profile, loop: slices.Clip(append(append(common, rpcs...), "POLL_INTERVAL=200ms",
+			"ECB_RATES_URL="+ecbFake.URL))}
 }
 
 // waitScanned waits for the worker's first scan: invoices are made only once a chain is watched.

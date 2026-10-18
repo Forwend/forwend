@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,6 +13,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ensp1re/forwend/apps/backend/internal/config"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
+	"github.com/ensp1re/forwend/apps/backend/internal/ecb"
 	"github.com/ensp1re/forwend/apps/backend/internal/email"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/notify"
@@ -70,6 +72,7 @@ func run() error {
 		sender = r
 	}
 	invoices := invoice.NewService(pool)
+	rates := &ecb.Keeper{Pool: pool, Client: &http.Client{Timeout: 30 * time.Second}, URL: cfg.RatesURL}
 	slog.Info("worker ready", "every", cfg.Chains.PollInterval, "email", sender != nil)
 	for {
 		if err := lock.Held(ctx); err != nil {
@@ -82,6 +85,10 @@ func run() error {
 		}
 		if err := invoices.MakeRetainerInvoices(ctx); err != nil {
 			slog.Error("make retainer invoices", "err", err)
+		}
+		// Records in another currency (R-110) wait for the rates when the ECB can't be read.
+		if err := rates.Tick(ctx, time.Now()); err != nil {
+			slog.Warn("keep ECB rates", "err", err)
 		}
 		if sender != nil {
 			if err := notify.Deliver(ctx, pool, sender, notify.Site{WebURL: cfg.Email.PublicWebURL, PostalAddress: cfg.Email.PostalAddress}); err != nil {
