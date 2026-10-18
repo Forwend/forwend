@@ -43,7 +43,12 @@ export function NewInvoiceScreen() {
   // currentData: a 404 for this id must not leave an earlier invoice's values behind.
   const start =
     from && source.currentData && owned.currentData
-      ? restartFrom(source.currentData, owned.currentData.client, params.has(RESTART_PARAMS.rest))
+      ? restartFrom(
+          source.currentData,
+          owned.currentData.client,
+          params.has(RESTART_PARAMS.rest),
+          owned.currentData.reminders,
+        )
       : undefined;
   const loadingStart = Boolean(from) && (source.isLoading || owned.isLoading);
   const tokens = balances.currentData?.tokens;

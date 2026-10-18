@@ -34,6 +34,9 @@ export const CLIENTS_COPY = {
   reference: "Default PO or reference (optional)",
   referenceHint:
     "Filled in on each new invoice for this client. Change it on the invoice when each order has its own PO number.",
+  reminders: "Start new invoices with payment reminders on",
+  remindersHint:
+    "Reminders email the client 3 days before the due date, on it and 7 days after, until it is paid. You can turn them off on each invoice.",
   save: "Save client",
   cancel: "Cancel",
   saved: (name: string) => `${name} saved`,

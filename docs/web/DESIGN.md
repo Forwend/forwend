@@ -340,6 +340,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - While the checkout can take money, a small secondary Send to client button. A day after the last send it returns;
     until then a quiet line says when.
   - Without a client email, while the checkout can take money, one quiet line says it can't be emailed.
+- New invoice has a Send payment reminders checkbox in Dates, after Due date, with a quiet line under it (R-97). Picking
+  a saved client sets it from the client's default; Duplicate copies it unless the client stopped them. Checked
+  without a due date or a client email, it shows an error there. The client form has the default under On invoices.
 - Payment reminders (R-96) follow Send to client in Billed to, ruled off, as a settings row:
   - The Payment reminders switch at the row's end, saved when flipped, with a toast.
   - Under it one quiet line: the schedule, "Reminders need a due date", or when the client stopped them.

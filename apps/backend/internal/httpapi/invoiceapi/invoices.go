@@ -36,9 +36,10 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 			agreed = &invoice.AgreedRequest{Currency: a.Currency, Amount: a.Amount, Date: a.Date}
 		}
 		inv, created, err := invoices.Create(r.Context(), r.PathValue("profileId"), key, invoice.Request{
-			Lines:   lines,
-			Agreed:  agreed,
-			ChainID: body.ChainID, Token: body.Token, Amount: body.Amount, AmountUSD: body.AmountUSD,
+			Lines:     lines,
+			Agreed:    agreed,
+			Reminders: body.Reminders,
+			ChainID:   body.ChainID, Token: body.Token, Amount: body.Amount, AmountUSD: body.AmountUSD,
 			ExpiresInSeconds: body.ExpiresIn,
 			Details: invoice.Details{Title: body.Title, Note: body.Note, DueDate: body.DueDate, SupplyDate: body.SupplyDate,
 				ClientName: body.Client.Name, ClientEmail: body.Client.Email, ClientAddress: body.Client.Address,

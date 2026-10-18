@@ -134,6 +134,7 @@ export const INVOICE_FIELDS = {
   returnUrl: "returnUrl",
   // The API's word on the lines as a whole (R-88).
   lines: "lines",
+  reminders: "reminders",
 } as const;
 
 export const AMOUNT_ERRORS = {

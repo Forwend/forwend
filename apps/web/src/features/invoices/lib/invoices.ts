@@ -31,6 +31,7 @@ import type {
   InvoiceException,
   InvoiceField,
   InvoicePdf,
+  InvoiceReminders,
   InvoiceStart,
   InvoiceSummary,
   LineDraft,
@@ -292,6 +293,7 @@ export function restartFrom(
   inv: Invoice,
   client: InvoiceClient | undefined,
   rest: boolean,
+  reminders: InvoiceReminders | undefined,
 ): InvoiceStart {
   const decimals = inv.options.find((o) => o.optionId === inv.optionId)?.decimals ?? 0;
   const { received, left } = invoiceException(inv, PAYMENT_STATUS.expiredPartiallyPaid);
@@ -323,6 +325,8 @@ export function restartFrom(
             amount: decimalText(BigInt(inv.agreedValue.amount), inv.agreedValue.decimals),
             date: inv.agreedValue.date,
           },
+    // Reminders the client stopped stay off on the copy (R-97); the rest of a closed invoice starts without them.
+    reminders: !rest && !!reminders?.on && !reminders.stoppedAt,
     client: {
       name: client?.name ?? "",
       email: client?.email ?? "",

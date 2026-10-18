@@ -3,6 +3,7 @@
 import {
   Button,
   buttonClasses,
+  Checkbox,
   ComboboxField,
   DatePicker,
   Form,
@@ -107,7 +108,10 @@ export function NewInvoiceForm({
   // last filled in is kept too: another client's replaces it, but a reference the owner typed stays.
   const [reference, setReference] = useState(start?.reference ?? "");
   const [agreed, setAgreed] = useState<AgreedDraft | null>(start?.agreed ?? null);
+  // Payment reminders (R-97): filled from the picked saved client or the copied invoice; the owner can change it.
+  const [reminders, setReminders] = useState(start?.reminders ?? false);
   const agreedId = useId();
+  const remindersId = useId();
   const filledReference = useRef("");
   // D-80: who set the checkout's close. The due date sets it until the owner picks one of their own, which then stays.
   const [closeBy, setCloseBy] = useState<"default" | "due" | "owner">("default");
@@ -215,10 +219,12 @@ export function NewInvoiceForm({
         ? { currency: agreed.currency, amount: decimalText(agreedUnits, digits), date: agreed.date }
         : undefined;
     const badAgreed = agreed !== null && !agreedValue;
+    const badReminders = reminders && (!text("dueDate") || !text("clientEmail"));
     if (
       typeof units === "string" ||
       badLines ||
       badAgreed ||
+      badReminders ||
       missingName ||
       expiresIn === null ||
       badLink
@@ -241,6 +247,9 @@ export function NewInvoiceForm({
         [INVOICE_FIELDS.senderName]: missingName ? NEW_REQUEST_COPY.senderMissing : undefined,
         [INVOICE_FIELDS.expiresIn]: expiresIn === null ? COPY.customError : undefined,
         [INVOICE_FIELDS.returnUrl]: badLink ? COPY.returnError : undefined,
+        [INVOICE_FIELDS.reminders]: badReminders
+          ? COPY.fieldErrors[INVOICE_FIELDS.reminders]
+          : undefined,
       });
       return;
     }
@@ -255,6 +264,7 @@ export function NewInvoiceForm({
       supplyDate: text("supplyDate"),
       reference: reference.trim(),
       ...(agreedValue ? { agreedValue } : {}),
+      ...(reminders ? { reminders: true as const } : {}),
       senderName: text("senderName"),
       returnUrl,
       client: {
@@ -632,6 +642,27 @@ export function NewInvoiceForm({
               className="sm:max-w-xs"
             />
           )}
+          {request ? null : (
+            <div className="flex flex-col">
+              <Checkbox
+                label={COPY.remindersLabel}
+                checked={reminders}
+                onChange={(event) => {
+                  setReminders(event.target.checked);
+                  clear(INVOICE_FIELDS.reminders);
+                }}
+                aria-invalid={errors[INVOICE_FIELDS.reminders] ? true : undefined}
+                aria-describedby={remindersId}
+              />
+              <p id={remindersId} className="text-sm text-muted">
+                {errors[INVOICE_FIELDS.reminders] ? (
+                  <span className="text-danger">{errors[INVOICE_FIELDS.reminders]}</span>
+                ) : (
+                  COPY.remindersHint
+                )}
+              </p>
+            </div>
+          )}
           {expiryField}
         </FieldGroup>
 
@@ -659,6 +690,8 @@ export function NewInvoiceForm({
                     clear(INVOICE_FIELDS.reference);
                   }
                   setCountry(values.country);
+                  setReminders(picked.reminders);
+                  clear(INVOICE_FIELDS.reminders);
                   setTyped((shown) => ({ ...shown, client: values.name }));
                   // The client fields are drawn again with new values; errors elsewhere stay.
                   setErrors((shown) => ({

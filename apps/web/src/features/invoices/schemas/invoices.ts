@@ -206,6 +206,8 @@ export const createInvoiceBodySchema = z.object({
   reference: z.string(),
   // R-93: amount as a decimal in the currency's own decimals.
   agreedValue: z.object({ currency: z.string(), amount: z.string(), date: z.string() }).optional(),
+  // Payment reminders on at once (R-97); sent only when true.
+  reminders: z.literal(true).optional(),
   senderName: z.string(),
   client: clientBodySchema,
   // R-88: unitPrice in the amount's own unit, base units with amount and a USD decimal with amountUsd.

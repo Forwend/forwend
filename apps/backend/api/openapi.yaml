@@ -976,9 +976,12 @@ components:
           maxLength: 100
           description: |
             The client's PO number or reference that New invoice fills in (R-90); one line. Each invoice keeps its own.
+        reminders:
+          type: boolean
+          description: New invoice starts with payment reminders on for this client (R-97); false when left out.
     Client:
       type: object
-      required: [clientId, name, email, address, country, taxId, reference, updatedAt]
+      required: [clientId, name, email, address, country, taxId, reference, reminders, updatedAt]
       description: A saved client; a field it doesn't have is null.
       properties:
         clientId: { type: string, format: uuid }
@@ -988,6 +991,7 @@ components:
         country: { type: [string, "null"], pattern: "^[A-Z]{2}$" }
         taxId: { type: [string, "null"] }
         reference: { type: [string, "null"] }
+        reminders: { type: boolean }
         updatedAt: { type: string, format: date-time }
     Issuer:
       type: object
@@ -1348,6 +1352,11 @@ components:
           description: |
             Optional https link to the creator's site, offered to the payer once paid (R-58, R-62); empty means none.
             No user or password in it.
+        reminders:
+          type: boolean
+          description: |
+            Optional. true turns payment reminders on at once, as setReminders does (R-97); it needs dueDate and
+            client.email, otherwise 422. Part of the idempotency hash only when true.
         client:
           type: object
           additionalProperties: false

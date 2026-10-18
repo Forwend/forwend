@@ -34,7 +34,8 @@ func TestClients(t *testing.T) {
 	}
 	delete(made.body, "updatedAt")
 	want := map[string]any{"clientId": clientB, "name": "Bob Ltd", "email": "ap@bob.example",
-		"address": "Main St 1\nBerlin", "country": "DE", "taxId": "DE999999999", "reference": "PO-4500012345"}
+		"address": "Main St 1\nBerlin", "country": "DE", "taxId": "DE999999999", "reference": "PO-4500012345",
+		"reminders": false}
 	if !reflect.DeepEqual(made.body, want) {
 		t.Fatalf("PUT returned %v, want %v", made.body, want)
 	}

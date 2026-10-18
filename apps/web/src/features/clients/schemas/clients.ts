@@ -14,8 +14,14 @@ export const clientBodySchema = z.object({
   taxId: z.string(),
 });
 
-/** The PUT body: the client block and the PO number or reference New invoice fills in (R-90). */
-export const savedClientBodySchema = clientBodySchema.extend({ reference: z.string() });
+/**
+ * The PUT body: the client block, the PO number or reference New invoice fills in (R-90), and whether its new invoices
+ * start with payment reminders on (R-97).
+ */
+export const savedClientBodySchema = clientBodySchema.extend({
+  reference: z.string(),
+  reminders: z.boolean(),
+});
 
 /** One saved client (apps/backend/api/openapi.yaml, Client). */
 export const clientSchema = z.object({
@@ -26,6 +32,7 @@ export const clientSchema = z.object({
   country: z.string().nullable(),
   taxId: z.string().nullable(),
   reference: z.string().nullable(),
+  reminders: z.boolean(),
   updatedAt: apiTime,
 });
 

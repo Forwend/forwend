@@ -441,7 +441,7 @@
       "dependsOn": [
         "F225"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "e2e"
@@ -456,7 +456,71 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-18T03:23:30Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 67.2,
+            "log": "docs/runs/F226-20261018T032330Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 192.2,
+            "log": "docs/runs/F226-20261018T032330Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F226-20261018T032330Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F226-20261018T032330Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F226-20261018T032330Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": "docs/runs/F226-20261018T032330Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.9,
+            "log": "docs/runs/F226-20261018T032330Z-build.log"
+          }
+        ],
+        "taskHash": "601f4ff597bef0a1",
+        "filesHash": "d5dfaca757184bb9",
+        "proof": {
+          "1": "unit: httpapi/tests/invoices_reminders_test.go TestRemindersFromCreate: a saved client keeps reminders true and false when left out; create with reminders true answers reminders.on true, the same request with the same key is 200, the same key without reminders is 409 idempotency_conflict, and reminders without a due date or a client email is 422; clients_test.go expects the reminders field; invoices.test.ts restartFrom copies reminders on and not stopped to a duplicate only; e2e/privy/invoices.spec.ts: the client form's Start new invoices with payment reminders on, Send payment reminders checked after picking the client and on Duplicate, and the invoice starting with the switch on",
+          "2": "docs-check: openapi.yaml adds reminders to ClientRequest, Client and CreateInvoiceRequest; docs/backend/api.md (Clients, Invoices) and DESIGN.md describe the field and the checkboxes; e2e: axe 0 on the invoice page with the switch"
+        }
+      },
+      "branch": "feat/f226-a-saved-client-can-start-its-new-invoice",
+      "baseCommit": "69a754e8bf4cb07a0f68239129a47a1b4f6af989",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

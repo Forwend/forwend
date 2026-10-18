@@ -3,6 +3,7 @@
 import {
   Button,
   buttonClasses,
+  Checkbox,
   ComboboxField,
   Form,
   TextAreaField,
@@ -18,11 +19,11 @@ import { useSaveClientMutation } from "@/features/clients/api/clients-api";
 import { CLIENT_LIMITS } from "@/features/clients/constants/clients";
 import { CLIENTS_COPY as COPY } from "@/features/clients/constants/clients-copy";
 import { clientCountryOptions, invalidClientField } from "@/features/clients/lib/clients";
-import type { Client, SavedClientBody } from "@/features/clients/types/clients";
+import type { Client, ClientTextField, SavedClientBody } from "@/features/clients/types/clients";
 import { FieldGroup } from "@/shared/components/field-group";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-type Field = keyof SavedClientBody;
+type Field = ClientTextField;
 
 export interface ClientFormProps {
   profileId: string;
@@ -54,6 +55,7 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
       country,
       taxId: value("taxId"),
       reference: value("reference"),
+      reminders: new FormData(form).get("reminders") === "on",
     };
     const shown: Partial<Record<Field, string>> = {};
     if (!body.name) shown.name = COPY.errors.required;
@@ -147,6 +149,17 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
           hint={COPY.referenceHint}
           error={errors.reference}
         />
+        <div className="flex flex-col">
+          <Checkbox
+            name="reminders"
+            label={COPY.reminders}
+            defaultChecked={client?.reminders ?? false}
+            aria-describedby="client-reminders-hint"
+          />
+          <p id="client-reminders-hint" className="text-sm text-muted">
+            {COPY.remindersHint}
+          </p>
+        </div>
       </FieldGroup>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         <Button type="submit" loading={busy}>
