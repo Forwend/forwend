@@ -14,10 +14,12 @@ import {
   TABLE_HEAD_CLASSES,
   TABLE_ROW_CLASSES,
 } from "@forwend/ui-web";
-import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChevronRight, Download } from "lucide-react";
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useId, useState } from "react";
 import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
+import { ExportTransactions } from "@/features/transactions/components/export-transactions";
+import { TransactionType } from "@/features/transactions/components/transaction-type";
 import {
   RELATIVE_DAYS,
   TRANSACTION_DIRECTIONS,
@@ -31,7 +33,6 @@ import {
   groupByDay,
   transactionKey,
   transactionStatus,
-  transactionsCsv,
 } from "@/features/transactions/lib/transactions";
 import type { Transaction } from "@/features/transactions/types/transactions";
 import { ChainBadge, hasChainBadge } from "@/shared/components/chains/chain-badge";
@@ -120,16 +121,6 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
   const [skeletonRows, setSkeletonRows] = useState(preview ?? SKELETON_ROWS);
   if (rows.length > 0 && rows.length !== skeletonRows) setSkeletonRows(rows.length);
 
-  const exportCsv = () => {
-    const url = URL.createObjectURL(new Blob([transactionsCsv(rows)], { type: "text/csv" }));
-    const link = Object.assign(document.createElement("a"), {
-      href: url,
-      download: TRANSACTIONS_COPY.csvFile,
-    });
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <section
       aria-labelledby={`${profileId}-transactions`}
@@ -184,19 +175,9 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
               }))}
             />
           }
+          // The export ignores the direction and search, so only a profile with no transactions has nothing to export.
           actions={
-            // Phones keep only its icon, its touch area widened to 44px like an icon button's; the accessible name says
-            // what it does.
-            <Button
-              variant="secondary"
-              aria-label={TRANSACTIONS_COPY.exportCsv}
-              onClick={exportCsv}
-              disabled={rows.length === 0}
-              className="max-sm:w-10 max-sm:px-0 max-sm:pointer-coarse:before:left-1/2 max-sm:pointer-coarse:before:w-11 max-sm:pointer-coarse:before:-translate-x-1/2"
-            >
-              <Download aria-hidden className="size-[var(--fw-icon-sm)]" />
-              <span className="max-sm:sr-only">{TRANSACTIONS_COPY.exportCsv}</span>
-            </Button>
+            <ExportTransactions profileId={profileId} disabled={!filtered && rows.length === 0} />
           }
         />
       )}
@@ -233,6 +214,7 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                   <th scope="col" className="w-[38%]">
                     {TRANSACTIONS_COPY.columns.transaction}
                   </th>
+                  {preview ? null : <th scope="col">{TRANSACTIONS_COPY.columns.type}</th>}
                   <th scope="col" className="hidden 2xl:table-cell">
                     {TRANSACTIONS_COPY.columns.network}
                   </th>
@@ -259,6 +241,11 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                           detailClassName="2xl:hidden"
                         />
                       </td>
+                      {preview ? null : (
+                        <td>
+                          <TransactionType profileId={profileId} t={t} />
+                        </td>
+                      )}
                       <td className="hidden whitespace-nowrap text-muted 2xl:table-cell">
                         <NetworkName chainId={t.chainId} />
                       </td>
@@ -293,39 +280,44 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                 </DayHeading>
                 <ul className="divide-y divide-line">
                   {group.items.map((t) => (
-                    <li
-                      key={transactionKey(t)}
-                      className="flex min-h-16 items-center gap-3 px-4 py-3"
-                    >
-                      {/* Two lines that never cut: the network rides on the icon as its logo (and in words for
+                    <li key={transactionKey(t)} className="min-h-16 px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {/* Two lines that never cut: the network rides on the icon as its logo (and in words for
                           screen readers), the time and the explorer link sit under the other side. */}
-                      <Party
-                        t={t}
-                        short
-                        chainBadge
-                        detail={
-                          <>
-                            <time dateTime={t.at} className="whitespace-nowrap">
-                              {TIME.format(new Date(t.at))}
-                            </time>
-                            {hasChainBadge(t.chainId) ? (
-                              <span className="sr-only">, {chainName(t.chainId)}</span>
-                            ) : (
-                              ` · ${chainName(t.chainId)}`
-                            )}
-                            <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
-                          </>
-                        }
-                      />
-                      {/* A phone row names only a status that still needs waiting for, as banking apps do. */}
-                      <span className="ml-auto flex shrink-0 flex-col items-end gap-1">
-                        <Amount t={t} />
-                        {transactionStatus(t) === PAYMENT_STATUS.confirmed ? null : (
-                          <span className="text-xs">
-                            <Status t={t} />
-                          </span>
-                        )}
-                      </span>
+                        <Party
+                          t={t}
+                          short
+                          chainBadge
+                          detail={
+                            <>
+                              <time dateTime={t.at} className="whitespace-nowrap">
+                                {TIME.format(new Date(t.at))}
+                              </time>
+                              {hasChainBadge(t.chainId) ? (
+                                <span className="sr-only">, {chainName(t.chainId)}</span>
+                              ) : (
+                                ` · ${chainName(t.chainId)}`
+                              )}
+                              <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
+                            </>
+                          }
+                        />
+                        {/* A phone row names only a status that still needs waiting for, as banking apps do. */}
+                        <span className="ml-auto flex shrink-0 flex-col items-end gap-1">
+                          <Amount t={t} />
+                          {transactionStatus(t) === PAYMENT_STATUS.confirmed ? null : (
+                            <span className="text-xs">
+                              <Status t={t} />
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      {/* The type sits under the party, in line with its text. */}
+                      {preview ? null : (
+                        <div className="mt-2 pl-12 text-sm">
+                          <TransactionType profileId={profileId} t={t} />
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>

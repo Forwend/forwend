@@ -3,6 +3,7 @@ import {
   TRANSACTION_DIRECTIONS,
   type TRANSACTION_STATUSES,
 } from "@/features/transactions/constants/transactions";
+import type { TransactionClass } from "@/features/transactions/types/transactions";
 import {
   apiTime,
   baseUnits,
@@ -11,6 +12,7 @@ import {
   hash32,
   openEnum,
   pageOf,
+  usdAmount,
 } from "@/shared/schemas/api";
 
 export const transactionSchema = z.object({
@@ -28,6 +30,13 @@ export const transactionSchema = z.object({
   at: apiTime,
   // Other values may come from a newer API.
   status: openEnum<(typeof TRANSACTION_STATUSES)[keyof typeof TRANSACTION_STATUSES]>(),
+  // R-108: the value at receipt, what it was, whether the user may label it, and the invoice money in paid.
+  usdValue: usdAmount,
+  classification: openEnum<TransactionClass>(),
+  labelable: z.boolean(),
+  invoice: z
+    .object({ invoiceId: hash32, number: count, clientName: z.string().nullable() })
+    .nullable(),
 });
 
 export const transactionsPageSchema = pageOf(transactionSchema);

@@ -21,3 +21,21 @@ export const RELATIVE_DAYS = {
 
 export const TRANSACTIONS_PAGE_SIZE = 20;
 export const TRANSACTIONS_MAX = 100;
+
+/** What a transaction was (R-108); money in that Forwend can't classify takes one of TRANSACTION_LABELS. */
+export const TRANSACTION_CLASSES = {
+  invoice: "invoice",
+  ownTransfer: "own_transfer",
+  sent: "sent",
+  unclassified: "unclassified",
+  income: "income",
+  refund: "refund",
+  other: "other",
+} as const;
+
+export const TRANSACTION_LABELS = [
+  TRANSACTION_CLASSES.income,
+  TRANSACTION_CLASSES.ownTransfer,
+  TRANSACTION_CLASSES.refund,
+  TRANSACTION_CLASSES.other,
+] as const;

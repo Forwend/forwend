@@ -1,4 +1,8 @@
-import { TRANSACTION_FILTERS } from "@/features/transactions/constants/transactions";
+import {
+  TRANSACTION_CLASSES,
+  TRANSACTION_FILTERS,
+} from "@/features/transactions/constants/transactions";
+import type { TransactionClass } from "@/features/transactions/types/transactions";
 
 export const TRANSACTIONS_COPY = {
   transactions: "Transactions",
@@ -25,8 +29,31 @@ export const TRANSACTIONS_COPY = {
   searchPlaceholder: "Search address, hash or token",
   exportCsv: "Export CSV",
   csvFile: "forwend-transactions.csv",
+  exportTitle: "Export transactions",
+  exportText:
+    "Every transaction in the days you choose (UTC), with its USD value, type, invoice and client. Leave a day empty for no limit.",
+  exportFrom: "From",
+  exportTo: "To",
+  exportCancel: "Cancel",
+  exportDownload: "Download CSV",
+  exportFailed: "We could not export them. Check the days and try again.",
+  classes: {
+    [TRANSACTION_CLASSES.invoice]: "Invoice payment",
+    [TRANSACTION_CLASSES.ownTransfer]: "Own transfer",
+    [TRANSACTION_CLASSES.sent]: "Sent",
+    [TRANSACTION_CLASSES.unclassified]: "Unclassified",
+    [TRANSACTION_CLASSES.income]: "Income",
+    [TRANSACTION_CLASSES.refund]: "Refund",
+    [TRANSACTION_CLASSES.other]: "Other",
+  } satisfies Record<TransactionClass, string>,
+  invoicePaid: (number: string, client: string | null) =>
+    client ? `${number} · ${client}` : number,
+  typeOf: (amount: string, counterparty: string) => `Type of ${amount} in from ${counterparty}`,
+  typeRefused: "This transaction takes no type any more.",
+  typeFailed: "We could not save the type. Try again.",
   columns: {
     transaction: "Transaction",
+    type: "Type",
     network: "Network",
     date: "Date",
     status: "Status",

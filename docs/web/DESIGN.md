@@ -178,6 +178,15 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   (Today, Yesterday, then the weekday and date) and are two lines that never cut: the network is its logo on the
   corner of the direction icon (and in words for screen readers), the time and the explorer link sit under the other
   side, and the amount sits on the right.
+- Transactions' Type column (R-109) follows the Transaction column; on phones the type is a line under the row.
+  - An invoice payment is an underlined link: the invoice number, then the client after a middle dot.
+  - Own transfer and Sent are quiet text.
+  - Money in that Forwend can't classify has a compact select: Unclassified, Income, Own transfer, Refund, Other.
+  - A label the API refuses or fails to save says so in a warning toast.
+  - The overview's Recent transactions keeps its columns, with no type.
+- Export CSV opens a dialog: what the file holds, optional From and To days side by side, then Cancel and Download CSV.
+  - From and To are the browser's date fields, not the kit's DatePicker.
+  - The kit's calendar opens inside its field, so the dialog's scrolling body would cut it off.
 - Clients (R-86) is laid out like Invoices: the toolbar's search (name, email, tax ID) with Add client at its end
   (beside the title on phones), then a table of the client with its initials avatar, billing email, country and tax
   ID, where a row opens the client (a long country gives way to the name on phones). New client and Edit client are
