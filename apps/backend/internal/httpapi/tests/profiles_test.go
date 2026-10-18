@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"slices"
@@ -201,6 +203,11 @@ var profileRoutes = []struct{ method, path, body string }{
 	{"PUT", "/v1/profiles/%s/invoices/0x" + strings.Repeat("0", 64) + "/reminders", `{"on": false}`},
 	{"POST", "/v1/profiles/%s/invoices/0x" + strings.Repeat("0", 64) + "/repeat/stop", ""},
 	{"GET", "/v1/profiles/%s/owed", ""},
+	{"GET", "/v1/profiles/%s/invoices/0x" + strings.Repeat("0", 64), ""},
+	{"POST", "/v1/profiles/%s/invoices/0x" + strings.Repeat("0", 64) + "/cancel", ""},
+	{"GET", "/v1/profiles/%s/events", ""},
+	{"GET", "/v1/profiles/%s/notifications", ""},
+	{"PUT", "/v1/profiles/%s/notifications", `{"email": true}`},
 	{"POST", "/v1/profiles/%s/jobs", jobBody},
 	{"GET", "/v1/profiles/%s/jobs", ""},
 	{"GET", "/v1/profiles/%s/jobs/00000000-0000-0000-0000-000000000000", ""},
@@ -209,6 +216,30 @@ var profileRoutes = []struct{ method, path, body string }{
 	{"POST", "/v1/profiles/%s/jobs/00000000-0000-0000-0000-000000000000/payments",
 		`{"title": "Extra page", "amountUsd": "100", "dueDays": 7}`},
 	{"DELETE", "/v1/profiles/%s/jobs/00000000-0000-0000-0000-000000000000/payments/3", ""},
+}
+
+// Every profile route the API registers has a case in profileRoutes, so a new route can't skip the 403 test.
+func TestProfileRoutesAreAllListed(t *testing.T) {
+	files, err := filepath.Glob("../*/routes.go")
+	if err != nil || len(files) == 0 {
+		t.Fatalf("route files %v %v", files, err)
+	}
+	files = append(files, "../router.go")
+	registered := regexp.MustCompile(`mux\.Handle(?:Func)?\("(\w+) (/v1/profiles/\{profileId\}[^"]*)"`)
+	for _, file := range files {
+		src, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range registered.FindAllStringSubmatch(string(src), -1) {
+			pattern := regexp.MustCompile("^" + regexp.MustCompile(`\{\w+\}`).ReplaceAllString(m[2], `[^/]+`) + "$")
+			if !slices.ContainsFunc(profileRoutes, func(r struct{ method, path, body string }) bool {
+				return r.method == m[1] && pattern.MatchString(fmt.Sprintf(r.path, "p"))
+			}) {
+				t.Errorf("%s %s (%s) has no case in profileRoutes", m[1], m[2], file)
+			}
+		}
+	}
 }
 
 // Bob never sees Alice's profiles and gets 403 on every profile route for them; Alice passes the owner check.

@@ -309,18 +309,23 @@ R-100, D-81; the full schema is in openapi.yaml. A job is a quote with a payment
   - After acceptance only (409 `job_not_accepted`), in order (409 `payment_out_of_order`).
   - A payment that has its invoice answers the same; clicks at once replay one invoice.
   - The last payment's invoice note gives the job's total and each earlier payment, its invoice, amount and if it is paid.
-  - A change still waiting for the client doesn't count as the last payment (R-105).
+  - The final payment waits until no change does: while one waits it is 409 `change_pending` (R-105).
+  - Its invoice locks the job, so a change proposed meanwhile makes it read the job again.
   - Nothing is emailed: the job page then calls Send to client, with its limits (R-94).
 - `POST /v1/profiles/{profileId}/jobs/{jobId}/payments` (R-105) proposes a scope change, with an Idempotency-Key.
   - Body: `title`, `amountUsd` and `dueDays`, as a payment. It goes at the end of an accepted job's schedule.
   - A job not accepted yet is 409 `job_not_accepted`; past 10 payments it is 422.
   - One change waits at a time: another before the client accepts it is 409 `change_pending`.
+  - Once the last payment is done, the job is finished: a change is 409 `job_finished`.
+  - A job paid in full by its deposit never finishes this way: the deposit is invoiced at acceptance, not marked done.
+  - A withdrawn change keeps its key: the same request again answers 200 and adds nothing.
   - Until the client accepts it, marking it done is 409 `change_not_accepted`, and it doesn't count in the total.
 - `POST /v1/jobs/{token}/payments/{position}/accept` is the client's accept of a change: `{name, email, proposedAt}`.
   - `proposedAt` is the change's, with its microseconds, so consent can't land on a change proposed after it.
   - It keeps the name, email and time once. Another change, or a payment that is not one, is 404 `job_not_found`.
 - `DELETE /v1/profiles/{profileId}/jobs/{jobId}/payments/{position}` withdraws the change waiting for the client.
   - It is always the last payment, so positions keep no gap. Anything else is 409 `payment_not_withdrawable`.
+  - A position that doesn't exist is 404 `job_not_found`.
 - Each payment has `proposedAt`, `acceptedName` and `acceptedAt`, null for the quote's payments.
   - The owner's read adds `acceptedEmail`; the client's read never shows it.
 - `GET /v1/jobs/{token}` is the client's read, public like the checkout: no client block, typed email, job id or token.

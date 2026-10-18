@@ -102,29 +102,10 @@ func TestJobs(t *testing.T) {
 		}
 	}
 
-	// R-103: the next step marked done makes its invoice and keeps the delivery link, which the client's link shows.
 	done := func(id string, position int, body string) reply {
 		return e.call(t, "POST", fmt.Sprintf("%s/%s/payments/%d/done", jobs, id, position), alice, "", body)
 	}
-	if r := done(id, 9, `{}`); r.status != http.StatusNotFound {
-		t.Fatalf("payment 9: %d %v, want 404", r.status, r.body)
-	}
-	if r := done(id, 2, `{"deliveryLink": "http://drive.example"}`); r.status != http.StatusUnprocessableEntity {
-		t.Fatalf("http link: %d %v, want 422", r.status, r.body)
-	}
-	marked := done(id, 2, `{"deliveryLink": "https://drive.example/logo"}`)
-	final := marked.body["payments"].([]any)[1].(map[string]any)
-	if marked.status != http.StatusOK || final["invoiceId"] == nil || final["doneAt"] == nil ||
-		final["deliveryLink"] != "https://drive.example/logo" || final["status"] != "open" {
-		t.Fatalf("mark done: %d %v", marked.status, marked.body)
-	}
-	if link := e.call(t, "GET", "/v1/jobs/"+token, "", "", "").body["payments"].([]any)[1].(map[string]any)["deliveryLink"]; link != "https://drive.example/logo" {
-		t.Fatalf("the client's link shows delivery %v", link)
-	}
 	waiting := e.call(t, "POST", jobs, alice, "job-5", jobBody).body["jobId"].(string)
-	if r := done(waiting, 2, `{}`); r.status != http.StatusConflict || errorCode(r) != "job_not_accepted" {
-		t.Fatalf("before acceptance: %d %v, want 409 job_not_accepted", r.status, r.body)
-	}
 
 	// R-105: a change goes at the end; the client accepts it by the link, whose read never shows the typed email.
 	change := `{"title": "Extra page", "amountUsd": "150", "dueDays": 7}`
@@ -147,9 +128,16 @@ func TestJobs(t *testing.T) {
 	if r := done(id, 3, `{}`); r.status != http.StatusConflict || errorCode(r) != "change_not_accepted" {
 		t.Fatalf("mark an unaccepted change done: %d %v, want 409", r.status, r.body)
 	}
+	if r := done(id, 2, `{}`); r.status != http.StatusConflict || errorCode(r) != "change_pending" {
+		t.Fatalf("the final while a change waits: %d %v, want 409 change_pending", r.status, r.body)
+	}
 	acceptChange := func(position int) reply {
 		return e.call(t, "POST", fmt.Sprintf("/v1/jobs/%s/payments/%d/accept", token, position), "", "",
 			fmt.Sprintf(`{"name": "Jane Doe", "email": "jane@bob.example", "proposedAt": %q}`, third["proposedAt"]))
+	}
+	if r := e.call(t, "POST", "/v1/jobs/"+token+"/payments/3/accept", "", "",
+		`{"name": "Jane Doe", "email": "jane@bob.example"}`); r.status != http.StatusUnprocessableEntity {
+		t.Fatalf("accept without proposedAt: %d %v, want 422", r.status, r.body)
 	}
 	if r := acceptChange(1); r.status != http.StatusNotFound {
 		t.Fatalf("accept a payment of the quote as a change: %d %v, want 404", r.status, r.body)
@@ -171,7 +159,40 @@ func TestJobs(t *testing.T) {
 	if r := e.call(t, "DELETE", jobs+"/"+id+"/payments/4", alice, "", ""); r.status != http.StatusNoContent {
 		t.Fatalf("withdraw: %d %v, want 204", r.status, r.body)
 	}
+	// A late retry of the withdrawn change's request replays and adds nothing.
+	if r := e.call(t, "POST", jobs+"/"+id+"/payments", alice, "change-2", change); r.status != http.StatusOK ||
+		len(r.body["payments"].([]any)) != 3 {
+		t.Fatalf("retry the withdrawn change: %d %v, want 200 with 3 payments", r.status, r.body)
+	}
+
+	// R-103: the next step marked done makes its invoice and keeps the delivery link, which the client's link shows.
+	if r := done(id, 9, `{}`); r.status != http.StatusNotFound {
+		t.Fatalf("payment 9: %d %v, want 404", r.status, r.body)
+	}
+	if r := done(id, 2, `{"deliveryLink": "http://drive.example"}`); r.status != http.StatusUnprocessableEntity {
+		t.Fatalf("http link: %d %v, want 422", r.status, r.body)
+	}
+	marked := done(id, 2, `{"deliveryLink": "https://drive.example/logo"}`)
+	final := marked.body["payments"].([]any)[1].(map[string]any)
+	if marked.status != http.StatusOK || final["invoiceId"] == nil || final["doneAt"] == nil ||
+		final["deliveryLink"] != "https://drive.example/logo" || final["status"] != "open" {
+		t.Fatalf("mark done: %d %v", marked.status, marked.body)
+	}
+	if link := e.call(t, "GET", "/v1/jobs/"+token, "", "", "").body["payments"].([]any)[1].(map[string]any)["deliveryLink"]; link != "https://drive.example/logo" {
+		t.Fatalf("the client's link shows delivery %v", link)
+	}
+	if r := done(waiting, 2, `{}`); r.status != http.StatusConflict || errorCode(r) != "job_not_accepted" {
+		t.Fatalf("before acceptance: %d %v, want 409 job_not_accepted", r.status, r.body)
+	}
 	e.call(t, "DELETE", jobs+"/"+waiting, alice, "", "")
+	// R-105: once the last payment is done, more work is a new job.
+	if r := done(id, 3, `{}`); r.status != http.StatusOK {
+		t.Fatalf("mark the accepted change done: %d %v", r.status, r.body)
+	}
+	if r := e.call(t, "POST", jobs+"/"+id+"/payments", alice, "change-3", change); r.status != http.StatusConflict ||
+		errorCode(r) != "job_finished" {
+		t.Fatalf("a change on a finished job: %d %v, want 409 job_finished", r.status, r.body)
+	}
 
 	// R-101: an accepted job can't be deleted; one not accepted can, once.
 	if r := e.call(t, "DELETE", jobs+"/"+id, alice, "", ""); r.status != http.StatusConflict || errorCode(r) != "job_accepted" {
