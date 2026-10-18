@@ -12,9 +12,10 @@ import (
 )
 
 // Message is one email: a plain text part, and the designed HTML part when there is one. Key is the Idempotency-Key:
-// Resend sends one email per key for 24 hours, so a retry after a lost answer never sends twice. ReplyTo is optional.
+// Resend sends one email per key for 24 hours, so a retry after a lost answer never sends twice. ReplyTo is optional;
+// Unsubscribe, when set, is a one-click unsubscribe URL (RFC 8058) the mail provider may POST to.
 type Message struct {
-	To, Subject, Text, HTML, Key, ReplyTo string
+	To, Subject, Text, HTML, Key, ReplyTo, Unsubscribe string
 }
 
 // Sender sends one message; the worker's tests replace it.
@@ -42,6 +43,10 @@ func (r *Resend) Send(ctx context.Context, m Message) error {
 	}
 	if m.ReplyTo != "" {
 		fields["reply_to"] = m.ReplyTo
+	}
+	if m.Unsubscribe != "" {
+		fields["headers"] = map[string]string{"List-Unsubscribe": "<" + m.Unsubscribe + ">",
+			"List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
 	}
 	body, err := json.Marshal(fields)
 	if err != nil {

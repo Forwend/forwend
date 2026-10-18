@@ -111,8 +111,8 @@ The store holds only the RTK Query request cache. What exists:
 
 - `store/store.ts`: `makeStore`, `AppStore`, `RootState` and `AppDispatch`; one store per tab, never a server-wide
   singleton.
-- `providers/store-provider.tsx` (signed-in app, inside Privy) and `providers/public-store-provider.tsx` (`/pay`, no
-  token).
+- `providers/store-provider.tsx` (signed-in app, inside Privy) and `providers/public-store-provider.tsx` (`/pay` and
+  `/reminders/<token>`, no token).
 - `shared/api/api-slice.ts`: the one `apiSlice` with the common request setup. Each feature injects its endpoints in
   `features/<feature>/api/<feature>-api.ts` with `injectEndpoints`; no endpoints in the shared file and no second
   `createApi`.

@@ -27,9 +27,8 @@ type Owed struct {
 }
 
 // Owed lists the profile's invoices the payer can still pay that are overdue (due date before today's UTC date) or
-// partly paid, then every option with money held for the payer. What is left is the amount less the ledger's
-// recipient_payable credits: no settlement runs before the amount is in, so those credits are what the owner got. The
-// caller has checked that the user owns the profile.
+// partly paid, with what is left (PaidToOwnerSQL), then every option with money held for the payer. The caller has
+// checked that the user owns the profile.
 func (s *Service) Owed(ctx context.Context, profileID string) ([]Owed, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT kind, id, number, title, client_name, due_date, days_late, option_count, chain_id, token, symbol, decimals,
@@ -42,9 +41,7 @@ func (s *Service) Owed(ctx context.Context, profileID string) ([]Owed, error) {
 		           greatest((now() AT TIME ZONE 'UTC')::date - invoices.due_date, 0) AS days_late,
 		           (SELECT count(*) FROM invoices o WHERE o.id = invoices.id OR o.main_id = invoices.id) AS option_count,
 		           invoices.chain_id, invoices.token_contract AS token, t.symbol, t.decimals,
-		           invoices.amount + coalesce((SELECT sum(e.amount) FROM ledger_entries e
-		               JOIN ledger_transactions x ON x.id = e.transaction_id
-		               WHERE x.invoice_id = invoices.option_id AND e.account = 'recipient_payable'), 0) AS amount
+		           invoices.amount + `+PaidToOwnerSQL("invoices.option_id")+` AS amount
 		    FROM `+invoicesCurrent+` JOIN tokens t ON t.chain_id = invoices.chain_id AND t.contract = invoices.token_contract
 		    WHERE invoices.profile_id = $1 AND `+StatusFilterSQL+` = 'open'
 		      AND (invoices.due_date < (now() AT TIME ZONE 'UTC')::date OR invoices.payment_status = 'partially_paid')

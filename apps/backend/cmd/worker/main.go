@@ -13,6 +13,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/config"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/email"
+	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/notify"
 	"github.com/ensp1re/forwend/apps/backend/internal/worker"
 )
@@ -68,12 +69,17 @@ func run() error {
 		}
 		sender = r
 	}
+	invoices := invoice.NewService(pool)
 	slog.Info("worker ready", "every", cfg.Chains.PollInterval, "email", sender != nil)
 	for {
 		if err := lock.Held(ctx); err != nil {
 			return err
 		}
 		w.Round(ctx)
+		// Payment reminders (R-96) wait in the outbox like the other emails when there is no key.
+		if err := invoices.QueueReminders(ctx); err != nil {
+			slog.Error("queue reminders", "err", err)
+		}
 		if sender != nil {
 			if err := notify.Deliver(ctx, pool, sender, notify.Site{WebURL: cfg.Email.PublicWebURL, PostalAddress: cfg.Email.PostalAddress}); err != nil {
 				slog.Error("deliver email", "err", err)

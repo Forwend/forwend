@@ -73,6 +73,14 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
   invoice); an address given after that queues it at once. The worker sends it to that address whatever the owner's
   setting: the amount, the payee, the transaction and the receipt PDF. Limited per invoice (3, then one per 10 s) and
   for everyone together; per IP belongs to the edge (Q-8).
+- Payment reminders (R-96): each worker round (`invoice.QueueReminders`) queues `invoice.reminder` rows.
+  - Steps: `before` 3 days before the due date, `due` on it, `after` 7 days after, in UTC days.
+  - Only the latest step whose day has come is queued, once per invoice and step (a unique index on the step).
+  - It needs reminders on and not stopped, a client email, and the `open` status filter.
+  - At delivery the worker checks the same again, and that something is left; otherwise it sends nothing.
+  - The email names the issuer, number, what is left and the due date, with the pay page and `invoice.pdf`.
+  - Reply-To is the issuer's billing email. The footer links `/reminders/<token>`.
+  - `List-Unsubscribe` and `List-Unsubscribe-Post` headers point at the stop route (RFC 8058).
 - The owner's Send to client (R-94) goes to the invoice's client email whatever the owner's setting. It names the
   issuer, number, amount and due date, and links the pay page and `invoice.pdf`. A payer-chooses invoice shows USD.
   Its Reply-To is the issuer's billing email, so a reply reaches the owner.
@@ -183,6 +191,15 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - One send per invoice in 24 hours and 20 per profile in 24 hours, counted from `outbox_events` under a profile lock.
   - Sends share the limit for everyone with the payer's receipt address. Past any limit: 429 with Retry-After.
   - The owner's reads return `sends`, oldest first: `{requestedAt, sentAt, failedAt}`. The bell leaves sends out.
+- `PUT /v1/profiles/{profileId}/invoices/{invoiceId}/reminders` (R-96, D-69) takes `{"on": true|false}`.
+  - On needs the `open` status filter, a due date and a client email. Otherwise 409 `invoice_closed`,
+    `due_date_required` or `client_email_required`.
+  - After the client stopped them, on is 409 `reminders_stopped`. Off always works.
+  - The first call makes the row in `invoice_reminders` with a random 32-byte stop token.
+  - The owner's reads return `reminders`: `{on, stoppedAt, emails}`, each email with its `step`.
+- `POST /v1/reminders/{token}/stop` is public: the client's stop link and one-click List-Unsubscribe-Post.
+  - It reads no body, sets `stopped_at` once and answers `{number, from}`, the same when already stopped.
+  - An unknown token is 404 `invoice_not_found`.
 - `GET /v1/profiles/{profileId}/owed` (R-95) lists what clients still owe, for the Owed to you panel.
   - Unpaid rows: invoices under the `open` status filter that are overdue or partly paid.
   - Overdue means the due date is before today's UTC date; `daysLate` counts whole UTC days.
@@ -314,7 +331,7 @@ seconds (when the next token is back) and runs nothing else.
   read and no other holds unrecorded money, it is 503: another option's empty read never answers for it. A rescan is asked only when the address holds more than is
   recorded and no rescan finished in the last 10 minutes, so money no log explains (Arc native USDC) doesn't start a
   full rescan on every press.
-- The other public routes (`GET /v1/invoices/{invoiceId}` and both PDFs) have no limit in the api. Next's `/api` rewrite adds
+- The other public routes (`GET /v1/invoices/{invoiceId}`, both PDFs and `POST /v1/reminders/{token}/stop`) have no limit in the api. Next's `/api` rewrite adds
   no `X-Forwarded-For` of its own and passes a client's header through unchanged (measured 2026-10-15 with a stub
   behind `next start`: no header without one, a sent `1.2.3.4` arrived as is), so the api sees one address for every
   payer and cannot trust the header. Limit them

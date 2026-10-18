@@ -139,13 +139,31 @@ type ownerInvoiceJSON struct {
 	invoiceDetailJSON
 	SettlementWait *settlementWaitJSON `json:"settlementWait"`
 	Sends          []sendJSON          `json:"sends"`
+	Reminders      remindersJSON       `json:"reminders"`
 }
 
-// sendJSON is one Send to client (R-94): sentAt and failedAt stay null while the email waits.
+// sendJSON is one email to the client (R-94, R-96): sentAt and failedAt stay null while the email waits.
 type sendJSON struct {
 	RequestedAt string  `json:"requestedAt"`
 	SentAt      *string `json:"sentAt"`
 	FailedAt    *string `json:"failedAt"`
+}
+
+// remindersJSON is the invoice's payment reminders (R-96): stoppedAt is when the client stopped them.
+type remindersJSON struct {
+	On        bool           `json:"on"`
+	StoppedAt *string        `json:"stoppedAt"`
+	Emails    []reminderJSON `json:"emails"`
+}
+
+type reminderJSON struct {
+	Step string `json:"step"`
+	sendJSON
+}
+
+func toSendJSON(s invoice.Send) sendJSON {
+	return sendJSON{RequestedAt: s.RequestedAt.Format(time.RFC3339), SentAt: httpio.OrNullTime(s.SentAt),
+		FailedAt: httpio.OrNullTime(s.FailedAt)}
 }
 
 type settlementWaitJSON struct {
@@ -228,10 +246,14 @@ func toDepositsJSON(deposits []invoice.Deposit) []depositJSON {
 }
 
 func toOwnerInvoiceJSON(inv invoice.Invoice) ownerInvoiceJSON {
-	out := ownerInvoiceJSON{invoiceDetailJSON: toInvoiceDetailJSON(inv, true), Sends: []sendJSON{}}
+	out := ownerInvoiceJSON{invoiceDetailJSON: toInvoiceDetailJSON(inv, true), Sends: []sendJSON{},
+		Reminders: remindersJSON{On: inv.Reminders.On, StoppedAt: httpio.OrNullTime(inv.Reminders.StoppedAt),
+			Emails: []reminderJSON{}}}
 	for _, s := range inv.Sends {
-		out.Sends = append(out.Sends, sendJSON{RequestedAt: s.RequestedAt.Format(time.RFC3339),
-			SentAt: httpio.OrNullTime(s.SentAt), FailedAt: httpio.OrNullTime(s.FailedAt)})
+		out.Sends = append(out.Sends, toSendJSON(s))
+	}
+	for _, r := range inv.Reminders.Emails {
+		out.Reminders.Emails = append(out.Reminders.Emails, reminderJSON{Step: r.Step, sendJSON: toSendJSON(r)})
 	}
 	if w := inv.SettlementWait; w != nil {
 		out.SettlementWait = &settlementWaitJSON{Kind: w.Kind, Until: httpio.OrNullTime(w.Until)}
@@ -249,6 +271,12 @@ type recheckJSON struct {
 	Rescanning  bool     `json:"rescanning"`
 	NextCheckAt string   `json:"nextCheckAt"`
 	Unreadable  []uint64 `json:"unreadable"`
+}
+
+// stoppedJSON answers the client's stop link (R-96): which invoice, and who sent it.
+type stoppedJSON struct {
+	Number int64   `json:"number"`
+	From   *string `json:"from"`
 }
 
 type owedListJSON struct {

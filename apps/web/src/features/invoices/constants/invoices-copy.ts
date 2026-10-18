@@ -12,6 +12,7 @@ import {
   INVOICE_STEPS,
   LINE_LIMITS,
   OWED_KINDS,
+  REMINDER_STEPS,
   SETTLEMENT_WAITS,
 } from "@/features/invoices/constants/invoices";
 import type {
@@ -22,6 +23,7 @@ import type {
   OwedKind,
   PayWith,
   Recheck,
+  ReminderStep,
   SettlementWaitKind,
 } from "@/features/invoices/types/invoices";
 
@@ -395,6 +397,38 @@ export const INVOICE_COPY = {
     limited: "You can't send more emails right now. Try again later.",
     error: "We could not send it. Try again.",
   },
+  // Payment reminders (R-96), under Send to client.
+  reminders: {
+    toggle: "Payment reminders",
+    hint: "Emails the client 3 days before the due date, on it and 7 days after, until it is paid.",
+    needsDue: "Reminders need a due date, so they are off for this invoice.",
+    stopped: (time: string) => `The client stopped reminders on ${time}.`,
+    steps: {
+      [REMINDER_STEPS.before]: "Reminder before the due date",
+      [REMINDER_STEPS.due]: "Reminder on the due date",
+      [REMINDER_STEPS.after]: "Reminder after the due date",
+    } satisfies Record<ReminderStep, string>,
+    sent: (time: string) => `emailed ${time}`,
+    sending: "sending…",
+    failed: "could not be sent",
+    saved: (on: boolean) => (on ? "Payment reminders on" : "Payment reminders off"),
+    conflict: "Reminders can't be turned on for this invoice now.",
+    error: "We could not save it. Try again.",
+  },
+} as const;
+
+// The client's page to stop payment reminders (R-96).
+export const STOP_REMINDERS_COPY = {
+  title: "Stop payment reminders?",
+  body: "You will get no more payment reminders for this invoice. The invoice and its payment page stay as they are.",
+  action: "Stop reminders",
+  doneTitle: "Reminders stopped",
+  // Before the invoice number, kept on one line, and after it.
+  doneFor: "You will get no more payment reminders for",
+  doneFrom: (from: string | null) => (from ? ` from ${from}.` : "."),
+  notFound:
+    "This link does not stop any reminders. Check that you opened the whole link from the email.",
+  failed: "We could not stop them. Try again.",
 } as const;
 
 // Owed to you on the business overview (R-95).

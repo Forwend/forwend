@@ -12,6 +12,7 @@ import type {
   LINE_ERRORS,
   OWED_KINDS,
   PAY_WITH,
+  REMINDER_STEPS,
   SETTLEMENT_WAITS,
 } from "@/features/invoices/constants/invoices";
 import type {
@@ -23,6 +24,7 @@ import type {
   invoiceIssuerSchema,
   invoiceLineSchema,
   invoiceOptionSchema,
+  invoiceRemindersSchema,
   invoiceSchema,
   invoiceSendSchema,
   invoiceSummarySchema,
@@ -30,11 +32,15 @@ import type {
   owedSchema,
   recheckSchema,
   settlementWaitSchema,
+  stoppedRemindersSchema,
 } from "@/features/invoices/schemas/invoices";
 
 export type PayWith = (typeof PAY_WITH)[keyof typeof PAY_WITH];
 export type InvoiceEventKind = (typeof INVOICE_EVENTS)[keyof typeof INVOICE_EVENTS];
 export type OwedKind = (typeof OWED_KINDS)[keyof typeof OWED_KINDS];
+export type ReminderStep = (typeof REMINDER_STEPS)[keyof typeof REMINDER_STEPS];
+export type InvoiceReminders = z.infer<typeof invoiceRemindersSchema>;
+export type StoppedReminders = z.infer<typeof stoppedRemindersSchema>;
 export type Owed = z.infer<typeof owedSchema>;
 export type InvoiceEvent = z.infer<typeof invoiceEventSchema>;
 export type InvoiceExceptionKind = (typeof INVOICE_EXCEPTIONS)[keyof typeof INVOICE_EXCEPTIONS];

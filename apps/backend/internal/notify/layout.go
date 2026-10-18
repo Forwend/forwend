@@ -46,6 +46,9 @@ type view struct {
 	Button             button
 	Reason, Settings   string // why it was sent; the email settings link for owner emails
 	ReplyTo            string // where the recipient's reply goes; Forwend's From address when empty
+	// Stop is the client's page to stop reminders (R-96), linked in the footer; Unsubscribe is the one-click
+	// List-Unsubscribe URL for mail providers.
+	Stop, Unsubscribe string
 }
 
 // render fills the layout; it fails only on a bug in the template, which the tests render for every kind.

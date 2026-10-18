@@ -10,6 +10,7 @@ import (
 
 	"github.com/ensp1re/forwend/apps/backend/internal/finality"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
+	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -88,7 +89,10 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 		if inv.SettlementWait, err = s.settlementWait(ctx, inv, head); err != nil {
 			return Invoice{}, err
 		}
-		inv.Sends, err = s.sends(ctx, inv.ID)
+		if inv.Sends, err = s.emails(ctx, inv.ID, outbox.Sent); err != nil {
+			return Invoice{}, err
+		}
+		inv.Reminders, err = s.reminders(ctx, inv.ID)
 		return inv, err
 	}
 	return inv, err

@@ -144,6 +144,43 @@ func sendInvoice(invoices *invoice.Service, emails *mid.Buckets) http.HandlerFun
 	}
 }
 
+// putReminders is PUT /v1/profiles/{profileId}/invoices/{invoiceId}/reminders (R-96): {"on": true|false}; 200 with the
+// invoice. On is 409 invoice_closed, due_date_required, client_email_required or reminders_stopped.
+func putReminders(invoices *invoice.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			On *bool `json:"on"`
+		}
+		if err := httpio.DecodeJSON(w, r, &body); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		if body.On == nil {
+			httpio.WriteError(w, r, fmt.Errorf("%w: on must be true or false", invoice.ErrInvalid))
+			return
+		}
+		inv, err := invoices.SetReminders(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"), *body.On)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, toOwnerInvoiceJSON(inv))
+	}
+}
+
+// stopReminders is POST /v1/reminders/{token}/stop (R-96): public, the client's stop link and one-click
+// List-Unsubscribe-Post. It reads no body, so the mail provider's "List-Unsubscribe=One-Click" form works too.
+func stopReminders(invoices *invoice.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		number, from, err := invoices.StopReminders(r.Context(), r.PathValue("token"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, stoppedJSON{Number: number, From: httpio.OrNull(from)})
+	}
+}
+
 // getProfileInvoice is GET /v1/profiles/{profileId}/invoices/{invoiceId}: the public read with the client's details.
 func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

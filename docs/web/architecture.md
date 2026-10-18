@@ -1,7 +1,8 @@
 # Web architecture
 
 One Next.js app (App Router, TypeScript strict) for every surface: landing `/`, private `/kit`, the signed-in
-app `/app` and the public checkout `/pay/<invoice>` (PROJECT D-2). Rules: [rules.md](rules.md).
+app `/app`, the public checkout `/pay/<invoice>` and the public stop reminders page `/reminders/<token>` (PROJECT D-2,
+R-96). Rules: [rules.md](rules.md).
 Whole system: [architecture.md](../architecture.md).
 
 ## Parts
@@ -10,7 +11,7 @@ Whole system: [architecture.md](../architecture.md).
 |---|---|
 | `packages/design-tokens` | Every color, type size, space, radius, shadow, blur and duration as CSS variables, light and dark (D-4). Tailwind v4 reads them; a unit test checks contrast (R-2). |
 | `packages/ui-web` | Shared React components built only on the tokens: buttons, fields, address, payment status and money display, motion, theme switch. Money is `bigint` base units plus decimals (D-6). |
-| `apps/web` | Routes, screens and features: landing, kit, `/app`, `/pay`. Imports tokens and components; adds no raw colors or sizes. |
+| `apps/web` | Routes, screens and features: landing, kit, `/app`, `/pay`, `/reminders`. Imports tokens and components; adds no raw colors or sizes. |
 | `/kit` | Shows every token and component with all states; private (`KIT_ENABLED=1`, `noindex`, not in the sitemap) (D-5, R-4). |
 
 The source layout and naming rules are in [structure.md](structure.md): routes assemble screens,

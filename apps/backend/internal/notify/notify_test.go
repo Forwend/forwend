@@ -406,3 +406,57 @@ func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
 		t.Fatalf("payer-chooses email %+v", f.sent[len(f.sent)-1])
 	}
 }
+
+// R-96: a reminder goes to the client with what is left, the due date, Reply-To the issuer, a stop link and one-click
+// unsubscribe; checked again when sent, so none goes once the client stopped them or the invoice was paid.
+func TestDeliverSendsTheReminderToTheClient(t *testing.T) {
+	pool, id := setup(t, "owner@example.com")
+	exec(t, pool, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard, DISABLE TRIGGER invoices_number")
+	exec(t, pool, `UPDATE invoices SET client_email = 'ap@client.example', issuer_name = 'Alice Design GmbH',
+		issuer_email = 'billing@alice.example', due_date = '2026-11-30' WHERE id = $1`, id)
+	exec(t, pool, "ALTER TABLE invoices ENABLE TRIGGER invoices_guard, ENABLE TRIGGER invoices_number")
+	token := strings.Repeat("cd", 32)
+	exec(t, pool, "INSERT INTO invoice_reminders (invoice_id, enabled, stop_token) VALUES ($1, true, $2)", id, token)
+	remind := func(step string) {
+		t.Helper()
+		exec(t, pool, `INSERT INTO outbox_events (kind, invoice_id, payload) VALUES ('invoice.reminder', $1,
+			jsonb_build_object('option', $1::text, 'step', $2::text))`, id, step)
+	}
+	f := &fake{}
+	deliver := func() {
+		t.Helper()
+		if err := Deliver(context.Background(), pool, f, site); err != nil {
+			t.Fatal(err)
+		}
+	}
+	remind("after")
+	deliver()
+	if len(f.sent) != 1 {
+		t.Fatalf("sent %d, want the reminder", len(f.sent))
+	}
+	m := f.sent[0]
+	if m.To != "ap@client.example" || m.ReplyTo != "billing@alice.example" ||
+		m.Subject != "Reminder: INV-0001 is overdue (Alice Design GmbH)" ||
+		m.Unsubscribe != web+"/api/v1/reminders/"+token+"/stop" {
+		t.Fatalf("reminder %+v", m)
+	}
+	for _, want := range []string{"Alice Design GmbH reminds you that INV-0001 was due on 2026-11-30: 5.00 USDC left to pay.",
+		"View and pay: " + web + "/pay/" + id, "Stop reminders: " + web + "/reminders/" + token} {
+		if !strings.Contains(m.Text, want) {
+			t.Fatalf("text %q lacks %q", m.Text, want)
+		}
+	}
+
+	// Stopped after it was queued, or paid: nothing goes, and nothing waits.
+	remind("due")
+	exec(t, pool, "UPDATE invoice_reminders SET stopped_at = now()")
+	deliver()
+	exec(t, pool, "UPDATE invoice_reminders SET stopped_at = NULL")
+	exec(t, pool, "UPDATE invoices SET payment_status = 'paid' WHERE id = $1", id)
+	remind("before")
+	deliver()
+	if len(f.sent) != 1 || count(t, pool, "published_at IS NULL") != 0 {
+		t.Fatalf("sent %d, unpublished %d: want nothing more sent and nothing waiting", len(f.sent),
+			count(t, pool, "published_at IS NULL"))
+	}
+}

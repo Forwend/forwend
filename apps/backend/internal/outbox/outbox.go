@@ -19,12 +19,16 @@ const (
 	Receipt = "invoice.receipt" // the payer's receipt, to the address they gave (R-82); at most one per invoice
 	Welcome = "account.welcome" // a new account's welcome, to its login email (R-84); at most one per user
 	Sent    = "invoice.sent"    // the invoice, to its client's email when the owner presses Send to client (R-94)
+	// A payment reminder to the client's email (R-96); at most one per invoice and step.
+	Reminder = "invoice.reminder"
 )
 
-// Payload names the option row the event happened on (its token and network) and, for held money, the amount.
+// Payload names the option row the event happened on (its token and network), for held money the amount, and for a
+// reminder its step.
 type Payload struct {
 	Option string `json:"option"`
 	Amount string `json:"amount,omitempty"`
+	Step   string `json:"step,omitempty"`
 }
 
 // QueueReceipt adds the payer's receipt for the invoice that option belongs to, when the payer gave an address and no
