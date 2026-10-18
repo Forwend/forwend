@@ -441,7 +441,7 @@
       "dependsOn": [
         "F225"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -517,8 +517,8 @@
         "taskHash": "601f4ff597bef0a1",
         "filesHash": "90512ab6e69706ed",
         "proof": {
-          "1": "unit: httpapi/tests/invoices_reminders_test.go TestRemindersFromCreate: a saved client keeps reminders true and false when left out; create with reminders true answers reminders.on true, the same request with the same key is 200, the same key without reminders is 409 idempotency_conflict, and reminders without a due date or a client email is 422; clients_test.go expects the reminders field; invoices.test.ts restartFrom copies reminders on and not stopped to a duplicate only; e2e/privy/invoices.spec.ts: the client form's Start new invoices with payment reminders on, Send payment reminders checked after picking the client and on Duplicate, and the invoice starting with the switch on",
-          "2": "docs-check: openapi.yaml adds reminders to ClientRequest, Client and CreateInvoiceRequest; docs/backend/api.md (Clients, Invoices, the invoice_reminders row), architecture.md (clients columns) and DESIGN.md (Clients form, New invoice Dates with the checkbox last) describe the field and the checkboxes; e2e: axe 0 on the invoice page with the switch; screenshots docs/runs/F226-client-form.png, F226-new-invoice.png"
+          "1": "unit: httpapi/tests/invoices_reminders_test.go TestRemindersFromCreate; invoices.test.ts restartFrom; e2e: e2e/privy/invoices.spec.ts",
+          "2": "docs-check: openapi.yaml, docs/backend/api.md, architecture.md, DESIGN.md"
         },
         "review": {
           "result": "pass",
@@ -526,11 +526,18 @@
           "summary": "Re-review of 6632199. The three blocking findings are fixed. architecture.md:132 lists reminders in the clients columns. The New invoice checkbox now sits last in Dates, after Checkout closes after (new-invoice-form.tsx:645-667). DESIGN.md keeps its Dates order true, and the new screenshot shows it. The facts moved into the New invoice and Clients bullets, and the misplaced Billed to bullet is gone. api.md keeps the client PUT bullet whole, gives reminders its own bullet, and says a create with reminders true also makes the invoice_reminders row. The restartFrom comment and R-97 now say a stopped client gives an unchecked copy. Nothing else changed in the fix commit. Non-blocking: the new DESIGN.md sentence on the checkbox (lines 215-218) has about 45 words, over D-84's 25; the bullet around it was already long. The restartFrom comment line at lib/invoices.ts:287 is about 170 characters, past the file's wrap. Left for the owner: hint and error props on the shared Checkbox, role=alert on its error, and the request mode state. Checks run: pnpm lint ok (644 files), web test 90 passed, check-docs 0 errors, no anvil left. Earlier on 91f4e1c: backend test ok, typecheck ok.",
           "at": "2026-10-18T03:42:59Z",
           "filesHash": "90512ab6e69706ed"
-        }
+        },
+        "commit": "7543f2f",
+        "doneAt": "2026-10-18T03:43:19Z"
       },
       "branch": "feat/f226-a-saved-client-can-start-its-new-invoice",
       "baseCommit": "69a754e8bf4cb07a0f68239129a47a1b4f6af989",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f226-a-saved-client-can-start-its-new-invoice",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
