@@ -1,6 +1,7 @@
 # Web app
 
-Next.js app: landing page, private `/kit`, signed-in `/app` and public checkout `/pay/<id>`.
+Next.js app: landing page, private `/kit`, signed-in `/app`, public checkout `/pay/<id>` and the public
+stop reminders page `/reminders/<token>`.
 
 ## Commands
 

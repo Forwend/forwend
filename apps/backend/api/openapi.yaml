@@ -544,7 +544,6 @@ paths:
                   number: { type: integer, minimum: 1 }
                   from: { type: [string, "null"], description: The issuer's name, else the sender name. }
         "404": { $ref: "#/components/responses/InvoiceNotFound" }
-        "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/balances:
     get:
