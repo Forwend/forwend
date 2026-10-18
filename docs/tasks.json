@@ -912,7 +912,7 @@
         "openapi.yaml, docs/backend/api.md and docs/backend/architecture.md describe the routes, rules and tables."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "docs-check"
@@ -1008,11 +1008,18 @@
           "summary": "PASS. Every finding from the first review is fixed, and all four acceptance lines hold.\n\nFixed and checked:\n1. apps/backend/api/openapi.yaml:775 and :795 now mark GET /v1/jobs/{token} and POST /v1/jobs/{token}/accept with `security: []`. That matches jobapi/routes.go:25-28 and api.md (Auth).\n2. Midnight case. job/accept.go:51-55 treats invoice.ErrConflict as a sign that another accept already made the deposit, then reads the job again. If the job is accepted, it returns that job.\n   - The ErrConflict can only come from a committed row: the replay read, or the unique-key wait. So the winner's acceptance, made in the same transaction, is already visible.\n   - TestAcceptAcrossMidnight (accept_test.go:155-198) holds two accepts on the profile lock, one second before and one second after UTC midnight. Both get the same deposit.\n   - If the key was taken some other way (only the owner could do that) and the job is not accepted, it still answers 409. This harms only the owner.\n3. The api.md Idempotency section (line 333) names the accept route as an exception.\n4. api.md:302 says the public read has no \"client block, typed email, job id or token\".\n\nMinor points from the first review, now fixed:\n- The accept error text no longer has the job id (accept.go:59).\n- The rate-limit text is split into short bullets (api.md:383-385), and the architecture.md:179-181 jobs row is split into short sentences.\n- jobs_test.go:81-84 checks the 404 job_not_found on accept.\n- One job.USD (job.go:79) is used by accept.go and jobapi/model.go.\n- The job request hash (create.go:81-87) is now a fixed format: %q-quoted strings, then cents, dueDays and onAccept for each payment. A new ClientDetails field can no longer change stored hashes.\n\nStill open, not blocking:\n- Five {profileId} routes were already missing from profileRoutes before this task: GET events, GET invoices/{invoiceId}, POST invoices/{invoiceId}/cancel, and GET and PUT notifications. Each has its own 403 test. But api.md:353 says every route is listed. The coordinator will report this to the user.\n- A public 422 on accept can still show the owner's limit state, for example the open receive address cap. It no longer shows any id.\n- httpio/errors.go:78 logs the request path on a 500, and that path includes the link token. The reminder stop token already works this way.\n- For later 10.3 tasks:\n  - The key job:<id>:<position> cannot make a new invoice after that payment's invoice expires or is canceled.\n  - The position <= 10 CHECK and the single set of accepted_* columns mean scope-change milestones need a migration.\n  - MaxJobs 1000 counts every job ever made, with no delete.\n\nRan:\n- `python3 scripts/check-docs.py`: 0 errors.\n- gofmt -l and go vet on job, httpapi and tests: clean.\n- `sh scripts/with-env.sh go test -race ./internal/job/ ./internal/invoice/ ./internal/httpapi/tests/ -count=1`: all ok.",
           "at": "2026-10-18T13:03:07Z",
           "filesHash": "fca296c6ec8c85d5"
-        }
+        },
+        "commit": "fca2441",
+        "doneAt": "2026-10-18T13:03:25Z"
       },
       "branch": "feat/f230-a-freelancer-can-create-a-job-a-quote-wi",
       "baseCommit": "121bf061035e05ac6547ee3a7815bc2e5dcde453",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f230-a-freelancer-can-create-a-job-a-quote-wi",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
