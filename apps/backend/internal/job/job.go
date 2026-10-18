@@ -34,6 +34,12 @@ var (
 	ErrNotAccepted = errors.New("the client has not accepted the job")
 	// ErrOutOfOrder: the steps are marked done in order, and an earlier payment has no invoice yet.
 	ErrOutOfOrder = errors.New("an earlier payment has no invoice yet")
+	// ErrChangeNotAccepted: a scope change is marked done only once the client accepted it.
+	ErrChangeNotAccepted = errors.New("the client has not accepted this change")
+	// ErrChangePending: one change waits for the client at a time, so each is accepted in order.
+	ErrChangePending = errors.New("a change waits for the client's acceptance")
+	// ErrNotWithdrawable: only the last payment, a change the client has not accepted, can be withdrawn.
+	ErrNotWithdrawable = errors.New("only the last payment, a change not accepted yet, can be withdrawn")
 )
 
 // Request is a new job as the owner sends it. Client needs a name and an email: payments are billed there.
@@ -71,6 +77,12 @@ type Payment struct {
 	// zero until then.
 	InvoicedAt time.Time
 	PaidAt     time.Time
+	// A scope change (R-105): when the owner proposed it, and the client's typed name, email and time once they
+	// accepted it; zero and "" for the payments of the quote.
+	ProposedAt    time.Time
+	AcceptedName  string
+	AcceptedEmail string
+	AcceptedAt    time.Time
 }
 
 // Job is a quote and what came of it. The client's typed name and email are set once accepted.
@@ -94,11 +106,14 @@ func USD(cents int64) string {
 	return fmt.Sprintf("%d.%02d", cents/100, cents%100)
 }
 
-// TotalCents is what the whole job costs: the sum of its payments.
+// TotalCents is what the whole job costs: the sum of its payments the client agreed to, so a change counts once
+// accepted (R-105).
 func (j Job) TotalCents() int64 {
 	var total int64
 	for _, p := range j.Payments {
-		total += p.AmountCents
+		if p.ProposedAt.IsZero() || !p.AcceptedAt.IsZero() {
+			total += p.AmountCents
+		}
 	}
 	return total
 }

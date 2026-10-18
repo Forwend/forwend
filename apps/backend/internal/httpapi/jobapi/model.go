@@ -47,8 +47,10 @@ type jobJSON struct {
 	JobID string `json:"jobId"`
 	Token string `json:"token"`
 	publicJobJSON
-	Client        clientJSON `json:"client"`
-	AcceptedEmail *string    `json:"acceptedEmail"`
+	// The public payments with each change's typed email; it shadows the embedded field.
+	Payments      []ownerPaymentJSON `json:"payments"`
+	Client        clientJSON         `json:"client"`
+	AcceptedEmail *string            `json:"acceptedEmail"`
 }
 
 // paymentJSON is one payment; invoiceId, number, status and invoicedAt are null until its invoice is made, doneAt and
@@ -66,6 +68,16 @@ type paymentJSON struct {
 	DeliveryLink *string `json:"deliveryLink"`
 	InvoicedAt   *string `json:"invoicedAt"`
 	PaidAt       *string `json:"paidAt"`
+	// A scope change (R-105): null for the quote's payments, and acceptedName and acceptedAt until the client accepts.
+	ProposedAt   *string `json:"proposedAt"`
+	AcceptedName *string `json:"acceptedName"`
+	AcceptedAt   *string `json:"acceptedAt"`
+}
+
+// ownerPaymentJSON adds the client's typed email on an accepted change, for the owner only.
+type ownerPaymentJSON struct {
+	paymentJSON
+	AcceptedEmail *string `json:"acceptedEmail"`
 }
 
 type issuerJSON struct {
@@ -105,7 +117,9 @@ func toPublicJobJSON(j job.Job) publicJobJSON {
 		pj := paymentJSON{Position: p.Position, Title: p.Title, AmountUSD: job.USD(p.AmountCents), DueDays: p.DueDays,
 			OnAccept: p.OnAccept, InvoiceID: httpio.OrNull(p.InvoiceID), Status: httpio.OrNull(p.Status),
 			DoneAt: httpio.OrNullTime(p.DoneAt), DeliveryLink: httpio.OrNull(p.DeliveryLink),
-			InvoicedAt: httpio.OrNullTime(p.InvoicedAt), PaidAt: httpio.OrNullTime(p.PaidAt)}
+			InvoicedAt: httpio.OrNullTime(p.InvoicedAt), PaidAt: httpio.OrNullTime(p.PaidAt),
+			ProposedAt: proposedAt(p.ProposedAt), AcceptedName: httpio.OrNull(p.AcceptedName),
+			AcceptedAt: httpio.OrNullTime(p.AcceptedAt)}
 		if p.InvoiceID != "" {
 			pj.Number = &p.Number
 		}
@@ -114,12 +128,25 @@ func toPublicJobJSON(j job.Job) publicJobJSON {
 	return out
 }
 
+// proposedAt keeps the microseconds the database stores: the client's accept names the change by it (R-105).
+func proposedAt(t time.Time) *string {
+	if t.IsZero() {
+		return nil
+	}
+	return httpio.OrNull(t.Format(time.RFC3339Nano))
+}
+
 func toJobJSON(j job.Job) jobJSON {
 	c := j.Client
-	return jobJSON{JobID: j.ID, Token: j.Token, publicJobJSON: toPublicJobJSON(j),
+	out := jobJSON{JobID: j.ID, Token: j.Token, publicJobJSON: toPublicJobJSON(j), Payments: []ownerPaymentJSON{},
 		Client: clientJSON{Name: c.Name, Email: c.Email, Address: httpio.OrNull(c.Address),
 			Country: httpio.OrNull(c.Country), TaxID: httpio.OrNull(c.TaxID)},
 		AcceptedEmail: httpio.OrNull(j.AcceptedEmail)}
+	for i, p := range out.publicJobJSON.Payments {
+		out.Payments = append(out.Payments, ownerPaymentJSON{paymentJSON: p,
+			AcceptedEmail: httpio.OrNull(j.Payments[i].AcceptedEmail)})
+	}
+	return out
 }
 
 func toJobSummaryJSON(s job.Summary) jobSummaryJSON {

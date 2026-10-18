@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 235,
+  "nextId": 236,
   "tasks": [
     {
       "id": "F222",
@@ -1477,6 +1477,126 @@
       "delivery": {
         "mode": "pr",
         "branch": "feat/f234-a-job-shows-a-dated-record-of-the-quote",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F235",
+      "type": "feat",
+      "behavior": "The owner can propose a scope change on an accepted job, a new payment at the end that the client accepts by link like the quote; the owner can withdraw it until then",
+      "acceptance": [
+        "POST /v1/profiles/{id}/jobs/{jobId}/payments (Idempotency-Key) adds a change {title, amountUsd, dueDays} at the end of an accepted job's schedule (409 job_not_accepted before; 409 change_pending while another waits; 422 past 10 payments or for bad values; the same request replays; another user 403).",
+        "POST /v1/jobs/{token}/payments/{position}/accept (public, limited like accept) takes {name, email, proposedAt} and records the name, email and time on that exact change, the same answer twice; another change at the position, or a payment that is not a change, is 404.",
+        "MarkDone refuses a change not accepted yet (409 change_not_accepted) and gives the final note to the last agreed payment; DELETE /v1/profiles/{id}/jobs/{jobId}/payments/{position} withdraws the waiting change (204; 409 payment_not_withdrawable otherwise).",
+        "The owner's and public reads give each payment's proposedAt (with microseconds), acceptedName and acceptedAt (null for the original schedule), the owner's read adds acceptedEmail, and totals count a change once accepted; openapi.yaml, api.md and architecture.md describe it."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-105",
+        "R-100",
+        "R-103"
+      ],
+      "keep": [
+        "apps/web/src/*",
+        "packages/*"
+      ],
+      "review": false,
+      "notes": [
+        "2026-10-18 review fail by reviewer: FAIL. Ran: go test ./internal/job/ ./internal/httpapi/tests/ (pass), the migration rollback test (pass), check-docs (0 errors). I reproduced 1-3 with a throwaway test loaded through go test -overlay, so no repo file changed.\nBlocking:\n1) Consent can land on the wrong change. AcceptChange matches the change only by position (change.go:86-94). A withdrawn position is reused by the next proposal (change.go:54,61,118). Repro: propose 150 USD at position 3, withdraw it, propose 5000 USD. The client's accept of position 3, sent from the page that showed 150, records Jane Doe's acceptance on the 5000 USD change. This is a money and D-81 evidence bug. Fix: the accept names the exact change (for example proposedAt or the amount) and the UPDATE matches it.\n2) A job can get stuck. ProposeChange allows a second change while one is pending (change.go:50-64). AcceptChange accepts any pending change, in any order (change.go:86-96). Repro: propose changes 3 and 4, the client accepts only 4, then mark 2 done. Withdraw 3 and withdraw 4 both give payment_not_withdrawable: 3 is not last and 4 is accepted. Mark 4 done gives payment_out_of_order, mark 3 done gives change_not_accepted, and Delete gives job_accepted (read.go:137). The total already counts 4 (1200.50), but 4 can never be billed. Fix: allow one pending change at a time, or refuse an accept while an earlier change is pending.\n3) R-103 becomes false. done.go:56 counts a pending change as the last payment. Repro: propose change 3, mark payment 2 done (no final note), then withdraw 3. The job's last payment now has an invoice with an empty note. Fix: treat the last payment that is not a pending change as the final one, which matches TotalCents.\n4) Docs and contract are inaccurate. PROJECT.md:154 (R-105) says the owner can withdraw a change until the client accepts it, but only the last payment can be withdrawn. R-105 also has two sentences over 25 words (28 and 29), which breaks D-84. openapi.yaml:1796 PublicJob.totalUsd says 'The sum of the payments', and openapi.yaml:1837 JobSummary.payments says 'How many payments the schedule has'. Both now leave out pending changes.\nChecked and fine: the job row lock in Propose and Withdraw; the hash replay under that lock; the 10-payment cap through max(position) under the lock plus the position CHECK; no position gaps; the migration CHECKs; Down (rollback and reapply passes). Accept vs Withdraw races end in 404 or 409, never a bad row. Accept vs MarkDone is safe. TotalCents and the list SQL leave out pending changes. A test program confirmed encoding/json writes only the outer jobJSON.Payments, and the public reply has no acceptedEmail. The allOf owner payments in openapi are valid, since JobPayment does not set additionalProperties false. Rate limits share the global bucket, with a per-link bucket for each route. The error codes map correctly. profileRoutes covers both new owner routes.\nMinor, not blocking: errors.go:42 says 'a step is marked done once the client accepted the job' for a change proposed too early. A withdraw frees the Idempotency-Key, so a late retry adds the change again. A DB CHECK could require accepted_at before a change gets invoice_id. An earlier final invoice's note goes stale once a change is accepted after it.\nNext task (web): job-detail.tsx:39 'next' will pick a pending change, and Mark done then shows the out-of-order copy. The payment rows will not add up to totalUsd (job-detail.tsx:112, job-quote.tsx:199). The quote page shows a pending change as a normal payment. None of this is reachable today, because the web cannot propose a change.",
+        "2026-10-18 review pass by reviewer: PASS on re-review. Ran: go test ./internal/job/ ./internal/httpapi/tests/ (pass), the migration rollback test (pass), gofmt and go vet (clean), check-docs (0 errors). I re-ran my three earlier repros through go test -overlay; no repo file changed.\nAll three earlier blockers are fixed:\n1) Consent binding. AcceptChange matches proposedAt in Go and in the UPDATE (change.go:97,104). proposedAt is written with RFC3339Nano (model.go proposedAt), and the JSON round trip is exact. The stale accept of a withdrawn 150 USD change now gives ErrNotFound, and the 5000 USD change stays unaccepted. proposedAt one microsecond off is also 404. now() is the transaction start, and a re-proposal starts after the withdraw commits, so two changes can't share a value.\n2) Stuck job. ProposeChange returns change_pending while a change waits, inside the job row lock and after the replay check (change.go:54-61). A replay of the waiting change still answers 200. The waiting change is always last, so withdraw always reaches it. Accepted changes always come before it, so MarkDone's order rule can't block.\n3) Final note. done.go skips a waiting last change, so payment 2 keeps its final note after the change is withdrawn (repro now shows the full note).\n4) Docs. R-105 sentences are 24 words or fewer, R-103 names the waiting-change rule, and api.md, openapi.yaml (proposedAt body, change_pending in ChangeConflict and the enum, totalUsd and JobSummary.payments as agreed payments) and architecture.md match the code.\nStill fine from the first review: row locks, the 10-payment cap, no position gaps, the migration CHECKs and Down, the privacy of acceptedEmail (encoding/json writes only the outer payments field), rate limits, error mapping, profileRoutes and the allOf owner payments.\nMinor, not blocking: a withdrawn change frees its Idempotency-Key, so a late retry adds it again. No DB CHECK ties invoice_id to accepted_at on a change. An earlier final note goes stale once a later change is accepted. R-105 'anything else is 409' leaves out a position that doesn't exist, which is 404. No API test sends a missing proposedAt; the handler returns 422.\nNext task (web): send proposedAt back exactly as read. apiTime keeps the string, but reformatting it through Date drops the microseconds, and every accept would then be 404. job-detail.tsx:39 'next' can pick the waiting change. The payment rows won't add up to totalUsd while a change waits (job-detail.tsx:112, job-quote.tsx:199)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-18T15:50:17Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 72.5,
+            "log": "docs/runs/F235-20261018T155017Z-unit.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F235-20261018T155017Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F235-20261018T155017Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F235-20261018T155017Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F235-20261018T155017Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.9,
+            "log": "docs/runs/F235-20261018T155017Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 215.0,
+            "log": "docs/runs/F235-20261018T155017Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F235-20261018T155017Z-keep.log"
+          }
+        ],
+        "taskHash": "d68cf8052eb61366",
+        "filesHash": "5fd6051949c36733",
+        "proof": {
+          "1": "unit: TestScopeChange: before acceptance ErrNotAccepted; after it the change is position 3 with proposedAt, never the deposit; the same request replays, another under the key is ErrConflict; past 10 payments ErrInvalid. TestScopeChangeConsent: a second change while one waits is ErrChangePending (fails without the check). TestJobs: 409 job_not_accepted, 409 change_pending, 201 then 200 for the same key; the routes are in profileRoutes (403).",
+          "2": "unit: TestScopeChangeConsent: propose 150, withdraw, propose 5000; the client's accept with the first change's proposedAt is ErrNotFound and the 5000 change stays unaccepted (fails without the proposedAt match). TestScopeChange: accepting a quote payment is ErrNotFound; accepting twice keeps the name, email and time; the total goes from 100050 to 115050 only once accepted. TestJobs: the public accept with proposedAt answers acceptedName without acceptedEmail, the owner's read has acceptedEmail.",
+          "3": "unit: TestScopeChangeConsent: with a change waiting, marking payment 2 done gives it the final note (fails without the rule). TestScopeChange: marking an unaccepted change is ErrChangeNotAccepted, then its invoice lists the earlier payments; withdrawing an accepted change or a quote payment is ErrNotWithdrawable, the waiting change withdraws once, then ErrNotFound. TestJobs: 409 change_not_accepted, 409 payment_not_withdrawable, 204.",
+          "4": "docs-check: openapi.yaml has the three routes, proposedAt in the accept body, the change fields, acceptedEmail on the owner's payments, ChangeConflict with change_pending, and totals that count agreed payments; R-105 and R-103, api.md and architecture.md match; docs-check passes."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS on re-review. Ran: go test ./internal/job/ ./internal/httpapi/tests/ (pass), the migration rollback test (pass), gofmt and go vet (clean), check-docs (0 errors). I re-ran my three earlier repros through go test -overlay; no repo file changed.\nAll three earlier blockers are fixed:\n1) Consent binding. AcceptChange matches proposedAt in Go and in the UPDATE (change.go:97,104). proposedAt is written with RFC3339Nano (model.go proposedAt), and the JSON round trip is exact. The stale accept of a withdrawn 150 USD change now gives ErrNotFound, and the 5000 USD change stays unaccepted. proposedAt one microsecond off is also 404. now() is the transaction start, and a re-proposal starts after the withdraw commits, so two changes can't share a value.\n2) Stuck job. ProposeChange returns change_pending while a change waits, inside the job row lock and after the replay check (change.go:54-61). A replay of the waiting change still answers 200. The waiting change is always last, so withdraw always reaches it. Accepted changes always come before it, so MarkDone's order rule can't block.\n3) Final note. done.go skips a waiting last change, so payment 2 keeps its final note after the change is withdrawn (repro now shows the full note).\n4) Docs. R-105 sentences are 24 words or fewer, R-103 names the waiting-change rule, and api.md, openapi.yaml (proposedAt body, change_pending in ChangeConflict and the enum, totalUsd and JobSummary.payments as agreed payments) and architecture.md match the code.\nStill fine from the first review: row locks, the 10-payment cap, no position gaps, the migration CHECKs and Down, the privacy of acceptedEmail (encoding/json writes only the outer payments field), rate limits, error mapping, profileRoutes and the allOf owner payments.\nMinor, not blocking: a withdrawn change frees its Idempotency-Key, so a late retry adds it again. No DB CHECK ties invoice_id to accepted_at on a change. An earlier final note goes stale once a later change is accepted. R-105 'anything else is 409' leaves out a position that doesn't exist, which is 404. No API test sends a missing proposedAt; the handler returns 422.\nNext task (web): send proposedAt back exactly as read. apiTime keeps the string, but reformatting it through Date drops the microseconds, and every accept would then be 404. job-detail.tsx:39 'next' can pick the waiting change. The payment rows won't add up to totalUsd while a change waits (job-detail.tsx:112, job-quote.tsx:199).",
+          "at": "2026-10-18T15:57:04Z",
+          "filesHash": "5fd6051949c36733"
+        },
+        "commit": "92b2c92",
+        "doneAt": "2026-10-18T15:57:23Z"
+      },
+      "branch": "feat/f235-the-owner-can-propose-a-scope-change-on",
+      "baseCommit": "08e88c94e18a7cbd67b601f415030849d333951e",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f235-the-owner-can-propose-a-scope-change-on",
         "base": "main"
       }
     }

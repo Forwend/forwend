@@ -1,8 +1,10 @@
 package jobapi
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/ensp1re/forwend/apps/backend/internal/job"
@@ -103,6 +105,87 @@ func markDone(jobs *job.Service) http.HandlerFunc {
 			return
 		}
 		httpio.WriteJSON(w, http.StatusOK, toJobJSON(j))
+	}
+}
+
+// proposeChange is POST /v1/profiles/{profileId}/jobs/{jobId}/payments (R-105): {title, amountUsd, dueDays} with an
+// Idempotency-Key; 201 when added, 200 when the same request is repeated.
+func proposeChange(jobs *job.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		key, err := httpio.IdempotencyKey(r)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		var body struct {
+			Title     string `json:"title"`
+			AmountUSD string `json:"amountUsd"`
+			DueDays   int    `json:"dueDays"`
+		}
+		if err := httpio.DecodeJSON(w, r, &body); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		j, created, err := jobs.ProposeChange(r.Context(), r.PathValue("profileId"), r.PathValue("jobId"), key,
+			job.PaymentRequest{Title: body.Title, AmountUSD: body.AmountUSD, DueDays: body.DueDays})
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		status := http.StatusOK
+		if created {
+			status = http.StatusCreated
+		}
+		httpio.WriteJSON(w, status, toJobJSON(j))
+	}
+}
+
+// withdrawChange is DELETE /v1/profiles/{profileId}/jobs/{jobId}/payments/{position} (R-105): 204 for the last
+// payment while it is a change the client has not accepted; 409 payment_not_withdrawable otherwise.
+func withdrawChange(jobs *job.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		position, err := strconv.Atoi(r.PathValue("position"))
+		if err != nil {
+			httpio.WriteError(w, r, job.ErrNotFound)
+			return
+		}
+		if err := jobs.WithdrawChange(r.Context(), r.PathValue("profileId"), r.PathValue("jobId"), position); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// acceptChange is POST /v1/jobs/{token}/payments/{position}/accept (R-105): {name, email, proposedAt}, the client's
+// typed name and email for the change they read; 200 with the job, the same when already accepted.
+func acceptChange(jobs *job.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			acceptBody
+			ProposedAt string `json:"proposedAt"`
+		}
+		if err := httpio.DecodeJSON(w, r, &body); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		proposedAt, err := time.Parse(time.RFC3339Nano, body.ProposedAt)
+		if err != nil {
+			httpio.WriteError(w, r, fmt.Errorf("%w: proposedAt must be the change's proposedAt, like 2026-10-18T12:00:00Z",
+				job.ErrInvalid))
+			return
+		}
+		position, err := strconv.Atoi(r.PathValue("position"))
+		if err != nil {
+			httpio.WriteError(w, r, job.ErrNotFound)
+			return
+		}
+		j, err := jobs.AcceptChange(r.Context(), r.PathValue("token"), position, proposedAt, body.Name, body.Email)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, toPublicJobJSON(j))
 	}
 }
 

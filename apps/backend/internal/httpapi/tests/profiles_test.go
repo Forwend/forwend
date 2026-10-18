@@ -206,6 +206,9 @@ var profileRoutes = []struct{ method, path, body string }{
 	{"GET", "/v1/profiles/%s/jobs/00000000-0000-0000-0000-000000000000", ""},
 	{"DELETE", "/v1/profiles/%s/jobs/00000000-0000-0000-0000-000000000000", ""},
 	{"POST", "/v1/profiles/%s/jobs/00000000-0000-0000-0000-000000000000/payments/1/done", "{}"},
+	{"POST", "/v1/profiles/%s/jobs/00000000-0000-0000-0000-000000000000/payments",
+		`{"title": "Extra page", "amountUsd": "100", "dueDays": 7}`},
+	{"DELETE", "/v1/profiles/%s/jobs/00000000-0000-0000-0000-000000000000/payments/3", ""},
 }
 
 // Bob never sees Alice's profiles and gets 403 on every profile route for them; Alice passes the owner check.

@@ -29,10 +29,12 @@ func TestJobs(t *testing.T) {
 	payments := []any{
 		map[string]any{"position": float64(1), "title": "Deposit", "amountUsd": "300.00", "dueDays": float64(7),
 			"onAccept": true, "invoiceId": nil, "number": nil, "status": nil, "doneAt": nil, "deliveryLink": nil,
-			"invoicedAt": nil, "paidAt": nil},
+			"invoicedAt": nil, "paidAt": nil, "proposedAt": nil, "acceptedName": nil, "acceptedAt": nil,
+			"acceptedEmail": nil},
 		map[string]any{"position": float64(2), "title": "Final delivery", "amountUsd": "700.50", "dueDays": float64(14),
 			"onAccept": false, "invoiceId": nil, "number": nil, "status": nil, "doneAt": nil, "deliveryLink": nil,
-			"invoicedAt": nil, "paidAt": nil},
+			"invoicedAt": nil, "paidAt": nil, "proposedAt": nil, "acceptedName": nil, "acceptedAt": nil,
+			"acceptedEmail": nil},
 	}
 	if !reflect.DeepEqual(r.body["payments"], payments) {
 		t.Fatalf("payments %v", r.body["payments"])
@@ -123,6 +125,52 @@ func TestJobs(t *testing.T) {
 	if r := done(waiting, 2, `{}`); r.status != http.StatusConflict || errorCode(r) != "job_not_accepted" {
 		t.Fatalf("before acceptance: %d %v, want 409 job_not_accepted", r.status, r.body)
 	}
+
+	// R-105: a change goes at the end; the client accepts it by the link, whose read never shows the typed email.
+	change := `{"title": "Extra page", "amountUsd": "150", "dueDays": 7}`
+	if r := e.call(t, "POST", jobs+"/"+waiting+"/payments", alice, "change-1", change); r.status != http.StatusConflict ||
+		errorCode(r) != "job_not_accepted" {
+		t.Fatalf("a change before acceptance: %d %v, want 409", r.status, r.body)
+	}
+	proposed := e.call(t, "POST", jobs+"/"+id+"/payments", alice, "change-1", change)
+	third := proposed.body["payments"].([]any)[2].(map[string]any)
+	if proposed.status != http.StatusCreated || third["proposedAt"] == nil || third["acceptedAt"] != nil {
+		t.Fatalf("propose: %d %v", proposed.status, proposed.body)
+	}
+	if again := e.call(t, "POST", jobs+"/"+id+"/payments", alice, "change-1", change); again.status != http.StatusOK {
+		t.Fatalf("same change again: %d %v", again.status, again.body)
+	}
+	if r := e.call(t, "POST", jobs+"/"+id+"/payments", alice, "change-x", change); r.status != http.StatusConflict ||
+		errorCode(r) != "change_pending" {
+		t.Fatalf("a second change while one waits: %d %v, want 409 change_pending", r.status, r.body)
+	}
+	if r := done(id, 3, `{}`); r.status != http.StatusConflict || errorCode(r) != "change_not_accepted" {
+		t.Fatalf("mark an unaccepted change done: %d %v, want 409", r.status, r.body)
+	}
+	acceptChange := func(position int) reply {
+		return e.call(t, "POST", fmt.Sprintf("/v1/jobs/%s/payments/%d/accept", token, position), "", "",
+			fmt.Sprintf(`{"name": "Jane Doe", "email": "jane@bob.example", "proposedAt": %q}`, third["proposedAt"]))
+	}
+	if r := acceptChange(1); r.status != http.StatusNotFound {
+		t.Fatalf("accept a payment of the quote as a change: %d %v, want 404", r.status, r.body)
+	}
+	changed := acceptChange(3)
+	changeRead := changed.body["payments"].([]any)[2].(map[string]any)
+	if _, ok := changeRead["acceptedEmail"]; changed.status != http.StatusOK || ok || changeRead["acceptedName"] != "Jane Doe" {
+		t.Fatalf("accept the change: %d %v", changed.status, changed.body)
+	}
+	owner := e.call(t, "GET", jobs+"/"+id, alice, "", "").body["payments"].([]any)[2].(map[string]any)
+	if owner["acceptedEmail"] != "jane@bob.example" {
+		t.Fatalf("the owner's read of the change %v", owner)
+	}
+	if r := e.call(t, "DELETE", jobs+"/"+id+"/payments/3", alice, "", ""); r.status != http.StatusConflict ||
+		errorCode(r) != "payment_not_withdrawable" {
+		t.Fatalf("withdraw an accepted change: %d %v, want 409", r.status, r.body)
+	}
+	e.call(t, "POST", jobs+"/"+id+"/payments", alice, "change-2", change)
+	if r := e.call(t, "DELETE", jobs+"/"+id+"/payments/4", alice, "", ""); r.status != http.StatusNoContent {
+		t.Fatalf("withdraw: %d %v, want 204", r.status, r.body)
+	}
 	e.call(t, "DELETE", jobs+"/"+waiting, alice, "", "")
 
 	// R-101: an accepted job can't be deleted; one not accepted can, once.
@@ -154,8 +202,9 @@ func TestJobs(t *testing.T) {
 	if list.status != http.StatusOK || len(items) != 1 {
 		t.Fatalf("list: %d %v", list.status, list.body)
 	}
-	want := map[string]any{"jobId": id, "title": "Logo design", "clientName": "Bob Ltd", "totalUsd": "1000.50",
-		"payments": float64(2), "paid": float64(0), "acceptedAt": owned.body["acceptedAt"], "createdAt": owned.body["createdAt"]}
+	// The accepted change counts in the total; the withdrawn one is gone.
+	want := map[string]any{"jobId": id, "title": "Logo design", "clientName": "Bob Ltd", "totalUsd": "1150.50",
+		"payments": float64(3), "paid": float64(0), "acceptedAt": owned.body["acceptedAt"], "createdAt": owned.body["createdAt"]}
 	if !reflect.DeepEqual(items[0], want) {
 		t.Fatalf("list item %v, want %v", items[0], want)
 	}

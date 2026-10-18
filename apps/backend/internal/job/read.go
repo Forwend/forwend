@@ -58,7 +58,8 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 		    coalesce(p.invoice_id, ''), coalesce(invoices.number, 0),
 		    CASE WHEN invoices.id IS NULL THEN '' ELSE `+invoice.StatusFilterSQL+` END, p.done_at,
 		    coalesce(p.delivery_link, ''), invoices.created_at,
-		    CASE WHEN invoices.payment_status = 'paid' THEN `+invoice.PaidAtSQL("invoices.option_id")+` END
+		    CASE WHEN invoices.payment_status = 'paid' THEN `+invoice.PaidAtSQL("invoices.option_id")+` END,
+		    p.proposed_at, coalesce(p.accepted_name, ''), coalesce(p.accepted_email, ''), p.accepted_at
 		FROM job_payments p LEFT JOIN invoices_current invoices ON invoices.id = p.invoice_id
 		WHERE p.job_id = $1 ORDER BY p.position`, j.ID)
 	if err != nil {
@@ -66,10 +67,16 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 	}
 	j.Payments, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (Payment, error) {
 		var p Payment
-		var done, invoiced *time.Time
+		var done, invoiced, proposed, accepted *time.Time
 		var paid *int64
 		err := row.Scan(&p.Position, &p.Title, &p.AmountCents, &p.DueDays, &p.OnAccept, &p.InvoiceID, &p.Number,
-			&p.Status, &done, &p.DeliveryLink, &invoiced, &paid)
+			&p.Status, &done, &p.DeliveryLink, &invoiced, &paid, &proposed, &p.AcceptedName, &p.AcceptedEmail, &accepted)
+		if proposed != nil {
+			p.ProposedAt = proposed.UTC()
+		}
+		if accepted != nil {
+			p.AcceptedAt = accepted.UTC()
+		}
 		if done != nil {
 			p.DoneAt = done.UTC()
 		}
@@ -89,10 +96,11 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 
 // List is the profile's jobs, newest first.
 func (s *Service) List(ctx context.Context, profileID string) ([]Summary, error) {
+	// A change counts once the client accepted it (R-105).
 	rows, err := s.pool.Query(ctx, `SELECT j.id::text, j.title, j.client_name, sum(p.amount_cents)::bigint, count(*),
 		    count(*) FILTER (WHERE invoices.id IS NOT NULL AND `+invoice.StatusFilterSQL+` IN ('paid', 'settled')),
 		    j.accepted_at, j.created_at
-		FROM jobs j JOIN job_payments p ON p.job_id = j.id
+		FROM jobs j JOIN job_payments p ON p.job_id = j.id AND (p.proposed_at IS NULL OR p.accepted_at IS NOT NULL)
 		LEFT JOIN invoices_current invoices ON invoices.id = p.invoice_id
 		WHERE j.profile_id = $1 GROUP BY j.id ORDER BY j.created_at DESC, j.id`, profileID)
 	if err != nil {
