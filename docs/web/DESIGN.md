@@ -198,6 +198,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The first field in error takes focus, and nothing is sent.
   - Without billing details the error line says why and ends with an Add billing details link.
   - That link opens billing details with a way back: saving them returns to Transactions.
+  - Days with more transactions than one file holds (R-118) say to choose a shorter period.
 - With a records currency, each amount has a quiet second line: the value as money in that currency.
   - The line is a small dotted-underline button; its tooltip, opened by hover, focus or tap, gives the ECB rate's day.
 - Clients (R-86) is laid out like Invoices: the toolbar's search (name, email, tax ID) with Add client at its end

@@ -2347,7 +2347,7 @@ components:
           properties:
             code:
               type: string
-              enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found, job_not_found, job_accepted, job_not_accepted, payment_out_of_order, change_not_accepted, change_pending, job_finished, payment_not_withdrawable, transaction_not_found, not_labelable,
+              enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found, job_not_found, job_accepted, job_not_accepted, payment_out_of_order, change_not_accepted, change_pending, job_finished, payment_not_withdrawable, transaction_not_found, not_labelable, too_many_transactions,
                 billing_details_not_found, billing_details_required, client_not_found, idempotency_conflict, invoice_not_paid,
                 invoice_not_cancelable, receipt_sent, client_email_required, invoice_closed, due_date_required,
                 reminders_stopped, invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
