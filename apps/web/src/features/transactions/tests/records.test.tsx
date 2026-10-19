@@ -167,6 +167,19 @@ describe("records", () => {
     const dialog = document.querySelector("dialog");
     expect(dialog?.open).toBe(false);
 
+    // R-118: more transactions than one file holds names the way out.
+    answer(
+      [],
+      422,
+      JSON.stringify({ error: { code: "too_many_transactions", message: "too many" } }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
+    await settle();
+    expect(screen.getByRole("alert").textContent).toBe(
+      "These days have too many transactions for one file. Choose a shorter period.",
+    );
+    document.querySelector("dialog")?.close();
     answer([], 500, JSON.stringify({ error: { code: "internal", message: "no" } }));
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
     fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
@@ -275,6 +288,11 @@ describe("records", () => {
             { status: 404 },
           );
         if (answer === "broken") return new Response("upstream down", { status: 500 });
+        if (answer === "tooMany")
+          return Response.json(
+            { error: { code: "too_many_transactions", message: "too many" } },
+            { status: 422 },
+          );
         return new Response("%PDF-1.4", { headers: { "Content-Type": "application/pdf" } });
       }),
     );
@@ -340,6 +358,12 @@ describe("records", () => {
       "We could not make the statement. Try again.",
     );
     expect(screen.queryByRole("link", { name: "Add billing details" })).toBeNull();
+
+    answer = "tooMany";
+    await ask();
+    expect(screen.getByRole("alert").textContent).toBe(
+      "These days have too many transactions for one file. Choose a shorter period.",
+    );
     click.mockRestore();
   });
 });

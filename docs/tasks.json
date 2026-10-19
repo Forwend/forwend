@@ -3353,13 +3353,14 @@
         "With 100000 dust transfers, ten parallel exports stay far below the audit's 1.1 GB peak (the audit PoC as a test)."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
         "docs-check"
       ],
       "refs": [
+        "R-118",
         "R-108",
         "R-112"
       ],
@@ -3367,9 +3368,99 @@
         "packages/contracts/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-19 review fail by subagent: Blocker:\n1) apps/backend/api/openapi.yaml:2350: the Error schema's code enum lacks too_many_transactions. The new 422 responses (lines 898-902, 933-937) name that code, so the contract contradicts itself. A client or validator built from the spec rejects the response. Every other code in httpio/errors.go is in the enum (F240 added not_labelable the same way). Fix: add too_many_transactions to the enum.\n\nChecked, OK:\n- Balance history matches the old walk. least((block_time - start)/86400, days-1) gives the same day buckets: block_time >= start, so the bigint division is never negative and truncates like floor. Today's bucket has no end, as before. block_number <= r.block per token equals the old skip. Tokens without a wallet balance are ignored as before. The below-0 clamp and received/sent per day are unchanged. tokens has key (chain_id, contract), so the unnest join cannot double rows. Empty arrays encode as NULL, and unnest gives no rows.\n- EachTransfer: LIMIT 10001. Exactly 10000 rows pass; the 10001st returns ErrTooMany before fn runs.\n- CSV: header, formula guard and CRLF are unchanged. Content-Type and Content-Disposition are set only on success; errors stay JSON.\n- Statement: lines come newest first, then slices.Reverse gives the old oldest-first order. The Unclassified count is unchanged.\n- The DB connection is held only while rows are formatted in memory. The file and PDF go to the client after the connection is released. Acceptable.\n- Web: responseHandler parses JSON on error, like the statement. Both downloads show the new line. Tests cover CSV and statement.\n- No other HTTP reader loads every wallet transfer. Transfers is paged and SetLabel reads one transfer. The watcher's pending read is bounded by finality and is outside this task.\n\nRan:\n- go test -count=1 ./internal/balance/ ./internal/activity/ ./internal/httpapi/tests/: all ok.\n- npx vitest run src/features/transactions: 6/6 passed.\n- New test on the base tree (git archive 6075d8e into scratch, since removed): it FAILS. 200 instead of 422; CSV 3544 MB, statement 2243 MB, history 29 MB.\n- Latest docs/runs/F251-20261019T190035Z-*: all checks passed.\n\nMinor:\n(a) By design, 10001 dust transfers in one UTC day block that day's CSV and statement. No shorter period exists. The statement keeps only income lines, so it would stay bounded without the cap. Owner's call.\n(b) No test at exactly 10000 vs 10001 rows. The code reads right.\n(c) exports_bounded_test.go: the fake balance block is 100, so only 100 dust rows reach the history SUM. The test still fails on the old code.\n(d) R-118 and the test comment say the audit measured 3 GB; the base run gives 3.5 GB. Accept 4 says 1.1 GB peak.\n(e) docs/web/DESIGN.md (Export dialog errors) does not list the too-many line. R-118 covers it.\n(f) The DB still joins and sorts every row in the period before LIMIT. Memory is bounded, but DB time still grows with dust.",
+        "2026-10-19 review pass by subagent: Re-review after 1938852. No blockers.\n\nFixed:\n- openapi.yaml:2350: the Error code enum now lists too_many_transactions. Every code in httpio/errors.go is in the enum (checked with comm).\n- New TestExportCapIsExact: 10000 rows give 200 with a header and 10000 rows (10001 CRLF). One more row gives 422 too_many_transactions. An off-by-one in either direction fails it.\n- R-118 and the test comment now say 3.5 GB, which matches the base run (3544 MB).\n- docs/web/DESIGN.md:201 names the shorter-period message.\n\nCode from d8ace34 is unchanged. My first review's checks still hold: history equivalence, cap, CSV, statement order, web error handling.\n\nRan:\n- go test -count=1 ./internal/balance/ ./internal/activity/ ./internal/httpapi/tests/: all ok.\n- go test -v -run 'TestExportCapIsExact|TestExportsStayBoundedWithDust': both PASS.\n- Latest docs/runs/F251-20261019T191113Z-*: unit, e2e, docs-check, harness, lint, typecheck, build and keep all passed.\n\nMinor, kept on purpose by the coordinator:\n(a) 10001 dust transfers in one UTC day block that day's CSV and statement. The coordinator will tell the owner.\n(c) In the dust test, only 100 dust rows reach the balance history SUM (the fake balance block is 100).\n(f) The database still sorts the whole period before LIMIT, so database time grows with dust; memory does not."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-19T19:11:13Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 71.7,
+            "log": "docs/runs/F251-20261019T191113Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 218.4,
+            "log": "docs/runs/F251-20261019T191113Z-e2e.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F251-20261019T191113Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F251-20261019T191113Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F251-20261019T191113Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F251-20261019T191113Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.3,
+            "log": "docs/runs/F251-20261019T191113Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F251-20261019T191113Z-keep.log"
+          }
+        ],
+        "taskHash": "a9054807e04e5749",
+        "filesHash": "8ca4a28c977d2b50",
+        "proof": {
+          "1": "unit: activity.EachTransfer streams rows into the CSV buffer and the statement keeps only income lines; TestExportsStayBoundedWithDust and the activity records tests",
+          "2": "unit: TestExportsStayBoundedWithDust: 100000 dust transfers give 422 too_many_transactions on the CSV and the statement; TestExportCapIsExact: 10000 rows export, 10001 is 422; records.test.tsx: the Export dialog says to choose a shorter period for both",
+          "3": "unit: TestExportsStayBoundedWithDust: balance-history?days=365 allocates under 10 MB (29 MB before); balance package history tests unchanged and passing",
+          "4": "unit: TestExportsStayBoundedWithDust: ten parallel CSV exports and ten statements allocate under 300 MB each round (3544 MB and 2242 MB before the fix)"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Re-review after 1938852. No blockers.\n\nFixed:\n- openapi.yaml:2350: the Error code enum now lists too_many_transactions. Every code in httpio/errors.go is in the enum (checked with comm).\n- New TestExportCapIsExact: 10000 rows give 200 with a header and 10000 rows (10001 CRLF). One more row gives 422 too_many_transactions. An off-by-one in either direction fails it.\n- R-118 and the test comment now say 3.5 GB, which matches the base run (3544 MB).\n- docs/web/DESIGN.md:201 names the shorter-period message.\n\nCode from d8ace34 is unchanged. My first review's checks still hold: history equivalence, cap, CSV, statement order, web error handling.\n\nRan:\n- go test -count=1 ./internal/balance/ ./internal/activity/ ./internal/httpapi/tests/: all ok.\n- go test -v -run 'TestExportCapIsExact|TestExportsStayBoundedWithDust': both PASS.\n- Latest docs/runs/F251-20261019T191113Z-*: unit, e2e, docs-check, harness, lint, typecheck, build and keep all passed.\n\nMinor, kept on purpose by the coordinator:\n(a) 10001 dust transfers in one UTC day block that day's CSV and statement. The coordinator will tell the owner.\n(c) In the dust test, only 100 dust rows reach the balance history SUM (the fake balance block is 100).\n(f) The database still sorts the whole period before LIMIT, so database time grows with dust; memory does not.",
+          "at": "2026-10-19T19:17:04Z",
+          "filesHash": "8ca4a28c977d2b50"
+        },
+        "commit": "1938852",
+        "doneAt": "2026-10-19T19:17:15Z"
+      },
+      "branch": "fix/f251-transactions-csv-the-statement-pdf-and-b",
+      "baseCommit": "6075d8e1361628525be16ff614cc8cd9ae69b354",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f251-transactions-csv-the-statement-pdf-and-b",
+        "base": "main"
+      }
     },
     {
       "id": "F252",
@@ -3552,7 +3643,7 @@
         "A change accept on a quote payment, also with a zero proposedAt, answers 404 job_not_found and writes nothing."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "dropped",
       "verification": [
         "unit"
       ],
@@ -3563,7 +3654,9 @@
         "packages/contracts/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-19 dropped: Fixed in F250 (PR merged): AcceptChange answers 404 job_not_found for a quote payment named as a change, also with a zero proposedAt, before the shared limit; F250 needed it for its own acceptance. Test: job change_test zero-proposedAt case."
+      ],
       "blockedReason": null,
       "evidence": null
     }

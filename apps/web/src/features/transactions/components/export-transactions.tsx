@@ -11,10 +11,15 @@ import {
   useLazyExportTransactionsQuery,
 } from "@/features/transactions/api/transactions-api";
 import { RecordsCurrency } from "@/features/transactions/components/records-currency";
+import { TOO_MANY_TRANSACTIONS } from "@/features/transactions/constants/transactions";
 import { TRANSACTIONS_COPY as COPY } from "@/features/transactions/constants/transactions-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const NOT_FOUND = 404;
+// R-118: more transactions in the days than one file holds.
+const tooMany = (failure: unknown) =>
+  (failure as { data?: { error?: { code?: unknown } } }).data?.error?.code ===
+  TOO_MANY_TRANSACTIONS;
 
 export interface ExportTransactionsProps {
   profileId: string;
@@ -67,7 +72,13 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
       save(await statement({ profileId, from, to }).unwrap(), COPY.statementFile(from, to));
     } catch (failure) {
       const { status } = failure as { status?: unknown };
-      setError(status === NOT_FOUND ? COPY.statementNeedsBilling : COPY.statementFailed);
+      setError(
+        status === NOT_FOUND
+          ? COPY.statementNeedsBilling
+          : tooMany(failure)
+            ? COPY.tooManyTransactions
+            : COPY.statementFailed,
+      );
     }
   };
 
@@ -80,8 +91,8 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
         to: to || undefined,
       }).unwrap();
       save(URL.createObjectURL(new Blob([csv], { type: "text/csv" })), COPY.csvFile);
-    } catch {
-      setError(COPY.exportFailed);
+    } catch (failure) {
+      setError(tooMany(failure) ? COPY.tooManyTransactions : COPY.exportFailed);
     }
   };
 

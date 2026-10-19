@@ -44,6 +44,8 @@ export const TRANSACTIONS_COPY = {
   addBillingDetails: "Add billing details",
   statementFailed: "We could not make the statement. Try again.",
   exportFailed: "We could not export them. Check the days and try again.",
+  tooManyTransactions:
+    "These days have too many transactions for one file. Choose a shorter period.",
   recordsCurrency: "Records currency",
   recordsCurrencyHint:
     "Saved for this profile: each amount also shows in it, and the export adds it.",

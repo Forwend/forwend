@@ -386,6 +386,8 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
 - `GET /v1/profiles/{profileId}/transactions.csv?from=&to=` exports every transaction in those UTC days, newest first.
   - Both days are optional and included.
   - A bad day, or from after to, is 422.
+  - More than 10000 transactions in the days is 422 `too_many_transactions` (R-118): dust can't make it grow.
+  - Rows go into the file as the database sends them; the request never holds every transfer.
   - Columns: date (UTC), direction, amount, token, network, counterparty, transaction, status, USD value.
   - Then the classification, invoice number and client.
   - A cell starting like a formula gets a leading apostrophe.
@@ -395,6 +397,7 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   - Another value is 422 `invalid_value`.
 - `GET /v1/profiles/{profileId}/statement.pdf?from=&to=` is the profile's income statement for those UTC days (R-112).
   - Both days are required and included; a missing or bad day, or from after to, is 422.
+  - More than 10000 transactions in the days is 422 `too_many_transactions`; only income lines are kept (R-118).
   - Income is confirmed money in classified `invoice` or labelled `income`, oldest first.
   - Each line has its UTC time, invoice and client or Income, token amount, network and transaction.
   - It has the USD value to the cent and the records currency's value; totals add the rounded lines.
@@ -411,7 +414,7 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   base-unit string per point. `at` is the end of the day (00:00 UTC of the next day); the last point is now, and its
   balance is the wallet balance `/balances` reads at the second RPC's finalized block. An earlier balance undoes the
   final transfers after it (not reorged, at or below that block); `received` and `sent` sum them per day, today's
-  without an end. A missing wallet balance makes that token's arrays and every USD total null. Money moved without a
+  without an end. The database sums them per token and day, so dust doesn't make the read grow (R-118). A missing wallet balance makes that token's arrays and every USD total null. Money moved without a
   token `Transfer` log (Arc native-coin sends, fees paid in the token) is not undone; a balance below 0 shows 0.
 
 ## Idempotency

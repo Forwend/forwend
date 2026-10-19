@@ -61,32 +61,39 @@ func (s *Service) History(ctx context.Context, profileID string, days int, now t
 	}
 	h.Points[days-1].At = now.UTC()
 
+	// Each token's final transfers in and out per day, summed in the database: dust sent to the wallet must not make
+	// this read every row (R-118). Only transfers at or below the block the token's balance was read at count, as the
+	// balance includes those.
+	var chains, blocks []int64
+	var tokens []string
+	for _, t := range current.Tokens {
+		chains, tokens, blocks = append(chains, int64(t.ChainID)), append(tokens, t.Token), append(blocks, int64(t.Block))
+	}
 	type key struct {
 		chainID uint64
 		token   string
+		day     int
 	}
-	type move struct {
-		block  uint64
-		time   int64
-		in     bool
-		amount *big.Int
-	}
-	moves := map[key][]move{} // newest first
+	moved := map[key][2]*big.Int{} // received, sent
 	rows, err := s.pool.Query(ctx, `
-		SELECT t.chain_id, t.token_contract, t.block_number, t.block_time, t.direction = 'in', t.amount::text
+		SELECT t.chain_id, t.token_contract, least((t.block_time - $2) / 86400, $3 - 1)::int,
+		       coalesce(sum(t.amount) FILTER (WHERE t.direction = 'in'), 0)::text,
+		       coalesce(sum(t.amount) FILTER (WHERE t.direction = 'out'), 0)::text
 		FROM wallet_transfers t
 		JOIN profile_wallets w ON w.chain_family = t.chain_family AND w.address = t.wallet_address
-		WHERE w.profile_id = $1 AND t.status <> 'reorged' AND t.block_time >= $2
-		ORDER BY t.block_time DESC, t.id DESC`, profileID, start.Unix())
+		JOIN unnest($4::bigint[], $5::text[], $6::bigint[]) r (chain_id, token, block)
+		    ON r.chain_id = t.chain_id AND r.token = t.token_contract
+		WHERE w.profile_id = $1 AND t.status <> 'reorged' AND t.block_time >= $2 AND t.block_number <= r.block
+		GROUP BY 1, 2, 3`, profileID, start.Unix(), days, chains, tokens, blocks)
 	if err != nil {
 		return History{}, fmt.Errorf("read wallet transfers: %w", err)
 	}
 	var k key
-	var m move
-	var amount string
-	if _, err := pgx.ForEachRow(rows, []any{&k.chainID, &k.token, &m.block, &m.time, &m.in, &amount}, func() error {
-		m.amount, _ = new(big.Int).SetString(amount, 10)
-		moves[k] = append(moves[k], m)
+	var in, out string
+	if _, err := pgx.ForEachRow(rows, []any{&k.chainID, &k.token, &k.day, &in, &out}, func() error {
+		received, _ := new(big.Int).SetString(in, 10)
+		sent, _ := new(big.Int).SetString(out, 10)
+		moved[k] = [2]*big.Int{received, sent}
 		return nil
 	}); err != nil {
 		return History{}, fmt.Errorf("read wallet transfers: %w", err)
@@ -96,7 +103,7 @@ func (s *Service) History(ctx context.Context, profileID string, days int, now t
 		th := TokenHistory{ChainID: t.ChainID, Token: t.Token, Symbol: t.Symbol, Decimals: t.Decimals}
 		if t.Wallet != nil {
 			th.Balances, th.Received, th.Sent = make([]*big.Int, days), make([]*big.Int, days), make([]*big.Int, days)
-			balance, left := new(big.Int).Set(t.Wallet), moves[key{t.ChainID, t.Token}]
+			balance := new(big.Int).Set(t.Wallet)
 			for i := days - 1; i >= 0; i-- {
 				// ponytail: money that moves without a Transfer log of the token (an Arc native-coin send, fees paid
 				// in the token) is not undone, so an earlier balance can come out below 0; it shows as 0.
@@ -105,21 +112,10 @@ func (s *Service) History(ctx context.Context, profileID string, days int, now t
 					th.Balances[i].SetInt64(0)
 				}
 				th.Received[i], th.Sent[i] = new(big.Int), new(big.Int)
-				from := start
-				if i > 0 {
-					from = h.Points[i-1].At
-				}
-				for ; len(left) > 0 && left[0].time >= from.Unix(); left = left[1:] {
-					m := left[0]
-					switch {
-					case m.block > t.Block: // not final at the block the balance was read at
-					case m.in:
-						th.Received[i].Add(th.Received[i], m.amount)
-						balance.Sub(balance, m.amount)
-					default:
-						th.Sent[i].Add(th.Sent[i], m.amount)
-						balance.Add(balance, m.amount)
-					}
+				if m, ok := moved[key{t.ChainID, t.Token, i}]; ok {
+					th.Received[i], th.Sent[i] = m[0], m[1]
+					balance.Sub(balance, m[0])
+					balance.Add(balance, m[1])
 				}
 			}
 		}

@@ -19,6 +19,9 @@ export const RELATIVE_DAYS = {
   yesterday: "yesterday",
 } as const;
 
+/** The API's code for days with more transactions than one export or statement holds (R-118). */
+export const TOO_MANY_TRANSACTIONS = "too_many_transactions";
+
 export const TRANSACTIONS_PAGE_SIZE = 20;
 export const TRANSACTIONS_MAX = 100;
 

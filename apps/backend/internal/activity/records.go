@@ -80,19 +80,39 @@ func (t Transfer) Classification() string {
 	}
 }
 
-// AllTransfers returns the profile's transfers whose block time is in [from, to), newest first, for the records
-// export (R-108). The caller has checked that the user owns the profile.
-func (s *Service) AllTransfers(ctx context.Context, profileID string, from, to time.Time) ([]Transfer, error) {
+// MaxExportRows bounds one export or statement (R-118): anyone can send dust to a wallet and the watcher records each
+// transfer, so the work of one request must not grow with it.
+const MaxExportRows = 10000
+
+// ErrTooMany: the period has more than MaxExportRows transactions; a shorter period fits.
+var ErrTooMany = errors.New("too many transactions in the period")
+
+// EachTransfer calls fn with each of the profile's transfers whose block time is in [from, to), newest first, as the
+// database sends them, for the records export and the statement (R-108, R-112). A period with more than MaxExportRows
+// is ErrTooMany once fn has seen that many. The caller has checked that the user owns the profile.
+func (s *Service) EachTransfer(ctx context.Context, profileID string, from, to time.Time, fn func(Transfer) error) error {
 	rows, err := s.pool.Query(ctx, transferSQL+` AND t.block_time >= $2 AND t.block_time < $3
-		ORDER BY t.block_time DESC, t.id DESC`, profileID, from.Unix(), to.Unix())
+		ORDER BY t.block_time DESC, t.id DESC LIMIT $4`, profileID, from.Unix(), to.Unix(), MaxExportRows+1)
 	if err != nil {
-		return nil, fmt.Errorf("read wallet transfers: %w", err)
+		return fmt.Errorf("read wallet transfers: %w", err)
 	}
-	items, err := pgx.CollectRows(rows, scanTransfer)
-	if err != nil {
-		return nil, fmt.Errorf("read wallet transfers: %w", err)
+	defer rows.Close()
+	for n := 1; rows.Next(); n++ {
+		if n > MaxExportRows {
+			return ErrTooMany
+		}
+		t, err := scanTransfer(rows)
+		if err != nil {
+			return fmt.Errorf("read wallet transfers: %w", err)
+		}
+		if err := fn(t); err != nil {
+			return err
+		}
 	}
-	return items, nil
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("read wallet transfers: %w", err)
+	}
+	return nil
 }
 
 // SetLabel gives the profile's money in at (chain, transaction, log) one of Labels, or clears it with "" (R-108).

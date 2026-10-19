@@ -1,6 +1,7 @@
 package moneyapi
 
 import (
+	"bytes"
 	"encoding/csv"
 	"fmt"
 	"math/big"
@@ -86,15 +87,10 @@ var transactionsCSVHeader = []string{"Date (UTC)", "Direction", "Amount", "Token
 	"Transaction", "Status", "USD value", "Classification", "Invoice", "Client"}
 
 // getTransactionsCSV is GET /v1/profiles/{profileId}/transactions.csv?from=&to=: every transaction in those UTC days
-// (both optional, inclusive), newest first (R-108).
+// (both optional, inclusive), newest first (R-108); 422 too_many_transactions past activity.MaxExportRows (R-118).
 func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		from, to, err := dayRange(r.URL.Query().Get("from"), r.URL.Query().Get("to"))
-		if err != nil {
-			httpio.WriteError(w, r, err)
-			return
-		}
-		items, err := activities.AllTransfers(r.Context(), r.PathValue("profileId"), from, to)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -108,12 +104,12 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 		if currency != "" {
 			header = append(slices.Clip(header), currency+" value", "ECB rate date")
 		}
-		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-		w.Header().Set("Content-Disposition", `attachment; filename="transactions.csv"`)
-		out := csv.NewWriter(w)
+		// Rows go to the buffer as the database sends them, so the request holds the file, not every transfer.
+		var body bytes.Buffer
+		out := csv.NewWriter(&body)
 		out.UseCRLF = true
 		_ = out.Write(header)
-		for _, t := range items {
+		err = activities.EachTransfer(r.Context(), r.PathValue("profileId"), from, to, func(t activity.Transfer) error {
 			invoice, client := "", ""
 			if t.Invoice != nil {
 				invoice, client = document.Number(t.Invoice.Number), t.Invoice.ClientName
@@ -135,9 +131,16 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 					row[i] = "'" + cell
 				}
 			}
-			_ = out.Write(row)
+			return out.Write(row)
+		})
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
 		}
 		out.Flush()
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+		w.Header().Set("Content-Disposition", `attachment; filename="transactions.csv"`)
+		_, _ = body.WriteTo(w)
 	}
 }
 
@@ -234,7 +237,8 @@ func putRecordsCurrency(activities *activity.Service) http.HandlerFunc {
 }
 
 // getStatement is GET /v1/profiles/{profileId}/statement.pdf?from=&to= (R-112): the profile's income in those UTC days,
-// both required, as a PDF with the billing details as its account holder.
+// both required, as a PDF with the billing details as its account holder; 422 too_many_transactions past
+// activity.MaxExportRows (R-118).
 func getStatement(activities *activity.Service, profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q, id := r.URL.Query(), r.PathValue("profileId")
@@ -252,11 +256,6 @@ func getStatement(activities *activity.Service, profiles *profile.Service) http.
 			httpio.WriteError(w, r, err)
 			return
 		}
-		items, err := activities.AllTransfers(r.Context(), id, from, to)
-		if err != nil {
-			httpio.WriteError(w, r, err)
-			return
-		}
 		currency, err := activities.RecordsCurrency(r.Context(), id)
 		if err != nil {
 			httpio.WriteError(w, r, err)
@@ -265,10 +264,10 @@ func getStatement(activities *activity.Service, profiles *profile.Service) http.
 		s := document.Statement{Holder: holder.Issuer, From: from, To: to.AddDate(0, 0, -1),
 			Issued: time.Now().UTC().Truncate(time.Second), Currency: currency,
 			Decimals: invoice.AgreedCurrencies[currency]}
-		// Oldest first; a transfer still confirming is no income yet.
-		for _, t := range slices.Backward(items) {
+		// Only income is kept; a transfer still confirming is no income yet.
+		err = activities.EachTransfer(r.Context(), id, from, to, func(t activity.Transfer) error {
 			if t.Status != "confirmed" {
-				continue
+				return nil
 			}
 			switch t.Classification() {
 			case activity.ClassInvoice, activity.LabelIncome:
@@ -276,7 +275,13 @@ func getStatement(activities *activity.Service, profiles *profile.Service) http.
 			case activity.ClassUnclassified:
 				s.Unclassified++
 			}
+			return nil
+		})
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
 		}
+		slices.Reverse(s.Lines) // oldest first
 		pdf, err := document.StatementPDF(s)
 		if err != nil {
 			httpio.WriteError(w, r, err)

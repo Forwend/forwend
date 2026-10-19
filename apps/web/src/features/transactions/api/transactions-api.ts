@@ -73,12 +73,12 @@ export const transactionsApi = apiSlice
             response.ok ? URL.createObjectURL(await response.blob()) : response.json(),
         }),
       }),
-      /** Every transaction in the UTC days given (YYYY-MM-DD, both optional), as CSV text (R-108). */
+      /** Every transaction in the UTC days given (YYYY-MM-DD, both optional), as CSV text (R-108); an error stays JSON. */
       exportTransactions: build.query<string, { profileId: string; from?: string; to?: string }>({
         query: ({ profileId, ...params }) => ({
           url: `/v1/profiles/${encodeURIComponent(profileId)}/transactions.csv`,
           params,
-          responseHandler: "text",
+          responseHandler: (response) => (response.ok ? response.text() : response.json()),
         }),
         keepUnusedDataFor: 0,
       }),
