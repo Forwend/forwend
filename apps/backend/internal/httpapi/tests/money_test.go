@@ -299,3 +299,91 @@ func TestTransactionRecords(t *testing.T) {
 		t.Fatalf("clear: %d %v", r.status, r.body)
 	}
 }
+
+// R-112: the statement lists the period's confirmed income oldest first, with USD and records currency values and their
+// totals, names the account holder, and counts the unclassified money in it leaves out.
+func TestStatement(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice, stranger = "did:privy:alice", "0x5555555555555555555555555555555555555555"
+	made := e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/invoices", alice, "inv-1",
+		`{"chainId": 84532, "token": "`+usdc+`", "amount": "5000000", "client": {"name": "Bob Ltd"}}`)
+	if made.status != http.StatusCreated {
+		t.Fatalf("invoice: %d %v", made.status, made.body)
+	}
+	add := func(n int, at time.Time, direction, counterparty, amount, status string) string {
+		t.Helper()
+		hash := fmt.Sprintf("0x%064x", n)
+		e.exec(t, `INSERT INTO wallet_transfers (chain_id, chain_family, token_contract, wallet_address, direction,
+			    counterparty, tx_hash, log_index, block_hash, block_number, block_time, amount, status)
+			VALUES (84532, 'evm', $1, $2, $3, $4, $5, 0, $5, $6::bigint, $7, $8, $9)`,
+			usdc, aliceWallet, direction, counterparty, hash, n, at.Unix(), amount, status)
+		return hash
+	}
+	day := func(d, h int) time.Time { return time.Date(2025, 10, d, h, 0, 0, 0, time.UTC) }
+	paid := add(1, day(9, 10), "in", made.body["receiveAddress"].(string), "5000000", "confirmed")
+	income := add(2, day(9, 12), "in", stranger, "1234567", "confirmed")
+	add(3, day(10, 9), "in", stranger, "2000000", "confirmed")                  // unclassified
+	add(4, day(10, 10), "out", stranger, "1000000", "confirmed")                // money out
+	add(5, day(10, 11), "in", stranger, "3000000", "detected")                  // still confirming
+	late := add(6, day(20, 9), "in", stranger, "1000000", "confirmed")          // labelled income, no ECB rate within 7 days
+	add(7, day(1, 0).Add(-time.Second), "in", stranger, "9000000", "confirmed") // before the period
+	// Two half cents: the total adds the rounded lines, 1.01 twice, never the rounded sum 2.01.
+	halfA := add(8, day(11, 9), "in", stranger, "1005000", "confirmed")
+	halfB := add(9, day(11, 10), "in", stranger, "1005000", "confirmed")
+	label := func(hash string) {
+		t.Helper()
+		if r := e.call(t, "PUT", fmt.Sprintf("/v1/profiles/%s/transactions/84532/%s/0/label", e.aliceProfile, hash),
+			alice, "", `{"label": "income"}`); r.status != http.StatusNoContent {
+			t.Fatalf("label: %d %v", r.status, r.body)
+		}
+	}
+	label(income)
+	label(late)
+	label(halfA)
+	label(halfB)
+	label(fmt.Sprintf("0x%064x", 5)) // still confirming: labelled, but no income yet
+	e.exec(t, "INSERT INTO ecb_rates (currency, day, per_eur) VALUES ('USD', '2025-10-08', 1.25)")
+	if r := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/records-currency", alice, "", `{"currency": "EUR"}`); r.status != http.StatusOK {
+		t.Fatalf("records currency: %d %v", r.status, r.body)
+	}
+
+	path := "/v1/profiles/" + e.aliceProfile + "/statement.pdf"
+	got := e.call(t, "GET", path+"?from=2025-10-01&to=2025-10-31", alice, "", "")
+	if got.status != http.StatusOK || !strings.HasPrefix(got.raw, "%PDF-") {
+		t.Fatalf("statement: %d %.40q", got.status, got.raw)
+	}
+	text := pdfText(t, []byte(got.raw))
+	mustContain(t, text, "Statement", "2025-10-01 to 2025-10-31", "ACCOUNT HOLDER", "Alice Design GmbH",
+		"Tax ID DE123456789", "EUR",
+		"2025-10-09 10:00", "INV-0001 · Bob Ltd", "5.00", "4.00", "5.00 USDC on Base Sepolia", paid,
+		"2025-10-09 12:00", "Income", "1.23", "0.99", "1.234567 USDC on Base Sepolia", income,
+		"2025-10-20 09:00", "no rate", late,
+		"Total", "9.25", "—",
+		"no EUR value, so the EUR total is left out", "1 payment in is unclassified and not listed")
+	for _, never := range []string{fmt.Sprintf("0x%064x", 3), fmt.Sprintf("0x%064x", 4), fmt.Sprintf("0x%064x", 5),
+		fmt.Sprintf("0x%064x", 7)} {
+		if strings.Contains(text, never) {
+			t.Fatalf("the statement lists %s:\n%s", never, text)
+		}
+	}
+	if strings.Index(text, paid) > strings.Index(text, income) || strings.Index(text, income) > strings.Index(text, late) {
+		t.Fatalf("not oldest first:\n%s", text)
+	}
+
+	// Days whose lines all have a rate: the EUR total adds the rounded lines too (0.80 twice, never 1.61).
+	half := pdfText(t, []byte(e.call(t, "GET", path+"?from=2025-10-11&to=2025-10-11", alice, "", "").raw))
+	mustContain(t, half, "2025-10-11 to 2025-10-11", "1.01", "0.80", "Total", "2.02", "1.60")
+	if strings.Contains(half, "—") || strings.Contains(half, "left out") || strings.Contains(half, income) {
+		t.Fatalf("one day with rates:\n%s", half)
+	}
+
+	for _, query := range []string{"", "?from=2025-10-01", "?to=2025-10-31", "?from=2025-10-31&to=2025-10-01", "?from=x&to=y"} {
+		if r := e.call(t, "GET", path+query, alice, "", ""); r.status != http.StatusUnprocessableEntity {
+			t.Fatalf("statement %q: %d %v, want 422", query, r.status, r.body)
+		}
+	}
+	if r := e.call(t, "GET", "/v1/profiles/"+e.walletless+"/statement.pdf?from=2025-10-01&to=2025-10-31", alice, "", ""); r.status != http.StatusNotFound ||
+		errorCode(r) != "billing_details_not_found" {
+		t.Fatalf("without billing details: %d %v", r.status, r.body)
+	}
+}

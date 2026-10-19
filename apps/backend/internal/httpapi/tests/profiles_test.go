@@ -197,6 +197,7 @@ var profileRoutes = []struct{ method, path, body string }{
 	{"GET", "/v1/profiles/%s/transactions", ""},
 	{"GET", "/v1/profiles/%s/transactions.csv", ""},
 	{"GET", "/v1/profiles/%s/records-currency", ""},
+	{"GET", "/v1/profiles/%s/statement.pdf?from=2026-10-01&to=2026-10-31", ""},
 	{"PUT", "/v1/profiles/%s/records-currency", `{"currency": "EUR"}`},
 	{"PUT", "/v1/profiles/%s/transactions/84532/0x" + strings.Repeat("0", 64) + "/0/label", `{"label": "income"}`},
 	{"GET", "/v1/profiles/%s/balance-history", ""},
@@ -238,7 +239,8 @@ func TestProfileRoutesAreAllListed(t *testing.T) {
 		for _, m := range registered.FindAllStringSubmatch(string(src), -1) {
 			pattern := regexp.MustCompile("^" + regexp.MustCompile(`\{\w+\}`).ReplaceAllString(m[2], `[^/]+`) + "$")
 			if !slices.ContainsFunc(profileRoutes, func(r struct{ method, path, body string }) bool {
-				return r.method == m[1] && pattern.MatchString(fmt.Sprintf(r.path, "p"))
+				path, _, _ := strings.Cut(fmt.Sprintf(r.path, "p"), "?")
+				return r.method == m[1] && pattern.MatchString(path)
 			}) {
 				t.Errorf("%s %s (%s) has no case in profileRoutes", m[1], m[2], file)
 			}

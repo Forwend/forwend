@@ -1,5 +1,6 @@
-// Package document renders an invoice and its receipt as PDF files with a fixed layout (R-47, R-61, D-51). Only the
-// stored invoice goes in, nothing is read from the network or disk, and the same invoice always gives the same bytes.
+// Package document renders an invoice, its receipt and a profile's income statement as PDF files with a fixed layout
+// (R-47, R-61, R-112, D-51). Only what is stored goes in, nothing is read from the network or disk, and the same input
+// always gives the same bytes.
 package document
 
 import (
@@ -180,12 +181,6 @@ func Receipt(inv invoice.Invoice, payLink string) ([]byte, error) {
 type doc struct{ *fpdf.Fpdf }
 
 func start(inv invoice.Invoice, kind string) doc {
-	d := doc{fpdf.New("P", "mm", "A4", "")}
-	d.SetMargins(margin, margin, margin)
-	d.SetAutoPageBreak(true, margin)
-	d.SetCellMargin(0)
-	d.AddUTF8FontFromBytes(font, "", regular)
-	d.AddUTF8FontFromBytes(font, "B", bold)
 	author := bmp(inv.SenderName)
 	if inv.Issuer != nil {
 		author = bmp(inv.Issuer.Name)
@@ -194,37 +189,7 @@ func start(inv invoice.Invoice, kind string) doc {
 	if kind == "Receipt" {
 		date = inv.PaidAt
 	}
-	d.SetTitle(kind+" "+Number(inv.Number), true)
-	d.SetAuthor(author, true)
-	d.SetCreator("Forwend", true)
-	d.SetLang("en")
-	d.SetCreationDate(date)
-	d.SetModificationDate(date)
-	d.SetCatalogSort(true)
-	// Every page names the invoice and its place, so a printed page that comes loose is still traceable.
-	d.AliasNbPages("{pages}")
-	d.SetFooterFunc(func() {
-		d.SetY(-margin + 6)
-		d.SetFont(font, "", 8)
-		d.text(subtle)
-		d.CellFormat(width/2, lineHeight, kind+" "+Number(inv.Number), "", 0, "L", false, 0, "")
-		d.CellFormat(width/2, lineHeight, fmt.Sprintf("Page %d of {pages}", d.PageNo()), "", 0, "R", false, 0, "")
-		d.text(ink)
-	})
-	d.AddPage()
-
-	// The mark and name on the left, the document's kind and number on the right.
-	d.color(ink)
-	d.logo(margin, margin, 8)
-	d.SetXY(margin+10.5, margin)
-	d.SetFont(font, "B", 14)
-	d.CellFormat(40, 8, "Forwend", "", 0, "L", false, 0, "")
-	d.SetXY(margin+width/2, margin-1)
-	d.SetFont(font, "B", 20)
-	d.CellFormat(width/2, 9, kind, "", 2, "R", false, 0, "")
-	d.SetFont(font, "", 10)
-	d.text(subtle)
-	d.CellFormat(width/2, lineHeight, Number(inv.Number), "", 1, "R", false, 0, "")
+	d := open(kind, Number(inv.Number), author, date)
 	// The client's accounts team matches the invoice by it (R-90). Never cut: each line holds at least one byte.
 	if text := "Reference " + inv.Reference; inv.Reference != "" {
 		for _, l := range d.fit(text, width/2, len(text)) {
@@ -259,6 +224,49 @@ func start(inv invoice.Invoice, kind string) doc {
 		bottom = max(bottom, d.party(x, top, "Bill to", inv.ClientName, inv.ClientAddress, inv.ClientCountry, tax))
 	}
 	d.SetXY(margin, bottom+6)
+	return d
+}
+
+// open starts a document: its metadata, a footer naming it on every page, and the header with the mark, its kind and
+// its label (an invoice's number, a statement's period).
+func open(kind, label, author string, date time.Time) doc {
+	d := doc{fpdf.New("P", "mm", "A4", "")}
+	d.SetMargins(margin, margin, margin)
+	d.SetAutoPageBreak(true, margin)
+	d.SetCellMargin(0)
+	d.AddUTF8FontFromBytes(font, "", regular)
+	d.AddUTF8FontFromBytes(font, "B", bold)
+	d.SetTitle(kind+" "+label, true)
+	d.SetAuthor(author, true)
+	d.SetCreator("Forwend", true)
+	d.SetLang("en")
+	d.SetCreationDate(date)
+	d.SetModificationDate(date)
+	d.SetCatalogSort(true)
+	// Every page names the document and its place, so a printed page that comes loose is still traceable.
+	d.AliasNbPages("{pages}")
+	d.SetFooterFunc(func() {
+		d.SetY(-margin + 6)
+		d.SetFont(font, "", 8)
+		d.text(subtle)
+		d.CellFormat(width/2, lineHeight, kind+" "+label, "", 0, "L", false, 0, "")
+		d.CellFormat(width/2, lineHeight, fmt.Sprintf("Page %d of {pages}", d.PageNo()), "", 0, "R", false, 0, "")
+		d.text(ink)
+	})
+	d.AddPage()
+
+	// The mark and name on the left, the document's kind and label on the right.
+	d.color(ink)
+	d.logo(margin, margin, 8)
+	d.SetXY(margin+10.5, margin)
+	d.SetFont(font, "B", 14)
+	d.CellFormat(40, 8, "Forwend", "", 0, "L", false, 0, "")
+	d.SetXY(margin+width/2, margin-1)
+	d.SetFont(font, "B", 20)
+	d.CellFormat(width/2, 9, kind, "", 2, "R", false, 0, "")
+	d.SetFont(font, "", 10)
+	d.text(subtle)
+	d.CellFormat(width/2, lineHeight, label, "", 1, "R", false, 0, "")
 	return d
 }
 

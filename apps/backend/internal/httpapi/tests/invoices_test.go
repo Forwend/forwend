@@ -92,7 +92,7 @@ func invoiceAPI(t *testing.T) invoiceEnv {
 type reply struct {
 	status int
 	body   map[string]any
-	raw    string // a CSV body
+	raw    string // a CSV or PDF body
 }
 
 func (e invoiceEnv) post(t *testing.T, user, profile, key, body string) reply {
@@ -134,7 +134,7 @@ func (e invoiceEnv) do(t *testing.T, req *http.Request) reply {
 	if res.StatusCode == http.StatusNoContent && len(raw) == 0 {
 		return r
 	}
-	if strings.HasPrefix(res.Header.Get("Content-Type"), "text/csv") {
+	if ct := res.Header.Get("Content-Type"); strings.HasPrefix(ct, "text/csv") || ct == "application/pdf" {
 		r.raw = string(raw)
 		return r
 	}
