@@ -307,8 +307,8 @@ PDF prints, so a change updates both. Both are public like `GET /v1/invoices/{pa
   - The paid time is the block time of the last deposit the ledger booked to `recipient_payable`: the one that
     completed the amount.
 - The same data gives the same bytes (creation date = created or paid time, sorted catalog), so the `ETag` is a hash of
-  the file. `Cache-Control: private, no-cache`: a client revalidates and gets 304 while the file is unchanged; another
-  deposit before the checkout closes changes the receipt; a late deposit and the settlement do not.
+  the file. `Cache-Control: private, no-cache`: a client revalidates and gets 304 while the file is unchanged. A paid
+  receipt doesn't change: later money is held for the payer (R-121), and the settlement is not on it.
   `Content-Disposition: attachment; filename="forwend-INV-0001-invoice.pdf"` (or `-receipt.pdf`).
 
 ## Jobs

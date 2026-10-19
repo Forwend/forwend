@@ -2506,8 +2506,8 @@ components:
           schema: { type: string }
         Cache-Control:
           description: |
-            private, no-cache. Revalidate with the ETag. Another deposit before the checkout closes changes the receipt;
-            a late deposit (held for the payer) and the settlement do not.
+            private, no-cache. Revalidate with the ETag. A paid receipt doesn't change: later money is held for the
+            payer (R-121), and the settlement is not on it.
           schema: { type: string }
       content:
         application/pdf:
