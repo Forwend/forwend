@@ -2582,7 +2582,7 @@
         "The header shows the billing details as account holder, the period and the issue time; the same input gives the same bytes; R-112, api.md and openapi.yaml describe it; the route is in the 403 test."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "docs-check"
@@ -2679,11 +2679,18 @@
           "summary": "Fourth review: pass. The last minor point is fixed. Before the Notes heading, statement.go keeps room for the heading and its first note (pageFor(3*lineHeight + first note's lines)). The font is set first, so the line count matches what is drawn. checkStatementPages fails when a page ends with the NOTES heading alone. A probe of 2,852 renders found no page that ends with NOTES, INCOME or the column header alone, no empty page, no rows or total without the header, and exactly one total each time. It covered IDR and no records currency, 0 to 45 lines, 0 to 30 extra address lines, and the no-rate and unclassified notes. Nothing else changed since the third review, and its findings hold. Not changed by choice: the 6 pt font floor in row(), fine for real amounts. Go tests pass (document, httpapi, tests, activity).",
           "at": "2026-10-19T13:34:04Z",
           "filesHash": "7148a947212cbb8e"
-        }
+        },
+        "commit": "e6de95e",
+        "doneAt": "2026-10-19T13:34:18Z"
       },
       "branch": "feat/f244-a-statement-pdf-proves-a-profile-s-incom",
       "baseCommit": "7aaf482c1566d92c0a7c0b58dd6f2cae8d50f61d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f244-a-statement-pdf-proves-a-profile-s-incom",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
