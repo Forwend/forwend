@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -82,6 +83,9 @@ func getTransactions(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
+// formulaAfterSemicolon is a formula start right after a ";".
+var formulaAfterSemicolon = regexp.MustCompile(`;([=+\-@\t\r])`)
+
 // transactionsCSVHeader names the export's columns (R-108).
 var transactionsCSVHeader = []string{"Date (UTC)", "Direction", "Amount", "Token", "Network", "Counterparty",
 	"Transaction", "Status", "USD value", "Classification", "Invoice", "Client"}
@@ -126,10 +130,15 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 				}
 			}
 			for i, cell := range row {
-				// A spreadsheet runs a cell that starts like a formula; an apostrophe makes it text.
+				// A spreadsheet runs a cell that starts like a formula; an apostrophe makes it text. One that splits on
+				// ";" (de-DE, fr-FR) starts a cell after each ";" too.
 				if cell != "" && strings.ContainsRune("=+-@\t\r", rune(cell[0])) {
-					row[i] = "'" + cell
+					cell = "'" + cell
 				}
+				if strings.Contains(cell, ";") { // only then: a regexp on every cell of a big export costs gigabytes
+					cell = formulaAfterSemicolon.ReplaceAllString(cell, ";'$1")
+				}
+				row[i] = cell
 			}
 			return out.Write(row)
 		})

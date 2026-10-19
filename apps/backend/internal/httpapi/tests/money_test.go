@@ -192,7 +192,7 @@ func TestTransactionRecords(t *testing.T) {
 	const alice, stranger = "did:privy:alice", "0x5555555555555555555555555555555555555555"
 	path := "/v1/profiles/" + e.aliceProfile + "/transactions"
 	made := e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/invoices", alice, "inv-1",
-		`{"chainId": 84532, "token": "`+usdc+`", "amount": "5000000", "client": {"name": "=Bob Ltd"}}`)
+		`{"chainId": 84532, "token": "`+usdc+`", "amount": "5000000", "client": {"name": "=Bob Ltd;=1+1"}}`)
 	if made.status != http.StatusCreated {
 		t.Fatalf("invoice: %d %v", made.status, made.body)
 	}
@@ -215,7 +215,7 @@ func TestTransactionRecords(t *testing.T) {
 	paid, other := items[1].(map[string]any), items[0].(map[string]any)
 	if paid["classification"] != "invoice" || paid["usdValue"] != "5.000000" || paid["labelable"] != false ||
 		!reflect.DeepEqual(paid["invoice"],
-			map[string]any{"invoiceId": invoice, "number": float64(1), "clientName": "=Bob Ltd"}) {
+			map[string]any{"invoiceId": invoice, "number": float64(1), "clientName": "=Bob Ltd;=1+1"}) {
 		t.Fatalf("the invoice payment %v", paid)
 	}
 	if other["classification"] != "unclassified" || other["usdValue"] != "1.500000" || other["labelable"] != true ||
@@ -257,7 +257,8 @@ func TestTransactionRecords(t *testing.T) {
 	want := "Date (UTC),Direction,Amount,Token,Network,Counterparty,Transaction,Status,USD value,Classification,Invoice,Client\r\n" +
 		"2025-10-09T08:53:22Z,in,1.500000,USDC,Base Sepolia," + stranger + "," + hash(2) + ",confirmed,1.500000,income,,\r\n" +
 		"2025-10-09T08:53:21Z,in,5.000000,USDC,Base Sepolia," + made.body["receiveAddress"].(string) + "," + hash(1) +
-		",confirmed,5.000000,invoice,INV-0001,'=Bob Ltd\r\n"
+		// A spreadsheet that splits on ";" would run what follows it too (R-108).
+		",confirmed,5.000000,invoice,INV-0001,'=Bob Ltd;'=1+1\r\n"
 	if export.status != http.StatusOK || export.raw != want {
 		t.Fatalf("export: %d\n%s\nwant\n%s", export.status, export.raw, want)
 	}

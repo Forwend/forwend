@@ -4149,7 +4149,7 @@
         "A client name Acme;=1+1 exports as Acme;'=1+1; the first-character guard is unchanged."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "docs-check"
@@ -4163,7 +4163,77 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-19T21:31:33Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 70.9,
+            "log": "docs/runs/F258-20261019T213133Z-unit.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F258-20261019T213133Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F258-20261019T213133Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F258-20261019T213133Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F258-20261019T213133Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.0,
+            "log": "docs/runs/F258-20261019T213133Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 212.9,
+            "log": "docs/runs/F258-20261019T213133Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F258-20261019T213133Z-keep.log"
+          }
+        ],
+        "taskHash": "fb676fb95532383e",
+        "filesHash": "a92372824c4c913d",
+        "proof": {
+          "1": "unit: TestTransactionRecords: the client name =Bob Ltd;=1+1 exports as '=Bob Ltd;'=1+1 (the part after ; was unguarded before); the first-character guard is unchanged; TestExportsStayBoundedWithDust still passes (the regexp runs only on cells with a ;)"
+        }
+      },
+      "branch": "fix/f258-the-transactions-csv-also-guards-a-formu",
+      "baseCommit": "4cd6c9be7f71114ff927b9361070d6b894c76265",
+      "failedVerifies": 0
     },
     {
       "id": "F259",
