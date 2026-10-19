@@ -3,6 +3,7 @@ package moneyapi
 import (
 	"encoding/csv"
 	"fmt"
+	"math/big"
 	"net/http"
 	"slices"
 	"strconv"
@@ -12,6 +13,8 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/activity"
 	"github.com/ensp1re/forwend/apps/backend/internal/document"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
+	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
 
 // getActivity is GET /v1/profiles/{profileId}/activity?limit=&cursor=&status=&q=.
@@ -228,4 +231,80 @@ func putRecordsCurrency(activities *activity.Service) http.HandlerFunc {
 		}
 		httpio.WriteJSON(w, http.StatusOK, recordsCurrencyJSON{Currency: httpio.OrNull(currency)})
 	}
+}
+
+// getStatement is GET /v1/profiles/{profileId}/statement.pdf?from=&to= (R-112): the profile's income in those UTC days,
+// both required, as a PDF with the billing details as its account holder.
+func getStatement(activities *activity.Service, profiles *profile.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		q, id := r.URL.Query(), r.PathValue("profileId")
+		if q.Get("from") == "" || q.Get("to") == "" {
+			httpio.WriteError(w, r, fmt.Errorf("%w: from and to are both required", activity.ErrInvalid))
+			return
+		}
+		from, to, err := dayRange(q.Get("from"), q.Get("to"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		holder, err := profiles.BillingDetails(r.Context(), id)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		items, err := activities.AllTransfers(r.Context(), id, from, to)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		currency, err := activities.RecordsCurrency(r.Context(), id)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		s := document.Statement{Holder: holder.Issuer, From: from, To: to.AddDate(0, 0, -1),
+			Issued: time.Now().UTC().Truncate(time.Second), Currency: currency,
+			Decimals: invoice.AgreedCurrencies[currency]}
+		// Oldest first; a transfer still confirming is no income yet.
+		for _, t := range slices.Backward(items) {
+			if t.Status != "confirmed" {
+				continue
+			}
+			switch t.Classification() {
+			case activity.ClassInvoice, activity.LabelIncome:
+				s.Lines = append(s.Lines, statementLine(t))
+			case activity.ClassUnclassified:
+				s.Unclassified++
+			}
+		}
+		pdf, err := document.StatementPDF(s)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Header().Set("Content-Disposition", `attachment; filename="statement.pdf"`)
+		_, _ = w.Write(pdf)
+	}
+}
+
+// statementLine is an income transfer as a statement shows it: its USD value rounded half up to the cent, and its value
+// in the records currency in minor units when it has a rate.
+func statementLine(t activity.Transfer) document.StatementLine {
+	what := "Income"
+	if i := t.Invoice; i != nil {
+		what = document.Number(i.Number)
+		if i.ClientName != "" {
+			what += " · " + i.ClientName
+		}
+	}
+	// FloatString rounds halves away from zero, which for money in is half up; its digits are always an integer.
+	cents, _ := new(big.Int).SetString(new(big.Rat).Mul(t.USDValue(), big.NewRat(100, 1)).FloatString(0), 10)
+	l := document.StatementLine{At: t.At, What: what, ChainID: t.ChainID, TxHash: t.TxHash, USDCents: cents,
+		Amount: document.Amount(t.Amount, t.Decimals, t.Symbol)}
+	if amount, _, ok := t.RecordsValue(); ok {
+		// The value is already rounded to the currency's decimals: without the point it is in minor units.
+		l.Other, _ = new(big.Int).SetString(strings.Replace(amount, ".", "", 1), 10)
+	}
+	return l
 }

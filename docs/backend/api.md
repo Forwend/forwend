@@ -377,6 +377,14 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
 - `GET` and `PUT /v1/profiles/{profileId}/records-currency` read and set `{"currency": ...}` (R-110).
   - It is EUR or a currency the ECB publishes a rate for, other than USD; null clears it.
   - Another value is 422 `invalid_value`.
+- `GET /v1/profiles/{profileId}/statement.pdf?from=&to=` is the profile's income statement for those UTC days (R-112).
+  - Both days are required and included; a missing or bad day, or from after to, is 422.
+  - Income is confirmed money in classified `invoice` or labelled `income`, oldest first.
+  - Each line has its UTC time, invoice and client or Income, token amount, network and transaction.
+  - It has the USD value to the cent and the records currency's value; totals add the rounded lines.
+  - A line without a rate leaves out the other total, and a note says why.
+  - The billing details are the account holder; without them it is 404 `billing_details_not_found`.
+  - A note counts the confirmed unclassified money in that it leaves out.
 - Each transaction adds `recordsValue` `{currency, amount, rateDate}`, null without a currency or a rate.
   - `rateDate` is the latest ECB day on or before the transfer's UTC day, within 7 days; an older rate gives null.
   - Until the ECB publishes a day's rates and the worker reads them, that day's transfers use the day before.

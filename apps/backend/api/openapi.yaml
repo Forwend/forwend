@@ -898,6 +898,37 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/statement.pdf:
+    get:
+      operationId: getStatement
+      summary: The profile's income statement for the UTC days given, as a PDF (R-112)
+      description: |
+        Confirmed money in classified invoice or labelled income, oldest first, with each line's USD value to the cent and
+        its value in the records currency, and their totals. The billing details are the account holder.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: from
+          in: query
+          required: true
+          description: The first UTC day (YYYY-MM-DD).
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: true
+          description: The last UTC day, included. Before from is 422.
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: The statement
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/BillingDetailsNotFound" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/records-currency:
     get:
       operationId: getRecordsCurrency
