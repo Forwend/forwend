@@ -2702,7 +2702,7 @@
         "Unit tests cover the request, the saved PDF and its name, the day errors and both failures; the live e2e downloads it and shows the billing error on fixed answers, axe clean, 390 px fit; DESIGN.md describes it."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
@@ -2798,11 +2798,18 @@
           "summary": "Third review: the five minor points from the last pass are fixed. 1) checkDays now focuses the first aria-invalid field inside the days container (ref days), so the Records currency select can no longer take focus. 2) The CSV path's To-before-From check is in R-109 and DESIGN.md. The CSV unit test sets To before From, expects To aria-invalid and no CSV request, then clears To and downloads. 3) The DESIGN.md bullet is split into one fact per bullet (D-84). 4) The checkDays what-comment is gone. 5) records.spec.ts clicks Add billing details, saves, and expects /app/transactions. The save goes to the mocked billing-details route, so nothing lasting (D-85). Earlier findings stay resolved. vitest 6/6, typecheck and biome are clean; verify passed at 14:02:43Z with 8 checks. No open findings. Left as agreed: revoking right after click(), the 404 status check (matches profiles-api), and no test for the New job way back (outside this task).",
           "at": "2026-10-19T14:09:02Z",
           "filesHash": "c661af2fa775f23e"
-        }
+        },
+        "commit": "f5b437d",
+        "doneAt": "2026-10-19T14:09:20Z"
       },
       "branch": "feat/f245-the-export-dialog-downloads-the-income-s",
       "baseCommit": "200d8727fefc026dfbd3dfb3be6cd8bf156fa47d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f245-the-export-dialog-downloads-the-income-s",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
