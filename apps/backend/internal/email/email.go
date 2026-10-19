@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,6 +23,10 @@ type Message struct {
 type Sender interface {
 	Send(ctx context.Context, m Message) error
 }
+
+// ErrRefused: Resend refused the request as sent (400 or 422), such as a bad address; the next message may still go.
+// Other errors are about the key, the account, the quota or Resend (resend.com/docs/api-reference/errors).
+var ErrRefused = errors.New("Resend refused the message")
 
 // ResendURL is Resend's send endpoint (resend.com/docs/api-reference/emails/send-email).
 const ResendURL = "https://api.resend.com/emails"
@@ -65,8 +70,11 @@ func (r *Resend) Send(ctx context.Context, m Message) error {
 	}
 	defer res.Body.Close()
 	_, _ = io.Copy(io.Discard, io.LimitReader(res.Body, 1<<16))
-	if res.StatusCode/100 != 2 {
+	switch {
+	case res.StatusCode == http.StatusBadRequest, res.StatusCode == http.StatusUnprocessableEntity:
 		// The status alone: Resend's error text can quote the address.
+		return fmt.Errorf("send email: %w: Resend answered %d", ErrRefused, res.StatusCode)
+	case res.StatusCode/100 != 2:
 		return fmt.Errorf("send email: Resend answered %d", res.StatusCode)
 	}
 	return nil
