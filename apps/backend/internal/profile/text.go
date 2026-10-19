@@ -30,13 +30,7 @@ func Impersonates(name string) bool {
 	var b strings.Builder
 	gap := false
 	for _, r := range norm.NFKD.String(name) {
-		if c, ok := lookalikes[r]; ok {
-			r = rune(c)
-		} else if c, ok := moreLookalikes[r]; ok {
-			r = rune(c)
-		} else {
-			r = unicode.ToLower(r)
-		}
+		r = latin(r)
 		switch {
 		case r >= 'a' && r <= 'z':
 			if gap && b.Len() > 0 {
@@ -58,6 +52,19 @@ func Impersonates(name string) bool {
 }
 
 var forwend = regexp.MustCompile("f ?o ?r ?w ?e ?n ?d")
+
+// latin is the lower-case ASCII letter r reads as, by itself or in lower case, else r in lower case.
+func latin(r rune) rune {
+	for _, c := range []rune{r, unicode.ToLower(r)} {
+		if l, ok := lookalikes[c]; ok {
+			return rune(l)
+		}
+		if l, ok := moreLookalikes[c]; ok {
+			return rune(l)
+		}
+	}
+	return unicode.ToLower(r)
+}
 
 // moreLookalikes read as a Latin letter in a name, though Unicode's confusables (lookalikes.go) don't list them:
 // lower-case Greek and Cyrillic letters and small capitals.

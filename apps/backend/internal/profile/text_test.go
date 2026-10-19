@@ -20,7 +20,8 @@ func TestImpersonates(t *testing.T) {
 		"ꜰᴏʀᴡᴇɴᴅ" /* small capitals */, "ꓝꓳꓣꓪꓰꓠꓓ" /* Lisu */, "ꓝORWEND Support", "Forvvend Support", "F o r w e n d",
 		// Unicode's confusables (UTS #39) cover other scripts too (audit 2026-10-19).
 		"Fօrwend Billing" /* Armenian օ */, "Forweոd" /* Armenian ո */, "Forwenԁ" /* Cyrillic ԁ */, "ϜORWEND",
-		"Fᴏrwend"} {
+		"Fᴏrwend", "ƑORWEND", "FORWENԀ", "FORѠEND", "FORWEПD", "FORWEՈD", /* upper case whose lower case reads as a letter */
+		"For|wend" /* a bar is a gap */} {
 		if !Impersonates(name) {
 			t.Errorf("%q passes", name)
 		}

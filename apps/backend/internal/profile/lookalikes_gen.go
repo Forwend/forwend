@@ -5,7 +5,8 @@
 //	curl -sO https://www.unicode.org/Public/security/latest/confusables.txt
 //	go run lookalikes_gen.go < confusables.txt > lookalikes.go
 //
-// It keeps each character whose prototype is one ASCII letter, as that letter in lower case.
+// It keeps each letter or digit whose prototype is one ASCII letter, as that letter in lower case. Other characters,
+// such as a bar that reads as l, stay gaps between letters.
 package main
 
 import (
@@ -33,10 +34,12 @@ func main() {
 		}
 		source, err1 := strconv.ParseUint(strings.TrimSpace(fields[0]), 16, 32)
 		target, err2 := strconv.ParseUint(strings.TrimSpace(fields[1]), 16, 32)
-		if err1 != nil || err2 != nil || target > unicode.MaxASCII || !unicode.IsLetter(rune(target)) {
-			continue // one code point that reads as an ASCII letter, nothing else
+		r := rune(source)
+		if err1 != nil || err2 != nil || target > unicode.MaxASCII || !unicode.IsLetter(rune(target)) ||
+			!unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			continue // a letter or digit that reads as one ASCII letter, nothing else
 		}
-		table[rune(source)] = unicode.ToLower(rune(target))
+		table[r] = unicode.ToLower(rune(target))
 	}
 	if err := in.Err(); err != nil || version == "" || len(table) == 0 {
 		fmt.Fprintln(os.Stderr, "lookalikes_gen: read confusables.txt on stdin:", err)

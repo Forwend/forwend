@@ -3938,75 +3938,77 @@
         "packages/contracts/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-19 review fail by reviewer: Blocker: apps/backend/internal/profile/text.go:33-39 looks up the tables only before ToLower. An upper-case letter whose lower case is in lookalikes or moreLookalikes is now missed. The old code lowered first, then mapped. So 'ƑORWEND' (U+0191 F with hook), 'FORWENԀ' (U+0500), 'FORѠEND' (U+0460) and 'FORWEПD' were refused on main and pass now. New Armenian capitals Ո and Ռ (lower case maps to n) are missed too. Fix: when neither table has r, look up unicode.ToLower(r) in both tables before falling back to it. Add 'ƑORWEND' and 'FORWENԀ' to TestImpersonates. Minor: '|' and other bars (U+007C, U+01C0, U+2223, U+2502) now map to l. 'For|wend' was refused as 'For wend' and now passes. Minor: the U+017F ſ->f entry never applies, because NFKD turns ſ into s first; 'ſorwend' passes (it did before too). Minor: the pay page's Need help always says the name is not checked, also with billing details. So 'Billing details get no such note' in docs/backend/api.md holds for emails and PDF only. Good: the generator is correct. Regenerating from the local confusables.txt 18.0.0 gives a byte-identical lookalikes.go; gofmt is clean. Multi-code-point targets are skipped; 0 and 1 map to o and l. Every old hand-map entry is still covered. 'Gifts for Wendy' and 'Forward End' still pass. The new test fails on the old code (both Armenian cases) and passes now. Ran: harness show; go run lookalikes_gen.go | diff (same); go test -overlay probes on new and old code; sh scripts/with-env.sh go test -count=1 ./internal/profile/ (ok). Verify logs F256-20261019T205024Z-* all passed."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-19T20:50:24Z",
+        "at": "2026-10-19T21:00:39Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 76.2,
-            "log": "docs/runs/F256-20261019T205024Z-unit.log"
+            "seconds": 81.5,
+            "log": "docs/runs/F256-20261019T210039Z-unit.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F256-20261019T205024Z-docs-check.log"
+            "log": "docs/runs/F256-20261019T210039Z-docs-check.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.2,
-            "log": "docs/runs/F256-20261019T205024Z-harness.log"
+            "seconds": 2.3,
+            "log": "docs/runs/F256-20261019T210039Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F256-20261019T205024Z-lint.log"
+            "log": "docs/runs/F256-20261019T210039Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.2,
-            "log": "docs/runs/F256-20261019T205024Z-typecheck.log"
+            "log": "docs/runs/F256-20261019T210039Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
             "seconds": 3.4,
-            "log": "docs/runs/F256-20261019T205024Z-build.log"
+            "log": "docs/runs/F256-20261019T210039Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 211.1,
-            "log": "docs/runs/F256-20261019T205024Z-e2e.log"
+            "seconds": 211.6,
+            "log": "docs/runs/F256-20261019T210039Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F256-20261019T205024Z-keep.log"
+            "log": "docs/runs/F256-20261019T210039Z-keep.log"
           }
         ],
         "taskHash": "a94a2996b340d757",
-        "filesHash": "c3678a2f98b2fb1e",
+        "filesHash": "f7dfec93b12bef67",
         "proof": {
-          "1": "unit: profile TestImpersonates: Fօrwend and Forweոd (Armenian), Forwenԁ, ϜORWEND and the earlier cases are refused (the Armenian ones passed before); Gifts for Wendy and For Wendy's Bakery are still allowed; lookalikes.go is generated from Unicode confusables.txt 18.0.0 by lookalikes_gen.go, with moreLookalikes for the old entries Unicode lacks",
-          "2": "docs-check: api.md says why billing details get no not-checked note (the issuer's own legal details; the look-alike check guards the Forwend name); R-122 added"
+          "1": "unit: profile TestImpersonates: Fօrwend and Forweոd (Armenian), Forwenԁ, ϜORWEND, ƑORWEND, FORWENԀ, FORѠEND, FORWEПD, FORWEՈD, For|wend and the earlier cases are refused (the Armenian ones passed before); Gifts for Wendy and For Wendy's Bakery are still allowed; lookalikes.go is generated from Unicode confusables.txt 18.0.0 by lookalikes_gen.go (letters and digits only), with moreLookalikes for the old entries Unicode lacks",
+          "2": "docs-check: api.md says why emails and PDFs show billing details without a not-checked note (the issuer's own legal details; the look-alike check guards the Forwend name); R-122 added"
         }
       },
       "branch": "fix/f256-a-name-that-reads-as-forwend-through-any",
