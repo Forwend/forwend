@@ -25,12 +25,22 @@ func PlainText(s string, lines bool) bool {
 var fillers = map[rune]bool{'\u115f': true, '\u1160': true, '\u2800': true, '\u3164': true, '\uffa0': true}
 
 // Impersonates reports a name shown to payers that reads as Forwend, also with accents, spaces or look-alike letters.
-// Split across words it counts only when it ends a word: "For wend" reads as Forwend, "Gifts for Wendy" does not.
+// Split across words it counts only when it ends a word: "For wend" reads as Forwend, "Gifts for Wendy" does not. A
+// symbol that looks like a letter can read either way, so both readings count: "Forw℮nd" as a letter, "For|wend" as a
+// gap.
 func Impersonates(name string) bool {
+	return readsAsForwend(name, true) || readsAsForwend(name, false)
+}
+
+// readsAsForwend reads name as Latin letters; symbols says whether a symbol that looks like a letter counts as it, or
+// as a gap like any other symbol.
+func readsAsForwend(name string, symbols bool) bool {
 	var b strings.Builder
 	gap := false
 	for _, r := range norm.NFKD.String(name) {
-		r = latin(r)
+		if symbols || unicode.IsLetter(r) || unicode.IsDigit(r) {
+			r = latin(r)
+		}
 		switch {
 		case r >= 'a' && r <= 'z':
 			if gap && b.Len() > 0 {

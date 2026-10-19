@@ -21,7 +21,7 @@ func TestImpersonates(t *testing.T) {
 		// Unicode's confusables (UTS #39) cover other scripts too (audit 2026-10-19).
 		"Fօrwend Billing" /* Armenian օ */, "Forweոd" /* Armenian ո */, "Forwenԁ" /* Cyrillic ԁ */, "ϜORWEND",
 		"Fᴏrwend", "ƑORWEND", "FORWENԀ", "FORѠEND", "FORWEПD", "FORWEՈD", /* upper case whose lower case reads as a letter */
-		"For|wend" /* a bar is a gap */} {
+		"For|wend" /* a bar as a gap */, "Forw℮nd", "F〇rwend", "Fంrwend" /* symbols and marks as letters */} {
 		if !Impersonates(name) {
 			t.Errorf("%q passes", name)
 		}

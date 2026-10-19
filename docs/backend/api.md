@@ -52,7 +52,8 @@ column existed were set to their signup time (migration 00013), so they never se
   notes and addresses, zero-width joiners allowed), and sender, profile and billing names that read as Forwend: 422.
   - "Reads as Forwend" folds accents, spaces and look-alike letters, also of upper-case letters (R-122).
   - The letters come from Unicode's confusables (`profile/lookalikes.go`, made by `lookalikes_gen.go`). A few it lacks,
-    such as small capitals, are added by hand. A symbol that reads as a letter, such as `|`, stays a gap.
+    such as small capitals, are added by hand. A symbol that looks like a letter counts both ways: as that letter
+    (`℮` as e) and as a gap (`|`).
   - Emails and the PDF of a request without billing details say a typed sender name is not checked. The pay page's
     Need help always says so.
   - Emails and PDFs show billing details without that note: they are the issuer's own legal details, shown as on any
