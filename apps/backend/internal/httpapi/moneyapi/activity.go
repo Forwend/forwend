@@ -83,8 +83,9 @@ func getTransactions(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
-// formulaAfterSemicolon is a formula start right after a ";".
-var formulaAfterSemicolon = regexp.MustCompile(`;([=+\-@\t\r])`)
+// formulaAfterSemicolon is a formula start right after a ";", also after quotes: a cell that starts with a quote
+// ends at the next lone quote, and what follows is added to it.
+var formulaAfterSemicolon = regexp.MustCompile(`;("*[=+\-@\t\r])`)
 
 // transactionsCSVHeader names the export's columns (R-108).
 var transactionsCSVHeader = []string{"Date (UTC)", "Direction", "Amount", "Token", "Network", "Counterparty",
