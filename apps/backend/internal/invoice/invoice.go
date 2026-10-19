@@ -276,8 +276,9 @@ type Deposit struct {
 	BlockTime   time.Time
 	Status      string // detected or confirmed
 	Late        bool   // block time after expiresAt: held for the payer (D-26)
-	// Paid is the part the ledger booked to the creator (R-121): all of it, part of a deposit that went over, or 0 for
-	// one held for the payer; nil until the ledger books it.
+	// Paid is the part the ledger booked to the creator when it booked the deposit (R-121): all of it, part of a deposit
+	// that went over, or 0 for one held for the payer; nil until the ledger books it. An expired partial payment keeps
+	// it, though the expiry later holds that money for the payer.
 	Paid *big.Int
 	finality.Progress
 	// BlocksTotal is the blocks it had to wait when first seen, at least BlocksLeft: the m of "Confirming (n/m)" (R-73).

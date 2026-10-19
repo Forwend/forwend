@@ -91,9 +91,8 @@ export function payState(inv: Invoice, now: number) {
   };
 }
 
-/** The payments the receipt names: confirmed and before expiry. A late one is held for the payer, not part of it. */
+/** The payments the receipt names: those that paid the creator (R-121). Late money and money over the amount are held. */
 export function receiptDeposits(inv: Invoice) {
-  // What paid the creator (R-121): late money and money over the amount are held for the payer.
   return inv.deposits.filter((d) => d.paid !== null && BigInt(d.paid) > 0n);
 }
 

@@ -2324,10 +2324,12 @@ components:
           type: boolean
           description: Block time after expiresAt; held for the payer, never paid to the creator.
         paid:
-          oneOf: [{ $ref: "#/components/schemas/Uint256" }, { type: "null" }]
+          type: [string, "null"]
+          pattern: "^[0-9]+$"
           description: >-
-            The part the ledger booked to the creator (R-121): all of it, the part that completed the amount, or 0 when
-            held for the payer. Null until the ledger books it.
+            The part the ledger booked to the creator when it booked the deposit (R-121): all of it, the part that
+            completed the amount, or 0 when it was held for the payer. Null until the ledger books it. An expired
+            partial payment keeps its paid part here, though the expiry later holds it for the payer.
         blocksLeft:
           type: integer
           minimum: 0

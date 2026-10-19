@@ -46,7 +46,7 @@ export const depositSchema = z.object({
   status: openEnum<ApiDepositStatus>(),
   // Paid after expiry: held for the payer, never the creator's.
   late: z.boolean(),
-  // The part the ledger booked to the creator (R-121): all of it, part, or "0" when held; null until booked.
+  // The part the ledger booked to the creator at booking (R-121): all, part, or "0" when held; null until booked.
   paid: baseUnits.nullable(),
   blocksLeft: count,
   // The blocks it had to wait when first seen, fixed across reads: blocksTotal - blocksLeft have passed (R-73).
