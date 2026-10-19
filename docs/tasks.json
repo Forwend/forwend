@@ -2996,7 +2996,7 @@
         "Re-saving a refused payer address every 10 s no longer stops the other emails (the audit PoC as a test)."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "docs-check"
@@ -3011,7 +3011,8 @@
       "review": false,
       "notes": [
         "2026-10-19 review fail by reviewer: Blocker 1, notify.go:113-121: a refused event is given up at once (failed_at = now()). Accept 1 asks for the usual backoff, and R-115 was written to match the code instead. This is unsafe. Resend's errors page puts any bad request field under 400 validation_error, the from field too. EMAIL_FROM is an unchecked env var (config.go:106). One malformed EMAIL_FROM, or a deploy bug that breaks a field in every message (422 missing_required_field), now marks every due event failed, 20 per round, with no retry. Before, each event had 10 tries over about 4 h. Paid, settled, held, welcome and change emails have no way to start again. Fix: on ErrRefused, record the failure like other errors (attempts++, Backoff, failed_at at MaxAttempts) and return true so the round goes on. The payer PoC still holds: the PUT makes the receipt due again, and each round tries it once and moves on. Update R-115, docs/backend/api.md:69 and the ErrRefused comment (email.go:27, 'sending it again won't work' is false for a bad From). Minor: accept 1 says every 4xx except 401, 403 and 429 goes on; the code also stops on 409, 404, 405 and 451. 409 as a retry is fair (concurrent_idempotent_requests), but say why or follow the acceptance. Minor: R-115's first sentence is 37 words (D-84 says at most 25). Minor: api.md:70 moves 'Email off or no address' under the failed-send bullet; it is not about failures, holds two facts, and the line is 128 chars. Good: the transaction commits, Batch still bounds the round, a refused event leaves the due set, so there is no loop. Every kind (receipt, send, reminder, change, welcome) goes through deliverOne. Send and reminder history show failedAt (send.go:105). No address is logged. Both new tests fail without the fix. Ran: sh scripts/with-env.sh go test -count=1 ./internal/email/ ./internal/notify/ (both ok). Checked Resend's errors page for the status list.",
-        "2026-10-19 review pass by reviewer: No blockers. The earlier blocker is fixed. notify.go: a refused message (400 or 422) now records its failure like any other: attempts plus one, the same backoff, failed_at only at MaxAttempts. Only the round goes on. So a bad EMAIL_FROM no longer drops the queue at once; each event keeps its 10 tries over about 4 h. The send error has its own name, so the DB write can't hide it. The transaction commits. A refused event waits its backoff, so it leaves the due list and the round can't loop; Batch still bounds it. Every email kind goes through deliverOne. Send and reminder history show failedAt after the last try. No address is logged. The notify test fails without the fix (round 0 would send nothing). It checks one owner email per round over 3 rounds and the receipt waiting with attempts 1 and about 1 min backoff. The ErrRefused comment, acceptance 1 and 2, R-115 and api.md now match the code. api.md lines are under 120 chars. Minor: R-115's first sentence is 29 words, over D-84's 25. Minor: the test name still says 'SetsARefusedEmailAside', but the event is now retried. Ran: sh scripts/with-env.sh go test -count=1 ./internal/email/ ./internal/notify/ (both ok); go vet and gofmt -l on both packages (clean); python3 scripts/check-docs.py (0 errors). Verify logs F248-20261019T180101Z-* are present."
+        "2026-10-19 review pass by reviewer: No blockers. The earlier blocker is fixed. notify.go: a refused message (400 or 422) now records its failure like any other: attempts plus one, the same backoff, failed_at only at MaxAttempts. Only the round goes on. So a bad EMAIL_FROM no longer drops the queue at once; each event keeps its 10 tries over about 4 h. The send error has its own name, so the DB write can't hide it. The transaction commits. A refused event waits its backoff, so it leaves the due list and the round can't loop; Batch still bounds it. Every email kind goes through deliverOne. Send and reminder history show failedAt after the last try. No address is logged. The notify test fails without the fix (round 0 would send nothing). It checks one owner email per round over 3 rounds and the receipt waiting with attempts 1 and about 1 min backoff. The ErrRefused comment, acceptance 1 and 2, R-115 and api.md now match the code. api.md lines are under 120 chars. Minor: R-115's first sentence is 29 words, over D-84's 25. Minor: the test name still says 'SetsARefusedEmailAside', but the event is now retried. Ran: sh scripts/with-env.sh go test -count=1 ./internal/email/ ./internal/notify/ (both ok); go vet and gofmt -l on both packages (clean); python3 scripts/check-docs.py (0 errors). Verify logs F248-20261019T180101Z-* are present.",
+        "2026-10-19 review pass by reviewer: No blockers. Checked the two changes in commit 671f7f6 against origin/main. The notify test is now TestDeliverGoesOnPastARefusedEmail; its body is unchanged and still fails without the fix. R-115's first sentence is shorter and still matches the code: 400 or 422 records the failure with the usual backoff, and the round goes on. The rest of the diff is the same as in my last pass. The commit message has no AI attribution, and the working tree is clean. Nit: the R-115 first sentence is about 25 words, so it is at the D-84 limit. Ran: sh scripts/with-env.sh go test -count=1 ./internal/email/ ./internal/notify/ (both ok). Verify logs F248-20261019T180705Z-* are present."
       ],
       "blockedReason": null,
       "evidence": {
@@ -3082,11 +3083,25 @@
           "1": "unit: TestDeliverGoesOnPastARefusedEmail: a 422-refused receipt gets attempts 1 and a backoff of about a minute, and the owner's email due after it is sent in the same round; email TestResendRefusesOnlyTheMessageOn400And422 maps 400 and 422 to ErrRefused",
           "2": "unit: TestResendRefusesOnlyTheMessageOn400And422: 401, 403, 409, 429, 500 and 503 are not ErrRefused; TestDeliverRetriesWithBackoffThenGivesUp still shows a 503 ends the round with backoff and MaxAttempts",
           "3": "unit: TestDeliverGoesOnPastARefusedEmail resets the receipt as the payer email PUT does, three rounds in a row, and the owner's email goes out every round (0 sent before the fix)"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "No blockers. Checked the two changes in commit 671f7f6 against origin/main. The notify test is now TestDeliverGoesOnPastARefusedEmail; its body is unchanged and still fails without the fix. R-115's first sentence is shorter and still matches the code: 400 or 422 records the failure with the usual backoff, and the round goes on. The rest of the diff is the same as in my last pass. The commit message has no AI attribution, and the working tree is clean. Nit: the R-115 first sentence is about 25 words, so it is at the D-84 limit. Ran: sh scripts/with-env.sh go test -count=1 ./internal/email/ ./internal/notify/ (both ok). Verify logs F248-20261019T180705Z-* are present.",
+          "at": "2026-10-19T18:12:32Z",
+          "filesHash": "8f95e17c5877d5e2"
+        },
+        "commit": "671f7f6",
+        "doneAt": "2026-10-19T18:12:41Z"
       },
       "branch": "fix/f248-an-email-the-provider-refuses-is-set-asi",
       "baseCommit": "d0f3e121ac03c5c5eebf2198eae4684ba7c9c2f8",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f248-an-email-the-provider-refuses-is-set-asi",
+        "base": "main"
+      }
     },
     {
       "id": "F249",
