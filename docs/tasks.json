@@ -3586,7 +3586,7 @@
         "With many such invoices, one round still marks an honest paid invoice paid (the audit PoC, scaled down, as a test)."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "docs-check"
@@ -3600,7 +3600,8 @@
       ],
       "review": false,
       "notes": [
-        "2026-10-19 review fail by reviewer: Blocker: apps/backend/internal/ledger/process.go:258 computes interval '1 minute' * power(2, alerts) before least(). Postgres raises 'interval out of range' once the stored alerts count is 38 (60e6 us * 2^38 overflows int64). An invoice gets there about 28 days after its first alert (11 alerts in about 34 h, then one a day). Such invoices stay open until an operator acts, so this is reachable. After that the upsert fails and Process rolls back. next_check_at stays in the past, so the invoice costs two second-RPC calls and an error every round again. The audit's round starvation comes back for every invoice stuck 4 weeks. Reproduced: the exact upsert in a rolled-back transaction on infra-postgres-1 gives '1 day' from 37 alerts and fails from 38. Fix: cap the exponent, e.g. power(2, least(alerts, 11)), and add a test that starts from a high alerts count. Minor: (1) ORDER BY money DESC is untested; the new test has no round deadline, so it passes without the ordering. A balance stub that records call order would cover it. (2) After an operator refunds the unexplained money, expiry now follows only at the next check, up to a day later. money-safety.md does not say so (or that deleting the row rechecks now). (3) architecture.md:416 describes the wait only for more on chain than booked; less than booked backs off too. Backing off there is fine. (4) An open invoice in backoff that gets a new detected transfer shows detected only once it confirms or the wait ends. (5) R-120's first sentence has 29 words (D-84 limit 25). (6) Alert rows stay after the invoice expires; harmless. Checked OK: paid uses funded/compare, not balanced. Booking deletes the row in the same transaction before balanced, so a rescan-booked deposit gets its expiry or paid decision in the same Process. The ProcessChain query returns the old rows minus waiting ones with no deposit to book. Normal invoices never get a row. Held deposits always run and go first. Migration up/down fine; FK matches 00035. Ran: sh scripts/with-env.sh go test -count=1 ./internal/ledger/ ./internal/worker/ -> ok, ok. Latest docs/runs/F253-20261019T195535Z-*.log all passed."
+        "2026-10-19 review fail by reviewer: Blocker: apps/backend/internal/ledger/process.go:258 computes interval '1 minute' * power(2, alerts) before least(). Postgres raises 'interval out of range' once the stored alerts count is 38 (60e6 us * 2^38 overflows int64). An invoice gets there about 28 days after its first alert (11 alerts in about 34 h, then one a day). Such invoices stay open until an operator acts, so this is reachable. After that the upsert fails and Process rolls back. next_check_at stays in the past, so the invoice costs two second-RPC calls and an error every round again. The audit's round starvation comes back for every invoice stuck 4 weeks. Reproduced: the exact upsert in a rolled-back transaction on infra-postgres-1 gives '1 day' from 37 alerts and fails from 38. Fix: cap the exponent, e.g. power(2, least(alerts, 11)), and add a test that starts from a high alerts count. Minor: (1) ORDER BY money DESC is untested; the new test has no round deadline, so it passes without the ordering. A balance stub that records call order would cover it. (2) After an operator refunds the unexplained money, expiry now follows only at the next check, up to a day later. money-safety.md does not say so (or that deleting the row rechecks now). (3) architecture.md:416 describes the wait only for more on chain than booked; less than booked backs off too. Backing off there is fine. (4) An open invoice in backoff that gets a new detected transfer shows detected only once it confirms or the wait ends. (5) R-120's first sentence has 29 words (D-84 limit 25). (6) Alert rows stay after the invoice expires; harmless. Checked OK: paid uses funded/compare, not balanced. Booking deletes the row in the same transaction before balanced, so a rescan-booked deposit gets its expiry or paid decision in the same Process. The ProcessChain query returns the old rows minus waiting ones with no deposit to book. Normal invoices never get a row. Held deposits always run and go first. Migration up/down fine; FK matches 00035. Ran: sh scripts/with-env.sh go test -count=1 ./internal/ledger/ ./internal/worker/ -> ok, ok. Latest docs/runs/F253-20261019T195535Z-*.log all passed.",
+        "2026-10-19 review pass by reviewer: Re-review of 91534ff. The blocker is fixed. process.go:259 now uses power(2, least(alerts, 11)) under the one-day cap. 2^11 min is 34 h, so the cap still applies, and nothing overflows. The new test sets alerts = 100 and expects 101 alerts and a wait of about a day. The order test requires the honest invoice's balance call first in round one. Nothing calls the balance stub before that round. I proved both tests in scratch copies of apps/backend. With the old exponent, the test fails with 'interval out of range' (SQLSTATE 22008). Without ORDER BY money DESC, it fails on the first call (a stuck invoice's address). money-safety.md now says a refund expires at the next check, up to a day later. It also says deleting the row brings the check into the next round. Both match the code. architecture.md says less than booked also waits. R-120 is split; its longest sentence has 22 words. Minor: architecture.md:417 is 127 characters, wider than the lines around it. Left as agreed: an open invoice that is waiting shows detected only once the new transfer confirms or the wait ends; alert rows stay after expiry. Ran: sh scripts/with-env.sh go test -count=1 ./internal/ledger/ ./internal/worker/ -> ok, ok. Latest docs/runs/F253-20261019T200525Z-*.log all passed. Scratch copies removed."
       ],
       "blockedReason": null,
       "evidence": {
@@ -3670,11 +3671,25 @@
         "proof": {
           "1": "unit: ledger TestUnexplainedBalanceWaitsLongerEachTime: 20 stuck invoices make 20 balance calls once, none the next round while waiting about a minute, 20 when the wait ends, then about two minutes, and a day after 101 alerts without overflow (20 calls every round before the fix); TestSecondRPCBehindFinalizedNeverDecides: a found deposit is booked and paid",
           "2": "unit: TestUnexplainedBalanceWaitsLongerEachTime: the honest invoice's balance call comes first and it is paid in the first round; the audit's 700-invoice PoC (run locally) now pays the honest invoice in round 1 (open after two rounds before the fix)"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review of 91534ff. The blocker is fixed. process.go:259 now uses power(2, least(alerts, 11)) under the one-day cap. 2^11 min is 34 h, so the cap still applies, and nothing overflows. The new test sets alerts = 100 and expects 101 alerts and a wait of about a day. The order test requires the honest invoice's balance call first in round one. Nothing calls the balance stub before that round. I proved both tests in scratch copies of apps/backend. With the old exponent, the test fails with 'interval out of range' (SQLSTATE 22008). Without ORDER BY money DESC, it fails on the first call (a stuck invoice's address). money-safety.md now says a refund expires at the next check, up to a day later. It also says deleting the row brings the check into the next round. Both match the code. architecture.md says less than booked also waits. R-120 is split; its longest sentence has 22 words. Minor: architecture.md:417 is 127 characters, wider than the lines around it. Left as agreed: an open invoice that is waiting shows detected only once the new transfer confirms or the wait ends; alert rows stay after expiry. Ran: sh scripts/with-env.sh go test -count=1 ./internal/ledger/ ./internal/worker/ -> ok, ok. Latest docs/runs/F253-20261019T200525Z-*.log all passed. Scratch copies removed.",
+          "at": "2026-10-19T20:13:42Z",
+          "filesHash": "b7d1f559e1af9f64"
+        },
+        "commit": "91534ff",
+        "doneAt": "2026-10-19T20:13:51Z"
       },
       "branch": "fix/f253-an-expired-invoice-whose-balance-the-led",
       "baseCommit": "b0b31d40e89bd5840df7e336a3fe4afb8901b8a4",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f253-an-expired-invoice-whose-balance-the-led",
+        "base": "main"
+      }
     },
     {
       "id": "F254",
