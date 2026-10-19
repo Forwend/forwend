@@ -453,7 +453,7 @@ paths:
         R-94. Queues one email to the invoice's client email, which the worker sends whatever the owner's email
         setting: the issuer, number, amount, due date, the pay page and the invoice PDF, with Reply-To set to the
         issuer's billing email. Only while the payer can still pay it (open or partly paid, checkout not closed). One
-        send per invoice in 24 hours and 20 per profile in 24 hours; sends also share the limit for everyone with the
+        send per invoice in 24 hours, and the user's 20 client emails a day (R-116); sends also share the limit for everyone with the
         payer's receipt address. The same key again answers 200 and queues nothing. Answers the invoice with its sends.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
@@ -1874,7 +1874,8 @@ components:
           description: |
             Optional. Makes the invoice repeat every month (R-98, D-58): each later month's invoice is due on the
             dueDate's day (the month's last day when shorter). The worker makes it 7 UTC days before that due date,
-            with the checkout open 60 days past it (D-80), and emails it to client.email. A month whose due date
+            with the checkout open 60 days past it (D-80), and emails it to client.email unless the user's client
+            email cap is used up (R-116). A month whose due date
             passed unmade is skipped. It needs dueDate and client.email, otherwise 422; a profile has at most 50
             running. Part of the idempotency hash only when set.
           properties:

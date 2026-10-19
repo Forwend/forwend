@@ -122,8 +122,8 @@ func cancelInvoice(invoices *invoice.Service) http.HandlerFunc {
 
 // sendInvoice is POST /v1/profiles/{profileId}/invoices/{invoiceId}/send (R-94): queues the invoice's email to its
 // client; 201 with the invoice, 200 when the same Idempotency-Key already queued it. 409 client_email_required or
-// invoice_closed; 429 with Retry-After within invoice.SendEvery of the invoice's last send, past the profile's
-// invoice.MaxProfileSends, or past the shared emails budget.
+// invoice_closed; 429 with Retry-After within invoice.SendEvery of the invoice's last send, past the user's client
+// emails for the day (R-116), or past the shared emails budget.
 func sendInvoice(invoices *invoice.Service, emails *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key, err := httpio.IdempotencyKey(r)

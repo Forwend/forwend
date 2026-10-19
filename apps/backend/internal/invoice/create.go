@@ -182,7 +182,7 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		}
 	}
 	if r.cycle != nil {
-		if err := addCycle(ctx, tx, *r.cycle, *mainID, idempotencyKey); err != nil {
+		if err := addCycle(ctx, tx, *r.cycle, profileID, *mainID, idempotencyKey); err != nil {
 			return Invoice{}, false, err
 		}
 	}
