@@ -27,7 +27,7 @@ func TestScopeChange(t *testing.T) {
 	if _, _, err := s.ProposeChange(ctx, profileID, j.ID, "c1", extra); !errors.Is(err, ErrNotAccepted) {
 		t.Fatalf("before acceptance: %v, want ErrNotAccepted", err)
 	}
-	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example"); err != nil {
+	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit); err != nil {
 		t.Fatal(err)
 	}
 	proposed, created, err := s.ProposeChange(ctx, profileID, j.ID, "c1", extra)
@@ -74,12 +74,12 @@ func TestScopeChange(t *testing.T) {
 		t.Fatalf("change not accepted: %v, want ErrChangeNotAccepted", err)
 	}
 	for _, bad := range []int{1, 2, 4} {
-		if _, err := s.AcceptChange(ctx, j.Token, bad, change.ProposedAt, "Jane Doe", "jane@bob.example"); !errors.Is(err, ErrNotFound) {
+		if _, err := s.AcceptChange(ctx, j.Token, bad, change.ProposedAt, "Jane Doe", "jane@bob.example", noLimit); !errors.Is(err, ErrNotFound) {
 			t.Fatalf("accept payment %d: %v, want ErrNotFound", bad, err)
 		}
 	}
 	for range 2 {
-		accepted, err := s.AcceptChange(ctx, j.Token, 3, change.ProposedAt, "Jane Doe", "jane@bob.example")
+		accepted, err := s.AcceptChange(ctx, j.Token, 3, change.ProposedAt, "Jane Doe", "jane@bob.example", noLimit)
 		if c := accepted.Payments[2]; err != nil || c.AcceptedName != "Jane Doe" || c.AcceptedEmail != "jane@bob.example" ||
 			c.AcceptedAt.IsZero() {
 			t.Fatalf("accept change: %+v %v", c, err)
@@ -113,7 +113,7 @@ func TestScopeChange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example"); err != nil {
+	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit); err != nil {
 		t.Fatal(err)
 	}
 	pending, _, err := s.ProposeChange(ctx, profileID, j.ID, "c3", extra)
@@ -129,7 +129,7 @@ func TestScopeChange(t *testing.T) {
 	if err := s.WithdrawChange(ctx, profileID, j.ID, 3); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("withdraw twice: %v, want ErrNotFound", err)
 	}
-	if _, err := s.AcceptChange(ctx, j.Token, 3, pending.Payments[2].ProposedAt, "Jane Doe", "jane@bob.example"); !errors.Is(err, ErrNotFound) {
+	if _, err := s.AcceptChange(ctx, j.Token, 3, pending.Payments[2].ProposedAt, "Jane Doe", "jane@bob.example", noLimit); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("accept a withdrawn change: %v, want ErrNotFound", err)
 	}
 	for i := 3; i <= MaxPayments; i++ {
@@ -137,7 +137,7 @@ func TestScopeChange(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := s.AcceptChange(ctx, j.Token, i, filled.Payments[i-1].ProposedAt, "Jane Doe", "jane@bob.example"); err != nil {
+		if _, err := s.AcceptChange(ctx, j.Token, i, filled.Payments[i-1].ProposedAt, "Jane Doe", "jane@bob.example", noLimit); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -157,7 +157,7 @@ func TestScopeChangeConsent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example"); err != nil {
+	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit); err != nil {
 		t.Fatal(err)
 	}
 	small, _, err := s.ProposeChange(ctx, profileID, j.ID, "c1", PaymentRequest{Title: "Extra", AmountUSD: "150", DueDays: 7})
@@ -175,7 +175,7 @@ func TestScopeChangeConsent(t *testing.T) {
 	if _, _, err := s.ProposeChange(ctx, profileID, j.ID, "c3", PaymentRequest{Title: "Extra", AmountUSD: "5000", DueDays: 7}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AcceptChange(ctx, j.Token, 3, read, "Jane Doe", "jane@bob.example"); !errors.Is(err, ErrNotFound) {
+	if _, err := s.AcceptChange(ctx, j.Token, 3, read, "Jane Doe", "jane@bob.example", noLimit); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("accept the withdrawn change's read: %v, want ErrNotFound", err)
 	}
 	if got, err := s.Get(ctx, profileID, j.ID); err != nil || !got.Payments[2].AcceptedAt.IsZero() {
@@ -219,7 +219,7 @@ func TestFinalWaitsForAChangeInFlight(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example"); err != nil {
+	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit); err != nil {
 		t.Fatal(err)
 	}
 	// A proposal in flight: it holds the job row and adds the change, as ProposeChange does.
@@ -276,14 +276,14 @@ func TestDepositOnlyJobTakesAChange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example"); err != nil {
+	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit); err != nil {
 		t.Fatal(err)
 	}
 	proposed, _, err := s.ProposeChange(ctx, profileID, j.ID, "c1", PaymentRequest{Title: "Extra", AmountUSD: "150", DueDays: 7})
 	if err != nil {
 		t.Fatalf("a change on a deposit-only job: %v", err)
 	}
-	if _, err := s.AcceptChange(ctx, j.Token, 2, proposed.Payments[1].ProposedAt, "Jane Doe", "jane@bob.example"); err != nil {
+	if _, err := s.AcceptChange(ctx, j.Token, 2, proposed.Payments[1].ProposedAt, "Jane Doe", "jane@bob.example", noLimit); err != nil {
 		t.Fatal(err)
 	}
 	final, err := s.MarkDone(ctx, profileID, j.ID, 2, "")
@@ -310,7 +310,7 @@ func TestChangeEmailsPerDay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example"); err != nil {
+	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit); err != nil {
 		t.Fatal(err)
 	}
 	for i := range MaxChangeEmails + 1 {
@@ -334,7 +334,7 @@ func TestChangeEmailsPerDay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Accept(ctx, other.Token, "Jane Doe", "jane@bob.example"); err != nil {
+	if _, err := s.Accept(ctx, other.Token, "Jane Doe", "jane@bob.example", noLimit); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO outbox_events (kind, invoice_id, payload, idempotency_key)
@@ -345,6 +345,6 @@ func TestChangeEmailsPerDay(t *testing.T) {
 	proposed, created, err := s.ProposeChange(ctx, profileID, other.ID, "c", PaymentRequest{Title: "Extra", AmountUSD: "150",
 		DueDays: 7})
 	if err != nil || !created || proposed.Payments[2].ClientEmailed {
-		t.Fatalf("a change past the profile's cap: %v %+v %v", created, proposed.Payments, err)
+		t.Fatalf("a change past the user's cap: %v %+v %v", created, proposed.Payments, err)
 	}
 }

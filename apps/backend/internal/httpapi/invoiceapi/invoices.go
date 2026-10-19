@@ -262,8 +262,9 @@ func listEvents(invoices *invoice.Service) http.HandlerFunc {
 }
 
 // putPayerEmail is PUT /v1/invoices/{payToken}/payer-email (R-82): public, like the checkout. 200 with the address as
-// kept; 409 receipt_sent once the receipt went out.
-func putPayerEmail(invoices *invoice.Service) http.HandlerFunc {
+// kept; 409 receipt_sent once the receipt went out; 429 with Retry-After when a receipt that would go now is past the
+// shared emails budget.
+func putPayerEmail(invoices *invoice.Service, emails *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Email string `json:"email"`
@@ -272,7 +273,14 @@ func putPayerEmail(invoices *invoice.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		kept, err := invoices.SetPayerEmail(r.Context(), r.PathValue("payToken"), body.Email)
+		allow := func() time.Duration { return emails.Wait(mid.Everyone(r)) }
+		kept, err := invoices.SetPayerEmail(r.Context(), r.PathValue("payToken"), body.Email, allow)
+		var soon *invoice.TooSoonError
+		if errors.As(err, &soon) {
+			w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))
+			httpio.WriteError(w, r, httpio.ErrRateLimited)
+			return
+		}
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

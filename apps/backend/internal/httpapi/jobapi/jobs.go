@@ -1,12 +1,16 @@
 package jobapi
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
+	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/job"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
@@ -159,7 +163,7 @@ func withdrawChange(jobs *job.Service) http.HandlerFunc {
 
 // acceptChange is POST /v1/jobs/{token}/payments/{position}/accept (R-105): {name, email, proposedAt}, the client's
 // typed name and email for the change they read; 200 with the job, the same when already accepted.
-func acceptChange(jobs *job.Service) http.HandlerFunc {
+func acceptChange(jobs *job.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			acceptBody
@@ -180,12 +184,9 @@ func acceptChange(jobs *job.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, job.ErrNotFound)
 			return
 		}
-		j, err := jobs.AcceptChange(r.Context(), r.PathValue("token"), position, proposedAt, body.Name, body.Email)
-		if err != nil {
-			httpio.WriteError(w, r, err)
-			return
-		}
-		httpio.WriteJSON(w, http.StatusOK, toPublicJobJSON(j))
+		allow := func() time.Duration { return all.Wait(mid.Everyone(r)) }
+		j, err := jobs.AcceptChange(r.Context(), r.PathValue("token"), position, proposedAt, body.Name, body.Email, allow)
+		writeAccepted(w, r, j, err)
 	}
 }
 
@@ -203,18 +204,30 @@ func getPublicJob(jobs *job.Service) http.HandlerFunc {
 
 // acceptJob is POST /v1/jobs/{token}/accept (R-100): {"name", "email"}; 200 with the job, the same when already
 // accepted.
-func acceptJob(jobs *job.Service) http.HandlerFunc {
+func acceptJob(jobs *job.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body acceptBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		j, err := jobs.Accept(r.Context(), r.PathValue("token"), body.Name, body.Email)
-		if err != nil {
-			httpio.WriteError(w, r, err)
-			return
-		}
-		httpio.WriteJSON(w, http.StatusOK, toPublicJobJSON(j))
+		allow := func() time.Duration { return all.Wait(mid.Everyone(r)) }
+		j, err := jobs.Accept(r.Context(), r.PathValue("token"), body.Name, body.Email, allow)
+		writeAccepted(w, r, j, err)
 	}
+}
+
+// writeAccepted answers an accept: the job, or 429 with Retry-After past the budget everyone shares.
+func writeAccepted(w http.ResponseWriter, r *http.Request, j job.Job, err error) {
+	var soon *invoice.TooSoonError
+	if errors.As(err, &soon) {
+		w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))
+		httpio.WriteError(w, r, httpio.ErrRateLimited)
+		return
+	}
+	if err != nil {
+		httpio.WriteError(w, r, err)
+		return
+	}
+	httpio.WriteJSON(w, http.StatusOK, toPublicJobJSON(j))
 }

@@ -105,18 +105,20 @@ func TestPayerEmailQueuesOneReceipt(t *testing.T) {
 	}
 }
 
-// Everyone together gets a few changes a second, so many invoices can't be used to mail many addresses.
+// Everyone together gets a few receipts a second, so many paid invoices can't be used to mail many addresses. Only a
+// receipt that goes out spends that budget (R-117).
 func TestPayerEmailIsLimitedForEveryone(t *testing.T) {
 	e := invoiceAPI(t)
 	limited := 0
 	for i := range 25 {
-		id := fmt.Sprintf("0x%064x", i+1) // unknown invoices: the limits come before the lookup
+		id := e.post(t, "did:privy:alice", e.aliceProfile, fmt.Sprint("key-", i), basicBody).body["invoiceId"].(string)
+		e.exec(t, `UPDATE invoices SET payment_status = 'paid' WHERE id = $1`, id)
 		if r := e.call(t, "PUT", "/v1/invoices/"+e.link(t, id)+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status == http.StatusTooManyRequests {
 			limited++
 		}
 	}
 	if limited == 0 {
-		t.Fatal("25 changes at once on 25 invoices: none limited")
+		t.Fatal("25 receipts at once on 25 paid invoices: none limited")
 	}
 }
 

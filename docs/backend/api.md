@@ -75,6 +75,8 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
   invoice); an address given after that queues it at once. The worker sends it to that address whatever the owner's
   setting: the amount, the payee, the transaction and the receipt PDF. Limited per invoice (3, then one per 10 s) and
   for everyone together; per IP belongs to the edge (Q-8).
+  - The limit for everyone is spent only when the receipt goes out now (R-117).
+  - A bad body or an unknown link answers before it, so junk can't block Send to client, which shares it.
 - Payment reminders (R-96): each worker round (`invoice.QueueReminders`) queues `invoice.reminder` rows.
   - Steps: `before` 3 days before the due date, `due` on it, `after` 7 days after, in UTC days.
   - Only the latest step whose day has come is queued, once per invoice and step (a unique index on the step).
@@ -470,7 +472,8 @@ seconds (when the next token is back) and runs nothing else.
 - `POST /v1/jobs/{token}/accept` makes an invoice, so it has limits in `jobapi/routes.go`. Accepting a change has its
   own per-link limit and shares the one for everyone.
   - Per link: 3 at once, then one every 10 s.
-  - For everyone together: 20 at once, then 5 a second.
+  - For everyone together: 20 at once, then 5 a second, spent only by an accept that changes a job (R-117).
+  - A bad body, an unknown link or a job already accepted answers before it.
 - The other public routes (`GET /v1/invoices/{payToken}`, `GET /v1/jobs/{token}`, both PDFs and `POST /v1/reminders/{token}/stop`) have no limit in the api. Next's `/api` rewrite adds
   no `X-Forwarded-For` of its own and passes a client's header through unchanged (measured 2026-10-15 with a stub
   behind `next start`: no header without one, a sent `1.2.3.4` arrived as is), so the api sees one address for every

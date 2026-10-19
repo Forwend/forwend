@@ -3235,12 +3235,13 @@
         "Forty junk requests to each route leave the owner's Send to client and a real client's accept working (the audit PoCs as tests)."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "docs-check"
       ],
       "refs": [
+        "R-117",
         "R-82",
         "R-100"
       ],
@@ -3250,7 +3251,79 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-19T18:38:34Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 73.8,
+            "log": "docs/runs/F250-20261019T183834Z-unit.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F250-20261019T183834Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F250-20261019T183834Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F250-20261019T183834Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F250-20261019T183834Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.5,
+            "log": "docs/runs/F250-20261019T183834Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 213.6,
+            "log": "docs/runs/F250-20261019T183834Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F250-20261019T183834Z-keep.log"
+          }
+        ],
+        "taskHash": "551a63dcf70fa0cf",
+        "filesHash": "f8cf25dec3afc987",
+        "proof": {
+          "1": "unit: TestJunkSpendsNoSharedLimit: 40 PUTs to unknown links and 40 with a bad body spend nothing, Send to client still answers 201 (429 before the fix); TestPayerEmailIsLimitedForEveryone: 25 receipts that go out now on paid invoices meet the shared limit",
+          "2": "unit: TestJunkSpendsNoSharedLimit: 40 accepts of unknown links and 40 with an empty body, then a real accept answers 200; job tests pass allow to Accept and AcceptChange after the lookup",
+          "3": "unit: TestJunkSpendsNoSharedLimit is the audit PoC as a test; TestPayerEmailIsLimitedPerInvoice keeps the per-link limit"
+        }
+      },
+      "branch": "fix/f250-requests-with-an-unknown-link-or-a-bad-b",
+      "baseCommit": "e5e2499aad83236c1d2e9fcfe32b8e7b0bd42e54",
+      "failedVerifies": 0
     },
     {
       "id": "F251",

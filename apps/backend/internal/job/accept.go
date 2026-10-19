@@ -15,13 +15,18 @@ import (
 
 // Accept records the client's acceptance of the job its link names, with their typed name and email (R-100). A job
 // with a deposit makes its invoice in the same transaction. An accepted job answers the same, whoever accepts again.
-func (s *Service) Accept(ctx context.Context, token, name, email string) (Job, error) {
+// allow is the limit shared by everyone, asked only for a job this accept would change, so an unknown link or a bad
+// body spends none of it (R-117).
+func (s *Service) Accept(ctx context.Context, token, name, email string, allow func() time.Duration) (Job, error) {
 	if err := checkTyped(name, email); err != nil {
 		return Job{}, err
 	}
 	j, err := s.ByToken(ctx, token)
 	if err != nil || !j.AcceptedAt.IsZero() {
 		return j, err
+	}
+	if wait := allow(); wait > 0 {
+		return Job{}, &invoice.TooSoonError{Wait: wait}
 	}
 	return s.accept(ctx, j, name, email)
 }

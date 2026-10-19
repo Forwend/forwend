@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
@@ -20,8 +21,10 @@ var emailShape = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
 
 // SetPayerEmail keeps, and returns as kept, the address the payer gave on the pay page for this invoice's receipt only (R-82, D-68). It can
 // change until the receipt is sent. An invoice already paid queues its receipt now; otherwise the ledger queues it when
-// paid. It locks the invoice's main row, as the ledger does, so the two never decide at once.
-func (s *Service) SetPayerEmail(ctx context.Context, payToken, email string) (string, error) {
+// paid. It locks the invoice's main row, as the ledger does, so the two never decide at once. allow is the limit
+// shared by everyone, asked only when the receipt goes out now, so an unknown link or a bad address spends none of it
+// (R-117).
+func (s *Service) SetPayerEmail(ctx context.Context, payToken, email string, allow func() time.Duration) (string, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	if len(email) > 254 || !emailShape.MatchString(email) {
 		return "", fmt.Errorf("%w: email: enter an address like name@example.com", ErrInvalid)
@@ -61,9 +64,12 @@ func (s *Service) SetPayerEmail(ctx context.Context, payToken, email string) (st
 			Scan(&option, &status); err != nil {
 			return fmt.Errorf("read invoice %s status: %w", id, err)
 		}
-		if status == ledger.Paid {
-			return outbox.QueueReceipt(ctx, tx, option)
+		if status != ledger.Paid {
+			return nil
 		}
-		return nil
+		if wait := allow(); wait > 0 {
+			return &TooSoonError{Wait: wait}
+		}
+		return outbox.QueueReceipt(ctx, tx, option)
 	})
 }
