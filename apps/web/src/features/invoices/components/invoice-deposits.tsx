@@ -50,7 +50,7 @@ export function InvoiceDeposits({
       </span>
     );
   return (
-    <div className="flex flex-col gap-2">
+    <div className="@container flex flex-col gap-2">
       <h3 className="text-xs text-muted">{title}</h3>
       <ul className="divide-y divide-line rounded-md border border-line">
         {invoice.deposits.map((d) => (
@@ -103,8 +103,9 @@ function Transaction({
   txHash: string;
 }) {
   return (
-    // Phones: what it was and when on one line, who and the transaction under it. Wider: all four in one row.
-    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 px-3 py-2.5 text-sm [grid-template-areas:'what_when''who_tx'] md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:[grid-template-areas:'what_who_when_tx']">
+    // A narrow list (a phone, or the column beside Details): what it was and when on one line, who and the transaction
+    // under it. A wide one: all four in one row. The list's width decides, not the screen's.
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 px-3 py-2.5 text-sm [grid-template-areas:'what_when''who_tx'] @2xl:grid-cols-[minmax(0,1fr)_auto_auto_auto] @2xl:[grid-template-areas:'what_who_when_tx']">
       <span className="flex flex-col [grid-area:what]">
         <span className="text-xs text-muted">
           {kind}
@@ -119,7 +120,7 @@ function Transaction({
       {at ? (
         <time
           dateTime={at}
-          className="justify-self-end self-start text-xs text-muted [grid-area:when] md:self-center"
+          className="justify-self-end self-start text-xs text-muted [grid-area:when] @2xl:self-center"
         >
           {TIME.format(Date.parse(at))}
         </time>

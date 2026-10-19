@@ -462,7 +462,7 @@ export function NewInvoiceForm({
               />
             </div>
           ) : null}
-          {/* Short fields pair up. Empty, when items stand in for the amount on any token, the row takes no room. */}
+          {/* Empty when items stand in for the amount on any token: then the row takes no room. */}
           <div className="grid gap-5 empty:hidden sm:grid-cols-2">
             {any ? null : (
               <SelectField

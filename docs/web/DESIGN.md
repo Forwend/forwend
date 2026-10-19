@@ -218,6 +218,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Add payment and the total follow the rows; a checkbox makes the first payment the deposit.
   - Without billing details it shows the same empty state as New invoice, which comes back here.
 - A job's page has the title as its heading and, until the client accepts, Delete job in the More actions menu.
+  - From large screens, Payments and Scope take two thirds; Client's link, Record and Billed to take the rest.
   - A delete the client's acceptance beat says so in a toast, and focus moves to the heading.
   - Once accepted, the next payment without an invoice has a small secondary Mark done button (R-103).
   - It opens a dialog: what it bills and to whom, an optional delivery link, Not yet and Mark done and send.
@@ -269,9 +270,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - They are New invoice, Request money, New job, New and Edit client, Billing details, New profile and Email
     notifications.
   - Each field group is a full-width panel with its title ruled off. Billing details has Contact, then Address and tax.
-  - Inside a panel, short fields pair up in two columns from small screens up: network and amount, title and
-    reference, the dates, name and email, country and tax ID.
-  - A note, an address, a link, a choice row or a list of rows takes the whole row.
+  - Inside a panel, short fields pair up in two columns from small screens up.
+  - The pairs: network and amount, title and reference, the dates, name and email, country and tax ID.
+  - Request money pairs Your name with the return link.
+  - A note, an address, an invoice's return link, a choice row or a list of rows takes the whole row.
   - A lone date keeps one column, in line with the dates above it. Phones keep one column.
 - New invoice and Request money: each field group (Amount, Details, Dates, Client) is a panel with its title ruled off.
   A freelancer or merchant without billing details sees, in place of the form, an empty state that says the invoice
@@ -299,8 +301,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   The invoice page lists the items in an Items panel under Amount: each row the description with "qty × unit price"
   quietly under it and the line's amount on the right, then a ruled Total row, the same on every width.
   From extra-large screens a sticky Preview panel takes a third of the width beside the form. It echoes the form in
-  the pay page's order: title, amount with how it is paid, then Billed to (Shown as for a request), Due and Checkout
-  closes after as ruled rows, and the note. It is hidden from screen readers, since the fields already say all of it.
+  the pay page's order: the title, then the amount with how it is paid. Billed to (Shown as for a request), Due and
+  Checkout closes after follow as ruled rows, then the note. It is hidden from screen readers, since the fields
+  already say all of it.
 - Money actions are round icon buttons with the label underneath, on desktop and phones; only working actions are
   filled with the primary ink. In the header, Send is a dashed outline pill in the subtle color until it is built.
 - Personal overview actions: Receive, Request, Send, Transfer, Withdraw, in one row with a narrow gap on phones.
@@ -402,8 +405,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   as a warning-tinted label when partly paid, the status line (only the confirming count or why settling waits; the
   state itself is the timeline's), one Transactions list (each payment, then the settlement to the wallet, later refunds: kind, amount, the other side,
   time and hash with its explorer link, no status pill of its own; Details repeats none of them) and Check
-  status only while the checkout can take money; beside it the details (empty ones left out), Billed to, and From (or "None on this invoice" with a link to add
-  billing details).
+  status only while the checkout can take money.
+  - The main column then holds the Items panel, then Billed to and From side by side, as on a paper invoice.
+  - Billed to and From share one height. They stack while the column is under 36rem; a request's From fills it.
+  - Beside the main column, a third of the width, sits the details panel (empty rows left out).
+  - From shows "None on this invoice" with a link to add billing details when there are none.
+  - Phones stack the amount, Items, Billed to, From, then the details.
+  - A transaction is one row once its list is 42rem wide. Narrower, the list's own width, not the screen's, splits it
+    in two lines.
 - Billed to ends with Send to client (R-94), ruled off under the client:
   - Each send in a quiet list: "Emailed to <address> · <time>", "Sending to <address>…" or "Could not email".
   - While the checkout can take money, a small secondary Send to client button. A day after the last send it returns;

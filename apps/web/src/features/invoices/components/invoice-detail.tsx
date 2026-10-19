@@ -231,8 +231,8 @@ function Loaded({
       </header>
 
       {/* minmax(0, 1fr): a long value never widens the column past the screen. */}
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]">
-        <div className="flex min-w-0 flex-col gap-4">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+        <div className="@container flex min-w-0 flex-col gap-4">
           <section aria-labelledby="invoice-amount" className={PANEL}>
             <div className="flex flex-col gap-3 border-b border-line px-4 py-4 sm:px-5">
               <h2 id="invoice-amount" className="text-sm text-muted">
@@ -329,6 +329,90 @@ function Loaded({
               total={BigInt(main.amount)}
             />
           ) : null}
+          {/* Side by side, as on a paper invoice, once the column has room; one height, so neither leaves a gap. */}
+          <div className="grid gap-4 @xl:grid-cols-2 *:only:col-span-full">
+            {request ? null : (
+              <section aria-labelledby="invoice-client" className={PANEL}>
+                <h2 id="invoice-client" className={PANEL_TITLE}>
+                  {COPY.client}
+                </h2>
+                {clientFailed ? (
+                  <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.clientFailed}</p>
+                ) : !mine ? (
+                  <Skeleton className="m-5 h-16" />
+                ) : client?.name ||
+                  client?.email ||
+                  client?.address ||
+                  client?.country ||
+                  client?.taxId ? (
+                  <Party
+                    lines={[
+                      client.name,
+                      client.email,
+                      client.address,
+                      client.country ? (COUNTRY.of(client.country) ?? client.country) : null,
+                      client.taxId ? `${COPY.taxId} ${client.taxId}` : null,
+                    ]}
+                  />
+                ) : (
+                  <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.noClient}</p>
+                )}
+                {mine ? (
+                  <SendToClient
+                    profileId={profileId}
+                    invoiceId={invoice.invoiceId}
+                    number={invoiceNumber(invoice.number)}
+                    email={client?.email ?? null}
+                    sends={sends}
+                    payable={payable}
+                  />
+                ) : null}
+                {/* Reminders go to the client's email, so they show only with one (R-96). */}
+                {client?.email && reminders ? (
+                  <PaymentReminders
+                    profileId={profileId}
+                    invoiceId={invoice.invoiceId}
+                    reminders={reminders}
+                    hasDueDate={!!invoice.dueDate}
+                    payable={payable}
+                  />
+                ) : null}
+                {retainer ? (
+                  <RepeatsMonthly
+                    profileId={profileId}
+                    invoiceId={invoice.invoiceId}
+                    retainer={retainer}
+                  />
+                ) : null}
+              </section>
+            )}
+
+            <section aria-labelledby="invoice-issuer" className={PANEL}>
+              <h2 id="invoice-issuer" className={PANEL_TITLE}>
+                {COPY.issuer}
+              </h2>
+              {issuer ? (
+                <Party
+                  lines={[
+                    issuer.name,
+                    issuer.email,
+                    issuer.address,
+                    COUNTRY.of(issuer.country) ?? issuer.country,
+                    issuer.taxId ? `${COPY.taxId} ${issuer.taxId}` : null,
+                  ]}
+                />
+              ) : invoice.senderName ? (
+                <Party lines={[invoice.senderName]} />
+              ) : (
+                <p className="px-4 py-3 text-sm text-muted sm:px-5">
+                  {COPY.noIssuer}{" "}
+                  <Link href={APP_ROUTES.billingDetails} className="text-accent hover:underline">
+                    {COPY.addBillingDetails}
+                  </Link>
+                </p>
+              )}
+            </section>
+          </div>
         </div>
 
         <div className="flex flex-col gap-4">
@@ -375,88 +459,6 @@ function Loaded({
                 </span>
               </Row>
             </dl>
-          </section>
-
-          {request ? null : (
-            <section aria-labelledby="invoice-client" className={PANEL}>
-              <h2 id="invoice-client" className={PANEL_TITLE}>
-                {COPY.client}
-              </h2>
-              {clientFailed ? (
-                <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.clientFailed}</p>
-              ) : !mine ? (
-                <Skeleton className="m-5 h-16" />
-              ) : client?.name ||
-                client?.email ||
-                client?.address ||
-                client?.country ||
-                client?.taxId ? (
-                <Party
-                  lines={[
-                    client.name,
-                    client.email,
-                    client.address,
-                    client.country ? (COUNTRY.of(client.country) ?? client.country) : null,
-                    client.taxId ? `${COPY.taxId} ${client.taxId}` : null,
-                  ]}
-                />
-              ) : (
-                <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.noClient}</p>
-              )}
-              {mine ? (
-                <SendToClient
-                  profileId={profileId}
-                  invoiceId={invoice.invoiceId}
-                  number={invoiceNumber(invoice.number)}
-                  email={client?.email ?? null}
-                  sends={sends}
-                  payable={payable}
-                />
-              ) : null}
-              {/* Reminders go to the client's email, so they show only with one (R-96). */}
-              {client?.email && reminders ? (
-                <PaymentReminders
-                  profileId={profileId}
-                  invoiceId={invoice.invoiceId}
-                  reminders={reminders}
-                  hasDueDate={!!invoice.dueDate}
-                  payable={payable}
-                />
-              ) : null}
-              {retainer ? (
-                <RepeatsMonthly
-                  profileId={profileId}
-                  invoiceId={invoice.invoiceId}
-                  retainer={retainer}
-                />
-              ) : null}
-            </section>
-          )}
-
-          <section aria-labelledby="invoice-issuer" className={PANEL}>
-            <h2 id="invoice-issuer" className={PANEL_TITLE}>
-              {COPY.issuer}
-            </h2>
-            {issuer ? (
-              <Party
-                lines={[
-                  issuer.name,
-                  issuer.email,
-                  issuer.address,
-                  COUNTRY.of(issuer.country) ?? issuer.country,
-                  issuer.taxId ? `${COPY.taxId} ${issuer.taxId}` : null,
-                ]}
-              />
-            ) : invoice.senderName ? (
-              <Party lines={[invoice.senderName]} />
-            ) : (
-              <p className="px-4 py-3 text-sm text-muted sm:px-5">
-                {COPY.noIssuer}{" "}
-                <Link href={APP_ROUTES.billingDetails} className="text-accent hover:underline">
-                  {COPY.addBillingDetails}
-                </Link>
-              </p>
-            )}
           </section>
         </div>
       </div>
