@@ -21,12 +21,13 @@ const web = "https://app.example"
 
 var site = Site{WebURL: web}
 
-// fake records what it sends; fail makes every send fail.
+// fake records what it sends; fail makes every send fail, and refuse refuses the message to that address.
 type fake struct {
-	mu   sync.Mutex
-	sent []email.Message
-	keys []string // of every try, failed or not
-	fail bool
+	mu     sync.Mutex
+	sent   []email.Message
+	keys   []string // of every try, failed or not
+	fail   bool
+	refuse string
 }
 
 func (f *fake) Send(_ context.Context, m email.Message) error {
@@ -35,6 +36,9 @@ func (f *fake) Send(_ context.Context, m email.Message) error {
 	f.keys = append(f.keys, m.Key)
 	if f.fail {
 		return errors.New("Resend answered 503")
+	}
+	if m.To == f.refuse {
+		return fmt.Errorf("%w: Resend answered 422", email.ErrRefused)
 	}
 	f.sent = append(f.sent, m)
 	return nil
@@ -189,6 +193,31 @@ func TestDeliverRetriesWithBackoffThenGivesUp(t *testing.T) {
 	f.fail = false
 	if err := Deliver(context.Background(), pool, f, site); err != nil || len(f.sent) != 0 {
 		t.Fatalf("a given-up event was sent: %d (%v)", len(f.sent), err)
+	}
+}
+
+// R-115: Resend refusing one message (a bad address) waits its backoff like any failure, but the round goes on, so a
+// payer address saved again and again can't hold up everyone's email (audit 2026-10-19).
+func TestDeliverGoesOnPastARefusedEmail(t *testing.T) {
+	pool, id := setup(t, "owner@example.com")
+	exec(t, pool, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard, DISABLE TRIGGER invoices_number")
+	exec(t, pool, "UPDATE invoices SET payer_email = 'x@bad.example' WHERE id = $1", id)
+	exec(t, pool, "ALTER TABLE invoices ENABLE TRIGGER invoices_guard, ENABLE TRIGGER invoices_number")
+	f := &fake{refuse: "x@bad.example"}
+	queue(t, pool, outbox.Receipt, id, nil)
+	for round := range 3 {
+		// The payer's PUT puts the receipt first in line again (invoice.SetPayerEmail).
+		exec(t, pool, `UPDATE outbox_events SET attempts = 0, failed_at = NULL, next_attempt_at = now()
+			WHERE kind = 'invoice.receipt' AND published_at IS NULL`)
+		queue(t, pool, outbox.Paid, id, nil)
+		if err := Deliver(context.Background(), pool, f, site); err != nil {
+			t.Fatal(err)
+		}
+		if len(f.sent) != round+1 || count(t, pool, `kind = 'invoice.receipt' AND attempts = 1 AND failed_at IS NULL
+			AND next_attempt_at > now() + interval '50 seconds'`) != 1 {
+			t.Fatalf("round %d: sent %d, want the owner's email each round and the receipt waiting its backoff", round,
+				len(f.sent))
+		}
 	}
 }
 

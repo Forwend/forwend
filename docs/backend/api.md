@@ -64,9 +64,11 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
 - The ledger and the signer queue `invoice.paid`, `invoice.held` (with the amount newly held) and `invoice.settled` in
   `outbox_events`, in the transaction that makes the change (`internal/outbox`). The worker sends them through Resend
   (`internal/notify`) with `forwend-<invoiceId>-<eventId>-<address hash>` as the Idempotency-Key, one at a time with `FOR UPDATE SKIP
-  LOCKED`; a failed send ends that round and is retried after 1 min doubling to 1 h, given up after 10 tries. Email off
-  or no address: the event is marked done and nothing is sent. Without `RESEND_API_KEY` the worker sends nothing and
-  events wait; `scripts/with-env.sh` gives the key to the worker alone.
+  LOCKED`; a failed send is retried after 1 min doubling to 1 h, given up after 10 tries.
+  - A failed send ends that round, except when Resend refused the message as sent (400 or 422, such as a bad
+    address). Then the round goes on, so one bad address can't hold up the other emails (R-115).
+- Email off or no address: the event is marked done and nothing is sent. Without `RESEND_API_KEY` the worker sends
+  nothing and events wait; `scripts/with-env.sh` gives the key to the worker alone.
 - `PUT /v1/invoices/{payToken}/payer-email` (R-82, D-68, public like the checkout): the payer's address for this
   invoice's receipt only, kept on the main row, trimmed and lowercased; it changes until the receipt is sent (then 409
   `receipt_sent`). The ledger queues one `invoice.receipt` when the invoice becomes paid (a unique index keeps one per

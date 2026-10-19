@@ -110,21 +110,23 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 	}
 	sum := sha256.Sum256([]byte(*to))
 	m.To, m.Key = *to, fmt.Sprintf("forwend-%s-%d-%x", scope, id, sum[:8])
-	if err := sender.Send(ctx, m); err != nil {
+	if sent := sender.Send(ctx, m); sent != nil {
 		attempts++
 		if attempts >= MaxAttempts {
-			slog.Error("email given up", "event", id, "kind", kind, "attempts", attempts, "err", err)
+			slog.Error("email given up", "event", id, "kind", kind, "attempts", attempts, "err", sent)
 			_, err = tx.Exec(ctx, "UPDATE outbox_events SET attempts = $2, failed_at = now() WHERE id = $1", id, attempts)
 		} else {
-			slog.Warn("email failed; trying again later", "event", id, "kind", kind, "attempt", attempts, "err", err)
+			slog.Warn("email failed; trying again later", "event", id, "kind", kind, "attempt", attempts, "err", sent)
 			_, err = tx.Exec(ctx, "UPDATE outbox_events SET attempts = $2, next_attempt_at = now() + $3 WHERE id = $1",
 				id, attempts, Backoff(attempts))
 		}
 		if err != nil {
 			return false, fmt.Errorf("record email event %d failure: %w", id, err)
 		}
-		// Stop this round: a Resend that fails or hangs must not hold up the worker's chain rounds for a whole batch.
-		return false, tx.Commit(ctx)
+		// A message Resend refused goes on to the next one: stopping would let one bad address hold up every email
+		// behind it (R-115). Any other failure stops this round: a Resend that fails or hangs must not hold up the
+		// worker's chain rounds for a whole batch.
+		return errors.Is(sent, email.ErrRefused), tx.Commit(ctx)
 	}
 	if _, err := tx.Exec(ctx, "UPDATE outbox_events SET attempts = attempts + 1, published_at = now() WHERE id = $1", id); err != nil {
 		return false, fmt.Errorf("record email event %d: %w", id, err)
