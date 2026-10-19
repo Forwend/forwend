@@ -1,0 +1,105 @@
+{
+  "id": "F260",
+  "type": "fix",
+  "behavior": "Form pages fill the content width: full-width panels with paired fields instead of a fixed narrow column",
+  "acceptance": [
+    "Form pages (New invoice, Request money, New job, New and Edit client, Billing details, New profile, Email notifications) fill the content width at 1024, 1280, 1440 and 1920 px: no fixed narrow column with empty space beside it; screenshots in docs/runs",
+    "Inside a panel, short fields pair up in two columns from small screens up; notes, addresses and row lists take the whole row; New invoice's preview takes a third from extra-large screens",
+    "Phones (390 px) keep one column, nothing scrolls sideways, and DESIGN.md describes the form page layout"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "e2e"
+  ],
+  "refs": [
+    "R-66"
+  ],
+  "keep": [],
+  "review": true,
+  "notes": [
+    "2026-10-19 review pass by reviewer: No blockers. Layout-only change. Field names, ids, labels, the amount/items swap and its focus effect, the any-token mode and the request branches behave as before. Billing details now reads name, email, address, country, tax ID; first-invalid focus follows that DOM order, which is the reading order. empty:hidden works: JSX drops whitespace between the two conditional children, so the grid is :empty when both are null. The request-1440 shot shows the empty Details and Dates rows take no room. Phones (390) stay one column with no sideways scroll in the shots. No in-app form page keeps a fixed narrow column; sign-in, consent and first-run sit outside the app shell. Tokens only, no raw px. Minor: (1) DESIGN.md:274 says a link takes the whole row, but Request money pairs Your name with the return link (new-invoice-form.tsx:623); name that pair in the doc. (2) DESIGN.md:272 bullet is 29 words and the Preview sentence at :301 is about 35, over the D-84 limit of 25. (3) new-invoice-form.tsx:465 comment opens with what the row does; keep only the why for empty:hidden. (4) client-screen.tsx:44 wrapper div now has no class. (5) No request-1280 after-shot. (6) New profile and Email notifications stretch one field or switch across 1920 px with no pairing; acceptable but sparse. Ran: cd apps/web && npx vitest run (24 files, 113 tests passed); npx tsc --noEmit -p . (clean). Read verify logs F260-20261019T220910Z: unit, e2e (41 passed), harness, docs-check, lint, typecheck, build all passed."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-19T22:09:10Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 74.7,
+        "log": "docs/runs/F260-20261019T220910Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 218.9,
+        "log": "docs/runs/F260-20261019T220910Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.1,
+        "log": "docs/runs/F260-20261019T220910Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F260-20261019T220910Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.5,
+        "log": "docs/runs/F260-20261019T220910Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F260-20261019T220910Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.4,
+        "log": "docs/runs/F260-20261019T220910Z-build.log"
+      }
+    ],
+    "taskHash": "b7ce70d52f20c71c",
+    "filesHash": "2077c4b8d0c70836",
+    "proof": {
+      "1": "e2e: screenshots docs/runs/F260-shots/before and after at 1024, 1280, 1440 and 1920 px: New invoice, Request money, New job, New and Edit client, Billing details, New profile and Email notifications fill the content width; before, each was a fixed 28-42rem column with the rest empty",
+      "2": "unit: same screenshots: network and amount, title and reference, supply and due date, name and email, country and tax ID pair up; note, address, return link and payment rows take the whole row; New invoice's preview is a third from xl (2fr/1fr); web vitest 113 passed",
+      "3": "e2e: 390 px screenshots keep one column; the Privy e2e sideways checks pass; DESIGN.md has the Form pages bullet and the preview width"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "No blockers. Layout-only change. Field names, ids, labels, the amount/items swap and its focus effect, the any-token mode and the request branches behave as before. Billing details now reads name, email, address, country, tax ID; first-invalid focus follows that DOM order, which is the reading order. empty:hidden works: JSX drops whitespace between the two conditional children, so the grid is :empty when both are null. The request-1440 shot shows the empty Details and Dates rows take no room. Phones (390) stay one column with no sideways scroll in the shots. No in-app form page keeps a fixed narrow column; sign-in, consent and first-run sit outside the app shell. Tokens only, no raw px. Minor: (1) DESIGN.md:274 says a link takes the whole row, but Request money pairs Your name with the return link (new-invoice-form.tsx:623); name that pair in the doc. (2) DESIGN.md:272 bullet is 29 words and the Preview sentence at :301 is about 35, over the D-84 limit of 25. (3) new-invoice-form.tsx:465 comment opens with what the row does; keep only the why for empty:hidden. (4) client-screen.tsx:44 wrapper div now has no class. (5) No request-1280 after-shot. (6) New profile and Email notifications stretch one field or switch across 1920 px with no pairing; acceptable but sparse. Ran: cd apps/web && npx vitest run (24 files, 113 tests passed); npx tsc --noEmit -p . (clean). Read verify logs F260-20261019T220910Z: unit, e2e (41 passed), harness, docs-check, lint, typecheck, build all passed.",
+      "at": "2026-10-19T22:17:29Z",
+      "filesHash": "2077c4b8d0c70836"
+    },
+    "commit": "6cd7b34",
+    "doneAt": "2026-10-19T22:17:40Z"
+  },
+  "branch": "fix/f260-form-pages-fill-the-content-width-full-w",
+  "baseCommit": "b679de468e10ce4e6100cb0eb75da4571f775afc",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f260-form-pages-fill-the-content-width-full-w",
+    "base": "main"
+  }
+}

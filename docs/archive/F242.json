@@ -1,0 +1,121 @@
+{
+  "id": "F242",
+  "type": "feat",
+  "behavior": "A profile can value its records in an ECB currency: the worker keeps the ECB's daily rates, and transactions and the CSV carry the value",
+  "acceptance": [
+    "GET and PUT /v1/profiles/{id}/records-currency read and set EUR or an ECB currency other than USD, null clears it, another value is 422; another user 403.",
+    "The worker fetches the ECB 90-day reference rates at start, then every 6 hours, 10 minutes after a failure, and upserts them; a fake ECB server tests parsing, storing and the retry wait, and the e2e gate's worker reads a fake, never the ECB.",
+    "With a currency set each transaction has recordsValue {currency, amount, rateDate}: USD value / USD rate × currency rate on the latest ECB day on or before its UTC day within 7 days, rounded half up to the currency's decimals; EUR uses the USD rate alone; null without a currency or such a rate.",
+    "transactions.csv adds '<currency> value' and 'ECB rate date' columns when the profile has a currency.",
+    "R-110, api.md, architecture.md, openapi.yaml and .env.example (ECB_RATES_URL) describe it; the new route is in the 403 test."
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "docs-check"
+  ],
+  "refs": [
+    "R-110",
+    "D-82"
+  ],
+  "keep": [
+    "apps/web/*",
+    "packages/contracts/*"
+  ],
+  "review": false,
+  "notes": [
+    "2026-10-18 review fail by reviewer: Blockers:\n1. apps/backend/internal/activity/transfers.go:65-69: the rate lookup has no age limit. 'Latest ECB day on or before' covers weekends and holidays (the ECB's longest closure is 4 days, Easter Thu->Tue), but it also takes a rate weeks old. After a failed ECB read (only slog.Warn, cmd/worker/main.go:91), every new transfer is valued at the last stored day. After a worker gap over 90 days the 90-day file can't backfill, so those transfers keep the old rate for good. D-82 says 'that day's ECB reference rate'. Fix: add 'AND u.day > <UTC day> - 7' (or similar) so an older rate gives null, which fills in once the rates arrive. Say it in R-110, api.md and openapi recordsValue, and add a TestRecordsValue row (a transfer more than 7 days after the last rate has none).\n2. The e2e gate's worker reads the real ECB: e2e/gate_test.go:226 (loop env) has no ECB_RATES_URL, so each of the 3 worker starts GETs www.ecb.europa.eu. A dropped connection holds the worker loop for up to 30 s against 60 s waits. .env.example:50 and config.go:47 say only tests that run a fake set it, but no test does. Fix: point the gate's worker at a local httptest fake (this also tests the cmd/worker wiring), or correct both comments.\n3. Docs (D-84): the 90-day file and its limit (no rates older than 90 days at first read; a longer worker gap is not backfilled) are only in a config.go comment. Add a bullet to architecture.md. architecture.md:30-36: the worker sentence is now 76 words; give the ECB step its own bullet. architecture.md:170-171: one bullet holds two facts (ecb_rates and profiles.records_currency), and its first sentence is 26 words.\nChecked and fine: rate direction (USD value / USD per EUR x currency per EUR), EUR = 1, half-up via FloatString for values >= 0, ISO decimals from invoice.AgreedCurrencies (no BGN), UTC day via AT TIME ZONE 'UTC' (the New York test catches it), a currency missing on the USD day gives null, the upsert column order and casts, CHECKs (no EUR row, no USD records currency), Parse (no entity expansion, 16 MiB LimitReader fails on truncation, the regexes), the 30 s client timeout, one worker under the advisory lock, and EXPLAIN on 5,000 transfers (Index Scan Backward on ecb_rates_pkey with Limit 1, then a PK lookup: 30 ms). Go tests for ecb, activity, httpapi, database and config pass.\nMinor: (a) CHECK (per_eur > 0) admits NaN and Infinity, and transfers.go:87 drops SetString's ok, so a hand-inserted NaN row would panic in RecordsValue. Add per_eur < 'Infinity' or check ok. (b) ecb.go:61 logs the remote currency value with %s and no length cap; use %q. (c) No test for a currency missing on a day where USD exists. (d) Today's transfers use the previous day's rate until the day's rate is read, then change. Say so in api.md. (e) D-82 uses that day's rate, but art. 91(2) in the research says the latest rate published at the time, so before about 15:00 UTC they differ by a day. This is an owner note, not a fix. (f) PUT with {} or currency '' clears the setting, the same as the label route.\nWeb next task: add recordsValue (nullable {currency, amount, rateDate}) to transactionSchema; a records-currency select in settings (AGREED_CURRENCIES without USD, plus None) using GET/PUT; show the amount and rate date per row; e2e and axe checks. No web task is queued yet.",
+    "2026-10-18 review pass by reviewer: Re-review after the first fail. All 3 blockers are fixed.\n1. transfers.go: the LATERAL adds u.day > <UTC day> - 7. The ECB's longest closure (4 days, Easter) stays inside it, and an older rate gives null. TestRecordsValue covers it with the 2026-10-27 transfer against the 2026-10-20 rate. Without the limit the EUR case fails. R-110, api.md and openapi say 'within 7 days'.\n2. e2e/gate_test.go: newStack runs an httptest fake ECB, and every worker start (gate and exceptions) gets ECB_RATES_URL from st.loop. TestMoneyLoop waits for an ecb_rates row, which tests the cmd/worker wiring. The e2e log shows TestMoneyLoop and TestExceptionsCancelAndEmail pass. Web e2e starts no worker. The .env.example and config.go comments are now true.\n3. architecture.md: the worker sentence is back to the original. Three short sub-bullets cover the schedule, the 90-day-file limit and the test-only URL. The ecb_rates and records_currency bullets are split.\nThe minor points are fixed too. The CHECK is per_eur > 0 AND per_eur < 1e12, which refuses NaN and Infinity and matches the parser's 12-digit limit. The parse error uses %q. The USD-only day test gives EUR a value and none for GBP and JPY. api.md says a day's transfers use the earlier rate until that day's rate is read.\nRe-ran the Go tests for ecb, activity, httpapi, database and config: all pass. gofmt is clean.\nOpen for the owner, not blocking: D-82 'that day's rate' vs art. 91(2) 'latest published at the time'. PUT {} clears the currency, the same as the label route.\nWeb next task: recordsValue in transactionSchema, a records-currency select in settings, and the value and rate date on each row."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-18T21:11:24Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 76.7,
+        "log": "docs/runs/F242-20261018T211124Z-unit.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F242-20261018T211124Z-docs-check.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.5,
+        "log": "docs/runs/F242-20261018T211124Z-harness.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.6,
+        "log": "docs/runs/F242-20261018T211124Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F242-20261018T211124Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 3.3,
+        "log": "docs/runs/F242-20261018T211124Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 262.8,
+        "log": "docs/runs/F242-20261018T211124Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F242-20261018T211124Z-keep.log"
+      }
+    ],
+    "taskHash": "6b40dc101e192873",
+    "filesHash": "2c873c872e345f1e",
+    "proof": {
+      "1": "unit: TestTransactionRecords: GET records-currency is null, PUT USD and XXX are 422, PUT EUR answers EUR, PUT null clears; TestRecordsValue: SetRecordsCurrency refuses USD, XXX and eur; the two routes are in profileRoutes (403).",
+      "2": "unit: TestParse reads the ECB file and refuses a comma rate, EUR, a bad day, no rates and bad XML. TestKeeperReadsWhenDue on a fake ECB server: stores 4 rates, waits Every, stores a correction, and after a 503 waits Retry. The e2e gate's worker reads a fake ECB (ECB_RATES_URL) and stores its rate.",
+      "3": "unit: TestRecordsValue (session clock in New York): 1.005 USD is 1.01 EUR, 0.50 GBP, 151 JPY; a Sunday takes Friday's rates; 23:59:59 and 00:00 UTC take their own days (fails without AT TIME ZONE 'UTC'); a USD-only day has EUR but no GBP or JPY; a 7-day-old rate gives none (fails without the limit); before the first rate and without a currency, none.",
+      "4": "unit: TestTransactionRecords: with EUR the CSV header ends ',Client,EUR value,ECB rate date' and a row ',income,,,1.20,2025-10-08'; without a currency the exact CSV has no such columns.",
+      "5": "docs-check: R-110 (the 7-day rule), api.md, architecture.md (the worker's ECB bullets, the 90-day limit, ecb_rates, records_currency), openapi.yaml and .env.example describe it; docs-check passes."
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Re-review after the first fail. All 3 blockers are fixed.\n1. transfers.go: the LATERAL adds u.day > <UTC day> - 7. The ECB's longest closure (4 days, Easter) stays inside it, and an older rate gives null. TestRecordsValue covers it with the 2026-10-27 transfer against the 2026-10-20 rate. Without the limit the EUR case fails. R-110, api.md and openapi say 'within 7 days'.\n2. e2e/gate_test.go: newStack runs an httptest fake ECB, and every worker start (gate and exceptions) gets ECB_RATES_URL from st.loop. TestMoneyLoop waits for an ecb_rates row, which tests the cmd/worker wiring. The e2e log shows TestMoneyLoop and TestExceptionsCancelAndEmail pass. Web e2e starts no worker. The .env.example and config.go comments are now true.\n3. architecture.md: the worker sentence is back to the original. Three short sub-bullets cover the schedule, the 90-day-file limit and the test-only URL. The ecb_rates and records_currency bullets are split.\nThe minor points are fixed too. The CHECK is per_eur > 0 AND per_eur < 1e12, which refuses NaN and Infinity and matches the parser's 12-digit limit. The parse error uses %q. The USD-only day test gives EUR a value and none for GBP and JPY. api.md says a day's transfers use the earlier rate until that day's rate is read.\nRe-ran the Go tests for ecb, activity, httpapi, database and config: all pass. gofmt is clean.\nOpen for the owner, not blocking: D-82 'that day's rate' vs art. 91(2) 'latest published at the time'. PUT {} clears the currency, the same as the label route.\nWeb next task: recordsValue in transactionSchema, a records-currency select in settings, and the value and rate date on each row.",
+      "at": "2026-10-18T21:18:28Z",
+      "filesHash": "2c873c872e345f1e"
+    },
+    "commit": "66f4330",
+    "doneAt": "2026-10-18T21:18:43Z"
+  },
+  "branch": "feat/f242-a-profile-can-value-its-records-in-an-ec",
+  "baseCommit": "c805c5ec55e02e88d26e62cfc9c0485108dc6479",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f242-a-profile-can-value-its-records-in-an-ec",
+    "base": "main"
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "id": "F227",
+  "type": "test",
+  "behavior": "The live e2e suite stops piling up data toward the shared test profile's caps: every invoice and request it makes closes within 2 days, and Send to client is answered by a route mock",
+  "acceptance": [
+    "Every invoice and request the live e2e suite makes closes within 2 days: the phone invoice and the phone request now pick 1 hour, and the e2e passes.",
+    "A full e2e run adds no invoice.sent row for the E2E shop profile, because the Send to client step is mocked; the Go API test TestSendInvoiceToClient still sends for real.",
+    "D-85 records the rule and docs/web/architecture.md Tests says it; docs-check passes."
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "e2e",
+    "unit",
+    "docs-check"
+  ],
+  "refs": [
+    "D-85"
+  ],
+  "keep": [
+    "apps/web/src/*",
+    "apps/backend/*",
+    "packages/*"
+  ],
+  "review": false,
+  "notes": [
+    "2026-10-18 review fail by reviewer: FAIL. Acceptance 1, 2 and 3 hold, but the mock makes one assertion meaningless.\n\nBlocking: apps/web/e2e/privy/invoices.spec.ts:281 expects the send POST to answer 201, but the route mock at :268-275 always answers 201, so this check can never fail. Before F227 it was the only check that the API accepts the web's real request, including the Idempotency-Key header the API requires (400 without it, invoices_send_test.go:27). No web unit test checks that sendInvoice (apps/web/src/features/invoices/api/invoices-api.ts:99-112) sends that header; profiles-api.test.ts:58 and new-invoice-form.test.tsx:44 do this for other calls. Fix: assert the request's Idempotency-Key, for example a UUID from (await sent).request().headerValue(\"idempotency-key\"), in place of or next to the 201 check.\n\nChecked and fine:\n- Accept 1: dev DB rows from the verify run (10:24-10:25 UTC) close after 24 h (desktop invoice), 1 h (phone invoice, 4 addresses), 27.6 h (desktop request, custom tomorrow 17:00) and 1 h (phone request). No other privy spec makes a real invoice or request: navigation and toasts use mockApi, onboarding mocks /api/v1/**, balances only reuses the E2E shop profile.\n- Accept 2: no outbox_events rows of any kind since 10:00 UTC; the last invoice.sent row for E2E shop is from 03:50 UTC. The desktop invoice queues no reminder (due a month away, checkout closes in 1 day). TestSendInvoiceToClient (apps/backend/internal/httpapi/tests/invoices_send_test.go:14) has no skip and ran in the unit log.\n- Mock shape: the /send mock answers the real owner GET plus sends: [queued], which matches invoiceSchema and invoiceSendSchema; the real Send also answers 201 with GetOfProfile. The toast, the Sending line, the hidden button and the focus move still test the UI: they need the mutation to succeed and the refetch to pass the owned mock.\n- Accept 3: D-85 (docs/PROJECT.md:237) is accurate, each sentence 24 words or fewer; docs/web/architecture.md:99-100 states the rule; check-docs.py: 0 errors. No doc still says the e2e sends a real email.\n- Comments in both specs are current (invoices.spec.ts:118, :260-261, :290-291, :492; money-requests.spec.ts:173).\n\nMinor, not blocking:\n- invoices.spec.ts:264: the owned-read mock is never unrouted, unlike the other mocks in this test (:359, :405). Later reads (reminders, duplicate, final Billed to check) only get sends replaced, so no later assertion is hidden. It also adds the send to any owner read before the click; adding it only after the /send handler ran would be tighter.\n- docs/web/architecture.md:100 repeats D-85's two rules beside the D-85 link. Accept 3 asks for it, but D-84 prefers a link only.\n- invoices.spec.ts:261 is 121 characters, like the existing line 21.",
+    "2026-10-18 review pass by reviewer: PASS. The earlier blocking point is fixed, and acceptance 1, 2 and 3 hold.\n\nFixed: apps/web/e2e/privy/invoices.spec.ts:280-288 now waits for the POST /send request and checks that its Idempotency-Key is a UUID. If sendInvoice (apps/web/src/features/invoices/api/invoices-api.ts:99-112) dropped the header, this would fail. The API side stays covered: invoices_send_test.go:28-29 (400 without the key). That is the correct line; my first review said :27. The tautological 201 check is gone.\n\nFixed (minor): the owner-read mock is now registered inside the /send handler (:271-277), before the 201 reply. Reads before the click are real, and the refetch after the send lists it. So the Sending line, the hidden button and the focus move need a real click, a successful mutation and the refetch. Later steps (reminders, duplicate, held money, final Billed to check) only get sends replaced, so no later assertion is hidden.\n\nChecked:\n- Accept 1: dev DB rows from the new verify run (10:38-10:39 UTC) close after 24 h (desktop invoice), 1 h (phone invoice, 4 addresses), 27.3 h (desktop request) and 1 h (phone request). The e2e log docs/runs/F227-20261018T103727Z-e2e.log has all privy specs passing (39 passed).\n- Accept 2: no outbox_events rows of any kind since 10:00 UTC, across both runs today. TestSendInvoiceToClient still runs in unit.\n- Accept 3: D-85 and docs/web/architecture.md:99-100 are unchanged and accurate; check-docs.py: 0 errors.\n- Diff scope is the same 4 files; no path under apps/web/src, apps/backend or packages changed.\n\nMinor, not blocking:\n- docs/web/architecture.md:100 repeats D-85's two rules beside the link; acceptance line 3 asks for it.\n- invoices.spec.ts:261 is 121 characters, like the existing line 21.\n- The owner-read mock is never unrouted; harmless now that it starts only after the send."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-18T10:37:27Z",
+    "checks": [
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 198.3,
+        "log": "docs/runs/F227-20261018T103727Z-e2e.log"
+      },
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 69.6,
+        "log": "docs/runs/F227-20261018T103727Z-unit.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F227-20261018T103727Z-docs-check.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.1,
+        "log": "docs/runs/F227-20261018T103727Z-harness.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F227-20261018T103727Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.1,
+        "log": "docs/runs/F227-20261018T103727Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.2,
+        "log": "docs/runs/F227-20261018T103727Z-build.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F227-20261018T103727Z-keep.log"
+      }
+    ],
+    "taskHash": "4c85e3ea6a1dd97c",
+    "filesHash": "82110ce5569c3fea",
+    "proof": {
+      "1": "e2e: the privy specs pass; the run's new rows in the dev DB close after 1 h (phone invoice, 4 addresses; phone request), 24 h (desktop invoice) and about 28 h (desktop request), all within 2 days",
+      "2": "e2e: 0 invoice.sent rows for the E2E shop profile were created during the privy runs (SQL count); the desktop test checks the request's Idempotency-Key, the toast, the Sending line, the button gone and focus; TestSendInvoiceToClient runs in unit",
+      "3": "docs-check: D-85 is defined once and cited in docs/web/architecture.md Tests and both specs; docs-check passes"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "PASS. The earlier blocking point is fixed, and acceptance 1, 2 and 3 hold.\n\nFixed: apps/web/e2e/privy/invoices.spec.ts:280-288 now waits for the POST /send request and checks that its Idempotency-Key is a UUID. If sendInvoice (apps/web/src/features/invoices/api/invoices-api.ts:99-112) dropped the header, this would fail. The API side stays covered: invoices_send_test.go:28-29 (400 without the key). That is the correct line; my first review said :27. The tautological 201 check is gone.\n\nFixed (minor): the owner-read mock is now registered inside the /send handler (:271-277), before the 201 reply. Reads before the click are real, and the refetch after the send lists it. So the Sending line, the hidden button and the focus move need a real click, a successful mutation and the refetch. Later steps (reminders, duplicate, held money, final Billed to check) only get sends replaced, so no later assertion is hidden.\n\nChecked:\n- Accept 1: dev DB rows from the new verify run (10:38-10:39 UTC) close after 24 h (desktop invoice), 1 h (phone invoice, 4 addresses), 27.3 h (desktop request) and 1 h (phone request). The e2e log docs/runs/F227-20261018T103727Z-e2e.log has all privy specs passing (39 passed).\n- Accept 2: no outbox_events rows of any kind since 10:00 UTC, across both runs today. TestSendInvoiceToClient still runs in unit.\n- Accept 3: D-85 and docs/web/architecture.md:99-100 are unchanged and accurate; check-docs.py: 0 errors.\n- Diff scope is the same 4 files; no path under apps/web/src, apps/backend or packages changed.\n\nMinor, not blocking:\n- docs/web/architecture.md:100 repeats D-85's two rules beside the link; acceptance line 3 asks for it.\n- invoices.spec.ts:261 is 121 characters, like the existing line 21.\n- The owner-read mock is never unrouted; harmless now that it starts only after the send.",
+      "at": "2026-10-18T10:42:46Z",
+      "filesHash": "82110ce5569c3fea"
+    },
+    "commit": "ea5098d",
+    "doneAt": "2026-10-18T10:43:05Z"
+  },
+  "branch": "test/f227-the-live-e2e-suite-stops-piling-up-data",
+  "baseCommit": "78f9e49fdcca600d644fcd3304d223cf9bbb9951",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "test/f227-the-live-e2e-suite-stops-piling-up-data",
+    "base": "main"
+  }
+}

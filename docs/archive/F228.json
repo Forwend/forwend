@@ -1,0 +1,123 @@
+{
+  "id": "F228",
+  "type": "feat",
+  "behavior": "The owner can make an invoice repeat every month: the API saves a retainer with the invoice, and the worker creates and emails each next invoice 7 days before its due date until the end date or a stop",
+  "acceptance": [
+    "POST /v1/profiles/{id}/invoices with repeat saves the invoice and its retainer in one transaction; without a due date or client email, or with an end date before the due date, it is 422; past 50 running retainers it is 422; repeat is in the idempotency hash only when set.",
+    "The worker creates the next invoice once, 7 UTC days before its due date, due on the due date's day each month (the month's last day when shorter), with the checkout open 60 days past it, and queues one invoice.sent email for it; a month whose due date passed unmade is skipped; a month keeps reminders off once the client stopped them; nothing after the end date or a stop, and a stop racing the worker makes no extra invoice.",
+    "The owner's invoice read shows retainer (end date, next due date, the day it is made, stoppedAt) on every invoice of the retainer; POST .../invoices/{invoiceId}/repeat/stop stops it, the same answer twice; another user gets 403.",
+    "openapi.yaml, docs/backend/api.md and docs/backend/architecture.md describe the field, the route and the worker step."
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "docs-check"
+  ],
+  "refs": [
+    "R-98",
+    "D-58",
+    "D-80",
+    "R-94",
+    "R-96"
+  ],
+  "keep": [
+    "apps/web/*",
+    "packages/*"
+  ],
+  "review": false,
+  "notes": [
+    "2026-10-18 review fail by reviewer: FAIL. Blocking: past months are backfilled in a burst.\n- apps/backend/internal/invoice/retainers.go:118-123 picks max(cycle)+1 with no lower bound, and checkRepeat (retainers.go:48-61) accepts a dueDate in the past.\n- So a retainer whose first dueDate is months back gets one invoice and one invoice.sent email per worker round (about 3 s) until it reaches the current month.\n- Repro in a scratch copy: dueDate 2024-01-15 plus repeat gave 31 invoices and 30 queued invoice.sent rows after 30 MakeRetainerInvoices calls.\n- Data integrity: an honest owner who backdates by 2 months makes the client receive 2 extra invoices at once, already past due, each with a 7-day checkout (retainers.go:143).\n- Abuse: 50 retainers per profile and 10 profiles per user let one account have the worker email any addresses up to MaxPerDay (500) receive addresses a day per profile.\n- That skips R-94's 20 sends per profile per day and the shared limiter that protects the Resend budget (D-65).\n- It also breaks accept 2 (\"creates the next invoice once, 7 UTC days before its due date\").\n- The same burst follows any stall, such as a disabled token that is enabled again.\n- Suggested fix: like R-96, which skips passed steps (reminders.go:122-124), let the worker make only the first month whose due date is today or later.\n- Cycle numbers may then have gaps, or reject repeat with a past dueDate. Add a test with a first due date months back that expects at most one new invoice and email.\n- State the rule in R-98 and docs/backend/api.md.\nShould fix in the same pass: client reminder stops are ignored.\n- The stored request keeps Reminders (retainers.go:76), so every later month turns reminders on again (create.go:166-175).\n- This happens even after the client used Stop reminders or one-click List-Unsubscribe on an earlier month.\n- Repro: first invoice stopped, then the next two months each had reminders on, stopped=false, and a reminder queued.\n- R-97 makes Duplicate respect a client stop; a retainer should too, or the choice should be documented.\nChecked and fine:\n- Accept 1: one transaction (create.go:176-185); 422 for missing dueDate or client email, a bad endDate, and past the 50 cap counted under the profile lock; repeat is in the hash only when set (invoice.go:451).\n- Month math: first_due + make_interval(months => n) clamps to the month end, and each month is computed from the first due date, so Jan 31 gives Feb 28, Mar 31, Apr 30 (tested).\n- The close is due + 61 days at 00:00 UTC, with a 7-day floor.\n- Idempotency: key retainer:<id>:<n>, the PK (retainer_id, cycle) and the unique outbox send index prevent doubles.\n- Stop race: the FOR UPDATE in addCycle (retainers.go:94) orders it after StopRetainer, and a made invoice stays.\n- Stored JSON round-trips: Request.Agreed shadows Details.Agreed in encoding/json, and Lines, AmountUSD and Reminders come back.\n- notify sends invoice.sent for the main id with Reply-To the issuer email.\n- Accept 3: the read is on every invoice via retainer_invoices; stop answers the same twice; 403 for another user.\n- Accept 4: openapi, api.md, architecture.md and R-98 match the code and follow D-84.\n- Ran `sh scripts/with-env.sh go test ./internal/invoice/ ./internal/httpapi/tests/ -count=1`: both ok. check-docs: 0 errors.\nMinor, not blocking:\n- retainers.go:143-145 floors to whole seconds against an earlier now(), so the checkout can close at 23:59:59 instead of 00:00:00.\n- DueGraceDays (retainers.go:21) is exported but used only inside the package.\n- A retainer that always fails (token disabled, MaxOpen reached) logs an error every round (cmd/worker/main.go:83-85) and only shows the owner a past nextOn.\n- Worker sends count toward the owner's 20-a-day Send limit and the 24 h per-invoice limit (send.go:70-89), so Send to client on a fresh retainer invoice is 429.\n- Canceling an invoice does not stop its retainer.\n- api.md does not mention the 7-day floor for a late month.",
+    "2026-10-18 review pass by reviewer: PASS. Both blocking points from the first review are fixed.\nBurst of past months, fixed:\n- nextMonthSQL (apps/backend/internal/invoice/retainers.go:111-117) picks the first month after the last one made whose due date is today or later.\n- MakeRetainerInvoices (retainers.go:130-135) and the owner's read (retainers.go:184-188) both use it.\n- I brute-forced the age()-based month count against the plain rule in Postgres. Over 336,991 (first due, today) pairs in 2027-2028 there were 0 mismatches, month ends and Feb 29 included.\n- Re-ran my earlier repro in a scratch copy, then deleted the copy. A 2024-01-15 start now makes nothing in 30 rounds.\n- A 2026-09-25 start makes only Oct 25, once, with one send and a close at 2026-12-25 00:00 UTC. A 2026-08-31 start skips Sep 30 and waits for Oct 31.\n- A month is never made after its due date, so the close is always about 60 to 68 days out. Dropping the 7-day floor is safe.\n- The close now rounds up to whole seconds (retainers.go:154).\nClient reminder stop, fixed:\n- A later month starts with reminders off once invoice_reminders.stopped_at is set on any invoice of the retainer (retainers.go:131-132, 156).\n- Only the client's stop link sets stopped_at (reminders.go:110).\n- TestRetainerSkipsPassedMonthsAndKeepsAReminderStop covers both fixes.\nAcceptance:\n- Accept 1 to 4 hold. The docs (R-98, api.md, openapi.yaml, architecture.md) match the code and follow D-84.\n- Ran `sh scripts/with-env.sh go test ./internal/invoice/ ./internal/httpapi/tests/ -count=1`: both ok. gofmt is clean. check-docs: 0 errors.\nMinor, not blocking:\n- \"reminders on when the first invoice had them\" (R-98, api.md) really means \"created with reminders: true\".\n- The code reads the stored create request (retainers.go:76, 156). Turning reminders on or off later on the first invoice does not change later months. Consider wording it that way.\n- Canceling an invoice does not stop its retainer. The web task should make that clear or offer Stop.\n- A retainer that keeps failing (token disabled, MaxOpen reached) logs every round (cmd/worker/main.go:83-85). With the skip rule its months now pass silently, and the owner sees only nextOn move.\n- The 50 cap (retainers.go:66-67) still counts a retainer whose end_date is today or later after its last month is made.\n- The openapi repeat description has an odd line break before \"client.email\".",
+    "2026-10-18 review pass by reviewer: PASS. Re-review of commit f1e29b9 after the wording changes. The working tree is clean.\nChanges since my last PASS:\n- I compared the committed retainers.go, retainers_test.go, the API test, the migration and the code diffs with what I reviewed. The only code change is the comment at apps/backend/internal/invoice/retainers.go:120-121.\n- openapi.yaml: the repeat description's line break is fixed. Its text is unchanged.\n- R-98 in docs/PROJECT.md and the Retainers bullet in docs/backend/api.md have the new reminder wording.\nThe wording is accurate:\n- The worker reads Reminders from the stored create request (retainers.go:76, 156).\n- It turns them off when invoice_reminders.stopped_at is set on any invoice of the retainer (retainers.go:131-132). Only the client's stop link sets it.\n- So \"when the first invoice was created with them, unless the client stopped them on an earlier/any month\" matches the code.\n- Every invoice of the retainer is an earlier month than the one being made, so \"earlier\" and \"any\" mean the same here.\nChecks:\n- Ran `sh scripts/with-env.sh go test ./internal/invoice/ ./internal/httpapi/tests/ -count=1`: both ok. check-docs: 0 errors.\nMinor points still open from my last review, none blocking:\n- Canceling an invoice does not stop its retainer.\n- A retainer that keeps failing logs every round.\n- The 50 cap counts a retainer whose end_date is today or later after its last month is made."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-18T11:20:23Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 79.5,
+        "log": "docs/runs/F228-20261018T112023Z-unit.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F228-20261018T112023Z-docs-check.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.0,
+        "log": "docs/runs/F228-20261018T112023Z-harness.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.5,
+        "log": "docs/runs/F228-20261018T112023Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F228-20261018T112023Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 3.2,
+        "log": "docs/runs/F228-20261018T112023Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 206.3,
+        "log": "docs/runs/F228-20261018T112023Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F228-20261018T112023Z-keep.log"
+      }
+    ],
+    "taskHash": "0dc35e0a38021972",
+    "filesHash": "a04de4afc8005bd5",
+    "proof": {
+      "1": "unit: TestRepeatFromCreate: repeat answers 201 with retainer; the same request replays 200; the same key without repeat or with another endDate is 409; no dueDate, no client email, an endDate before dueDate or not a date are 422; with one ended and the first stopped, the 50th running fits and the 51st is 422. startRetainer runs inside Create's transaction under its profile lock.",
+      "2": "unit: TestRetainerMakesEachMonthOnce: nothing 8 days before; at 7 days one invoice due 2027-02-28 closing 2027-04-30 00:00 UTC and one invoice.sent row, a second call adds none; then 2027-03-31 and 2027-04-30 from a 2027-01-31 start, none past the end date. TestRetainerSkipsPassedMonthsAndKeepsAReminderStop: a 2027-01-15 start created on 2027-05-10 adds only May 15 (one send) over 3 rounds; after the client stops reminders on May, June starts with them off. TestStoppedRetainerMakesNothing: a stop, and a month made after the stop (the race), make nothing. Each test fails when its rule is removed (checked by mutation).",
+      "3": "unit: TestRepeatFromCreate: the owner's read shows retainer {endDate, nextDueDate, nextOn, stoppedAt}, null on an invoice that doesn't repeat, absent from the public read; POST .../repeat/stop answers 200 with stoppedAt and null next dates twice; Bob's profile gets 403. The unit tests check the read on the first invoice, after a backdated start and after the end.",
+      "4": "docs-check: openapi.yaml has repeat (with the skip rule), retainer on the owner's Invoice and the stopRepeat route; api.md has the create field, the route and the worker step with skip, reminders and send limits; architecture.md has the tables and the worker step; docs-check passes."
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "PASS. Re-review of commit f1e29b9 after the wording changes. The working tree is clean.\nChanges since my last PASS:\n- I compared the committed retainers.go, retainers_test.go, the API test, the migration and the code diffs with what I reviewed. The only code change is the comment at apps/backend/internal/invoice/retainers.go:120-121.\n- openapi.yaml: the repeat description's line break is fixed. Its text is unchanged.\n- R-98 in docs/PROJECT.md and the Retainers bullet in docs/backend/api.md have the new reminder wording.\nThe wording is accurate:\n- The worker reads Reminders from the stored create request (retainers.go:76, 156).\n- It turns them off when invoice_reminders.stopped_at is set on any invoice of the retainer (retainers.go:131-132). Only the client's stop link sets it.\n- So \"when the first invoice was created with them, unless the client stopped them on an earlier/any month\" matches the code.\n- Every invoice of the retainer is an earlier month than the one being made, so \"earlier\" and \"any\" mean the same here.\nChecks:\n- Ran `sh scripts/with-env.sh go test ./internal/invoice/ ./internal/httpapi/tests/ -count=1`: both ok. check-docs: 0 errors.\nMinor points still open from my last review, none blocking:\n- Canceling an invoice does not stop its retainer.\n- A retainer that keeps failing logs every round.\n- The 50 cap counts a retainer whose end_date is today or later after its last month is made.",
+      "at": "2026-10-18T11:26:29Z",
+      "filesHash": "a04de4afc8005bd5"
+    },
+    "commit": "f1e29b9",
+    "doneAt": "2026-10-18T11:26:40Z"
+  },
+  "branch": "feat/f228-the-owner-can-make-an-invoice-repeat-eve",
+  "baseCommit": "d89550e11cbafac70e7f2d4ca44ab9ae5950292e",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f228-the-owner-can-make-an-invoice-repeat-eve",
+    "base": "main"
+  }
+}

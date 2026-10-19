@@ -1,0 +1,54 @@
+{
+  "id": "F246",
+  "type": "docs",
+  "behavior": "PLAN marks phase 10 items 10.1 and 10.3 to 10.6 done with their requirements",
+  "acceptance": [
+    "PLAN.md marks 10.1 (R-86), 10.3 (R-100 to R-107), 10.4 (R-98, R-99), 10.5 (R-94 to R-97) and 10.6 (R-108 to R-113) done, as 10.2 is."
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "docs-check"
+  ],
+  "refs": [],
+  "keep": [],
+  "review": false,
+  "notes": [],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-19T14:10:15Z",
+    "checks": [
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F246-20261019T141015Z-docs-check.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.9,
+        "log": "docs/runs/F246-20261019T141015Z-harness.log"
+      }
+    ],
+    "taskHash": "8fd0ddb6ec82fdfe",
+    "filesHash": "e2c51ee28a8a4b31",
+    "proof": {
+      "1": "docs-check: PLAN.md marks 10.1 (R-86), 10.3 (D-81; R-100 to R-107), 10.4 (D-58; R-98, R-99), 10.5 (R-94 to R-97) and 10.6 (D-82; R-108 to R-113) done, wrapped at 120 columns; docs-check passes."
+    },
+    "commit": "a71dada",
+    "doneAt": "2026-10-19T14:10:23Z"
+  },
+  "branch": "docs/f246-plan-marks-phase-10-items-10-1-and-10-3",
+  "baseCommit": "aadf98883c7a0d2b5a9f8d9d9244966b90d76651",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "docs/f246-plan-marks-phase-10-items-10-1-and-10-3",
+    "base": "main"
+  }
+}

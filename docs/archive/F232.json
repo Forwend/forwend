@@ -1,0 +1,122 @@
+{
+  "id": "F232",
+  "type": "feat",
+  "behavior": "The client reads a job's quote at /w/<token> and accepts it with a typed name and email, then pays the deposit from the page",
+  "acceptance": [
+    "/w/<token> (public, noindex, no sign-in) shows the issuer, title, scope, each payment (how it is invoiced, days to pay, amount) and the total; an unknown or deleted link says the quote isn't there.",
+    "Before acceptance a form takes the name and email, says accepting agrees to the work and payments, calls POST /v1/jobs/{token}/accept, then shows who accepted and when with focus there; a refused field is named on that field.",
+    "A made payment links its pay page while it can be paid (the deposit's as the page's main action), else shows its status pill.",
+    "The public e2e accepts a quote against fixed API answers and checks the form, focus, the deposit's pay link, a refused email and an unknown link; the live e2e opens a real job's /w/<token> signed out and deletes the job after, so nothing piles up (D-85: a real accept makes a 60-day deposit and a job that can't be deleted); axe finds no serious or critical violations and the page fits 390 px.",
+    "DESIGN.md describes the page; apps/web/AGENTS.md lists the public route."
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "e2e",
+    "docs-check"
+  ],
+  "refs": [
+    "R-102",
+    "R-100"
+  ],
+  "keep": [
+    "apps/backend/*",
+    "packages/contracts/*"
+  ],
+  "review": false,
+  "notes": [
+    "2026-10-18 review fail by reviewer: FAIL: two docs that list the web app's public pages were not updated for /w/<token>.\n\nBlocking:\n1. docs/web/architecture.md:3-5 says one app serves 'every surface' and lists /, /kit, /app, /pay/<invoice> and /reminders/<token>. /w/<token> is missing. Line 14 (apps/web row) lists 'landing, kit, /app, /pay, /reminders' and also misses /w.\n2. docs/web/structure.md:114-115 says providers/public-store-provider.tsx serves '/pay and /reminders/<token>'. /w/<token> uses it too (apps/web/src/app/w/[token]/page.tsx:19).\nAGENTS.md says to update the owning doc when behavior changes. R-96 updated both lists when it added /reminders. Add /w/<token> to all three places.\n\nChecked and correct:\n- Contract: publicJobSchema (schemas/jobs.ts:21-36) matches openapi PublicJob, JobPayment and Issuer, and jobapi/model.go publicJobJSON. The accept body {name, email} matches acceptBody.\n- The 422 parsing (job-quote.tsx:94-97) maps the backend text from job/accept.go:21 and :24 to the name and email fields.\n- 404 shows the not-found text on load (job-quote.tsx:56) and on accept (:101). A 429 reaches the form after withRateLimit's single retry (:103).\n- Privacy and security: the route is noindex and nofollow (page.tsx:10-13). A malformed token gives a 404 before any request. The page uses PublicStoreProvider with no access token, outside (app).\n- The page shows only the client's acceptedName, never an email. The web code does not log the token, and the page has no cross-origin links.\n- The PAYMENT_STATUS.open check (job-quote.tsx:35) fits the API values open/paid/settled/expired/canceled from invoice.StatusFilterSQL. 'open' also covers partly paid and confirming, which the pay page handles.\n- Accessibility: h1 is the title and each panel has an h2. A refused field gets aria-invalid, a role=alert error and focus. 'Quote accepted' takes focus (:51-53). The pay links are links styled with buttonClasses.\n- Structure: screens/job-quote/job-quote-screen.tsx mirrors stop-reminders. The page reuses Party, formatUsd, apiCents, invoiceNumber and StatusPill.\n- The e2e mocks match the real shapes and the real 422 text.\n- Runs: pnpm e2e e2e/job-quote.spec.ts gave 2 passed. vitest src/features/jobs gave 4 passed. typecheck and check-docs passed. The verify e2e log shows privy/jobs.spec.ts passed.\n- The F232-*.png screenshots show all four states on desktop and at 390 px.\n\nMinor (not blocking):\n- job-quote.tsx:94-95 repeats the message parsing of invalidJobField (lib/jobs.ts:33-36). One helper that takes the field list would serve both.\n- job-quote.tsx:28 copies the EMAIL regex from job-form.tsx:39 in the same feature. schemas/jobs.ts:41 repeats JOB_TOKEN_PATTERN (constants/jobs.ts:23).\n- jobs-copy.ts:138 'Pay it to start the work.' promises a term the freelancer never set.\n- job-quote.tsx:55-69: the not-found and failed states have no h1. axe rates this moderate, so it is not blocking.\n- acceptJob invalidates PUBLIC_JOB_TAG, so the quote is fetched again after the mutation already returned it. This is harmless.\n- Pre-existing and outside this task (backend): httpio/errors.go:80 logs r.URL.Path on a 500. For /v1/jobs/{token} that path holds the secret token. Worth a follow-up task.",
+    "2026-10-18 review pass by reviewer: PASS on re-review. The blocking doc gaps are fixed, and the minor points are addressed.\n\nFixed:\n- docs/web/architecture.md:3-5 now lists /w/<token> among the surfaces, citing R-102. Line 14 (apps/web row) adds /w.\n- docs/web/structure.md:114-115 names /pay, /reminders/<token> and /w/<token> for public-store-provider.tsx.\n- lib/jobs.ts:33-36: namedField(message, fields) now serves invalidJobField and the accept form (job-quote.tsx:98). jobs.test.ts:25-31 still covers it through invalidJobField.\n- constants/jobs.ts:23: EMAIL_PATTERN is now shared by job-form.tsx:101 and job-quote.tsx:84. schemas/jobs.ts:42 uses JOB_TOKEN_PATTERN.\n- jobs-copy.ts:138 now reads 'The deposit's invoice is ready to pay.' It no longer makes a promise about the work.\n- job-quote.tsx:54-73: the loading, not-found and failed states now have an h1 'Quote'.\n- e2e/privy/jobs.spec.ts:24-25: openNewJob now clicks the in-app New job link instead of a full page load. This saves API calls under the shared user limit. It matches the phone step at :152, and the test still checks the same things.\n\nRe-checked: the contract, privacy, noindex, the public store without sign-in, the PAYMENT_STATUS.open check, focus and errors, and the e2e mocks are unchanged from my first review and still correct.\n\nRuns: check-docs gave 0 errors. vitest src/features/jobs gave 4 passed. typecheck passed. pnpm e2e e2e/job-quote.spec.ts gave 2 passed. The verify log F232-20261018T141608Z-e2e.log shows 46 public and 40 live tests passed, including privy/jobs.spec.ts.\n\nLeft for later (not blocking):\n- DESIGN.md calls Pay the deposit a 'main button'. It is a link styled as a button, which is correct per structure.md.\n- acceptJob invalidates PUBLIC_JOB_TAG, so the quote is fetched once more after accept. This is harmless.\n- Pre-existing and outside this task (backend): httpio/errors.go:80 logs r.URL.Path on a 500, which holds the job token for /v1/jobs/{token}. It needs its own follow-up task."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-18T14:16:08Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 68.9,
+        "log": "docs/runs/F232-20261018T141608Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 212.8,
+        "log": "docs/runs/F232-20261018T141608Z-e2e.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F232-20261018T141608Z-docs-check.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.0,
+        "log": "docs/runs/F232-20261018T141608Z-harness.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.5,
+        "log": "docs/runs/F232-20261018T141608Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F232-20261018T141608Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.2,
+        "log": "docs/runs/F232-20261018T141608Z-build.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F232-20261018T141608Z-keep.log"
+      }
+    ],
+    "taskHash": "004e2c76008a0cdb",
+    "filesHash": "dbf67b22adb13e4e",
+    "proof": {
+      "1": "e2e: job-quote.spec (fixed API answers) shows 'Quote from Alice Design GmbH', the title as h1, the payments with how each is invoiced and its due days, the total 2,000.00 USD, The work and From with the tax ID; an unknown token's 404 says 'This quote isn't here' under a Quote heading, and /w/not-a-token is a 404 page. The live jobs.spec opens a real job's /w/<token> signed out and sees the title, 'Quote from E2E studio Ltd', the total and Accept quote. The route has robots noindex. Screenshot docs/runs/F232-quote-desk.png.",
+      "2": "e2e: job-quote.spec: Accept quote with nothing typed focuses Your name and sends nothing; typed, it posts {name: Jane Doe, email: jane@bob.example}, then 'Quote accepted' (h2) takes focus, the status says 'Accepted by Jane Doe on …' and the form is gone; a 422 naming email focuses Your email with aria-invalid. Screenshots F232-accepted-desk.png, F232-accepted-phone-dark.png.",
+      "3": "e2e: job-quote.spec: after acceptance 'Pay the deposit' links /pay/<the deposit's invoice id>; the screenshot shows another paid payment as INV-0015 with the Paid pill.",
+      "4": "e2e: job-quote.spec runs on fixed API answers; the live jobs.spec reads the real quote signed out and deletes its job; the dev DB keeps 0 jobs (SQL); the live job test now opens New job inside the app, 24 API calls instead of 30 (measured), since one run's next spec hit the user's API limit; axe finds no serious or critical violations on the quote before and after accepting and on the 404; the phone test fits 390 px.",
+      "5": "docs-check: DESIGN.md describes the quote page under the public pages; apps/web/AGENTS.md, docs/web/architecture.md (surfaces and the apps/web row) and docs/web/structure.md (PublicStoreProvider) list /w/<token>; docs-check passes."
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "PASS on re-review. The blocking doc gaps are fixed, and the minor points are addressed.\n\nFixed:\n- docs/web/architecture.md:3-5 now lists /w/<token> among the surfaces, citing R-102. Line 14 (apps/web row) adds /w.\n- docs/web/structure.md:114-115 names /pay, /reminders/<token> and /w/<token> for public-store-provider.tsx.\n- lib/jobs.ts:33-36: namedField(message, fields) now serves invalidJobField and the accept form (job-quote.tsx:98). jobs.test.ts:25-31 still covers it through invalidJobField.\n- constants/jobs.ts:23: EMAIL_PATTERN is now shared by job-form.tsx:101 and job-quote.tsx:84. schemas/jobs.ts:42 uses JOB_TOKEN_PATTERN.\n- jobs-copy.ts:138 now reads 'The deposit's invoice is ready to pay.' It no longer makes a promise about the work.\n- job-quote.tsx:54-73: the loading, not-found and failed states now have an h1 'Quote'.\n- e2e/privy/jobs.spec.ts:24-25: openNewJob now clicks the in-app New job link instead of a full page load. This saves API calls under the shared user limit. It matches the phone step at :152, and the test still checks the same things.\n\nRe-checked: the contract, privacy, noindex, the public store without sign-in, the PAYMENT_STATUS.open check, focus and errors, and the e2e mocks are unchanged from my first review and still correct.\n\nRuns: check-docs gave 0 errors. vitest src/features/jobs gave 4 passed. typecheck passed. pnpm e2e e2e/job-quote.spec.ts gave 2 passed. The verify log F232-20261018T141608Z-e2e.log shows 46 public and 40 live tests passed, including privy/jobs.spec.ts.\n\nLeft for later (not blocking):\n- DESIGN.md calls Pay the deposit a 'main button'. It is a link styled as a button, which is correct per structure.md.\n- acceptJob invalidates PUBLIC_JOB_TAG, so the quote is fetched once more after accept. This is harmless.\n- Pre-existing and outside this task (backend): httpio/errors.go:80 logs r.URL.Path on a 500, which holds the job token for /v1/jobs/{token}. It needs its own follow-up task.",
+      "at": "2026-10-18T14:21:52Z",
+      "filesHash": "dbf67b22adb13e4e"
+    },
+    "commit": "b1a1584",
+    "doneAt": "2026-10-18T14:22:08Z"
+  },
+  "branch": "feat/f232-the-client-reads-a-job-s-quote-at-w-toke",
+  "baseCommit": "e4dc996d94368bce29d673c9905ecbd84d02ec5e",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f232-the-client-reads-a-job-s-quote-at-w-toke",
+    "base": "main"
+  }
+}

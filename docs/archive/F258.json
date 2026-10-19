@@ -1,0 +1,111 @@
+{
+  "id": "F258",
+  "type": "fix",
+  "behavior": "The transactions CSV also guards a formula start after a semicolon",
+  "acceptance": [
+    "A client name Acme;=1+1 exports as Acme;'=1+1; the first-character guard is unchanged."
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "docs-check"
+  ],
+  "refs": [
+    "R-108"
+  ],
+  "keep": [
+    "packages/contracts/*"
+  ],
+  "review": false,
+  "notes": [
+    "2026-10-19 review fail by reviewer: Blocker: apps/backend/internal/httpapi/moneyapi/activity.go:87. The regexp misses a double quote between the ; and the formula start. Client name Acme;\"=1+1&\" passes PlainText. It exports as \"Acme;\"\"=1+1&\"\"\"\" and the regexp does not touch it. A ;-separated parse (Python csv, Excel dialect, delimiter ;) reads the second cell as =1+1&\"\"\". That is a valid Excel formula. Excel opens a field at a leading quote, closes it at the next lone quote, and appends the rest. So one extra character defeats the new guard. I checked this with the Python parser, not with real Excel. Fix: use the regexp ;(\"*[=+\\-@\\t\\r]) with the replacement ;'$1. In the same simulation that gives the cell '\"\"=1+1&\"\"\" (text), and the existing cases keep their output. Add this case to TestTransactionRecords and say 'also after quotes' in R-108 and the api.md bullet. Checked and fine: ;= at cell start, ;;=, ;=..;=, and a comma-quoted cell all get the apostrophe. Tab and CR after ; are covered, though PlainText already refuses them in client names. Amount, USD value and records value cells are unsigned (Direction is a separate column), and date, address and hash cells start with digits or 0x. Token symbols come from the tokens table. transactions.csv is the only CSV or spreadsheet output. The web saves the API text unchanged, and the PDFs do not run formulas. The strings.Contains gate keeps the memory bound. The test compares exact text, so it fails without the fix. Docs are short and accurate for what the code does. Ran: go test -run 'TestTransactionRecords|TestExportsStayBoundedWithDust|TestExportCapIsExact' (all PASS), plus a scratch Go and Python simulation of the cell loop. The latest docs/runs/F258-20261019T213133Z-* logs all pass.",
+    "2026-10-19 review pass by reviewer: No blockers. The earlier finding is fixed. apps/backend/internal/httpapi/moneyapi/activity.go:89 now uses ;(\"*[=+\\-@\\t\\r]) with the replacement ;'$1, so quotes between the ; and the formula start no longer get past it. The test name =Bob Ltd;=1+1;\"=2+2 exports as \"'=Bob Ltd;'=1+1;'\"\"=2+2\". Split on ; (Python csv, Excel dialect) the cells are '=1+1 and '\"\"=2+2\", both text. I also traced how a ; parser handles quotes: every cell it starts after a ; now begins with an apostrophe, a non-formula character or a quote. Line ends stay safe, because the next row starts with a date. The first-character guard is unchanged. The strings.Contains gate keeps the memory bound. TestExportsStayBoundedWithDust passes. The test compares exact text, and the coordinator saw it fail without the change. Minor: the new R-108 sentence and the api.md bullet are 26 words each, one over D-84. 'also after quotes' could say 'also with quotes between'. A leading space before a formula is not guarded after a ; or at the cell start; that matches the old rule. Ran: go test -run 'TestTransactionRecords|TestExportsStayBoundedWithDust|TestExportCapIsExact' -v (all PASS), plus a Python ; parse of the expected row. Latest docs/runs/F258-20261019T214124Z-* logs all pass."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-19T21:41:24Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 71.3,
+        "log": "docs/runs/F258-20261019T214124Z-unit.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F258-20261019T214124Z-docs-check.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.9,
+        "log": "docs/runs/F258-20261019T214124Z-harness.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F258-20261019T214124Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F258-20261019T214124Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.7,
+        "log": "docs/runs/F258-20261019T214124Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 216.8,
+        "log": "docs/runs/F258-20261019T214124Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F258-20261019T214124Z-keep.log"
+      }
+    ],
+    "taskHash": "fb676fb95532383e",
+    "filesHash": "32b874dbe0f1c73b",
+    "proof": {
+      "1": "unit: TestTransactionRecords: the client name =Bob Ltd;=1+1;\"=2+2 exports as \"'=Bob Ltd;'=1+1;'\"\"=2+2\" (the parts after ; were unguarded before, with or without a quote); the first-character guard is unchanged; TestExportsStayBoundedWithDust still passes (the regexp runs only on cells with a ;)"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "No blockers. The earlier finding is fixed. apps/backend/internal/httpapi/moneyapi/activity.go:89 now uses ;(\"*[=+\\-@\\t\\r]) with the replacement ;'$1, so quotes between the ; and the formula start no longer get past it. The test name =Bob Ltd;=1+1;\"=2+2 exports as \"'=Bob Ltd;'=1+1;'\"\"=2+2\". Split on ; (Python csv, Excel dialect) the cells are '=1+1 and '\"\"=2+2\", both text. I also traced how a ; parser handles quotes: every cell it starts after a ; now begins with an apostrophe, a non-formula character or a quote. Line ends stay safe, because the next row starts with a date. The first-character guard is unchanged. The strings.Contains gate keeps the memory bound. TestExportsStayBoundedWithDust passes. The test compares exact text, and the coordinator saw it fail without the change. Minor: the new R-108 sentence and the api.md bullet are 26 words each, one over D-84. 'also after quotes' could say 'also with quotes between'. A leading space before a formula is not guarded after a ; or at the cell start; that matches the old rule. Ran: go test -run 'TestTransactionRecords|TestExportsStayBoundedWithDust|TestExportCapIsExact' -v (all PASS), plus a Python ; parse of the expected row. Latest docs/runs/F258-20261019T214124Z-* logs all pass.",
+      "at": "2026-10-19T21:47:24Z",
+      "filesHash": "32b874dbe0f1c73b"
+    },
+    "commit": "c1470c0",
+    "doneAt": "2026-10-19T21:47:39Z"
+  },
+  "branch": "fix/f258-the-transactions-csv-also-guards-a-formu",
+  "baseCommit": "4cd6c9be7f71114ff927b9361070d6b894c76265",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f258-the-transactions-csv-also-guards-a-formu",
+    "base": "main"
+  }
+}

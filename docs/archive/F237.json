@@ -1,0 +1,120 @@
+{
+  "id": "F237",
+  "type": "fix",
+  "behavior": "Job changes: a withdrawn change's retry replays, a finished job takes no change, logs never carry a link token, and every profile route has a 403 test",
+  "acceptance": [
+    "A 500 logs the route pattern (e.g. POST /v1/jobs/{token}/accept), never the request path, so no link token or stop token reaches the log; a unit test fails on the old line.",
+    "Every profile route the API registers is in the 403 test, including events, invoice read, cancel and notifications; a guard test reads the routes from the source and fails when one is missing.",
+    "A withdrawn change keeps its Idempotency-Key: the same request again replays (200, the change stays withdrawn), another request under the key is 409 idempotency_conflict.",
+    "The final payment can't be marked done while a change waits (409 change_pending), also when the change is proposed during the mark; once the last payment is done, a change is 409 job_finished; a change can't get an invoice before it is accepted (database CHECK); an accept without proposedAt is 422.",
+    "R-105, R-103, api.md, openapi.yaml and backend rules describe job_finished, the final waiting for a change, the replay after a withdraw, 404 for a missing position and the route-only log."
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "docs-check"
+  ],
+  "refs": [
+    "R-105"
+  ],
+  "keep": [
+    "apps/web/*",
+    "packages/contracts/*"
+  ],
+  "review": false,
+  "notes": [
+    "2026-10-18 review pass by reviewer: No blockers. Checked: go test job, httpapi, database pass; TestFinalWaitsForAChangeInFlight and TestScopeChange* pass 30 times under -race (24s). Mutation runs on a scratch copy: without the After lock the race test fails (MarkDone never waited); with the lock but no count it fails (nil, want ErrChangePending). Concurrency: a final and a change can't both succeed. The After lock plus a separate count statement (fresh READ COMMITTED snapshot) rolls back a final read before a proposal; a proposal after the final sees done_at and gets job_finished. AcceptChange can't race the final: a change that existed at the read already gives ErrChangePending, and an accepted one makes the position not final. Lock order is profile then job everywhere (invoice.Create, job accept's After); ProposeChange, WithdrawChange and Delete take only the job row; no triggers on job tables, so no deadlock. The rollback leaves no invoice-number gap (the counter is on the profile row). Migration 00041 Up/Down pass the rollback test. Logs: no other request-path log, and errors carry no link token. Docs match code, and no added sentence is over 25 words. Minor: (1) httpapi/tests/profiles_test.go:217 regex matches only mux.Handle in ../*/routes.go. It misses mux.HandleFunc (used in healthapi/routes.go:12) and router.go; a HandleFunc profile route is also the one without ProfileScoped. Fix: mux\\.Handle(?:Func)?\\( and scan ../router.go too. (2) job/change_test.go:471 the poll matches any lock wait in the test DB, so a stray wait could commit early and pass without the race. Fix: add pid <> pg_backend_pid() and a query filter on the jobs FOR UPDATE. (3) Deposit-only job: the deposit is invoiced at accept but never gets done_at, so change.go:69 never says job_finished and the job keeps taking changes. That is safe (no final note goes stale), but R-105 and api.md don't say it and no test covers it. Add one line or a test. (4) done.go:91 retry has no cap. In practice it is bounded: for the final it ends after one retry with ErrChangePending; for other positions each retry needs a new owner action. (5) done.go:73 the lock and count run for every position, not only the final; harmless. Web gaps for F239: job-detail.tsx:58 canPropose ignores a finished job. propose-change.tsx:62 maps every 409 (job_finished, job_not_accepted, idempotency_conflict) to 'A change already waits for the client.' job-detail.tsx:53 offers Mark done on the final while a change waits. mark-done.tsx:56 then shows change_pending as 'Mark the earlier payments done first.' F239's finished check should use the last payment's doneAt, like the backend, so a deposit-only job still offers Propose.",
+    "2026-10-18 review pass by reviewer: Re-review after the follow-up changes: no blockers. (1) profiles_test.go guard: the regex is now mux\\.Handle(?:Func)?\\( and the files include ../router.go, so a HandleFunc route or a route in router.go is caught too. (2) TestFinalWaitsForAChangeInFlight: the poll now needs pid <> pg_backend_pid() and the After hook's exact statement, so no stray lock wait can let it commit early. If that SQL is reworded, the poll times out and fails; it can't pass by mistake. Mutation on a scratch copy (lock kept, count removed) still fails, in 0.8s, on the real assertion (nil, want ErrChangePending), so the poll finds the wait. (3) TestDepositOnlyJobTakesAChange: a deposit-only job takes a change after acceptance, the accepted change gets the final note, and then ProposeChange is ErrJobFinished. R-105 and api.md say a job paid in full by its deposit never finishes that way. Both new sentences are under 25 words. Ran: go test job, httpapi, database all pass; the race, deposit-only and scope change tests pass 30 times under -race (31s). The earlier concurrency, lock order, migration and docs findings still hold. Left as is: the lock and count run for every position, not only the final; harmless. The retry has no cap; bounded in practice. Web gaps for F239 are unchanged: job-detail.tsx:58 shows Propose on a finished job; propose-change.tsx:62 shows every 409 as 'A change already waits for the client.'; job-detail.tsx:53 offers Mark done on the final while a change waits; mark-done.tsx:56 shows change_pending as 'Mark the earlier payments done first.' F239 should treat a job as finished from the last payment's doneAt, so a deposit-only job keeps Propose."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-18T18:42:36Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 69.7,
+        "log": "docs/runs/F237-20261018T184236Z-unit.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F237-20261018T184236Z-docs-check.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.9,
+        "log": "docs/runs/F237-20261018T184236Z-harness.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F237-20261018T184236Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F237-20261018T184236Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 3.1,
+        "log": "docs/runs/F237-20261018T184236Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 238.6,
+        "log": "docs/runs/F237-20261018T184236Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F237-20261018T184236Z-keep.log"
+      }
+    ],
+    "taskHash": "d6108f82e2bc9ae7",
+    "filesHash": "9aa822548c114d30",
+    "proof": {
+      "1": "unit: TestWriteErrorLogsTheRouteNotThePath sends a 500 on POST /v1/jobs/<token>/accept through a ServeMux: the log has the route and not the token. Before the fix the log held path=/v1/jobs/<token>/accept.",
+      "2": "unit: TestProfileRoutesAreAllListed reads ../*/routes.go and router.go (Handle and HandleFunc) and failed on 5 routes (events, invoice read, cancel, notifications GET and PUT); now each is in profileRoutes, and TestProfilesBelongToTheirUser gives Bob 403 and Alice no 403 on all of them.",
+      "3": "unit: TestScopeChangeConsent: after c1 is withdrawn and c3 proposed, c1's request again answers created=false with c3 still the change, and another body under c1 is ErrConflict (failed before: ErrChangePending). TestJobs: the retry after the DELETE answers 200 with 3 payments.",
+      "4": "unit: the final while a change waits is ErrChangePending (failed before: nil); a change after the final is ErrJobFinished; TestDepositOnlyJobTakesAChange shows a deposit-only job still takes a change. TestFinalWaitsForAChangeInFlight holds the job row, adds a change, waits for MarkDone's own lock, and MarkDone answers ErrChangePending (fails without the lock or the count). TestJobs: 409 change_pending, 409 job_finished, 422 without proposedAt.",
+      "5": "docs-check: R-105 and R-103, api.md, openapi.yaml (job_finished in ChangeConflict and the enum, change_pending in MarkDoneConflict, the replay) and docs/backend/rules.md describe the fixes and the deposit-only case; docs-check passes."
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Re-review after the follow-up changes: no blockers. (1) profiles_test.go guard: the regex is now mux\\.Handle(?:Func)?\\( and the files include ../router.go, so a HandleFunc route or a route in router.go is caught too. (2) TestFinalWaitsForAChangeInFlight: the poll now needs pid <> pg_backend_pid() and the After hook's exact statement, so no stray lock wait can let it commit early. If that SQL is reworded, the poll times out and fails; it can't pass by mistake. Mutation on a scratch copy (lock kept, count removed) still fails, in 0.8s, on the real assertion (nil, want ErrChangePending), so the poll finds the wait. (3) TestDepositOnlyJobTakesAChange: a deposit-only job takes a change after acceptance, the accepted change gets the final note, and then ProposeChange is ErrJobFinished. R-105 and api.md say a job paid in full by its deposit never finishes that way. Both new sentences are under 25 words. Ran: go test job, httpapi, database all pass; the race, deposit-only and scope change tests pass 30 times under -race (31s). The earlier concurrency, lock order, migration and docs findings still hold. Left as is: the lock and count run for every position, not only the final; harmless. The retry has no cap; bounded in practice. Web gaps for F239 are unchanged: job-detail.tsx:58 shows Propose on a finished job; propose-change.tsx:62 shows every 409 as 'A change already waits for the client.'; job-detail.tsx:53 offers Mark done on the final while a change waits; mark-done.tsx:56 shows change_pending as 'Mark the earlier payments done first.' F239 should treat a job as finished from the last payment's doneAt, so a deposit-only job keeps Propose.",
+      "at": "2026-10-18T18:49:25Z",
+      "filesHash": "9aa822548c114d30"
+    },
+    "commit": "cd1e916",
+    "doneAt": "2026-10-18T18:49:39Z"
+  },
+  "branch": "fix/f237-job-changes-a-withdrawn-change-s-retry-r",
+  "baseCommit": "0fbdd42b6fe69f9a6c59943fe13ead29e66543bf",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f237-job-changes-a-withdrawn-change-s-retry-r",
+    "base": "main"
+  }
+}

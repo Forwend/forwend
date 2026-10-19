@@ -1,0 +1,105 @@
+{
+  "id": "F261",
+  "type": "fix",
+  "behavior": "Invoice and job pages balance their columns: Billed to and From move beside each other under the amount",
+  "acceptance": [
+    "The invoice page splits 2:1 from large screens: Amount, Items, then Billed to and From side by side (stacked in a narrow column) on the left, Details on the right, so neither column leaves a large empty block; screenshots in docs/runs",
+    "The job page uses the same 2:1 split; phones keep one column and nothing scrolls sideways; DESIGN.md says where each panel sits"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "e2e"
+  ],
+  "refs": [
+    "R-60",
+    "R-66"
+  ],
+  "keep": [],
+  "review": true,
+  "notes": [
+    "2026-10-19 review fail by subagent: Blocker: invoice-detail.tsx:234 splits from lg (1024 px). From 1024 to about 1180 px the main column is under 36rem. So Billed to and From stack, and Details sits alone on the right. The right column then leaves the large empty block the owner reported, and it is bigger than before. after/invoice-rich-1024.png: Details ends near y=640, the main column near y=1390 (about 750 px empty). Before it was about 270 px. after/invoice-open-1024.png: about 450 px empty, before about 100 px. This fails accept 1 at a large-screen width the task screenshotted. The task says it uses the business overview's split, but business-overview.tsx:152 is xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]. Suggested fix: use that xl split here (and on job-detail.tsx:85 to match). At 1024-1279 the page is then one column: Billed to and From side by side (the column is over 36rem), Details under them. At 1280 the main column is 640 px, so they sit side by side from the split's start. Update DESIGN.md ('two columns from large screens up') and its job bullet to match. Minor: the 18rem side column at 1024 is narrower than the old 22rem, so Checkout closes wraps its time onto two lines. Minor: Billed to and From share one height, so with Send to client, reminders and Repeats monthly the From panel has a tall blank area; acceptable. Checked and fine: the move of Billed to and From is verbatim (compared removed and added lines, ignoring indent): SendToClient, PaymentReminders, RepeatsMonthly, clientFailed, skeleton, no-client, issuer branches all kept. The canceledRow ref stays in Details. No behavior change beyond layout. Built CSS has :is(.*:only:col-span-full>*):only-child{grid-column:1/-1}, @container (min-width:36rem) for @xl and 42rem for @2xl. The timeline keeps its own @container, so the new main-column container changes nothing inside it. The transaction row fix works (1024 and 1280 shots show two clean lines, 1440 one row). DOM order Amount, Items, Billed to, From, Details is fine for keyboard and phones. 390 px shot is one column with no sideways scroll. The job page at 1440 and 1920 is better balanced. client-screen.tsx wrapper removal is safe (parent is flex-col). The new-invoice-form comment and DESIGN.md form bullets are accurate, and sentences are under 25 words. Ran: npx vitest run (24 files, 113 tests passed), npx tsc --noEmit -p . (exit 0), python3 scripts/check-docs.py (0 errors). Read verify logs F261-20261019T222206Z-*: all seven checks passed.",
+    "2026-10-19 review pass by subagent: Re-review after d130771. The blocker is fixed. invoice-detail.tsx:234 and job-detail.tsx:85 now use xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)], the same split as business-overview.tsx:152. New shots: at 1024 the invoice page is one column: Amount, Items, Billed to and From side by side, then Details. There is no empty block. request-detail-1024 shows From full width, then Details. At 1280 and 1440 the page splits 2:1. Billed to and From sit side by side (main column about 640 px at 1280). Details is alone on the right and ends about 400 px above the main column. That is less than the old 430+ px gap in the side column, and the page is shorter. job-1024 is one column, and job-1440/1920 split 2:1. The old minor about the 18rem side column wrapping at 1024 no longer applies. DESIGN.md now says extra-large for both pages. It also says narrower screens stack amount, Items, Billed to, From, then details. Both match the code. Still true from the first review: the move of Billed to and From is verbatim, with every child, condition and prop. The canceledRow ref stays in Details. Nothing changes except layout. Built CSS has the only-child col-span-full rule and @xl (36rem) and @2xl (42rem) container queries. The transaction row splits by its list's width. Order and phone layout are fine. Minor, acceptable: Billed to and From share one height, so a long Billed to (send, reminders, Repeats monthly) leaves blank space inside From. Ran: npx vitest run (24 files, 113 tests passed), npx tsc --noEmit -p . (exit 0), python3 scripts/check-docs.py (0 errors). Read verify logs F261-20261019T223320Z-*: all seven checks passed, e2e 48 + 41 passed."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-19T22:33:20Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 78.0,
+        "log": "docs/runs/F261-20261019T223320Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 224.4,
+        "log": "docs/runs/F261-20261019T223320Z-e2e.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.0,
+        "log": "docs/runs/F261-20261019T223320Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F261-20261019T223320Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.5,
+        "log": "docs/runs/F261-20261019T223320Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.2,
+        "log": "docs/runs/F261-20261019T223320Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.2,
+        "log": "docs/runs/F261-20261019T223320Z-build.log"
+      }
+    ],
+    "taskHash": "97a7b9bac857faa7",
+    "filesHash": "dd09a4d05f42a319",
+    "proof": {
+      "1": "e2e: docs/runs/F261-shots before/after at 1024-1920 px: from xl the invoice page splits 2fr/minmax(20rem,1fr) like the business overview; Amount, Items, then Billed to and From side by side with one height (stacked under a 36rem column; a request's From fills it); Details alone on the right. Below 1280 px one column: Billed to and From side by side, Details under them (1024 shot). Before, the side column ran ~430 px below the main column at 1440 and 1920, and the 1024 px transaction row overlapped itself (it now splits by the list's width, @2xl)",
+      "2": "e2e: the job page uses the same xl split (job-1440, job-1920); 390 px shots keep one column (amount, Items, Billed to, From, Details); Privy e2e (sideways and role checks) passes; DESIGN.md and R-60 say where each panel sits"
+    },
+    "review": {
+      "result": "pass",
+      "by": "subagent",
+      "summary": "Re-review after d130771. The blocker is fixed. invoice-detail.tsx:234 and job-detail.tsx:85 now use xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)], the same split as business-overview.tsx:152. New shots: at 1024 the invoice page is one column: Amount, Items, Billed to and From side by side, then Details. There is no empty block. request-detail-1024 shows From full width, then Details. At 1280 and 1440 the page splits 2:1. Billed to and From sit side by side (main column about 640 px at 1280). Details is alone on the right and ends about 400 px above the main column. That is less than the old 430+ px gap in the side column, and the page is shorter. job-1024 is one column, and job-1440/1920 split 2:1. The old minor about the 18rem side column wrapping at 1024 no longer applies. DESIGN.md now says extra-large for both pages. It also says narrower screens stack amount, Items, Billed to, From, then details. Both match the code. Still true from the first review: the move of Billed to and From is verbatim, with every child, condition and prop. The canceledRow ref stays in Details. Nothing changes except layout. Built CSS has the only-child col-span-full rule and @xl (36rem) and @2xl (42rem) container queries. The transaction row splits by its list's width. Order and phone layout are fine. Minor, acceptable: Billed to and From share one height, so a long Billed to (send, reminders, Repeats monthly) leaves blank space inside From. Ran: npx vitest run (24 files, 113 tests passed), npx tsc --noEmit -p . (exit 0), python3 scripts/check-docs.py (0 errors). Read verify logs F261-20261019T223320Z-*: all seven checks passed, e2e 48 + 41 passed.",
+      "at": "2026-10-19T22:39:07Z",
+      "filesHash": "dd09a4d05f42a319"
+    },
+    "commit": "d130771",
+    "doneAt": "2026-10-19T22:39:18Z"
+  },
+  "branch": "fix/f261-invoice-and-job-pages-balance-their-colu",
+  "baseCommit": "a2689888af8293353ded940bda57d7eaf8a9c66d",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f261-invoice-and-job-pages-balance-their-colu",
+    "base": "main"
+  }
+}

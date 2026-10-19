@@ -1,0 +1,122 @@
+{
+  "id": "F239",
+  "type": "fix",
+  "behavior": "Job page and quote page follow the change rules: one shared accept form, a withdrawn change's notice stays, no change on a finished job, the final waits for a change, and the toast says where the link went",
+  "acceptance": [
+    "The quote's accept and a change's accept use one ConsentForm (name, email, checks, field errors, messages); the old duplicate code is gone.",
+    "When the client's accept of a change answers 404, the quote page says the change was withdrawn or replaced above the payments, focus moves there, and the notice stays after the re-read removes the form.",
+    "On a finished job (the last agreed payment done) Propose a change is gone; a deposit-only job still has it. While a change waits, the final payment shows that its invoice waits for the change instead of Mark done.",
+    "Propose's toast names the address when clientEmailed, else says to send the link; the dialog says the client gets an email; 409 change_pending and job_finished each get their own message, also in Mark done; a waiting change says where its link was sent.",
+    "Due days read 'due 1 day after' for one day on the job page, the quote page and Mark done; DESIGN.md, R-106, api.md and openapi.yaml describe the changes."
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "e2e",
+    "docs-check"
+  ],
+  "refs": [
+    "R-106",
+    "R-107"
+  ],
+  "keep": [
+    "apps/backend/internal/*",
+    "packages/contracts/*"
+  ],
+  "review": false,
+  "notes": [
+    "2026-10-18 review fail by reviewer: FAIL, 1 blocker.\n\nBLOCKER 1: propose-change.tsx:62-76 and mark-done.tsx:48-63. The 409 change_pending and job_finished messages are set inside the dialog. Both mutations invalidate [JOBS_TAG] as an array (jobs-api.ts:81, :100). RTK Query 2.12 also invalidates on isRejectedWithValue, so a 409 re-reads the job. The re-read makes canPropose false (job-detail.tsx:60-64, :194), or swaps MarkDone for the finalWaits hint (job-detail.tsx:175-184). So ProposeChange or MarkDone unmounts with its open dialog. The message shows only until the re-read lands, then focus falls to body. The job_finished advice ('Start a new job') can't be read. Accept 2 fixes this same bug on the quote page. changes.test.tsx:243 renders ProposeChange alone, so it can't see the unmount. No test covers change_pending in Propose or Mark done: reverting mark-done.tsx:58 passes every test. Fix: for these two codes, show the message where it survives the re-read. For example, use a warning toast like Withdraw's withdrawGone (job-detail.tsx:133), and move focus to the Payments heading. Add unit tests for Propose 409 change_pending and job_finished, and Mark done 409 change_pending. Each test asserts the message outside the dialog.\n\nMINOR: (a) changes.test.tsx:264 has no case where a change waits and the next payment is not the final (deposit, p2, p3, change). Dropping 'p === final' at job-detail.tsx:175 passes every test; add that case. (b) job-quote.spec.ts:186-187 checks focus before the form goes, not after. Assert the notice again after toHaveCount(0) to prove it stays. (c) job-quote.tsx:123-131: role=alert plus focus can read the notice twice. Focus alone announces it, also on a second 404, so consider dropping role=alert. Acceptable as is. (d) accept-change.tsx:28: notFound={COPY.change.gone} never shows, because onConsent handles the 404 itself. Make the prop optional or drop it there. (e) Proof 5 names docs-check for the jobs.test.ts copy test; that test ran under unit.\n\nFINE: ConsentForm keeps the checks, focus on the first wrong field, 422 field mapping, 404/429/failed messages, loading, compact sizes and the quote's justAccepted focus. The change's !proposedAt guard stays. 'final' and the hint match change.go (finished = last payment done_at, no change waiting) and done.go (ErrChangePending at position last-1). A deposit-only job keeps Propose. The toast says 'on its way to' and the line says 'was sent to'; neither claims delivery. No other reader says '1 days'. The live e2e cancels both dialogs and sends nothing (D-85). New doc sentences are 25 words or fewer; docs-check has 0 errors. vitest src/features/jobs: 14 passed. typecheck and biome are clean.",
+    "2026-10-18 review pass by reviewer: PASS. The blocker and all five minor points are fixed.\n\nBLOCKER 1, fixed: propose-change.tsx:69-78 handles 409 change_pending and job_finished, and mark-done.tsx:57-62 handles change_pending. Each closes its own dialog, focuses #job-payments, then shows a warning toast. The toast sits in ToastProvider, so it survives the re-read that unmounts the component. Focus is already outside the unmounted part. close() runs before focus(), so the dialog's own focus return can't undo it. The kit Dialog keeps no open state, so an outside close() is safe. Other errors stay in the dialog. The new test in changes.test.tsx covers Propose job_finished and change_pending, and Mark done change_pending. It checks the text and that the dialog closed. Reverting to the in-dialog message leaves the dialog open, so the test fails.\n\nMINOR, all fixed: (a) A new JobDetail case (deposit, Design, Final, waiting change 4) keeps Mark done on Design with no hint. It fails without 'p === final'. (b) job-quote.spec.ts checks the notice is still focused after the form is gone. (c) The gone notice drops role=alert; focus reads it. (d) ConsentForm's notFound is optional; a 404 without it falls back to the failed message. AcceptChange no longer passes it. (e) Proof 5 is labelled unit.\n\nNIT, not blocking: the new test renders ProposeChange and MarkDone alone, so it doesn't check focus on the Payments heading. The Withdraw test checks the same focus move.\n\nRan: vitest src/features/jobs 15 passed; typecheck clean; biome clean; docs-check 0 errors. Verify at 19:36:19Z covers the current files (no 'files changed after verify'). Its e2e log shows 48 and 40 passed, including the withdrawn-change and live jobs tests. The new DESIGN.md line has 21 words (D-84)."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-18T19:36:19Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 71.7,
+        "log": "docs/runs/F239-20261018T193619Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 233.2,
+        "log": "docs/runs/F239-20261018T193619Z-e2e.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F239-20261018T193619Z-docs-check.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.5,
+        "log": "docs/runs/F239-20261018T193619Z-harness.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F239-20261018T193619Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F239-20261018T193619Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.6,
+        "log": "docs/runs/F239-20261018T193619Z-build.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F239-20261018T193619Z-keep.log"
+      }
+    ],
+    "taskHash": "674530bba1f4a174",
+    "filesHash": "a57155bda24d9025",
+    "proof": {
+      "1": "unit: the quote and change accept tests run through ConsentForm (accept-change.tsx and job-quote.tsx keep no form code); the public quote e2e accepts the quote and a change through it.",
+      "2": "e2e: job-quote.spec.ts 'says when the change the client read was withdrawn': the accept answers 404, the notice is focused, stays focused once the form is gone, and the payments no longer list the change; axe clean. Unit: AcceptChange calls onGone, not onAccepted, on 404.",
+      "3": "unit: changes.test.tsx: with the final not invoiced and a change waiting there is no Mark done and the 'final invoice waits' line shows; an earlier step keeps Mark done while a change waits (fails without p === final); a finished job has no Propose a change; a deposit-only job has it. The live jobs spec checks the waiting state, then Propose and Mark done once the change is gone.",
+      "4": "unit: changes.test.tsx: a 201 with clientEmailed toasts 'on its way to jane@bob.example'; Propose 409 job_finished and change_pending and Mark done 409 change_pending each close the dialog and toast the reason (fails without the toast branch); the waiting line says 'The link was sent to jane@bob.example.'.",
+      "5": "unit: jobs.test.ts checks 'due the day it is invoiced', 'due 1 day after', 'due 7 days after' for the job page and quote page copy. DESIGN.md, R-106, api.md (clientEmailed) and openapi.yaml (any 24 hours) describe the changes, and docs-check passes."
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "PASS. The blocker and all five minor points are fixed.\n\nBLOCKER 1, fixed: propose-change.tsx:69-78 handles 409 change_pending and job_finished, and mark-done.tsx:57-62 handles change_pending. Each closes its own dialog, focuses #job-payments, then shows a warning toast. The toast sits in ToastProvider, so it survives the re-read that unmounts the component. Focus is already outside the unmounted part. close() runs before focus(), so the dialog's own focus return can't undo it. The kit Dialog keeps no open state, so an outside close() is safe. Other errors stay in the dialog. The new test in changes.test.tsx covers Propose job_finished and change_pending, and Mark done change_pending. It checks the text and that the dialog closed. Reverting to the in-dialog message leaves the dialog open, so the test fails.\n\nMINOR, all fixed: (a) A new JobDetail case (deposit, Design, Final, waiting change 4) keeps Mark done on Design with no hint. It fails without 'p === final'. (b) job-quote.spec.ts checks the notice is still focused after the form is gone. (c) The gone notice drops role=alert; focus reads it. (d) ConsentForm's notFound is optional; a 404 without it falls back to the failed message. AcceptChange no longer passes it. (e) Proof 5 is labelled unit.\n\nNIT, not blocking: the new test renders ProposeChange and MarkDone alone, so it doesn't check focus on the Payments heading. The Withdraw test checks the same focus move.\n\nRan: vitest src/features/jobs 15 passed; typecheck clean; biome clean; docs-check 0 errors. Verify at 19:36:19Z covers the current files (no 'files changed after verify'). Its e2e log shows 48 and 40 passed, including the withdrawn-change and live jobs tests. The new DESIGN.md line has 21 words (D-84).",
+      "at": "2026-10-18T19:42:36Z",
+      "filesHash": "a57155bda24d9025"
+    },
+    "commit": "e2832f7",
+    "doneAt": "2026-10-18T19:42:51Z"
+  },
+  "branch": "fix/f239-job-page-and-quote-page-follow-the-chang",
+  "baseCommit": "c9de04a8d958480a4d75fb5640311e530d6dbe4a",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f239-job-page-and-quote-page-follow-the-chang",
+    "base": "main"
+  }
+}

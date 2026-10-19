@@ -1,0 +1,25 @@
+{
+  "id": "F259",
+  "type": "fix",
+  "behavior": "Accepting a quote payment that is not a change answers 404 job_not_found",
+  "acceptance": [
+    "A change accept on a quote payment, also with a zero proposedAt, answers 404 job_not_found and writes nothing."
+  ],
+  "dependsOn": [],
+  "state": "dropped",
+  "verification": [
+    "unit"
+  ],
+  "refs": [
+    "R-105"
+  ],
+  "keep": [
+    "packages/contracts/*"
+  ],
+  "review": false,
+  "notes": [
+    "2026-10-19 dropped: Fixed in F250 (PR merged): AcceptChange answers 404 job_not_found for a quote payment named as a change, also with a zero proposedAt, before the shared limit; F250 needed it for its own acceptance. Test: job change_test zero-proposedAt case."
+  ],
+  "blockedReason": null,
+  "evidence": null
+}
