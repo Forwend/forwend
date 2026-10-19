@@ -3471,12 +3471,13 @@
         "Until every option's chain was scanned past the earliest transfer's block time, no option is chosen and no deposit of the invoice is booked."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "docs-check"
       ],
       "refs": [
+        "R-119",
         "R-56",
         "D-76"
       ],
@@ -3486,7 +3487,78 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-19T19:19:42Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 74.1,
+            "log": "docs/runs/F252-20261019T191942Z-unit.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F252-20261019T191942Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F252-20261019T191942Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F252-20261019T191942Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F252-20261019T191942Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.9,
+            "log": "docs/runs/F252-20261019T191942Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 231.0,
+            "log": "docs/runs/F252-20261019T191942Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F252-20261019T191942Z-keep.log"
+          }
+        ],
+        "taskHash": "d4db48fcbc255ffe",
+        "filesHash": "554e0ff159f2e56d",
+        "proof": {
+          "1": "unit: ledger TestOptionWaitsForEveryChainBeforeChoosing: a full payment at 1400 on chain 2 wins over dust at 1500 on chain 1 read first; the option is paid and the dust held (the dust was chosen before the fix); the audit's two-Anvil PoC now chooses the full payment and shows paid",
+          "2": "unit: TestOptionWaitsForEveryChainBeforeChoosing: while chain 2 is final only to 1000, no option is chosen; existing option tests (first paid wins, first on chain) still pass"
+        }
+      },
+      "branch": "fix/f252-a-payer-chooses-invoice-takes-the-option",
+      "baseCommit": "7bf09536c2ac2339f0b8e1bc665be7f1fef89fb3",
+      "failedVerifies": 0
     },
     {
       "id": "F253",
