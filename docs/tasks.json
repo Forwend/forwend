@@ -3925,12 +3925,13 @@
         "Emails that show an issuer name follow the same rule as sender names for the not-checked note, or the reason is documented."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "docs-check"
       ],
       "refs": [
+        "R-122",
         "R-45"
       ],
       "keep": [
@@ -3939,7 +3940,78 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-19T20:50:24Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 76.2,
+            "log": "docs/runs/F256-20261019T205024Z-unit.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F256-20261019T205024Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.2,
+            "log": "docs/runs/F256-20261019T205024Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F256-20261019T205024Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F256-20261019T205024Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.4,
+            "log": "docs/runs/F256-20261019T205024Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 211.1,
+            "log": "docs/runs/F256-20261019T205024Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F256-20261019T205024Z-keep.log"
+          }
+        ],
+        "taskHash": "a94a2996b340d757",
+        "filesHash": "c3678a2f98b2fb1e",
+        "proof": {
+          "1": "unit: profile TestImpersonates: Fօrwend and Forweոd (Armenian), Forwenԁ, ϜORWEND and the earlier cases are refused (the Armenian ones passed before); Gifts for Wendy and For Wendy's Bakery are still allowed; lookalikes.go is generated from Unicode confusables.txt 18.0.0 by lookalikes_gen.go, with moreLookalikes for the old entries Unicode lacks",
+          "2": "docs-check: api.md says why billing details get no not-checked note (the issuer's own legal details; the look-alike check guards the Forwend name); R-122 added"
+        }
+      },
+      "branch": "fix/f256-a-name-that-reads-as-forwend-through-any",
+      "baseCommit": "808c26c2f35f43e3bdace7c8597a14fc4152c7af",
+      "failedVerifies": 0
     },
     {
       "id": "F257",

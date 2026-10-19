@@ -17,7 +17,10 @@ func TestPlainText(t *testing.T) {
 func TestImpersonates(t *testing.T) {
 	for _, name := range []string{"Forwend", "forwend support", "For wend", "Forwеnd" /* Cyrillic е */, "Fórwend",
 		"F0rwend", "FORWEND Security Team", "𝐅𝐨𝐫𝐰𝐞𝐧𝐝", "ℱorwend", "FORWΕND", "FORWEΝD", "Ｆｏｒｗｅｎｄ",
-		"ꜰᴏʀᴡᴇɴᴅ" /* small capitals */, "ꓝꓳꓣꓪꓰꓠꓓ" /* Lisu */, "ꓝORWEND Support", "Forvvend Support", "F o r w e n d"} {
+		"ꜰᴏʀᴡᴇɴᴅ" /* small capitals */, "ꓝꓳꓣꓪꓰꓠꓓ" /* Lisu */, "ꓝORWEND Support", "Forvvend Support", "F o r w e n d",
+		// Unicode's confusables (UTS #39) cover other scripts too (audit 2026-10-19).
+		"Fօrwend Billing" /* Armenian օ */, "Forweոd" /* Armenian ո */, "Forwenԁ" /* Cyrillic ԁ */, "ϜORWEND",
+		"Fᴏrwend"} {
 		if !Impersonates(name) {
 			t.Errorf("%q passes", name)
 		}

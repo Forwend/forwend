@@ -50,8 +50,12 @@ column existed were set to their signup time (migration 00013), so they never se
   a user has at most 10 profiles, the personal one included (each makes a Privy wallet the watcher scans): 422 above.
 - Names, titles, notes, client and billing fields refuse control and invisible format characters (line breaks only in
   notes and addresses, zero-width joiners allowed), and sender, profile and billing names that read as Forwend: 422.
-  The pay page says the name is not checked, and so does the PDF of a request without billing details. Onboarding
-  counts toward the 10 profiles too.
+  - "Reads as Forwend" folds accents, spaces and look-alike letters (R-122). The letters come from Unicode's
+    confusables (`profile/lookalikes.go`, made by `lookalikes_gen.go`), plus a few it lacks, such as small capitals.
+  - The pay page, emails and the PDF of a request without billing details say a typed sender name is not checked.
+  - Billing details get no such note: they are the issuer's own legal details, shown as on any invoice. The
+    look-alike check is what keeps them from reading as Forwend.
+- Onboarding counts toward the 10 profiles too.
 
 ## Notifications
 
