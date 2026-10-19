@@ -1,0 +1,121 @@
+{
+  "id": "F243",
+  "type": "feat",
+  "behavior": "Transactions has a records currency select, and each amount shows its value in that currency",
+  "acceptance": [
+    "The transactions schema reads recordsValue {currency, amount, rateDate} or null; the API slice reads and sets the records currency, and setting it reloads the list.",
+    "The Export CSV dialog has a Records currency select: USD only, then EUR and each ECB currency but USD with its name; choosing sends PUT .../records-currency (null for USD only) at once; a failure says so and keeps the saved currency.",
+    "Each amount with a recordsValue shows it under the amount (both table and phone rows), with the ECB rate date in its tooltip.",
+    "Unit tests cover the select's requests and the value line; the live e2e on fixed answers chooses EUR and sees values, axe clean, 390 px fit; DESIGN.md describes it."
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "e2e",
+    "docs-check"
+  ],
+  "refs": [
+    "R-111",
+    "R-110"
+  ],
+  "keep": [
+    "apps/backend/*",
+    "packages/contracts/*"
+  ],
+  "review": false,
+  "notes": [
+    "2026-10-19 review fail by reviewer: Blockers: (1) apps/web/src/features/transactions/components/transactions-table.tsx:463-469: the ECB rate date is only a title attribute. Touch users never see it (accept 3 names phone rows), keyboard users cannot reach it, and screen readers often skip it. Fix: use the kit Tooltip (hover, focus, tap; as EstimateHint and ConfirmingStatus do) on a focusable trigger, plus sr-only rate text, or show the date another way; update the e2e check. (2) transactions-table.tsx:468: the API decimal string prints raw, with no thousands grouping ('1234567.89 EUR' under '+1,234,567.89 USDC'; '1734567 KRW'). Fix: format with the currency's decimals from AGREED_CURRENCIES, via formatTokenAmount/Money after parseTokenAmount, or Intl.NumberFormat as formatAgreed does. (3) Accept 4 asks for unit tests of the value line; there are none (records.test.tsx only adds recordsValue: null; proof 4 cites docs-check only). Fix: add a unit test that renders a row with recordsValue in the table and phone list and checks the formatted value and the rate date; it is money display, a kept-test category. Minor: records-currency.tsx error state survives closing and reopening the dialog (the dialog never unmounts; ExportTransactions clears its own error on open); a failed GET leaves the select disabled with no message; Cancel does not undo the instant save (hint says Saved, acceptable); the setting sits behind an icon-only Export button on phones and DESIGN.md does not record why it is in the export dialog; transactions-api.ts repeats { currency: string | null } three times, infer one type from recordsCurrencySchema in types/transactions.ts; recordsCurrencySchema lacks the ^[A-Z]{3}$ pattern recordsValue.currency has; records-currency.tsx:13-20 repeats agreed-value.tsx's code-and-name option mapping; 'USD' literal at records-currency.tsx:18; transactions-table.tsx:449 comment says what, not why; DESIGN.md:191 holds two facts (D-84); tooltip shows an ISO date unlike other dates; no screenshots in docs/runs; proof 1 cites unit for the list reload, only e2e shows it. Fine: USD_ONLY sentinel, tags and invalidation, chosen reset on confirm, failure keeps the saved value, select label and hint, axe, 390 px fit; overview preview shares Amount, bell and command menu show token amounts only, as before.",
+    "2026-10-19 review fail by reviewer: Earlier blockers fixed: kit Tooltip on a button whose name holds the value and the rate day (hover, focus, tap); Intl currency format with ISO decimals; unit test of the value line; error reset per opening; load error; inferred type; schema pattern; currencyOptions shared; RECORDS_BASE_CURRENCY; DESIGN.md reason; screenshots. Blocker: apps/web/src/features/transactions/components/records-value.tsx:35: the new tap target is the text-xs line, about 16px tall, with no larger hit area. DESIGN.md:450 says touch targets are at least 44px on touch screens; small controls keep their look and grow only their hit area. Phone rows are where the tap matters (see docs/runs/F243-transactions-phone.png). Fix: add a 44px coarse-pointer hit band, as the kit Button's TOUCH classes (packages/ui-web/src/components/buttons/button.tsx:54-55) or ExplorerLink's after:-inset-1.5 do; check it does not overlap the type select. Minor: records.test.tsx:222 depends on the machine locale: LANG=de_DE.UTF-8 vitest fails it (it expects en-US '€1,234,567.89' and 'Oct 16, 2026'; CI and this machine are en-US); records-value.tsx:28 repeats formatDueDate from invoices/lib/invoices.ts:241 (same formatter and parse); formatRecordsValue is exported from a component file but used only there; the '?? 2' fallback covers a currency the API can't send; the RecordsValue type and component share a name. Checked fine: USD_ONLY, tags, chosen and error reset by the opening key, failed save keeps the saved value, failed read message, label-in-name, axe, 390 px, overview preview shares Amount, bell and command menu show token amounts only. vitest transactions+invoices 38 passed, typecheck and biome clean.",
+    "2026-10-19 review pass by reviewer: All blockers fixed. Rate day: the value is a button in the kit Tooltip (hover, focus, tap); its name holds the value and the day, label-in-name holds. Money: Intl currency format with AGREED_CURRENCIES decimals (EUR 2, JPY 0), grouped. Touch: records-value.tsx:35 adds a coarse-pointer before band, 44px tall and at least 44px wide, centered on the line. The e2e asserts 44px in a touch context. The band stays clear of the type select, which sits on the left under the party. Unit: the value-line test passes with the default locale and with LANG=de_DE.UTF-8. Earlier minors fixed: error and choice reset per opening, read-failure message, inferred types, schema pattern, shared currencyOptions and formatDueDate, RECORDS_BASE_CURRENCY, DESIGN.md placement reason, screenshots. Checks: vitest transactions+invoices 38 passed; typecheck and biome clean; verify 12:44:57Z passed 8 checks, records.spec.ts passed. Left as is: Cancel does not undo the instant save; the hint says it is saved. On phones the setting sits behind the icon-only Export button; DESIGN.md records why."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-19T12:44:57Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 69.8,
+        "log": "docs/runs/F243-20261019T124457Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 237.3,
+        "log": "docs/runs/F243-20261019T124457Z-e2e.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F243-20261019T124457Z-docs-check.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.1,
+        "log": "docs/runs/F243-20261019T124457Z-harness.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F243-20261019T124457Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F243-20261019T124457Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.3,
+        "log": "docs/runs/F243-20261019T124457Z-build.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F243-20261019T124457Z-keep.log"
+      }
+    ],
+    "taskHash": "9fdd62e5800e2c70",
+    "filesHash": "a1eb0be11cf97d25",
+    "proof": {
+      "1": "e2e: records.spec.ts: choosing EUR · Euro in the export dialog sends the PUT and the list reads again with values. Unit: RecordsCurrency reads USD only and choosing EUR sends PUT {\"currency\":\"EUR\"}; the schema reads recordsValue and checks the currency code.",
+      "2": "unit: records.test.tsx: a failed save shows 'We could not save the currency. Try again.' and the select keeps EUR; the select remounts on each opening (key), and a failed read shows its error. E2E: USD only, then EUR · Euro, axe clean.",
+      "3": "unit: RecordsValue names EUR 1234567.89 and JPY 151 as money with 2 and 0 decimals plus 'At the ECB rate of <day>' in the reader's locale (passes in en_US and de_DE). E2E: the value's tooltip opens on focus; at 390 px the phone rows show it; on a touch screen its tap band is 44px; screenshots docs/runs/F243-*.png.",
+      "4": "docs-check: DESIGN.md (the select in the export dialog and why, the value button and its tooltip), R-111 and docs/web/architecture.md describe it; docs-check passes."
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "All blockers fixed. Rate day: the value is a button in the kit Tooltip (hover, focus, tap); its name holds the value and the day, label-in-name holds. Money: Intl currency format with AGREED_CURRENCIES decimals (EUR 2, JPY 0), grouped. Touch: records-value.tsx:35 adds a coarse-pointer before band, 44px tall and at least 44px wide, centered on the line. The e2e asserts 44px in a touch context. The band stays clear of the type select, which sits on the left under the party. Unit: the value-line test passes with the default locale and with LANG=de_DE.UTF-8. Earlier minors fixed: error and choice reset per opening, read-failure message, inferred types, schema pattern, shared currencyOptions and formatDueDate, RECORDS_BASE_CURRENCY, DESIGN.md placement reason, screenshots. Checks: vitest transactions+invoices 38 passed; typecheck and biome clean; verify 12:44:57Z passed 8 checks, records.spec.ts passed. Left as is: Cancel does not undo the instant save; the hint says it is saved. On phones the setting sits behind the icon-only Export button; DESIGN.md records why.",
+      "at": "2026-10-19T12:50:57Z",
+      "filesHash": "a1eb0be11cf97d25"
+    },
+    "commit": "534421a",
+    "doneAt": "2026-10-19T12:51:12Z"
+  },
+  "branch": "feat/f243-transactions-has-a-records-currency-sele",
+  "baseCommit": "b5b26ef04a69941dc785c3b861b7f7ce8955254d",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f243-transactions-has-a-records-currency-sele",
+    "base": "main"
+  }
+}

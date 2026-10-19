@@ -1,0 +1,115 @@
+{
+  "id": "F255",
+  "type": "fix",
+  "behavior": "The receipt lists only money paid to the creator; money held for the payer is not a payment",
+  "acceptance": [
+    "Paid with 2 USDC, then 2 more: the receipt PDF lists one 2.00 payment.",
+    "A deposit split between the creator and held money lists only the creator's part; the pay page and receipt email follow the same rule or are named."
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "docs-check"
+  ],
+  "refs": [
+    "R-121",
+    "R-48"
+  ],
+  "keep": [
+    "packages/contracts/*"
+  ],
+  "review": false,
+  "notes": [
+    "2026-10-19 review pass by subagent: No blockers. The paid subquery in get.go:176 is right. recipient_payable credits are negative, so -sum is the paid part. A deposit booked only to receiver and payer_held gives 0. With no deposit transaction, HAVING count(*) > 0 makes it null. Reversals have no chain_transfer_id and no code writes them, so they are not counted. inv.Deposits is the chosen option's list (get.go:97). A superseded option books all to held, so its paid is 0. A paid invoice never gets an expiry transaction: Paid is final and the invoices guard forbids paid to expired. split caps each part at amount minus owed, so the listed paid parts add up to the amount. The notify query keeps only deposits with a recipient_payable entry. book() skips zero entries, so that means paid > 0. The web schema makes paid required and nullable. All typed and e2e fixtures set it, and typecheck and e2e passed. Minor: (1) openapi.yaml:2327 refs Uint256, whose description says 1 to 2^256-1, but paid can be 0. Use the plain pattern string used for held. (2) For an expired_partially_paid invoice, paid stays above 0 after the expiry book moves the money to held. The openapi text, the invoice.go:279 comment and the schema comment say 0 when held. Activity treats it as held. No reader uses paid there today. (3) The JSDoc of receiptDeposits (pay.ts:94) still says confirmed and before expiry. The new inline comment now states the rule. (4) The owner page list (invoice-deposits.tsx:61) still labels an over-amount deposit Payment and notes only late ones. That is the owner's view, not proof of payment, but name it in the PR. (5) The api.md receipt bullet is still one long sentence (D-84), with a short broken line at 'D-26); and'. What I ran: go test -count=1 on document, httpapi/tests, notify and invoice: all ok. vitest on pay and invoices: 52 passed. I copied origin/main apps/backend to a temp dir with the new tests. TestReceiptListsOnlyMoneyPaidToTheCreator failed there because it listed 1.50, 1.50 and 2.50. TestDeliverSendsTheReceiptToThePayer failed because it linked the held 0xe2 deposit. Then I deleted the temp dir. The web test fails by reading: the old filter keeps the held 400 deposit. docs/runs/F255-20261019T202625Z-*.log all passed: unit, docs-check, harness, lint, typecheck, build, e2e (48 + 41) and keep.",
+    "2026-10-19 review fail by subagent: Blocker (docs, missed in my first pass): docs/backend/api.md:310-311 and apps/backend/api/openapi.yaml:2509-2510 still say another deposit before the checkout closes changes the receipt. After this fix that is false. The receipt exists only once paid. Any deposit after paid is booked with final=true, so it is all held (paid 0). The receipt does not list it, and the paid time does not move. So once the receipt exists, no deposit changes it. Fix: say the receipt does not change once paid, or that held money (late or over the amount) and the settlement do not change it. Points 1, 2, 3 and 5 are fixed and correct. Point 1: openapi paid is type [string, null] with ^[0-9]+$, so 0 is allowed (openapi 3.1). Point 2: openapi, invoice.go:279 and the web schema comment say what an expired partial payment keeps. Point 3: the receiptDeposits JSDoc states the R-121 rule. Point 5: the api.md receipt bullet is now short sub-bullets. Point 4 (owner page labels an over-amount deposit Payment) is left for the owner, which is fine. Code is unchanged since my pass. What I ran: python3 scripts/check-docs.py gave 0 errors. vitest src/features/pay gave 19 passed. docs/runs/F255-20261019T203612Z-*.log all passed: unit, docs-check, harness, lint, typecheck, build, e2e (41) and keep.",
+    "2026-10-19 review pass by subagent: No blockers. Commit 74087b5 fixes the one blocker. docs/backend/api.md:310-311 and apps/backend/api/openapi.yaml:2509-2510 now say a paid receipt doesn't change. Later money is held for the payer (R-121), and the settlement is not on it. That matches the code. The receipt exists only once paid. After that every deposit is booked as held (paid 0), so it is not listed, and the paid time does not move. A search finds no other doc that says a deposit changes the receipt. The commit touches only those two docs and tasks.json evidence. Earlier fixes 1, 2, 3 and 5 stay in place. Point 4 (owner page labels an over-amount deposit Payment) is left for the owner to decide. Code is unchanged since my first pass. I covered the code then: the paid SQL, options, expiry, the sum of paid parts, the notify query, web schema and fixtures, and tests that fail on origin/main. What I ran: python3 scripts/check-docs.py gave 0 errors. docs/runs/F255-20261019T204224Z-*.log all passed: unit, docs-check, harness, lint, typecheck, build, e2e (41) and keep."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-19T20:42:24Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 74.1,
+        "log": "docs/runs/F255-20261019T204224Z-unit.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F255-20261019T204224Z-docs-check.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.0,
+        "log": "docs/runs/F255-20261019T204224Z-harness.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F255-20261019T204224Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F255-20261019T204224Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 3.1,
+        "log": "docs/runs/F255-20261019T204224Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 213.2,
+        "log": "docs/runs/F255-20261019T204224Z-e2e.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F255-20261019T204224Z-keep.log"
+      }
+    ],
+    "taskHash": "4e93d9b53a838986",
+    "filesHash": "31f4d9fa12133a80",
+    "proof": {
+      "1": "unit: TestReceiptListsOnlyMoneyPaidToTheCreator: deposits of 1.5, 1.5 and 2.5 on a 2 USDC invoice list 1.50 and 0.50 USDC under Payments and not the held 2.50 (the held deposit was listed before the fix)",
+      "2": "unit: TestReceiptListsOnlyMoneyPaidToTheCreator: the read gives paid 1500000, 500000 and 0; notify TestDeliverSendsTheReceiptToThePayer links the deposit that paid, not a later held one; web pay.test receiptDeposits keeps only deposits with a paid part, so the pay page's transaction link follows the same rule"
+    },
+    "review": {
+      "result": "pass",
+      "by": "subagent",
+      "summary": "No blockers. Commit 74087b5 fixes the one blocker. docs/backend/api.md:310-311 and apps/backend/api/openapi.yaml:2509-2510 now say a paid receipt doesn't change. Later money is held for the payer (R-121), and the settlement is not on it. That matches the code. The receipt exists only once paid. After that every deposit is booked as held (paid 0), so it is not listed, and the paid time does not move. A search finds no other doc that says a deposit changes the receipt. The commit touches only those two docs and tasks.json evidence. Earlier fixes 1, 2, 3 and 5 stay in place. Point 4 (owner page labels an over-amount deposit Payment) is left for the owner to decide. Code is unchanged since my first pass. I covered the code then: the paid SQL, options, expiry, the sum of paid parts, the notify query, web schema and fixtures, and tests that fail on origin/main. What I ran: python3 scripts/check-docs.py gave 0 errors. docs/runs/F255-20261019T204224Z-*.log all passed: unit, docs-check, harness, lint, typecheck, build, e2e (41) and keep.",
+      "at": "2026-10-19T20:47:38Z",
+      "filesHash": "31f4d9fa12133a80"
+    },
+    "commit": "74087b5",
+    "doneAt": "2026-10-19T20:47:48Z"
+  },
+  "branch": "fix/f255-the-receipt-lists-only-money-paid-to-the",
+  "baseCommit": "03d9bdc2d5b2c19d3636cb11cbb56bc493c510e6",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f255-the-receipt-lists-only-money-paid-to-the",
+    "base": "main"
+  }
+}

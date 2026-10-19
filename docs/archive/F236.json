@@ -1,0 +1,122 @@
+{
+  "id": "F236",
+  "type": "feat",
+  "behavior": "The owner proposes and withdraws scope changes on the job page, and the client accepts each on the quote page; the record lists them",
+  "acceptance": [
+    "On an accepted job with fewer than 10 payments and no change waiting, Propose a change opens a dialog (title, Amount in USD, days to pay) that adds the change with an Idempotency-Key per filled-in form; an empty or wrong field is named before anything is sent.",
+    "A waiting change shows 'Waiting for the client', stays out of the total, and has Withdraw (DELETE, with a toast); Mark done skips it.",
+    "On the quote page the waiting change has an Accept change form (name, email) that posts proposedAt exactly as the read gave it; then the change shows as accepted and focus moves there.",
+    "The record adds 'Change proposed' and 'Change accepted by' events in order; tests: web unit tests for the bodies (proposedAt sent exactly) and the record order; the public e2e accepts a change on fixed answers; the live e2e opens the dialog on a job read as accepted; axe clean, 390 px fit.",
+    "DESIGN.md describes the change UI on both pages."
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "e2e",
+    "docs-check"
+  ],
+  "refs": [
+    "R-106",
+    "R-105"
+  ],
+  "keep": [
+    "apps/backend/*",
+    "packages/contracts/*"
+  ],
+  "review": false,
+  "notes": [
+    "2026-10-18 review fail by reviewer: Code is correct; three acceptance claims are not proven by any test. BLOCKERS: (1) apps/web/e2e/privy/jobs.spec.ts:106 'Mark done skips it' (acceptance 2) is vacuous: the mock puts the uninvoiced Final payment before the change, so find(!invoiceId) stops there and the assertion passes with the !isPendingChange guard removed from job-detail.tsx:53. Fix: a test where every agreed payment has its invoice and a change waits, expecting no Mark done (e.g. a JobDetail unit test in changes.test.tsx). (2) job-detail.tsx:104-126 Withdraw is never clicked in any test; acceptance 2 claims 'DELETE, with a toast' and the proof only shows the button. Fix: the same JobDetail test clicks Withdraw with fetch stubbed to 204 and asserts DELETE /api/v1/profiles/<p>/jobs/<id>/payments/3, the 'Extra page withdrawn' toast and focus on the Payments heading. (3) e2e/job-quote.spec.ts:118-161 R-106 and acceptance 4 need both pages to fit 390 px; the quote page with the Accept change form is checked only at desktop width. Fix: set the viewport to 390x844 while the form shows and assert sidewaysScroll <= 0. MINOR: accept-change.tsx repeats the quote accept form's submit, checks and error mapping, and type AcceptField is defined twice (job-quote.tsx:38, accept-change.tsx:16): share one form or at least move the type to types/jobs.ts. propose-change.tsx:33 error keys restate PAYMENT_FIELDS; use Partial<Record<PaymentField, string>>. job-record.tsx:19 comment 'What happened, in words.' says what, not why; drop it. job-detail.tsx:120 a withdraw 409 (client accepted meanwhile) or 404 says 'Try again', which can't work. ProposeChange: 409 change_pending does not refetch; client-side errors don't move focus to the first wrong field. AcceptChange: 404 asks for a reload instead of refetching; the accept answer is ignored, so a failed refetch leaves the form with no confirmation. PROJECT.md R-106 Given sentence is 26 words (D-84: 25). CONFIRMED: proposedAt stays the read's string (apiTime has no transform; unit test and quote e2e fail if reformatted); job-quote job source keeps the quote-accept flow (accept answer until the read shows acceptedAt; e2e passed); keys reused per filled-in form; Propose gating matches backend MaxPayments; focus targets have tabIndex -1; dialog, fields and form are named; no web reader counts a waiting change (list, detail, quote, record, toasts; totals come from the API); live e2e sends no write (D-85). vitest jobs 9/9, typecheck and biome pass.",
+    "2026-10-18 review pass by reviewer: All three blockers are fixed. (1)+(2) changes.test.tsx renders JobDetail with both agreed payments invoiced and a change waiting: no Mark done, no Propose a change; Withdraw sends DELETE /api/v1/profiles/<p>/jobs/<id>/payments/3, toasts 'Extra page withdrawn' and focuses the Payments heading. Without !isPendingChange in next (job-detail.tsx:53), the change would get Mark done and the test fails. (3) job-quote.spec.ts sets 390x844 while the Accept change form shows and asserts no sideways scroll; the rest of that test runs at phone width. Fixed minors checked: AcceptField is one type in types/jobs.ts; ProposeChange errors are keyed by PaymentField and focus the first wrong field; withdraw 409/404 says the client accepted it or it is gone, and the array invalidatesTags reads the job again on failure; the comment is gone; R-106 Given sentence is 23 words. Earlier confirmations still hold: proposedAt is sent as the read's string, keys are reused per filled-in form, Propose gating matches the backend limit, focus targets have tabIndex -1, no web reader counts a waiting change, the live e2e sends no write (D-85). Remaining minor, not blocking: the quote and change accept forms still repeat the same submit logic; when a client's accept gets 404 for a withdrawn change, the re-read removes the form, so its 'gone' alert disappears and focus falls to the body; privy/jobs.spec.ts:106 Mark done count stays vacuous there (the unit test now covers it). Ran: vitest jobs 10/10, web typecheck, biome; verify 16:17:30Z passed 8 checks (e2e 47 + 40)."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-18T16:17:30Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 70.2,
+        "log": "docs/runs/F236-20261018T161730Z-unit.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 209.7,
+        "log": "docs/runs/F236-20261018T161730Z-e2e.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F236-20261018T161730Z-docs-check.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.2,
+        "log": "docs/runs/F236-20261018T161730Z-harness.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F236-20261018T161730Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.0,
+        "log": "docs/runs/F236-20261018T161730Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 4.7,
+        "log": "docs/runs/F236-20261018T161730Z-build.log"
+      },
+      {
+        "id": "keep",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F236-20261018T161730Z-keep.log"
+      }
+    ],
+    "taskHash": "184b9df50652bdbc",
+    "filesHash": "bb2fe20f9cb7142e",
+    "proof": {
+      "1": "e2e: the live jobs spec opens Propose a change on the job read as accepted with no change waiting: the fields show, axe is clean, Cancel closes it. Unit: changes.test.tsx sends {title, amountUsd: '150.50', dueDays: 14} to .../payments, and a retry reuses the Idempotency-Key.",
+      "2": "unit: changes.test.tsx renders a job with both agreed payments invoiced and a change waiting: no Mark done (fails without the skip), no Propose a change; Withdraw sends DELETE .../payments/3, toasts 'Extra page withdrawn' and focuses the Payments heading. The live spec shows the waiting line, total 1,000.50 USD, Withdraw, axe clean, 390 px fit.",
+      "3": "e2e: job-quote.spec.ts accepts a waiting change on fixed answers at 390 px with no sideways scroll: the post has the read's proposedAt with microseconds, focus moves to 'Change · Accepted by Jane Doe', the total becomes 2,150.00 USD, axe is clean. Unit: changes.test.tsx posts proposedAt unchanged.",
+      "4": "unit: jobs.test.ts orders created, accepted, proposed2, changeAccepted2, done2, invoiced2. The quote spec's record shows 'Change proposed: Extra page, 150.00 USD' and 'Extra page accepted by Jane Doe'; the live spec's record shows the change proposed.",
+      "5": "docs-check: DESIGN.md describes Propose a change, the change line, Withdraw and focus on the job page, the Accept change form on the quote page, and the record's change events."
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "All three blockers are fixed. (1)+(2) changes.test.tsx renders JobDetail with both agreed payments invoiced and a change waiting: no Mark done, no Propose a change; Withdraw sends DELETE /api/v1/profiles/<p>/jobs/<id>/payments/3, toasts 'Extra page withdrawn' and focuses the Payments heading. Without !isPendingChange in next (job-detail.tsx:53), the change would get Mark done and the test fails. (3) job-quote.spec.ts sets 390x844 while the Accept change form shows and asserts no sideways scroll; the rest of that test runs at phone width. Fixed minors checked: AcceptField is one type in types/jobs.ts; ProposeChange errors are keyed by PaymentField and focus the first wrong field; withdraw 409/404 says the client accepted it or it is gone, and the array invalidatesTags reads the job again on failure; the comment is gone; R-106 Given sentence is 23 words. Earlier confirmations still hold: proposedAt is sent as the read's string, keys are reused per filled-in form, Propose gating matches the backend limit, focus targets have tabIndex -1, no web reader counts a waiting change, the live e2e sends no write (D-85). Remaining minor, not blocking: the quote and change accept forms still repeat the same submit logic; when a client's accept gets 404 for a withdrawn change, the re-read removes the form, so its 'gone' alert disappears and focus falls to the body; privy/jobs.spec.ts:106 Mark done count stays vacuous there (the unit test now covers it). Ran: vitest jobs 10/10, web typecheck, biome; verify 16:17:30Z passed 8 checks (e2e 47 + 40).",
+      "at": "2026-10-18T16:23:16Z",
+      "filesHash": "bb2fe20f9cb7142e"
+    },
+    "commit": "380a1ac",
+    "doneAt": "2026-10-18T16:23:32Z"
+  },
+  "branch": "feat/f236-the-owner-proposes-and-withdraws-scope-c",
+  "baseCommit": "7c5cb69d42021b62d57397a8dcb2afe55166baf7",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f236-the-owner-proposes-and-withdraws-scope-c",
+    "base": "main"
+  }
+}
