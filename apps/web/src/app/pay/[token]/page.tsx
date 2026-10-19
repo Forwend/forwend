@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { INVOICE_ID_PATTERN } from "@/features/pay/constants/pay";
+import { PAY_TOKEN_PATTERN } from "@/features/invoices/constants/invoices";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { PublicStoreProvider } from "@/providers/public-store-provider";
 import { PayScreen } from "@/screens/pay/pay-screen";
@@ -11,14 +11,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function PayPage({ params, searchParams }: PageProps<"/pay/[invoiceId]">) {
-  const { invoiceId } = await params;
-  if (!INVOICE_ID_PATTERN.test(invoiceId)) notFound();
+export default async function PayPage({ params, searchParams }: PageProps<"/pay/[token]">) {
+  const { token } = await params;
+  if (!PAY_TOKEN_PATTERN.test(token)) notFound();
   // One option of a payer-chooses invoice (R-56); the canary opens each this way.
   const { option } = await searchParams;
   return (
     <PublicStoreProvider>
-      <PayScreen invoiceId={invoiceId} option={typeof option === "string" ? option : undefined} />
+      <PayScreen linkToken={token} option={typeof option === "string" ? option : undefined} />
     </PublicStoreProvider>
   );
 }

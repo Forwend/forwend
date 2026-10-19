@@ -31,6 +31,7 @@ const payment = (position: number, more: object = {}) => ({
   dueDays: 14,
   onAccept: position === 1,
   invoiceId: null,
+  payToken: null,
   number: null,
   status: null,
   doneAt: null,
@@ -52,7 +53,12 @@ const job: Job = {
   client: { name: "Bob Ltd", email: "ap@bob.example", address: null, country: null, taxId: null },
   issuer: { name: "Alice", address: "Main St 1", country: "DE", taxId: null, email: "a@x.example" },
   payments: [
-    payment(1, { invoiceId: `0x${"8".repeat(64)}`, number: 1, status: "paid" }),
+    payment(1, {
+      invoiceId: `0x${"8".repeat(64)}`,
+      payToken: "8".repeat(64),
+      number: 1,
+      status: "paid",
+    }),
     payment(2),
   ],
   totalUsd: "600.00",
@@ -85,6 +91,7 @@ describe("mark done", () => {
             job.payments[0],
             payment(2, {
               invoiceId: INVOICE,
+              payToken: "9".repeat(64),
               number: 2,
               status: "open",
               doneAt: "2026-10-18T11:00:00Z",

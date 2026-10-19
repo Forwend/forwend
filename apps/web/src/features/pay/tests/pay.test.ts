@@ -5,6 +5,7 @@ import { payState, payToken, receiptDeposits, withOption } from "@/features/pay/
 
 const invoice: Invoice = {
   invoiceId: `0x${"1".repeat(64)}`,
+  payToken: "2".repeat(64),
   optionId: `0x${"1".repeat(64)}`,
   optionLocked: false,
   optionCount: 1,

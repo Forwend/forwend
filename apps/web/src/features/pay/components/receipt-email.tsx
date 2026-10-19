@@ -13,7 +13,8 @@ const ENTER =
   "transition-[opacity,transform] duration-[var(--fw-duration-base)] ease-[var(--fw-ease-out)] starting:translate-y-1 starting:opacity-0";
 
 export interface ReceiptEmailProps {
-  invoiceId: string;
+  /** The pay link's token (D-86). */
+  linkToken: string;
   paid: boolean;
 }
 
@@ -21,7 +22,7 @@ export interface ReceiptEmailProps {
 // stay first. An optional address for this invoice's receipt only, sent once it is paid; not kept in the browser.
 // Once the address is saved the form gives way to a confirmation: the button can't be pressed again for the same
 // address, and before payment "Use another address" reopens the form (once paid the receipt goes out at once).
-export function ReceiptEmail({ invoiceId, paid }: ReceiptEmailProps) {
+export function ReceiptEmail({ linkToken, paid }: ReceiptEmailProps) {
   const [setPayerEmail, { data, error, isLoading, reset }] = useSetPayerEmailMutation();
   const [step, setStep] = useState<"folded" | "form" | "done">("folded");
   const [text, setText] = useState("");
@@ -36,7 +37,7 @@ export function ReceiptEmail({ invoiceId, paid }: ReceiptEmailProps) {
   }, [step]);
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setPayerEmail({ invoiceId, email: text })
+    setPayerEmail({ payToken: linkToken, email: text })
       .unwrap()
       .then(() => setStep("done"))
       .catch(() => {});

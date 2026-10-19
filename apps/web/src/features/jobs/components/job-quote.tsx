@@ -20,9 +20,10 @@ const PANEL = "fw-panel";
 const PANEL_TITLE = "fw-panel-head text-base font-semibold text-ink";
 const NOT_FOUND = 404;
 const usd = (amountUsd: string) => `${formatUsd(apiCents(amountUsd))} ${MONEY_COPY.usd}`;
-const payHref = (p: JobPayment) => `/pay/${p.invoiceId}`;
+// The pay link carries its token (D-86).
+const payHref = (p: JobPayment) => `/pay/${p.payToken}`;
 // A made payment the client can still pay: its pay page takes money.
-const payable = (p: JobPayment) => p.invoiceId !== null && p.status === PAYMENT_STATUS.open;
+const payable = (p: JobPayment) => p.payToken !== null && p.status === PAYMENT_STATUS.open;
 
 // The client's quote (R-102): who sends it, the work and the payments, then Accept with a typed name and email. Once
 // accepted the form gives way to who accepted and when, and focus moves there; the deposit's pay link is the main

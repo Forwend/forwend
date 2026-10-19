@@ -15,7 +15,7 @@ import { Fragment } from "react";
 import { AccountInitial, AccountMenu } from "@/features/auth/components/account-menu";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
-import { useGetInvoiceQuery } from "@/features/invoices/api/invoices-api";
+import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
@@ -126,7 +126,9 @@ export function AppHeader({
 function Breadcrumb({ active, pathname }: { active: Profile; pathname: string }) {
   const { trail, invoiceId } = breadcrumb(pathname, active.kind);
   // The invoice page reads the same invoice, so this comes from the cache.
-  const invoice = useGetInvoiceQuery(invoiceId ?? skipToken);
+  const invoice = useGetProfileInvoiceQuery(
+    invoiceId ? { profileId: active.profileId, invoiceId } : skipToken,
+  );
   // null: the invoice is still loading. One that fails to load leaves the trail at Invoices.
   const number: Crumb | null = invoice.data
     ? { label: invoiceNumber(invoice.data.number), href: pathname }

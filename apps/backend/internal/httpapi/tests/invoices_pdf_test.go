@@ -24,7 +24,7 @@ type pdfReply struct {
 
 func (e invoiceEnv) pdf(t *testing.T, id, file, ifNoneMatch string) pdfReply {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodGet, e.srv.URL+"/v1/invoices/"+id+"/"+file, nil)
+	req, err := http.NewRequest(http.MethodGet, e.srv.URL+"/v1/invoices/"+e.link(t, id)+"/"+file, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestInvoicePDF(t *testing.T) {
 		t.Fatalf("Cache-Control %q, ETag %q", r.header.Get("Cache-Control"), r.header.Get("ETag"))
 	}
 	text := pdfText(t, r.body)
-	link := webURL + "/pay/" + id
+	link := webURL + "/pay/" + e.link(t, id)
 	mustContain(t, text, "Forwend\nInvoice\nINV-0002",
 		"FROM\nAlice Design GmbH\nHauptstr. 1\n10115 Berlin\nDE\nTax ID DE123456789\nbilling@alice.example",
 		"BILL TO\nBob Ltd\nMain St 1\nBerlin\nDE\nTax ID DE999999999",
@@ -176,7 +176,7 @@ func TestInvoicePDF(t *testing.T) {
 
 	text = pdfText(t, e.pdf(t, plain, "invoice.pdf", "").body)
 	mustContain(t, text, "INV-0001", "Description\nNetwork\nAmount\nPayment\nBase Sepolia")
-	mustContain(t, strings.ReplaceAll(text, "\n", ""), webURL+"/pay/"+plain)
+	mustContain(t, strings.ReplaceAll(text, "\n", ""), webURL+"/pay/"+e.link(t, plain))
 
 	// A request names its sender, marked as not checked.
 	mustContain(t, pdfText(t, e.pdf(t, request, "invoice.pdf", "").body),
@@ -277,7 +277,7 @@ func TestReceiptPDF(t *testing.T) {
 		r.header.Get("Content-Disposition") != `attachment; filename="forwend-INV-0001-receipt.pdf"` {
 		t.Fatalf("paid: %d %v %s", r.status, r.header, r.body)
 	}
-	link := webURL + "/pay/" + id
+	link := webURL + "/pay/" + e.link(t, id)
 	stamp := func(at time.Time) string { return at.UTC().Format("2006-01-02 15:04") + " UTC" }
 	text := pdfText(t, r.body)
 	mustContain(t, text, "Forwend\nReceipt\nINV-0001\nReference PO-7\n", "Supply date\n2026-10-01\nPaid\n"+stamp(paidAt),

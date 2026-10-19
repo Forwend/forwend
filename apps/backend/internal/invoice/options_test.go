@@ -62,9 +62,13 @@ func TestCreatePayerChooses(t *testing.T) {
 		t.Fatalf("both options share %s", inv.Options[0].ReceiveAddress)
 	}
 
-	// An option's id reads the invoice; the list shows it once; the next invoice takes the next number.
-	if byOption, err := s.Get(ctx, inv.Options[1].ID); err != nil || byOption.ID != inv.ID {
+	// An option's id reads the invoice for its owner, never in public (D-86); the list shows it once; the next invoice
+	// takes the next number.
+	if byOption, err := s.GetOfProfile(ctx, profile, inv.Options[1].ID); err != nil || byOption.ID != inv.ID {
 		t.Fatalf("get by option: %s, %v", byOption.ID, err)
+	}
+	if _, err := s.Get(ctx, inv.Options[1].ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("public get by option: %v, want ErrNotFound", err)
 	}
 	if page, err := s.List(ctx, profile, "", 10, "", search.Query{}); err != nil || len(page.Items) != 1 {
 		t.Fatalf("list: %d items, %v", len(page.Items), err)
@@ -125,7 +129,7 @@ func TestRecheckWithOneNetworkDown(t *testing.T) {
 		}
 		return big.NewInt(0), 1, nil
 	}
-	r, err := s.Recheck(ctx, inv.ID, balanceOf, noLimit)
+	r, err := s.Recheck(ctx, inv.PayToken, balanceOf, noLimit)
 	if err != nil || r.OnChain.Sign() != 0 || len(r.Unreadable) != 1 || r.Unreadable[0] != 421614 {
 		t.Fatalf("one down: %+v, %v", r, err)
 	}
@@ -140,7 +144,7 @@ func TestRecheckWithOneNetworkDown(t *testing.T) {
 	}
 	// The shown option (Base Sepolia) down: another option's empty read must not answer for it.
 	down = map[uint64]bool{84532: true}
-	if _, err := s.Recheck(ctx, inv.ID, balanceOf, noLimit); !errors.Is(err, ErrChainUnavailable) {
+	if _, err := s.Recheck(ctx, inv.PayToken, balanceOf, noLimit); !errors.Is(err, ErrChainUnavailable) {
 		t.Fatalf("shown option down: err = %v, want ErrChainUnavailable", err)
 	}
 	// Unless the other option holds money not recorded yet: that is worth saying, and it is rescanned.
@@ -151,13 +155,13 @@ func TestRecheckWithOneNetworkDown(t *testing.T) {
 		}
 		return big.NewInt(1000000), 1, nil
 	}
-	r, err = s.Recheck(ctx, inv.ID, money, noLimit)
+	r, err = s.Recheck(ctx, inv.PayToken, money, noLimit)
 	if err != nil || r.OnChain.Int64() != 1000000 || !r.Rescanning || len(r.Unreadable) != 1 || r.Unreadable[0] != 84532 {
 		t.Fatalf("money on the other option: %+v, %v", r, err)
 	}
 	again()
 	down = map[uint64]bool{84532: true, 421614: true}
-	if _, err := s.Recheck(ctx, inv.ID, balanceOf, noLimit); !errors.Is(err, ErrChainUnavailable) {
+	if _, err := s.Recheck(ctx, inv.PayToken, balanceOf, noLimit); !errors.Is(err, ErrChainUnavailable) {
 		t.Fatalf("all down: err = %v, want ErrChainUnavailable", err)
 	}
 }

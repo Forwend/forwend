@@ -27,6 +27,8 @@ const CONFLICT = 409;
 export interface InvoiceActionsProps {
   profileId: string;
   invoiceId: string;
+  /** The pay link's token (D-86); null for an invoice made before it, which has no pay link. */
+  payToken: string | null;
   number: string;
   noun: string;
   /** The pay link still takes money: it can be copied and opened. */
@@ -44,14 +46,16 @@ export interface InvoiceActionsProps {
 export function InvoiceActions({
   profileId,
   invoiceId,
+  payToken,
   number,
   noun,
-  payable,
+  payable: open,
   cancelable,
   onCanceled,
 }: InvoiceActionsProps) {
+  const payable = open && payToken !== null;
   // The app renders only in the browser, after sign-in.
-  const link = `${window.location.origin}/pay/${invoiceId}`;
+  const link = `${window.location.origin}/pay/${payToken}`;
   const [copyStatus, copy] = useCopy(link);
   const [cancel, { isLoading, error }] = useCancelInvoiceMutation();
   const toast = useToast();

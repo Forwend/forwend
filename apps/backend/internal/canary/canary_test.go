@@ -16,29 +16,41 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/canary"
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
 	"github.com/ensp1re/forwend/apps/backend/internal/config"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
-	id        = "0x1c0ffee0000000000000000000000000000000000000000000000000000000ab"
+	// The pay link's token of the line's invoice; its id is keccak256 of it (D-86).
+	payToken  = "1c0ffee0000000000000000000000000000000000000000000000000000000ab"
 	recipient = "0x1111111111111111111111111111111111111111"
 	token     = "0x2222222222222222222222222222222222222222"
 	amount    = "2500000"
 	expiresAt = 1893456000 // 2030-01-01
 	deadline  = expiresAt + 86400
 	wrong     = "0x3333333333333333333333333333333333333333"
-	// The pay link of a payer-chooses invoice that has id as one of its options.
-	payID = "0x2c0ffee0000000000000000000000000000000000000000000000000000000cd"
+	// The pay link's token of a payer-chooses invoice that has id as one of its options.
+	otherToken = "2c0ffee0000000000000000000000000000000000000000000000000000000cd"
 )
 
-// line is the invoice as the database lists it on the canary's stdin.
-var line = fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil", id, chaintest.ChainID, recipient, token, amount, expiresAt,
-	deadline)
+var (
+	id, otherID = idOf(payToken), idOf(otherToken)
+	// line is the invoice as the database lists it on the canary's stdin.
+	line = lineOf(payToken)
+)
+
+func idOf(pay string) string { return crypto.Keccak256Hash(common.FromHex(pay)).Hex() }
+
+func lineOf(pay string) string {
+	return fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil %s", id, chaintest.ChainID, recipient, token, amount,
+		expiresAt, deadline, pay)
+}
 
 // setup is what one case serves and configures.
 type setup struct {
-	rpc2, codeHash, pageAddress, qrAddress, network, payID string
-	chainKey                                               uint64
-	api                                                    map[string]any
+	rpc2, codeHash, pageAddress, qrAddress, network, payToken string
+	chainKey                                                  uint64
+	api                                                       map[string]any
 }
 
 // option is the api's first listed option, the one the line names.
@@ -74,15 +86,17 @@ func TestCheck(t *testing.T) {
 		{name: "api address changed", change: func(s *setup) { s.option()["receiveAddress"] = wrong },
 			alert: "api shows " + wrong},
 		{name: "api amount changed", change: func(s *setup) { s.option()["amount"] = "1" }, alert: "api amount 1"},
-		{name: "api lists no such option", change: func(s *setup) { s.option()["optionId"] = payID },
+		{name: "api lists no such option", change: func(s *setup) { s.option()["optionId"] = otherID },
 			alert: "api lists no option " + id},
+		{name: "api answers another invoice", change: func(s *setup) { s.api["invoiceId"] = otherID },
+			alert: "api invoiceId " + otherID},
 		{name: "option of a payer-chooses invoice", change: func(s *setup) {
-			s.payID = payID
-			s.api["invoiceId"] = payID
+			s.payToken = otherToken
+			s.api["invoiceId"] = otherID
 		}},
 		{name: "page of a payer-chooses invoice shows another option", change: func(s *setup) {
-			s.payID = payID
-			s.api["invoiceId"] = payID
+			s.payToken = otherToken
+			s.api["invoiceId"] = otherID
 			s.pageAddress = wrong
 		}, alert: fmt.Sprintf("pay page shows [%s]", wrong)},
 		{name: "api recipient changed", change: func(s *setup) { s.api["recipient"] = wrong }, alert: "api recipient " + wrong},
@@ -101,7 +115,7 @@ func TestCheck(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := setup{rpc2: b.URL, codeHash: codeHash, pageAddress: want, qrAddress: want, network: "Anvil (local)",
-				chainKey: chaintest.ChainID, payID: id,
+				chainKey: chaintest.ChainID, payToken: payToken,
 				api: map[string]any{"invoiceId": id, "chainId": chaintest.ChainID, "token": token, "amount": amount,
 					"recipient": recipient, "factory": factory, "receiveAddress": want,
 					"expiresAt": "2030-01-01T00:00:00Z", "settleDeadline": "2030-01-02T00:00:00Z",
@@ -110,14 +124,10 @@ func TestCheck(t *testing.T) {
 			if tc.change != nil {
 				tc.change(&s)
 			}
-			origin := serve(t, s.payID, maps.Clone(s.api), s.pageAddress, qrPath(t, s.qrAddress), s.network)
+			origin := serve(t, s.payToken, maps.Clone(s.api), s.pageAddress, qrPath(t, s.qrAddress), s.network)
 			cfg := config.Canary{APIURL: origin, WebURL: origin, Factory: factory, FactoryCodeHash: s.codeHash,
 				RPCURLs: map[uint64][2]string{s.chainKey: {a.URL, s.rpc2}}, PageScript: script}
-			input := line
-			if s.payID != id {
-				input += " " + s.payID
-			}
-			alerts := canary.Check(context.Background(), cfg, []string{input})
+			alerts := canary.Check(context.Background(), cfg, []string{lineOf(s.payToken)})
 			if tc.alert == "" && len(alerts) != 0 {
 				t.Fatalf("got alerts %q", alerts)
 			}
@@ -159,11 +169,10 @@ func TestImportsNoAppCode(t *testing.T) {
 
 // serve answers the api's GET /v1/invoices/<pay> with api, and /pay/<pay> with a page laid out like the real one that
 // shows address and a QR code drawn as qr once Show address is pressed, or a closed invoice without it when address
-// is "". An option's page must be asked for by
-// ?option=<id>.
+// is "". The page must be asked for by ?option=<id>.
 func serve(t *testing.T, pay string, api map[string]any, address, qr, network string) string {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if pay != id && r.URL.Path == "/pay/"+pay && r.URL.Query().Get("option") != id {
+		if r.URL.Path == "/pay/"+pay && r.URL.Query().Get("option") != id {
 			http.NotFound(w, r)
 			return
 		}
@@ -231,14 +240,14 @@ func TestCheckFirstOptionOfPayerChoosesInvoice(t *testing.T) {
 		"expiresAt": "2030-01-01T00:00:00Z", "settleDeadline": "2030-01-02T00:00:00Z", "optionLocked": false,
 		"options": []map[string]any{
 			{"optionId": id, "chainId": chaintest.ChainID, "token": token, "amount": amount, "receiveAddress": want},
-			{"optionId": payID, "chainId": 84532, "token": wrong, "amount": amount, "receiveAddress": wrong},
+			{"optionId": otherID, "chainId": 84532, "token": wrong, "amount": amount, "receiveAddress": wrong},
 		}}
 	qr := qrPath(t, want)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/v1/invoices/" + id:
+		case "/v1/invoices/" + payToken:
 			_ = json.NewEncoder(w).Encode(api)
-		case "/pay/" + id:
+		case "/pay/" + payToken:
 			page := `<!doctype html><main><section aria-labelledby="pay-amount"><h2 id="pay-amount">Amount due</h2>` +
 				`<p>2.50</p><p>USDC</p><p>Anvil (local)</p></section>`
 			if r.URL.Query().Get("option") != id {
@@ -262,7 +271,7 @@ document.querySelector('[aria-labelledby="pay-before"] button').onclick = () => 
 
 	cfg := config.Canary{APIURL: srv.URL, WebURL: srv.URL, Factory: factory, FactoryCodeHash: codeHash,
 		RPCURLs: map[uint64][2]string{chaintest.ChainID: {a.URL, a.URL}}, PageScript: script}
-	if alerts := canary.Check(context.Background(), cfg, []string{line + " " + id}); len(alerts) != 0 {
+	if alerts := canary.Check(context.Background(), cfg, []string{line}); len(alerts) != 0 {
 		t.Fatalf("an honest payer-chooses invoice alerts: %q", alerts)
 	}
 }
@@ -275,9 +284,9 @@ func TestCheckSkipsInvoicesThePayPageClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	soon := time.Now().Add(2 * time.Minute).Unix()
-	input := fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil", id, chaintest.ChainID, recipient, token, amount, soon,
-		soon+86400)
-	origin := serve(t, id, map[string]any{}, "", "", "Anvil (local)")
+	input := fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil %s", id, chaintest.ChainID, recipient, token, amount, soon,
+		soon+86400, payToken)
+	origin := serve(t, payToken, map[string]any{}, "", "", "Anvil (local)")
 	cfg := config.Canary{APIURL: origin, WebURL: origin, Factory: factory,
 		FactoryCodeHash: cast(t, "codehash", factory, "--rpc-url", a.URL),
 		RPCURLs:         map[uint64][2]string{chaintest.ChainID: {a.URL, a.URL}}, PageScript: script}

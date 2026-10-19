@@ -37,6 +37,14 @@ export function receiveAddress(t: InvoiceTerms): string {
 }
 
 /**
+ * The on-chain id of the invoice whose pay link carries this token, as the API derives it (D-86): keccak256(token).
+ * Throws on a token that is not 32 bytes of hex.
+ */
+export function invoiceIdOf(payToken: string): string {
+  return `0x${keccak(fixedBytes(`0x${payToken}`, 32))}`;
+}
+
+/**
  * The on-chain id of a payer-chooses invoice's further option, as the API derives it (R-56):
  * keccak256(abi.encode(invoice id, chain id, token)). Throws on a value outside its type.
  */
@@ -45,15 +53,15 @@ export function optionIdOf(invoiceId: string, chainId: bigint, token: string): s
 }
 
 /**
- * The invoice's receive address when the answer is the invoice the link names, its terms (the shown option's, with
+ * The invoice's receive address when the answer is the invoice the link's token names, its terms (the shown option's, with
  * that option's on-chain id) follow the rules the API
  * creates them by (money sent to terms that break them can only be refunded), and they compute to it; or null. Null
  * means the page must not show it: the API answer was changed somewhere, or a term can't be read (a term that can't
  * be read can't prove the address).
  */
-export function checkedReceiveAddress(inv: Invoice, linkInvoiceId: string): string | null {
-  if (inv.invoiceId.toLowerCase() !== linkInvoiceId.toLowerCase()) return null;
+export function checkedReceiveAddress(inv: Invoice, payToken: string): string | null {
   try {
+    if (inv.invoiceId.toLowerCase() !== invoiceIdOf(payToken)) return null;
     // The shown option is the invoice's own terms or an option derived from the link's id, never another invoice's.
     const option = inv.optionId.toLowerCase();
     if (

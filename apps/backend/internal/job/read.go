@@ -56,7 +56,7 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 	}
 	j.CreatedAt = j.CreatedAt.UTC()
 	rows, err := s.pool.Query(ctx, `SELECT p.position, p.title, p.amount_cents, p.due_days, p.on_accept,
-		    coalesce(p.invoice_id, ''), coalesce(invoices.number, 0),
+		    coalesce(p.invoice_id, ''), coalesce(invoices.pay_token, ''), coalesce(invoices.number, 0),
 		    CASE WHEN invoices.id IS NULL THEN '' ELSE `+invoice.StatusFilterSQL+` END, p.done_at,
 		    coalesce(p.delivery_link, ''), invoices.created_at,
 		    CASE WHEN invoices.payment_status = 'paid' THEN `+invoice.PaidAtSQL("invoices.option_id")+` END,
@@ -72,7 +72,7 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 		var p Payment
 		var done, invoiced, proposed, accepted *time.Time
 		var paid *int64
-		err := row.Scan(&p.Position, &p.Title, &p.AmountCents, &p.DueDays, &p.OnAccept, &p.InvoiceID, &p.Number,
+		err := row.Scan(&p.Position, &p.Title, &p.AmountCents, &p.DueDays, &p.OnAccept, &p.InvoiceID, &p.PayToken, &p.Number,
 			&p.Status, &done, &p.DeliveryLink, &invoiced, &paid, &proposed, &p.AcceptedName, &p.AcceptedEmail, &accepted,
 			&p.ClientEmailed)
 		if proposed != nil {

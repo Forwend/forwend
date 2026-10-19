@@ -4,14 +4,16 @@ import { readPayPage } from "../scripts/canary-pay-page";
 import { PUBLIC_URL } from "./servers";
 import { sidewaysScroll } from "./sideways";
 
-// A sample invoice as GET /v1/invoices/{id} returns it. RECEIVE is factory.predict of these terms (the unit test checks
-// the computation against the R-15 vectors), so the page shows it only while every term is unchanged.
-const ID = "0x7f3a9c1e5b2d4086a1c3e5f7092b4d6f8a0c2e4f6a8b0d2f4e6c8a0b2d4f6e81";
-const RECEIVE = "0x586134f74b654f5835860ca198ae725344670078";
+// A sample invoice as GET /v1/invoices/{payToken} returns it. The link carries PAY, and ID is keccak256 of it (D-86).
+// RECEIVE is factory.predict of these terms (the unit test checks the computation against the R-15 vectors), so the
+// page shows it only while every term is unchanged.
+const PAY = "7f3a9c1e5b2d4086a1c3e5f7092b4d6f8a0c2e4f6a8b0d2f4e6c8a0b2d4f6e81";
+const ID = "0x0bc3ec4e72d7b5f3cc8a059ea1a0f06cc9d24ea5e71a2acfd86fea75540e9a31";
+const RECEIVE = "0x25425f508790c1847090371590297cad428868f3";
 // A second option of a payer-chooses invoice (R-56): USDC on Arbitrum Sepolia, its id derived from ID as the API does
 // (keccak256(abi.encode(ID, 421614, token))) and the address predict gives for the same terms with that id.
-const OPTION_ID = "0x80166bc7ad9374378c99215bffabc884c9fe82e8876840816d1eb4e5710a89e7";
-const OPTION_RECEIVE = "0xdb27b5da140247ca45e078798de10030638c2ba3";
+const OPTION_ID = "0x285391c5b8b001b41a459f4011b40661d4c83c871d3f0d7881682bbced83a1c1";
+const OPTION_RECEIVE = "0x66d0b871c6371d997f8bf34ea320927aff32dc6f";
 const NOW = new Date("2026-10-10T12:00:00Z");
 const POLL_MS = 15_000;
 
@@ -29,6 +31,7 @@ const MAIN_OPTION = {
 
 const OPEN = {
   invoiceId: ID,
+  payToken: PAY,
   optionId: ID,
   optionLocked: false,
   optionCount: 1,
@@ -136,12 +139,12 @@ async function mockInvoice(page: Page, ...bodies: object[]) {
 async function openPay(page: Page, ...bodies: object[]) {
   await page.clock.install({ time: NOW });
   await mockInvoice(page, ...bodies);
-  await page.goto(`/pay/${ID}`);
+  await page.goto(`/pay/${PAY}`);
 }
 
 const showAddress = (page: Page) => page.getByRole("button", { name: "Show address" });
 const status = (page: Page) => page.getByRole("status").filter({ hasText: /./ }).first();
-const pdfPath = (file: string) => `/api/v1/invoices/${ID}/${file}`;
+const pdfPath = (file: string) => `/api/v1/invoices/${PAY}/${file}`;
 const PARTIAL = {
   ...OPEN,
   paymentStatus: "partially_paid",
@@ -246,7 +249,7 @@ test.describe("pay page", () => {
     await openPay(page, OPEN);
     await showAddress(page).click();
     let calls = 0;
-    await page.route(`**/api/v1/invoices/${ID}/recheck`, (route) => {
+    await page.route(`**/api/v1/invoices/${PAY}/recheck`, (route) => {
       calls++;
       return route.fulfill({
         json: {
@@ -282,7 +285,7 @@ test.describe("pay page", () => {
   }) => {
     await openPay(page, OPEN);
     await showAddress(page).click();
-    await page.route(`**/api/v1/invoices/${ID}/recheck`, (route) =>
+    await page.route(`**/api/v1/invoices/${PAY}/recheck`, (route) =>
       route.fulfill({
         json: {
           onChain: "0",
@@ -317,7 +320,7 @@ test.describe("pay page", () => {
   }) => {
     await openPay(page, OPEN);
     await showAddress(page).click();
-    await page.route(`**/api/v1/invoices/${ID}/recheck`, (route) =>
+    await page.route(`**/api/v1/invoices/${PAY}/recheck`, (route) =>
       route.fulfill({
         status: 429,
         headers: { "Retry-After": "120" },
@@ -463,7 +466,7 @@ test.describe("pay page", () => {
     await page.route("**/api/v1/invoices/*", (route) =>
       call++ === 0 ? route.fulfill({ status: 500, json: {} }) : route.fulfill({ json: OPEN }),
     );
-    await page.goto(`/pay/${ID}`);
+    await page.goto(`/pay/${PAY}`);
     const alert = page.getByRole("alert").filter({ hasText: "We could not load this invoice" });
     await expect(alert).toBeVisible();
     for (const width of [1440, 390]) {
@@ -627,7 +630,7 @@ test.describe("pay page", () => {
   });
 
   test("lets the canary read the shown address, or why there is none", async ({ browser }) => {
-    const read = async (body: object, id = ID) => {
+    const read = async (body: object, id = PAY) => {
       const page = await browser.newPage();
       await page.clock.install({ time: NOW });
       await mockInvoice(page, body);
@@ -636,13 +639,13 @@ test.describe("pay page", () => {
       return result;
     };
     expect(await read(OPEN)).toEqual({
-      id: ID,
+      id: PAY,
       addresses: [RECEIVE],
       qrMatches: true,
       amountText: expect.stringMatching(/USDC[\s\S]*Base Sepolia/),
     });
     expect(await read(PAID)).toEqual({
-      id: ID,
+      id: PAY,
       error: "no address shown: the invoice is not open for payment",
     });
     expect((await read({ ...OPEN, amount: "1250000001" })).error).toMatch(
@@ -650,7 +653,7 @@ test.describe("pay page", () => {
     );
 
     // Each option of a payer-chooses invoice opens by ?option=, checked against its own terms (R-56).
-    const option = `${ID}?option=${OPTION_ID}`;
+    const option = `${PAY}?option=${OPTION_ID}`;
     expect(await read(CHOOSING, option)).toEqual({
       id: option,
       addresses: [OPTION_RECEIVE],
@@ -672,13 +675,15 @@ test.describe("pay page", () => {
     page,
   }) => {
     expect((await page.goto("/pay/not-an-invoice"))?.status()).toBe(404);
+    // The on-chain id is public, so it is no pay link (D-86).
+    expect((await page.goto(`/pay/${ID}`))?.status()).toBe(404);
     await page.route("**/api/v1/invoices/*", (route) =>
       route.fulfill({
         status: 404,
         json: { error: { code: "invoice_not_found", message: "invoice not found" } },
       }),
     );
-    await page.goto(`/pay/${ID}`);
+    await page.goto(`/pay/${PAY}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("This path ends here.");
   });
 

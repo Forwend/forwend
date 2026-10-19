@@ -6,6 +6,8 @@ import { sidewaysScroll } from "./sideways";
 // live suite opens a real job's link.
 const TOKEN = "cd".repeat(32);
 const DEPOSIT = `0x${"9".repeat(64)}`;
+// The deposit's pay link token (D-86).
+const DEPOSIT_PAY = "8".repeat(64);
 
 const blocking = async (page: Page) =>
   (await new AxeBuilder({ page }).analyze()).violations
@@ -19,6 +21,7 @@ const payment = (position: number, title: string, amountUsd: string, more: objec
   dueDays: 14,
   onAccept: false,
   invoiceId: null,
+  payToken: null,
   number: null,
   status: null,
   doneAt: null,
@@ -57,6 +60,7 @@ const accepted = {
     {
       ...quote.payments[0],
       invoiceId: DEPOSIT,
+      payToken: DEPOSIT_PAY,
       number: 12,
       status: "open",
       invoicedAt: "2026-10-18T12:00:00Z",
@@ -108,7 +112,7 @@ test.describe("job quote page", () => {
     ]);
     await expect(page.getByRole("link", { name: "Pay the deposit" })).toHaveAttribute(
       "href",
-      `/pay/${DEPOSIT}`,
+      `/pay/${DEPOSIT_PAY}`,
     );
     await expect(page.getByRole("button", { name: "Accept quote" })).toHaveCount(0);
     expect(await blocking(page)).toEqual([]);

@@ -14,7 +14,7 @@ Read only the sections your change touches. Any new control also needs
 | [Type and color](#type-and-color) | Fonts, money and address type, role tokens, status colors, surfaces, fields |
 | [Controls](#controls) | Heights, buttons, segmented controls, selects, search, toolbars, forms, settings rows |
 | [App shell](#app-shell) | `/app`: sidebar, header, search, sheets, panels, overviews, charts, lists, tables, first run, onboarding, the invoice forms, money actions, toasts |
-| [Checkout](#checkout) | The pay page `/pay/<id>`, PDF links, the confirming row, the owner's invoice page |
+| [Checkout](#checkout) | The pay page `/pay/<token>`, PDF links, the confirming row, the owner's invoice page |
 | [Emails](#emails) | The email layout |
 | [Theme and behavior](#theme-and-behavior) | Empty lists, theme, loading, motion, touch targets, accessibility, width checks |
 | [Interaction and device rules](#interaction-and-device-rules) | Phone titles, filters, Receive, safe areas, skip link |
@@ -310,7 +310,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 
 ## Checkout
 
-- `/pay/<id>` (R-68) is one short screen. The logo links home.
+- `/pay/<token>` (R-68) is one short screen. The logo links home.
   - Wide screens: the invoice on the left, how to pay on the right.
   - Phones: the pay panel comes right after the amount; the title, dates, note and PDF link follow it. The payer reaches
     the address first.

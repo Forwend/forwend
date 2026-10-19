@@ -21,16 +21,18 @@ var emailShape = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
 // SetPayerEmail keeps, and returns as kept, the address the payer gave on the pay page for this invoice's receipt only (R-82, D-68). It can
 // change until the receipt is sent. An invoice already paid queues its receipt now; otherwise the ledger queues it when
 // paid. It locks the invoice's main row, as the ledger does, so the two never decide at once.
-func (s *Service) SetPayerEmail(ctx context.Context, id, email string) (string, error) {
+func (s *Service) SetPayerEmail(ctx context.Context, payToken, email string) (string, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	if len(email) > 254 || !emailShape.MatchString(email) {
 		return "", fmt.Errorf("%w: email: enter an address like name@example.com", ErrInvalid)
 	}
-	id = strings.ToLower(id)
+	id, ok := idOf(payToken)
+	if !ok {
+		return "", ErrNotFound
+	}
 	return email, pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		var main, option, status string
-		err := tx.QueryRow(ctx, `SELECT m.id FROM invoices m WHERE m.id = (SELECT coalesce(main_id, id) FROM invoices WHERE id = $1)
-			FOR UPDATE`, id).Scan(&main)
+		err := tx.QueryRow(ctx, "SELECT id FROM invoices WHERE id = $1 FOR UPDATE", id).Scan(&main)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		} else if err != nil {

@@ -330,7 +330,7 @@ paths:
       operationId: listInvoices
       summary: The profile's invoices, newest first (highest number first), in cursor pages
       description: |
-        Each item is the invoice without its deposits; GET /v1/invoices/{invoiceId} adds them. status and q narrow the
+        Each item is the invoice without its deposits; GET /v1/invoices/{payToken} adds them. status and q narrow the
         list before paging, so a cursor continues the same filtered list. q looks in the number as shown (INV-0042),
         title, note, client name and email, receive address, reference and, when it is a number, the amount.
       parameters:
@@ -401,7 +401,7 @@ paths:
     get:
       operationId: getProfileInvoice
       summary: Read one of the profile's invoices with its client
-      description: The public GET /v1/invoices/{invoiceId} plus client. Another profile's invoice is not found here.
+      description: The public GET /v1/invoices/{payToken} plus client. Another profile's invoice is not found here.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - name: invoiceId
@@ -1130,20 +1130,21 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
-  /v1/invoices/{invoiceId}:
+  /v1/invoices/{payToken}:
     get:
       operationId: getInvoice
       summary: Read an invoice's terms and statuses
       description: |
-        Public, so checkout can show the invoice and recompute the receive address from the terms. Anyone with the id
-        can read it, so it leaves out the client's name, email and address; the payer sees the number, title, note, due
-        and supply dates, reference, line items, agreed value, sender name and issuer (who bills them).
+        Public, so checkout can show the invoice and recompute the receive address from the terms. Anyone with the pay
+        link's token can read it, so it leaves out the client's name, email and address; the payer sees the number,
+        title, note, due and supply dates, reference, line items, agreed value, sender name and issuer (who bills them).
+        An invoice or option id is not found: the chain shows those (D-86).
       security: []
       parameters:
-        - name: invoiceId
+        - name: payToken
           in: path
           required: true
-          schema: { $ref: "#/components/schemas/InvoiceId" }
+          schema: { $ref: "#/components/schemas/PayToken" }
       responses:
         "200":
           description: The invoice
@@ -1152,7 +1153,7 @@ paths:
               schema: { $ref: "#/components/schemas/Invoice" }
         "404": { $ref: "#/components/responses/InvoiceNotFound" }
         "500": { $ref: "#/components/responses/Internal" }
-  /v1/invoices/{invoiceId}/payer-email:
+  /v1/invoices/{payToken}/payer-email:
     put:
       operationId: putPayerEmail
       summary: Email me the receipt (public, like the checkout)
@@ -1162,10 +1163,10 @@ paths:
         it goes once paid. Limited per invoice and for everyone together; per IP at the edge (Q-8).
       security: []
       parameters:
-        - name: invoiceId
+        - name: payToken
           in: path
           required: true
-          schema: { $ref: "#/components/schemas/InvoiceId" }
+          schema: { $ref: "#/components/schemas/PayToken" }
       requestBody:
         required: true
         content:
@@ -1192,22 +1193,22 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
-  /v1/invoices/{invoiceId}/recheck:
+  /v1/invoices/{payToken}/recheck:
     post:
       operationId: recheckInvoice
       summary: Check an invoice on chain again (Check status)
       description: |
-        Public like GET /v1/invoices/{invoiceId}: the payer presses Check status (R-55, D-77). Reads the receive
+        Public like GET /v1/invoices/{payToken}: the payer presses Check status (R-55, D-77). Reads the receive
         address's token balance at the chain's finalized block and compares it with the recorded transfers. When more
         is on chain, the worker rescans the address from the invoice's creation block in bounded steps and books what
         it finds. Never signs. One check per invoice every 5 minutes across api replicas; a per-process limit bounds the
         RPC reads; per-IP limits belong to the edge (Q-8).
       security: []
       parameters:
-        - name: invoiceId
+        - name: payToken
           in: path
           required: true
-          schema: { $ref: "#/components/schemas/InvoiceId" }
+          schema: { $ref: "#/components/schemas/PayToken" }
       responses:
         "200":
           description: What the check found
@@ -1241,12 +1242,12 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "500": { $ref: "#/components/responses/Internal" }
-  /v1/invoices/{invoiceId}/invoice.pdf:
+  /v1/invoices/{payToken}/invoice.pdf:
     get:
       operationId: getInvoicePdf
       summary: Download the invoice as a PDF
       description: |
-        Public like GET /v1/invoices/{invoiceId} (R-47, R-61, D-51). Built on the server from the stored invoice only:
+        Public like GET /v1/invoices/{payToken} (R-47, R-61, D-51). Built on the server from the stored invoice only:
         the Forwend mark, number, reference, issuer (left out when the profile had no billing details), bill-to with the
         client's name and address (never the email), created time, supply date, due date, checkout expiry, a line with
         the title, network and amount with the token's symbol (or one per line item, with the title above them), the
@@ -1254,16 +1255,16 @@ paths:
         gives the same bytes.
       security: []
       parameters:
-        - name: invoiceId
+        - name: payToken
           in: path
           required: true
-          schema: { $ref: "#/components/schemas/InvoiceId" }
+          schema: { $ref: "#/components/schemas/PayToken" }
       responses:
         "200": { $ref: "#/components/responses/Pdf" }
         "304": { description: The If-None-Match ETag still matches }
         "404": { $ref: "#/components/responses/InvoiceNotFound" }
         "500": { $ref: "#/components/responses/Internal" }
-  /v1/invoices/{invoiceId}/receipt.pdf:
+  /v1/invoices/{payToken}/receipt.pdf:
     get:
       operationId: getReceiptPdf
       summary: Download the receipt of a paid invoice as a PDF
@@ -1276,10 +1277,10 @@ paths:
         money to the creator is the creator's business (R-61, R-68).
       security: []
       parameters:
-        - name: invoiceId
+        - name: payToken
           in: path
           required: true
-          schema: { $ref: "#/components/schemas/InvoiceId" }
+          schema: { $ref: "#/components/schemas/PayToken" }
       responses:
         "200": { $ref: "#/components/responses/Pdf" }
         "304": { description: The If-None-Match ETag still matches }
@@ -1339,8 +1340,12 @@ components:
   schemas:
     InvoiceId:
       type: string
-      description: The on-chain invoice id, 32 random bytes.
+      description: The on-chain invoice id; a main invoice's is keccak256 of its pay link's token (D-86).
       pattern: "^0x[0-9a-f]{64}$"
+    PayToken:
+      type: string
+      description: The pay link's token (D-86), 32 random bytes; the invoice id is keccak256 of it.
+      pattern: "^[0-9a-f]{64}$"
     Address:
       type: string
       pattern: "^0x[0-9a-f]{40}$"
@@ -1935,12 +1940,12 @@ components:
                 description: The deposit, made when the client accepts; only the first payment can be.
     JobPayment:
       type: object
-      required: [position, title, amountUsd, dueDays, onAccept, invoiceId, number, status, doneAt, deliveryLink, invoicedAt,
-        paidAt, proposedAt, acceptedName, acceptedAt]
+      required: [position, title, amountUsd, dueDays, onAccept, invoiceId, payToken, number, status, doneAt, deliveryLink,
+        invoicedAt, paidAt, proposedAt, acceptedName, acceptedAt]
       description: |
-        One payment; invoiceId, number, status and invoicedAt are null until its invoice is made, doneAt and
-        deliveryLink until the owner marks its step done (the deposit is made at acceptance, so it has neither), and
-        paidAt until its invoice is paid.
+        One payment; invoiceId, payToken, number, status and invoicedAt are null until its invoice is made, doneAt
+        and deliveryLink until the owner marks its step done (the deposit is made at acceptance, so it has neither),
+        and paidAt until its invoice is paid.
       properties:
         position: { type: integer, minimum: 1, maximum: 10 }
         title: { type: string }
@@ -1948,6 +1953,7 @@ components:
         dueDays: { type: integer }
         onAccept: { type: boolean }
         invoiceId: { oneOf: [{ $ref: "#/components/schemas/InvoiceId" }, { type: "null" }] }
+        payToken: { oneOf: [{ $ref: "#/components/schemas/PayToken" }, { type: "null" }] }
         number: { type: [integer, "null"] }
         status: { type: [string, "null"], enum: [open, paid, settled, expired, canceled, null] }
         doneAt: { type: [string, "null"], format: date-time }
@@ -2167,7 +2173,7 @@ components:
                   failedAt: { type: [string, "null"], format: date-time }
     InvoiceSummary:
       type: object
-      required: [invoiceId, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, agreedValue, senderName, returnUrl, issuer, chainId,
+      required: [invoiceId, payToken, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, agreedValue, senderName, returnUrl, issuer, chainId,
         token, amount, recipient, factory, receiveAddress, expiresAt, settleDeadline, paymentStatus, settlementStatus,
         refundStatus, settlementTxHash, createdAt]
       description: |
@@ -2176,7 +2182,12 @@ components:
       properties:
         invoiceId:
           allOf: [{ $ref: "#/components/schemas/InvoiceId" }]
-          description: The pay link's id. GET with an option's id answers this invoice.
+          description: >-
+            keccak256 of payToken; random for an invoice made before D-86. The chain shows it, so it opens no public
+            route.
+        payToken:
+          oneOf: [{ $ref: "#/components/schemas/PayToken" }, { type: "null" }]
+          description: The pay link's token; null for an invoice made before D-86, which has no pay link.
         optionId:
           allOf: [{ $ref: "#/components/schemas/InvoiceId" }]
           description: The on-chain id in the terms below; invoiceId for a fixed invoice.

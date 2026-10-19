@@ -53,6 +53,7 @@ const payment = (position: number, title: string, more: object = {}) => ({
   dueDays: 14,
   onAccept: false,
   invoiceId: null,
+  payToken: null,
   number: null,
   status: null,
   doneAt: null,
@@ -68,6 +69,7 @@ const payment = (position: number, title: string, more: object = {}) => ({
 });
 const invoiced = (number: number) => ({
   invoiceId: `0x${String(number).repeat(64)}`,
+  payToken: String(number).repeat(64),
   number,
   status: "open",
   invoicedAt: "2026-10-18T10:00:00Z",
@@ -183,6 +185,7 @@ describe("scope changes", () => {
       dueDays: 7,
       onAccept: false,
       invoiceId: null,
+      payToken: null,
       number: null,
       status: null,
       doneAt: null,

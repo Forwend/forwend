@@ -1,8 +1,5 @@
 import type { PayToken } from "@/features/pay/types/pay";
 
-/** openapi.yaml, InvoiceId: the on-chain invoice id. */
-export const INVOICE_ID_PATTERN = /^0x[0-9a-f]{64}$/;
-
 /**
  * Tokens the pay page names, by chain and contract (docs/spikes/s5-s6-testnets.md). The symbol and decimals come from
  * this build, never from the API, and the page refuses any other token. Add a token here when the API enables it.

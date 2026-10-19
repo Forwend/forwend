@@ -1,7 +1,7 @@
 # Web architecture
 
 One Next.js app (App Router, TypeScript strict) for every surface: landing `/`, private `/kit`, the signed-in
-app `/app`, the public checkout `/pay/<invoice>`, the public stop reminders page `/reminders/<token>` and the public
+app `/app`, the public checkout `/pay/<token>`, the public stop reminders page `/reminders/<token>` and the public
 quote page `/w/<token>` (PROJECT D-2, R-96, R-102). Rules: [rules.md](rules.md).
 Whole system: [architecture.md](../architecture.md).
 
@@ -45,8 +45,8 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
     (R-50, D-73); once done that address returns to `next` (an `/app` path only, `afterOnboarding`), else `/app`.
   - The invoice form turns the typed amount into exact base units without float; a custom checkout close is sent as
     seconds from now (15 minutes to 365 days).
-  - `/app/invoices/<id>` reads `GET /v1/profiles/{id}/invoices/{invoiceId}`, because the public read has no client;
-    its 404 also means another profile made the invoice.
+  - `/app/invoices/<id>` reads only `GET /v1/profiles/{id}/invoices/{invoiceId}`: it has the client, and the public
+    read needs the pay link's token (D-86). Its 404 also means another profile made the invoice.
 - Invoices, Activity and Transactions (also the business overview's payments) send their filter and search to the API
   (`?status=` or `?direction=`, `?q=`) and show only its answer for the current pair, so a match on an older page shows
   at once and "Show more" continues the filtered list. `shared/hooks/use-list-filters.ts` keeps both in the page URL
@@ -71,19 +71,22 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   does not have.
 - Features import each other only here: receive → balances; invoices → activity, balances, clients (the client block
   an invoice copies, R-86); clients → profiles (the country list); pay → activity, invoices
-  (including the `check-status` and `invoice-progress` components); onboarding → activity, invoices, profiles,
+  (including the `check-status` and `invoice-progress` components); jobs → clients, invoices (the pay link's token
+  pattern, Send to client); onboarding → activity, invoices, profiles,
   transactions; transactions → invoices (the bell's invoice events, R-81, the invoice numbers on Transactions, R-109, and the ECB currencies, R-111); transactions → profiles (the statement's way back from billing details, R-113). No cycles ([structure.md](structure.md)); money helpers and words that several features show live in
   `shared/lib/money.ts` and `shared/constants/money-copy.ts`. Add no new edge without listing it here.
-- Checkout `/pay/<id>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed id is a 404;
-  an id the API does not know shows the 404 page. It reads the public `GET /v1/invoices/{id}` every 15 s through a
+- Checkout `/pay/<token>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed token
+  (an on-chain id too, D-86) is a 404; a token the API does not know shows the 404 page. It reads the public
+  `GET /v1/invoices/{payToken}` every 15 s through a
   store whose requests carry no token (`providers/public-store-provider.tsx`). The browser recomputes the receive
   address from the terms with the factory and implementation built into the page (`features/pay/lib/receive-address.ts`,
-  keccak256 from `@noble/hashes`, tested against the R-15 vectors) and shows no address on a mismatch. Token symbol and
+  keccak256 from `@noble/hashes`, tested against the R-15 vectors) and shows no address on a mismatch. The terms'
+  `invoiceId` must be keccak256 of the link's token (D-86). Token symbol and
   decimals come from `PAY_TOKENS` in the build, never the API; another token is refused, so enabling a token in the
   API also needs an entry there. The address and QR show only after the payer picks the network and presses Show
   address, with one line naming the exact token and network. A payer-chooses invoice (R-57) lists its `options`: until
   one has money the payer picks the network, then a token on it, with selects (`features/pay/components/option-picker.tsx`), and
-  the page checks that option's terms with its own id, which must derive from the link's; the pick goes into
+  the page checks that option's terms with its own id, which must derive from the invoice id; the pick goes into
   `?option=<id>` and the shown address into session storage, so a reload keeps both (R-68). Paid and settled come only from the API (D-29). It loads no
   third-party scripts ([money-safety.md](../backend/money-safety.md)).
 

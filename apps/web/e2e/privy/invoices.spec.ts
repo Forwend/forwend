@@ -52,6 +52,7 @@ async function createInvoice(page: Page, fill: () => Promise<void>) {
   expect(response.status()).toBe(201);
   const body = (await response.json()) as {
     invoiceId: string;
+    payToken: string;
     number: number;
     returnUrl: string | null;
     options: object[];
@@ -330,7 +331,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(client.getByRole("button", { name: "Stop repeating" })).toHaveCount(0);
     expect(await blockingViolations(page)).toEqual([]);
     // The pay link copies whole, from the header's More actions menu, which also opens it.
-    const link = `http://localhost:3000/pay/${invoice.invoiceId}`;
+    const link = `http://localhost:3000/pay/${invoice.payToken}`;
     await page
       .getByRole("main")
       .locator("header")
@@ -371,8 +372,8 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
     // The PDFs come through the same-origin /api path; the receipt only once the invoice is paid.
     const pdf = (name: string) => details.getByRole("link", { name });
-    const read = `/api/v1/invoices/${invoice.invoiceId}`;
-    const pdfPath = (file: string) => `${read}/${file}`;
+    const read = `/api/v1/profiles/*/invoices/${invoice.invoiceId}`;
+    const pdfPath = (file: string) => `/api/v1/invoices/${invoice.payToken}/${file}`;
     await expect(pdf("Invoice PDF")).toHaveAttribute("href", pdfPath("invoice.pdf"));
     const file = await page.request.get(pdfPath("invoice.pdf"));
     expect([file.status(), file.headers()["content-type"]]).toEqual([200, "application/pdf"]);

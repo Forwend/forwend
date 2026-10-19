@@ -36,9 +36,10 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 ## Checkout
 
-- The page shows an address only for the invoice its link names: for a payer-chooses invoice's further option, only
-  when the option's id is `keccak256(abi.encode(link id, chain id, token))`, as `address.OptionID` makes it, so no
-  other invoice's terms pass under the link. Only for terms the API would create (amount above
+- The page shows an address only for the invoice its link names: the invoice id must be keccak256 of the link's token
+  (`address.InvoiceID`, D-86). For a payer-chooses invoice's further option, only when the option's id is
+  `keccak256(abi.encode(invoice id, chain id, token))`, as `address.OptionID` makes it, so no other invoice's terms
+  pass under the link. Only for terms the API would create (amount above
   0, settle deadline 24 h after expiry, expiry at most a year after creation, a recipient that is not zero, the token,
   the factory or the implementation), and only when the terms compute to it.
 - No third-party scripts; pinned dependencies.
@@ -53,8 +54,8 @@ DOM and imports nothing from `src/`. It reads only its own `CANARY_*` variables 
 different hosts per chain ID and the script path.
 
 Stdin holds one open invoice or accepted option per line, its terms as the database stores them, then its token's
-symbol, its chain's name and, for an option of a payer-chooses invoice (R-56), the invoice's id:
-`id chain_id recipient_address token_contract amount expires_at settle_deadline symbol network [pay_id]`. A line whose
+symbol, its chain's name and the pay link's token of the invoice it belongs to (D-86):
+`id chain_id recipient_address token_contract amount expires_at settle_deadline symbol network pay_token`. A line whose
 terms break create's rules (amount 0, a settle deadline other than expiry + 24 h, a recipient that is zero or the
 token) is an alert. A line within 6 minutes of its expiry is skipped: the pay page stops showing the address 5
 minutes before expiry. The canary then:
@@ -63,13 +64,13 @@ minutes before expiry. The canary then:
    factory's code to equal `CANARY_FACTORY_CODE_HASH`. A receiver's init-code hash differs per invoice (its init
    code holds the terms), so the canary pins the factory's runtime code instead: with its immutables it fixes
    `predict`, the receiver implementation and the refund authority.
-2. Reads `GET <api>/v1/invoices/<pay_id>` and requires the listed option with this `id` (its `optionId`, chain,
-   token, amount and address) and the invoice's shared terms and `factory` to equal the database's terms and
-   `CANARY_FACTORY`.
+2. Reads `GET <api>/v1/invoices/<pay_token>`, requires its `invoiceId` to be keccak256 of the token, and requires the
+   listed option with this `id` (its `optionId`, chain, token, amount and address) and the invoice's shared terms and
+   `factory` to equal the database's terms and `CANARY_FACTORY`.
 3. Calls `predict` with the database's terms on both RPCs and requires both to agree and to equal the api's
    `receiveAddress`.
-4. Runs the script once for all ids, with a deadline that grows with their number. It opens `<web>/pay/<pay_id>?option=<id>`
-   (`pay_id` is `id` for a fixed invoice and for the first option), which shows that option while none has money, in
+4. Runs the script once for all ids, with a deadline that grows with their number. It opens
+   `<web>/pay/<pay_token>?option=<id>`, which shows that option while none has money, in
    Chromium as a payer would, presses Show address and reads the send box's text and QR code. The text
    must show that one address, each QR code must draw what `uqr` encodes for it, as `QrCode` in
    `packages/ui-web` does, and the amount panel must name the token's symbol and the chain (`Base Sepolia` for
@@ -84,16 +85,16 @@ check on the last `canary passed`):
 
 ```sh
 psql "$READONLY_DATABASE_URL" -At -F ' ' -c "SELECT i.id, i.chain_id, i.recipient_address, i.token_contract,
-  i.amount, i.expires_at, i.settle_deadline, t.symbol, c.name, m.id FROM invoices i
+  i.amount, i.expires_at, i.settle_deadline, t.symbol, c.name, m.pay_token FROM invoices i
   JOIN invoices m ON m.id = coalesce(i.main_id, i.id)
   JOIN tokens t ON t.chain_id = i.chain_id AND t.contract = i.token_contract JOIN chains c ON c.chain_id = i.chain_id
   WHERE i.payment_status IN ('open', 'partially_paid') AND i.expires_at > extract(epoch FROM now()) + 60
-    AND (m.chosen_id IS NULL OR m.chosen_id = i.id)" |
+    AND (m.chosen_id IS NULL OR m.chosen_id = i.id) AND m.pay_token IS NOT NULL" |
   pnpm --silent --filter @forwend/backend canary
 ```
 
 The terms come from stdin, not a database connection, so the canary holds no database credentials; a read-only role
-lists them. `detected` invoices are left out: a deposit that may cover the amount is on its way, and the page then
+lists them. An invoice made before D-86 has no pay token and no pay page, so the query leaves it out. `detected` invoices are left out: a deposit that may cover the amount is on its way, and the page then
 stops showing the address. So are the other options of an invoice whose option was chosen: the page no longer shows
 them. An invoice paid between the query and the page read alerts once; the next run passes.
 

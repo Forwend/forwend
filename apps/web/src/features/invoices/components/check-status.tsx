@@ -12,7 +12,8 @@ const TOO_MANY_REQUESTS = 429;
 const TOO_SOON_REST_MS = 30_000;
 
 export interface CheckStatusProps {
-  invoiceId: string;
+  /** The pay link's token (D-86): Check status is public, like the checkout read. */
+  payToken: string;
   network: string;
   money: (units: bigint) => string;
   nextCheckAt: string | null;
@@ -26,7 +27,7 @@ export interface CheckStatusProps {
  * until the next check the api allows, which the invoice read also gives, so a reload never asks again early.
  */
 export function CheckStatus({
-  invoiceId,
+  payToken,
   network,
   money,
   nextCheckAt,
@@ -65,7 +66,7 @@ export function CheckStatus({
         variant="secondary"
         loading={isLoading}
         disabled={resting}
-        onClick={() => void recheck(invoiceId)}
+        onClick={() => void recheck(payToken)}
       >
         {COPY.checkStatus}
       </Button>

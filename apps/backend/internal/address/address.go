@@ -92,6 +92,12 @@ func mustHex20(s string) [20]byte {
 	return [20]byte(mustHex(s))
 }
 
+// InvoiceID is the on-chain id of the invoice whose pay link carries payToken (D-86): keccak256(payToken). The chain
+// shows the id, never the token, so an id read from chain opens no public route; the pay page recomputes it.
+func InvoiceID(payToken [32]byte) [32]byte {
+	return [32]byte(keccak(payToken[:]))
+}
+
 // OptionID is the on-chain id of a payer-chooses invoice's further option (R-56): keccak256(abi.encode(invoice id,
 // chain id, token)). The pay page recomputes it, so an option's address stays tied to the
 // link's id as a fixed invoice's is.

@@ -27,7 +27,7 @@ async function openRequest(page: Page) {
   return true;
 }
 
-// Creates the filled-in request through the API and returns its id and number (INV-0001).
+// Creates the filled-in request through the API and returns its id, pay link token and number (INV-0001).
 async function createRequest(page: Page) {
   const created = page.waitForResponse(
     (r) => /\/api\/v1\/profiles\/[^/]+\/invoices$/.test(r.url()) && r.request().method() === "POST",
@@ -35,14 +35,15 @@ async function createRequest(page: Page) {
   await page.getByRole("main").getByRole("button", { name: "Create request" }).click();
   const response = await created;
   expect(response.status()).toBe(201);
-  const { invoiceId, number, expiresAt } = (await response.json()) as {
+  const { invoiceId, payToken, number, expiresAt } = (await response.json()) as {
     invoiceId: string;
+    payToken: string;
     number: number;
     expiresAt: string;
   };
   // The request opens with its pay link.
   await expect(page).toHaveURL(`/app/invoices/${invoiceId}`);
-  return { invoiceId, expiresAt, number: `INV-${String(number).padStart(4, "0")}` };
+  return { invoiceId, payToken, expiresAt, number: `INV-${String(number).padStart(4, "0")}` };
 }
 
 test("a personal profile requests money, sends the pay link and the payer sees who asks (R-49)", async ({
@@ -101,7 +102,7 @@ test("a personal profile requests money, sends the pay link and the payer sees w
 
     // The request opens with the link to send, and it copies whole.
     await expect(page.getByRole("region", { name: "Amount" })).toContainText("3.25");
-    const link = `http://localhost:3000/pay/${request.invoiceId}`;
+    const link = `http://localhost:3000/pay/${request.payToken}`;
     await page
       .getByRole("main")
       .locator("header")
@@ -136,7 +137,7 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     // The payer, without an account, sees the name and the amount asked.
     const payer = await browser.newContext({ reducedMotion: "reduce" });
     const pay = await payer.newPage();
-    await pay.goto(`/pay/${request.invoiceId}`);
+    await pay.goto(`/pay/${request.payToken}`);
     await expect(pay.getByRole("heading", { level: 1, name: "E2E Requester" })).toBeVisible();
     await expect(pay.locator("[data-money]")).toHaveText("3.25 USDC");
     await expect(pay.getByText(`Request ${request.number}`)).toBeVisible();
@@ -180,7 +181,7 @@ test("on a phone a personal profile requests money from the round actions withou
       .click();
     await expect(
       page.getByRole("menuitem", { name: "Open pay page in a new tab" }),
-    ).toHaveAttribute("href", new RegExp(`/pay/${request.invoiceId}$`));
+    ).toHaveAttribute("href", new RegExp(`/pay/${request.payToken}$`));
     await page.keyboard.press("Escape");
     await fits();
     expect(await blockingViolations(page)).toEqual([]);
@@ -188,7 +189,7 @@ test("on a phone a personal profile requests money from the round actions withou
     await expect(page.getByRole("link", { name: "Requests" })).toBeVisible();
     await fits();
 
-    await page.goto(`/pay/${request.invoiceId}`);
+    await page.goto(`/pay/${request.payToken}`);
     await expect(page.getByRole("heading", { level: 1, name: "E2E Phone" })).toBeVisible();
     await expect(page.locator("[data-money]")).toHaveText("1.00 USDC");
     await fits();

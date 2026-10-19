@@ -31,6 +31,7 @@ const TOKEN = {
 };
 const OPEN = {
   invoiceId: ID,
+  payToken: "cd".repeat(32),
   optionId: ID,
   optionLocked: false,
   optionCount: 1,

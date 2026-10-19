@@ -40,6 +40,9 @@ func (f *fake) Send(_ context.Context, m email.Message) error {
 	return nil
 }
 
+// payToken is setup's invoice's pay link token (D-86).
+var payToken = strings.Repeat("ef", 32)
+
 // setup makes a database with one user (login email as sign-up stores it: "" when the account has none), profile and
 // 5 USDC invoice on Base Sepolia.
 func setup(t *testing.T, login string) (*pgxpool.Pool, string) {
@@ -62,10 +65,12 @@ func setup(t *testing.T, login string) (*pgxpool.Pool, string) {
 		     u AS (INSERT INTO users (privy_user_id, login_email) VALUES ('did:privy:a', $2) RETURNING id),
 		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id)
 		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
-		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash, sender_name)
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash, sender_name,
+		    pay_token)
 		SELECT $1, id, 84532, 'evm', '0x00000000000000000000000000000000000000ee', 5000000, 2000000000, 2000086400,
 		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
-		    '0x3333333333333333333333333333333333333333', 'k', decode(repeat('00', 32), 'hex'), 'Mara Ilić' FROM p`, id, login)
+		    '0x3333333333333333333333333333333333333333', 'k', decode(repeat('00', 32), 'hex'), 'Mara Ilić', $3 FROM p`, id,
+		login, payToken)
 	return pool, id
 }
 
@@ -284,7 +289,7 @@ func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 	m := f.sent[0]
 	for _, want := range []string{"You paid 5.00 USDC on Base Sepolia to Mara Ilić for INV-0001.",
 		"The name is what the invoice's creator gave; Forwend doesn't check it.",
-		"Transaction: https://sepolia.basescan.org/tx/" + hash, "Download receipt (PDF): " + web + "/api/v1/invoices/" + id + "/receipt.pdf"} {
+		"Transaction: https://sepolia.basescan.org/tx/" + hash, "Download receipt (PDF): " + web + "/api/v1/invoices/" + payToken + "/receipt.pdf"} {
 		if !strings.Contains(m.Text, want) {
 			t.Fatalf("receipt text %q lacks %q", m.Text, want)
 		}
@@ -352,6 +357,34 @@ func TestDeliverSendsTheWelcome(t *testing.T) {
 
 // R-94: the owner's send goes to the client's email whatever the owner's setting, from the issuer, with replies to the
 // issuer's billing email, the pay page and the PDF. A payer-chooses invoice is priced in USD on any network.
+// D-86: an invoice made before the pay token has no pay link, so nothing that would link it goes to the client or payer.
+func TestDeliverSendsNoClientEmailWithoutAPayLink(t *testing.T) {
+	pool, id := setup(t, "owner@example.com")
+	exec(t, pool, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard, DISABLE TRIGGER invoices_number")
+	exec(t, pool, `UPDATE invoices SET pay_token = NULL, client_email = 'ap@client.example', payer_email = 'p@x.example',
+		due_date = '2026-11-30' WHERE id = $1`, id)
+	exec(t, pool, "ALTER TABLE invoices ENABLE TRIGGER invoices_guard, ENABLE TRIGGER invoices_number")
+	exec(t, pool, `INSERT INTO invoice_reminders (invoice_id, enabled, stop_token) VALUES ($1, true, $2)`, id,
+		strings.Repeat("cd", 32))
+	if err := pgx.BeginFunc(context.Background(), pool, func(tx pgx.Tx) error {
+		return outbox.QueueSend(context.Background(), tx, id, "k1")
+	}); err != nil {
+		t.Fatal(err)
+	}
+	queue(t, pool, outbox.Receipt, id, nil)
+	exec(t, pool, `INSERT INTO outbox_events (kind, invoice_id, payload) VALUES ($1, $2, jsonb_build_object('option', $2::text,
+		'step', 'after'))`, outbox.Reminder, id)
+	f := &fake{}
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
+		t.Fatal(err)
+	}
+	var waiting int
+	if err := pool.QueryRow(context.Background(), "SELECT count(*) FROM outbox_events WHERE published_at IS NULL").
+		Scan(&waiting); err != nil || len(f.sent) != 0 || waiting != 0 {
+		t.Fatalf("sent %d, %d still waiting (%v); want none sent and none waiting", len(f.sent), waiting, err)
+	}
+}
+
 func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	exec(t, pool, "UPDATE profiles SET email_notifications = false")
@@ -381,8 +414,8 @@ func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
 		t.Fatalf("email %+v", m)
 	}
 	for _, want := range []string{"Alice Design GmbH sent you INV-0001 for 5.00 USDC.", "Due date: 2026-11-30",
-		"Network: Base Sepolia", "Invoice PDF: " + web + "/api/v1/invoices/" + id + "/invoice.pdf",
-		"View and pay: " + web + "/pay/" + id, "Reply to this email to reach them."} {
+		"Network: Base Sepolia", "Invoice PDF: " + web + "/api/v1/invoices/" + payToken + "/invoice.pdf",
+		"View and pay: " + web + "/pay/" + payToken, "Reply to this email to reach them."} {
 		if !strings.Contains(m.Text, want) {
 			t.Fatalf("text %q lacks %q", m.Text, want)
 		}
@@ -441,7 +474,7 @@ func TestDeliverSendsTheReminderToTheClient(t *testing.T) {
 		t.Fatalf("reminder %+v", m)
 	}
 	for _, want := range []string{"Alice Design GmbH reminds you that INV-0001 was due on 2026-11-30: 5.00 USDC left to pay.",
-		"View and pay: " + web + "/pay/" + id, "Stop reminders: " + web + "/reminders/" + token} {
+		"View and pay: " + web + "/pay/" + payToken, "Stop reminders: " + web + "/reminders/" + token} {
 		if !strings.Contains(m.Text, want) {
 			t.Fatalf("text %q lacks %q", m.Text, want)
 		}
