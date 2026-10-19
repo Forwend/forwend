@@ -5,7 +5,7 @@ import type {
   ApiSettlementStatus,
 } from "@/features/activity/types/activity";
 import { clientBodySchema } from "@/features/clients/schemas/clients";
-import { SETTLEMENT_WAITS } from "@/features/invoices/constants/invoices";
+import { PAY_TOKEN_PATTERN, SETTLEMENT_WAITS } from "@/features/invoices/constants/invoices";
 import type { InvoiceEventKind, OwedKind, ReminderStep } from "@/features/invoices/types/invoices";
 import {
   apiDate,
@@ -62,8 +62,10 @@ export const agreedValueSchema = z.object({
 
 /** openapi.yaml, InvoiceSummary. */
 export const invoiceSummarySchema = z.object({
-  // The pay link's id.
+  // keccak256 of payToken; the chain shows it, so it opens no public route (D-86).
   invoiceId: hash32,
+  // The pay link's token; null for an invoice made before D-86, which has no pay link.
+  payToken: z.string().regex(PAY_TOKEN_PATTERN).nullable(),
   // The on-chain id in the terms below: invoiceId, or the chosen or first option's of a payer-chooses invoice.
   optionId: hash32,
   // An option received money, so the payer can't pick another (R-56).
@@ -189,7 +191,7 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   retainer: invoiceRetainerSchema.nullable().optional(),
 });
 
-/** POST /v1/invoices/{id}/recheck (R-55): what Check status found. Amounts in base units. */
+/** POST /v1/invoices/{payToken}/recheck (R-55): what Check status found. Amounts in base units. */
 export const recheckSchema = z.object({
   onChain: baseUnits,
   recorded: baseUnits,

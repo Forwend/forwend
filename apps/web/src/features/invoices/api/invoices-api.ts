@@ -54,9 +54,9 @@ export const invoicesApi = apiSlice
         responseSchema: invoicesPageSchema,
         providesTags: [INVOICES_TAG],
       }),
-      /** Public: terms, statuses and deposits, without the client. */
+      /** Public, by the pay link's token: terms, statuses and deposits, without the client. */
       getInvoice: build.query<Invoice, string>({
-        query: (invoiceId) => `/v1/invoices/${encodeURIComponent(invoiceId)}`,
+        query: (payToken) => `/v1/invoices/${encodeURIComponent(payToken)}`,
         responseSchema: invoiceSchema,
         providesTags: [INVOICES_TAG],
       }),
@@ -144,16 +144,16 @@ export const invoicesApi = apiSlice
       recheckInvoice: build.mutation<Recheck, string>({
         // Asked too soon is the answer: the page rests until the next check, it does not wait and ask again.
         extraOptions: { answerFirst: true },
-        query: (invoiceId) => ({
-          url: `/v1/invoices/${encodeURIComponent(invoiceId)}/recheck`,
+        query: (payToken) => ({
+          url: `/v1/invoices/${encodeURIComponent(payToken)}/recheck`,
           method: "POST",
         }),
         responseSchema: recheckSchema,
       }),
       /** Email me the receipt (R-82): public, like the checkout; 409 once the receipt went out. */
-      setPayerEmail: build.mutation<{ email: string }, { invoiceId: string; email: string }>({
-        query: ({ invoiceId, email }) => ({
-          url: `/v1/invoices/${encodeURIComponent(invoiceId)}/payer-email`,
+      setPayerEmail: build.mutation<{ email: string }, { payToken: string; email: string }>({
+        query: ({ payToken, email }) => ({
+          url: `/v1/invoices/${encodeURIComponent(payToken)}/payer-email`,
           method: "PUT",
           body: { email },
         }),

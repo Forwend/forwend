@@ -12,8 +12,8 @@ Routes: `apps/backend/api/openapi.yaml`; each module mounts its own in `internal
 ## Routes
 
 - Prefix `/v1` (except `/healthz`). A breaking change means `/v2`.
-- Plural nouns, IDs in the path: `/v1/profiles/{profileId}/invoices`, `/v1/invoices/{invoiceId}`.
-- `GET` reads and never changes state. `POST` creates or runs an action (`POST /v1/invoices/{invoiceId}/recheck`).
+- Plural nouns, IDs in the path: `/v1/profiles/{profileId}/invoices`, `/v1/invoices/{payToken}`.
+- `GET` reads and never changes state. `POST` creates or runs an action (`POST /v1/invoices/{payToken}/recheck`).
 - `PUT` creates or replaces a whole editable resource (billing details).
 - Invoice terms and ledger entries are immutable. Transfer and invoice statuses change through validated worker
   transitions. Clients cannot edit money records with `PUT` or `DELETE`.
@@ -67,7 +67,7 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
   LOCKED`; a failed send ends that round and is retried after 1 min doubling to 1 h, given up after 10 tries. Email off
   or no address: the event is marked done and nothing is sent. Without `RESEND_API_KEY` the worker sends nothing and
   events wait; `scripts/with-env.sh` gives the key to the worker alone.
-- `PUT /v1/invoices/{invoiceId}/payer-email` (R-82, D-68, public like the checkout): the payer's address for this
+- `PUT /v1/invoices/{payToken}/payer-email` (R-82, D-68, public like the checkout): the payer's address for this
   invoice's receipt only, kept on the main row, trimmed and lowercased; it changes until the receipt is sent (then 409
   `receipt_sent`). The ledger queues one `invoice.receipt` when the invoice becomes paid (a unique index keeps one per
   invoice); an address given after that queues it at once. The worker sends it to that address whatever the owner's
@@ -247,22 +247,29 @@ R-19 and R-42; the full schema is in openapi.yaml.
   (others would miss payments), each at 1 USD per token: the amount in the token's decimals, 422 when they
   can't hold it exactly. Each option is an `invoices` row of its own with its own on-chain id (the first random, the
   others `keccak256(abi.encode(first id, chain id, token))`, so the pay page can tie them to the link), terms and
-  receive address, so the watcher, ledger and signer treat it as any invoice; the first row is the invoice (its id is the pay
+  receive address, so the watcher, ledger and signer treat it as any invoice; the first row is the invoice (its token is the pay
   link, its number and details are the invoice's). Each option counts toward the profile's open and daily limits.
   Reads add `optionId` (the on-chain id in the shown terms), `optionLocked`, `optionCount` and, on a read alone, `options` (each
   `{optionId, chainId, network, token, symbol, decimals, amount, receiveAddress, deposits}`; deposits on an option
   other than the shown one are held for the payer). Until an option has money the
   terms shown are the first option's; the option whose money came first on chain becomes the invoice's for good
-  (`chosen_id`), and money on any other is booked to `payer_held`. A GET with an option's id answers its invoice.
+  (`chosen_id`), and money on any other is booked to `payer_held`. The owner's GET with an option's id answers its
+  invoice; the public routes don't take ids.
   Lists, activity and search show each invoice once, with the current option (`invoices_current` view).
-- The public `GET /v1/invoices/{invoiceId}` has no `client`: the id is a bearer link, so it returns only what the payer
+- The pay link carries `payToken` (D-86, R-114): 32 random bytes in lowercase hex, kept on the main row
+  (`invoices.pay_token`). The invoice's `invoiceId` is keccak256 of it.
+  - The chain shows `invoiceId` and option ids (`ReceiverDeployed`, `Settled`, the deploy calldata), so no public route
+    takes them: an id there is 404 `invoice_not_found`.
+  - Create, the owner's reads and a job's payments give `payToken`. An invoice made before D-86 has `null` and no
+    public route. Its Send to client, reminder and receipt emails are dropped: they would link nowhere.
+- The public `GET /v1/invoices/{payToken}` has no `client`: the token is a bearer link, so it returns only what the payer
   needs (OWASP API Security Top 10 2023, API3). What it returns is listed once, in `getInvoice` in openapi.yaml. Create,
   list and the profile's GET, which only the owner calls, include `client`.
 
 ## Invoice and receipt PDFs
 
 R-47 and D-51. This section has the full layout. `getInvoicePdf` and `getReceiptPdf` in openapi.yaml also list what each
-PDF prints, so a change updates both. Both are public like `GET /v1/invoices/{invoiceId}` and answer 404
+PDF prints, so a change updates both. Both are public like `GET /v1/invoices/{payToken}` and answer 404
 `invoice_not_found` the same way.
 
 - `internal/document` draws them with `codeberg.org/go-pdf/fpdf` in a fixed layout, from `invoice.Get` only: no
@@ -271,13 +278,13 @@ PDF prints, so a change updates both. Both are public like `GET /v1/invoices/{in
 - Both look like the product (R-61): the Forwend mark (`internal/document/logo.path`, a copy of
   `packages/ui-web/src/icons/logo-data.ts`) and the light theme's colors, the kind and number (`INV-0001`) with the
   reference under it (R-90), the issuer block from the invoice's copy (left out without one) and "Bill to" with the
-  client's name and address but never the email (the id is a bearer link), a row of dates (with the supply date when
+  client's name and address but never the email (the token is a bearer link), a row of dates (with the supply date when
   set, R-89), then a line table: the title (or "Payment"), the network (name and chain id) and the exact amount with the
   token's symbol and decimals, never cut, and the agreed value (R-93) quietly under the total; with line items (R-88)
   the title heads the table and each item is a row with its quantity and unit price. Network names and explorers are a
   copy of `apps/web/src/shared/constants/chains.ts`; a test fails when either copy changes alone.
 - `invoice.pdf`: created time, supply date, due date and checkout expiry, the note, and a box with the pay link
-  `PUBLIC_WEB_URL/pay/<invoiceId>` and its QR code (drawn as vector modules), then the invoice id. A payer-chooses
+  `PUBLIC_WEB_URL/pay/<payToken>` and its QR code (drawn as vector modules), then the invoice id. A payer-chooses
   invoice names the network "Any" with the amount and total due in USD, then lists under Pay with each token and its
   networks ("USDC on Base Sepolia, Arbitrum Sepolia") and says to send only on those (R-70). Amounts group thousands
   (1,250.00); every page's footer names the document and number and says Page X of Y.
@@ -444,7 +451,7 @@ seconds (when the next token is back) and runs nothing else.
 
 - Routes that need a token: per Privy user, after the token is checked; 2 requests a second, 60 at once.
   - `API_USER_BURST` raises the 60. Only the live e2e sets it (1000): all its tests sign in as one user (D-85).
-- `POST /v1/invoices/{invoiceId}/recheck` (Check status, R-55) reads a chain RPC, so it is limited in the api: one
+- `POST /v1/invoices/{payToken}/recheck` (Check status, R-55) reads a chain RPC, so it is limited in the api: one
   check per invoice every 5 minutes (the invoice read gives `nextCheckAt`, so a reloaded page still waits), kept in Postgres so every replica agrees (`invoice_rechecks.checked_at`), and a
   per-process bucket of 1 a second, 10 at once, for everyone together. Both answer 429 with `Retry-After`. A chain that
   can't be read answers 503 `network_unavailable`. Until an option has money it checks every option's address (the
@@ -457,7 +464,7 @@ seconds (when the next token is back) and runs nothing else.
   own per-link limit and shares the one for everyone.
   - Per link: 3 at once, then one every 10 s.
   - For everyone together: 20 at once, then 5 a second.
-- The other public routes (`GET /v1/invoices/{invoiceId}`, `GET /v1/jobs/{token}`, both PDFs and `POST /v1/reminders/{token}/stop`) have no limit in the api. Next's `/api` rewrite adds
+- The other public routes (`GET /v1/invoices/{payToken}`, `GET /v1/jobs/{token}`, both PDFs and `POST /v1/reminders/{token}/stop`) have no limit in the api. Next's `/api` rewrite adds
   no `X-Forwarded-For` of its own and passes a client's header through unchanged (measured 2026-10-15 with a stub
   behind `next start`: no header without one, a sent `1.2.3.4` arrived as is), so the api sees one address for every
   payer and cannot trust the header. Limit them

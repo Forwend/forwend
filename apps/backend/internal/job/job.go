@@ -70,6 +70,7 @@ type Payment struct {
 	DueDays     int
 	OnAccept    bool
 	InvoiceID   string // "" until made
+	PayToken    string // its pay link's token (D-86); "" until made
 	Number      int64
 	Status      string // the invoice's status filter (invoice.StatusFilterSQL); "" until made
 	// When the owner marked the step done, and the link to what was delivered (R-103); zero and "" until then. The

@@ -14,6 +14,7 @@ export const sampleInvoice = (
   client: string | null,
 ) => ({
   invoiceId: `0x${String(number).padStart(4, "0")}${"a".repeat(60)}`,
+  payToken: `${String(number).padStart(4, "0")}${"b".repeat(60)}`,
   optionId: `0x${String(number).padStart(4, "0")}${"a".repeat(60)}`,
   optionLocked: paymentStatus !== "open",
   optionCount: 1,
@@ -256,14 +257,14 @@ export async function mockApi(
         },
       });
     }
-    // The public read leaves out the client; the profile's own read has it.
+    // The public read, by the pay link's token (D-86), leaves out the client; the profile's own read has it.
     const owned = lists.invoices.find(
       (inv) => path === `/v1/profiles/${MERCHANT_ID}/invoices/${inv.invoiceId}`,
     );
     if (owned) {
       return route.fulfill({ json: { ...owned, deposits: DEPOSITS[owned.invoiceId] ?? [] } });
     }
-    const invoice = lists.invoices.find((inv) => path === `/v1/invoices/${inv.invoiceId}`);
+    const invoice = lists.invoices.find((inv) => path === `/v1/invoices/${inv.payToken}`);
     if (invoice) {
       const { client: _, ...open } = invoice;
       return route.fulfill({ json: { ...open, deposits: DEPOSITS[invoice.invoiceId] ?? [] } });

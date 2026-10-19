@@ -6,10 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
 import { useListClientsQuery } from "@/features/clients/api/clients-api";
-import {
-  useGetInvoiceQuery,
-  useGetProfileInvoiceQuery,
-} from "@/features/invoices/api/invoices-api";
+import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import { NewInvoiceForm } from "@/features/invoices/components/new-invoice-form";
 import { RESTART_PARAMS } from "@/features/invoices/constants/invoices";
 import {
@@ -26,15 +23,14 @@ import { APP_ROUTES } from "@/shared/config/routes";
 
 // The enabled tokens (from the balances) are the networks and tokens an invoice can ask for. A personal profile makes
 // a request here instead (D-52, R-71), then lands on it with its pay link. ?from=<id> fills the form from that invoice
-// (Duplicate, R-91, or a closed one's next step, R-77), read from the cache its page filled; the client comes from the
-// owner's read, never from the URL.
+// (Duplicate, R-91, or a closed one's next step, R-77), from the owner's read its page filled in the cache, which also
+// gives the client; nothing comes from the URL but the id.
 export function NewInvoiceScreen() {
   const { profile } = useAppSession();
   const router = useRouter();
   const params = useSearchParams();
   const from = params.get(RESTART_PARAMS.from);
   const balances = useGetBalancesQuery(profile.profileId, LIVE_QUERY);
-  const source = useGetInvoiceQuery(from ?? "", { skip: !from });
   const owned = useGetProfileInvoiceQuery(
     { profileId: profile.profileId, invoiceId: from ?? "" },
     { skip: !from },
@@ -42,15 +38,15 @@ export function NewInvoiceScreen() {
   // Another profile's invoice, or one that failed to load, starts an empty form.
   // currentData: a 404 for this id must not leave an earlier invoice's values behind.
   const start =
-    from && source.currentData && owned.currentData
+    from && owned.currentData
       ? restartFrom(
-          source.currentData,
+          owned.currentData,
           owned.currentData.client,
           params.has(RESTART_PARAMS.rest),
           owned.currentData.reminders,
         )
       : undefined;
-  const loadingStart = Boolean(from) && (source.isLoading || owned.isLoading);
+  const loadingStart = Boolean(from) && owned.isLoading;
   const tokens = balances.currentData?.tokens;
   const request = profile.kind === PROFILE_KINDS.personal;
   // A business invoice names who bills the client, so a freelancer or merchant adds billing details first (R-92); if

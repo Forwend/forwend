@@ -28,11 +28,11 @@ func TestJobs(t *testing.T) {
 	id, token := r.body["jobId"].(string), r.body["token"].(string)
 	payments := []any{
 		map[string]any{"position": float64(1), "title": "Deposit", "amountUsd": "300.00", "dueDays": float64(7),
-			"onAccept": true, "invoiceId": nil, "number": nil, "status": nil, "doneAt": nil, "deliveryLink": nil,
+			"onAccept": true, "invoiceId": nil, "payToken": nil, "number": nil, "status": nil, "doneAt": nil, "deliveryLink": nil,
 			"invoicedAt": nil, "paidAt": nil, "proposedAt": nil, "acceptedName": nil, "acceptedAt": nil,
 			"acceptedEmail": nil, "clientEmailed": false},
 		map[string]any{"position": float64(2), "title": "Final delivery", "amountUsd": "700.50", "dueDays": float64(14),
-			"onAccept": false, "invoiceId": nil, "number": nil, "status": nil, "doneAt": nil, "deliveryLink": nil,
+			"onAccept": false, "invoiceId": nil, "payToken": nil, "number": nil, "status": nil, "doneAt": nil, "deliveryLink": nil,
 			"invoicedAt": nil, "paidAt": nil, "proposedAt": nil, "acceptedName": nil, "acceptedAt": nil,
 			"acceptedEmail": nil, "clientEmailed": false},
 	}
@@ -99,6 +99,10 @@ func TestJobs(t *testing.T) {
 		}
 		if _, ok := r.body["acceptedEmail"]; ok {
 			t.Fatalf("accept answers the typed email: %v", r.body)
+		}
+		// The client pays by the pay link's token (D-86).
+		if pay, _ := deposit["payToken"].(string); e.get(t, pay).body["invoiceId"] != deposit["invoiceId"] {
+			t.Fatalf("deposit payToken %v opens no invoice %v", deposit["payToken"], deposit["invoiceId"])
 		}
 	}
 

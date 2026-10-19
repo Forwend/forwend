@@ -41,8 +41,8 @@ type Recheck struct {
 // Recheck reads the invoice's receive addresses on chain (every option's until one has money) and, for each that holds
 // more than its recorded transfers, asks the worker to rescan it (D-77). It reads only: it never signs, never books
 // and never moves a cursor. allow runs only for an invoice due a check, so unknown ids never spend the shared budget.
-func (s *Service) Recheck(ctx context.Context, id string, balanceOf ledger.BalanceOf, allow func() time.Duration) (Recheck, error) {
-	inv, err := s.Get(ctx, id)
+func (s *Service) Recheck(ctx context.Context, payToken string, balanceOf ledger.BalanceOf, allow func() time.Duration) (Recheck, error) {
+	inv, err := s.Get(ctx, payToken)
 	if err != nil {
 		return Recheck{}, err
 	}

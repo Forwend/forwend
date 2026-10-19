@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { clientBodySchema } from "@/features/clients/schemas/clients";
+import { PAY_TOKEN_PATTERN } from "@/features/invoices/constants/invoices";
 import { JOB_TOKEN_PATTERN } from "@/features/jobs/constants/jobs";
 import type { JobPaymentStatus } from "@/features/jobs/types/jobs";
 import { apiTime, hash32, openEnum } from "@/shared/schemas/api";
@@ -17,6 +18,8 @@ export const jobPaymentSchema = z.object({
   dueDays: z.number().int().nonnegative(),
   onAccept: z.boolean(),
   invoiceId: hash32.nullable(),
+  // Its pay link's token (D-86); null until the invoice is made.
+  payToken: z.string().regex(PAY_TOKEN_PATTERN).nullable(),
   number: z.number().int().positive().nullable(),
   status: openEnum<JobPaymentStatus>().nullable(),
   doneAt: apiTime.nullable(),

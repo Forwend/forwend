@@ -68,7 +68,7 @@ invoice says, the phase follows EU, UK and US rules first (D-83).
 - 11.2 Team: email invites; Admin, Developer and Finance roles with assigned stores; a 403 test on every route; the
   last Admin cannot leave. Only the owner moves money (D-61). After 11.1.
 - 11.3 Payment links `/l/<slug>` per store or freelancer, fixed or open amount: each visit creates its own invoice
-  and goes to `/pay/<id>` (D-54); rate limited; can be turned off. After 11.1.
+  and goes to `/pay/<token>` (D-54); rate limited; can be turned off. After 11.1.
 - 11.4 Secret API keys: shown once, hashed, scoped to a store, revocable; creating one needs a fresh sign-in (D-63).
   After 12.1; build 12.1 first.
 - 11.5 Webhooks: Standard Webhooks signatures (D-42) with a separate signing secret, backoff, replay, delivery log,
@@ -85,7 +85,7 @@ invoice says, the phase follows EU, UK and US rules first (D-83).
   verification before the gate.
   - 11.9.1 Decide hosted or embedded checkout for merchant sites (a PROJECT decision row): the payer must always
     see the receive address and amount as Forwend shows them, never as merchant code renders them.
-  - 11.9.2 Pay button: a link or popup to `/pay/<id>` with a return URL and the store's branding (D-32). Works on
+  - 11.9.2 Pay button: a link or popup to `/pay/<token>` with a return URL and the store's branding (D-32). Works on
     any site without a package. After 11.6.
   - 11.9.3 If 11.9.1 picks embedded: a `@forwend/react` package (`PayButton`, `Checkout`) that renders the pay page
     in an iframe from the Forwend origin, like Stripe Elements, so the merchant page cannot change it. Theme props

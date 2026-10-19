@@ -47,9 +47,9 @@ func TestPayerChoosesInvoice(t *testing.T) {
 	if len(items) != 1 || items[0].(map[string]any)["optionCount"] != float64(2) {
 		t.Fatalf("activity %d %v, want the invoice with optionCount 2", activity.status, activity.body)
 	}
-	byOption := e.get(t, second["optionId"].(string))
-	if byOption.status != http.StatusOK || byOption.body["invoiceId"] != id {
-		t.Fatalf("get by option id: %d %v", byOption.status, byOption.body["invoiceId"])
+	// An option's id goes on chain when it settles, so it opens nothing public (D-86).
+	if byOption := e.get(t, second["optionId"].(string)); byOption.status != http.StatusNotFound {
+		t.Fatalf("get by option id: %d %v", byOption.status, byOption.body)
 	}
 
 	// Until an option has money, the PDF prices the invoice in USD and leaves the choice to the payer.

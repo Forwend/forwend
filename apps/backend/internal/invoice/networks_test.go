@@ -42,7 +42,7 @@ func TestPlannedNetworksTakeInvoicesOnceEnabled(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			inv, err := s.Get(ctx, created.ID)
+			inv, err := s.Get(ctx, created.PayToken)
 			if err != nil {
 				t.Fatal(err)
 			}

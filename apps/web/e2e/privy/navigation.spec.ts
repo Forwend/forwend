@@ -305,7 +305,6 @@ test("a paid invoice that is still settling says why its money waits", async ({ 
     deposits: [],
   };
   const wait = { kind: "finalizing", until: null, secondsLeft: 720 };
-  await page.route(`/api/v1/invoices/${paid.invoiceId}`, (route) => route.fulfill({ json: paid }));
   await page.route(`/api/v1/profiles/*/invoices/${paid.invoiceId}`, (route) =>
     route.fulfill({ json: { ...paid, settlementWait: wait } }),
   );
@@ -330,7 +329,7 @@ test("an open invoice's page offers Check status and a settled one does not", as
   });
   const page = await context.newPage();
   await mockApi(page);
-  await page.route(`/api/v1/invoices/${OPEN_INVOICE.invoiceId}/recheck`, (route) =>
+  await page.route(`/api/v1/invoices/${OPEN_INVOICE.payToken}/recheck`, (route) =>
     route.fulfill({
       json: {
         onChain: "0",
@@ -473,7 +472,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(page.getByRole("menuitem", { name: "Copy link" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: /^Open pay page/ })).toHaveAttribute(
     "href",
-    `http://localhost:3000/pay/${OPEN_INVOICE.invoiceId}`,
+    `http://localhost:3000/pay/${OPEN_INVOICE.payToken}`,
   );
   await page.keyboard.press("Escape");
   await expect(main.getByRole("button", { name: "Check status" })).toBeVisible();

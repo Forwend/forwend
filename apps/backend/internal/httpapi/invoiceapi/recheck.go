@@ -13,13 +13,13 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 )
 
-// recheckInvoice is POST /v1/invoices/{invoiceId}/recheck (R-55): public like the checkout read, since the payer
+// recheckInvoice is POST /v1/invoices/{payToken}/recheck (R-55): public like the checkout read, since the payer
 // presses Check status. A check within invoice.RecheckEvery of the last one, or past the shared rechecks budget,
 // answers 429 with Retry-After.
 func recheckInvoice(invoices *invoice.Service, balances ledger.BalanceOf, rechecks *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		allow := func() time.Duration { return rechecks.Wait(mid.Everyone(r)) }
-		found, err := invoices.Recheck(r.Context(), r.PathValue("invoiceId"), balances, allow)
+		found, err := invoices.Recheck(r.Context(), r.PathValue("payToken"), balances, allow)
 		var soon *invoice.TooSoonError
 		if errors.As(err, &soon) {
 			w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))

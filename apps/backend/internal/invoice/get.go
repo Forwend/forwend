@@ -2,22 +2,42 @@ package invoice
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
+	"regexp"
 	"strings"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/address"
 	"github.com/ensp1re/forwend/apps/backend/internal/finality"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
 
-// Get reads an invoice by its on-chain id (0x + 64 hex); an option's id reads the invoice it belongs to.
-func (s *Service) Get(ctx context.Context, id string) (Invoice, error) {
+// Get reads an invoice by its pay link's token (64 hex, D-86). An on-chain id, the invoice's or an option's, is
+// ErrNotFound: the chain shows those.
+func (s *Service) Get(ctx context.Context, payToken string) (Invoice, error) {
+	id, ok := idOf(payToken)
+	if !ok {
+		return Invoice{}, ErrNotFound
+	}
 	return s.get(ctx, "", id)
 }
+
+// idOf is the on-chain id of the invoice whose pay link carries payToken.
+func idOf(payToken string) (string, bool) {
+	var token [32]byte
+	if !payTokenShape.MatchString(payToken) {
+		return "", false
+	}
+	_, _ = hex.Decode(token[:], []byte(payToken))
+	return hexID(address.InvoiceID(token)), true
+}
+
+var payTokenShape = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // GetOfProfile is Get for the profile's owner: another profile's invoice is ErrNotFound.
 func (s *Service) GetOfProfile(ctx context.Context, profileID, id string) (Invoice, error) {

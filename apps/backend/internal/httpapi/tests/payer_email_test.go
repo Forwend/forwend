@@ -13,7 +13,9 @@ import (
 func TestPayerEmail(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
-	put := func(id, body string) reply { return e.call(t, "PUT", "/v1/invoices/"+id+"/payer-email", "", "", body) }
+	put := func(id, body string) reply {
+		return e.call(t, "PUT", "/v1/invoices/"+e.link(t, id)+"/payer-email", "", "", body)
+	}
 	receipts := func() int {
 		var n int
 		if err := e.pool.QueryRow(t.Context(), `SELECT count(*) FROM outbox_events WHERE invoice_id = $1 AND kind = 'invoice.receipt'`,
@@ -59,17 +61,17 @@ func TestPayerEmailIsLimitedPerInvoice(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
 	for i := range 3 {
-		if r := e.call(t, "PUT", "/v1/invoices/"+id+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status != http.StatusOK {
+		if r := e.call(t, "PUT", "/v1/invoices/"+e.link(t, id)+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status != http.StatusOK {
 			t.Fatalf("change %d: %d %v", i, r.status, r.body)
 		}
 	}
-	if r := e.call(t, "PUT", "/v1/invoices/"+id+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status != http.StatusTooManyRequests ||
+	if r := e.call(t, "PUT", "/v1/invoices/"+e.link(t, id)+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status != http.StatusTooManyRequests ||
 		errorCode(r) != "rate_limited" {
 		t.Fatalf("fourth change: %d %v, want 429 rate_limited", r.status, r.body)
 	}
 	// Another invoice has its own budget.
 	other := e.post(t, "did:privy:alice", e.aliceProfile, "key-2", basicBody).body["invoiceId"].(string)
-	if r := e.call(t, "PUT", "/v1/invoices/"+other+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status != http.StatusOK {
+	if r := e.call(t, "PUT", "/v1/invoices/"+e.link(t, other)+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status != http.StatusOK {
 		t.Fatalf("another invoice: %d %v", r.status, r.body)
 	}
 }
@@ -82,7 +84,7 @@ func TestPayerEmailQueuesOneReceipt(t *testing.T) {
 	e.exec(t, `UPDATE invoices SET payment_status = 'paid' WHERE id = $1`, id)
 	put := func(email string) {
 		t.Helper()
-		if r := e.call(t, "PUT", "/v1/invoices/"+id+"/payer-email", "", "", `{"email": "`+email+`"}`); r.status != http.StatusOK {
+		if r := e.call(t, "PUT", "/v1/invoices/"+e.link(t, id)+"/payer-email", "", "", `{"email": "`+email+`"}`); r.status != http.StatusOK {
 			t.Fatalf("PUT %s: %d %v", email, r.status, r.body)
 		}
 	}
@@ -98,7 +100,7 @@ func TestPayerEmailQueuesOneReceipt(t *testing.T) {
 	if n != 1 || attempts != 0 || failed {
 		t.Fatalf("receipts %d, attempts %d, given up %v; want one, started again", n, attempts, failed)
 	}
-	if r := e.call(t, "PUT", "/v1/invoices/"+id+"/payer-email", "", "", `{"email": 1}`); r.status != http.StatusBadRequest {
+	if r := e.call(t, "PUT", "/v1/invoices/"+e.link(t, id)+"/payer-email", "", "", `{"email": 1}`); r.status != http.StatusBadRequest {
 		t.Fatalf("a number for email: %d %v, want 400", r.status, r.body)
 	}
 }
@@ -109,7 +111,7 @@ func TestPayerEmailIsLimitedForEveryone(t *testing.T) {
 	limited := 0
 	for i := range 25 {
 		id := fmt.Sprintf("0x%064x", i+1) // unknown invoices: the limits come before the lookup
-		if r := e.call(t, "PUT", "/v1/invoices/"+id+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status == http.StatusTooManyRequests {
+		if r := e.call(t, "PUT", "/v1/invoices/"+e.link(t, id)+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status == http.StatusTooManyRequests {
 			limited++
 		}
 	}
@@ -124,7 +126,7 @@ func TestPayerEmailWaitsForASendInProgress(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
 	e.exec(t, `UPDATE invoices SET payment_status = 'paid' WHERE id = $1`, id)
-	if r := e.call(t, "PUT", "/v1/invoices/"+id+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status != http.StatusOK {
+	if r := e.call(t, "PUT", "/v1/invoices/"+e.link(t, id)+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status != http.StatusOK {
 		t.Fatalf("first address: %d %v", r.status, r.body)
 	}
 	// The worker's send: it holds the receipt row until Resend answers.
@@ -139,7 +141,7 @@ func TestPayerEmailWaitsForASendInProgress(t *testing.T) {
 	}
 	answer := make(chan reply, 1)
 	go func() {
-		answer <- e.call(t, "PUT", "/v1/invoices/"+id+"/payer-email", "", "", `{"email": "b@example.com"}`)
+		answer <- e.call(t, "PUT", "/v1/invoices/"+e.link(t, id)+"/payer-email", "", "", `{"email": "b@example.com"}`)
 	}()
 	select {
 	case r := <-answer:

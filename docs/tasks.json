@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 247,
+  "nextId": 260,
   "tasks": [
     {
       "id": "F222",
@@ -2864,12 +2864,441 @@
         "branch": "docs/f246-plan-marks-phase-10-items-10-1-and-10-3",
         "base": "main"
       }
+    },
+    {
+      "id": "F247",
+      "type": "fix",
+      "behavior": "A pay link carries a secret token and the chain shows only its hash, so an invoice id read from chain opens nothing",
+      "acceptance": [
+        "Create gives each invoice a payToken of 32 random bytes; the main invoice id is keccak256 of it; option ids still derive from the main id; terms and receive addresses keep their form.",
+        "The public routes (invoice read, Check status, payer email, invoice and receipt PDFs) take the token; an invoice id or option id there is 404. On Anvil, the id from a settled invoice's ReceiverDeployed log opens none of them.",
+        "The pay page /pay/<token> shows an address only when keccak256(token) is the terms' invoiceId; the owner's page, every email, both PDFs, the job quote page and the canary link by token.",
+        "An invoice made before has no token: its public routes are 404 and its owner page shows no pay link (testnet data only).",
+        "A decision replaces D-50's link rule; R-114, api.md, openapi.yaml, money-safety.md and the web docs describe the token."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "R-114",
+        "D-86"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [
+        "2026-10-19 review fail by reviewer: Blockers:\n1. docs/backend/money-safety.md:87-92: the canary feed query still selects m.id as the 10th field. canary.parseTerms (apps/backend/internal/canary/canary.go:233-243) now requires a 64-hex pay token there. So every line alerts \"a value is malformed\" and the scheduled canary fails on every run. Select m.pay_token instead. Also add \"AND m.pay_token IS NOT NULL\": a pre-D-86 open invoice prints 9 fields and alerts, and its pay page is 404 anyway.\n2. Accept 2, Anvil part, is not done. No test reads a settled invoice's ReceiverDeployed log on Anvil and checks that its id opens none of the public routes. gate_test.go only switched to the token. pay_token_test.go uses the id from the create response, not from the chain. Add the check to gate_test.go, or change the acceptance with the owner.\n\nMinor (fix with the blockers):\n- docs/PROJECT.md:221 D-51 still says GET /v1/invoices/{id}/invoice.pdf. D-50's reason \"the random ID keeps links hard to guess\" is now wrong; the token does that.\n- apps/backend/.env.example:26 and internal/config/config.go:35 say PDFs link to /pay/<invoiceId>. Stale {id} comments: canary.go:47, web schemas/invoices.ts:194, signer_test.go:654. docs/web/architecture.md:4 says /pay/<invoice>.\n- Pre-D-86 open invoices still send Send to client and reminder emails. Their links are /pay/ and /api/v1/invoices//invoice.pdf (notify.go:184, 367). These are dead links (testnet only). Refuse those sends or name this in R-114.\n- apps/web/e2e/privy/navigation.spec.ts:308 mocks the public /api/v1/invoices/<invoiceId> route. The owner page no longer reads it, so the mock is dead.\n- pay_token_test.go old-invoice case sets pay_token to NULL. Lookup is by keccak256(token), so the original token would still open that invoice. The test only shows the id is 404, which holds for every invoice. Real old ids are random, so the behavior is right; the test proves less than its comment says.\n- openapi InvoiceSummary.invoiceId says keccak256 of payToken. That is not true for pre-D-86 invoices.\n\nChecked and correct: crypto/rand token, on main rows only (UNIQUE, shape CHECK, pay_token IS NULL OR main_id IS NULL). The view gets the column appended; the down migration is right. Public routes look up keccak256(token), so invoice and option ids are 404. The pay page checks keccak256 of the link token. Emails, PDFs, job quote, copy link, Check status, receipt email and the canary binary use the token. The owner page, breadcrumb and duplicate use the owner route. The test link() helper falls back to the id only when no token exists, so it hides no missing token. Referrer-Policy strict-origin-when-cross-origin keeps the token out of Referer. The error log uses the route pattern, not the path.\n\nRan: go test ./internal/httpapi/tests -run PayToken|PayerEmail|InvoicePDF|ReceiptPDF|PayerChooses|Jobs: ok (TestPublicRoutesTakeOnlyThePayToken PASS). go test ./internal/address ./internal/invoice ./internal/notify: ok. npx vitest run src/features/pay src/features/invoices src/features/jobs: 9 files, 67 tests passed.",
+        "2026-10-19 review pass by reviewer: Re-review after the fail. Both blockers are fixed.\n1. docs/backend/money-safety.md: the canary query now selects m.pay_token and filters m.pay_token IS NOT NULL. A new sentence says why. This matches canary.parseTerms.\n2. apps/backend/e2e/gate_test.go TestMoneyLoop now reads ReceiverDeployed after the settle. topics[2] is the invoiceId, as InvoiceReceiverFactory.sol:29 declares. The test requires 404 by that id on GET, both PDFs, recheck and payer-email. The latest e2e log shows TestMoneyLoop PASS.\n\nMinor points from the first review are fixed: D-50 reason, D-51 path, stale comments (config.go, .env.example, canary.go, schemas/invoices.ts, signer_test.go), web architecture line 4, the dead navigation mock, the pay_token_test comment and the openapi invoiceId note. notify now drops Send to client, receipt and reminder emails for invoices without a token. TestDeliverSendsNoClientEmailWithoutAPayLink covers it. R-114 and api.md say so.\n\nMinor, not blocking (testnet data only): a dropped email is marked published_at like any skipped event. invoice/send.go emails() reads that as SentAt. So the owner page of a pre-D-86 invoice says Sent to the client, and shows reminders as sent, though nothing went. To fix later, refuse Send to client (409) and hide Send and reminders when payToken is null.\n\nRan: go test ./internal/notify ./internal/httpapi/tests ./internal/invoice ./internal/address: ok. TestDeliverSendsNoClientEmailWithoutAPayLink: PASS. go vet -tags e2e ./e2e: clean. apps/web pnpm typecheck: exit 0. npx vitest run src/features/pay src/features/invoices src/features/jobs: 9 files, 67 tests passed. Read docs/runs/F247-20261019T174307Z-e2e.log: TestMoneyLoop PASS, web e2e 48 and 41 passed."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-19T17:43:07Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 74.2,
+            "log": "docs/runs/F247-20261019T174307Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 218.8,
+            "log": "docs/runs/F247-20261019T174307Z-e2e.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F247-20261019T174307Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F247-20261019T174307Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F247-20261019T174307Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F247-20261019T174307Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.6,
+            "log": "docs/runs/F247-20261019T174307Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F247-20261019T174307Z-keep.log"
+          }
+        ],
+        "taskHash": "ad0b941efec8dad6",
+        "filesHash": "c20b422104ad10f2",
+        "proof": {
+          "1": "unit: TestPublicRoutesTakeOnlyThePayToken checks payToken is 64 hex and invoiceId is keccak256 of it; address TestInvoiceID and TestOptionID vectors; invoice options tests still derive option ids from the main id",
+          "2": "e2e: backend TestMoneyLoop settles an invoice on Anvil, reads the id from the factory's ReceiverDeployed log and gets 404 on GET, both PDFs, recheck and payer-email by it. unit: TestPublicRoutesTakeOnlyThePayToken: the invoice id, an option id and the id without 0x are 404 on every public route; the token answers 200",
+          "3": "e2e: pay.spec opens /pay/<token>, a /pay/<invoice id> link is 404, the canary script reads the address; job-quote.spec links the deposit by token; the live suite creates and duplicates invoices and opens their pay links by token. unit: receive-address.test invoiceIdOf vector shared with Go; notify tests link by token; canary tests check api invoiceId = keccak256(pay_token)",
+          "4": "unit: TestPublicRoutesTakeOnlyThePayToken: an invoice with no pay_token is 404 by its id and the owner read gives payToken null; TestDeliverSendsNoClientEmailWithoutAPayLink drops its Send, reminder and receipt emails; invoice-detail hides PDFs, Check status and the pay link without a token",
+          "5": "docs-check: D-86 and R-114 added, D-50, D-51, R-47, R-55 amended; api.md, openapi.yaml, money-safety.md (canary query selects pay_token), web architecture and DESIGN docs use the token"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review after the fail. Both blockers are fixed.\n1. docs/backend/money-safety.md: the canary query now selects m.pay_token and filters m.pay_token IS NOT NULL. A new sentence says why. This matches canary.parseTerms.\n2. apps/backend/e2e/gate_test.go TestMoneyLoop now reads ReceiverDeployed after the settle. topics[2] is the invoiceId, as InvoiceReceiverFactory.sol:29 declares. The test requires 404 by that id on GET, both PDFs, recheck and payer-email. The latest e2e log shows TestMoneyLoop PASS.\n\nMinor points from the first review are fixed: D-50 reason, D-51 path, stale comments (config.go, .env.example, canary.go, schemas/invoices.ts, signer_test.go), web architecture line 4, the dead navigation mock, the pay_token_test comment and the openapi invoiceId note. notify now drops Send to client, receipt and reminder emails for invoices without a token. TestDeliverSendsNoClientEmailWithoutAPayLink covers it. R-114 and api.md say so.\n\nMinor, not blocking (testnet data only): a dropped email is marked published_at like any skipped event. invoice/send.go emails() reads that as SentAt. So the owner page of a pre-D-86 invoice says Sent to the client, and shows reminders as sent, though nothing went. To fix later, refuse Send to client (409) and hide Send and reminders when payToken is null.\n\nRan: go test ./internal/notify ./internal/httpapi/tests ./internal/invoice ./internal/address: ok. TestDeliverSendsNoClientEmailWithoutAPayLink: PASS. go vet -tags e2e ./e2e: clean. apps/web pnpm typecheck: exit 0. npx vitest run src/features/pay src/features/invoices src/features/jobs: 9 files, 67 tests passed. Read docs/runs/F247-20261019T174307Z-e2e.log: TestMoneyLoop PASS, web e2e 48 and 41 passed.",
+          "at": "2026-10-19T17:49:56Z",
+          "filesHash": "c20b422104ad10f2"
+        },
+        "commit": "7bfcb19",
+        "doneAt": "2026-10-19T17:50:20Z"
+      },
+      "branch": "fix/f247-a-pay-link-carries-a-secret-token-and-th",
+      "baseCommit": "a01f91e042a5521ce9b6a2c61ee8579b5825c3a7",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f247-a-pay-link-carries-a-secret-token-and-th",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F248",
+      "type": "fix",
+      "behavior": "An email the provider refuses is set aside, and the other due emails still go out in the same round",
+      "acceptance": [
+        "A Resend answer 4xx other than 401, 403 and 429 records that event's failure with the usual backoff and the round goes on to the next due event.",
+        "A 5xx, a timeout, 401, 403 or 429 still ends the round as before.",
+        "Re-saving a refused payer address every 10 s no longer stops the other emails (the audit PoC as a test)."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-80"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F249",
+      "type": "fix",
+      "behavior": "A user queues at most 20 client emails a day across all profiles: Send to client, reminders, retainer months and job changes",
+      "acceptance": [
+        "Send to client answers 429 rate_limited once the user's profiles queued 20 client emails in 24 h, of any kind and from any profile.",
+        "Over the cap a reminder is not queued and goes out when there is room; a retainer month and a job change are still made, without the email.",
+        "The per-invoice and per-job limits stay; the old per-profile caps are replaced by the per-user cap.",
+        "PLAN lists an own email provider in place of Resend after the MVP; R-94, R-96, R-98, R-107 and api.md name the cap."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-94",
+        "R-96",
+        "R-107",
+        "D-65"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F250",
+      "type": "fix",
+      "behavior": "Requests with an unknown link or a bad body spend no shared limit, so junk traffic can't block Send to client or job acceptance",
+      "acceptance": [
+        "The payer email route checks the body and finds the invoice before any limit; the shared email budget is spent only when a receipt is queued.",
+        "Job accept and change accept check the body and find a job that can still accept before the shared budget.",
+        "Forty junk requests to each route leave the owner's Send to client and a real client's accept working (the audit PoCs as tests)."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-82",
+        "R-100"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F251",
+      "type": "fix",
+      "behavior": "Transactions CSV, the statement PDF and balance history stay bounded in memory, whatever a wallet receives",
+      "acceptance": [
+        "The CSV and the statement read rows as they come instead of loading them all; the statement keeps only income lines.",
+        "A period with more than 10000 transactions answers 422 too_many_transactions, and the Export dialog says to pick a shorter period.",
+        "Balance history no longer loads every transfer row into memory.",
+        "With 100000 dust transfers, ten parallel exports stay far below the audit's 1.1 GB peak (the audit PoC as a test)."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "R-108",
+        "R-112"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F252",
+      "type": "fix",
+      "behavior": "A payer-chooses invoice takes the option paid first only after every option's chain was read past that payment",
+      "acceptance": [
+        "With a full payment on one chain and later dust on a chain the worker reads first, the full payment's option is chosen and paid; the dust is held.",
+        "Until every option's chain was scanned past the earliest transfer's block time, no option is chosen and no deposit of the invoice is booked."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-56",
+        "D-76"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F253",
+      "type": "fix",
+      "behavior": "An expired invoice whose balance the ledger can't explain is checked again after a growing wait, so such invoices can't use up a chain's round",
+      "acceptance": [
+        "After an unexplained-balance alert the invoice is skipped until its wait ends (doubling, capped), unless a new confirmed deposit arrives.",
+        "With many such invoices, one round still marks an honest paid invoice paid (the audit PoC, scaled down, as a test)."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-21"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F254",
+      "type": "fix",
+      "behavior": "Check status gives each invoice owner a share of the limit, so one account's invoices can't use it up for everyone",
+      "acceptance": [
+        "Checks of one owner's invoices first take from that owner's own budget; once it is empty, payers of other owners' invoices still get checks."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-55"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F255",
+      "type": "fix",
+      "behavior": "The receipt lists only money paid to the creator; money held for the payer is not a payment",
+      "acceptance": [
+        "Paid with 2 USDC, then 2 more: the receipt PDF lists one 2.00 payment.",
+        "A deposit split between the creator and held money lists only the creator's part; the pay page and receipt email follow the same rule or are named."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-48"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F256",
+      "type": "fix",
+      "behavior": "A name that reads as Forwend through any Unicode look-alike letter is refused",
+      "acceptance": [
+        "The look-alike table comes from Unicode's confusables.txt; Armenian օ and ո and the existing cases are refused; 'Gifts for Wendy' is still allowed.",
+        "Emails that show an issuer name follow the same rule as sender names for the not-checked note, or the reason is documented."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-45"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F257",
+      "type": "fix",
+      "behavior": "The payer's receipt address is checked like a client email: plain text and exactly one address",
+      "acceptance": [
+        "A NUL, a bidi or control character, or x@bad..example answers 422 invalid_value, never 500; ordinary addresses still save."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-82"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F258",
+      "type": "fix",
+      "behavior": "The transactions CSV also guards a formula start after a semicolon",
+      "acceptance": [
+        "A client name Acme;=1+1 exports as Acme;'=1+1; the first-character guard is unchanged."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-108"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F259",
+      "type": "fix",
+      "behavior": "Accepting a quote payment that is not a change answers 404 job_not_found",
+      "acceptance": [
+        "A change accept on a quote payment, also with a zero proposedAt, answers 404 job_not_found and writes nothing."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit"
+      ],
+      "refs": [
+        "R-105"
+      ],
+      "keep": [
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-18T16:28:41Z",
+    "at": "2026-10-19T14:22:14Z",
     "clean": true,
     "problems": [],
-    "note": "PLAN 10.3 Jobs done: F230-F236 merged (backend, owner pages, quote page, mark done, record, scope changes backend and web). Next: PLAN 10.6 Records."
+    "note": "Fixed every known job limit (F237-F239) and finished PLAN 10.6 Records (F240-F245): classification and labels, CSV export, ECB records currency, statement PDF. Phase 10 is done (F246). Next: phase 11."
   }
 }

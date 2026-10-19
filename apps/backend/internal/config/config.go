@@ -32,7 +32,7 @@ type API struct {
 	ChainsFile string
 	InfuraKeys []string
 	RPCRate    float64
-	// PublicWebURL is the web app's origin, such as https://forwend.app: PDFs link to its /pay/<invoiceId> page.
+	// PublicWebURL is the web app's origin, such as https://forwend.app: PDFs link to its /pay/<payToken> page.
 	PublicWebURL string
 	// UserBurst is each signed-in user's burst of requests; 0 keeps the default (mid.UserBurst). Only the live e2e,
 	// whose tests all run as one user, sets it.

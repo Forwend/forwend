@@ -65,6 +65,7 @@ func TestExceptionsCancelAndEmail(t *testing.T) {
 	start(t, st.bin, "signer", append(append([]string{}, st.loop...), "EXECUTOR_PRIVATE_KEY="+chaintest.Key))
 	st.waitScanned(t)
 
+	pays := map[string]string{} // each invoice's pay link token (D-86)
 	create := func(key string) (id, receive string) {
 		t.Helper()
 		body := fmt.Sprintf(`{"chainId": %d, "token": %q, "amount": %q}`, chaintest.ChainID, st.token, amount)
@@ -72,10 +73,11 @@ func TestExceptionsCancelAndEmail(t *testing.T) {
 		if status != http.StatusCreated {
 			t.Fatalf("create %s: %d %v", key, status, made)
 		}
+		pays[made["invoiceId"].(string)] = made["payToken"].(string)
 		return made["invoiceId"].(string), made["receiveAddress"].(string)
 	}
 	state := func(id string) string {
-		inv := get(t, st.api+"/v1/invoices/"+id)
+		inv := get(t, st.api+"/v1/invoices/"+pays[id])
 		if inv["settlementStatus"] == "settled" {
 			return "settled"
 		}
@@ -91,7 +93,7 @@ func TestExceptionsCancelAndEmail(t *testing.T) {
 	d, dReceive := create("d") // INV-0004: canceled, then paid anyway
 
 	// The payer asks for the receipt before paying (R-82).
-	req, _ := http.NewRequest(http.MethodPut, st.api+"/v1/invoices/"+a+"/payer-email", strings.NewReader(`{"email": "payer@example.com"}`))
+	req, _ := http.NewRequest(http.MethodPut, st.api+"/v1/invoices/"+pays[a]+"/payer-email", strings.NewReader(`{"email": "payer@example.com"}`))
 	if status, body := do(t, req); status != http.StatusOK {
 		t.Fatalf("payer email: %d %v", status, body)
 	}

@@ -196,7 +196,8 @@ type Invoice struct {
 	Lines []Line // set by Get
 	// A copy taken at creation; later billing changes don't reach it.
 	Issuer       *profile.Issuer
-	ID           string // the pay link's id: the main row's
+	ID           string // the main row's on-chain id: keccak256 of PayToken
+	PayToken     string // the pay link's secret (D-86); "" for an invoice made before it
 	OptionID     string // the on-chain id of the terms below; ID for a fixed invoice
 	OptionLocked bool   // an option received money, so the payer can't pick another
 	OptionCount  int    // accepted options: 1 for a fixed invoice

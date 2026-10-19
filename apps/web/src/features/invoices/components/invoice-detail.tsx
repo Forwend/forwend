@@ -11,10 +11,7 @@ import { ChevronLeft, FileDown } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, type Ref, useEffect, useRef, useState } from "react";
 import { API_PAYMENT_STATUSES } from "@/features/activity/constants/activity";
-import {
-  useGetInvoiceQuery,
-  useGetProfileInvoiceQuery,
-} from "@/features/invoices/api/invoices-api";
+import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import { CheckStatus } from "@/features/invoices/components/check-status";
 import { InvoiceActions } from "@/features/invoices/components/invoice-actions";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
@@ -74,22 +71,19 @@ export interface InvoiceDetailProps {
   request?: boolean;
 }
 
-// The public read gives the terms, statuses and deposits and is read again every REFRESH_MS; the profile's own read
-// gives the client once, and its 404 tells that this profile did not make the invoice. On desktop the header's
-// breadcrumb leads back; phones have no breadcrumb, so they get a back link. A personal profile's invoice is a request:
-// it has no client and no due date.
+// The profile's own read gives the terms, statuses, deposits and the client, and is read again every REFRESH_MS; its 404
+// tells that this profile did not make the invoice (the public read needs the pay link's token, D-86). On desktop the
+// header's breadcrumb leads back; phones have no breadcrumb, so they get a back link. A personal profile's invoice is a
+// request: it has no client and no due date.
 export function InvoiceDetail({
   invoiceId,
   profileId,
   tokens,
   request = false,
 }: InvoiceDetailProps) {
-  const invoice = useGetInvoiceQuery(invoiceId, LIVE_QUERY);
-  // Polled like the public read: it carries why a paid invoice's money still waits, which changes as it settles.
-  const owned = useGetProfileInvoiceQuery({ profileId, invoiceId }, LIVE_QUERY);
-  const mine = owned.currentData ?? null;
+  const invoice = useGetProfileInvoiceQuery({ profileId, invoiceId }, LIVE_QUERY);
+  const mine = invoice.currentData ?? null;
   const failure = invoice.error as { status?: unknown } | undefined;
-  const notMine = (owned.error as { status?: unknown } | undefined)?.status === NOT_FOUND;
 
   return (
     <div className="flex flex-col gap-4 lg:gap-6">
@@ -101,22 +95,18 @@ export function InvoiceDetail({
         {request ? REQUESTS_COPY.invoices : COPY.back}
       </Link>
       {invoice.data ? (
-        notMine ? (
-          <p className="text-muted">{COPY.otherProfile}</p>
-        ) : (
-          <Loaded
-            profileId={profileId}
-            invoice={invoice.data}
-            mine={mine}
-            wait={owned.currentData?.settlementWait ?? null}
-            sends={owned.currentData?.sends ?? []}
-            reminders={owned.currentData?.reminders ?? null}
-            retainer={owned.currentData?.retainer ?? null}
-            clientFailed={owned.isError}
-            tokens={tokens}
-            request={request}
-          />
-        )
+        <Loaded
+          profileId={profileId}
+          invoice={invoice.data}
+          mine={mine}
+          wait={mine?.settlementWait ?? null}
+          sends={mine?.sends ?? []}
+          reminders={mine?.reminders ?? null}
+          retainer={mine?.retainer ?? null}
+          clientFailed={invoice.isError}
+          tokens={tokens}
+          request={request}
+        />
       ) : failure?.status === NOT_FOUND ? (
         <p className="text-muted">{COPY.notFound}</p>
       ) : invoice.isError ? (
@@ -225,6 +215,7 @@ function Loaded({
         <InvoiceActions
           profileId={profileId}
           invoiceId={invoice.invoiceId}
+          payToken={invoice.payToken}
           number={invoiceNumber(invoice.number)}
           noun={request ? COPY.noun.request : COPY.noun.invoice}
           payable={payable}
@@ -319,9 +310,9 @@ function Loaded({
                   />
                 ))}
               {/* Only while the checkout can take money: paid, settled or expired has nothing left to look for. */}
-              {payable ? (
+              {payable && invoice.payToken ? (
                 <CheckStatus
-                  invoiceId={invoice.invoiceId}
+                  payToken={invoice.payToken}
                   network={chainName(invoice.chainId)}
                   money={money}
                   nextCheckAt={invoice.nextCheckAt}
@@ -376,9 +367,9 @@ function Loaded({
               ) : null}
               <Row term={COPY.pdfs}>
                 <span className="flex flex-wrap justify-end gap-x-5 gap-y-1">
-                  <PdfLink invoiceId={invoice.invoiceId} pdf={INVOICE_PDFS.invoice} />
+                  <PdfLink payToken={invoice.payToken} pdf={INVOICE_PDFS.invoice} />
                   {invoice.paymentStatus === API_PAYMENT_STATUSES.paid ? (
-                    <PdfLink invoiceId={invoice.invoiceId} pdf={INVOICE_PDFS.receipt} />
+                    <PdfLink payToken={invoice.payToken} pdf={INVOICE_PDFS.receipt} />
                   ) : null}
                 </span>
               </Row>
@@ -543,10 +534,12 @@ function Row({
   );
 }
 
-function PdfLink({ invoiceId, pdf }: { invoiceId: string; pdf: InvoicePdf }) {
+// An invoice made before D-86 has no pay link, so its PDFs can't be fetched.
+function PdfLink({ payToken, pdf }: { payToken: string | null; pdf: InvoicePdf }) {
+  if (!payToken) return null;
   return (
     <a
-      href={invoicePdfUrl(invoiceId, pdf)}
+      href={invoicePdfUrl(payToken, pdf)}
       className={`${buttonClasses({ variant: "link" })} gap-1.5 text-sm`}
     >
       <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />

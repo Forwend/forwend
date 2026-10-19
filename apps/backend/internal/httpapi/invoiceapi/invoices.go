@@ -93,11 +93,12 @@ func listInvoices(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// getInvoice is GET /v1/invoices/{invoiceId}: public, so checkout can read the terms and recompute the address. The
-// id is the only key, so it leaves out the client's contact details; the issuer is who bills the payer, so it stays.
+// getInvoice is GET /v1/invoices/{payToken}: public, so checkout can read the terms and recompute the address. The
+// pay link is the only key, so it leaves out the client's contact details; the issuer is who bills the payer, so it
+// stays.
 func getInvoice(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		inv, err := invoices.Get(r.Context(), r.PathValue("invoiceId"))
+		inv, err := invoices.Get(r.Context(), r.PathValue("payToken"))
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -260,7 +261,7 @@ func listEvents(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// putPayerEmail is PUT /v1/invoices/{invoiceId}/payer-email (R-82): public, like the checkout. 200 with the address as
+// putPayerEmail is PUT /v1/invoices/{payToken}/payer-email (R-82): public, like the checkout. 200 with the address as
 // kept; 409 receipt_sent once the receipt went out.
 func putPayerEmail(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -271,7 +272,7 @@ func putPayerEmail(invoices *invoice.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		kept, err := invoices.SetPayerEmail(r.Context(), r.PathValue("invoiceId"), body.Email)
+		kept, err := invoices.SetPayerEmail(r.Context(), r.PathValue("payToken"), body.Email)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

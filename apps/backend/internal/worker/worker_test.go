@@ -13,6 +13,8 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 	"github.com/ensp1re/forwend/apps/backend/internal/watcher"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -109,11 +111,11 @@ func missedDeposit(t *testing.T, ctx context.Context, settleDeadline int64) (*pg
 		     u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:alice') RETURNING id),
 		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id)
 		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
-		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash, pay_token)
 		SELECT $4, id, $1, 'evm', $2, 5000000, $5 - 86400, $5,
 		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
-		    $3, 'key-1', decode(repeat('00', 32), 'hex') FROM p`, chaintest.ChainID, token, receive, missedID,
-		settleDeadline); err != nil {
+		    $3, 'key-1', decode(repeat('00', 32), 'hex'), $6 FROM p`, chaintest.ChainID, token, receive, missedID,
+		settleDeadline, missedToken); err != nil {
 		t.Fatal(err)
 	}
 	w := New(pool, map[uint64]chain.Spec{chaintest.ChainID: {ChainID: chaintest.ChainID,
@@ -140,7 +142,10 @@ func missedDeposit(t *testing.T, ctx context.Context, settleDeadline int64) (*pg
 	return pool, w, a, status
 }
 
-const missedID = "0x0101010101010101010101010101010101010101010101010101010101010101"
+// missedToken is the invoice's pay link token, and missedID its id (D-86).
+const missedToken = "0101010101010101010101010101010101010101010101010101010101010101"
+
+var missedID = crypto.Keccak256Hash(common.FromHex(missedToken)).Hex()
 
 func recheck(t *testing.T, ctx context.Context, pool *pgxpool.Pool, a *chaintest.Anvil) invoice.Recheck {
 	t.Helper()
@@ -149,7 +154,7 @@ func recheck(t *testing.T, ctx context.Context, pool *pgxpool.Pool, a *chaintest
 		t.Fatal(err)
 	}
 	defer client.Close()
-	found, err := invoice.NewService(pool).Recheck(ctx, missedID,
+	found, err := invoice.NewService(pool).Recheck(ctx, missedToken,
 		ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: client}), func() time.Duration { return 0 })
 	if err != nil {
 		t.Fatal(err)

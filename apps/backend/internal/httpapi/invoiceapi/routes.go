@@ -4,7 +4,6 @@ package invoiceapi
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
@@ -38,12 +37,12 @@ func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, balance
 	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/repeat/stop", g.ProfileScoped(stopRepeat(invoices)))
 	mux.Handle("GET /v1/profiles/{profileId}/events", g.ProfileScoped(listEvents(invoices)))
 	mux.Handle("GET /v1/profiles/{profileId}/owed", g.ProfileScoped(listOwed(invoices)))
-	mux.Handle("GET /v1/invoices/{invoiceId}", getInvoice(invoices)) // checkout reads
-	mux.Handle("POST /v1/invoices/{invoiceId}/recheck", recheckInvoice(invoices, balances, rechecks))
-	perInvoice := func(r *http.Request) string { return strings.ToLower(r.PathValue("invoiceId")) }
-	mux.Handle("PUT /v1/invoices/{invoiceId}/payer-email", mid.Limit(emails,
+	mux.Handle("GET /v1/invoices/{payToken}", getInvoice(invoices)) // checkout reads
+	mux.Handle("POST /v1/invoices/{payToken}/recheck", recheckInvoice(invoices, balances, rechecks))
+	perInvoice := func(r *http.Request) string { return r.PathValue("payToken") }
+	mux.Handle("PUT /v1/invoices/{payToken}/payer-email", mid.Limit(emails,
 		mid.Everyone, mid.Limit(mid.NewBuckets(PayerEmailRate, PayerEmailBurst), perInvoice, putPayerEmail(invoices))))
 	mux.Handle("POST /v1/reminders/{token}/stop", stopReminders(invoices)) // the client's stop link: no sign-in
-	mux.Handle("GET /v1/invoices/{invoiceId}/invoice.pdf", invoicePDF(invoices, webURL))
-	mux.Handle("GET /v1/invoices/{invoiceId}/receipt.pdf", receiptPDF(invoices, webURL))
+	mux.Handle("GET /v1/invoices/{payToken}/invoice.pdf", invoicePDF(invoices, webURL))
+	mux.Handle("GET /v1/invoices/{payToken}/receipt.pdf", receiptPDF(invoices, webURL))
 }

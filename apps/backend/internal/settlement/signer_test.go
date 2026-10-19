@@ -651,14 +651,25 @@ func TestAfterTheDeadlineTheSignerWaitsForTheRefundAuthority(t *testing.T) {
 	}
 }
 
-// settlementTxHash is the hash GET /v1/invoices/{id} shows; "" is null.
+// settlementTxHash is the hash the invoice reads show; "" is null.
 func (e env) settlementTxHash(t *testing.T, invoiceID string) string {
 	t.Helper()
-	inv, err := invoice.NewService(e.pool).Get(context.Background(), invoiceID)
+	return e.invoice(t, invoiceID).SettlementTxHash
+}
+
+// invoice is the owner's read of the invoice with this id.
+func (e env) invoice(t *testing.T, id string) invoice.Invoice {
+	t.Helper()
+	var profile string
+	if err := e.pool.QueryRow(context.Background(), "SELECT profile_id::text FROM invoices WHERE id = $1", id).
+		Scan(&profile); err != nil {
+		t.Fatal(err)
+	}
+	inv, err := invoice.NewService(e.pool).GetOfProfile(context.Background(), profile, id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return inv.SettlementTxHash
+	return inv
 }
 
 // Our settle is saved but reverts or never mines, and the refund authority settles after the deadline: the intent
@@ -1465,10 +1476,9 @@ func TestSettlesTheOptionPaidFirst(t *testing.T) {
 	if err := e.pool.QueryRow(ctx, "SELECT count(*) FROM settlement_intents").Scan(&intents); err != nil || intents != 1 {
 		t.Fatalf("%d settlement intents (%v), want 1", intents, err)
 	}
-	got, err := invoice.NewService(e.pool).Get(ctx, inv.ID)
-	if err != nil || got.OptionID != usdtOption.ID || !got.OptionLocked || got.SettlementStatus != "settled" {
-		t.Fatalf("invoice shows option %s locked %v settlement %s (%v)", got.OptionID, got.OptionLocked,
-			got.SettlementStatus, err)
+	got := e.invoice(t, inv.ID)
+	if got.OptionID != usdtOption.ID || !got.OptionLocked || got.SettlementStatus != "settled" {
+		t.Fatalf("invoice shows option %s locked %v settlement %s", got.OptionID, got.OptionLocked, got.SettlementStatus)
 	}
 	// The read lists the held USDC payment under its own option, and only the USDT one as the invoice's (F143).
 	if len(got.Deposits) != 1 || len(got.Options[1].Deposits) != 1 || got.Options[1].ID != usdtOption.ID {

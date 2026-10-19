@@ -24,7 +24,7 @@ test("page titles use the 'Forwend | …' format", async ({ page }) => {
 test("pages can't be framed by another site and carry the security headers", async ({
   request,
 }) => {
-  for (const path of ["/", "/sign-in", "/app", `/pay/0x${"1".repeat(64)}`]) {
+  for (const path of ["/", "/sign-in", "/app", `/pay/${"1".repeat(64)}`]) {
     const headers = (await request.get(path)).headers();
     expect(headers["content-security-policy"], path).toContain("frame-ancestors 'none'");
     expect(headers["x-frame-options"], path).toBe("DENY");

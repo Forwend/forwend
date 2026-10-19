@@ -16,7 +16,7 @@ import (
 
 func (e invoiceEnv) recheck(t *testing.T, srv *httptest.Server, id string) reply {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodPost, srv.URL+"/v1/invoices/"+id+"/recheck", nil)
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/v1/invoices/"+e.link(t, id)+"/recheck", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

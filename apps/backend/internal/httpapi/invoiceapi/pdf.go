@@ -12,7 +12,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 )
 
-// invoicePDF is GET /v1/invoices/{invoiceId}/invoice.pdf and receiptPDF is .../receipt.pdf: public, like the invoice.
+// invoicePDF is GET /v1/invoices/{payToken}/invoice.pdf and receiptPDF is .../receipt.pdf: public, like the invoice.
 func invoicePDF(invoices *invoice.Service, webURL string) http.HandlerFunc {
 	return servePDF(invoices, webURL, "invoice", document.Invoice)
 }
@@ -23,12 +23,12 @@ func receiptPDF(invoices *invoice.Service, webURL string) http.HandlerFunc {
 
 func servePDF(invoices *invoice.Service, webURL, kind string, render func(invoice.Invoice, string) ([]byte, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		inv, err := invoices.Get(r.Context(), r.PathValue("invoiceId"))
+		inv, err := invoices.Get(r.Context(), r.PathValue("payToken"))
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		pdf, err := render(inv, webURL+"/pay/"+inv.ID)
+		pdf, err := render(inv, webURL+"/pay/"+inv.PayToken)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

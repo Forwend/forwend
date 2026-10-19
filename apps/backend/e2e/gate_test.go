@@ -26,7 +26,9 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
+	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
@@ -58,7 +60,7 @@ func TestMoneyLoop(t *testing.T) {
 	if status != http.StatusCreated {
 		t.Fatalf("create invoice: %d %v", status, created)
 	}
-	id, receive := created["invoiceId"].(string), created["receiveAddress"].(string)
+	id, pay, receive := created["invoiceId"].(string), created["payToken"].(string), created["receiveAddress"].(string)
 
 	// Every state the API shows on the way, in order: the invoice's, and its deposit's with blocks left.
 	var seen, deposit []string
@@ -68,7 +70,7 @@ func TestMoneyLoop(t *testing.T) {
 		}
 	}
 	observe := func() string {
-		inv := get(t, api+"/v1/invoices/"+id)
+		inv := get(t, api+"/v1/invoices/"+pay)
 		state := inv["paymentStatus"].(string)
 		if inv["settlementStatus"] == "settled" {
 			state = "settled"
@@ -102,10 +104,24 @@ func TestMoneyLoop(t *testing.T) {
 	}
 	t.Logf("the first RPC answered %d of %d requests with 429", refused, len(limited.Calls()))
 	// The API names the signer's settle transaction: a call to the receive address.
-	hash, _ := get(t, api+"/v1/invoices/"+id)["settlementTxHash"].(string)
+	hash, _ := get(t, api+"/v1/invoices/"+pay)["settlementTxHash"].(string)
 	settleTx, _, err := ethclient.NewClient(anvil.RPC).TransactionByHash(ctx, gethcommon.HexToHash(hash))
 	if err != nil || settleTx.To() == nil || !strings.EqualFold(settleTx.To().Hex(), receive) {
 		t.Fatalf("settlementTxHash %q: %v, want the settle transaction to %s", hash, err, receive)
+	}
+	// D-86: the settle deployed the receiver, whose event shows the invoice id to anyone; that id opens no public route.
+	logs, err := ethclient.NewClient(anvil.RPC).FilterLogs(ctx, ethereum.FilterQuery{
+		Topics: [][]gethcommon.Hash{{crypto.Keccak256Hash([]byte("ReceiverDeployed(address,bytes32)"))}}})
+	if err != nil || len(logs) != 1 || logs[0].Topics[2].Hex() != id {
+		t.Fatalf("ReceiverDeployed logs %v (%v), want one naming %s", logs, err, id)
+	}
+	for _, r := range []struct{ method, path, body string }{{http.MethodGet, "", ""}, {http.MethodGet, "/invoice.pdf", ""},
+		{http.MethodGet, "/receipt.pdf", ""}, {http.MethodPost, "/recheck", ""},
+		{http.MethodPut, "/payer-email", `{"email": "a@example.com"}`}} {
+		req, _ := http.NewRequest(r.method, api+"/v1/invoices/"+id+r.path, strings.NewReader(r.body))
+		if status, body := do(t, req); status != http.StatusNotFound {
+			t.Fatalf("%s %s by the on-chain id: %d %v, want 404", r.method, r.path, status, body)
+		}
 	}
 
 	// The ledger equals the chain: the receive address is empty, the creator holds the amount.

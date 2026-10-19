@@ -75,13 +75,14 @@ const formatMoney = (units: bigint, token: PayToken) =>
   `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`;
 
 export interface PayInvoiceProps {
-  invoiceId: string;
+  /** The pay link's token (D-86). */
+  linkToken: string;
   option?: string;
 }
 
 // The public read, again every REFRESH_MS while the tab is visible: the payer sees the status move without a reload.
-export function PayInvoice({ invoiceId, option }: PayInvoiceProps) {
-  const invoice = useGetInvoiceQuery(invoiceId, LIVE_QUERY);
+export function PayInvoice({ linkToken, option }: PayInvoiceProps) {
+  const invoice = useGetInvoiceQuery(linkToken, LIVE_QUERY);
   const failure = invoice.error as { status?: unknown } | undefined;
   if (invoice.data) {
     // A failed poll keeps the last read: say so first, or a payer may think nothing arrived and send again.
@@ -96,9 +97,7 @@ export function PayInvoice({ invoiceId, option }: PayInvoiceProps) {
         </Button>
       </p>
     ) : null;
-    return (
-      <Loaded invoice={invoice.data} linkInvoiceId={invoiceId} option={option} stale={stale} />
-    );
+    return <Loaded invoice={invoice.data} linkToken={linkToken} option={option} stale={stale} />;
   }
   if (failure?.status === NOT_FOUND) notFound();
   if (invoice.isError) {
@@ -134,12 +133,12 @@ const shownKey = (invoiceId: string) => `forwend:pay:${invoiceId}`;
 
 function Loaded({
   invoice: answer,
-  linkInvoiceId,
+  linkToken,
   option,
   stale,
 }: {
   invoice: Invoice;
-  linkInvoiceId: string;
+  linkToken: string;
   option?: string;
   stale: ReactNode;
 }) {
@@ -151,10 +150,7 @@ function Loaded({
   const choosing = !answer.optionLocked && answer.options.length > 1;
   const [picked, setPicked] = useState(option?.toLowerCase());
   const invoice = useMemo(() => withOption(answer, picked), [answer, picked]);
-  const address = useMemo(
-    () => checkedReceiveAddress(invoice, linkInvoiceId),
-    [invoice, linkInvoiceId],
-  );
+  const address = useMemo(() => checkedReceiveAddress(invoice, linkToken), [invoice, linkToken]);
   const token = payToken(invoice);
   const pickedOption = choosing ? answer.options.find((o) => o.optionId === picked) : undefined;
   const choice: Choice | null = choosing
@@ -187,6 +183,7 @@ function Loaded({
       <Summary invoice={invoice} token={token} pay={pay} picking={picking} stale={stale} />
       <PayBox
         invoice={invoice}
+        linkToken={linkToken}
         address={address}
         token={token}
         pay={pay}
@@ -194,7 +191,7 @@ function Loaded({
         choice={choice}
         picking={picking}
       />
-      <Terms invoice={invoice} pay={pay} now={now} />
+      <Terms invoice={invoice} linkToken={linkToken} pay={pay} now={now} />
     </>
   );
 }
@@ -272,7 +269,17 @@ function Summary({
 
 // What the invoice is for, its terms, its note and its PDF, as a hosted invoice page lists them: under the amount on
 // wide screens and after the pay panel on phones, so the top of the page is only who asks and how much.
-function Terms({ invoice, pay, now }: { invoice: Invoice; pay: Pay; now: number }) {
+function Terms({
+  invoice,
+  linkToken,
+  pay,
+  now,
+}: {
+  invoice: Invoice;
+  linkToken: string;
+  pay: Pay;
+  now: number;
+}) {
   const closesAt = checkoutClosesAt(invoice);
   return (
     <div className="flex min-w-0 flex-col items-start gap-4 lg:col-start-1 lg:row-start-2 lg:gap-5">
@@ -321,7 +328,7 @@ function Terms({ invoice, pay, now }: { invoice: Invoice; pay: Pay; now: number 
         </p>
       ) : null}
       <a
-        href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.invoice)}
+        href={invoicePdfUrl(linkToken, INVOICE_PDFS.invoice)}
         className="-mx-1 inline-flex items-center gap-2 rounded-sm px-1 text-sm font-medium text-ink underline decoration-line-strong underline-offset-4 outline-none hover:decoration-ink focus-visible:outline-2 focus-visible:outline-focus"
       >
         <FileDown aria-hidden className={ICON} />
@@ -334,6 +341,7 @@ function Terms({ invoice, pay, now }: { invoice: Invoice; pay: Pay; now: number 
 // The payer's side: how to pay while money is due; once money is seen, the steps it goes through and each payment (R-68).
 function PayBox({
   invoice,
+  linkToken,
   address,
   token,
   pay,
@@ -342,6 +350,7 @@ function PayBox({
   picking,
 }: {
   invoice: Invoice;
+  linkToken: string;
   address: string;
   token: PayToken;
   pay: Pay;
@@ -402,7 +411,7 @@ function PayBox({
     <div className="flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
       <div className={PANEL}>
         {done ? (
-          <Paid invoice={invoice} token={token} />
+          <Paid invoice={invoice} linkToken={linkToken} token={token} />
         ) : (
           <>
             {pay.canSend || seen ? (
@@ -491,11 +500,19 @@ function PayBox({
               </section>
             ) : null}
             {seen ? (
-              <Received invoice={invoice} pay={pay} token={token} money={money} network={network} />
+              <Received
+                invoice={invoice}
+                linkToken={linkToken}
+                pay={pay}
+                token={token}
+                money={money}
+                network={network}
+              />
             ) : pay.state === PAY_STATES.waiting && !sending ? null : (
               // Waiting means something only once there is an address to pay.
               <StatusLine
                 invoice={invoice}
+                linkToken={linkToken}
                 pay={pay}
                 money={money}
                 network={network}
@@ -506,7 +523,7 @@ function PayBox({
         )}
         {/* The receipt by email as the panel's last row, once there is a payment to send it for: from the first
             money seen, so a payer can leave before the final check, and after paying (R-82). */}
-        {seen || done ? <ReceiptEmail invoiceId={invoice.invoiceId} paid={done} /> : null}
+        {seen || done ? <ReceiptEmail linkToken={linkToken} paid={done} /> : null}
       </div>
       {/* Overpaid gets its own handling later (PLAN 11.10.1); late money is held for the payer now. */}
       {pay.late > 0n ? (
@@ -536,12 +553,14 @@ function PayBox({
 // as stuck.
 function StatusLine({
   invoice,
+  linkToken,
   pay,
   money,
   network,
   bordered,
 }: {
   invoice: Invoice;
+  linkToken: string;
   pay: Pay;
   money: (units: bigint) => string;
   network: string;
@@ -566,7 +585,7 @@ function StatusLine({
       {/* Money not seen yet may be a missed log: the payer can ask once in a while (R-55). */}
       {pending ? (
         <CheckStatus
-          invoiceId={invoice.invoiceId}
+          payToken={linkToken}
           network={network}
           money={money}
           nextCheckAt={invoice.nextCheckAt}
@@ -619,12 +638,14 @@ function PickedOption({
 // Money seen: the steps to Paid, where they stand, and each payment with its transaction on the explorer.
 function Received({
   invoice,
+  linkToken,
   pay,
   token,
   money,
   network,
 }: {
   invoice: Invoice;
+  linkToken: string;
   pay: Pay;
   token: PayToken;
   money: (units: bigint) => string;
@@ -685,7 +706,7 @@ function Received({
       {/* The rest may already be sent and missed: the payer can ask once in a while (R-55). */}
       {pay.state === PAY_STATES.partial ? (
         <CheckStatus
-          invoiceId={invoice.invoiceId}
+          payToken={linkToken}
           network={network}
           money={money}
           nextCheckAt={invoice.nextCheckAt}
@@ -696,7 +717,15 @@ function Received({
 }
 
 // Done for the payer: paid is the end. Whether the money already reached the sender is the sender's business (R-68).
-function Paid({ invoice, token }: { invoice: Invoice; token: PayToken }) {
+function Paid({
+  invoice,
+  linkToken,
+  token,
+}: {
+  invoice: Invoice;
+  linkToken: string;
+  token: PayToken;
+}) {
   const amount = BigInt(invoice.amount);
   const last = receiptDeposits(invoice).at(-1);
   const tx = last ? txLink(invoice.chainId, last.txHash) : null;
@@ -744,7 +773,7 @@ function Paid({ invoice, token }: { invoice: Invoice; token: PayToken }) {
       </dl>
       <div className="flex flex-col gap-2">
         <a
-          href={invoicePdfUrl(invoice.invoiceId, INVOICE_PDFS.receipt)}
+          href={invoicePdfUrl(linkToken, INVOICE_PDFS.receipt)}
           className={`${buttonClasses({ variant: back ? "secondary" : "primary", size: "lg" })} w-full`}
         >
           <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />

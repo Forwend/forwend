@@ -47,8 +47,8 @@ export function invoiceNumber(n: number): string {
   return `INV-${String(n).padStart(4, "0")}`;
 }
 
-export function invoicePdfUrl(invoiceId: string, pdf: InvoicePdf): string {
-  return `${API_BASE}/v1/invoices/${encodeURIComponent(invoiceId)}/${pdf}.pdf`;
+export function invoicePdfUrl(payToken: string, pdf: InvoicePdf): string {
+  return `${API_BASE}/v1/invoices/${encodeURIComponent(payToken)}/${pdf}.pdf`;
 }
 
 export function tokenKey(t: { chainId: number; token: string }): string {

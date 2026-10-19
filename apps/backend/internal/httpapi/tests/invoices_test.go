@@ -112,11 +112,24 @@ func (e invoiceEnv) post(t *testing.T, user, profile, key, body string) reply {
 
 func (e invoiceEnv) get(t *testing.T, id string) reply {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodGet, e.srv.URL+"/v1/invoices/"+id, nil)
+	req, err := http.NewRequest(http.MethodGet, e.srv.URL+"/v1/invoices/"+e.link(t, id), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return e.do(t, req)
+}
+
+// link is the pay link's token of the invoice with this id, as the owner's read gives it (D-86). An id without one (an
+// option's, an unknown one) stays as it is, so a test can show that the public routes refuse it.
+func (e invoiceEnv) link(t *testing.T, id string) string {
+	t.Helper()
+	var token *string
+	err := e.pool.QueryRow(context.Background(), "SELECT pay_token FROM invoices WHERE id = $1", strings.ToLower(id)).
+		Scan(&token)
+	if err != nil || token == nil {
+		return id
+	}
+	return *token
 }
 
 func (e invoiceEnv) do(t *testing.T, req *http.Request) reply {

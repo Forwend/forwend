@@ -43,6 +43,9 @@ export const REMINDER_STEPS = {
 /** A payment reminder's stop token (R-96): 32 random bytes in lowercase hex. */
 export const STOP_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
 
+/** A pay link's token (D-86): 32 random bytes in lowercase hex; the invoice id is keccak256 of it. */
+export const PAY_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
+
 /** The rows of Owed to you (R-95), in the API's order. */
 export const OWED_KINDS = {
   overdue: "overdue",

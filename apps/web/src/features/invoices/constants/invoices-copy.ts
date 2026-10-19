@@ -270,7 +270,6 @@ export const INVOICE_COPY = {
   receivedOf: (received: string, total: string) => `Received ${received} of ${total}`,
   notFound: "No invoice has this link.",
   failed: "We could not load this invoice.",
-  otherProfile: "This invoice belongs to another profile. Switch to that profile to see it.",
   retry: "Try again",
   amount: "Amount",
   progress: "Payment progress",
