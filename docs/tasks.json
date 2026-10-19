@@ -3586,12 +3586,13 @@
         "With many such invoices, one round still marks an honest paid invoice paid (the audit PoC, scaled down, as a test)."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "docs-check"
       ],
       "refs": [
+        "R-120",
         "R-21"
       ],
       "keep": [
@@ -3600,7 +3601,78 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-19T19:55:35Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 77.2,
+            "log": "docs/runs/F253-20261019T195535Z-unit.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F253-20261019T195535Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.2,
+            "log": "docs/runs/F253-20261019T195535Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F253-20261019T195535Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F253-20261019T195535Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.2,
+            "log": "docs/runs/F253-20261019T195535Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 213.8,
+            "log": "docs/runs/F253-20261019T195535Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F253-20261019T195535Z-keep.log"
+          }
+        ],
+        "taskHash": "905e0a279189ebb1",
+        "filesHash": "d216610b884fae4a",
+        "proof": {
+          "1": "unit: ledger TestUnexplainedBalanceWaitsLongerEachTime: 20 stuck invoices make 20 balance calls once, none the next round while waiting about a minute, 20 when the wait ends, then wait about two minutes (20 calls every round before the fix); TestSecondRPCBehindFinalizedNeverDecides: a found deposit is booked and paid",
+          "2": "unit: TestUnexplainedBalanceWaitsLongerEachTime: the honest invoice is paid in the first round; the audit's 700-invoice PoC (run locally) now pays the honest invoice in round 1 with new deposits first (open after two rounds before the fix)"
+        }
+      },
+      "branch": "fix/f253-an-expired-invoice-whose-balance-the-led",
+      "baseCommit": "b0b31d40e89bd5840df7e336a3fe4afb8901b8a4",
+      "failedVerifies": 0
     },
     {
       "id": "F254",
