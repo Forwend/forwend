@@ -166,4 +166,4 @@ func TestRecheckWithOneNetworkDown(t *testing.T) {
 	}
 }
 
-func noLimit() time.Duration { return 0 }
+func noLimit(string) time.Duration { return 0 }

@@ -155,7 +155,7 @@ func recheck(t *testing.T, ctx context.Context, pool *pgxpool.Pool, a *chaintest
 	}
 	defer client.Close()
 	found, err := invoice.NewService(pool).Recheck(ctx, missedToken,
-		ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: client}), func() time.Duration { return 0 })
+		ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: client}), func(string) time.Duration { return 0 })
 	if err != nil {
 		t.Fatal(err)
 	}

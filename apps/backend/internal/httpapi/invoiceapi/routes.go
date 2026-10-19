@@ -11,8 +11,12 @@ import (
 )
 
 // Check status reads a chain RPC per call: this bounds those reads per api process, whoever asks (R-55). Each invoice
-// is also limited to one check every invoice.RecheckEvery, across replicas.
-const RecheckRate, RecheckBurst = 1, 10
+// is also limited to one check every invoice.RecheckEvery, across replicas, and each owner's invoices take from the
+// owner's share first, so one account's invoices can't use up the budget everyone shares.
+const (
+	RecheckRate, RecheckBurst           = 1, 10
+	RecheckOwnerRate, RecheckOwnerBurst = 0.2, 3
+)
 
 // The payer's receipt address (R-82) is public like the checkout: a few changes per invoice, and a shared budget for
 // everyone, spent only by a receipt that goes out (R-117), so the endpoint can't send mail to many addresses. Per IP
@@ -27,6 +31,7 @@ const (
 // (D-15); webURL is the web app's origin, for the pay link in PDFs.
 func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, balances ledger.BalanceOf, webURL string) {
 	rechecks := mid.NewBuckets(RecheckRate, RecheckBurst)
+	owners := mid.NewBuckets(RecheckOwnerRate, RecheckOwnerBurst)
 	emails := mid.NewBuckets(PayerEmailAllRate, PayerEmailAllBurst)
 	mux.Handle("POST /v1/profiles/{profileId}/invoices", g.ProfileScoped(createInvoice(invoices)))
 	mux.Handle("GET /v1/profiles/{profileId}/invoices", g.ProfileScoped(listInvoices(invoices)))
@@ -38,7 +43,7 @@ func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, balance
 	mux.Handle("GET /v1/profiles/{profileId}/events", g.ProfileScoped(listEvents(invoices)))
 	mux.Handle("GET /v1/profiles/{profileId}/owed", g.ProfileScoped(listOwed(invoices)))
 	mux.Handle("GET /v1/invoices/{payToken}", getInvoice(invoices)) // checkout reads
-	mux.Handle("POST /v1/invoices/{payToken}/recheck", recheckInvoice(invoices, balances, rechecks))
+	mux.Handle("POST /v1/invoices/{payToken}/recheck", recheckInvoice(invoices, balances, rechecks, owners))
 	perInvoice := func(r *http.Request) string { return r.PathValue("payToken") }
 	mux.Handle("PUT /v1/invoices/{payToken}/payer-email",
 		mid.Limit(mid.NewBuckets(PayerEmailRate, PayerEmailBurst), perInvoice, putPayerEmail(invoices, emails)))
