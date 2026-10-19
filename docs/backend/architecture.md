@@ -413,7 +413,8 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
   a second RPC's `balanceOf` covers every booked deposit (D-15). An invoice owed in full never expires; it waits for
   the second RPC. Otherwise it becomes `expired` or `expired_partially_paid` once the chain's finalized block time
   passes `expires_at`, no transfer is still `detected`, and the second RPC's balance equals the booked amount. More on
-  chain than booked (a missed log, an Arc native-coin payment) blocks expiry and logs a warning. An expired partial
+  chain than booked (a missed log, an Arc native-coin payment) blocks expiry and logs a warning; so does less. Such
+  an invoice is read again after a growing wait (R-120), and a round books invoices with new deposits first. An expired partial
   payment is moved to `payer_held` by an `expiry` ledger transaction. `refund_status` becomes `held` while
   `payer_held` > 0. One invoice's error doesn't stop the others; each balance call has a 10 s limit.
 - The second RPC reads `balanceOf` at its own finalized block and reports that block, so a primary RPC that calls a

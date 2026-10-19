@@ -15,13 +15,18 @@ import (
 // BalanceTimeout bounds one second-RPC balance call.
 const BalanceTimeout = 10 * time.Second
 
-// ProcessChain runs Process for every invoice on the chain that can still change: not final yet, or with a
-// confirmed deposit not booked yet. ponytail: scans every open invoice each run; index by due work if it grows.
+// ProcessChain runs Process for every invoice on the chain that can still change: not final yet and not waiting after
+// an unexplained balance (R-120), or with a confirmed deposit not booked yet. Those with a deposit to book go first,
+// so new money is booked even when the round runs out of time. ponytail: scans every open invoice each run; index by
+// due work if it grows.
 func (s *Service) ProcessChain(ctx context.Context, chainID uint64) error {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id FROM invoices i WHERE chain_id = $1 AND (payment_status IN ('open', 'detected', 'partially_paid')
-		    OR EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = i.id AND t.status = 'confirmed' AND NOT t.booked))`,
-		chainID)
+		SELECT id FROM (SELECT i.id, i.payment_status, EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = i.id
+		        AND t.status = 'confirmed' AND NOT t.booked) AS money
+		    FROM invoices i WHERE i.chain_id = $1) i
+		WHERE money OR (payment_status IN ('open', 'detected', 'partially_paid')
+		    AND NOT EXISTS (SELECT 1 FROM invoice_balance_alerts a WHERE a.invoice_id = i.id AND a.next_check_at > now()))
+		ORDER BY money DESC`, chainID)
 	if err != nil {
 		return fmt.Errorf("list chain %d invoices to process: %w", chainID, err)
 	}
@@ -142,6 +147,11 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		owed.Add(owed, toCreator)
 		newlyHeld.Add(newlyHeld, toHeld)
 	}
+	if len(deposits) > 0 { // new money: an unexplained balance may be explained now
+		if _, err := tx.Exec(ctx, "DELETE FROM invoice_balance_alerts WHERE invoice_id = $1", invoiceID); err != nil {
+			return fmt.Errorf("clear invoice %s balance alert: %w", invoiceID, err)
+		}
+	}
 
 	funded, mayExpire := false, false
 	switch {
@@ -216,6 +226,11 @@ func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chain
 
 // balanced asks the second RPC whether the receive address holds exactly what is booked.
 func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (bool, error) {
+	var waiting bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM invoice_balance_alerts WHERE invoice_id = $1
+		AND next_check_at > now())`, invoiceID).Scan(&waiting); err != nil || waiting {
+		return false, err
+	}
 	booked, onChain, err := s.compare(ctx, tx, invoiceID, chainID, finalized, token, receive)
 	if err != nil || onChain == nil {
 		return false, err
@@ -224,14 +239,29 @@ func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, cha
 		// A deposit the watcher never saw, or Arc USDC sent natively: an operator books it (money-safety.md).
 		slog.Error("ALERT receive address holds money with no booked transfer; not expiring", "invoice", invoiceID,
 			"booked", booked.String(), "onChain", onChain.String())
-		return false, nil
+		return false, alertAgainLater(ctx, tx, invoiceID)
 	}
 	if onChain.Cmp(booked) < 0 {
 		slog.Warn("receive address holds less than booked; not expiring", "invoice", invoiceID,
 			"booked", booked.String(), "onChain", onChain.String())
-		return false, nil
+		return false, alertAgainLater(ctx, tx, invoiceID)
 	}
 	return true, nil
+}
+
+// alertAgainLater counts one more unexplained balance and sets when the worker reads it again: 1 min, doubling to at
+// most a day (R-120). Each read costs second-RPC calls in the chain's round, so many such invoices can't use it up.
+// The exponent stops at 11 (34 h, over the cap): a larger one overflows Postgres's interval.
+func alertAgainLater(ctx context.Context, tx pgx.Tx, invoiceID string) error {
+	if _, err := tx.Exec(ctx, `INSERT INTO invoice_balance_alerts (invoice_id, alerts, next_check_at)
+		VALUES ($1, 1, now() + interval '1 minute')
+		ON CONFLICT (invoice_id) DO UPDATE SET alerts = invoice_balance_alerts.alerts + 1,
+		    next_check_at = now() + least(interval '1 minute' * power(2, least(invoice_balance_alerts.alerts, 11)),
+		        interval '1 day')`,
+		invoiceID); err != nil {
+		return fmt.Errorf("record invoice %s balance alert: %w", invoiceID, err)
+	}
+	return nil
 }
 
 // compare returns the booked receiver balance and the second RPC's balance. onChain is nil when that RPC is behind

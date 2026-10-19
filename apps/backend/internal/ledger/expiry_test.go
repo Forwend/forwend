@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
@@ -23,6 +24,7 @@ type sim struct {
 	answer  map[string]*big.Int // second RPC balance per receive address
 	down    map[string]bool     // second RPC errors for these addresses
 	behind  map[string]bool     // second RPC answers 0 from a block before the finalized one
+	calls   []string            // second RPC balance calls, by receive address
 	n       int
 }
 
@@ -52,6 +54,7 @@ func newSim(t *testing.T) *sim {
 	}
 	s := &sim{t: t, pool: pool, answer: map[string]*big.Int{}, down: map[string]bool{}, behind: map[string]bool{}}
 	s.service = NewService(pool, func(_ context.Context, _ uint64, _, holder string) (*big.Int, uint64, error) {
+		s.calls = append(s.calls, holder)
 		switch {
 		case s.down[holder]:
 			return nil, 0, errors.New("second RPC down")
@@ -172,9 +175,68 @@ func TestUnexplainedBalanceDelaysExpiry(t *testing.T) {
 		t.Fatalf("with an unexplained balance: %s, want open", payment)
 	}
 	s.answer[receive] = new(big.Int)
+	s.exec("UPDATE invoice_balance_alerts SET next_check_at = now()") // its next check is due (R-120)
 	s.process(id)
 	if payment, _ := s.payment(id); payment != Expired {
 		t.Fatalf("once the balance matches the ledger: %s, want expired", payment)
+	}
+}
+
+// R-120: an expired invoice whose balance the ledger can't explain (Arc USDC sent natively) is checked again only after a
+// growing wait, so many of them can't use up a chain's round, and an honest invoice in the same round is still paid
+// (audit 2026-10-19: 700 of them starved the round).
+func TestUnexplainedBalanceWaitsLongerEachTime(t *testing.T) {
+	s := newSim(t)
+	var stuck []string
+	for range 20 {
+		id, receive := s.invoice()
+		s.answer[receive] = big.NewInt(1)
+		stuck = append(stuck, id)
+	}
+	honest, receive := s.invoice()
+	s.transfer(honest, receive, 5000000, simExpires-10, "confirmed")
+	s.finalizedAt(simExpires + 1)
+	round := func() int {
+		s.t.Helper()
+		before := len(s.calls)
+		if err := s.service.ProcessChain(context.Background(), 1); err != nil {
+			t.Fatal(err)
+		}
+		return len(s.calls) - before
+	}
+	if calls := round(); calls != 21 || s.calls[0] != receive {
+		t.Fatalf("first round: %d balance calls, the first for %s; want 21, the honest invoice's first", calls,
+			s.calls[0])
+	}
+	if payment, _ := s.payment(honest); payment != Paid {
+		t.Fatalf("the honest invoice: %s, want paid", payment)
+	}
+	if calls := round(); calls != 0 {
+		t.Fatalf("second round: %d balance calls, want none while the stuck invoices wait", calls)
+	}
+	wait := func() (n int, left time.Duration) {
+		t.Helper()
+		if err := s.pool.QueryRow(context.Background(), `SELECT alerts, next_check_at - now() FROM invoice_balance_alerts
+			WHERE invoice_id = $1`, stuck[0]).Scan(&n, &left); err != nil {
+			t.Fatal(err)
+		}
+		return n, left
+	}
+	if n, left := wait(); n != 1 || left < 50*time.Second || left > time.Minute {
+		t.Fatalf("after one alert: %d, %v left; want 1 and about a minute", n, left)
+	}
+	s.exec("UPDATE invoice_balance_alerts SET next_check_at = now()")
+	if calls := round(); calls != 20 {
+		t.Fatalf("once the wait ended: %d balance calls, want 20", calls)
+	}
+	if n, left := wait(); n != 2 || left < 110*time.Second || left > 2*time.Minute {
+		t.Fatalf("after two alerts: %d, %v left; want 2 and about two minutes", n, left)
+	}
+	// Weeks later the wait stays a day: the doubling stops before it overflows.
+	s.exec("UPDATE invoice_balance_alerts SET alerts = 100, next_check_at = now()")
+	round()
+	if n, left := wait(); n != 101 || left < 23*time.Hour || left > 24*time.Hour {
+		t.Fatalf("after 101 alerts: %d, %v left; want a day", n, left)
 	}
 }
 

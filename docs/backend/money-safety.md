@@ -27,6 +27,10 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
   a system emitter (18 decimals) that the watcher ignores, so such a payment has no transfer row. When the second RPC's
   `balanceOf` holds more than is booked, the worker logs `ALERT receive address holds money with no booked transfer`
   and the invoice never expires: an operator checks the chain and refunds the money with the refund authority.
+  - The worker reads that balance again after 1 min, doubling to at most a day (`invoice_balance_alerts`, R-120).
+  - So many such invoices can't use up a chain's round; a new deposit to book ends the wait.
+  - After an operator refunds the money, the invoice expires at its next check, up to a day later. Deleting its
+    `invoice_balance_alerts` row makes the worker check it in the next round.
 - Deposits are booked in chain order: one waits while an earlier one is still detected, so the earliest payers are
   paid to the creator first and later ones held (D-27). An empty `balanceOf` answer is an error, never 0.
 - A deposit is received when seen and paid only at or below the chain's `finalized` block (D-45); show blocks and
