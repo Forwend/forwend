@@ -10,7 +10,7 @@ import (
 )
 
 // Accepting is public like the checkout, and it makes an invoice: a few tries per link, and a shared budget for
-// everyone. Per IP belongs to the edge (Q-8).
+// everyone, spent only by an accept that changes a job (R-117). Per IP belongs to the edge (Q-8).
 const (
 	AcceptRate, AcceptBurst       = 0.1, 3
 	AcceptAllRate, AcceptAllBurst = 5, 20
@@ -32,8 +32,8 @@ func Routes(mux *http.ServeMux, g mid.Guards, jobs *job.Service) {
 	all := mid.NewBuckets(AcceptAllRate, AcceptAllBurst)
 	perJob := func(r *http.Request) string { return r.PathValue("token") }
 	limited := func(h http.Handler) http.Handler {
-		return mid.Limit(all, mid.Everyone, mid.Limit(mid.NewBuckets(AcceptRate, AcceptBurst), perJob, h))
+		return mid.Limit(mid.NewBuckets(AcceptRate, AcceptBurst), perJob, h)
 	}
-	mux.Handle("POST /v1/jobs/{token}/accept", limited(acceptJob(jobs)))
-	mux.Handle("POST /v1/jobs/{token}/payments/{position}/accept", limited(acceptChange(jobs)))
+	mux.Handle("POST /v1/jobs/{token}/accept", limited(acceptJob(jobs, all)))
+	mux.Handle("POST /v1/jobs/{token}/payments/{position}/accept", limited(acceptChange(jobs, all)))
 }

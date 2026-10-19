@@ -31,7 +31,7 @@ func TestMarkDone(t *testing.T) {
 	if _, err := s.MarkDone(ctx, profileID, j.ID, 2, ""); !errors.Is(err, ErrNotAccepted) {
 		t.Fatalf("before acceptance: %v, want ErrNotAccepted", err)
 	}
-	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example"); err != nil {
+	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.MarkDone(ctx, profileID, j.ID, 3, ""); !errors.Is(err, ErrOutOfOrder) {

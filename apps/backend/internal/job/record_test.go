@@ -22,7 +22,7 @@ func TestRecordTimes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	accepted, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example")
+	accepted, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit)
 	if err != nil {
 		t.Fatal(err)
 	}

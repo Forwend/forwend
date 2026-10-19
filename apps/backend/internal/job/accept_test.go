@@ -65,7 +65,15 @@ func TestAcceptMakesTheDepositOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	accepted, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example")
+	// Past the shared limit (R-117) nothing is accepted or made yet.
+	var soon *invoice.TooSoonError
+	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", func() time.Duration { return time.Second }); !errors.As(err, &soon) {
+		t.Fatalf("accept past the shared limit: %v, want TooSoonError", err)
+	}
+	if again, err := s.ByToken(ctx, j.Token); err != nil || !again.AcceptedAt.IsZero() || again.Payments[0].InvoiceID != "" {
+		t.Fatalf("after a refused accept: %+v %v, want nothing accepted", again, err)
+	}
+	accepted, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +97,7 @@ func TestAcceptMakesTheDepositOnce(t *testing.T) {
 	if days := inv.ExpiresAt.Sub(time.Now()).Hours() / 24; days < 67.9 || days > 68.1 {
 		t.Fatalf("checkout closes in %.2f days, want 7 + 61", days)
 	}
-	again, err := s.Accept(ctx, j.Token, "Someone Else", "else@example.com")
+	again, err := s.Accept(ctx, j.Token, "Someone Else", "else@example.com", noLimit)
 	if err != nil || again.AcceptedName != "Jane Doe" || again.Payments[0].InvoiceID != deposit.InvoiceID {
 		t.Fatalf("second accept: %+v %v", again, err)
 	}
@@ -111,7 +119,7 @@ func TestAcceptMakesTheDepositOnce(t *testing.T) {
 	got := make([]Job, 5)
 	errs := make([]error, 5)
 	for i := range 5 {
-		wg.Go(func() { got[i], errs[i] = s.Accept(ctx, j2.Token, "Jane Doe", "jane@bob.example") })
+		wg.Go(func() { got[i], errs[i] = s.Accept(ctx, j2.Token, "Jane Doe", "jane@bob.example", noLimit) })
 	}
 	for waiting := 0; waiting < 5; {
 		if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'
@@ -143,7 +151,7 @@ func TestAcceptWithoutDepositMakesNoInvoice(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	accepted, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example")
+	accepted, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit)
 	if err != nil || accepted.AcceptedAt.IsZero() {
 		t.Fatalf("accept: %v %v", accepted.AcceptedAt, err)
 	}
@@ -177,7 +185,7 @@ func TestAcceptAcrossMidnight(t *testing.T) {
 	got := make([]Job, 2)
 	errs := make([]error, 2)
 	for i, s := range []*Service{before, after} {
-		wg.Go(func() { got[i], errs[i] = s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example") })
+		wg.Go(func() { got[i], errs[i] = s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit) })
 	}
 	for waiting := 0; waiting < 2; {
 		if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'
@@ -240,7 +248,7 @@ func TestConcurrentAcceptsWithoutDeposit(t *testing.T) {
 	got := make([]Job, 2)
 	errs := make([]error, 2)
 	for i := range 2 {
-		wg.Go(func() { got[i], errs[i] = s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example") })
+		wg.Go(func() { got[i], errs[i] = s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit) })
 	}
 	for waiting := 0; waiting < 2; {
 		if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'
@@ -258,3 +266,6 @@ func TestConcurrentAcceptsWithoutDeposit(t *testing.T) {
 		}
 	}
 }
+
+// noLimit is a shared limit that always lets the request through.
+func noLimit() time.Duration { return 0 }

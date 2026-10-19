@@ -15,8 +15,8 @@ import (
 const RecheckRate, RecheckBurst = 1, 10
 
 // The payer's receipt address (R-82) is public like the checkout: a few changes per invoice, and a shared budget for
-// everyone, so the endpoint can't send mail to many addresses. Per IP belongs to the edge (Q-8). The owner's Send to
-// client (R-94) takes from the same shared budget.
+// everyone, spent only by a receipt that goes out (R-117), so the endpoint can't send mail to many addresses. Per IP
+// belongs to the edge (Q-8). The owner's Send to client (R-94) takes from the same shared budget.
 const (
 	PayerEmailRate, PayerEmailBurst       = 0.1, 3
 	PayerEmailAllRate, PayerEmailAllBurst = 5, 20
@@ -40,8 +40,8 @@ func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, balance
 	mux.Handle("GET /v1/invoices/{payToken}", getInvoice(invoices)) // checkout reads
 	mux.Handle("POST /v1/invoices/{payToken}/recheck", recheckInvoice(invoices, balances, rechecks))
 	perInvoice := func(r *http.Request) string { return r.PathValue("payToken") }
-	mux.Handle("PUT /v1/invoices/{payToken}/payer-email", mid.Limit(emails,
-		mid.Everyone, mid.Limit(mid.NewBuckets(PayerEmailRate, PayerEmailBurst), perInvoice, putPayerEmail(invoices))))
+	mux.Handle("PUT /v1/invoices/{payToken}/payer-email",
+		mid.Limit(mid.NewBuckets(PayerEmailRate, PayerEmailBurst), perInvoice, putPayerEmail(invoices, emails)))
 	mux.Handle("POST /v1/reminders/{token}/stop", stopReminders(invoices)) // the client's stop link: no sign-in
 	mux.Handle("GET /v1/invoices/{payToken}/invoice.pdf", invoicePDF(invoices, webURL))
 	mux.Handle("GET /v1/invoices/{payToken}/receipt.pdf", receiptPDF(invoices, webURL))

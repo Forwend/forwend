@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
@@ -112,9 +113,10 @@ func (s *Service) ProposeChange(ctx context.Context, profileID, id, key string, 
 // AcceptChange records the client's acceptance of the change at position on the job its link names (R-105), with
 // their typed name and email, once; an accepted change answers the same. proposedAt is the change as the client read
 // it, to the microsecond the database keeps, so consent never lands on another change at that position: one withdrawn
-// and replaced is ErrNotFound, as is a position that is not a change.
+// and replaced is ErrNotFound, as is a position that is not a change. allow is the limit shared by everyone, asked only
+// for a change this accept would change (R-117).
 func (s *Service) AcceptChange(ctx context.Context, token string, position int, proposedAt time.Time, name,
-	email string) (Job, error) {
+	email string, allow func() time.Duration) (Job, error) {
 	if err := checkTyped(name, email); err != nil {
 		return Job{}, err
 	}
@@ -122,11 +124,16 @@ func (s *Service) AcceptChange(ctx context.Context, token string, position int, 
 	if err != nil {
 		return Job{}, err
 	}
-	if position < 1 || position > len(j.Payments) || !j.Payments[position-1].ProposedAt.Equal(proposedAt) {
+	// A quote payment has a zero ProposedAt: it is no change, whatever proposedAt says.
+	if position < 1 || position > len(j.Payments) || j.Payments[position-1].ProposedAt.IsZero() ||
+		!j.Payments[position-1].ProposedAt.Equal(proposedAt) {
 		return Job{}, ErrNotFound
 	}
 	if !j.Payments[position-1].AcceptedAt.IsZero() {
 		return j, nil
+	}
+	if wait := allow(); wait > 0 {
+		return Job{}, &invoice.TooSoonError{Wait: wait}
 	}
 	if _, err := s.pool.Exec(ctx, `UPDATE job_payments SET accepted_name = $4, accepted_email = $5, accepted_at = now()
 		WHERE job_id = $1 AND position = $2 AND proposed_at = $3 AND accepted_at IS NULL`,
