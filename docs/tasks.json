@@ -4039,7 +4039,7 @@
         "A NUL, a bidi or control character, or x@bad..example answers 422 invalid_value, never 500; ordinary addresses still save."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "docs-check"
@@ -4053,7 +4053,77 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-19T21:17:14Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 75.0,
+            "log": "docs/runs/F257-20261019T211714Z-unit.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F257-20261019T211714Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F257-20261019T211714Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F257-20261019T211714Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F257-20261019T211714Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.7,
+            "log": "docs/runs/F257-20261019T211714Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 215.4,
+            "log": "docs/runs/F257-20261019T211714Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F257-20261019T211714Z-keep.log"
+          }
+        ],
+        "taskHash": "0ddc9304084a4cf5",
+        "filesHash": "619d8cf3442fd350",
+        "proof": {
+          "1": "unit: TestPayerEmailIsOneAddress: a NUL (500 before), U+202E, BEL, x@bad..example, a zero-width space, a display name and a list answer 422 invalid_value; ' Payer@Example.com ' saves as payer@example.com; the other payer email tests still pass"
+        }
+      },
+      "branch": "fix/f257-the-payer-s-receipt-address-is-checked-l",
+      "baseCommit": "29ced6851262708d66e4c8e387844680fd1b173d",
+      "failedVerifies": 0
     },
     {
       "id": "F258",

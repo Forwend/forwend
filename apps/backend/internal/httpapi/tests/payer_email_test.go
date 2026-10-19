@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -163,5 +164,27 @@ func TestPayerEmailWaitsForASendInProgress(t *testing.T) {
 	}
 	if r := <-answer; r.status != http.StatusConflict || errorCode(r) != "receipt_sent" {
 		t.Fatalf("after the send: %d %v, want 409 receipt_sent", r.status, r.body)
+	}
+}
+
+// R-82: the payer's address is checked like a client email: plain text and exactly one address, so a NUL can't reach
+// Postgres (a 500) and hidden or reordering characters can't be stored (audit 2026-10-19).
+func TestPayerEmailIsOneAddress(t *testing.T) {
+	e := invoiceAPI(t)
+	n := 0
+	put := func(email string) reply { // each on its own invoice, under its per-link limit
+		n++
+		id := e.post(t, "did:privy:alice", e.aliceProfile, fmt.Sprint("key-", n), basicBody).body["invoiceId"].(string)
+		body, _ := json.Marshal(map[string]string{"email": email})
+		return e.call(t, "PUT", "/v1/invoices/"+e.link(t, id)+"/payer-email", "", "", string(body))
+	}
+	for _, bad := range []string{"a\x00@example.com", "a@exa‮mple.com", "a\a@x.io", "x@bad..example",
+		"Payer <a@example.com>", "a@example.com, b@example.com", "​a@example.com"} {
+		if r := put(bad); r.status != http.StatusUnprocessableEntity || errorCode(r) != "invalid_value" {
+			t.Errorf("%q: %d %v, want 422 invalid_value", bad, r.status, r.body)
+		}
+	}
+	if r := put(" Payer@Example.com "); r.status != http.StatusOK || r.body["email"] != "payer@example.com" {
+		t.Fatalf("an ordinary address: %d %v", r.status, r.body)
 	}
 }

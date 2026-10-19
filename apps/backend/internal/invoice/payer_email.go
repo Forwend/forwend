@@ -4,20 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
+	"net/mail"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
+	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 )
 
 // ErrReceiptSent: the receipt already went to the address given, so it can't change any more.
 var ErrReceiptSent = errors.New("receipt already sent")
-
-// A plain shape check: something@domain.tld with no spaces. Delivery is the real test.
-var emailShape = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
 
 // SetPayerEmail keeps, and returns as kept, the address the payer gave on the pay page for this invoice's receipt only (R-82, D-68). It can
 // change until the receipt is sent. An invoice already paid queues its receipt now; otherwise the ledger queues it when
@@ -26,7 +25,9 @@ var emailShape = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
 // (R-117).
 func (s *Service) SetPayerEmail(ctx context.Context, payToken, email string, allow func() time.Duration) (string, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
-	if len(email) > 254 || !emailShape.MatchString(email) {
+	// As a client email is checked: plain text, and exactly one address with nothing around it.
+	if a, err := mail.ParseAddress(email); err != nil || a.Address != email || len(email) > profile.MaxClientEmail ||
+		!utf8.ValidString(email) || !profile.PlainText(email, false) {
 		return "", fmt.Errorf("%w: email: enter an address like name@example.com", ErrInvalid)
 	}
 	id, ok := idOf(payToken)
