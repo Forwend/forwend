@@ -402,6 +402,8 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   - Columns: date (UTC), direction, amount, token, network, counterparty, transaction, status, USD value.
   - Then the classification, invoice number and client.
   - A cell starting like a formula gets a leading apostrophe.
+  - So does a formula start right after a `;`, also after quotes: a spreadsheet set for a `;` list separator (de-DE,
+    fr-FR) starts a cell there.
   - With a records currency it adds `<currency> value` and `ECB rate date` columns (R-110).
 - `GET` and `PUT /v1/profiles/{profileId}/records-currency` read and set `{"currency": ...}` (R-110).
   - It is EUR or a currency the ECB publishes a rate for, other than USD; null clears it.
