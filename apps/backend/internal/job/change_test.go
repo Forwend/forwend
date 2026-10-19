@@ -78,6 +78,19 @@ func TestScopeChange(t *testing.T) {
 			t.Fatalf("accept payment %d: %v, want ErrNotFound", bad, err)
 		}
 	}
+	// A quote payment is no change, also by its own zero proposedAt, and asks nothing of the shared limit (R-117).
+	asked := func() time.Duration { t.Fatal("the shared limit was asked"); return 0 }
+	for _, bad := range []int{1, 2} {
+		if _, err := s.AcceptChange(ctx, j.Token, bad, time.Time{}, "Jane Doe", "jane@bob.example", asked); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("accept payment %d with a zero proposedAt: %v, want ErrNotFound", bad, err)
+		}
+	}
+	// Past the shared limit the change stays waiting.
+	var soon *invoice.TooSoonError
+	if _, err := s.AcceptChange(ctx, j.Token, 3, change.ProposedAt, "Jane Doe", "jane@bob.example",
+		func() time.Duration { return time.Second }); !errors.As(err, &soon) {
+		t.Fatalf("accept past the shared limit: %v, want TooSoonError", err)
+	}
 	for range 2 {
 		accepted, err := s.AcceptChange(ctx, j.Token, 3, change.ProposedAt, "Jane Doe", "jane@bob.example", noLimit)
 		if c := accepted.Payments[2]; err != nil || c.AcceptedName != "Jane Doe" || c.AcceptedEmail != "jane@bob.example" ||

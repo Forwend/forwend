@@ -65,6 +65,14 @@ func TestAcceptMakesTheDepositOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Past the shared limit (R-117) nothing is accepted or made yet.
+	var soon *invoice.TooSoonError
+	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", func() time.Duration { return time.Second }); !errors.As(err, &soon) {
+		t.Fatalf("accept past the shared limit: %v, want TooSoonError", err)
+	}
+	if again, err := s.ByToken(ctx, j.Token); err != nil || !again.AcceptedAt.IsZero() || again.Payments[0].InvoiceID != "" {
+		t.Fatalf("after a refused accept: %+v %v, want nothing accepted", again, err)
+	}
 	accepted, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit)
 	if err != nil {
 		t.Fatal(err)

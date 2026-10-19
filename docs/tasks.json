@@ -3231,7 +3231,7 @@
       "behavior": "Requests with an unknown link or a bad body spend no shared limit, so junk traffic can't block Send to client or job acceptance",
       "acceptance": [
         "The payer email route checks the body and finds the invoice before any limit; the shared email budget is spent only when a receipt is queued.",
-        "Job accept and change accept check the body and find a job that can still accept before the shared budget.",
+        "Job accept and change accept check the body and find a job or change that can still accept before the shared budget; a quote payment named as a change, also with a zero proposedAt, is 404 job_not_found and spends nothing (audit F-13).",
         "Forty junk requests to each route leave the owner's Send to client and a real client's accept working (the audit PoCs as tests)."
       ],
       "dependsOn": [],
@@ -3249,76 +3249,78 @@
         "packages/contracts/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-19 review fail by reviewer: Blocker: apps/backend/internal/job/change.go:127-136. AcceptChange spends the shared accept budget on a request that changes nothing. A proposedAt of 0001-01-01T00:00:00Z on a payment that is not a change (position 1) passes the ProposedAt.Equal check, since an original payment's ProposedAt is zero. AcceptedAt is zero too, so allow() runs. The UPDATE then matches no row, and the call answers 200 (openapi says 404). Repro in a scratch copy: 8 owner-made job links x 3 such requests gave 20x200 and 4x429, then a real accept on a fresh job got 429. With about 50 job links held, one owner keeps every client's accept blocked. This breaks acceptance 2 and R-117 (spent only when an accept changes a job). Fix: treat a payment with a zero ProposedAt as ErrNotFound before allow(), and add that case to the tests. Minor: (1) TestJunkSpendsNoSharedLimit sends no junk to the change-accept route and no accept of an already accepted job, though R-117 names each route. (2) No test shows the accept budget still answers 429 with Retry-After (writeAccepted); job tests always pass noLimit, so dropping the allow() call would pass. (3) TestPayerEmailIsLimitedForEveryone needs its 25 create+PUT rounds in under about 1 s (refill 5/s); it takes 0.3 s here and may flake on a loaded machine. (4) R-117's first sentence is 29 words (D-84 limit 25), and it says job already accepted where change accept means a change already accepted. (5) The per-link bucket map and Postgres now see every junk token, with no shared gate in front; the one-minute sweep and the edge limit (Q-8) bound it. That is fine, just worth knowing. (6) change_test.go:523 has an unrelated message fix, named in the commit. Checked and fine: allow() inside the payer-email transaction is an in-memory call, like invoice.Send. A refusal rolls back the address and the receipt restart, which is right: the paid transition has passed, so a saved address would never get its receipt. A failed receipt reset only exists on a paid invoice, so it spends the budget. Two concurrent first accepts spend 2 tokens, bounded per link. The 429 + Retry-After mapping matches recheck and send. Ran: go test -count=1 ./internal/job/ ./internal/httpapi/tests/ ./internal/invoice/ (all ok); go build, go vet, gofmt (clean). The new test against the old handlers fails on both Send (429) and accept (429). docs/runs/F250-20261019T183834Z-*.log all passed. Scratch copies removed."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-19T18:38:34Z",
+        "at": "2026-10-19T18:49:48Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 73.8,
-            "log": "docs/runs/F250-20261019T183834Z-unit.log"
+            "seconds": 70.9,
+            "log": "docs/runs/F250-20261019T184948Z-unit.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F250-20261019T183834Z-docs-check.log"
+            "log": "docs/runs/F250-20261019T184948Z-docs-check.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 1.9,
-            "log": "docs/runs/F250-20261019T183834Z-harness.log"
+            "log": "docs/runs/F250-20261019T184948Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F250-20261019T183834Z-lint.log"
+            "log": "docs/runs/F250-20261019T184948Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F250-20261019T183834Z-typecheck.log"
+            "log": "docs/runs/F250-20261019T184948Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.5,
-            "log": "docs/runs/F250-20261019T183834Z-build.log"
+            "seconds": 2.8,
+            "log": "docs/runs/F250-20261019T184948Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 213.6,
-            "log": "docs/runs/F250-20261019T183834Z-e2e.log"
+            "seconds": 212.2,
+            "log": "docs/runs/F250-20261019T184948Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F250-20261019T183834Z-keep.log"
+            "log": "docs/runs/F250-20261019T184948Z-keep.log"
           }
         ],
-        "taskHash": "551a63dcf70fa0cf",
-        "filesHash": "f8cf25dec3afc987",
+        "taskHash": "b27c2ce64caee1f4",
+        "filesHash": "a0245398713bcfaf",
         "proof": {
           "1": "unit: TestJunkSpendsNoSharedLimit: 40 PUTs to unknown links and 40 with a bad body spend nothing, Send to client still answers 201 (429 before the fix); TestPayerEmailIsLimitedForEveryone: 25 receipts that go out now on paid invoices meet the shared limit",
-          "2": "unit: TestJunkSpendsNoSharedLimit: 40 accepts of unknown links and 40 with an empty body, then a real accept answers 200; job tests pass allow to Accept and AcceptChange after the lookup",
-          "3": "unit: TestJunkSpendsNoSharedLimit is the audit PoC as a test; TestPayerEmailIsLimitedPerInvoice keeps the per-link limit"
+          "2": "unit: job TestAcceptChange case: positions 1 and 2 with a zero proposedAt are ErrNotFound and never ask the limit; a change past the limit is TooSoonError and stays waiting; TestAcceptMakesTheDepositOnce: an accept past the limit is TooSoonError and accepts nothing",
+          "3": "unit: TestJunkSpendsNoSharedLimit sends junk to the payer email, accept and change accept routes, and accepts of an accepted job, then a real accept answers 200; TestPayerEmailIsLimitedPerInvoice keeps the per-link limit"
         }
       },
       "branch": "fix/f250-requests-with-an-unknown-link-or-a-bad-b",

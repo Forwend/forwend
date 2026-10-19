@@ -109,11 +109,15 @@ func TestPayerEmailQueuesOneReceipt(t *testing.T) {
 // receipt that goes out spends that budget (R-117).
 func TestPayerEmailIsLimitedForEveryone(t *testing.T) {
 	e := invoiceAPI(t)
-	limited := 0
+	var links []string
 	for i := range 25 {
 		id := e.post(t, "did:privy:alice", e.aliceProfile, fmt.Sprint("key-", i), basicBody).body["invoiceId"].(string)
 		e.exec(t, `UPDATE invoices SET payment_status = 'paid' WHERE id = $1`, id)
-		if r := e.call(t, "PUT", "/v1/invoices/"+e.link(t, id)+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status == http.StatusTooManyRequests {
+		links = append(links, e.link(t, id))
+	}
+	limited := 0
+	for _, link := range links {
+		if r := e.call(t, "PUT", "/v1/invoices/"+link+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status == http.StatusTooManyRequests {
 			limited++
 		}
 	}

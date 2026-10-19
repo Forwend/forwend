@@ -124,7 +124,9 @@ func (s *Service) AcceptChange(ctx context.Context, token string, position int, 
 	if err != nil {
 		return Job{}, err
 	}
-	if position < 1 || position > len(j.Payments) || !j.Payments[position-1].ProposedAt.Equal(proposedAt) {
+	// A quote payment has a zero ProposedAt: it is no change, whatever proposedAt says.
+	if position < 1 || position > len(j.Payments) || j.Payments[position-1].ProposedAt.IsZero() ||
+		!j.Payments[position-1].ProposedAt.Equal(proposedAt) {
 		return Job{}, ErrNotFound
 	}
 	if !j.Payments[position-1].AcceptedAt.IsZero() {
