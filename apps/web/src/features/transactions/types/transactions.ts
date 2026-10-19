@@ -6,6 +6,7 @@ import type {
   TRANSACTION_LABELS,
 } from "@/features/transactions/constants/transactions";
 import type {
+  recordsCurrencySchema,
   transactionSchema,
   transactionsPageSchema,
 } from "@/features/transactions/schemas/transactions";
@@ -22,3 +23,8 @@ export type TransactionLabel = (typeof TRANSACTION_LABELS)[number];
 export type Transaction = z.infer<typeof transactionSchema>;
 
 export type TransactionsPage = z.infer<typeof transactionsPageSchema>;
+
+/** A transaction's value in the profile's other records currency (R-110). */
+export type TransactionRecordsValue = NonNullable<Transaction["recordsValue"]>;
+
+export type RecordsCurrencySetting = z.infer<typeof recordsCurrencySchema>;

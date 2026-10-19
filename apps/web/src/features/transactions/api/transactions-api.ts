@@ -1,5 +1,9 @@
-import { transactionsPageSchema } from "@/features/transactions/schemas/transactions";
+import {
+  recordsCurrencySchema,
+  transactionsPageSchema,
+} from "@/features/transactions/schemas/transactions";
 import type {
+  RecordsCurrencySetting,
   Transaction,
   TransactionDirection,
   TransactionLabel,
@@ -8,9 +12,10 @@ import type {
 import { apiSlice } from "@/shared/api/api-slice";
 
 const TRANSACTIONS_TAG = "Transactions";
+const RECORDS_CURRENCY_TAG = "RecordsCurrency";
 
 export const transactionsApi = apiSlice
-  .enhanceEndpoints({ addTagTypes: [TRANSACTIONS_TAG] })
+  .enhanceEndpoints({ addTagTypes: [TRANSACTIONS_TAG, RECORDS_CURRENCY_TAG] })
   .injectEndpoints({
     endpoints: (build) => ({
       /** In one direction and under the search when given. */
@@ -37,6 +42,25 @@ export const transactionsApi = apiSlice
         }),
         invalidatesTags: [TRANSACTIONS_TAG],
       }),
+      /** The profile's other records currency (R-110), null for none. */
+      getRecordsCurrency: build.query<RecordsCurrencySetting, string>({
+        query: (profileId) => `/v1/profiles/${encodeURIComponent(profileId)}/records-currency`,
+        responseSchema: recordsCurrencySchema,
+        providesTags: [RECORDS_CURRENCY_TAG],
+      }),
+      /** Sets it, null for none; the transactions read again with their values in it. */
+      setRecordsCurrency: build.mutation<
+        RecordsCurrencySetting,
+        { profileId: string } & RecordsCurrencySetting
+      >({
+        query: ({ profileId, currency }) => ({
+          url: `/v1/profiles/${encodeURIComponent(profileId)}/records-currency`,
+          method: "PUT",
+          body: { currency },
+        }),
+        responseSchema: recordsCurrencySchema,
+        invalidatesTags: [TRANSACTIONS_TAG, RECORDS_CURRENCY_TAG],
+      }),
       /** Every transaction in the UTC days given (YYYY-MM-DD, both optional), as CSV text (R-108). */
       exportTransactions: build.query<string, { profileId: string; from?: string; to?: string }>({
         query: ({ profileId, ...params }) => ({
@@ -53,4 +77,6 @@ export const {
   useGetTransactionsQuery,
   useLabelTransactionMutation,
   useLazyExportTransactionsQuery,
+  useGetRecordsCurrencyQuery,
+  useSetRecordsCurrencyMutation,
 } = transactionsApi;

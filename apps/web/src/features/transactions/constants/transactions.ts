@@ -39,3 +39,9 @@ export const TRANSACTION_LABELS = [
   TRANSACTION_CLASSES.refund,
   TRANSACTION_CLASSES.other,
 ] as const;
+
+/** The records currency select's value for none: a select takes no empty value. */
+export const USD_ONLY = "usd-only";
+
+/** Every record has its USD value already, so USD is never the other records currency (R-110). */
+export const RECORDS_BASE_CURRENCY = "USD";

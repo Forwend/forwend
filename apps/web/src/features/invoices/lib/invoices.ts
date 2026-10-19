@@ -125,6 +125,12 @@ export function formatAgreed(agreed: AgreedValue): string {
   }).format(Number(decimalText(BigInt(agreed.amount), agreed.decimals)));
 }
 
+/** Currency codes as select options: the code, then its name in the reader's language (EUR · Euro). */
+export function currencyOptions(codes: readonly string[]): { value: string; label: string }[] {
+  const names = new Intl.DisplayNames(undefined, { type: "currency" });
+  return codes.map((code) => ({ value: code, label: `${code} · ${names.of(code) ?? code}` }));
+}
+
 /** Units with `decimals` as a plain decimal, as the API reads amountUsd: 12500000 at 6 is "12.5". */
 export function decimalText(units: bigint, decimals: number): string {
   const scale = 10n ** BigInt(decimals);

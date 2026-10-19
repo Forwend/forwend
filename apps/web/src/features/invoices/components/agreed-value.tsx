@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useId, useMemo } from "react";
 import { AGREED_CURRENCIES } from "@/features/invoices/constants/invoices";
 import { NEW_INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
+import { currencyOptions } from "@/features/invoices/lib/invoices";
 import type { AgreedDraft } from "@/features/invoices/types/invoices";
 
 const COPY = NEW_INVOICE_COPY.agreed;
@@ -21,13 +22,7 @@ export interface AgreedValueFieldsProps {
 // R-93: the price agreed with the client in fiat, typed by the owner (no exchange-rate API), beside the stablecoin
 // amount the invoice asks for. A day after today can't have been agreed yet.
 export function AgreedValueFields({ id, value, onChange, today, errors }: AgreedValueFieldsProps) {
-  const currencies = useMemo(() => {
-    const names = new Intl.DisplayNames(undefined, { type: "currency" });
-    return Object.keys(AGREED_CURRENCIES).map((code) => ({
-      value: code,
-      label: `${code} · ${names.of(code) ?? code}`,
-    }));
-  }, []);
+  const currencies = useMemo(() => currencyOptions(Object.keys(AGREED_CURRENCIES)), []);
   // One fieldset, so a screen reader names the three fields together and reads the hint with them.
   const hintId = useId();
   return (

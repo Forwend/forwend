@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
-import { ToastProvider } from "@forwend/ui-web";
+import { ToastProvider, TooltipProvider } from "@forwend/ui-web";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { ExportTransactions } from "@/features/transactions/components/export-transactions";
+import { RecordsCurrency } from "@/features/transactions/components/records-currency";
+import { RecordsValue } from "@/features/transactions/components/records-value";
 import { TransactionType } from "@/features/transactions/components/transaction-type";
 import type { Transaction } from "@/features/transactions/types/transactions";
 import { makeStore } from "@/store/store";
@@ -50,6 +52,7 @@ const base: Transaction = {
   classification: "unclassified",
   labelable: true,
   invoice: null,
+  recordsValue: null,
 };
 
 type Call = { method: string; url: string; body: string };
@@ -63,6 +66,8 @@ const answer = (calls: Call[], status: number, body = "") =>
         url: url.pathname + url.search,
         body: await request.text(),
       });
+      // The export dialog also reads the records currency: none saved.
+      if (url.pathname.endsWith("/records-currency")) return Response.json({ currency: null });
       return new Response(status === 204 ? null : body, {
         status,
         headers: { "Content-Type": status < 300 ? "text/csv" : "application/json" },
@@ -146,7 +151,8 @@ describe("records", () => {
     fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-10-01" } });
     fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
     await settle();
-    expect(calls.map((c) => c.url)).toEqual([
+    // The dialog also reads the records currency.
+    expect(calls.filter((c) => c.url.includes(".csv")).map((c) => c.url)).toEqual([
       `/api/v1/profiles/${PROFILE}/transactions.csv?from=2026-10-01`,
     ]);
     expect(await saved[0]?.text()).toBe("Date (UTC),Direction\r\n");
@@ -167,5 +173,81 @@ describe("records", () => {
     fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
     expect(screen.queryByRole("alert")).toBeNull();
     click.mockRestore();
+  });
+
+  // R-111: the records currency saves when chosen; a failed save says so and keeps the saved one.
+  it("saves the records currency when chosen, and keeps the saved one when that fails", async () => {
+    const calls: Call[] = [];
+    let saved: string | null = null;
+    let failing = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (request: Request) => {
+        const body = await request.text();
+        calls.push({ method: request.method, url: new URL(request.url).pathname, body });
+        if (request.method === "PUT") {
+          if (failing) return new Response("{}", { status: 500 });
+          saved = JSON.parse(body).currency;
+        }
+        return new Response(JSON.stringify({ currency: saved }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <RecordsCurrency profileId={PROFILE} />
+      </Provider>,
+    );
+    await settle();
+    expect(screen.getByRole("combobox", { name: "Records currency" }).textContent).toContain(
+      "USD only",
+    );
+    await choose("EUR · Euro");
+    expect(calls.filter((c) => c.method === "PUT")).toEqual([
+      {
+        method: "PUT",
+        url: `/api/v1/profiles/${PROFILE}/records-currency`,
+        body: '{"currency":"EUR"}',
+      },
+    ]);
+    expect(screen.getByRole("combobox", { name: "Records currency" }).textContent).toContain("EUR");
+    failing = true;
+    await choose("USD only");
+    expect(screen.getByText("We could not save the currency. Try again.")).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Records currency" }).textContent).toContain("EUR");
+  });
+
+  // R-111: a value reads as money in its currency, with its ISO decimals, and its rate's day is in its name.
+  it("shows a value as money in its currency, with its rate's day", () => {
+    render(
+      <TooltipProvider>
+        <RecordsValue value={{ currency: "EUR", amount: "1234567.89", rateDate: "2026-10-16" }} />
+        <RecordsValue value={{ currency: "JPY", amount: "151", rateDate: "2026-10-13" }} />
+      </TooltipProvider>,
+    );
+    // The reader's locale sets the separators and the day's words, so the names are built with it; what this checks
+    // is each currency's decimals and the rate's day in the name.
+    const money = (amount: number, currency: string, digits: number) =>
+      new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency,
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+      }).format(amount);
+    const day = (iso: string) =>
+      new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone: "UTC" }).format(
+        new Date(`${iso}T00:00:00Z`),
+      );
+    expect(
+      screen.getByRole("button", {
+        name: `${money(1234567.89, "EUR", 2)}, At the ECB rate of ${day("2026-10-16")}`,
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", {
+        name: `${money(151, "JPY", 0)}, At the ECB rate of ${day("2026-10-13")}`,
+      }),
+    ).toBeTruthy();
   });
 });

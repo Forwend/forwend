@@ -54,10 +54,33 @@ test("transactions show their type, take a label, and export the days chosen; it
   expect((await download).suggestedFilename()).toBe("forwend-transactions.csv");
   await expect(dialog).toBeHidden();
 
+  // R-111: the records currency, chosen in the export dialog, puts each value in it under the amount.
+  await main.getByRole("button", { name: "Export CSV" }).click();
+  const currency = dialog.getByRole("combobox", { name: "Records currency" });
+  await expect(currency).toContainText("USD only");
+  await currency.click();
+  await page.getByRole("option", { name: "EUR · Euro" }).click();
+  await expect(currency).toContainText("EUR");
+  expect(await blockingViolations(page)).toEqual([]);
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  // The rate's day is in the value's name and in a tooltip that focus opens.
+  const value = table
+    .getByRole("button", { name: /^€[\d,]+\.\d{2}, At the ECB rate of Oct 16, 2026$/ })
+    .first();
+  await expect(value).toBeVisible();
+  await value.focus();
+  await expect(page.getByRole("tooltip")).toContainText("At the ECB rate of Oct 16, 2026");
+
   // On a phone the type sits under each row.
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(
     main.getByRole("combobox", { name: /^Type of [\d.,]+ USDC in from 0x01/ }),
+  ).toBeVisible();
+  await expect(
+    main
+      .getByRole("listitem")
+      .getByRole("button", { name: /^€[\d,]+\.\d{2}, At the ECB rate of/ })
+      .first(),
   ).toBeVisible();
   await expect.poll(() => sidewaysScroll(page)).toBeLessThanOrEqual(0);
   expect(await blockingViolations(page)).toEqual([]);
@@ -70,4 +93,27 @@ test("transactions show their type, take a label, and export the days chosen; it
   await expect(recent.getByRole("columnheader", { name: "Type" })).toHaveCount(0);
   await expect(recent.getByRole("combobox")).toHaveCount(0);
   await context.close();
+
+  // On a touch screen the value line keeps its size, and a 44px band takes the tap (DESIGN.md: touch targets).
+  const touch = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+    storageState: session,
+  });
+  const phone = await touch.newPage();
+  await mockApi(phone);
+  await phone.goto("/app/transactions");
+  await phone.getByRole("main").getByRole("button", { name: "Export CSV" }).click();
+  await phone.getByRole("combobox", { name: "Records currency" }).click();
+  await phone.getByRole("option", { name: "EUR · Euro" }).click();
+  await phone.getByRole("button", { name: "Cancel" }).click();
+  const tap = phone
+    .getByRole("main")
+    .getByRole("listitem")
+    .getByRole("button", { name: /^€/ })
+    .first();
+  await expect(tap).toBeVisible();
+  expect(await tap.evaluate((el) => getComputedStyle(el, "::before").height)).toBe("44px");
+  await touch.close();
 });
