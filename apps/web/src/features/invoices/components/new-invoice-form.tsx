@@ -383,7 +383,7 @@ export function NewInvoiceForm({
         {expiry === CUSTOM_EXPIRY ? null : <p className="text-sm text-muted">{COPY.expiryHint}</p>}
       </div>
       {expiry === CUSTOM_EXPIRY ? (
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_9rem]">
+        <div className="grid gap-5 sm:grid-cols-2">
           <DatePicker
             label={COPY.closesOn}
             value={closesOn}
@@ -438,7 +438,7 @@ export function NewInvoiceForm({
   );
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 xl:grid-cols-[minmax(0,42rem)_minmax(0,22rem)]">
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
       <Form onSubmit={submit} onInput={readTyped}>
         <FieldGroup title={COPY.amountGroup}>
           {tokens.length > 1 ? (
@@ -462,38 +462,23 @@ export function NewInvoiceForm({
               />
             </div>
           ) : null}
-          {any ? null : (
-            <SelectField
-              label={COPY.tokenLabel}
-              value={tokenKey(token)}
-              onValueChange={(value) => {
-                setPicked(value);
-                setLineErrors({});
-              }}
-              options={tokens.map((t) => ({
-                value: tokenKey(t),
-                label: `${t.symbol} · ${chainName(t.chainId)}`,
-              }))}
-            />
-          )}
-          {items.length > 0 ? (
-            <LineItems
-              id={itemsId}
-              items={items}
-              onChange={(next) => {
-                if (next.length === 0 && itemsTotal > 0n)
-                  setAmount(decimalText(itemsTotal, decimals));
-                setItems(next);
-                setLineErrors({});
-                clear(INVOICE_FIELDS.lines);
-              }}
-              decimals={decimals}
-              unit={unit}
-              errors={lineErrors}
-              error={errors[INVOICE_FIELDS.lines]}
-            />
-          ) : (
-            <>
+          {/* Short fields pair up. Empty, when items stand in for the amount on any token, the row takes no room. */}
+          <div className="grid gap-5 empty:hidden sm:grid-cols-2">
+            {any ? null : (
+              <SelectField
+                label={COPY.tokenLabel}
+                value={tokenKey(token)}
+                onValueChange={(value) => {
+                  setPicked(value);
+                  setLineErrors({});
+                }}
+                options={tokens.map((t) => ({
+                  value: tokenKey(t),
+                  label: `${t.symbol} · ${chainName(t.chainId)}`,
+                }))}
+              />
+            )}
+            {items.length > 0 ? null : (
               <TextField
                 id={amountId}
                 label={any ? COPY.amountUsdLabel : COPY.amountLabel}
@@ -520,28 +505,44 @@ export function NewInvoiceForm({
                 }
                 error={errors[INVOICE_FIELDS.amount]}
               />
-              {request ? null : (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="self-start"
-                  onClick={() => {
-                    setItems([
-                      {
-                        id: crypto.randomUUID(),
-                        description: "",
-                        quantity: "1",
-                        price: amount.trim(),
-                      },
-                    ]);
-                    clear(INVOICE_FIELDS.amount);
-                  }}
-                >
-                  <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
-                  {COPY.items.add}
-                </Button>
-              )}
-            </>
+            )}
+          </div>
+          {items.length > 0 ? (
+            <LineItems
+              id={itemsId}
+              items={items}
+              onChange={(next) => {
+                if (next.length === 0 && itemsTotal > 0n)
+                  setAmount(decimalText(itemsTotal, decimals));
+                setItems(next);
+                setLineErrors({});
+                clear(INVOICE_FIELDS.lines);
+              }}
+              decimals={decimals}
+              unit={unit}
+              errors={lineErrors}
+              error={errors[INVOICE_FIELDS.lines]}
+            />
+          ) : request ? null : (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="self-start"
+              onClick={() => {
+                setItems([
+                  {
+                    id: crypto.randomUUID(),
+                    description: "",
+                    quantity: "1",
+                    price: amount.trim(),
+                  },
+                ]);
+                clear(INVOICE_FIELDS.amount);
+              }}
+            >
+              <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
+              {COPY.items.add}
+            </Button>
           )}
           {request ? null : agreed ? (
             <AgreedValueFields
@@ -584,31 +585,33 @@ export function NewInvoiceForm({
         </FieldGroup>
 
         <FieldGroup title={COPY.detailsGroup}>
-          {request ? null : (
-            <TextField
-              label={COPY.titleLabel}
-              name="title"
-              defaultValue={start?.title}
-              maxLength={INVOICE_LIMITS.title}
-              placeholder={COPY.titlePlaceholder}
-              error={errors[INVOICE_FIELDS.title]}
-            />
-          )}
-          {request ? null : (
-            <TextField
-              label={COPY.referenceLabel}
-              name="reference"
-              value={reference}
-              onChange={(event) => {
-                setReference(event.target.value);
-                clear(INVOICE_FIELDS.reference);
-              }}
-              autoComplete="off"
-              maxLength={INVOICE_LIMITS.reference}
-              hint={COPY.referenceHint}
-              error={errors[INVOICE_FIELDS.reference]}
-            />
-          )}
+          <div className="grid gap-5 empty:hidden sm:grid-cols-2">
+            {request ? null : (
+              <TextField
+                label={COPY.titleLabel}
+                name="title"
+                defaultValue={start?.title}
+                maxLength={INVOICE_LIMITS.title}
+                placeholder={COPY.titlePlaceholder}
+                error={errors[INVOICE_FIELDS.title]}
+              />
+            )}
+            {request ? null : (
+              <TextField
+                label={COPY.referenceLabel}
+                name="reference"
+                value={reference}
+                onChange={(event) => {
+                  setReference(event.target.value);
+                  clear(INVOICE_FIELDS.reference);
+                }}
+                autoComplete="off"
+                maxLength={INVOICE_LIMITS.reference}
+                hint={COPY.referenceHint}
+                error={errors[INVOICE_FIELDS.reference]}
+              />
+            )}
+          </div>
           <TextAreaField
             label={COPY.noteLabel}
             name="note"
@@ -617,44 +620,48 @@ export function NewInvoiceForm({
             error={errors[INVOICE_FIELDS.note]}
           />
           {request ? (
-            <TextField
-              label={NEW_REQUEST_COPY.senderLabel}
-              name="senderName"
-              autoComplete="name"
-              defaultValue={request.senderName}
-              maxLength={INVOICE_LIMITS.senderName}
-              error={errors[INVOICE_FIELDS.senderName]}
-            />
-          ) : null}
-          {returnField}
+            <div className="grid gap-5 sm:grid-cols-2">
+              <TextField
+                label={NEW_REQUEST_COPY.senderLabel}
+                name="senderName"
+                autoComplete="name"
+                defaultValue={request.senderName}
+                maxLength={INVOICE_LIMITS.senderName}
+                error={errors[INVOICE_FIELDS.senderName]}
+              />
+              {returnField}
+            </div>
+          ) : (
+            returnField
+          )}
         </FieldGroup>
 
         <FieldGroup title={COPY.datesGroup}>
-          {request ? null : (
-            <DatePicker
-              label={COPY.supplyLabel}
-              name="supplyDate"
-              value={supplyDate}
-              onChange={setSupplyDate}
-              clearLabel={COPY.supplyClear}
-              hint={COPY.supplyHint}
-              error={errors[INVOICE_FIELDS.supplyDate]}
-              className="sm:max-w-xs"
-            />
-          )}
-          {request ? null : (
-            <DatePicker
-              label={COPY.dueLabel}
-              name="dueDate"
-              value={dueDate}
-              onChange={pickDueDate}
-              min={today}
-              clearLabel={COPY.dueClear}
-              hint={COPY.dueHint}
-              error={errors[INVOICE_FIELDS.dueDate]}
-              className="sm:max-w-xs"
-            />
-          )}
+          <div className="grid gap-5 empty:hidden sm:grid-cols-2">
+            {request ? null : (
+              <DatePicker
+                label={COPY.supplyLabel}
+                name="supplyDate"
+                value={supplyDate}
+                onChange={setSupplyDate}
+                clearLabel={COPY.supplyClear}
+                hint={COPY.supplyHint}
+                error={errors[INVOICE_FIELDS.supplyDate]}
+              />
+            )}
+            {request ? null : (
+              <DatePicker
+                label={COPY.dueLabel}
+                name="dueDate"
+                value={dueDate}
+                onChange={pickDueDate}
+                min={today}
+                clearLabel={COPY.dueClear}
+                hint={COPY.dueHint}
+                error={errors[INVOICE_FIELDS.dueDate]}
+              />
+            )}
+          </div>
           {expiryField}
           {request ? null : (
             <div className="flex flex-col">
@@ -700,20 +707,21 @@ export function NewInvoiceForm({
             </div>
           )}
           {repeat ? (
-            <DatePicker
-              label={COPY.repeatEndLabel}
-              name="repeatEndDate"
-              value={repeatEnd}
-              onChange={(iso) => {
-                setRepeatEnd(iso);
-                clear(INVOICE_FIELDS.repeatEndDate);
-              }}
-              min={dueDate ?? today}
-              clearLabel={COPY.repeatEndClear}
-              hint={COPY.repeatEndHint}
-              error={errors[INVOICE_FIELDS.repeatEndDate]}
-              className="sm:max-w-xs"
-            />
+            <div className="grid gap-5 sm:grid-cols-2">
+              <DatePicker
+                label={COPY.repeatEndLabel}
+                name="repeatEndDate"
+                value={repeatEnd}
+                onChange={(iso) => {
+                  setRepeatEnd(iso);
+                  clear(INVOICE_FIELDS.repeatEndDate);
+                }}
+                min={dueDate ?? today}
+                clearLabel={COPY.repeatEndClear}
+                hint={COPY.repeatEndHint}
+                error={errors[INVOICE_FIELDS.repeatEndDate]}
+              />
+            </div>
           ) : null}
         </FieldGroup>
 
