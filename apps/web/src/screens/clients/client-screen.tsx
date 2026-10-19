@@ -41,33 +41,31 @@ export function ClientScreen({ clientId }: ClientScreenProps) {
           />
         ) : null}
       </header>
-      <div>
-        {!clientId ? (
-          <ClientForm key={profile.profileId} profileId={profile.profileId} />
-        ) : list.isError && !list.currentData ? (
-          <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">
-            {COPY.failed}
-            <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
-              {COPY.retry}
-            </Button>
-          </div>
-        ) : !list.currentData || deleted ? (
-          <Skeleton className="h-96" />
-        ) : client ? (
-          // A new form per client, so it never keeps another client's values.
-          <ClientForm key={client.clientId} profileId={profile.profileId} client={client} />
-        ) : (
-          <div className="flex flex-col items-start gap-3 text-sm text-muted">
-            {COPY.gone}
-            <Link
-              href={APP_ROUTES.clients}
-              className={buttonClasses({ size: "sm", variant: "secondary" })}
-            >
-              {COPY.backToList}
-            </Link>
-          </div>
-        )}
-      </div>
+      {!clientId ? (
+        <ClientForm key={profile.profileId} profileId={profile.profileId} />
+      ) : list.isError && !list.currentData ? (
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">
+          {COPY.failed}
+          <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
+            {COPY.retry}
+          </Button>
+        </div>
+      ) : !list.currentData || deleted ? (
+        <Skeleton className="h-96" />
+      ) : client ? (
+        // A new form per client, so it never keeps another client's values.
+        <ClientForm key={client.clientId} profileId={profile.profileId} client={client} />
+      ) : (
+        <div className="flex flex-col items-start gap-3 text-sm text-muted">
+          {COPY.gone}
+          <Link
+            href={APP_ROUTES.clients}
+            className={buttonClasses({ size: "sm", variant: "secondary" })}
+          >
+            {COPY.backToList}
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
