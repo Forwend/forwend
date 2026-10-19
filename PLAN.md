@@ -40,24 +40,26 @@ Freelancer before merchant (D-55). Scope and evidence: [phase 10 research](docs/
 who pay late, so the phase builds deposits, milestones and payment terms as one flow. Where the law decides what an
 invoice says, the phase follows EU, UK and US rules first (D-83).
 
-- 10.1 Clients (R-86): saved clients with legal name, billing email (the finance contact, often not the person who
+- 10.1 Clients, done (R-86): saved clients with legal name, billing email (the finance contact, often not the person who
   ordered the work), address, country and tax/VAT ID. An invoice picks a client and copies the details; the copy never
   changes, like the issuer block (R-43).
 - 10.2 Invoice terms, done: line items (R-88), supply date (R-89), PO/reference with a default per saved client
   (R-90), duplicate (R-91), billing details before a business invoice (R-92) and the agreed value in fiat (R-93).
-- 10.3 Jobs (D-81): a quote with the work, price and a payment schedule (deposit, milestones, final) and pay dates;
-  the client accepts it on `/w/<token>` with a typed name and email. Acceptance issues the deposit invoice; each
-  milestone invoice goes out when the freelancer marks the step done; the final invoice lists earlier payments and
-  bills the rest. A scope change is a new milestone the client accepts the same way. The job keeps a dated record of
-  acceptance, invoices, payments and delivery links (links only, D-66) as dispute evidence. After 10.2.
-- 10.4 Retainers (D-58): a schedule (day of month, end date); each cycle the worker creates the invoice before the
-  period starts, due at its start, and emails the client's billing email, who pays by hand. After 10.2.
-- 10.5 Getting paid on time: Send to client emails the invoice to the billing email; an "Owed to you" list shows
-  overdue (days past due), partly paid and held money; reminders the freelancer turns on (D-69). After 10.1.
-- 10.6 Records (D-82): each payment keeps its time, token, network, transaction, invoice and client and its USD value
-  at receipt; a profile may add an ECB currency (EUR, GBP, …); transfers between your own profiles are labeled "own
-  transfer"; a deposit without an invoice stays "Unclassified" until the user labels it; CSV export with a
-  classification column; a payment statement PDF as proof of income.
+- 10.3 Jobs, done (D-81; R-100 to R-107): a quote with the work, price and a payment schedule (deposit, milestones,
+  final) and pay dates; the client accepts it on `/w/<token>` with a typed name and email. Acceptance issues the deposit
+  invoice; each milestone invoice goes out when the freelancer marks the step done; the final invoice lists earlier
+  payments and bills the rest. A scope change is a new milestone the client accepts the same way. The job keeps a dated
+  record of acceptance, invoices, payments and delivery links (links only, D-66) as dispute evidence. After 10.2.
+- 10.4 Retainers, done (D-58; R-98, R-99): a schedule (day of month, end date); each cycle the worker creates the
+  invoice before the period starts, due at its start, and emails the client's billing email, who pays by hand. After
+  10.2.
+- 10.5 Getting paid on time, done (R-94 to R-97): Send to client emails the invoice to the billing email; an "Owed to
+  you" list shows overdue (days past due), partly paid and held money; reminders the freelancer turns on (D-69). After
+  10.1.
+- 10.6 Records, done (D-82; R-108 to R-113): each payment keeps its time, token, network, transaction, invoice and
+  client and its USD value at receipt; a profile may add an ECB currency (EUR, GBP, …); transfers between your own
+  profiles are labeled "own transfer"; a deposit without an invoice stays "Unclassified" until the user labels it; CSV
+  export with a classification column; a payment statement PDF as proof of income.
 
 ## Phase 11: merchants, developers, connected wallet and refunds
 
