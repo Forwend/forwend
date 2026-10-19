@@ -35,7 +35,7 @@ func (s *Service) ProposeChange(ctx context.Context, profileID, id, key string, 
 	hash := sha256.Sum256(fmt.Appendf(nil, "%q|%d|%d", r.Title, cents[0], r.DueDays))
 	created := false
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		// The profile row first, as an invoice locks it, so the profile's change emails count one after the other.
+		// The profile row first, as an invoice locks it; outbox.ClientEmailsLeft then locks the user's row.
 		if _, err := tx.Exec(ctx, "SELECT 1 FROM profiles WHERE id = $1 FOR UPDATE", profileID); err != nil {
 			return fmt.Errorf("lock profile %s: %w", profileID, err)
 		}

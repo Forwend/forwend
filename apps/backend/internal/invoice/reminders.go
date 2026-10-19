@@ -135,9 +135,15 @@ func (s *Service) QueueReminders(ctx context.Context) error {
 		                  AND o.payload->>'step' = s.step)`
 	args := []any{outbox.Reminder, ReminderBefore, ReminderDue, ReminderAfter}
 	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		// The users' rows, as outbox.ClientEmailsLeft locks them, so a Send to client at once counts after these.
-		if _, err := tx.Exec(ctx, `SELECT 1 FROM users WHERE id IN (SELECT user_id FROM (`+due+`) d) ORDER BY id
-			FOR UPDATE`, args...); err != nil {
+		// The users' rows, as outbox.ClientEmailsLeft locks them, so a Send to client at once counts after these. Only
+		// these users' reminders are queued below: one due since then waits for the next round.
+		rows, err := tx.Query(ctx, `SELECT id FROM users WHERE id IN (SELECT user_id FROM (`+due+`) d) ORDER BY id
+			FOR NO KEY UPDATE`, args...)
+		if err != nil {
+			return fmt.Errorf("lock reminder users: %w", err)
+		}
+		users, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
 			return fmt.Errorf("lock reminder users: %w", err)
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, invoice_id, payload)
@@ -145,9 +151,9 @@ func (s *Service) QueueReminders(ctx context.Context) error {
 			FROM (SELECT d.*, row_number() OVER (PARTITION BY d.user_id ORDER BY d.due_date, d.id) AS n
 			      FROM (`+due+`) d) d
 			LEFT JOIN (`+outbox.ClientEmailsSQL+`) c ON c.user_id = d.user_id
-			WHERE d.n <= $5 - coalesce(c.sent, 0)
+			WHERE d.user_id = ANY($6::uuid[]) AND d.n <= $5 - coalesce(c.sent, 0)
 			ON CONFLICT (invoice_id, (payload->>'step')) WHERE kind = 'invoice.reminder' DO NOTHING`,
-			append(args, outbox.MaxClientEmails)...); err != nil {
+			append(args, outbox.MaxClientEmails, users)...); err != nil {
 			return fmt.Errorf("queue reminders: %w", err)
 		}
 		return nil

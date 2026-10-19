@@ -32,7 +32,8 @@ type Send struct {
 // Send queues one email of the profile's invoice to its client's email (R-94), once per (profile, idempotency key):
 // queued is false when the same key already did. Only while the payer can still pay it (StatusFilterSQL open). allow
 // is the limit shared by everyone, asked last, so a refused request uses none of it. It locks the profile row, as
-// Create does, so the sends of one profile count one after the other.
+// Create does; outbox.ClientEmailsLeft then locks the user's row, so the user's client emails count one after the
+// other.
 func (s *Service) Send(ctx context.Context, profileID, id, key string, allow func() time.Duration) (inv Invoice,
 	queued bool, err error) {
 	id = strings.ToLower(id)

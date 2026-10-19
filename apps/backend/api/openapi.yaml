@@ -1874,7 +1874,8 @@ components:
           description: |
             Optional. Makes the invoice repeat every month (R-98, D-58): each later month's invoice is due on the
             dueDate's day (the month's last day when shorter). The worker makes it 7 UTC days before that due date,
-            with the checkout open 60 days past it (D-80), and emails it to client.email. A month whose due date
+            with the checkout open 60 days past it (D-80), and emails it to client.email unless the user's client
+            email cap is used up (R-116). A month whose due date
             passed unmade is skipped. It needs dueDate and client.email, otherwise 422; a profile has at most 50
             running. Part of the idempotency hash only when set.
           properties:

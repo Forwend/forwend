@@ -107,22 +107,24 @@ func TestClientEmailsCapCountsEveryProfileOfTheUser(t *testing.T) {
 		VALUES ($1, 'privy', 'w2', 'evm', '0x2222222222222222222222222222222222222223')`, e.walletless)
 	e.exec(t, `INSERT INTO profile_billing_details (profile_id, name, address, country, contact_email)
 		VALUES ($1, 'Alice Shop', 'Main St 2', 'DE', 'shop@alice.example')`, e.walletless)
-	first := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", clientBody).body["invoiceId"].(string)
+	old := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", clientBody).body["invoiceId"].(string)
+	first := e.post(t, "did:privy:alice", e.aliceProfile, "key-2", clientBody).body["invoiceId"].(string)
 	second := e.post(t, "did:privy:alice", e.walletless, "key-1", clientBody)
 	if second.status != http.StatusCreated {
 		t.Fatalf("second profile's invoice: %d %v", second.status, second.body)
 	}
-	// 19 client emails of the first profile: Send to client and reminders.
+	// 19 client emails of the first profile, on another invoice: Send to client and reminders.
 	e.exec(t, `INSERT INTO outbox_events (kind, invoice_id, payload, idempotency_key)
-		SELECT 'invoice.sent', $1, '{}', 'old-' || n FROM generate_series(1, 16) n`, first)
+		SELECT 'invoice.sent', $1, '{}', 'old-' || n FROM generate_series(1, 16) n`, old)
 	e.exec(t, `INSERT INTO outbox_events (kind, invoice_id, payload)
-		SELECT 'invoice.reminder', $1, jsonb_build_object('step', s) FROM unnest(ARRAY['before', 'due', 'after']) s`, first)
+		SELECT 'invoice.reminder', $1, jsonb_build_object('step', s) FROM unnest(ARRAY['before', 'due', 'after']) s`, old)
 	send := func(profile, id, key string) int {
 		return e.call(t, "POST", "/v1/profiles/"+profile+"/invoices/"+id+"/send", "did:privy:alice", key, "").status
 	}
 	if got := send(e.walletless, second.body["invoiceId"].(string), "send-1"); got != http.StatusCreated {
 		t.Fatalf("the user's 20th client email: %d, want 201", got)
 	}
+	// A first send of an invoice: only the user's cap can refuse it.
 	if got := send(e.aliceProfile, first, "send-2"); got != http.StatusTooManyRequests {
 		t.Fatalf("the 21st, from the other profile: %d, want 429", got)
 	}

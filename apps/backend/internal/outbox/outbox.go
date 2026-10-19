@@ -41,7 +41,7 @@ const ClientEmailsSQL = `SELECT p.user_id, count(*) AS sent, min(e.created_at) A
 // many more may be queued now and, when none, how long until the oldest counted one is a day old.
 func ClientEmailsLeft(ctx context.Context, tx pgx.Tx, profileID string) (left int, wait time.Duration, err error) {
 	var user string
-	if err := tx.QueryRow(ctx, "SELECT u.id FROM users u JOIN profiles p ON p.user_id = u.id WHERE p.id = $1 FOR UPDATE OF u",
+	if err := tx.QueryRow(ctx, "SELECT u.id FROM users u JOIN profiles p ON p.user_id = u.id WHERE p.id = $1 FOR NO KEY UPDATE OF u",
 		profileID).Scan(&user); err != nil {
 		return 0, 0, fmt.Errorf("lock profile %s user: %w", profileID, err)
 	}

@@ -329,7 +329,7 @@ func TestChangeEmailsPerDay(t *testing.T) {
 		t.Fatalf("change emails %d %v, want %d", n, err, MaxChangeEmails)
 	}
 
-	// The user's other client emails count too.
+	// The user's other client emails count too, of any kind.
 	other, _, err := s.Create(ctx, profileID, "k2", quote(true))
 	if err != nil {
 		t.Fatal(err)
@@ -337,8 +337,9 @@ func TestChangeEmailsPerDay(t *testing.T) {
 	if _, err := s.Accept(ctx, other.Token, "Jane Doe", "jane@bob.example"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO outbox_events (kind, job_id, payload)
-		SELECT 'job.change', $1, '{}' FROM generate_series(1, $2)`, j.ID, outbox.MaxClientEmails-MaxChangeEmails); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO outbox_events (kind, invoice_id, payload, idempotency_key)
+		SELECT 'invoice.sent', invoice_id, '{}', 'old-' || n FROM job_payments, generate_series(1, $2) n
+		WHERE job_id = $1 AND position = 1`, j.ID, outbox.MaxClientEmails-MaxChangeEmails); err != nil {
 		t.Fatal(err)
 	}
 	proposed, created, err := s.ProposeChange(ctx, profileID, other.ID, "c", PaymentRequest{Title: "Extra", AmountUSD: "150",
