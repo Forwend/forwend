@@ -1279,8 +1279,8 @@ paths:
       description: |
         Public like the invoice PDF. 409 until paymentStatus is paid; a paid invoice stays paid, also once settled.
         Shows the invoice's parties, reference, supply date, line or line items and agreed value, the paid time (block
-        time of the deposit that completed the amount), each confirmed deposit made before the checkout closed with its
-        full tx hash and a link to the network's explorer, and the pay link with its QR code to check the receipt, since
+        time of the deposit that completed the amount), each deposit's part paid to the creator (R-121) with its full tx
+        hash and a link to the network's explorer, and the pay link with its QR code to check the receipt, since
         a PDF can be edited. It says nothing about the settlement: the payer only needs to know they paid; moving the
         money to the creator is the creator's business (R-61, R-68).
       security: []
@@ -2303,7 +2303,7 @@ components:
         createdAt: { type: string, format: date-time }
     Deposit:
       type: object
-      required: [txHash, logIndex, from, amount, blockNumber, blockTime, status, late, blocksLeft, blocksTotal, secondsLeft]
+      required: [txHash, logIndex, from, amount, blockNumber, blockTime, status, late, paid, blocksLeft, blocksTotal, secondsLeft]
       properties:
         txHash: { type: string, pattern: "^0x[0-9a-f]{64}$" }
         logIndex: { type: integer, minimum: 0 }
@@ -2323,6 +2323,13 @@ components:
         late:
           type: boolean
           description: Block time after expiresAt; held for the payer, never paid to the creator.
+        paid:
+          type: [string, "null"]
+          pattern: "^[0-9]+$"
+          description: >-
+            The part the ledger booked to the creator when it booked the deposit (R-121): all of it, the part that
+            completed the amount, or 0 when it was held for the payer. Null until the ledger books it. An expired
+            partial payment keeps its paid part here, though the expiry later holds it for the payer.
         blocksLeft:
           type: integer
           minimum: 0
@@ -2499,8 +2506,8 @@ components:
           schema: { type: string }
         Cache-Control:
           description: |
-            private, no-cache. Revalidate with the ETag. Another deposit before the checkout closes changes the receipt;
-            a late deposit (held for the payer) and the settlement do not.
+            private, no-cache. Revalidate with the ETag. A paid receipt doesn't change: later money is held for the
+            payer (R-121), and the settlement is not on it.
           schema: { type: string }
       content:
         application/pdf:

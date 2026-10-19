@@ -101,6 +101,7 @@ const DEPOSIT = {
   blockTime: "2026-10-10T12:04:00Z",
   status: "detected",
   late: false,
+  paid: null as string | null,
   blocksLeft: 12,
   blocksTotal: 12,
   secondsLeft: 150,
@@ -112,7 +113,14 @@ const CONFIRMING = {
   deposits: [{ ...DEPOSIT, blocksLeft: 6, secondsLeft: 75 }],
 };
 const CONFIRMED = [
-  { ...DEPOSIT, status: "confirmed", blocksLeft: 0, blocksTotal: 0, secondsLeft: 0 },
+  {
+    ...DEPOSIT,
+    status: "confirmed",
+    paid: "1250000000",
+    blocksLeft: 0,
+    blocksTotal: 0,
+    secondsLeft: 0,
+  },
 ];
 const PAID = {
   ...OPEN,
@@ -153,6 +161,7 @@ const PARTIAL = {
       ...DEPOSIT,
       amount: "250000000",
       status: "confirmed",
+      paid: "250000000",
       blocksLeft: 0,
       blocksTotal: 0,
       secondsLeft: 0,

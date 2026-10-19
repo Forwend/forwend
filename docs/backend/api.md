@@ -298,15 +298,17 @@ PDF prints, so a change updates both. Both are public like `GET /v1/invoices/{pa
   invoice names the network "Any" with the amount and total due in USD, then lists under Pay with each token and its
   networks ("USDC on Base Sepolia, Arbitrum Sepolia") and says to send only on those (R-70). Amounts group thousands
   (1,250.00); every page's footer names the document and number and says Page X of Y.
-- `receipt.pdf`: 409 `invoice_not_paid` until `paymentStatus` is `paid` (it stays paid once settled). Adds the paid time
-  beside the created time and supply date; under Payments each confirmed deposit made before the checkout closed, with
-  its amount, block time, full tx hash and "View on <explorer>" link (a late deposit is held for the payer, D-26); and
-  the pay link with its QR code, since a PDF can be edited. It says nothing about the settlement, the creator's business
-  (R-61). The paid time is the block time of the last deposit the ledger booked to `recipient_payable`: the one that
-  completed the amount.
+- `receipt.pdf`: 409 `invoice_not_paid` until `paymentStatus` is `paid` (it stays paid once settled).
+  - It adds the paid time beside the created time and supply date.
+  - Under Payments it lists each deposit's part paid to the creator (R-121): amount, block time, full tx hash and a
+    "View on <explorer>" link. Late money and money over the amount are held for the payer (D-26).
+  - It ends with the pay link and its QR code, since a PDF can be edited.
+  - It says nothing about the settlement, the creator's business (R-61).
+  - The paid time is the block time of the last deposit the ledger booked to `recipient_payable`: the one that
+    completed the amount.
 - The same data gives the same bytes (creation date = created or paid time, sorted catalog), so the `ETag` is a hash of
-  the file. `Cache-Control: private, no-cache`: a client revalidates and gets 304 while the file is unchanged; another
-  deposit before the checkout closes changes the receipt; a late deposit and the settlement do not.
+  the file. `Cache-Control: private, no-cache`: a client revalidates and gets 304 while the file is unchanged. A paid
+  receipt doesn't change: later money is held for the payer (R-121), and the settlement is not on it.
   `Content-Disposition: attachment; filename="forwend-INV-0001-invoice.pdf"` (or `-receipt.pdf`).
 
 ## Jobs

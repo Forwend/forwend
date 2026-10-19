@@ -169,8 +169,9 @@ func Receipt(inv invoice.Invoice, payLink string) ([]byte, error) {
 	net := networkOf(inv)
 	d.heading("Payments")
 	for _, dep := range inv.Deposits {
-		if dep.Status == "confirmed" && !dep.Late { // late money is held for the payer, not paid (D-26)
-			d.transaction(net, Amount(dep.Amount, inv.Decimals, inv.Symbol)+" · "+stamp(dep.BlockTime), dep.TxHash)
+		// Only what was paid to the creator: late money and money over the amount are held for the payer (D-26, R-121).
+		if dep.Paid != nil && dep.Paid.Sign() > 0 {
+			d.transaction(net, Amount(dep.Paid, inv.Decimals, inv.Symbol)+" · "+stamp(dep.BlockTime), dep.TxHash)
 		}
 	}
 	d.code(payLink, "Check this receipt", "A PDF can be edited. The pay page shows what the chain recorded.")

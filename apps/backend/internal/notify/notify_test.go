@@ -288,11 +288,21 @@ func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 		VALUES (84532, 'evm', '0x00000000000000000000000000000000000000ee', $1, $2, 0, $2, 1, 1,
 		    '0x4444444444444444444444444444444444444444', '0x3333333333333333333333333333333333333333', 5000000, 'confirmed')`,
 		id, hash)
-	// Later transfers the link must not pick: one after the checkout closed, and one not final yet.
+	// The ledger booked it to the creator; the link is a payment that paid the creator (R-121).
+	book := func(hash, account string, amount int64) {
+		t.Helper()
+		exec(t, pool, `WITH x AS (INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id)
+			    SELECT $1, 'deposit', id FROM chain_transfers WHERE tx_hash = $2 RETURNING id)
+			INSERT INTO ledger_entries (transaction_id, account, amount)
+			SELECT id, 'receiver', $4::numeric FROM x UNION ALL SELECT id, $3, -$4::numeric FROM x`, id, hash, account, amount)
+	}
+	book(hash, "recipient_payable", 5000000)
+	// Later transfers the link must not pick: one after the checkout closed, one not final yet, and one on time but
+	// held for the payer because the invoice was already paid.
 	for i, d := range []struct {
 		status string
 		late   bool
-	}{{"confirmed", true}, {"detected", false}} {
+	}{{"confirmed", true}, {"detected", false}, {"confirmed", false}} {
 		at := "1"
 		if d.late {
 			at = "2000000001"
@@ -303,6 +313,7 @@ func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 			    '0x4444444444444444444444444444444444444444', '0x3333333333333333333333333333333333333333', 1, $5)`,
 			id, "0x"+strings.Repeat(fmt.Sprintf("%02x", 0xe0+i), 32), 10+i, at, d.status)
 	}
+	book("0x"+strings.Repeat("e2", 32), "payer_held", 1)
 	if err := pgx.BeginFunc(context.Background(), pool, func(tx pgx.Tx) error {
 		return outbox.QueueReceipt(context.Background(), tx, id)
 	}); err != nil {
