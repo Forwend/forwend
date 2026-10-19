@@ -2461,7 +2461,7 @@
         "Unit tests cover the select's requests and the value line; the live e2e on fixed answers chooses EUR and sees values, axe clean, 390 px fit; DESIGN.md describes it."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
@@ -2558,11 +2558,18 @@
           "summary": "All blockers fixed. Rate day: the value is a button in the kit Tooltip (hover, focus, tap); its name holds the value and the day, label-in-name holds. Money: Intl currency format with AGREED_CURRENCIES decimals (EUR 2, JPY 0), grouped. Touch: records-value.tsx:35 adds a coarse-pointer before band, 44px tall and at least 44px wide, centered on the line. The e2e asserts 44px in a touch context. The band stays clear of the type select, which sits on the left under the party. Unit: the value-line test passes with the default locale and with LANG=de_DE.UTF-8. Earlier minors fixed: error and choice reset per opening, read-failure message, inferred types, schema pattern, shared currencyOptions and formatDueDate, RECORDS_BASE_CURRENCY, DESIGN.md placement reason, screenshots. Checks: vitest transactions+invoices 38 passed; typecheck and biome clean; verify 12:44:57Z passed 8 checks, records.spec.ts passed. Left as is: Cancel does not undo the instant save; the hint says it is saved. On phones the setting sits behind the icon-only Export button; DESIGN.md records why.",
           "at": "2026-10-19T12:50:57Z",
           "filesHash": "a1eb0be11cf97d25"
-        }
+        },
+        "commit": "534421a",
+        "doneAt": "2026-10-19T12:51:12Z"
       },
       "branch": "feat/f243-transactions-has-a-records-currency-sele",
       "baseCommit": "b5b26ef04a69941dc785c3b861b7f7ce8955254d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f243-transactions-has-a-records-currency-sele",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
