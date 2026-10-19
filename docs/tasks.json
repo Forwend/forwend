@@ -3925,21 +3925,111 @@
         "Emails that show an issuer name follow the same rule as sender names for the not-checked note, or the reason is documented."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "unit",
         "docs-check"
       ],
       "refs": [
+        "R-122",
         "R-45"
       ],
       "keep": [
         "packages/contracts/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-19 review fail by reviewer: Blocker: apps/backend/internal/profile/text.go:33-39 looks up the tables only before ToLower. An upper-case letter whose lower case is in lookalikes or moreLookalikes is now missed. The old code lowered first, then mapped. So 'ƑORWEND' (U+0191 F with hook), 'FORWENԀ' (U+0500), 'FORѠEND' (U+0460) and 'FORWEПD' were refused on main and pass now. New Armenian capitals Ո and Ռ (lower case maps to n) are missed too. Fix: when neither table has r, look up unicode.ToLower(r) in both tables before falling back to it. Add 'ƑORWEND' and 'FORWENԀ' to TestImpersonates. Minor: '|' and other bars (U+007C, U+01C0, U+2223, U+2502) now map to l. 'For|wend' was refused as 'For wend' and now passes. Minor: the U+017F ſ->f entry never applies, because NFKD turns ſ into s first; 'ſorwend' passes (it did before too). Minor: the pay page's Need help always says the name is not checked, also with billing details. So 'Billing details get no such note' in docs/backend/api.md holds for emails and PDF only. Good: the generator is correct. Regenerating from the local confusables.txt 18.0.0 gives a byte-identical lookalikes.go; gofmt is clean. Multi-code-point targets are skipped; 0 and 1 map to o and l. Every old hand-map entry is still covered. 'Gifts for Wendy' and 'Forward End' still pass. The new test fails on the old code (both Armenian cases) and passes now. Ran: harness show; go run lookalikes_gen.go | diff (same); go test -overlay probes on new and old code; sh scripts/with-env.sh go test -count=1 ./internal/profile/ (ok). Verify logs F256-20261019T205024Z-* all passed.",
+        "2026-10-19 review fail by reviewer: Blocker: apps/backend/internal/profile/lookalikes_gen.go:38-39. The new letter-or-digit filter drops about 120 of Unicode's entries. About 15 of them read as f, o, r, w, e, n or d. The first commit (ef071ef) refused these names, and this commit lets them pass: 'Forw℮nd' (U+212E), 'F〇rwend' (U+3007), 'Fంrwend' (U+0C02), 'Forw⋿nd', 'For⧢end', '𝈓orwend', 'Fo𝈖wend', 'Forwen𐆋'. That is the bug class of the audit: a look-alike that Unicode lists passes the check. U+0C02 and the other spacing anusvara signs are marks. Impersonates drops marks, so they are not even gaps. The filter also ties the output to Go's Unicode tables. Go 1.27.2 knows Unicode 17, so letters new in 18 (U+1DF7D w, U+1DF81 e) count as non-letters and are dropped. Fix: remove the filter and keep every source, as in ef071ef. Then 'For|wend' passes again. That is the smaller risk, so drop it from the test and from api.md. If both are wanted, check two readings of the name: symbols as their letter and as a gap. Fixed: latin() in text.go:57-66 looks up r, then ToLower(r). 'ƑORWEND', 'FORWENԀ', 'FORѠEND', 'FORWEПD', 'FORWEՈD' and 'FORWEՌD' are refused. The api.md and R-122 notes about billing details and the pay page are now accurate and in short sentences. 'Gifts for Wendy', 'Forward End' and 'For Wendy's Bakery' still pass. Ran: go run lookalikes_gen.go < confusables.txt 18.0.0 | diff - lookalikes.go (same); gofmt -l (clean); overlay probe tests of Impersonates; sh scripts/with-env.sh go test -count=1 ./internal/profile/ (ok). Verify logs F256-20261019T210039Z-* all passed.",
+        "2026-10-19 review pass by reviewer: No blockers. Both earlier findings are fixed. lookalikes.go and lookalikes_gen.go are byte-identical to ef071ef. Regenerating from confusables.txt 18.0.0 gives the same file. Impersonates reads a name twice: once with symbols as their letter, once as gaps. 'Forw℮nd', 'F〇rwend', 'Fంrwend', '⋿', '⧢', U+1DF7D and U+1DF81 are refused as letters. 'For|wend', U+2223 and U+2502 are refused as gaps. latin() maps upper case by its lower case. 'ƑORWEND', 'FORWENԀ', 'FORѠEND', 'FORWEПD' and 'FORWEՈD' are refused. Only spacing marks (Mc) are in the table, so accents never map to letters. 'Gifts for Wendy', 'Forward End', 'For Wendy's Bakery', 'Wendy Ford' and 'Gifts for|Wendy' still pass. Minor: U+01C0 ǀ is a letter, so both readings map it to l. 'Forǀwend' passes now; main refused it as a gap. It reads as Forlwend, so this is acceptable. Minor: ſ (U+017F) still becomes s through NFKD, as on main. The docs in api.md and R-122 are accurate and in short sentences. Ran: go run lookalikes_gen.go | diff (same); gofmt -l and go vet (clean); overlay probes of both readings; the new TestImpersonates on main's code (6 names fail); sh scripts/with-env.sh go test -count=1 ./internal/profile/ (ok). Verify logs F256-20261019T210855Z-* all passed."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-19T21:08:55Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 81.7,
+            "log": "docs/runs/F256-20261019T210855Z-unit.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F256-20261019T210855Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.3,
+            "log": "docs/runs/F256-20261019T210855Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F256-20261019T210855Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F256-20261019T210855Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.3,
+            "log": "docs/runs/F256-20261019T210855Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 240.0,
+            "log": "docs/runs/F256-20261019T210855Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F256-20261019T210855Z-keep.log"
+          }
+        ],
+        "taskHash": "a94a2996b340d757",
+        "filesHash": "7f4fc05a8570d133",
+        "proof": {
+          "1": "unit: profile TestImpersonates: Fօrwend and Forweոd (Armenian), Forwenԁ, ϜORWEND, ƑORWEND, FORWENԀ, FORѠEND, FORWEПD, FORWEՈD, For|wend, Forw℮nd, F〇rwend, Fంrwend and the earlier cases are refused (the Armenian ones passed before); Gifts for Wendy and For Wendy's Bakery are still allowed; lookalikes.go is every Unicode confusables.txt 18.0.0 entry with a one-letter prototype, generated by lookalikes_gen.go, plus moreLookalikes for the old entries Unicode lacks",
+          "2": "docs-check: api.md says why emails and PDFs show billing details without a not-checked note (the issuer's own legal details; the look-alike check guards the Forwend name); R-122 added"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "No blockers. Both earlier findings are fixed. lookalikes.go and lookalikes_gen.go are byte-identical to ef071ef. Regenerating from confusables.txt 18.0.0 gives the same file. Impersonates reads a name twice: once with symbols as their letter, once as gaps. 'Forw℮nd', 'F〇rwend', 'Fంrwend', '⋿', '⧢', U+1DF7D and U+1DF81 are refused as letters. 'For|wend', U+2223 and U+2502 are refused as gaps. latin() maps upper case by its lower case. 'ƑORWEND', 'FORWENԀ', 'FORѠEND', 'FORWEПD' and 'FORWEՈD' are refused. Only spacing marks (Mc) are in the table, so accents never map to letters. 'Gifts for Wendy', 'Forward End', 'For Wendy's Bakery', 'Wendy Ford' and 'Gifts for|Wendy' still pass. Minor: U+01C0 ǀ is a letter, so both readings map it to l. 'Forǀwend' passes now; main refused it as a gap. It reads as Forlwend, so this is acceptable. Minor: ſ (U+017F) still becomes s through NFKD, as on main. The docs in api.md and R-122 are accurate and in short sentences. Ran: go run lookalikes_gen.go | diff (same); gofmt -l and go vet (clean); overlay probes of both readings; the new TestImpersonates on main's code (6 names fail); sh scripts/with-env.sh go test -count=1 ./internal/profile/ (ok). Verify logs F256-20261019T210855Z-* all passed.",
+          "at": "2026-10-19T21:15:45Z",
+          "filesHash": "7f4fc05a8570d133"
+        },
+        "commit": "7b0bbbb",
+        "doneAt": "2026-10-19T21:15:59Z"
+      },
+      "branch": "fix/f256-a-name-that-reads-as-forwend-through-any",
+      "baseCommit": "808c26c2f35f43e3bdace7c8597a14fc4152c7af",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f256-a-name-that-reads-as-forwend-through-any",
+        "base": "main"
+      }
     },
     {
       "id": "F257",

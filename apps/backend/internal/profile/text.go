@@ -25,17 +25,21 @@ func PlainText(s string, lines bool) bool {
 var fillers = map[rune]bool{'\u115f': true, '\u1160': true, '\u2800': true, '\u3164': true, '\uffa0': true}
 
 // Impersonates reports a name shown to payers that reads as Forwend, also with accents, spaces or look-alike letters.
-// Split across words it counts only when it ends a word: "For wend" reads as Forwend, "Gifts for Wendy" does not.
+// Split across words it counts only when it ends a word: "For wend" reads as Forwend, "Gifts for Wendy" does not. A
+// symbol that looks like a letter can read either way, so both readings count: "Forw℮nd" as a letter, "For|wend" as a
+// gap.
 func Impersonates(name string) bool {
+	return readsAsForwend(name, true) || readsAsForwend(name, false)
+}
+
+// readsAsForwend reads name as Latin letters; symbols says whether a symbol that looks like a letter counts as it, or
+// as a gap like any other symbol.
+func readsAsForwend(name string, symbols bool) bool {
 	var b strings.Builder
 	gap := false
 	for _, r := range norm.NFKD.String(name) {
-		if c, ok := capitals[r]; ok {
-			r = c
-		}
-		r = unicode.ToLower(r)
-		if c, ok := lookalikes[r]; ok {
-			r = c
+		if symbols || unicode.IsLetter(r) || unicode.IsDigit(r) {
+			r = latin(r)
 		}
 		switch {
 		case r >= 'a' && r <= 'z':
@@ -59,12 +63,20 @@ func Impersonates(name string) bool {
 
 var forwend = regexp.MustCompile("f ?o ?r ?w ?e ?n ?d")
 
-// capitals look like a Latin capital whose lowercase differs from theirs (Greek Ν is N, but ν reads as v).
-var capitals = map[rune]rune{'Ν': 'N', 'Η': 'H', 'Ρ': 'P', 'Β': 'B', 'Χ': 'X', 'Ϝ': 'F', 'Ꮃ': 'W', 'Ԝ': 'W'}
-
-var lookalikes = map[rune]rune{
-	'а': 'a', 'е': 'e', 'о': 'o', 'р': 'p', 'с': 'c', 'г': 'r', 'п': 'n', 'ԁ': 'd', 'ԝ': 'w', 'ѡ': 'w', 'ο': 'o',
-	'ρ': 'p', 'ν': 'v', 'ω': 'w', 'ε': 'e', 'η': 'n', 'ɾ': 'r', 'ƒ': 'f', 'ꬵ': 'f', '0': 'o', '1': 'l',
-	'ꜰ': 'f', 'ᴏ': 'o', 'ʀ': 'r', 'ᴡ': 'w', 'ᴇ': 'e', 'ɴ': 'n', 'ᴅ': 'd',
-	'ꓝ': 'f', 'ꓳ': 'o', 'ꓣ': 'r', 'ꓪ': 'w', 'ꓰ': 'e', 'ꓠ': 'n', 'ꓓ': 'd',
+// latin is the lower-case ASCII letter r reads as, by itself or in lower case, else r in lower case.
+func latin(r rune) rune {
+	for _, c := range []rune{r, unicode.ToLower(r)} {
+		if l, ok := lookalikes[c]; ok {
+			return rune(l)
+		}
+		if l, ok := moreLookalikes[c]; ok {
+			return rune(l)
+		}
+	}
+	return unicode.ToLower(r)
 }
+
+// moreLookalikes read as a Latin letter in a name, though Unicode's confusables (lookalikes.go) don't list them:
+// lower-case Greek and Cyrillic letters and small capitals.
+var moreLookalikes = map[rune]byte{'п': 'n', 'ω': 'w', 'ε': 'e', 'η': 'n', 'ɾ': 'r', 'ꜰ': 'f', 'ʀ': 'r', 'ᴇ': 'e', 'ɴ': 'n',
+	'ᴅ': 'd'}
