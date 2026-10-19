@@ -466,7 +466,8 @@ seconds (when the next token is back) and runs nothing else.
   - `API_USER_BURST` raises the 60. Only the live e2e sets it (1000): all its tests sign in as one user (D-85).
 - `POST /v1/invoices/{payToken}/recheck` (Check status, R-55) reads a chain RPC, so it is limited in the api: one
   check per invoice every 5 minutes (the invoice read gives `nextCheckAt`, so a reloaded page still waits), kept in Postgres so every replica agrees (`invoice_rechecks.checked_at`), and a
-  per-process bucket of 1 a second, 10 at once, for everyone together. Both answer 429 with `Retry-After`. A chain that
+  per-process bucket of 1 a second, 10 at once, for everyone together. Each owner's invoices (one user, all profiles)
+  take from the owner's own bucket first, 3 at once, then one every 5 s, so one account can't empty the shared one. Both answer 429 with `Retry-After`. A chain that
   can't be read answers 503 `network_unavailable`. Until an option has money it checks every option's address (the
   payer may have paid any); the answer is an option holding more than recorded, else the shown one. An option whose
   network does not answer is listed in `unreadable` and the others are still checked. When the shown option can't be

@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -122,5 +123,27 @@ func TestUnknownInvoicesDoNotUseTheSharedCheckLimit(t *testing.T) {
 	if r := e.recheck(t, e.srv, id); r.status != http.StatusOK {
 		t.Fatalf("first check of a real invoice after %d unknown-id requests (no RPC read): %d %v, want 200",
 			invoiceapi.RecheckBurst+1, r.status, r.body)
+	}
+}
+
+// R-55: one owner's invoices take Check status from that owner's share first, so a free account that makes its own
+// invoices and checks them can't use up the budget everyone shares (audit 2026-10-19).
+func TestRecheckBudgetHasAShareForEachOwner(t *testing.T) {
+	e := invoiceAPI(t)
+	victim := e.post(t, "did:privy:alice", e.aliceProfile, "victim", basicBody).body["invoiceId"].(string)
+	e.exec(t, `INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
+		VALUES ($1, 'privy', 'bob-wallet', 'evm', '0x3333333333333333333333333333333333333333')`, e.bobProfile)
+	limited := 0
+	for i := range invoiceapi.RecheckBurst {
+		own := e.post(t, "did:privy:bob", e.bobProfile, "b"+strconv.Itoa(i), basicBody).body["invoiceId"].(string)
+		if r := e.recheck(t, e.srv, own); r.status == http.StatusTooManyRequests {
+			limited++
+		}
+	}
+	if limited == 0 {
+		t.Fatalf("one owner's %d checks at once: none limited", invoiceapi.RecheckBurst)
+	}
+	if r := e.recheck(t, e.srv, victim); r.status != http.StatusOK {
+		t.Fatalf("another owner's payer: %d %s, want 200", r.status, errorCode(r))
 	}
 }

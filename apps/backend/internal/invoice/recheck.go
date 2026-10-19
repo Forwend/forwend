@@ -40,8 +40,10 @@ type Recheck struct {
 
 // Recheck reads the invoice's receive addresses on chain (every option's until one has money) and, for each that holds
 // more than its recorded transfers, asks the worker to rescan it (D-77). It reads only: it never signs, never books
-// and never moves a cursor. allow runs only for an invoice due a check, so unknown ids never spend the shared budget.
-func (s *Service) Recheck(ctx context.Context, payToken string, balanceOf ledger.BalanceOf, allow func() time.Duration) (Recheck, error) {
+// and never moves a cursor. allow runs only for an invoice due a check, so unknown ids never spend the shared budget;
+// it gets the invoice's owner, so one owner's invoices can be given a share of it.
+func (s *Service) Recheck(ctx context.Context, payToken string, balanceOf ledger.BalanceOf,
+	allow func(owner string) time.Duration) (Recheck, error) {
 	inv, err := s.Get(ctx, payToken)
 	if err != nil {
 		return Recheck{}, err
@@ -67,8 +69,13 @@ func (s *Service) Recheck(ctx context.Context, payToken string, balanceOf ledger
 	if err != nil {
 		return Recheck{}, fmt.Errorf("start invoice %s check: %w", inv.ID, err)
 	}
+	var owner string
+	if err := tx.QueryRow(ctx, "SELECT p.user_id::text FROM invoices i JOIN profiles p ON p.id = i.profile_id WHERE i.id = $1",
+		inv.ID).Scan(&owner); err != nil {
+		return Recheck{}, fmt.Errorf("read invoice %s owner: %w", inv.ID, err)
+	}
 	// The rollback keeps the last check time, so a payer refused here may press again soon.
-	if wait := allow(); wait > 0 {
+	if wait := allow(owner); wait > 0 {
 		return Recheck{}, &TooSoonError{Wait: wait}
 	}
 	if err := tx.Commit(ctx); err != nil {

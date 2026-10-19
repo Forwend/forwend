@@ -3699,7 +3699,7 @@
         "Checks of one owner's invoices first take from that owner's own budget; once it is empty, payers of other owners' invoices still get checks."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "docs-check"
@@ -3713,7 +3713,77 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-19T20:15:14Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 78.3,
+            "log": "docs/runs/F254-20261019T201514Z-unit.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F254-20261019T201514Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.3,
+            "log": "docs/runs/F254-20261019T201514Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F254-20261019T201514Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F254-20261019T201514Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.3,
+            "log": "docs/runs/F254-20261019T201514Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 215.7,
+            "log": "docs/runs/F254-20261019T201514Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F254-20261019T201514Z-keep.log"
+          }
+        ],
+        "taskHash": "3168e47e20075318",
+        "filesHash": "4c8fda53ebda5037",
+        "proof": {
+          "1": "unit: TestRecheckBudgetHasAShareForEachOwner: one owner's 10 checks at once are limited by the owner's share, and another owner's payer still gets 200 (none limited and the other payer 429 before the fix); existing recheck tests pass"
+        }
+      },
+      "branch": "fix/f254-check-status-gives-each-invoice-owner-a",
+      "baseCommit": "a8a34c629d987d05bc7820765f7f15a2d6307421",
+      "failedVerifies": 0
     },
     {
       "id": "F255",
