@@ -895,7 +895,11 @@ paths:
               schema: { type: string }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
-        "422": { $ref: "#/components/responses/InvalidValue" }
+        "422":
+          description: A bad day (invalid_value), or more than 10000 transactions in the days (too_many_transactions, R-118).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/statement.pdf:
@@ -926,7 +930,11 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/BillingDetailsNotFound" }
-        "422": { $ref: "#/components/responses/InvalidValue" }
+        "422":
+          description: A bad day (invalid_value), or more than 10000 transactions in the days (too_many_transactions, R-118).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/records-currency:

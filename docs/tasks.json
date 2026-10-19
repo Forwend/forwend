@@ -3353,13 +3353,14 @@
         "With 100000 dust transfers, ten parallel exports stay far below the audit's 1.1 GB peak (the audit PoC as a test)."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "e2e",
         "docs-check"
       ],
       "refs": [
+        "R-118",
         "R-108",
         "R-112"
       ],
@@ -3369,7 +3370,80 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-19T19:00:35Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 71.7,
+            "log": "docs/runs/F251-20261019T190035Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 213.7,
+            "log": "docs/runs/F251-20261019T190035Z-e2e.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F251-20261019T190035Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F251-20261019T190035Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F251-20261019T190035Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": "docs/runs/F251-20261019T190035Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.9,
+            "log": "docs/runs/F251-20261019T190035Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F251-20261019T190035Z-keep.log"
+          }
+        ],
+        "taskHash": "a9054807e04e5749",
+        "filesHash": "c3ca4bb6bfeda8e6",
+        "proof": {
+          "1": "unit: activity.EachTransfer streams rows into the CSV buffer and the statement keeps only income lines; TestExportsStayBoundedWithDust and the activity records tests",
+          "2": "unit: TestExportsStayBoundedWithDust: 100000 dust transfers give 422 too_many_transactions on the CSV and the statement; records.test.tsx: the Export dialog says to choose a shorter period for both",
+          "3": "unit: TestExportsStayBoundedWithDust: balance-history?days=365 allocates under 10 MB with 100000 transfers (29 MB before); balance package history tests unchanged and passing",
+          "4": "unit: TestExportsStayBoundedWithDust: ten parallel CSV exports and ten statements allocate under 300 MB each round (3544 MB and 2242 MB before the fix)"
+        }
+      },
+      "branch": "fix/f251-transactions-csv-the-statement-pdf-and-b",
+      "baseCommit": "6075d8e1361628525be16ff614cc8cd9ae69b354",
+      "failedVerifies": 0
     },
     {
       "id": "F252",
@@ -3552,7 +3626,7 @@
         "A change accept on a quote payment, also with a zero proposedAt, answers 404 job_not_found and writes nothing."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "dropped",
       "verification": [
         "unit"
       ],
@@ -3563,7 +3637,9 @@
         "packages/contracts/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-19 dropped: Fixed in F250 (PR merged): AcceptChange answers 404 job_not_found for a quote payment named as a change, also with a zero proposedAt, before the shared limit; F250 needed it for its own acceptance. Test: job change_test zero-proposedAt case."
+      ],
       "blockedReason": null,
       "evidence": null
     }

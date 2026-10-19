@@ -4,6 +4,7 @@ package httpio
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -87,6 +88,9 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		errors.Is(err, activity.ErrInvalid),
 		errors.Is(err, balance.ErrInvalid), errors.Is(err, search.ErrInvalid):
 		status, code, message = http.StatusUnprocessableEntity, "invalid_value", err.Error()
+	case errors.Is(err, activity.ErrTooMany):
+		status, code, message = http.StatusUnprocessableEntity, "too_many_transactions",
+			fmt.Sprintf("more than %d transactions in these days: choose a shorter period", activity.MaxExportRows)
 	case errors.Is(err, invoice.ErrNotWatched):
 		status, code, message = http.StatusServiceUnavailable, "network_not_ready", "this network is starting: try again in a minute"
 	case errors.Is(err, invoice.ErrChainUnavailable):

@@ -65,7 +65,7 @@ func TestTransferClassification(t *testing.T) {
 	s := NewService(pool)
 	classes := func(from, to int64) map[string]string {
 		t.Helper()
-		items, err := s.AllTransfers(ctx, profile, time.Unix(from, 0), time.Unix(to, 0))
+		items, err := collect(s, profile, time.Unix(from, 0), time.Unix(to, 0))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -171,7 +171,7 @@ func TestRecordsValue(t *testing.T) {
 	s := NewService(pool)
 	values := func() map[string]string {
 		t.Helper()
-		items, err := s.AllTransfers(ctx, profile, time.Unix(0, 0), time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC))
+		items, err := collect(s, profile, time.Unix(0, 0), time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -215,4 +215,14 @@ func TestRecordsValue(t *testing.T) {
 	if got := values(); len(got) != 0 {
 		t.Fatalf("values after clearing: %v", got)
 	}
+}
+
+// collect is EachTransfer's transfers in a slice.
+func collect(s *Service, profile string, from, to time.Time) ([]Transfer, error) {
+	var out []Transfer
+	err := s.EachTransfer(context.Background(), profile, from, to, func(t Transfer) error {
+		out = append(out, t)
+		return nil
+	})
+	return out, err
 }
