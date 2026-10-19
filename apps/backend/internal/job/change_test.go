@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
+	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 )
 
 // R-105: a change goes at the end of an accepted job's schedule once per key; the client accepts it like the quote,
@@ -298,8 +299,9 @@ func TestDepositOnlyJobTakesAChange(t *testing.T) {
 	}
 }
 
-// R-107: a job sends its client at most MaxChangeEmails change emails in a day, and a profile MaxProfileChangeEmails;
-// past that the change is still added, and the owner's read says no email went.
+// R-107, R-116: a job sends its client at most MaxChangeEmails change emails in a day, and a user
+// outbox.MaxClientEmails client emails of every kind; past that the change is still added, and the owner's read says no
+// email went.
 func TestChangeEmailsPerDay(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -327,7 +329,7 @@ func TestChangeEmailsPerDay(t *testing.T) {
 		t.Fatalf("change emails %d %v, want %d", n, err, MaxChangeEmails)
 	}
 
-	// The profile's other jobs count too.
+	// The user's other client emails count too.
 	other, _, err := s.Create(ctx, profileID, "k2", quote(true))
 	if err != nil {
 		t.Fatal(err)
@@ -336,7 +338,7 @@ func TestChangeEmailsPerDay(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO outbox_events (kind, job_id, payload)
-		SELECT 'job.change', $1, '{}' FROM generate_series(1, $2)`, j.ID, MaxProfileChangeEmails-MaxChangeEmails); err != nil {
+		SELECT 'job.change', $1, '{}' FROM generate_series(1, $2)`, j.ID, outbox.MaxClientEmails-MaxChangeEmails); err != nil {
 		t.Fatal(err)
 	}
 	proposed, created, err := s.ProposeChange(ctx, profileID, other.ID, "c", PaymentRequest{Title: "Extra", AmountUSD: "150",

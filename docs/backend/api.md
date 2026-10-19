@@ -78,6 +78,7 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
 - Payment reminders (R-96): each worker round (`invoice.QueueReminders`) queues `invoice.reminder` rows.
   - Steps: `before` 3 days before the due date, `due` on it, `after` 7 days after, in UTC days.
   - Only the latest step whose day has come is queued, once per invoice and step (a unique index on the step).
+  - They fit in what is left of the client email cap (R-116), earliest due first; the rest wait for room.
   - It needs reminders on and not stopped, a client email, and the `open` status filter.
   - At delivery the worker checks the same again, and that something is left; otherwise it sends nothing.
   - The email names the issuer, number, what is left and the due date, with the pay page and `invoice.pdf`.
@@ -89,7 +90,7 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
   - Reply-To is the issuer's billing email.
   - The Idempotency-Key starts `forwend-job-<jobId>`.
   - At delivery a change withdrawn or accepted sends nothing.
-  - In any 24 hours a job queues at most 5, and a profile at most 20; withdrawn changes count too.
+  - In any 24 hours a job queues at most 5 (withdrawn changes count too), within the client email cap (R-116).
   - Past a cap the change is still added, and the owner's read has `clientEmailed: false` for it.
 - Retainers (R-98): each worker round (`invoice.MakeRetainerInvoices`) makes a running retainer's next invoice.
   - Each later month is due on the first due date's day, or the month's last day when it is shorter.
@@ -98,8 +99,12 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
   - Its checkout stays open to the end of the 60th day after the due date (D-80).
   - It has reminders on when the first invoice was created with them, unless the client stopped them on any month.
   - In the same transaction it queues one `invoice.sent` row, so the client gets it as from Send to client.
-  - That send counts toward Send to client's limits for the invoice and the profile.
+  - That send counts toward the client email cap (R-116); past it the month is made without its email.
   - One month per retainer per round; a stop that lands first makes nothing (a row lock on the retainer).
+- Client email cap (R-116): a user's profiles queue at most 20 emails to clients in any 24 hours, all kinds together.
+  - It counts `invoice.sent` (Send to client and retainer months), `invoice.reminder` and `job.change` rows.
+  - `outbox.ClientEmailsLeft` counts them under a lock on the user's row, so two profiles can't both pass it.
+  - It keeps one account from mailing strangers in bulk, and Resend's shared daily budget (D-65) for money emails.
 - The owner's Send to client (R-94) goes to the invoice's client email whatever the owner's setting. It names the
   issuer, number, amount and due date, and links the pay page and `invoice.pdf`. A payer-chooses invoice shows USD.
   Its Reply-To is the issuer's billing email, so a reply reaches the owner.
@@ -215,7 +220,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
   client email. It needs an Idempotency-Key; the same key again answers 200 and queues nothing.
   - Only while the payer can still pay it (the `open` status filter); otherwise 409 `invoice_closed`.
   - Without a client email: 409 `client_email_required`. A key used for another invoice: 409 `idempotency_conflict`.
-  - One send per invoice in 24 hours and 20 per profile in 24 hours, counted from `outbox_events` under a profile lock.
+  - One send per invoice in 24 hours, within the client email cap (R-116).
   - Sends share the limit for everyone with the payer's receipt address. Past any limit: 429 with Retry-After.
   - The owner's reads return `sends`, oldest first: `{requestedAt, sentAt, failedAt}`. The bell leaves sends out.
 - `PUT /v1/profiles/{profileId}/invoices/{invoiceId}/reminders` (R-96, D-69) takes `{"on": true|false}`.

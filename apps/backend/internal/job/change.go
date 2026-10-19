@@ -12,12 +12,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Change email caps (R-107), in any 24 hours: per job, so a change proposed and withdrawn again and again doesn't flood
-// its client, and per profile, as Send to client (R-94), since the owner can accept their own link with any address.
-const (
-	MaxChangeEmails        = 5
-	MaxProfileChangeEmails = 20
-)
+// MaxChangeEmails caps a job's change emails in any 24 hours (R-107), so a change proposed and withdrawn again and
+// again doesn't flood its client; outbox.MaxClientEmails caps the user's client emails of every kind (R-116), since
+// the owner can accept their own link with any address.
+const MaxChangeEmails = 5
 
 // ProposeChange adds a scope change to the profile's accepted job (R-105): a payment at the end of its schedule that
 // the client accepts by the job's link. It is made once per (job, idempotency key), withdrawn or not: created is false
@@ -94,15 +92,13 @@ func (s *Service) ProposeChange(ctx context.Context, profileID, id, key string, 
 			return fmt.Errorf("add job %s change: %w", id, err)
 		}
 		created = true
-		var job, profile int
-		if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE e.job_id = $1), count(*)
-			FROM outbox_events e JOIN jobs j ON j.id = e.job_id
-			WHERE j.profile_id = $2 AND e.kind = $3 AND e.created_at > now() - interval '24 hours'`,
-			id, profileID, outbox.Change).Scan(&job, &profile); err != nil {
+		var job int
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM outbox_events WHERE job_id = $1 AND kind = $2
+			AND created_at > now() - interval '24 hours'`, id, outbox.Change).Scan(&job); err != nil {
 			return fmt.Errorf("count job %s change emails: %w", id, err)
 		}
-		if job >= MaxChangeEmails || profile >= MaxProfileChangeEmails {
-			return nil
+		if left, _, err := outbox.ClientEmailsLeft(ctx, tx, profileID); err != nil || left == 0 || job >= MaxChangeEmails {
+			return err
 		}
 		return outbox.QueueChange(ctx, tx, id, key)
 	})

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -23,6 +24,35 @@ const (
 	Reminder = "invoice.reminder"
 	Change   = "job.change" // a scope change, to the email the client typed accepting the job (R-107)
 )
+
+// MaxClientEmails caps the emails a user's profiles queue to clients in any 24 hours, of every kind the owner starts:
+// Send to client and retainer months (Sent), reminders and job changes (R-116). It keeps one account from mailing
+// strangers in bulk through Forwend, and the shared Resend budget (D-65) for the money emails.
+const MaxClientEmails = 20
+
+// ClientEmailsSQL lists, per user, the client emails queued in the last 24 hours (sent) and the oldest one's time.
+const ClientEmailsSQL = `SELECT p.user_id, count(*) AS sent, min(e.created_at) AS oldest FROM outbox_events e
+	LEFT JOIN invoices i ON i.id = e.invoice_id LEFT JOIN jobs j ON j.id = e.job_id
+	JOIN profiles p ON p.id = coalesce(i.profile_id, j.profile_id)
+	WHERE e.kind IN ('` + Sent + `', '` + Reminder + `', '` + Change + `') AND e.created_at > now() - interval '24 hours'
+	GROUP BY p.user_id`
+
+// ClientEmailsLeft locks the profile's user row, so the user's client emails count one after the other, and says how
+// many more may be queued now and, when none, how long until the oldest counted one is a day old.
+func ClientEmailsLeft(ctx context.Context, tx pgx.Tx, profileID string) (left int, wait time.Duration, err error) {
+	var user string
+	if err := tx.QueryRow(ctx, "SELECT u.id FROM users u JOIN profiles p ON p.user_id = u.id WHERE p.id = $1 FOR UPDATE OF u",
+		profileID).Scan(&user); err != nil {
+		return 0, 0, fmt.Errorf("lock profile %s user: %w", profileID, err)
+	}
+	var sent int
+	if err := tx.QueryRow(ctx, `SELECT coalesce(c.sent, 0), coalesce(c.oldest + interval '24 hours' - now(), interval '0')
+		FROM (SELECT $1::uuid AS user_id) u LEFT JOIN (`+ClientEmailsSQL+`) c USING (user_id)`, user).
+		Scan(&sent, &wait); err != nil {
+		return 0, 0, fmt.Errorf("count user %s client emails: %w", user, err)
+	}
+	return max(MaxClientEmails-sent, 0), wait, nil
+}
 
 // Payload names the option row the event happened on (its token and network), for held money the amount, for a
 // reminder its step, and for a scope change its key.

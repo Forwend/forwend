@@ -3114,14 +3114,16 @@
         "PLAN lists an own email provider in place of Resend after the MVP; R-94, R-96, R-98, R-107 and api.md name the cap."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "docs-check"
       ],
       "refs": [
+        "R-116",
         "R-94",
         "R-96",
+        "R-98",
         "R-107",
         "D-65"
       ],
@@ -3131,7 +3133,80 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-19T18:16:56Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 72.2,
+            "log": "docs/runs/F249-20261019T181656Z-unit.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F249-20261019T181656Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F249-20261019T181656Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F249-20261019T181656Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F249-20261019T181656Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.8,
+            "log": "docs/runs/F249-20261019T181656Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 213.3,
+            "log": "docs/runs/F249-20261019T181656Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F249-20261019T181656Z-keep.log"
+          }
+        ],
+        "taskHash": "befa5a1e34717fe6",
+        "filesHash": "a3b4dee27f0a223f",
+        "proof": {
+          "1": "unit: TestClientEmailsCapCountsEveryProfileOfTheUser: 16 sends and 3 reminders on one profile, the 20th from the second profile is 201 and the 21st is 429; TestRemindersFitTheUsersClientEmails: Send to client at the cap is TooSoonError",
+          "2": "unit: TestRemindersFitTheUsersClientEmails queues 20 of 25 due reminders, the other 5 a day later; TestRetainerMonthPastTheCapSendsNoEmail makes the month without its email; job TestChangeEmailsPerDay adds a change past the user cap without an email",
+          "3": "unit: TestSendInvoiceToClient keeps one send per invoice a day; TestChangeEmailsPerDay keeps 5 per job; MaxProfileSends and MaxProfileChangeEmails are gone, outbox.ClientEmailsLeft replaces them",
+          "4": "docs-check: R-116 added; R-94, R-107, api.md and openapi.yaml name the user cap; PLAN lists our own email provider after the MVP"
+        }
+      },
+      "branch": "fix/f249-a-user-queues-at-most-20-client-emails-a",
+      "baseCommit": "4ee525444a8f9c9616785741af248d14aec8714d",
+      "failedVerifies": 0
     },
     {
       "id": "F250",

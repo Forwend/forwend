@@ -11,12 +11,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Send to client limits (R-94): the owner picks the address, so these stop the button from mailing a client again and
-// again, and keep the shared Resend budget (D-65) for the paid and settled emails.
-const (
-	SendEvery       = 24 * time.Hour
-	MaxProfileSends = 20 // per profile in any SendEvery
-)
+// Send to client limit (R-94): the owner picks the address, so this stops the button from mailing a client again and
+// again; outbox.MaxClientEmails caps the user's client emails of every kind (R-116).
+const SendEvery = 24 * time.Hour
 
 var (
 	// ErrNoClientEmail: the invoice has no client email to send it to.
@@ -76,15 +73,10 @@ func (s *Service) Send(ctx context.Context, profileID, id, key string, allow fun
 		if wait > 0 {
 			return &TooSoonError{Wait: wait}
 		}
-		var sends int
-		if err := tx.QueryRow(ctx, `SELECT count(*), coalesce(min(e.created_at) + make_interval(secs => $3) - now(),
-			    interval '0')
-			FROM outbox_events e JOIN invoices m ON m.id = e.invoice_id
-			WHERE m.profile_id = $1 AND e.kind = $2 AND e.created_at > now() - make_interval(secs => $3)`,
-			profileID, outbox.Sent, SendEvery.Seconds()).Scan(&sends, &wait); err != nil {
-			return fmt.Errorf("count profile %s sends: %w", profileID, err)
-		}
-		if sends >= MaxProfileSends {
+		left, wait, err := outbox.ClientEmailsLeft(ctx, tx, profileID)
+		if err != nil {
+			return err
+		} else if left == 0 {
 			return &TooSoonError{Wait: wait}
 		}
 		if wait := allow(); wait > 0 {

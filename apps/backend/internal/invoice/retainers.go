@@ -87,9 +87,10 @@ func (s *Service) startRetainer(ctx context.Context, tx pgx.Tx, profileID, invoi
 	return nil
 }
 
-// addCycle records the month's invoice just inserted in tx and queues its email to the client. A retainer stopped in
-// the meantime makes nothing: the row lock orders this after StopRetainer.
-func addCycle(ctx context.Context, tx pgx.Tx, c cycle, invoiceID, key string) error {
+// addCycle records the month's invoice just inserted in tx and queues its email to the client, unless the user's client
+// emails are used up for the day (R-116). A retainer stopped in the meantime makes nothing: the row lock orders this
+// after StopRetainer.
+func addCycle(ctx context.Context, tx pgx.Tx, c cycle, profileID, invoiceID, key string) error {
 	var stopped bool
 	if err := tx.QueryRow(ctx, "SELECT stopped_at IS NOT NULL FROM retainers WHERE id = $1 FOR UPDATE",
 		c.retainer).Scan(&stopped); err != nil {
@@ -101,6 +102,9 @@ func addCycle(ctx context.Context, tx pgx.Tx, c cycle, invoiceID, key string) er
 	if _, err := tx.Exec(ctx, "INSERT INTO retainer_invoices (retainer_id, cycle, invoice_id) VALUES ($1, $2, $3)",
 		c.retainer, c.n, invoiceID); err != nil {
 		return fmt.Errorf("add retainer %s month %d: %w", c.retainer, c.n, err)
+	}
+	if left, _, err := outbox.ClientEmailsLeft(ctx, tx, profileID); err != nil || left == 0 {
+		return err
 	}
 	return outbox.QueueSend(ctx, tx, invoiceID, key)
 }

@@ -151,7 +151,8 @@ invoice says, the phase follows EU, UK and US rules first (D-83).
 Mobile; optional BNB and non-EVM networks; HD-wallet receive methods; cross-chain sends; automatic wallet billing;
 full accounting page and Koinly export; opt-in escrow; bank/card on-ramp; public developer sandbox; custom checkout
 domains; platform fees and the business model (D-56, Q-10); external payout address (D-62); file delivery storage
-(D-66); invoice and tax rules for countries beyond the EU, the UK and the US (D-83). Each new chain or receive
+(D-66); invoice and tax rules for countries beyond the EU, the UK and the US (D-83); our own email provider in place of
+Resend (owner request 2026-10-19; the client email cap, R-116, stays). Each new chain or receive
 method needs its own spike. Planned Base/Arbitrum/Arc/Tempo expansion stays gated by D-38.
 Card payers (card, Apple Pay or Google Pay in, USDC to the invoice) need a card-acquirer spike first:
 the consumer on-ramps forbid buying for another person's address, and card payments bring chargebacks back
