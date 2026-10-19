@@ -178,14 +178,17 @@ func (c *Chain) Scan(ctx context.Context) error {
 	}
 	// The cursor's finalized block never passes what this scan read: finalized was read after latest and may be
 	// higher, and blocks above latest were not scanned. Its time is that block's, for expiry and countdowns.
+	head, ok := headers[latest]
 	if finalized > latest {
-		h, ok := headers[latest]
 		if !ok {
 			return fmt.Errorf("read chain %d block %d: not found", c.chainID, latest)
 		}
-		final = h
+		final = head
 	}
-	return c.record(ctx, reorgedOf(open), deposits, reorgedOf(openWallet), transfers, final, latest)
+	if !ok { // a node behind the one that answered latest: the scanned time stays safe, at the finalized block's
+		head = header{Number: hexutil.Uint64(latest), Timestamp: final.Timestamp}
+	}
+	return c.record(ctx, reorgedOf(open), deposits, reorgedOf(openWallet), transfers, final, head)
 }
 
 // depositsOf turns invoice logs into deposits, final at or below finalized, and the set of logs it kept. A log whose
@@ -459,7 +462,7 @@ func (c *Chain) headers(ctx context.Context, numbers []uint64) (header, map[uint
 // record writes one scan: reorged rows first (so a re-mined copy can be live), then each deposit and wallet transfer
 // is inserted or brought back, then the cursor moves.
 func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit, reorgedWallet []int64,
-	transfers []walletTransfer, finalized header, scanned uint64) error {
+	transfers []walletTransfer, finalized, scanned header) error {
 	tx, err := c.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("record chain %d scan: %w", c.chainID, err)
@@ -496,14 +499,18 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 		}
 	}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block, last_finalized_time)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block, last_finalized_time,
+		    last_scanned_time)
+		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (chain_id) DO UPDATE
 		SET last_scanned_block = greatest(excluded.last_scanned_block, chain_cursors.last_finalized_block),
+		    last_scanned_time = CASE WHEN excluded.last_scanned_block >= chain_cursors.last_finalized_block
+		        THEN excluded.last_scanned_time ELSE chain_cursors.last_finalized_time END,
 		    last_finalized_block = greatest(chain_cursors.last_finalized_block, excluded.last_finalized_block),
 		    last_finalized_time = CASE WHEN excluded.last_finalized_block >= chain_cursors.last_finalized_block
 		        THEN excluded.last_finalized_time ELSE chain_cursors.last_finalized_time END,
-		    updated_at = now()`, c.chainID, scanned, uint64(finalized.Number), uint64(finalized.Timestamp))
+		    updated_at = now()`, c.chainID, uint64(scanned.Number), uint64(finalized.Number), uint64(finalized.Timestamp),
+		uint64(scanned.Timestamp))
 	if err != nil {
 		return fmt.Errorf("move chain %d cursor: %w", c.chainID, err)
 	}

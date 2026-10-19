@@ -3,6 +3,7 @@ package ledger
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
@@ -108,4 +109,66 @@ func deref(s *string) string {
 		return "<nil>"
 	}
 	return *s
+}
+
+// R-119: the worker reads one chain after another, so a later transfer on a chain read first must not take the choice
+// from an earlier full payment on a chain not read that far yet (audit 2026-10-19: dust took over a paid invoice).
+// The option is chosen, and its deposits booked, only once every other enabled option chain was read past the first
+// one.
+func TestOptionWaitsForEveryChainBeforeChoosing(t *testing.T) {
+	s := newSim(t)
+	s.exec(`WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (2, 'evm', 'sim2', true)),
+		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
+		            VALUES (2, 'evm', $1, 'USDC', 6, true))
+		INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) VALUES (2, 100, 100)`, simToken)
+
+	pay := func(id string, chainID int, receive string, amount, blockTime int64) {
+		s.n++
+		s.exec(`INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
+			    block_hash, block_number, block_time, from_address, to_address, amount, status)
+			VALUES ($1, 'evm', $2, $3, $4, 0, $4, $5, $6, '0x00000000000000000000000000000000000000ff', $7, $8, 'confirmed')`,
+			chainID, simToken, id, fmt.Sprintf("0x%064x", s.n), s.n, blockTime, receive, amount)
+		s.answer[receive].Add(s.answer[receive], big.NewInt(amount))
+	}
+	main, dust := fmt.Sprintf("0x%064x", 0xa1), "0x00000000000000000000000000000000000000a1"
+	option, full := fmt.Sprintf("0x%064x", 0xa2), "0x00000000000000000000000000000000000000a2"
+	s.exec(`INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
+		    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
+		    request_hash)
+		SELECT $1, id, 1, 'evm', $2, 5000000, 5000, 5000 + 86400, '0x1111111111111111111111111111111111111111',
+		    'evm_create2', '0x2222222222222222222222222222222222222222', $3, $1, decode(repeat('00', 32), 'hex')
+		FROM profiles`, main, simToken, dust)
+	s.answer[dust] = new(big.Int)
+	s.exec(`INSERT INTO invoices (id, main_id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
+		    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
+		    request_hash)
+		SELECT $1, m.id, m.profile_id, 2, 'evm', m.token_contract, m.amount, m.expires_at, m.settle_deadline,
+		    m.recipient_address, m.receive_method, m.factory_address, $2, m.idempotency_key, m.request_hash
+		FROM invoices m WHERE m.id = $3`, option, full, main)
+	s.answer[full] = new(big.Int)
+	scanned := func(chainID, time int64) {
+		s.exec("UPDATE chain_cursors SET last_scanned_time = $2, last_finalized_time = $2 WHERE chain_id = $1", chainID,
+			time)
+	}
+
+	// Chain 1 is read first: it has the dust at 1500, and chain 2 was read only to 1000.
+	scanned(1, 2000)
+	scanned(2, 1000)
+	pay(main, 1, dust, 1, 1500)
+	s.process(main)
+	var chosen *string
+	if err := s.pool.QueryRow(context.Background(), "SELECT chosen_id FROM invoices WHERE id = $1", main).Scan(&chosen); err != nil || chosen != nil {
+		t.Fatalf("chosen %v (%v) before chain 2 was read past the dust, want none", deref(chosen), err)
+	}
+	// Chain 2's read finds the full payment, made at 1400, before the dust.
+	pay(option, 2, full, 5000000, 1400)
+	scanned(2, 2000)
+	s.process(option)
+	s.process(main)
+	if got, _ := s.payment(option); got != Paid {
+		t.Fatalf("the option paid in full first: %s, want paid", got)
+	}
+	if got, refund := s.payment(main); refund != "held" {
+		t.Fatalf("the dust: %s, refund %s; want held for the payer", got, refund)
+	}
 }

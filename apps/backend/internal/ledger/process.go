@@ -79,11 +79,23 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			return fmt.Errorf("read invoice %s chosen option: %w", group, err)
 		}
 		if chosen == nil && anyTransfer {
+			// Chains are read one after another, so an earlier transfer may still come on a chain not read that far:
+			// the first one counts only once every other enabled option chain was read past its time (R-119), about
+			// one round later. Its own chain was read up to it. Until then nothing of the invoice is chosen or booked.
 			var first string
-			if err := tx.QueryRow(ctx, `SELECT t.invoice_id FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
+			var ready bool
+			if err := tx.QueryRow(ctx, `SELECT t.invoice_id, NOT EXISTS (SELECT 1 FROM invoices o
+				    JOIN chains c ON c.chain_id = o.chain_id AND c.enabled
+				    LEFT JOIN chain_cursors cur ON cur.chain_id = o.chain_id
+				    WHERE coalesce(o.main_id, o.id) = $1 AND o.chain_id <> t.chain_id
+				      AND coalesce(cur.last_scanned_time, 0) <= t.block_time)
+				FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
 				WHERE coalesce(i.main_id, i.id) = $1 AND t.status <> 'reorged'
-				ORDER BY t.block_time, t.chain_id, t.block_number, t.log_index LIMIT 1`, group).Scan(&first); err != nil {
+				ORDER BY t.block_time, t.chain_id, t.block_number, t.log_index LIMIT 1`, group).Scan(&first, &ready); err != nil {
 				return fmt.Errorf("read invoice %s first paid option: %w", group, err)
+			}
+			if !ready {
+				return nil
 			}
 			if _, err := tx.Exec(ctx, "UPDATE invoices SET chosen_id = $2 WHERE id = $1", group, first); err != nil {
 				return fmt.Errorf("choose invoice %s option %s: %w", group, first, err)
