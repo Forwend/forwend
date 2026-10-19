@@ -16,6 +16,7 @@ export const BILLING_THEN = {
   param: "then",
   newInvoice: "new-invoice",
   newJob: "new-job",
+  transactions: "transactions",
 } as const;
 
 /** Profiles a user can create; the personal one is made at signup. */

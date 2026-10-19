@@ -314,6 +314,9 @@ export async function mockApi(
       return route.fulfill({ status: 204 });
     if (what === "transactions.csv")
       return route.fulfill({ contentType: "text/csv", body: "Date (UTC),Direction\r\n" });
+    // R-112: the statement is a stand-in PDF.
+    if (what === "statement.pdf")
+      return route.fulfill({ contentType: "application/pdf", body: "%PDF-1.4" });
     if (what?.startsWith("events")) return route.fulfill({ json: { items: lists.events ?? [] } });
     if (what === "billing-details") {
       if (route.request().method() === "PUT")

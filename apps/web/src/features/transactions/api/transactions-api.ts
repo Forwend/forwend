@@ -61,6 +61,18 @@ export const transactionsApi = apiSlice
         responseSchema: recordsCurrencySchema,
         invalidatesTags: [TRANSACTIONS_TAG, RECORDS_CURRENCY_TAG],
       }),
+      /**
+       * The income statement of the UTC days given, both required (R-112). The PDF comes back as an object URL for the
+       * caller to save and revoke, so no file sits in the store; an error stays the API's JSON.
+       */
+      downloadStatement: build.mutation<string, { profileId: string; from: string; to: string }>({
+        query: ({ profileId, from, to }) => ({
+          url: `/v1/profiles/${encodeURIComponent(profileId)}/statement.pdf`,
+          params: { from, to },
+          responseHandler: async (response) =>
+            response.ok ? URL.createObjectURL(await response.blob()) : response.json(),
+        }),
+      }),
       /** Every transaction in the UTC days given (YYYY-MM-DD, both optional), as CSV text (R-108). */
       exportTransactions: build.query<string, { profileId: string; from?: string; to?: string }>({
         query: ({ profileId, ...params }) => ({
@@ -79,4 +91,5 @@ export const {
   useLazyExportTransactionsQuery,
   useGetRecordsCurrencyQuery,
   useSetRecordsCurrencyMutation,
+  useDownloadStatementMutation,
 } = transactionsApi;

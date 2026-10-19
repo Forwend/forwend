@@ -45,7 +45,7 @@ test("transactions show their type, take a label, and export the days chosen; it
   await expect.poll(() => readsAfterLabel).toBeGreaterThan(0);
   expect(await blockingViolations(page)).toEqual([]);
 
-  await main.getByRole("button", { name: "Export CSV" }).click();
+  await main.getByRole("button", { name: "Export", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Export transactions" });
   await dialog.getByLabel("From").fill("2026-10-01");
   expect(await blockingViolations(page)).toEqual([]);
@@ -54,8 +54,19 @@ test("transactions show their type, take a label, and export the days chosen; it
   expect((await download).suggestedFilename()).toBe("forwend-transactions.csv");
   await expect(dialog).toBeHidden();
 
+  // R-113: the same dialog downloads the income statement of both days.
+  await main.getByRole("button", { name: "Export", exact: true }).click();
+  await dialog.getByLabel("From").fill("2026-10-01");
+  await dialog.getByLabel("To").fill("2026-10-31");
+  const statement = page.waitForEvent("download");
+  await dialog.getByRole("button", { name: "Download statement (PDF)" }).click();
+  expect((await statement).suggestedFilename()).toBe(
+    "forwend-statement-2026-10-01-to-2026-10-31.pdf",
+  );
+  await expect(dialog).toBeHidden();
+
   // R-111: the records currency, chosen in the export dialog, puts each value in it under the amount.
-  await main.getByRole("button", { name: "Export CSV" }).click();
+  await main.getByRole("button", { name: "Export", exact: true }).click();
   const currency = dialog.getByRole("combobox", { name: "Records currency" });
   await expect(currency).toContainText("USD only");
   await currency.click();
@@ -85,6 +96,28 @@ test("transactions show their type, take a label, and export the days chosen; it
   await expect.poll(() => sidewaysScroll(page)).toBeLessThanOrEqual(0);
   expect(await blockingViolations(page)).toEqual([]);
 
+  // R-113: without billing details the statement links them, with a way back, and the dialog still fits a phone.
+  await page.route("**/statement.pdf?*", (route) =>
+    route.fulfill({
+      status: 404,
+      json: { error: { code: "billing_details_not_found", message: "no billing details" } },
+    }),
+  );
+  await main.getByRole("button", { name: "Export", exact: true }).click();
+  await dialog.getByLabel("From").fill("2026-10-01");
+  await dialog.getByLabel("To").fill("2026-10-31");
+  await dialog.getByRole("button", { name: "Download statement (PDF)" }).click();
+  await expect(dialog.getByRole("link", { name: "Add billing details" })).toHaveAttribute(
+    "href",
+    "/app/billing-details?then=transactions",
+  );
+  expect(await blockingViolations(page)).toEqual([]);
+  await expect.poll(() => sidewaysScroll(page)).toBeLessThanOrEqual(0);
+  // Saving the billing details goes back to Transactions.
+  await dialog.getByRole("link", { name: "Add billing details" }).click();
+  await page.getByRole("button", { name: "Save details" }).click();
+  await expect(page).toHaveURL("/app/transactions");
+
   // The overview's preview (Payments on a business profile) keeps its columns, with no type.
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/app");
@@ -104,7 +137,7 @@ test("transactions show their type, take a label, and export the days chosen; it
   const phone = await touch.newPage();
   await mockApi(phone);
   await phone.goto("/app/transactions");
-  await phone.getByRole("main").getByRole("button", { name: "Export CSV" }).click();
+  await phone.getByRole("main").getByRole("button", { name: "Export", exact: true }).click();
   await phone.getByRole("combobox", { name: "Records currency" }).click();
   await phone.getByRole("option", { name: "EUR · Euro" }).click();
   await phone.getByRole("button", { name: "Cancel" }).click();

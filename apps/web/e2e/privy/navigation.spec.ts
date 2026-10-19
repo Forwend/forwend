@@ -390,7 +390,7 @@ test("money tables share row hover, show network logos, keep Export at the right
   expect(invoiceHover).toBe(activityHover);
 
   await page.goto("/app/transactions");
-  const exportButton = main.getByRole("button", { name: "Export CSV" });
+  const exportButton = main.getByRole("button", { name: "Export", exact: true });
   const search = main.getByRole("searchbox", { name: "Search transactions" });
   const [exportBox, searchBox, mainBox] = await Promise.all([
     exportButton.boundingBox(),
