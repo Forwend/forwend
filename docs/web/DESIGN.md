@@ -218,7 +218,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Add payment and the total follow the rows; a checkbox makes the first payment the deposit.
   - Without billing details it shows the same empty state as New invoice, which comes back here.
 - A job's page has the title as its heading and, until the client accepts, Delete job in the More actions menu.
-  - From large screens, Payments and Scope take two thirds; Client's link, Record and Billed to take the rest.
+  - From extra-large screens, Payments and Scope take two thirds; Client's link, Record and Billed to take the rest.
   - A delete the client's acceptance beat says so in a toast, and focus moves to the heading.
   - Once accepted, the next payment without an invoice has a small secondary Mark done button (R-103).
   - It opens a dialog: what it bills and to whom, an optional delivery link, Not yet and Mark done and send.
@@ -400,7 +400,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   actions menu: Copy link and Open pay page (a new tab) while the checkout can take money, Duplicate always (New
   invoice filled from this one, R-91), and while it can still be canceled, Cancel in
   the danger color, which asks to confirm in a dialog. Copying keeps the menu open and the item says Link copied; if
-  the clipboard refuses, the whole link shows there to select. Below, two columns from large screens up: the
+  the clipboard refuses, the whole link shows there to select. Below, two columns from extra-large screens up: the
   amount ("Received X of Y" under it when partly paid) with the timeline, where the Paid step reads "Partially paid"
   as a warning-tinted label when partly paid, the status line (only the confirming count or why settling waits; the
   state itself is the timeline's), one Transactions list (each payment, then the settlement to the wallet, later refunds: kind, amount, the other side,
@@ -410,7 +410,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Billed to and From share one height. They stack while the column is under 36rem; a request's From fills it.
   - Beside the main column, a third of the width, sits the details panel (empty rows left out).
   - From shows "None on this invoice" with a link to add billing details when there are none.
-  - Phones stack the amount, Items, Billed to, From, then the details.
+  - Narrower screens stack the amount, Items, Billed to, From, then the details.
   - A transaction is one row once its list is 42rem wide. Narrower, the list's own width, not the screen's, splits it
     in two lines.
 - Billed to ends with Send to client (R-94), ruled off under the client:

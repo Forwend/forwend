@@ -82,7 +82,7 @@ export function JobDetail({ profileId, job }: JobDetailProps) {
     }
   }, [focusInvoice, made]);
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
       <div className="flex min-w-0 flex-col gap-4">
         <section aria-labelledby="job-payments" className={PANEL}>
           <h2 id="job-payments" tabIndex={-1} className={`${PANEL_TITLE} outline-none`}>

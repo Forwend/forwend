@@ -231,7 +231,7 @@ function Loaded({
       </header>
 
       {/* minmax(0, 1fr): a long value never widens the column past the screen. */}
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
         <div className="@container flex min-w-0 flex-col gap-4">
           <section aria-labelledby="invoice-amount" className={PANEL}>
             <div className="flex flex-col gap-3 border-b border-line px-4 py-4 sm:px-5">
