@@ -251,11 +251,13 @@ func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, cha
 
 // alertAgainLater counts one more unexplained balance and sets when the worker reads it again: 1 min, doubling to at
 // most a day (R-120). Each read costs second-RPC calls in the chain's round, so many such invoices can't use it up.
+// The exponent stops at 11 (34 h, over the cap): a larger one overflows Postgres's interval.
 func alertAgainLater(ctx context.Context, tx pgx.Tx, invoiceID string) error {
 	if _, err := tx.Exec(ctx, `INSERT INTO invoice_balance_alerts (invoice_id, alerts, next_check_at)
 		VALUES ($1, 1, now() + interval '1 minute')
 		ON CONFLICT (invoice_id) DO UPDATE SET alerts = invoice_balance_alerts.alerts + 1,
-		    next_check_at = now() + least(interval '1 minute' * power(2, invoice_balance_alerts.alerts), interval '1 day')`,
+		    next_check_at = now() + least(interval '1 minute' * power(2, least(invoice_balance_alerts.alerts, 11)),
+		        interval '1 day')`,
 		invoiceID); err != nil {
 		return fmt.Errorf("record invoice %s balance alert: %w", invoiceID, err)
 	}

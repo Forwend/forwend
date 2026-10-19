@@ -3599,75 +3599,77 @@
         "packages/contracts/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-19 review fail by reviewer: Blocker: apps/backend/internal/ledger/process.go:258 computes interval '1 minute' * power(2, alerts) before least(). Postgres raises 'interval out of range' once the stored alerts count is 38 (60e6 us * 2^38 overflows int64). An invoice gets there about 28 days after its first alert (11 alerts in about 34 h, then one a day). Such invoices stay open until an operator acts, so this is reachable. After that the upsert fails and Process rolls back. next_check_at stays in the past, so the invoice costs two second-RPC calls and an error every round again. The audit's round starvation comes back for every invoice stuck 4 weeks. Reproduced: the exact upsert in a rolled-back transaction on infra-postgres-1 gives '1 day' from 37 alerts and fails from 38. Fix: cap the exponent, e.g. power(2, least(alerts, 11)), and add a test that starts from a high alerts count. Minor: (1) ORDER BY money DESC is untested; the new test has no round deadline, so it passes without the ordering. A balance stub that records call order would cover it. (2) After an operator refunds the unexplained money, expiry now follows only at the next check, up to a day later. money-safety.md does not say so (or that deleting the row rechecks now). (3) architecture.md:416 describes the wait only for more on chain than booked; less than booked backs off too. Backing off there is fine. (4) An open invoice in backoff that gets a new detected transfer shows detected only once it confirms or the wait ends. (5) R-120's first sentence has 29 words (D-84 limit 25). (6) Alert rows stay after the invoice expires; harmless. Checked OK: paid uses funded/compare, not balanced. Booking deletes the row in the same transaction before balanced, so a rescan-booked deposit gets its expiry or paid decision in the same Process. The ProcessChain query returns the old rows minus waiting ones with no deposit to book. Normal invoices never get a row. Held deposits always run and go first. Migration up/down fine; FK matches 00035. Ran: sh scripts/with-env.sh go test -count=1 ./internal/ledger/ ./internal/worker/ -> ok, ok. Latest docs/runs/F253-20261019T195535Z-*.log all passed."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-19T19:55:35Z",
+        "at": "2026-10-19T20:05:25Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 77.2,
-            "log": "docs/runs/F253-20261019T195535Z-unit.log"
+            "seconds": 78.9,
+            "log": "docs/runs/F253-20261019T200525Z-unit.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F253-20261019T195535Z-docs-check.log"
+            "log": "docs/runs/F253-20261019T200525Z-docs-check.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.2,
-            "log": "docs/runs/F253-20261019T195535Z-harness.log"
+            "seconds": 2.3,
+            "log": "docs/runs/F253-20261019T200525Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F253-20261019T195535Z-lint.log"
+            "log": "docs/runs/F253-20261019T200525Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F253-20261019T195535Z-typecheck.log"
+            "seconds": 0.2,
+            "log": "docs/runs/F253-20261019T200525Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.2,
-            "log": "docs/runs/F253-20261019T195535Z-build.log"
+            "seconds": 3.0,
+            "log": "docs/runs/F253-20261019T200525Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 213.8,
-            "log": "docs/runs/F253-20261019T195535Z-e2e.log"
+            "seconds": 214.8,
+            "log": "docs/runs/F253-20261019T200525Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F253-20261019T195535Z-keep.log"
+            "log": "docs/runs/F253-20261019T200525Z-keep.log"
           }
         ],
         "taskHash": "905e0a279189ebb1",
-        "filesHash": "d216610b884fae4a",
+        "filesHash": "b7d1f559e1af9f64",
         "proof": {
-          "1": "unit: ledger TestUnexplainedBalanceWaitsLongerEachTime: 20 stuck invoices make 20 balance calls once, none the next round while waiting about a minute, 20 when the wait ends, then wait about two minutes (20 calls every round before the fix); TestSecondRPCBehindFinalizedNeverDecides: a found deposit is booked and paid",
-          "2": "unit: TestUnexplainedBalanceWaitsLongerEachTime: the honest invoice is paid in the first round; the audit's 700-invoice PoC (run locally) now pays the honest invoice in round 1 with new deposits first (open after two rounds before the fix)"
+          "1": "unit: ledger TestUnexplainedBalanceWaitsLongerEachTime: 20 stuck invoices make 20 balance calls once, none the next round while waiting about a minute, 20 when the wait ends, then about two minutes, and a day after 101 alerts without overflow (20 calls every round before the fix); TestSecondRPCBehindFinalizedNeverDecides: a found deposit is booked and paid",
+          "2": "unit: TestUnexplainedBalanceWaitsLongerEachTime: the honest invoice's balance call comes first and it is paid in the first round; the audit's 700-invoice PoC (run locally) now pays the honest invoice in round 1 (open after two rounds before the fix)"
         }
       },
       "branch": "fix/f253-an-expired-invoice-whose-balance-the-led",

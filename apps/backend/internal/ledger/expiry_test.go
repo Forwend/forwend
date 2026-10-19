@@ -24,7 +24,7 @@ type sim struct {
 	answer  map[string]*big.Int // second RPC balance per receive address
 	down    map[string]bool     // second RPC errors for these addresses
 	behind  map[string]bool     // second RPC answers 0 from a block before the finalized one
-	calls   int                 // second RPC balance calls
+	calls   []string            // second RPC balance calls, by receive address
 	n       int
 }
 
@@ -54,7 +54,7 @@ func newSim(t *testing.T) *sim {
 	}
 	s := &sim{t: t, pool: pool, answer: map[string]*big.Int{}, down: map[string]bool{}, behind: map[string]bool{}}
 	s.service = NewService(pool, func(_ context.Context, _ uint64, _, holder string) (*big.Int, uint64, error) {
-		s.calls++
+		s.calls = append(s.calls, holder)
 		switch {
 		case s.down[holder]:
 			return nil, 0, errors.New("second RPC down")
@@ -198,14 +198,15 @@ func TestUnexplainedBalanceWaitsLongerEachTime(t *testing.T) {
 	s.finalizedAt(simExpires + 1)
 	round := func() int {
 		s.t.Helper()
-		before := s.calls
+		before := len(s.calls)
 		if err := s.service.ProcessChain(context.Background(), 1); err != nil {
 			t.Fatal(err)
 		}
-		return s.calls - before
+		return len(s.calls) - before
 	}
-	if calls := round(); calls != 21 {
-		t.Fatalf("first round: %d balance calls, want 21", calls)
+	if calls := round(); calls != 21 || s.calls[0] != receive {
+		t.Fatalf("first round: %d balance calls, the first for %s; want 21, the honest invoice's first", calls,
+			s.calls[0])
 	}
 	if payment, _ := s.payment(honest); payment != Paid {
 		t.Fatalf("the honest invoice: %s, want paid", payment)
@@ -230,6 +231,12 @@ func TestUnexplainedBalanceWaitsLongerEachTime(t *testing.T) {
 	}
 	if n, left := wait(); n != 2 || left < 110*time.Second || left > 2*time.Minute {
 		t.Fatalf("after two alerts: %d, %v left; want 2 and about two minutes", n, left)
+	}
+	// Weeks later the wait stays a day: the doubling stops before it overflows.
+	s.exec("UPDATE invoice_balance_alerts SET alerts = 100, next_check_at = now()")
+	round()
+	if n, left := wait(); n != 101 || left < 23*time.Hour || left > 24*time.Hour {
+		t.Fatalf("after 101 alerts: %d, %v left; want a day", n, left)
 	}
 }
 
