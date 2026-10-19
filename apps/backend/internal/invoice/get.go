@@ -173,8 +173,11 @@ func (s *Service) deposits(ctx context.Context, id string, chainID uint64, expir
 		return nil, err
 	}
 	rows, err := s.pool.Query(ctx, `SELECT tx_hash, log_index, from_address, amount::text, block_number, block_time, status,
-		       coalesce(detected_finalized_block, 0)
-		FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged' ORDER BY block_number, log_index`, id)
+		       coalesce(detected_finalized_block, 0),
+		       (SELECT coalesce(-sum(e.amount) FILTER (WHERE e.account = 'recipient_payable'), 0)::text
+		        FROM ledger_transactions x JOIN ledger_entries e ON e.transaction_id = x.id
+		        WHERE x.chain_transfer_id = t.id AND x.kind = 'deposit' HAVING count(*) > 0)
+		FROM chain_transfers t WHERE invoice_id = $1 AND status <> 'reorged' ORDER BY block_number, log_index`, id)
 	if err != nil {
 		return nil, fmt.Errorf("read invoice %s deposits: %w", id, err)
 	}
@@ -183,12 +186,16 @@ func (s *Service) deposits(ctx context.Context, id string, chainID uint64, expir
 	for rows.Next() {
 		var d Deposit
 		var amount string
+		var paid *string
 		var blockTime, seenFinalized uint64
 		if err := rows.Scan(&d.TxHash, &d.LogIndex, &d.From, &amount, &d.BlockNumber, &blockTime, &d.Status,
-			&seenFinalized); err != nil {
+			&seenFinalized, &paid); err != nil {
 			return nil, fmt.Errorf("read invoice %s deposits: %w", id, err)
 		}
 		d.Amount, _ = new(big.Int).SetString(amount, 10)
+		if paid != nil {
+			d.Paid, _ = new(big.Int).SetString(*paid, 10)
+		}
 		d.BlockTime = time.Unix(int64(blockTime), 0).UTC()
 		d.Late = int64(blockTime) > expiresAt.Unix()
 		if d.Status != "confirmed" {

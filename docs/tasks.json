@@ -3810,12 +3810,13 @@
         "A deposit split between the creator and held money lists only the creator's part; the pay page and receipt email follow the same rule or are named."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "docs-check"
       ],
       "refs": [
+        "R-121",
         "R-48"
       ],
       "keep": [
@@ -3824,7 +3825,78 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-19T20:26:25Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 78.3,
+            "log": "docs/runs/F255-20261019T202625Z-unit.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F255-20261019T202625Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F255-20261019T202625Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F255-20261019T202625Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F255-20261019T202625Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.6,
+            "log": "docs/runs/F255-20261019T202625Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 215.1,
+            "log": "docs/runs/F255-20261019T202625Z-e2e.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F255-20261019T202625Z-keep.log"
+          }
+        ],
+        "taskHash": "4e93d9b53a838986",
+        "filesHash": "f3f5f84a8a525330",
+        "proof": {
+          "1": "unit: TestReceiptListsOnlyMoneyPaidToTheCreator: deposits of 1.5, 1.5 and 2.5 on a 2 USDC invoice list 1.50 and 0.50 USDC under Payments and not the held 2.50 (the held deposit was listed before the fix)",
+          "2": "unit: TestReceiptListsOnlyMoneyPaidToTheCreator: the read gives paid 1500000, 500000 and 0; notify TestDeliverSendsTheReceiptToThePayer links the deposit that paid, not a later held one; web pay.test receiptDeposits keeps only deposits with a paid part, so the pay page's transaction link follows the same rule"
+        }
+      },
+      "branch": "fix/f255-the-receipt-lists-only-money-paid-to-the",
+      "baseCommit": "03d9bdc2d5b2c19d3636cb11cbb56bc493c510e6",
+      "failedVerifies": 0
     },
     {
       "id": "F256",

@@ -299,8 +299,9 @@ PDF prints, so a change updates both. Both are public like `GET /v1/invoices/{pa
   networks ("USDC on Base Sepolia, Arbitrum Sepolia") and says to send only on those (R-70). Amounts group thousands
   (1,250.00); every page's footer names the document and number and says Page X of Y.
 - `receipt.pdf`: 409 `invoice_not_paid` until `paymentStatus` is `paid` (it stays paid once settled). Adds the paid time
-  beside the created time and supply date; under Payments each confirmed deposit made before the checkout closed, with
-  its amount, block time, full tx hash and "View on <explorer>" link (a late deposit is held for the payer, D-26); and
+  beside the created time and supply date; under Payments each deposit's part paid to the creator (R-121), with that
+  amount, block time, full tx hash and "View on <explorer>" link (late money and money over the amount are held for
+  the payer, D-26); and
   the pay link with its QR code, since a PDF can be edited. It says nothing about the settlement, the creator's business
   (R-61). The paid time is the block time of the last deposit the ledger booked to `recipient_payable`: the one that
   completed the amount.

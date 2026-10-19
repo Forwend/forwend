@@ -49,6 +49,7 @@ const deposit = (amount: string, extra: Partial<Deposit> = {}): Deposit => ({
   blockTime: "2026-10-10T12:00:00Z",
   status: "confirmed",
   late: false,
+  paid: amount,
   blocksLeft: 0,
   blocksTotal: 0,
   secondsLeft: 0,
@@ -120,19 +121,22 @@ describe("payState", () => {
 });
 
 describe("receiptDeposits", () => {
-  it("names only the confirmed payments made before the checkout closed", () => {
+  it("names only the payments that paid the creator (R-121)", () => {
     const paid = deposit("1000");
+    const over = deposit("300", { logIndex: 3, paid: "200" });
     const settled = {
       ...invoice,
       paymentStatus: "paid",
       settlementStatus: "settled",
       deposits: [
         paid,
-        deposit("70", { logIndex: 1, late: true }),
-        deposit("5", { logIndex: 2, status: "detected" }),
+        deposit("70", { logIndex: 1, late: true, paid: "0" }),
+        deposit("5", { logIndex: 2, status: "detected", paid: null }),
+        over,
+        deposit("400", { logIndex: 4, paid: "0" }),
       ],
     };
-    expect(receiptDeposits(settled)).toEqual([paid]);
+    expect(receiptDeposits(settled)).toEqual([paid, over]);
   });
 });
 

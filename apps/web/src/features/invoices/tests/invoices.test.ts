@@ -84,6 +84,7 @@ const deposit: Deposit = {
   blockTime: "2026-10-10T12:00:00Z",
   status: "detected",
   late: false,
+  paid: null,
   blocksLeft: 0,
   blocksTotal: 0,
   secondsLeft: 0,

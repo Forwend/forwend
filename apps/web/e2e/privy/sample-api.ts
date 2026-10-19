@@ -96,6 +96,7 @@ const sampleDeposit = (inv: typeof CONFIRMING_INVOICE, status: string, blocksLef
   blockTime: "2026-10-09T08:30:00Z",
   status,
   late: false,
+  paid: status === "confirmed" ? inv.amount : null,
   blocksLeft,
   blocksTotal: blocksLeft,
   secondsLeft: blocksLeft * 3,

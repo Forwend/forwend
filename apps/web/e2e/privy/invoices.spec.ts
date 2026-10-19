@@ -414,6 +414,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
             blockTime: body.createdAt,
             status: "confirmed",
             late: false,
+            paid: "0",
             blocksLeft: 0,
             blocksTotal: 0,
             secondsLeft: 0,
