@@ -147,8 +147,15 @@ describe("records", () => {
         <ExportTransactions profileId={PROFILE} disabled={false} />
       </Provider>,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
     fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-10-01" } });
+    // A To before From is named on To, and the CSV isn't asked for.
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-30" } });
+    fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
+    await settle();
+    expect(screen.getByLabelText("To").getAttribute("aria-invalid")).toBe("true");
+    expect(calls.filter((c) => c.url.includes(".csv"))).toEqual([]);
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "" } });
     fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
     await settle();
     // The dialog also reads the records currency.
@@ -161,7 +168,7 @@ describe("records", () => {
     expect(dialog?.open).toBe(false);
 
     answer([], 500, JSON.stringify({ error: { code: "internal", message: "no" } }));
-    fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
     fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
     await settle();
     expect(screen.getByRole("alert").textContent).toBe(
@@ -170,7 +177,7 @@ describe("records", () => {
     expect(dialog?.open).toBe(true);
     // Cancel closes it (jsdom has no form submit to a dialog).
     dialog?.close();
-    fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
     expect(screen.queryByRole("alert")).toBeNull();
     click.mockRestore();
   });
@@ -249,5 +256,90 @@ describe("records", () => {
         name: `${money(151, "JPY", 0)}, At the ECB rate of ${day("2026-10-13")}`,
       }),
     ).toBeTruthy();
+  });
+
+  // R-113: the statement needs both days in order, saves the API's PDF under its period, links billing details when it
+  // can't be made without them, and says when it failed otherwise.
+  it("downloads the statement of both days, and names what is missing", async () => {
+    const calls: Call[] = [];
+    let answer = "pdf";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (request: Request) => {
+        const url = new URL(request.url);
+        calls.push({ method: request.method, url: url.pathname + url.search, body: "" });
+        if (url.pathname.endsWith("/records-currency")) return Response.json({ currency: null });
+        if (answer === "missing")
+          return Response.json(
+            { error: { code: "billing_details_not_found", message: "no billing details" } },
+            { status: 404 },
+          );
+        if (answer === "broken") return new Response("upstream down", { status: 500 });
+        return new Response("%PDF-1.4", { headers: { "Content-Type": "application/pdf" } });
+      }),
+    );
+    const blobs: Blob[] = [];
+    URL.createObjectURL = vi.fn((blob: Blob) => {
+      blobs.push(blob);
+      return "blob:pdf";
+    });
+    URL.revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <ExportTransactions profileId={PROFILE} disabled={false} />
+      </Provider>,
+    );
+    const statements = () => calls.filter((c) => c.url.includes("statement")).map((c) => c.url);
+    const from = () => screen.getByLabelText("From");
+    const to = () => screen.getByLabelText("To");
+    const ask = async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Download statement (PDF)" }));
+      await settle();
+    };
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    fireEvent.change(from(), { target: { value: "2026-10-01" } });
+    await ask();
+    expect(to().getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(to());
+    expect(screen.getByText("Choose a day: a statement covers a period.")).toBeTruthy();
+    fireEvent.change(to(), { target: { value: "2026-09-30" } });
+    await ask();
+    expect(screen.getByText("Choose a day on or after From.")).toBeTruthy();
+    expect(statements()).toEqual([]);
+
+    fireEvent.change(to(), { target: { value: "2026-10-31" } });
+    await ask();
+    expect(statements()).toEqual([
+      `/api/v1/profiles/${PROFILE}/statement.pdf?from=2026-10-01&to=2026-10-31`,
+    ]);
+    expect(await blobs[0]?.text()).toBe("%PDF-1.4");
+    const saved = click.mock.contexts[0] as HTMLAnchorElement;
+    expect([saved.href, saved.download]).toEqual([
+      "blob:pdf",
+      "forwend-statement-2026-10-01-to-2026-10-31.pdf",
+    ]);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:pdf");
+    const dialog = document.querySelector("dialog");
+    expect(dialog?.open).toBe(false);
+
+    answer = "missing";
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await ask();
+    expect(screen.getByRole("alert").textContent).toContain(
+      "A statement names you by your billing details. Add them first.",
+    );
+    expect(screen.getByRole("link", { name: "Add billing details" }).getAttribute("href")).toBe(
+      "/app/billing-details?then=transactions",
+    );
+    expect(dialog?.open).toBe(true);
+
+    answer = "broken";
+    await ask();
+    expect(screen.getByRole("alert").textContent).toBe(
+      "We could not make the statement. Try again.",
+    );
+    expect(screen.queryByRole("link", { name: "Add billing details" })).toBeNull();
+    click.mockRestore();
   });
 });

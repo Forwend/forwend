@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 245,
+  "nextId": 246,
   "tasks": [
     {
       "id": "F222",
@@ -2691,6 +2691,118 @@
         "branch": "feat/f244-a-statement-pdf-proves-a-profile-s-incom",
         "base": "main"
       }
+    },
+    {
+      "id": "F245",
+      "type": "feat",
+      "behavior": "The Export dialog downloads the income statement PDF for its days",
+      "acceptance": [
+        "Download statement (PDF) in the Export dialog asks GET .../statement.pdf?from=&to= with the dialog's days and saves the API's PDF as forwend-statement-<from>-to-<to>.pdf, then closes the dialog; the toolbar button that opens it is Export.",
+        "Both days are required and in order: a missing day or a To before From is that field's error, it takes focus, and nothing is sent; a 404 billing_details_not_found links billing details with a way back to Transactions; another failure says so without the link.",
+        "Unit tests cover the request, the saved PDF and its name, the day errors and both failures; the live e2e downloads it and shows the billing error on fixed answers, axe clean, 390 px fit; DESIGN.md describes it."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "R-113",
+        "R-112"
+      ],
+      "keep": [
+        "apps/backend/*",
+        "packages/contracts/*"
+      ],
+      "review": false,
+      "notes": [
+        "2026-10-19 review fail by reviewer: Blockers:\n1) export-transactions.tsx:46-48 + transactions-copy.ts:41: accept 2, R-113 and DESIGN.md say a missing day is named, but the dialog always says 'Choose both days' and marks no field. Fix: pass the kit TextField error to the empty field(s) (names it, sets aria-invalid, the pattern the records currency field uses), or name the missing day in the copy. Or change the three docs if the owner accepts a generic line.\n2) records.test.tsx:273-298: the test never checks what is saved. createObjectURL is mocked with no argument check, and only anchor.download is asserted. A responseHandler that returned text would still pass, and so would the e2e (it checks only the suggested file name). The other-failure branch has no test either (accept 3: both errors), so showing the billing link on every failure would pass. Fix: assert createObjectURL got the response's PDF blob (or href is blob:pdf) and revokeObjectURL got that URL; add a 500 with a non-JSON body that shows 'We could not make the statement. Try again.' with no link.\nChecked, OK: non-ok non-JSON bodies become RTK PARSING_ERROR and show the generic line (ran 500 text, 404 text and 422 against the component in a scratch test). A JSON 404 on this route can only be billing_details_not_found for an owner (non-owner is 403), and the status check matches profiles-api. No Blob in the store. needsBilling resets on open and each action. role=alert with a link inside is valid; focus stays on the button. e2e is mocked, nothing lasting (D-85). vitest 6/6, typecheck, biome clean.\nMinor: (a) from after to (typed dates pass min/max) gets a 422 and 'Try again', which cannot help; check from > to with the missing-day check or say 'Check the days'. (b) docs/runs F245 screenshots predate the exportText change (no 'a statement of income needs both'); retake. (c) e2e runs axe and the 390 px check with no statement error showing; the error state is proven only by screenshot. (d) DESIGN.md:187 still lists 'Cancel and Download CSV' as the actions. (e) export-transactions.tsx:28 comment says what the state does; drop it. needsBilling can be derived (error === COPY.statementNeedsBilling), removing one state and three resets. (f) Revoking right after click() is safe per the HTML spec and matches the CSV path; defer it only if Safari reports fail. (g) Optional: checking data.error.code instead of 404 would be stricter. (h) The billing details page has no return to Transactions (BILLING_THEN covers new invoice and new job only); the trigger still reads Export CSV though it now also gives a PDF.",
+        "2026-10-19 review pass by reviewer: Re-review after the fail: both blockers fixed. 1) A missing day or a To before From is now the TextField error on that field, which sets aria-invalid. The first invalid field takes focus, using the flushSync + querySelector pattern from client-form. Errors clear on a day change and on open. No request is sent. 2) records.test.tsx now checks the From-only case (To invalid, focused, message), the order message, and that no request is sent. It checks the saved Blob is %PDF-1.4, href blob:pdf, the file name, revoke('blob:pdf') and that the dialog closes. It checks the 404 link to /app/billing-details?then=transactions, and that a 500 with a text body shows the generic line with no link. Earlier minors (a)-(e) and (h) are done. The e2e covers the 404 state at 390 px with axe and the sideways-scroll check. The screenshots show the current text. BILLING_THEN.transactions maps only to a known route, and the new transactions -> profiles edge is listed in architecture.md with no cycle. No 'Export CSV' is left in src or e2e. vitest 6/6, typecheck and biome are clean. Minor, not blocking: (1) export-transactions.tsx:60-63 looks for aria-invalid in the whole dialog. The Records currency SelectField also sets aria-invalid when its read or save failed, so focus would go there instead of the day; scope the query to the days' grid. (2) The CSV path now refuses a To before From on the field, but R-109 and DESIGN.md don't say so, and no unit test covers the CSV case. (3) DESIGN.md:196 holds three facts (D-84); split it. (4) The comment at export-transactions.tsx:44 restates what checkDays does; drop it. (5) No test covers the return to Transactions after saving billing details; the new-job return has none either.",
+        "2026-10-19 review pass by reviewer: Third review: the five minor points from the last pass are fixed. 1) checkDays now focuses the first aria-invalid field inside the days container (ref days), so the Records currency select can no longer take focus. 2) The CSV path's To-before-From check is in R-109 and DESIGN.md. The CSV unit test sets To before From, expects To aria-invalid and no CSV request, then clears To and downloads. 3) The DESIGN.md bullet is split into one fact per bullet (D-84). 4) The checkDays what-comment is gone. 5) records.spec.ts clicks Add billing details, saves, and expects /app/transactions. The save goes to the mocked billing-details route, so nothing lasting (D-85). Earlier findings stay resolved. vitest 6/6, typecheck and biome are clean; verify passed at 14:02:43Z with 8 checks. No open findings. Left as agreed: revoking right after click(), the 404 status check (matches profiles-api), and no test for the New job way back (outside this task)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-19T14:02:43Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 76.9,
+            "log": "docs/runs/F245-20261019T140243Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 246.8,
+            "log": "docs/runs/F245-20261019T140243Z-e2e.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F245-20261019T140243Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.4,
+            "log": "docs/runs/F245-20261019T140243Z-harness.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F245-20261019T140243Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F245-20261019T140243Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.4,
+            "log": "docs/runs/F245-20261019T140243Z-build.log"
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F245-20261019T140243Z-keep.log"
+          }
+        ],
+        "taskHash": "0fc4c5f141941d24",
+        "filesHash": "c661af2fa775f23e",
+        "proof": {
+          "1": "unit: records.test.tsx asks /statement.pdf?from=2026-10-01&to=2026-10-31, saves the response's PDF Blob ('%PDF-1.4') through blob:pdf as forwend-statement-2026-10-01-to-2026-10-31.pdf, revokes blob:pdf and closes the dialog; the toolbar button is Export. E2E: records.spec.ts downloads that file name.",
+          "2": "unit: records.test.tsx: From alone marks To invalid with 'Choose a day: a statement covers a period.' and focuses it; To before From says 'Choose a day on or after From.' for the statement and the CSV; none sends; a 404 links /app/billing-details?then=transactions; a 500 text body says 'We could not make the statement. Try again.' with no link.",
+          "3": "e2e: records.spec.ts downloads the statement, then at 390 px with a 404 shows the Add billing details link, axe clean, no sideways scroll, and saving the billing details returns to /app/transactions; navigation.spec.ts passes with Export; screenshots docs/runs/F245-*.png; DESIGN.md and R-109, R-111, R-113 describe it."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Third review: the five minor points from the last pass are fixed. 1) checkDays now focuses the first aria-invalid field inside the days container (ref days), so the Records currency select can no longer take focus. 2) The CSV path's To-before-From check is in R-109 and DESIGN.md. The CSV unit test sets To before From, expects To aria-invalid and no CSV request, then clears To and downloads. 3) The DESIGN.md bullet is split into one fact per bullet (D-84). 4) The checkDays what-comment is gone. 5) records.spec.ts clicks Add billing details, saves, and expects /app/transactions. The save goes to the mocked billing-details route, so nothing lasting (D-85). Earlier findings stay resolved. vitest 6/6, typecheck and biome are clean; verify passed at 14:02:43Z with 8 checks. No open findings. Left as agreed: revoking right after click(), the 404 status check (matches profiles-api), and no test for the New job way back (outside this task).",
+          "at": "2026-10-19T14:09:02Z",
+          "filesHash": "c661af2fa775f23e"
+        }
+      },
+      "branch": "feat/f245-the-export-dialog-downloads-the-income-s",
+      "baseCommit": "200d8727fefc026dfbd3dfb3be6cd8bf156fa47d",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
