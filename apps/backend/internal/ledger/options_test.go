@@ -113,7 +113,8 @@ func deref(s *string) string {
 
 // R-119: the worker reads one chain after another, so a later transfer on a chain read first must not take the choice
 // from an earlier full payment on a chain not read that far yet (audit 2026-10-19: dust took over a paid invoice).
-// The option is chosen, and its deposits booked, only once every enabled option chain is final past the first one.
+// The option is chosen, and its deposits booked, only once every other enabled option chain was read past the first
+// one.
 func TestOptionWaitsForEveryChainBeforeChoosing(t *testing.T) {
 	s := newSim(t)
 	s.exec(`WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (2, 'evm', 'sim2', true)),
@@ -145,13 +146,14 @@ func TestOptionWaitsForEveryChainBeforeChoosing(t *testing.T) {
 		    m.recipient_address, m.receive_method, m.factory_address, $2, m.idempotency_key, m.request_hash
 		FROM invoices m WHERE m.id = $3`, option, full, main)
 	s.answer[full] = new(big.Int)
-	finalized := func(chainID, time int64) {
-		s.exec("UPDATE chain_cursors SET last_finalized_time = $2 WHERE chain_id = $1", chainID, time)
+	scanned := func(chainID, time int64) {
+		s.exec("UPDATE chain_cursors SET last_scanned_time = $2, last_finalized_time = $2 WHERE chain_id = $1", chainID,
+			time)
 	}
 
-	// Chain 1 is read first: it has the dust at 1500, and chain 2 is final only to 1000.
-	finalized(1, 2000)
-	finalized(2, 1000)
+	// Chain 1 is read first: it has the dust at 1500, and chain 2 was read only to 1000.
+	scanned(1, 2000)
+	scanned(2, 1000)
 	pay(main, 1, dust, 1, 1500)
 	s.process(main)
 	var chosen *string
@@ -160,7 +162,7 @@ func TestOptionWaitsForEveryChainBeforeChoosing(t *testing.T) {
 	}
 	// Chain 2's read finds the full payment, made at 1400, before the dust.
 	pay(option, 2, full, 5000000, 1400)
-	finalized(2, 2000)
+	scanned(2, 2000)
 	s.process(option)
 	s.process(main)
 	if got, _ := s.payment(option); got != Paid {

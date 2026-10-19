@@ -3468,7 +3468,7 @@
       "behavior": "A payer-chooses invoice takes the option paid first only after every option's chain was read past that payment",
       "acceptance": [
         "With a full payment on one chain and later dust on a chain the worker reads first, the full payment's option is chosen and paid; the dust is held.",
-        "Until every option's chain was scanned past the earliest transfer's block time, no option is chosen and no deposit of the invoice is booked."
+        "Until every other enabled option chain was scanned past the earliest transfer's block time (about one round), no option is chosen and no deposit of the invoice is booked; the pay page and the owner page call money on another option held only once an option is chosen."
       ],
       "dependsOn": [],
       "state": "verified",
@@ -3485,75 +3485,77 @@
         "packages/contracts/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-19 review fail by reviewer: Blocker: apps/backend/internal/ledger/process.go:87-98 waits until every enabled option chain is FINAL past the first transfer. The race is chain read order inside one round, and acceptance 2 asks for 'scanned past'. Final past makes every payer-chooses payment wait for the slowest chain's finality: Base 15-25 min, Arbitrum 16-19 min (docs/spikes/s4-chains.md). Arc and Tempo payments were paid at once before. During the wait chosen_id is null and the paid option stays open, not detected. The readers then show wrong state, and none were fixed or named (AGENTS.md rule). Pay page (apps/web/src/features/pay/components/pay-invoice.tsx:537-546) tells the payer the money went to another option, is held, and to ask for it back. The option picker stays open, which invites a second payment. Owner detail (apps/web/src/features/invoices/components/invoice-detail.tsx:301-310) lists it under 'Held for the payer'. If the main option's chain passes expiry, an on-time full payment shows as expired, then flips to paid. A scratch probe confirmed this: shown status expired, optionLocked false, option open; paid once the third chain was final. Fix: gate on each chain's scanned head time (store it on chain_cursors), so the wait is about one round. Or keep final, fix or name the readers, and state the wait in R-119. Minor: one stalled enabled chain now blocks every payer-chooses invoice with money on any chain; past the 24 h settle window the creator can't be paid. Disabling the chain unblocks it; say so in money-safety.md. Minor: '<' treats a chain final at the same second as past; Arc and Tempo make several blocks per second. Use '<=' to wait for strictly past. Minor: api.md says 'read past', R-119 and architecture.md say 'final past'. architecture.md 'open -> detected (a transfer seen)' no longer holds during the wait. R-119's first sentence is 28 words (D-84). Fine: the choice is still made under the main row lock, and only the worker calls Process. ProcessChain still selects the waiting invoice each round. A missing cursor can't happen, since options need a cursor at creation. Disabled chains are skipped. Ran: go test ./internal/ledger ./internal/worker ./internal/watcher, all pass. The new test fails against origin/main process.go in a scratch copy (dust chosen). Verify log 2026-10-19T19:19:42Z: all checks passed."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-19T19:19:42Z",
+        "at": "2026-10-19T19:35:54Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 74.1,
-            "log": "docs/runs/F252-20261019T191942Z-unit.log"
+            "seconds": 80.1,
+            "log": "docs/runs/F252-20261019T193554Z-unit.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F252-20261019T191942Z-docs-check.log"
+            "log": "docs/runs/F252-20261019T193554Z-docs-check.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.0,
-            "log": "docs/runs/F252-20261019T191942Z-harness.log"
+            "seconds": 2.4,
+            "log": "docs/runs/F252-20261019T193554Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F252-20261019T191942Z-lint.log"
+            "log": "docs/runs/F252-20261019T193554Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F252-20261019T191942Z-typecheck.log"
+            "seconds": 1.2,
+            "log": "docs/runs/F252-20261019T193554Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.9,
-            "log": "docs/runs/F252-20261019T191942Z-build.log"
+            "seconds": 5.7,
+            "log": "docs/runs/F252-20261019T193554Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 231.0,
-            "log": "docs/runs/F252-20261019T191942Z-e2e.log"
+            "seconds": 218.1,
+            "log": "docs/runs/F252-20261019T193554Z-e2e.log"
           },
           {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F252-20261019T191942Z-keep.log"
+            "log": "docs/runs/F252-20261019T193554Z-keep.log"
           }
         ],
-        "taskHash": "d4db48fcbc255ffe",
-        "filesHash": "554e0ff159f2e56d",
+        "taskHash": "e7d813968ad5aee2",
+        "filesHash": "3c3efffc03b7d1a9",
         "proof": {
-          "1": "unit: ledger TestOptionWaitsForEveryChainBeforeChoosing: a full payment at 1400 on chain 2 wins over dust at 1500 on chain 1 read first; the option is paid and the dust held (the dust was chosen before the fix); the audit's two-Anvil PoC now chooses the full payment and shows paid",
-          "2": "unit: TestOptionWaitsForEveryChainBeforeChoosing: while chain 2 is final only to 1000, no option is chosen; existing option tests (first paid wins, first on chain) still pass"
+          "1": "unit: ledger TestOptionWaitsForEveryChainBeforeChoosing: a full payment at 1400 on chain 2 wins over dust at 1500 on chain 1 read first; the option is paid and the dust held (the dust was chosen before the fix); the audit's two-Anvil PoC now chooses the full payment and shows paid in one flow",
+          "2": "unit: TestOptionWaitsForEveryChainBeforeChoosing: while chain 2 was read only to 1000 no option is chosen; watcher TestDepositIsDetectedThenConfirmed: the cursor keeps the scanned block's time; existing option tests pass; web tests pass with the held line shown only when optionLocked"
         }
       },
       "branch": "fix/f252-a-payer-chooses-invoice-takes-the-option",

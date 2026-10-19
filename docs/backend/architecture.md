@@ -406,8 +406,9 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
   whose transfer that is not reorged came first on chain (block time, then block and log) becomes `chosen_id`; deposits on any other option are booked entirely to `payer_held`, as late money
   is, so that option is never paid or settled and expires like any invoice. A choice made on a detected transfer that
   a reorg later drops stays.
-  - The worker reads chains one after another, so the choice waits until every enabled option chain is final past
-    that first transfer (`chain_cursors.last_finalized_time`, R-119). Until then nothing of the invoice is booked.
+  - The worker reads chains one after another, so the choice waits until every other enabled option chain was read
+    past that first transfer (`chain_cursors.last_scanned_time`, R-119), about one round. Until then nothing of the
+    invoice is booked, and it stays `open`.
 - Payment status: `open` → `detected` (a transfer seen) → `partially_paid` → `paid` when the full amount is owed and
   a second RPC's `balanceOf` covers every booked deposit (D-15). An invoice owed in full never expires; it waits for
   the second RPC. Otherwise it becomes `expired` or `expired_partially_paid` once the chain's finalized block time

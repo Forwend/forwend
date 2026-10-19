@@ -262,7 +262,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
   `{optionId, chainId, network, token, symbol, decimals, amount, receiveAddress, deposits}`; deposits on an option
   other than the shown one are held for the payer). Until an option has money the
   terms shown are the first option's; the option whose money came first on chain becomes the invoice's for good
-  (`chosen_id`), once every option's chain was read past that money (R-119), and money on any other is booked to
+  (`chosen_id`), once every other option's chain was read past that money (R-119), and money on any other is booked to
   `payer_held`. The owner's GET with an option's id answers its
   invoice; the public routes don't take ids.
   Lists, activity and search show each invoice once, with the current option (`invoices_current` view).

@@ -534,8 +534,11 @@ function PayBox({
           {COPY.canceledHeld(money(pay.received), payeeOf(invoice))}
         </p>
       ) : null}
+      {/* Held only once an option was chosen (R-119): until then money on another option may still be the one. */}
       {invoice.options
-        .filter((o) => o.optionId !== invoice.optionId && o.deposits.length > 0)
+        .filter(
+          (o) => invoice.optionLocked && o.optionId !== invoice.optionId && o.deposits.length > 0,
+        )
         .map((o) => {
           const units = o.deposits.reduce((sum, d) => sum + BigInt(d.amount), 0n);
           const amount = `${formatTokenAmount({ baseUnits: units, decimals: o.decimals, fractionDigits: exactDigits(units, o.decimals) })} ${o.symbol}`;

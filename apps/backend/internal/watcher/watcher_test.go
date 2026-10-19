@@ -102,6 +102,12 @@ func TestDepositIsDetectedThenConfirmed(t *testing.T) {
 	if err != nil || amount != "5000000" || from != chaintest.Sender || blockTime == 0 {
 		t.Fatalf("row: amount %s from %s time %d err %v", amount, from, blockTime, err)
 	}
+	// The cursor keeps the time of the block the scan read to (R-119).
+	var scannedTime int64
+	if err := e.pool.QueryRow(context.Background(), "SELECT last_scanned_time FROM chain_cursors").Scan(&scannedTime); err != nil ||
+		scannedTime != e.anvil.Now() {
+		t.Fatalf("scanned time %d (%v), want the latest block's %d", scannedTime, err, e.anvil.Now())
+	}
 	// The finalized block of the scan that saw it is kept: the deposit had 2 blocks to wait (R-73).
 	wait := func() (n int64) {
 		err := e.pool.QueryRow(context.Background(),
