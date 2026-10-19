@@ -4,6 +4,7 @@ import { BUTTON_VARIANTS, Button, Dialog, TextField } from "@forwend/ui-web";
 import { Download } from "lucide-react";
 import { useRef, useState } from "react";
 import { useLazyExportTransactionsQuery } from "@/features/transactions/api/transactions-api";
+import { RecordsCurrency } from "@/features/transactions/components/records-currency";
 import { TRANSACTIONS_COPY as COPY } from "@/features/transactions/constants/transactions-copy";
 
 export interface ExportTransactionsProps {
@@ -18,6 +19,8 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [error, setError] = useState("");
+  // Each opening starts the records currency afresh: the dialog keeps its content while closed.
+  const [opened, setOpened] = useState(0);
   const actions = useRef<HTMLFormElement>(null);
 
   const download = async () => {
@@ -49,6 +52,7 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
           aria-label={COPY.exportCsv}
           onClick={() => {
             setError("");
+            setOpened((n) => n + 1);
             open();
           }}
           disabled={disabled}
@@ -60,6 +64,9 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
       )}
     >
       <p>{COPY.exportText}</p>
+      <div className="mt-4">
+        <RecordsCurrency key={opened} profileId={profileId} />
+      </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <TextField
           type="date"

@@ -154,6 +154,7 @@ export const sampleTransfer = (i: number) => {
           clientName: CONFIRMING_INVOICE.client.name,
         }
       : null,
+    recordsValue: null as { currency: string; amount: string; rateDate: string } | null,
   };
 };
 export const TRANSFERS = Array.from({ length: 30 }, (_, i) => sampleTransfer(i));
@@ -233,6 +234,8 @@ export async function mockApi(
   const notifications = { email: true, address: "owner@example.com" };
   // Saved by PUT for the rest of the page's life, as the notifications are.
   let details = billing;
+  // R-110: the records currency PUT saves; with one, each transaction has its value at a fixed 0.90 per USD.
+  let recordsCurrency: string | null = null;
   // Our API only: Privy's own API is also under /api/v1.
   await page.route("/api/v1/**", (route) => {
     const url = new URL(route.request().url());
@@ -284,11 +287,27 @@ export async function mockApi(
     if (what === "transactions") {
       const json = listPage(
         url,
-        lists.transfers,
+        lists.transfers.map((t) =>
+          recordsCurrency
+            ? {
+                ...t,
+                recordsValue: {
+                  currency: recordsCurrency,
+                  amount: (Number(t.usdValue) * 0.9).toFixed(2),
+                  rateDate: "2026-10-16",
+                },
+              }
+            : t,
+        ),
         (t: SampleTransfer) => t.direction,
         (t) => [t.counterparty, t.txHash, t.symbol],
       );
       return route.fulfill({ json });
+    }
+    if (what === "records-currency") {
+      if (route.request().method() === "PUT")
+        recordsCurrency = route.request().postDataJSON().currency;
+      return route.fulfill({ json: { currency: recordsCurrency } });
     }
     // R-108: a label is saved; the export is a header-only CSV.
     if (what?.startsWith("transactions/") && what.endsWith("/label"))

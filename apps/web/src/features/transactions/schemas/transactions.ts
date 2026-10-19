@@ -5,6 +5,7 @@ import {
 } from "@/features/transactions/constants/transactions";
 import type { TransactionClass } from "@/features/transactions/types/transactions";
 import {
+  apiDate,
   apiTime,
   baseUnits,
   count,
@@ -36,6 +37,17 @@ export const transactionSchema = z.object({
   labelable: z.boolean(),
   invoice: z
     .object({ invoiceId: hash32, number: count, clientName: z.string().nullable() })
+    .nullable(),
+  // R-110: the value in the profile's other records currency at the ECB rate of rateDate.
+  recordsValue: z
+    .object({ currency: z.string().regex(/^[A-Z]{3}$/), amount: usdAmount, rateDate: apiDate })
+    .nullable(),
+});
+
+export const recordsCurrencySchema = z.object({
+  currency: z
+    .string()
+    .regex(/^[A-Z]{3}$/)
     .nullable(),
 });
 

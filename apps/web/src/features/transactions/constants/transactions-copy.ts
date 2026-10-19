@@ -37,6 +37,13 @@ export const TRANSACTIONS_COPY = {
   exportCancel: "Cancel",
   exportDownload: "Download CSV",
   exportFailed: "We could not export them. Check the days and try again.",
+  recordsCurrency: "Records currency",
+  recordsCurrencyHint:
+    "Saved for this profile: each amount also shows in it, and the export adds it.",
+  usdOnly: "USD only",
+  recordsCurrencyFailed: "We could not save the currency. Try again.",
+  recordsCurrencyLoadFailed: "We could not load the saved currency. Close and open this again.",
+  rateOf: (day: string) => `At the ECB rate of ${day}`,
   classes: {
     [TRANSACTION_CLASSES.invoice]: "Invoice payment",
     [TRANSACTION_CLASSES.ownTransfer]: "Own transfer",

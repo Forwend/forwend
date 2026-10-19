@@ -187,6 +187,12 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Export CSV opens a dialog: what the file holds, optional From and To days side by side, then Cancel and Download CSV.
   - From and To are the browser's date fields, not the kit's DatePicker.
   - The kit's calendar opens inside its field, so the dialog's scrolling body would cut it off.
+  - Above the days, a Records currency select (R-111) saves the profile's other currency as soon as it is chosen.
+  - It lives here because the export adds its columns, and a phone's toolbar has no room for a second control.
+  - Its hint says each amount also shows in it and the export adds it.
+  - A failed save or read shows under it as the field's error.
+- With a records currency, each amount has a quiet second line: the value as money in that currency.
+  - The line is a small dotted-underline button; its tooltip, opened by hover, focus or tap, gives the ECB rate's day.
 - Clients (R-86) is laid out like Invoices: the toolbar's search (name, email, tax ID) with Add client at its end
   (beside the title on phones), then a table of the client with its initials avatar, billing email, country and tax
   ID, where a row opens the client (a long country gives way to the name on phones). New client and Edit client are

@@ -19,6 +19,7 @@ import Link from "next/link";
 import { type ReactNode, useId, useState } from "react";
 import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
 import { ExportTransactions } from "@/features/transactions/components/export-transactions";
+import { RecordsValue } from "@/features/transactions/components/records-value";
 import { TransactionType } from "@/features/transactions/components/transaction-type";
 import {
   RELATIVE_DAYS,
@@ -449,14 +450,17 @@ function Status({ t }: { t: Transaction }) {
 function Amount({ t }: { t: Transaction }) {
   const incoming = t.direction === TRANSACTION_DIRECTIONS.in;
   return (
-    <span className={`whitespace-nowrap ${incoming ? "text-success" : "text-ink"}`}>
-      {incoming ? "+" : "−"}
-      <Money
-        baseUnits={BigInt(t.amount)}
-        decimals={t.decimals}
-        token={t.symbol}
-        className="flex-nowrap"
-      />
+    <span className="inline-flex flex-col items-end">
+      <span className={`whitespace-nowrap ${incoming ? "text-success" : "text-ink"}`}>
+        {incoming ? "+" : "−"}
+        <Money
+          baseUnits={BigInt(t.amount)}
+          decimals={t.decimals}
+          token={t.symbol}
+          className="flex-nowrap"
+        />
+      </span>
+      {t.recordsValue ? <RecordsValue value={t.recordsValue} /> : null}
     </span>
   );
 }
