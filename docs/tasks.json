@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 260,
+  "nextId": 263,
   "tasks": [
     {
       "id": "F222",
@@ -4276,12 +4276,144 @@
       ],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F260",
+      "type": "fix",
+      "behavior": "Form pages fill the content width: full-width panels with paired fields instead of a fixed narrow column",
+      "acceptance": [
+        "Form pages (New invoice, Request money, New job, New and Edit client, Billing details, New profile, Email notifications) fill the content width at 1024, 1280, 1440 and 1920 px: no fixed narrow column with empty space beside it; screenshots in docs/runs",
+        "Inside a panel, short fields pair up in two columns from small screens up; notes, addresses and row lists take the whole row; New invoice's preview takes a third from extra-large screens",
+        "Phones (390 px) keep one column, nothing scrolls sideways, and DESIGN.md describes the form page layout"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-66"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-19T22:09:10Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 74.7,
+            "log": "docs/runs/F260-20261019T220910Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 218.9,
+            "log": "docs/runs/F260-20261019T220910Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F260-20261019T220910Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F260-20261019T220910Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F260-20261019T220910Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F260-20261019T220910Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.4,
+            "log": "docs/runs/F260-20261019T220910Z-build.log"
+          }
+        ],
+        "taskHash": "b7ce70d52f20c71c",
+        "filesHash": "2077c4b8d0c70836",
+        "proof": {
+          "1": "e2e: screenshots docs/runs/F260-shots/before and after at 1024, 1280, 1440 and 1920 px: New invoice, Request money, New job, New and Edit client, Billing details, New profile and Email notifications fill the content width; before, each was a fixed 28-42rem column with the rest empty",
+          "2": "unit: same screenshots: network and amount, title and reference, supply and due date, name and email, country and tax ID pair up; note, address, return link and payment rows take the whole row; New invoice's preview is a third from xl (2fr/1fr); web vitest 113 passed",
+          "3": "e2e: 390 px screenshots keep one column; the Privy e2e sideways checks pass; DESIGN.md has the Form pages bullet and the preview width"
+        }
+      },
+      "branch": "fix/f260-form-pages-fill-the-content-width-full-w",
+      "baseCommit": "b679de468e10ce4e6100cb0eb75da4571f775afc",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F261",
+      "type": "fix",
+      "behavior": "Invoice and job pages balance their columns: Billed to and From move beside each other under the amount",
+      "acceptance": [
+        "The invoice page splits 2:1 from large screens: Amount, Items, then Billed to and From side by side (stacked in a narrow column) on the left, Details on the right, so neither column leaves a large empty block; screenshots in docs/runs",
+        "The job page uses the same 2:1 split; phones keep one column and nothing scrolls sideways; DESIGN.md says where each panel sits"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-60",
+        "R-66"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F262",
+      "type": "chore",
+      "behavior": "Finished tasks move to the archive",
+      "acceptance": [
+        "Every passing and dropped task moves from docs/tasks.json to docs/archive; harness validate passes"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "harness"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-19T14:22:14Z",
+    "at": "2026-10-19T21:52:46Z",
     "clean": true,
     "problems": [],
-    "note": "Fixed every known job limit (F237-F239) and finished PLAN 10.6 Records (F240-F245): classification and labels, CSV export, ECB records currency, statement PDF. Phase 10 is done (F246). Next: phase 11."
+    "note": "Audit fixes F247-F258 merged (PRs #245-#256; F259 dropped, fixed in F250). Next: owner reviews the remaining minors and Info items in the session report."
   }
 }

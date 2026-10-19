@@ -265,6 +265,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   button or link) and Skip. Steps come from data: passkey linked, billing details (freelancer), first invoice or
   request, first paid in full, first final money in. Skipped steps and the closed card are remembered per profile in
   the browser; the card hides when closed or when every step left is done.
+- Form pages fill the content width, as lists do, with no fixed narrow column beside empty space.
+  - They are New invoice, Request money, New job, New and Edit client, Billing details, New profile and Email
+    notifications.
+  - Each field group is a full-width panel with its title ruled off. Billing details has Contact, then Address and tax.
+  - Inside a panel, short fields pair up in two columns from small screens up: network and amount, title and
+    reference, the dates, name and email, country and tax ID.
+  - A note, an address, a link, a choice row or a list of rows takes the whole row.
+  - A lone date keeps one column, in line with the dates above it. Phones keep one column.
 - New invoice and Request money: each field group (Amount, Details, Dates, Client) is a panel with its title ruled off.
   A freelancer or merchant without billing details sees, in place of the form, an empty state that says the invoice
   needs them with an Add billing details button (R-92); saving them there, or Cancel, comes back to New invoice.
@@ -290,9 +298,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   shows its error under the field it belongs to. Removing the last item leaves its total as the amount.
   The invoice page lists the items in an Items panel under Amount: each row the description with "qty × unit price"
   quietly under it and the line's amount on the right, then a ruled Total row, the same on every width.
-  From extra-large screens a sticky Preview panel beside the form echoes it in the pay page's order: title, amount with
-  how it is paid, then Billed to (Shown as for a request), Due and Checkout closes after as ruled rows, and the note. It
-  is hidden from screen readers, since the fields already say all of it.
+  From extra-large screens a sticky Preview panel takes a third of the width beside the form. It echoes the form in
+  the pay page's order: title, amount with how it is paid, then Billed to (Shown as for a request), Due and Checkout
+  closes after as ruled rows, and the note. It is hidden from screen readers, since the fields already say all of it.
 - Money actions are round icon buttons with the label underneath, on desktop and phones; only working actions are
   filled with the primary ink. In the header, Send is a dashed outline pill in the subtle color until it is built.
 - Personal overview actions: Receive, Request, Send, Transfer, Withdraw, in one row with a narrow gap on phones.

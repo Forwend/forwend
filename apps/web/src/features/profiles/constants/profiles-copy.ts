@@ -31,6 +31,8 @@ export const BILLING_DETAILS_COPY = {
   saved: "Billing details saved",
   intro:
     "Your name and address as clients see them on each new invoice and its PDF. Invoices you already sent keep the details they had.",
+  contactGroup: "Contact",
+  addressGroup: "Address and tax",
   name: "Name or business name",
   address: "Address",
   country: "Country",

@@ -89,24 +89,26 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
   return (
     <Form onSubmit={submit}>
       <FieldGroup title={COPY.contactGroup}>
-        <TextField
-          label={COPY.name}
-          name="name"
-          autoComplete="off"
-          defaultValue={client?.name}
-          maxLength={CLIENT_LIMITS.name}
-          error={errors.name}
-        />
-        <TextField
-          label={COPY.email}
-          name="email"
-          type="email"
-          autoComplete="off"
-          defaultValue={client?.email ?? ""}
-          maxLength={CLIENT_LIMITS.email}
-          hint={COPY.emailHint}
-          error={errors.email}
-        />
+        <div className="grid gap-5 sm:grid-cols-2">
+          <TextField
+            label={COPY.name}
+            name="name"
+            autoComplete="off"
+            defaultValue={client?.name}
+            maxLength={CLIENT_LIMITS.name}
+            error={errors.name}
+          />
+          <TextField
+            label={COPY.email}
+            name="email"
+            type="email"
+            autoComplete="off"
+            defaultValue={client?.email ?? ""}
+            maxLength={CLIENT_LIMITS.email}
+            hint={COPY.emailHint}
+            error={errors.email}
+          />
+        </div>
       </FieldGroup>
       <FieldGroup title={COPY.taxGroup}>
         <TextAreaField

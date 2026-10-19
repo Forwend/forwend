@@ -19,6 +19,7 @@ import { BILLING_LIMITS } from "@/features/profiles/constants/billing-details";
 import { BILLING_DETAILS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { countryOptions, invalidBillingField } from "@/features/profiles/lib/billing-details";
 import type { BillingDetails, BillingDetailsBody } from "@/features/profiles/types/billing-details";
+import { FieldGroup } from "@/shared/components/field-group";
 
 type Field = keyof BillingDetailsBody;
 
@@ -86,52 +87,60 @@ export function BillingDetailsForm({ profileId, saved, next }: BillingDetailsFor
   };
 
   return (
-    <Form onSubmit={submit} gap="md">
-      <TextField
-        label={COPY.name}
-        name="name"
-        autoComplete="organization"
-        defaultValue={saved?.name}
-        maxLength={BILLING_LIMITS.name}
-        error={errors.name}
-      />
-      <TextAreaField
-        label={COPY.address}
-        name="address"
-        autoComplete="street-address"
-        defaultValue={saved?.address}
-        maxLength={BILLING_LIMITS.address}
-        error={errors.address}
-      />
-      <ComboboxField
-        id={COUNTRY_ID}
-        label={COPY.country}
-        placeholder={COPY.countryPlaceholder}
-        searchLabel={COPY.searchCountries}
-        options={countries}
-        value={country}
-        onValueChange={(value) => {
-          setCountry(value);
-          setErrors((current) => ({ ...current, country: undefined }));
-        }}
-        error={errors.country}
-      />
-      <TextField
-        label={COPY.taxId}
-        name="taxId"
-        defaultValue={saved?.taxId ?? ""}
-        maxLength={BILLING_LIMITS.taxId}
-        error={errors.taxId}
-      />
-      <TextField
-        label={COPY.email}
-        name="email"
-        type="email"
-        autoComplete="email"
-        defaultValue={saved?.email}
-        maxLength={BILLING_LIMITS.email}
-        error={errors.email}
-      />
+    <Form onSubmit={submit}>
+      <FieldGroup title={COPY.contactGroup}>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <TextField
+            label={COPY.name}
+            name="name"
+            autoComplete="organization"
+            defaultValue={saved?.name}
+            maxLength={BILLING_LIMITS.name}
+            error={errors.name}
+          />
+          <TextField
+            label={COPY.email}
+            name="email"
+            type="email"
+            autoComplete="email"
+            defaultValue={saved?.email}
+            maxLength={BILLING_LIMITS.email}
+            error={errors.email}
+          />
+        </div>
+      </FieldGroup>
+      <FieldGroup title={COPY.addressGroup}>
+        <TextAreaField
+          label={COPY.address}
+          name="address"
+          autoComplete="street-address"
+          defaultValue={saved?.address}
+          maxLength={BILLING_LIMITS.address}
+          error={errors.address}
+        />
+        <div className="grid gap-5 sm:grid-cols-2">
+          <ComboboxField
+            id={COUNTRY_ID}
+            label={COPY.country}
+            placeholder={COPY.countryPlaceholder}
+            searchLabel={COPY.searchCountries}
+            options={countries}
+            value={country}
+            onValueChange={(value) => {
+              setCountry(value);
+              setErrors((current) => ({ ...current, country: undefined }));
+            }}
+            error={errors.country}
+          />
+          <TextField
+            label={COPY.taxId}
+            name="taxId"
+            defaultValue={saved?.taxId ?? ""}
+            maxLength={BILLING_LIMITS.taxId}
+            error={errors.taxId}
+          />
+        </div>
+      </FieldGroup>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         <Button type="submit" loading={busy}>
           {COPY.save}

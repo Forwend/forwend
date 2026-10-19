@@ -26,7 +26,7 @@ export function ClientScreen({ clientId }: ClientScreenProps) {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex items-start justify-between gap-3">
-        <div className="flex max-w-2xl min-w-0 flex-col gap-2">
+        <div className="flex min-w-0 flex-col gap-2">
           {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
           <h1 className="text-2xl font-semibold tracking-tight break-words text-ink lg:sr-only">
             {clientId ? (client?.name ?? COPY.editTitle) : COPY.newTitle}
@@ -41,7 +41,7 @@ export function ClientScreen({ clientId }: ClientScreenProps) {
           />
         ) : null}
       </header>
-      <div className="max-w-2xl">
+      <div>
         {!clientId ? (
           <ClientForm key={profile.profileId} profileId={profile.profileId} />
         ) : list.isError && !list.currentData ? (
