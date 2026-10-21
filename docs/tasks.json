@@ -71,7 +71,7 @@
         "docs-check passes"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -112,11 +112,18 @@
           "2": "docs-check: PLAN phase 11 lists 11.1-11.11 (address-only pay, links created on Pay, test mode and keys, webhooks after 11.11.1, three checkout levels with @forwend/react, refunds of held money, history log with edits, revise and reopen); Deferred lists tolerance, merchant refunds, credit notes and a draft state",
           "3": "docs-check: PROJECT rewrites D-37, D-50, D-54, D-75, D-78, Q-11 and the payment-link entry, and adds D-87 to D-92",
           "4": "docs-check: 0 errors"
-        }
+        },
+        "commit": "423248c",
+        "doneAt": "2026-10-21T21:41:05Z"
       },
       "branch": "docs/f264-plan-phase-11-follows-the-approved-merch",
       "baseCommit": "5b95b1a3943845f18928d523e975851880829978",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f264-plan-phase-11-follows-the-approved-merch",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
