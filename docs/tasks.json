@@ -58,9 +58,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-19T21:52:46Z",
+    "at": "2026-10-19T22:45:11Z",
     "clean": true,
     "problems": [],
-    "note": "Audit fixes F247-F258 merged (PRs #245-#256; F259 dropped, fixed in F250). Next: owner reviews the remaining minors and Info items in the session report."
+    "note": "Form pages fill the width (F260), invoice and job pages balance their columns (F261), finished tasks archived (F262). Next: owner checks the new layouts."
   }
 }
