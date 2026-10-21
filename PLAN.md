@@ -16,14 +16,14 @@ reason; it joins the plan once the owner agrees.
 | 7 | Done: login, app shell and profile wallets | Sign in, create freelancer profile, switch profiles and see the correct wallet |
 | 8 | Done: first payment through the UI on Base USDC, then Arbitrum, Arc and Tempo | Sasha's Base Sepolia run; then enable other planned pairs individually |
 | 9 | Done: payment exceptions, cancel and notifications | On Anvil: partial → top-up → paid; expired partial → held; late → held; cancel → later deposit held; each email sent once |
-| 10 | Freelancer work | One freelancer runs quote → accepted → deposit → milestone → final invoice paid on testnet; the final invoice shows the earlier payments and the records export matches the chain |
+| 10 | Done: freelancer work | One freelancer runs quote → accepted → deposit → milestone → final invoice paid on testnet; the final invoice shows the earlier payments and the records export matches the chain |
 | 11 | Merchant stores, developer tools, connected wallet and refunds | Sample merchant uses SDK, pays and verifies an invoice.settled webhook; on Anvil overpay → claim → refund and expired partial → claim → refund |
 | 12 | Account security, send, handles and bank withdrawal | Send works on a fork; withdrawal works in provider sandbox |
 | 13 | Security review and personal mainnet trials | Full testnet exception suite, then 20 tiny personal mainnet invoices with zero reconciliation difference |
 
-## Open from phases 1–9
+## Open from phases 1–10
 
-Phases 1–9 are done; their requirements are PROJECT R-1…R-85 and their records are in `docs/archive/`. Still open:
+Phases 1–10 are done; their requirements are PROJECT R-1…R-122 and their records are in `docs/archive/`. Still open:
 
 - Q-1: the owner reviews the visual direction on `/kit/directions`.
 - Before ignoring tiny deposits, define a dust threshold; they stay refundable.
@@ -32,34 +32,6 @@ Phases 1–9 are done; their requirements are PROJECT R-1…R-85 and their recor
 - Owner track, no code: interviews, a free USPTO, EUIPO and WIPO search in finance and software classes, social
   handles and app-store names, a spoken spelling test with 5 people. Results feed D-55, D-58 and Q-12. Questions:
   [owner research](docs/owner-research.md).
-
-## Phase 10: freelancer work
-
-Freelancer before merchant (D-55). Scope and evidence: [phase 10 research](docs/research/phase-10-freelancers.md)
-(owner approval 2026-10-16). Freelancers lose the most money on final invoices after delivery and on net-30 clients
-who pay late, so the phase builds deposits, milestones and payment terms as one flow. Where the law decides what an
-invoice says, the phase follows EU, UK and US rules first (D-83).
-
-- 10.1 Clients, done (R-86): saved clients with legal name, billing email (the finance contact, often not the person who
-  ordered the work), address, country and tax/VAT ID. An invoice picks a client and copies the details; the copy never
-  changes, like the issuer block (R-43).
-- 10.2 Invoice terms, done: line items (R-88), supply date (R-89), PO/reference with a default per saved client
-  (R-90), duplicate (R-91), billing details before a business invoice (R-92) and the agreed value in fiat (R-93).
-- 10.3 Jobs, done (D-81; R-100 to R-107): a quote with the work, price and a payment schedule (deposit, milestones,
-  final) and pay dates; the client accepts it on `/w/<token>` with a typed name and email. Acceptance issues the deposit
-  invoice; each milestone invoice goes out when the freelancer marks the step done; the final invoice lists earlier
-  payments and bills the rest. A scope change is a new milestone the client accepts the same way. The job keeps a dated
-  record of acceptance, invoices, payments and delivery links (links only, D-66) as dispute evidence. After 10.2.
-- 10.4 Retainers, done (D-58; R-98, R-99): a schedule (day of month, end date); each cycle the worker creates the
-  invoice before the period starts, due at its start, and emails the client's billing email, who pays by hand. After
-  10.2.
-- 10.5 Getting paid on time, done (R-94 to R-97): Send to client emails the invoice to the billing email; an "Owed to
-  you" list shows overdue (days past due), partly paid and held money; reminders the freelancer turns on (D-69). After
-  10.1.
-- 10.6 Records, done (D-82; R-108 to R-113): each payment keeps its time, token, network, transaction, invoice and
-  client and its USD value at receipt; a profile may add an ECB currency (EUR, GBP, …); transfers between your own
-  profiles are labeled "own transfer"; a deposit without an invoice stays "Unclassified" until the user labels it; CSV
-  export with a classification column; a payment statement PDF as proof of income.
 
 ## Phase 11: merchants, developers, connected wallet and refunds
 
@@ -96,8 +68,7 @@ invoice says, the phase follows EU, UK and US rules first (D-83).
   - 11.9.5 `apps/example-merchant` uses the button or component and verifies the webhook, with a browser test.
     After 11.9.2 or 11.9.3.
 - 11.10 Pay with a connected wallet on `/pay` and the merchant checkout (lifts D-37's MVP limit): the payer connects
-  a wallet and the page sends the exact amount. After phase 10 and 11.1–11.9 (full freelancer and merchant features
-  and the developer kit).
+  a wallet and the page sends the exact amount. After 11.1–11.9 (merchant features and the developer kit).
   - 11.10.1 Overpaid handling: the pay page and the owner's invoice page show money sent above the amount (held for
     the payer, D-26) with its next step and a way to return it. Until then neither page shows an overpaid line.
     After 11.10.

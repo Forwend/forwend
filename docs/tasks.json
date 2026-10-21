@@ -1,20 +1,23 @@
 {
   "schemaVersion": 2,
-  "nextId": 263,
+  "nextId": 264,
   "tasks": [
     {
-      "id": "F262",
+      "id": "F263",
       "type": "chore",
-      "behavior": "Finished tasks move to the archive",
+      "behavior": "Docs match the finished phase 10: phase 10 is Done in PLAN and F262 moves to the archive",
       "acceptance": [
-        "Every passing and dropped task moves from docs/tasks.json to docs/archive; harness validate passes"
+        "PLAN.md marks phase 10 Done on the owner's check of every phase 10 feature (2026-10-21); the open section covers phases 1-10 with R-1…R-122; the phase 10 section is removed; no finished 10.x dependency remains",
+        "docs/archive holds F262 and docs/tasks.json keeps only open tasks; docs-check passes"
       ],
       "dependsOn": [],
-      "state": "passing",
+      "state": "verified",
       "verification": [
-        "harness"
+        "docs-check"
       ],
-      "refs": [],
+      "refs": [
+        "R-25"
+      ],
       "keep": [],
       "review": false,
       "notes": [],
@@ -22,39 +25,33 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-19T22:39:46Z",
+        "at": "2026-10-21T18:29:39Z",
         "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.9,
-            "log": "docs/runs/F262-20261019T223946Z-harness.log"
-          },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F262-20261019T223946Z-docs-check.log"
+            "log": "docs/runs/F263-20261021T182939Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.2,
+            "log": "docs/runs/F263-20261021T182939Z-harness.log"
           }
         ],
-        "taskHash": "5b55ea3730ea5a83",
-        "filesHash": "dd09a4d05f42a319",
+        "taskHash": "6fa775f407da4904",
+        "filesHash": "8404f4f5355d073d",
         "proof": {
-          "1": "harness: harness archive moved 40 tasks (F222-F261 passing, F259 dropped) to docs/archive; docs/tasks.json keeps only F262; harness validate prints ok"
-        },
-        "commit": "56ffaef",
-        "doneAt": "2026-10-19T22:39:56Z"
+          "1": "docs-check: PLAN row 10 reads Done (owner checked every phase 10 feature, 2026-10-21); section renamed Open from phases 1-10 with R-1…R-122; phase 10 section removed (D-55, D-81 to D-83 and the research link at Deferred keep its context); 11.10 no longer waits on phase 10",
+          "2": "docs-check: harness archive moved F262 to docs/archive; tasks.json keeps only F263"
+        }
       },
-      "branch": "chore/f262-finished-tasks-move-to-the-archive",
-      "baseCommit": "d322a44ce452c05a39548f751f35f20b1eced509",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "chore/f262-finished-tasks-move-to-the-archive",
-        "base": "main"
-      }
+      "branch": "chore/f263-docs-match-the-finished-phase-10-phase-1",
+      "baseCommit": "55f6f516b06636b636d6d576334b7cfb27a70fca",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
