@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 264,
+  "nextId": 265,
   "tasks": [
     {
       "id": "F263",
@@ -57,6 +57,71 @@
       "delivery": {
         "mode": "pr",
         "branch": "chore/f263-docs-match-the-finished-phase-10-phase-1",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F264",
+      "type": "docs",
+      "behavior": "PLAN phase 11 follows the approved merchant research: address-only pay, history log and invoice changes, test mode, three checkout levels, and decision rows for them",
+      "acceptance": [
+        "docs/research/phase-11-merchants.md holds the research (method, evidence M1-M18, market, competitors, checkout levels, history log) and the owner decisions of 2026-10-22",
+        "PLAN phase 11 has 11.1-11.11 as decided: address-only pay, links created on Pay, test mode and keys, webhooks after the history log, three checkout levels with the React package, refunds of held money, history log with edits, revise and reopen; Deferred lists tolerance, merchant refunds and credit notes",
+        "PROJECT rewrites D-37, D-50, D-54, D-75, D-78 and Q-11, and adds D-87 to D-92 (test mode, checkout levels, suspension, refund costs, API notice, history and invoice changes)",
+        "docs-check passes"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [
+        "D-55",
+        "D-37",
+        "D-54",
+        "Q-11"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-21T21:41:00Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F264-20261021T214100Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F264-20261021T214100Z-harness.log"
+          }
+        ],
+        "taskHash": "c3fc81958b6994af",
+        "filesHash": "a07ff819fc01ee24",
+        "proof": {
+          "1": "docs-check: docs/research/phase-11-merchants.md has method, evidence M1-M18, market, money map, competitors, proposals, checkout levels and history-log follow-ups, and the owner decisions of 2026-10-22",
+          "2": "docs-check: PLAN phase 11 lists 11.1-11.11 (address-only pay, links created on Pay, test mode and keys, webhooks after 11.11.1, three checkout levels with @forwend/react, refunds of held money, history log with edits, revise and reopen); Deferred lists tolerance, merchant refunds, credit notes and a draft state",
+          "3": "docs-check: PROJECT rewrites D-37, D-50, D-54, D-75, D-78, Q-11 and the payment-link entry, and adds D-87 to D-92",
+          "4": "docs-check: 0 errors"
+        },
+        "commit": "423248c",
+        "doneAt": "2026-10-21T21:41:05Z"
+      },
+      "branch": "docs/f264-plan-phase-11-follows-the-approved-merch",
+      "baseCommit": "5b95b1a3943845f18928d523e975851880829978",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f264-plan-phase-11-follows-the-approved-merch",
         "base": "main"
       }
     }
