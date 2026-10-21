@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 265,
+  "nextId": 266,
   "tasks": [
     {
       "id": "F263",
@@ -124,6 +124,93 @@
         "branch": "docs/f264-plan-phase-11-follows-the-approved-merch",
         "base": "main"
       }
+    },
+    {
+      "id": "F265",
+      "type": "fix",
+      "behavior": "The job tests size their own database pool, so they pass on a 2-CPU CI runner and staging CI finishes",
+      "acceptance": [
+        "In a 2-CPU Linux container (docker --cpuset-cpus=0,1) go test -race ./internal/job passes; on main it times out in TestAcceptMakesTheDepositOnce, which needs 7 connections and gets pgxpool's default of 4",
+        "unit passes"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit"
+      ],
+      "refs": [
+        "R-40",
+        "R-100"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-21T22:06:04Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 80.6,
+            "log": "docs/runs/F265-20261021T220604Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F265-20261021T220604Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F265-20261021T220604Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F265-20261021T220604Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F265-20261021T220604Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.2,
+            "log": "docs/runs/F265-20261021T220604Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 222.2,
+            "log": "docs/runs/F265-20261021T220604Z-e2e.log"
+          }
+        ],
+        "taskHash": "08c37fd6c58f5e51",
+        "filesHash": "f3d8bc9707c8f0ea",
+        "proof": {
+          "1": "unit: in a 2-CPU Linux container (docker --cpuset-cpus=0,1, golang:1.27.2) go test -race ./internal/job timed out on main after 2m in TestAcceptMakesTheDepositOnce and passes on this branch in 5.1s; staging run 39680914616 failed the same way (internal/job 600.086s)",
+          "2": "unit: passes"
+        }
+      },
+      "branch": "fix/f265-the-job-tests-size-their-own-database-po",
+      "baseCommit": "59796944e7bbb7d915da78c1fab30cb5799fd199",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

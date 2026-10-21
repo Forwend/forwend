@@ -24,7 +24,9 @@ func open(t *testing.T) (*pgxpool.Pool, string) {
 	if err := database.Migrate(ctx, url); err != nil {
 		t.Fatal(err)
 	}
-	pool, err := database.Open(ctx, url)
+	// The concurrent accepts use up to 7 connections at once: the held lock, five accepts waiting on it and the poll.
+	// Without pool_max_conns the pool takes the CPU count, at least 4, and a 2-CPU CI runner deadlocks.
+	pool, err := database.Open(ctx, url+"&pool_max_conns=8")
 	if err != nil {
 		t.Fatal(err)
 	}
