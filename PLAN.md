@@ -17,7 +17,7 @@ reason; it joins the plan once the owner agrees.
 | 8 | Done: first payment through the UI on Base USDC, then Arbitrum, Arc and Tempo | Sasha's Base Sepolia run; then enable other planned pairs individually |
 | 9 | Done: payment exceptions, cancel and notifications | On Anvil: partial → top-up → paid; expired partial → held; late → held; cancel → later deposit held; each email sent once |
 | 10 | Done: freelancer work | One freelancer runs quote → accepted → deposit → milestone → final invoice paid on testnet; the final invoice shows the earlier payments and the records export matches the chain |
-| 11 | Merchant stores, developer tools, connected wallet and refunds | Sample merchant uses SDK, pays and verifies an invoice.settled webhook; on Anvil overpay → claim → refund and expired partial → claim → refund |
+| 11 | Merchant stores, developer tools, history log and refunds of held money | Sample merchant uses SDK, pays and verifies an invoice.settled webhook; on Anvil overpay → claim → refund and expired partial → claim → refund |
 | 12 | Account security, send, handles and bank withdrawal | Send works on a fork; withdrawal works in provider sandbox |
 | 13 | Security review and personal mainnet trials | Full testnet exception suite, then 20 tiny personal mainnet invoices with zero reconciliation difference |
 
@@ -33,48 +33,64 @@ Phases 1–10 are done; their requirements are PROJECT R-1…R-122 and their rec
   handles and app-store names, a spoken spelling test with 5 people. Results feed D-55, D-58 and Q-12. Questions:
   [owner research](docs/owner-research.md).
 
-## Phase 11: merchants, developers, connected wallet and refunds
+## Phase 11: merchants, developers, history log and refunds of held money
 
-- 11.1 Stores: project ID, logo, color, default checkout expiry; each invoice records its store; per-invoice
-  override (D-30).
-- 11.2 Team: email invites; Admin, Developer and Finance roles with assigned stores; a 403 test on every route; the
-  last Admin cannot leave. Only the owner moves money (D-61). After 11.1.
-- 11.3 Payment links `/l/<slug>` per store or freelancer, fixed or open amount: each visit creates its own invoice
-  and goes to `/pay/<token>` (D-54); rate limited; can be turned off. After 11.1.
-- 11.4 Secret API keys: shown once, hashed, scoped to a store, revocable; creating one needs a fresh sign-in (D-63).
-  After 12.1; build 12.1 first.
-- 11.5 Webhooks: Standard Webhooks signatures (D-42) with a separate signing secret, backoff, replay, delivery log,
-  "send test event". Events: `invoice.detected`, `invoice.confirmed`, `invoice.paid`, `invoice.settled`,
-  `invoice.partially_paid`, `invoice.expired`, `invoice.overpaid`, `refund.completed`.
+Merchants after freelancers (D-55). Scope and evidence: [phase 11 research](docs/research/phase-11-merchants.md)
+(owner decisions 2026-10-22). Merchants lose most when a payment company holds or locks their money. Forwend pays the
+merchant's own wallet, so the phase builds merchant and developer tools around that. Payers pay only by address and QR
+code; a wallet connects only to claim a refund (D-37).
+
+- 11.1 Stores: project ID, logo, color, default checkout expiry and allowed origins (return links and embeds); each
+  invoice records its store; per-invoice override (D-30). A profile turns chains and tokens on or off, and a store can
+  narrow that (D-75).
+- 11.2 Team: email invites (single use, hashed, bound to the invited email); Admin, Developer and Finance roles with
+  assigned stores; permissions in one map in code, and a test fails when a route has none; the last Admin cannot
+  leave. Roles also decide which History rows a member reads (11.11). Only the owner moves money (D-61). After 11.1.
+- 11.3 Payment links `/l/<slug>` per store or freelancer, fixed or open amount (min, max, a default cap). Opening the
+  link creates nothing; Pay creates the invoice, and the same browser reuses its open one (D-54). Its number comes at
+  the first deposit (D-50). Optional end date and use cap; rate limited; can be turned off; the owner sees visits and
+  paid counts. After 11.1.
+- 11.4 Test mode and secret API keys (D-87). Test mode runs on the testnets, live mode on mainnets; test mode reads
+  chains through public RPCs, and a developer can add their own. Keys `fw_test_…` and `fw_live_…` with a checksum:
+  shown once, hashed, scoped to a store, no scope moves money, rolled with an overlap, last use shown. Creating one
+  needs a fresh sign-in (D-63). After 12.1; build 12.1 first.
+- 11.5 Webhooks: Standard Webhooks signatures (D-42) with a separate signing secret, retries over days, replay,
+  delivery log, "send test event" and secret rotation; the task picks the design from the research. Events:
+  `invoice.detected`, `invoice.partially_paid`, `invoice.paid`, `invoice.settled`, `invoice.expired`,
+  `invoice.canceled`, `invoice.held` (with its reason), `refund.completed`. After 11.11.1.
 - 11.6 Public API v1 (idempotent create, get, list, events), OpenAPI, generated Node SDK, webhook verification
-  helper; a create with `dueDate` and no `expiresIn` closes the checkout 60 days after the due date, as the form
-  does (D-80), with a retry-stable idempotency hash. After 11.4, 11.5.
-- 11.7 Merchant ops: attention list (exceptions, claims, failed webhooks), store filter, CSV.
+  helper; create takes `returnUrl`, `reference` and `metadata`. A create with `dueDate` and no `expiresIn` closes the
+  checkout 60 days after the due date, as the form does (D-80), with a retry-stable idempotency hash. Developer docs
+  with a changelog and a status page; breaking changes get 90 days' notice (D-91). After 11.4, 11.5.
+- 11.7 Merchant ops: attention list (exceptions, held money with its reason, refund claims waiting, failed webhooks),
+  store filter, and a CSV with store, invoice, chain, transaction hash, settlement and USD value.
 - 11.8 Merchant onboarding: business name and website, first store, branding preview, team invites, developer steps
-  (API key, webhook, test event, quickstart) and a KYB status row (D-64); the developer choice shows the developer
-  steps first. After 11.1.
-- 11.9 `apps/example-merchant`, quickstart and brandable checkout components. Review keys, scopes and webhook
-  verification before the gate.
-  - 11.9.1 Decide hosted or embedded checkout for merchant sites (a PROJECT decision row): the payer must always
-    see the receive address and amount as Forwend shows them, never as merchant code renders them.
-  - 11.9.2 Pay button: a link or popup to `/pay/<token>` with a return URL and the store's branding (D-32). Works on
-    any site without a package. After 11.6.
-  - 11.9.3 If 11.9.1 picks embedded: a `@forwend/react` package (`PayButton`, `Checkout`) that renders the pay page
-    in an iframe from the Forwend origin, like Stripe Elements, so the merchant page cannot change it. Theme props
-    map to design tokens; events (`paid`, `settled`, `expired`) reach the merchant through `postMessage`, and the
-    server confirms them through webhooks. After 11.9.1, 11.6.
-  - 11.9.4 Publish the SDK and components: npm scope and account (owner approval), semver, changelog, the browsers
-    and React versions supported. After 11.9.3.
-  - 11.9.5 `apps/example-merchant` uses the button or component and verifies the webhook, with a browser test.
-    After 11.9.2 or 11.9.3.
-- 11.10 Pay with a connected wallet on `/pay` and the merchant checkout (lifts D-37's MVP limit): the payer connects
-  a wallet and the page sends the exact amount. After 11.1–11.9 (merchant features and the developer kit).
+  (test key, allowed origin, webhook, test event, quickstart) and a KYB status row with a reason and a next step
+  (D-64); the developer choice shows the developer steps first. After 11.1.
+- 11.9 Checkout for merchant sites in three levels (D-88), `apps/example-merchant` and the quickstart. Review keys,
+  scopes and webhook verification before the gate.
+  - 11.9.1 Pay button: a link to `/pay/<token>` or `/l/<slug>` with a return link (`{INVOICE_ID}`) and the store's
+    branding (D-32). Works on any site without a package. After 11.6.
+  - 11.9.2 Embedded checkout: `/embed/<token>` on the Forwend origin, as the full pay page or as a payment element
+    (`layout=full|element`). Only the store's allowed origins may frame it; events go by `postMessage` to that one
+    origin as UI hints (D-29). After 11.1, 11.9.1.
+  - 11.9.3 `@forwend/js` and `@forwend/react` (`PayButton`, `Checkout`, `PaymentElement`): no remote script; a theme
+    and a few variables mapped to the design tokens and checked for contrast; React 18 and 19. After 11.9.2.
+  - 11.9.4 Publish both packages: npm org (owner approval), CI publish with provenance, `0.x` until the message
+    protocol is stable, a changelog file, size and type checks. After 11.9.3.
+  - 11.9.5 `apps/example-merchant` uses the button and the components and verifies the webhook, with a browser test:
+    merchant code cannot read the frame, a forged message never marks an order paid, a strict CSP works, and an
+    origin off the list is blocked. After 11.9.3.
+- 11.10 Refunds of held money (D-78). A refund goes ahead whatever the merchant profile's status (D-89). Forwend pays
+  the network fee, and the minimum refund is 1 USD (D-90). After 11.11.1.
   - 11.10.1 Overpaid handling: the pay page and the owner's invoice page show money sent above the amount (held for
     the payer, D-26) with its next step and a way to return it. Until then neither page shows an overpaid line.
     After 11.10.
-  - 11.10.2 Refund claims on `/pay`: the payer connects the wallet that sent the money and signs a claim
-    naming the invoice and the destination; exchange deposits give a destination and support evidence instead (Q-9);
-    `refund_claims` with states; claim updates reach the payer receipt email (D-68). After 11.10.
+  - 11.10.2 Refund claims on `/pay`: the payer presses Claim refund, then connects the wallet that sent the money and
+    signs a claim naming the invoice and the destination (D-37); plain and smart-contract wallets are both checked.
+    Exchange deposits give a destination and support evidence instead (Q-9). From an embed the claim opens the hosted
+    page in a new tab. `refund_claims` with states the payer sees; claim updates reach the payer receipt email (D-68).
+    After 11.10.
   - 11.10.3 Refund tool: an ops command (`cmd/ops`) lists claims, approves or rejects them with a reason
     (D-60) and prints the `refund(to, amount)` call for the refund-authority Safe; one refund of everything held by
     default (D-57). The watcher books the refund. No new hot key. A refund shows in the invoice's Transactions list on
@@ -83,8 +99,20 @@ Phases 1–10 are done; their requirements are PROJECT R-1…R-122 and their rec
     opens a recovery claim; `recover()` works only where our factory exists, and recovery is never promised (D-33).
     After 11.10.2.
   - 11.10.5 Refund suite on Anvil: overpay → claim → refund; expired partial → claim → refund; late → claim → refund;
-    the ledger matches the chain after each. After 11.10.1–11.10.4.
-- Before outside merchants: Q-11.
+    a smart-wallet claim; the ledger matches the chain after each. After 11.10.1–11.10.4.
+- 11.11 History log and invoice changes (D-92). Build 11.11.1 before 11.5: webhook events and the events endpoint read
+  it.
+  - 11.11.1 History log: one append-only row per change, written in the same transaction, with actor, source and
+    typed data; no secrets, IP or user agent. A database guard fails a change that writes no row. Invoices, requests,
+    checkouts and jobs write to it; old invoices are backfilled; the job Record (R-104) moves onto it later.
+  - 11.11.2 History tab on the invoice page, newest first, with filters. The pay page shows the payer's rows as
+    Updates. Views count first view, last view and a total, with no IP. After 11.11.1.
+  - 11.11.3 Edits: memo, client email, reminders and return link at any time; reference, note and a due date inside
+    the checkout window before payment, shown to the payer as Updated. Any other change is a Revise before any deposit:
+    a new invoice with a new number, address and pay link, and the old one canceled as "Replaced by". After 11.11.1.
+  - 11.11.4 Reopen an expired, partly paid invoice before its settle deadline: same address, and the payer sends the
+    rest. The owner decides how long the settle grace after expiry is (D-92). After 11.11.1.
+- Before outside merchants: Q-11. The Privy key-quorum spike comes first; D-61 holds for the first outside merchants.
 
 ## Phase 12: account security, send and bank withdrawal
 
@@ -123,8 +151,10 @@ Mobile; optional BNB and non-EVM networks; HD-wallet receive methods; cross-chai
 full accounting page and Koinly export; opt-in escrow; bank/card on-ramp; public developer sandbox; custom checkout
 domains; platform fees and the business model (D-56, Q-10); external payout address (D-62); file delivery storage
 (D-66); invoice and tax rules for countries beyond the EU, the UK and the US (D-83); our own email provider in place of
-Resend (owner request 2026-10-19; the client email cap, R-116, stays). Each new chain or receive
-method needs its own spike. Planned Base/Arbitrum/Arc/Tempo expansion stays gated by D-38.
+Resend (owner request 2026-10-19; the client email cap, R-116, stays).
+Also later: an underpayment tolerance (needs a receiver that settles a minimum amount); merchant refunds of paid
+invoices, such as a customer who did not like the product; credit notes; a draft invoice state.
+Each new chain or receive method needs its own spike. Planned Base/Arbitrum/Arc/Tempo expansion stays gated by D-38.
 Card payers (card, Apple Pay or Google Pay in, USDC to the invoice) need a card-acquirer spike first:
 the consumer on-ramps forbid buying for another person's address, and card payments bring chargebacks back
 ([research](docs/research/phase-10-freelancers.md#card-payers-paying-by-card-receiving-stablecoins)).
