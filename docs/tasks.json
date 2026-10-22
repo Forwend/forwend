@@ -240,7 +240,7 @@
         "unit passes"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit"
       ],
@@ -328,11 +328,18 @@
           "summary": "Every invoices writer (create, cancel, payer email, ledger choice/status/held/settlement queued, signer settled) writes one history row in its own transaction, none on a no-change round, with the right actor; only the shown row writes status and held money names its option; the ledger diff only adds history calls, and the 6 backend packages pass with -race. Non-blocking: the writers test counts per file, so process.go's spare Add (4 Adds, 3 writes) would let one new write there pass; the backfill test covers only owner-made, single-option invoices; docs/research/phase-11-merchants.md:217 still proposes a database guard.",
           "at": "2026-10-22T17:18:11Z",
           "filesHash": "04f4420e236c7f1c"
-        }
+        },
+        "commit": "f5d9090",
+        "doneAt": "2026-10-22T17:18:37Z"
       },
       "branch": "feat/f266-every-change-to-an-invoice-is-kept-in-it",
       "baseCommit": "3f93565375cf06f29aa6750519342ffd5c1d39a6",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f266-every-change-to-an-invoice-is-kept-in-it",
+        "base": "main"
+      }
     },
     {
       "id": "F267",
