@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"slices"
 	"testing"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
+	"github.com/ensp1re/forwend/apps/backend/internal/history/historytest"
 )
 
 // option adds an accepted option of invoice main (R-56): its own id and receive address, the main row's other terms.
@@ -78,6 +80,22 @@ func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 	var settles string
 	if err := e.pool.QueryRow(ctx, "SELECT invoice_id FROM settlement_intents").Scan(&settles); err != nil || settles != other {
 		t.Fatalf("settlement intent for %q (%v), want %s", settles, err, other)
+	}
+
+	// The choice is kept once, and each change names its option (R-123). The two options run in either order.
+	got := historytest.Events(t, e.pool, main)
+	history := []string{
+		fmt.Sprintf(`payer.option_chosen by system {"option": "%s"}`, other),
+		fmt.Sprintf(`invoice.detected by system {"option": "%s"}`, other),
+		fmt.Sprintf(`invoice.paid by system {"option": "%s"}`, other),
+		fmt.Sprintf(`settlement.queued by system {"option": "%s"}`, other),
+		fmt.Sprintf(`invoice.detected by system {"option": "%s"}`, main),
+		fmt.Sprintf(`invoice.held by system {"amount": "5000000", "option": "%s"}`, main),
+	}
+	slices.Sort(got)
+	slices.Sort(history)
+	if !slices.Equal(got, history) {
+		t.Fatalf("history\n got %q\nwant %q", got, history)
 	}
 }
 

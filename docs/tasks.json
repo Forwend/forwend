@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 266,
+  "nextId": 267,
   "tasks": [
     {
       "id": "F263",
@@ -227,6 +227,99 @@
         "branch": "fix/f265-the-job-tests-size-their-own-database-po",
         "base": "main"
       }
+    },
+    {
+      "id": "F266",
+      "type": "feat",
+      "behavior": "Every change to an invoice is kept in its history: one append-only row per change, written in the same transaction",
+      "acceptance": [
+        "history_events is append-only (update, delete and truncate raise) and each row has the invoice, kind, actor (owner, payer or system), time and small typed data",
+        "create (owner, payer for a job deposit, system for a retainer month), cancel, payer email, option chosen, each payment status change, money held, settlement queued and settled each write one row in the transaction that makes the change; no row when nothing changed",
+        "a test fails when a non-test Go file writes the invoices table without history.Add",
+        "invoices made before get created, canceled, current status and settled rows marked backfilled",
+        "unit passes"
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "unit"
+      ],
+      "refs": [
+        "R-123",
+        "D-92"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "failed",
+        "at": "2026-10-22T13:31:37Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 100.8,
+            "log": "docs/runs/F266-20261022T133137Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F266-20261022T133137Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F266-20261022T133137Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.8,
+            "log": "docs/runs/F266-20261022T133137Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F266-20261022T133137Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.7,
+            "log": "docs/runs/F266-20261022T133137Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "failed",
+            "exit": 1,
+            "seconds": 32.0,
+            "log": "docs/runs/F266-20261022T133137Z-e2e.log"
+          }
+        ],
+        "taskHash": "c09fdc66f2f796f8",
+        "filesHash": "edc4e014a9f6bfa7",
+        "proof": {
+          "1": "unit: internal/database TestHistoryIsAppendOnly (update, delete, truncate and replica-mode delete raise); every row has invoice, kind, actor, at and data typed by history.Data",
+          "2": "unit: invoice TestInvoiceChangesKeepHistory (created by owner, payer email by payer only when it changes, canceled by owner), TestRetainerMakesEachMonthOnce (owner,system,system,system), job TestAcceptMakesTheDepositOnce (deposit created by payer), ledger TestDepositsMoveThePaymentStatus (detected, partially_paid, paid, held 1000000, settlement.queued; nothing for the idle round) and TestFirstOptionPaidWinsAndOthersAreHeld (option chosen once, each change names its option), settlement TestSettlesAPaidInvoiceOnce (settled once with the tx hash)",
+          "3": "unit: history TestInvoiceWritersKeepHistory scans internal/ for invoices writes; with reconcile.go's history.Add removed it failed",
+          "4": "unit: database TestHistoryForExistingInvoices migrates to 48, adds open, canceled and paid+settled invoices, then up: created x3, paid, canceled, settled with tx hash, all backfilled, in time order; TestMigrationsRollBackAndReapply passes",
+          "5": "unit: passes"
+        }
+      },
+      "branch": "feat/f266-every-change-to-an-invoice-is-kept-in-it",
+      "baseCommit": "3f93565375cf06f29aa6750519342ffd5c1d39a6",
+      "failedVerifies": 1
     }
   ],
   "lastWrapup": {

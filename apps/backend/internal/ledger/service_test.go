@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
+	"github.com/ensp1re/forwend/apps/backend/internal/history/historytest"
 	"github.com/ensp1re/forwend/apps/backend/internal/watcher"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -135,6 +137,13 @@ func TestDepositsMoveThePaymentStatus(t *testing.T) {
 
 	e.run(t)
 	want(t, "run again", e.state(t, id), state{payment: Paid, refund: "held", receiver: 6000000, owed: 5000000, held: 1000000})
+
+	// One history row per change, and none for the round that changed nothing (R-123).
+	history := []string{"invoice.detected by system", "invoice.partially_paid by system", "invoice.paid by system",
+		`invoice.held by system {"amount": "1000000"}`, "settlement.queued by system"}
+	if got := historytest.Events(t, e.pool, id); !reflect.DeepEqual(got, history) {
+		t.Fatalf("history\n got %q\nwant %q", got, history)
+	}
 }
 
 // A deposit the primary RPC calls final too early (a lie or a bug) never makes the invoice paid: the second RPC

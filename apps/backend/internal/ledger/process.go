@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/history"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
@@ -105,6 +106,9 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			if _, err := tx.Exec(ctx, "UPDATE invoices SET chosen_id = $2 WHERE id = $1", group, first); err != nil {
 				return fmt.Errorf("choose invoice %s option %s: %w", group, first, err)
 			}
+			if err := history.Add(ctx, tx, group, history.OptionChosen, history.System, history.Data{Option: first}); err != nil {
+				return err
+			}
 			chosen = &first
 		}
 		superseded = chosen != nil && *chosen != invoiceID
@@ -186,6 +190,15 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		invoiceID, next, refund); err != nil {
 		return fmt.Errorf("update invoice %s status: %w", invoiceID, err)
 	}
+	var on history.Data // which option changed, when the invoice has several
+	if options {
+		on.Option = invoiceID
+	}
+	if next != current {
+		if err := history.Add(ctx, tx, invoiceID, "invoice."+next, history.System, on); err != nil {
+			return err
+		}
+	}
 	// Paid before held: the owner reads that it was paid, then that the extra is the payer's.
 	if next == Paid && current != Paid {
 		if err := outbox.Queue(ctx, tx, outbox.Paid, invoiceID, nil); err != nil {
@@ -199,12 +212,20 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		if err := outbox.Queue(ctx, tx, outbox.Held, invoiceID, newlyHeld); err != nil {
 			return err
 		}
+		held := on
+		held.Amount = newlyHeld.String()
+		if err := history.Add(ctx, tx, invoiceID, history.Held, history.System, held); err != nil {
+			return err
+		}
 	}
 	if next == Paid && current != Paid {
 		// The signer settles it; one intent per invoice (R-22).
 		if _, err := tx.Exec(ctx, `WITH i AS (INSERT INTO settlement_intents (invoice_id) VALUES ($1) ON CONFLICT DO NOTHING)
 			UPDATE invoices SET settlement_status = 'pending' WHERE id = $1`, invoiceID); err != nil {
 			return fmt.Errorf("queue invoice %s settlement: %w", invoiceID, err)
+		}
+		if err := history.Add(ctx, tx, invoiceID, history.SettlementQueued, history.System, on); err != nil {
+			return err
 		}
 	}
 	return tx.Commit(ctx)

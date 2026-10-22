@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/history"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
@@ -53,8 +54,15 @@ func (s *Service) SetPayerEmail(ctx context.Context, payToken, email string, all
 		if sent {
 			return ErrReceiptSent
 		}
-		if _, err := tx.Exec(ctx, "UPDATE invoices SET payer_email = $2 WHERE id = $1", main, email); err != nil {
+		tag, err := tx.Exec(ctx, "UPDATE invoices SET payer_email = $2 WHERE id = $1 AND payer_email IS DISTINCT FROM $2",
+			main, email)
+		if err != nil {
 			return fmt.Errorf("save payer email: %w", err)
+		}
+		if tag.RowsAffected() == 1 {
+			if err := history.Add(ctx, tx, main, history.PayerEmail, history.Payer, history.Data{}); err != nil {
+				return err
+			}
 		}
 		// A receipt the worker gave up on, or still retrying, starts again for the new address.
 		if _, err := tx.Exec(ctx, `UPDATE outbox_events SET attempts = 0, failed_at = NULL, next_attempt_at = now()

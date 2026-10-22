@@ -87,6 +87,13 @@ func TestRetainerMakesEachMonthOnce(t *testing.T) {
 	if r, err := s.GetOfProfile(ctx, profile, first.ID); err != nil || r.Retainer.NextDue != "" || r.Retainer.NextOn != "" {
 		t.Fatalf("ended retainer: %+v %v", r.Retainer, err)
 	}
+	// The owner made the first invoice, Forwend each later month (R-123).
+	var makers string
+	if err := pool.QueryRow(ctx, `SELECT string_agg(h.actor, ',' ORDER BY ri.cycle) FROM retainer_invoices ri
+		JOIN history_events h ON h.invoice_id = ri.invoice_id AND h.kind = 'invoice.created'`).Scan(&makers); err != nil ||
+		makers != "owner,system,system,system" {
+		t.Fatalf("made by %q (%v), want owner,system,system,system", makers, err)
+	}
 }
 
 // R-98: a stopped retainer makes nothing more, also when the stop lands while the worker is making a month.
