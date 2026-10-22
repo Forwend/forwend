@@ -244,9 +244,73 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "failed",
+        "at": "2026-10-22T23:50:36Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "failed",
+            "exit": 1,
+            "seconds": 148.0,
+            "log": "docs/runs/F273-20261022T235036Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F273-20261022T235036Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F273-20261022T235036Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F273-20261022T235036Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F273-20261022T235036Z-typecheck.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 138.1,
+            "log": "docs/runs/F273-20261022T235036Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.4,
+            "log": "docs/runs/F273-20261022T235036Z-build.log"
+          }
+        ],
+        "taskHash": "864f40d128cfc4c5",
+        "filesHash": "5790b37799f35624",
+        "proof": {
+          "1": "e2e: @axe-core/playwright 4.14.0 resolves axe-core 4.14.0; pnpm outdated -r lists nothing",
+          "2": "e2e: the a11y and privy e2e specs run blockingViolations under axe 4.14 with no label-content-name-mismatch: status menu, sidebar and phone profile switcher, account menu, counterparty link, truncated address",
+          "3": "e2e: the privy specs find the switcher as Switch profile: E2E shop Merchant, the phone button by Switch profile at the end, and the short address 0xcccc…cccc, whose tooltip shows the full address on focus",
+          "4": "e2e: unit, lint, typecheck, build and e2e (with the privy specs) pass"
+        }
+      },
       "branch": "fix/f273-axe-core-4-14-passes-every-control-s-vis",
-      "baseCommit": "90e3b706daf2ee6cc4da0658c526af8ddd2ba605"
+      "baseCommit": "90e3b706daf2ee6cc4da0658c526af8ddd2ba605",
+      "failedVerifies": 1
     }
   ],
   "lastWrapup": {

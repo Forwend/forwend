@@ -33,9 +33,10 @@ export function AccountMenu({ email, onSignOut, trigger, side = "top" }: Account
     <Menu>
       <MenuTrigger asChild>
         {trigger ?? (
-          <RowButton size="md" aria-label={`${AUTH_COPY.account}: ${email}, ${AUTH_COPY.signedIn}`}>
+          <RowButton size="md">
             <AccountInitial email={email} />
             <span className="min-w-0 flex-1">
+              <span className="sr-only">{AUTH_COPY.account}: </span>
               <span className="block truncate text-sm font-medium text-ink">{email}</span>{" "}
               <span className="block text-xs text-muted">{AUTH_COPY.signedIn}</span>
             </span>
