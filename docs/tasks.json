@@ -13,7 +13,7 @@
         "unit passes"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit"
       ],
@@ -22,11 +22,84 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-22 review pass by reviewer: Diff changes only comments (AST compare equal), the AGENTS.md rule is short (6-18 words per sentence), archive F263-F270 matches the removed queue entries, and build, vet and gofmt are clean. Minor: pool.go no longer says why a non-JSON-RPC answer is lasting, process.go dropped why the main row must not expire while a choice waits, and ledger/options_test.go's 'either order' note sits above the expiry time jump it does not explain."
+      ],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-22T18:47:15Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 88.4,
+            "log": "docs/runs/F271-20261022T184715Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": "docs/runs/F271-20261022T184715Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F271-20261022T184715Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F271-20261022T184715Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F271-20261022T184715Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.5,
+            "log": "docs/runs/F271-20261022T184715Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 239.7,
+            "log": "docs/runs/F271-20261022T184715Z-e2e.log"
+          }
+        ],
+        "taskHash": "bd886a4ae7d3b15a",
+        "filesHash": "5eaf5ef0f1037e4b",
+        "proof": {
+          "1": "unit: AGENTS.md Shared rules: describe the code as it is; history, incidents, dates and review notes go in the commit message; a test's name says what it checks",
+          "2": "unit: git diff of apps/ changes only comments (71 comment lines out, 16 shorter in, no code line); no 2026-10 date, Infura/Blockdaemon/Cloudflare anecdote or Before-story left in the F265-F270 comments; unit passes",
+          "3": "unit: harness archive: 8 tasks (F263-F270) in docs/archive, 1 left in docs/tasks.json",
+          "4": "unit: unit passes"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Diff changes only comments (AST compare equal), the AGENTS.md rule is short (6-18 words per sentence), archive F263-F270 matches the removed queue entries, and build, vet and gofmt are clean. Minor: pool.go no longer says why a non-JSON-RPC answer is lasting, process.go dropped why the main row must not expire while a choice waits, and ledger/options_test.go's 'either order' note sits above the expiry time jump it does not explain.",
+          "at": "2026-10-22T18:55:36Z",
+          "filesHash": "5eaf5ef0f1037e4b"
+        }
+      },
       "branch": "chore/f271-comments-say-only-what-the-code-can-t-ag",
-      "baseCommit": "aa6e4f72809625702c136a99a071bd910a4446f5"
+      "baseCommit": "aa6e4f72809625702c136a99a071bd910a4446f5",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

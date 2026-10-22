@@ -89,7 +89,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		if chosen == nil {
 			// Chains are read one after another, so an earlier transfer may still come on a chain not read that far:
 			// the first one counts only once every other enabled option chain was read past its time (R-119), about
-			// one round later. Its own chain was read up to it. Until then no row of the invoice changes.
+			// one round later. Its own chain was read up to it. Until then no row changes, so no row expires while a payment waits on another option.
 			var first string
 			var ready bool
 			err := tx.QueryRow(ctx, `SELECT t.invoice_id, NOT EXISTS (SELECT 1 FROM invoices o

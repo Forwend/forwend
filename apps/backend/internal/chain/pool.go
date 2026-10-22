@@ -301,7 +301,7 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 	}
 	if reason := outage(raw); reason != "" {
 		err := fmt.Errorf("%s: %s", e.name, reason)
-		if reason == notJSONRPC {
+		if reason == notJSONRPC { // a host that answers in a form we can't read keeps doing so
 			return res, lasting{err}
 		}
 		return res, err

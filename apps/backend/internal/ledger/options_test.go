@@ -82,7 +82,7 @@ func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 		t.Fatalf("settlement intent for %q (%v), want %s", settles, err, other)
 	}
 
-	// The two options run in either order.
+	// Past expiry too: the option not chosen only adds the money held on it.
 	e.anvil.Wait(4000)
 	e.anvil.Mine(3)
 	e.run(t)
@@ -94,7 +94,7 @@ func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 		"invoice.settlement_queued by system",
 		fmt.Sprintf(`invoice.held by system {"amount": "5000000", "option": "%s"}`, main),
 	}
-	slices.Sort(got)
+	slices.Sort(got) // the two options run in either order
 	slices.Sort(history)
 	if !slices.Equal(got, history) {
 		t.Fatalf("history\n got %q\nwant %q", got, history)
