@@ -422,9 +422,9 @@
       "type": "fix",
       "behavior": "Each RPC role keeps a host that works: Arc's working hosts go to different roles, and a host refusing us rests at once",
       "acceptance": [
-        "packages/contracts/chains.json lists Arc testnet's public RPCs so its two hosts that answer from here (Infura and drpc) fall in different roles (D-15): primary Infura, rpc.testnet.arc.io and QuickNode; second drpc and Blockdaemon",
+        "packages/contracts/chains.json lists Arc testnet's public RPCs dRPC, rpc.testnet.arc.io, QuickNode, Blockdaemon: with Infura keys the second role is dRPC and QuickNode, and Blockdaemon (Brotli to Go everywhere) is primary beside Infura (D-15); the Arc canary in .env.example uses dRPC and QuickNode instead of Blockdaemon",
         "An endpoint that answers HTTP 401, 403 or 404, or an answer that is not JSON-RPC, rests RestMax at once instead of RestBase, since that doesn't heal in seconds; timeouts, 429 and 5xx keep the growing rest",
-        "docs/backend/architecture.md says the list order decides the roles and each role needs a host that works",
+        "docs/backend/architecture.md says the list order decides the roles, each role needs a host that answers, and that from regions Cloudflare blocks Arc needs Infura keys",
         "unit passes"
       ],
       "dependsOn": [],
@@ -438,11 +438,84 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-22 review fail by reviewer: Code is right: roles stay host-disjoint with and without Infura keys; only 401/403/404 and non-JSON answers rest 5 min (check, call and batch all go through post); no key reaches errors or logs; the new test fails on main's pool.go and passes with -race. Fails on docs: the two added architecture.md sentences are 28 and 45 words (D-84). 'dRPC serves the second role and Infura the primary' holds only with INFURA_API_KEYS: without keys the second role is rpc.testnet.arc.io + QuickNode, which refuse from here, so Arc can't start keyless, against the paragraph's 'so it runs without Infura keys'; '(the chain's own RPC, then publicnode or dRPC)' no longer fits Arc."
+      ],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-22T15:29:25Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 79.5,
+            "log": "docs/runs/F268-20261022T152925Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F268-20261022T152925Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F268-20261022T152925Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F268-20261022T152925Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F268-20261022T152925Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": "docs/runs/F268-20261022T152925Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 235.3,
+            "log": "docs/runs/F268-20261022T152925Z-e2e.log"
+          }
+        ],
+        "taskHash": "49feaba1a12cb1ad",
+        "filesHash": "6e064cb59736b543",
+        "proof": {
+          "1": "unit: chains.json lists Arc's public RPCs dRPC, rpc.testnet.arc.io, Blockdaemon, QuickNode; with Infura first the roles are primary Infura, rpc.testnet.arc.io, QuickNode and second dRPC, Blockdaemon (hosts alternate in list order, chain.NewRPCs); TestEveryChainListsTwoPublicHosts passes",
+          "2": "unit: chain TestRefusingEndpointRestsLong: HTTP 401, 403, 404 and a Brotli answer rest at least half of RestMax after one failure and the call moves on; all four cases failed on main's pool; TestFailingEndpointRestsThenComesBack (429, 503, -32005, timeout) keeps the short rest",
+          "3": "unit: docs/backend/architecture.md Running the loop says the list order decides the roles, each role needs a host that answers, why Arc lists dRPC first, and the 5-minute rest",
+          "4": "unit: passes"
+        },
+        "review": {
+          "result": "fail",
+          "by": "reviewer",
+          "summary": "Code is right: roles stay host-disjoint with and without Infura keys; only 401/403/404 and non-JSON answers rest 5 min (check, call and batch all go through post); no key reaches errors or logs; the new test fails on main's pool.go and passes with -race. Fails on docs: the two added architecture.md sentences are 28 and 45 words (D-84). 'dRPC serves the second role and Infura the primary' holds only with INFURA_API_KEYS: without keys the second role is rpc.testnet.arc.io + QuickNode, which refuse from here, so Arc can't start keyless, against the paragraph's 'so it runs without Infura keys'; '(the chain's own RPC, then publicnode or dRPC)' no longer fits Arc.",
+          "at": "2026-10-22T15:40:50Z",
+          "filesHash": "6e064cb59736b543"
+        }
+      },
       "branch": "fix/f268-each-rpc-role-keeps-a-host-that-works-ar",
-      "baseCommit": "3f93565375cf06f29aa6750519342ffd5c1d39a6"
+      "baseCommit": "3f93565375cf06f29aa6750519342ffd5c1d39a6",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

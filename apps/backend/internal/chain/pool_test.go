@@ -86,8 +86,8 @@ func TestRefusingEndpointRestsLong(t *testing.T) {
 			if got := number(t, context.Background(), r.Primary); got != want {
 				t.Fatalf("block %d, want %d", got, want)
 			}
-			if failures, until := health(r, r.pool.endpoints[0]); failures != 1 || time.Until(until) < RestMax/2-time.Minute {
-				t.Fatalf("%d failures, rests %v; want 1 and at least half of RestMax", failures, time.Until(until))
+			if failures, until := health(r, r.pool.endpoints[0]); failures != 1 || time.Until(until) < RestMax/2-time.Second {
+				t.Fatalf("%d failures, rests %v; want 1 and about half of RestMax or more", failures, time.Until(until))
 			}
 		})
 	}

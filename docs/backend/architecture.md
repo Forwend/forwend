@@ -245,17 +245,17 @@ alternate between the two roles in list order (first host primary, second host s
 uses only its own hosts: the primary (reading the chain, signing) and the second (balances, D-15) never share a host,
 even after an outage, so one provider can't supply both a deposit and the balance that confirms it. When all
 of a role's hosts rest, that role waits; paid and settled wait with it. So the list order decides the roles, and each
-role needs a host that answers. Arc lists dRPC first: from some regions `rpc.testnet.arc.io` and QuickNode refuse
-(Cloudflare 1009) and Blockdaemon answers in Brotli, so dRPC serves the second role and Infura the primary. A list with
-fewer than two hosts is refused; every
-chain lists at least two public hosts from different operators (the chain's own RPC, then publicnode or dRPC), so it
-runs without Infura keys (`TestEveryChainListsTwoPublicHosts`). Every call, or batch, goes to its role's endpoint. No answer within 5 s, a connection error, an HTTP error
+role needs a host that answers. Arc lists dRPC, its own RPC, QuickNode, then Blockdaemon: with Infura keys, dRPC and
+QuickNode serve the second role. Blockdaemon answers Go's client in Brotli, which it can't read. From regions that
+Cloudflare blocks (error 1009), Arc's own RPC and QuickNode refuse too. There Arc needs Infura keys: without them its
+second role has no host that answers. A list with fewer than two hosts is refused; every chain lists at least two
+public hosts from different operators (`TestEveryChainListsTwoPublicHosts`). Every call, or batch, goes to its role's endpoint. No answer within 5 s, a connection error, an HTTP error
 status or a rate-limit JSON-RPC error (429, -32005, -32007, or a message saying so) rests that endpoint (1 s doubled
 per failure in a row, up to 5 min, half of it random) and sends the call to the next endpoint at once; when every
 endpoint of the role rests, the call waits for the first one back if that comes before its deadline, else fails. Any
 other answer, a revert or invalid params included, is the call's. HTTP 401, 403 or 404, or an answer that is not
-JSON-RPC, rests the endpoint 5 min at once (half of it random): a refused key, a blocked region or an unreadable
-answer doesn't heal in seconds, and each try of it delays a call. Each endpoint gets at most `RPC_RATE_PER_SECOND`
+JSON-RPC, rests the endpoint 5 min at once (half of it random). A refused key, a blocked region or an unreadable
+answer doesn't heal in seconds, and each try of such a host would delay a call. Each endpoint gets at most `RPC_RATE_PER_SECOND`
 calls a second per process, a batch counting each call. Errors and logs name an endpoint by host and position, never
 by URL (an Infura URL holds the key). Each chain's round has a 2-minute limit. Every `POLL_INTERVAL` the worker runs, per chain, a watcher scan then the ledger; the
 signer runs its due intents. The gate starts all three binaries against Postgres and Anvil (public RPCs only, the first

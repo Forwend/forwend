@@ -23,8 +23,8 @@
     "public": [
       "https://rpc.drpc.testnet.arc.io",
       "https://rpc.testnet.arc.io",
-      "https://rpc.blockdaemon.testnet.arc.io",
-      "https://rpc.quicknode.testnet.arc.io"
+      "https://rpc.quicknode.testnet.arc.io",
+      "https://rpc.blockdaemon.testnet.arc.io"
     ]
   },
   "tempo-moderato": {
