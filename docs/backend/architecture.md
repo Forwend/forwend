@@ -54,9 +54,8 @@ Each binary checks what it needs before it serves, and otherwise stops with one 
   migration they embed is applied; if not, they stop and ask for the api to be started first (only the api migrates).
 - Every chain enabled in the `chains` table is in the chain list and answers through a primary and a second RPC on
   different hosts (D-15), within 30 s per chain.
-  - A mistake stops the process: the chain is missing from the list or lists one host (with `INFURA_API_KEYS`
-    empty, only Arc Testnet lists two), or every host of a role serves another chain. Fix the list, disable the
-    chain in the database, or give it a second host.
+  - A mistake stops the process: the chain is missing from the list or lists one host, or every host of a role
+    serves another chain. Fix the list, disable the chain in the database, or give it a second host.
   - A chain whose hosts don't answer is an outage, not a mistake (D-71). The process logs
     `chain unavailable at startup` with the chain and how many of its hosts answered, and starts.
   - The pool then rides it out as it rides out any outage: requests rest the hosts that fail and use the next one.
