@@ -122,7 +122,7 @@
         "unit, lint, typecheck, build and e2e pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "active",
       "verification": [
         "unit"
       ],
@@ -132,7 +132,8 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-22 axe-core 4.14 makes label-content-name-mismatch (WCAG 2.5.3) a real rule; 20 privy e2e tests fail on it (profile switcher, account menu, row links, address tooltips, the status menu). @axe-core/playwright stays 4.13.0 until a task fixes those names."
+        "2026-10-22 axe-core 4.14 makes label-content-name-mismatch (WCAG 2.5.3) a real rule; 20 privy e2e tests fail on it (profile switcher, account menu, row links, address tooltips, the status menu). @axe-core/playwright stays 4.13.0 until a task fixes those names.",
+        "2026-10-22 review fail by reviewer: pnpm 12 ignores the package.json pnpm field, so the F126 security overrides are gone: pnpm-lock.yaml has no overrides section and now resolves ws 8.18.0/8.18.3, uuid 8.3.2/9.0.1 and decode-uri-component 0.2.2 (pnpm config get overrides is undefined). Move overrides into pnpm-workspace.yaml, reinstall, and confirm the lockfile keeps them; everything else checked out."
       ],
       "blockedReason": null,
       "evidence": {
@@ -197,6 +198,13 @@
           "2": "unit: go list -m -u lists no direct update; go.mod go 1.27.3; go build and go vet pass",
           "3": "unit: packages/contracts/lib/forge-std at v1.17.0, forge test 70 passed; ci.yml Foundry v1.8.6, setup-go v7, pnpm/action-setup v6.1.0 (ea17c68), foundry-toolchain v1.9.2 (dba66c2)",
           "4": "unit: unit, lint (Biome 2.6.2), typecheck, build and e2e (with the privy specs) pass"
+        },
+        "review": {
+          "result": "fail",
+          "by": "reviewer",
+          "summary": "pnpm 12 ignores the package.json pnpm field, so the F126 security overrides are gone: pnpm-lock.yaml has no overrides section and now resolves ws 8.18.0/8.18.3, uuid 8.3.2/9.0.1 and decode-uri-component 0.2.2 (pnpm config get overrides is undefined). Move overrides into pnpm-workspace.yaml, reinstall, and confirm the lockfile keeps them; everything else checked out.",
+          "at": "2026-10-22T21:06:08Z",
+          "filesHash": "324ab9fc220b4459"
         }
       },
       "branch": "chore/f272-dependencies-and-tools-are-on-their-late",
