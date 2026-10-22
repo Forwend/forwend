@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/history"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -57,6 +58,9 @@ func (s *Service) Cancel(ctx context.Context, profileID, id string) (Invoice, er
 	if _, err := tx.Exec(ctx, `UPDATE invoices SET payment_status = 'canceled', canceled_at = now()
 		WHERE coalesce(main_id, id) = $1`, id); err != nil {
 		return Invoice{}, fmt.Errorf("cancel invoice %s: %w", id, err)
+	}
+	if err := history.Add(ctx, tx, id, history.Canceled, history.Owner, history.Data{}); err != nil {
+		return Invoice{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return Invoice{}, fmt.Errorf("cancel invoice %s: %w", id, err)

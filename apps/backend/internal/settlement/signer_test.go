@@ -16,6 +16,8 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
+	"github.com/ensp1re/forwend/apps/backend/internal/history"
+	"github.com/ensp1re/forwend/apps/backend/internal/history/historytest"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 	"github.com/ensp1re/forwend/apps/backend/internal/watcher"
@@ -229,6 +231,16 @@ func TestSettlesAPaidInvoiceOnce(t *testing.T) {
 	hash := e.settlementTxHash(t, id)
 	if r, err := e.client.TransactionReceipt(ctx, common.HexToHash(hash)); err != nil || r.Status != types.ReceiptStatusSuccessful {
 		t.Fatalf("settlementTxHash %q: receipt %v (%v), want our successful settle", hash, r, err)
+	}
+	// Its history has the settlement once, with the settle transaction (R-123).
+	var settled []string
+	for _, event := range historytest.Events(t, e.pool, id) {
+		if strings.HasPrefix(event, history.Settled+" ") {
+			settled = append(settled, event)
+		}
+	}
+	if want := fmt.Sprintf(`invoice.settled by system {"txHash": "%s"}`, hash); len(settled) != 1 || settled[0] != want {
+		t.Fatalf("settled history %q, want [%q]", settled, want)
 	}
 	if got := e.balance(t, wallet); got != 5000000 {
 		t.Fatalf("recipient got %d, want exactly 5000000", got)

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/history"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/ethereum/go-ethereum"
@@ -220,6 +221,13 @@ func (s *Signer) confirm(ctx context.Context, in intent) error {
 		return fmt.Errorf("confirm settlement: %w", err)
 	}
 	if err := outbox.Queue(ctx, tx, outbox.Settled, in.invoiceID, nil); err != nil {
+		return err
+	}
+	var settled history.Data
+	if in.txHash != nil {
+		settled.TxHash = *in.txHash
+	}
+	if err := history.Add(ctx, tx, in.invoiceID, history.Settled, history.System, settled); err != nil {
 		return err
 	}
 	slog.Info("settled", "invoice", in.invoiceID, "amount", in.amount.String())

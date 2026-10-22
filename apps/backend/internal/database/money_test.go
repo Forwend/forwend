@@ -169,6 +169,28 @@ func TestLedgerIsAppendOnly(t *testing.T) {
 	wantCode(t, err, codeRaise, "DELETE in replica mode")
 }
 
+// An invoice's history never changes either (R-123).
+func TestHistoryIsAppendOnly(t *testing.T) {
+	conn, profile := moneyDB(t)
+	ctx := context.Background()
+	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
+	_, err := conn.Exec(ctx, "INSERT INTO history_events (invoice_id, kind, actor) VALUES ($1, 'invoice.created', 'owner')",
+		hex32(1))
+	must(t, err)
+	for _, stmt := range []string{
+		"UPDATE history_events SET actor = 'system'",
+		"DELETE FROM history_events",
+		"TRUNCATE history_events",
+	} {
+		_, err := conn.Exec(ctx, stmt)
+		wantCode(t, err, codeRaise, stmt)
+	}
+	_, err = conn.Exec(ctx, "SET session_replication_role = replica")
+	must(t, err)
+	_, err = conn.Exec(ctx, "DELETE FROM history_events")
+	wantCode(t, err, codeRaise, "DELETE in replica mode")
+}
+
 func TestLedgerTransactionsBalance(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()

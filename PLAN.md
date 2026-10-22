@@ -102,8 +102,8 @@ code; a wallet connects only to claim a refund (D-37).
     a smart-wallet claim; the ledger matches the chain after each. After 11.10.1–11.10.4.
 - 11.11 History log and invoice changes (D-92). Build 11.11.1 before 11.5: webhook events and the events endpoint read
   it.
-  - 11.11.1 History log: one append-only row per change, written in the same transaction, with actor, source and
-    typed data; no secrets, IP or user agent. A database guard fails a change that writes no row. Invoices, requests,
+  - 11.11.1 History log: one append-only row per change, written in the same transaction, with the actor and typed
+    data; no secrets, IP or user agent. A test fails when a Go writer of invoices writes no row. Invoices, requests,
     checkouts and jobs write to it; old invoices are backfilled; the job Record (R-104) moves onto it later.
   - 11.11.2 History tab on the invoice page, newest first, with filters. The pay page shows the payer's rows as
     Updates. Views count first view, last view and a total, with no IP. After 11.11.1.

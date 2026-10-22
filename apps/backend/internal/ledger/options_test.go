@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"slices"
 	"testing"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
+	"github.com/ensp1re/forwend/apps/backend/internal/history/historytest"
 )
 
 // option adds an accepted option of invoice main (R-56): its own id and receive address, the main row's other terms.
@@ -78,6 +80,39 @@ func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 	var settles string
 	if err := e.pool.QueryRow(ctx, "SELECT invoice_id FROM settlement_intents").Scan(&settles); err != nil || settles != other {
 		t.Fatalf("settlement intent for %q (%v), want %s", settles, err, other)
+	}
+
+	// The history follows the chosen option; the other one only adds the money held on it, also once it closes at
+	// expiry (R-123). The two options run in either order.
+	e.anvil.Wait(4000)
+	e.anvil.Mine(3)
+	e.run(t)
+	got := historytest.Events(t, e.pool, main)
+	history := []string{
+		fmt.Sprintf(`payer.option_chosen by system {"option": "%s"}`, other),
+		"invoice.detected by system",
+		"invoice.paid by system",
+		"invoice.settlement_queued by system",
+		fmt.Sprintf(`invoice.held by system {"amount": "5000000", "option": "%s"}`, main),
+	}
+	slices.Sort(got)
+	slices.Sort(history)
+	if !slices.Equal(got, history) {
+		t.Fatalf("history\n got %q\nwant %q", got, history)
+	}
+}
+
+// An unpaid invoice with several options expires once in its history, not once per option (R-123).
+func TestUnpaidOptionsExpireOnce(t *testing.T) {
+	e := newChainEnv(t)
+	main, _ := e.invoice(t, 1, 5000000, e.anvil.Now()+1000)
+	e.option(t, main, 2)
+	e.option(t, main, 3)
+	e.anvil.Wait(2000)
+	e.anvil.Mine(3)
+	e.run(t)
+	if got := historytest.Events(t, e.pool, main); !slices.Equal(got, []string{"invoice.expired by system"}) {
+		t.Fatalf("history %q, want one invoice.expired", got)
 	}
 }
 

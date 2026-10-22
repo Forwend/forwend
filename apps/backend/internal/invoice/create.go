@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/address"
+	"github.com/ensp1re/forwend/apps/backend/internal/history"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -190,6 +191,13 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		if err := r.After(ctx, tx, *mainID); err != nil {
 			return Invoice{}, false, err
 		}
+	}
+	by := r.By
+	if by == "" {
+		by = history.Owner
+	}
+	if err := history.Add(ctx, tx, *mainID, history.Created, by, history.Data{}); err != nil {
+		return Invoice{}, false, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return Invoice{}, false, fmt.Errorf("insert invoice: %w", err)

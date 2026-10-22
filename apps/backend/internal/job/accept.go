@@ -8,6 +8,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/history"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
@@ -56,6 +57,7 @@ func (s *Service) accept(ctx context.Context, j Job, name, email string) (Job, e
 		err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error { return accept(ctx, tx) })
 	} else {
 		r := s.paymentRequest(j, deposit)
+		r.By = history.Payer // the client's acceptance makes the deposit invoice
 		r.After = func(ctx context.Context, tx pgx.Tx, invoiceID string) error {
 			if err := accept(ctx, tx); err != nil {
 				return err

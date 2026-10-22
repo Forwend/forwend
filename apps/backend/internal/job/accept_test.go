@@ -10,6 +10,7 @@ import (
 
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
+	"github.com/ensp1re/forwend/apps/backend/internal/history/historytest"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -85,6 +86,10 @@ func TestAcceptMakesTheDepositOnce(t *testing.T) {
 	deposit := accepted.Payments[0]
 	if deposit.InvoiceID == "" || deposit.Status != "open" || accepted.Payments[1].InvoiceID != "" {
 		t.Fatalf("payments %+v", accepted.Payments)
+	}
+	// The client's acceptance made the deposit invoice (R-123).
+	if got := historytest.Events(t, pool, deposit.InvoiceID); !reflect.DeepEqual(got, []string{"invoice.created by payer"}) {
+		t.Fatalf("deposit history %q, want it made by the payer", got)
 	}
 	inv, err := invoices.GetOfProfile(ctx, profileID, deposit.InvoiceID)
 	if err != nil {

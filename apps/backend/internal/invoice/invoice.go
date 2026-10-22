@@ -19,6 +19,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/address"
 	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ensp1re/forwend/apps/backend/internal/finality"
+	"github.com/ensp1re/forwend/apps/backend/internal/history"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 )
@@ -91,6 +92,8 @@ type Request struct {
 	// After runs in the transaction that inserts the invoice, before it commits; not on a replay. A job records its
 	// payment's invoice with it (R-100).
 	After func(ctx context.Context, tx pgx.Tx, invoiceID string) error `json:"-"`
+	// By is who makes the invoice, for its history (R-123); empty is the owner.
+	By history.Actor `json:"-"`
 }
 
 type AgreedRequest struct {

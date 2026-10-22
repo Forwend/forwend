@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/history"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
@@ -158,7 +159,7 @@ func (s *Service) MakeRetainerInvoices(ctx context.Context) error {
 		seconds := int64((m.due.AddDate(0, 0, DueGraceDays+1).Sub(s.now()) + time.Second - 1) / time.Second)
 		r.DueDate, r.ExpiresInSeconds = m.due.Format(time.DateOnly), &seconds
 		r.Reminders = r.Reminders && !m.remindersStopped
-		r.cycle = &cycle{retainer: m.retainer, n: m.n}
+		r.cycle, r.By = &cycle{retainer: m.retainer, n: m.n}, history.System
 		key := fmt.Sprintf("retainer:%s:%d", m.retainer, m.n)
 		if _, _, err := s.Create(ctx, m.profile, key, r); err != nil && !errors.Is(err, errRetainerStopped) {
 			errs = append(errs, fmt.Errorf("retainer %s month %d: %w", m.retainer, m.n, err))

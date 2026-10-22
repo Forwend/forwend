@@ -191,6 +191,12 @@ with a test.
   name a `job_id` (no invoice) and carry the change's key in the payload (R-107).
   `users.login_email` and `profiles.email_notifications` decide where and whether; `users.welcome` marks accounts made
   after welcome emails existed.
+- `history_events` (R-123, D-92): what happened to each invoice, one row per change.
+  - `history.Add` writes it in the transaction that makes the change.
+  - A row has the main invoice, `kind`, `actor` (`owner`, `payer` or `system`), `at` and small `data`.
+  - Only the option an invoice shows writes its status; an option not chosen adds only money held on it.
+  - Append-only like the ledger.
+  - Rows marked `backfilled` were made from older invoices' timestamps.
 - `invoice_reminders`: one row per invoice once the owner first turns reminders on, with `enabled`, the client's
   `stop_token` and `stopped_at`.
 - `jobs` (R-100): a quote with its link `token`, title, scope, a client copy and an issuer copy from billing details.
