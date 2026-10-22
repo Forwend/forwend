@@ -334,7 +334,7 @@
         "unit passes"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit"
       ],
@@ -421,11 +421,18 @@
           "summary": "Pass: startup skips a chain only when both roles, asked at once, fail while each still has a host not found on another chain; every listed mistake stops; FactoryDeployed and CheckGas go to the second RPC only on a failed read, both shortfall paths wrap errFundIt, no key reaches the warning or errors, and chain/address/settlement tests pass with -race. Low gaps: TestFactoryDeployed does not guard a first-RPC 'no code' against a second that shows code (an overlay mutant passes), the Tempo shortfall and multi-chain skip have no test, and architecture.md line 52 still says every failed check stops.",
           "at": "2026-10-22T16:33:26Z",
           "filesHash": "434c735aa8534fd9"
-        }
+        },
+        "commit": "f3eb18b",
+        "doneAt": "2026-10-22T16:33:59Z"
       },
       "branch": "fix/f267-one-chain-whose-rpc-hosts-are-down-no-lo",
       "baseCommit": "3f93565375cf06f29aa6750519342ffd5c1d39a6",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f267-one-chain-whose-rpc-hosts-are-down-no-lo",
+        "base": "main"
+      }
     },
     {
       "id": "F268",
