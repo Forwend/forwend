@@ -580,11 +580,84 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-22 review fail by reviewer: Code and tests are correct: host-wide rest only for unanswered() errors, roles never share a host, TestHangingHostRestsWhole fails on the old pool (~910 ms) and passes at ~305 ms, race tests pass. Blocking: the added sentence in docs/backend/architecture.md Running the loop ('No answer in time or a broken connection rests every endpoint of that host together: ...') is 26 words, over D-84's 25; 'broken connection' also undersells refused, DNS and TLS failures. Suggested: 'No answer in time or a connection error rests every endpoint of that host: its other keys would each hang a call the same way.' (25 words)."
+      ],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-22T17:40:25Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 82.8,
+            "log": "docs/runs/F269-20261022T174025Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F269-20261022T174025Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F269-20261022T174025Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F269-20261022T174025Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F269-20261022T174025Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.0,
+            "log": "docs/runs/F269-20261022T174025Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 228.6,
+            "log": "docs/runs/F269-20261022T174025Z-e2e.log"
+          }
+        ],
+        "taskHash": "ccd2273a8b084d88",
+        "filesHash": "25df7763b77fba2c",
+        "proof": {
+          "1": "unit: chain TestHangingHostRestsWhole: three hanging endpoints of one host in front of a working host; the answer came from the working host within 2 attempts and all three rest with failures 1; on the old pool it took 1.21 s (four attempts of 300 ms) and failed",
+          "2": "unit: TestFailedKeyMovesToTheNextKeyOnItsHost and TestRefusingEndpointRestsLong pass: a key's own failure rests only that key",
+          "3": "unit: TestCheckEnabled 'an unreachable chain skips only itself' (chain 2 down is skipped, the anvil chain still checked); TestFactoryDeployed: no code on the first client stops even when the second shows code",
+          "4": "unit: architecture.md startup intro says a setup mistake stops and an unreachable chain is skipped; Running the loop says a host that doesn't answer rests as a whole; unit passes"
+        },
+        "review": {
+          "result": "fail",
+          "by": "reviewer",
+          "summary": "Code and tests are correct: host-wide rest only for unanswered() errors, roles never share a host, TestHangingHostRestsWhole fails on the old pool (~910 ms) and passes at ~305 ms, race tests pass. Blocking: the added sentence in docs/backend/architecture.md Running the loop ('No answer in time or a broken connection rests every endpoint of that host together: ...') is 26 words, over D-84's 25; 'broken connection' also undersells refused, DNS and TLS failures. Suggested: 'No answer in time or a connection error rests every endpoint of that host: its other keys would each hang a call the same way.' (25 words).",
+          "at": "2026-10-22T17:52:33Z",
+          "filesHash": "25df7763b77fba2c"
+        }
+      },
       "branch": "fix/f269-a-host-whose-endpoints-hang-no-longer-ho",
-      "baseCommit": "edfad3ae1aa69125f20e02239de2684215cf8f3b"
+      "baseCommit": "edfad3ae1aa69125f20e02239de2684215cf8f3b",
+      "failedVerifies": 0
     },
     {
       "id": "F270",

@@ -270,10 +270,10 @@ per failure in a row, up to 5 min, half of it random) and sends the call to the 
 endpoint of the role rests, the call waits for the first one back if that comes before its deadline, else fails. Any
 other answer, a revert or invalid params included, is the call's. HTTP 401, 403 or 404, or an answer that is not
 JSON-RPC, rests the endpoint 5 min at once (half of it random). A refused key, a blocked region or an unreadable
-answer doesn't heal in seconds, and each try of such a host would delay a call. No answer in time or a broken
-connection rests every endpoint of that host together: its other keys would each hang a call the same way. Each
-endpoint gets at most `RPC_RATE_PER_SECOND`
-calls a second per process, a batch counting each call. Errors and logs name an endpoint by host and position, never
+answer doesn't heal in seconds, and each try of such a host would delay a call. No answer in time or a connection
+error rests every endpoint of that host: its other keys would each hang a call the same way. Each endpoint gets at
+most `RPC_RATE_PER_SECOND` calls a second per process, a batch counting each call. Errors and logs name an endpoint
+by host and position, never
 by URL (an Infura URL holds the key). Each chain's round has a 2-minute limit. Every `POLL_INTERVAL` the worker runs, per chain, a watcher scan then the ledger; the
 signer runs its due intents. The gate starts all three binaries against Postgres and Anvil (public RPCs only, the first
 answering every third request with 429), creates an invoice through
