@@ -122,7 +122,7 @@
         "unit, lint, typecheck, build and e2e pass"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit"
       ],
@@ -140,72 +140,65 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-22T21:06:59Z",
+        "at": "2026-10-22T21:51:21Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
             "seconds": 74.6,
-            "log": "docs/runs/F272-20261022T210659Z-unit.log"
+            "log": "docs/runs/F272-20261022T215121Z-unit.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.0,
-            "log": "docs/runs/F272-20261022T210659Z-harness.log"
+            "seconds": 2.3,
+            "log": "docs/runs/F272-20261022T215121Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F272-20261022T210659Z-docs-check.log"
+            "log": "docs/runs/F272-20261022T215121Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F272-20261022T210659Z-lint.log"
+            "log": "docs/runs/F272-20261022T215121Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F272-20261022T210659Z-typecheck.log"
+            "log": "docs/runs/F272-20261022T215121Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.4,
-            "log": "docs/runs/F272-20261022T210659Z-build.log"
+            "seconds": 0.7,
+            "log": "docs/runs/F272-20261022T215121Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 203.4,
-            "log": "docs/runs/F272-20261022T210659Z-e2e.log"
+            "seconds": 206.7,
+            "log": "docs/runs/F272-20261022T215121Z-e2e.log"
           }
         ],
         "taskHash": "5469895c071b6b33",
-        "filesHash": "1c5de984a2c1a18b",
+        "filesHash": "7584fb789fccaff7",
         "proof": {
           "1": "unit: pnpm outdated -r lists only @axe-core/playwright 4.13.0 -> 4.14.0 (held: axe 4.14 fails 20 privy e2e tests on label-in-name); packageManager pnpm@12.15.0; the F126 overrides sit in pnpm-workspace.yaml, the lockfile has its overrides section, and ws, uuid and decode-uri-component resolve as on main",
           "2": "unit: go list -m -u lists no direct update; go.mod go 1.27.3; go build and go vet pass",
-          "3": "unit: packages/contracts/lib/forge-std at v1.17.0, forge test 70 passed; ci.yml Foundry v1.8.6, setup-go v7, pnpm/action-setup v6.1.0 (ea17c68), foundry-toolchain v1.9.2 (dba66c2)",
+          "3": "unit: forge-std v1.17.0 in the submodule and foundry.lock; Foundry v1.8.6 forge build --locked passes and forge test passes all 71 tests (the 5 invariants run as one group); ci.yml Foundry v1.8.6, setup-go v7, pnpm/action-setup v6.1.0 (ea17c68), foundry-toolchain v1.9.2 (dba66c2)",
           "4": "unit: unit, lint (Biome 2.6.2), typecheck, build and e2e (with the privy specs) pass"
-        },
-        "review": {
-          "result": "fail",
-          "by": "reviewer",
-          "summary": "packages/contracts/foundry.lock still pins forge-std v1.16.2 (rev bf647bd) while the submodule is v1.17.0 (f3dae6e). With Foundry 1.8.6, forge build --locked fails on the mismatch, and forge install (or the auto-install forge build runs on a clone without submodules) checks out v1.16.2 again; set lib/forge-std to v1.17.0/f3dae6e in foundry.lock. Everything else checked out: overrides apply (ws, uuid, decode-uri-component as on main), frozen install, lint, typecheck, go build/vet, outdated and CI pins are fine.",
-          "at": "2026-10-22T21:21:02Z",
-          "filesHash": "1c5de984a2c1a18b"
         }
       },
       "branch": "chore/f272-dependencies-and-tools-are-on-their-late",
