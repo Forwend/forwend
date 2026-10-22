@@ -678,7 +678,7 @@
         "Tests cover both orders: the payment recorded before the main row is processed, and the main chain read past the close before the option chain records an on-time payment; neither paid invoice gets invoice.expired in its history; unit passes"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit"
       ],
@@ -765,11 +765,18 @@
           "summary": "Ledger choice-for-every-row, close gate and ClosedSQL are correct: no money left unbooked or misbooked, choice set once, late money held, superseded rows and expired partials unchanged, lock order unchanged, new queries use id/main_id indexes (EXPLAIN); each mutant (anyTransfer guard, close gate, chosen_id IS NULL in ClosedSQL) fails a test; the 5 packages pass with -race. Minor, non-blocking: openapi Invoice.closed still says paymentStatus changes once the chain is final past expiry (before a choice it also waits for the other option chains), and two new process.go comment sentences run over 25 words.",
           "at": "2026-10-22T18:39:41Z",
           "filesHash": "d15d53c6c0fc30fa"
-        }
+        },
+        "commit": "57e719b",
+        "doneAt": "2026-10-22T18:40:08Z"
       },
       "branch": "fix/f270-a-payer-chooses-invoice-doesn-t-close-be",
       "baseCommit": "75ea7add4049513c3153f82027b43622b4b75908",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f270-a-payer-chooses-invoice-doesn-t-close-be",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
