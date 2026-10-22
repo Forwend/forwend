@@ -6,13 +6,12 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Events lists the history of the invoice that option belongs to, oldest first, as "kind by actor", followed by its
 // data when it has any.
-func Events(t *testing.T, db interface {
-	Query(context.Context, string, ...any) (pgx.Rows, error)
-}, option string) []string {
+func Events(t *testing.T, db *pgxpool.Pool, option string) []string {
 	t.Helper()
 	rows, err := db.Query(context.Background(), `SELECT h.kind || ' by ' || h.actor ||
 		    CASE WHEN h.data = '{}' THEN '' ELSE ' ' || h.data::text END

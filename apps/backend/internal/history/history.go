@@ -10,21 +10,16 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Event kinds. A payment status change is "invoice." and the new status (Open … ExpiredPartiallyPaid).
+// Event kinds. A payment status change is "invoice." and the new status, as the ledger names it (open after a reorg
+// dropped the only transfer seen, detected, partially_paid, paid, expired, expired_partially_paid).
 const (
-	Created              = "invoice.created"
-	Canceled             = "invoice.canceled"
-	PayerEmail           = "payer.email_given"   // the payer gave an address for their receipt (R-82)
-	OptionChosen         = "payer.option_chosen" // the option the money came to first (D-76); data names it
-	Open                 = "invoice.open"        // back to open: a reorg dropped the only transfer seen
-	Detected             = "invoice.detected"
-	PartiallyPaid        = "invoice.partially_paid"
-	Paid                 = "invoice.paid"
-	Expired              = "invoice.expired"
-	ExpiredPartiallyPaid = "invoice.expired_partially_paid"
-	Held                 = "invoice.held" // money held for the payer; data has its amount in base units
-	SettlementQueued     = "settlement.queued"
-	Settled              = "invoice.settled" // data has the settle transaction's hash
+	Created          = "invoice.created"
+	Canceled         = "invoice.canceled"
+	PayerEmail       = "payer.email_given"   // the payer gave an address for their receipt (R-82)
+	OptionChosen     = "payer.option_chosen" // the option the money came to first (D-76); data names it
+	Held             = "invoice.held"        // money held for the payer; data has its amount in base units
+	SettlementQueued = "invoice.settlement_queued"
+	Settled          = "invoice.settled" // data has the settle transaction's hash
 )
 
 // Actor is who made a change.

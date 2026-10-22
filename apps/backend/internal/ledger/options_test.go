@@ -92,7 +92,7 @@ func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 		fmt.Sprintf(`payer.option_chosen by system {"option": "%s"}`, other),
 		"invoice.detected by system",
 		"invoice.paid by system",
-		"settlement.queued by system",
+		"invoice.settlement_queued by system",
 		fmt.Sprintf(`invoice.held by system {"amount": "5000000", "option": "%s"}`, main),
 	}
 	slices.Sort(got)
@@ -150,41 +150,77 @@ func deref(s *string) string {
 // from an earlier full payment on a chain not read that far yet (audit 2026-10-19: dust took over a paid invoice).
 // The option is chosen, and its deposits booked, only once every other enabled option chain was read past the first
 // one.
-func TestOptionWaitsForEveryChainBeforeChoosing(t *testing.T) {
+// optionSim is a payer-chooses invoice in the sim: its main row on chain 1 and one option on chain 2, both closing at
+// 5000, with nothing paid yet.
+type optionSim struct {
+	*sim
+	main, option, dust, full string // the rows and their receive addresses
+}
+
+func newOptionSim(t *testing.T) optionSim {
 	s := newSim(t)
 	s.exec(`WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (2, 'evm', 'sim2', true)),
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		            VALUES (2, 'evm', $1, 'USDC', 6, true))
 		INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) VALUES (2, 100, 100)`, simToken)
-
-	pay := func(id string, chainID int, receive string, amount, blockTime int64) {
-		s.n++
-		s.exec(`INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
-			    block_hash, block_number, block_time, from_address, to_address, amount, status)
-			VALUES ($1, 'evm', $2, $3, $4, 0, $4, $5, $6, '0x00000000000000000000000000000000000000ff', $7, $8, 'confirmed')`,
-			chainID, simToken, id, fmt.Sprintf("0x%064x", s.n), s.n, blockTime, receive, amount)
-		s.answer[receive].Add(s.answer[receive], big.NewInt(amount))
-	}
-	main, dust := fmt.Sprintf("0x%064x", 0xa1), "0x00000000000000000000000000000000000000a1"
-	option, full := fmt.Sprintf("0x%064x", 0xa2), "0x00000000000000000000000000000000000000a2"
+	o := optionSim{sim: s, main: fmt.Sprintf("0x%064x", 0xa1), dust: "0x00000000000000000000000000000000000000a1",
+		option: fmt.Sprintf("0x%064x", 0xa2), full: "0x00000000000000000000000000000000000000a2"}
 	s.exec(`INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
 		    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
 		    request_hash)
 		SELECT $1, id, 1, 'evm', $2, 5000000, 5000, 5000 + 86400, '0x1111111111111111111111111111111111111111',
 		    'evm_create2', '0x2222222222222222222222222222222222222222', $3, $1, decode(repeat('00', 32), 'hex')
-		FROM profiles`, main, simToken, dust)
-	s.answer[dust] = new(big.Int)
+		FROM profiles`, o.main, simToken, o.dust)
+	s.answer[o.dust] = new(big.Int)
 	s.exec(`INSERT INTO invoices (id, main_id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
 		    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
 		    request_hash)
 		SELECT $1, m.id, m.profile_id, 2, 'evm', m.token_contract, m.amount, m.expires_at, m.settle_deadline,
 		    m.recipient_address, m.receive_method, m.factory_address, $2, m.idempotency_key, m.request_hash
-		FROM invoices m WHERE m.id = $3`, option, full, main)
-	s.answer[full] = new(big.Int)
-	scanned := func(chainID, time int64) {
-		s.exec("UPDATE chain_cursors SET last_scanned_time = $2, last_finalized_time = $2 WHERE chain_id = $1", chainID,
-			time)
+		FROM invoices m WHERE m.id = $3`, o.option, o.full, o.main)
+	s.answer[o.full] = new(big.Int)
+	return o
+}
+
+func (o optionSim) pay(id string, chainID int, receive string, amount, blockTime int64) {
+	o.n++
+	o.exec(`INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
+		    block_hash, block_number, block_time, from_address, to_address, amount, status)
+		VALUES ($1, 'evm', $2, $3, $4, 0, $4, $5, $6, '0x00000000000000000000000000000000000000ff', $7, $8, 'confirmed')`,
+		chainID, simToken, id, fmt.Sprintf("0x%064x", o.n), o.n, blockTime, receive, amount)
+	o.answer[receive].Add(o.answer[receive], big.NewInt(amount))
+}
+
+// scanned says the chain was read, and is final, up to time.
+func (o optionSim) scanned(chainID, time int64) {
+	o.exec("UPDATE chain_cursors SET last_scanned_time = $2, last_finalized_time = $2 WHERE chain_id = $1", chainID, time)
+}
+
+// A payment on another option keeps the whole invoice open until the choice is made (R-119): the main row, with no
+// money of its own, does not expire meanwhile, so a paid invoice never shows expired, on screen or in its history.
+func TestMainRowWaitsForTheChoiceBeforeExpiring(t *testing.T) {
+	o := newOptionSim(t)
+	o.scanned(1, 4800)
+	o.pay(o.option, 2, o.full, 5000000, 4900) // just before the checkout closes at 5000
+	o.scanned(2, 4950)
+	o.process(o.option) // chain 1 was read only to 4800: no choice yet
+	o.scanned(1, 5100)  // read past the close, and past the payment
+	o.process(o.main)
+	o.process(o.option)
+	if got, _ := o.payment(o.option); got != Paid {
+		t.Fatalf("the option: %s, want paid", got)
 	}
+	want := []string{fmt.Sprintf(`payer.option_chosen by system {"option": "%s"}`, o.option), "invoice.paid by system",
+		"invoice.settlement_queued by system"}
+	if got := historytest.Events(t, o.pool, o.main); !slices.Equal(got, want) {
+		t.Fatalf("history\n got %q\nwant %q", got, want)
+	}
+}
+
+func TestOptionWaitsForEveryChainBeforeChoosing(t *testing.T) {
+	o := newOptionSim(t)
+	s, main, dust, option, full := o.sim, o.main, o.dust, o.option, o.full
+	pay, scanned := o.pay, o.scanned
 
 	// Chain 1 is read first: it has the dust at 1500, and chain 2 was read only to 1000.
 	scanned(1, 2000)

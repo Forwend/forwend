@@ -252,77 +252,85 @@
       "review": false,
       "notes": [
         "2026-10-22 blocked: verify's live e2e needs the api to start while Arc has under 2 answering RPC hosts; F267 fixes startup first",
-        "2026-10-22 refs R-123 and D-92 on its branch; R-123 is defined there, so main's copy cites D-92 until F266 merges"
+        "2026-10-22 refs R-123 and D-92 on its branch; R-123 is defined there, so main's copy cites D-92 until F266 merges",
+        "2026-10-22 review fail by reviewer: A payer-chooses invoice paid on another option in the last worker round before expiry still gets invoice.expired in its history: the main chain is read first, its row expires while the R-119 choice waits, then option_chosen/paid follow (reproduced with the ledger sim: history = expired, option_chosen, paid, settlement.queued); stop the main row's status change, or its row, while any option of the group has an unchosen transfer. R-123's first sentence is 60 words (D-84: at most 25). Minor: history.Open..ExpiredPartiallyPaid are unused, historytest.Events takes an interface though every caller passes a pool."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
-        "status": "failed",
-        "at": "2026-10-22T13:48:35Z",
+        "status": "passed",
+        "at": "2026-10-22T16:34:53Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 99.1,
-            "log": "docs/runs/F266-20261022T134835Z-unit.log"
+            "seconds": 79.0,
+            "log": "docs/runs/F266-20261022T163453Z-unit.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 1.9,
-            "log": "docs/runs/F266-20261022T134835Z-harness.log"
+            "log": "docs/runs/F266-20261022T163453Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F266-20261022T134835Z-docs-check.log"
+            "log": "docs/runs/F266-20261022T163453Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F266-20261022T134835Z-lint.log"
+            "log": "docs/runs/F266-20261022T163453Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.2,
-            "log": "docs/runs/F266-20261022T134835Z-typecheck.log"
+            "log": "docs/runs/F266-20261022T163453Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.8,
-            "log": "docs/runs/F266-20261022T134835Z-build.log"
+            "seconds": 3.2,
+            "log": "docs/runs/F266-20261022T163453Z-build.log"
           },
           {
             "id": "e2e",
-            "outcome": "failed",
-            "exit": 1,
-            "seconds": 45.8,
-            "log": "docs/runs/F266-20261022T134835Z-e2e.log"
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 215.7,
+            "log": "docs/runs/F266-20261022T163453Z-e2e.log"
           }
         ],
         "taskHash": "c09fdc66f2f796f8",
-        "filesHash": "080f9dac2128c0b4",
+        "filesHash": "73f4c51499f6ddfa",
         "proof": {
           "1": "unit: internal/database TestHistoryIsAppendOnly (update, delete, truncate and replica-mode delete raise); rows carry invoice, kind, actor, at and data typed by history.Data",
           "2": "unit: invoice TestInvoiceChangesKeepHistory (created by owner, payer email only when it changes, canceled by owner), TestRetainerMakesEachMonthOnce (owner,system,system,system), job TestAcceptMakesTheDepositOnce (deposit by payer), ledger TestDepositsMoveThePaymentStatus (detected, partially_paid, paid, held 1000000, settlement.queued; nothing on the idle round), TestFirstOptionPaidWinsAndOthersAreHeld (follows the chosen option, no expired rows after expiry) and TestUnpaidOptionsExpireOnce (both failed on the per-option code), settlement TestSettlesAPaidInvoiceOnce (settled once with tx hash)",
           "3": "unit: history TestInvoiceWritersKeepHistory scans apps/backend and counts writes per file; with reconcile.go's history.Add removed it failed",
           "4": "unit: database TestHistoryForExistingInvoices: migrate to 48, open, canceled, paid+settled and expired invoices, then up: created x4, paid at its intent, canceled, settled with tx hash, expired at expiry, all backfilled; TestMigrationsRollBackAndReapply passes",
           "5": "unit: passes"
+        },
+        "review": {
+          "result": "fail",
+          "by": "reviewer",
+          "summary": "A payer-chooses invoice paid on another option in the last worker round before expiry still gets invoice.expired in its history: the main chain is read first, its row expires while the R-119 choice waits, then option_chosen/paid follow (reproduced with the ledger sim: history = expired, option_chosen, paid, settlement.queued); stop the main row's status change, or its row, while any option of the group has an unchosen transfer. R-123's first sentence is 60 words (D-84: at most 25). Minor: history.Open..ExpiredPartiallyPaid are unused, historytest.Events takes an interface though every caller passes a pool.",
+          "at": "2026-10-22T16:49:32Z",
+          "filesHash": "73f4c51499f6ddfa"
         }
       },
       "branch": "feat/f266-every-change-to-an-invoice-is-kept-in-it",
       "baseCommit": "3f93565375cf06f29aa6750519342ffd5c1d39a6",
-      "failedVerifies": 2
+      "failedVerifies": 0
     },
     {
       "id": "F267",
