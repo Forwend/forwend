@@ -428,7 +428,7 @@
         "unit passes"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit"
       ],
@@ -439,78 +439,79 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-22 review fail by reviewer: Code is right: roles stay host-disjoint with and without Infura keys; only 401/403/404 and non-JSON answers rest 5 min (check, call and batch all go through post); no key reaches errors or logs; the new test fails on main's pool.go and passes with -race. Fails on docs: the two added architecture.md sentences are 28 and 45 words (D-84). 'dRPC serves the second role and Infura the primary' holds only with INFURA_API_KEYS: without keys the second role is rpc.testnet.arc.io + QuickNode, which refuse from here, so Arc can't start keyless, against the paragraph's 'so it runs without Infura keys'; '(the chain's own RPC, then publicnode or dRPC)' no longer fits Arc."
+        "2026-10-22 review fail by reviewer: Code is right: roles stay host-disjoint with and without Infura keys; only 401/403/404 and non-JSON answers rest 5 min (check, call and batch all go through post); no key reaches errors or logs; the new test fails on main's pool.go and passes with -race. Fails on docs: the two added architecture.md sentences are 28 and 45 words (D-84). 'dRPC serves the second role and Infura the primary' holds only with INFURA_API_KEYS: without keys the second role is rpc.testnet.arc.io + QuickNode, which refuse from here, so Arc can't start keyless, against the paragraph's 'so it runs without Infura keys'; '(the chain's own RPC, then publicnode or dRPC)' no longer fits Arc.",
+        "2026-10-22 review pass by reviewer: Arc roles verified from chains.json: with keys primary Infura+arc.io+Blockdaemon, second dRPC+QuickNode; keyless primary dRPC+QuickNode, second arc.io+Blockdaemon; hosts never shared (D-15). Only 401/403/404 and non-JSON-RPC answers rest RestMax (check, call and batch all pass through post), no key in errors or logs; TestRefusingEndpointRestsLong fails all 4 cases on main's pool.go, chain tests pass with -race; docs match the code with and without keys, added sentences 10-25 words. Nits: 'which it can't read' has an unclear 'it'; an empty or HTML 200 body now also rests 2.5-5 min."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-22T15:29:25Z",
+        "at": "2026-10-22T15:42:14Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 79.5,
-            "log": "docs/runs/F268-20261022T152925Z-unit.log"
+            "seconds": 81.5,
+            "log": "docs/runs/F268-20261022T154214Z-unit.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.1,
-            "log": "docs/runs/F268-20261022T152925Z-harness.log"
+            "seconds": 2.2,
+            "log": "docs/runs/F268-20261022T154214Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F268-20261022T152925Z-docs-check.log"
+            "log": "docs/runs/F268-20261022T154214Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F268-20261022T152925Z-lint.log"
+            "log": "docs/runs/F268-20261022T154214Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.2,
-            "log": "docs/runs/F268-20261022T152925Z-typecheck.log"
+            "log": "docs/runs/F268-20261022T154214Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.7,
-            "log": "docs/runs/F268-20261022T152925Z-build.log"
+            "seconds": 3.2,
+            "log": "docs/runs/F268-20261022T154214Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 235.3,
-            "log": "docs/runs/F268-20261022T152925Z-e2e.log"
+            "seconds": 220.3,
+            "log": "docs/runs/F268-20261022T154214Z-e2e.log"
           }
         ],
-        "taskHash": "49feaba1a12cb1ad",
-        "filesHash": "6e064cb59736b543",
+        "taskHash": "9d6b21d380313e5a",
+        "filesHash": "4a0496bc6b9fb9d1",
         "proof": {
-          "1": "unit: chains.json lists Arc's public RPCs dRPC, rpc.testnet.arc.io, Blockdaemon, QuickNode; with Infura first the roles are primary Infura, rpc.testnet.arc.io, QuickNode and second dRPC, Blockdaemon (hosts alternate in list order, chain.NewRPCs); TestEveryChainListsTwoPublicHosts passes",
-          "2": "unit: chain TestRefusingEndpointRestsLong: HTTP 401, 403, 404 and a Brotli answer rest at least half of RestMax after one failure and the call moves on; all four cases failed on main's pool; TestFailingEndpointRestsThenComesBack (429, 503, -32005, timeout) keeps the short rest",
-          "3": "unit: docs/backend/architecture.md Running the loop says the list order decides the roles, each role needs a host that answers, why Arc lists dRPC first, and the 5-minute rest",
+          "1": "unit: chains.json lists Arc dRPC, rpc.testnet.arc.io, QuickNode, Blockdaemon; with Infura first the roles are primary Infura, rpc.testnet.arc.io, Blockdaemon and second dRPC, QuickNode (chain.NewRPCs alternates hosts in list order); TestEveryChainListsTwoPublicHosts passes; .env.example's Arc canary is dRPC and QuickNode",
+          "2": "unit: chain TestRefusingEndpointRestsLong: HTTP 401, 403, 404 and a Brotli answer rest at least half of RestMax after one failure and the call moves on; all four failed on main's pool; TestFailingEndpointRestsThenComesBack (429, 503, -32005, timeout) keeps the short rest",
+          "3": "unit: architecture.md Running the loop: list order decides the roles, each role needs a host that answers, Blockdaemon answers Go in Brotli, from Cloudflare-blocked regions Arc needs Infura keys; 5-minute rest for refusals",
           "4": "unit: passes"
         },
         "review": {
-          "result": "fail",
+          "result": "pass",
           "by": "reviewer",
-          "summary": "Code is right: roles stay host-disjoint with and without Infura keys; only 401/403/404 and non-JSON answers rest 5 min (check, call and batch all go through post); no key reaches errors or logs; the new test fails on main's pool.go and passes with -race. Fails on docs: the two added architecture.md sentences are 28 and 45 words (D-84). 'dRPC serves the second role and Infura the primary' holds only with INFURA_API_KEYS: without keys the second role is rpc.testnet.arc.io + QuickNode, which refuse from here, so Arc can't start keyless, against the paragraph's 'so it runs without Infura keys'; '(the chain's own RPC, then publicnode or dRPC)' no longer fits Arc.",
-          "at": "2026-10-22T15:40:50Z",
-          "filesHash": "6e064cb59736b543"
+          "summary": "Arc roles verified from chains.json: with keys primary Infura+arc.io+Blockdaemon, second dRPC+QuickNode; keyless primary dRPC+QuickNode, second arc.io+Blockdaemon; hosts never shared (D-15). Only 401/403/404 and non-JSON-RPC answers rest RestMax (check, call and batch all pass through post), no key in errors or logs; TestRefusingEndpointRestsLong fails all 4 cases on main's pool.go, chain tests pass with -race; docs match the code with and without keys, added sentences 10-25 words. Nits: 'which it can't read' has an unclear 'it'; an empty or HTML 200 body now also rests 2.5-5 min.",
+          "at": "2026-10-22T15:51:16Z",
+          "filesHash": "4a0496bc6b9fb9d1"
         }
       },
       "branch": "fix/f268-each-rpc-role-keeps-a-host-that-works-ar",
