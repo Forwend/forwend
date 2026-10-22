@@ -32,8 +32,7 @@ var (
 
 // CheckGas returns an error unless the executor holds MinGas at the chain's current fee cap: below that the node
 // refuses the signer's next deploy and settle. The error names the chain, the executor's address and its balance. A
-// read that fails on one client, as Infura answered eth_getCode with "Internal error" on 2026-10-22, is asked of the
-// next. A shortfall is an answer, not a failed read: it stops the check, since the signer sends through the first.
+// failed read moves to the next client; a shortfall stops the check, since the signer sends through the first.
 func CheckGas(ctx context.Context, chainID uint64, executor common.Address, clients ...*ethclient.Client) error {
 	var err error
 	for _, client := range clients {
@@ -44,7 +43,6 @@ func CheckGas(ctx context.Context, chainID uint64, executor common.Address, clie
 	return err
 }
 
-// errFundIt ends a shortfall's message.
 var errFundIt = errors.New("fund it")
 
 func checkGas(ctx context.Context, client *ethclient.Client, chainID uint64, executor common.Address) error {

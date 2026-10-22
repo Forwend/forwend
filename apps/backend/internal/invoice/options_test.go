@@ -168,8 +168,6 @@ func TestRecheckWithOneNetworkDown(t *testing.T) {
 
 func noLimit(string) time.Duration { return 0 }
 
-// Before an option is chosen, money paid on time on any option keeps the checkout from reading closed: the ledger
-// chooses that option once its chains were read (R-119), and the invoice is paid, not expired (R-77).
 func TestClosedCountsEveryOptionBeforeTheChoice(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -186,7 +184,6 @@ func TestClosedCountsEveryOptionBeforeTheChoice(t *testing.T) {
 	if err != nil || len(inv.Options) != 2 {
 		t.Fatalf("create: %v, %d options", err, len(inv.Options))
 	}
-	// The checkout closed a minute ago.
 	exec(`ALTER TABLE invoices DISABLE TRIGGER USER`)
 	exec(`UPDATE invoices SET expires_at = extract(epoch FROM now())::bigint - 60 WHERE id = $1 OR main_id = $1`, inv.ID)
 	exec(`ALTER TABLE invoices ENABLE TRIGGER USER`)
@@ -201,7 +198,6 @@ func TestClosedCountsEveryOptionBeforeTheChoice(t *testing.T) {
 	if !closed() {
 		t.Fatal("nothing paid: open, want closed")
 	}
-	// The full amount, before the close, on the second option; no option is chosen yet.
 	exec(`INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index, block_hash,
 		    block_number, block_time, from_address, to_address, amount, status)
 		SELECT chain_id, 'evm', token_contract, id, '0x' || repeat('ab', 32), 0, '0x' || repeat('ab', 32), 1,
@@ -210,7 +206,6 @@ func TestClosedCountsEveryOptionBeforeTheChoice(t *testing.T) {
 	if closed() {
 		t.Fatal("paid in full on time on the other option, before the choice: closed, want open")
 	}
-	// Once an option is chosen only it counts: here the unpaid main row.
 	exec(`UPDATE invoices SET chosen_id = id WHERE id = $1`, inv.ID)
 	if !closed() {
 		t.Fatal("the unpaid main row chosen: open, want closed")

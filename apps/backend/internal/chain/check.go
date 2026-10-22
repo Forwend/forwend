@@ -23,9 +23,7 @@ var errUnavailable = errors.New("its RPCs did not answer")
 // CheckEnabled is the api's, worker's and signer's startup check: every chain enabled in the database must be in the
 // chain list and answer through a primary and a second RPC on different hosts (D-15). also, when not nil, runs a
 // further check per chain with its RPCs (the factory, the signer's executor gas). Each chain has StartupTimeout. A
-// mistake stops the process. A chain whose hosts don't answer is logged and skipped (D-71): the process then rides out
-// that outage as it rides out one that starts later, and nothing is decided paid or settled there without the second
-// RPC.
+// mistake stops the process; a chain whose hosts don't answer is logged and skipped (D-71).
 func CheckEnabled(ctx context.Context, db *pgxpool.Pool, specs map[uint64]Spec, keys []string, rate float64,
 	also func(ctx context.Context, chainID uint64, r RPCs) error) error {
 	ids, err := Enabled(ctx, db)
@@ -56,8 +54,7 @@ func CheckEnabled(ctx context.Context, db *pgxpool.Pool, specs map[uint64]Spec, 
 func (r RPCs) check(ctx context.Context, also func(context.Context, uint64, RPCs) error) error {
 	ctx, cancel := context.WithTimeout(ctx, StartupTimeout)
 	defer cancel()
-	// Both roles at once, each with the whole time: a role is asked even when the other is down, so a host of it that
-	// serves another chain is found.
+	// Both roles at once, so a role whose hosts serve another chain is found even while the other role is down.
 	errs := make([]error, 2)
 	var wg sync.WaitGroup
 	for i, client := range []*rpc.Client{r.Primary, r.Second} {

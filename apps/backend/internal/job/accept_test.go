@@ -25,8 +25,7 @@ func open(t *testing.T) (*pgxpool.Pool, string) {
 	if err := database.Migrate(ctx, url); err != nil {
 		t.Fatal(err)
 	}
-	// The concurrent accepts use up to 7 connections at once: the held lock, five accepts waiting on it and the poll.
-	// Without pool_max_conns the pool takes the CPU count, at least 4, and a 2-CPU CI runner deadlocks.
+	// The accepts hold up to 7 connections at once; the default pool, max(4, CPUs), deadlocks on a 2-CPU runner.
 	pool, err := database.Open(ctx, url+"&pool_max_conns=8")
 	if err != nil {
 		t.Fatal(err)
@@ -87,7 +86,6 @@ func TestAcceptMakesTheDepositOnce(t *testing.T) {
 	if deposit.InvoiceID == "" || deposit.Status != "open" || accepted.Payments[1].InvoiceID != "" {
 		t.Fatalf("payments %+v", accepted.Payments)
 	}
-	// The client's acceptance made the deposit invoice (R-123).
 	if got := historytest.Events(t, pool, deposit.InvoiceID); !reflect.DeepEqual(got, []string{"invoice.created by payer"}) {
 		t.Fatalf("deposit history %q, want it made by the payer", got)
 	}

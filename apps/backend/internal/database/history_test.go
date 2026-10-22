@@ -11,8 +11,6 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-// Invoices made before migration 49 get the history their rows still show, marked backfilled: when each was made and
-// canceled, when it was paid (its settlement queued) or expired, and its settlement (R-123).
 func TestHistoryForExistingInvoices(t *testing.T) {
 	ctx := context.Background()
 	conn, err := sql.Open("pgx", databasetest.New(t))

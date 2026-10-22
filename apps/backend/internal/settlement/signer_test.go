@@ -232,7 +232,6 @@ func TestSettlesAPaidInvoiceOnce(t *testing.T) {
 	if r, err := e.client.TransactionReceipt(ctx, common.HexToHash(hash)); err != nil || r.Status != types.ReceiptStatusSuccessful {
 		t.Fatalf("settlementTxHash %q: receipt %v (%v), want our successful settle", hash, r, err)
 	}
-	// Its history has the settlement once, with the settle transaction (R-123).
 	var settled []string
 	for _, event := range historytest.Events(t, e.pool, id) {
 		if strings.HasPrefix(event, history.Settled+" ") {

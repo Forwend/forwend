@@ -27,8 +27,10 @@ Read only the task's requirement rows and the relevant package instructions.
   split unrelated responsibilities and use concrete names. Create layers and folders only for existing code.
 - TypeScript: keep types and constants with their owning feature, component or shared capability (D-11).
   Derive unions from finite domain constants; use type-only imports and do not repeat domain string values.
-- Comments only where the code cannot say it: a non-obvious reason, a money or safety rule, a workaround. Do not
-  describe what a function, prop or line does, and do not add a comment with every change.
+- Comments only where the code cannot say it: a non-obvious reason, a money or safety rule, a workaround.
+  - Describe the code as it is. History, incidents, dates and review notes go in the commit message.
+  - A test's name says what it checks. Comment a test only for setup a reader can't follow.
+  - Don't restate what a function, prop or line does, and don't add a comment with every change.
 - Money is integer base units plus decimals (`bigint`, `*big.Int`, `NUMERIC(78,0)`). Identify tokens by chain + contract.
 - Secrets only in the ignored `.env` of the package that reads them (`apps/backend`, `apps/web`, `packages/contracts`); no root `.env`.
   Each package lists its names in `.env.example`. Never print, log or commit keys, tokens or request bodies.

@@ -10,8 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// The factory check refuses a chain without the factory. A client that fails with an error, as Infura answered
-// eth_getCode on 2026-10-22, gives way to the next; when none answers, the check fails.
 func TestFactoryDeployed(t *testing.T) {
 	ctx := context.Background()
 	a := chaintest.Start(t)
@@ -31,7 +29,6 @@ func TestFactoryDeployed(t *testing.T) {
 	if err := address.FactoryDeployed(ctx, chaintest.ChainID, failing, client); err != nil {
 		t.Fatalf("primary failing, second answering: %v", err)
 	}
-	// No code is an answer, not a failed read: a second client that shows code does not override it.
 	lagging := a.Proxy()
 	lagging.Stale(func(c chaintest.Call) json.RawMessage {
 		if c.Method == "eth_getCode" {

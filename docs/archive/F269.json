@@ -1,0 +1,107 @@
+{
+  "id": "F269",
+  "type": "fix",
+  "behavior": "A host whose endpoints hang no longer holds its RPC role: when one endpoint of a host times out or can't connect, the whole host rests, so calls reach the role's next host",
+  "acceptance": [
+    "When an endpoint times out or fails to connect, every endpoint of its host rests with it (the same rest and failure count), so a call reaches the role's next host after one AttemptTimeout instead of cycling through the host's other keys",
+    "A failure of one key (HTTP 401 or a rate limit) still rests only that key",
+    "Tests: three hanging endpoints of one host in front of a working host give the answer from the working host within about one AttemptTimeout; a startup with two enabled chains skips the unreachable one and still checks the other; no factory code on the first RPC stops even when the second shows code",
+    "docs/backend/architecture.md: the startup intro no longer says every failed check stops the process, and Running the loop says a host that hangs rests as a whole; unit passes"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit"
+  ],
+  "refs": [
+    "D-15"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [
+    "2026-10-22 review fail by reviewer: Code and tests are correct: host-wide rest only for unanswered() errors, roles never share a host, TestHangingHostRestsWhole fails on the old pool (~910 ms) and passes at ~305 ms, race tests pass. Blocking: the added sentence in docs/backend/architecture.md Running the loop ('No answer in time or a broken connection rests every endpoint of that host together: ...') is 26 words, over D-84's 25; 'broken connection' also undersells refused, DNS and TLS failures. Suggested: 'No answer in time or a connection error rests every endpoint of that host: its other keys would each hang a call the same way.' (25 words).",
+    "2026-10-22 review pass by reviewer: Code, tests and docs match the task: only unanswered() errors (timeout, connection, body read) rest the whole host with the same rest and failure count, key failures (429, 401/403/404, not JSON-RPC) stay per key, roles never share a host; TestHangingHostRestsWhole fails on the old pool.go (913 ms) and passes at ~370 ms, chain and address tests pass with -race; the edited doc sentences are 24 and 25 words and match the code. Nits, not blocking: the last commit re-wrapped one unchanged line in Running the loop, leaving a 27-char stub 'by host and position, never'; 'would each hang a call' fits timeouts better than refused or DNS errors, which fail fast."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-22T17:53:30Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 74.5,
+        "log": "docs/runs/F269-20261022T175330Z-unit.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.0,
+        "log": "docs/runs/F269-20261022T175330Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F269-20261022T175330Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.5,
+        "log": "docs/runs/F269-20261022T175330Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F269-20261022T175330Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.8,
+        "log": "docs/runs/F269-20261022T175330Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 227.5,
+        "log": "docs/runs/F269-20261022T175330Z-e2e.log"
+      }
+    ],
+    "taskHash": "ccd2273a8b084d88",
+    "filesHash": "88f6c3e7bea9c403",
+    "proof": {
+      "1": "unit: chain TestHangingHostRestsWhole: three hanging endpoints of one host in front of a working host; the answer came from the working host within 2 attempts and all three rest with failures 1; on the old pool it took 1.21 s (four attempts of 300 ms) and failed",
+      "2": "unit: TestFailedKeyMovesToTheNextKeyOnItsHost and TestRefusingEndpointRestsLong pass: a key's own failure rests only that key",
+      "3": "unit: TestCheckEnabled 'an unreachable chain skips only itself' (chain 2 down is skipped, the anvil chain still checked); TestFactoryDeployed: no code on the first client stops even when the second shows code",
+      "4": "unit: architecture.md startup intro says a setup mistake stops and an unreachable chain is skipped; Running the loop: no answer in time or a connection error rests every endpoint of that host (25 words); unit passes"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Code, tests and docs match the task: only unanswered() errors (timeout, connection, body read) rest the whole host with the same rest and failure count, key failures (429, 401/403/404, not JSON-RPC) stay per key, roles never share a host; TestHangingHostRestsWhole fails on the old pool.go (913 ms) and passes at ~370 ms, chain and address tests pass with -race; the edited doc sentences are 24 and 25 words and match the code. Nits, not blocking: the last commit re-wrapped one unchanged line in Running the loop, leaving a 27-char stub 'by host and position, never'; 'would each hang a call' fits timeouts better than refused or DNS errors, which fail fast.",
+      "at": "2026-10-22T18:03:04Z",
+      "filesHash": "88f6c3e7bea9c403"
+    },
+    "commit": "08d31c0",
+    "doneAt": "2026-10-22T18:03:25Z"
+  },
+  "branch": "fix/f269-a-host-whose-endpoints-hang-no-longer-ho",
+  "baseCommit": "edfad3ae1aa69125f20e02239de2684215cf8f3b",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f269-a-host-whose-endpoints-hang-no-longer-ho",
+    "base": "main"
+  }
+}

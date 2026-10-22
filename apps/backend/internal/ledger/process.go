@@ -89,8 +89,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		if chosen == nil {
 			// Chains are read one after another, so an earlier transfer may still come on a chain not read that far:
 			// the first one counts only once every other enabled option chain was read past its time (R-119), about
-			// one round later. Its own chain was read up to it. Until then nothing of the invoice is chosen or booked,
-			// on any row: the main row, with no money of its own, must not expire while another option's payment waits.
+			// one round later. Its own chain was read up to it. Until then no row of the invoice changes.
 			var first string
 			var ready bool
 			err := tx.QueryRow(ctx, `SELECT t.invoice_id, NOT EXISTS (SELECT 1 FROM invoices o
@@ -118,8 +117,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			}
 		}
 		if chosen == nil && finalizedTime > expiresAt {
-			// The close counts once every other enabled option chain was read past it too: a payment made before it
-			// may still come on one of them, and that option would be chosen and paid.
+			// A payment made before the close may still come on an option chain not read past it.
 			if err := tx.QueryRow(ctx, `SELECT NOT EXISTS (SELECT 1 FROM invoices o
 				    JOIN chains c ON c.chain_id = o.chain_id AND c.enabled
 				    LEFT JOIN chain_cursors cur ON cur.chain_id = o.chain_id
@@ -230,7 +228,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		}
 		event := history.Data{Amount: newlyHeld.String()}
 		if options {
-			event.Option = invoiceID // the option the money is held on
+			event.Option = invoiceID
 		}
 		if err := history.Add(ctx, tx, invoiceID, history.Held, history.System, event); err != nil {
 			return err

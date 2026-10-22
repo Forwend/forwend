@@ -64,9 +64,6 @@ func TestFailingEndpointRestsThenComesBack(t *testing.T) {
 	}
 }
 
-// A host that refuses us (HTTP 401, 403 or 404, as Cloudflare answers a region it blocks) or answers in a form we
-// can't read (Brotli whatever the request accepts, as Blockdaemon's Arc RPC did on 2026-10-22) rests RestMax at once:
-// that doesn't heal in seconds, and each try of it delays a call. The call moves on to the next endpoint.
 func TestRefusingEndpointRestsLong(t *testing.T) {
 	a := chaintest.Start(t)
 	want := number(t, context.Background(), a.RPC)
@@ -93,9 +90,6 @@ func TestRefusingEndpointRestsLong(t *testing.T) {
 	}
 }
 
-// A host whose endpoints hang rests as a whole once one of them times out, so the call reaches the role's next host
-// after one attempt. Before, each key rested less than an attempt takes, and a hanging host with several keys (Infura)
-// kept the role.
 func TestHangingHostRestsWhole(t *testing.T) {
 	a := chaintest.Start(t)
 	want := number(t, context.Background(), a.RPC)

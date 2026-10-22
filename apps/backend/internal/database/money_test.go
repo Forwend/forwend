@@ -169,7 +169,6 @@ func TestLedgerIsAppendOnly(t *testing.T) {
 	wantCode(t, err, codeRaise, "DELETE in replica mode")
 }
 
-// An invoice's history never changes either (R-123).
 func TestHistoryIsAppendOnly(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()

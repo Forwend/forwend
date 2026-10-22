@@ -9,8 +9,7 @@ import (
 )
 
 // FactoryDeployed refuses a chain without the factory: invoices there would pay addresses no one can settle. It asks
-// the clients in turn, since one can fail with an error the pool does not move past, as Infura answered eth_getCode
-// with "Internal error" on 2026-10-22.
+// the clients in turn: one can fail with an error the pool does not move past.
 func FactoryDeployed(ctx context.Context, chainID uint64, clients ...*ethclient.Client) error {
 	var err error
 	for _, client := range clients {
