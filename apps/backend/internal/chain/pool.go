@@ -199,6 +199,18 @@ func (p *pool) answered() (ok, all int) {
 	return len(good), len(hosts)
 }
 
+// serves reports whether a role still has a host not found serving another chain.
+func (p *pool) serves(second bool) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	for _, e := range p.endpoints {
+		if e.second == second && !e.wrong {
+			return true
+		}
+	}
+	return false
+}
+
 func (p *pool) resting(e *endpoint) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
