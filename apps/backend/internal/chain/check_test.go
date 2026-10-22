@@ -86,4 +86,21 @@ func TestCheckEnabled(t *testing.T) {
 			t.Fatalf("got %v; want an error without the key", err)
 		}
 	})
+
+	// Last: it enables a second chain. Chain 2 is checked first and skipped; the anvil chain is still checked after it.
+	t.Run("an unreachable chain skips only itself", func(t *testing.T) {
+		if _, err := db.Exec(ctx, "INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (2, 'evm', 'two', true)"); err != nil {
+			t.Fatal(err)
+		}
+		specs := map[uint64]Spec{2: {ChainID: 2, Public: []string{down.URL, localhost(down.URL)}},
+			chaintest.ChainID: {ChainID: chaintest.ChainID, Public: pair}}
+		var checked []uint64
+		err := CheckEnabled(ctx, db, specs, nil, 1000, func(_ context.Context, id uint64, _ RPCs) error {
+			checked = append(checked, id)
+			return nil
+		})
+		if err != nil || !slices.Equal(checked, []uint64{chaintest.ChainID}) {
+			t.Fatalf("got %v, checked %v; want chain 2 skipped and the anvil chain checked", err, checked)
+		}
+	})
 }
