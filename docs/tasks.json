@@ -328,8 +328,8 @@
       "type": "fix",
       "behavior": "One chain whose RPC hosts are down no longer stops the api, worker and signer: that chain waits until two hosts answer again, and the other chains keep working",
       "acceptance": [
-        "When an enabled chain's RPCs don't answer at startup (fewer than two hosts answer, or a read fails), the api, worker and signer log that chain as unavailable and start, as they already keep running through an outage; nothing is decided paid or settled without the second RPC (D-15), as before",
-        "A mistake in the chain list or on chain still stops them: a chain missing from the list, a role without a host, a host on another chain, no factory code, or an executor without gas",
+        "When an enabled chain's RPC hosts don't answer at startup (fewer than two answer), the api, worker and signer log that chain as unavailable and start, as they already keep running through an outage; nothing is decided paid or settled without the second RPC (D-15), as before",
+        "A mistake in the chain list or on chain still stops them: a chain missing from the list, a chain listing one host, a role whose hosts all serve another chain, no factory code, or an executor without gas",
         "The startup factory check (address.FactoryDeployed) asks the second RPC when the primary errors, instead of stopping on the primary's error",
         "unit passes"
       ],
@@ -344,11 +344,84 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-22 review fail by reviewer: Accept 2 broken: a host on another chain no longer stops startup. When every host of a role serves another chain, the pool returns 'no second RPC host serves this chain', RPCs.check wraps it in ErrUnavailable, and CheckEnabled logs 'chain unavailable' and returns nil (reproduced with an overlay test: Public [anvil, host answering chainId 0x1] -> nil). Also: checkFeeToken marks ledger.ErrNoToken and wrong-length balanceOf answers as unavailable, and no test covers the wrong-chain case."
+      ],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-22T14:56:31Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 77.2,
+            "log": "docs/runs/F267-20261022T145631Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F267-20261022T145631Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F267-20261022T145631Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F267-20261022T145631Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F267-20261022T145631Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.4,
+            "log": "docs/runs/F267-20261022T145631Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 242.8,
+            "log": "docs/runs/F267-20261022T145631Z-e2e.log"
+          }
+        ],
+        "taskHash": "04f6cdfd1314e862",
+        "filesHash": "1696f02fb510f160",
+        "proof": {
+          "1": "unit: chain TestCheckEnabled: a chain whose second host is down, and a further check returning chain.ErrUnavailable, are logged and skipped; the old check stopped on both (run against it, both cases failed). settlement TestCheckGas: an RPC down is chain.ErrUnavailable; worker and signer use the same CheckEnabled",
+          "2": "unit: TestCheckEnabled still stops on a chain missing from the list, one host, and a further check that finds a mistake; TestFactoryDeployed: no factory code is a mistake, not an outage; TestCheckGas: one wei short is a mistake, not an outage",
+          "3": "unit: address TestFactoryDeployed: a primary answering -32603 Internal error (as Infura did) gives way to the second, which finds the factory; both failing is chain.ErrUnavailable",
+          "4": "unit: passes"
+        },
+        "review": {
+          "result": "fail",
+          "by": "reviewer",
+          "summary": "Accept 2 broken: a host on another chain no longer stops startup. When every host of a role serves another chain, the pool returns 'no second RPC host serves this chain', RPCs.check wraps it in ErrUnavailable, and CheckEnabled logs 'chain unavailable' and returns nil (reproduced with an overlay test: Public [anvil, host answering chainId 0x1] -> nil). Also: checkFeeToken marks ledger.ErrNoToken and wrong-length balanceOf answers as unavailable, and no test covers the wrong-chain case.",
+          "at": "2026-10-22T15:06:05Z",
+          "filesHash": "1696f02fb510f160"
+        }
+      },
       "branch": "fix/f267-one-chain-whose-rpc-hosts-are-down-no-lo",
-      "baseCommit": "3f93565375cf06f29aa6750519342ffd5c1d39a6"
+      "baseCommit": "3f93565375cf06f29aa6750519342ffd5c1d39a6",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

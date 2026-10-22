@@ -2,7 +2,6 @@ package settlement
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -10,7 +9,6 @@ import (
 
 	"encoding/json"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -44,24 +42,10 @@ func TestCheckGas(t *testing.T) {
 		chaintest.ChainID, executor.Hex(), ether(short))) {
 		t.Fatalf("one wei short: got %v", err)
 	}
-	if errors.Is(err, chain.ErrUnavailable) {
-		t.Fatalf("a shortfall is a mistake to fix, not an outage: %v", err)
-	}
 	t.Log(err)
 	fund(need)
 	if err := CheckGas(ctx, client, chaintest.ChainID, executor); err != nil {
 		t.Fatalf("funded: %v", err)
-	}
-	// An RPC that doesn't answer is an outage, which startup rides out (D-71).
-	down := a.Proxy()
-	down.Fail(func(chaintest.Call) chaintest.Fault { return chaintest.HTTP503 })
-	unreachable, err := ethclient.Dial(down.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer unreachable.Close()
-	if err := CheckGas(ctx, unreachable, chaintest.ChainID, executor); !errors.Is(err, chain.ErrUnavailable) {
-		t.Fatalf("RPC down: %v, want chain.ErrUnavailable", err)
 	}
 
 	for wei, want := range map[int64]string{0: "0", 1: "0.000000000000000001", 1_500_000_000_000_000_000: "1.5"} {

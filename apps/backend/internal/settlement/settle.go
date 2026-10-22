@@ -347,11 +347,11 @@ func (s *Signer) fees(ctx context.Context, client *ethclient.Client, chainID uin
 func fees(ctx context.Context, client *ethclient.Client, chainID uint64) (tip, feeCap *big.Int, err error) {
 	tip, err = client.SuggestGasTipCap(ctx)
 	if err != nil {
-		return nil, nil, unanswered("read gas tip", err)
+		return nil, nil, fmt.Errorf("read gas tip: %w", err)
 	}
 	head, err := client.HeaderByNumber(ctx, nil)
 	if err != nil {
-		return nil, nil, unanswered("read base fee", err)
+		return nil, nil, fmt.Errorf("read base fee: %w", err)
 	}
 	if head.BaseFee == nil {
 		return nil, nil, fmt.Errorf("chain %d has no base fee (EIP-1559)", chainID)

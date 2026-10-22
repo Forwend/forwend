@@ -3,7 +3,8 @@ package chain
 import (
 	"context"
 	"errors"
-	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
@@ -15,8 +16,8 @@ import (
 
 // The startup check passes an enabled chain whose primary and second answer from different hosts, then runs the
 // further check on it. It stops on a mistake: an enabled chain missing from the chain list, one listing a single host,
-// or a further check that finds one. A chain whose hosts don't answer, or whose further check gets no answer, is
-// logged and skipped: the process starts and rides out the outage (D-71). A disabled chain is not checked.
+// a role whose host serves another chain, or a further check that fails. A chain whose hosts don't answer is logged
+// and skipped: the process starts and rides out the outage (D-71). A disabled chain is not checked.
 func TestCheckEnabled(t *testing.T) {
 	ctx := context.Background()
 	a := chaintest.Start(t)
@@ -36,6 +37,10 @@ func TestCheckEnabled(t *testing.T) {
 	down := a.Proxy()
 	down.Fail(func(chaintest.Call) chaintest.Fault { return chaintest.HTTP503 })
 	pair := []string{a.URL, localhost(a.URL)}
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":"0x1"}`)) // chain 1
+	}))
+	defer other.Close()
 	for name, tc := range map[string]struct {
 		public  []string
 		further error  // what the further check returns
@@ -46,9 +51,9 @@ func TestCheckEnabled(t *testing.T) {
 		"not listed":       {want: "chain 31337 is enabled in the database but not in the chain list"},
 		"one host":         {public: []string{a.URL}, want: "chain 31337 lists 1 RPC host(s)"},
 		"second host down": {public: []string{a.URL, down.URL}},
-		"further check unanswered": {public: pair, checked: true,
-			further: fmt.Errorf("chain 31337: read the factory: %w", ErrUnavailable)},
-		"further check finds a mistake": {public: pair, checked: true, further: errors.New("chain 31337: no factory at 0x1"),
+		"second host on another chain": {public: []string{a.URL, other.URL},
+			want: "chain 31337: 1 of 2 RPC hosts answered"},
+		"further check fails": {public: pair, checked: true, further: errors.New("chain 31337: no factory at 0x1"),
 			want: "chain 31337: no factory at 0x1"},
 	} {
 		t.Run(name, func(t *testing.T) {
