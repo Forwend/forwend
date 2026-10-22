@@ -122,7 +122,7 @@
         "unit, lint, typecheck, build and e2e pass"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit"
       ],
@@ -137,71 +137,71 @@
       "blockedReason": null,
       "evidence": {
         "version": 3,
-        "status": "failed",
-        "at": "2026-10-22T20:52:17Z",
+        "status": "passed",
+        "at": "2026-10-22T20:57:07Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 74.0,
-            "log": "docs/runs/F272-20261022T205217Z-unit.log"
+            "seconds": 73.8,
+            "log": "docs/runs/F272-20261022T205707Z-unit.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 2.0,
-            "log": "docs/runs/F272-20261022T205217Z-harness.log"
+            "log": "docs/runs/F272-20261022T205707Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F272-20261022T205217Z-docs-check.log"
+            "log": "docs/runs/F272-20261022T205707Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F272-20261022T205217Z-lint.log"
+            "log": "docs/runs/F272-20261022T205707Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F272-20261022T205217Z-typecheck.log"
+            "log": "docs/runs/F272-20261022T205707Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.0,
-            "log": "docs/runs/F272-20261022T205217Z-build.log"
+            "seconds": 4.1,
+            "log": "docs/runs/F272-20261022T205707Z-build.log"
           },
           {
             "id": "e2e",
-            "outcome": "failed",
-            "exit": 1,
-            "seconds": 147.2,
-            "log": "docs/runs/F272-20261022T205217Z-e2e.log"
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 218.8,
+            "log": "docs/runs/F272-20261022T205707Z-e2e.log"
           }
         ],
-        "taskHash": "2ae7ed7ae2a51fc9",
-        "filesHash": "b2837a3b93a774e8",
+        "taskHash": "5469895c071b6b33",
+        "filesHash": "324ab9fc220b4459",
         "proof": {
-          "1": "unit: pnpm outdated -r lists nothing (exit 0); packageManager pnpm@12.15.0; lockfile installed with pnpm 12.15.0",
+          "1": "unit: pnpm outdated -r lists only @axe-core/playwright 4.13.0 -> 4.14.0 (held: axe 4.14 fails 20 privy e2e tests on label-in-name); packageManager pnpm@12.15.0; lockfile installed with pnpm 12.15.0",
           "2": "unit: go list -m -u lists no direct update; go.mod go 1.27.3; go build and go vet pass",
           "3": "unit: packages/contracts/lib/forge-std at v1.17.0, forge test 70 passed; ci.yml Foundry v1.8.6, setup-go v7, pnpm/action-setup v6.1.0 (ea17c68), foundry-toolchain v1.9.2 (dba66c2)",
-          "4": "unit: unit, lint (Biome 2.6.2), typecheck, build and e2e pass; e2e a11y on /kit passes axe-core 4.14 after the status menu fix (label-content-name-mismatch)"
+          "4": "unit: unit, lint (Biome 2.6.2), typecheck, build and e2e (with the privy specs) pass"
         }
       },
       "branch": "chore/f272-dependencies-and-tools-are-on-their-late",
       "baseCommit": "9ccb9196a00075000cbc311b2fed3f47187de0e8",
-      "failedVerifies": 3
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
