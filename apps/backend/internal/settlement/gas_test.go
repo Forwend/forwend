@@ -43,6 +43,22 @@ func TestCheckGas(t *testing.T) {
 		t.Fatalf("one wei short: got %v", err)
 	}
 	t.Log(err)
+	// A shortfall is an answer, not a failed read: a lagging second RPC that shows more does not override it.
+	rich := a.Proxy()
+	rich.Stale(func(c chaintest.Call) json.RawMessage {
+		if c.Method == "eth_getBalance" {
+			return json.RawMessage(`"0xde0b6b3a7640000"`) // 1 coin
+		}
+		return nil
+	})
+	lagging, err := ethclient.Dial(rich.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lagging.Close()
+	if err := CheckGas(ctx, chaintest.ChainID, executor, client, lagging); err == nil || !strings.Contains(err.Error(), "fund it") {
+		t.Fatalf("short on the first RPC, rich on a lagging second: %v, want the shortfall", err)
+	}
 	fund(need)
 	if err := CheckGas(ctx, chaintest.ChainID, executor, client); err != nil {
 		t.Fatalf("funded: %v", err)

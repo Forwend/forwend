@@ -2,6 +2,7 @@ package settlement
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -30,18 +31,21 @@ var (
 )
 
 // CheckGas returns an error unless the executor holds MinGas at the chain's current fee cap: below that the node
-// refuses the signer's next deploy and settle. The error names the chain, the executor's address and its balance. It
-// asks the clients in turn and passes when one does, since a read can fail on one RPC with an error the pool does not
-// move past, as Infura answered eth_getCode with "Internal error" on 2026-10-22; otherwise the last one's error.
+// refuses the signer's next deploy and settle. The error names the chain, the executor's address and its balance. A
+// read that fails on one client, as Infura answered eth_getCode with "Internal error" on 2026-10-22, is asked of the
+// next. A shortfall is an answer, not a failed read: it stops the check, since the signer sends through the first.
 func CheckGas(ctx context.Context, chainID uint64, executor common.Address, clients ...*ethclient.Client) error {
 	var err error
 	for _, client := range clients {
-		if err = checkGas(ctx, client, chainID, executor); err == nil {
-			return nil
+		if err = checkGas(ctx, client, chainID, executor); err == nil || errors.Is(err, errFundIt) {
+			return err
 		}
 	}
 	return err
 }
+
+// errFundIt ends a shortfall's message.
+var errFundIt = errors.New("fund it")
 
 func checkGas(ctx context.Context, client *ethclient.Client, chainID uint64, executor common.Address) error {
 	_, feeCap, err := fees(ctx, client, chainID)
@@ -62,7 +66,7 @@ func checkGas(ctx context.Context, client *ethclient.Client, chainID uint64, exe
 	}
 	if have.Cmp(need) < 0 {
 		return fmt.Errorf("chain %d: executor %s holds %s of the native coin, below the %s that one deploy and settle "+
-			"cost at the current gas price: fund it", chainID, executor.Hex(), ether(have), ether(need))
+			"cost at the current gas price: %w", chainID, executor.Hex(), ether(have), ether(need), errFundIt)
 	}
 	return nil
 }
@@ -103,7 +107,7 @@ func checkFeeToken(ctx context.Context, client *ethclient.Client, chainID uint64
 	}
 	if have.Cmp(need) < 0 {
 		return fmt.Errorf("chain %d: executor %s holds %s of fee token %s, below the %s that one deploy and settle "+
-			"cost at the current gas price: fund it", chainID, executor.Hex(), usd(have), token.Hex(), usd(need))
+			"cost at the current gas price: %w", chainID, executor.Hex(), usd(have), token.Hex(), usd(need), errFundIt)
 	}
 	return nil
 }
