@@ -27,6 +27,7 @@ const (
 	RateLimited          // JSON-RPC error -32005 "project ID request rate exceeded", as Infura answers over its rate
 	TooManyResults       // JSON-RPC error -32005 "query returned more than 10000 results", as Infura answers a big log query
 	TooManyTopics        // JSON-RPC error -32602 "exceed max topics", as go-ethereum nodes answer over 1,000 topic values
+	InternalError        // JSON-RPC error -32603 "Internal error", as Infura answered eth_getCode on Arbitrum Sepolia
 	Hang                 // no answer until the client gives up
 	Stale                // answered with the result of the proxy's Stale rule, as a lagging node would
 )
@@ -85,6 +86,8 @@ func (a *Anvil) Proxy() *Proxy {
 			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"error":{"code":-32005,"message":"query returned more than 10000 results"}}`, id)
 		case TooManyTopics:
 			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"error":{"code":-32602,"message":"invalid argument 0: exceed max topics"}}`, id)
+		case InternalError:
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"error":{"code":-32603,"message":"Internal error"}}`, id)
 		case Stale:
 			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":%s}`, id, result)
 		case Hang:

@@ -36,7 +36,8 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	// Startup checks: each stops the signer with a message naming what is wrong.
+	// Startup checks: a setup mistake stops the signer with a message naming it; a chain whose RPCs don't answer is
+	// logged and skipped (D-71).
 	pool, err := database.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
@@ -56,7 +57,7 @@ func run() error {
 	executor := crypto.PubkeyToAddress(cfg.ExecutorKey.PublicKey)
 	err = chain.CheckEnabled(ctx, pool, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate,
 		func(ctx context.Context, id uint64, r chain.RPCs) error {
-			return settlement.CheckGas(ctx, ethclient.NewClient(r.Primary), id, executor)
+			return settlement.CheckGas(ctx, id, executor, ethclient.NewClient(r.Primary), ethclient.NewClient(r.Second))
 		})
 	if err != nil {
 		return err
