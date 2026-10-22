@@ -122,7 +122,7 @@
         "unit, lint, typecheck, build and e2e pass"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit"
       ],
@@ -141,72 +141,65 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-22T21:51:21Z",
+        "at": "2026-10-22T22:34:08Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 74.6,
-            "log": "docs/runs/F272-20261022T215121Z-unit.log"
+            "seconds": 129.2,
+            "log": "docs/runs/F272-20261022T223408Z-unit.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.3,
-            "log": "docs/runs/F272-20261022T215121Z-harness.log"
+            "seconds": 2.2,
+            "log": "docs/runs/F272-20261022T223408Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F272-20261022T215121Z-docs-check.log"
+            "log": "docs/runs/F272-20261022T223408Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F272-20261022T215121Z-lint.log"
+            "log": "docs/runs/F272-20261022T223408Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F272-20261022T215121Z-typecheck.log"
+            "log": "docs/runs/F272-20261022T223408Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.7,
-            "log": "docs/runs/F272-20261022T215121Z-build.log"
+            "seconds": 8.2,
+            "log": "docs/runs/F272-20261022T223408Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 206.7,
-            "log": "docs/runs/F272-20261022T215121Z-e2e.log"
+            "seconds": 216.5,
+            "log": "docs/runs/F272-20261022T223408Z-e2e.log"
           }
         ],
         "taskHash": "5469895c071b6b33",
-        "filesHash": "7584fb789fccaff7",
+        "filesHash": "7c92568b30d6077d",
         "proof": {
-          "1": "unit: pnpm outdated -r lists only @axe-core/playwright 4.13.0 -> 4.14.0 (held: axe 4.14 fails 20 privy e2e tests on label-in-name); packageManager pnpm@12.15.0; the F126 overrides sit in pnpm-workspace.yaml, the lockfile has its overrides section, and ws, uuid and decode-uri-component resolve as on main",
+          "1": "unit: pnpm outdated -r lists only @axe-core/playwright 4.13.0 -> 4.14.0 (held: axe 4.14 fails 20 privy e2e tests on label-in-name); packageManager pnpm@12.15.0; the F126 overrides sit in pnpm-workspace.yaml and ws, uuid and decode-uri-component resolve as on main",
           "2": "unit: go list -m -u lists no direct update; go.mod go 1.27.3; go build and go vet pass",
-          "3": "unit: forge-std v1.17.0 in the submodule and foundry.lock; Foundry v1.8.6 forge build --locked passes and forge test passes all 71 tests (the 5 invariants run as one group); ci.yml Foundry v1.8.6, setup-go v7, pnpm/action-setup v6.1.0 (ea17c68), foundry-toolchain v1.9.2 (dba66c2)",
-          "4": "unit: unit, lint (Biome 2.6.2), typecheck, build and e2e (with the privy specs) pass"
-        },
-        "review": {
-          "result": "fail",
-          "by": "reviewer",
-          "summary": "Foundry 1.8.6, which CI now installs, breaks two CI checks. (1) The ci-only symbolic check fails: Foundry 1.8 turns dynamic_test_linking on by default, which rewrites 'new X()' in tests to vm.deployCode, and halmos 0.3.3 (the latest) stops with 'Unsupported cheat code: deployCode(string,bytes)' in setUp, 0 of 3 passed; with FOUNDRY_DYNAMIC_TEST_LINKING=false all 3 pass, so set dynamic_test_linking = false in foundry.toml. (2) Backend unit tests under Anvil 1.8.6: TestRestartAfterSendingSendsNothing and TestSentSettleIsFinishedEvenIfTheWalletChanged fail with 'send settle: transaction already imported' (2 of 2 full go test runs, 3 of 30 isolated runs) and never under Anvil 1.5.1 (0 of 30, full run green); the verify ran with local Foundry 1.5.1. Everything else checked out: overrides and allowBuilds in pnpm-workspace.yaml, frozen install, lint, typecheck, forge build --locked/fmt/test on 1.8.6, go build/vet, Biome file coverage unchanged, code changes behavior-neutral, pins and SHAs match, no AI attribution.",
-          "at": "2026-10-22T22:20:29Z",
-          "filesHash": "7584fb789fccaff7"
+          "3": "unit: forge-std v1.17.0 in the submodule and foundry.lock; with Foundry v1.8.6 forge build --locked passes, forge test passes all 71 tests and the Halmos symbolic check passes 3 of 3 (dynamic_test_linking off); ci.yml Foundry v1.8.6, setup-go v7, pnpm/action-setup v6.1.0 (ea17c68), foundry-toolchain v1.9.2 (dba66c2)",
+          "4": "unit: unit (Go tests on Anvil 1.8.6), lint, typecheck, build and e2e (with the privy specs) pass; TestRestartResendsAPendingSettleOnce failed before the reconcile fix with 'transaction already imported'; the three restart tests pass 20 of 20 runs on Anvil 1.8.6"
         }
       },
       "branch": "chore/f272-dependencies-and-tools-are-on-their-late",
