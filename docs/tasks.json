@@ -25,7 +25,8 @@
       "notes": [
         "2026-10-22 review pass by reviewer: Diff changes only comments (AST compare equal), the AGENTS.md rule is short (6-18 words per sentence), archive F263-F270 matches the removed queue entries, and build, vet and gofmt are clean. Minor: pool.go no longer says why a non-JSON-RPC answer is lasting, process.go dropped why the main row must not expire while a choice waits, and ledger/options_test.go's 'either order' note sits above the expiry time jump it does not explain.",
         "2026-10-22 review pass by reviewer: Only comments change in apps/ (Go token streams equal outside comments); the AGENTS.md rule is clear with 6-18 words per sentence; F265-F271 comments carry no stories, incident dates or test-name repeats, and no money or safety reason was lost (D-15/D-71 and the assert messages keep them). Archive F263-F270 equals the removed queue entries; build, vet and gofmt are clean; no AI attribution. Minor: ledger/process.go:92 runs to 150 columns while the rest of that comment wraps at 120.",
-        "2026-10-22 review pass by reviewer: Only comments change in apps/ (Go token streams equal with comments skipped); the AGENTS.md rule is clear at 6-17 words per sentence; no F265-F271 comment keeps a story, incident date, vendor anecdote or test-name repeat, and the removed safety reasons live on in D-15/D-71, hostDown, lasting and assert messages. Archive F263-F270 equals the old queue entries; build, vet and gofmt are clean; no AI attribution."
+        "2026-10-22 review pass by reviewer: Only comments change in apps/ (Go token streams equal with comments skipped); the AGENTS.md rule is clear at 6-17 words per sentence; no F265-F271 comment keeps a story, incident date, vendor anecdote or test-name repeat, and the removed safety reasons live on in D-15/D-71, hostDown, lasting and assert messages. Archive F263-F270 equals the old queue entries; build, vet and gofmt are clean; no AI attribution.",
+        "2026-10-22 review pass by reviewer: Only comments change in apps/ (Go token streams equal with comments skipped); the AGENTS.md rule is clear at 6-18 words per sentence, and F265-F271 comments carry no stories, incident dates or test-name repeats. accept_test.go:28 is accurate: TestAcceptMakesTheDepositOnce peaks at 7 connections (the held lock, five accepts waiting, the poll); archive F263-F270 equals the removed queue entries, no AI attribution, and build, vet and gofmt are clean."
       ],
       "blockedReason": null,
       "evidence": {
@@ -90,6 +91,13 @@
           "2": "unit: apps/ diff changes only comments (reviews compared all 24 Go files with comments stripped: identical); no 2026-10 date, vendor anecdote or Before-story left in F265-F271 comments; lost reasons restored; the ledger comment wraps at 120; the job pool comment counts the test's 7 connections",
           "3": "unit: harness archive: 8 tasks (F263-F270) in docs/archive, only F271 in docs/tasks.json",
           "4": "unit: unit passes"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Only comments change in apps/ (Go token streams equal with comments skipped); the AGENTS.md rule is clear at 6-18 words per sentence, and F265-F271 comments carry no stories, incident dates or test-name repeats. accept_test.go:28 is accurate: TestAcceptMakesTheDepositOnce peaks at 7 connections (the held lock, five accepts waiting, the poll); archive F263-F270 equals the removed queue entries, no AI attribution, and build, vet and gofmt are clean.",
+          "at": "2026-10-22T19:21:19Z",
+          "filesHash": "3ac316b643d749c6"
         }
       },
       "branch": "chore/f271-comments-say-only-what-the-code-can-t-ag",
