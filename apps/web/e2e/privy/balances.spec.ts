@@ -92,7 +92,7 @@ test("a profile shows its balance, networks, receive address and activity; a new
       await expect(page).toHaveURL("/app");
     }
     await expect(
-      sidebar.getByRole("button", { name: /^Switch profile: Merchant · E2E shop/ }),
+      sidebar.getByRole("button", { name: /^Switch profile: E2E shop Merchant/ }),
     ).toBeVisible();
     // A merchant's sidebar lists its own coming pages, and its overview is a business console.
     await expect(sidebar.getByText("Checkout")).toBeVisible();
@@ -171,7 +171,7 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
   await tabs.getByRole("button", { name: "More" }).click();
   await page
     .getByRole("dialog", { name: "More" })
-    .getByRole("button", { name: /^Switch profile:/ })
+    .getByRole("button", { name: /Switch profile$/ })
     .click();
   const profilesSheet = page.getByRole("dialog", { name: "Profiles" });
   // The current profile is the one choice made, not an on/off toggle.
@@ -203,7 +203,7 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
   await tabs.getByRole("button", { name: "More" }).click();
   await page
     .getByRole("dialog", { name: "More" })
-    .getByRole("button", { name: /^Switch profile:/ })
+    .getByRole("button", { name: /Switch profile$/ })
     .click();
   await expect(page.getByRole("dialog", { name: "Profiles" })).toBeVisible();
   await page.setViewportSize({ width: 1200, height: 800 });

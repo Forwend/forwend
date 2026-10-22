@@ -104,7 +104,6 @@ export function PhoneTabBar({ pathname, active, onProfiles }: PhoneTabBarProps) 
           <div className={CARD}>
             <button
               type="button"
-              aria-label={`${PROFILES_COPY.switchProfile}: ${profileLabel(active)}`}
               aria-haspopup="dialog"
               onClick={() => {
                 setOpen(false);
@@ -114,7 +113,7 @@ export function PhoneTabBar({ pathname, active, onProfiles }: PhoneTabBarProps) 
             >
               <ProfileAvatar kind={active.kind} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-base">{profileLabel(active)}</span>
+                <span className="block truncate text-base">{profileLabel(active)}</span>{" "}
                 <span className="block text-sm font-normal text-muted">
                   {PROFILES_COPY.switchProfile}
                 </span>

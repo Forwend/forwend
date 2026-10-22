@@ -33,10 +33,10 @@ export function AccountMenu({ email, onSignOut, trigger, side = "top" }: Account
     <Menu>
       <MenuTrigger asChild>
         {trigger ?? (
-          <RowButton size="md" aria-label={`${AUTH_COPY.account}: ${email}`}>
+          <RowButton size="md" aria-label={`${AUTH_COPY.account}: ${email}, ${AUTH_COPY.signedIn}`}>
             <AccountInitial email={email} />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-ink">{email}</span>
+              <span className="block truncate text-sm font-medium text-ink">{email}</span>{" "}
               <span className="block text-xs text-muted">{AUTH_COPY.signedIn}</span>
             </span>
             <ChevronsUpDown aria-hidden className="size-[var(--fw-icon-md)] shrink-0 text-muted" />
@@ -81,7 +81,10 @@ export interface AccountInitialProps {
 /** The account's round initial, also the phone top bar's account button. */
 export function AccountInitial({ email }: AccountInitialProps) {
   return (
-    <span className="grid size-8 shrink-0 place-items-center rounded-pill bg-surface-2 text-sm font-semibold text-ink ring-1 ring-line">
+    <span
+      aria-hidden
+      className="grid size-8 shrink-0 place-items-center rounded-pill bg-surface-2 text-sm font-semibold text-ink ring-1 ring-line"
+    >
       {email.charAt(0).toUpperCase() || "?"}
     </span>
   );

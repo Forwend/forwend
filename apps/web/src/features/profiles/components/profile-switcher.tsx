@@ -33,22 +33,19 @@ export function ProfileSwitcher({
   onSwitch,
   compact = false,
 }: ProfileSwitcherProps) {
+  const kind = PROFILE_KIND_LABELS[active.kind];
   return (
     <Menu>
       <MenuTrigger
-        aria-label={`${PROFILES_COPY.switchProfile}: ${profileLabel(active)}`}
+        aria-label={`${PROFILES_COPY.switchProfile}: ${active.name ? `${active.name} ${kind}` : kind}`}
         className="flex w-full min-w-0 items-center gap-2.5 rounded-md p-1.5 text-left outline-none transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-focus data-[state=open]:bg-surface-2"
       >
         <ProfileAvatar kind={active.kind} />
         <span className={compact ? "sr-only" : "min-w-0 flex-1"}>
           <span className="block truncate text-sm font-semibold text-ink">
-            {active.name ?? PROFILE_KIND_LABELS[active.kind]}
-          </span>
-          {active.name ? (
-            <span className="block truncate text-xs text-muted">
-              {PROFILE_KIND_LABELS[active.kind]}
-            </span>
-          ) : null}
+            {active.name ?? kind}
+          </span>{" "}
+          {active.name ? <span className="block truncate text-xs text-muted">{kind}</span> : null}
         </span>
         {compact ? null : (
           <ChevronsUpDown aria-hidden className="size-[var(--fw-icon-md)] shrink-0 text-muted" />

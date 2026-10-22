@@ -96,9 +96,8 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   const paymentRow = main
     .getByRole("listitem")
     .filter({ has: page.getByRole("link", { name: "View transaction on Basescan" }) });
-  await expect(paymentRow.getByRole("button", { name: `0x${"c".repeat(40)}` })).toHaveText(
-    "0xcccc…cccc",
-  );
+  await paymentRow.getByRole("button", { name: "0xcccc…cccc" }).focus();
+  await expect(page.getByRole("tooltip")).toHaveText(`0x${"c".repeat(40)}`);
   await expect(paymentRow.locator("time")).toHaveAttribute("datetime", "2026-10-09T08:30:00Z");
   expect(await blockingViolations(page)).toEqual([]);
   await crumbs.getByRole("link", { name: "Invoices" }).click();
@@ -981,7 +980,7 @@ test("switching profile opens the new profile's overview", async ({ browser }) =
       .click();
     await expect(page.getByRole("menu")).toBeHidden();
     await expect(
-      sidebar.getByRole("button", { name: new RegExp(`^Switch profile: ${kind}`) }),
+      sidebar.getByRole("button", { name: new RegExp(`^Switch profile: (.+ )?${kind}$`) }),
     ).toBeVisible();
   };
   // Loaded and hydrated before the menu is used.

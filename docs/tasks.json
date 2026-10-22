@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 273,
+  "nextId": 274,
   "tasks": [
     {
       "id": "F271",
@@ -221,6 +221,32 @@
         "branch": "chore/f272-dependencies-and-tools-are-on-their-late",
         "base": "main"
       }
+    },
+    {
+      "id": "F273",
+      "type": "fix",
+      "behavior": "axe-core 4.14 passes: every control's visible text is part of its accessible name (WCAG 2.5.3)",
+      "acceptance": [
+        "@axe-core/playwright is 4.14.0 (pnpm outdated -r lists nothing)",
+        "Every control axe 4.14 flagged for label-content-name-mismatch has its visible text in its accessible name: the status menu, the profile switcher (sidebar and phone), the account menu, list row links and address tooltips",
+        "The e2e tests that find these controls by name use the new names",
+        "unit, lint, typecheck, build and e2e (with the privy specs) pass"
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-10"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null,
+      "branch": "fix/f273-axe-core-4-14-passes-every-control-s-vis",
+      "baseCommit": "90e3b706daf2ee6cc4da0658c526af8ddd2ba605"
     }
   ],
   "lastWrapup": {

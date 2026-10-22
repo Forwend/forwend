@@ -83,7 +83,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     sidebar.getByRole("button", { name: /^Switch profile/ }).click(),
   );
   await expect(
-    sidebar.getByRole("button", { name: /^Switch profile: Merchant · E2E shop/ }),
+    sidebar.getByRole("button", { name: /^Switch profile: E2E shop Merchant/ }),
   ).toBeVisible();
 
   // Invoices is a page now, not "Soon".
@@ -95,7 +95,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   const isMerchant = async (p: Page) => {
     const aside = p.locator("aside");
     await expect(
-      aside.getByRole("button", { name: /^Switch profile: Merchant · E2E shop/ }),
+      aside.getByRole("button", { name: /^Switch profile: E2E shop Merchant/ }),
     ).toBeVisible();
     await expect(aside.getByText("Checkout")).toBeVisible();
     await expect(p.getByRole("heading", { level: 1, name: "Invoices" })).toBeAttached();
@@ -496,7 +496,7 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
   const more = page.getByRole("dialog", { name: "More" });
   await chooseMerchant(page, async () => {
     await tabs.getByRole("button", { name: "More" }).click();
-    await more.getByRole("button", { name: /^Switch profile:/ }).click();
+    await more.getByRole("button", { name: /Switch profile$/ }).click();
   });
   await tabs.getByRole("button", { name: "More" }).click();
   await expect(more.getByRole("link", { name: "Activity", exact: true })).toBeVisible();
