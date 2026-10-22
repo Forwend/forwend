@@ -122,7 +122,7 @@
         "unit, lint, typecheck, build and e2e pass"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit"
       ],
@@ -139,72 +139,65 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-22T20:57:07Z",
+        "at": "2026-10-22T21:06:59Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 73.8,
-            "log": "docs/runs/F272-20261022T205707Z-unit.log"
+            "seconds": 74.6,
+            "log": "docs/runs/F272-20261022T210659Z-unit.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 2.0,
-            "log": "docs/runs/F272-20261022T205707Z-harness.log"
+            "log": "docs/runs/F272-20261022T210659Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F272-20261022T205707Z-docs-check.log"
+            "log": "docs/runs/F272-20261022T210659Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F272-20261022T205707Z-lint.log"
+            "log": "docs/runs/F272-20261022T210659Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F272-20261022T205707Z-typecheck.log"
+            "log": "docs/runs/F272-20261022T210659Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.1,
-            "log": "docs/runs/F272-20261022T205707Z-build.log"
+            "seconds": 3.4,
+            "log": "docs/runs/F272-20261022T210659Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 218.8,
-            "log": "docs/runs/F272-20261022T205707Z-e2e.log"
+            "seconds": 203.4,
+            "log": "docs/runs/F272-20261022T210659Z-e2e.log"
           }
         ],
         "taskHash": "5469895c071b6b33",
-        "filesHash": "324ab9fc220b4459",
+        "filesHash": "1c5de984a2c1a18b",
         "proof": {
-          "1": "unit: pnpm outdated -r lists only @axe-core/playwright 4.13.0 -> 4.14.0 (held: axe 4.14 fails 20 privy e2e tests on label-in-name); packageManager pnpm@12.15.0; lockfile installed with pnpm 12.15.0",
+          "1": "unit: pnpm outdated -r lists only @axe-core/playwright 4.13.0 -> 4.14.0 (held: axe 4.14 fails 20 privy e2e tests on label-in-name); packageManager pnpm@12.15.0; the F126 overrides sit in pnpm-workspace.yaml, the lockfile has its overrides section, and ws, uuid and decode-uri-component resolve as on main",
           "2": "unit: go list -m -u lists no direct update; go.mod go 1.27.3; go build and go vet pass",
           "3": "unit: packages/contracts/lib/forge-std at v1.17.0, forge test 70 passed; ci.yml Foundry v1.8.6, setup-go v7, pnpm/action-setup v6.1.0 (ea17c68), foundry-toolchain v1.9.2 (dba66c2)",
           "4": "unit: unit, lint (Biome 2.6.2), typecheck, build and e2e (with the privy specs) pass"
-        },
-        "review": {
-          "result": "fail",
-          "by": "reviewer",
-          "summary": "pnpm 12 ignores the package.json pnpm field, so the F126 security overrides are gone: pnpm-lock.yaml has no overrides section and now resolves ws 8.18.0/8.18.3, uuid 8.3.2/9.0.1 and decode-uri-component 0.2.2 (pnpm config get overrides is undefined). Move overrides into pnpm-workspace.yaml, reinstall, and confirm the lockfile keeps them; everything else checked out.",
-          "at": "2026-10-22T21:06:08Z",
-          "filesHash": "324ab9fc220b4459"
         }
       },
       "branch": "chore/f272-dependencies-and-tools-are-on-their-late",
