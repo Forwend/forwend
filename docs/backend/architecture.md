@@ -431,6 +431,8 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
   - The worker reads chains one after another, so the choice waits until every other enabled option chain was read
     past that first transfer (`chain_cursors.last_scanned_time`, R-119), about one round. Until then nothing of the
     invoice is booked, and it stays `open`.
+  - Before a choice, no row of the invoice expires until every other enabled option chain was read past the close.
+    A payment made before the close may still come on one of them, and it would be chosen.
 - Payment status: `open` → `detected` (a transfer seen) → `partially_paid` → `paid` when the full amount is owed and
   a second RPC's `balanceOf` covers every booked deposit (D-15). An invoice owed in full never expires; it waits for
   the second RPC. Otherwise it becomes `expired` or `expired_partially_paid` once the chain's finalized block time

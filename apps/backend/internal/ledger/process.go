@@ -80,37 +80,53 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	// row's lock so two options can't both win; money on any other option is held for the payer.
 	superseded := false
 	shown := true // the row invoices_current shows: the chosen option, or the main row until one is chosen
+	closedEverywhere := true
 	if options {
 		var chosen *string
 		if err := tx.QueryRow(ctx, "SELECT chosen_id FROM invoices WHERE id = $1 FOR UPDATE", group).Scan(&chosen); err != nil {
 			return fmt.Errorf("read invoice %s chosen option: %w", group, err)
 		}
-		if chosen == nil && anyTransfer {
+		if chosen == nil {
 			// Chains are read one after another, so an earlier transfer may still come on a chain not read that far:
 			// the first one counts only once every other enabled option chain was read past its time (R-119), about
-			// one round later. Its own chain was read up to it. Until then nothing of the invoice is chosen or booked.
+			// one round later. Its own chain was read up to it. Until then nothing of the invoice is chosen or booked,
+			// on any row: the main row, with no money of its own, must not expire while another option's payment waits.
 			var first string
 			var ready bool
-			if err := tx.QueryRow(ctx, `SELECT t.invoice_id, NOT EXISTS (SELECT 1 FROM invoices o
+			err := tx.QueryRow(ctx, `SELECT t.invoice_id, NOT EXISTS (SELECT 1 FROM invoices o
 				    JOIN chains c ON c.chain_id = o.chain_id AND c.enabled
 				    LEFT JOIN chain_cursors cur ON cur.chain_id = o.chain_id
-				    WHERE coalesce(o.main_id, o.id) = $1 AND o.chain_id <> t.chain_id
+				    WHERE (o.id = $1 OR o.main_id = $1) AND o.chain_id <> t.chain_id
 				      AND coalesce(cur.last_scanned_time, 0) <= t.block_time)
 				FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
-				WHERE coalesce(i.main_id, i.id) = $1 AND t.status <> 'reorged'
-				ORDER BY t.block_time, t.chain_id, t.block_number, t.log_index LIMIT 1`, group).Scan(&first, &ready); err != nil {
+				WHERE (i.id = $1 OR i.main_id = $1) AND t.status <> 'reorged'
+				ORDER BY t.block_time, t.chain_id, t.block_number, t.log_index LIMIT 1`, group).Scan(&first, &ready)
+			switch {
+			case errors.Is(err, pgx.ErrNoRows): // no money on any option yet
+			case err != nil:
 				return fmt.Errorf("read invoice %s first paid option: %w", group, err)
-			}
-			if !ready {
+			case !ready:
 				return nil
+			default:
+				if _, err := tx.Exec(ctx, "UPDATE invoices SET chosen_id = $2 WHERE id = $1", group, first); err != nil {
+					return fmt.Errorf("choose invoice %s option %s: %w", group, first, err)
+				}
+				if err := history.Add(ctx, tx, group, history.OptionChosen, history.System, history.Data{Option: first}); err != nil {
+					return err
+				}
+				chosen = &first
 			}
-			if _, err := tx.Exec(ctx, "UPDATE invoices SET chosen_id = $2 WHERE id = $1", group, first); err != nil {
-				return fmt.Errorf("choose invoice %s option %s: %w", group, first, err)
+		}
+		if chosen == nil && finalizedTime > expiresAt {
+			// The close counts once every other enabled option chain was read past it too: a payment made before it
+			// may still come on one of them, and that option would be chosen and paid.
+			if err := tx.QueryRow(ctx, `SELECT NOT EXISTS (SELECT 1 FROM invoices o
+				    JOIN chains c ON c.chain_id = o.chain_id AND c.enabled
+				    LEFT JOIN chain_cursors cur ON cur.chain_id = o.chain_id
+				    WHERE (o.id = $1 OR o.main_id = $1) AND o.chain_id <> $2
+				      AND coalesce(cur.last_scanned_time, 0) <= $3)`, group, chainID, expiresAt).Scan(&closedEverywhere); err != nil {
+				return fmt.Errorf("read invoice %s option chains past its close: %w", group, err)
 			}
-			if err := history.Add(ctx, tx, group, history.OptionChosen, history.System, history.Data{Option: first}); err != nil {
-				return err
-			}
-			chosen = &first
 		}
 		superseded = chosen != nil && *chosen != invoiceID
 		shown = chosen == nil && invoiceID == group || chosen != nil && *chosen == invoiceID
@@ -166,7 +182,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		if funded, err = s.funded(ctx, tx, invoiceID, chainID, finalizedBlock, token, receive); err != nil {
 			return err
 		}
-	case finalizedTime > expiresAt && !anyPending:
+	case finalizedTime > expiresAt && !anyPending && closedEverywhere:
 		// Expiry is final, so the ledger must explain the whole balance first: more on chain than booked is a
 		// deposit the watcher hasn't booked yet (a missed log, an Arc native-coin payment).
 		if mayExpire, err = s.balanced(ctx, tx, invoiceID, chainID, finalizedBlock, token, receive); err != nil {
