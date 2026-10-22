@@ -51,7 +51,7 @@
   },
   "overrides": [
     {
-      "includes": ["apps/web/e2e/**", "apps/web/scripts/**"],
+      "includes": ["apps/web/scripts/**"],
       "linter": {
         "rules": {
           "performance": {
