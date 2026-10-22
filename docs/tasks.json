@@ -122,7 +122,7 @@
         "unit, lint, typecheck, build and e2e pass"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit"
       ],
@@ -142,72 +142,65 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-22T22:34:08Z",
+        "at": "2026-10-22T23:04:20Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 129.2,
-            "log": "docs/runs/F272-20261022T223408Z-unit.log"
+            "seconds": 123.5,
+            "log": "docs/runs/F272-20261022T230420Z-unit.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.2,
-            "log": "docs/runs/F272-20261022T223408Z-harness.log"
+            "seconds": 2.5,
+            "log": "docs/runs/F272-20261022T230420Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F272-20261022T223408Z-docs-check.log"
+            "log": "docs/runs/F272-20261022T230420Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F272-20261022T223408Z-lint.log"
+            "log": "docs/runs/F272-20261022T230420Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F272-20261022T223408Z-typecheck.log"
+            "log": "docs/runs/F272-20261022T230420Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 8.2,
-            "log": "docs/runs/F272-20261022T223408Z-build.log"
+            "seconds": 3.2,
+            "log": "docs/runs/F272-20261022T230420Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 216.5,
-            "log": "docs/runs/F272-20261022T223408Z-e2e.log"
+            "seconds": 213.7,
+            "log": "docs/runs/F272-20261022T230420Z-e2e.log"
           }
         ],
         "taskHash": "5469895c071b6b33",
-        "filesHash": "7c92568b30d6077d",
+        "filesHash": "1bff084d762536de",
         "proof": {
           "1": "unit: pnpm outdated -r lists only @axe-core/playwright 4.13.0 -> 4.14.0 (held: axe 4.14 fails 20 privy e2e tests on label-in-name); packageManager pnpm@12.15.0; the F126 overrides sit in pnpm-workspace.yaml and ws, uuid and decode-uri-component resolve as on main",
           "2": "unit: go list -m -u lists no direct update; go.mod go 1.27.3; go build and go vet pass",
           "3": "unit: forge-std v1.17.0 in the submodule and foundry.lock; with Foundry v1.8.6 forge build --locked passes, forge test passes all 71 tests and the Halmos symbolic check passes 3 of 3 (dynamic_test_linking off); ci.yml Foundry v1.8.6, setup-go v7, pnpm/action-setup v6.1.0 (ea17c68), foundry-toolchain v1.9.2 (dba66c2)",
-          "4": "unit: unit (Go tests on Anvil 1.8.6), lint, typecheck, build and e2e (with the privy specs) pass; TestRestartResendsAPendingSettleOnce failed before the reconcile fix with 'transaction already imported'; the three restart tests pass 20 of 20 runs on Anvil 1.8.6"
-        },
-        "review": {
-          "result": "fail",
-          "by": "reviewer",
-          "summary": "Foundry 1.8.6, which CI now installs, fails the backend unit tests: concurrent forge script --broadcast runs (chaintest.DeployFactory in internal/address, canary, settlement, run in parallel by go test ./...) now lock packages/contracts/cache/Deploy.s.sol/31337/run-latest.json.recovery.json, and TestFactoryDeployed fails with 'another process is already modifying recovery state' (2 of 2 full go test -race runs and the unit check; 5 of 30 concurrent runs vs 0 of 30 and a green full run on 1.5.1). Serialize DeployFactory across test processes (e.g. a file lock) or give each run its own broadcast state. Everything else checked out: the reconcile holds() change is safe (await still needs this hash's receipt; nothing is booked from the send answer), the new test fails 3 of 3 without the fix on 1.8.6 and 1.5.1 and passes 20 of 20 with it, the Mine(1) lines keep the mined case honest, harness/docs-check/lint/typecheck/build/e2e/symbolic pass on 1.8.6, overrides, foundry.lock, allowBuilds, Biome and pins are right, no AI attribution.",
-          "at": "2026-10-22T23:01:33Z",
-          "filesHash": "7c92568b30d6077d"
+          "4": "unit: unit (Go tests on Anvil/Foundry 1.8.6), lint, typecheck, build and e2e (with the privy specs) pass; TestRestartResendsAPendingSettleOnce failed before the reconcile fix; three parallel TestFactoryDeployed runs fail 4 of 30 without the deploy lock and 0 of 30 with it"
         }
       },
       "branch": "chore/f272-dependencies-and-tools-are-on-their-late",
