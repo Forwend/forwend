@@ -571,7 +571,7 @@
         "docs/backend/architecture.md: the startup intro no longer says every failed check stops the process, and Running the loop says a host that hangs rests as a whole; unit passes"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit"
       ],
@@ -654,11 +654,18 @@
           "summary": "Code, tests and docs match the task: only unanswered() errors (timeout, connection, body read) rest the whole host with the same rest and failure count, key failures (429, 401/403/404, not JSON-RPC) stay per key, roles never share a host; TestHangingHostRestsWhole fails on the old pool.go (913 ms) and passes at ~370 ms, chain and address tests pass with -race; the edited doc sentences are 24 and 25 words and match the code. Nits, not blocking: the last commit re-wrapped one unchanged line in Running the loop, leaving a 27-char stub 'by host and position, never'; 'would each hang a call' fits timeouts better than refused or DNS errors, which fail fast.",
           "at": "2026-10-22T18:03:04Z",
           "filesHash": "88f6c3e7bea9c403"
-        }
+        },
+        "commit": "08d31c0",
+        "doneAt": "2026-10-22T18:03:25Z"
       },
       "branch": "fix/f269-a-host-whose-endpoints-hang-no-longer-ho",
       "baseCommit": "edfad3ae1aa69125f20e02239de2684215cf8f3b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f269-a-host-whose-endpoints-hang-no-longer-ho",
+        "base": "main"
+      }
     },
     {
       "id": "F270",
