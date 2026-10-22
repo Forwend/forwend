@@ -53,6 +53,8 @@ func TestCheckEnabled(t *testing.T) {
 		"second host down": {public: []string{a.URL, down.URL}},
 		"second host on another chain": {public: []string{a.URL, other.URL},
 			want: "chain 31337: 1 of 2 RPC hosts answered"},
+		"primary down, second host on another chain": {public: []string{down.URL, other.URL},
+			want: "chain 31337: 0 of 2 RPC hosts answered"},
 		"further check fails": {public: pair, checked: true, further: errors.New("chain 31337: no factory at 0x1"),
 			want: "chain 31337: no factory at 0x1"},
 	} {

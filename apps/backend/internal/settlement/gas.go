@@ -30,8 +30,20 @@ var (
 )
 
 // CheckGas returns an error unless the executor holds MinGas at the chain's current fee cap: below that the node
-// refuses the signer's next deploy and settle. The error names the chain, the executor's address and its balance.
-func CheckGas(ctx context.Context, client *ethclient.Client, chainID uint64, executor common.Address) error {
+// refuses the signer's next deploy and settle. The error names the chain, the executor's address and its balance. It
+// asks the clients in turn and passes when one does, since a read can fail on one RPC with an error the pool does not
+// move past, as Infura answered eth_getCode with "Internal error" on 2026-10-22; otherwise the last one's error.
+func CheckGas(ctx context.Context, chainID uint64, executor common.Address, clients ...*ethclient.Client) error {
+	var err error
+	for _, client := range clients {
+		if err = checkGas(ctx, client, chainID, executor); err == nil {
+			return nil
+		}
+	}
+	return err
+}
+
+func checkGas(ctx context.Context, client *ethclient.Client, chainID uint64, executor common.Address) error {
 	_, feeCap, err := fees(ctx, client, chainID)
 	if err != nil {
 		return fmt.Errorf("chain %d: %w", chainID, err)

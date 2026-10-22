@@ -37,15 +37,29 @@ func TestCheckGas(t *testing.T) {
 
 	short := new(big.Int).Sub(need, big.NewInt(1))
 	fund(short)
-	err = CheckGas(ctx, client, chaintest.ChainID, executor)
+	err = CheckGas(ctx, chaintest.ChainID, executor, client)
 	if err == nil || !strings.Contains(err.Error(), fmt.Sprintf("chain %d: executor %s holds %s of the native coin",
 		chaintest.ChainID, executor.Hex(), ether(short))) {
 		t.Fatalf("one wei short: got %v", err)
 	}
 	t.Log(err)
 	fund(need)
-	if err := CheckGas(ctx, client, chaintest.ChainID, executor); err != nil {
+	if err := CheckGas(ctx, chaintest.ChainID, executor, client); err != nil {
 		t.Fatalf("funded: %v", err)
+	}
+	// A read the first RPC fails, as Infura answered eth_getCode on 2026-10-22, is asked of the next one.
+	broken := a.Proxy()
+	broken.Fail(func(chaintest.Call) chaintest.Fault { return chaintest.InternalError })
+	failing, err := ethclient.Dial(broken.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer failing.Close()
+	if err := CheckGas(ctx, chaintest.ChainID, executor, failing, client); err != nil {
+		t.Fatalf("first RPC failing, second answering: %v", err)
+	}
+	if err := CheckGas(ctx, chaintest.ChainID, executor, failing, failing); err == nil {
+		t.Fatal("no error when no RPC answers")
 	}
 
 	for wei, want := range map[int64]string{0: "0", 1: "0.000000000000000001", 1_500_000_000_000_000_000: "1.5"} {
@@ -100,13 +114,13 @@ func TestCheckGasInFeeToken(t *testing.T) {
 			need := new(big.Int).Div(new(big.Int).Add(attodollars, big.NewInt(1e12-1)), big.NewInt(1e12))
 			short := new(big.Int).Sub(need, big.NewInt(1))
 			hold(short)
-			err = CheckGas(ctx, client, chaintest.ChainID, executor)
+			err = CheckGas(ctx, chaintest.ChainID, executor, client)
 			if err == nil || !strings.Contains(err.Error(), fmt.Sprintf("holds %s of fee token %s", usd(short), c.pays.Hex())) {
 				t.Fatalf("one unit short: got %v", err)
 			}
 			t.Log(err)
 			hold(need)
-			if err := CheckGas(ctx, client, chaintest.ChainID, executor); err != nil {
+			if err := CheckGas(ctx, chaintest.ChainID, executor, client); err != nil {
 				t.Fatalf("funded, with no native coin: %v", err)
 			}
 		})

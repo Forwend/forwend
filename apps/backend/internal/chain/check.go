@@ -5,9 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -53,15 +56,27 @@ func CheckEnabled(ctx context.Context, db *pgxpool.Pool, specs map[uint64]Spec, 
 func (r RPCs) check(ctx context.Context, also func(context.Context, uint64, RPCs) error) error {
 	ctx, cancel := context.WithTimeout(ctx, StartupTimeout)
 	defer cancel()
-	var block hexutil.Uint64
-	err := r.Primary.CallContext(ctx, &block, "eth_blockNumber")
-	if err == nil {
-		err = r.Second.CallContext(ctx, &block, "eth_blockNumber")
+	// Both roles at once, each with the whole time: a role is asked even when the other is down, so a host of it that
+	// serves another chain is found.
+	errs := make([]error, 2)
+	var wg sync.WaitGroup
+	for i, client := range []*rpc.Client{r.Primary, r.Second} {
+		wg.Go(func() {
+			var block hexutil.Uint64
+			errs[i] = client.CallContext(ctx, &block, "eth_blockNumber")
+		})
 	}
-	if err != nil {
+	wg.Wait()
+	var failed []string
+	for _, err := range errs {
+		if err != nil {
+			failed = append(failed, Redact(err))
+		}
+	}
+	if len(failed) > 0 {
 		answered, hosts := r.pool.answered()
-		err = fmt.Errorf("chain %d: %d of %d RPC hosts answered; D-15 needs a primary and a second on different "+
-			"hosts: %s", r.pool.chainID, answered, hosts, Redact(err))
+		err := fmt.Errorf("chain %d: %d of %d RPC hosts answered; D-15 needs a primary and a second on different "+
+			"hosts: %s", r.pool.chainID, answered, hosts, strings.Join(failed, "; "))
 		if !r.pool.serves(false) || !r.pool.serves(true) {
 			return err // every host left for a role serves another chain: a mistake in the chain list
 		}
