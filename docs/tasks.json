@@ -565,12 +565,13 @@
       "type": "fix",
       "behavior": "A host whose endpoints hang no longer holds its RPC role: when one endpoint of a host times out or can't connect, the whole host rests, so calls reach the role's next host",
       "acceptance": [
-        "When an endpoint times out or fails to connect, every endpoint of its host rests, so a call reaches the role's next host after one AttemptTimeout instead of cycling through the host's other keys (today several hanging Infura keys hold the role, since each rests less than an attempt takes)",
+        "When an endpoint times out or fails to connect, every endpoint of its host rests with it (the same rest and failure count), so a call reaches the role's next host after one AttemptTimeout instead of cycling through the host's other keys",
         "A failure of one key (HTTP 401 or a rate limit) still rests only that key",
-        "A test with three hanging endpoints of one host in front of a working host gets its answer from the working host within about one AttemptTimeout; unit passes"
+        "Tests: three hanging endpoints of one host in front of a working host give the answer from the working host within about one AttemptTimeout; a startup with two enabled chains skips the unreachable one and still checks the other; no factory code on the first RPC stops even when the second shows code",
+        "docs/backend/architecture.md: the startup intro no longer says every failed check stops the process, and Running the loop says a host that hangs rests as a whole; unit passes"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "active",
       "verification": [
         "unit"
       ],
@@ -581,7 +582,9 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": null,
+      "branch": "fix/f269-a-host-whose-endpoints-hang-no-longer-ho",
+      "baseCommit": "edfad3ae1aa69125f20e02239de2684215cf8f3b"
     },
     {
       "id": "F270",

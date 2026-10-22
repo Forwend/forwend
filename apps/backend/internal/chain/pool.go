@@ -181,6 +181,14 @@ func (p *pool) done(e *endpoint, failure error) {
 	}
 	rest := restFor(n, rand.Float64())
 	e.restUntil = time.Now().Add(rest)
+	if errors.As(failure, new(hostDown)) {
+		// The host is down, not this key: its other keys would each hang a call the same way.
+		for _, other := range p.endpoints {
+			if other.host == e.host && other.restUntil.Before(e.restUntil) {
+				other.failures, other.restUntil = max(other.failures, e.failures), e.restUntil
+			}
+		}
+	}
 	p.mu.Unlock()
 	slog.Warn("RPC rests", "chain", p.chainID, "rpc", e.name, "for", rest.Round(time.Millisecond), "err", failure)
 }
@@ -309,17 +317,23 @@ type lasting struct{ error }
 const notJSONRPC = "answer is not JSON-RPC"
 
 // unanswered describes a request without an answer, leaving out the URL: net/http puts it, Infura key included, in
-// its errors.
+// its errors. No answer is the host's failure, not its key's.
 func (p *pool) unanswered(e *endpoint, err error) error {
 	if errors.Is(err, context.DeadlineExceeded) {
-		return fmt.Errorf("%s: no answer in time: %w", e.name, context.DeadlineExceeded)
+		return hostDown{fmt.Errorf("%s: no answer in time: %w", e.name, context.DeadlineExceeded)}
 	}
 	var u *url.Error
 	if errors.As(err, &u) {
 		err = u.Err
 	}
-	return fmt.Errorf("%s: %w", e.name, err)
+	return hostDown{fmt.Errorf("%s: %w", e.name, err)}
 }
+
+// hostDown is a request its host didn't answer (a timeout, a refused or broken connection): every endpoint of that
+// host rests with it.
+type hostDown struct{ error }
+
+func (h hostDown) Unwrap() error { return h.error }
 
 // outage says why a 200 answer is about the endpoint rather than the call, or returns "". A rate limit on any call
 // of a batch sends the whole batch to the next endpoint.

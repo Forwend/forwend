@@ -49,7 +49,8 @@ Read only the sections your task touches:
 
 ## Startup
 
-Each binary checks what it needs before it serves, and otherwise stops with one message naming the item (exit 1, D-71):
+Each binary checks what it needs before it serves. A setup mistake stops it with one message naming the item (exit 1,
+D-71); a chain whose RPCs don't answer is logged and skipped:
 - `DATABASE_URL` answers within 10 s. The api then applies migrations. The worker and signer only read that every
   migration they embed is applied; if not, they stop and ask for the api to be started first (only the api migrates).
 - Every chain enabled in the `chains` table is in the chain list and answers through a primary and a second RPC on
@@ -269,7 +270,9 @@ per failure in a row, up to 5 min, half of it random) and sends the call to the 
 endpoint of the role rests, the call waits for the first one back if that comes before its deadline, else fails. Any
 other answer, a revert or invalid params included, is the call's. HTTP 401, 403 or 404, or an answer that is not
 JSON-RPC, rests the endpoint 5 min at once (half of it random). A refused key, a blocked region or an unreadable
-answer doesn't heal in seconds, and each try of such a host would delay a call. Each endpoint gets at most `RPC_RATE_PER_SECOND`
+answer doesn't heal in seconds, and each try of such a host would delay a call. No answer in time or a broken
+connection rests every endpoint of that host together: its other keys would each hang a call the same way. Each
+endpoint gets at most `RPC_RATE_PER_SECOND`
 calls a second per process, a batch counting each call. Errors and logs name an endpoint by host and position, never
 by URL (an Infura URL holds the key). Each chain's round has a 2-minute limit. Every `POLL_INTERVAL` the worker runs, per chain, a watcher scan then the ledger; the
 signer runs its due intents. The gate starts all three binaries against Postgres and Anvil (public RPCs only, the first

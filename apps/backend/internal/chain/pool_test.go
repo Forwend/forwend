@@ -93,6 +93,30 @@ func TestRefusingEndpointRestsLong(t *testing.T) {
 	}
 }
 
+// A host whose endpoints hang rests as a whole once one of them times out, so the call reaches the role's next host
+// after one attempt. Before, each key rested less than an attempt takes, and a hanging host with several keys (Infura)
+// kept the role.
+func TestHangingHostRestsWhole(t *testing.T) {
+	a := chaintest.Start(t)
+	want := number(t, context.Background(), a.RPC)
+	hang := a.Proxy()
+	hang.Fail(func(chaintest.Call) chaintest.Fault { return chaintest.Hang })
+	r := newRPCs(t, hang.URL+"/1", hang.URL+"/2", hang.URL+"/3", a.URL, localhost(a.URL))
+	r.pool.timeout = 300 * time.Millisecond
+	start := time.Now()
+	if got := number(t, context.Background(), r.Primary); got != want {
+		t.Fatalf("block %d, want %d", got, want)
+	}
+	if took := time.Since(start); took > 2*r.pool.timeout {
+		t.Fatalf("answered after %v, want about one attempt (%v)", took, r.pool.timeout)
+	}
+	for _, e := range r.pool.endpoints[:3] {
+		if failures, until := health(r, e); failures != 1 || !until.After(time.Now()) {
+			t.Fatalf("%s: %d failures, rests until %v; want the whole host resting", e.name, failures, until)
+		}
+	}
+}
+
 // Requests waiting their turn on an endpoint that starts to fail move on without being sent to it, and the burst counts
 // as one failure: the rest stays at its first step instead of doubling per queued request.
 func TestQueuedRequestsSkipAnEndpointThatStartsToRest(t *testing.T) {
