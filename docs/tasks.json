@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 270,
+  "nextId": 271,
   "tasks": [
     {
       "id": "F263",
@@ -253,79 +253,80 @@
       "notes": [
         "2026-10-22 blocked: verify's live e2e needs the api to start while Arc has under 2 answering RPC hosts; F267 fixes startup first",
         "2026-10-22 refs R-123 and D-92 on its branch; R-123 is defined there, so main's copy cites D-92 until F266 merges",
-        "2026-10-22 review fail by reviewer: A payer-chooses invoice paid on another option in the last worker round before expiry still gets invoice.expired in its history: the main chain is read first, its row expires while the R-119 choice waits, then option_chosen/paid follow (reproduced with the ledger sim: history = expired, option_chosen, paid, settlement.queued); stop the main row's status change, or its row, while any option of the group has an unchosen transfer. R-123's first sentence is 60 words (D-84: at most 25). Minor: history.Open..ExpiredPartiallyPaid are unused, historytest.Events takes an interface though every caller passes a pool."
+        "2026-10-22 review fail by reviewer: A payer-chooses invoice paid on another option in the last worker round before expiry still gets invoice.expired in its history: the main chain is read first, its row expires while the R-119 choice waits, then option_chosen/paid follow (reproduced with the ledger sim: history = expired, option_chosen, paid, settlement.queued); stop the main row's status change, or its row, while any option of the group has an unchosen transfer. R-123's first sentence is 60 words (D-84: at most 25). Minor: history.Open..ExpiredPartiallyPaid are unused, historytest.Events takes an interface though every caller passes a pool.",
+        "2026-10-22 review fail by reviewer: A paid payer-chooses invoice still gets invoice.expired in its history: the main chain (lowest id, read first each round) is read past the close before the option chain's read finds a payment made before the close, so the main row expires with no transfer in the group yet (reproduced: history expired, option_chosen, paid, settlement_queued); the main row's expiry must also wait until every enabled option chain was read past expires_at. The choice query now runs for every open payer-chooses row each round and filters coalesce(main_id, id), a seq scan of all invoices per row (use id = $1 OR main_id = $1, or gate it). Minor: the R-119 test comment got merged into optionSim's comment; D-92's edited first sentence is 34 words."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-22T16:34:53Z",
+        "at": "2026-10-22T16:52:39Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 79.0,
-            "log": "docs/runs/F266-20261022T163453Z-unit.log"
+            "seconds": 89.4,
+            "log": "docs/runs/F266-20261022T165239Z-unit.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.9,
-            "log": "docs/runs/F266-20261022T163453Z-harness.log"
+            "seconds": 2.3,
+            "log": "docs/runs/F266-20261022T165239Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F266-20261022T163453Z-docs-check.log"
+            "log": "docs/runs/F266-20261022T165239Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F266-20261022T163453Z-lint.log"
+            "log": "docs/runs/F266-20261022T165239Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.2,
-            "log": "docs/runs/F266-20261022T163453Z-typecheck.log"
+            "log": "docs/runs/F266-20261022T165239Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
             "seconds": 3.2,
-            "log": "docs/runs/F266-20261022T163453Z-build.log"
+            "log": "docs/runs/F266-20261022T165239Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 215.7,
-            "log": "docs/runs/F266-20261022T163453Z-e2e.log"
+            "seconds": 245.7,
+            "log": "docs/runs/F266-20261022T165239Z-e2e.log"
           }
         ],
         "taskHash": "c09fdc66f2f796f8",
-        "filesHash": "73f4c51499f6ddfa",
+        "filesHash": "b2ccb51f95ec6a27",
         "proof": {
           "1": "unit: internal/database TestHistoryIsAppendOnly (update, delete, truncate and replica-mode delete raise); rows carry invoice, kind, actor, at and data typed by history.Data",
-          "2": "unit: invoice TestInvoiceChangesKeepHistory (created by owner, payer email only when it changes, canceled by owner), TestRetainerMakesEachMonthOnce (owner,system,system,system), job TestAcceptMakesTheDepositOnce (deposit by payer), ledger TestDepositsMoveThePaymentStatus (detected, partially_paid, paid, held 1000000, settlement.queued; nothing on the idle round), TestFirstOptionPaidWinsAndOthersAreHeld (follows the chosen option, no expired rows after expiry) and TestUnpaidOptionsExpireOnce (both failed on the per-option code), settlement TestSettlesAPaidInvoiceOnce (settled once with tx hash)",
+          "2": "unit: invoice TestInvoiceChangesKeepHistory (created by owner, payer email only when it changes, canceled by owner), TestRetainerMakesEachMonthOnce (owner,system,system,system), job TestAcceptMakesTheDepositOnce (deposit by payer), ledger TestDepositsMoveThePaymentStatus (nothing on the idle round), TestFirstOptionPaidWinsAndOthersAreHeld, TestUnpaidOptionsExpireOnce and TestMainRowWaitsForTheChoiceBeforeExpiring (main row waits for the choice; failed on the reviewed code), settlement TestSettlesAPaidInvoiceOnce (settled once with tx hash)",
           "3": "unit: history TestInvoiceWritersKeepHistory scans apps/backend and counts writes per file; with reconcile.go's history.Add removed it failed",
-          "4": "unit: database TestHistoryForExistingInvoices: migrate to 48, open, canceled, paid+settled and expired invoices, then up: created x4, paid at its intent, canceled, settled with tx hash, expired at expiry, all backfilled; TestMigrationsRollBackAndReapply passes",
+          "4": "unit: database TestHistoryForExistingInvoices: created x4, paid at its intent, canceled, settled with tx hash, expired at expiry, all backfilled; on the dev database no paid row has its settled time and no tx hash is null",
           "5": "unit: passes"
         },
         "review": {
           "result": "fail",
           "by": "reviewer",
-          "summary": "A payer-chooses invoice paid on another option in the last worker round before expiry still gets invoice.expired in its history: the main chain is read first, its row expires while the R-119 choice waits, then option_chosen/paid follow (reproduced with the ledger sim: history = expired, option_chosen, paid, settlement.queued); stop the main row's status change, or its row, while any option of the group has an unchosen transfer. R-123's first sentence is 60 words (D-84: at most 25). Minor: history.Open..ExpiredPartiallyPaid are unused, historytest.Events takes an interface though every caller passes a pool.",
-          "at": "2026-10-22T16:49:32Z",
-          "filesHash": "73f4c51499f6ddfa"
+          "summary": "A paid payer-chooses invoice still gets invoice.expired in its history: the main chain (lowest id, read first each round) is read past the close before the option chain's read finds a payment made before the close, so the main row expires with no transfer in the group yet (reproduced: history expired, option_chosen, paid, settlement_queued); the main row's expiry must also wait until every enabled option chain was read past expires_at. The choice query now runs for every open payer-chooses row each round and filters coalesce(main_id, id), a seq scan of all invoices per row (use id = $1 OR main_id = $1, or gate it). Minor: the R-119 test comment got merged into optionSim's comment; D-92's edited first sentence is 34 words.",
+          "at": "2026-10-22T17:05:56Z",
+          "filesHash": "b2ccb51f95ec6a27"
         }
       },
       "branch": "feat/f266-every-change-to-an-invoice-is-kept-in-it",
@@ -571,6 +572,35 @@
       "keep": [],
       "review": false,
       "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F270",
+      "type": "fix",
+      "behavior": "A payer-chooses invoice doesn't close before every option chain was read past its close, so a paid one never shows expired",
+      "acceptance": [
+        "While no option is chosen, the main row of a payer-chooses invoice expires only after every other enabled option chain was read past expires_at, and waits for the R-119 choice when any option has money; so an on-time payment on another option is always recorded and chosen first",
+        "The pay and owner pages (ClosedSQL, R-77) follow the same rule, so they don't show expired while that wait lasts",
+        "The choice query uses an index (id = $1 OR main_id = $1), not coalesce(main_id, id) = $1, since it runs for more rows",
+        "Tests cover both orders: the payment recorded before the main row is processed, and the main chain read past the close before the option chain records an on-time payment; neither paid invoice gets invoice.expired in its history; unit passes"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "unit"
+      ],
+      "refs": [
+        "R-119",
+        "R-77",
+        "R-123"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-22 start from the patch kept from F266's review round: TestMainRowWaitsForTheChoiceBeforeExpiring and the newOptionSim helper in options_test.go cover the first order",
+        "2026-10-22 test recipe (sim, main on chain 1 and one option on chain 2, both close at 5000): order A: scanned(1,4800), option paid at 4900, scanned(2,4950), process(option) waits, scanned(1,5100), process(main), process(option); order B: scanned(2,4800), scanned(1,5100), process(main), then option paid at 4900, scanned(2,5100), process(option). Both: option paid, history [payer.option_chosen, invoice.paid, invoice.settlement_queued]"
+      ],
       "blockedReason": null,
       "evidence": null
     }
