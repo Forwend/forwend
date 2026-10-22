@@ -571,7 +571,7 @@
         "docs/backend/architecture.md: the startup intro no longer says every failed check stops the process, and Running the loop says a host that hangs rests as a whole; unit passes"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit"
       ],
@@ -581,78 +581,79 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-22 review fail by reviewer: Code and tests are correct: host-wide rest only for unanswered() errors, roles never share a host, TestHangingHostRestsWhole fails on the old pool (~910 ms) and passes at ~305 ms, race tests pass. Blocking: the added sentence in docs/backend/architecture.md Running the loop ('No answer in time or a broken connection rests every endpoint of that host together: ...') is 26 words, over D-84's 25; 'broken connection' also undersells refused, DNS and TLS failures. Suggested: 'No answer in time or a connection error rests every endpoint of that host: its other keys would each hang a call the same way.' (25 words)."
+        "2026-10-22 review fail by reviewer: Code and tests are correct: host-wide rest only for unanswered() errors, roles never share a host, TestHangingHostRestsWhole fails on the old pool (~910 ms) and passes at ~305 ms, race tests pass. Blocking: the added sentence in docs/backend/architecture.md Running the loop ('No answer in time or a broken connection rests every endpoint of that host together: ...') is 26 words, over D-84's 25; 'broken connection' also undersells refused, DNS and TLS failures. Suggested: 'No answer in time or a connection error rests every endpoint of that host: its other keys would each hang a call the same way.' (25 words).",
+        "2026-10-22 review pass by reviewer: Code, tests and docs match the task: only unanswered() errors (timeout, connection, body read) rest the whole host with the same rest and failure count, key failures (429, 401/403/404, not JSON-RPC) stay per key, roles never share a host; TestHangingHostRestsWhole fails on the old pool.go (913 ms) and passes at ~370 ms, chain and address tests pass with -race; the edited doc sentences are 24 and 25 words and match the code. Nits, not blocking: the last commit re-wrapped one unchanged line in Running the loop, leaving a 27-char stub 'by host and position, never'; 'would each hang a call' fits timeouts better than refused or DNS errors, which fail fast."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-22T17:40:25Z",
+        "at": "2026-10-22T17:53:30Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 82.8,
-            "log": "docs/runs/F269-20261022T174025Z-unit.log"
+            "seconds": 74.5,
+            "log": "docs/runs/F269-20261022T175330Z-unit.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.1,
-            "log": "docs/runs/F269-20261022T174025Z-harness.log"
+            "seconds": 2.0,
+            "log": "docs/runs/F269-20261022T175330Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F269-20261022T174025Z-docs-check.log"
+            "log": "docs/runs/F269-20261022T175330Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.4,
-            "log": "docs/runs/F269-20261022T174025Z-lint.log"
+            "seconds": 0.5,
+            "log": "docs/runs/F269-20261022T175330Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F269-20261022T174025Z-typecheck.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F269-20261022T175330Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.0,
-            "log": "docs/runs/F269-20261022T174025Z-build.log"
+            "seconds": 0.8,
+            "log": "docs/runs/F269-20261022T175330Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 228.6,
-            "log": "docs/runs/F269-20261022T174025Z-e2e.log"
+            "seconds": 227.5,
+            "log": "docs/runs/F269-20261022T175330Z-e2e.log"
           }
         ],
         "taskHash": "ccd2273a8b084d88",
-        "filesHash": "25df7763b77fba2c",
+        "filesHash": "88f6c3e7bea9c403",
         "proof": {
           "1": "unit: chain TestHangingHostRestsWhole: three hanging endpoints of one host in front of a working host; the answer came from the working host within 2 attempts and all three rest with failures 1; on the old pool it took 1.21 s (four attempts of 300 ms) and failed",
           "2": "unit: TestFailedKeyMovesToTheNextKeyOnItsHost and TestRefusingEndpointRestsLong pass: a key's own failure rests only that key",
           "3": "unit: TestCheckEnabled 'an unreachable chain skips only itself' (chain 2 down is skipped, the anvil chain still checked); TestFactoryDeployed: no code on the first client stops even when the second shows code",
-          "4": "unit: architecture.md startup intro says a setup mistake stops and an unreachable chain is skipped; Running the loop says a host that doesn't answer rests as a whole; unit passes"
+          "4": "unit: architecture.md startup intro says a setup mistake stops and an unreachable chain is skipped; Running the loop: no answer in time or a connection error rests every endpoint of that host (25 words); unit passes"
         },
         "review": {
-          "result": "fail",
+          "result": "pass",
           "by": "reviewer",
-          "summary": "Code and tests are correct: host-wide rest only for unanswered() errors, roles never share a host, TestHangingHostRestsWhole fails on the old pool (~910 ms) and passes at ~305 ms, race tests pass. Blocking: the added sentence in docs/backend/architecture.md Running the loop ('No answer in time or a broken connection rests every endpoint of that host together: ...') is 26 words, over D-84's 25; 'broken connection' also undersells refused, DNS and TLS failures. Suggested: 'No answer in time or a connection error rests every endpoint of that host: its other keys would each hang a call the same way.' (25 words).",
-          "at": "2026-10-22T17:52:33Z",
-          "filesHash": "25df7763b77fba2c"
+          "summary": "Code, tests and docs match the task: only unanswered() errors (timeout, connection, body read) rest the whole host with the same rest and failure count, key failures (429, 401/403/404, not JSON-RPC) stay per key, roles never share a host; TestHangingHostRestsWhole fails on the old pool.go (913 ms) and passes at ~370 ms, chain and address tests pass with -race; the edited doc sentences are 24 and 25 words and match the code. Nits, not blocking: the last commit re-wrapped one unchanged line in Running the loop, leaving a 27-char stub 'by host and position, never'; 'would each hang a call' fits timeouts better than refused or DNS errors, which fail fast.",
+          "at": "2026-10-22T18:03:04Z",
+          "filesHash": "88f6c3e7bea9c403"
         }
       },
       "branch": "fix/f269-a-host-whose-endpoints-hang-no-longer-ho",
