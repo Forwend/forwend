@@ -428,7 +428,7 @@
         "unit passes"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit"
       ],
@@ -512,11 +512,18 @@
           "summary": "Arc roles verified from chains.json: with keys primary Infura+arc.io+Blockdaemon, second dRPC+QuickNode; keyless primary dRPC+QuickNode, second arc.io+Blockdaemon; hosts never shared (D-15). Only 401/403/404 and non-JSON-RPC answers rest RestMax (check, call and batch all pass through post), no key in errors or logs; TestRefusingEndpointRestsLong fails all 4 cases on main's pool.go, chain tests pass with -race; docs match the code with and without keys, added sentences 10-25 words. Nits: 'which it can't read' has an unclear 'it'; an empty or HTML 200 body now also rests 2.5-5 min.",
           "at": "2026-10-22T15:51:16Z",
           "filesHash": "4a0496bc6b9fb9d1"
-        }
+        },
+        "commit": "a1f4fda",
+        "doneAt": "2026-10-22T15:51:40Z"
       },
       "branch": "fix/f268-each-rpc-role-keeps-a-host-that-works-ar",
       "baseCommit": "3f93565375cf06f29aa6750519342ffd5c1d39a6",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f268-each-rpc-role-keeps-a-host-that-works-ar",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
