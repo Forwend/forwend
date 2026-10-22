@@ -210,4 +210,9 @@ func TestClosedCountsEveryOptionBeforeTheChoice(t *testing.T) {
 	if closed() {
 		t.Fatal("paid in full on time on the other option, before the choice: closed, want open")
 	}
+	// Once an option is chosen only it counts: here the unpaid main row.
+	exec(`UPDATE invoices SET chosen_id = id WHERE id = $1`, inv.ID)
+	if !closed() {
+		t.Fatal("the unpaid main row chosen: open, want closed")
+	}
 }

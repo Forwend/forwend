@@ -146,10 +146,6 @@ func deref(s *string) string {
 	return *s
 }
 
-// R-119: the worker reads one chain after another, so a later transfer on a chain read first must not take the choice
-// from an earlier full payment on a chain not read that far yet (audit 2026-10-19: dust took over a paid invoice).
-// The option is chosen, and its deposits booked, only once every other enabled option chain was read past the first
-// one.
 // optionSim is a payer-chooses invoice in the sim: its main row on chain 1 and one option on chain 2, both closing at
 // 5000, with nothing paid yet.
 type optionSim struct {
@@ -158,6 +154,7 @@ type optionSim struct {
 }
 
 func newOptionSim(t *testing.T) optionSim {
+	t.Helper()
 	s := newSim(t)
 	s.exec(`WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (2, 'evm', 'sim2', true)),
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
@@ -202,9 +199,9 @@ func TestMainRowWaitsForTheChoiceBeforeExpiring(t *testing.T) {
 	o := newOptionSim(t)
 	o.scanned(1, 4800)
 	o.pay(o.option, 2, o.full, 5000000, 4900) // just before the checkout closes at 5000
-	o.scanned(2, 4950)
-	o.process(o.option) // chain 1 was read only to 4800: no choice yet
-	o.scanned(1, 5100)  // read past the close, and past the payment
+	o.scanned(2, 5100)                        // the option's chain is read past the close too: only the choice keeps the main row open
+	o.process(o.option)                       // chain 1 was read only to 4800: no choice yet
+	o.scanned(1, 5100)                        // read past the close, and past the payment
 	o.process(o.main)
 	o.process(o.option)
 	if got, _ := o.payment(o.option); got != Paid {

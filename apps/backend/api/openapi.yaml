@@ -2214,7 +2214,8 @@ components:
           description: >-
             The checkout closed and the invoice can no longer be paid: open, detected or partially_paid, past expiresAt,
             with no payment made before expiry still confirming and less than the amount paid before it (money after
-            the close reads detected until the chain is final). Its paymentStatus
+            the close reads detected until the chain is final). Before an option is chosen, every option's money
+            counts, each against its own amount. Its paymentStatus
             changes once the chain is final past expiry; show it as expired (or expired, partially paid) meanwhile.
         optionLocked:
           type: boolean
