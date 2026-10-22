@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"math/rand/v2"
 	"net/http"
 	"net/url"
@@ -174,7 +175,11 @@ func (p *pool) done(e *endpoint, failure error) {
 		return // a request sent before this rest began: the rest already counts its failure
 	}
 	e.failures++
-	rest := restFor(e.failures, rand.Float64())
+	n := e.failures
+	if errors.As(failure, new(lasting)) {
+		n = math.MaxInt // it won't heal in seconds: rest RestMax at once
+	}
+	rest := restFor(n, rand.Float64())
 	e.restUntil = time.Now().Add(rest)
 	p.mu.Unlock()
 	slog.Warn("RPC rests", "chain", p.chainID, "rpc", e.name, "for", rest.Round(time.Millisecond), "err", failure)
@@ -280,13 +285,28 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 	}
 	res.Body = io.NopCloser(bytes.NewReader(raw))
 	if res.StatusCode/100 != 2 {
-		return res, fmt.Errorf("%s: HTTP %s", e.name, res.Status)
+		err := fmt.Errorf("%s: HTTP %s", e.name, res.Status)
+		switch res.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound: // a refused key or region, a wrong path
+			return res, lasting{err}
+		}
+		return res, err
 	}
 	if reason := outage(raw); reason != "" {
-		return res, fmt.Errorf("%s: %s", e.name, reason)
+		err := fmt.Errorf("%s: %s", e.name, reason)
+		if reason == notJSONRPC { // as Blockdaemon's Arc RPC answers in Brotli whatever the request accepts
+			return res, lasting{err}
+		}
+		return res, err
 	}
 	return res, nil
 }
+
+// lasting is a failure that doesn't heal in seconds, so its endpoint rests RestMax at once instead of coming back
+// after RestBase: each try of it would delay a call.
+type lasting struct{ error }
+
+const notJSONRPC = "answer is not JSON-RPC"
 
 // unanswered describes a request without an answer, leaving out the URL: net/http puts it, Infura key included, in
 // its errors.
@@ -314,12 +334,12 @@ func outage(raw []byte) string {
 	raw = bytes.TrimSpace(raw)
 	if len(raw) > 0 && raw[0] == '[' {
 		if json.Unmarshal(raw, &answers) != nil {
-			return "answer is not JSON-RPC"
+			return notJSONRPC
 		}
 	} else {
 		var one answer
 		if json.Unmarshal(raw, &one) != nil {
-			return "answer is not JSON-RPC"
+			return notJSONRPC
 		}
 		answers = []answer{one}
 	}
