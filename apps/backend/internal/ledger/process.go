@@ -79,6 +79,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	// Payer chooses (R-56, D-76): the option whose money came first on chain becomes the invoice's, under the main
 	// row's lock so two options can't both win; money on any other option is held for the payer.
 	superseded := false
+	shown := true // the row invoices_current shows: the chosen option, or the main row until one is chosen
 	if options {
 		var chosen *string
 		if err := tx.QueryRow(ctx, "SELECT chosen_id FROM invoices WHERE id = $1 FOR UPDATE", group).Scan(&chosen); err != nil {
@@ -112,6 +113,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			chosen = &first
 		}
 		superseded = chosen != nil && *chosen != invoiceID
+		shown = chosen == nil && invoiceID == group || chosen != nil && *chosen == invoiceID
 	}
 	amount, _ := new(big.Int).SetString(amountText, 10)
 	owed, err := accountBalance(ctx, tx, invoiceID, "recipient_payable")
@@ -190,12 +192,10 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		invoiceID, next, refund); err != nil {
 		return fmt.Errorf("update invoice %s status: %w", invoiceID, err)
 	}
-	var on history.Data // which option changed, when the invoice has several
-	if options {
-		on.Option = invoiceID
-	}
-	if next != current {
-		if err := history.Add(ctx, tx, invoiceID, "invoice."+next, history.System, on); err != nil {
+	// An option not chosen expires or holds money without changing the invoice's status, so only the shown row's
+	// status is history.
+	if shown && next != current {
+		if err := history.Add(ctx, tx, invoiceID, "invoice."+next, history.System, history.Data{}); err != nil {
 			return err
 		}
 	}
@@ -212,9 +212,11 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		if err := outbox.Queue(ctx, tx, outbox.Held, invoiceID, newlyHeld); err != nil {
 			return err
 		}
-		held := on
-		held.Amount = newlyHeld.String()
-		if err := history.Add(ctx, tx, invoiceID, history.Held, history.System, held); err != nil {
+		event := history.Data{Amount: newlyHeld.String()}
+		if options {
+			event.Option = invoiceID // the option the money is held on
+		}
+		if err := history.Add(ctx, tx, invoiceID, history.Held, history.System, event); err != nil {
 			return err
 		}
 	}
@@ -224,7 +226,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			UPDATE invoices SET settlement_status = 'pending' WHERE id = $1`, invoiceID); err != nil {
 			return fmt.Errorf("queue invoice %s settlement: %w", invoiceID, err)
 		}
-		if err := history.Add(ctx, tx, invoiceID, history.SettlementQueued, history.System, on); err != nil {
+		if err := history.Add(ctx, tx, invoiceID, history.SettlementQueued, history.System, history.Data{}); err != nil {
 			return err
 		}
 	}

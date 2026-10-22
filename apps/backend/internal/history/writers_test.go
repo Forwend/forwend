@@ -10,21 +10,33 @@ import (
 	"testing"
 )
 
-// Every Go file that writes the invoices table also writes history (D-92): a new writer without it fails here.
+// Every Go file that writes the invoices table calls history.Add at least once per write (D-92): a new writer without
+// it fails here.
 func TestInvoiceWritersKeepHistory(t *testing.T) {
-	writes := regexp.MustCompile(`(?i)\b(INSERT\s+INTO|UPDATE)\s+invoices\b`)
+	writes := regexp.MustCompile(`(?i)\b(?:INSERT\s+INTO|UPDATE(?:\s+ONLY)?)\s+(?:"?public"?\.)?"?invoices"?(?:\s|\(|$)` +
+		`|Identifier\{"invoices"\}`)
 	writers := 0
-	err := filepath.WalkDir("..", func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+	err := filepath.WalkDir("../..", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
 			return err
+		}
+		if d.IsDir() && d.Name() == "node_modules" {
+			return filepath.SkipDir
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
 		}
 		src, err := os.ReadFile(path)
-		if err != nil || !writes.Match(src) {
+		if err != nil {
 			return err
 		}
+		n := len(writes.FindAll(src, -1))
+		if n == 0 {
+			return nil
+		}
 		writers++
-		if !bytes.Contains(src, []byte("history.Add(")) {
-			t.Errorf("%s writes invoices without history.Add", path)
+		if adds := bytes.Count(src, []byte("history.Add(")); adds < n {
+			t.Errorf("%s writes invoices %d times but calls history.Add %d times", path, n, adds)
 		}
 		return nil
 	})

@@ -10,12 +10,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Event kinds. A payment status change is "invoice." and the new status (Detected … ExpiredPartiallyPaid).
+// Event kinds. A payment status change is "invoice." and the new status (Open … ExpiredPartiallyPaid).
 const (
 	Created              = "invoice.created"
 	Canceled             = "invoice.canceled"
 	PayerEmail           = "payer.email_given"   // the payer gave an address for their receipt (R-82)
 	OptionChosen         = "payer.option_chosen" // the option the money came to first (D-76); data names it
+	Open                 = "invoice.open"        // back to open: a reorg dropped the only transfer seen
 	Detected             = "invoice.detected"
 	PartiallyPaid        = "invoice.partially_paid"
 	Paid                 = "invoice.paid"
@@ -37,17 +38,14 @@ const (
 
 // Data is an event's detail. Only these fields exist, so a row can never take a secret, a request body or an email.
 type Data struct {
-	Option string `json:"option,omitempty"` // the option row a change was on, when the invoice has several
+	Option string `json:"option,omitempty"` // the option chosen, or the one money is held on, when there are several
 	Amount string `json:"amount,omitempty"` // base units of the invoice token
 	TxHash string `json:"txHash,omitempty"`
 }
 
 // Add writes the event for the invoice that option belongs to.
 func Add(ctx context.Context, tx pgx.Tx, option, kind string, by Actor, data Data) error {
-	payload, err := json.Marshal(data)
-	if err != nil {
-		return fmt.Errorf("history %s for %s: %w", kind, option, err)
-	}
+	payload, _ := json.Marshal(data) // only strings: it can't fail
 	tag, err := tx.Exec(ctx, `INSERT INTO history_events (invoice_id, kind, actor, data)
 		SELECT coalesce(main_id, id), $2, $3, $4 FROM invoices WHERE id = $1`, option, kind, by, payload)
 	if err == nil && tag.RowsAffected() != 1 {

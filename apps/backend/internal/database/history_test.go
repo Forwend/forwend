@@ -11,8 +11,8 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-// Invoices made before migration 49 get the history their rows still show, marked backfilled: when each was made
-// and canceled, its payment status at its last booking (its creation without one) and its settlement (R-123).
+// Invoices made before migration 49 get the history their rows still show, marked backfilled: when each was made and
+// canceled, when it was paid (its settlement queued) or expired, and its settlement (R-123).
 func TestHistoryForExistingInvoices(t *testing.T) {
 	ctx := context.Background()
 	conn, err := sql.Open("pgx", databasetest.New(t))
@@ -46,7 +46,8 @@ func TestHistoryForExistingInvoices(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for n, at := range []string{"2026-10-01T08:00:00Z", "2026-10-01T09:00:00Z", "2026-10-01T10:00:00Z"} {
+	for n, at := range []string{"2026-10-01T08:00:00Z", "2026-10-01T09:00:00Z", "2026-10-01T10:00:00Z",
+		"2026-10-01T10:15:00Z"} {
 		exec(`INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
 			    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
 			    request_hash, created_at)
@@ -59,9 +60,10 @@ func TestHistoryForExistingInvoices(t *testing.T) {
 		WHERE id = '0x' || lpad('2', 64, '0')`)
 	third := "0x" + "0000000000000000000000000000000000000000000000000000000000000003"
 	exec("UPDATE invoices SET payment_status = 'paid', settlement_status = 'pending' WHERE id = $1", third)
-	exec(`INSERT INTO settlement_intents (invoice_id, status, tx_hash, updated_at)
-		VALUES ($1, 'confirmed', '0x' || repeat('ab', 32), '2026-10-01T12:00:00Z')`, third)
+	exec(`INSERT INTO settlement_intents (invoice_id, status, tx_hash, created_at, updated_at)
+		VALUES ($1, 'confirmed', '0x' || repeat('ab', 32), '2026-10-01T10:30:00Z', '2026-10-01T12:00:00Z')`, third)
 	exec("UPDATE invoices SET settlement_status = 'settled' WHERE id = $1", third)
+	exec("UPDATE invoices SET payment_status = 'expired' WHERE id = '0x' || lpad('4', 64, '0')")
 	if _, err := provider.Up(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -88,9 +90,11 @@ func TestHistoryForExistingInvoices(t *testing.T) {
 		"1 invoice.created by owner",
 		"2 invoice.created by owner",
 		"3 invoice.created by owner",
+		"4 invoice.created by owner",
 		"3 invoice.paid by system",
 		"2 invoice.canceled by owner",
 		"3 invoice.settled by system 0x" + "abababababababababababababababababababababababababababababababab",
+		"4 invoice.expired by system", // at its expiry, 2027-01-15
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("history\n got %q\nwant %q", got, want)
