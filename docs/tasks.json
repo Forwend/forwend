@@ -30,72 +30,65 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-22T18:56:22Z",
+        "at": "2026-10-22T19:04:38Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 90.6,
-            "log": "docs/runs/F271-20261022T185622Z-unit.log"
+            "seconds": 79.5,
+            "log": "docs/runs/F271-20261022T190438Z-unit.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.2,
-            "log": "docs/runs/F271-20261022T185622Z-harness.log"
+            "seconds": 2.0,
+            "log": "docs/runs/F271-20261022T190438Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F271-20261022T185622Z-docs-check.log"
+            "log": "docs/runs/F271-20261022T190438Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F271-20261022T185622Z-lint.log"
+            "log": "docs/runs/F271-20261022T190438Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F271-20261022T185622Z-typecheck.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F271-20261022T190438Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.9,
-            "log": "docs/runs/F271-20261022T185622Z-build.log"
+            "seconds": 2.8,
+            "log": "docs/runs/F271-20261022T190438Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 239.0,
-            "log": "docs/runs/F271-20261022T185622Z-e2e.log"
+            "seconds": 237.0,
+            "log": "docs/runs/F271-20261022T190438Z-e2e.log"
           }
         ],
         "taskHash": "bd886a4ae7d3b15a",
-        "filesHash": "4771413e295510d2",
+        "filesHash": "88b7224a52cff114",
         "proof": {
           "1": "unit: AGENTS.md Shared rules: describe the code as it is; history, incidents, dates and review notes go in the commit message; a test's name says what it checks",
-          "2": "unit: apps/ diff changes only comments (review compared all 24 Go files with comments stripped: identical); no 2026-10 date, vendor anecdote or Before-story left in F265-F271 comments; the review's two lost reasons (lasting non-JSON-RPC, main row's wait) restored in one line each",
+          "2": "unit: apps/ diff changes only comments (reviews compared all 24 Go files with comments stripped: identical); no 2026-10 date, vendor anecdote or Before-story left in F265-F271 comments; lost reasons restored; the ledger comment wraps at 120",
           "3": "unit: harness archive: 8 tasks (F263-F270) in docs/archive, only F271 in docs/tasks.json",
           "4": "unit: unit passes"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Only comments change in apps/ (Go token streams equal outside comments); the AGENTS.md rule is clear with 6-18 words per sentence; F265-F271 comments carry no stories, incident dates or test-name repeats, and no money or safety reason was lost (D-15/D-71 and the assert messages keep them). Archive F263-F270 equals the removed queue entries; build, vet and gofmt are clean; no AI attribution. Minor: ledger/process.go:92 runs to 150 columns while the rest of that comment wraps at 120.",
-          "at": "2026-10-22T19:04:01Z",
-          "filesHash": "4771413e295510d2"
         }
       },
       "branch": "chore/f271-comments-say-only-what-the-code-can-t-ag",
