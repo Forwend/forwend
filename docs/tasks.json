@@ -678,7 +678,7 @@
         "Tests cover both orders: the payment recorded before the main row is processed, and the main chain read past the close before the option chain records an on-time payment; neither paid invoice gets invoice.expired in its history; unit passes"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "active",
       "verification": [
         "unit"
       ],
@@ -694,7 +694,9 @@
         "2026-10-22 test recipe (sim, main on chain 1 and one option on chain 2, both close at 5000): order A: scanned(1,4800), option paid at 4900, scanned(2,4950), process(option) waits, scanned(1,5100), process(main), process(option); order B: scanned(2,4800), scanned(1,5100), process(main), then option paid at 4900, scanned(2,5100), process(option). Both: option paid, history [payer.option_chosen, invoice.paid, invoice.settlement_queued]"
       ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": null,
+      "branch": "fix/f270-a-payer-chooses-invoice-doesn-t-close-be",
+      "baseCommit": "75ea7add4049513c3153f82027b43622b4b75908"
     }
   ],
   "lastWrapup": {

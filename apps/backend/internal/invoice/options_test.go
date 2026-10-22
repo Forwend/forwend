@@ -167,3 +167,47 @@ func TestRecheckWithOneNetworkDown(t *testing.T) {
 }
 
 func noLimit(string) time.Duration { return 0 }
+
+// Before an option is chosen, money paid on time on any option keeps the checkout from reading closed: the ledger
+// chooses that option once its chains were read (R-119), and the invoice is paid, not expired (R-77).
+func TestClosedCountsEveryOptionBeforeTheChoice(t *testing.T) {
+	ctx := context.Background()
+	pool, profile := open(t)
+	exec := func(sql string, args ...any) {
+		t.Helper()
+		if _, err := pool.Exec(ctx, sql, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	exec(`UPDATE chains SET enabled = true WHERE chain_id = 421614`)
+	exec(`UPDATE tokens SET enabled = true WHERE chain_id = 421614`)
+	exec(`INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) VALUES (421614, 0, 0)`)
+	inv, _, err := NewService(pool).Create(ctx, profile, "key-1", Request{AmountUSD: "12.5"})
+	if err != nil || len(inv.Options) != 2 {
+		t.Fatalf("create: %v, %d options", err, len(inv.Options))
+	}
+	// The checkout closed a minute ago.
+	exec(`ALTER TABLE invoices DISABLE TRIGGER USER`)
+	exec(`UPDATE invoices SET expires_at = extract(epoch FROM now())::bigint - 60 WHERE id = $1 OR main_id = $1`, inv.ID)
+	exec(`ALTER TABLE invoices ENABLE TRIGGER USER`)
+	closed := func() bool {
+		t.Helper()
+		var c bool
+		if err := pool.QueryRow(ctx, "SELECT "+ClosedSQL+" FROM "+invoicesCurrent+" WHERE id = $1", inv.ID).Scan(&c); err != nil {
+			t.Fatal(err)
+		}
+		return c
+	}
+	if !closed() {
+		t.Fatal("nothing paid: open, want closed")
+	}
+	// The full amount, before the close, on the second option; no option is chosen yet.
+	exec(`INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index, block_hash,
+		    block_number, block_time, from_address, to_address, amount, status)
+		SELECT chain_id, 'evm', token_contract, id, '0x' || repeat('ab', 32), 0, '0x' || repeat('ab', 32), 1,
+		    expires_at - 10, '0x' || repeat('ff', 20), receive_address, amount, 'confirmed' FROM invoices WHERE id = $1`,
+		inv.Options[1].ID)
+	if closed() {
+		t.Fatal("paid in full on time on the other option, before the choice: closed, want open")
+	}
+}

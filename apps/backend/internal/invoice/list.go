@@ -22,13 +22,15 @@ var StatusFilters = []string{"open", "paid", "settled", "expired", "canceled"}
 // be paid: open, detected or partly paid, past expiry, with no payment made before expiry still confirming and less
 // than the amount paid before it. Detected counts: money after the close also reads detected until the chain is final. Its status waits for the chain to be final past expiry (the ledger's rule), but every reader
 // already shows it expired (R-77). Paid on time and awaiting the second RPC is not closed: that money goes to the
-// creator.
+// creator. Until an option is chosen every option counts, each with its own amount: one paid on time is chosen (R-119).
 const ClosedSQL = `(invoices.payment_status IN ('open', 'detected', 'partially_paid')
 	AND invoices.expires_at < extract(epoch FROM now())
-	AND NOT EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = invoices.option_id AND t.status = 'detected'
-	                AND t.block_time <= invoices.expires_at)
-	AND coalesce((SELECT sum(t.amount) FROM chain_transfers t WHERE t.invoice_id = invoices.option_id
-	              AND t.status <> 'reorged' AND t.block_time <= invoices.expires_at), 0) < invoices.amount)`
+	AND NOT EXISTS (SELECT 1 FROM invoices o
+	    WHERE (o.id = invoices.option_id OR invoices.chosen_id IS NULL AND o.main_id = invoices.id)
+	      AND (EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = o.id AND t.status = 'detected'
+	                   AND t.block_time <= o.expires_at)
+	           OR coalesce((SELECT sum(t.amount) FROM chain_transfers t WHERE t.invoice_id = o.id
+	                        AND t.status <> 'reorged' AND t.block_time <= o.expires_at), 0) >= o.amount)))`
 
 // StatusFilterSQL is the filter of an invoices row: settled once settled, otherwise its payment status, with open,
 // detected and partially paid as open, both expired ones and a closed checkout (ClosedSQL) as expired, and canceled.
