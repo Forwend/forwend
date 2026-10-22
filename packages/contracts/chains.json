@@ -21,10 +21,10 @@
     "chainId": 5042002,
     "infura": "arc-testnet",
     "public": [
-      "https://rpc.testnet.arc.io",
       "https://rpc.drpc.testnet.arc.io",
-      "https://rpc.blockdaemon.testnet.arc.io",
-      "https://rpc.quicknode.testnet.arc.io"
+      "https://rpc.testnet.arc.io",
+      "https://rpc.quicknode.testnet.arc.io",
+      "https://rpc.blockdaemon.testnet.arc.io"
     ]
   },
   "tempo-moderato": {

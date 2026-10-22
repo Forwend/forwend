@@ -64,6 +64,35 @@ func TestFailingEndpointRestsThenComesBack(t *testing.T) {
 	}
 }
 
+// A host that refuses us (HTTP 401, 403 or 404, as Cloudflare answers a region it blocks) or answers in a form we
+// can't read (Brotli whatever the request accepts, as Blockdaemon's Arc RPC did on 2026-10-22) rests RestMax at once:
+// that doesn't heal in seconds, and each try of it delays a call. The call moves on to the next endpoint.
+func TestRefusingEndpointRestsLong(t *testing.T) {
+	a := chaintest.Start(t)
+	want := number(t, context.Background(), a.RPC)
+	for name, answer := range map[string]http.HandlerFunc{
+		"HTTP 401": func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusUnauthorized) },
+		"HTTP 403": func(w http.ResponseWriter, _ *http.Request) { http.Error(w, "error code: 1009", http.StatusForbidden) },
+		"HTTP 404": func(w http.ResponseWriter, _ *http.Request) { http.NotFound(w, nil) },
+		"Brotli": func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Encoding", "br")
+			_, _ = w.Write([]byte{0x8b, 0x05, 0x80, 0x7b, 0x7d, 0x03})
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			bad := httptest.NewServer(answer)
+			defer bad.Close()
+			r := newRPCs(t, bad.URL, a.URL, localhost(a.URL))
+			if got := number(t, context.Background(), r.Primary); got != want {
+				t.Fatalf("block %d, want %d", got, want)
+			}
+			if failures, until := health(r, r.pool.endpoints[0]); failures != 1 || time.Until(until) < RestMax/2-time.Second {
+				t.Fatalf("%d failures, rests %v; want 1 and about half of RestMax or more", failures, time.Until(until))
+			}
+		})
+	}
+}
+
 // Requests waiting their turn on an endpoint that starts to fail move on without being sent to it, and the burst counts
 // as one failure: the rest stays at its first step instead of doubling per queued request.
 func TestQueuedRequestsSkipAnEndpointThatStartsToRest(t *testing.T) {
