@@ -1,780 +1,113 @@
 {
   "schemaVersion": 2,
-  "nextId": 271,
+  "nextId": 272,
   "tasks": [
     {
-      "id": "F263",
+      "id": "F271",
       "type": "chore",
-      "behavior": "Docs match the finished phase 10: phase 10 is Done in PLAN and F262 moves to the archive",
+      "behavior": "Comments say only what the code can't: AGENTS.md has the rule, today's comments follow it, and finished tasks move to the archive",
       "acceptance": [
-        "PLAN.md marks phase 10 Done on the owner's check of every phase 10 feature (2026-10-21); the open section covers phases 1-10 with R-1…R-122; the phase 10 section is removed; no finished 10.x dependency remains",
-        "docs/archive holds F262 and docs/tasks.json keeps only open tasks; docs-check passes"
+        "AGENTS.md: comments describe the code as it is; history, incidents, dates and review notes go in the commit message; a test's name says what it checks",
+        "The comments added in F265-F270 follow it: no change stories, incident dates or vendor anecdotes, no test comments that restate the test name or its assert message, and each kept reason in one short sentence",
+        "Every passing task moves from docs/tasks.json to docs/archive",
+        "unit passes"
       ],
       "dependsOn": [],
       "state": "passing",
       "verification": [
-        "docs-check"
+        "unit"
       ],
       "refs": [
         "R-25"
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-22 review pass by reviewer: Diff changes only comments (AST compare equal), the AGENTS.md rule is short (6-18 words per sentence), archive F263-F270 matches the removed queue entries, and build, vet and gofmt are clean. Minor: pool.go no longer says why a non-JSON-RPC answer is lasting, process.go dropped why the main row must not expire while a choice waits, and ledger/options_test.go's 'either order' note sits above the expiry time jump it does not explain.",
+        "2026-10-22 review pass by reviewer: Only comments change in apps/ (Go token streams equal outside comments); the AGENTS.md rule is clear with 6-18 words per sentence; F265-F271 comments carry no stories, incident dates or test-name repeats, and no money or safety reason was lost (D-15/D-71 and the assert messages keep them). Archive F263-F270 equals the removed queue entries; build, vet and gofmt are clean; no AI attribution. Minor: ledger/process.go:92 runs to 150 columns while the rest of that comment wraps at 120.",
+        "2026-10-22 review pass by reviewer: Only comments change in apps/ (Go token streams equal with comments skipped); the AGENTS.md rule is clear at 6-17 words per sentence; no F265-F271 comment keeps a story, incident date, vendor anecdote or test-name repeat, and the removed safety reasons live on in D-15/D-71, hostDown, lasting and assert messages. Archive F263-F270 equals the old queue entries; build, vet and gofmt are clean; no AI attribution.",
+        "2026-10-22 review pass by reviewer: Only comments change in apps/ (Go token streams equal with comments skipped); the AGENTS.md rule is clear at 6-18 words per sentence, and F265-F271 comments carry no stories, incident dates or test-name repeats. accept_test.go:28 is accurate: TestAcceptMakesTheDepositOnce peaks at 7 connections (the held lock, five accepts waiting, the poll); archive F263-F270 equals the removed queue entries, no AI attribution, and build, vet and gofmt are clean."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-21T18:29:39Z",
+        "at": "2026-10-22T19:12:35Z",
         "checks": [
           {
-            "id": "docs-check",
+            "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F263-20261021T182939Z-docs-check.log"
+            "seconds": 88.2,
+            "log": "docs/runs/F271-20261022T191235Z-unit.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.2,
-            "log": "docs/runs/F263-20261021T182939Z-harness.log"
-          }
-        ],
-        "taskHash": "6fa775f407da4904",
-        "filesHash": "8404f4f5355d073d",
-        "proof": {
-          "1": "docs-check: PLAN row 10 reads Done (owner checked every phase 10 feature, 2026-10-21); section renamed Open from phases 1-10 with R-1…R-122; phase 10 section removed (D-55, D-81 to D-83 and the research link at Deferred keep its context); 11.10 no longer waits on phase 10",
-          "2": "docs-check: harness archive moved F262 to docs/archive; tasks.json keeps only F263"
-        },
-        "commit": "7756338",
-        "doneAt": "2026-10-21T18:29:48Z"
-      },
-      "branch": "chore/f263-docs-match-the-finished-phase-10-phase-1",
-      "baseCommit": "55f6f516b06636b636d6d576334b7cfb27a70fca",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "chore/f263-docs-match-the-finished-phase-10-phase-1",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F264",
-      "type": "docs",
-      "behavior": "PLAN phase 11 follows the approved merchant research: address-only pay, history log and invoice changes, test mode, three checkout levels, and decision rows for them",
-      "acceptance": [
-        "docs/research/phase-11-merchants.md holds the research (method, evidence M1-M18, market, competitors, checkout levels, history log) and the owner decisions of 2026-10-22",
-        "PLAN phase 11 has 11.1-11.11 as decided: address-only pay, links created on Pay, test mode and keys, webhooks after the history log, three checkout levels with the React package, refunds of held money, history log with edits, revise and reopen; Deferred lists tolerance, merchant refunds and credit notes",
-        "PROJECT rewrites D-37, D-50, D-54, D-75, D-78 and Q-11, and adds D-87 to D-92 (test mode, checkout levels, suspension, refund costs, API notice, history and invoice changes)",
-        "docs-check passes"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "docs-check"
-      ],
-      "refs": [
-        "D-55",
-        "D-37",
-        "D-54",
-        "Q-11"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-21T21:41:00Z",
-        "checks": [
+            "seconds": 2.1,
+            "log": "docs/runs/F271-20261022T191235Z-harness.log"
+          },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F264-20261021T214100Z-docs-check.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.0,
-            "log": "docs/runs/F264-20261021T214100Z-harness.log"
-          }
-        ],
-        "taskHash": "c3fc81958b6994af",
-        "filesHash": "a07ff819fc01ee24",
-        "proof": {
-          "1": "docs-check: docs/research/phase-11-merchants.md has method, evidence M1-M18, market, money map, competitors, proposals, checkout levels and history-log follow-ups, and the owner decisions of 2026-10-22",
-          "2": "docs-check: PLAN phase 11 lists 11.1-11.11 (address-only pay, links created on Pay, test mode and keys, webhooks after 11.11.1, three checkout levels with @forwend/react, refunds of held money, history log with edits, revise and reopen); Deferred lists tolerance, merchant refunds, credit notes and a draft state",
-          "3": "docs-check: PROJECT rewrites D-37, D-50, D-54, D-75, D-78, Q-11 and the payment-link entry, and adds D-87 to D-92",
-          "4": "docs-check: 0 errors"
-        },
-        "commit": "423248c",
-        "doneAt": "2026-10-21T21:41:05Z"
-      },
-      "branch": "docs/f264-plan-phase-11-follows-the-approved-merch",
-      "baseCommit": "5b95b1a3943845f18928d523e975851880829978",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "docs/f264-plan-phase-11-follows-the-approved-merch",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F265",
-      "type": "fix",
-      "behavior": "The job tests size their own database pool, so they pass on a 2-CPU CI runner and staging CI finishes",
-      "acceptance": [
-        "In a 2-CPU Linux container (docker --cpuset-cpus=0,1) go test -race ./internal/job passes; on main it times out in TestAcceptMakesTheDepositOnce, which needs 7 connections and gets pgxpool's default of 4",
-        "unit passes"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "unit"
-      ],
-      "refs": [
-        "R-40",
-        "R-100"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-10-21 review pass by reviewer: Reasoning holds: the 5-accept test needs 7 connections (held lock, 5 Accept txs blocked on the profile FOR UPDATE, the pg_stat_activity poll) and pgx v5.11.0 defaults to max(4, NumCPU); pool_max_conns=8 covers it, all other job tests need at most 4, and the url+\"&pool_max_conns=...\" pattern matches TestPoolSizeFromTheURL (it relies on DATABASE_URL carrying a non-pool param like sslmode, true for .env.example and CI). In a 2-CPU container all DB packages pass, internal/job included; no other package holds N+2>4 connections at once. Diff is one line plus a why-comment and tasks.json, commit has no AI attribution."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-21T22:06:04Z",
-        "checks": [
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 80.6,
-            "log": "docs/runs/F265-20261021T220604Z-unit.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.6,
-            "log": "docs/runs/F265-20261021T220604Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F265-20261021T220604Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.5,
-            "log": "docs/runs/F265-20261021T220604Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F265-20261021T220604Z-typecheck.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.2,
-            "log": "docs/runs/F265-20261021T220604Z-build.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 222.2,
-            "log": "docs/runs/F265-20261021T220604Z-e2e.log"
-          }
-        ],
-        "taskHash": "08c37fd6c58f5e51",
-        "filesHash": "f3d8bc9707c8f0ea",
-        "proof": {
-          "1": "unit: in a 2-CPU Linux container (docker --cpuset-cpus=0,1, golang:1.27.2) go test -race ./internal/job timed out on main after 2m in TestAcceptMakesTheDepositOnce and passes on this branch in 5.1s; staging run 39680914616 failed the same way (internal/job 600.086s)",
-          "2": "unit: passes"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Reasoning holds: the 5-accept test needs 7 connections (held lock, 5 Accept txs blocked on the profile FOR UPDATE, the pg_stat_activity poll) and pgx v5.11.0 defaults to max(4, NumCPU); pool_max_conns=8 covers it, all other job tests need at most 4, and the url+\"&pool_max_conns=...\" pattern matches TestPoolSizeFromTheURL (it relies on DATABASE_URL carrying a non-pool param like sslmode, true for .env.example and CI). In a 2-CPU container all DB packages pass, internal/job included; no other package holds N+2>4 connections at once. Diff is one line plus a why-comment and tasks.json, commit has no AI attribution.",
-          "at": "2026-10-21T22:20:33Z",
-          "filesHash": "f3d8bc9707c8f0ea"
-        },
-        "commit": "9ccca5a",
-        "doneAt": "2026-10-21T22:20:53Z"
-      },
-      "branch": "fix/f265-the-job-tests-size-their-own-database-po",
-      "baseCommit": "59796944e7bbb7d915da78c1fab30cb5799fd199",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f265-the-job-tests-size-their-own-database-po",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F266",
-      "type": "feat",
-      "behavior": "Every change to an invoice is kept in its history: one append-only row per change, written in the same transaction",
-      "acceptance": [
-        "history_events is append-only (update, delete and truncate raise) and each row has the invoice, kind, actor (owner, payer or system), time and small typed data",
-        "create (owner, payer for a job deposit, system for a retainer month), cancel, payer email, option chosen, each payment status change, money held, settlement queued and settled each write one row in the transaction that makes the change; no row when nothing changed",
-        "a test fails when a non-test Go file writes the invoices table without history.Add",
-        "invoices made before get created, canceled, current status and settled rows marked backfilled",
-        "unit passes"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "unit"
-      ],
-      "refs": [
-        "R-123",
-        "D-92"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-10-22 blocked: verify's live e2e needs the api to start while Arc has under 2 answering RPC hosts; F267 fixes startup first",
-        "2026-10-22 refs R-123 and D-92 on its branch; R-123 is defined there, so main's copy cites D-92 until F266 merges",
-        "2026-10-22 review fail by reviewer: A payer-chooses invoice paid on another option in the last worker round before expiry still gets invoice.expired in its history: the main chain is read first, its row expires while the R-119 choice waits, then option_chosen/paid follow (reproduced with the ledger sim: history = expired, option_chosen, paid, settlement.queued); stop the main row's status change, or its row, while any option of the group has an unchosen transfer. R-123's first sentence is 60 words (D-84: at most 25). Minor: history.Open..ExpiredPartiallyPaid are unused, historytest.Events takes an interface though every caller passes a pool.",
-        "2026-10-22 review fail by reviewer: A paid payer-chooses invoice still gets invoice.expired in its history: the main chain (lowest id, read first each round) is read past the close before the option chain's read finds a payment made before the close, so the main row expires with no transfer in the group yet (reproduced: history expired, option_chosen, paid, settlement_queued); the main row's expiry must also wait until every enabled option chain was read past expires_at. The choice query now runs for every open payer-chooses row each round and filters coalesce(main_id, id), a seq scan of all invoices per row (use id = $1 OR main_id = $1, or gate it). Minor: the R-119 test comment got merged into optionSim's comment; D-92's edited first sentence is 34 words.",
-        "2026-10-22 review pass by reviewer: Every invoices writer (create, cancel, payer email, ledger choice/status/held/settlement queued, signer settled) writes one history row in its own transaction, none on a no-change round, with the right actor; only the shown row writes status and held money names its option; the ledger diff only adds history calls, and the 6 backend packages pass with -race. Non-blocking: the writers test counts per file, so process.go's spare Add (4 Adds, 3 writes) would let one new write there pass; the backfill test covers only owner-made, single-option invoices; docs/research/phase-11-merchants.md:217 still proposes a database guard."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-22T17:07:46Z",
-        "checks": [
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 82.4,
-            "log": "docs/runs/F266-20261022T170746Z-unit.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.4,
-            "log": "docs/runs/F266-20261022T170746Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F266-20261022T170746Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.5,
-            "log": "docs/runs/F266-20261022T170746Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F266-20261022T170746Z-typecheck.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.0,
-            "log": "docs/runs/F266-20261022T170746Z-build.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 227.0,
-            "log": "docs/runs/F266-20261022T170746Z-e2e.log"
-          }
-        ],
-        "taskHash": "c09fdc66f2f796f8",
-        "filesHash": "04f4420e236c7f1c",
-        "proof": {
-          "1": "unit: internal/database TestHistoryIsAppendOnly (update, delete, truncate and replica-mode delete raise); rows carry invoice, kind, actor, at and data typed by history.Data",
-          "2": "unit: invoice TestInvoiceChangesKeepHistory (created by owner, payer email only when it changes, canceled by owner), TestRetainerMakesEachMonthOnce (owner,system,system,system), job TestAcceptMakesTheDepositOnce (deposit by payer), ledger TestDepositsMoveThePaymentStatus (nothing on the idle round), TestFirstOptionPaidWinsAndOthersAreHeld and TestUnpaidOptionsExpireOnce (only the shown row writes status; both failed on the per-option code), settlement TestSettlesAPaidInvoiceOnce (settled once with tx hash); the main row expiring before the R-119 choice is a ledger rule queued as F270",
-          "3": "unit: history TestInvoiceWritersKeepHistory scans apps/backend and counts writes per file; with reconcile.go's history.Add removed it failed",
-          "4": "unit: database TestHistoryForExistingInvoices: created x4, paid at its intent, canceled, settled with tx hash, expired at expiry, all backfilled; on the dev database no paid row has its settled time and no tx hash is null",
-          "5": "unit: passes"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Every invoices writer (create, cancel, payer email, ledger choice/status/held/settlement queued, signer settled) writes one history row in its own transaction, none on a no-change round, with the right actor; only the shown row writes status and held money names its option; the ledger diff only adds history calls, and the 6 backend packages pass with -race. Non-blocking: the writers test counts per file, so process.go's spare Add (4 Adds, 3 writes) would let one new write there pass; the backfill test covers only owner-made, single-option invoices; docs/research/phase-11-merchants.md:217 still proposes a database guard.",
-          "at": "2026-10-22T17:18:11Z",
-          "filesHash": "04f4420e236c7f1c"
-        },
-        "commit": "f5d9090",
-        "doneAt": "2026-10-22T17:18:37Z"
-      },
-      "branch": "feat/f266-every-change-to-an-invoice-is-kept-in-it",
-      "baseCommit": "3f93565375cf06f29aa6750519342ffd5c1d39a6",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f266-every-change-to-an-invoice-is-kept-in-it",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F267",
-      "type": "fix",
-      "behavior": "One chain whose RPC hosts are down no longer stops the api, worker and signer: that chain waits until two hosts answer again, and the other chains keep working",
-      "acceptance": [
-        "When an enabled chain's RPC hosts don't answer at startup (fewer than two answer), the api, worker and signer log that chain as unavailable and start, as they already keep running through an outage; nothing is decided paid or settled without the second RPC (D-15), as before. Both roles are asked at once, so a role is checked even when the other is down",
-        "A mistake in the chain list or on chain still stops them: a chain missing from the list, a chain listing one host, a role whose hosts all serve another chain, no factory code, or an executor without gas",
-        "The startup factory check (address.FactoryDeployed) and the signer's gas check (settlement.CheckGas) ask the second RPC when the primary fails, instead of stopping on the primary's error",
-        "unit passes"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "unit"
-      ],
-      "refs": [
-        "D-15",
-        "D-38"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-10-22 review fail by reviewer: Accept 2 broken: a host on another chain no longer stops startup. When every host of a role serves another chain, the pool returns 'no second RPC host serves this chain', RPCs.check wraps it in ErrUnavailable, and CheckEnabled logs 'chain unavailable' and returns nil (reproduced with an overlay test: Public [anvil, host answering chainId 0x1] -> nil). Also: checkFeeToken marks ledger.ErrNoToken and wrong-length balanceOf answers as unavailable, and no test covers the wrong-chain case.",
-        "2026-10-22 blocked: verify's live e2e times out on balances: Arc's second-role hosts (rpc.testnet.arc.io, Blockdaemon) are both broken from here; F268 fixes the roles and rests first",
-        "2026-10-22 review fail by reviewer: Accept 2 breaks when the primary is unreachable: RPCs.check skips the second role after a primary error, so a second role whose only host serves another chain is logged 'chain unavailable at startup' and the process starts (reproduced with a go test -overlay: Public [503 proxy, host answering chainId 0x1] -> nil); probe the second role even when the primary fails and add that test case. Also, a chain skipped at startup never gets the api factory check or the signer gas check, but architecture.md's enable steps ('restart ... so their startup checks cover it') and D-71 do not say that this warning means those checks did not run. The rest holds: D-15 is unchanged (runtime RPCs are built per round, paid and settled only through Second), no key in the warning or errors, the new TestCheckEnabled case fails on origin/main, and the edited doc sentences are at most 25 words.",
-        "2026-10-22 review fail by reviewer: settlement.CheckGas moves to the next RPC on any error, a shortfall included, so a primary that reports the executor below MinGas is overridden by a second that shows enough (reproduced via an overlay test: real primary at 1 wei plus a Stale proxy returning 1 ETH for eth_getBalance gives nil). This goes past accept 3 (ask the second only when the primary's read fails), weakens accept 2 (an executor without gas stops) and differs from FactoryDeployed, which stops on the first definite 'no code'; when the second then errors, its read error also replaces the 'fund it' message. Fix: continue only on read errors, stop on the first shortfall, and add that case to TestCheckGas. The rest holds: both roles run in parallel without races, the new TestCheckEnabled case fails on the previous check.go, factory/gas tests fail on primary-only code, no key in the warning, every new doc sentence is 25 words or fewer.",
-        "2026-10-22 review pass by reviewer: Pass: startup skips a chain only when both roles, asked at once, fail while each still has a host not found on another chain; every listed mistake stops; FactoryDeployed and CheckGas go to the second RPC only on a failed read, both shortfall paths wrap errFundIt, no key reaches the warning or errors, and chain/address/settlement tests pass with -race. Low gaps: TestFactoryDeployed does not guard a first-RPC 'no code' against a second that shows code (an overlay mutant passes), the Tempo shortfall and multi-chain skip have no test, and architecture.md line 52 still says every failed check stops."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-22T16:23:08Z",
-        "checks": [
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 77.8,
-            "log": "docs/runs/F267-20261022T162308Z-unit.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.3,
-            "log": "docs/runs/F267-20261022T162308Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F267-20261022T162308Z-docs-check.log"
+            "log": "docs/runs/F271-20261022T191235Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F267-20261022T162308Z-lint.log"
+            "log": "docs/runs/F271-20261022T191235Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.3,
-            "log": "docs/runs/F267-20261022T162308Z-typecheck.log"
+            "log": "docs/runs/F271-20261022T191235Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
             "seconds": 2.8,
-            "log": "docs/runs/F267-20261022T162308Z-build.log"
+            "log": "docs/runs/F271-20261022T191235Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 219.1,
-            "log": "docs/runs/F267-20261022T162308Z-e2e.log"
+            "seconds": 238.4,
+            "log": "docs/runs/F271-20261022T191235Z-e2e.log"
           }
         ],
-        "taskHash": "a7f8b5c1cd6654d3",
-        "filesHash": "434c735aa8534fd9",
+        "taskHash": "bd886a4ae7d3b15a",
+        "filesHash": "3ac316b643d749c6",
         "proof": {
-          "1": "unit: chain TestCheckEnabled: a chain whose second host is down is logged as unavailable and skipped (the check before F267 stopped on it); both roles are asked at once",
-          "2": "unit: TestCheckEnabled stops on a chain missing from the list, one host, a second host on another chain, the primary down with the second on another chain, and a failing further check; TestFactoryDeployed stops without factory code; TestCheckGas stops on a shortfall, also when a lagging second RPC shows more (the reviewed version passed that; this case failed there)",
-          "3": "unit: TestFactoryDeployed and TestCheckGas: a first RPC answering -32603 Internal error (as Infura did) gives way to the second, which passes; both failing fails",
-          "4": "unit: passes"
+          "1": "unit: AGENTS.md Shared rules: describe the code as it is; history, incidents, dates and review notes go in the commit message; a test's name says what it checks",
+          "2": "unit: apps/ diff changes only comments (reviews compared all 24 Go files with comments stripped: identical); no 2026-10 date, vendor anecdote or Before-story left in F265-F271 comments; lost reasons restored; the ledger comment wraps at 120; the job pool comment counts the test's 7 connections",
+          "3": "unit: harness archive: 8 tasks (F263-F270) in docs/archive, only F271 in docs/tasks.json",
+          "4": "unit: unit passes"
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Pass: startup skips a chain only when both roles, asked at once, fail while each still has a host not found on another chain; every listed mistake stops; FactoryDeployed and CheckGas go to the second RPC only on a failed read, both shortfall paths wrap errFundIt, no key reaches the warning or errors, and chain/address/settlement tests pass with -race. Low gaps: TestFactoryDeployed does not guard a first-RPC 'no code' against a second that shows code (an overlay mutant passes), the Tempo shortfall and multi-chain skip have no test, and architecture.md line 52 still says every failed check stops.",
-          "at": "2026-10-22T16:33:26Z",
-          "filesHash": "434c735aa8534fd9"
+          "summary": "Only comments change in apps/ (Go token streams equal with comments skipped); the AGENTS.md rule is clear at 6-18 words per sentence, and F265-F271 comments carry no stories, incident dates or test-name repeats. accept_test.go:28 is accurate: TestAcceptMakesTheDepositOnce peaks at 7 connections (the held lock, five accepts waiting, the poll); archive F263-F270 equals the removed queue entries, no AI attribution, and build, vet and gofmt are clean.",
+          "at": "2026-10-22T19:21:19Z",
+          "filesHash": "3ac316b643d749c6"
         },
-        "commit": "f3eb18b",
-        "doneAt": "2026-10-22T16:33:59Z"
+        "commit": "8b75aca",
+        "doneAt": "2026-10-22T19:21:40Z"
       },
-      "branch": "fix/f267-one-chain-whose-rpc-hosts-are-down-no-lo",
-      "baseCommit": "3f93565375cf06f29aa6750519342ffd5c1d39a6",
+      "branch": "chore/f271-comments-say-only-what-the-code-can-t-ag",
+      "baseCommit": "aa6e4f72809625702c136a99a071bd910a4446f5",
       "failedVerifies": 0,
       "delivery": {
         "mode": "pr",
-        "branch": "fix/f267-one-chain-whose-rpc-hosts-are-down-no-lo",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F268",
-      "type": "fix",
-      "behavior": "Each RPC role keeps a host that works: Arc's working hosts go to different roles, and a host refusing us rests at once",
-      "acceptance": [
-        "packages/contracts/chains.json lists Arc testnet's public RPCs dRPC, rpc.testnet.arc.io, QuickNode, Blockdaemon: with Infura keys the second role is dRPC and QuickNode, and Blockdaemon (Brotli to Go everywhere) is primary beside Infura (D-15); the Arc canary in .env.example uses dRPC and QuickNode instead of Blockdaemon",
-        "An endpoint that answers HTTP 401, 403 or 404, or an answer that is not JSON-RPC, rests RestMax at once instead of RestBase, since that doesn't heal in seconds; timeouts, 429 and 5xx keep the growing rest",
-        "docs/backend/architecture.md says the list order decides the roles, each role needs a host that answers, and that from regions Cloudflare blocks Arc needs Infura keys",
-        "unit passes"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "unit"
-      ],
-      "refs": [
-        "D-15",
-        "R-33"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-10-22 review fail by reviewer: Code is right: roles stay host-disjoint with and without Infura keys; only 401/403/404 and non-JSON answers rest 5 min (check, call and batch all go through post); no key reaches errors or logs; the new test fails on main's pool.go and passes with -race. Fails on docs: the two added architecture.md sentences are 28 and 45 words (D-84). 'dRPC serves the second role and Infura the primary' holds only with INFURA_API_KEYS: without keys the second role is rpc.testnet.arc.io + QuickNode, which refuse from here, so Arc can't start keyless, against the paragraph's 'so it runs without Infura keys'; '(the chain's own RPC, then publicnode or dRPC)' no longer fits Arc.",
-        "2026-10-22 review pass by reviewer: Arc roles verified from chains.json: with keys primary Infura+arc.io+Blockdaemon, second dRPC+QuickNode; keyless primary dRPC+QuickNode, second arc.io+Blockdaemon; hosts never shared (D-15). Only 401/403/404 and non-JSON-RPC answers rest RestMax (check, call and batch all pass through post), no key in errors or logs; TestRefusingEndpointRestsLong fails all 4 cases on main's pool.go, chain tests pass with -race; docs match the code with and without keys, added sentences 10-25 words. Nits: 'which it can't read' has an unclear 'it'; an empty or HTML 200 body now also rests 2.5-5 min."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-22T15:42:14Z",
-        "checks": [
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 81.5,
-            "log": "docs/runs/F268-20261022T154214Z-unit.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.2,
-            "log": "docs/runs/F268-20261022T154214Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F268-20261022T154214Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": "docs/runs/F268-20261022T154214Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F268-20261022T154214Z-typecheck.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.2,
-            "log": "docs/runs/F268-20261022T154214Z-build.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 220.3,
-            "log": "docs/runs/F268-20261022T154214Z-e2e.log"
-          }
-        ],
-        "taskHash": "9d6b21d380313e5a",
-        "filesHash": "4a0496bc6b9fb9d1",
-        "proof": {
-          "1": "unit: chains.json lists Arc dRPC, rpc.testnet.arc.io, QuickNode, Blockdaemon; with Infura first the roles are primary Infura, rpc.testnet.arc.io, Blockdaemon and second dRPC, QuickNode (chain.NewRPCs alternates hosts in list order); TestEveryChainListsTwoPublicHosts passes; .env.example's Arc canary is dRPC and QuickNode",
-          "2": "unit: chain TestRefusingEndpointRestsLong: HTTP 401, 403, 404 and a Brotli answer rest at least half of RestMax after one failure and the call moves on; all four failed on main's pool; TestFailingEndpointRestsThenComesBack (429, 503, -32005, timeout) keeps the short rest",
-          "3": "unit: architecture.md Running the loop: list order decides the roles, each role needs a host that answers, Blockdaemon answers Go in Brotli, from Cloudflare-blocked regions Arc needs Infura keys; 5-minute rest for refusals",
-          "4": "unit: passes"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Arc roles verified from chains.json: with keys primary Infura+arc.io+Blockdaemon, second dRPC+QuickNode; keyless primary dRPC+QuickNode, second arc.io+Blockdaemon; hosts never shared (D-15). Only 401/403/404 and non-JSON-RPC answers rest RestMax (check, call and batch all pass through post), no key in errors or logs; TestRefusingEndpointRestsLong fails all 4 cases on main's pool.go, chain tests pass with -race; docs match the code with and without keys, added sentences 10-25 words. Nits: 'which it can't read' has an unclear 'it'; an empty or HTML 200 body now also rests 2.5-5 min.",
-          "at": "2026-10-22T15:51:16Z",
-          "filesHash": "4a0496bc6b9fb9d1"
-        },
-        "commit": "a1f4fda",
-        "doneAt": "2026-10-22T15:51:40Z"
-      },
-      "branch": "fix/f268-each-rpc-role-keeps-a-host-that-works-ar",
-      "baseCommit": "3f93565375cf06f29aa6750519342ffd5c1d39a6",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f268-each-rpc-role-keeps-a-host-that-works-ar",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F269",
-      "type": "fix",
-      "behavior": "A host whose endpoints hang no longer holds its RPC role: when one endpoint of a host times out or can't connect, the whole host rests, so calls reach the role's next host",
-      "acceptance": [
-        "When an endpoint times out or fails to connect, every endpoint of its host rests with it (the same rest and failure count), so a call reaches the role's next host after one AttemptTimeout instead of cycling through the host's other keys",
-        "A failure of one key (HTTP 401 or a rate limit) still rests only that key",
-        "Tests: three hanging endpoints of one host in front of a working host give the answer from the working host within about one AttemptTimeout; a startup with two enabled chains skips the unreachable one and still checks the other; no factory code on the first RPC stops even when the second shows code",
-        "docs/backend/architecture.md: the startup intro no longer says every failed check stops the process, and Running the loop says a host that hangs rests as a whole; unit passes"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "unit"
-      ],
-      "refs": [
-        "D-15"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-10-22 review fail by reviewer: Code and tests are correct: host-wide rest only for unanswered() errors, roles never share a host, TestHangingHostRestsWhole fails on the old pool (~910 ms) and passes at ~305 ms, race tests pass. Blocking: the added sentence in docs/backend/architecture.md Running the loop ('No answer in time or a broken connection rests every endpoint of that host together: ...') is 26 words, over D-84's 25; 'broken connection' also undersells refused, DNS and TLS failures. Suggested: 'No answer in time or a connection error rests every endpoint of that host: its other keys would each hang a call the same way.' (25 words).",
-        "2026-10-22 review pass by reviewer: Code, tests and docs match the task: only unanswered() errors (timeout, connection, body read) rest the whole host with the same rest and failure count, key failures (429, 401/403/404, not JSON-RPC) stay per key, roles never share a host; TestHangingHostRestsWhole fails on the old pool.go (913 ms) and passes at ~370 ms, chain and address tests pass with -race; the edited doc sentences are 24 and 25 words and match the code. Nits, not blocking: the last commit re-wrapped one unchanged line in Running the loop, leaving a 27-char stub 'by host and position, never'; 'would each hang a call' fits timeouts better than refused or DNS errors, which fail fast."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-22T17:53:30Z",
-        "checks": [
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 74.5,
-            "log": "docs/runs/F269-20261022T175330Z-unit.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.0,
-            "log": "docs/runs/F269-20261022T175330Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F269-20261022T175330Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.5,
-            "log": "docs/runs/F269-20261022T175330Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F269-20261022T175330Z-typecheck.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.8,
-            "log": "docs/runs/F269-20261022T175330Z-build.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 227.5,
-            "log": "docs/runs/F269-20261022T175330Z-e2e.log"
-          }
-        ],
-        "taskHash": "ccd2273a8b084d88",
-        "filesHash": "88f6c3e7bea9c403",
-        "proof": {
-          "1": "unit: chain TestHangingHostRestsWhole: three hanging endpoints of one host in front of a working host; the answer came from the working host within 2 attempts and all three rest with failures 1; on the old pool it took 1.21 s (four attempts of 300 ms) and failed",
-          "2": "unit: TestFailedKeyMovesToTheNextKeyOnItsHost and TestRefusingEndpointRestsLong pass: a key's own failure rests only that key",
-          "3": "unit: TestCheckEnabled 'an unreachable chain skips only itself' (chain 2 down is skipped, the anvil chain still checked); TestFactoryDeployed: no code on the first client stops even when the second shows code",
-          "4": "unit: architecture.md startup intro says a setup mistake stops and an unreachable chain is skipped; Running the loop: no answer in time or a connection error rests every endpoint of that host (25 words); unit passes"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Code, tests and docs match the task: only unanswered() errors (timeout, connection, body read) rest the whole host with the same rest and failure count, key failures (429, 401/403/404, not JSON-RPC) stay per key, roles never share a host; TestHangingHostRestsWhole fails on the old pool.go (913 ms) and passes at ~370 ms, chain and address tests pass with -race; the edited doc sentences are 24 and 25 words and match the code. Nits, not blocking: the last commit re-wrapped one unchanged line in Running the loop, leaving a 27-char stub 'by host and position, never'; 'would each hang a call' fits timeouts better than refused or DNS errors, which fail fast.",
-          "at": "2026-10-22T18:03:04Z",
-          "filesHash": "88f6c3e7bea9c403"
-        },
-        "commit": "08d31c0",
-        "doneAt": "2026-10-22T18:03:25Z"
-      },
-      "branch": "fix/f269-a-host-whose-endpoints-hang-no-longer-ho",
-      "baseCommit": "edfad3ae1aa69125f20e02239de2684215cf8f3b",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f269-a-host-whose-endpoints-hang-no-longer-ho",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F270",
-      "type": "fix",
-      "behavior": "A payer-chooses invoice doesn't close before every option chain was read past its close, so a paid one never shows expired",
-      "acceptance": [
-        "While no option is chosen, the main row of a payer-chooses invoice expires only after every other enabled option chain was read past expires_at, and waits for the R-119 choice when any option has money; so an on-time payment on another option is always recorded and chosen first",
-        "The pay and owner pages (ClosedSQL, R-77) follow the same rule, so they don't show expired while that wait lasts",
-        "The choice query uses an index (id = $1 OR main_id = $1), not coalesce(main_id, id) = $1, since it runs for more rows",
-        "Tests cover both orders: the payment recorded before the main row is processed, and the main chain read past the close before the option chain records an on-time payment; neither paid invoice gets invoice.expired in its history; unit passes"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "unit"
-      ],
-      "refs": [
-        "R-119",
-        "R-77",
-        "R-123"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-10-22 start from the patch kept from F266's review round: TestMainRowWaitsForTheChoiceBeforeExpiring and the newOptionSim helper in options_test.go cover the first order",
-        "2026-10-22 test recipe (sim, main on chain 1 and one option on chain 2, both close at 5000): order A: scanned(1,4800), option paid at 4900, scanned(2,4950), process(option) waits, scanned(1,5100), process(main), process(option); order B: scanned(2,4800), scanned(1,5100), process(main), then option paid at 4900, scanned(2,5100), process(option). Both: option paid, history [payer.option_chosen, invoice.paid, invoice.settlement_queued]",
-        "2026-10-22 review fail by subagent: Ledger and ClosedSQL code is correct (the 6 packages pass with -race; the new queries use the id/main_id indexes), but the first fix, every row running the R-119 choice, is untested: with 'if chosen == nil && anyTransfer' put back, every ledger test still passes, because in TestMainRowWaitsForTheChoiceBeforeExpiring chain 2 is read only to 4950, so the expiry gate alone keeps the main row open; with o.scanned(2, 5100) that test fails on the revert (main gets invoice.expired) and passes on 617acdd. Also fix: dropping 'invoices.chosen_id IS NULL AND' from ClosedSQL fails no test (add an after-the-choice check); the old R-119 test comment is left above the optionSim type (options_test.go:149-152); money-safety.md's accepted risk and openapi Invoice.closed don't say a stopped option chain now also holds expiry of unpaid invoices; and R-119's 'no page calls it expired while any option holds a payment made on time' is wrong for a partial on-time payment.",
-        "2026-10-22 review pass by reviewer: Ledger choice-for-every-row, close gate and ClosedSQL are correct: no money left unbooked or misbooked, choice set once, late money held, superseded rows and expired partials unchanged, lock order unchanged, new queries use id/main_id indexes (EXPLAIN); each mutant (anyTransfer guard, close gate, chosen_id IS NULL in ClosedSQL) fails a test; the 5 packages pass with -race. Minor, non-blocking: openapi Invoice.closed still says paymentStatus changes once the chain is final past expiry (before a choice it also waits for the other option chains), and two new process.go comment sentences run over 25 words."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-22T18:24:42Z",
-        "checks": [
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 90.2,
-            "log": "docs/runs/F270-20261022T182442Z-unit.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.0,
-            "log": "docs/runs/F270-20261022T182442Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F270-20261022T182442Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": "docs/runs/F270-20261022T182442Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F270-20261022T182442Z-typecheck.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.8,
-            "log": "docs/runs/F270-20261022T182442Z-build.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 250.8,
-            "log": "docs/runs/F270-20261022T182442Z-e2e.log"
-          }
-        ],
-        "taskHash": "ceeef1654b9939f4",
-        "filesHash": "d15d53c6c0fc30fa",
-        "proof": {
-          "1": "unit: ledger TestInvoiceClosesOnlyOnceEveryOptionChainIsReadPastIt: chain 1 read past the close, chain 2 only to 4800: the main row stays open; the payment at 4900 is then chosen and paid (it expired on the old code)",
-          "2": "unit: invoice TestClosedCountsEveryOptionBeforeTheChoice: nothing paid reads closed; the full amount on time on the second option before the choice reads open (closed on the old ClosedSQL); once the unpaid main row is chosen it reads closed (it read open with chosen_id IS NULL dropped); httpapi TestClosedCheckoutReadsExpired unchanged",
-          "3": "unit: the choice query reads (o.id = $1 OR o.main_id = $1) and (i.id = $1 OR i.main_id = $1); EXPLAIN in review: BitmapOr on the primary key and invoices_main",
-          "4": "unit: TestMainRowWaitsForTheChoiceBeforeExpiring with the option's chain read to 5100 fails with the choice run only on rows with money, and TestInvoiceClosesOnlyOnceEveryOptionChainIsReadPastIt fails without the close gate; history [payer.option_chosen, invoice.paid, invoice.settlement_queued]; unit passes"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Ledger choice-for-every-row, close gate and ClosedSQL are correct: no money left unbooked or misbooked, choice set once, late money held, superseded rows and expired partials unchanged, lock order unchanged, new queries use id/main_id indexes (EXPLAIN); each mutant (anyTransfer guard, close gate, chosen_id IS NULL in ClosedSQL) fails a test; the 5 packages pass with -race. Minor, non-blocking: openapi Invoice.closed still says paymentStatus changes once the chain is final past expiry (before a choice it also waits for the other option chains), and two new process.go comment sentences run over 25 words.",
-          "at": "2026-10-22T18:39:41Z",
-          "filesHash": "d15d53c6c0fc30fa"
-        },
-        "commit": "57e719b",
-        "doneAt": "2026-10-22T18:40:08Z"
-      },
-      "branch": "fix/f270-a-payer-chooses-invoice-doesn-t-close-be",
-      "baseCommit": "75ea7add4049513c3153f82027b43622b4b75908",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f270-a-payer-chooses-invoice-doesn-t-close-be",
+        "branch": "chore/f271-comments-say-only-what-the-code-can-t-ag",
         "base": "main"
       }
     }

@@ -177,12 +177,11 @@ func (p *pool) done(e *endpoint, failure error) {
 	e.failures++
 	n := e.failures
 	if errors.As(failure, new(lasting)) {
-		n = math.MaxInt // it won't heal in seconds: rest RestMax at once
+		n = math.MaxInt
 	}
 	rest := restFor(n, rand.Float64())
 	e.restUntil = time.Now().Add(rest)
 	if errors.As(failure, new(hostDown)) {
-		// The host is down, not this key: its other keys would each hang a call the same way.
 		for _, other := range p.endpoints {
 			if other.host == e.host && other.restUntil.Before(e.restUntil) {
 				other.failures, other.restUntil = max(other.failures, e.failures), e.restUntil
@@ -302,7 +301,7 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 	}
 	if reason := outage(raw); reason != "" {
 		err := fmt.Errorf("%s: %s", e.name, reason)
-		if reason == notJSONRPC { // as Blockdaemon's Arc RPC answers in Brotli whatever the request accepts
+		if reason == notJSONRPC { // a host that answers in a form we can't read keeps doing so
 			return res, lasting{err}
 		}
 		return res, err
@@ -310,14 +309,13 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 	return res, nil
 }
 
-// lasting is a failure that doesn't heal in seconds, so its endpoint rests RestMax at once instead of coming back
-// after RestBase: each try of it would delay a call.
+// lasting is a failure that doesn't heal in seconds: its endpoint rests RestMax at once.
 type lasting struct{ error }
 
 const notJSONRPC = "answer is not JSON-RPC"
 
 // unanswered describes a request without an answer, leaving out the URL: net/http puts it, Infura key included, in
-// its errors. No answer is the host's failure, not its key's.
+// its errors.
 func (p *pool) unanswered(e *endpoint, err error) error {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return hostDown{fmt.Errorf("%s: no answer in time: %w", e.name, context.DeadlineExceeded)}

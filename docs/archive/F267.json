@@ -1,0 +1,111 @@
+{
+  "id": "F267",
+  "type": "fix",
+  "behavior": "One chain whose RPC hosts are down no longer stops the api, worker and signer: that chain waits until two hosts answer again, and the other chains keep working",
+  "acceptance": [
+    "When an enabled chain's RPC hosts don't answer at startup (fewer than two answer), the api, worker and signer log that chain as unavailable and start, as they already keep running through an outage; nothing is decided paid or settled without the second RPC (D-15), as before. Both roles are asked at once, so a role is checked even when the other is down",
+    "A mistake in the chain list or on chain still stops them: a chain missing from the list, a chain listing one host, a role whose hosts all serve another chain, no factory code, or an executor without gas",
+    "The startup factory check (address.FactoryDeployed) and the signer's gas check (settlement.CheckGas) ask the second RPC when the primary fails, instead of stopping on the primary's error",
+    "unit passes"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit"
+  ],
+  "refs": [
+    "D-15",
+    "D-38"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [
+    "2026-10-22 review fail by reviewer: Accept 2 broken: a host on another chain no longer stops startup. When every host of a role serves another chain, the pool returns 'no second RPC host serves this chain', RPCs.check wraps it in ErrUnavailable, and CheckEnabled logs 'chain unavailable' and returns nil (reproduced with an overlay test: Public [anvil, host answering chainId 0x1] -> nil). Also: checkFeeToken marks ledger.ErrNoToken and wrong-length balanceOf answers as unavailable, and no test covers the wrong-chain case.",
+    "2026-10-22 blocked: verify's live e2e times out on balances: Arc's second-role hosts (rpc.testnet.arc.io, Blockdaemon) are both broken from here; F268 fixes the roles and rests first",
+    "2026-10-22 review fail by reviewer: Accept 2 breaks when the primary is unreachable: RPCs.check skips the second role after a primary error, so a second role whose only host serves another chain is logged 'chain unavailable at startup' and the process starts (reproduced with a go test -overlay: Public [503 proxy, host answering chainId 0x1] -> nil); probe the second role even when the primary fails and add that test case. Also, a chain skipped at startup never gets the api factory check or the signer gas check, but architecture.md's enable steps ('restart ... so their startup checks cover it') and D-71 do not say that this warning means those checks did not run. The rest holds: D-15 is unchanged (runtime RPCs are built per round, paid and settled only through Second), no key in the warning or errors, the new TestCheckEnabled case fails on origin/main, and the edited doc sentences are at most 25 words.",
+    "2026-10-22 review fail by reviewer: settlement.CheckGas moves to the next RPC on any error, a shortfall included, so a primary that reports the executor below MinGas is overridden by a second that shows enough (reproduced via an overlay test: real primary at 1 wei plus a Stale proxy returning 1 ETH for eth_getBalance gives nil). This goes past accept 3 (ask the second only when the primary's read fails), weakens accept 2 (an executor without gas stops) and differs from FactoryDeployed, which stops on the first definite 'no code'; when the second then errors, its read error also replaces the 'fund it' message. Fix: continue only on read errors, stop on the first shortfall, and add that case to TestCheckGas. The rest holds: both roles run in parallel without races, the new TestCheckEnabled case fails on the previous check.go, factory/gas tests fail on primary-only code, no key in the warning, every new doc sentence is 25 words or fewer.",
+    "2026-10-22 review pass by reviewer: Pass: startup skips a chain only when both roles, asked at once, fail while each still has a host not found on another chain; every listed mistake stops; FactoryDeployed and CheckGas go to the second RPC only on a failed read, both shortfall paths wrap errFundIt, no key reaches the warning or errors, and chain/address/settlement tests pass with -race. Low gaps: TestFactoryDeployed does not guard a first-RPC 'no code' against a second that shows code (an overlay mutant passes), the Tempo shortfall and multi-chain skip have no test, and architecture.md line 52 still says every failed check stops."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-22T16:23:08Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 77.8,
+        "log": "docs/runs/F267-20261022T162308Z-unit.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.3,
+        "log": "docs/runs/F267-20261022T162308Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F267-20261022T162308Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F267-20261022T162308Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F267-20261022T162308Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.8,
+        "log": "docs/runs/F267-20261022T162308Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 219.1,
+        "log": "docs/runs/F267-20261022T162308Z-e2e.log"
+      }
+    ],
+    "taskHash": "a7f8b5c1cd6654d3",
+    "filesHash": "434c735aa8534fd9",
+    "proof": {
+      "1": "unit: chain TestCheckEnabled: a chain whose second host is down is logged as unavailable and skipped (the check before F267 stopped on it); both roles are asked at once",
+      "2": "unit: TestCheckEnabled stops on a chain missing from the list, one host, a second host on another chain, the primary down with the second on another chain, and a failing further check; TestFactoryDeployed stops without factory code; TestCheckGas stops on a shortfall, also when a lagging second RPC shows more (the reviewed version passed that; this case failed there)",
+      "3": "unit: TestFactoryDeployed and TestCheckGas: a first RPC answering -32603 Internal error (as Infura did) gives way to the second, which passes; both failing fails",
+      "4": "unit: passes"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Pass: startup skips a chain only when both roles, asked at once, fail while each still has a host not found on another chain; every listed mistake stops; FactoryDeployed and CheckGas go to the second RPC only on a failed read, both shortfall paths wrap errFundIt, no key reaches the warning or errors, and chain/address/settlement tests pass with -race. Low gaps: TestFactoryDeployed does not guard a first-RPC 'no code' against a second that shows code (an overlay mutant passes), the Tempo shortfall and multi-chain skip have no test, and architecture.md line 52 still says every failed check stops.",
+      "at": "2026-10-22T16:33:26Z",
+      "filesHash": "434c735aa8534fd9"
+    },
+    "commit": "f3eb18b",
+    "doneAt": "2026-10-22T16:33:59Z"
+  },
+  "branch": "fix/f267-one-chain-whose-rpc-hosts-are-down-no-lo",
+  "baseCommit": "3f93565375cf06f29aa6750519342ffd5c1d39a6",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f267-one-chain-whose-rpc-hosts-are-down-no-lo",
+    "base": "main"
+  }
+}

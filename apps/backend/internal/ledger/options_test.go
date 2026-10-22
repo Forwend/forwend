@@ -82,8 +82,7 @@ func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 		t.Fatalf("settlement intent for %q (%v), want %s", settles, err, other)
 	}
 
-	// The history follows the chosen option; the other one only adds the money held on it, also once it closes at
-	// expiry (R-123). The two options run in either order.
+	// Past expiry too: the option not chosen only adds the money held on it.
 	e.anvil.Wait(4000)
 	e.anvil.Mine(3)
 	e.run(t)
@@ -95,14 +94,13 @@ func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 		"invoice.settlement_queued by system",
 		fmt.Sprintf(`invoice.held by system {"amount": "5000000", "option": "%s"}`, main),
 	}
-	slices.Sort(got)
+	slices.Sort(got) // the two options run in either order
 	slices.Sort(history)
 	if !slices.Equal(got, history) {
 		t.Fatalf("history\n got %q\nwant %q", got, history)
 	}
 }
 
-// An unpaid invoice with several options expires once in its history, not once per option (R-123).
 func TestUnpaidOptionsExpireOnce(t *testing.T) {
 	e := newChainEnv(t)
 	main, _ := e.invoice(t, 1, 5000000, e.anvil.Now()+1000)
@@ -193,13 +191,11 @@ func (o optionSim) scanned(chainID, time int64) {
 	o.exec("UPDATE chain_cursors SET last_scanned_time = $2, last_finalized_time = $2 WHERE chain_id = $1", chainID, time)
 }
 
-// A payment on another option keeps the whole invoice open until the choice is made (R-119): the main row, with no
-// money of its own, does not expire meanwhile, so a paid invoice never shows expired, on screen or in its history.
 func TestMainRowWaitsForTheChoiceBeforeExpiring(t *testing.T) {
 	o := newOptionSim(t)
 	o.scanned(1, 4800)
 	o.pay(o.option, 2, o.full, 5000000, 4900) // just before the checkout closes at 5000
-	o.scanned(2, 5100)                        // the option's chain is read past the close too: only the choice keeps the main row open
+	o.scanned(2, 5100)                        // past the close too: only the pending choice keeps the main row open
 	o.process(o.option)                       // chain 1 was read only to 4800: no choice yet
 	o.scanned(1, 5100)                        // read past the close, and past the payment
 	o.process(o.main)
@@ -214,8 +210,6 @@ func TestMainRowWaitsForTheChoiceBeforeExpiring(t *testing.T) {
 	}
 }
 
-// The other order: the main chain is read past the close before the option's chain records the payment made before
-// it. The invoice closes only once every option chain was read past the close, so that payment is chosen and paid.
 func TestInvoiceClosesOnlyOnceEveryOptionChainIsReadPastIt(t *testing.T) {
 	o := newOptionSim(t)
 	o.scanned(2, 4800)
@@ -238,8 +232,6 @@ func TestInvoiceClosesOnlyOnceEveryOptionChainIsReadPastIt(t *testing.T) {
 	}
 }
 
-// R-119: chain 1 is read first and has dust at 1500 while chain 2 was read only to 1000; the full payment on chain 2,
-// made at 1400, is chosen, and the dust is held.
 func TestOptionWaitsForEveryChainBeforeChoosing(t *testing.T) {
 	o := newOptionSim(t)
 	s, main, dust, option, full := o.sim, o.main, o.dust, o.option, o.full

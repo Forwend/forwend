@@ -1,0 +1,111 @@
+{
+  "id": "F270",
+  "type": "fix",
+  "behavior": "A payer-chooses invoice doesn't close before every option chain was read past its close, so a paid one never shows expired",
+  "acceptance": [
+    "While no option is chosen, the main row of a payer-chooses invoice expires only after every other enabled option chain was read past expires_at, and waits for the R-119 choice when any option has money; so an on-time payment on another option is always recorded and chosen first",
+    "The pay and owner pages (ClosedSQL, R-77) follow the same rule, so they don't show expired while that wait lasts",
+    "The choice query uses an index (id = $1 OR main_id = $1), not coalesce(main_id, id) = $1, since it runs for more rows",
+    "Tests cover both orders: the payment recorded before the main row is processed, and the main chain read past the close before the option chain records an on-time payment; neither paid invoice gets invoice.expired in its history; unit passes"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit"
+  ],
+  "refs": [
+    "R-119",
+    "R-77",
+    "R-123"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [
+    "2026-10-22 start from the patch kept from F266's review round: TestMainRowWaitsForTheChoiceBeforeExpiring and the newOptionSim helper in options_test.go cover the first order",
+    "2026-10-22 test recipe (sim, main on chain 1 and one option on chain 2, both close at 5000): order A: scanned(1,4800), option paid at 4900, scanned(2,4950), process(option) waits, scanned(1,5100), process(main), process(option); order B: scanned(2,4800), scanned(1,5100), process(main), then option paid at 4900, scanned(2,5100), process(option). Both: option paid, history [payer.option_chosen, invoice.paid, invoice.settlement_queued]",
+    "2026-10-22 review fail by subagent: Ledger and ClosedSQL code is correct (the 6 packages pass with -race; the new queries use the id/main_id indexes), but the first fix, every row running the R-119 choice, is untested: with 'if chosen == nil && anyTransfer' put back, every ledger test still passes, because in TestMainRowWaitsForTheChoiceBeforeExpiring chain 2 is read only to 4950, so the expiry gate alone keeps the main row open; with o.scanned(2, 5100) that test fails on the revert (main gets invoice.expired) and passes on 617acdd. Also fix: dropping 'invoices.chosen_id IS NULL AND' from ClosedSQL fails no test (add an after-the-choice check); the old R-119 test comment is left above the optionSim type (options_test.go:149-152); money-safety.md's accepted risk and openapi Invoice.closed don't say a stopped option chain now also holds expiry of unpaid invoices; and R-119's 'no page calls it expired while any option holds a payment made on time' is wrong for a partial on-time payment.",
+    "2026-10-22 review pass by reviewer: Ledger choice-for-every-row, close gate and ClosedSQL are correct: no money left unbooked or misbooked, choice set once, late money held, superseded rows and expired partials unchanged, lock order unchanged, new queries use id/main_id indexes (EXPLAIN); each mutant (anyTransfer guard, close gate, chosen_id IS NULL in ClosedSQL) fails a test; the 5 packages pass with -race. Minor, non-blocking: openapi Invoice.closed still says paymentStatus changes once the chain is final past expiry (before a choice it also waits for the other option chains), and two new process.go comment sentences run over 25 words."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-22T18:24:42Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 90.2,
+        "log": "docs/runs/F270-20261022T182442Z-unit.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.0,
+        "log": "docs/runs/F270-20261022T182442Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F270-20261022T182442Z-docs-check.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F270-20261022T182442Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F270-20261022T182442Z-typecheck.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.8,
+        "log": "docs/runs/F270-20261022T182442Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 250.8,
+        "log": "docs/runs/F270-20261022T182442Z-e2e.log"
+      }
+    ],
+    "taskHash": "ceeef1654b9939f4",
+    "filesHash": "d15d53c6c0fc30fa",
+    "proof": {
+      "1": "unit: ledger TestInvoiceClosesOnlyOnceEveryOptionChainIsReadPastIt: chain 1 read past the close, chain 2 only to 4800: the main row stays open; the payment at 4900 is then chosen and paid (it expired on the old code)",
+      "2": "unit: invoice TestClosedCountsEveryOptionBeforeTheChoice: nothing paid reads closed; the full amount on time on the second option before the choice reads open (closed on the old ClosedSQL); once the unpaid main row is chosen it reads closed (it read open with chosen_id IS NULL dropped); httpapi TestClosedCheckoutReadsExpired unchanged",
+      "3": "unit: the choice query reads (o.id = $1 OR o.main_id = $1) and (i.id = $1 OR i.main_id = $1); EXPLAIN in review: BitmapOr on the primary key and invoices_main",
+      "4": "unit: TestMainRowWaitsForTheChoiceBeforeExpiring with the option's chain read to 5100 fails with the choice run only on rows with money, and TestInvoiceClosesOnlyOnceEveryOptionChainIsReadPastIt fails without the close gate; history [payer.option_chosen, invoice.paid, invoice.settlement_queued]; unit passes"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Ledger choice-for-every-row, close gate and ClosedSQL are correct: no money left unbooked or misbooked, choice set once, late money held, superseded rows and expired partials unchanged, lock order unchanged, new queries use id/main_id indexes (EXPLAIN); each mutant (anyTransfer guard, close gate, chosen_id IS NULL in ClosedSQL) fails a test; the 5 packages pass with -race. Minor, non-blocking: openapi Invoice.closed still says paymentStatus changes once the chain is final past expiry (before a choice it also waits for the other option chains), and two new process.go comment sentences run over 25 words.",
+      "at": "2026-10-22T18:39:41Z",
+      "filesHash": "d15d53c6c0fc30fa"
+    },
+    "commit": "57e719b",
+    "doneAt": "2026-10-22T18:40:08Z"
+  },
+  "branch": "fix/f270-a-payer-chooses-invoice-doesn-t-close-be",
+  "baseCommit": "75ea7add4049513c3153f82027b43622b4b75908",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "fix/f270-a-payer-chooses-invoice-doesn-t-close-be",
+    "base": "main"
+  }
+}

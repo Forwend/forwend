@@ -57,7 +57,7 @@ func (s *Service) accept(ctx context.Context, j Job, name, email string) (Job, e
 		err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error { return accept(ctx, tx) })
 	} else {
 		r := s.paymentRequest(j, deposit)
-		r.By = history.Payer // the client's acceptance makes the deposit invoice
+		r.By = history.Payer
 		r.After = func(ctx context.Context, tx pgx.Tx, invoiceID string) error {
 			if err := accept(ctx, tx); err != nil {
 				return err

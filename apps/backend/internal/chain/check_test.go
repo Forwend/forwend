@@ -17,7 +17,7 @@ import (
 // The startup check passes an enabled chain whose primary and second answer from different hosts, then runs the
 // further check on it. It stops on a mistake: an enabled chain missing from the chain list, one listing a single host,
 // a role whose host serves another chain, or a further check that fails. A chain whose hosts don't answer is logged
-// and skipped: the process starts and rides out the outage (D-71). A disabled chain is not checked.
+// and skipped (D-71). A disabled chain is not checked.
 func TestCheckEnabled(t *testing.T) {
 	ctx := context.Background()
 	a := chaintest.Start(t)
@@ -43,9 +43,9 @@ func TestCheckEnabled(t *testing.T) {
 	defer other.Close()
 	for name, tc := range map[string]struct {
 		public  []string
-		further error  // what the further check returns
+		further error
 		want    string // the error that stops the process; "" when it starts
-		checked bool   // the further check ran
+		checked bool
 	}{
 		"working pair":     {public: pair, checked: true},
 		"not listed":       {want: "chain 31337 is enabled in the database but not in the chain list"},

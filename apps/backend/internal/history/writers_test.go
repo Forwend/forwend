@@ -10,8 +10,6 @@ import (
 	"testing"
 )
 
-// Every Go file that writes the invoices table calls history.Add at least once per write (D-92): a new writer without
-// it fails here.
 func TestInvoiceWritersKeepHistory(t *testing.T) {
 	writes := regexp.MustCompile(`(?i)\b(?:INSERT\s+INTO|UPDATE(?:\s+ONLY)?)\s+(?:"?public"?\.)?"?invoices"?(?:\s|\(|$)` +
 		`|Identifier\{"invoices"\}`)

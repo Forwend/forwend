@@ -9,8 +9,6 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/history/historytest"
 )
 
-// Making, the payer's email and canceling each leave one history row, by who did them; the same email again changes
-// nothing and leaves none (R-123).
 func TestInvoiceChangesKeepHistory(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)

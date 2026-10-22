@@ -39,8 +39,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	// Startup checks: a setup mistake stops the worker with a message naming it; a chain whose RPCs don't answer is
-	// logged and skipped (D-71).
+	// Startup checks: a setup mistake stops the worker with a message naming it.
 	pool, err := database.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err

@@ -43,7 +43,6 @@ func TestCheckGas(t *testing.T) {
 		t.Fatalf("one wei short: got %v", err)
 	}
 	t.Log(err)
-	// A shortfall is an answer, not a failed read: a lagging second RPC that shows more does not override it.
 	rich := a.Proxy()
 	rich.Stale(func(c chaintest.Call) json.RawMessage {
 		if c.Method == "eth_getBalance" {
@@ -63,7 +62,6 @@ func TestCheckGas(t *testing.T) {
 	if err := CheckGas(ctx, chaintest.ChainID, executor, client); err != nil {
 		t.Fatalf("funded: %v", err)
 	}
-	// A read the first RPC fails, as Infura answered eth_getCode on 2026-10-22, is asked of the next one.
 	broken := a.Proxy()
 	broken.Fail(func(chaintest.Call) chaintest.Fault { return chaintest.InternalError })
 	failing, err := ethclient.Dial(broken.URL)

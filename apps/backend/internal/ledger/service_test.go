@@ -138,7 +138,6 @@ func TestDepositsMoveThePaymentStatus(t *testing.T) {
 	e.run(t)
 	want(t, "run again", e.state(t, id), state{payment: Paid, refund: "held", receiver: 6000000, owed: 5000000, held: 1000000})
 
-	// One history row per change, and none for the round that changed nothing (R-123).
 	history := []string{"invoice.detected by system", "invoice.partially_paid by system", "invoice.paid by system",
 		`invoice.held by system {"amount": "1000000"}`, "invoice.settlement_queued by system"}
 	if got := historytest.Events(t, e.pool, id); !reflect.DeepEqual(got, history) {
