@@ -168,6 +168,7 @@ export function dueCheckoutTarget(dueDate: string): string {
 export function dueCheckoutDate(dueDate: string, today: string): string {
   const target = dueCheckoutTarget(dueDate);
   const latest = addDays(today, EXPIRY_BOUNDS_S.max / EXPIRY_CHOICES.day - 1);
+  // biome-ignore lint/complexity/useMathMinMax: ISO date strings; Math.min would give NaN
   return target < latest ? target : latest;
 }
 
