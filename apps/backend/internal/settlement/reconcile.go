@@ -119,13 +119,20 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 			return nil, err
 		}
 	}
-	if err := client.SendTransaction(ctx, tx); err != nil && !strings.Contains(strings.ToLower(err.Error()), "known") {
+	if err := client.SendTransaction(ctx, tx); err != nil && !holds(err) {
 		return nil, fmt.Errorf("send settle: %w", err)
 	}
 	if s.stopAfter == "send" {
 		return nil, errStopped
 	}
 	return s.await(ctx, client, tx.Hash())
+}
+
+// holds is a node's answer to a transaction it already has: "already known" on most nodes, "transaction already
+// imported" on Anvil.
+func holds(err error) bool {
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "known") || strings.Contains(msg, "already imported")
 }
 
 // fillGap sends a zero-value transfer to the executor itself at nonce when nothing is pending there and no saved

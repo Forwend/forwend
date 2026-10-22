@@ -314,6 +314,7 @@ func TestRestartAfterSendingSendsNothing(t *testing.T) {
 	if err := crashing.Run(ctx); !errors.Is(err, errStopped) {
 		t.Fatalf("got %v", err)
 	}
+	e.anvil.Mine(1) // automine may not have mined the settle yet
 	if err := e.signer(t).Run(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -323,6 +324,52 @@ func TestRestartAfterSendingSendsNothing(t *testing.T) {
 	}
 	if got := e.nonce(t) - before; got != 2 {
 		t.Fatalf("executor sent %d transactions, want 2", got)
+	}
+}
+
+func TestRestartResendsAPendingSettleOnce(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, _ := e.paidInvoice(t)
+	before := e.nonce(t)
+	saving := e.signer(t)
+	saving.stopAfter = "save"
+	if err := saving.Run(ctx); !errors.Is(err, errStopped) {
+		t.Fatalf("got %v", err)
+	}
+	e.anvilCall(t, "evm_setAutomine", false)
+	crashing := e.signer(t)
+	crashing.stopAfter = "send"
+	if err := crashing.Run(ctx); !errors.Is(err, errStopped) {
+		t.Fatalf("got %v", err)
+	}
+	saved, _ := e.saved(t, id)
+	// Mined only once the restart has sent the settle again, so the node answers that send as a duplicate.
+	proxy := e.anvil.Proxy()
+	var resent bool
+	proxy.Fail(func(c chaintest.Call) chaintest.Fault {
+		switch {
+		case c.Method == "eth_sendRawTransaction":
+			resent = true
+		case c.Method == "eth_getTransactionReceipt" && resent:
+			resent = false
+			_ = e.anvil.RPC.Call(nil, "anvil_mine", "0x1")
+		}
+		return chaintest.Forward
+	})
+	if err := e.signerVia(t, proxy.URL).Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	e.anvilCall(t, "evm_setAutomine", true)
+	e.final(t, e.signer(t))
+	if status, _, _ := e.intent(t, id); status != "confirmed" || e.balance(t, wallet) != 5000000 {
+		t.Fatalf("after the restart: intent %s, recipient %d", status, e.balance(t, wallet))
+	}
+	if got := e.nonce(t) - before; got != 2 {
+		t.Fatalf("executor sent %d transactions, want 2 (deploy, the saved settle)", got)
+	}
+	if _, err := e.client.TransactionReceipt(ctx, common.HexToHash(saved)); err != nil {
+		t.Fatalf("the saved settle %s was not the one mined: %v", saved, err)
 	}
 }
 
@@ -420,6 +467,7 @@ func TestSentSettleIsFinishedEvenIfTheWalletChanged(t *testing.T) {
 	if err := crashing.Run(ctx); !errors.Is(err, errStopped) {
 		t.Fatalf("got %v", err)
 	}
+	e.anvil.Mine(1) // automine may not have mined the settle yet
 	if _, err := e.pool.Exec(ctx, "UPDATE profile_wallets SET address = '0x2222222222222222222222222222222222222223'"); err != nil {
 		t.Fatal(err)
 	}
