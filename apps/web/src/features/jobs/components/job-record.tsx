@@ -16,7 +16,7 @@ const changeEmail = (event: RecordEvent) =>
     ? (event.payment.acceptedEmail as string | null)
     : null;
 
-function describe(event: RecordEvent, job: PublicJob, acceptedEmail: string | null): string {
+function describeEvent(event: RecordEvent, job: PublicJob, acceptedEmail: string | null): string {
   const title = event.payment?.title ?? "";
   switch (event.kind) {
     case RECORD_EVENTS.created:
@@ -60,7 +60,7 @@ export function JobRecord({ job, acceptedEmail = null }: JobRecordProps) {
               {TIME.format(new Date(event.at))}
             </time>
             <span className="min-w-0 break-words text-ink">
-              {describe(event, job, acceptedEmail)}
+              {describeEvent(event, job, acceptedEmail)}
               {event.kind === RECORD_EVENTS.done && event.payment?.deliveryLink ? (
                 <>
                   {" · "}

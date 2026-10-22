@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -111,6 +112,20 @@ func (a *Anvil) DeployFactory() string {
 		a.t.Fatal(err)
 	}
 	testnet := d.Chains["base-sepolia"]
+	// Foundry locks the script's broadcast recovery file, one per chain ID, so deploys from parallel test processes
+	// take turns.
+	cache := filepath.Join(contractsDir(), "cache")
+	if err := os.MkdirAll(cache, 0o755); err != nil {
+		a.t.Fatal(err)
+	}
+	lock, err := os.OpenFile(filepath.Join(cache, "chaintest-deploy.lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	defer lock.Close()
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
+		a.t.Fatal(err)
+	}
 	out := a.runEnv([]string{"REFUND_AUTHORITY=" + testnet.RefundAuthority, "EXECUTOR=" + testnet.Executor,
 		"DEPLOYER_PRIVATE_KEY=" + Key}, "forge", "script", filepath.Join(contractsDir(), "script/Deploy.s.sol")+":Deploy",
 		"--root", contractsDir(),

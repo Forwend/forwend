@@ -1,7 +1,7 @@
 {
   "name": "forwend",
   "private": true,
-  "packageManager": "pnpm@10.26.1",
+  "packageManager": "pnpm@12.15.0",
   "engines": {
     "node": ">=26"
   },
@@ -16,16 +16,9 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
+    "@biomejs/biome": "2.6.2",
     "husky": "9.1.7",
-    "turbo": "2.11.7",
+    "turbo": "2.11.10",
     "typescript": "7.0.2"
-  },
-  "pnpm": {
-    "overrides": {
-      "ws@>=8.0.0 <8.21.0": "^8.21.0",
-      "uuid@<11.1.1": "^11.1.1",
-      "decode-uri-component@<0.5.0": "^0.5.0"
-    }
   }
 }

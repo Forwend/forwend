@@ -80,20 +80,20 @@ export function Calendar({
   const now = today();
 
   const onKeyDown = (event: KeyboardEvent) => {
-    const keys: Record<string, () => string> = {
-      ArrowLeft: () => addDays(focused, -1),
-      ArrowRight: () => addDays(focused, 1),
-      ArrowUp: () => addDays(focused, -7),
-      ArrowDown: () => addDays(focused, 7),
-      PageUp: () => addMonths(focused, event.shiftKey ? -12 : -1),
-      PageDown: () => addMonths(focused, event.shiftKey ? 12 : 1),
-      Home: () => addDays(focused, -weekday(focused)),
-      End: () => addDays(focused, 6 - weekday(focused)),
+    const targets: Record<string, string> = {
+      ArrowLeft: addDays(focused, -1),
+      ArrowRight: addDays(focused, 1),
+      ArrowUp: addDays(focused, -7),
+      ArrowDown: addDays(focused, 7),
+      PageUp: addMonths(focused, event.shiftKey ? -12 : -1),
+      PageDown: addMonths(focused, event.shiftKey ? 12 : 1),
+      Home: addDays(focused, -weekday(focused)),
+      End: addDays(focused, 6 - weekday(focused)),
     };
-    const move = keys[event.key];
-    if (move) {
+    const target = targets[event.key];
+    if (target) {
       event.preventDefault();
-      go(move());
+      go(target);
     } else if ((event.key === "Enter" || event.key === " ") && !disabled(focused)) {
       event.preventDefault();
       onChange(focused);
