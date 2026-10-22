@@ -53,20 +53,26 @@ Each binary checks what it needs before it serves, and otherwise stops with one 
 - `DATABASE_URL` answers within 10 s. The api then applies migrations. The worker and signer only read that every
   migration they embed is applied; if not, they stop and ask for the api to be started first (only the api migrates).
 - Every chain enabled in the `chains` table is in the chain list and answers through a primary and a second RPC on
-  different hosts (D-15), within 30 s per chain. A chain that can't is not skipped: the process stops, naming the chain
-  and how many of its hosts answered. Disable the chain in the database or give it a second host (with
-  `INFURA_API_KEYS` empty, only Arc Testnet lists two). The api checks too: it reads balances through the second RPC,
-  and it stops when the factory has no code on an enabled chain, since invoices there could never settle.
+  different hosts (D-15), within 30 s per chain.
+  - A mistake stops the process: a chain missing from the list, or listing one host (with `INFURA_API_KEYS` empty,
+    only Arc Testnet lists two). Disable the chain in the database or give it a second host.
+  - A chain whose RPCs don't answer is an outage, not a mistake (D-71). The process logs
+    `chain unavailable at startup` with the chain and how many of its hosts answered, and starts.
+  - The pool then rides it out as it rides out any outage: requests rest the hosts that fail and use the next one.
+    Nothing on that chain is decided paid or settled without the second RPC.
+- The api reads the factory's code through the primary, then the second RPC. No code on an enabled chain stops it,
+  since invoices there could never settle; no answer from either is an outage.
 - The signer: `EXECUTOR_PRIVATE_KEY` is a hex secp256k1 key (the error never shows it), and on every enabled chain the
   executor holds `settlement.MinGas` at the fee cap it would sign with now (twice the base fee plus the tip). `MinGas`
   is one receiver deploy (159,990 gas on Anvil) and one settle (at least `SettleGasFloor`), each plus a fifth: 342,000
   gas, 0.001026 ETH on Anvil (1 gwei base fee and tip). Below it the node would refuse the next deploy and settle. The
-  message names the chain, the executor's address and its balance in whole coins. It is a floor derived from each
-  chain's own price, not a budget: Arbitrum's L1 data cost is not in it. Tempo has no native coin and its RPC reports
-  a placeholder balance: where Tempo's fee manager precompile exists, the check reads the executor's fee token instead
-  (its choice in the fee manager, else PathUSD) and needs ceil(fee cap × `TempoMinGas` / 10^12) of its 6-decimal
-  units, since Tempo prices gas in attodollars. `TempoMinGas` is 2,262,000: Tempo charges far more for creating
-  contracts and storage, and its testnet deploy and settle used 1,305,758 and 572,845 gas.
+  message names the chain, the executor's address and its balance in whole coins. A read the RPC doesn't answer is an
+  outage: the signer starts (D-71). It is a floor derived from each chain's own price, not a budget: Arbitrum's L1
+  data cost is not in it. Tempo has no native coin and its RPC reports a placeholder balance: where Tempo's fee
+  manager precompile exists, the check reads the executor's fee token instead (its choice in the fee manager, else
+  PathUSD) and needs ceil(fee cap × `TempoMinGas` / 10^12) of its 6-decimal units, since Tempo prices gas in
+  attodollars. `TempoMinGas` is 2,262,000: Tempo charges far more for creating contracts and storage, and its testnet
+  deploy and settle used 1,305,758 and 572,845 gas.
 
 Then each logs its ready line: `api listening`, `worker ready`, `signer ready`. The checks run once; an RPC failing
 later is handled by the pool as before.

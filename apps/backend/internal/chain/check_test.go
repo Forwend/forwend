@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -13,8 +14,9 @@ import (
 )
 
 // The startup check passes an enabled chain whose primary and second answer from different hosts, then runs the
-// further check on it. It stops on an enabled chain missing from the chain list, listing one host, or whose second
-// host does not answer, naming the chain and how many hosts answered. A disabled chain is not checked.
+// further check on it. It stops on a mistake: an enabled chain missing from the chain list, one listing a single host,
+// or a further check that finds one. A chain whose hosts don't answer, or whose further check gets no answer, is
+// logged and skipped: the process starts and rides out the outage (D-71). A disabled chain is not checked.
 func TestCheckEnabled(t *testing.T) {
 	ctx := context.Background()
 	a := chaintest.Start(t)
@@ -33,14 +35,21 @@ func TestCheckEnabled(t *testing.T) {
 	}
 	down := a.Proxy()
 	down.Fail(func(chaintest.Call) chaintest.Fault { return chaintest.HTTP503 })
+	pair := []string{a.URL, localhost(a.URL)}
 	for name, tc := range map[string]struct {
-		public []string
-		want   string
+		public  []string
+		further error  // what the further check returns
+		want    string // the error that stops the process; "" when it starts
+		checked bool   // the further check ran
 	}{
-		"working pair":     {public: []string{a.URL, localhost(a.URL)}},
+		"working pair":     {public: pair, checked: true},
 		"not listed":       {want: "chain 31337 is enabled in the database but not in the chain list"},
 		"one host":         {public: []string{a.URL}, want: "chain 31337 lists 1 RPC host(s)"},
-		"second host down": {public: []string{a.URL, down.URL}, want: "chain 31337: 1 of 2 RPC hosts answered"},
+		"second host down": {public: []string{a.URL, down.URL}},
+		"further check unanswered": {public: pair, checked: true,
+			further: fmt.Errorf("chain 31337: read the factory: %w", ErrUnavailable)},
+		"further check finds a mistake": {public: pair, checked: true, further: errors.New("chain 31337: no factory at 0x1"),
+			want: "chain 31337: no factory at 0x1"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			specs := map[uint64]Spec{}
@@ -50,18 +59,14 @@ func TestCheckEnabled(t *testing.T) {
 			var checked []uint64
 			err := CheckEnabled(ctx, db, specs, nil, 1000, func(_ context.Context, id uint64, _ RPCs) error {
 				checked = append(checked, id)
-				return nil
+				return tc.further
 			})
-			if tc.want == "" {
-				if err != nil || !slices.Equal(checked, []uint64{chaintest.ChainID}) {
-					t.Fatalf("got %v, checked %v; want the anvil chain checked", err, checked)
-				}
-				return
+			if tc.want == "" && err != nil || tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+				t.Fatalf("got %v; want %q", err, tc.want)
 			}
-			if err == nil || !strings.Contains(err.Error(), tc.want) || len(checked) != 0 {
-				t.Fatalf("got %v, checked %v; want %q", err, checked, tc.want)
+			if ran := slices.Equal(checked, []uint64{chaintest.ChainID}); ran != tc.checked {
+				t.Fatalf("further check ran on %v; want it to run: %v", checked, tc.checked)
 			}
-			t.Log(err)
 		})
 	}
 

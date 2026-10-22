@@ -52,7 +52,7 @@ func run() error {
 		return err
 	}
 	err = chain.CheckEnabled(ctx, pool, specs, cfg.InfuraKeys, cfg.RPCRate, func(ctx context.Context, id uint64, r chain.RPCs) error {
-		return address.FactoryDeployed(ctx, ethclient.NewClient(r.Primary), id)
+		return address.FactoryDeployed(ctx, id, ethclient.NewClient(r.Primary), ethclient.NewClient(r.Second))
 	})
 	if err != nil {
 		return err

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 266,
+  "nextId": 268,
   "tasks": [
     {
       "id": "F263",
@@ -227,6 +227,128 @@
         "branch": "fix/f265-the-job-tests-size-their-own-database-po",
         "base": "main"
       }
+    },
+    {
+      "id": "F266",
+      "type": "feat",
+      "behavior": "Every change to an invoice is kept in its history: one append-only row per change, written in the same transaction",
+      "acceptance": [
+        "history_events is append-only (update, delete and truncate raise) and each row has the invoice, kind, actor (owner, payer or system), time and small typed data",
+        "create (owner, payer for a job deposit, system for a retainer month), cancel, payer email, option chosen, each payment status change, money held, settlement queued and settled each write one row in the transaction that makes the change; no row when nothing changed",
+        "a test fails when a non-test Go file writes the invoices table without history.Add",
+        "invoices made before get created, canceled, current status and settled rows marked backfilled",
+        "unit passes"
+      ],
+      "dependsOn": [],
+      "state": "blocked",
+      "verification": [
+        "unit"
+      ],
+      "refs": [
+        "D-92"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-22 blocked: verify's live e2e needs the api to start while Arc has under 2 answering RPC hosts; F267 fixes startup first",
+        "2026-10-22 refs R-123 and D-92 on its branch; R-123 is defined there, so main's copy cites D-92 until F266 merges"
+      ],
+      "blockedReason": "verify's live e2e needs the api to start while Arc has under 2 answering RPC hosts; F267 fixes startup first",
+      "evidence": {
+        "version": 3,
+        "status": "failed",
+        "at": "2026-10-22T13:48:35Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 99.1,
+            "log": "docs/runs/F266-20261022T134835Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F266-20261022T134835Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F266-20261022T134835Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F266-20261022T134835Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F266-20261022T134835Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.8,
+            "log": "docs/runs/F266-20261022T134835Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "failed",
+            "exit": 1,
+            "seconds": 45.8,
+            "log": "docs/runs/F266-20261022T134835Z-e2e.log"
+          }
+        ],
+        "taskHash": "c09fdc66f2f796f8",
+        "filesHash": "080f9dac2128c0b4",
+        "proof": {
+          "1": "unit: internal/database TestHistoryIsAppendOnly (update, delete, truncate and replica-mode delete raise); rows carry invoice, kind, actor, at and data typed by history.Data",
+          "2": "unit: invoice TestInvoiceChangesKeepHistory (created by owner, payer email only when it changes, canceled by owner), TestRetainerMakesEachMonthOnce (owner,system,system,system), job TestAcceptMakesTheDepositOnce (deposit by payer), ledger TestDepositsMoveThePaymentStatus (detected, partially_paid, paid, held 1000000, settlement.queued; nothing on the idle round), TestFirstOptionPaidWinsAndOthersAreHeld (follows the chosen option, no expired rows after expiry) and TestUnpaidOptionsExpireOnce (both failed on the per-option code), settlement TestSettlesAPaidInvoiceOnce (settled once with tx hash)",
+          "3": "unit: history TestInvoiceWritersKeepHistory scans apps/backend and counts writes per file; with reconcile.go's history.Add removed it failed",
+          "4": "unit: database TestHistoryForExistingInvoices: migrate to 48, open, canceled, paid+settled and expired invoices, then up: created x4, paid at its intent, canceled, settled with tx hash, expired at expiry, all backfilled; TestMigrationsRollBackAndReapply passes",
+          "5": "unit: passes"
+        }
+      },
+      "branch": "feat/f266-every-change-to-an-invoice-is-kept-in-it",
+      "baseCommit": "3f93565375cf06f29aa6750519342ffd5c1d39a6",
+      "failedVerifies": 2
+    },
+    {
+      "id": "F267",
+      "type": "fix",
+      "behavior": "One chain whose RPC hosts are down no longer stops the api, worker and signer: that chain waits until two hosts answer again, and the other chains keep working",
+      "acceptance": [
+        "When an enabled chain's RPCs don't answer at startup (fewer than two hosts answer, or a read fails), the api, worker and signer log that chain as unavailable and start, as they already keep running through an outage; nothing is decided paid or settled without the second RPC (D-15), as before",
+        "A mistake in the chain list or on chain still stops them: a chain missing from the list, a role without a host, a host on another chain, no factory code, or an executor without gas",
+        "The startup factory check (address.FactoryDeployed) asks the second RPC when the primary errors, instead of stopping on the primary's error",
+        "unit passes"
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "unit"
+      ],
+      "refs": [
+        "D-15",
+        "D-38"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null,
+      "branch": "fix/f267-one-chain-whose-rpc-hosts-are-down-no-lo",
+      "baseCommit": "3f93565375cf06f29aa6750519342ffd5c1d39a6"
     }
   ],
   "lastWrapup": {

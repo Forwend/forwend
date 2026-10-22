@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -30,7 +31,8 @@ var (
 )
 
 // CheckGas returns an error unless the executor holds MinGas at the chain's current fee cap: below that the node
-// refuses the signer's next deploy and settle. The error names the chain, the executor's address and its balance.
+// refuses the signer's next deploy and settle. The error names the chain, the executor's address and its balance. A
+// read the RPC doesn't answer is chain.ErrUnavailable: startup logs it and goes on (D-71).
 func CheckGas(ctx context.Context, client *ethclient.Client, chainID uint64, executor common.Address) error {
 	_, feeCap, err := fees(ctx, client, chainID)
 	if err != nil {
@@ -46,7 +48,7 @@ func CheckGas(ctx context.Context, client *ethclient.Client, chainID uint64, exe
 	need := new(big.Int).Mul(feeCap, big.NewInt(MinGas))
 	have, err := client.BalanceAt(ctx, executor, nil)
 	if err != nil {
-		return fmt.Errorf("chain %d: read the executor's balance: %w", chainID, err)
+		return fmt.Errorf("chain %d: %w", chainID, unanswered("read the executor's balance", err))
 	}
 	if have.Cmp(need) < 0 {
 		return fmt.Errorf("chain %d: executor %s holds %s of the native coin, below the %s that one deploy and settle "+
@@ -58,7 +60,7 @@ func CheckGas(ctx context.Context, client *ethclient.Client, chainID uint64, exe
 func feeToken(ctx context.Context, client *ethclient.Client, executor common.Address) (common.Address, error) {
 	code, err := client.CodeAt(ctx, tempoFeeManager, nil)
 	if err != nil {
-		return common.Address{}, fmt.Errorf("read the fee manager's code: %w", err)
+		return common.Address{}, unanswered("read the fee manager's code", err)
 	}
 	if len(code) == 0 {
 		return common.Address{}, nil
@@ -66,7 +68,7 @@ func feeToken(ctx context.Context, client *ethclient.Client, executor common.Add
 	data := append(append([]byte{}, userTokens...), common.LeftPadBytes(executor.Bytes(), 32)...)
 	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &tempoFeeManager, Data: data}, nil)
 	if err != nil {
-		return common.Address{}, fmt.Errorf("read the executor's fee token: %w", err)
+		return common.Address{}, unanswered("read the executor's fee token", err)
 	}
 	if len(out) != 32 {
 		return common.Address{}, fmt.Errorf("read the executor's fee token: %d-byte answer", len(out))
@@ -83,17 +85,22 @@ func checkFeeToken(ctx context.Context, client *ethclient.Client, chainID uint64
 	need := new(big.Int).Div(new(big.Int).Add(attodollars, new(big.Int).Sub(scale, big.NewInt(1))), scale)
 	block, err := client.BlockNumber(ctx)
 	if err != nil {
-		return fmt.Errorf("chain %d: read the latest block: %w", chainID, err)
+		return fmt.Errorf("chain %d: %w", chainID, unanswered("read the latest block", err))
 	}
 	have, err := ledger.BalanceAt(ctx, client, chainID, token.Hex(), executor.Hex(), block)
 	if err != nil {
-		return fmt.Errorf("chain %d: read the executor's fee token balance: %w", chainID, err)
+		return fmt.Errorf("chain %d: %w", chainID, unanswered("read the executor's fee token balance", err))
 	}
 	if have.Cmp(need) < 0 {
 		return fmt.Errorf("chain %d: executor %s holds %s of fee token %s, below the %s that one deploy and settle "+
 			"cost at the current gas price: fund it", chainID, executor.Hex(), usd(have), token.Hex(), usd(need))
 	}
 	return nil
+}
+
+// unanswered is a read the RPC didn't answer: an outage, not a mistake.
+func unanswered(read string, err error) error {
+	return fmt.Errorf("%s: %w: %w", read, err, chain.ErrUnavailable)
 }
 
 func usd(units *big.Int) string {
