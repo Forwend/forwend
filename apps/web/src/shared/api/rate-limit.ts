@@ -21,8 +21,6 @@ type BaseQuery = BaseQueryFn<
 
 export const MAX_PAUSE_MS = 5 * 60_000;
 
-/** The wait a 429's Retry-After header asks for (whole seconds), in ms: 1 s when it is missing or not a number,
- * at most MAX_PAUSE_MS. */
 export function retryAfterMs(header: string | null | undefined): number {
   const seconds = Number(header);
   return Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds * 1000, MAX_PAUSE_MS) : 1000;
@@ -45,9 +43,8 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-/** Wraps the base query so a 429 does not turn into more load. The request waits Retry-After and is sent once more.
- * When that is refused too, every later read first waits a pause that doubles with each refusal, so polling slows
- * down from every 15 s; the first answer that is not a 429 ends the pause. Mutations never wait for the pause. */
+/** A 429 waits Retry-After and is sent once more; if refused again, later reads wait a pause that doubles per
+ * refusal until an answer that is not a 429. Mutations never wait for the pause. */
 export function withRateLimit(base: BaseQuery): BaseQuery {
   let pauseMs = 0;
   let pausedUntil = 0;

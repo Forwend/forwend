@@ -19,8 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-// Every Infura key comes first, all on one host, then the public RPCs; without keys only the public RPCs are used, and
-// a chain needs two hosts (D-15). Endpoint names, used in logs, never hold a key.
+// D-15: a chain needs two hosts; endpoint names go to logs, so they never hold a key.
 func TestNewRPCsUsesEveryKeyThenThePublicRPCs(t *testing.T) {
 	base := Spec{ChainID: 84532, Infura: "base-sepolia", Public: []string{"https://sepolia.base.org"}}
 	r, err := NewRPCs(base, []string{"key1", "key2"}, 10)
@@ -50,7 +49,6 @@ func TestNewRPCsUsesEveryKeyThenThePublicRPCs(t *testing.T) {
 	arc.Close()
 }
 
-// An RPC answering another chain is never used: its one eth_chainId answer is all it gets.
 func TestWrongChainRPCIsNeverUsed(t *testing.T) {
 	var asked atomic.Int64
 	wrong := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -102,7 +100,6 @@ func tryNumber(ctx context.Context, c *rpc.Client) (uint64, error) {
 	return uint64(n), err
 }
 
-// go-ethereum puts the RPC URL in network errors; an Infura key must never reach a log line.
 func TestRedactHidesInfuraKeys(t *testing.T) {
 	c, err := rpc.Dial("http://127.0.0.1:1/v3/SECRETKEY")
 	if err != nil {

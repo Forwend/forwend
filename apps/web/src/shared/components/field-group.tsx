@@ -5,7 +5,6 @@ export interface FieldGroupProps {
   children: ReactNode;
 }
 
-/** A titled group of form fields: a panel with its title ruled off (New invoice, a client's form). */
 export function FieldGroup({ title, children }: FieldGroupProps) {
   return (
     <fieldset className="fw-panel flex min-w-0 flex-col sm:rounded-lg">

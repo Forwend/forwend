@@ -15,7 +15,6 @@ import (
 )
 
 // Against the Privy test app: go test -tags privylive ./internal/privy/ with PRIVY_APP_ID and PRIVY_APP_SECRET set.
-// Creates a throwaway user, asks for one profile's wallet twice, then deletes the user and archives the wallet.
 func TestLiveProfileWallet(t *testing.T) {
 	id, secret := os.Getenv("PRIVY_APP_ID"), os.Getenv("PRIVY_APP_SECRET")
 	if id == "" || secret == "" {

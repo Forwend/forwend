@@ -80,7 +80,7 @@ export const PAY_COPY = {
     `The ${received} you sent is held for you; ask ${payee} to get it back.`,
   otherOption: (amount: string, network: string, payee: string) =>
     `${amount} sent on ${network} went to another payment option. It is held for you; ask ${payee} to get it back.`,
-  // Email me the receipt (R-82, D-68): optional, for this receipt only.
+  // R-82, D-68.
   receipt: {
     open: "Email me a receipt",
     label: "Email me the receipt (optional)",

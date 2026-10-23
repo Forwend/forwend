@@ -24,9 +24,8 @@ import { APP_ROUTES } from "@/shared/config/routes";
 
 const PASSKEY = "passkey";
 
-// The checklist for a personal or freelancer overview (R-50, D-53), read from data the app already loads: the
-// Privy account, billing details, the newest invoices page and the newest transfers (the notifications menu's
-// query). A paid invoice older than the newest page does not count; by then the user is past their first steps.
+// R-50, D-53: read from data the app already loads. A paid invoice older than the newest page does not count;
+// by then the user is past their first steps.
 export function OverviewChecklist() {
   const { profile, openReceive, openRequest } = useAppSession();
   const { profileId, kind } = profile;

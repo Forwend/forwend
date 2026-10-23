@@ -34,11 +34,8 @@ var (
 	loadAPI      = flag.String("api", "", "an api binary to test instead of this tree's (a build of another commit)")
 )
 
-// TestLoad seeds -users users, each with a personal profile, a wallet, 5 paid invoices in two tokens and 10 wallet
-// transfers, runs the api against Postgres and Anvil, and has every user poll what the dashboard reads every
-// -interval for -duration. It reports latency per route, errors, balances the api could not read, and the RPC calls
-// per second counted at a proxy in front of Anvil. RPC_RATE_PER_SECOND is set high so the count is the api's demand,
-// not the pace limit. Run: pnpm --filter @forwend/backend loadtest -users=1000 (docs/backend/architecture.md#load-test).
+// TestLoad: pnpm --filter @forwend/backend loadtest -users=1000 (docs/backend/architecture.md#load-test).
+// RPC_RATE_PER_SECOND is high so the RPC count is the api's demand, not the pace limit.
 func TestLoad(t *testing.T) {
 	ctx := context.Background()
 	anvil := chaintest.Start(t)
@@ -71,7 +68,7 @@ func TestLoad(t *testing.T) {
 
 	runCtx, stop := context.WithTimeout(ctx, *loadDuration)
 	defer stop()
-	go func() { // the chain moves on, like a real one
+	go func() {
 		for tick := time.NewTicker(*loadBlock); ; {
 			select {
 			case <-runCtx.Done():
@@ -187,9 +184,7 @@ func TestLoad(t *testing.T) {
 		methods)
 }
 
-// seed makes n users with a personal profile each and returns the profile ids, index i being did:privy:load-i's.
-// Each profile has a wallet, 5 invoices alternating between the tokens, each paid by one booked deposit, and 10
-// confirmed wallet transfers over the last 30 days.
+// seed returns the profile ids in user order: index i is did:privy:load-i's.
 func seed(t *testing.T, dbURL string, tokens []string, n int) []string {
 	t.Helper()
 	ctx := context.Background()

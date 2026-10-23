@@ -89,7 +89,6 @@ func TestCreateProfileSameKeyConcurrently(t *testing.T) {
 	}
 }
 
-// Keys are per user: another user's key never returns or blocks this user's profile.
 func TestKeysArePerUser(t *testing.T) {
 	s, _, _ := newService(t)
 	ctx := context.Background()
@@ -111,8 +110,6 @@ func TestKeysArePerUser(t *testing.T) {
 	}
 }
 
-// A profile whose wallet Privy failed to make is still created and returned, without a wallet, so a retry with other
-// values can't make a second one; the next signup call makes its wallet.
 func TestCreateWithoutWalletThenSignUpRepairsIt(t *testing.T) {
 	s, f, pool := newService(t)
 	ctx := context.Background()

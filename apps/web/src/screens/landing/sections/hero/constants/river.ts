@@ -18,5 +18,4 @@ export const RIVER_MARKS_COMPACT = [
   [830, 748],
 ] as const;
 
-/** Where the drawn line starts: the river mouth under the sun. */
 export const RIVER_SOURCE = [848, 606] as const;

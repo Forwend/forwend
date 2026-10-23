@@ -10,8 +10,7 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-// Invoices made before migration 8 get numbers per profile by creation time, then id, and each profile's counter
-// continues after them.
+// Migration 8 numbers existing invoices per profile by creation time, then id; each counter continues after them.
 func TestInvoiceNumbersForExistingInvoices(t *testing.T) {
 	ctx := context.Background()
 	conn, err := sql.Open("pgx", databasetest.New(t))

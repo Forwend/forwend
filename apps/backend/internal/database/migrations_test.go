@@ -18,7 +18,6 @@ func TestMigrateTwiceOnEmptyDatabase(t *testing.T) {
 	}
 }
 
-// The worker and signer refuse a schema older than their binary: never migrated, or one migration short.
 func TestCheckSchemaRefusesAnOlderSchema(t *testing.T) {
 	ctx := context.Background()
 	url := databasetest.New(t)

@@ -1,5 +1,3 @@
-// Package httpapi is the api process's HTTP server. NewMux is the one place that mounts every module's routes behind
-// the shared middleware; each module (healthapi, profileapi, invoiceapi, jobapi, moneyapi) lists its own routes in routes.go.
 package httpapi
 
 import (
@@ -22,8 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// NewMux serves the API. balances reads wallet balances from each chain's second RPC (D-15); webURL is the web app's
-// origin, for the pay link in PDFs. userBurst is each signed-in user's burst; 0 keeps mid.UserBurst.
+// balances reads each chain's second RPC (D-15); webURL is the pay links' origin; userBurst 0 keeps mid.UserBurst.
 func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, balances ledger.BalanceOf,
 	webURL string, userBurst int) http.Handler {
 	guards := mid.NewGuards(verifier, auth.NewService(pool), userBurst)

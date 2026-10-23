@@ -122,7 +122,6 @@ export function AppHeader({
   );
 }
 
-// Profile, page, then the form or invoice under it; every step is a link, the last one is the current page.
 function Breadcrumb({ active, pathname }: { active: Profile; pathname: string }) {
   const { trail, invoiceId } = breadcrumb(pathname, active.kind);
   // The invoice page reads the same invoice, so this comes from the cache.

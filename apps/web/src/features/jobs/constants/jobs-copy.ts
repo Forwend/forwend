@@ -7,7 +7,7 @@ const dueAfter = (days: number) =>
       ? "due 1 day after"
       : `due ${days} days after`;
 
-/** /app/jobs, New job and a job's page (R-101). */
+/** R-101. */
 export const JOBS_COPY = {
   title: "Jobs",
   add: "New job",
@@ -160,7 +160,7 @@ export const JOBS_COPY = {
   },
 } as const;
 
-/** The client's quote page /w/<token> (R-102). */
+/** R-102. */
 export const QUOTE_COPY = {
   title: "Quote",
   from: (issuer: string) => `Quote from ${issuer}`,
@@ -213,7 +213,7 @@ export const QUOTE_COPY = {
   },
 } as const;
 
-/** A job's record (R-104), on the job page and the quote page. */
+/** R-104. */
 export const RECORD_COPY = {
   title: "Record",
   created: "Quote made",

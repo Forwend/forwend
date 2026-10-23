@@ -1,6 +1,5 @@
--- Cancel (R-79, D-79): the owner can cancel an open invoice before any money arrives. Canceled is final: it never
--- settles, and money sent to it later is held for the payer (D-26). Every row of a payer-chooses invoice is canceled
--- together, at one time.
+-- Cancel (R-79, D-79): canceled is final. It never settles, and money sent later is held for the payer (D-26).
+-- Every row of a payer-chooses invoice is canceled together, at one time.
 
 -- +goose Up
 ALTER TABLE invoices DROP CONSTRAINT invoices_payment_status_check;
@@ -41,7 +40,6 @@ END;
 $$;
 -- +goose StatementEnd
 
--- The view lists its columns, so it is made again with the new one.
 CREATE OR REPLACE VIEW invoices_current AS
 SELECT m.id, m.profile_id, m.number, m.title, m.note, m.due_date, m.client_name, m.client_email, m.client_address,
        m.sender_name, m.issuer_name, m.issuer_address, m.issuer_country, m.issuer_tax_id, m.issuer_email, m.created_at,

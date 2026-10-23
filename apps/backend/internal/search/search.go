@@ -12,10 +12,9 @@ import (
 // MaxLength is the longest search in characters.
 const MaxLength = 100
 
-// ErrInvalid wraps a search that is blank, too long or not text.
 var ErrInvalid = errors.New("invalid search")
 
-// Query is a parsed search; the zero Query matches every row.
+// The zero Query matches every row.
 type Query struct {
 	// Like is the trimmed text between two %, LIKE's wildcards escaped, for ILIKE (contains, any letter case).
 	Like *string
@@ -26,7 +25,6 @@ type Query struct {
 
 var decimal = regexp.MustCompile(`^([0-9]+\.?[0-9]*|\.[0-9]+)$`)
 
-// Parse reads the q parameter.
 func Parse(text string) (Query, error) {
 	text = strings.TrimSpace(text)
 	if text == "" || utf8.RuneCountInString(text) > MaxLength {

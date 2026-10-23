@@ -12,7 +12,6 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 )
 
-// Every kind of email, with what the worker fills in.
 func samples() map[string]view {
 	tx := "https://sepolia.basescan.org/tx/0x" + strings.Repeat("cd", 32)
 	link, settings := web+"/app/invoices/0xabc", web+"/app/notifications"
@@ -45,7 +44,6 @@ var (
 	textURLs = regexp.MustCompile(`https?://\S+|[\w.+-]+@[\w-]+\.[\w.]+`)
 )
 
-// links are a part's link targets, mailto: as the bare address, sorted and without repeats.
 func links(all []string) []string {
 	for i, l := range all {
 		all[i] = strings.TrimPrefix(l, "mailto:")
@@ -54,7 +52,7 @@ func links(all []string) []string {
 	return slices.Compact(all)
 }
 
-// F200: each kind has a designed HTML part beside its text part, and both lead to the same pages.
+// F200.
 func TestEveryEmailHasHTMLWithTheTextLinks(t *testing.T) {
 	for name, v := range samples() {
 		m, err := message(site, v)
@@ -74,7 +72,6 @@ func TestEveryEmailHasHTMLWithTheTextLinks(t *testing.T) {
 	}
 }
 
-// A name the invoice's creator typed is shown as text, never as markup.
 func TestEmailEscapesTypedNames(t *testing.T) {
 	m, err := message(site, receipt("INV-0001", "5.00 USDC", "USDC", "Base Sepolia", "", `<b>Mara</b> & "Co"`, "", "pdf"))
 	if err != nil {

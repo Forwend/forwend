@@ -3,7 +3,6 @@ export interface PartyProps {
   lines: (string | null)[];
 }
 
-/** Who bills or is billed, in a panel: the name, then its contact and address lines (an invoice's or a job's page). */
 export function Party({ lines }: PartyProps) {
   const [first, ...rest] = lines.filter(Boolean);
   return (

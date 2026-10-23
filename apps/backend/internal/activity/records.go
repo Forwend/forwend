@@ -25,24 +25,21 @@ const (
 	LabelOther        = "other"
 )
 
-// Labels are what the user may call money in that Forwend can't classify.
 var Labels = []string{LabelIncome, ClassOwnTransfer, LabelRefund, LabelOther}
 
 var (
-	// ErrNotFound: the profile's wallet has no such transfer.
-	ErrNotFound = errors.New("transaction not found")
-	// ErrNotLabelable: only money in that is neither an invoice payment nor an own transfer takes a label.
+	ErrNotFound     = errors.New("transaction not found")
 	ErrNotLabelable = errors.New("only money in that Forwend can't classify takes a label")
 )
 
-// TransferInvoice is the invoice money in paid: its main row's id, number and client ("" when it has none).
+// TransferInvoice is the main invoice row; ClientName is "" when it has none.
 type TransferInvoice struct {
 	ID         string
 	Number     int64
 	ClientName string
 }
 
-// Labelable: money in that Forwend can't classify, which the user may label (R-108).
+// R-108.
 func (t Transfer) Labelable() bool {
 	return t.Direction == "in" && t.Invoice == nil && !t.own
 }
@@ -52,9 +49,8 @@ func (t Transfer) USDValue() *big.Rat {
 	return new(big.Rat).SetFrac(t.Amount, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(t.Decimals)), nil))
 }
 
-// RecordsValue is the value at receipt in the profile's records currency (R-110): the USD value at the ECB's rates of
-// the latest day on or before the transfer's UTC day, within 7 days, rounded half up to the currency's decimals. ok is
-// false without a records currency or such a rate.
+// RecordsValue is the USD value in the records currency (R-110) at the ECB rates of the latest day on or before
+// the transfer's UTC day, within 7 days, rounded half up. ok is false without a records currency or such a rate.
 func (t Transfer) RecordsValue() (amount string, day time.Time, ok bool) {
 	if t.RecordsCurrency == "" || t.fx == nil {
 		return "", time.Time{}, false
@@ -64,7 +60,7 @@ func (t Transfer) RecordsValue() (amount string, day time.Time, ok bool) {
 	return v.Mul(v, t.fx.cur).FloatString(invoice.AgreedCurrencies[t.RecordsCurrency]), t.fx.day, true
 }
 
-// Classification says what the transfer was (R-108).
+// R-108.
 func (t Transfer) Classification() string {
 	switch {
 	case t.Invoice != nil:
@@ -84,12 +80,10 @@ func (t Transfer) Classification() string {
 // transfer, so the work of one request must not grow with it.
 const MaxExportRows = 10000
 
-// ErrTooMany: the period has more than MaxExportRows transactions; a shorter period fits.
 var ErrTooMany = errors.New("too many transactions in the period")
 
-// EachTransfer calls fn with each of the profile's transfers whose block time is in [from, to), newest first, as the
-// database sends them, for the records export and the statement (R-108, R-112). A period with more than MaxExportRows
-// is ErrTooMany once fn has seen that many. The caller has checked that the user owns the profile.
+// EachTransfer calls fn with each transfer in [from, to), newest first, for the export and statement (R-108,
+// R-112); past MaxExportRows it returns ErrTooMany. The caller has checked that the user owns the profile.
 func (s *Service) EachTransfer(ctx context.Context, profileID string, from, to time.Time, fn func(Transfer) error) error {
 	rows, err := s.pool.Query(ctx, transferSQL+` AND t.block_time >= $2 AND t.block_time < $3
 		ORDER BY t.block_time DESC, t.id DESC LIMIT $4`, profileID, from.Unix(), to.Unix(), MaxExportRows+1)
@@ -115,7 +109,7 @@ func (s *Service) EachTransfer(ctx context.Context, profileID string, from, to t
 	return nil
 }
 
-// SetLabel gives the profile's money in at (chain, transaction, log) one of Labels, or clears it with "" (R-108).
+// SetLabel clears the label with "" (R-108).
 func (s *Service) SetLabel(ctx context.Context, profileID string, chainID uint64, txHash string, logIndex uint64,
 	label string) error {
 	if label != "" && !slices.Contains(Labels, label) {
@@ -161,8 +155,7 @@ func (s *Service) RecordsCurrency(ctx context.Context, profileID string) (string
 	return currency, nil
 }
 
-// SetRecordsCurrency sets the profile's other records currency: EUR or one the ECB publishes a rate for, other than
-// USD, which every record has already; "" clears it.
+// USD is refused: every record has it already. "" clears the currency.
 func (s *Service) SetRecordsCurrency(ctx context.Context, profileID, currency string) error {
 	if _, ok := invoice.AgreedCurrencies[currency]; currency != "" && (!ok || currency == "USD") {
 		return fmt.Errorf("%w: currency must be EUR or a currency the ECB publishes a rate for, other than USD", ErrInvalid)

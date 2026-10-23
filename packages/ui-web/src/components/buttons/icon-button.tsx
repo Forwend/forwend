@@ -28,7 +28,6 @@ const SIZES: Record<IconButtonSize, string> = {
 const BASE =
   "relative grid shrink-0 place-items-center rounded-pill outline-none transition-colors duration-[var(--fw-duration-fast)] before:absolute enabled:hover:bg-[color-mix(in_oklab,var(--fw-ink)_7%,transparent)] enabled:hover:text-ink enabled:active:bg-[color-mix(in_oklab,var(--fw-ink)_12%,transparent)] enabled:active:text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-focus data-[state=open]:bg-[color-mix(in_oklab,var(--fw-ink)_7%,transparent)] data-[state=open]:text-ink";
 
-/** A button that shows only an icon (or an avatar); the label names it. */
 export function IconButton({
   label,
   size = ICON_BUTTON_SIZES.sm,

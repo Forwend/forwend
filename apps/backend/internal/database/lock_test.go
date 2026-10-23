@@ -13,9 +13,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
 )
 
-// Two workers on one lock, each with its own pool as its own process: the second waits, and says so, while the first
-// runs rounds; they never run one at the same time; the second takes over once the first exits. When the lock's
-// connection is lost, Held says so, so the process stops instead of running beside the one that takes over.
+// Each worker has its own pool, as a separate process would.
 func TestLockRunsOneWorkerAtATime(t *testing.T) {
 	ctx := context.Background()
 	url := databasetest.New(t)
@@ -60,7 +58,7 @@ func TestLockRunsOneWorkerAtATime(t *testing.T) {
 				if running.Add(1) > 1 {
 					overlap.Store(true)
 				}
-				time.Sleep(5 * time.Millisecond) // a round
+				time.Sleep(5 * time.Millisecond)
 				running.Add(-1)
 				w.rounds.Add(1)
 			}
@@ -94,7 +92,6 @@ func TestLockRunsOneWorkerAtATime(t *testing.T) {
 		t.Fatal("two workers ran a round at the same time")
 	}
 
-	// The connection holding the lock ends, as when the database restarts.
 	admin, err := database.Open(ctx, url)
 	if err != nil {
 		t.Fatal(err)

@@ -42,7 +42,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	// Startup checks: a setup mistake stops the api with a message naming it.
 	pool, err := database.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err

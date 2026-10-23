@@ -1,8 +1,5 @@
-// Brand logos. Base, USDC, USDT and the social icons come from thesvg
-// (https://github.com/glincker/thesvg), MIT License: see LICENSE-thesvg.txt.
-// Arbitrum, Arc, Tempo and OUSD come from each project's official sources (see the comment on each).
-// Copied as static markup so the app does not ship the full 7,400-icon package.
-// fill "currentColor" icons take the text color; "none" keeps the brand colors in the markup.
+// Base, USDC, USDT and the social icons: thesvg (https://github.com/glincker/thesvg), MIT License: LICENSE-thesvg.txt.
+// Static markup, so the app doesn't ship the 7,400-icon package. fill "currentColor" takes the text color.
 export const BRAND_ICONS = {
   // Google's "G" as shown on Google sign-in buttons (Google Identity branding guidelines).
   google: {

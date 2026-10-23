@@ -107,8 +107,6 @@ const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 30))
 afterEach(cleanup);
 
 describe("owner's invoice page", () => {
-  // jsdom has no clipboard, like a browser that refuses it.
-
   it("does not offer the pay link, or say it waits for payment, once the checkout has closed", async () => {
     // As the API answers once nothing can complete it (R-77).
     serve({ ...OPEN, expiresAt: new Date(Date.now() - 10 * 60_000).toISOString(), closed: true });
@@ -120,7 +118,7 @@ describe("owner's invoice page", () => {
     expect(screen.queryByText("Waiting for payment")).toBeNull();
   });
 
-  // R-88: the items are in the invoice's own option's base units, even once the payer locked another option.
+  // R-88: even once the payer locked another option.
   it("lists the items in the invoice's own option", async () => {
     const dai = "0x00000000000000000000000000000000000000da";
     const other = `0x${"ab".repeat(32)}`;

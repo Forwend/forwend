@@ -1,6 +1,5 @@
--- Scope changes (R-105): a payment the owner adds to an accepted job, which the client accepts by the job's link like
--- the quote. proposed_at marks a change; change_key and change_hash make the owner's request idempotent per job. The
--- client's typed name, email and time are kept on the change.
+-- Scope changes (R-105): a payment the owner adds to an accepted job. change_key and change_hash make the owner's
+-- request idempotent per job.
 
 -- +goose Up
 ALTER TABLE job_payments

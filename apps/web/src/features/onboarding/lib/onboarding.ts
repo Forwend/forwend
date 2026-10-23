@@ -13,15 +13,12 @@ import {
 } from "@/features/transactions/constants/transactions";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-// After the first-run choice the app opens the profile made for the most specific use: freelancer (get paid by
-// clients), then merchant (business payments or an integration), else the personal one.
 const LANDING_ORDER: readonly ProfileKind[] = [
   PROFILE_KINDS.freelancer,
   PROFILE_KINDS.merchant,
   PROFILE_KINDS.personal,
 ];
 
-/** The profile to open after the first-run choice: one it made (`before` is the list it started from), by kind. */
 export function landingProfile(before: readonly Profile[], after: readonly Profile[]) {
   const made = after.filter((p) => !before.some((b) => b.profileId === p.profileId));
   for (const kind of LANDING_ORDER) {
@@ -31,7 +28,6 @@ export function landingProfile(before: readonly Profile[], after: readonly Profi
   return after.find((p) => p.kind === PROFILE_KINDS.personal) ?? after[0];
 }
 
-/** The profile's steps, done or not; null for a profile kind without a checklist (merchant). */
 export function checklistSteps(kind: ProfileKind, facts: ChecklistFacts): ChecklistStep[] | null {
   if (kind === PROFILE_KINDS.merchant) return null;
   const steps: ChecklistStep[] = [{ id: CHECKLIST_STEPS.passkey, done: facts.passkeyLinked }];
@@ -57,7 +53,6 @@ export function checklistSteps(kind: ProfileKind, facts: ChecklistFacts): Checkl
   return steps;
 }
 
-/** The steps the card lists, or null when it hides: closed, or every step not skipped is done. */
 export function visibleSteps(
   steps: readonly ChecklistStep[],
   dismissal: ChecklistDismissal,
@@ -91,10 +86,7 @@ export function saveDismissal(profileId: string, dismissal: ChecklistDismissal) 
   }
 }
 
-/**
- * Where the first run returns to: the app page the user asked for (`next`), else the overview. Only a path in this
- * app: never another site, which would make the link an open redirect.
- */
+/** Only a path in this app: another site would make the link an open redirect. */
 export function afterOnboarding(next: string | null): string {
   // Checked as the browser resolves it, so ".." or "//" can't step out of /app.
   const base = "http://forwend.invalid";

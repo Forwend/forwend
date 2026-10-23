@@ -19,7 +19,6 @@ const sample = `<?xml version="1.0" encoding="UTF-8"?><gesmes:Envelope xmlns:ges
 	`<Cube time="2026-10-15"><Cube currency="USD" rate="1.12"/><Cube currency="GBP" rate="0.84"/></Cube></Cube>` +
 	`</gesmes:Envelope>`
 
-// The ECB's file: a day per Cube, a currency per Cube in it; anything else is refused whole.
 func TestParse(t *testing.T) {
 	rates, err := Parse(strings.NewReader(sample))
 	if err != nil || len(rates) != 4 || rates[0].Currency != "USD" || rates[0].PerEUR != "1.1253" ||
@@ -39,7 +38,7 @@ func TestParse(t *testing.T) {
 	}
 }
 
-// R-110: the worker reads the rates when due, keeps a corrected rate, and after a failure tries again after Retry.
+// R-110.
 func TestKeeperReadsWhenDue(t *testing.T) {
 	ctx := context.Background()
 	url := databasetest.New(t)

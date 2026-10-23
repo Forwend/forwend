@@ -14,11 +14,8 @@ const ZERO = "0".repeat(40);
 const UINT64_MAX = 2n ** 64n - 1n;
 const UINT256_MAX = 2n ** 256n - 1n;
 
-/**
- * The receiver address the factory deploys for these terms, as apps/backend/internal/address does it: a CREATE2 clone
- * (OpenZeppelin Clones.cloneDeterministicWithImmutableArgs) with args = abi.encode(terms) and salt = keccak256(args).
- * Lower-case hex. Throws on a term outside its type.
- */
+// As apps/backend/internal/address: a CREATE2 clone (OpenZeppelin Clones.cloneDeterministicWithImmutableArgs)
+// with args = abi.encode(terms) and salt = keccak256(args). Throws on a term outside its type.
 export function receiveAddress(t: InvoiceTerms): string {
   const args = [
     fixedBytes(t.invoiceId, 32),
@@ -36,29 +33,18 @@ export function receiveAddress(t: InvoiceTerms): string {
   return `0x${keccak(`ff${FACTORY}${keccak(args)}${keccak(code)}`).slice(24)}`;
 }
 
-/**
- * The on-chain id of the invoice whose pay link carries this token, as the API derives it (D-86): keccak256(token).
- * Throws on a token that is not 32 bytes of hex.
- */
+/** As the API derives it (D-86): keccak256(token); throws on a token that is not 32 bytes of hex. */
 export function invoiceIdOf(payToken: string): string {
   return `0x${keccak(fixedBytes(`0x${payToken}`, 32))}`;
 }
 
-/**
- * The on-chain id of a payer-chooses invoice's further option, as the API derives it (R-56):
- * keccak256(abi.encode(invoice id, chain id, token)). Throws on a value outside its type.
- */
+/** As the API derives it (R-56): keccak256(abi.encode(invoice id, chain id, token)). */
 export function optionIdOf(invoiceId: string, chainId: bigint, token: string): string {
   return `0x${keccak(fixedBytes(invoiceId, 32) + uint(chainId, UINT256_MAX) + fixedBytes(token, 20))}`;
 }
 
-/**
- * The invoice's receive address when the answer is the invoice the link's token names, its terms (the shown option's, with
- * that option's on-chain id) follow the rules the API
- * creates them by (money sent to terms that break them can only be refunded), and they compute to it; or null. Null
- * means the page must not show it: the API answer was changed somewhere, or a term can't be read (a term that can't
- * be read can't prove the address).
- */
+// Null means the page must not show the address: the answer isn't the link's invoice, breaks the API's
+// rules for terms (money sent there could only be refunded), or doesn't compute to it.
 export function checkedReceiveAddress(inv: Invoice, payToken: string): string | null {
   try {
     if (inv.invoiceId.toLowerCase() !== invoiceIdOf(payToken)) return null;
@@ -98,20 +84,17 @@ function keccak(hex: string): string {
   return bytesToHex(keccak_256(hexToBytes(hex)));
 }
 
-/** A left-padded ABI word. */
 function uint(n: bigint, max: bigint): string {
   if (n < 0n || n > max) throw new RangeError(`${n} is out of range`);
   return n.toString(16).padStart(64, "0");
 }
 
-/** An address or bytes32 as an ABI word: exactly `size` bytes of hex. */
 function fixedBytes(hex: string, size: number): string {
   if (!new RegExp(`^0x[0-9a-fA-F]{${size * 2}}$`).test(hex))
     throw new RangeError(`${hex} is not ${size} bytes`);
   return hex.slice(2).toLowerCase().padStart(64, "0");
 }
 
-/** The API's RFC 3339 time (whole seconds) as Unix seconds. */
 function unixSeconds(time: string): bigint {
   const ms = Date.parse(time);
   if (!Number.isInteger(ms) || ms % 1000 !== 0)

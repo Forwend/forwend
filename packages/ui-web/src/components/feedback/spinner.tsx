@@ -1,7 +1,7 @@
 import { cx } from "../../lib/cx";
 import type { LoaderProps } from "../../types/loader";
 
-/** A ring with a moving arc, for short waits inside buttons and small areas. */
+/** For short waits inside buttons and small areas. */
 export function Spinner({ label = "Loading", className }: LoaderProps) {
   return (
     <svg

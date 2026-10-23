@@ -4,7 +4,6 @@ import { apiSlice } from "@/shared/api/api-slice";
 
 export const activityApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
-    /** Under the status filter and search when given. */
     getActivity: build.query<
       ActivityPage,
       { profileId: string; limit: number; status?: StatusFilter; q?: string }

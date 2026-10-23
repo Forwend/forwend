@@ -1,6 +1,4 @@
--- The invoice list's search (F110) looks for text anywhere in a few fields (internal/invoice/list.go, searchText; the
--- expression here must stay the same). Without this index a search that matches little read every invoice of the
--- profile: 45 ms at 20,000 invoices; with it, 0.02 ms.
+-- The invoice list search (F110). Must stay the same expression as internal/invoice/list.go, searchText.
 
 -- +goose Up
 CREATE EXTENSION IF NOT EXISTS pg_trgm;

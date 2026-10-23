@@ -6,7 +6,6 @@ export interface RowButtonProps extends ComponentPropsWithRef<"button"> {
   size?: "md" | "lg";
 }
 
-/** A full-width row that acts as one button: a choice in a list, or a menu trigger showing who or what is chosen. */
 export function RowButton({
   size = "lg",
   type = "button",

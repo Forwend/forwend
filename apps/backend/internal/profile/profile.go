@@ -20,15 +20,12 @@ const MaxProfiles = 10
 
 var (
 	// ErrInvalid wraps a request value that breaks a rule; the message names it.
-	ErrInvalid = errors.New("invalid profile request")
-	// ErrConflict means the idempotency key was used with another request.
-	ErrConflict = errors.New("idempotency key reused with another request")
-	// ErrNotSignedUp means the user has not called signup yet.
+	ErrInvalid     = errors.New("invalid profile request")
+	ErrConflict    = errors.New("idempotency key reused with another request")
 	ErrNotSignedUp = errors.New("user has not signed up")
 )
 
-// Profile is one of a user's profiles. Name is "" when none was given; WalletAddress is "" until Privy has made the
-// wallet (a failed create is retried by repeating the request).
+// WalletAddress is "" until Privy has made the wallet; repeating the request retries a failed create.
 type Profile struct {
 	ID            string
 	Kind          string

@@ -39,7 +39,6 @@ type Anvil struct {
 	authority string // the factory's refund authority, impersonated after DeployFactory
 }
 
-// Start runs Anvil on a free port until the test ends.
 func Start(t *testing.T) *Anvil {
 	t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -95,10 +94,8 @@ func (a *Anvil) DeployToken() string {
 
 var factoryLine = regexp.MustCompile(`factory (0x[0-9a-fA-F]{40})`)
 
-// DeployFactory deploys the v1 factory exactly as on the testnets (script/Deploy.s.sol through the CREATE2
-// deployer, with the testnet refund authority and first executor from deployments.json), so it lands at the same
-// address the Go code has compiled in. Then the refund authority, impersonated, makes Sender the executor, so tests
-// sign with Anvil's key. Returns the factory address in lowercase.
+// DeployFactory deploys the v1 factory as on the testnets, so it lands at the address the Go code has compiled in,
+// and makes Sender the executor so tests sign with Anvil's key. It returns the factory address in lowercase.
 func (a *Anvil) DeployFactory() string {
 	a.t.Helper()
 	raw, err := os.ReadFile(filepath.Join(contractsDir(), "deployments.json"))
@@ -152,13 +149,11 @@ func (a *Anvil) AsAuthority(to, sig string, args ...string) {
 	a.run("cast", append([]string{"send", "--rpc-url", a.URL, "--unlocked", "--from", a.authority, to, sig}, args...)...)
 }
 
-// Mint gives the sender tokens.
 func (a *Anvil) Mint(token string, amount string) {
 	a.t.Helper()
 	a.Send(token, "mint(address,uint256)", Sender, amount)
 }
 
-// Transfer sends tokens from the sender and returns the transaction hash.
 func (a *Anvil) Transfer(token, to, amount string) string {
 	a.t.Helper()
 	return a.Send(token, "transfer(address,uint256)", to, amount)
@@ -177,7 +172,6 @@ func (a *Anvil) Send(to, sig string, args ...string) string {
 	return receipt.TransactionHash
 }
 
-// Mine adds n empty blocks.
 func (a *Anvil) Mine(n int) {
 	a.t.Helper()
 	if err := a.RPC.Call(nil, "anvil_mine", fmt.Sprintf("0x%x", n)); err != nil {
@@ -185,7 +179,6 @@ func (a *Anvil) Mine(n int) {
 	}
 }
 
-// Now returns the latest block's time.
 func (a *Anvil) Now() int64 {
 	a.t.Helper()
 	var block struct {
@@ -217,7 +210,6 @@ func (a *Anvil) Reorg(depth int) {
 	}
 }
 
-// RawTx returns a mined transaction's signed bytes, so it can be sent again after a reorg drops it.
 func (a *Anvil) RawTx(hash string) string {
 	a.t.Helper()
 	var raw string
@@ -273,7 +265,6 @@ func (a *Anvil) runEnv(env []string, name string, args ...string) string {
 	return string(out)
 }
 
-// contractsDir is packages/contracts, found from this file's location.
 func contractsDir() string {
 	_, file, _, _ := runtime.Caller(0)
 	return filepath.Join(filepath.Dir(file), "../../../../packages/contracts")

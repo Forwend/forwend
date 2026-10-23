@@ -16,20 +16,16 @@ import (
 // RecheckEvery spaces the checks of one invoice, across api replicas (R-55).
 const RecheckEvery = 5 * time.Minute
 
-// RescanAgainAfter is how long a finished rescan stands before a check may ask for another: money that no log explains
-// (Arc native USDC, docs/backend/money-safety.md) must not start a full rescan on every press.
+// Money no log explains (Arc native USDC, docs/backend/money-safety.md) must not start a full rescan on every press.
 const RescanAgainAfter = 10 * time.Minute
 
-// ErrChainUnavailable means the chain's RPC could not answer; the caller may try again shortly.
 var ErrChainUnavailable = errors.New("chain unavailable")
 
-// TooSoonError is a recheck asked for within RecheckEvery of the last one.
 type TooSoonError struct{ Wait time.Duration }
 
 func (e *TooSoonError) Error() string { return fmt.Sprintf("checked recently: wait %s", e.Wait) }
 
-// Recheck is what one check found: the receive address's finalized balance, what transfers recorded, whether the
-// worker rescans the address for the difference, and when the next check is allowed.
+// OnChain is the receive address's balance at the finalized block; Recorded sums its transfers.
 type Recheck struct {
 	OnChain, Recorded *big.Int
 	Rescanning        bool
@@ -38,10 +34,8 @@ type Recheck struct {
 	Unreadable []uint64
 }
 
-// Recheck reads the invoice's receive addresses on chain (every option's until one has money) and, for each that holds
-// more than its recorded transfers, asks the worker to rescan it (D-77). It reads only: it never signs, never books
-// and never moves a cursor. allow runs only for an invoice due a check, so unknown ids never spend the shared budget;
-// it gets the invoice's owner, so one owner's invoices can be given a share of it.
+// Recheck (D-77) never signs, books or moves a cursor; it only asks the worker to rescan. allow runs only for an
+// invoice due a check, so unknown ids never spend the shared budget.
 func (s *Service) Recheck(ctx context.Context, payToken string, balanceOf ledger.BalanceOf,
 	allow func(owner string) time.Duration) (Recheck, error) {
 	inv, err := s.Get(ctx, payToken)
@@ -113,7 +107,6 @@ func (s *Service) Recheck(ctx context.Context, payToken string, balanceOf ledger
 	return found, nil
 }
 
-// recheckOption reads one option's receive address and asks for its rescan when it holds more than recorded.
 func (s *Service) recheckOption(ctx context.Context, o Option, balanceOf ledger.BalanceOf) (Recheck, error) {
 	onChain, _, err := balanceOf(ctx, o.ChainID, o.Token, o.ReceiveAddress)
 	if err != nil {

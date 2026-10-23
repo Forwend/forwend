@@ -42,10 +42,7 @@ export interface JobDetailProps {
   job: Job;
 }
 
-// A job's page (R-101), laid out like an invoice's: the payments on the left, then the scope; the client's link and
-// who is billed on the right. Each payment shows how it gets invoiced, and once it is, its invoice and status. Once
-// accepted, the next agreed payment without an invoice can be marked done (R-103), and the owner can propose a scope
-// change, one at a time, or withdraw it while it waits for the client (R-106).
+// R-101. Once accepted, the next agreed payment can be marked done (R-103) and a change proposed (R-106).
 export function JobDetail({ profileId, job }: JobDetailProps) {
   // The app renders only in the browser, after sign-in.
   const link = `${window.location.origin}/w/${job.token}`;

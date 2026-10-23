@@ -10,13 +10,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// ErrNotCancelable: the invoice is not open, its checkout has closed, or money was seen for it.
 var ErrNotCancelable = errors.New("invoice can't be canceled")
 
-// Cancel cancels the profile's invoice and all its options (R-79, D-79), only while every row is open, the checkout
-// has not closed and no transfer was ever recorded for any of them. It locks the rows the ledger locks, so the two
-// never decide at once. A transfer the watcher records after the cancel is held for the payer: the ledger treats
-// canceled as final (D-26).
+// Cancel (R-79, D-79) locks the rows the ledger locks, so the two never decide at once. A transfer recorded
+// after the cancel is held for the payer: the ledger treats canceled as final (D-26).
 func (s *Service) Cancel(ctx context.Context, profileID, id string) (Invoice, error) {
 	id = strings.ToLower(id)
 	tx, err := s.pool.Begin(ctx)
@@ -24,8 +21,7 @@ func (s *Service) Cancel(ctx context.Context, profileID, id string) (Invoice, er
 		return Invoice{}, fmt.Errorf("cancel invoice %s: %w", id, err)
 	}
 	defer tx.Rollback(ctx)
-	// Options first, the main row last: the ledger locks an option, then its main row, so the two never wait on each
-	// other.
+	// Options first, main row last, in the ledger's lock order, so the two can't deadlock.
 	rows, err := tx.Query(ctx, `SELECT payment_status, expires_at FROM invoices
 		WHERE coalesce(main_id, id) = $1 AND profile_id = $2 ORDER BY main_id IS NULL, id FOR UPDATE`, id, profileID)
 	if err != nil {

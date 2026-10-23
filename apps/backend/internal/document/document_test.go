@@ -12,7 +12,6 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 )
 
-// Amounts are exact: no rounding, trailing zeros trimmed down to 2 decimals.
 func TestAmount(t *testing.T) {
 	for _, c := range []struct {
 		units    string
@@ -37,7 +36,6 @@ func TestAmount(t *testing.T) {
 	}
 }
 
-// The logo and the networks are copies of the web's; these fail when either side changes alone.
 func TestCopiesMatchTheWeb(t *testing.T) {
 	logo, err := os.ReadFile("../../../../packages/ui-web/src/icons/logo-data.ts")
 	if err != nil {
@@ -60,8 +58,7 @@ func TestCopiesMatchTheWeb(t *testing.T) {
 	}
 }
 
-// R-88: lines are in the invoice's own option's units, and in USD when the client chooses, even on a receipt paid with
-// another token.
+// R-88.
 func TestLineUnit(t *testing.T) {
 	usdc := invoice.Option{ID: "main", Asset: chain.Asset{Symbol: "USDC", Decimals: 6}}
 	dai := invoice.Option{ID: "other", Asset: chain.Asset{Symbol: "DAI", Decimals: 18}}

@@ -12,8 +12,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 )
 
-// R-95: Owed to you lists overdue invoices (most days late first), then partly paid ones, each with what is left, then
-// money held for the payer; paid, closed, not yet due and undated invoices stay out.
+// R-95.
 func TestOwedToYou(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()

@@ -25,10 +25,6 @@ export interface DatePickerProps extends Pick<CalendarProps, "min" | "max" | "is
 
 const SHOWN = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone: "UTC" });
 
-/**
- * A date field: a button that opens a Calendar below it. Choosing a day closes it; Escape or a click outside closes it
- * and focus returns to the button. The value is an ISO date, the same in every time zone.
- */
 export function DatePicker({
   label,
   value,

@@ -12,7 +12,6 @@ export interface Choice {
   onPick: (optionId: string | undefined) => void;
 }
 
-/** The option a network picks by itself: its only token, else none until the payer picks the token. */
 export function onlyOptionOn(
   options: readonly InvoiceOption[],
   chainId: number,
@@ -21,8 +20,7 @@ export function onlyOptionOn(
   return on.length === 1 ? on[0]?.optionId : undefined;
 }
 
-// Selects, not cards: the list grows with every chain and token added (R-68). The network first, then the token among
-// those it carries; a network with one token picks it at once.
+// Selects, not cards: the list grows with every chain and token added (R-68).
 export function OptionPicker({ options, picked, onPick }: Choice) {
   const current = options.find((o) => o.optionId === picked);
   const [chainId, setChainId] = useState(current?.chainId);

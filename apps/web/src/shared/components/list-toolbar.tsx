@@ -7,12 +7,8 @@ export interface ListToolbarProps {
   actions?: ReactNode;
 }
 
-/**
- * A list's search, its filter and actions: the search on the left with the filter beside it, the actions at the row's
- * end. The search takes the free room first (grow 1000 to 1, up to its cap from small screens up), so beside it on a
- * phone the filter ends the row; the group gets what is left, which carries the actions to the end. When a phone has
- * no room for the filter beside the search, the filter and actions take the next row together, still at its end.
- */
+/** The search takes the free room first (grow 1000 to 1), so on a phone the filter ends its row; when it can't fit,
+ * the filter and actions wrap to the next row together, still at its end. */
 export function ListToolbar({ search, filter, actions }: ListToolbarProps) {
   return (
     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -24,7 +20,6 @@ export function ListToolbar({ search, filter, actions }: ListToolbarProps) {
           <div className="contents [&>:first-child]:ml-auto">{actions}</div>
         </div>
       ) : (
-        // Without a filter there is no group: an action hidden at this width then takes no room and leaves no gap.
         <div className="contents [&>:first-child]:ml-auto">{actions}</div>
       )}
     </div>

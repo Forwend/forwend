@@ -1,4 +1,3 @@
-// Package databasetest gives each test its own empty Postgres database.
 package databasetest
 
 import (
@@ -13,9 +12,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// New creates an empty database next to DATABASE_URL and drops it when the test ends. Locally: pnpm postgres:up.
-// The URL it returns has none of DATABASE_URL's pool_ parameters (pool_max_conns), which only pgxpool reads: tests
-// also open plain connections, which would send them to Postgres as settings.
+// New creates an empty database, dropped when the test ends. It strips DATABASE_URL's pool_ parameters: plain pgx
+// connections would send them to Postgres as settings.
 func New(t *testing.T) string {
 	t.Helper()
 	ctx := context.Background()

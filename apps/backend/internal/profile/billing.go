@@ -21,7 +21,6 @@ const (
 	MaxBillingEmail   = 254 // the longest address SMTP carries (RFC 5321)
 )
 
-// ErrNoBillingDetails means the profile has not saved billing details.
 var ErrNoBillingDetails = errors.New("no billing details")
 
 // R-43: only TaxID is optional ("" means none).
@@ -49,7 +48,6 @@ const countries = "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE B
 
 var countryCode = regexp.MustCompile(`^[A-Z]{2}$`)
 
-// ValidCountry reports whether code is an assigned ISO 3166-1 alpha-2 code in upper case, like DE.
 func ValidCountry(code string) bool {
 	return countryCode.MatchString(code) && strings.Contains(countries, code)
 }
@@ -87,8 +85,7 @@ func (d BillingDetails) check() error {
 	return nil
 }
 
-// SaveBillingDetails creates or replaces the profile's billing details. Invoices made earlier keep their own copy.
-// The caller has checked that the user owns the profile.
+// Invoices made earlier keep their own copy. The caller has checked that the user owns the profile.
 func (s *Service) SaveBillingDetails(ctx context.Context, profileID string, d BillingDetails) (BillingDetails, error) {
 	if err := d.check(); err != nil {
 		return BillingDetails{}, err
@@ -106,8 +103,7 @@ func (s *Service) SaveBillingDetails(ctx context.Context, profileID string, d Bi
 	return d, nil
 }
 
-// BillingDetails returns the profile's billing details, or ErrNoBillingDetails. The caller has checked that the user
-// owns the profile.
+// The caller has checked that the user owns the profile.
 func (s *Service) BillingDetails(ctx context.Context, profileID string) (BillingDetails, error) {
 	var d BillingDetails
 	err := s.pool.QueryRow(ctx, `SELECT name, address, country, coalesce(tax_id, ''), contact_email, updated_at FROM profile_billing_details WHERE profile_id = $1`, profileID).

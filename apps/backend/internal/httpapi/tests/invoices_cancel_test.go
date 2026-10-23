@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// R-79, D-79: the owner cancels an open invoice before any money; it stays readable, canceled, and never again.
+// R-79, D-79.
 func TestCancelInvoice(t *testing.T) {
 	e := invoiceAPI(t)
 	cancel := func(profile, id string) reply {
@@ -26,7 +26,6 @@ func TestCancelInvoice(t *testing.T) {
 	checkList(t, e, "/v1/profiles/"+e.aliceProfile+"/invoices", func(it map[string]any) any { return it["invoiceId"] },
 		[]listCase{{"status=canceled", []any{id}}, {"status=open", []any{}}})
 
-	// Money seen, even one detected transfer, or a closed checkout: too late to cancel.
 	paid := e.post(t, "did:privy:alice", e.aliceProfile, "key-2", basicBody).body["invoiceId"].(string)
 	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
 		    block_hash, block_number, block_time, from_address, to_address, amount, status)
@@ -40,7 +39,6 @@ func TestCancelInvoice(t *testing.T) {
 		}
 	}
 
-	// Another profile's invoice is not found under this one; another user's profile is forbidden.
 	// The fixture's other profile has no wallet to invoice with, so an invoice moves there under a lifted guard.
 	other := e.post(t, "did:privy:alice", e.aliceProfile, "key-4", basicBody).body["invoiceId"].(string)
 	e.exec(t, `ALTER TABLE invoices DISABLE TRIGGER invoices_guard`)
@@ -60,7 +58,6 @@ func TestCancelInvoice(t *testing.T) {
 	}
 }
 
-// A payer-chooses invoice is canceled whole: every option, so no address of it takes money for the creator.
 func TestCancelPayerChoosesInvoice(t *testing.T) {
 	e := invoiceAPI(t)
 	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
@@ -89,7 +86,7 @@ func TestCancelPayerChoosesInvoice(t *testing.T) {
 	}
 }
 
-// A canceled invoice's PDF stays as a record and never asks for money: no pay link or code (D-79).
+// D-79.
 func TestCanceledInvoicePDF(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1",

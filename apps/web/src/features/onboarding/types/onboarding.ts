@@ -25,7 +25,6 @@ export interface ChecklistFacts {
   transactions: readonly Pick<Transaction, "direction" | "status">[];
 }
 
-/** What this browser's viewer closed or skipped on a profile's checklist. */
 export interface ChecklistDismissal {
   closed: boolean;
   skipped: readonly ChecklistStepId[];

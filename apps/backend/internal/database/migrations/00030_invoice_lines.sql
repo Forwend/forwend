@@ -1,6 +1,4 @@
--- Invoice line items (R-88): an optional breakdown of an invoice's amount, in the base units of the invoice's token (the
--- main row's). Like the invoice's other details they are written with it and never change, and they add up exactly to
--- its amount: Postgres checks the sum when the transaction commits.
+-- Invoice lines (R-88), in base units of the main row's token.
 
 -- +goose Up
 CREATE TABLE invoice_lines (
@@ -13,8 +11,7 @@ CREATE TABLE invoice_lines (
     PRIMARY KEY (invoice_id, position)
 );
 
--- Lines belong to an invoice's main row and come in the transaction that makes it (created_at is that transaction's
--- start, as now() is), so an issued invoice never gains a line; none ever changes or goes.
+-- created_at = now() holds only in the transaction that made the invoice: now() is that transaction's start.
 -- +goose StatementBegin
 CREATE FUNCTION invoice_lines_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN

@@ -11,8 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Create makes a freelancer or merchant profile once per (user, idempotency key), then makes sure it has its wallet.
-// created is false when the same request was already made: the stored profile is returned.
+// Create is idempotent per (user, idempotency key); created is false when the stored profile is returned.
 func (s *Service) Create(ctx context.Context, privyUserID, idempotencyKey, kind, name string) (p Profile, created bool, err error) {
 	if kind != Freelancer && kind != Merchant {
 		return Profile{}, false, fmt.Errorf("%w: kind must be %s or %s", ErrInvalid, Freelancer, Merchant)
@@ -45,8 +44,7 @@ func (s *Service) Create(ctx context.Context, privyUserID, idempotencyKey, kind,
 	return Profile{}, false, fmt.Errorf("profile %s is not listed", id)
 }
 
-// insert adds the profile unless the key was used before, under a lock on the user so the cap holds against
-// concurrent requests. Each profile gets a Privy wallet the watcher scans forever.
+// The user row lock makes the cap hold against concurrent requests: each profile's wallet is scanned forever.
 func (s *Service) insert(ctx context.Context, privyUserID, idempotencyKey, kind, name string, hash []byte) (string, bool, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {

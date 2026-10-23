@@ -15,7 +15,6 @@ test.describe("kit privacy", () => {
   }
 });
 
-// Touch has no hover: a tap shows a tooltip's text, a second tap or a tap elsewhere hides it.
 test("a tap opens a tooltip on a touch screen, and a tap elsewhere closes it", async ({
   browser,
 }) => {

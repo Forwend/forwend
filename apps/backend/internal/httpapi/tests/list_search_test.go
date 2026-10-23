@@ -12,7 +12,6 @@ import (
 	"testing"
 )
 
-// pages reads a list under query in pages of limit items and returns each item as key says.
 func (e invoiceEnv) pages(t *testing.T, path, query string, limit int, key func(map[string]any) any) []any {
 	t.Helper()
 	got := []any{}
@@ -39,8 +38,7 @@ type listCase struct {
 	want  []any
 }
 
-// checkList reads each case one item per page, so every cursor continues the filtered list. A user may send 60
-// requests at once (ratelimit.go), so a test stays under that.
+// One item per page, so every cursor is used. A user may send 60 requests at once (ratelimit.go): stay under that.
 func checkList(t *testing.T, e invoiceEnv, path string, key func(map[string]any) any, cases []listCase) {
 	t.Helper()
 	for _, c := range cases {
@@ -50,7 +48,6 @@ func checkList(t *testing.T, e invoiceEnv, path string, key func(map[string]any)
 	}
 }
 
-// checkListErrors: a blank or too long search and a filter value the list does not know are 422; another user is 403.
 func checkListErrors(t *testing.T, e invoiceEnv, path string, badFilters ...string) {
 	t.Helper()
 	for _, query := range append([]string{"q=", "q=%20%20", "q=" + url.QueryEscape(strings.Repeat("é", 101))}, badFilters...) {
@@ -74,8 +71,7 @@ func (e invoiceEnv) exec(t *testing.T, sql string, args ...any) {
 	}
 }
 
-// closeCheckout moves an invoice's expiry into the past. Terms never change in production (the invoices_guard
-// trigger), so the test lifts that trigger for this one update.
+// Terms never change in production (the invoices_guard trigger), so this lifts it for one update.
 func (e invoiceEnv) closeCheckout(t *testing.T, id string) {
 	t.Helper()
 	e.exec(t, `ALTER TABLE invoices DISABLE TRIGGER invoices_guard`)
@@ -135,8 +131,7 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 	checkListErrors(t, e, path, "status=all", "status=refunded")
 }
 
-// R-77: a checkout that closed with less than the amount paid on time reads expired at once, everywhere; one whose
-// on-time money may still complete it does not.
+// R-77.
 func TestClosedCheckoutReadsExpired(t *testing.T) {
 	e := invoiceAPI(t)
 	var ids []string

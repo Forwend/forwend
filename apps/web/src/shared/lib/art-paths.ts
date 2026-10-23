@@ -8,7 +8,7 @@ export function ridgeY(x: number, spec: RidgeSpec): number {
   );
 }
 
-// Closed shape from a sum of sines down to the bottom edge. Deterministic, so server and client match.
+// Deterministic, so server and client render the same path.
 export function ridgePath(spec: RidgeSpec): string {
   const step = spec.step ?? 16;
   let d = `M0 ${spec.height} L0 ${ridgeY(0, spec).toFixed(1)}`;
@@ -18,7 +18,6 @@ export function ridgePath(spec: RidgeSpec): string {
   return `${d} L${spec.width} ${spec.height} Z`;
 }
 
-// A pine as three stacked triangles on a short trunk.
 export function pinePath(x: number, baseY: number, height: number): string {
   const w = height * 0.36;
   const tiers = [0, 0.3, 0.55].map((t, i) => {
@@ -31,7 +30,6 @@ export function pinePath(x: number, baseY: number, height: number): string {
   return [...tiers, trunk].join(" ");
 }
 
-// Dots grow from nothing at the edge to full size `ramp` rows below it.
 export function halftoneDots(spec: HalftoneSpec): Dot[] {
   const dots: Dot[] = [];
   const max = spec.cell * 0.46;
@@ -78,7 +76,6 @@ function smoothSegments(points: readonly Point[]): Cubic[] {
   return segments;
 }
 
-/** Smooth path through the points (Catmull-Rom converted to cubic Béziers). */
 export function smoothPath(points: readonly Point[]): string {
   const [first] = points;
   if (!first) return "";

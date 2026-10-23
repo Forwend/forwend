@@ -8,7 +8,6 @@ import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 
 const COPY = PAY_COPY.receipt;
 const ANSWERS = { 409: COPY.sent, 422: COPY.invalid, 429: COPY.tooMany } as const;
-// Entering content rises a few pixels and fades in: it replaces what was there, it doesn't jump in.
 const ENTER =
   "transition-[opacity,transform] duration-[var(--fw-duration-base)] ease-[var(--fw-ease-out)] starting:translate-y-1 starting:opacity-0";
 
@@ -18,10 +17,7 @@ export interface ReceiptEmailProps {
   paid: boolean;
 }
 
-// Email me the receipt (R-82, D-68): the pay panel's last row, folded until the payer asks for it, so the steps to pay
-// stay first. An optional address for this invoice's receipt only, sent once it is paid; not kept in the browser.
-// Once the address is saved the form gives way to a confirmation: the button can't be pressed again for the same
-// address, and before payment "Use another address" reopens the form (once paid the receipt goes out at once).
+// R-82, D-68: the address is for this invoice's receipt only and is never kept in the browser.
 export function ReceiptEmail({ linkToken, paid }: ReceiptEmailProps) {
   const [setPayerEmail, { data, error, isLoading, reset }] = useSetPayerEmailMutation();
   const [step, setStep] = useState<"folded" | "form" | "done">("folded");

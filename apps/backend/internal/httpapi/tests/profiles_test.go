@@ -14,7 +14,6 @@ import (
 	"time"
 )
 
-// call sends a request as user ("" = no token) with an optional Idempotency-Key.
 func (e invoiceEnv) call(t *testing.T, method, path, user, key, body string) reply {
 	t.Helper()
 	req, err := http.NewRequest(method, e.srv.URL+path, strings.NewReader(body))
@@ -67,8 +66,6 @@ func TestSignUpAndMe(t *testing.T) {
 	}
 }
 
-// The first-run choice makes its profiles once and sets onboardedAt, which GET and POST /v1/me return; a repeat, with
-// any choices, answers 200 with the same state. Another user's token onboards only that user.
 func TestOnboardingRoute(t *testing.T) {
 	e := invoiceAPI(t)
 	const carol, dave = "did:privy:carol", "did:privy:dave"
@@ -126,7 +123,6 @@ func TestOnboardingRoute(t *testing.T) {
 		}
 	}
 
-	// Dave skips: no profile, his own onboardedAt; Carol's state stays as it was.
 	skip := e.call(t, "POST", path, dave, "", `{"choices": []}`)
 	if skip.status != http.StatusCreated || skip.body["onboardedAt"] == nil || len(profilesOf(skip)) != 1 {
 		t.Fatalf("skip: %d %v; want 201 with only the personal profile", skip.status, skip.body)
@@ -186,7 +182,7 @@ func TestCreateProfileRoute(t *testing.T) {
 	}
 }
 
-// profileRoutes is every route with a {profileId}; add each new one here so the cross-user test covers it.
+// Every route with a {profileId}; TestProfileRoutesAreAllListed fails until a new one is added here.
 var profileRoutes = []struct{ method, path, body string }{
 	{"PUT", "/v1/profiles/%s/billing-details", billingBody},
 	{"GET", "/v1/profiles/%s/billing-details", ""},
@@ -223,7 +219,6 @@ var profileRoutes = []struct{ method, path, body string }{
 	{"DELETE", "/v1/profiles/%s/jobs/00000000-0000-0000-0000-000000000000/payments/3", ""},
 }
 
-// Every profile route the API registers has a case in profileRoutes, so a new route can't skip the 403 test.
 func TestProfileRoutesAreAllListed(t *testing.T) {
 	files, err := filepath.Glob("../*/routes.go")
 	if err != nil || len(files) == 0 {
@@ -248,7 +243,6 @@ func TestProfileRoutesAreAllListed(t *testing.T) {
 	}
 }
 
-// Bob never sees Alice's profiles and gets 403 on every profile route for them; Alice passes the owner check.
 func TestProfilesBelongToTheirUser(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
@@ -269,14 +263,12 @@ func TestProfilesBelongToTheirUser(t *testing.T) {
 			}
 		}
 	}
-	// Bob's same key makes his own profile, not Alice's.
 	if r := e.call(t, "POST", "/v1/profiles", bob, "key-1", `{"kind": "merchant"}`); r.status != http.StatusCreated ||
 		r.body["profileId"] == merchant {
 		t.Fatalf("Bob with Alice's key: %d %v", r.status, r.body)
 	}
 
-	// Each route on one of Alice's profiles in turn, so every route and every profile is checked: each user's limit
-	// (60 requests at once) can't take every pair.
+	// One of Alice's profiles per route in turn: every pair would exceed the user's limit of 60 requests at once.
 	for i, route := range profileRoutes {
 		id := alices[i%len(alices)]
 		path := fmt.Sprintf(route.path, id)
@@ -292,7 +284,6 @@ func TestProfilesBelongToTheirUser(t *testing.T) {
 const billingBody = `{"name": "Alice Design GmbH", "address": "Hauptstr. 1\n10115 Berlin", "country": "DE",
 	"taxId": "DE123456789", "email": "billing@alice.example"}`
 
-// PUT saves the profile's billing details and replaces them on the next PUT; GET returns them, 404 before the first.
 func TestBillingDetails(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -331,7 +322,6 @@ func TestBillingDetails(t *testing.T) {
 		t.Fatalf("GET after the second PUT: %d %v, want %v", got.status, got.body, want)
 	}
 
-	// Each case changes one field of a valid body.
 	for _, c := range []struct {
 		field, value, code string
 		status             int
@@ -363,7 +353,7 @@ func TestBillingDetails(t *testing.T) {
 			t.Fatalf("PUT %s: %d %v, want %d %s", raw, r.status, r.body, c.status, c.code)
 		}
 	}
-	for _, field := range []string{"name", "address", "country", "email"} { // left out
+	for _, field := range []string{"name", "address", "country", "email"} {
 		var body map[string]string
 		_ = json.Unmarshal([]byte(short), &body)
 		delete(body, field)

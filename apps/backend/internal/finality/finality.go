@@ -4,7 +4,7 @@ package finality
 
 import "time"
 
-// Block is a block's number and time (Unix seconds) as the RPC reports them.
+// Block's Time is in Unix seconds, as the RPC reports it.
 type Block struct {
 	Number uint64
 	Time   uint64
@@ -16,13 +16,11 @@ type Progress struct {
 	TimeLeft   time.Duration
 }
 
-// Final reports whether the deposit's block is at or below the finalized head.
 func (p Progress) Final() bool {
 	return p.BlocksLeft == 0
 }
 
-// ProgressOf compares the deposit's block with the finalized head. Time left is the chain time the finalized head
-// must still cover; it is an estimate, recomputed on every poll.
+// ProgressOf: time left is the chain time the finalized head must still cover, an estimate recomputed each poll.
 func ProgressOf(deposit, finalized Block) Progress {
 	if finalized.Number >= deposit.Number {
 		return Progress{}

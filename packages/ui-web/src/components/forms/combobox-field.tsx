@@ -32,15 +32,13 @@ export interface ComboboxFieldProps {
   className?: string;
 }
 
-// Lower case without accents, so "cote" finds Côte d'Ivoire and "zur" finds Zürich.
 const fold = (text: string) =>
   text
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase();
 
-// The options that contain the words, best first: a label that starts with them ("nether" puts Netherlands before
-// Caribbean Netherlands), then one with a word that starts with them, then any other match; otherwise in list order.
+// Best first: a label that starts with the words, then a word that does, then any match; ties keep list order.
 function matching(options: readonly ComboboxOption[], words: string): ComboboxOption[] {
   const rank = (option: ComboboxOption) => {
     const label = fold(option.label);
@@ -55,11 +53,7 @@ function matching(options: readonly ComboboxOption[], words: string): ComboboxOp
     .map((match) => match.option);
 }
 
-/**
- * A select for a long list (countries, saved clients): the field opens a panel with a search box over the options.
- * Typing filters them, arrow keys move, Enter picks, Escape closes; the search box is an ARIA combobox that owns the
- * keyboard, as in the command menu. A short list stays a SelectField.
- */
+/** For a long list (countries, saved clients); a short list stays a SelectField. */
 export function ComboboxField({
   label,
   options,
@@ -113,7 +107,6 @@ export function ComboboxField({
     return () => document.removeEventListener("pointerdown", away);
   }, [open]);
 
-  // The active option stays in view as the arrow keys move it.
   useEffect(() => {
     if (open) document.getElementById(`${listId}-${current}`)?.scrollIntoView({ block: "nearest" });
   }, [open, current, listId]);

@@ -22,7 +22,7 @@ export interface RecordsCurrencyProps {
   profileId: string;
 }
 
-// R-111: the profile's other records currency, saved when chosen; the choice shows at once until the read confirms it.
+// R-111: the choice shows at once, until the read confirms it.
 export function RecordsCurrency({ profileId }: RecordsCurrencyProps) {
   const saved = useGetRecordsCurrencyQuery(profileId);
   const [save] = useSetRecordsCurrencyMutation();

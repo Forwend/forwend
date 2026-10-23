@@ -79,7 +79,7 @@ export const profilesApi = apiSlice.injectEndpoints({
         }
       },
     }),
-    /** The profile's owner email (R-80): on or off, and the login email it goes to. */
+    /** The profile's owner email (R-80). */
     getNotifications: build.query<Notifications, string>({
       query: (profileId) => notificationsUrl(profileId),
       responseSchema: notificationsSchema,

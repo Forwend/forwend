@@ -7,7 +7,6 @@ import { exactDigits } from "@/shared/lib/money";
 
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 
-/** The settle transaction that moved the money to the creator's wallet. */
 export interface SettlementRow {
   txHash: string;
   to: string;
@@ -22,11 +21,7 @@ export interface InvoiceDepositsProps {
   settlement?: SettlementRow | null;
 }
 
-/**
- * Every transaction of the invoice in one list (R-69): each payment the chain shows for it, then the settlement to the
- * wallet once there is one; refunds join later (PLAN 9.4). Each row: what it was, amount, the other side, time,
- * transaction and a link to it on the block explorer.
- */
+/** Every transaction of the invoice (R-69); refunds join later (PLAN 9.4). */
 export function InvoiceDeposits({
   invoice,
   token,
@@ -103,8 +98,7 @@ function Transaction({
   txHash: string;
 }) {
   return (
-    // A narrow list (a phone, or the column beside Details): what it was and when on one line, who and the transaction
-    // under it. A wide one: all four in one row. The list's width decides, not the screen's.
+    // The list's width decides the layout (container query), not the screen's.
     <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 px-3 py-2.5 text-sm [grid-template-areas:'what_when''who_tx'] @2xl:grid-cols-[minmax(0,1fr)_auto_auto_auto] @2xl:[grid-template-areas:'what_who_when_tx']">
       <span className="flex flex-col [grid-area:what]">
         <span className="text-xs text-muted">

@@ -37,7 +37,7 @@ export const billingDetailsBodySchema = z.object({
 /** GET /v1/profiles/{profileId}/billing-details. */
 export const billingDetailsSchema = billingDetailsBodySchema.extend({ updatedAt: apiTime });
 
-/** GET and PUT /v1/profiles/{id}/notifications (R-80): email on or off, to the account's login email (null: none). */
+/** GET and PUT /v1/profiles/{id}/notifications (R-80); a null address means none. */
 export const notificationsSchema = z.object({
   email: z.boolean(),
   address: z.string().nullable(),

@@ -4,7 +4,6 @@ import { useId } from "react";
 import { cx } from "../../lib/cx";
 
 export interface ChoiceCardProps {
-  /** radio: one of several; checkbox: any number. The mark's shape follows. */
   type: "radio" | "checkbox";
   name: string;
   value: string;
@@ -15,10 +14,7 @@ export interface ChoiceCardProps {
   hint?: ReactNode;
 }
 
-/**
- * A large selectable card: an icon, a title and a hint, with a mark that fills when chosen, so the choice is never
- * shown by border color alone.
- */
+/** The mark fills when chosen, so the choice is never shown by border color alone. */
 export function ChoiceCard({
   type,
   name,

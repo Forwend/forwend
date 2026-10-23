@@ -21,8 +21,7 @@ export interface ProposeChangeProps {
   onProposed: () => void;
 }
 
-// R-106: a scope change on an accepted job, in a dialog: what it is for, its amount and days to pay. One key per
-// filled-in form, so a double click or a retry of the same values adds one change.
+// R-106. One key per filled-in form, so a double click or a retry adds one change.
 export function ProposeChange({ profileId, jobId, onProposed }: ProposeChangeProps) {
   const [propose, { isLoading }] = useProposeChangeMutation();
   const toast = useToast();

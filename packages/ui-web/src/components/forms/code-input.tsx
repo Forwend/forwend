@@ -7,7 +7,6 @@ export interface CodeInputProps {
   label: string;
   value: string;
   onValueChange: (digits: string) => void;
-  /** Number of digits; 6 by default. */
   length?: number;
   hint?: string;
   error?: string;
@@ -18,9 +17,8 @@ export interface CodeInputProps {
   className?: string;
 }
 
-// A one-time code shown as one box per digit. One real input sits over the boxes, so typing, paste, SMS or email
-// autofill (autocomplete="one-time-code") and screen readers work as with any text field. Non-digits are dropped, so
-// a pasted "123 456" or "Code: 123456" works; there is no maxLength, which would cut the paste first.
+// One real input sits over the boxes, so paste, one-time-code autofill and screen readers work as in any text field.
+// Non-digits are dropped, so a pasted "Code: 123456" works; maxLength would cut the paste first.
 export function CodeInput({
   label,
   value,
@@ -50,7 +48,6 @@ export function CodeInput({
           const current = focused && i === active && !disabled;
           return (
             <span
-              // The boxes only show the input's value; the input itself is read by assistive tech.
               // biome-ignore lint/suspicious/noArrayIndexKey: one box per position, the order never changes
               key={i}
               aria-hidden

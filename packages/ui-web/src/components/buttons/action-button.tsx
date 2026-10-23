@@ -10,8 +10,7 @@ export interface ActionButtonProps extends ComponentPropsWithoutRef<"button"> {
   primary?: boolean;
 }
 
-// A round icon action with its label underneath, as on a money dashboard. A disabled action keeps its place, says why
-// in its accessible name, and still reports a press to onClick, so the page can show the reason on touch too.
+// A disabled action still reports a press to onClick, so the page can show the reason on touch too.
 export function ActionButton({
   icon: Icon,
   label,

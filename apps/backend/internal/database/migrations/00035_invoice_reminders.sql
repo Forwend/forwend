@@ -1,6 +1,5 @@
--- Payment reminders (R-96, D-69): the owner turns them on per invoice, and the client stops them with a link that
--- carries stop_token. A row exists once the owner first turns them on. Each reminder is an outbox row whose payload
--- names its step, at most one per invoice and step.
+-- Payment reminders (R-96, D-69): the client stops them with a link carrying stop_token. A row exists once the
+-- owner first turns them on.
 
 -- +goose Up
 CREATE TABLE invoice_reminders (

@@ -30,10 +30,6 @@ export const invoicesApi = apiSlice
   .enhanceEndpoints({ addTagTypes: [INVOICES_TAG] })
   .injectEndpoints({
     endpoints: (build) => ({
-      /**
-       * Newest first, under the status filter and search (none when left out); "Show more" adds the next page of the
-       * same filtered list, and a refresh reads every shown page again.
-       */
       getInvoices: build.infiniteQuery<
         InvoicesPage,
         { profileId: string; status?: StatusFilter; q?: string },
@@ -54,7 +50,7 @@ export const invoicesApi = apiSlice
         responseSchema: invoicesPageSchema,
         providesTags: [INVOICES_TAG],
       }),
-      /** Public, by the pay link's token: terms, statuses and deposits, without the client. */
+      /** Public, by the pay link's token; without the client. */
       getInvoice: build.query<Invoice, string>({
         query: (payToken) => `/v1/invoices/${encodeURIComponent(payToken)}`,
         responseSchema: invoiceSchema,
@@ -67,7 +63,7 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         providesTags: [INVOICES_TAG],
       }),
-      /** The bell's events (R-81): paid, settled and held money, newest first. */
+      /** The bell's events (R-81), newest first. */
       getInvoiceEvents: build.query<InvoiceEvent[], string>({
         query: (profileId) => ({
           url: `/v1/profiles/${encodeURIComponent(profileId)}/events`,
@@ -76,7 +72,7 @@ export const invoicesApi = apiSlice
         rawResponseSchema: invoiceEventsSchema,
         transformResponse: (data: { items: InvoiceEvent[] }) => data.items,
       }),
-      /** Owed to you (R-95): overdue and partly paid invoices with what is left, then money held for the payer. */
+      /** Owed to you (R-95). */
       getOwed: build.query<Owed[], string>({
         query: (profileId) => `/v1/profiles/${encodeURIComponent(profileId)}/owed`,
         rawResponseSchema: owedListSchema,
@@ -92,10 +88,7 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
-      /**
-       * Send to client (R-94): one email per idempotency key. 409 without a client email or once the invoice can't be
-       * paid; 429 within a day of its last send or past the profile's daily sends.
-       */
+      /** R-94: one email per idempotency key; 409 when it can't be sent, 429 past a send limit. */
       sendInvoice: build.mutation<
         Invoice,
         { profileId: string; invoiceId: string; idempotencyKey: string }
@@ -110,10 +103,7 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
-      /**
-       * Payment reminders on or off (R-96). On is 409 once the invoice can't be paid, without a due date or client
-       * email, or after the client stopped them.
-       */
+      /** R-96: on is 409 once unpayable, without a due date or client email, or after the client stopped them. */
       setReminders: build.mutation<Invoice, { profileId: string; invoiceId: string; on: boolean }>({
         query: ({ profileId, invoiceId, on }) => ({
           url: `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}/reminders`,
@@ -123,7 +113,7 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
-      /** Stops the retainer the invoice belongs to (R-98): the same answer twice, and for an invoice that doesn't repeat. */
+      /** Stops the invoice's retainer (R-98); the same answer twice, also for an invoice that doesn't repeat. */
       stopRepeat: build.mutation<Invoice, { profileId: string; invoiceId: string }>({
         query: ({ profileId, invoiceId }) => ({
           url: `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}/repeat/stop`,

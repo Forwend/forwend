@@ -73,7 +73,7 @@ describe("new invoice form", () => {
     expect(bodies[1]).toBe(bodies[0]);
   });
 
-  // R-86: an invoice keeps a copy of the saved client's details, sent in its create request.
+  // R-86.
   it("fills the client from a saved client and sends its details", async () => {
     const bodies: Record<string, unknown>[] = [];
     vi.stubGlobal(
@@ -103,13 +103,12 @@ describe("new invoice form", () => {
     );
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
     fireEvent.click(screen.getByRole("button", { name: /^Saved client/ }));
-    // The search box filters the list as it is typed, ignoring letter case.
     fireEvent.change(screen.getByRole("combobox", { name: /Saved client/ }), {
       target: { value: "bob" },
     });
     fireEvent.click(await screen.findByRole("option", { name: /^Bob Ltd/ }));
     expect((screen.getByLabelText("Tax or VAT ID") as HTMLInputElement).value).toBe("DE999999999");
-    // R-90: the client's default PO number fills the invoice's reference.
+    // R-90.
     expect((screen.getByLabelText(/^PO or reference/) as HTMLInputElement).value).toBe(
       "PO-4500012345",
     );
@@ -126,7 +125,7 @@ describe("new invoice form", () => {
     expect(bodies[0]?.reference).toBe("PO-4500012345");
   });
 
-  // R-88: items replace the amount field, their total becomes the amount, and a line the token can't hold is named.
+  // R-88.
   it("sends items whose total is the amount, unit prices in the amount's own unit", async () => {
     const bodies: Record<string, unknown>[] = [];
     vi.stubGlobal(
@@ -211,7 +210,6 @@ describe("new invoice form", () => {
     expect(screen.queryByText("12.34 USDC")).toBeNull();
   });
 
-  // The amount field is gone while items stand in for it, so the API's word on the amount shows under the items.
   it("shows a refused amount under the items", async () => {
     vi.stubGlobal(
       "fetch",
@@ -242,7 +240,6 @@ describe("new invoice form", () => {
     );
   });
 
-  // Adding or removing an item takes away the button that had focus, so focus moves to where the work goes on.
   it("keeps keyboard focus on the items as they are added and removed", () => {
     render(
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>
@@ -259,7 +256,7 @@ describe("new invoice form", () => {
     expect(document.activeElement).toBe(screen.getByLabelText(/Amount/));
   });
 
-  // R-90: the reference follows the picked client's default, but never replaces one the owner typed.
+  // R-90.
   it("fills the reference from the picked client without losing a typed one", async () => {
     const saved = (clientId: string, name: string, reference: string | null) => ({
       clientId,
@@ -295,7 +292,7 @@ describe("new invoice form", () => {
     expect(reference()).toBe("PO-777");
   });
 
-  // R-91: a duplicate's form shows the earlier invoice's items without taking focus, and sends what it shows.
+  // R-91.
   it("fills from another invoice without moving focus", async () => {
     const bodies: Record<string, unknown>[] = [];
     vi.stubGlobal(
@@ -350,7 +347,7 @@ describe("new invoice form", () => {
     });
   });
 
-  // R-93: the price agreed in fiat, checked in its currency's decimals before it is sent.
+  // R-93.
   it("adds an agreed value and names what is missing", async () => {
     const bodies: Record<string, unknown>[] = [];
     vi.stubGlobal(
@@ -368,7 +365,6 @@ describe("new invoice form", () => {
     );
     fireEvent.change(screen.getByLabelText(/^Amount/), { target: { value: "100" } });
     fireEvent.click(screen.getByRole("button", { name: "Add agreed value" }));
-    // The button went away, so focus moved to what it asks for first.
     expect(document.activeElement).toBe(screen.getByRole("button", { name: /^Agreed in/ }));
     const create = () => fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
     create();
@@ -396,7 +392,7 @@ describe("new invoice form", () => {
     });
   });
 
-  // R-99: repeat needs a due date and a client email, and sends the last due date when one is picked.
+  // R-99.
   it("repeats every month only with a due date and a client email", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-14T10:00:00Z"));

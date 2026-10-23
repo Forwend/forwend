@@ -13,7 +13,6 @@ export interface Direction {
 
 export type ImageCompLayout = "center" | "left" | "split";
 
-/** A direction drawn from data: its image, palette, display face and layout. */
 export interface ImageCompSpec {
   palette: Readonly<Record<string, string>>;
   /** CSS variable set by next/font, e.g. "--font-sora". */

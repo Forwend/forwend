@@ -22,7 +22,6 @@ const (
 )
 
 var (
-	// ErrDueDateRequired: reminders count from the due date, and the invoice has none.
 	ErrDueDateRequired = errors.New("invoice has no due date")
 	// ErrRemindersStopped: the client stopped the reminders, so the owner can't turn them on again.
 	ErrRemindersStopped = errors.New("the client stopped the reminders")
@@ -37,16 +36,14 @@ type Reminders struct {
 
 var stopToken = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
-// PaidToOwnerSQL is the ledger's recipient_payable credits on the option row whose id is the SQL expression option:
-// minus what the owner got. No settlement runs before the amount is all in, so on an invoice the payer can still pay,
-// its amount plus this is what is left (R-95, R-96).
+// PaidToOwnerSQL is minus what the owner got on the option row whose id is the SQL expression option. No settlement
+// runs before the amount is all in, so while the payer can still pay, amount plus this is what is left (R-95, R-96).
 func PaidToOwnerSQL(option string) string {
 	return `coalesce((SELECT sum(e.amount) FROM ledger_entries e JOIN ledger_transactions x ON x.id = e.transaction_id
 		WHERE x.invoice_id = ` + option + ` AND e.account = 'recipient_payable'), 0)`
 }
 
-// SetReminders turns the profile's invoice's reminders on or off (R-96). On needs an invoice the payer can still pay,
-// with a due date and a client email, whose client has not stopped them. The first call makes the stop token.
+// SetReminders (R-96): the first call makes the stop token; later calls keep it.
 func (s *Service) SetReminders(ctx context.Context, profileID, id string, on bool) (Invoice, error) {
 	id = strings.ToLower(id)
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
@@ -91,7 +88,6 @@ func (s *Service) SetReminders(ctx context.Context, profileID, id string, on boo
 	return s.GetOfProfile(ctx, profileID, id)
 }
 
-// newStopToken is the secret in the client's stop link: 32 random bytes in hex.
 func newStopToken() (string, error) {
 	token := make([]byte, 32)
 	if _, err := rand.Read(token); err != nil {
@@ -100,9 +96,7 @@ func newStopToken() (string, error) {
 	return hex.EncodeToString(token), nil
 }
 
-// StopReminders stops an invoice's reminders for good, by the token of the client's stop link (R-96). It answers the
-// invoice's number and who sent it (the issuer, else the sender name), the same when already stopped. An unknown token
-// is ErrNotFound.
+// StopReminders stops them for good (R-96); a token already used answers the same.
 func (s *Service) StopReminders(ctx context.Context, token string) (number int64, from string, err error) {
 	if !stopToken.MatchString(token) {
 		return 0, "", ErrNotFound
@@ -119,10 +113,8 @@ func (s *Service) StopReminders(ctx context.Context, token string) (number int64
 	return number, from, nil
 }
 
-// QueueReminders queues, for each invoice with reminders on and not stopped that the payer can still pay and that has
-// a client email, the latest step whose UTC day has come, once per step: a step passed while the worker was down gives
-// way to the later one. The worker calls it each round and the email worker sends them (R-96). A user's reminders fit
-// in what is left of outbox.MaxClientEmails, earliest due first; the others wait for a later round (R-116).
+// QueueReminders queues only the latest step due, once: a step missed while the worker was down is skipped (R-96).
+// A user's reminders fit in what is left of outbox.MaxClientEmails, earliest due first; the rest wait (R-116).
 func (s *Service) QueueReminders(ctx context.Context) error {
 	// $1 to $4: the kind and the steps.
 	due := `SELECT invoices.id, invoices.option_id, invoices.due_date, s.step, p.user_id
@@ -160,7 +152,6 @@ func (s *Service) QueueReminders(ctx context.Context) error {
 	})
 }
 
-// reminders reads the invoice's reminder state and the reminders queued for it.
 func (s *Service) reminders(ctx context.Context, id string) (Reminders, error) {
 	var r Reminders
 	var stopped *time.Time

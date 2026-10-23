@@ -7,7 +7,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
 
-// listClients is GET /v1/profiles/{profileId}/clients: every saved client, by name (R-86).
+// R-86.
 func listClients(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		list, err := profiles.Clients(r.Context(), r.PathValue("profileId"))
@@ -25,7 +25,6 @@ func listClients(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// putClient is PUT /v1/profiles/{profileId}/clients/{clientId}: 201 when it makes the client, 200 when it replaces it.
 func putClient(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body clientBody
@@ -48,7 +47,7 @@ func putClient(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// deleteClient is DELETE /v1/profiles/{profileId}/clients/{clientId}: 204; invoices keep their copy.
+// Invoices keep their copy of the client's details.
 func deleteClient(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := profiles.DeleteClient(r.Context(), r.PathValue("profileId"), r.PathValue("clientId")); err != nil {

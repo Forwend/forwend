@@ -6,7 +6,6 @@ import { CTA, WAITLIST_COPY, WAITLIST_MOCK_DELAY_MS } from "@/features/waitlist/
 import { isEmail } from "@/features/waitlist/lib/waitlist";
 
 interface WaitlistFormProps {
-  /** Distinguishes the hero and closing forms; used for the anchor id. */
   id: string;
 }
 

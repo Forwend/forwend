@@ -16,8 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// open migrates a fresh database with Base Sepolia, enabled USDC and one freelancer profile with a wallet and billing
-// details.
+// open: Base Sepolia USDC and a freelancer profile with a wallet and billing details.
 func open(t *testing.T) (*pgxpool.Pool, string) {
 	t.Helper()
 	ctx := context.Background()
@@ -56,8 +55,7 @@ func quote(deposit bool) Request {
 			{Title: "Final delivery", AmountUSD: "700.50", DueDays: 14}}}
 }
 
-// R-100: acceptance records the typed name, email and time once and makes the deposit invoice in the same
-// transaction: payer chooses in USD, the job's title and client, one line, due 7 days after the UTC day, open 60 more.
+// R-100.
 func TestAcceptMakesTheDepositOnce(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -107,8 +105,7 @@ func TestAcceptMakesTheDepositOnce(t *testing.T) {
 		t.Fatalf("second accept: %+v %v", again, err)
 	}
 
-	// Clients clicking at once make one deposit, and each gets the job back. The profile lock that Create takes holds
-	// them all until each has passed its checks, so they race to insert the same key.
+	// Holding the profile lock Create takes lets every concurrent accept pass its checks, so they race on one key.
 	j2, _, err := s.Create(ctx, profileID, "k2", quote(true))
 	if err != nil {
 		t.Fatal(err)
@@ -147,7 +144,7 @@ func TestAcceptMakesTheDepositOnce(t *testing.T) {
 	}
 }
 
-// R-100: a job without a deposit makes no invoice at acceptance.
+// R-100.
 func TestAcceptWithoutDepositMakesNoInvoice(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -165,8 +162,7 @@ func TestAcceptWithoutDepositMakesNoInvoice(t *testing.T) {
 	}
 }
 
-// R-100: accepts on both sides of UTC midnight make different deposit requests under one key; the later one reads the
-// job as accepted instead of failing.
+// R-100: the later accept reads the job as accepted instead of failing on the key.
 func TestAcceptAcrossMidnight(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -209,7 +205,7 @@ func TestAcceptAcrossMidnight(t *testing.T) {
 	}
 }
 
-// R-101: an accept that reads the job just before the owner deletes it makes no deposit invoice.
+// R-101.
 func TestAcceptOfADeletedJobMakesNoInvoice(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -232,8 +228,7 @@ func TestAcceptOfADeletedJobMakesNoInvoice(t *testing.T) {
 	}
 }
 
-// R-100: clients accepting a job without a deposit at once both get the accepted job: the later one finds it accepted,
-// not gone.
+// R-100: the later accept finds the job accepted, not gone.
 func TestConcurrentAcceptsWithoutDeposit(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -272,5 +267,4 @@ func TestConcurrentAcceptsWithoutDeposit(t *testing.T) {
 	}
 }
 
-// noLimit is a shared limit that always lets the request through.
 func noLimit() time.Duration { return 0 }

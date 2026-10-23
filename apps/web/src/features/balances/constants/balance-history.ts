@@ -1,6 +1,6 @@
 import type { HistoryRange } from "@/features/balances/types/balance-history";
 
-/** The chart ranges, in days of history (the API takes 1 to 365). */
+/** In days; the API takes 1 to 365. */
 export const HISTORY_RANGES = {
   "1W": 7,
   "1M": 30,

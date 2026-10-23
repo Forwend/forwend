@@ -1,5 +1,4 @@
--- Records (R-108): the label a user gives money in that is neither an invoice payment nor a transfer between their own
--- profiles. One per profile and transfer log; money in without one is unclassified.
+-- Records (R-108): a user's label for money in that is not an invoice payment or own transfer. None: unclassified.
 
 -- +goose Up
 CREATE TABLE transfer_labels (

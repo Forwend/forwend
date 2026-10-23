@@ -1,5 +1,4 @@
--- A job's payment marked done (R-103): when, and an optional link to the delivered work (D-66: links only). Its invoice
--- is made in the same transaction.
+-- Payment done (R-103, D-66: links only). Its invoice is made in the same transaction.
 
 -- +goose Up
 ALTER TABLE job_payments

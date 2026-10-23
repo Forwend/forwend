@@ -20,8 +20,6 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-// A call that meets a 429, a 5xx, a rate-limit JSON-RPC error or a timeout moves to the next endpoint at once and gets
-// the right answer; the failing endpoint rests, gets no calls while resting, and is used again once its rest is over.
 func TestFailingEndpointRestsThenComesBack(t *testing.T) {
 	a := chaintest.Start(t)
 	want := number(t, context.Background(), a.RPC)
@@ -111,8 +109,7 @@ func TestHangingHostRestsWhole(t *testing.T) {
 	}
 }
 
-// Requests waiting their turn on an endpoint that starts to fail move on without being sent to it, and the burst counts
-// as one failure: the rest stays at its first step instead of doubling per queued request.
+// At 10 calls a second the 5 requests queue on the first endpoint; the burst must count as one failure.
 func TestQueuedRequestsSkipAnEndpointThatStartsToRest(t *testing.T) {
 	a := chaintest.Start(t)
 	bad := a.Proxy()
@@ -142,14 +139,12 @@ func TestQueuedRequestsSkipAnEndpointThatStartsToRest(t *testing.T) {
 	}
 }
 
-// The primary and the second answer only from their own hosts (D-15): a failed host is replaced by another of its
-// role, never by the other role's.
+// D-15: a failed host is replaced only by another of its own role.
 func TestRolesStayOnDifferentHosts(t *testing.T) {
 	a := chaintest.Start(t)
 	hosts := []*chaintest.Proxy{a.Proxy(), a.Proxy(), a.Proxy()}
 	r := newRPCs(t, hosts[0].URL, hosts[1].URL, hosts[2].URL)
 	ctx := context.Background()
-	// served is the host that answered a call, or -1.
 	served := func(ctx context.Context, c *rpc.Client) (int, error) {
 		before := make([]int, len(hosts))
 		for i, h := range hosts {
@@ -184,8 +179,7 @@ func TestRolesStayOnDifferentHosts(t *testing.T) {
 	}
 	hosts[1].Fail(nil)
 
-	// SEC-01: the primary fails over within its own hosts, and once its first host is back, the second still never
-	// reads from the host that answered the primary meanwhile.
+	// SEC-01: after the primary fails over and back, the second never reads from the host the primary used meanwhile.
 	hosts[0].Fail(down)
 	if got, err := served(ctx, r.Primary); err != nil || got != 2 {
 		t.Fatalf("primary served by host %d (%v), want 2", got, err)
@@ -198,7 +192,6 @@ func TestRolesStayOnDifferentHosts(t *testing.T) {
 	expect(0, 1)
 }
 
-// Infura keys share a host: a rate-limited key moves the primary to the next key, and the second keeps its own host.
 func TestFailedKeyMovesToTheNextKeyOnItsHost(t *testing.T) {
 	a := chaintest.Start(t)
 	infura, other := a.Proxy(), a.Proxy()
@@ -228,7 +221,6 @@ func TestFailedKeyMovesToTheNextKeyOnItsHost(t *testing.T) {
 	}
 }
 
-// Errors and logs name an endpoint by host and position, never by URL: an Infura URL holds the key.
 func TestURLsStayOutOfErrorsAndLogs(t *testing.T) {
 	var logs bytes.Buffer
 	defer slog.SetDefault(slog.Default())
@@ -256,8 +248,7 @@ func TestURLsStayOutOfErrorsAndLogs(t *testing.T) {
 	}
 }
 
-// Each endpoint is sent at most the rate's calls per second, a batch counting each of its calls; the other host's
-// pace is its own.
+// A batch counts each of its calls; the other host's pace is its own.
 func TestEachEndpointIsPaced(t *testing.T) {
 	a := chaintest.Start(t)
 	r, err := NewRPCs(Spec{ChainID: chaintest.ChainID, Public: []string{a.URL, localhost(a.URL)}}, nil, 20) // 50 ms a call
@@ -312,7 +303,6 @@ func TestRestDoublesUpToTheCapWithJitter(t *testing.T) {
 	}
 }
 
-// An outage is an answer about the endpoint; any other answer, an error included, is the call's.
 func TestOutageIsToldFromAnAnswer(t *testing.T) {
 	for _, c := range []struct {
 		answer string
@@ -340,7 +330,6 @@ func TestOutageIsToldFromAnAnswer(t *testing.T) {
 	}
 }
 
-// The watcher narrows a log query on a rate limit no endpoint escaped or on a range or result the RPC refuses.
 func TestOverloaded(t *testing.T) {
 	for _, c := range []struct {
 		err  error
@@ -376,7 +365,6 @@ func health(r RPCs, e *endpoint) (int, time.Time) {
 	return e.failures, e.restUntil
 }
 
-// answered counts the calls a proxy forwarded to Anvil.
 func answered(p *chaintest.Proxy) int {
 	n := 0
 	for _, c := range p.Calls() {
@@ -387,8 +375,7 @@ func answered(p *chaintest.Proxy) int {
 	return n
 }
 
-// Calls at once reuse their connections afterwards: 20 rounds of 10 calls at once open about 10 connections, not one per
-// call (net/http keeps only 2 per host by default).
+// 20 rounds of 10 calls at once should open about 10 connections, not one per call (net/http keeps 2 idle).
 func TestCallsReuseConnections(t *testing.T) {
 	var conns atomic.Int32
 	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

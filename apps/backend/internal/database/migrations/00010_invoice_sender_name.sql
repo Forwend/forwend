@@ -1,5 +1,4 @@
--- A sender name for requests (R-49, D-52): a personal profile usually has no billing details, so a request carries the
--- name its payer sees. Optional, and like the invoice's other details it never changes.
+-- Sender name (R-49, D-52): a personal profile usually has no billing details, so a request names its sender.
 
 -- +goose Up
 ALTER TABLE invoices ADD COLUMN sender_name text CHECK (char_length(sender_name) BETWEEN 1 AND 100);

@@ -9,7 +9,6 @@ export interface InitialsAvatarProps {
   children?: ReactNode;
 }
 
-/** A round avatar with up to two letters of a name: a client in Invoices and Clients. */
 export function InitialsAvatar({ name, small = false, fallback, children }: InitialsAvatarProps) {
   const letters = name ? initials(name) : "";
   return (
@@ -23,7 +22,6 @@ export function InitialsAvatar({ name, small = false, fallback, children }: Init
   );
 }
 
-// Up to two letters of the name, one from each of its first words that has a letter.
 function initials(name: string): string {
   return name
     .split(/\s+/)

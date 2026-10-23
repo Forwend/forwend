@@ -28,8 +28,7 @@ test.describe("accessibility", () => {
   }
 
   for (const colorScheme of ["light", "dark"] as const) {
-    // The theme comes from the system preference through the head script, as for a real visitor;
-    // setting data-theme by hand after load raced with hydration and made this test flaky.
+    // colorScheme, not a hand-set data-theme: setting it after load races hydration.
     test(`/kit has no serious or critical axe violations in the ${colorScheme} theme`, async ({
       browser,
     }) => {
@@ -38,7 +37,7 @@ test.describe("accessibility", () => {
       await page.goto(`${KIT_URL}/kit`);
       await expect(page.locator("html")).toHaveAttribute("data-theme", colorScheme);
       expect(await blockingViolations(page)).toEqual([]);
-      // R-59: an open date picker, its calendar grid and the keyboard path into it.
+      // R-59
       await page.getByRole("button", { name: /^Due date \(optional\)/ }).click();
       const grid = page.getByRole("grid", { name: "Due date (optional)" });
       await expect(grid.locator("button[tabindex='0']")).toBeFocused();

@@ -1,10 +1,7 @@
 import { z } from "zod";
 import { apiTime } from "@/shared/schemas/api";
 
-/**
- * The PUT /v1/profiles/{profileId}/clients/{clientId} body, and the client block an invoice copies (R-86); "" means
- * none. A saved client needs a name; an invoice's client block may leave every field empty.
- */
+/** R-86: "" means none. A saved client needs a name; an invoice's client block may be all empty. */
 export const clientBodySchema = z.object({
   name: z.string(),
   email: z.string(),
@@ -14,10 +11,7 @@ export const clientBodySchema = z.object({
   taxId: z.string(),
 });
 
-/**
- * The PUT body: the client block, the PO number or reference New invoice fills in (R-90), and whether its new invoices
- * start with payment reminders on (R-97).
- */
+/** The PUT body (R-90, R-97). */
 export const savedClientBodySchema = clientBodySchema.extend({
   reference: z.string(),
   reminders: z.boolean(),

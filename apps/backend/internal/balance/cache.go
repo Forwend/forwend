@@ -6,11 +6,8 @@ import (
 	"time"
 )
 
-// cache shares chain reads between the api's requests. get returns key's value while it is fresh. Otherwise it runs
-// read once for every request that asks for key meanwhile, and keeps a successful value for ttl. An error goes to the
-// requests that waited for that read and is not kept, so the next request reads again. Values are strings so that a
-// Redis implementation can take memoryCache's place once the api runs as more than a few replicas
-// (docs/backend/architecture.md#scaling).
+// cache shares chain reads between requests: one read per key at a time, a value kept for ttl, an error not kept.
+// Values are strings so Redis can replace memoryCache across replicas (docs/backend/architecture.md#scaling).
 type cache interface {
 	get(ctx context.Context, key string, ttl time.Duration, read func(context.Context) (string, error)) (string, error)
 }
@@ -56,8 +53,7 @@ func (m *memoryCache) get(ctx context.Context, key string, ttl time.Duration,
 	}
 }
 
-// fill runs the read for every request waiting on e. The request that started it may leave early while others still
-// wait, so its cancel does not stop the read; its deadline still bounds it.
+// The starting request may leave while others wait, so its cancel doesn't stop the read; its deadline still bounds it.
 func (m *memoryCache) fill(ctx context.Context, key string, e *entry, ttl time.Duration,
 	read func(context.Context) (string, error)) {
 	shared := context.WithoutCancel(ctx)

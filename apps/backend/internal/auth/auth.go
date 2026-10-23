@@ -33,9 +33,8 @@ const MaxKeyAge = time.Hour
 // KeyGrace is how much longer the last list still verifies while Privy can't be reached; past it, nothing does (R-30).
 const KeyGrace = 10 * time.Minute
 
-// Verifier checks Privy access tokens with the app's published signing keys (R-29). Keys are loaded at startup and
-// fetched again when a token names an unknown kid (at most once per RefetchInterval) or the list is older than
-// MaxKeyAge (R-30).
+// Verifier checks Privy access tokens with the app's published signing keys (R-29). It refetches them for an unknown
+// kid (at most once per RefetchInterval) or a list older than MaxKeyAge (R-30).
 type Verifier struct {
 	jwksURL string
 	client  *http.Client
@@ -48,7 +47,6 @@ type Verifier struct {
 	triedAt   time.Time // last attempt: limits fetches to one per RefetchInterval
 }
 
-// NewVerifier loads the keys from the Privy JWKS URL; it fails if they can't be fetched.
 func NewVerifier(ctx context.Context, appID, jwksURL string, client *http.Client) (*Verifier, error) {
 	if appID == "" {
 		return nil, errors.New("empty Privy app ID") // would accept a token with an empty audience
@@ -99,10 +97,8 @@ func (v *Verifier) Verify(ctx context.Context, token string) (string, error) {
 	return claims.Subject, nil
 }
 
-// keysFor returns the key named kid, fetching the keys again if it is unknown and the last fetch is old enough.
-// A token without a kid may match any published key.
-// A key list older than MaxKeyAge is fetched again first, so a withdrawn key stops verifying. The lock is not held
-// during the fetch, so known keys keep working while Privy answers.
+// keysFor: a token without a kid may match any published key. The lock is not held during the fetch, so known keys
+// keep working while Privy answers.
 func (v *Verifier) keysFor(ctx context.Context, kid string) (jwt.VerificationKeySet, error) {
 	v.mu.Lock()
 	cached, known := v.lookup(kid)
@@ -150,7 +146,6 @@ func (v *Verifier) lookup(kid string) (jwt.VerificationKeySet, bool) {
 	return set, len(set.Keys) > 0
 }
 
-// fetch reads the JWKS and keeps its ES256 P-256 signing keys.
 func (v *Verifier) fetch(ctx context.Context) (map[string]*ecdsa.PublicKey, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, v.jwksURL, nil)
 	if err != nil {

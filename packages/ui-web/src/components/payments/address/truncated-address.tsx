@@ -9,7 +9,6 @@ export interface TruncatedAddressProps {
   className?: string;
 }
 
-/** An address cut to its start and end in a row of details; hover, focus or a tap shows it whole. */
 export function TruncatedAddress({ address, className }: TruncatedAddressProps) {
   return (
     <Tooltip content={address}>

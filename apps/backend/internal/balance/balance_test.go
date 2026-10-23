@@ -22,9 +22,8 @@ const (
 	invoice = "0xab00000000000000000000000000000000000000000000000000000000000001"
 )
 
-// setup makes a profile with a wallet and one invoice in token on Anvil, with these transfers to its receive address:
-// 1.0 detected (pending), 0.5 reorged (ignored), and 3.0 confirmed and booked as 2.0 owed to the creator (pending
-// until settled) and 1.0 held for the payer.
+// setup's invoice has 1.0 detected (pending), 0.5 reorged (ignored), and 3.0 confirmed and booked as 2.0 owed to
+// the creator (pending) and 1.0 held for the payer.
 func setup(t *testing.T, token string) (pool *pgxpool.Pool, profile, walletless string) {
 	t.Helper()
 	ctx := context.Background()
@@ -135,7 +134,6 @@ func TestBalancesOnAnvil(t *testing.T) {
 	}
 }
 
-// A chain that hangs leaves only its own balance missing: the others are read in their own time.
 func TestHungChainLeavesTheOthers(t *testing.T) {
 	anvil := chaintest.Start(t)
 	token := anvil.DeployToken()

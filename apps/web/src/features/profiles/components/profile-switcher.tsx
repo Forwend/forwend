@@ -26,7 +26,6 @@ export interface ProfileSwitcherProps {
   compact?: boolean;
 }
 
-// The workspace switcher: the chosen profile frames everything below it, and switching keeps you on the same page.
 export function ProfileSwitcher({
   profiles,
   active,

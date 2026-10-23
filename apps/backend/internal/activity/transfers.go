@@ -14,9 +14,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Transfer is an enabled-token transfer from or to the profile's wallet (R-38). Direction is "in" or "out"; Status is
-// detected or confirmed (reorged ones are left out); At is the block time. Invoice, Label and own say what it was
-// (R-108): see Classification.
+// Transfer is an enabled-token transfer of the profile's wallet (R-38); reorged ones are left out. At is the block
+// time; Invoice, Label and own classify it (R-108): see Classification.
 type Transfer struct {
 	chain.Asset
 	Direction    string
@@ -36,16 +35,14 @@ type Transfer struct {
 	id              int64
 }
 
-// rates are the ECB's euro rates of the latest day on or before a transfer's UTC day, within 7 days: USD and the
-// records currency per 1 EUR.
+// rates are USD and the records currency per 1 EUR, on the ECB day that values a transfer.
 type rates struct {
 	day      time.Time
 	usd, cur *big.Rat
 }
 
-// transferSQL selects a profile's transfers ($1) with what classifies them (R-108): the invoice money in paid (sent
-// from one of its receive addresses), whether the counterparty is another of the user's profiles, and the user's label.
-// With a records currency it adds the ECB rates that value the transfer (R-110).
+// transferSQL selects a profile's transfers ($1) with what classifies them (R-108): the invoice paid from one of
+// its receive addresses, an own-profile counterparty, the user's label, and the ECB rates that value it (R-110).
 const transferSQL = `
 	SELECT t.id, t.chain_id, t.token_contract, tk.symbol, tk.decimals, t.direction, t.amount::text, t.counterparty,
 	       t.tx_hash, t.log_index, t.block_number, t.block_time, t.status, inv.id, inv.number, inv.client_name,
@@ -100,15 +97,14 @@ func scanTransfer(row pgx.CollectableRow) (Transfer, error) {
 	return t, err
 }
 
-// TransferPage is one page of transfers; NextCursor is "" on the last one.
+// NextCursor is "" on the last page.
 type TransferPage struct {
 	Items      []Transfer
 	NextCursor string
 }
 
-// Transfers returns the page of the profile wallet's transfers in direction ("" for both) whose counterparty,
-// transaction hash, token symbol or amount matches q, after cursor ("" for the first), newest block time first. The
-// caller has checked that the user owns the profile.
+// Transfers returns a page in direction ("" for both) matching q, newest block time first. The caller has checked
+// that the user owns the profile.
 func (s *Service) Transfers(ctx context.Context, profileID, cursor string, limit int, direction string,
 	q search.Query) (TransferPage, error) {
 	if limit < 1 || limit > MaxLimit {
@@ -151,7 +147,6 @@ func (s *Service) Transfers(ctx context.Context, profileID, cursor string, limit
 	return page, nil
 }
 
-// decodeTransfer reads a transfers cursor: the last item's block time and row id.
 func decodeTransfer(cursor string) (at, id int64, err error) {
 	raw, err := base64.RawURLEncoding.DecodeString(cursor)
 	parts := strings.Split(string(raw), "|")

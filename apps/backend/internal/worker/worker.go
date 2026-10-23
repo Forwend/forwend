@@ -14,10 +14,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// RescanTimeout bounds one chain's Check status rescans within its round.
 const RescanTimeout = 30 * time.Second
 
-// RoundTimeout bounds one chain's scan and ledger run.
 const RoundTimeout = 2 * time.Minute
 
 // LockKey is the worker's Postgres advisory lock: one worker runs at a time, since two would race on the chain
@@ -35,8 +33,7 @@ type Worker struct {
 	ledger   *ledger.Service
 }
 
-// New works on the chains in specs through their Infura keys (where a chain lists Infura) and public RPCs, sending each
-// at most rate calls per second.
+// New sends each RPC at most rate calls per second.
 func New(pool *pgxpool.Pool, specs map[uint64]chain.Spec, keys []string, rate float64) *Worker {
 	w := &Worker{pool: pool, specs: specs, keys: keys, rate: rate, rpcs: map[uint64]chain.RPCs{},
 		watchers: map[uint64]*watcher.Chain{}, balances: map[uint64]*ethclient.Client{}}
@@ -44,8 +41,7 @@ func New(pool *pgxpool.Pool, specs map[uint64]chain.Spec, keys []string, rate fl
 	return w
 }
 
-// Round scans each enabled chain, then books and moves its invoices. A failing or rate-limited RPC is rested and its
-// calls move to the chain's next one (chain.NewRPCs); a chain that fails still gets its next round.
+// Round: a failing or rate-limited RPC is rested and its calls move to the chain's next one (chain.NewRPCs).
 func (w *Worker) Round(ctx context.Context) {
 	ids, err := chain.Enabled(ctx, w.pool)
 	if err != nil {
@@ -88,7 +84,6 @@ func (w *Worker) Round(ctx context.Context) {
 	}
 }
 
-// Close closes every chain's RPC clients.
 func (w *Worker) Close() {
 	for _, r := range w.rpcs {
 		r.Close()

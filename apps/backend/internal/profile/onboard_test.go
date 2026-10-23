@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// kinds lists the profiles' kinds sorted: profiles made in one transaction share created_at, so their order is open.
+// Sorted: profiles made in one transaction share created_at, so their order is open.
 func kinds(profiles []Profile) []string {
 	var out []string
 	for _, p := range profiles {
@@ -19,7 +19,6 @@ func kinds(profiles []Profile) []string {
 	return out
 }
 
-// The choices make their profiles once, each with a wallet; a second call, with any choices, makes none.
 func TestOnboardOnce(t *testing.T) {
 	s, f, pool := newService(t)
 	ctx := context.Background()

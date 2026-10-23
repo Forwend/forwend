@@ -19,7 +19,6 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
 
-// getActivity is GET /v1/profiles/{profileId}/activity?limit=&cursor=&status=&q=.
 func getActivity(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		limit, err := httpio.IntQuery(r, "limit", activity.DefaultLimit)
@@ -52,7 +51,6 @@ func getActivity(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
-// getTransactions is GET /v1/profiles/{profileId}/transactions?limit=&cursor=&direction=&q=.
 func getTransactions(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		limit, err := httpio.IntQuery(r, "limit", activity.DefaultLimit)
@@ -83,16 +81,14 @@ func getTransactions(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
-// formulaAfterSemicolon is a formula start right after a ";", also after quotes: a cell that starts with a quote
-// ends at the next lone quote, and what follows is added to it.
+// Also after quotes: a cell that starts with a quote ends at the next lone quote, and what follows is added to it.
 var formulaAfterSemicolon = regexp.MustCompile(`;("*[=+\-@\t\r])`)
 
-// transactionsCSVHeader names the export's columns (R-108).
+// R-108.
 var transactionsCSVHeader = []string{"Date (UTC)", "Direction", "Amount", "Token", "Network", "Counterparty",
 	"Transaction", "Status", "USD value", "Classification", "Invoice", "Client"}
 
-// getTransactionsCSV is GET /v1/profiles/{profileId}/transactions.csv?from=&to=: every transaction in those UTC days
-// (both optional, inclusive), newest first (R-108); 422 too_many_transactions past activity.MaxExportRows (R-118).
+// R-108, R-118.
 func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		from, to, err := dayRange(r.URL.Query().Get("from"), r.URL.Query().Get("to"))
@@ -154,7 +150,6 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
-// dayRange reads the export's from and to UTC days (YYYY-MM-DD) as [from, the day after to).
 func dayRange(from, to string) (time.Time, time.Time, error) {
 	start, end := time.Unix(0, 0).UTC(), time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)
 	var err error
@@ -175,8 +170,7 @@ func dayRange(from, to string) (time.Time, time.Time, error) {
 	return start, end, nil
 }
 
-// putTransactionLabel is PUT /v1/profiles/{profileId}/transactions/{chainId}/{txHash}/{logIndex}/label with
-// {"label": "income"|"own_transfer"|"refund"|"other"|null} (R-108).
+// R-108.
 func putTransactionLabel(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -214,7 +208,7 @@ type recordsCurrencyJSON struct {
 	Currency *string `json:"currency"`
 }
 
-// getRecordsCurrency is GET /v1/profiles/{profileId}/records-currency (R-110).
+// R-110.
 func getRecordsCurrency(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currency, err := activities.RecordsCurrency(r.Context(), r.PathValue("profileId"))
@@ -226,7 +220,7 @@ func getRecordsCurrency(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
-// putRecordsCurrency is PUT /v1/profiles/{profileId}/records-currency with {"currency": "EUR"|...|null} (R-110).
+// R-110.
 func putRecordsCurrency(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body recordsCurrencyJSON
@@ -246,9 +240,7 @@ func putRecordsCurrency(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
-// getStatement is GET /v1/profiles/{profileId}/statement.pdf?from=&to= (R-112): the profile's income in those UTC days,
-// both required, as a PDF with the billing details as its account holder; 422 too_many_transactions past
-// activity.MaxExportRows (R-118).
+// R-112, R-118.
 func getStatement(activities *activity.Service, profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q, id := r.URL.Query(), r.PathValue("profileId")
@@ -274,7 +266,7 @@ func getStatement(activities *activity.Service, profiles *profile.Service) http.
 		s := document.Statement{Holder: holder.Issuer, From: from, To: to.AddDate(0, 0, -1),
 			Issued: time.Now().UTC().Truncate(time.Second), Currency: currency,
 			Decimals: invoice.AgreedCurrencies[currency]}
-		// Only income is kept; a transfer still confirming is no income yet.
+		// A transfer still confirming is no income yet.
 		err = activities.EachTransfer(r.Context(), id, from, to, func(t activity.Transfer) error {
 			if t.Status != "confirmed" {
 				return nil
@@ -303,8 +295,6 @@ func getStatement(activities *activity.Service, profiles *profile.Service) http.
 	}
 }
 
-// statementLine is an income transfer as a statement shows it: its USD value rounded half up to the cent, and its value
-// in the records currency in minor units when it has a rate.
 func statementLine(t activity.Transfer) document.StatementLine {
 	what := "Income"
 	if i := t.Invoice; i != nil {

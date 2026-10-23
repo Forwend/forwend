@@ -9,7 +9,6 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
 )
 
-// send makes a GET as user ("" = no token) and returns the status, error code and Retry-After header.
 func (e invoiceEnv) send(t *testing.T, path, user string) (status int, code, retryAfter string) {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodGet, e.srv.URL+path, nil)
@@ -29,8 +28,6 @@ func (e invoiceEnv) send(t *testing.T, path, user string) (status int, code, ret
 	return res.StatusCode, body.Error.Code, res.Header.Get("Retry-After")
 }
 
-// A signed-in user past the burst gets 429 rate_limited with Retry-After, and passes again after it; another user is
-// not held up.
 func TestUserRateLimit(t *testing.T) {
 	e := invoiceAPI(t)
 	const carol, dave = "did:privy:carol", "did:privy:dave"

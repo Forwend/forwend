@@ -3,7 +3,7 @@ import Link from "next/link";
 import { JobQuote } from "@/features/jobs/components/job-quote";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-/** The page a job's link opens (R-102): the logo, then the quote in one column, like the stop reminders page. */
+/** The page a job's link opens (R-102). */
 export function JobQuoteScreen({ token }: { token: string }) {
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-8 fw-safe-x pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] lg:py-10">

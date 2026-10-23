@@ -44,7 +44,6 @@ type envelope struct {
 	} `xml:"Cube>Cube"`
 }
 
-// Parse reads an ECB eurofxref file.
 func Parse(r io.Reader) ([]Rate, error) {
 	var e envelope
 	if err := xml.NewDecoder(r).Decode(&e); err != nil {
@@ -69,7 +68,6 @@ func Parse(r io.Reader) ([]Rate, error) {
 	return out, nil
 }
 
-// Keeper reads the rates at URL when they are due and keeps them; the worker calls Tick each round.
 type Keeper struct {
 	Pool   *pgxpool.Pool
 	Client *http.Client
@@ -77,7 +75,6 @@ type Keeper struct {
 	due    time.Time
 }
 
-// Tick reads the rates when due: again after Every, or after Retry when the read failed.
 func (k *Keeper) Tick(ctx context.Context, now time.Time) error {
 	if now.Before(k.due) {
 		return nil
@@ -90,7 +87,7 @@ func (k *Keeper) Tick(ctx context.Context, now time.Time) error {
 	return nil
 }
 
-// refresh stores every rate in the file; a rate the ECB corrected replaces the one kept.
+// refresh: a rate the ECB corrected replaces the one kept.
 func (k *Keeper) refresh(ctx context.Context) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, k.URL, nil)
 	if err != nil {

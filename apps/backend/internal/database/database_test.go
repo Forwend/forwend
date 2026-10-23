@@ -11,7 +11,6 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
 )
 
-// A database that does not answer stops a binary at startup with a message naming Postgres.
 func TestOpenNamesAnUnreachableDatabase(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -35,8 +34,7 @@ func TestOpenRetainsCancellationCause(t *testing.T) {
 	}
 }
 
-// DATABASE_URL sizes the pool with pgxpool's pool_max_conns; the migrations' plain connection must not send it to
-// Postgres as a setting.
+// Migrate runs first: its plain connection must not send pool_max_conns to Postgres as a setting.
 func TestPoolSizeFromTheURL(t *testing.T) {
 	ctx := context.Background()
 	url := databasetest.New(t) + "&pool_max_conns=3"

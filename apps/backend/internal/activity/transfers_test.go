@@ -12,7 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// addTransfer records wallet's side of log n (tx and block hash 0x00…n, block n) at blockTime.
 func addTransfer(t *testing.T, pool *pgxpool.Pool, wallet string, n int, blockTime int64, direction, status string) string {
 	t.Helper()
 	hash := fmt.Sprintf("0x%064x", n)

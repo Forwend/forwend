@@ -13,7 +13,6 @@ import {
 } from "./sample-api";
 import { session } from "./session";
 
-// The status filter of Invoices and Activity is a menu beside the search.
 async function pickStatus(page: Page, name: string) {
   await page
     .getByRole("main")
@@ -42,7 +41,6 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
     expect((await heading.boundingBox())?.width).toBeLessThanOrEqual(1);
   };
 
-  // Invoices: status filter and search in the toolbar.
   await page.goto("/app/invoices");
   await expect(crumbs.getByRole("link", { name: "Invoices" })).toHaveAttribute(
     "aria-current",
@@ -67,7 +65,6 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   await search.fill("");
   expect(await blockingViolations(page)).toEqual([]);
 
-  // A row opens its invoice; the breadcrumb ends at its number and leads back, with no separate back link.
   await rows.filter({ hasText: "INV-0004" }).click();
   await expect(page).toHaveURL(`/app/invoices/${CONFIRMING_INVOICE.invoiceId}`);
   await expect(crumbs.getByRole("link", { name: "INV-0004" })).toHaveAttribute(
@@ -77,11 +74,10 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   await hiddenHeading("INV-0004");
   await expect(main.getByRole("link", { name: "Invoices" })).toHaveCount(0);
   await expect(main.getByRole("region", { name: "Billed to" })).toContainText("Brightline Studio");
-  // A payment on its way: pending, a short line, and its transaction on Basescan.
   await expect(main.getByRole("status").filter({ hasText: /./ })).toContainText(
     "Confirming (0/120) · about 6 min left",
   );
-  // The timeline carries the invoice's status, at its Confirming step; the payment repeats no pill of its own (R-69).
+  // R-69
   const amountPanel = main.getByRole("region", { name: "Amount" });
   await expect(amountPanel.locator("[data-status]")).toHaveCount(0);
   await expect(
@@ -105,7 +101,6 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   await crumbs.getByRole("link", { name: "Merchant · Sample shop" }).click();
   await expect(page).toHaveURL("/app");
 
-  // Activity: every row opens its invoice, a payment also links to its transaction; filter and search.
   await sidebar.getByRole("link", { name: "Activity" }).click();
   await hiddenHeading("Activity");
   const items = main.getByRole("listitem");
@@ -130,7 +125,6 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
     .click();
   await expect(page).toHaveURL(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
 
-  // Transactions: each transfer links to its transaction.
   await sidebar.getByRole("link", { name: "Transactions" }).click();
   await hiddenHeading("Transactions");
   await expect(
@@ -138,8 +132,7 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   ).toHaveAttribute("href", basescan(`0x00${"9".repeat(62)}`));
   expect(await blockingViolations(page)).toEqual([]);
 
-  // The sidebar stays in view down to the bottom of a long page, open and collapsed, and nothing runs on below the
-  // content (a year of chart data once did).
+  // With a year of chart data, nothing may run on below the content.
   await sidebar.getByRole("link", { name: "Overview", exact: true }).click();
   await main.getByRole("group", { name: "Chart range" }).getByText("1Y", { exact: true }).click();
   await expect(main.getByRole("img", { name: /^Received/ })).toBeVisible();
@@ -159,7 +152,6 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   await page.getByRole("button", { name: "Expand sidebar" }).click();
   await context.close();
 
-  // A phone: the filters and rows fit without sideways scrolling, and the invoice has its back link.
   const phone = await browser.newContext({
     viewport: { width: 390, height: 844 },
     hasTouch: true,
@@ -222,7 +214,7 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
   });
   const main = page.getByRole("main");
 
-  // Invoices: INV-0003 is the 43rd invoice. Typing sends one request, after the last key.
+  // INV-0003 is the 43rd invoice.
   await page.goto("/app/invoices");
   const rows = main.getByRole("row").filter({ hasText: "INV-" });
   await expect(rows).toHaveCount(20);
@@ -235,7 +227,6 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
   await page.reload();
   await expect(invoiceSearch).toHaveValue("zephyr");
   await expect(rows).toHaveCount(1);
-  // A filter joins the search in the URL; nothing matched says so and offers to clear both.
   await pickStatus(page, "Paid");
   await expect(page).toHaveURL("/app/invoices?q=zephyr&status=paid");
   await expect(main.getByText("Nothing matches", { exact: true })).toBeVisible();
@@ -244,7 +235,6 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
   await expect(page).toHaveURL("/app/invoices");
   await expect(invoiceSearch).toHaveValue("");
   await expect(rows).toHaveCount(20);
-  // "Show more" continues the searched list, and Back from an invoice returns to it.
   await invoiceSearch.fill("monthly");
   await expect(page).toHaveURL("/app/invoices?q=monthly");
   await main.getByRole("button", { name: "Show more" }).click();
@@ -255,7 +245,7 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
   await expect(page).toHaveURL("/app/invoices?q=monthly");
   await expect(invoiceSearch).toHaveValue("monthly");
 
-  // Activity: the payment is the 41st item.
+  // The payment is the 41st item.
   await page.goto("/app/activity");
   const items = main.getByRole("listitem");
   await expect(items).toHaveCount(20);
@@ -289,7 +279,7 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
   await context.close();
 });
 
-// R-54: a paid invoice whose settle waits to be final says so on its page, with the chain and the time left.
+// R-54
 test("a paid invoice that is still settling says why its money waits", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
@@ -318,7 +308,7 @@ test("a paid invoice that is still settling says why its money waits", async ({ 
   await context.close();
 });
 
-// R-55: the owner can press Check status on an open invoice's page; a settled invoice has nothing left to check.
+// R-55
 test("an open invoice's page offers Check status and a settled one does not", async ({
   browser,
 }) => {
@@ -355,8 +345,7 @@ test("an open invoice's page offers Check status and a settled one does not", as
   await context.close();
 });
 
-// R-64: clickable rows share their hover and press; Transactions keeps Export at the toolbar's right end, shows each
-// network's logo and links the other side's address to the explorer.
+// R-64
 test("money tables share row hover, show network logos, keep Export at the right and link counterparties", async ({
   browser,
 }) => {
@@ -367,8 +356,7 @@ test("money tables share row hover, show network logos, keep Export at the right
   const page = await context.newPage();
   await mockApi(page);
   const main = page.getByRole("main");
-  // The tint is read once its color transition has finished: the transition starts from the same transparent written
-  // in the tint's color space, which differs as text while it is still no tint.
+  // Read the tint after its transition: until then the transparent start differs as text in the tint's color space.
   const settled = (row: import("@playwright/test").Locator) =>
     row.evaluate(async (el) => {
       await Promise.all(el.getAnimations().map((a) => a.finished.catch(() => {})));
@@ -396,7 +384,6 @@ test("money tables share row hover, show network logos, keep Export at the right
     main.locator("table").boundingBox(),
   ]);
   expect(exportBox && searchBox && mainBox).toBeTruthy();
-  // Export ends where the table ends, to the right of the search.
   expect(
     Math.abs(
       (exportBox?.x ?? 0) + (exportBox?.width ?? 0) - ((mainBox?.x ?? 0) + (mainBox?.width ?? 0)),
@@ -415,8 +402,7 @@ test("money tables share row hover, show network logos, keep Export at the right
   await context.close();
 });
 
-// R-69: the owner's invoice page says its state once: a tinted badge, a moving current step, payments without
-// repeated statuses, and received X of Y when partly paid.
+// R-69
 test("the owner's invoice page shows each state once, with the waiting step moving", async ({
   browser,
 }) => {
@@ -451,11 +437,10 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   const progress = main.getByRole("list", { name: "Payment progress" });
   const current = progress.locator("[aria-current=step]");
   const payments = main.locator("ul").filter({ hasText: "From" });
-  // A reload signs in again and redraws the shell: under the full suite's load that can take longer than one check
-  // waits, so each state waits for the page itself first.
+  // A reload signs in and redraws the shell, which under the full suite can outlast one check's wait.
   const shown = () => expect(progress).toBeVisible({ timeout: 15_000 });
 
-  // Before any money: Waiting is the moving step, and the pay link sits in the header with Copy and Open (R-69, R-60).
+  // R-69, R-60
   body = { ...OPEN_INVOICE, deposits: [] };
   await page.goto(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
   await expect(progress.getByRole("listitem")).toHaveText([
@@ -467,7 +452,6 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   ]);
   await expect(current).toHaveText("Waiting");
   await expect(current.locator("[class*='fw-progress']")).toHaveCount(1);
-  // The pay link waits in the header's More actions menu: Copy link, and Open the pay page itself.
   await main.locator("header").getByRole("button", { name: "More actions" }).click();
   await expect(page.getByRole("menuitem", { name: "Copy link" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: /^Open pay page/ })).toHaveAttribute(
@@ -478,7 +462,6 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(main.getByRole("button", { name: "Check status" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
 
-  // Confirming: the count says it once; the payment row has no status pill of its own.
   body = {
     ...OPEN_INVOICE,
     paymentStatus: "detected",
@@ -489,16 +472,16 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(main.getByRole("status").filter({ hasText: /Confirming/ })).toContainText(
     "Confirming (0/120) · about 6 min left",
   );
-  // The timeline says the state; the header repeats it in no pill (R-60).
+  // R-60
   await expect(main.locator("header [data-status]")).toHaveCount(0);
-  // Keep the count and accessible clock below the short step label (R-69).
+  // R-69
   await expect(current).toHaveText("Confirming");
   await expect(main.getByRole("button", { name: "About 6 min left" })).toBeVisible();
   await expect(main.getByText("0 / 120 blocks confirmed", { exact: true })).toBeVisible();
   await expect(payments.locator("[data-status]")).toHaveCount(0);
   await expect(main.getByText(/test network|no real value/i)).toHaveCount(0); // R-72
   expect(await blockingViolations(page)).toEqual([]);
-  // A reload halfway keeps the count: the API says how many blocks it had to wait (R-73).
+  // R-73
   body = {
     ...OPEN_INVOICE,
     paymentStatus: "detected",
@@ -510,7 +493,6 @@ test("the owner's invoice page shows each state once, with the waiting step movi
     "Confirming (60/120) · about 3 min left",
   );
 
-  // Partly paid: the Paid step itself says so, tinted and half full, and the amount says what came in.
   body = {
     ...OPEN_INVOICE,
     paymentStatus: "partially_paid",
@@ -521,11 +503,10 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(current).toContainText("Partially paid");
   await expect(progress.getByText("Partially paid")).toHaveClass(/bg-warning-soft/);
   await expect(main.getByText("Received 1.00 USDC of 2.00 USDC")).toBeVisible();
-  // No separate line repeats it under the steps.
   await expect(main.getByRole("status").filter({ hasText: "Partially paid" })).toHaveCount(0);
   expect(await blockingViolations(page)).toEqual([]);
 
-  // Partly paid with the next payment still confirming: one state at a time, the confirming one (R-69).
+  // R-69
   body = {
     ...OPEN_INVOICE,
     paymentStatus: "partially_paid",
@@ -540,7 +521,6 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(current).toHaveText("Confirming");
   await expect(progress.getByText("Partially paid")).toHaveCount(0);
 
-  // Paid and on its way to the wallet: Paid out (Settled) is the moving step, not an empty one.
   body = {
     ...OPEN_INVOICE,
     paymentStatus: "paid",
@@ -554,12 +534,12 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(progress.getByRole("listitem").nth(2)).toHaveText(/^Confirmed/);
   await expect(current.locator("[class*='fw-progress']")).toHaveCount(1);
   await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
-  // Paid takes no more money and can't be canceled: More actions only offers Duplicate (R-91).
+  // R-91
   await main.getByRole("button", { name: "More actions" }).click();
   await expect(page.getByRole("menuitem")).toHaveText(["Duplicate"]);
   await page.keyboard.press("Escape");
 
-  // Settled: one Transactions list holds the payment and the settlement to the wallet; Details repeats neither (R-69).
+  // R-69
   const settleTx = hash("5");
   body = {
     ...OPEN_INVOICE,
@@ -584,7 +564,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(main.getByRole("region", { name: "Details" })).not.toContainText("Settlement");
   expect(await blockingViolations(page)).toEqual([]);
 
-  // Closed takes no more money either: nothing to check (R-69).
+  // R-69
   body = { ...OPEN_INVOICE, paymentStatus: "expired", deposits: [] };
   await page.reload();
   await shown();
@@ -593,7 +573,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await context.close();
 });
 
-// R-77: every exception says what happened and what to do; a closed invoice is asked again with a new one (D-25).
+// R-77, D-25
 test("the owner's invoice page names the next step of every exception", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
@@ -637,7 +617,6 @@ test("the owner's invoice page names the next step of every exception", async ({
     });
   };
 
-  // Partly paid and open: the amount already says Received X of Y, so no next-step line repeats it.
   body = { ...OPEN_INVOICE, paymentStatus: "partially_paid", deposits: [paid("1000000")] };
   await open();
   await expect(main.getByText("Received 1.00 USDC of 2.00 USDC")).toBeVisible();
@@ -645,8 +624,7 @@ test("the owner's invoice page names the next step of every exception", async ({
   await expect(header.getByRole("button", { name: "More actions" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
 
-  // Closed with nothing paid, while the API's status still says open (closed says sooner): closed, and a new invoice
-  // with the same client.
+  // The API's status still says open; `closed` says it sooner.
   body = { ...OPEN_INVOICE, expiresAt: closedAt, closed: true, deposits: [] };
   await open();
   await expect(main.getByRole("region", { name: "Details" })).toContainText("Checkout closed");
@@ -661,7 +639,6 @@ test("the owner's invoice page names the next step of every exception", async ({
   await expect(main.getByLabel("Amount")).toHaveValue("2");
   await expect(main.getByLabel("Name", { exact: true })).toHaveValue("Mara Ilić");
 
-  // Closed partly paid: the money is held for the payer, and the new invoice asks only for the rest.
   body = {
     ...OPEN_INVOICE,
     paymentStatus: "expired_partially_paid",
@@ -694,8 +671,7 @@ test("the owner's invoice page names the next step of every exception", async ({
   await context.close();
 });
 
-// R-92: a business invoice names who bills the client, so New invoice asks a merchant without billing details for them
-// first, and saving them comes back to the form.
+// R-92
 test("New invoice asks for billing details first, then comes back to the form", async ({
   browser,
 }) => {
@@ -726,7 +702,7 @@ test("New invoice asks for billing details first, then comes back to the form", 
   await context.close();
 });
 
-// R-79: the owner cancels an invoice that has no money yet, after a confirm that says what canceling means.
+// R-79
 test("the owner cancels an invoice before any money, after confirming", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
@@ -764,7 +740,6 @@ test("the owner cancels an invoice before any money, after confirming", async ({
   await page.goto(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
   const dialog = page.getByRole("dialog", { name: "Cancel INV-0002?" });
 
-  // Behind More actions, as a destructive one. Keep: nothing happens.
   const more = header.getByRole("button", { name: "More actions" });
   await more.click({ timeout: 15_000 });
   await page.getByRole("menuitem", { name: "Cancel invoice" }).click();
@@ -774,25 +749,23 @@ test("the owner cancels an invoice before any money, after confirming", async ({
   await expect(dialog).toBeHidden();
   expect(cancels).toBe(0);
 
-  // Confirm: canceled, said in a toast, and the page no longer takes money or offers to cancel.
   await more.click();
   await page.getByRole("menuitem", { name: "Cancel invoice" }).click();
   await dialog.getByRole("button", { name: "Cancel invoice" }).click();
   await expect(page.getByText("INV-0002 canceled")).toBeVisible();
   expect(cancels).toBe(1);
-  // Details says when (R-60); the header only names the invoice.
+  // R-60
   const canceledRow = main.getByRole("region", { name: "Details" }).locator("[tabindex='-1']");
   await expect(canceledRow).toContainText(/^Canceled on/);
   await expect(header).not.toContainText("Canceled");
-  // The dialog and its trigger are gone, so keyboard focus moves to that row, not to the page body.
   await expect(canceledRow).toBeFocused();
-  // A canceled invoice can still be duplicated, to send a corrected one (R-91).
+  // R-91
   await header.getByRole("button", { name: "More actions" }).click();
   await expect(page.getByRole("menuitem")).toHaveText(["Duplicate"]);
   await context.close();
 });
 
-// R-80: email notifications are one switch per profile, to the login email, reached from the account menu.
+// R-80
 test("the owner turns email notifications off from the account menu", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
@@ -823,7 +796,7 @@ test("the owner turns email notifications off from the account menu", async ({ b
   await context.close();
 });
 
-// R-81: the bell lists invoice events beside incoming payments, newest first, each linking to its invoice.
+// R-81
 test("the bell lists paid, settled and held-money events beside payments", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
@@ -865,12 +838,11 @@ test("the bell lists paid, settled and held-money events beside payments", async
   expect(await blockingViolations(page)).toEqual([]);
   await items.nth(3).click();
   await expect(page).toHaveURL(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
-  // Opened once: nothing is new any more.
   await expect(bell).toHaveAccessibleName("Notifications");
   await context.close();
 });
 
-// R-77: a closed checkout reads Expired in the lists too, as soon as the API says closed.
+// R-77
 test("the invoice list and activity show a closed checkout as expired", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
@@ -893,7 +865,7 @@ test("the invoice list and activity show a closed checkout as expired", async ({
   await context.close();
 });
 
-// R-70: an invoice the client may pay with any stablecoin reads in USD with Any network in the list, chosen or not.
+// R-70
 test("the invoice list and activity show a client-chooses invoice in USD with Any network", async ({
   browser,
 }) => {
@@ -906,7 +878,7 @@ test("the invoice list and activity show a client-chooses invoice in USD with An
     ...sampleInvoice(9, "paid", "pending", "Any network work", "Kettle & Co."),
     optionCount: 4,
   };
-  // Partly paid with the next payment confirming reads as confirming in the list too (R-69).
+  // R-69
   const partlyConfirming = {
     ...sampleInvoice(7, "partially_paid", "none", "Second half on its way", "Kettle & Co."),
     confirming: true,
@@ -928,7 +900,6 @@ test("the invoice list and activity show a client-chooses invoice in USD with An
   await expect(fixed).toContainText("USDC");
   await expect(fixed).toContainText("Base Sepolia");
 
-  // Activity reads it the same way, never as its first option's token.
   await page.goto("/app/activity");
   const rows = page.getByRole("main").getByRole("listitem");
   await expect(rows.first()).toContainText("Any network");
@@ -939,7 +910,7 @@ test("the invoice list and activity show a client-chooses invoice in USD with An
   await context.close();
 });
 
-// R-74: a chart follows its panel as the window shrinks; it never holds the page at its old width.
+// R-74
 test("the overview chart shrinks with the window and the page never scrolls sideways", async ({
   browser,
 }) => {
@@ -962,8 +933,7 @@ test("the overview chart shrinks with the window and the page never scrolls side
   await context.close();
 });
 
-// R-76: another profile starts at its own overview, from any page; on phones More opens Profiles, so the
-// overview has no profile pill.
+// R-76
 test("switching profile opens the new profile's overview", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
@@ -1011,7 +981,7 @@ test("switching profile opens the new profile's overview", async ({ browser }) =
   await context.close();
 });
 
-// R-75: an empty list, or one filtered to nothing, says so in one centered block that fills the list's width.
+// R-75
 test("empty and filtered-out lists say so in one centered block with an icon", async ({
   browser,
 }) => {
@@ -1025,7 +995,6 @@ test("empty and filtered-out lists say so in one centered block with an icon", a
   const fills = async (text: string) => {
     const title = main.getByText(text, { exact: true });
     await expect(title).toBeVisible();
-    // The block is the title's centered box: about as wide as the main column.
     const block = title.locator("xpath=..");
     const [inner, outer] = await Promise.all([block.boundingBox(), main.boundingBox()]);
     expect(inner && outer && inner.width > outer.width * 0.9).toBe(true);
@@ -1048,7 +1017,7 @@ test("empty and filtered-out lists say so in one centered block with an icon", a
   await context.close();
 });
 
-// R-69: on a phone each transaction is two lines: what and when, then who and the transaction.
+// R-69
 test("the invoice's transactions read in two lines on a phone", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
@@ -1102,7 +1071,6 @@ test("the invoice's transactions read in two lines on a phone", async ({ browser
       row.locator("time").boundingBox(),
       row.getByRole("link", { name: /Basescan/ }).boundingBox(),
     ]);
-    // The time sits at the top right, the explorer link at the bottom right.
     expect(time && box && time.y - box.y < 20).toBe(true);
     expect(link && time && link.y > time.y).toBe(true);
   }

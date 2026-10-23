@@ -10,9 +10,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/activity"
 )
 
-// R-118: anyone can send dust to a wallet, and the watcher records each transfer, so the exports and balance history
-// must not grow with it (audit 2026-10-19: 100000 dust transfers made ten CSV exports allocate 3.5 GB). A period with
-// more than activity.MaxExportRows transactions answers 422, and balance history sums days in the database.
+// R-118.
 func TestExportsStayBoundedWithDust(t *testing.T) {
 	const alice, stranger = "did:privy:alice", "0x5555555555555555555555555555555555555555"
 	e := invoiceAPI(t)
@@ -52,13 +50,12 @@ func TestExportsStayBoundedWithDust(t *testing.T) {
 	if got := allocated(1, base+"/balance-history?days=365", http.StatusOK, ""); got > 10<<20 {
 		t.Errorf("balance history allocated %d MB", got>>20)
 	}
-	// A shorter period still exports.
 	if r := e.call(t, "GET", base+"/transactions.csv?from=9999-12-01&to=9999-12-31", alice, "", ""); r.status != http.StatusOK {
 		t.Errorf("an empty period: %d %v, want 200", r.status, r.body)
 	}
 }
 
-// R-118: a period of exactly activity.MaxExportRows transactions exports; one more is 422.
+// R-118.
 func TestExportCapIsExact(t *testing.T) {
 	const alice = "did:privy:alice"
 	e := invoiceAPI(t)

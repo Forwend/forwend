@@ -1,6 +1,5 @@
--- Saved clients (R-86, PLAN 10.1): a profile keeps the people and companies it bills. An invoice copies a client's
--- details when it is made, so editing or deleting a client never changes an invoice. Invoices also keep the client's
--- country and tax ID, which a VAT invoice to a business must show (docs/research/phase-10-freelancers.md).
+-- Saved clients (R-86, PLAN 10.1): an invoice copies a client's details, so editing a client never changes it.
+-- A VAT invoice to a business shows the client's country and tax ID (docs/research/phase-10-freelancers.md).
 
 -- +goose Up
 CREATE TABLE clients (
@@ -50,7 +49,6 @@ END;
 $$;
 -- +goose StatementEnd
 
--- The view lists its columns, so it is made again with the new ones.
 CREATE OR REPLACE VIEW invoices_current AS
 SELECT m.id, m.profile_id, m.number, m.title, m.note, m.due_date, m.client_name, m.client_email, m.client_address,
        m.sender_name, m.issuer_name, m.issuer_address, m.issuer_country, m.issuer_tax_id, m.issuer_email, m.created_at,

@@ -19,8 +19,7 @@ import (
 
 const usdc = "0x036cbd53842c5426634e7929541ec2318f3dcf7e"
 
-// open migrates a fresh database with Base Sepolia, enabled USDC and one freelancer profile with a wallet and billing
-// details (R-92).
+// open: Base Sepolia USDC and a freelancer profile with a wallet and billing details (R-92).
 func open(t *testing.T) (*pgxpool.Pool, string) {
 	t.Helper()
 	ctx := context.Background()
@@ -52,8 +51,7 @@ func open(t *testing.T) (*pgxpool.Pool, string) {
 	return pool, profile
 }
 
-// A request whose key is being inserted by another transaction waits for it, then returns that invoice. The number
-// its own failed insert took is given back: the next invoice gets the one after the winner's.
+// The number the loser's failed insert took is given back: the next invoice gets the one after the winner's.
 func TestCreateLosesTheInsertRaceToTheSameKey(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -104,7 +102,7 @@ func TestCreateLosesTheInsertRaceToTheSameKey(t *testing.T) {
 	}
 }
 
-// Invoices made at once get different numbers with no gap, and a repeat with the same key returns the same number.
+// No gaps, and a repeat with the same key returns the same number.
 func TestCreateNumbersInvoicesAtOnce(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)

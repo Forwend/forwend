@@ -13,7 +13,6 @@ export interface AccordionProps {
   items: readonly AccordionItem[];
 }
 
-// One item open at a time; opening another closes it. Height animates (instant under reduced motion).
 export function Accordion({ items }: AccordionProps) {
   return (
     <RadixAccordion.Root

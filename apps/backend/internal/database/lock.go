@@ -10,12 +10,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Lock is a Postgres session advisory lock held on a connection of its own for the life of the process. Postgres frees
-// it when that connection ends, so a process that crashes never keeps it.
+// Lock is a session advisory lock on its own connection: Postgres frees it when the connection ends, even on a crash.
 type Lock struct{ conn *pgx.Conn }
 
-// TakeLock takes the advisory lock key for one process kind, such as "worker". While another process holds it, it logs
-// "another <name> is running; waiting" and tries again every `every`, until ctx ends.
 func TakeLock(ctx context.Context, pool *pgxpool.Pool, key int64, name string, every time.Duration) (*Lock, error) {
 	c, err := pool.Acquire(ctx)
 	if err != nil {
@@ -41,8 +38,7 @@ func TakeLock(ctx context.Context, pool *pgxpool.Pool, key int64, name string, e
 	}
 }
 
-// Held returns an error once the lock's connection is lost, and the lock with it: another process may have taken over,
-// so the caller must stop.
+// Held errors once the lock's connection is lost: another process may hold the lock now, so the caller must stop.
 func (l *Lock) Held(ctx context.Context) error {
 	if err := l.conn.Ping(ctx); err != nil {
 		return fmt.Errorf("lost the advisory lock's database connection: %w", err)
@@ -50,7 +46,6 @@ func (l *Lock) Held(ctx context.Context) error {
 	return nil
 }
 
-// Close ends the lock's connection, which frees the lock.
 func (l *Lock) Close() {
 	_ = l.conn.Close(context.Background())
 }

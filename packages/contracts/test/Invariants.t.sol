@@ -7,8 +7,6 @@ import {InvoiceReceiver} from "../src/InvoiceReceiver.sol";
 import {InvoiceTerms} from "../src/InvoiceTypes.sol";
 import {MockToken} from "./mocks/MockToken.sol";
 
-/// Random sequences of deposits, deploys, settles, refunds, recovers and time jumps by every role, including
-/// an attacker and the executor trying to move money elsewhere.
 contract Handler is Test {
     InvoiceReceiverFactory public factory;
     MockToken public token;
@@ -104,13 +102,11 @@ contract InvariantsTest is Test {
         targetContract(address(handler));
     }
 
-    /// Settlement happens at most once and pays exactly the invoice amount.
     function invariant_recipientGetsZeroOrExactlyAmount() public view {
         uint256 got = token.balanceOf(t.recipient);
         assertTrue(got == 0 || got == t.amount);
     }
 
-    /// No money is created or lost: settled + refunded + still held == received.
     function invariant_conservation() public view {
         assertEq(
             token.balanceOf(t.recipient) + handler.totalRefunded() + token.balanceOf(handler.receiver()),
@@ -118,7 +114,6 @@ contract InvariantsTest is Test {
         );
     }
 
-    /// The attacker and the executor never receive anything; the attacker only via an authority refund to it.
     function invariant_executorNeverReceives() public view {
         assertEq(token.balanceOf(handler.executor()), 0);
     }

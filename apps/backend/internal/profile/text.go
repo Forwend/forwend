@@ -9,8 +9,7 @@ import (
 )
 
 // PlainText refuses control, invisible format and separator characters and blank fillers: they can hide or reorder
-// what a payer reads. Zero-width joiners stay: Persian names and emoji need them. lines allows \n, for addresses and
-// notes.
+// what a payer reads. Zero-width joiners stay: Persian names and emoji need them. lines allows \n.
 func PlainText(s string, lines bool) bool {
 	for _, r := range s {
 		switch {
@@ -24,16 +23,13 @@ func PlainText(s string, lines bool) bool {
 
 var fillers = map[rune]bool{'\u115f': true, '\u1160': true, '\u2800': true, '\u3164': true, '\uffa0': true}
 
-// Impersonates reports a name shown to payers that reads as Forwend, also with accents, spaces or look-alike letters.
-// Split across words it counts only when it ends a word: "For wend" reads as Forwend, "Gifts for Wendy" does not. A
-// symbol that looks like a letter can read either way, so both readings count: "Forw℮nd" as a letter, "For|wend" as a
-// gap.
+// Impersonates reports a name that reads as Forwend, also with accents, spaces or look-alike letters. Split across
+// words it counts only when it ends a word ("For wend", not "Gifts for Wendy"); a letter-like symbol counts both ways.
 func Impersonates(name string) bool {
 	return readsAsForwend(name, true) || readsAsForwend(name, false)
 }
 
-// readsAsForwend reads name as Latin letters; symbols says whether a symbol that looks like a letter counts as it, or
-// as a gap like any other symbol.
+// symbols says whether a symbol that looks like a letter counts as that letter or as a gap.
 func readsAsForwend(name string, symbols bool) bool {
 	var b strings.Builder
 	gap := false
@@ -63,7 +59,6 @@ func readsAsForwend(name string, symbols bool) bool {
 
 var forwend = regexp.MustCompile("f ?o ?r ?w ?e ?n ?d")
 
-// latin is the lower-case ASCII letter r reads as, by itself or in lower case, else r in lower case.
 func latin(r rune) rune {
 	for _, c := range []rune{r, unicode.ToLower(r)} {
 		if l, ok := lookalikes[c]; ok {

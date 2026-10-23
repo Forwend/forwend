@@ -11,16 +11,11 @@ import { APP_NAV, NAV } from "@/screens/app-shell/constants/app-nav";
 import type { Crumb } from "@/screens/app-shell/types/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-/** The page a path belongs to: the page itself or one under it, such as an invoice under Invoices. */
 export function isCurrentPage(pathname: string, href: string): boolean {
   return pathname === href || (href !== APP_ROUTES.home && pathname.startsWith(`${href}/`));
 }
 
-/**
- * The header's trail after the profile: the page, by the name the profile's sidebar gives it, then a form under it. On
- * an invoice's page the trail ends at Invoices (Requests) and gives the invoice's id, which the header names by its
- * number once the invoice loads.
- */
+/** The trail after the profile; on an invoice's page it stops at Invoices and returns the invoice's id to name. */
 export function breadcrumb(
   pathname: string,
   kind: ProfileKind,
@@ -57,7 +52,6 @@ export function breadcrumb(
       invoiceId: null,
     };
   }
-  // A client's form pages sit under Clients: New client, or Edit client for a saved one.
   if (page.href === APP_ROUTES.clients && pathname !== APP_ROUTES.clients) {
     return {
       trail: [
@@ -70,7 +64,6 @@ export function breadcrumb(
       invoiceId: null,
     };
   }
-  // A job's pages sit under Jobs: New job, or a job's own page.
   if (page.href === APP_ROUTES.jobs && pathname !== APP_ROUTES.jobs) {
     return {
       trail: [

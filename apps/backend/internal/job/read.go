@@ -22,8 +22,7 @@ const jobColumns = `j.id::text, j.token, j.profile_id::text, j.title, coalesce(j
 	j.issuer_address, j.issuer_country, coalesce(j.issuer_tax_id, ''), j.issuer_email, coalesce(j.accepted_name, ''),
 	coalesce(j.accepted_email, ''), j.accepted_at, j.created_at`
 
-// Get reads the profile's job; another profile's or a malformed id is ErrNotFound. The caller has checked that the
-// user owns the profile.
+// The caller must check that the user owns the profile.
 func (s *Service) Get(ctx context.Context, profileID, id string) (Job, error) {
 	if !jobID.MatchString(id) {
 		return Job{}, ErrNotFound
@@ -98,7 +97,6 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 	return j, nil
 }
 
-// List is the profile's jobs, newest first.
 func (s *Service) List(ctx context.Context, profileID string) ([]Summary, error) {
 	// A change counts once the client accepted it (R-105).
 	rows, err := s.pool.Query(ctx, `SELECT j.id::text, j.title, j.client_name, sum(p.amount_cents)::bigint, count(*),
@@ -122,8 +120,7 @@ func (s *Service) List(ctx context.Context, profileID string) ([]Summary, error)
 	})
 }
 
-// Delete removes the profile's job while the client has not accepted it: a withdrawn quote. An accepted job is
-// ErrAccepted; its invoices and the record of acceptance stay. The row lock orders it with an accept.
+// Delete withdraws a quote the client has not accepted; the row lock orders it with an accept.
 func (s *Service) Delete(ctx context.Context, profileID, id string) error {
 	if !jobID.MatchString(id) {
 		return ErrNotFound

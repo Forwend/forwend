@@ -4,7 +4,6 @@ export interface ShimmerProps {
   className?: string;
 }
 
-/** A placeholder block with a soft light sweep, while content loads. */
 export function Shimmer({ className }: ShimmerProps) {
   return (
     <span

@@ -13,16 +13,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// MaxDeliveryLink is the longest delivery link, like an invoice's return link.
 const MaxDeliveryLink = 2000
 
 // errScheduleChanged rolls back an invoice made for a schedule a change altered meanwhile.
 var errScheduleChanged = errors.New("the job's payments changed")
 
-// MarkDone marks the profile's job's payment at position done and makes its invoice, like the deposit's (R-103). The
-// steps go in order, after acceptance; a payment that has its invoice answers the same. link is "" or an https link to
-// the delivered work, kept with the time (D-66). The last payment's invoice is the final one: its note lists the
-// earlier payments, and it waits until no change does (ErrChangePending), so a change can't come after it.
+// MarkDone (R-103, D-66) answers the same once the payment has its invoice. The final invoice waits until no change
+// does (ErrChangePending), so a change can't come after it.
 func (s *Service) MarkDone(ctx context.Context, profileID, id string, position int, link string) (Job, error) {
 	if link != "" {
 		// url.Parse lowers the scheme; the database takes only "https://" as written.
@@ -101,8 +98,7 @@ func (s *Service) MarkDone(ctx context.Context, profileID, id string, position i
 	return s.Get(ctx, profileID, id)
 }
 
-// finalNote is the final invoice's note (R-103, D-81): the job's total and each earlier payment with its invoice,
-// amount and whether it is paid, so the client sees what this invoice leaves to pay. It fits the invoice's note.
+// finalNote (R-103, D-81) fits the invoice's note length.
 func finalNote(j Job, final Payment) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "Final invoice for %s. Job total: %s USD.\nEarlier payments:", j.Title, USD(j.TotalCents()))

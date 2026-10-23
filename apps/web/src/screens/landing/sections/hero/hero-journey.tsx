@@ -33,7 +33,6 @@ function statesAt(reached: number): StepState[] {
   );
 }
 
-// The signature moment: each payment step lights a mark on the river while the path draws forward.
 export function HeroJourney() {
   // Starts with nothing lit, so the first step draws the line from the source too.
   const [states, setStates] = useState<readonly StepState[]>(statesAt(-1));

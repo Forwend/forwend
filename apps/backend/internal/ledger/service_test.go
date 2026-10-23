@@ -24,8 +24,7 @@ type chainEnv struct {
 	service *Service
 }
 
-// newChainEnv runs Anvil with a mock USDC, a migrated database and a scanned chain. The second RPC for balances is
-// its own client to the same Anvil.
+// The second RPC for balances is its own client to the same Anvil.
 func newChainEnv(t *testing.T) chainEnv {
 	t.Helper()
 	ctx := context.Background()
@@ -61,7 +60,6 @@ func newChainEnv(t *testing.T) chainEnv {
 	return e
 }
 
-// invoice adds an invoice for amount, paid at a receive address made from n, expiring at expiresAt.
 func (e chainEnv) invoice(t *testing.T, n int, amount int64, expiresAt int64) (id, receive string) {
 	t.Helper()
 	id, receive = fmt.Sprintf("0x%064x", n), fmt.Sprintf("0x%040x", 0xa0+n)
@@ -77,7 +75,7 @@ func (e chainEnv) invoice(t *testing.T, n int, amount int64, expiresAt int64) (i
 	return id, receive
 }
 
-// run is one worker round: scan the chain, then process its invoices.
+// run is one worker round.
 func (e chainEnv) run(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
@@ -145,8 +143,7 @@ func TestDepositsMoveThePaymentStatus(t *testing.T) {
 	}
 }
 
-// A deposit the primary RPC calls final too early (a lie or a bug) never makes the invoice paid: the second RPC
-// reads the balance at its own finalized block, which doesn't hold the deposit yet (D-15, D-45).
+// D-15, D-45: the primary RPC calls the deposit final too early; the second RPC's finalized block lacks it.
 func TestPaidNeedsTheSecondRPCToAgree(t *testing.T) {
 	e := newChainEnv(t)
 	id, receive := e.invoice(t, 1, 5000000, e.anvil.Now()+3600)
@@ -167,7 +164,7 @@ func TestPaidNeedsTheSecondRPCToAgree(t *testing.T) {
 	}
 }
 
-// Expiry follows chain time: a partial payment is then held for the payer, and a late deposit is held too.
+// Expiry follows chain time.
 func TestExpiryHoldsPartialAndLatePayments(t *testing.T) {
 	e := newChainEnv(t)
 	expires := e.anvil.Now() + 1000
@@ -191,7 +188,6 @@ func TestExpiryHoldsPartialAndLatePayments(t *testing.T) {
 	want(t, "late deposit", e.state(t, partial), state{payment: ExpiredPartiallyPaid, refund: "held", receiver: 3000000, held: 3000000})
 }
 
-// A deposit made in time but completing the amount pays the invoice even if its block is final after expiry.
 func TestOnTimeDepositPaysAfterExpiryFinalizes(t *testing.T) {
 	e := newChainEnv(t)
 	id, receive := e.invoice(t, 1, 5000000, e.anvil.Now()+1000)
@@ -202,7 +198,7 @@ func TestOnTimeDepositPaysAfterExpiryFinalizes(t *testing.T) {
 	want(t, "paid", e.state(t, id), state{payment: Paid, refund: "none", receiver: 5000000, owed: 5000000})
 }
 
-// A full payment that arrives after expiresAt never pays the invoice: it is held for the payer (D-26).
+// D-26.
 func TestLateFullPaymentIsHeldNotPaid(t *testing.T) {
 	e := newChainEnv(t)
 	id, receive := e.invoice(t, 1, 5000000, e.anvil.Now()+1000)
@@ -213,8 +209,7 @@ func TestLateFullPaymentIsHeldNotPaid(t *testing.T) {
 	want(t, "late full payment", e.state(t, id), state{payment: Expired, refund: "held", receiver: 5000000, held: 5000000})
 }
 
-// D-27: deposits are booked in chain order, so a later deposit confirmed first waits for an earlier one still
-// detected, and the excess is held for the later payer.
+// D-27: a later deposit confirmed first waits for an earlier one still detected.
 func TestDepositsBookInChainOrder(t *testing.T) {
 	e := newChainEnv(t)
 	ctx := context.Background()
@@ -244,8 +239,7 @@ func TestDepositsBookInChainOrder(t *testing.T) {
 	}
 }
 
-// An empty balanceOf answer (no contract at that address and block) is an error, never a balance of 0 that could let
-// an invoice expire with money in it.
+// A 0 balance could let an invoice expire with money in it.
 func TestEmptyBalanceAnswerIsAnError(t *testing.T) {
 	e := newChainEnv(t)
 	client := ethclient.NewClient(e.anvil.RPC)

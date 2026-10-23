@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Service answers ownership questions from the database.
 type Service struct {
 	pool *pgxpool.Pool
 }

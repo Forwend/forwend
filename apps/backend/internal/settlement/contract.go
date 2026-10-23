@@ -20,8 +20,7 @@ var (
 	statusSelector  = selector("status((bytes32,address,address,uint256,uint64,uint64,uint256))")
 	settleSelector  = selector("settle()")
 	settledSelector = selector("settled()")
-	// settledEvent is the topic of the receiver's Settled(bytes32 indexed invoiceId, address indexed recipient,
-	// uint256 amount), logged only by a successful settle.
+	// Logged only by a successful settle.
 	settledEvent = crypto.Keccak256Hash([]byte("Settled(bytes32,address,uint256)"))
 )
 
@@ -81,7 +80,6 @@ func receiverSettled(ctx context.Context, client *ethclient.Client, receiver com
 	return len(out) == 32 && out[31] == 1, nil
 }
 
-// settledBy reports whether a receipt is a successful settle of this receiver: status 1 and its Settled log.
 func settledBy(r *types.Receipt, receiver common.Address) bool {
 	if r.Status != types.ReceiptStatusSuccessful {
 		return false

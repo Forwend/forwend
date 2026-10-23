@@ -10,7 +10,7 @@ export interface NotificationsFormProps {
   saved: Notifications;
 }
 
-// One switch, saved when flipped. The address is the login email and is never typed here (R-80).
+// The address is the login email and is never typed here (R-80).
 export function NotificationsForm({ profileId, saved }: NotificationsFormProps) {
   const [save, { isLoading, isError }] = useSaveNotificationsMutation();
   const toast = useToast();
@@ -22,7 +22,6 @@ export function NotificationsForm({ profileId, saved }: NotificationsFormProps) 
       // Said below; the switch stays as saved.
     }
   };
-  // A settings row: what it does on the left, the switch at the row's end, where the emails go under it.
   return (
     <div className="fw-panel flex flex-col gap-1 px-4 py-3 sm:px-5">
       <Switch

@@ -9,8 +9,7 @@ export interface ChainBadgeProps {
 /** Whether a row has a logo badge to show the network; without one the row names it in text. */
 export const hasChainBadge = (chainId: number) => Boolean(CHAINS[chainId]?.icon);
 
-/** The network's logo on the corner of a round row icon or avatar, where a narrow row has no room for its name. The
- * row names the network for screen readers. */
+/** The network's logo on a round row icon's corner; the row must name the network for screen readers. */
 export function ChainBadge({ chainId, className = "" }: ChainBadgeProps) {
   const icon = CHAINS[chainId]?.icon;
   return icon ? (

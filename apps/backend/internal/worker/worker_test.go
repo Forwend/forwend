@@ -21,8 +21,7 @@ import (
 
 const receive = "0x00000000000000000000000000000000000000aa"
 
-// The primary RPC starts answering 429 in the middle of a round: its calls move to the next host, the second moves
-// to a third host for the balance check (D-15), and the same round still records the deposit and marks the invoice paid.
+// Three hosts: the primary's calls move to the next one, and the balance check's second RPC to the third (D-15).
 func TestRoundSurvivesAnRPCGoing429MidRound(t *testing.T) {
 	ctx := context.Background()
 	a := chaintest.Start(t)
@@ -87,9 +86,8 @@ func TestRoundSurvivesAnRPCGoing429MidRound(t *testing.T) {
 	}
 }
 
-// missedDeposit sets up an invoice with the given settle deadline and pays it in a block the regular scan has passed
-// without seeing (its cursor is far above the deposit's block). It returns the database, the worker and the
-// invoice's payment status.
+// missedDeposit pays an invoice in a block the regular scan has passed without seeing (its cursor is far above the
+// deposit's block).
 func missedDeposit(t *testing.T, ctx context.Context, settleDeadline int64) (*pgxpool.Pool, *Worker, *chaintest.Anvil, func() string) {
 	t.Helper()
 	a := chaintest.Start(t)
@@ -162,8 +160,7 @@ func recheck(t *testing.T, ctx context.Context, pool *pgxpool.Pool, a *chaintest
 	return found
 }
 
-// R-55: a deposit the regular scan never saw is booked only after Check status asks for a rescan; the next round
-// finds it from the invoice's creation block and books it.
+// R-55: the rescan starts at the invoice's creation block.
 func TestRecheckBooksADepositTheScanMissed(t *testing.T) {
 	ctx := context.Background()
 	pool, w, a, status := missedDeposit(t, ctx, 1800086400)
@@ -180,8 +177,7 @@ func TestRecheckBooksADepositTheScanMissed(t *testing.T) {
 	}
 }
 
-// An invoice the regular scan no longer watches (30 days after its settle deadline) is not rescanned either: its money
-// is the refund authority's, so the request is dropped and nothing is booked.
+// Past the watch window (30 days after the settle deadline) the money is the refund authority's: nothing is booked.
 func TestRecheckLeavesInvoicesPastTheWatchWindow(t *testing.T) {
 	ctx := context.Background()
 	pool, w, a, status := missedDeposit(t, ctx, 86401)

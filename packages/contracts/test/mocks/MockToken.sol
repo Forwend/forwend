@@ -27,7 +27,6 @@ contract FeeToken is MockToken {
     }
 }
 
-/// Calls back into the receiver during transfer.
 contract ReentrantToken is MockToken {
     address public target;
     bytes public data;
@@ -64,14 +63,12 @@ contract NoReturnToken {
     }
 }
 
-/// A token whose balanceOf always reverts.
 contract BrokenToken {
     function balanceOf(address) external pure returns (uint256) {
         revert("broken");
     }
 }
 
-/// A token whose balanceOf returns about 1 MB of data (a "return bomb").
 contract ReturnBombToken {
     function balanceOf(address) external pure returns (uint256) {
         assembly {

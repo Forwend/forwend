@@ -25,12 +25,10 @@ const (
 	Change   = "job.change" // a scope change, to the email the client typed accepting the job (R-107)
 )
 
-// MaxClientEmails caps the emails a user's profiles queue to clients in any 24 hours, of every kind the owner starts:
-// Send to client and retainer months (Sent), reminders and job changes (R-116). It keeps one account from mailing
-// strangers in bulk through Forwend, and the shared Resend budget (D-65) for the money emails.
+// MaxClientEmails caps a user's client emails (Sent, reminders, job changes) in any 24 hours (R-116), so one account
+// can't mail strangers in bulk through Forwend or spend the shared Resend budget (D-65) for the money emails.
 const MaxClientEmails = 20
 
-// ClientEmailsSQL lists, per user, the client emails queued in the last 24 hours (sent) and the oldest one's time.
 const ClientEmailsSQL = `SELECT p.user_id, count(*) AS sent, min(e.created_at) AS oldest FROM outbox_events e
 	LEFT JOIN invoices i ON i.id = e.invoice_id LEFT JOIN jobs j ON j.id = e.job_id
 	JOIN profiles p ON p.id = coalesce(i.profile_id, j.profile_id)
@@ -54,8 +52,6 @@ func ClientEmailsLeft(ctx context.Context, tx pgx.Tx, profileID string) (left in
 	return max(MaxClientEmails-sent, 0), wait, nil
 }
 
-// Payload names the option row the event happened on (its token and network), for held money the amount, for a
-// reminder its step, and for a scope change its key.
 type Payload struct {
 	Option string `json:"option"`
 	Amount string `json:"amount,omitempty"`
@@ -63,8 +59,7 @@ type Payload struct {
 	Change string `json:"change,omitempty"`
 }
 
-// QueueReceipt adds the payer's receipt for the invoice that option belongs to, when the payer gave an address and no
-// receipt is queued yet (R-82).
+// QueueReceipt queues at most one receipt, and only once the payer gave an address (R-82).
 func QueueReceipt(ctx context.Context, tx pgx.Tx, option string) error {
 	payload, err := json.Marshal(Payload{Option: option})
 	if err != nil {

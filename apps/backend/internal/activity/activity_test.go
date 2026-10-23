@@ -132,7 +132,6 @@ func TestListNewestFirstInPages(t *testing.T) {
 		t.Fatalf("invoice item %+v", i)
 	}
 
-	// A settled invoice carries its settlement transaction hash.
 	settle := fmt.Sprintf("0x%064x", 99)
 	exec(t, pool, `WITH i AS (INSERT INTO settlement_intents (invoice_id, status, tx_hash) VALUES ($1, 'confirmed', $2))
 		UPDATE invoices SET settlement_status = 'settled' WHERE id = $1`, a, settle)
@@ -156,8 +155,7 @@ func TestListRefusesBadInput(t *testing.T) {
 	}
 }
 
-// Money the owner gets none of is held for the payer (D-26): it says so, and is filed under no Open or Paid filter as a
-// payment. Booked deposits follow the ledger; unbooked ones the ledger's own rule (late, final invoice, other option).
+// D-26: booked deposits follow the ledger; unbooked ones the ledger's own rule (late, final invoice, other option).
 func TestListMarksHeldDeposits(t *testing.T) {
 	pool := open(t)
 	var profile string

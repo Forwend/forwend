@@ -35,8 +35,7 @@ const invoiceColumns = `id, option_id, chosen_id IS NOT NULL,
 	coalesce(to_char(supply_date, 'YYYY-MM-DD'), ''), coalesce(reference, ''), agreed_currency, agreed_amount,
 	agreed_decimals, to_char(agreed_date, 'YYYY-MM-DD'), coalesce(pay_token, '')`
 
-// invoicesCurrent is the invoices_current view (migration 00020) under the table's name, so filters written for
-// invoices read the same.
+// The invoices_current view (migration 00020) aliased as invoices, so filters written for the table work on it.
 const invoicesCurrent = "invoices_current invoices"
 
 func scanInvoice(row pgx.Row) (Invoice, error) {

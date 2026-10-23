@@ -14,10 +14,8 @@ import (
 // signup, so a slow Privy delays the app's load by at most this much (the api's write timeout is 30 s).
 var RepairBudget = 5 * time.Second
 
-// SignUp makes the user and their personal profile once, then makes sure every profile of the user has its wallet. A
-// repeated call changes nothing, except that it retries wallets Privy failed to make. Only the personal profile's
-// wallet must succeed; another profile's failure is logged and retried on the next call. created reports a new
-// personal profile.
+// SignUp changes nothing when repeated, except that it retries wallets Privy failed to make. Only the personal
+// profile's wallet must succeed; another's failure is logged and retried. created reports a new personal profile.
 func (s *Service) SignUp(ctx context.Context, privyUserID string) (profiles []Profile, created bool, err error) {
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, "INSERT INTO users (privy_user_id, welcome) VALUES ($1, true) ON CONFLICT DO NOTHING",
@@ -66,10 +64,8 @@ func (s *Service) SignUp(ctx context.Context, privyUserID string) (profiles []Pr
 	return profiles, created, err
 }
 
-// storeLoginEmail reads the user's verified login email from Privy once and keeps it for their notifications (R-80):
-// never an address a request names, so nobody can point them at another inbox. A failure is retried on the next load;
-// an account without one keeps ” and is not read again. A new account's welcome email is queued with the address
-// (R-84), so it waits for a failed read and goes out once.
+// storeLoginEmail stores the verified login email from Privy, never an address a request names, so nobody can
+// point notifications at another inbox (R-80). The welcome email is queued with it, so it goes out once (R-84).
 func (s *Service) storeLoginEmail(ctx context.Context, privyUserID string) {
 	var unread bool
 	if err := s.pool.QueryRow(ctx, "SELECT login_email IS NULL FROM users WHERE privy_user_id = $1",

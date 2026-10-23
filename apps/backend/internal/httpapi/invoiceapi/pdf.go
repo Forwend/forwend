@@ -12,7 +12,6 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 )
 
-// invoicePDF is GET /v1/invoices/{payToken}/invoice.pdf and receiptPDF is .../receipt.pdf: public, like the invoice.
 func invoicePDF(invoices *invoice.Service, webURL string) http.HandlerFunc {
 	return servePDF(invoices, webURL, "invoice", document.Invoice)
 }

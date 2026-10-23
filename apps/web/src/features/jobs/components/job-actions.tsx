@@ -26,15 +26,12 @@ const CONFLICT = 409;
 export interface JobActionsProps {
   profileId: string;
   job: Job;
-  /** Called once deleted, before the page leaves for the list. */
   onDeleted: () => void;
   /** Called when the client accepted it first: the refetch then takes the menu and this dialog away. */
   onTooLate: () => void;
 }
 
-// The job's actions behind one More actions menu, as a client's: Delete, while the client has not accepted it,
-// confirmed in a dialog because it can't be undone. Deleting leaves for the list; too late, a toast says so, as an
-// invoice's cancel does.
+// Delete works only before the client accepts; too late, a toast says so, as an invoice's cancel does.
 export function JobActions({ profileId, job, onDeleted, onTooLate }: JobActionsProps) {
   const [remove, { isLoading, error }] = useDeleteJobMutation();
   const toast = useToast();

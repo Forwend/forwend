@@ -53,8 +53,7 @@ func TestResendErrorNamesOnlyTheStatus(t *testing.T) {
 	}
 }
 
-// R-115: 400 and 422 are Resend refusing this one message (a bad address or field); the rest are about the key, the
-// account, the quota or Resend itself, so retrying later may work.
+// R-115: retrying the other statuses later may work.
 func TestResendRefusesOnlyTheMessageOn400And422(t *testing.T) {
 	for status, refused := range map[int]bool{400: true, 422: true, 401: false, 403: false, 409: false, 429: false,
 		500: false, 503: false} {

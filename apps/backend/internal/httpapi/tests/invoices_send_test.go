@@ -9,8 +9,7 @@ import (
 const clientBody = `{"chainId": 84532, "token": "` + usdc + `", "amount": "5000000",
 	"client": {"name": "Client Ltd", "email": "ap@client.example"}}`
 
-// R-94: the owner sends an open invoice to its client's email: once per Idempotency-Key, once a day per invoice, 20 a
-// day per profile, never a closed one; the owner's read lists each send, the public read and the bell do not.
+// R-94.
 func TestSendInvoiceToClient(t *testing.T) {
 	e := invoiceAPI(t)
 	send := func(profile, id, key string) reply {
@@ -57,13 +56,11 @@ func TestSendInvoiceToClient(t *testing.T) {
 		t.Fatalf("bell events %v: the owner's own send is not one", r.body)
 	}
 
-	// The key names one invoice: on another it is a conflict, not a second email.
 	other := e.post(t, "did:privy:alice", e.aliceProfile, "key-2", clientBody).body["invoiceId"].(string)
 	if r := send(e.aliceProfile, other, "send-1"); r.status != http.StatusConflict || errorCode(r) != "idempotency_conflict" {
 		t.Fatalf("key of another invoice: %d %v, want 409", r.status, r.body)
 	}
 
-	// No client email, or the payer can no longer pay: nothing to send.
 	bare := e.post(t, "did:privy:alice", e.aliceProfile, "key-3", basicBody).body["invoiceId"].(string)
 	if r := send(e.aliceProfile, bare, "send-3"); r.status != http.StatusConflict || errorCode(r) != "client_email_required" {
 		t.Fatalf("no client email: %d %v, want 409", r.status, r.body)
@@ -82,7 +79,6 @@ func TestSendInvoiceToClient(t *testing.T) {
 		}
 	}
 
-	// Another user's profile is forbidden; an unknown invoice is not found.
 	if r := e.call(t, "POST", "/v1/profiles/"+e.bobProfile+"/invoices/"+id+"/send", "did:privy:alice", "send-4", ""); r.status != http.StatusForbidden {
 		t.Fatalf("Bob's profile: %d %v, want 403", r.status, r.body)
 	}
@@ -99,8 +95,7 @@ func TestSendInvoiceToClient(t *testing.T) {
 	}
 }
 
-// R-116: the cap counts the user's client emails of every kind, from all their profiles: a second profile can't send
-// once the first one used the day's emails (audit 2026-10-19: one account sent 120 across 6 profiles).
+// R-116.
 func TestClientEmailsCapCountsEveryProfileOfTheUser(t *testing.T) {
 	e := invoiceAPI(t)
 	e.exec(t, `INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)

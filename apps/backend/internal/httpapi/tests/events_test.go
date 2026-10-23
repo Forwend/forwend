@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// R-81: the bell reads the profile's paid, settled and held-money events, newest first, and only its own.
+// R-81.
 func TestListEvents(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
@@ -51,7 +51,6 @@ func TestListEvents(t *testing.T) {
 	}
 }
 
-// An event on a payer-chooses invoice's second option lists the invoice and that option's token.
 func TestListEventsOfAnOption(t *testing.T) {
 	e := invoiceAPI(t)
 	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)

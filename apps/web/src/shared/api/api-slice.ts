@@ -7,8 +7,7 @@ export interface ApiExtra {
   getAccessToken: () => Promise<string | null>;
 }
 
-// One slice for our backend; each feature adds its endpoints with injectEndpoints. The browser calls the API
-// same-origin at /api/v1/…; next.config.ts forwards it to API_URL.
+// One slice for our backend; each feature adds its endpoints with injectEndpoints.
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: withRateLimit(

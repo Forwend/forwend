@@ -25,8 +25,6 @@ export interface AccountMenuProps {
   side?: "top" | "bottom" | "right";
 }
 
-// The signed-in account: the app's one theme control, the active profile's email notifications, settings (not built
-// yet) and sign out.
 export function AccountMenu({ email, onSignOut, trigger, side = "top" }: AccountMenuProps) {
   const [theme, setTheme] = useTheme();
   return (
@@ -79,7 +77,6 @@ export interface AccountInitialProps {
   email: string;
 }
 
-/** The account's round initial, also the phone top bar's account button. */
 export function AccountInitial({ email }: AccountInitialProps) {
   return (
     <span

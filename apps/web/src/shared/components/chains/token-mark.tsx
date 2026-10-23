@@ -7,7 +7,6 @@ export interface TokenMarkProps {
   symbol: string;
 }
 
-/** The token logo with the network's logo tucked on its corner, then the token and network in words. */
 export function TokenMark({ chainId, symbol }: TokenMarkProps) {
   const token = TOKEN_ICONS[symbol];
   const chain = CHAINS[chainId]?.icon;

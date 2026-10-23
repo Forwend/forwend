@@ -28,8 +28,7 @@ func (e chainEnv) option(t *testing.T, main string, n int) (id, receive string) 
 	return id, receive
 }
 
-// The first option that receives money becomes the invoice's (D-76): it is paid and settled as usual, and money sent
-// to another option afterwards is held for the payer, never owed to the creator.
+// D-76.
 func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 	ctx := context.Background()
 	e := newChainEnv(t)
@@ -144,8 +143,7 @@ func deref(s *string) string {
 	return *s
 }
 
-// optionSim is a payer-chooses invoice in the sim: its main row on chain 1 and one option on chain 2, both closing at
-// 5000, with nothing paid yet.
+// optionSim: the main row on chain 1 and one option on chain 2, both closing at 5000, nothing paid.
 type optionSim struct {
 	*sim
 	main, option, dust, full string // the rows and their receive addresses

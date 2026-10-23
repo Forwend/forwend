@@ -10,7 +10,7 @@ import {
 } from "@/features/jobs/lib/jobs";
 
 describe("job amounts", () => {
-  // R-100: the API takes at most 2 decimals and 10 whole digits; anything else is named on the field, never rounded.
+  // R-100.
   it("reads typed USD as exact cents, refusing what the API refuses", () => {
     expect(usdCents("300")).toBe(30000n);
     expect(usdCents(" 700.5 ")).toBe(70050n);
@@ -41,7 +41,7 @@ describe("job amounts", () => {
 });
 
 describe("job record", () => {
-  // R-104: dispute evidence reads in the order things happened; acceptance and its deposit share a time.
+  // R-104: acceptance and its deposit share a time.
   it("lists the events oldest first, acceptance before the invoice it made", () => {
     const payment = (position: number, more: object) => ({
       position,
@@ -94,7 +94,7 @@ describe("job record", () => {
     ]);
   });
 
-  // R-106: a scope change is proposed, then accepted, then billed like any payment.
+  // R-106.
   it("lists a change's proposal and acceptance in time order", () => {
     const base = {
       dueDays: 7,
@@ -147,7 +147,6 @@ describe("job record", () => {
 });
 
 describe("job copy", () => {
-  // The job page, the quote page and the change email say when a payment is due the same way.
   it("says when a payment is due, with one day singular", () => {
     for (const due of [JOBS_COPY.detail.dueDays, QUOTE_COPY.dueDays]) {
       expect([0, 1, 7].map(due)).toEqual([

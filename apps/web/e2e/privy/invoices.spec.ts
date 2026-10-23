@@ -3,8 +3,8 @@ import { sidewaysScroll } from "../sideways";
 import { blockingViolations } from "./axe";
 import { session } from "./session";
 
-// The merchant profile the tests share: made once for the test account (each one gets a real Privy wallet), then
-// reused. `open` shows the profile choices: the sidebar menu on desktop, the sheet on phones.
+// Made once for the test account, then reused: each profile gets a real Privy wallet.
+// `open` shows the profile choices: the sidebar menu on desktop, the sheet on phones.
 async function chooseMerchant(page: Page, open: () => Promise<void>) {
   await open();
   const existing = page
@@ -18,13 +18,12 @@ async function chooseMerchant(page: Page, open: () => Promise<void>) {
   await expect(page).toHaveURL("/app");
 }
 
-// Creates an invoice and returns its number and the API's answer, or null when this database has no enabled network: the
-// page then says so instead of showing the form.
+// Returns null when this database has no enabled network.
 async function createInvoice(page: Page, fill: () => Promise<void>) {
   await expect(page.getByRole("heading", { level: 1, name: "New invoice" })).toBeVisible();
   const noNetworks = page.getByText("No networks are enabled yet");
   const form = noNetworks.or(page.getByRole("button", { name: "Create invoice" }));
-  // R-92: the shared merchant profile saves its billing details once, before its first invoice.
+  // R-92: billing details are saved once, before the profile's first invoice.
   const billing = page.getByRole("main").getByRole("link", { name: "Add billing details" });
   await expect(form.or(billing)).toBeVisible();
   if (await billing.isVisible()) {
@@ -86,12 +85,10 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     sidebar.getByRole("button", { name: /^Switch profile: E2E shop Merchant/ }),
   ).toBeVisible();
 
-  // Invoices is a page now, not "Soon".
   await sidebar.getByRole("link", { name: "Invoices" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Invoices" })).toBeVisible();
   await expect(page.getByRole("table").or(page.getByText("No invoices yet"))).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
-  // The chosen profile survives a reload and opens in a new tab: switcher and merchant nav.
   const isMerchant = async (p: Page) => {
     const aside = p.locator("aside");
     await expect(
@@ -107,7 +104,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   await isMerchant(tab);
   await tab.close();
 
-  // R-86: a saved client fills the invoice below, which keeps its copy after the client is deleted at the end.
+  // R-86
   const clientName = `E2E client ${Date.now()}`;
   const po = `PO-${Date.now()}`;
   await sidebar.getByRole("link", { name: "Clients" }).click();
@@ -121,7 +118,6 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     .getByRole("textbox", { name: "Billing email (optional)" })
     .fill("delivered@resend.dev");
   await page.getByRole("textbox", { name: "Address (optional)" }).fill("1 Test Street\nBerlin");
-  // A long list is searched: typing narrows the countries.
   await page.getByRole("button", { name: /^Country \(optional\)/ }).click();
   await page.getByRole("combobox", { name: /Country \(optional\)/ }).fill("germ");
   await expect(page.getByRole("option")).toHaveCount(1);
@@ -132,7 +128,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   );
   await page.getByRole("textbox", { name: "Tax or VAT ID (optional)" }).fill("DE123456789");
   await page.getByRole("textbox", { name: "Default PO or reference (optional)" }).fill(po);
-  // R-97: this client's new invoices start with payment reminders on.
+  // R-97
   await page
     .getByRole("checkbox", { name: "Start new invoices with payment reminders on" })
     .check();
@@ -153,8 +149,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   let lastDue = "";
   const invoice = await createInvoice(page, async () => {
     await fixUsdcOnBase(page);
-    // An amount the token can't hold and a link that is not https are named on their fields before anything is sent;
-    // focus goes to the first.
+    // An amount the token can't hold and a link that is not https.
     const amount = page.getByRole("textbox", { name: "Amount" });
     const link = page.getByRole("textbox", { name: "Return link (optional)" });
     await amount.fill("1.1234567");
@@ -170,13 +165,13 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await link.fill("https://shop.example/thanks");
     await page.getByRole("textbox", { name: "Title (optional)" }).fill(title);
     await page.getByRole("textbox", { name: "Note to the client (optional)" }).fill("Thank you");
-    // R-89: the supply date, a month back, the work having been done before the invoice.
+    // R-89
     await page.getByRole("button", { name: /^Supply date \(optional\)/ }).click();
     await page.keyboard.press("PageUp");
     await page.keyboard.press("Enter");
     supplied = await page.locator('input[name="supplyDate"]').inputValue();
     expect(supplied).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    // The due date comes from the kit calendar (R-59): a month from today.
+    // R-59
     await page.getByRole("button", { name: /^Due date \(optional\)/ }).click();
     await page.keyboard.press("PageDown");
     await page.keyboard.press("Enter");
@@ -206,7 +201,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await page.getByRole("option", { name: new RegExp(`^${clientName}`) }).click();
     await expect(page.getByRole("textbox", { name: "Name", exact: true })).toHaveValue(clientName);
     await expect(page.getByRole("textbox", { name: "Tax or VAT ID" })).toHaveValue("DE123456789");
-    // R-90: the saved client's default PO number fills the invoice's reference.
+    // R-90
     await expect(page.getByRole("textbox", { name: "PO or reference (optional)" })).toHaveValue(po);
     await expect(page.getByRole("checkbox", { name: "Send payment reminders" })).toBeChecked();
     // R-99: a retainer; the test stops it below, so no run leaves one running (D-85).
@@ -218,7 +213,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await page.keyboard.press("Enter");
     lastDue = await page.locator('input[name="repeatEndDate"]').inputValue();
     expect(lastDue > due).toBe(true);
-    // R-93: the price agreed with the client in euros, today.
+    // R-93
     await page.getByRole("button", { name: "Add agreed value" }).click();
     await page.getByRole("button", { name: /^Agreed in/ }).click();
     await page.getByRole("combobox", { name: /Agreed in/ }).fill("euro");
@@ -232,8 +227,6 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       dateStyle: "medium",
       timeZone: "UTC",
     }).format(new Date(`${due}T00:00:00Z`));
-    // The detail: number, amount in the token, the timeline, due date apart from the checkout's close, the client.
-    // Nothing paid yet: the first step is the current one.
     await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
     await expect(page.getByText(title)).toBeVisible();
     const amount = page.getByRole("region", { name: "Amount" });
@@ -245,7 +238,6 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       "aria-current",
       "step",
     );
-    // No status pill: the timeline carries the status, and no payment has come in yet.
     await expect(amount.locator("[data-status]")).toHaveCount(0);
     const details = page.getByRole("region", { name: "Details" });
     await expect(details).toContainText("Due date");
@@ -260,7 +252,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       "€1,150.50",
     );
     await expect(details).toContainText("Checkout closes");
-    // R-60: each said once, the status by the timeline and the close time in Details, so the header has neither.
+    // R-60
     await expect(page.getByRole("main").locator("header [data-status]")).toHaveCount(0);
     await expect(page.getByRole("main").locator("header")).not.toContainText("Checkout closes");
     const client = page.getByRole("region", { name: "Billed to" });
@@ -268,8 +260,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(client).toContainText("delivered@resend.dev");
     await expect(client).toContainText("Germany");
     await expect(client).toContainText("Tax ID DE123456789");
-    // R-94: Send to client queues the email to the client's address; the panel then lists it, and the next send waits a
-    // day. The API's answer is mocked: every run sends from this one profile, whose 20 sends a day would run out (D-85).
+    // R-94. The send is mocked: every run uses this one profile, whose 20 sends a day would run out (D-85).
     const owned = `**/api/v1/profiles/*/invoices/${invoice.invoiceId}`;
     const queued = { requestedAt: new Date().toISOString(), sentAt: null, failedAt: null };
     await page.route(`${owned}/send`, async (route) => {
@@ -301,11 +292,9 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     ).toBeVisible();
     await expect(client).toContainText("Sending to delivered@resend.dev");
     await expect(client.getByRole("button", { name: "Send to client" })).toHaveCount(0);
-    // The button goes, so focus moves to the line that takes its place.
     await expect(client.getByText(/^You can send it again after/)).toBeFocused();
     expect(await blockingViolations(page)).toEqual([]);
-    // R-96, R-97: the invoice starts with payment reminders on from its saved client; the switch saves when flipped.
-    // The due date is a month away and the checkout closes tomorrow, so no reminder goes.
+    // R-96, R-97. The due date is a month away and the checkout closes tomorrow, so no reminder goes.
     const reminders = client.getByRole("switch", { name: "Payment reminders" });
     await expect(reminders).toBeChecked();
     await expect(client).toContainText("Emails the client 3 days before the due date");
@@ -316,7 +305,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByText("Payment reminders on")).toBeVisible();
     await expect(reminders).toBeChecked();
     expect(await blockingViolations(page)).toEqual([]);
-    // R-99: the retainer's next invoice, then Stop repeating, which asks first; focus moves to the line that says so.
+    // R-99
     await expect(client).toContainText("Repeats every month");
     await expect(client).toContainText(/Next invoice due .+, emailed to the client on /);
     await expect(client).toContainText(
@@ -330,7 +319,6 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(client.getByText(/^Stopped on /)).toBeFocused();
     await expect(client.getByRole("button", { name: "Stop repeating" })).toHaveCount(0);
     expect(await blockingViolations(page)).toEqual([]);
-    // The pay link copies whole, from the header's More actions menu, which also opens it.
     const link = `http://localhost:3000/pay/${invoice.payToken}`;
     await page
       .getByRole("main")
@@ -344,7 +332,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByRole("menuitem", { name: "Link copied" })).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
     await page.keyboard.press("Escape");
-    // R-91: Duplicate opens New invoice filled from this one, with dates of its own.
+    // R-91
     await page
       .getByRole("main")
       .locator("header")
@@ -365,12 +353,11 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.locator('input[name="dueDate"]')).toHaveValue("");
     await expect(page.locator('input[name="supplyDate"]')).toHaveValue("");
     await expect(page.getByRole("textbox", { name: "Agreed amount" })).toHaveValue("1150.5");
-    // R-97: the reminders the owner had on are copied too; R-99: a duplicate doesn't repeat.
+    // R-97, R-99
     await expect(page.getByRole("checkbox", { name: "Send payment reminders" })).toBeChecked();
     await expect(page.getByRole("checkbox", { name: "Repeat every month" })).not.toBeChecked();
     await page.goBack();
     await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
-    // The PDFs come through the same-origin /api path; the receipt only once the invoice is paid.
     const pdf = (name: string) => details.getByRole("link", { name });
     const read = `/api/v1/profiles/*/invoices/${invoice.invoiceId}`;
     const pdfPath = (file: string) => `/api/v1/invoices/${invoice.payToken}/${file}`;
@@ -437,7 +424,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     expect(await blockingViolations(page)).toEqual([]);
     await page.unroute(`**/api/v1/**/invoices/${invoice.invoiceId}`);
 
-    // Back in the list, newest first; the client's PO number finds the invoice (R-90).
+    // R-90
     await page.getByRole("link", { name: "Invoices" }).first().click();
     await page.getByRole("main").getByRole("searchbox", { name: "Search invoices" }).fill(po);
     await expect(page.getByRole("row")).toHaveCount(2);
@@ -451,7 +438,6 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
   }
 
-  // A row opens the client's page, whose More actions menu deletes it after asking.
   await sidebar.getByRole("link", { name: "Clients" }).click();
   await clientRow.getByRole("link", { name: clientName }).click();
   await expect(page).toHaveURL(/\/app\/clients\/[0-9a-f-]{36}$/);
@@ -501,7 +487,7 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
   await tabs.getByRole("button", { name: "More" }).click();
   await expect(more.getByRole("link", { name: "Activity", exact: true })).toBeVisible();
   await expect(more.getByRole("link", { name: "Billing details", exact: true })).toBeVisible();
-  // R-86: the Clients page and its form fit a phone.
+  // R-86
   await more.getByRole("link", { name: "Clients", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Clients" })).toBeVisible();
   await fits();
@@ -524,7 +510,7 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
     await page.getByRole("textbox", { name: choosing ? "Amount in USD" : "Amount" }).fill("0.5");
     // Its addresses stop counting toward the shared profile's open cap within the hour (D-85).
     await page.getByText("1 hour", { exact: true }).click();
-    // R-88: the typed amount becomes the first item's price, and the items' total the amount.
+    // R-88
     await page.getByRole("button", { name: "Add item" }).click();
     await page.getByRole("textbox", { name: "Item 1", exact: true }).fill("E2E logo");
     await page.getByRole("textbox", { name: "Qty" }).fill("2");
@@ -551,12 +537,12 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
     await expect(page.getByRole("region", { name: "Items" })).toContainText(
       choosing ? "E2E logo2 × 0.50 USD1.00 USD" : "E2E logo2 × 0.50 USDC1.00 USDC",
     );
-    // R-94: a client without an email: the page says why the invoice can't be emailed.
+    // R-94
     await expect(page.getByRole("region", { name: "Billed to" })).toContainText(
       "No client email on this invoice",
     );
     await fits();
-    // R-91: its duplicate's form, items filled in, fits a phone too.
+    // R-91
     await page
       .getByRole("main")
       .locator("header")
@@ -572,7 +558,6 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
     await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
     expect(await blockingViolations(page)).toEqual([]);
     await page.getByRole("link", { name: "Invoices" }).click();
-    // Phone rows lead with the client, then the number.
     await expect(
       page.getByRole("link", { name: new RegExp(`\\b${invoice.number}\\b`) }),
     ).toBeVisible();
@@ -587,7 +572,6 @@ test("the overview lists what clients owe, with the total left to pay, and fits 
 }) => {
   const context = await browser.newContext({ storageState: session });
   const page = await context.newPage();
-  // Overdue first, a payer-chooses one in USD, held money out of the total, and Show all past five.
   const row = (n: number, kind: string, amount: string, more: object = {}) => ({
     kind,
     invoiceId: `0x${String(n).repeat(64)}`,
@@ -613,8 +597,7 @@ test("the overview lists what clients owe, with the total left to pay, and fits 
     row(6, "partlyPaid", "1000000"),
     row(7, "held", "9000000"),
   ];
-  // R-95, with fixed rows set before the first load: every test signs in as one user, whose API rate limit the
-  // suite comes close to, so this test loads the overview once. The API test covers the real answer.
+  // R-95. Mocked before the first load: the suite nears the one test user's API rate limit, so this loads once.
   await page.route("**/api/v1/profiles/*/owed", (route) => route.fulfill({ json: { items } }));
   await page.goto("/app");
   await chooseMerchant(page, () =>
@@ -636,7 +619,6 @@ test("the overview lists what clients owe, with the total left to pay, and fits 
   expect(await blockingViolations(page)).toEqual([]);
   await owed.getByRole("button", { name: "Show all 7" }).click();
   await expect(links).toHaveCount(7);
-  // The button goes, so focus moves to the first row it showed.
   await expect(links.nth(5)).toBeFocused();
   await expect(links.last()).toContainText("Held for the payer");
   await expect(links.last()).not.toContainText("left to pay");

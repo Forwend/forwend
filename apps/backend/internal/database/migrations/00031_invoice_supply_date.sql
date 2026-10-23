@@ -1,5 +1,4 @@
--- An invoice's supply date (R-89): the day the work was done or delivered, which EU and UK VAT invoices show when it
--- differs from the issue date. A detail like the due date: written with the invoice and never changed.
+-- Supply date (R-89): EU and UK VAT invoices show it when it differs from the issue date.
 
 -- +goose Up
 ALTER TABLE invoices ADD COLUMN supply_date date;
@@ -34,7 +33,6 @@ END;
 $$;
 -- +goose StatementEnd
 
--- The view lists its columns, so it is made again with the new one.
 CREATE OR REPLACE VIEW invoices_current AS
 SELECT m.id, m.profile_id, m.number, m.title, m.note, m.due_date, m.client_name, m.client_email, m.client_address,
        m.sender_name, m.issuer_name, m.issuer_address, m.issuer_country, m.issuer_tax_id, m.issuer_email, m.created_at,

@@ -11,17 +11,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// RescanLimit invoices are rescanned per chain per round, each over at most rescanStep blocks, so Check status calls
-// take a bounded share of the chain's RPC budget (R-55).
+// RescanLimit bounds rescans per chain per round, so Check status calls take a bounded share of RPC budget (R-55).
 const RescanLimit = 5
 
-// rescanStep is the most blocks one invoice's rescan reads per round; where it stopped is saved for the next one.
 const rescanStep = 5 * MaxRange
 
-// Rescans looks again for deposits to the invoices someone asked to recheck: each from its creation block (or where
-// its last step stopped) up to the latest block, rescanStep blocks per round. It records what it finds like a scan but
-// never moves the chain's cursor: that would let the regular scan skip blocks for the other invoices. An invoice the
-// regular scan no longer watches (watchedAfterDeadline) is not rescanned either: its money is the refund authority's.
+// Rescans never moves the chain's cursor: that would let the regular scan skip blocks for the other invoices. An
+// invoice past watchedAfterDeadline is not rescanned: its money is the refund authority's.
 func (c *Chain) Rescans(ctx context.Context) error {
 	if _, err := c.pool.Exec(ctx, `UPDATE invoice_rechecks r SET rescan_requested_at = NULL, rescan_from_block = NULL,
 		    rescanned_at = now()
@@ -61,7 +57,6 @@ func (c *Chain) Rescans(ctx context.Context) error {
 	return errors.Join(failed...)
 }
 
-// rescanOne runs one step of one invoice's rescan and saves where it got.
 func (c *Chain) rescanOne(ctx context.Context, id, receive, token string, saved *int64, created int64) error {
 	var from uint64
 	if saved != nil {
@@ -88,8 +83,6 @@ func (c *Chain) rescanOne(ctx context.Context, id, receive, token string, saved 
 	return nil
 }
 
-// rescan records the deposits to addr in [from, from+rescanStep) up to the latest block. done is true when it reached
-// the latest block; otherwise the next step starts at next.
 func (c *Chain) rescan(ctx context.Context, addr common.Address, inv receiver, from uint64) (next uint64, done bool, err error) {
 	latest, err := c.eth.BlockNumber(ctx)
 	if err != nil {
@@ -124,7 +117,6 @@ func (c *Chain) rescan(ctx context.Context, addr common.Address, inv receiver, f
 	return hi + 1, hi >= latest, nil
 }
 
-// logsIn is logs over [lo, hi] in steps the RPC accepts, halving the step when it is overloaded, as Scan does.
 func (c *Chain) logsIn(ctx context.Context, lo, hi uint64, invoices map[common.Address]receiver) ([]types.Log, error) {
 	var out []types.Log
 	span := c.span // the chain's step that its RPC last accepted
@@ -144,8 +136,7 @@ func (c *Chain) logsIn(ctx context.Context, lo, hi uint64, invoices map[common.A
 	return out, nil
 }
 
-// blockAt is the first block at or after the Unix time t: a binary search over block headers, about log2(latest)
-// reads, done once per rescan.
+// blockAt is the first block at or after Unix time t: about log2(latest) header reads, done once per rescan.
 func (c *Chain) blockAt(ctx context.Context, t uint64) (uint64, error) {
 	latest, err := c.eth.BlockNumber(ctx)
 	if err != nil {

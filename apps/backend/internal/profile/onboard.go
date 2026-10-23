@@ -25,10 +25,8 @@ var choiceKinds = map[string]string{
 	BuildIntegration:       Merchant,
 }
 
-// Onboard runs the first-run choice once: it makes the profiles the choices need and sets the user's onboarded_at,
-// in one transaction. Later calls change nothing, whatever they choose. No choices (skip) only sets onboarded_at;
-// nil means the request had none and is refused. Wallets are made as at signup, after the transaction. onboarded
-// reports that this call did it.
+// Onboard runs the first-run choice once, in one transaction; later calls change nothing. No choices (skip) only
+// sets onboarded_at; nil choices are refused. onboarded reports that this call did it.
 func (s *Service) Onboard(ctx context.Context, privyUserID string, choices []string) (
 	profiles []Profile, onboardedAt time.Time, onboarded bool, err error) {
 	if choices == nil {
@@ -99,7 +97,6 @@ func (s *Service) Onboard(ctx context.Context, privyUserID string, choices []str
 	return profiles, *at, onboarded, nil
 }
 
-// OnboardedAt is when the user finished or skipped the first-run choice; nil until then.
 func (s *Service) OnboardedAt(ctx context.Context, privyUserID string) (*time.Time, error) {
 	var at *time.Time
 	err := s.pool.QueryRow(ctx, "SELECT onboarded_at FROM users WHERE privy_user_id = $1", privyUserID).Scan(&at)

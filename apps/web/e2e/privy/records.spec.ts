@@ -4,8 +4,7 @@ import { blockingViolations } from "./axe";
 import { mockApi } from "./sample-api";
 import { session } from "./session";
 
-// R-109: on fixed answers, the Transactions page says what each transaction was, takes a label for money in that
-// Forwend can't classify, and exports the days chosen. Nothing is saved on the shared account (D-85).
+// R-109. On mocked answers: nothing is saved on the shared account (D-85).
 test("transactions show their type, take a label, and export the days chosen; it fits a phone", async ({
   browser,
 }) => {
@@ -16,7 +15,6 @@ test("transactions show their type, take a label, and export the days chosen; it
   const page = await context.newPage();
   await mockApi(page);
   const labels: { url: string; body: unknown }[] = [];
-  // List reads that start after a label is saved.
   let readsAfterLabel = 0;
   page.on("request", (r) => {
     if (r.method() === "PUT" && r.url().endsWith("/label"))
@@ -41,7 +39,6 @@ test("transactions show their type, take a label, and export the days chosen; it
         body: { label: "income" },
       },
     ]);
-  // The list is read again after the label is saved.
   await expect.poll(() => readsAfterLabel).toBeGreaterThan(0);
   expect(await blockingViolations(page)).toEqual([]);
 
@@ -54,7 +51,7 @@ test("transactions show their type, take a label, and export the days chosen; it
   expect((await download).suggestedFilename()).toBe("forwend-transactions.csv");
   await expect(dialog).toBeHidden();
 
-  // R-113: the same dialog downloads the income statement of both days.
+  // R-113
   await main.getByRole("button", { name: "Export", exact: true }).click();
   await dialog.getByLabel("From").fill("2026-10-01");
   await dialog.getByLabel("To").fill("2026-10-31");
@@ -65,7 +62,7 @@ test("transactions show their type, take a label, and export the days chosen; it
   );
   await expect(dialog).toBeHidden();
 
-  // R-111: the records currency, chosen in the export dialog, puts each value in it under the amount.
+  // R-111
   await main.getByRole("button", { name: "Export", exact: true }).click();
   const currency = dialog.getByRole("combobox", { name: "Records currency" });
   await expect(currency).toContainText("USD only");
@@ -74,7 +71,6 @@ test("transactions show their type, take a label, and export the days chosen; it
   await expect(currency).toContainText("EUR");
   expect(await blockingViolations(page)).toEqual([]);
   await dialog.getByRole("button", { name: "Cancel" }).click();
-  // The rate's day is in the value's name and in a tooltip that focus opens.
   const value = table
     .getByRole("button", { name: /^€[\d,]+\.\d{2}, At the ECB rate of Oct 16, 2026$/ })
     .first();
@@ -82,7 +78,6 @@ test("transactions show their type, take a label, and export the days chosen; it
   await value.focus();
   await expect(page.getByRole("tooltip")).toContainText("At the ECB rate of Oct 16, 2026");
 
-  // On a phone the type sits under each row.
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(
     main.getByRole("combobox", { name: /^Type of [\d.,]+ USDC in from 0x01/ }),
@@ -96,7 +91,7 @@ test("transactions show their type, take a label, and export the days chosen; it
   await expect.poll(() => sidewaysScroll(page)).toBeLessThanOrEqual(0);
   expect(await blockingViolations(page)).toEqual([]);
 
-  // R-113: without billing details the statement links them, with a way back, and the dialog still fits a phone.
+  // R-113
   await page.route("**/statement.pdf?*", (route) =>
     route.fulfill({
       status: 404,
@@ -113,12 +108,10 @@ test("transactions show their type, take a label, and export the days chosen; it
   );
   expect(await blockingViolations(page)).toEqual([]);
   await expect.poll(() => sidewaysScroll(page)).toBeLessThanOrEqual(0);
-  // Saving the billing details goes back to Transactions.
   await dialog.getByRole("link", { name: "Add billing details" }).click();
   await page.getByRole("button", { name: "Save details" }).click();
   await expect(page).toHaveURL("/app/transactions");
 
-  // The overview's preview (Payments on a business profile) keeps its columns, with no type.
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/app");
   const recent = page.getByRole("region", { name: "Payments", exact: true });
@@ -127,7 +120,7 @@ test("transactions show their type, take a label, and export the days chosen; it
   await expect(recent.getByRole("combobox")).toHaveCount(0);
   await context.close();
 
-  // On a touch screen the value line keeps its size, and a 44px band takes the tap (DESIGN.md: touch targets).
+  // A 44px band takes the tap (DESIGN.md: touch targets).
   const touch = await browser.newContext({
     viewport: { width: 390, height: 844 },
     isMobile: true,

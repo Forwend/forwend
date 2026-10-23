@@ -5,8 +5,7 @@ import (
 	"testing"
 )
 
-// R-80: the owner's email goes to the account's verified login email, read from Privy once on POST /v1/me; the
-// profile turns it on or off, and no request can name another address.
+// R-80.
 func TestNotificationsUseTheLoginEmail(t *testing.T) {
 	e := invoiceAPI(t)
 	const dave = "did:privy:dave"
@@ -52,7 +51,6 @@ func TestNotificationsUseTheLoginEmail(t *testing.T) {
 	}
 }
 
-// An account that signs in without an email (a passkey alone) has no address, and is not read again on every load.
 func TestNotificationsWithoutLoginEmail(t *testing.T) {
 	e := invoiceAPI(t)
 	const erin = "did:privy:erin"

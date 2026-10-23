@@ -11,7 +11,6 @@ export interface NetworksCardProps {
   failed: boolean;
 }
 
-// Where the money is: each enabled token on each network, with what the wallet holds there.
 export function NetworksCard({ balances, failed }: NetworksCardProps) {
   return (
     <section aria-labelledby="networks-title" className="fw-panel flex flex-col">

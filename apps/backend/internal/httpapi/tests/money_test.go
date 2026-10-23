@@ -185,8 +185,7 @@ func TestGetBalanceHistory(t *testing.T) {
 	}
 }
 
-// R-108: each transaction says what it was, with its USD value; the user labels money in that Forwend can't classify,
-// and the export lists every transaction with those columns.
+// R-108.
 func TestTransactionRecords(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, stranger = "did:privy:alice", "0x5555555555555555555555555555555555555555"
@@ -301,8 +300,7 @@ func TestTransactionRecords(t *testing.T) {
 	}
 }
 
-// R-112: the statement lists the period's confirmed income oldest first, with USD and records currency values and their
-// totals, names the account holder, and counts the unclassified money in it leaves out.
+// R-112.
 func TestStatement(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, stranger = "did:privy:alice", "0x5555555555555555555555555555555555555555"

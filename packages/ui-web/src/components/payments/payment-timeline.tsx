@@ -17,10 +17,7 @@ export interface TimelineStep {
   label: string;
   state: StepState;
   detail?: string;
-  /**
-   * The current step's share done, 0 to 1: its bar fills that far. Null while it runs with no known share: a sweep
-   * moves along the bar. Left out, the current step's bar is full.
-   */
+  /** The current step's share done, 0 to 1; null sweeps the bar (no known share); left out, the bar is full. */
   progress?: number | null;
   /** Shows the label as a tinted badge, for a step that ended in a state worth noticing (partly paid). */
   tone?: Tone;

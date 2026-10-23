@@ -16,8 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// The signer starts only when the executor can pay one deploy and settle at the current gas price; one wei less is
-// refused with the chain, the executor's address and its balance in whole coins.
+// One wei short of one deploy and settle is refused, naming the chain, the executor and its balance in whole coins.
 func TestCheckGas(t *testing.T) {
 	ctx := context.Background()
 	a := chaintest.Start(t)

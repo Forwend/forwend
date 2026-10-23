@@ -12,9 +12,8 @@ import (
 	"time"
 )
 
-// Message is one email: a plain text part, and the designed HTML part when there is one. Key is the Idempotency-Key:
-// Resend sends one email per key for 24 hours, so a retry after a lost answer never sends twice. ReplyTo is optional;
-// Unsubscribe, when set, is a one-click unsubscribe URL (RFC 8058) the mail provider may POST to.
+// Key is the Idempotency-Key: Resend sends one email per key for 24 hours, so a retry never sends twice.
+// Unsubscribe is a one-click unsubscribe URL (RFC 8058) the mail provider may POST to.
 type Message struct {
 	To, Subject, Text, HTML, Key, ReplyTo, Unsubscribe string
 }

@@ -3,8 +3,7 @@ import { sidewaysScroll } from "../sideways";
 import { blockingViolations } from "./axe";
 import { session } from "./session";
 
-// Opens Request money from the round actions on the personal overview: a page of its own, not a modal (R-71). Waits for
-// the form; false when this database has no enabled network: the page then says so.
+// R-71. Returns false when this database has no enabled network.
 async function openRequest(page: Page) {
   await page
     .getByRole("region", { name: "Total balance" })
@@ -27,7 +26,6 @@ async function openRequest(page: Page) {
   return true;
 }
 
-// Creates the filled-in request through the API and returns its id, pay link token and number (INV-0001).
 async function createRequest(page: Page) {
   const created = page.waitForResponse(
     (r) => /\/api\/v1\/profiles\/[^/]+\/invoices$/.test(r.url()) && r.request().method() === "POST",
@@ -41,7 +39,6 @@ async function createRequest(page: Page) {
     number: number;
     expiresAt: string;
   };
-  // The request opens with its pay link.
   await expect(page).toHaveURL(`/app/invoices/${invoiceId}`);
   return { invoiceId, payToken, expiresAt, number: `INV-${String(number).padStart(4, "0")}` };
 }
@@ -57,7 +54,6 @@ test("a personal profile requests money, sends the pay link and the payer sees w
   await page.goto("/app");
   const sidebar = page.locator("aside");
   await expect(sidebar.getByRole("button", { name: /^Switch profile: Personal/ })).toBeVisible();
-  // ⌘K offers it as an action.
   await page.keyboard.press("ControlOrMeta+k");
   const search = page.getByRole("dialog", { name: "Search" });
   await search.getByRole("combobox").fill("request");
@@ -66,7 +62,6 @@ test("a personal profile requests money, sends the pay link and the payer sees w
 
   if (await openRequest(page)) {
     const sheet = page.getByRole("main");
-    // The name the payer sees is required, and named on its field before anything is sent.
     const name = sheet.getByRole("textbox", { name: "Your name (shown to the payer)" });
     await name.fill("");
     await sheet.getByRole("textbox", { name: "Amount" }).fill("3.25");
@@ -78,7 +73,7 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     await name.fill("E2E Requester");
     const note = `E2E lunch ${Date.now()}`;
     await sheet.getByRole("textbox", { name: "Note to the payer (optional)" }).fill(note);
-    // Custom: a date from the kit calendar and a time; a time too soon is named on the field (R-58).
+    // R-58
     await sheet.getByText("Custom", { exact: true }).click();
     await sheet.getByRole("button", { name: /^Closes on/ }).click();
     await page.keyboard.press("Enter"); // today
@@ -100,7 +95,6 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     // The API takes seconds from now, so the close lands within a minute of the time picked.
     expect(Math.abs(Date.parse(request.expiresAt) - tomorrow.getTime())).toBeLessThan(60_000);
 
-    // The request opens with the link to send, and it copies whole.
     await expect(page.getByRole("region", { name: "Amount" })).toContainText("3.25");
     const link = `http://localhost:3000/pay/${request.payToken}`;
     await page
@@ -117,7 +111,6 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     await page.keyboard.press("Escape");
     expect(await blockingViolations(page)).toEqual([]);
 
-    // It sits under Requests and names who asks.
     await expect(
       page
         .getByRole("navigation", { name: "Breadcrumb" })
@@ -128,20 +121,17 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     expect(await blockingViolations(page)).toEqual([]);
     await sidebar.getByRole("link", { name: "Requests" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeAttached();
-    // A row leads with its note, then the number.
     await expect(
       page.getByRole("link", { name: new RegExp(`\\b${request.number}\\b`) }),
     ).toContainText(note);
     expect(await blockingViolations(page)).toEqual([]);
 
-    // The payer, without an account, sees the name and the amount asked.
     const payer = await browser.newContext({ reducedMotion: "reduce" });
     const pay = await payer.newPage();
     await pay.goto(`/pay/${request.payToken}`);
     await expect(pay.getByRole("heading", { level: 1, name: "E2E Requester" })).toBeVisible();
     await expect(pay.locator("[data-money]")).toHaveText("3.25 USDC");
     await expect(pay.getByText(`Request ${request.number}`)).toBeVisible();
-    // Who asks is the name its creator gave; Need help, in the footer, says Forwend doesn't check it.
     await pay.getByRole("contentinfo").getByRole("button", { name: "Need help?" }).click();
     await expect(
       pay

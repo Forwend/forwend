@@ -91,7 +91,7 @@ const choose = async (name: string) => {
 afterEach(cleanup);
 
 describe("records", () => {
-  // R-109: an invoice payment links its invoice; anything Forwend classified is text.
+  // R-109.
   it("links the invoice money in paid, and names what else a transaction was", () => {
     renderType({
       ...base,
@@ -108,7 +108,7 @@ describe("records", () => {
     expect(screen.queryByRole("combobox")).toBeNull();
   });
 
-  // R-108, R-109: the select saves the label, Unclassified clears it, and a refusal says so.
+  // R-108, R-109.
   it("labels money in, clears the label, and says when the API refuses", async () => {
     const calls: Call[] = [];
     answer(calls, 204);
@@ -129,8 +129,7 @@ describe("records", () => {
     expect(screen.getByText("This transaction takes no type any more.")).toBeTruthy();
   });
 
-  // R-109: the export asks for the days chosen and saves the API's CSV; a failure stays in the dialog until it opens
-  // again.
+  // R-109.
   it("exports the days chosen as the API's CSV, and says when it fails", async () => {
     const calls: Call[] = [];
     answer(calls, 200, "Date (UTC),Direction\r\n");
@@ -167,7 +166,7 @@ describe("records", () => {
     const dialog = document.querySelector("dialog");
     expect(dialog?.open).toBe(false);
 
-    // R-118: more transactions than one file holds names the way out.
+    // R-118.
     answer(
       [],
       422,
@@ -195,7 +194,7 @@ describe("records", () => {
     click.mockRestore();
   });
 
-  // R-111: the records currency saves when chosen; a failed save says so and keeps the saved one.
+  // R-111.
   it("saves the records currency when chosen, and keeps the saved one when that fails", async () => {
     const calls: Call[] = [];
     let saved: string | null = null;
@@ -238,7 +237,7 @@ describe("records", () => {
     expect(screen.getByRole("combobox", { name: "Records currency" }).textContent).toContain("EUR");
   });
 
-  // R-111: a value reads as money in its currency, with its ISO decimals, and its rate's day is in its name.
+  // R-111.
   it("shows a value as money in its currency, with its rate's day", () => {
     render(
       <TooltipProvider>
@@ -246,8 +245,7 @@ describe("records", () => {
         <RecordsValue value={{ currency: "JPY", amount: "151", rateDate: "2026-10-13" }} />
       </TooltipProvider>,
     );
-    // The reader's locale sets the separators and the day's words, so the names are built with it; what this checks
-    // is each currency's decimals and the rate's day in the name.
+    // The reader's locale sets the separators, so the expected names are built with it.
     const money = (amount: number, currency: string, digits: number) =>
       new Intl.NumberFormat(undefined, {
         style: "currency",
@@ -271,8 +269,7 @@ describe("records", () => {
     ).toBeTruthy();
   });
 
-  // R-113: the statement needs both days in order, saves the API's PDF under its period, links billing details when it
-  // can't be made without them, and says when it failed otherwise.
+  // R-113.
   it("downloads the statement of both days, and names what is missing", async () => {
     const calls: Call[] = [];
     let answer = "pdf";

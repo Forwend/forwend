@@ -1,6 +1,6 @@
 import { CLIENT_LIMITS } from "@/features/clients/constants/clients";
 
-/** /app/clients and its form pages (R-86). */
+/** R-86. */
 export const CLIENTS_COPY = {
   title: "Clients",
   add: "Add client",

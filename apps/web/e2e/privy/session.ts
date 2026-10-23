@@ -7,14 +7,13 @@ export const { PRIVY_TEST_EMAIL: email = "", PRIVY_TEST_OTP: code = "" } = parse
   readFileSync(".env", "utf8"),
 ) as Record<string, string>;
 
-// Privy throttles a test account that signs in many times in a row, so the tests that only need to be signed in
-// share one session, made once by session.setup.ts; the sign-in test itself signs in on its own.
+// Privy throttles a test account that signs in many times in a row, so the tests share one session,
+// made once by session.setup.ts.
 export const session = "test-results/privy-session.json";
 
 export async function signIn(page: Page) {
   await page.getByRole("textbox", { name: "Email" }).fill(email);
   await page.getByRole("button", { name: "Email me a code" }).click();
-  // The code step, before typing: axe checks it too.
   await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
   // A pasted code with a space signs in without pressing the button.

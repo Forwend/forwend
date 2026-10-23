@@ -1,5 +1,4 @@
--- What happened to each invoice (R-123, D-92): one row per change, written by history.Add in the transaction that
--- makes it, so the history can't miss a change or show one that rolled back. Append-only like the ledger.
+-- Invoice history (R-123, D-92): history.Add writes each row in the transaction that makes the change. Append-only.
 
 -- +goose Up
 CREATE TABLE history_events (
@@ -20,10 +19,8 @@ CREATE TRIGGER history_events_no_truncate BEFORE TRUNCATE ON history_events
 ALTER TABLE history_events ENABLE ALWAYS TRIGGER history_events_append_only;
 ALTER TABLE history_events ENABLE ALWAYS TRIGGER history_events_no_truncate;
 
--- Invoices made before keep what their rows still show, marked backfilled. Who made one: Forwend for a retainer's later
--- month, the payer for a job deposit made on acceptance, else the owner. When its shown option reached its status: the
--- first transfer seen or deposit booked, paid when its settlement was queued (the same transaction), expired at
--- expiry. Its settlement.
+-- Backfill from what the rows still show. A paid status is dated by its settlement intent, queued in the same
+-- transaction.
 INSERT INTO history_events (at, invoice_id, kind, actor, data)
 SELECT at, invoice_id, kind, actor, data FROM (
     SELECT i.created_at AS at, i.id AS invoice_id, 'invoice.created' AS kind,

@@ -36,7 +36,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	// Startup checks: a setup mistake stops the signer with a message naming it.
 	pool, err := database.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
@@ -45,7 +44,7 @@ func run() error {
 	lock, err := database.TakeLock(ctx, pool, settlement.LockKey, "signer", cfg.Chains.PollInterval)
 	if err != nil {
 		if ctx.Err() != nil {
-			return nil // stopped while waiting
+			return nil
 		}
 		return err
 	}
@@ -76,7 +75,6 @@ func run() error {
 	}
 }
 
-// wait sleeps for d; false when the signer is stopping.
 func wait(ctx context.Context, d time.Duration) bool {
 	select {
 	case <-ctx.Done():

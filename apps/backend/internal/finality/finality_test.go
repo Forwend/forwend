@@ -8,7 +8,6 @@ import (
 // Deposit at Base Sepolia block 47889653 (2 s blocks), from the S-4 measurements.
 var deposit = Block{Number: 47889653, Time: 1791547594}
 
-// behind returns the finalized head the given number of 2 s blocks before the deposit.
 func behind(blocks uint64) Block {
 	return Block{Number: deposit.Number - blocks, Time: deposit.Time - 2*blocks}
 }
@@ -40,7 +39,7 @@ func TestProgressOf(t *testing.T) {
 	}
 }
 
-// Base finality moves in steps as L1 epochs finalize: blocks left falls in jumps, never rises, and reaches 0.
+// Base finality moves in steps as L1 epochs finalize.
 func TestProgressOfStepFinality(t *testing.T) {
 	prev := ProgressOf(deposit, behind(600))
 	for _, head := range []Block{behind(600), behind(408), behind(216), behind(24), {deposit.Number + 168, deposit.Time + 336}} {
@@ -55,7 +54,6 @@ func TestProgressOfStepFinality(t *testing.T) {
 	}
 }
 
-// A busy day: the finalized head falls further behind than usual, so the same deposit shows more time left.
 func TestProgressOfBusyDay(t *testing.T) {
 	normal := ProgressOf(deposit, behind(461)) // about 15 min, as measured
 	busy := ProgressOf(deposit, behind(750))   // about 25 min, the slowest S-4 sample

@@ -17,7 +17,6 @@ const (
 	zero     = "0x0000000000000000000000000000000000000000"
 )
 
-// addWallets gives each address its own profile.
 func addWallets(t *testing.T, pool *pgxpool.Pool, addresses ...string) {
 	t.Helper()
 	for _, a := range addresses {
@@ -30,7 +29,6 @@ func addWallets(t *testing.T, pool *pgxpool.Pool, addresses ...string) {
 	}
 }
 
-// walletRows lists the recorded wallet transfers in chain order as "wallet direction counterparty amount status".
 func (e env) walletRows(t *testing.T) []string {
 	t.Helper()
 	rows, err := e.pool.Query(context.Background(), `SELECT concat_ws(' ', wallet_address, direction, counterparty,
@@ -50,9 +48,7 @@ func (e env) walletRows(t *testing.T) []string {
 	return out
 }
 
-// Sender and ours are profile wallets. Every enabled-token transfer from or to them is recorded, once per wallet
-// side: a transfer between them is out for Sender and in for ours. Recording reaches back RescanDepth blocks below
-// the finalized block, so setup's mint to Sender (from the zero address) counts as received.
+// The scan reaches back RescanDepth below finalized, so setup's mint to Sender counts as received.
 func TestWalletTransfersAreRecordedInAndOut(t *testing.T) {
 	e := setup(t)
 	addWallets(t, e.pool, chaintest.Sender, ours)
@@ -83,8 +79,6 @@ func TestWalletTransfersAreRecordedInAndOut(t *testing.T) {
 	}
 }
 
-// A wallet transfer follows the deposit reorg rules: reorged when its block is replaced, a new row when the same
-// transaction is mined again, confirmed once final, and scanning again changes nothing.
 func TestWalletTransferReorg(t *testing.T) {
 	e := setup(t)
 	addWallets(t, e.pool, ours)
@@ -121,8 +115,6 @@ func TestWalletTransferReorg(t *testing.T) {
 	}
 }
 
-// A token disabled while one of its wallet transfers is still detected: that row still confirms by the normal rules
-// and stops holding the scan's start; the token's later transfers are not recorded.
 func TestDetectedTransferOfADisabledTokenStillConfirms(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()

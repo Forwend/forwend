@@ -13,7 +13,6 @@ export interface ProfileAvatarProps {
   kind: ProfileKind;
 }
 
-/** A square tile with the profile type's icon, the profile's mark in the switcher. */
 export function ProfileAvatar({ kind }: ProfileAvatarProps) {
   const Icon = ICONS[kind];
   return (

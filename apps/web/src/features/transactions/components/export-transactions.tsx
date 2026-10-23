@@ -26,9 +26,7 @@ export interface ExportTransactionsProps {
   disabled: boolean;
 }
 
-// R-109: every transaction in the UTC days chosen, as the API's CSV (R-108); an empty day sets no limit. The same days
-// give the income statement (R-113), which needs both. The days are the browser's date fields: the kit's calendar
-// opens inside its field, and the dialog's scrolling body cuts it off.
+// R-108, R-109, R-113. Browser date fields: the kit's calendar opens inside its field and the dialog cuts it off.
 export function ExportTransactions({ profileId, disabled }: ExportTransactionsProps) {
   const [exportCsv, { isFetching }] = useLazyExportTransactionsQuery();
   const [statement, statementState] = useDownloadStatementMutation();
@@ -101,8 +99,7 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
       triggerLabel={COPY.export}
       title={COPY.exportTitle}
       trigger={(open) => (
-        // Phones keep only its icon, its touch area widened to 44px like an icon button's; the accessible name says
-        // what it does.
+        // Phones show only the icon, so the accessible name says what it does.
         <Button
           variant={BUTTON_VARIANTS.secondary}
           aria-label={COPY.export}

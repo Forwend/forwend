@@ -45,7 +45,6 @@ const BUSINESS_COPY = {
   pendingHint: "Paid to invoices, not in the wallet yet",
   atLeast: (n: number) => `${n}+`,
 } as const;
-// The full list with filters, search and export is the Transactions page.
 const RECENT = 8;
 
 export function BusinessOverview() {
@@ -70,9 +69,8 @@ export function BusinessOverview() {
   const balancesFailed = balances.isError && !balances.currentData;
   const historyFailed = history.isError && !history.currentData;
 
-  // Payments in over the range, counted from the latest 100 transfers; when those do not reach back to the start of
-  // the range, the count shows as "100+". The range starts where the history's does: 00:00 UTC, `days` days back
-  // with today included, so the count and Received cover the same days.
+  // Counted from the latest 100 transfers, so "100+" when they don't reach the range's start. The range starts
+  // 00:00 UTC `days` days back, today included, as the history's does.
   const now = new Date();
   const since = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (days - 1));
   const items = latest.data?.items ?? [];
@@ -148,7 +146,6 @@ export function BusinessOverview() {
 
       <OwedToYou profileId={profile.profileId} />
 
-      {/* Both columns stretch to one height, so their bottom edges line up. */}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
         <section aria-labelledby="received-title" className="fw-panel flex flex-col">
           <div className="fw-panel-head flex-wrap justify-between gap-y-1">
@@ -159,8 +156,6 @@ export function BusinessOverview() {
               {payments === null ? rangeName : `${BUSINESS_COPY.payments(payments)} · ${rangeName}`}
             </span>
           </div>
-          {/* At least 12rem on a phone and 16rem wider, and taller when the side column is, so the chart fills its
-              panel. */}
           <div className="grid min-h-48 flex-1 sm:min-h-64 grid-rows-[minmax(0,1fr)] p-4 sm:p-5">
             {historyFailed ? (
               <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">

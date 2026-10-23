@@ -11,8 +11,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 )
 
-// R-121: the receipt lists only what was paid to the creator. A deposit after the invoice was already paid is held
-// for the payer (D-26), and only the paid part of a deposit that went over counts (audit 2026-10-19).
+// R-121, D-26.
 func TestReceiptListsOnlyMoneyPaidToTheCreator(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
@@ -52,7 +51,6 @@ func TestReceiptListsOnlyMoneyPaidToTheCreator(t *testing.T) {
 		strings.Contains(payments, third) || strings.Contains(payments, "2.50 USDC") {
 		t.Fatalf("receipt payments:\n%s\nwant 1.50 and 0.50 USDC, not the held deposit", payments)
 	}
-	// The pay page reads the same split.
 	paid := map[string]any{}
 	for _, d := range e.get(t, id).body["deposits"].([]any) {
 		paid[d.(map[string]any)["txHash"].(string)] = d.(map[string]any)["paid"]

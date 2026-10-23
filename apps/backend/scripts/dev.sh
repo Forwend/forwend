@@ -1,7 +1,6 @@
 #!/bin/sh
-# Root `pnpm dev` runs this beside the web app: Postgres, then the api, then the worker and signer once the api answers
-# (it applies migrations, which they check). It stops everything and exits 1 when the executor key is missing, when a
-# process does not report ready within 120 s, or when one stops. Ctrl+C stops them all.
+# Root `pnpm dev` runs this beside the web app. The worker and signer start once the api answers: it applies the
+# migrations they check.
 set -e
 cd "$(dirname "$0")/.."
 # Only the key's presence is checked; the value is never read here.
@@ -28,7 +27,7 @@ fail() {
 trap 'stop; exit 130' INT TERM
 
 go build -o "$tmp/" ./cmd/api ./cmd/worker ./cmd/signer || fail "go build failed"
-# start runs a binary with its output in $tmp/<name>.log, shown here too; $! is then the binary's PID.
+# start: $! is then the binary's PID, not tail's.
 start() {
   : >"$tmp/$1.log"
   tail -f "$tmp/$1.log" &
@@ -36,7 +35,6 @@ start() {
   sh scripts/with-env.sh "$tmp/$1" >"$tmp/$1.log" 2>&1 &
   pids="$pids $!"
 }
-# ready waits until a check passes; it fails when the process stops first or after 120 s.
 ready() {
   name=$1 pid=$2
   shift 2

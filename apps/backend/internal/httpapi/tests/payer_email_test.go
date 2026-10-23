@@ -9,8 +9,7 @@ import (
 	"time"
 )
 
-// R-82, D-68: the payer gives an address for the receipt on the public pay page; it changes until the receipt is sent,
-// a paid invoice queues its receipt once, and the endpoint is limited per invoice.
+// R-82, D-68.
 func TestPayerEmail(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
@@ -42,7 +41,6 @@ func TestPayerEmail(t *testing.T) {
 		t.Fatalf("saved %q (%v)", saved, err)
 	}
 
-	// Given once paid: queued now, once, and the address can still change until it is sent.
 	e.exec(t, `UPDATE invoices SET payment_status = 'paid' WHERE id = $1`, id)
 	if r := put(id, `{"email": "second@example.com"}`); r.status != http.StatusOK || receipts() != 1 {
 		t.Fatalf("after paid: %d, receipts %d; want 204 and one queued", r.status, receipts())
@@ -51,13 +49,11 @@ func TestPayerEmail(t *testing.T) {
 	if r := put(id, `{"email": "third@example.com"}`); r.status != http.StatusConflict || errorCode(r) != "receipt_sent" {
 		t.Fatalf("after the receipt went out: %d %v, want 409 receipt_sent", r.status, r.body)
 	}
-	// The payer's receipt is not an owner event: the bell leaves it out.
 	if r := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/events", "did:privy:alice", "", ""); len(r.body["items"].([]any)) != 0 {
 		t.Fatalf("bell events %v, want none", r.body)
 	}
 }
 
-// A few changes per invoice, then 429 with Retry-After: the public endpoint can't be used to mail many addresses.
 func TestPayerEmailIsLimitedPerInvoice(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
@@ -70,15 +66,13 @@ func TestPayerEmailIsLimitedPerInvoice(t *testing.T) {
 		errorCode(r) != "rate_limited" {
 		t.Fatalf("fourth change: %d %v, want 429 rate_limited", r.status, r.body)
 	}
-	// Another invoice has its own budget.
 	other := e.post(t, "did:privy:alice", e.aliceProfile, "key-2", basicBody).body["invoiceId"].(string)
 	if r := e.call(t, "PUT", "/v1/invoices/"+e.link(t, other)+"/payer-email", "", "", `{"email": "a@example.com"}`); r.status != http.StatusOK {
 		t.Fatalf("another invoice: %d %v", r.status, r.body)
 	}
 }
 
-// A paid invoice queues one receipt however often the address changes before it goes, and a receipt the worker gave
-// up on starts again for the new address.
+// A receipt the worker gave up on starts again for the new address.
 func TestPayerEmailQueuesOneReceipt(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
@@ -106,8 +100,7 @@ func TestPayerEmailQueuesOneReceipt(t *testing.T) {
 	}
 }
 
-// Everyone together gets a few receipts a second, so many paid invoices can't be used to mail many addresses. Only a
-// receipt that goes out spends that budget (R-117).
+// R-117: only a receipt that goes out spends the shared budget.
 func TestPayerEmailIsLimitedForEveryone(t *testing.T) {
 	e := invoiceAPI(t)
 	var links []string
@@ -127,8 +120,7 @@ func TestPayerEmailIsLimitedForEveryone(t *testing.T) {
 	}
 }
 
-// A change while the worker sends the receipt waits for that send, then says it was sent: never "on its way" to an
-// address the email did not go to.
+// Never "on its way" to an address the email did not go to.
 func TestPayerEmailWaitsForASendInProgress(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
@@ -167,8 +159,7 @@ func TestPayerEmailWaitsForASendInProgress(t *testing.T) {
 	}
 }
 
-// R-82: the payer's address is checked like a client email: plain text and exactly one address, so a NUL can't reach
-// Postgres (a 500) and hidden or reordering characters can't be stored (audit 2026-10-19).
+// R-82: plain text and exactly one address, like a client email.
 func TestPayerEmailIsOneAddress(t *testing.T) {
 	e := invoiceAPI(t)
 	n := 0

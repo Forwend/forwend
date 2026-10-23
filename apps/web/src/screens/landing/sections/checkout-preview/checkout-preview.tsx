@@ -18,7 +18,6 @@ import {
 import { CHECKOUT_IMAGE } from "@/shared/assets/images";
 import { SAMPLE_INVOICE, SAMPLE_STEPS } from "@/shared/examples/sample-invoice";
 
-// Dusk Ledger raise: product showcase in a dark framed section.
 export function CheckoutPreview() {
   return (
     <section

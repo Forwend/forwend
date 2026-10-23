@@ -10,8 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Event kinds. A payment status change is "invoice." and the new status, as the ledger names it (open after a reorg
-// dropped the only transfer seen, detected, partially_paid, paid, expired, expired_partially_paid).
+// A payment status change is "invoice." and the new status, as the ledger names it.
 const (
 	Created          = "invoice.created"
 	Canceled         = "invoice.canceled"
@@ -22,7 +21,6 @@ const (
 	Settled          = "invoice.settled" // data has the settle transaction's hash
 )
 
-// Actor is who made a change.
 type Actor string
 
 const (
@@ -31,7 +29,7 @@ const (
 	System Actor = "system" // Forwend itself: the worker, the signer, a retainer month
 )
 
-// Data is an event's detail. Only these fields exist, so a row can never take a secret, a request body or an email.
+// Data has only these fields, so a row can never take a secret, a request body or an email.
 type Data struct {
 	Option string `json:"option,omitempty"` // the option chosen, or the one money is held on, when there are several
 	Amount string `json:"amount,omitempty"` // base units of the invoice token

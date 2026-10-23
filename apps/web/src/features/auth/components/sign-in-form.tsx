@@ -14,8 +14,7 @@ import type { SignInStep } from "@/features/auth/types/sign-in";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Our own forms on Privy's headless sign-in: an email code, Google (a redirect and back) or a passkey added from the
-// checklist. The page moves on to /app once Privy reports the user signed in.
+// The page moves on to /app once Privy reports the user signed in.
 export function SignInForm() {
   const { sendCode, loginWithCode } = useLoginWithEmail();
   const { loginWithPasskey } = useLoginWithPasskey();
@@ -26,15 +25,13 @@ export function SignInForm() {
   const [fieldError, setFieldError] = useState("");
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
-  // Google answers after the redirect back, outside our click handler, so its result is read from the flow's own
-  // state. (The hook's onError is not used: Privy calls it for every sign-in method, a wrong email code included.)
+  // Google answers after the redirect, so read its result from state; onError fires for every method.
   const { initOAuth, loading: googleBusy, state: google } = useLoginWithOAuth();
   useEffect(() => {
     if (google.status === "error") setFormError(SIGN_IN_COPY.errors.google);
   }, [google.status]);
 
-  // A full code signs in once, whether typed, pasted or autofilled, also when it arrived during a resend. The Sign in
-  // button counts as a new attempt, so it tries the same code again.
+  // A full code signs in once however it arrived; the Sign in button retries the same code.
   const tried = useRef("");
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -96,8 +93,7 @@ export function SignInForm() {
             <span className="font-medium break-all text-ink">{email.trim()}</span>.
           </p>
         </div>
-        {/* Room for the error line is kept, so an error never moves the buttons. The field stays enabled while
-            the code is checked: disabling it would drop keyboard focus. */}
+        {/* Stays enabled while the code is checked: disabling it would drop keyboard focus. */}
         <CodeInput
           label={SIGN_IN_COPY.codeLabel}
           length={CODE_LENGTH}
@@ -217,8 +213,7 @@ export function SignInForm() {
   );
 }
 
-// Always in the page so screen readers announce a new message, with one line kept for it, so a message never moves
-// the form (on phones the form is centered). Keep each message to one line at the form's width.
+// Always rendered so screen readers announce a change; one reserved line, so keep each message short.
 function Messages({ error, notice }: { error: string; notice: string }) {
   return (
     <div className="min-h-5 text-sm">

@@ -68,7 +68,6 @@ func (e env) scan(t *testing.T) {
 	}
 }
 
-// rows returns tx hash -> status for every recorded transfer, and the row count.
 func (e env) rows(t *testing.T) (map[string][]string, int) {
 	t.Helper()
 	rows, err := e.pool.Query(context.Background(), "SELECT tx_hash, status FROM chain_transfers ORDER BY id")
@@ -102,7 +101,7 @@ func TestDepositIsDetectedThenConfirmed(t *testing.T) {
 	if err != nil || amount != "5000000" || from != chaintest.Sender || blockTime == 0 {
 		t.Fatalf("row: amount %s from %s time %d err %v", amount, from, blockTime, err)
 	}
-	// The cursor keeps the time of the block the scan read to (R-119).
+	// R-119.
 	var scannedTime int64
 	if err := e.pool.QueryRow(context.Background(), "SELECT last_scanned_time FROM chain_cursors").Scan(&scannedTime); err != nil ||
 		scannedTime != e.anvil.Now() {
@@ -190,8 +189,6 @@ func TestReorgMarksTheDepositReorged(t *testing.T) {
 	}
 }
 
-// A log query the RPC refuses for its size or rate is read again in half the range, down to MinRange for a rate limit,
-// and the range doubles back after each answer. The answered ranges still cover every block once, in order, and the deposit is found.
 func TestLogRangeHalvesAndGrowsBack(t *testing.T) {
 	for name, c := range map[string]struct {
 		refuse    func(blocks uint64, earlier int) chaintest.Fault
@@ -278,7 +275,7 @@ func TestLogRangeHalvesAndGrowsBack(t *testing.T) {
 	}
 }
 
-// logRange is an eth_getLogs call's block range. It may run in the proxy's goroutine, so it reports with Errorf.
+// logRange may run in the proxy's goroutine, so it reports with Errorf.
 func logRange(t *testing.T, call chaintest.Call) (uint64, uint64) {
 	t.Helper()
 	var filter struct{ FromBlock, ToBlock hexutil.Uint64 }
@@ -319,7 +316,7 @@ func TestLongBacklogIsCaughtUpOverSeveralScans(t *testing.T) {
 	}
 }
 
-// A deposit already recorded under another final block, mined again, is skipped with an alert: the chain's scan goes on.
+// Rewriting block_hash makes the row look recorded under another final block.
 func TestDepositMinedAgainUnderAFinalBlockIsSkipped(t *testing.T) {
 	e := setup(t)
 	tx := e.anvil.Transfer(e.token, receive, "5000000")
@@ -335,7 +332,6 @@ func TestDepositMinedAgainUnderAFinalBlockIsSkipped(t *testing.T) {
 	}
 }
 
-// Invoices 30 days past their settle deadline leave the scan: the refund authority moves late money from the chain.
 func TestLongClosedInvoicesAreNotWatched(t *testing.T) {
 	e := setup(t)
 	const old = "0x00000000000000000000000000000000000000ad"
@@ -354,8 +350,6 @@ func TestLongClosedInvoicesAreNotWatched(t *testing.T) {
 	}
 }
 
-// A deposit seen just before its invoice leaves the scan keeps the invoice watched until it confirms: a detected row
-// left behind would hold every later scan's start and stop the chain.
 func TestInvoiceLeavingTheScanWithADetectedDepositStaysUntilItConfirms(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()

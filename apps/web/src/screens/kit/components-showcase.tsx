@@ -108,7 +108,6 @@ const SAMPLE_CLIENTS = [
   { value: "3", label: "Studio Lumen", detail: "billing@lumen.example" },
 ];
 
-// Searchable selects for long lists, each holding its own choice.
 function ComboboxDemo() {
   const [country, setCountry] = useState("DE");
   const [client, setClient] = useState("");

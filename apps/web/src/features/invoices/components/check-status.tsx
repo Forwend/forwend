@@ -7,8 +7,7 @@ import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-cop
 import { chainName } from "@/shared/lib/chains";
 
 const TOO_MANY_REQUESTS = 429;
-// After a "too soon" answer the button rests at least this long; the read (polled every 15 s) then gives the exact
-// time.
+// At least this long after "too soon"; the read (polled every 15 s) then gives the exact time.
 const TOO_SOON_REST_MS = 30_000;
 
 export interface CheckStatusProps {
@@ -22,10 +21,7 @@ export interface CheckStatusProps {
   messageClassName?: string;
 }
 
-/**
- * Check status (R-55): asks Forwend to read the invoice's address on chain again and says what it found. It rests
- * until the next check the api allows, which the invoice read also gives, so a reload never asks again early.
- */
+/** R-55. Rests until the next check the api allows, which the invoice read also gives. */
 export function CheckStatus({
   payToken,
   network,
@@ -70,8 +66,7 @@ export function CheckStatus({
       >
         {COPY.checkStatus}
       </Button>
-      {/* Kept in the page while empty, so its live region is there before the first answer; out of the layout
-          (sr-only) until there is something to read. */}
+      {/* Always rendered, so the live region exists before the first answer. */}
       <p className={`text-sm text-muted ${found || left > 0 ? messageClassName : "sr-only"}`}>
         <span role="status">{found}</span>
         {/* The countdown sits outside the live region, so screen readers are not told each second. */}
@@ -86,12 +81,10 @@ export function CheckStatus({
   );
 }
 
-// Whole minutes are enough for a wait this long; seconds only in the last minute.
 function roughly(ms: number): string {
   return ms >= 60_000 ? `${Math.ceil(ms / 60_000)} min` : `${Math.ceil(ms / 1000)} s`;
 }
 
-// Milliseconds until `until`, again each second while there are any.
 function useLeft(until: number): number {
   const [, tick] = useState(0);
   const left = until - Date.now();

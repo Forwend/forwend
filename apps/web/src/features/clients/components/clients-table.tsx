@@ -40,8 +40,7 @@ export interface ClientsTableProps {
   profileId: string;
 }
 
-// R-86, laid out like Invoices: the toolbar's search on the left and Add client at its end (beside the title on
-// phones), then a table whose rows open the client. The list comes whole (at most 1000), so the search filters here.
+// R-86. The list comes whole (at most 1000), so the search filters here.
 export function ClientsTable({ profileId }: ClientsTableProps) {
   const list = useListClientsQuery(profileId);
   const [search, setSearch] = useState("");
@@ -101,7 +100,6 @@ export function ClientsTable({ profileId }: ClientsTableProps) {
         <NoMatch onClear={() => setSearch("")} clearLabel={COPY.clearSearch} />
       ) : (
         <div className="fw-panel overflow-hidden">
-          {/* Wide screens: a ruled table. Below xl rows stack as on phones, as Invoices does. */}
           <div className="hidden overflow-x-auto xl:block">
             <table className="w-full min-w-[44rem] text-sm">
               <thead>
@@ -116,7 +114,6 @@ export function ClientsTable({ profileId }: ClientsTableProps) {
               </thead>
               <tbody className="divide-y divide-line">
                 {rows.map((client) => (
-                  // The name's link covers the row, so the whole row opens the client.
                   <tr
                     key={client.clientId}
                     className={`relative transition-colors duration-[var(--fw-duration-fast)] ${TABLE_ROW_CLASSES} ${ROW_INTERACTIVE_CLASSES}`}
@@ -157,7 +154,6 @@ export function ClientsTable({ profileId }: ClientsTableProps) {
                       </span>
                     ) : null}
                   </span>
-                  {/* A long country name gives way to the client's name rather than squeezing it. */}
                   {client.country ? (
                     <span className="max-w-[40%] truncate text-right text-sm text-muted">
                       {countryName(client.country)}

@@ -17,7 +17,7 @@ import (
 //go:embed migrations/*.sql
 var migrations embed.FS
 
-// Migrate applies every pending migration. A session lock lets several processes start at once.
+// The session lock lets several processes start and migrate at once.
 func Migrate(ctx context.Context, url string) error {
 	// Parsed as the pool parses it, so its pool_ parameters (pool_max_conns) are not sent to Postgres as settings.
 	config, err := pgxpool.ParseConfig(url)
@@ -45,8 +45,8 @@ func Migrate(ctx context.Context, url string) error {
 	return nil
 }
 
-// CheckSchema returns an error unless every migration this binary embeds is applied. Only the api migrates: the worker
-// and signer call this at startup, so they never run against an older schema. It only reads.
+// CheckSchema errors unless every embedded migration is applied. Only the api migrates: the worker and signer call
+// this at startup so they never run against an older schema.
 func CheckSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	names, err := fs.Glob(migrations, "migrations/*.sql")
 	if err != nil {

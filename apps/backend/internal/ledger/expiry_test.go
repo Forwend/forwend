@@ -15,8 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// sim is a database with one simulated chain: transfers are written directly and the second RPC's answers are set
-// by the test.
+// sim: transfers are written directly and the test sets the second RPC's answers.
 type sim struct {
 	t       *testing.T
 	pool    *pgxpool.Pool
@@ -66,7 +65,6 @@ func newSim(t *testing.T) *sim {
 	return s
 }
 
-// invoice adds a 5 USDC invoice expiring at simExpires.
 func (s *sim) invoice() (id, receive string) {
 	s.t.Helper()
 	s.n++
@@ -84,7 +82,7 @@ func (s *sim) invoice() (id, receive string) {
 	return id, receive
 }
 
-// transfer writes a transfer row; the chain then holds it.
+// transfer also adds the amount to the second RPC's answer.
 func (s *sim) transfer(id, receive string, amount, blockTime int64, status string) int64 {
 	s.t.Helper()
 	s.n++
@@ -129,7 +127,6 @@ func (s *sim) payment(id string) (payment, refund string) {
 	return payment, refund
 }
 
-// The second RPC lags at the expiry moment: a fully, timely paid invoice must not expire.
 func TestLaggingSecondRPCNeverExpiresAPaidInvoice(t *testing.T) {
 	s := newSim(t)
 	id, receive := s.invoice()
@@ -147,7 +144,6 @@ func TestLaggingSecondRPCNeverExpiresAPaidInvoice(t *testing.T) {
 	}
 }
 
-// An on-time deposit still waiting to be final (or missed by one log answer) keeps the invoice from expiring.
 func TestPendingOnTimeDepositDelaysExpiry(t *testing.T) {
 	s := newSim(t)
 	id, receive := s.invoice()
@@ -164,7 +160,6 @@ func TestPendingOnTimeDepositDelaysExpiry(t *testing.T) {
 	}
 }
 
-// Money the ledger can't explain (a missed log, an Arc native-coin payment) keeps the invoice from expiring.
 func TestUnexplainedBalanceDelaysExpiry(t *testing.T) {
 	s := newSim(t)
 	id, receive := s.invoice()
@@ -182,9 +177,7 @@ func TestUnexplainedBalanceDelaysExpiry(t *testing.T) {
 	}
 }
 
-// R-120: an expired invoice whose balance the ledger can't explain (Arc USDC sent natively) is checked again only after a
-// growing wait, so many of them can't use up a chain's round, and an honest invoice in the same round is still paid
-// (audit 2026-10-19: 700 of them starved the round).
+// R-120: stuck invoices can't use up a chain's round, and an honest invoice in the same round is still paid.
 func TestUnexplainedBalanceWaitsLongerEachTime(t *testing.T) {
 	s := newSim(t)
 	var stuck []string
@@ -264,7 +257,6 @@ func TestSecondRPCBehindFinalizedNeverDecides(t *testing.T) {
 	}
 }
 
-// One invoice's failing balance call doesn't stop the others.
 func TestProcessChainContinuesAfterAnError(t *testing.T) {
 	s := newSim(t)
 	broken, brokenReceive := s.invoice()
@@ -280,7 +272,6 @@ func TestProcessChainContinuesAfterAnError(t *testing.T) {
 	}
 }
 
-// An invoice is created open; the database rejects any other first status.
 func TestInvoiceStartsOpen(t *testing.T) {
 	s := newSim(t)
 	_, err := s.pool.Exec(context.Background(), `
@@ -295,7 +286,7 @@ func TestInvoiceStartsOpen(t *testing.T) {
 	}
 }
 
-// R-79, D-26: money sent to a canceled invoice, even the whole amount on time, is held for the payer and never settled.
+// R-79, D-26: even the whole amount on time is held and never settled.
 func TestCanceledInvoiceHoldsEveryDeposit(t *testing.T) {
 	s := newSim(t)
 	id, receive := s.invoice()
@@ -319,8 +310,7 @@ func TestCanceledInvoiceHoldsEveryDeposit(t *testing.T) {
 	}
 }
 
-// R-80: the owner hears of each change once, from the transaction that made it: paid when it is paid (not again on
-// the next round), and money held for the payer with the amount newly held.
+// R-80: each event once, from the transaction that made it; held carries the amount newly held.
 func TestOutboxEventsFollowTheLedger(t *testing.T) {
 	s := newSim(t)
 	events := func(id string) []string {
@@ -361,7 +351,7 @@ func TestOutboxEventsFollowTheLedger(t *testing.T) {
 	}
 }
 
-// R-82: paying an invoice whose payer gave an address queues the payer's receipt once, beside the owner's paid event.
+// R-82.
 func TestPaidQueuesTheReceiptWhenAsked(t *testing.T) {
 	s := newSim(t)
 	id, receive := s.invoice()

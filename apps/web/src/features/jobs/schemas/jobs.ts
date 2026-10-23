@@ -7,10 +7,7 @@ import { apiTime, hash32, openEnum } from "@/shared/schemas/api";
 
 const usdCents = z.string().regex(/^\d+\.\d{2}$/);
 
-/**
- * One payment of the schedule (R-100); invoiceId, number and status are null until its invoice is made, doneAt and
- * deliveryLink until the owner marks its step done (R-103).
- */
+/** R-100. invoiceId, number and status are null until its invoice is made; doneAt until done (R-103). */
 export const jobPaymentSchema = z.object({
   position: z.number().int().positive(),
   title: z.string(),
@@ -24,7 +21,7 @@ export const jobPaymentSchema = z.object({
   status: openEnum<JobPaymentStatus>().nullable(),
   doneAt: apiTime.nullable(),
   deliveryLink: z.string().nullable(),
-  // For the record (R-104): when its invoice was made, and when it was paid.
+  // R-104.
   invoicedAt: apiTime.nullable(),
   paidAt: apiTime.nullable(),
   // A scope change (R-105): proposedAt keeps its microseconds, and the accept sends it back as this exact string.
@@ -33,7 +30,7 @@ export const jobPaymentSchema = z.object({
   acceptedAt: apiTime.nullable(),
 });
 
-/** GET /v1/jobs/{token}: the job as its client's link shows it. */
+/** GET /v1/jobs/{token}. */
 export const publicJobSchema = z.object({
   title: z.string(),
   scope: z.string().nullable(),
@@ -51,9 +48,7 @@ export const publicJobSchema = z.object({
   createdAt: apiTime,
 });
 
-/** The owner's read: the public view plus its id, link token, client and the client's typed email. */
 export const jobSchema = publicJobSchema.extend({
-  // Each change's typed email and whether the client was emailed about it, for the owner only.
   payments: z.array(
     jobPaymentSchema.extend({ acceptedEmail: z.string().nullable(), clientEmailed: z.boolean() }),
   ),

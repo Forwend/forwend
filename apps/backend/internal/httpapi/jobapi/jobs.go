@@ -15,7 +15,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
 
-// createJob is POST /v1/profiles/{profileId}/jobs (R-100): 201 when created, 200 when the same request is repeated.
+// R-100.
 func createJob(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key, err := httpio.IdempotencyKey(r)
@@ -47,7 +47,6 @@ func createJob(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// listJobs is GET /v1/profiles/{profileId}/jobs: the profile's jobs, newest first.
 func listJobs(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		list, err := jobs.List(r.Context(), r.PathValue("profileId"))
@@ -63,7 +62,6 @@ func listJobs(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// getJob is GET /v1/profiles/{profileId}/jobs/{jobId}: the owner's read, with the client and the link token.
 func getJob(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		j, err := jobs.Get(r.Context(), r.PathValue("profileId"), r.PathValue("jobId"))
@@ -75,8 +73,7 @@ func getJob(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// deleteJob is DELETE /v1/profiles/{profileId}/jobs/{jobId} (R-101): 204 before the client accepts it, 409
-// job_accepted after.
+// R-101.
 func deleteJob(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := jobs.Delete(r.Context(), r.PathValue("profileId"), r.PathValue("jobId")); err != nil {
@@ -87,8 +84,7 @@ func deleteJob(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// markDone is POST /v1/profiles/{profileId}/jobs/{jobId}/payments/{position}/done (R-103): {"deliveryLink"}; 200 with
-// the job, the same when the payment already has its invoice.
+// R-103.
 func markDone(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -112,8 +108,7 @@ func markDone(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// proposeChange is POST /v1/profiles/{profileId}/jobs/{jobId}/payments (R-105): {title, amountUsd, dueDays} with an
-// Idempotency-Key; 201 when added, 200 when the same request is repeated.
+// R-105.
 func proposeChange(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key, err := httpio.IdempotencyKey(r)
@@ -144,8 +139,7 @@ func proposeChange(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// withdrawChange is DELETE /v1/profiles/{profileId}/jobs/{jobId}/payments/{position} (R-105): 204 for the last
-// payment while it is a change the client has not accepted; 409 payment_not_withdrawable otherwise.
+// R-105.
 func withdrawChange(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		position, err := strconv.Atoi(r.PathValue("position"))
@@ -161,8 +155,7 @@ func withdrawChange(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// acceptChange is POST /v1/jobs/{token}/payments/{position}/accept (R-105): {name, email, proposedAt}, the client's
-// typed name and email for the change they read; 200 with the job, the same when already accepted.
+// R-105.
 func acceptChange(jobs *job.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -190,7 +183,6 @@ func acceptChange(jobs *job.Service, all *mid.Buckets) http.HandlerFunc {
 	}
 }
 
-// getPublicJob is GET /v1/jobs/{token}: the client's read, public like the checkout.
 func getPublicJob(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		j, err := jobs.ByToken(r.Context(), r.PathValue("token"))
@@ -202,8 +194,7 @@ func getPublicJob(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// acceptJob is POST /v1/jobs/{token}/accept (R-100): {"name", "email"}; 200 with the job, the same when already
-// accepted.
+// R-100.
 func acceptJob(jobs *job.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body acceptBody
@@ -217,7 +208,6 @@ func acceptJob(jobs *job.Service, all *mid.Buckets) http.HandlerFunc {
 	}
 }
 
-// writeAccepted answers an accept: the job, or 429 with Retry-After past the budget everyone shares.
 func writeAccepted(w http.ResponseWriter, r *http.Request, j job.Job, err error) {
 	var soon *invoice.TooSoonError
 	if errors.As(err, &soon) {

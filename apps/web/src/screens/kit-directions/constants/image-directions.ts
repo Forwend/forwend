@@ -1,6 +1,6 @@
 import type { Direction, ImageCompSpec } from "@/screens/kit-directions/types/directions";
 
-// Five more directions drawn from data (ImageComp). Palettes are comp-only colors, like COMP_UI.
+// Palettes are comp-only colors, like COMP_UI.
 export const IMAGE_DIRECTION_IDS = {
   coastalLedger: "coastal-ledger",
   paperAtlas: "paper-atlas",

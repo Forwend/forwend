@@ -8,8 +8,7 @@ import { invoiceNumber } from "@/features/invoices/lib/invoices";
 
 const NOT_FOUND = 404;
 
-// The client's stop link (R-96): it asks first, since mail scanners open links, and stops on the button. The button
-// goes once stopped, so focus moves to the heading that says so.
+// R-96: asks first, since mail scanners open links; focus then moves to the heading that says so.
 export function StopReminders({ token }: { token: string }) {
   const [stop, { data, error, isLoading }] = useStopRemindersMutation();
   const status = (error as { status?: unknown } | undefined)?.status;

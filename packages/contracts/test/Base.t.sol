@@ -43,7 +43,6 @@ abstract contract Base is Test {
         });
     }
 
-    /// Payer sends a plain transfer to the predicted address before anything is deployed.
     function pay(InvoiceTerms memory t, uint256 amount) internal returns (address at) {
         at = factory.predict(t);
         MockToken(t.token).mint(payer, amount);

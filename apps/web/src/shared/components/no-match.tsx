@@ -11,7 +11,7 @@ export interface NoMatchProps {
   clearLabel?: string;
 }
 
-/** A filtered list with no rows: says so in the list's place and offers the whole list again (R-75). */
+/** A filtered list with no rows (R-75). */
 export function NoMatch({ onClear, compact, clearLabel = CLEAR }: NoMatchProps) {
   return (
     <EmptyState

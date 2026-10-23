@@ -1,7 +1,5 @@
-// Package watcher records deposits to receive addresses: Transfer logs of each invoice's own token, detected when
-// seen, confirmed once their block is at or below the chain's finalized block (D-45), reorged when the chain shows
-// another block at their height (R-20). It records every enabled-token transfer from or to a profile wallet by the
-// same rules (R-38).
+// Package watcher records Transfer deposits to receive addresses and profile-wallet transfers (R-38): detected when
+// seen, confirmed at or below the finalized block (D-45), reorged when another block shows at their height (R-20).
 package watcher
 
 import (
@@ -38,18 +36,16 @@ const (
 	// RescanDepth finalized blocks are read again on every scan, so one lagging or empty eth_getLogs answer is never
 	// the last look at a block. On Arc and Tempo finalized is latest, and 2,000 blocks are still 15 minutes or more.
 	RescanDepth = MaxRange
-	// MaxBatch is the most calls in one JSON-RPC batch.
-	MaxBatch = 100
+	MaxBatch    = 100
 )
 
-// Chain watches one EVM chain. Run one Chain per chain: two at once would race on the cursor.
+// Run one Chain per chain: two at once would race on the cursor.
 type Chain struct {
 	pool    *pgxpool.Pool
 	chainID uint64
 	rpc     *rpc.Client
 	eth     *ethclient.Client
-	// span is the blocks per eth_getLogs call: halved when the RPC refuses a range for its rate (down to MinRange) or
-	// size (down to one block), doubled back up to MaxRange after each range it answers.
+	// span is the blocks per eth_getLogs call; it shrinks on a refused range and grows back after each answer.
 	span uint64
 }
 
@@ -57,14 +53,13 @@ func NewChain(pool *pgxpool.Pool, chainID uint64, client *rpc.Client) *Chain {
 	return &Chain{pool: pool, chainID: chainID, rpc: client, eth: ethclient.NewClient(client), span: MaxRange}
 }
 
-// header is a block as the RPC reports it. The hash is never computed in Go: go-ethereum gets it wrong on Tempo (S-4).
+// The hash is never computed in Go: go-ethereum gets it wrong on Tempo (S-4).
 type header struct {
 	Number    hexutil.Uint64 `json:"number"`
 	Hash      common.Hash    `json:"hash"`
 	Timestamp hexutil.Uint64 `json:"timestamp"`
 }
 
-// receiver is the invoice paid at a receive address, in its own token.
 type receiver struct{ invoiceID, token string }
 
 type deposit struct {
@@ -78,13 +73,11 @@ type deposit struct {
 	finalized               uint64 // the chain's finalized block in the scan that saw it
 }
 
-// logKey identifies a log on one chain.
 type logKey struct {
 	blockHash string
 	index     uint64
 }
 
-// pending is a detected row the chain may have dropped.
 type pending struct {
 	id          int64
 	blockNumber uint64
@@ -92,8 +85,8 @@ type pending struct {
 	logIndex    uint64
 }
 
-// Scan reads the chain from RescanDepth blocks below the last finalized block (or from the oldest detected deposit or
-// wallet transfer) to the latest block, and records the result in one transaction. Scanning the same range again changes nothing.
+// Scan reads from RescanDepth below the last finalized block (or the oldest detected row) to latest, in one
+// transaction. Scanning the same range again changes nothing.
 func (c *Chain) Scan(ctx context.Context) error {
 	latest, err := c.eth.BlockNumber(ctx)
 	if err != nil {
@@ -191,8 +184,6 @@ func (c *Chain) Scan(ctx context.Context) error {
 	return c.record(ctx, reorgedOf(open), deposits, reorgedOf(openWallet), transfers, final, head)
 }
 
-// depositsOf turns invoice logs into deposits, final at or below finalized, and the set of logs it kept. A log whose
-// block this node no longer shows is left for the next scan.
 func depositsOf(logs []types.Log, headers map[uint64]header, invoices map[common.Address]receiver,
 	finalized uint64) ([]deposit, map[logKey]bool) {
 	var deposits []deposit
@@ -217,9 +208,8 @@ func depositsOf(logs []types.Log, headers map[uint64]header, invoices map[common
 	return deposits, seen
 }
 
-// start is where this scan begins. A new chain starts at its finalized block: deposits and wallet transfers before
-// the first scan are not looked for. ponytail: add a start block to chains if a chain is enabled after invoices on it
-// exist.
+// A new chain starts at its finalized block: earlier deposits and wallet transfers are never looked for.
+// ponytail: add a start block to chains if a chain is enabled after invoices on it exist.
 func (c *Chain) start(ctx context.Context) (uint64, error) {
 	var from int64
 	err := c.pool.QueryRow(ctx, `
@@ -239,8 +229,7 @@ func (c *Chain) start(ctx context.Context) (uint64, error) {
 	return uint64(from), nil
 }
 
-// insertDeposits inserts each deposit, or brings a reorged one back, inside tx. A confirmed row may be booked and never
-// changes; a reorged one comes back if its block is canonical again.
+// A confirmed row may be booked and never changes; a reorged one comes back if its block is canonical again.
 func (c *Chain) insertDeposits(ctx context.Context, tx pgx.Tx, deposits []deposit) error {
 	for _, d := range deposits {
 		status := "detected"
@@ -278,11 +267,9 @@ func (c *Chain) insertDeposits(ctx context.Context, tx pgx.Tx, deposits []deposi
 	return nil
 }
 
-// invoices maps each receive address on this chain to its invoice and token.
 func (c *Chain) invoices(ctx context.Context) (map[common.Address]receiver, error) {
-	// Money reaching an invoice 30 days after its settle deadline (the contracts' MAX_HOLD) is moved only by the
-	// refund authority, from the chain: not watching those keeps each scan's topic lists bounded. One with a deposit
-	// still detected stays until it confirms or is reorged, or that row would hold every scan's start for good.
+	// Past MAX_HOLD (30 days after the settle deadline) only the refund authority moves the money: not watching those
+	// keeps topic lists bounded. One with a detected deposit stays, or that row would hold every scan's start for good.
 	rows, err := c.pool.Query(ctx, `SELECT receive_address, id, token_contract FROM invoices i
 		WHERE chain_id = $1 AND (settle_deadline > extract(epoch FROM now())::bigint - $2
 		    OR EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = i.id AND t.status = 'detected'))`,
@@ -364,7 +351,6 @@ func matches(q ethereum.FilterQuery, l types.Log) bool {
 	return true
 }
 
-// logs returns the Transfer logs in [lo, hi] that pay an invoice in its own token.
 func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Address]receiver) ([]types.Log, error) {
 	tokens := map[common.Address]bool{}
 	var receivers []common.Hash
@@ -401,7 +387,7 @@ func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Add
 	return out, nil
 }
 
-// pending returns the detected rows of table (chain_transfers or wallet_transfers) at or above from.
+// table is chain_transfers or wallet_transfers.
 func (c *Chain) pending(ctx context.Context, table string, from uint64) ([]pending, error) {
 	rows, err := c.pool.Query(ctx, `SELECT id, block_number, block_hash, log_index FROM `+table+`
 		WHERE chain_id = $1 AND status = 'detected' AND block_number >= $2`, c.chainID, from)
@@ -420,8 +406,7 @@ func (c *Chain) pending(ctx context.Context, table string, from uint64) ([]pendi
 	return out, rows.Err()
 }
 
-// headers reads the finalized block and the given blocks in one JSON-RPC batch. A block the node doesn't have is
-// left out.
+// headers leaves out a block the node doesn't have.
 func (c *Chain) headers(ctx context.Context, numbers []uint64) (header, map[uint64]header, error) {
 	unique := map[uint64]bool{}
 	var finalized *header
@@ -459,8 +444,7 @@ func (c *Chain) headers(ctx context.Context, numbers []uint64) (header, map[uint
 	return *finalized, out, nil
 }
 
-// record writes one scan: reorged rows first (so a re-mined copy can be live), then each deposit and wallet transfer
-// is inserted or brought back, then the cursor moves.
+// record marks reorged rows first, so a re-mined copy of one can be live.
 func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit, reorgedWallet []int64,
 	transfers []walletTransfer, finalized, scanned header) error {
 	tx, err := c.pool.Begin(ctx)

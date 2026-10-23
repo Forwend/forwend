@@ -24,7 +24,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Expiry bounds and the settle window (D-18).
+// D-18.
 const (
 	DefaultExpiresIn = time.Hour
 	MinExpiresIn     = 15 * time.Minute
@@ -40,24 +40,19 @@ const (
 	MaxReturnURL  = 2000
 )
 
-// MaxOpen and MaxPerDay bound a profile's watched receive addresses: each is in every scan until 30 days after its
-// settle deadline.
+// Each watched receive address is in every scan until 30 days after its settle deadline.
 const (
 	MaxOpen   = 1000
 	MaxPerDay = 500
 )
 
 var (
-	// ErrInvalid wraps a request value that breaks a rule; the message names it.
-	ErrInvalid = errors.New("invalid invoice request")
-	// ErrConflict means the idempotency key was used with another request.
+	ErrInvalid  = errors.New("invalid invoice request")
 	ErrConflict = errors.New("idempotency key reused with another request")
 	ErrNotFound = errors.New("invoice not found")
-	// ErrNotWatched: the worker has not scanned the chain yet, and its first scan starts at the finalized block, so a
-	// payment made before it would never be seen (SEC-02).
+	// The worker's first scan starts at the finalized block, so an earlier payment would never be seen (SEC-02).
 	ErrNotWatched = errors.New("network not watched yet")
-	// ErrBillingDetailsRequired: a business invoice names who bills the client (R-92, D-83), so a freelancer or
-	// merchant profile saves its billing details first; a personal request names its sender instead (D-52).
+	// A business invoice names who bills the client (R-92, D-83); a personal request names its sender (D-52).
 	ErrBillingDetailsRequired = errors.New("billing details required")
 )
 
@@ -69,9 +64,8 @@ var (
 	uint256Max = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(1))
 )
 
-// Request is a create request after parsing; nil ExpiresInSeconds means the default. A fixed invoice names ChainID,
-// Token and Amount in base units; payer chooses (R-56) names only AmountUSD, a decimal like "12.50", and accepts every
-// enabled token at 1 USD each (D-75).
+// A fixed invoice sets ChainID, Token and Amount in base units; payer chooses (R-56) sets only AmountUSD,
+// a decimal like "12.50", paid in any enabled token at 1 USD each (D-75).
 type Request struct {
 	ChainID          uint64
 	Token            string
@@ -79,18 +73,17 @@ type Request struct {
 	AmountUSD        string
 	ExpiresInSeconds *int64
 	Details
-	// Lines break the amount down (R-88): each UnitPrice is in the amount's own unit, base units with Amount and a USD
-	// decimal with AmountUSD, and the lines add up exactly to it.
+	// Lines add up exactly to the amount (R-88). UnitPrice is in the amount's unit:
+	// base units with Amount, a USD decimal with AmountUSD.
 	Lines []LineRequest
-	// Agreed is the price agreed with the client in fiat (R-93), as typed; Create stores it in Details.Agreed.
+	// Agreed is the price agreed with the client in fiat (R-93), as typed.
 	Agreed *AgreedRequest
-	// Reminders turns payment reminders on at once (R-97), as SetReminders does; it needs a due date and a client email.
+	// R-97: needs a due date and a client email.
 	Reminders bool
-	// Repeat makes the invoice repeat every month (R-98); it needs a due date and a client email.
+	// R-98: monthly; needs a due date and a client email.
 	Repeat *Repeat
-	cycle  *cycle // set by MakeRetainerInvoices
-	// After runs in the transaction that inserts the invoice, before it commits; not on a replay. A job records its
-	// payment's invoice with it (R-100).
+	cycle  *cycle
+	// After runs in the insert's transaction before commit, and not on an idempotent replay (R-100).
 	After func(ctx context.Context, tx pgx.Tx, invoiceID string) error `json:"-"`
 	// By is who makes the invoice, for its history (R-123); empty is the owner.
 	By history.Actor `json:"-"`
@@ -111,8 +104,8 @@ type AgreedValue struct {
 	Date     string // YYYY-MM-DD
 }
 
-// AgreedCurrencies are EUR and the currencies the ECB publishes a daily reference rate for (D-82; eurofxref-daily.xml
-// of 2026-10-16), with their ISO 4217 decimals. The web's list is a copy: a test fails when either changes alone.
+// EUR and the ECB's daily reference-rate currencies, with ISO 4217 decimals (D-82).
+// The web keeps a copy; a test fails when they differ.
 var AgreedCurrencies = map[string]int{
 	"EUR": 2, "USD": 2, "GBP": 2, "AUD": 2, "BRL": 2, "CAD": 2, "CHF": 2, "CNY": 2, "CZK": 2, "DKK": 2, "HKD": 2,
 	"HUF": 2, "IDR": 2, "ILS": 2, "INR": 2, "ISK": 0, "JPY": 0, "KRW": 0, "MXN": 2, "MYR": 2, "NOK": 2, "NZD": 2,
@@ -122,7 +115,6 @@ var AgreedCurrencies = map[string]int{
 // agreedAmount is a decimal of up to 12 whole digits, so its minor units fit an int64.
 var agreedAmount = regexp.MustCompile(`^([0-9]{1,12})(?:\.([0-9]+))?$`)
 
-// parse checks the agreed value as typed and turns its amount into minor units; nil stays nil.
 func (a *AgreedRequest) parse() (*AgreedValue, error) {
 	if a == nil {
 		return nil, nil
@@ -162,20 +154,19 @@ type Line struct {
 	Amount      *big.Int
 }
 
-// MaxLines and MaxLineDescription bound a request's lines (R-88).
+// R-88.
 const (
 	MaxLines           = 50
 	MaxLineDescription = 200
 )
 
-// line is a request line after checking: its quantity and unit price as exact fractions.
 type line struct {
 	description string
 	quantity    *big.Rat
 	price       *big.Rat
 }
 
-// Details are what the invoice says besides its terms; "" means none. Like the terms, they never change.
+// Details are what the invoice says besides its terms. Like the terms, they never change.
 type Details struct {
 	Title         string
 	Note          string
@@ -192,8 +183,7 @@ type Details struct {
 	ReturnURL     string // an https link to the creator's site, offered to the payer once paid (R-58)
 }
 
-// Invoice is the stored invoice: its terms (InvoiceTerms in the contract), number, details and statuses. With
-// several options the terms and statuses are the current option's: the chosen one, else the first.
+// With several options, the terms and statuses are the current option's: the chosen one, else the first.
 type Invoice struct {
 	Details
 	Lines []Line // set by Get
@@ -204,8 +194,8 @@ type Invoice struct {
 	OptionID     string // the on-chain id of the terms below; ID for a fixed invoice
 	OptionLocked bool   // an option received money, so the payer can't pick another
 	OptionCount  int    // accepted options: 1 for a fixed invoice
-	// Confirming: a payment before expiry is seen and not final yet. A partly paid invoice keeps that status while the
-	// rest confirms (the database allows no way back to detected), so readers show it as confirming (R-69).
+	// Confirming: a payment before expiry is seen, not final. A partly paid invoice stays confirming while the rest
+	// confirms, since the database allows no way back to detected (R-69).
 	Confirming bool
 	// Closed: the checkout closed and the invoice can no longer be paid, before its status catches up (ClosedSQL).
 	Closed           bool
@@ -222,7 +212,7 @@ type Invoice struct {
 	PaymentStatus    string
 	SettlementStatus string
 	RefundStatus     string
-	SettlementTxHash string // the signer's settle transaction once settled
+	SettlementTxHash string
 	CreatedAt        time.Time
 	Deposits         []Deposit // set by Get
 	Network          string    // the chain's name; set by Get
@@ -232,8 +222,7 @@ type Invoice struct {
 	SettledAt time.Time
 	// CanceledAt is when the owner canceled it (R-79); zero otherwise.
 	CanceledAt time.Time
-	// SettlementWait says why a paid invoice's money has not reached the creator yet; nil when it is not waiting.
-	// Set by Get.
+	// Why a paid invoice's money hasn't reached the creator yet; nil when not waiting. Set by Get.
 	SettlementWait *SettlementWait
 	Sends          []Send    // the owner's Send to client, oldest first (R-94); set by the owner's Get
 	Reminders      Reminders // payment reminders (R-96); set by the owner's Get
@@ -249,16 +238,14 @@ const (
 	WaitRefused    = "refused"    // the signer refused the terms; an operator looks at it
 )
 
-// SettlementWait is one of the Wait kinds, with when the signer tries again (retrying, daily limit) or the estimated
-// chain time until the sent settle is final (finalizing).
+// Until is set for retrying and dailyLimit; TimeLeft, an estimate, for finalizing.
 type SettlementWait struct {
 	Kind     string
 	Until    time.Time
 	TimeLeft time.Duration
 }
 
-// Option is one accepted token and network with its own on-chain id, amount and receive address; recipient, expiry
-// and settle deadline are the invoice's.
+// Option is one accepted token and network; recipient, expiry and settle deadline are the invoice's.
 type Option struct {
 	ID string
 	chain.Asset
@@ -268,8 +255,7 @@ type Option struct {
 	Deposits       []Deposit // set by Get
 }
 
-// Deposit is a transfer to the receive address that is not reorged. Until its block is final, Progress says how far
-// the chain's finalized block still has to go (R-28).
+// Deposit is a non-reorged transfer to the receive address; Progress counts blocks until final (R-28).
 type Deposit struct {
 	TxHash      string
 	LogIndex    uint64
@@ -279,17 +265,14 @@ type Deposit struct {
 	BlockTime   time.Time
 	Status      string // detected or confirmed
 	Late        bool   // block time after expiresAt: held for the payer (D-26)
-	// Paid is the part the ledger booked to the creator when it booked the deposit (R-121): all of it, part of a deposit
-	// that went over, or 0 for one held for the payer; nil until the ledger books it. An expired partial payment keeps
-	// it, though the expiry later holds that money for the payer.
+	// Paid is the part the ledger booked to the creator (R-121); nil until booked. An expired partial payment
+	// keeps it, though the expiry later holds that money for the payer.
 	Paid *big.Int
 	finality.Progress
 	// BlocksTotal is the blocks it had to wait when first seen, at least BlocksLeft: the m of "Confirming (n/m)" (R-73).
 	BlocksTotal uint64
 }
 
-// normalize checks the request values that need no database and returns them in canonical form: token and amount
-// for a fixed invoice, usd for payer chooses.
 func (r Request) normalize() (token string, amount *big.Int, usd *big.Rat, lines []line, expiresIn time.Duration, err error) {
 	if r.AmountUSD != "" {
 		if r.ChainID != 0 || r.Token != "" || r.Amount != "" {
@@ -339,8 +322,6 @@ func (r Request) normalize() (token string, amount *big.Int, usd *big.Rat, lines
 	return strings.ToLower(r.Token), amount, usd, lines, expiresIn, nil
 }
 
-// checkLines parses the lines and checks they add up exactly to total. With usd the unit prices are USD decimals,
-// otherwise base units, so each line's quantity times price must then be whole base units.
 func checkLines(in []LineRequest, usd bool, total *big.Rat) ([]line, error) {
 	if len(in) == 0 {
 		return nil, nil
@@ -387,8 +368,7 @@ func checkLines(in []LineRequest, usd bool, total *big.Rat) ([]line, error) {
 	return out, nil
 }
 
-// usdUnits is usd in a token's base units at 1 USD per token (D-75), or nil when the token's decimals can't hold it
-// exactly or it passes 2^256-1.
+// usdUnits converts at 1 USD per token (D-75); nil when the decimals can't hold it exactly or it passes 2^256-1.
 func usdUnits(usd *big.Rat, decimals int) *big.Int {
 	n := new(big.Rat).Mul(usd, new(big.Rat).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)))
 	if !n.IsInt() || n.Num().Cmp(uint256Max) > 0 {

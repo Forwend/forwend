@@ -12,8 +12,7 @@ import { APP_ROUTES } from "@/shared/config/routes";
 export function BillingDetailsScreen() {
   const { profile } = useAppSession();
   const details = useGetBillingDetailsQuery(profile.profileId);
-  // Sent here by New invoice (R-92), New job (R-101) or the statement (R-113), saving goes back there; otherwise home.
-  // Only known places, never a URL from the query.
+  // R-92, R-101, R-113. Only known places, never a URL from the query.
   const then = useSearchParams().get(BILLING_THEN.param);
   const next =
     then === BILLING_THEN.newInvoice

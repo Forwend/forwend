@@ -1,7 +1,5 @@
--- Owner email (R-80, D-65): the account's verified login email read once from Privy ('' when it has none, so it is
--- not read again), an on/off switch per profile,
--- and the outbox the worker sends from: one row per paid, settled or held-money event, written in the same
--- transaction as the change, retried with backoff and given up after a bounded number of tries.
+-- Owner email (R-80, D-65). login_email is read once from Privy, '' when it has none so it is not read again. Outbox
+-- rows are written in the change's transaction, retried with backoff and given up after bounded tries.
 
 -- +goose Up
 ALTER TABLE users ADD COLUMN login_email text CHECK (login_email = '' OR char_length(login_email) BETWEEN 3 AND 254);

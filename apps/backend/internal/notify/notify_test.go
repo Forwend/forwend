@@ -21,7 +21,6 @@ const web = "https://app.example"
 
 var site = Site{WebURL: web}
 
-// fake records what it sends; fail makes every send fail, and refuse refuses the message to that address.
 type fake struct {
 	mu     sync.Mutex
 	sent   []email.Message
@@ -47,8 +46,7 @@ func (f *fake) Send(_ context.Context, m email.Message) error {
 // payToken is setup's invoice's pay link token (D-86).
 var payToken = strings.Repeat("ef", 32)
 
-// setup makes a database with one user (login email as sign-up stores it: "" when the account has none), profile and
-// 5 USDC invoice on Base Sepolia.
+// setup makes one user (login "" when the account has none), profile and 5 USDC invoice on Base Sepolia.
 func setup(t *testing.T, login string) (*pgxpool.Pool, string) {
 	t.Helper()
 	ctx := context.Background()
@@ -103,7 +101,7 @@ func count(t *testing.T, pool *pgxpool.Pool, where string) int {
 	return n
 }
 
-// R-80: one email per event, keyed by the event, naming the invoice, amount and network, linking the invoice.
+// R-80.
 func TestDeliverSendsOneEmailPerEvent(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	queue(t, pool, outbox.Paid, id, nil)
@@ -133,7 +131,6 @@ func TestDeliverSendsOneEmailPerEvent(t *testing.T) {
 	}
 }
 
-// Email off for the profile, or an account without a login email: nothing is sent and nothing waits.
 func TestDeliverSkipsWhenOffOrNoAddress(t *testing.T) {
 	for _, c := range []struct {
 		name, login string
@@ -156,7 +153,6 @@ func TestDeliverSkipsWhenOffOrNoAddress(t *testing.T) {
 	}
 }
 
-// A failed send waits its backoff before the next try, and after MaxAttempts the event is given up.
 func TestDeliverRetriesWithBackoffThenGivesUp(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	queue(t, pool, outbox.Paid, id, nil)
@@ -196,8 +192,7 @@ func TestDeliverRetriesWithBackoffThenGivesUp(t *testing.T) {
 	}
 }
 
-// R-115: Resend refusing one message (a bad address) waits its backoff like any failure, but the round goes on, so a
-// payer address saved again and again can't hold up everyone's email (audit 2026-10-19).
+// R-115: a payer address saved again and again can't hold up everyone's email.
 func TestDeliverGoesOnPastARefusedEmail(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	exec(t, pool, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard, DISABLE TRIGGER invoices_number")
@@ -221,8 +216,6 @@ func TestDeliverGoesOnPastARefusedEmail(t *testing.T) {
 	}
 }
 
-// A retry is the same request to Resend: a send whose answer was lost (Resend delivered it, then the connection
-// dropped) is retried under the same Idempotency-Key, which Resend answers without sending again.
 func TestRetryKeepsTheIdempotencyKey(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	queue(t, pool, outbox.Paid, id, nil)
@@ -240,7 +233,6 @@ func TestRetryKeepsTheIdempotencyKey(t *testing.T) {
 	}
 }
 
-// Two workers at once (a deploy's overlap) never send one event twice: each claims with SKIP LOCKED.
 func TestDeliverClaimsEachEventOnce(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	for range 10 {
@@ -276,8 +268,7 @@ func TestBackoff(t *testing.T) {
 	}
 }
 
-// R-82: the payer's receipt goes to the address they gave, whatever the owner's setting, with what they paid, to whom,
-// the transaction and the receipt PDF.
+// R-82.
 func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	exec(t, pool, "UPDATE profiles SET email_notifications = false")
@@ -339,8 +330,6 @@ func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 	}
 }
 
-// The idempotency key changes with the address: a receipt restarted for a changed address is a new request to
-// Resend, not a replay it would refuse.
 func TestKeyFollowsTheAddress(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	queue(t, pool, outbox.Paid, id, nil)
@@ -358,7 +347,6 @@ func TestKeyFollowsTheAddress(t *testing.T) {
 	}
 }
 
-// An invoice with billing details names its issuer, which Forwend shows as given, without the unchecked note.
 func TestReceiptNamesTheIssuer(t *testing.T) {
 	m, err := message(site, receipt("INV-0001", "5.00 USDC", "USDC", "Base Sepolia", "Alice Design GmbH", "Mara", "", "pdf"))
 	if err != nil {
@@ -369,8 +357,7 @@ func TestReceiptNamesTheIssuer(t *testing.T) {
 	}
 }
 
-// R-84: the welcome goes to the account's login email whatever the profile's email setting, once, under a key of its
-// own.
+// R-84.
 func TestDeliverSendsTheWelcome(t *testing.T) {
 	pool, _ := setup(t, "owner@example.com")
 	exec(t, pool, "UPDATE profiles SET email_notifications = false")
@@ -480,8 +467,7 @@ func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
 	}
 }
 
-// R-96: a reminder goes to the client with what is left, the due date, Reply-To the issuer, a stop link and one-click
-// unsubscribe; checked again when sent, so none goes once the client stopped them or the invoice was paid.
+// R-96.
 func TestDeliverSendsTheReminderToTheClient(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	exec(t, pool, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard, DISABLE TRIGGER invoices_number")
@@ -534,8 +520,7 @@ func TestDeliverSendsTheReminderToTheClient(t *testing.T) {
 	}
 }
 
-// R-107: a scope change goes to the email the client typed accepting the job, whatever the owner's setting, with the
-// job's link and Reply-To the issuer; none goes for a change withdrawn or accepted before the worker sends it.
+// R-107.
 func TestDeliverSendsTheChangeToTheClient(t *testing.T) {
 	pool, _ := setup(t, "owner@example.com")
 	exec(t, pool, "UPDATE profiles SET email_notifications = false")

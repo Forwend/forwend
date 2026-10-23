@@ -51,10 +51,7 @@ function subscribe(onChange: () => void): () => void {
   };
 }
 
-/**
- * The page theme (set before paint by THEME_INIT_SCRIPT) and a setter that applies and remembers a choice. The setter
- * also takes a function of the theme on the page right now, for a toggle pressed twice in quick succession.
- */
+/** The setter also takes a function of the theme on the page right now, for a toggle pressed twice quickly. */
 export function useTheme(): [Theme, (theme: Theme | ((current: Theme) => Theme)) => void] {
   const theme = useSyncExternalStore(subscribe, readTheme, () => THEMES.light);
   const setTheme = (choice: Theme | ((current: Theme) => Theme)) => {

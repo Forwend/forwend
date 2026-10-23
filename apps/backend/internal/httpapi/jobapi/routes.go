@@ -1,5 +1,4 @@
-// Package jobapi serves jobs (docs/backend/api.md): routes.go lists them, model.go holds their JSON, and jobs.go the
-// handlers.
+// Package jobapi serves the job endpoints of docs/backend/api.md.
 package jobapi
 
 import (
@@ -9,16 +8,13 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/job"
 )
 
-// Accepting is public like the checkout, and it makes an invoice: a few tries per link, and a shared budget for
-// everyone, spent only by an accept that changes a job (R-117). Per IP belongs to the edge (Q-8).
+// Accepting is public and makes an invoice. The shared budget is spent only by an accept that changes a job
+// (R-117); per IP belongs to the edge (Q-8).
 const (
 	AcceptRate, AcceptBurst       = 0.1, 3
 	AcceptAllRate, AcceptAllBurst = 5, 20
 )
 
-// Routes mounts the job endpoints on mux: the owner's create, list, read, delete, mark done and changes behind the
-// profile guard; the client's read
-// and accept by the link's token in public.
 func Routes(mux *http.ServeMux, g mid.Guards, jobs *job.Service) {
 	mux.Handle("POST /v1/profiles/{profileId}/jobs", g.ProfileScoped(createJob(jobs)))
 	mux.Handle("GET /v1/profiles/{profileId}/jobs", g.ProfileScoped(listJobs(jobs)))

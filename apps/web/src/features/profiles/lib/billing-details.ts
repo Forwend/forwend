@@ -19,7 +19,6 @@ export function invalidBillingField(message: string): keyof BillingDetailsBody |
   return FIELDS.find((field) => field === name) ?? null;
 }
 
-/** Every country the API accepts, by English name. */
 export function countryOptions(): { value: string; label: string }[] {
   const names = new Intl.DisplayNames(["en"], { type: "region" });
   return COUNTRY_CODES.map((code) => ({ value: code, label: names.of(code) ?? code })).sort(

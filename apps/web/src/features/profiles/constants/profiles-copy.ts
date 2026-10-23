@@ -59,7 +59,7 @@ export const BILLING_DETAILS_COPY = {
   },
 } as const;
 
-/** /app/notifications (R-80). */
+/** R-80. */
 export const NOTIFICATIONS_COPY = {
   title: "Email notifications",
   intro:

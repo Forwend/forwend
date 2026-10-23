@@ -1,5 +1,4 @@
--- Payer receipt email (R-82, D-68): an optional address the payer gives on the pay page, kept on the invoice's main row
--- for its receipt only and deleted with the invoice, and one receipt event per invoice.
+-- Payer receipt email (R-82, D-68): on the main row, for the receipt only, and deleted with the invoice.
 
 -- +goose Up
 ALTER TABLE invoices ADD COLUMN payer_email text CHECK (char_length(payer_email) BETWEEN 3 AND 254);

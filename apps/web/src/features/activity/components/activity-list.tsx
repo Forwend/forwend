@@ -34,7 +34,6 @@ import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
 import { chainName } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
-// Short enough for a phone row: "Oct 10, 12:50 AM".
 const TIME = new Intl.DateTimeFormat(undefined, {
   month: "short",
   day: "numeric",
@@ -42,10 +41,8 @@ const TIME = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
 });
 
-// Invoices and their payments, newest first, read again every REFRESH_MS. "Show more" asks for more rows in one
-// request (up to the API's 100), so a refresh reads the same rows again and never skips or repeats one. An invoice is
-// a request, so its amount has no sign; only a payment shows "+". Every row opens its invoice; a payment also links to
-// its transaction. The API applies the filter and search, so "Show more" continues the filtered list.
+// "Show more" grows one request (up to 100), so a refresh rereads the same rows and never skips one.
+// An invoice is a request, so its amount has no sign; only a payment shows "+".
 interface ActivityListProps {
   profileId: string;
 }
@@ -127,7 +124,6 @@ function ProfileActivity({ profileId }: ActivityListProps) {
                     className={`relative px-4 transition-colors duration-[var(--fw-duration-fast)] sm:px-5 ${ROW_INTERACTIVE_CLASSES}`}
                   >
                     <ActivityRow
-                      // The title's link covers the row, so the whole row opens the invoice.
                       title={
                         <Link
                           href={`${APP_ROUTES.invoices}/${item.invoiceId}`}
@@ -140,8 +136,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
                             : ACTIVITY_COPY.invoice}
                         </Link>
                       }
-                      // Phones show one network as its logo on the icon (its name stays for screen readers), so
-                      // the time never gets cut; wider rows name it first.
+                      // Phones show the network as a logo on the icon, so the time never gets cut.
                       detail={
                         anyOption || !CHAINS[item.chainId]?.icon ? (
                           `${anyOption ? MONEY_COPY.anyNetwork : chainName(item.chainId)} · ${TIME.format(new Date(item.at))}`

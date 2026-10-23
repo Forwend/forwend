@@ -25,7 +25,6 @@ const (
 // MaxClients is per profile; the list is read whole.
 const MaxClients = 1000
 
-// ErrClientNotFound means no client with that id belongs to the profile.
 var ErrClientNotFound = errors.New("client not found")
 
 // ClientDetails are what a saved client holds and an invoice copies. Only Name is required; "" means none.
@@ -101,7 +100,6 @@ var clientID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
 // The callers below have checked that the user owns the profile; every query also names the profile, so a client id
 // from another profile is not found.
 
-// Clients lists the profile's saved clients by name.
 func (s *Service) Clients(ctx context.Context, profileID string) ([]Client, error) {
 	rows, err := s.pool.Query(ctx, `SELECT `+clientColumns+` FROM clients WHERE profile_id = $1
 		ORDER BY lower(name), id`, profileID)
@@ -115,8 +113,7 @@ func (s *Service) Clients(ctx context.Context, profileID string) ([]Client, erro
 	return clients, nil
 }
 
-// SaveClient creates the client with the id the caller chose, or replaces every field of the profile's client with
-// that id, so sending the same request twice saves one client. A new client needs room under MaxClients. Invoices
+// SaveClient upserts by the id the caller chose, so sending the same request twice saves one client. Invoices
 // made earlier keep their own copy.
 func (s *Service) SaveClient(ctx context.Context, profileID, id string, d ClientDetails) (Client, bool, error) {
 	if err := d.checkSaved(); err != nil {
@@ -168,7 +165,7 @@ func (s *Service) SaveClient(ctx context.Context, profileID, id string, d Client
 	return c, created, nil
 }
 
-// DeleteClient removes the client. Invoices made earlier keep their own copy.
+// Invoices made earlier keep their own copy.
 func (s *Service) DeleteClient(ctx context.Context, profileID, id string) error {
 	if !clientID.MatchString(id) {
 		return ErrClientNotFound

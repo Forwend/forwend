@@ -11,7 +11,7 @@ export interface EmptyStateProps {
   compact?: boolean;
 }
 
-// One centered block that fills the list's place, so an empty or filtered-out list never looks broken (R-75).
+// R-75: an empty or filtered-out list never looks broken.
 export function EmptyState({
   title,
   description,

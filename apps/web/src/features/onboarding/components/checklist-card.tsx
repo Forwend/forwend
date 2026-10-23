@@ -8,7 +8,6 @@ import { CHECKLIST_COPY as COPY } from "@/features/onboarding/constants/onboardi
 import type { ChecklistStep, ChecklistStepId } from "@/features/onboarding/types/onboarding";
 import type { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 
-/** Where a step's button goes: a page, or something that opens here. */
 export type StepAction = { href: string } | { onClick: () => void; busy?: boolean };
 
 type ChecklistKind = typeof PROFILE_KINDS.personal | typeof PROFILE_KINDS.freelancer;
@@ -27,13 +26,12 @@ export interface ChecklistCardProps {
   kind: ChecklistKind;
   steps: readonly ChecklistStep[];
   actions: Record<ChecklistStepId, StepAction>;
-  /** A step's failure, shown under the list. */
   error: string;
   onSkip: (id: ChecklistStepId) => void;
   onClose: () => void;
 }
 
-// R-50: the profile's first steps, each done or not from its data, with a way to do it or skip it.
+// R-50.
 export function ChecklistCard({
   kind,
   steps,
@@ -84,7 +82,6 @@ export function ChecklistCard({
                 <span className={`font-medium ${step.done ? "text-muted" : "text-ink"}`}>
                   {text.title}
                 </span>
-                {/* A finished step keeps only its title, so the steps left stand out. */}
                 {step.done ? null : <span className="text-sm text-muted">{text.hint}</span>}
               </div>
               {step.done ? null : (

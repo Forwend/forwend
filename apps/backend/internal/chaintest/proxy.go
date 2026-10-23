@@ -17,22 +17,20 @@ type Call struct {
 	Fault        Fault
 }
 
-// Fault is how a Proxy answers a request instead of forwarding it to Anvil.
 type Fault int
 
 const (
-	Forward        Fault = iota
-	HTTP429              // HTTP 429 Too Many Requests
-	HTTP503              // HTTP 503 Service Unavailable
-	RateLimited          // JSON-RPC error -32005 "project ID request rate exceeded", as Infura answers over its rate
-	TooManyResults       // JSON-RPC error -32005 "query returned more than 10000 results", as Infura answers a big log query
-	TooManyTopics        // JSON-RPC error -32602 "exceed max topics", as go-ethereum nodes answer over 1,000 topic values
-	InternalError        // JSON-RPC error -32603 "Internal error"
-	Hang                 // no answer until the client gives up
-	Stale                // answered with the result of the proxy's Stale rule, as a lagging node would
+	Forward Fault = iota
+	HTTP429
+	HTTP503
+	RateLimited    // as Infura answers over its rate limit
+	TooManyResults // as Infura answers a big log query
+	TooManyTopics  // as go-ethereum nodes answer over 1,000 topic values
+	InternalError
+	Hang  // no answer until the client gives up
+	Stale // answered with the result of the proxy's Stale rule, as a lagging node would
 )
 
-// Proxy is a JSON-RPC proxy in front of Anvil that answers each request with the fault its rule picks.
 type Proxy struct {
 	URL string
 
@@ -42,7 +40,6 @@ type Proxy struct {
 	calls []Call
 }
 
-// Proxy starts a proxy in front of this Anvil until the test ends. It forwards every request until Fail sets a rule.
 func (a *Anvil) Proxy() *Proxy {
 	p := &Proxy{}
 	stop := make(chan struct{})
@@ -118,16 +115,14 @@ func (p *Proxy) Fail(rule func(Call) Fault) {
 	p.rule = rule
 }
 
-// Stale answers each later single call for which rule returns a JSON result with that result instead of forwarding it,
-// as a node that lags behind the chain would (no code at a new contract, an old nonce); nil forwards it. Batches are
-// forwarded. nil stops it.
+// Stale answers a later single call with rule's result instead of forwarding it, as a lagging node would; a nil
+// result forwards the call, batches are always forwarded, and a nil rule stops it.
 func (p *Proxy) Stale(rule func(Call) json.RawMessage) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.stale = rule
 }
 
-// Calls returns every request received so far, in order.
 func (p *Proxy) Calls() []Call {
 	p.mu.Lock()
 	defer p.mu.Unlock()

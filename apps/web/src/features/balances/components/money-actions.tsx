@@ -16,9 +16,7 @@ export interface MoneyActionsProps {
   onRequest: () => void;
 }
 
-// Receive and Request work; the others keep their place, say why in their accessible name and show "Coming soon" on
-// hover or focus. Five share a phone's row: below 360 px the columns shrink and the labels get smaller, so they never
-// touch.
+// Five buttons share a phone's row: below 360 px the labels shrink, so they never touch.
 const NARROW = "min-w-0 max-[359px]:text-xs";
 
 export function MoneyActions({ onReceive, onRequest }: MoneyActionsProps) {

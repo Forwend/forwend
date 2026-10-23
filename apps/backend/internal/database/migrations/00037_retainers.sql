@@ -1,6 +1,5 @@
--- Retainers (R-98, D-58): an invoice that repeats every month. request is the create request the later invoices
--- reuse, without the per-month dates; retainer_invoices numbers each month's invoice from 0, the owner's first one,
--- so each month is made once.
+-- Retainers (R-98, D-58): request is the create request each month reuses, without the per-month dates. cycle 0
+-- is the owner's first invoice, and the primary key makes each month once.
 
 -- +goose Up
 CREATE TABLE retainers (

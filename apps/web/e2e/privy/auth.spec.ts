@@ -19,7 +19,6 @@ test("a wrong email address is named before any code is sent", async ({ page }) 
   await page.goto("/sign-in");
   await page.getByRole("textbox", { name: "Email" }).fill("not-an-email");
   await page.getByRole("button", { name: "Email me a code" }).click();
-  // Announced, and the form keeps its place.
   const before = await page.getByRole("button", { name: "Continue with Google" }).boundingBox();
   await expect(
     page.getByRole("alert").filter({ hasText: "Enter an email like name@example.com." }),
@@ -88,7 +87,6 @@ test("the Privy test account signs in and lands in the app shell with its person
   page,
 }) => {
   await page.goto("/sign-in");
-  // The real sign-in page, with Privy ready on its allowed origin.
   await expect(page.getByRole("button", { name: "Email me a code" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
 
@@ -97,11 +95,9 @@ test("the Privy test account signs in and lands in the app shell with its person
   );
   await signIn(page);
   await expect(page).toHaveURL("/app", { timeout: 30_000 });
-  // The account signed up on an earlier run, so this is the repeat call: 200 with the same profile (201 the first
-  // time). The backend tests cover the first signup.
+  // 201 on the account's first run, 200 on every later one.
   expect([200, 201]).toContain((await signedUp).status());
 
-  // The shell: the profile switcher on top of the sidebar, the pages, the account at the bottom.
   const sidebar = page.locator("aside");
   await expect(sidebar.getByRole("button", { name: /^Switch profile: Personal/ })).toBeVisible();
   await expect(sidebar.getByRole("link", { name: "Overview", exact: true })).toHaveAttribute(
@@ -109,14 +105,12 @@ test("the Privy test account signs in and lands in the app shell with its person
     "page",
   );
   await expect(sidebar.getByRole("link", { name: "Balances" })).toBeVisible();
-  // Pages not built yet are listed as coming, not as links.
   await expect(sidebar.getByText("Analytics")).toBeVisible();
   await expect(sidebar.getByRole("link", { name: "Analytics" })).toHaveCount(0);
   await expect(page.getByRole("heading", { level: 1, name: "Personal overview" })).toBeAttached();
   await expect(page.getByRole("region", { name: "Total balance" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
 
-  // The header: where you are, search, notifications and the money actions.
   const header = page.getByRole("banner");
   await expect(
     header.getByRole("navigation", { name: "Breadcrumb" }).getByText("Overview"),
@@ -129,7 +123,6 @@ test("the Privy test account signs in and lands in the app shell with its person
   await expect(page.getByRole("menu").getByText("Notifications")).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
   await page.keyboard.press("Escape");
-  // ⌘K opens search over pages, profiles and transactions; Enter opens the chosen one.
   await page.keyboard.press("ControlOrMeta+k");
   const search = page.getByRole("dialog", { name: "Search" });
   await expect(search).toBeVisible();
@@ -139,7 +132,6 @@ test("the Privy test account signs in and lands in the app shell with its person
   await expect(page.getByRole("heading", { level: 1, name: "Balances" })).toBeVisible();
   await sidebar.getByRole("link", { name: "Overview", exact: true }).click();
 
-  // The one theme control is in the account menu, as on phones; the sidebar has none.
   await expect(sidebar.getByRole("switch")).toHaveCount(0);
   const theme = await page.locator("html").getAttribute("data-theme");
   await sidebar.getByRole("button", { name: /^Account: / }).click();
@@ -150,16 +142,13 @@ test("the Privy test account signs in and lands in the app shell with its person
   await page.getByRole("menuitemcheckbox", { name: "Dark mode" }).click();
   await expect(page.locator("html")).not.toHaveAttribute("data-theme", theme ?? "");
   await page.keyboard.press("Escape");
-  // The overview passes axe in the other theme too.
   expect(await blockingViolations(page)).toEqual([]);
 
-  // Signing in again finds the same single personal profile.
   await page.reload();
   await sidebar.getByRole("button", { name: /^Switch profile/ }).click();
   await expect(page.getByRole("menuitemradio", { name: "Personal" })).toHaveCount(1);
   await page.keyboard.press("Escape");
 
-  // When the api fails, the user can retry or sign out, never stuck in the app.
   await page.route("**/api/v1/me", (route) => route.fulfill({ status: 500 }));
   await page.reload();
   // Next.js adds its own route announcer alert; pick ours by its text.

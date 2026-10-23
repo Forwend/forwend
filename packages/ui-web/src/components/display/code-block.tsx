@@ -46,7 +46,6 @@ export function CodeBlock({
           ) : failed ? (
             failedLabel
           ) : (
-            // Shows the original short "Copy"; screen readers hear what it copies.
             <>
               <span aria-hidden>Copy</span>
               <span className="sr-only">{copyLabel}</span>

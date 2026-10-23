@@ -102,8 +102,7 @@ export function AppSidebar({
                           <span className={collapsed ? "sr-only" : ""}>{label}</span>
                         </Link>,
                       )
-                    : // Not built yet: a line of text, not a link.
-                      named(
+                    : named(
                         `${label} · ${AUTH_COPY.soon}`,
                         <span
                           tabIndex={collapsed ? 0 : undefined}

@@ -5,15 +5,12 @@ export function niceTop(max: number): number {
   return step * power;
 }
 
-/** Geometry only: a pixel position for an exact amount. Shown amounts are always formatted from the bigint. */
+/** Geometry only, lossy: shown amounts are always formatted from the bigint. */
 export function toNumber(value: bigint, decimals: number): number {
   return Number(value) / 10 ** decimals;
 }
 
-/**
- * An SVG path through the points as a monotone cubic curve (Fritsch–Carlson): smooth, but never above the highest or
- * below the lowest neighbouring value, so a flat balance stays flat and a balance never dips under zero on the chart.
- */
+/** Monotone cubic (Fritsch–Carlson): never overshoots, so a balance never dips under zero. */
 export function smoothPath(points: readonly (readonly [number, number])[]): string {
   const n = points.length;
   const first = points[0];

@@ -1,6 +1,5 @@
-// Command canary reads open invoices' terms from stdin, one per line as the database holds them, and checks that the
-// api and the pay page show each one the receive address the factory predicts on two RPCs (R-51). Any difference
-// logs an alert and exits 1.
+// Command canary reads open invoices' terms from stdin, one per line, and exits 1 when the api or pay page shows
+// a receive address other than the one the factory predicts on two RPCs (R-51).
 package main
 
 import (

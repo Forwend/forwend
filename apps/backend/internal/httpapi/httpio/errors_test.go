@@ -10,7 +10,6 @@ import (
 	"testing"
 )
 
-// A 500 logs the route, never the path: a job's or a reminder's link token in the path is a secret.
 func TestWriteErrorLogsTheRouteNotThePath(t *testing.T) {
 	var log bytes.Buffer
 	prev := slog.Default()

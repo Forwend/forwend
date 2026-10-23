@@ -1,7 +1,6 @@
 import { cx } from "../../lib/cx";
 import type { LoaderProps } from "../../types/loader";
 
-/** Three dots that rise in turn, like the steps of a payment, for waiting on the network. */
 export function DotLoader({ label = "Waiting for the network", className }: LoaderProps) {
   return (
     <span

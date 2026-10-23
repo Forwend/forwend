@@ -22,7 +22,6 @@ const CHOICES = Object.values(ONBOARDING_CHOICES);
 export interface FirstRunProps {
   /** The user's profiles before the choice. */
   profiles: readonly Profile[];
-  /** Gets the profile to open: the one made for the most specific use, else the personal one. */
   onDone: (profile: Profile) => void;
 }
 

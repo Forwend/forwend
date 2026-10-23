@@ -21,10 +21,8 @@ import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-// The enabled tokens (from the balances) are the networks and tokens an invoice can ask for. A personal profile makes
-// a request here instead (D-52, R-71), then lands on it with its pay link. ?from=<id> fills the form from that invoice
-// (Duplicate, R-91, or a closed one's next step, R-77), from the owner's read its page filled in the cache, which also
-// gives the client; nothing comes from the URL but the id.
+// A personal profile makes a request here (D-52, R-71). ?from=<id> fills the form from that owned invoice (R-91,
+// R-77), read through the cache; nothing comes from the URL but the id.
 export function NewInvoiceScreen() {
   const { profile } = useAppSession();
   const router = useRouter();
@@ -49,8 +47,7 @@ export function NewInvoiceScreen() {
   const loadingStart = Boolean(from) && owned.isLoading;
   const tokens = balances.currentData?.tokens;
   const request = profile.kind === PROFILE_KINDS.personal;
-  // A business invoice names who bills the client, so a freelancer or merchant adds billing details first (R-92); if
-  // they can't be read, the form shows and the API still checks.
+  // R-92. If the billing details can't be read, the form shows and the API still checks.
   const billing = useGetBillingDetailsQuery(profile.profileId, { skip: request });
   const billingNeeded = !request && billing.currentData === null;
   const loadingBilling = !request && billing.currentData === undefined && !billing.isError;

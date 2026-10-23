@@ -19,19 +19,16 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// API is what cmd/api needs.
 type API struct {
-	DatabaseURL string
-	Addr        string
-	// Privy app ID, and the URL of its published token signing keys (JWKS).
+	DatabaseURL  string
+	Addr         string
 	PrivyAppID   string
 	PrivyJWKSURL string
 	// PrivyAppSecret lets the api make profile wallets: never log it.
 	PrivyAppSecret string
-	// ChainsFile, InfuraKeys and RPCRate reach the chains for wallet balances, as in Chains.
-	ChainsFile string
-	InfuraKeys []string
-	RPCRate    float64
+	ChainsFile     string
+	InfuraKeys     []string
+	RPCRate        float64
 	// PublicWebURL is the web app's origin, such as https://forwend.app: PDFs link to its /pay/<payToken> page.
 	PublicWebURL string
 	// UserBurst is each signed-in user's burst of requests; 0 keeps the default (mid.UserBurst). Only the live e2e,
@@ -39,7 +36,6 @@ type API struct {
 	UserBurst int
 }
 
-// Worker is what cmd/worker needs.
 type Worker struct {
 	DatabaseURL string
 	Chains      Chains
@@ -53,7 +49,7 @@ type Email struct {
 	ResendKey    string // send-only Resend API key; never log it
 	ResendURL    string // Resend's send endpoint; set only by tests that run a fake
 	From         string // the sender, on the domain Resend verified
-	PublicWebURL string // the web app's origin, for the links in each email
+	PublicWebURL string
 	// PostalAddress is the sender's address for each email's footer; empty leaves it out (Q-13).
 	PostalAddress string
 }
@@ -62,18 +58,16 @@ type Email struct {
 // read has no older transfers.
 const DefaultRatesURL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml"
 
-// DefaultEmailFrom is the sender when EMAIL_FROM is left out.
 const DefaultEmailFrom = "Forwend <notifications@mail.forwend.com>"
 
-// Chains is how the worker and signer reach the chains.
 type Chains struct {
-	File         string        // the chain list, packages/contracts/chains.json in a checkout
-	InfuraKeys   []string      // used before public RPCs; none: public RPCs only
-	RPCRate      float64       // most calls per second to each RPC endpoint (an Infura key or a public URL)
-	PollInterval time.Duration // time between rounds
+	File         string   // the chain list, packages/contracts/chains.json in a checkout
+	InfuraKeys   []string // used before public RPCs; none: public RPCs only
+	RPCRate      float64  // most calls per second to each RPC endpoint (an Infura key or a public URL)
+	PollInterval time.Duration
 }
 
-// Signer is what cmd/signer needs. ExecutorKey is read from a hex private key: never log it.
+// Signer's ExecutorKey is read from a hex private key: never log it.
 type Signer struct {
 	DatabaseURL string
 	Chains      Chains
@@ -82,8 +76,8 @@ type Signer struct {
 
 // Canary is what cmd/canary needs: its own factory, code hash and RPCs, never the api's (R-51).
 type Canary struct {
-	APIURL, WebURL  string               // the api's and the web app's public origins
-	Factory         string               // lowercase 0x address
+	APIURL, WebURL  string
+	Factory         string
 	FactoryCodeHash string               // keccak256 of the factory's runtime code, lowercase 0x hex
 	RPCURLs         map[uint64][2]string // two RPCs on different hosts per chain ID; may hold keys: never log
 	PageScript      string               // apps/web/scripts/canary-pay-page.ts, run with node
@@ -116,7 +110,6 @@ func LoadWorker() (Worker, error) {
 	return c, r.err()
 }
 
-// LoadDatabaseURL is for tools and tests that only need the database.
 func LoadDatabaseURL() (string, error) {
 	var r reader
 	url := r.get("DATABASE_URL")
@@ -148,7 +141,7 @@ func (r *reader) hex(name string, bytes int) string {
 	return strings.ToLower(raw)
 }
 
-// rpcPairs reads {"<chainId>": ["<url>", "<url>"], ...}. The URLs never go into an error: they may hold keys.
+// rpcPairs never puts the URLs into an error: they may hold keys.
 func (r *reader) rpcPairs(name string) map[uint64][2]string {
 	raw := r.get(name)
 	if raw == "" {
@@ -196,7 +189,7 @@ func (r *reader) chains() Chains {
 	return c
 }
 
-// key reads a hex secp256k1 private key. Its value never goes into an error.
+// key never puts the value into an error.
 func (r *reader) key(name string) *ecdsa.PrivateKey {
 	raw := r.get(name)
 	if raw == "" {
@@ -250,7 +243,6 @@ func (r *reader) rate() float64 {
 	return v
 }
 
-// count is an optional whole number above 0; 0 when unset.
 func (r *reader) count(name string) int {
 	raw := os.Getenv(name)
 	if raw == "" {
@@ -263,7 +255,6 @@ func (r *reader) count(name string) int {
 	return v
 }
 
-// infuraKeys may be empty: the chains are then reached through public RPCs only.
 func (r *reader) infuraKeys() []string {
 	var keys []string
 	for _, k := range strings.Split(os.Getenv("INFURA_API_KEYS"), ",") {

@@ -11,29 +11,23 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Send to client limit (R-94): the owner picks the address, so this stops the button from mailing a client again and
-// again; outbox.MaxClientEmails caps the user's client emails of every kind (R-116).
+// Send to client limit per invoice (R-94); outbox.MaxClientEmails caps all the user's client emails (R-116).
 const SendEvery = 24 * time.Hour
 
 var (
-	// ErrNoClientEmail: the invoice has no client email to send it to.
 	ErrNoClientEmail = errors.New("invoice has no client email")
 	// ErrClosed: the payer can no longer pay the invoice: paid, settled, expired, its checkout closed, or canceled.
 	ErrClosed = errors.New("invoice is closed")
 )
 
-// Send is one email to the client, a Send to client or a reminder (with its Step): when it was queued, and when the
-// worker sent it or gave up; zero until then.
+// Send is one client email, a Send to client or a reminder (with its Step); SentAt and FailedAt start zero.
 type Send struct {
 	Step                          string
 	RequestedAt, SentAt, FailedAt time.Time
 }
 
-// Send queues one email of the profile's invoice to its client's email (R-94), once per (profile, idempotency key):
-// queued is false when the same key already did. Only while the payer can still pay it (StatusFilterSQL open). allow
-// is the limit shared by everyone, asked last, so a refused request uses none of it. It locks the profile row, as
-// Create does; outbox.ClientEmailsLeft then locks the user's row, so the user's client emails count one after the
-// other.
+// Send (R-94) is idempotent per (profile, key). allow is asked last, so a refused request uses none of it. It locks
+// the profile row, as Create does, then outbox.ClientEmailsLeft locks the user's row: emails count one at a time.
 func (s *Service) Send(ctx context.Context, profileID, id, key string, allow func() time.Duration) (inv Invoice,
 	queued bool, err error) {
 	id = strings.ToLower(id)
@@ -93,7 +87,6 @@ func (s *Service) Send(ctx context.Context, profileID, id, key string, allow fun
 	return inv, queued, err
 }
 
-// emails reads the invoice's outbox rows of kind (Send to client or reminders), oldest first.
 func (s *Service) emails(ctx context.Context, id, kind string) ([]Send, error) {
 	rows, err := s.pool.Query(ctx, `SELECT coalesce(payload->>'step', ''), created_at, published_at, failed_at
 		FROM outbox_events WHERE invoice_id = $1 AND kind = $2 ORDER BY id`, id, kind)

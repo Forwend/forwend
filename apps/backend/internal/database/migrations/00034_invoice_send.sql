@@ -1,5 +1,4 @@
--- Send to client (R-94): the owner emails an open invoice to its client's address. Each send is an outbox row on the
--- invoice's main row, with the request's Idempotency-Key, so a retry queues no second email.
+-- Send to client (R-94): the outbox row keeps the request's Idempotency-Key, so a retry queues no second email.
 
 -- +goose Up
 ALTER TABLE outbox_events ADD COLUMN idempotency_key text CHECK (length(idempotency_key) BETWEEN 1 AND 255);

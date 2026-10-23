@@ -7,8 +7,7 @@ import (
 	"testing"
 )
 
-// R-88: lines break an invoice's amount down. They add up exactly to it, come back in base units on every read, are
-// part of the idempotency hash, and a line the token can't hold is refused.
+// R-88.
 func TestInvoiceLines(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

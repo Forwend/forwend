@@ -33,7 +33,6 @@ const STATUS_ICONS: Record<PaymentStatus, typeof Check> = {
   refunded: RotateCcw,
 };
 
-/** Still on its way: the icon turns (reduced motion stops it). */
 const PENDING: ReadonlySet<PaymentStatus> = new Set(["detected", "confirming"]);
 
 export function StatusPill({ status }: StatusPillProps) {

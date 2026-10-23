@@ -22,7 +22,7 @@ export const API_DEPOSIT_STATUSES = {
   confirmed: "confirmed",
 } as const;
 
-/** Activity rows: up to this many in one request, the API's limit; "Show more" grows the request by a page. */
+/** The API's limit on rows per request. */
 export const ACTIVITY_MAX = 100;
 
 export const ACTIVITY_KINDS = {
@@ -30,10 +30,8 @@ export const ACTIVITY_KINDS = {
   deposit: "deposit",
 } as const;
 
-/** Items per activity page. */
 export const ACTIVITY_PAGE_SIZE = 20;
 
-/** The status filter on Invoices and Activity. */
 export const STATUS_FILTERS = {
   all: "all",
   open: "open",

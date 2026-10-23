@@ -1,8 +1,5 @@
-// Builds, serves the production site and runs Lighthouse (mobile preset) on "/".
-// Fails unless Performance >= 90, Accessibility >= 95 and LCP < 2.5 s (docs/PROJECT.md R-11).
-// Throttling is applied for real ("devtools": slow 4G and 4x CPU slowdown), not simulated. On a local
-// server the scripts finish before the first paint, so the default simulation counts every script as
-// an LCP dependency (simulated 3.1 s vs real throttled 1.5 s). See docs/PROJECT.md D-14.
+// R-11: fails unless Performance >= 90, Accessibility >= 95 and LCP < 2.5 s on "/" (mobile preset).
+// D-14: real devtools throttling, not simulated: locally the simulation counts every script toward LCP.
 import { spawn, spawnSync } from "node:child_process";
 import { chromium } from "@playwright/test";
 import * as chromeLauncher from "chrome-launcher";

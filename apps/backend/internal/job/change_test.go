@@ -12,8 +12,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 )
 
-// R-105: a change goes at the end of an accepted job's schedule once per key; the client accepts it like the quote,
-// and only then can it be marked done; the owner can withdraw the last change until the client accepts it.
+// R-105.
 func TestScopeChange(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -159,8 +158,7 @@ func TestScopeChange(t *testing.T) {
 	}
 }
 
-// R-105: the client's acceptance binds to the change they read, one change waits at a time, a withdrawn change's key
-// stays used, and the final invoice waits until no change does; then the job is finished.
+// R-105.
 func TestScopeChangeConsent(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -222,8 +220,7 @@ func TestScopeChangeConsent(t *testing.T) {
 	}
 }
 
-// R-105: a final invoice made while a change is being proposed rolls back and reads the job again, so it waits for the
-// change like any final.
+// R-105.
 func TestFinalWaitsForAChangeInFlight(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -276,8 +273,7 @@ func TestFinalWaitsForAChangeInFlight(t *testing.T) {
 	}
 }
 
-// R-105: a job paid in full up front is never finished by Mark done (its deposit is invoiced at acceptance), so it
-// still takes a change, which then becomes its final payment.
+// R-105: Mark done never finishes a deposit-only job, since its deposit is invoiced at acceptance.
 func TestDepositOnlyJobTakesAChange(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -312,9 +308,7 @@ func TestDepositOnlyJobTakesAChange(t *testing.T) {
 	}
 }
 
-// R-107, R-116: a job sends its client at most MaxChangeEmails change emails in a day, and a user
-// outbox.MaxClientEmails client emails of every kind; past that the change is still added, and the owner's read says no
-// email went.
+// R-107, R-116: past the caps the change is still added, and the owner's read says no email went.
 func TestChangeEmailsPerDay(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)

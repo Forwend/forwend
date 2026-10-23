@@ -1,7 +1,4 @@
-/*
- * Maps the --fw-* tokens to Tailwind utilities (bg-surface, text-muted, rounded-lg, shadow-md, ...).
- * Tailwind's default color palette is removed, so only token colors exist as utilities.
- */
+/* Tailwind's default color palette is removed, so only token colors exist as utilities. */
 /* `dark:` follows data-theme (on <html> or any section), not only the system preference. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
@@ -82,7 +79,6 @@
   --text-6xl: 5.25rem;
   --text-6xl--line-height: 1;
 
-  /* Role sizes: fluid, each with its own line height and letter spacing. */
   --text-hero: clamp(2.75rem, 7vw, 5.25rem);
   --text-hero--line-height: 1.02;
   --text-hero--letter-spacing: -0.02em;

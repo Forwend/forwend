@@ -8,8 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// The list search can use the invoices_search trigram index only while searchText is the index's expression
-// (migration 00032); otherwise every search reads all of the profile's invoices.
+// searchText must stay the invoices_search index expression (migration 00032), or every search reads all invoices.
 func TestSearchCanUseItsIndex(t *testing.T) {
 	pool, profile := open(t)
 	ctx := context.Background()

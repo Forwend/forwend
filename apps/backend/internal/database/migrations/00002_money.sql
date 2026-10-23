@@ -1,7 +1,7 @@
 -- Money tables (R-17). Rules and sources: docs/backend/architecture.md#data-model.
 
 -- +goose Up
--- Token amounts in base units. NUMERIC(78,0) alone accepts up to 10^78-1, so the range is checked.
+-- NUMERIC(78,0) alone accepts up to 10^78-1, so the uint256 range is checked.
 CREATE DOMAIN uint256 AS numeric(78, 0)
     CHECK (VALUE >= 0 AND VALUE <= 115792089237316195423570985008687907853269984665640564039457584007913129639935);
 
@@ -31,7 +31,7 @@ CREATE TABLE profiles (
     kind text NOT NULL CHECK (kind IN ('personal', 'freelancer', 'merchant')),
     created_at timestamptz NOT NULL DEFAULT now()
 );
--- One personal profile per user, created at signup (D-21).
+-- Created at signup (D-21).
 CREATE UNIQUE INDEX profiles_one_personal ON profiles (user_id) WHERE kind = 'personal';
 
 CREATE TABLE profile_wallets (
@@ -78,9 +78,8 @@ CREATE TABLE invoices (
         AND receive_address ~ '^0x[0-9a-f]{40}$'))
 );
 
--- Allowlisted-token Transfer logs to receive addresses. log_index is the log's position in its block. After a reorg
--- the row stays as 'reorged' and the same transaction may be mined again, possibly with the same log index, so
--- (tx_hash, log_index) is unique only among rows that are not reorged.
+-- A reorged row stays, and its transaction may be mined again with the same log index, so (tx_hash, log_index) is
+-- unique only among rows that are not reorged.
 CREATE TABLE chain_transfers (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     chain_id bigint NOT NULL,
@@ -101,7 +100,6 @@ CREATE TABLE chain_transfers (
     UNIQUE (chain_id, block_hash, log_index),
     UNIQUE (id, invoice_id),
     FOREIGN KEY (chain_id, chain_family) REFERENCES chains (chain_id, chain_family),
-    -- Only the invoice's token, on its chain, to its receive address.
     FOREIGN KEY (invoice_id, chain_id, token_contract, to_address)
         REFERENCES invoices (id, chain_id, token_contract, receive_address),
     CHECK (chain_family <> 'evm' OR (tx_hash ~ '^0x[0-9a-f]{64}$' AND block_hash ~ '^0x[0-9a-f]{64}$'
@@ -110,10 +108,8 @@ CREATE TABLE chain_transfers (
 CREATE UNIQUE INDEX chain_transfers_live_log ON chain_transfers (chain_id, tx_hash, log_index) WHERE status <> 'reorged';
 CREATE INDEX chain_transfers_invoice ON chain_transfers (invoice_id);
 
--- Double-entry ledger. Each invoice has three accounts: receiver (the tokens at its receive address),
--- recipient_payable (owed to the creator) and payer_held (owed to payers). Entries are signed (debit > 0, credit < 0)
--- and every transaction sums to zero, so the receiver balance always equals what is owed. Only finalized transfers
--- are booked (D-45). Rows never change; a mistake is fixed by a reversal transaction.
+-- Double-entry, signed (debit > 0, credit < 0): every transaction sums to zero, so the receiver balance equals what
+-- is owed. Only finalized transfers are booked (D-45). Rows never change: a reversal transaction fixes a mistake.
 CREATE TABLE ledger_transactions (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     invoice_id text NOT NULL REFERENCES invoices (id),
@@ -122,13 +118,11 @@ CREATE TABLE ledger_transactions (
     reverses_id bigint,
     created_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (id, invoice_id),
-    -- A deposit books a transfer of the same invoice; a reversal reverses a transaction of the same invoice.
     FOREIGN KEY (chain_transfer_id, invoice_id) REFERENCES chain_transfers (id, invoice_id),
     FOREIGN KEY (reverses_id, invoice_id) REFERENCES ledger_transactions (id, invoice_id),
     CHECK ((kind = 'deposit') = (chain_transfer_id IS NOT NULL)),
     CHECK ((kind = 'reversal') = (reverses_id IS NOT NULL))
 );
--- A transfer is booked once; a transaction is reversed at most once.
 CREATE UNIQUE INDEX ledger_transactions_one_deposit ON ledger_transactions (chain_transfer_id);
 CREATE UNIQUE INDEX ledger_transactions_one_reversal ON ledger_transactions (reverses_id);
 
@@ -171,9 +165,8 @@ END;
 $$;
 -- +goose StatementEnd
 
--- A deposit books a confirmed, unbooked transfer and marks it booked. The write (not just a lock) makes a concurrent
--- status change fail at every isolation level: READ COMMITTED re-reads the booked row, REPEATABLE READ and
--- SERIALIZABLE get a serialization failure.
+-- The UPDATE, not just a lock, makes a concurrent status change fail at every isolation level: READ COMMITTED
+-- re-reads the booked row, REPEATABLE READ and SERIALIZABLE get a serialization failure.
 -- +goose StatementBegin
 CREATE FUNCTION ledger_check_deposit() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
@@ -200,8 +193,7 @@ END;
 $$;
 -- +goose StatementEnd
 
--- At commit, booked is true exactly when a ledger deposit books the transfer. Reads the current row: one transaction
--- can queue several events for it.
+-- Reads the current row, not NEW: one transaction can queue several events for it.
 -- +goose StatementBegin
 CREATE FUNCTION chain_transfers_check_booked() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
@@ -223,7 +215,6 @@ CREATE TRIGGER ledger_entries_append_only BEFORE UPDATE OR DELETE ON ledger_entr
     FOR EACH ROW EXECUTE FUNCTION ledger_reject_change();
 CREATE TRIGGER ledger_entries_no_truncate BEFORE TRUNCATE ON ledger_entries
     FOR EACH STATEMENT EXECUTE FUNCTION ledger_reject_change();
--- Checked at commit, after all entries of the transaction are in.
 CREATE CONSTRAINT TRIGGER ledger_entries_balanced AFTER INSERT ON ledger_entries
     DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION ledger_check_balanced();
 CREATE CONSTRAINT TRIGGER ledger_transactions_has_entries AFTER INSERT ON ledger_transactions
@@ -244,7 +235,7 @@ ALTER TABLE ledger_transactions ENABLE ALWAYS TRIGGER ledger_transactions_deposi
 ALTER TABLE chain_transfers ENABLE ALWAYS TRIGGER chain_transfers_booked;
 ALTER TABLE chain_transfers ENABLE ALWAYS TRIGGER chain_transfers_booked_matches_ledger;
 
--- One settlement per invoice (R-22). The signer reconciles by nonce and tx hash before any retry.
+-- R-22. The signer reconciles by nonce and tx hash before any retry.
 CREATE TABLE settlement_intents (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     invoice_id text NOT NULL UNIQUE REFERENCES invoices (id),
@@ -259,7 +250,7 @@ CREATE TABLE settlement_intents (
 );
 CREATE INDEX settlement_intents_due ON settlement_intents (next_attempt_at) WHERE status IN ('pending', 'sent');
 
--- The watcher's position per chain. Blocks at or below last_finalized_block are final (D-45).
+-- The watcher's position per chain (D-45).
 CREATE TABLE chain_cursors (
     chain_id bigint PRIMARY KEY REFERENCES chains (chain_id),
     last_scanned_block bigint NOT NULL CHECK (last_scanned_block >= 0),

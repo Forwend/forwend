@@ -4,9 +4,8 @@ import { readPayPage } from "../scripts/canary-pay-page";
 import { PUBLIC_URL } from "./servers";
 import { sidewaysScroll } from "./sideways";
 
-// A sample invoice as GET /v1/invoices/{payToken} returns it. The link carries PAY, and ID is keccak256 of it (D-86).
-// RECEIVE is factory.predict of these terms (the unit test checks the computation against the R-15 vectors), so the
-// page shows it only while every term is unchanged.
+// ID is keccak256(PAY) (D-86). RECEIVE is factory.predict of these terms (R-15), so the page shows it
+// only while every term is unchanged.
 const PAY = "7f3a9c1e5b2d4086a1c3e5f7092b4d6f8a0c2e4f6a8b0d2f4e6c8a0b2d4f6e81";
 const ID = "0x0bc3ec4e72d7b5f3cc8a059ea1a0f06cc9d24ea5e71a2acfd86fea75540e9a31";
 const RECEIVE = "0x25425f508790c1847090371590297cad428868f3";
@@ -107,7 +106,6 @@ const DEPOSIT = {
   secondsLeft: 150,
 };
 const DETECTED = { ...OPEN, paymentStatus: "detected", confirming: true, deposits: [DEPOSIT] };
-// The next read: half the blocks have passed.
 const CONFIRMING = {
   ...DETECTED,
   deposits: [{ ...DEPOSIT, blocksLeft: 6, secondsLeft: 75 }],
@@ -136,7 +134,6 @@ const SETTLED = {
   settledAt: "2026-10-10T12:20:00Z",
 };
 
-/** Answers the invoice read with each body in turn, then keeps the last; never reaches a backend. */
 async function mockInvoice(page: Page, ...bodies: object[]) {
   let call = 0;
   await page.route("**/api/v1/invoices/*", (route) =>
@@ -171,7 +168,7 @@ const PARTIAL = {
 const CLOSED = { ...OPEN, paymentStatus: "expired" };
 const CANCELED = { ...OPEN, paymentStatus: "canceled", canceledAt: "2026-10-10T10:05:00Z" };
 
-// R-68: one short screen: who asks, the amount, Pay with, the address on request, one status line.
+// R-68
 test.describe("pay page", () => {
   test("shows who asks and the amount, then the address once the payer asks for it", async ({
     page,
@@ -185,9 +182,9 @@ test.describe("pay page", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Alice Design GmbH");
     await expect(page.getByText("Invoice INV-0001", { exact: true })).toBeVisible();
     await expect(page.getByText("Logo design", { exact: true })).toBeVisible();
-    // R-90: the client's accounts team matches the invoice by its PO number.
+    // R-90
     await expect(page.getByText("Reference PO-4500012345", { exact: true })).toBeVisible();
-    // R-93: the price agreed in fiat, beside the amount the payer still sends.
+    // R-93
     await expect(
       page.getByText("Agreed value €1,150.00 on Oct 9, 2026", { exact: true }),
     ).toBeVisible();
@@ -197,10 +194,9 @@ test.describe("pay page", () => {
       "href",
       pdfPath("invoice.pdf"),
     );
-    // Nothing to wait for before there is an address: no status and no Check status yet (R-68).
+    // R-68
     await expect(page.getByText("Waiting for payment…")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Check status" })).toHaveCount(0);
-    // No filler: no testnet notice, no steps; the rules open from the footer in a dialog, so the box never grows.
     await expect(page.getByText(/test network/)).toHaveCount(0);
     await expect(page.getByRole("list", { name: "Payment progress" })).toHaveCount(0);
     const scam = page.getByText(
@@ -227,10 +223,9 @@ test.describe("pay page", () => {
     await expect(page.getByText(RECEIVE)).toBeVisible();
     await expect(page.getByRole("img", { name: "QR code of the address to pay" })).toBeVisible();
     await expect(page.getByRole("note")).toHaveText("Send only USDC on Base Sepolia.");
-    // R-78: the whole address as one plain string with Copy in its field, the token contract, the exchange's network.
+    // R-78
     const shown = page.locator("[data-address]");
     await expect(shown).toHaveText(RECEIVE);
-    // Selected and copied by hand, it gives exactly the address: no spaces or line breaks inside it.
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     await shown.click();
     await page.keyboard.press("ControlOrMeta+C");
@@ -244,7 +239,6 @@ test.describe("pay page", () => {
     ).toBeVisible();
     await expect(status(page)).toHaveText("Waiting for payment…");
     await expect(page.getByRole("button", { name: "Check status" })).toBeVisible();
-    // A reload in the same tab keeps the address shown.
     await page.reload();
     await expect(page.getByText(RECEIVE)).toBeVisible();
 
@@ -252,8 +246,7 @@ test.describe("pay page", () => {
     for (const url of scripts) expect(new URL(url).origin, url).toBe(new URL(PUBLIC_URL).origin);
   });
 
-  // R-55: Check status asks Forwend to look again, says what it found and rests until the next check, also after a
-  // reload.
+  // R-55
   test("Check status says what it found and when the next check is allowed", async ({ page }) => {
     await openPay(page, OPEN);
     await showAddress(page).click();
@@ -278,7 +271,6 @@ test.describe("pay page", () => {
     await expect(page.getByText(/· Next check in 5 min$/)).toBeVisible();
     await expect(check).toBeDisabled();
     expect(calls).toBe(1);
-    // The read says the same after a reload.
     await mockInvoice(page, {
       ...OPEN,
       nextCheckAt: new Date(NOW.getTime() + 240_000).toISOString(),
@@ -288,7 +280,6 @@ test.describe("pay page", () => {
     await expect(page.getByText("Next check in 4 min", { exact: true })).toBeVisible();
   });
 
-  // A bug a user hit: once a check answered, its message pushed Check status off the status's row.
   test("Check status stays beside the status once a check answers, with the answer under them", async ({
     page,
   }) => {
@@ -342,12 +333,11 @@ test.describe("pay page", () => {
       "Checked recently.",
     );
     await expect(check).toBeDisabled();
-    // It comes back once the wait is over.
     await page.clock.runFor(31_000);
     await expect(check).toBeEnabled();
   });
 
-  // R-73: the count comes from the API, so a page opened halfway through says how far it got.
+  // R-73
   test("a page opened while a payment confirms counts the blocks already passed", async ({
     page,
   }) => {
@@ -367,8 +357,7 @@ test.describe("pay page", () => {
     await showAddress(page).click();
     await expect(status(page)).toHaveText("Waiting for payment…");
 
-    // The full amount is on its way: no address invites a second payment. The box keeps its place and follows it:
-    // Detected, Confirming and Paid, the count, and the payment with its transaction (R-68).
+    // R-68: once the full amount is on its way, no address invites a second payment.
     await page.clock.runFor(POLL_MS);
     await expect(status(page)).toContainText("Confirming (0/12) · about 3 min left");
     await expect(page.getByText(RECEIVE)).toHaveCount(0);
@@ -376,7 +365,6 @@ test.describe("pay page", () => {
     await expect(page.getByRole("heading", { name: "Paying with" })).toBeVisible();
     const steps = page.getByRole("list", { name: "Payment progress" });
     await expect(steps.getByRole("listitem")).toHaveText([/^Detected/, /^Confirming/, /^Paid/]);
-    // Counts live below the steps, with an accessible time hint and the existing live announcement.
     await expect(steps.locator("[aria-current=step]")).toHaveText("Confirming");
     await expect(status(page).getByRole("button", { name: "About 3 min left" })).toBeVisible();
     await expect(status(page).getByText("0 / 12 blocks confirmed", { exact: true })).toBeVisible();
@@ -413,7 +401,7 @@ test.describe("pay page", () => {
     );
   });
 
-  // R-82: the payer may leave an address for the receipt, before or after paying; the field says what will happen.
+  // R-82
   test("takes an optional address for the receipt", async ({ page }) => {
     const sent: unknown[] = [];
     let answer = 200;
@@ -424,12 +412,10 @@ test.describe("pay page", () => {
         ? route.fulfill({ json: { email: "payer@example.com" } })
         : route.fulfill({ status: answer, json: { error: { code: "x", message: "x" } } });
     });
-    // Nothing to send a receipt for before any money: the row comes with the first payment seen.
     await openPay(page, OPEN);
     await expect(page.getByRole("button", { name: "Email me a receipt" })).toHaveCount(0);
     await mockInvoice(page, DETECTED);
     await page.reload();
-    // The panel's last row, folded until the payer asks for it; the field takes focus when it opens.
     await page.getByRole("button", { name: "Email me a receipt" }).click();
     const field = page.getByLabel("Email me the receipt (optional)");
     await expect(field).toBeFocused();
@@ -439,7 +425,6 @@ test.describe("pay page", () => {
     await field.fill(" Payer@Example.com ");
     await field.press("Enter");
     await field.press("Enter");
-    // Saved: the form gives way to a confirmation, which takes focus; nothing is left to press again.
     const saved = page.getByText("We will email the receipt to payer@example.com once it is paid.");
     await expect(saved).toBeVisible();
     await expect(page.getByText("Receipt saved")).toBeVisible();
@@ -492,7 +477,7 @@ test.describe("pay page", () => {
     await expect(showAddress(page)).toBeVisible();
   });
 
-  // R-79: a canceled invoice says so and shows no address; money that still arrives is held for the payer.
+  // R-79
   test("tells the payer a canceled invoice takes no money", async ({ page }) => {
     await openPay(page, CANCELED);
     await expect(status(page)).toHaveText(
@@ -520,14 +505,12 @@ test.describe("pay page", () => {
       "250.00 USDC of 1,250.00 USDC received. Send the remaining 1,000.00 USDC.",
     );
     await expect(page.locator("[data-money]").first()).toHaveText("1,000.00 USDC");
-    // Money is still due: the address stays, and the Paid step says it is partly there.
     await expect(showAddress(page)).toBeVisible();
-    // The rest goes to the address on this page, with the time left, never one copied from wallet history (R-77).
+    // R-77
     await expect(page.getByText(/^Closes in/)).toBeVisible();
     await expect(page.getByText(/Copy the address from this page for the rest/)).toBeVisible();
     const partlySteps = page.getByRole("list", { name: "Payment progress" });
     await expect(partlySteps.getByText("Partially paid")).toHaveClass(/bg-warning-soft/);
-    // Done, the step says Confirmed rather than Confirming.
     await expect(partlySteps.getByRole("listitem")).toHaveText([
       /^Detected/,
       /^Confirmed/,
@@ -545,7 +528,6 @@ test.describe("pay page", () => {
     page,
   }) => {
     await openPay(page, CHOOSING, CHOOSING, CHOOSING, { ...CHOOSING, optionLocked: true });
-    // Nothing picked: the amount is in USD and no address can show.
     await expect(page.locator("[data-money]")).toHaveText("1,250.00 USD");
     await expect(showAddress(page)).toHaveCount(0);
     const serious = (await new AxeBuilder({ page }).analyze()).violations.filter(
@@ -560,7 +542,7 @@ test.describe("pay page", () => {
     await expect(page).toHaveURL(new RegExp(`\\?option=${OPTION_ID}$`));
     await showAddress(page).click();
     await expect(page.getByText(OPTION_RECEIVE)).toBeVisible();
-    // Arbitrum also has bridged USDC.e, another contract that does not pay this invoice (R-78).
+    // R-78
     await expect(page.getByRole("note")).toHaveText(
       "Send only USDC on Arbitrum Sepolia. Native USDC, not USDC.e.",
     );
@@ -569,12 +551,11 @@ test.describe("pay page", () => {
       "https://sepolia.arbiscan.io/address/0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d",
     );
 
-    // A reload keeps the pick and the shown address; the pick folds into one row.
     await page.reload();
     await expect(page.getByText(OPTION_RECEIVE)).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Network" })).toHaveCount(0);
 
-    // Changing takes two presses, so a payer who already sent does not switch by accident; leaving the button cancels.
+    // Two presses, so a payer who already sent does not switch by accident.
     const change = page.getByRole("button", { name: "Change network and token" });
     await change.click();
     const confirm = page.getByRole("button", { name: "Confirm change" });
@@ -588,7 +569,6 @@ test.describe("pay page", () => {
     await expect(page.getByText(OPTION_RECEIVE)).toHaveCount(0);
     await expect(page.locator("[data-money]")).toHaveText("1,250.00 USD");
 
-    // Before any money the pick can change, and the address follows it.
     await page.getByRole("combobox", { name: "Network" }).click();
     await page.getByRole("option", { name: "Base Sepolia" }).click();
     await showAddress(page).click();
@@ -661,7 +641,7 @@ test.describe("pay page", () => {
       /^page alert: This payment page does not match/,
     );
 
-    // Each option of a payer-chooses invoice opens by ?option=, checked against its own terms (R-56).
+    // R-56
     const option = `${PAY}?option=${OPTION_ID}`;
     expect(await read(CHOOSING, option)).toEqual({
       id: option,
@@ -696,7 +676,6 @@ test.describe("pay page", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("This path ends here.");
   });
 
-  // A bug a user hit: "Copied" is wider than "Copy", and the address beside it wrapped onto two lines.
   test("the address stays on one line once copied, and Copy keeps its width", async ({ page }) => {
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     await openPay(page, OPEN);

@@ -10,9 +10,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 )
 
-// R-98: repeat saves a retainer with the invoice; it needs a due date and a client email, is part of the request an
-// Idempotency-Key names, and a profile has at most invoice.MaxRetainers running. The owner's read shows it; POST
-// .../repeat/stop stops it, the same answer twice.
+// R-98.
 func TestRepeatFromCreate(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

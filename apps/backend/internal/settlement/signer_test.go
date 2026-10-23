@@ -43,8 +43,7 @@ type env struct {
 	ledger *ledger.Service
 }
 
-// setup runs Anvil with the real factory at its compiled address, Anvil's key as executor, a mock USDC, and a
-// profile whose wallet is the recipient.
+// setup: the real factory at its compiled address, Anvil's key as executor, a mock USDC and a profile wallet.
 func setup(t *testing.T) env {
 	t.Helper()
 	ctx := context.Background()
@@ -97,14 +96,12 @@ func (e env) signer(t *testing.T) *Signer {
 	return NewSigner(e.pool, key, clients, clients)
 }
 
-// paidInvoice creates an invoice for 5 USDC with the address the API would compute, pays it 6 and runs the watcher
-// and ledger until it is paid with a settlement intent.
+// paidInvoice is a 5 USDC invoice paid 6, booked until it has a settlement intent.
 func (e env) paidInvoice(t *testing.T) (id, receive string) {
 	t.Helper()
 	return e.pay(t, 7)
 }
 
-// pay is paidInvoice for the invoice with ID n.
 func (e env) pay(t *testing.T, n int) (id, receive string) {
 	t.Helper()
 	ctx := context.Background()
@@ -120,7 +117,6 @@ func (e env) pay(t *testing.T, n int) (id, receive string) {
 	return id, receive
 }
 
-// create stores the invoice with ID n for 5 USDC, open for an hour, with the address the API would compute.
 func (e env) create(t *testing.T, n int) (id, receive string) {
 	t.Helper()
 	ctx := context.Background()
@@ -145,7 +141,7 @@ func (e env) create(t *testing.T, n int) (id, receive string) {
 	return id, receive
 }
 
-// final mines past the finalized block (Anvil: latest - 2) and runs the signer, which confirms what is now final.
+// Anvil's finalized block is latest - 2.
 func (e env) final(t *testing.T, s *Signer) {
 	t.Helper()
 	e.anvil.Mine(2)
@@ -173,7 +169,6 @@ func (e env) balance(t *testing.T, holder string) int64 {
 	return b.Int64()
 }
 
-// wait is the wait kind the signer stored with the invoice's intent, "" when none.
 func (e env) wait(t *testing.T, invoiceID string) string {
 	t.Helper()
 	var w *string
@@ -220,8 +215,7 @@ func TestSettlesAPaidInvoiceOnce(t *testing.T) {
 	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" {
 		t.Fatalf("after finality: intent %s, invoice settlement %s", status, settlement)
 	}
-	// The owner hears of each change once, from the transaction that made it (R-80): paid, the 1 USDC above the amount
-	// held for the payer, then the settlement.
+	// R-80: each change once, from the transaction that made it.
 	e.final(t, e.signer(t))
 	var kinds string
 	if err := e.pool.QueryRow(ctx, `SELECT string_agg(kind, ',' ORDER BY id) FROM outbox_events WHERE invoice_id = $1`,
@@ -273,7 +267,6 @@ func TestSettlesAPaidInvoiceOnce(t *testing.T) {
 	}
 }
 
-// Killed after saving the signed settle but before sending it: the restart sends those same bytes, once.
 func TestRestartAfterSavingSendsTheSavedTransaction(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -303,7 +296,6 @@ func TestRestartAfterSavingSendsTheSavedTransaction(t *testing.T) {
 	}
 }
 
-// Killed after sending the settle: the restart finds it mined and sends nothing.
 func TestRestartAfterSendingSendsNothing(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -373,9 +365,7 @@ func TestRestartResendsAPendingSettleOnce(t *testing.T) {
 	}
 }
 
-// R-54: the worker and the signer are down while the payer pays (or after the worker saw the payment but before it was
-// final) and until after the checkout closed. New processes book it from the saved cursor, as paid and not late,
-// since it was mined before the close, and settle it exactly once.
+// R-54: mined before the close, it is booked paid and not late from the saved cursor, and settled once.
 func TestPaidWhileTheWorkerWasDownSettlesAfterARestart(t *testing.T) {
 	for name, seenBeforeTheStop := range map[string]bool{"never seen": false, "seen, not final": true} {
 		t.Run(name, func(t *testing.T) {
@@ -428,7 +418,6 @@ func TestPaidWhileTheWorkerWasDownSettlesAfterARestart(t *testing.T) {
 	}
 }
 
-// Terms that no longer pay the profile wallet, or no longer compute the receive address, are refused: nothing sent.
 func TestRefusesTermsThatDoNotMatch(t *testing.T) {
 	for name, tamper := range map[string]string{
 		"recipient is not the profile wallet": "UPDATE profile_wallets SET address = '0x2222222222222222222222222222222222222223'",
@@ -457,7 +446,7 @@ func TestRefusesTermsThatDoNotMatch(t *testing.T) {
 	}
 }
 
-// A settle already sent is finished even if the database changed meanwhile: never "refused" while money moved.
+// Never "refused" while money moved.
 func TestSentSettleIsFinishedEvenIfTheWalletChanged(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -480,7 +469,6 @@ func TestSentSettleIsFinishedEvenIfTheWalletChanged(t *testing.T) {
 	}
 }
 
-// A paused factory is a temporary condition: the intent waits and settles after unpausing.
 func TestPausedFactoryIsRetried(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -541,7 +529,6 @@ func TestNonceTakenByAnotherTransaction(t *testing.T) {
 	}
 }
 
-// A tx_hash that is not this receiver's settle never confirms the settlement.
 func TestForeignTxHashIsNotConfirmed(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -577,7 +564,6 @@ func (e env) settleOutside(t *testing.T, id, receive string) {
 	e.anvil.Send(receive, "settle()")
 }
 
-// A receiver settled outside our signer (e.g. by the refund authority after the deadline) still confirms the intent.
 func TestExternallySettledIntentIsConfirmed(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -595,7 +581,7 @@ func TestExternallySettledIntentIsConfirmed(t *testing.T) {
 	}
 }
 
-// A stale attempt never moves an intent that went on: retry and refuse only change the status they loaded.
+// retry and refuse only change the status they loaded.
 func TestStaleAttemptDoesNotOverwriteAConfirmedIntent(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -624,7 +610,6 @@ func TestStaleAttemptDoesNotOverwriteAConfirmedIntent(t *testing.T) {
 	}
 }
 
-// The signer works only on intents of chains it serves (enabled chains with an RPC).
 func TestSignerSkipsChainsItDoesNotServe(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -642,7 +627,7 @@ func TestSignerSkipsChainsItDoesNotServe(t *testing.T) {
 	}
 }
 
-// A settle that a reorg drops before it is final is not booked; the saved bytes are sent again and booked once final.
+// The saved bytes are sent again, not a new settle.
 func TestSettleDroppedByReorgIsSentAgain(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -674,8 +659,7 @@ func TestSettleDroppedByReorgIsSentAgain(t *testing.T) {
 	}
 }
 
-// After the settle deadline only the refund authority may settle: the signer sends nothing, waits, and records the
-// authority's settle once it is final.
+// After the settle deadline only the refund authority may settle.
 func TestAfterTheDeadlineTheSignerWaitsForTheRefundAuthority(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -716,7 +700,6 @@ func (e env) settlementTxHash(t *testing.T, invoiceID string) string {
 	return e.invoice(t, invoiceID).SettlementTxHash
 }
 
-// invoice is the owner's read of the invoice with this id.
 func (e env) invoice(t *testing.T, id string) invoice.Invoice {
 	t.Helper()
 	var profile string
@@ -731,8 +714,7 @@ func (e env) invoice(t *testing.T, id string) invoice.Invoice {
 	return inv
 }
 
-// Our settle is saved but reverts or never mines, and the refund authority settles after the deadline: the intent
-// is confirmed and booked once, with no settlement tx hash, since our transaction did not settle.
+// Booked once, with no tx hash, since our transaction did not settle.
 func TestSettledByTheRefundAuthorityAfterOurSettleFailedHasNoTxHash(t *testing.T) {
 	for name, send := range map[string]bool{"reverted": true, "never mined": false} {
 		t.Run(name, func(t *testing.T) {
@@ -778,7 +760,6 @@ func TestSettledByTheRefundAuthorityAfterOurSettleFailedHasNoTxHash(t *testing.T
 	}
 }
 
-// An RPC that stops answering can't stall the signer: each intent's attempt has a deadline.
 func TestHangingRPCDoesNotStallTheSigner(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -815,7 +796,6 @@ func TestHangingRPCDoesNotStallTheSigner(t *testing.T) {
 	}
 }
 
-// signerVia is a signer whose RPC is url, such as a proxy in front of Anvil.
 func (e env) signerVia(t *testing.T, url string) *Signer {
 	t.Helper()
 	client, err := ethclient.Dial(url)
@@ -828,7 +808,6 @@ func (e env) signerVia(t *testing.T, url string) *Signer {
 	return s
 }
 
-// param is a proxied call's i-th parameter as lowercase JSON.
 func param(c chaintest.Call, i int) string {
 	if i >= len(c.Params) {
 		return ""
@@ -843,9 +822,7 @@ func (e env) dueNow(t *testing.T) {
 	}
 }
 
-// A node that has not seen the new receiver shows no code there and estimates settle as a call to an empty address,
-// 21,064 gas, which runs out. The signer sends no settle until the node shows the receiver's code, and never gives
-// settle less than SettleGasFloor.
+// A node that hasn't seen the receiver estimates settle at 21,064 gas, which runs out.
 func TestSettleWaitsForTheReceiverCodeAndNeverUnderestimatesGas(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -900,8 +877,7 @@ func TestSettleWaitsForTheReceiverCodeAndNeverUnderestimatesGas(t *testing.T) {
 	}
 }
 
-// Our settle succeeded, but a lagging node says the receiver is not settled at latest and has no receipt for it: the
-// intent keeps its hash, nothing is signed again, and it is booked once, with our hash, when final.
+// Nothing is signed again, and it is booked once, with our hash, when final.
 func TestStaleNotSettledReadKeepsOurSuccessfulSettle(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -978,8 +954,7 @@ func TestStaleNotSettledReadKeepsOurSuccessfulSettle(t *testing.T) {
 	}
 }
 
-// A lagging node hands out an old pending nonce: the signer takes the one after its last saved settle instead, and
-// the one after a deploy it just sent.
+// The signer also takes the nonce after a deploy it just sent.
 func TestStalePendingNonceUsesTheSavedNonce(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -1015,7 +990,6 @@ func TestStalePendingNonceUsesTheSavedNonce(t *testing.T) {
 	}
 }
 
-// anvil calls an Anvil RPC method that returns nothing the test needs.
 func (e env) anvilCall(t *testing.T, method string, args ...any) {
 	t.Helper()
 	if err := e.anvil.RPC.Call(nil, method, args...); err != nil {
@@ -1023,7 +997,6 @@ func (e env) anvilCall(t *testing.T, method string, args ...any) {
 	}
 }
 
-// saved is the intent's signed settle: its hash and bytes.
 func (e env) saved(t *testing.T, invoiceID string) (string, []byte) {
 	t.Helper()
 	var hash string
@@ -1035,17 +1008,15 @@ func (e env) saved(t *testing.T, invoiceID string) (string, []byte) {
 	return hash, raw
 }
 
-// overpriced makes the next blocks' base fee 100 gwei, far over the fee cap the signer used; Anvil then drops a
-// pending settle signed before and refuses to take it again, as a node does with a settle whose fee is too low.
+// 100 gwei base fee: Anvil drops a pending settle signed before and refuses it again, as a node does.
 func (e env) overpriced(t *testing.T) {
 	t.Helper()
 	e.anvilCall(t, "anvil_setNextBlockBaseFeePerGas", "0x174876e800")
 	e.anvil.Mine(1)
 }
 
-// A settle whose fee cap falls below the base fee is dropped by the node and refused when sent again. ReplaceAfter
-// after it was signed it is signed again with the same nonce and at least an eighth more tip and fee cap, so it and
-// the next settle on the chain mine; it is booked once, with the replacement's hash.
+// Re-signed with the same nonce and at least an eighth more tip and fee cap, it and the next settle on the chain mine;
+// it is booked once, with the replacement's hash.
 func TestStuckSettleIsReplacedWithAHigherFee(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -1110,8 +1081,7 @@ func TestStuckSettleIsReplacedWithAHigherFee(t *testing.T) {
 	}
 }
 
-// The version a replacement replaced can still be the one mined: a receipt for any hash signed for the intent books
-// it, once, with that hash.
+// A receipt for any hash signed for the intent books it, once, with that hash.
 func TestReplacedSettleThatMinesIsBookedOnce(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -1157,9 +1127,7 @@ func TestReplacedSettleThatMinesIsBookedOnce(t *testing.T) {
 	}
 }
 
-// Settle gas is estimated at the deploy's block, where a node has seen the receiver's code; on Arbitrum that estimate
-// counts the L1 data gas, more than SettleGasFloor. A node that can't estimate at a block is asked at latest, with
-// the floor.
+// On Arbitrum the at-block estimate counts L1 data gas; a node that can't estimate at a block is asked at latest.
 func TestSettleGasIsEstimatedAtTheDeployBlock(t *testing.T) {
 	const arbitrum = 400_000 // the at-block estimate with L1 data gas
 	for name, refuse := range map[string]bool{"at the deploy block": false, "node refuses a block": true} {
@@ -1221,7 +1189,6 @@ func TestSettleGasIsEstimatedAtTheDeployBlock(t *testing.T) {
 	}
 }
 
-// deployHash is the hash of the factory deploy the signer sent through proxy.
 func (e env) deployHash(t *testing.T, proxy *chaintest.Proxy) string {
 	t.Helper()
 	for _, c := range proxy.Calls() {
@@ -1238,8 +1205,7 @@ func (e env) deployHash(t *testing.T, proxy *chaintest.Proxy) string {
 	return ""
 }
 
-// A replacement never pays a fee cap over MaxFeeFactor times what a new settle gets now: a settle signed while the
-// base fee was high is sent again as it is once it has dropped.
+// Signed at a high base fee, it would pass MaxFeeFactor once the fee drops, so it is sent again as it is.
 func TestStuckSettleOverTheMaxFeeIsSentAgainAsItIs(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -1297,8 +1263,7 @@ func TestSettlementIsBookedOnlyWhenTheSecondRPCAgrees(t *testing.T) {
 	}
 }
 
-// SEC-03: a user's invoices get at most SponsoredPerDay settlements from the executor's gas in 24 hours; the next
-// one waits, unsent, with the reason.
+// SEC-03: the next one waits, unsent, with the reason.
 func TestSponsoredSettlementsPerUserAreCapped(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -1342,8 +1307,7 @@ func TestSignerStopsWhenItLosesItsLock(t *testing.T) {
 	}
 }
 
-// A nonce nothing will ever use holds every later transaction: the signer fills it with a transfer to itself, unless
-// a saved settle holds it.
+// Unless a saved settle holds the nonce.
 func TestNonceGapIsFilled(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -1372,7 +1336,7 @@ func TestNonceGapIsFilled(t *testing.T) {
 	}
 }
 
-// A transaction the fee left behind at the executor's next nonce is replaced by the next deploy at twice today's fee.
+// The next deploy takes the stuck nonce at twice today's fee.
 func TestDeployReplacesAStuckTransaction(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -1409,7 +1373,7 @@ func TestDeployReplacesAStuckTransaction(t *testing.T) {
 	}
 }
 
-// On Tempo (its fee manager has code) a settle gets at least TempoSettleGasFloor, plus a fifth.
+// Tempo is detected by code at its fee manager.
 func TestTempoSettleGasFloor(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -1433,8 +1397,7 @@ func TestTempoSettleGasFloor(t *testing.T) {
 	}
 }
 
-// A replacement settle never keeps a gas limit below a fresh estimate plus a fifth: on Arbitrum the L1 data cost in it
-// grows with L1 prices.
+// On Arbitrum the L1 data cost in the gas limit grows with L1 prices.
 func TestReplacementSettleGetsAFreshGasLimit(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -1480,8 +1443,7 @@ func TestReplacementSettleGetsAFreshGasLimit(t *testing.T) {
 	}
 }
 
-// Payer chooses (R-56, D-76): the signer settles the option that received money first, built by the API like any
-// invoice, and money sent to another option stays at its address, held for the payer.
+// R-56, D-76: money sent to another option stays at its address, held for the payer.
 func TestSettlesTheOptionPaidFirst(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()

@@ -1,5 +1,4 @@
--- Profiles get an optional name, and the Idempotency-Key of the request that created them (R-32). The personal
--- profile is made at signup without a key.
+-- R-32. The personal profile is made at signup without a key.
 
 -- +goose Up
 ALTER TABLE profiles

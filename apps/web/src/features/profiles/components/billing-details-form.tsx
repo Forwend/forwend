@@ -28,7 +28,6 @@ const COUNTRY_ID = "billing-country";
 export interface BillingDetailsFormProps {
   profileId: string;
   saved: BillingDetails | null;
-  /** Where saving or Cancel leads. */
   next: string;
 }
 

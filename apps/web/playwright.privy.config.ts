@@ -2,9 +2,8 @@ import { readFileSync } from "node:fs";
 import { parseEnv } from "node:util";
 import { defineConfig, devices } from "@playwright/test";
 
-// The live sign-in test (e2e/privy): the real Privy test app and the real backend api. Privy accepts only the origin
-// http://localhost:3000, so the app runs there and calls the api at API_URL from apps/web/.env. A dev server or api
-// already running there is reused. Run by scripts/e2e.mjs when apps/web/.env has the test account.
+// The live suite: the real Privy test app and backend api. Privy accepts only the origin http://localhost:3000,
+// so the app runs there; a dev server or api already running there is reused.
 const readEnv = (path: string) => {
   try {
     return parseEnv(readFileSync(path, "utf8")) as Record<string, string>;
@@ -13,7 +12,6 @@ const readEnv = (path: string) => {
   }
 };
 const web = readEnv(".env");
-// The api never holds the executor key.
 // The api needs neither the executor key nor the email key (only the worker sends email).
 const { EXECUTOR_PRIVATE_KEY: _, RESEND_API_KEY: __, ...backend } = readEnv("../backend/.env");
 const APP_URL = "http://localhost:3000";
@@ -33,7 +31,6 @@ export default defineConfig({
   ],
   webServer: [
     {
-      // The backend's own .env (database, Privy app ID, JWKS URL and secret) on API_URL's port.
       command: "go run ./cmd/api",
       cwd: "../backend",
       env: {

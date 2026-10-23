@@ -43,11 +43,7 @@ const FULL_DATE = new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeZo
 // 2024-01-01 is a Monday: the header reads Monday to Sunday in the viewer's language.
 const WEEK = Array.from({ length: 7 }, (_, i) => addDays("2024-01-01", i));
 
-/**
- * A month grid in the ARIA grid pattern: one tab stop, arrow keys move by a day or a week, Page Up/Down by a month
- * (with Shift, a year), Home/End to the week's start and end, Enter or Space choose. Disabled days can be reached but
- * not chosen.
- */
+/** ARIA grid pattern with one tab stop; disabled days can be reached but not chosen. */
 export function Calendar({
   label,
   value,
