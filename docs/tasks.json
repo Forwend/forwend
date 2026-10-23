@@ -13,7 +13,7 @@
         "openapi.yaml, api.md, PLAN and PROJECT match; unit, lint and typecheck pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "lint",
@@ -89,10 +89,10 @@
         "taskHash": "5aae51310ba12a92",
         "filesHash": "a20a4aa678e0a0e6",
         "proof": {
-          "1": "unit: TestOwnerReadsTheInvoiceHistory: the owner's GET returns canceled, held (optionId, amount, txHash) and created rows newest first with id and time; the public GET has no history; TestCreateInvoice treats history as owner-only",
-          "2": "unit: invoice-detail.test 'lists the history newest first, held money in its option's token': each row says what happened and who did it, held money on another option in that option's token (1.50 DAI); every kind the Go writers emit, invoice.open included, has copy (satisfies Record<HistoryKind>); screenshots in docs/runs/F276-shots at 390 and 1440, light and dark, axe clean",
-          "3": "unit: the same test picks Changes and only the Created row stays",
-          "4": "lint: openapi.yaml Invoice.history, api.md, DESIGN.md, PLAN 11.11.2/11.11.3 and PROJECT R-124 updated; unit, lint and typecheck pass"
+          "1": "unit",
+          "2": "unit",
+          "3": "unit",
+          "4": "lint"
         },
         "review": {
           "result": "pass",
@@ -100,11 +100,18 @@
           "summary": "Re-review after fixes: invoice.open now has copy (invoices.ts HISTORY_KINDS.open, invoices-copy.ts), HISTORY_KINDS reuses INVOICE_EVENTS.paid/held/settled, openapi.yaml and api.md say which token amount is in, DESIGN.md bullets split, test name covers the held token. The retaken 390/1440 light and dark shots show the selected filter and the open row correctly. The web test, tsc and docs-check pass, and the 19:17Z verify passed all 7 checks with no later source edits. Accepted as is: unknown kinds count as Payments, no backfilled mark, and [] history after a failed refetch.",
           "at": "2026-10-23T19:24:35Z",
           "filesHash": "a20a4aa678e0a0e6"
-        }
+        },
+        "commit": "3ee6425",
+        "doneAt": "2026-10-23T19:24:54Z"
       },
       "branch": "feat/f276-the-owner-reads-an-invoice-s-history-in",
       "baseCommit": "650ff3a77080daa75b742f9f03773af67d8c7412",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f276-the-owner-reads-an-invoice-s-history-in",
+        "base": "main"
+      }
     },
     {
       "id": "F277",
