@@ -218,8 +218,12 @@ R-19 and R-42; the full schema is in openapi.yaml.
   UTC), from the stored transfer.
 - `GET /v1/profiles/{profileId}/invoices?limit=&cursor=&status=&q=`: the list format above, highest number (newest)
   first; items have no `deposits`. Owner only, like every `{profileId}` route.
-- `GET /v1/profiles/{profileId}/invoices/{invoiceId}`: the public GET plus `client` and `settlementWait`. Another
-  profile's invoice is 404 (`invoice_not_found`), also when the same user owns both.
+- `GET /v1/profiles/{profileId}/invoices/{invoiceId}`: the public GET plus `client`, `settlementWait` and `history`.
+  Another profile's invoice is 404 (`invoice_not_found`), also when the same user owns both.
+  - `history` (R-124) is every `history_events` row of the invoice, newest first, also in create and the other
+    owner answers.
+  - A row is `{id, kind, actor, at, optionId, amount, txHash}`; the last three are null when the row has none.
+  - `amount` is in the token of `optionId`, or of the shown option when `optionId` is null.
 - `POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel` (R-79, D-79): cancels the invoice and every option of
   it, only while all are open, the checkout is open and no transfer was ever seen; otherwise 409
   `invoice_not_cancelable`. It locks the rows the ledger locks. The watcher records transfers without that lock, so a

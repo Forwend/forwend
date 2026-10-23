@@ -407,10 +407,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   time and hash with its explorer link, no status pill of its own; Details repeats none of them) and Check
   status only while the checkout can take money.
   - The main column then holds the Items panel, then Billed to and From side by side, as on a paper invoice.
+  - History (R-124) ends the main column, styled like a job's Record: one line per change, newest first.
+    - Each line: the time in quiet text, what happened, then " · " and who did it (You, Payer, Forwend) in quiet text.
+    - A settled line ends with its explorer link.
+    - A small segmented control in the head shows All, Payments or Changes.
   - Billed to and From share one height. They stack while the column is under 36rem; a request's From fills it.
   - Beside the main column, a third of the width, sits the details panel (empty rows left out).
   - From shows "None on this invoice" with a link to add billing details when there are none.
-  - Narrower screens stack the amount, Items, Billed to, From, then the details.
+  - Narrower screens stack the amount, Items, Billed to, From, History, then the details.
   - A transaction is one row once its list is 42rem wide. Narrower, the list's own width, not the screen's, splits it
     in two lines.
 - Billed to ends with Send to client (R-94), ruled off under the client:

@@ -1,0 +1,107 @@
+{
+  "id": "F275",
+  "type": "chore",
+  "behavior": "The 18 comments flagged in the F274 audit say what the code does",
+  "acceptance": [
+    "Each flagged comment is corrected, moved to the code it describes, or deleted when nothing true is left to say",
+    "Only comments changed: each file's code with comments stripped is identical before and after",
+    "unit, lint and typecheck pass"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "lint",
+    "typecheck"
+  ],
+  "refs": [
+    "R-25"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [
+    "2026-10-23 review fail by reviewer: apps/backend/internal/settlement/signer.go:1-3: the package comment is now 3 lines (the only Go comment block over 2 lines in the repo); its content is true (deploy, settle and fillGap's zero-value self-transfer) but must fit 2 lines of at most 120 characters. The other 17 changes are true, correctly placed or rightly deleted, and only comment lines changed.",
+    "2026-10-23 review pass by reviewer: All 18 flagged comments are now true, placed above the code they describe, or rightly deleted; signer.go:1-2 is 2 lines of 118 characters naming deploy, settle and fillGap's self-transfer. Only comment lines changed, every line is 120 characters or less, and no comment block is over 2 lines."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-23T16:07:01Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 146.2,
+        "log": "docs/runs/F275-20261023T160701Z-unit.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F275-20261023T160701Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F275-20261023T160701Z-typecheck.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.8,
+        "log": "docs/runs/F275-20261023T160701Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F275-20261023T160701Z-docs-check.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.9,
+        "log": "docs/runs/F275-20261023T160701Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 271.5,
+        "log": "docs/runs/F275-20261023T160701Z-e2e.log"
+      }
+    ],
+    "taskHash": "d29eab16751b920b",
+    "filesHash": "abe0efac11b1fbbf",
+    "proof": {
+      "1": "unit",
+      "2": "unit",
+      "3": "unit"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "All 18 flagged comments are now true, placed above the code they describe, or rightly deleted; signer.go:1-2 is 2 lines of 118 characters naming deploy, settle and fillGap's self-transfer. Only comment lines changed, every line is 120 characters or less, and no comment block is over 2 lines.",
+      "at": "2026-10-23T16:14:27Z",
+      "filesHash": "abe0efac11b1fbbf"
+    },
+    "commit": "b8c6191",
+    "doneAt": "2026-10-23T16:14:49Z"
+  },
+  "branch": "chore/f275-the-18-comments-flagged-in-the-f274-audi",
+  "baseCommit": "91797a4127bb9121b524d1ac67517f195311e835",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "chore/f275-the-18-comments-flagged-in-the-f274-audi",
+    "base": "main"
+  }
+}

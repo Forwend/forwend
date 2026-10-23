@@ -224,9 +224,10 @@ type Invoice struct {
 	CanceledAt time.Time
 	// Why a paid invoice's money hasn't reached the creator yet; nil when not waiting. Set by Get.
 	SettlementWait *SettlementWait
-	Sends          []Send    // the owner's Send to client, oldest first (R-94); set by the owner's Get
-	Reminders      Reminders // payment reminders (R-96); set by the owner's Get
-	Retainer       *Retainer // the retainer it belongs to (R-98), nil when it doesn't repeat; set by the owner's Get
+	Sends          []Send         // the owner's Send to client, oldest first (R-94); set by the owner's Get
+	Reminders      Reminders      // payment reminders (R-96); set by the owner's Get
+	Retainer       *Retainer      // the retainer it belongs to (R-98), nil when it doesn't repeat; set by the owner's Get
+	History        []HistoryEvent // newest first (R-124); set by the owner's Get
 }
 
 // Why a paid invoice still waits to settle (R-54).

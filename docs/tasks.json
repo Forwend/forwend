@@ -1,448 +1,16 @@
 {
   "schemaVersion": 2,
-  "nextId": 276,
+  "nextId": 278,
   "tasks": [
     {
-      "id": "F271",
-      "type": "chore",
-      "behavior": "Comments say only what the code can't: AGENTS.md has the rule, today's comments follow it, and finished tasks move to the archive",
+      "id": "F276",
+      "type": "feat",
+      "behavior": "The owner reads an invoice's history in a History panel on its page, newest first, with a filter",
       "acceptance": [
-        "AGENTS.md: comments describe the code as it is; history, incidents, dates and review notes go in the commit message; a test's name says what it checks",
-        "The comments added in F265-F270 follow it: no change stories, incident dates or vendor anecdotes, no test comments that restate the test name or its assert message, and each kept reason in one short sentence",
-        "Every passing task moves from docs/tasks.json to docs/archive",
-        "unit passes"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "unit"
-      ],
-      "refs": [
-        "R-25"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-10-22 review pass by reviewer: Diff changes only comments (AST compare equal), the AGENTS.md rule is short (6-18 words per sentence), archive F263-F270 matches the removed queue entries, and build, vet and gofmt are clean. Minor: pool.go no longer says why a non-JSON-RPC answer is lasting, process.go dropped why the main row must not expire while a choice waits, and ledger/options_test.go's 'either order' note sits above the expiry time jump it does not explain.",
-        "2026-10-22 review pass by reviewer: Only comments change in apps/ (Go token streams equal outside comments); the AGENTS.md rule is clear with 6-18 words per sentence; F265-F271 comments carry no stories, incident dates or test-name repeats, and no money or safety reason was lost (D-15/D-71 and the assert messages keep them). Archive F263-F270 equals the removed queue entries; build, vet and gofmt are clean; no AI attribution. Minor: ledger/process.go:92 runs to 150 columns while the rest of that comment wraps at 120.",
-        "2026-10-22 review pass by reviewer: Only comments change in apps/ (Go token streams equal with comments skipped); the AGENTS.md rule is clear at 6-17 words per sentence; no F265-F271 comment keeps a story, incident date, vendor anecdote or test-name repeat, and the removed safety reasons live on in D-15/D-71, hostDown, lasting and assert messages. Archive F263-F270 equals the old queue entries; build, vet and gofmt are clean; no AI attribution.",
-        "2026-10-22 review pass by reviewer: Only comments change in apps/ (Go token streams equal with comments skipped); the AGENTS.md rule is clear at 6-18 words per sentence, and F265-F271 comments carry no stories, incident dates or test-name repeats. accept_test.go:28 is accurate: TestAcceptMakesTheDepositOnce peaks at 7 connections (the held lock, five accepts waiting, the poll); archive F263-F270 equals the removed queue entries, no AI attribution, and build, vet and gofmt are clean."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-22T19:12:35Z",
-        "checks": [
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 88.2,
-            "log": "docs/runs/F271-20261022T191235Z-unit.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.1,
-            "log": "docs/runs/F271-20261022T191235Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F271-20261022T191235Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": "docs/runs/F271-20261022T191235Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F271-20261022T191235Z-typecheck.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.8,
-            "log": "docs/runs/F271-20261022T191235Z-build.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 238.4,
-            "log": "docs/runs/F271-20261022T191235Z-e2e.log"
-          }
-        ],
-        "taskHash": "bd886a4ae7d3b15a",
-        "filesHash": "3ac316b643d749c6",
-        "proof": {
-          "1": "unit: AGENTS.md Shared rules: describe the code as it is; history, incidents, dates and review notes go in the commit message; a test's name says what it checks",
-          "2": "unit: apps/ diff changes only comments (reviews compared all 24 Go files with comments stripped: identical); no 2026-10 date, vendor anecdote or Before-story left in F265-F271 comments; lost reasons restored; the ledger comment wraps at 120; the job pool comment counts the test's 7 connections",
-          "3": "unit: harness archive: 8 tasks (F263-F270) in docs/archive, only F271 in docs/tasks.json",
-          "4": "unit: unit passes"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Only comments change in apps/ (Go token streams equal with comments skipped); the AGENTS.md rule is clear at 6-18 words per sentence, and F265-F271 comments carry no stories, incident dates or test-name repeats. accept_test.go:28 is accurate: TestAcceptMakesTheDepositOnce peaks at 7 connections (the held lock, five accepts waiting, the poll); archive F263-F270 equals the removed queue entries, no AI attribution, and build, vet and gofmt are clean.",
-          "at": "2026-10-22T19:21:19Z",
-          "filesHash": "3ac316b643d749c6"
-        },
-        "commit": "8b75aca",
-        "doneAt": "2026-10-22T19:21:40Z"
-      },
-      "branch": "chore/f271-comments-say-only-what-the-code-can-t-ag",
-      "baseCommit": "aa6e4f72809625702c136a99a071bd910a4446f5",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "chore/f271-comments-say-only-what-the-code-can-t-ag",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F272",
-      "type": "chore",
-      "behavior": "Dependencies and tools are on their latest versions: npm packages, pnpm, Go modules and toolchain, forge-std, Foundry in CI and the CI actions",
-      "acceptance": [
-        "Every npm package in the workspace is on its latest version except @axe-core/playwright, held at 4.13.0 (pnpm outdated -r lists only it); pnpm is 12.15.0",
-        "Every direct Go module is on its latest version (go list -m -u lists no direct update), the Go toolchain is 1.27.3",
-        "forge-std is v1.17.0; CI installs Foundry v1.8.6; actions/setup-go, pnpm/action-setup and foundry-toolchain are on their latest releases",
-        "unit, lint, typecheck, build and e2e pass"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "unit"
-      ],
-      "refs": [
-        "R-25"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-10-22 axe-core 4.14 makes label-content-name-mismatch (WCAG 2.5.3) a real rule; 20 privy e2e tests fail on it (profile switcher, account menu, row links, address tooltips, the status menu). @axe-core/playwright stays 4.13.0 until a task fixes those names.",
-        "2026-10-22 review fail by reviewer: pnpm 12 ignores the package.json pnpm field, so the F126 security overrides are gone: pnpm-lock.yaml has no overrides section and now resolves ws 8.18.0/8.18.3, uuid 8.3.2/9.0.1 and decode-uri-component 0.2.2 (pnpm config get overrides is undefined). Move overrides into pnpm-workspace.yaml, reinstall, and confirm the lockfile keeps them; everything else checked out.",
-        "2026-10-22 review fail by reviewer: packages/contracts/foundry.lock still pins forge-std v1.16.2 (rev bf647bd) while the submodule is v1.17.0 (f3dae6e). With Foundry 1.8.6, forge build --locked fails on the mismatch, and forge install (or the auto-install forge build runs on a clone without submodules) checks out v1.16.2 again; set lib/forge-std to v1.17.0/f3dae6e in foundry.lock. Everything else checked out: overrides apply (ws, uuid, decode-uri-component as on main), frozen install, lint, typecheck, go build/vet, outdated and CI pins are fine.",
-        "2026-10-22 review fail by reviewer: Foundry 1.8.6, which CI now installs, breaks two CI checks. (1) The ci-only symbolic check fails: Foundry 1.8 turns dynamic_test_linking on by default, which rewrites 'new X()' in tests to vm.deployCode, and halmos 0.3.3 (the latest) stops with 'Unsupported cheat code: deployCode(string,bytes)' in setUp, 0 of 3 passed; with FOUNDRY_DYNAMIC_TEST_LINKING=false all 3 pass, so set dynamic_test_linking = false in foundry.toml. (2) Backend unit tests under Anvil 1.8.6: TestRestartAfterSendingSendsNothing and TestSentSettleIsFinishedEvenIfTheWalletChanged fail with 'send settle: transaction already imported' (2 of 2 full go test runs, 3 of 30 isolated runs) and never under Anvil 1.5.1 (0 of 30, full run green); the verify ran with local Foundry 1.5.1. Everything else checked out: overrides and allowBuilds in pnpm-workspace.yaml, frozen install, lint, typecheck, forge build --locked/fmt/test on 1.8.6, go build/vet, Biome file coverage unchanged, code changes behavior-neutral, pins and SHAs match, no AI attribution.",
-        "2026-10-22 review fail by reviewer: Foundry 1.8.6, which CI now installs, fails the backend unit tests: concurrent forge script --broadcast runs (chaintest.DeployFactory in internal/address, canary, settlement, run in parallel by go test ./...) now lock packages/contracts/cache/Deploy.s.sol/31337/run-latest.json.recovery.json, and TestFactoryDeployed fails with 'another process is already modifying recovery state' (2 of 2 full go test -race runs and the unit check; 5 of 30 concurrent runs vs 0 of 30 and a green full run on 1.5.1). Serialize DeployFactory across test processes (e.g. a file lock) or give each run its own broadcast state. Everything else checked out: the reconcile holds() change is safe (await still needs this hash's receipt; nothing is booked from the send answer), the new test fails 3 of 3 without the fix on 1.8.6 and 1.5.1 and passes 20 of 20 with it, the Mine(1) lines keep the mined case honest, harness/docs-check/lint/typecheck/build/e2e/symbolic pass on 1.8.6, overrides, foundry.lock, allowBuilds, Biome and pins are right, no AI attribution.",
-        "2026-10-22 review pass by reviewer: The deploy flock is held for the whole forge script call and released on every path (defer Close runs on t.Fatal; the OS frees it on exit). With it, 40 of 40 parallel deploys pass under Foundry 1.8.6; without it, 25 of 40 fail on the recovery-file lock. The backend suite passes 3 times with -race, and forge build --locked, fmt, test and Halmos pass; parallel forge create is unaffected, and no commit has AI attribution."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-22T23:04:20Z",
-        "checks": [
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 123.5,
-            "log": "docs/runs/F272-20261022T230420Z-unit.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.5,
-            "log": "docs/runs/F272-20261022T230420Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F272-20261022T230420Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F272-20261022T230420Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F272-20261022T230420Z-typecheck.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.2,
-            "log": "docs/runs/F272-20261022T230420Z-build.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 213.7,
-            "log": "docs/runs/F272-20261022T230420Z-e2e.log"
-          }
-        ],
-        "taskHash": "5469895c071b6b33",
-        "filesHash": "1bff084d762536de",
-        "proof": {
-          "1": "unit: pnpm outdated -r lists only @axe-core/playwright 4.13.0 -> 4.14.0 (held: axe 4.14 fails 20 privy e2e tests on label-in-name); packageManager pnpm@12.15.0; the F126 overrides sit in pnpm-workspace.yaml and ws, uuid and decode-uri-component resolve as on main",
-          "2": "unit: go list -m -u lists no direct update; go.mod go 1.27.3; go build and go vet pass",
-          "3": "unit: forge-std v1.17.0 in the submodule and foundry.lock; with Foundry v1.8.6 forge build --locked passes, forge test passes all 71 tests and the Halmos symbolic check passes 3 of 3 (dynamic_test_linking off); ci.yml Foundry v1.8.6, setup-go v7, pnpm/action-setup v6.1.0 (ea17c68), foundry-toolchain v1.9.2 (dba66c2)",
-          "4": "unit: unit (Go tests on Anvil/Foundry 1.8.6), lint, typecheck, build and e2e (with the privy specs) pass; TestRestartResendsAPendingSettleOnce failed before the reconcile fix; three parallel TestFactoryDeployed runs fail 4 of 30 without the deploy lock and 0 of 30 with it"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "The deploy flock is held for the whole forge script call and released on every path (defer Close runs on t.Fatal; the OS frees it on exit). With it, 40 of 40 parallel deploys pass under Foundry 1.8.6; without it, 25 of 40 fail on the recovery-file lock. The backend suite passes 3 times with -race, and forge build --locked, fmt, test and Halmos pass; parallel forge create is unaffected, and no commit has AI attribution.",
-          "at": "2026-10-22T23:27:40Z",
-          "filesHash": "1bff084d762536de"
-        },
-        "commit": "96822a4",
-        "doneAt": "2026-10-22T23:28:03Z"
-      },
-      "branch": "chore/f272-dependencies-and-tools-are-on-their-late",
-      "baseCommit": "9ccb9196a00075000cbc311b2fed3f47187de0e8",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "chore/f272-dependencies-and-tools-are-on-their-late",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F273",
-      "type": "fix",
-      "behavior": "axe-core 4.14 passes: every control's visible text is part of its accessible name (WCAG 2.5.3)",
-      "acceptance": [
-        "@axe-core/playwright is 4.14.0 (pnpm outdated -r lists nothing)",
-        "Every control axe 4.14 flagged for label-content-name-mismatch has its visible text in its accessible name: the status menu, the profile switcher (sidebar and phone), the account menu, list row links and address tooltips",
-        "The e2e tests that find these controls by name use the new names",
-        "unit, lint, typecheck, build and e2e (with the privy specs) pass"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "e2e"
-      ],
-      "refs": [
-        "R-10"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-10-23 review pass by reviewer: The six controls now pass axe 4.14 label-in-name (WCAG 2.5.3): each name has the visible text in order. Layout is unchanged, the e2e checks are as strict as before, and lint, typecheck and unit tests pass. Follow-up: an email that starts with a digit still fails in the collapsed-sidebar and phone-header account IconButtons, because the visible initial is not a word in the aria-label."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-22T23:56:34Z",
-        "checks": [
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 207.5,
-            "log": "docs/runs/F273-20261022T235634Z-e2e.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.9,
-            "log": "docs/runs/F273-20261022T235634Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F273-20261022T235634Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F273-20261022T235634Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F273-20261022T235634Z-typecheck.log"
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 135.9,
-            "log": "docs/runs/F273-20261022T235634Z-unit.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 5.1,
-            "log": "docs/runs/F273-20261022T235634Z-build.log"
-          }
-        ],
-        "taskHash": "864f40d128cfc4c5",
-        "filesHash": "d683b827c1816012",
-        "proof": {
-          "1": "e2e: @axe-core/playwright 4.14.0 resolves axe-core 4.14.0; pnpm outdated -r lists nothing",
-          "2": "e2e: the a11y and privy e2e specs run blockingViolations under axe 4.14 with no label-content-name-mismatch: status menu, sidebar and phone profile switcher, account menu, counterparty link, truncated address",
-          "3": "e2e: the privy specs find the switcher as Switch profile: E2E shop Merchant, the phone button by Switch profile at the end, the account menu as Account: <email>, and the short address 0xcccc…cccc, whose tooltip shows the full address on focus",
-          "4": "e2e: unit, lint, typecheck, build and e2e (with the privy specs) pass"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "The six controls now pass axe 4.14 label-in-name (WCAG 2.5.3): each name has the visible text in order. Layout is unchanged, the e2e checks are as strict as before, and lint, typecheck and unit tests pass. Follow-up: an email that starts with a digit still fails in the collapsed-sidebar and phone-header account IconButtons, because the visible initial is not a word in the aria-label.",
-          "at": "2026-10-23T12:42:57Z",
-          "filesHash": "d683b827c1816012"
-        },
-        "commit": "0714bea",
-        "doneAt": "2026-10-23T12:43:29Z"
-      },
-      "branch": "fix/f273-axe-core-4-14-passes-every-control-s-vis",
-      "baseCommit": "90e3b706daf2ee6cc4da0658c526af8ddd2ba605",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f273-axe-core-4-14-passes-every-control-s-vis",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F274",
-      "type": "chore",
-      "behavior": "Comments: only facts the code can't show remain, at most 2 lines each, across the codebase",
-      "acceptance": [
-        "Every comment in apps/, packages/ (except contracts/lib), scripts/, tests/, .github/ and infra/ was audited: restating, narrating, change-describing, banner, commented-out and name-repeating comments are gone; kept ones are at most 2 lines",
-        "Only comments changed: each file's code with comments stripped is identical before and after, and the contracts compile to the same bytecode",
-        "Wrong comments that point at something real are flagged in the audit table, not deleted",
-        "unit, lint, typecheck, build and e2e pass"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "unit"
-      ],
-      "refs": [
-        "R-25"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-10-23 review pass by reviewer: Money, safety, web, UI, database and HTTP API diffs read in full: no money or safety rule, lock-order trap, directive or requirement ID was lost, and 13 of 18 flags checked are correct. Minor wording notes: the recover NatSpec no longer says a broken token holds nothing, the sign nonce comment dropped the +1, replace says 'by an eighth' for 'at least an eighth', and SetPayerEmail lost why allow runs late.",
-        "2026-10-23 review pass by reviewer: The restore commit's comments are true, 1-2 lines, at most 120 characters, and carry the facts asked for (recover, sign nonce, replace fee, SetPayerEmail allow, receive-address spans, ClosedSQL detected, canary keccak). gofmt, go build, go vet, pnpm lint, forge build and forge test pass; a scan of all 498 changed files and a 20-file spot check found no code change beyond Biome reflow. Minor wording: ClosedSQL's 'detected may be money after it' has an unclear 'it' and drops 'until the chain is final'."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-23T13:45:28Z",
-        "checks": [
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 125.0,
-            "log": "docs/runs/F274-20261023T134528Z-unit.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.6,
-            "log": "docs/runs/F274-20261023T134528Z-harness.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F274-20261023T134528Z-docs-check.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": "docs/runs/F274-20261023T134528Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F274-20261023T134528Z-typecheck.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 5.6,
-            "log": "docs/runs/F274-20261023T134528Z-build.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 240.8,
-            "log": "docs/runs/F274-20261023T134528Z-e2e.log"
-          }
-        ],
-        "taskHash": "83feed134b8ee3ff",
-        "filesHash": "e0968ce834a6f78d",
-        "proof": {
-          "1": "unit: 3,776 comments audited (802 deleted, 967 shortened, 1,989 kept, 18 flagged); no comment block over 2 lines remains except the 2 flagged ones",
-          "2": "unit: a checker compares each changed file with main with comments removed (Go tokens, oxc AST for TS/TSX, Python tokens, Solidity/CSS/SQL stripped): all match; the one string literal change is a SQL -- comment inside a query; forge build and forge test pass",
-          "3": "unit: 18 wrong comments that point at real code are left unchanged and listed as flag in the audit table",
-          "4": "unit: unit, lint, typecheck, build and e2e pass"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "The restore commit's comments are true, 1-2 lines, at most 120 characters, and carry the facts asked for (recover, sign nonce, replace fee, SetPayerEmail allow, receive-address spans, ClosedSQL detected, canary keccak). gofmt, go build, go vet, pnpm lint, forge build and forge test pass; a scan of all 498 changed files and a 20-file spot check found no code change beyond Biome reflow. Minor wording: ClosedSQL's 'detected may be money after it' has an unclear 'it' and drops 'until the chain is final'.",
-          "at": "2026-10-23T13:55:27Z",
-          "filesHash": "e0968ce834a6f78d"
-        },
-        "commit": "e799d4d",
-        "doneAt": "2026-10-23T13:55:55Z"
-      },
-      "branch": "chore/f274-comments-only-facts-the-code-can-t-show",
-      "baseCommit": "f5a6693cee6a2d8beb43ddb2605ee15ccf386bda",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "chore/f274-comments-only-facts-the-code-can-t-show",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F275",
-      "type": "chore",
-      "behavior": "The 18 comments flagged in the F274 audit say what the code does",
-      "acceptance": [
-        "Each flagged comment is corrected, moved to the code it describes, or deleted when nothing true is left to say",
-        "Only comments changed: each file's code with comments stripped is identical before and after",
-        "unit, lint and typecheck pass"
+        "The owner's invoice reads return history: every history_events row of the invoice, newest first, with kind, actor, time, option, amount and transaction hash; the public read has none",
+        "The invoice page shows a History panel: each row's time, what happened and who did it; money held shows amount and token; settled links the transaction",
+        "A filter shows all rows, payments only or changes only",
+        "openapi.yaml, api.md, PLAN and PROJECT match; unit, lint and typecheck pass"
       ],
       "dependsOn": [],
       "state": "passing",
@@ -452,95 +20,127 @@
         "typecheck"
       ],
       "refs": [
-        "R-25"
+        "R-124",
+        "R-123",
+        "D-92"
       ],
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-23 review fail by reviewer: apps/backend/internal/settlement/signer.go:1-3: the package comment is now 3 lines (the only Go comment block over 2 lines in the repo); its content is true (deploy, settle and fillGap's zero-value self-transfer) but must fit 2 lines of at most 120 characters. The other 17 changes are true, correctly placed or rightly deleted, and only comment lines changed.",
-        "2026-10-23 review pass by reviewer: All 18 flagged comments are now true, placed above the code they describe, or rightly deleted; signer.go:1-2 is 2 lines of 118 characters naming deploy, settle and fillGap's self-transfer. Only comment lines changed, every line is 120 characters or less, and no comment block is over 2 lines."
+        "2026-10-23 review fail by reviewer: Blocking: the ledger writes invoice.open when a detected invoice's only transfer is reorged (ledger.go:75 status() returns Open; process.go:206 writes \"invoice.\"+next; migration 00024 allows detected->open). HISTORY_KINDS (apps/web/src/features/invoices/constants/invoices.ts:37) has no open kind, so the panel shows 'Updated (invoice.open)' (invoice-history.tsx:96, invoices-copy.ts:484) instead of saying what happened. Add open: 'invoice.open' with copy. Minor: HISTORY_KINDS repeats invoice.paid/settled/held from INVOICE_EVENTS (invoices.ts:30-34); the history-changes and history-dark shots caught the filter pill mid-transition (All still looks selected with Changes rows). Rest checks out: newest-first by id, field mapping, held/settled option token, public read has no history, contract docs agree, both kept tests fail without the change.",
+        "2026-10-23 review pass by reviewer: Re-review after fixes: invoice.open now has copy (invoices.ts HISTORY_KINDS.open, invoices-copy.ts), HISTORY_KINDS reuses INVOICE_EVENTS.paid/held/settled, openapi.yaml and api.md say which token amount is in, DESIGN.md bullets split, test name covers the held token. The retaken 390/1440 light and dark shots show the selected filter and the open row correctly. The web test, tsc and docs-check pass, and the 19:17Z verify passed all 7 checks with no later source edits. Accepted as is: unknown kinds count as Payments, no backfilled mark, and [] history after a failed refetch."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-23T16:07:01Z",
+        "at": "2026-10-23T19:17:26Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 146.2,
-            "log": "docs/runs/F275-20261023T160701Z-unit.log"
+            "seconds": 123.5,
+            "log": "docs/runs/F276-20261023T191726Z-unit.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F275-20261023T160701Z-lint.log"
+            "log": "docs/runs/F276-20261023T191726Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F275-20261023T160701Z-typecheck.log"
+            "seconds": 1.3,
+            "log": "docs/runs/F276-20261023T191726Z-typecheck.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 1.8,
-            "log": "docs/runs/F275-20261023T160701Z-harness.log"
+            "log": "docs/runs/F276-20261023T191726Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F275-20261023T160701Z-docs-check.log"
+            "seconds": 0.0,
+            "log": "docs/runs/F276-20261023T191726Z-docs-check.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.9,
-            "log": "docs/runs/F275-20261023T160701Z-build.log"
+            "seconds": 5.2,
+            "log": "docs/runs/F276-20261023T191726Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 271.5,
-            "log": "docs/runs/F275-20261023T160701Z-e2e.log"
+            "seconds": 262.6,
+            "log": "docs/runs/F276-20261023T191726Z-e2e.log"
           }
         ],
-        "taskHash": "d29eab16751b920b",
-        "filesHash": "abe0efac11b1fbbf",
+        "taskHash": "5aae51310ba12a92",
+        "filesHash": "a20a4aa678e0a0e6",
         "proof": {
           "1": "unit",
           "2": "unit",
-          "3": "unit"
+          "3": "unit",
+          "4": "lint"
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "All 18 flagged comments are now true, placed above the code they describe, or rightly deleted; signer.go:1-2 is 2 lines of 118 characters naming deploy, settle and fillGap's self-transfer. Only comment lines changed, every line is 120 characters or less, and no comment block is over 2 lines.",
-          "at": "2026-10-23T16:14:27Z",
-          "filesHash": "abe0efac11b1fbbf"
+          "summary": "Re-review after fixes: invoice.open now has copy (invoices.ts HISTORY_KINDS.open, invoices-copy.ts), HISTORY_KINDS reuses INVOICE_EVENTS.paid/held/settled, openapi.yaml and api.md say which token amount is in, DESIGN.md bullets split, test name covers the held token. The retaken 390/1440 light and dark shots show the selected filter and the open row correctly. The web test, tsc and docs-check pass, and the 19:17Z verify passed all 7 checks with no later source edits. Accepted as is: unknown kinds count as Payments, no backfilled mark, and [] history after a failed refetch.",
+          "at": "2026-10-23T19:24:35Z",
+          "filesHash": "a20a4aa678e0a0e6"
         },
-        "commit": "b8c6191",
-        "doneAt": "2026-10-23T16:14:49Z"
+        "commit": "3ee6425",
+        "doneAt": "2026-10-23T19:24:54Z"
       },
-      "branch": "chore/f275-the-18-comments-flagged-in-the-f274-audi",
-      "baseCommit": "91797a4127bb9121b524d1ac67517f195311e835",
+      "branch": "feat/f276-the-owner-reads-an-invoice-s-history-in",
+      "baseCommit": "650ff3a77080daa75b742f9f03773af67d8c7412",
       "failedVerifies": 0,
       "delivery": {
         "mode": "pr",
-        "branch": "chore/f275-the-18-comments-flagged-in-the-f274-audi",
+        "branch": "feat/f276-the-owner-reads-an-invoice-s-history-in",
         "base": "main"
       }
+    },
+    {
+      "id": "F277",
+      "type": "feat",
+      "behavior": "The owner sees how often the pay link was opened: first view, last view and a total, with no IP",
+      "acceptance": [
+        "Each pay page load counts one view; status refreshes don't; no IP or user agent is stored",
+        "The owner's invoice reads return views {count, firstAt, lastAt}; the public read has none",
+        "The History panel shows the view count with the first and last view",
+        "openapi.yaml and api.md match; unit, lint and typecheck pass"
+      ],
+      "dependsOn": [
+        "F276"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "lint",
+        "typecheck"
+      ],
+      "refs": [
+        "R-125",
+        "D-92"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

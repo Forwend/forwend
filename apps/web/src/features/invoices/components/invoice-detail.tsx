@@ -16,6 +16,7 @@ import { CheckStatus } from "@/features/invoices/components/check-status";
 import { InvoiceActions } from "@/features/invoices/components/invoice-actions";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { InvoiceDeposits } from "@/features/invoices/components/invoice-deposits";
+import { InvoiceHistory } from "@/features/invoices/components/invoice-history";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
 import { PaymentReminders } from "@/features/invoices/components/payment-reminders";
@@ -41,6 +42,7 @@ import {
 import type {
   Invoice,
   InvoiceException,
+  InvoiceHistoryEvent,
   InvoicePdf,
   InvoiceReminders,
   InvoiceRetainer,
@@ -101,6 +103,7 @@ export function InvoiceDetail({
           sends={mine?.sends ?? []}
           reminders={mine?.reminders ?? null}
           retainer={mine?.retainer ?? null}
+          history={mine?.history ?? []}
           clientFailed={invoice.isError}
           tokens={tokens}
           request={request}
@@ -129,6 +132,7 @@ function Loaded({
   sends,
   reminders,
   retainer,
+  history,
   clientFailed,
   tokens,
   request,
@@ -140,6 +144,7 @@ function Loaded({
   sends: readonly InvoiceSend[];
   reminders: InvoiceReminders | null;
   retainer: InvoiceRetainer | null;
+  history: readonly InvoiceHistoryEvent[];
   clientFailed: boolean;
   tokens: readonly InvoiceToken[] | null;
   request: boolean;
@@ -402,6 +407,7 @@ function Loaded({
               )}
             </section>
           </div>
+          <InvoiceHistory invoice={invoice} history={history} />
         </div>
 
         <div className="flex flex-col gap-4">

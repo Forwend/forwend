@@ -4,6 +4,9 @@ import type { ClientBody } from "@/features/clients/types/clients";
 import type {
   AMOUNT_ERRORS,
   EXPIRY_CHOICES,
+  HISTORY_ACTORS,
+  HISTORY_FILTERS,
+  HISTORY_KINDS,
   INVOICE_EVENTS,
   INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
@@ -21,6 +24,7 @@ import type {
   depositSchema,
   invoiceClientSchema,
   invoiceEventSchema,
+  invoiceHistoryEventSchema,
   invoiceIssuerSchema,
   invoiceLineSchema,
   invoiceOptionSchema,
@@ -45,6 +49,10 @@ export type InvoiceRetainer = z.infer<typeof invoiceRetainerSchema>;
 export type StoppedReminders = z.infer<typeof stoppedRemindersSchema>;
 export type Owed = z.infer<typeof owedSchema>;
 export type InvoiceEvent = z.infer<typeof invoiceEventSchema>;
+export type HistoryKind = (typeof HISTORY_KINDS)[keyof typeof HISTORY_KINDS];
+export type HistoryActor = (typeof HISTORY_ACTORS)[keyof typeof HISTORY_ACTORS];
+export type HistoryFilter = (typeof HISTORY_FILTERS)[keyof typeof HISTORY_FILTERS];
+export type InvoiceHistoryEvent = z.infer<typeof invoiceHistoryEventSchema>;
 export type InvoiceExceptionKind = (typeof INVOICE_EXCEPTIONS)[keyof typeof INVOICE_EXCEPTIONS];
 
 /** Base units of the shown option: received before expiry, still left to pay, and arrived after it (held). */

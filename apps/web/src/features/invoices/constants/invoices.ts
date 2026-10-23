@@ -33,6 +33,35 @@ export const INVOICE_EVENTS = {
   held: "invoice.held",
 } as const;
 
+/** history_events kinds (R-123); a payment status change is "invoice." and the new status. */
+export const HISTORY_KINDS = {
+  created: "invoice.created",
+  canceled: "invoice.canceled",
+  payerEmail: "payer.email_given",
+  optionChosen: "payer.option_chosen",
+  // A reorg took away the only payment seen.
+  open: "invoice.open",
+  detected: "invoice.detected",
+  partiallyPaid: "invoice.partially_paid",
+  paid: INVOICE_EVENTS.paid,
+  expired: "invoice.expired",
+  expiredPartiallyPaid: "invoice.expired_partially_paid",
+  held: INVOICE_EVENTS.held,
+  settlementQueued: "invoice.settlement_queued",
+  settled: INVOICE_EVENTS.settled,
+} as const;
+
+/** Who made a history change; system is Forwend. */
+export const HISTORY_ACTORS = { owner: "owner", payer: "payer", system: "system" } as const;
+
+/** The History panel's filter (R-124): changes are what someone did, payments everything else. */
+export const HISTORY_FILTERS = { all: "all", payments: "payments", changes: "changes" } as const;
+export const HISTORY_CHANGES: readonly string[] = [
+  HISTORY_KINDS.created,
+  HISTORY_KINDS.canceled,
+  HISTORY_KINDS.payerEmail,
+];
+
 /** Payment reminder steps (R-96), in the order they go out: 3 days before the due date, on it, 7 days after. */
 export const REMINDER_STEPS = {
   before: "before",
