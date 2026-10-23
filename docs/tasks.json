@@ -684,7 +684,7 @@
         "openapi.yaml, api.md, R-129 and DESIGN.md match; unit, lint and typecheck pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "lint",
@@ -761,11 +761,11 @@
         "taskHash": "6294c618511791ec",
         "filesHash": "d460d1e6f0e1277c",
         "proof": {
-          "1": "unit: TestReviseReplacesTheInvoice: create with replaces makes the next number and cancels the old invoice with replacedBy; the same key again returns the same invoice; after money it is 409 invoice_not_cancelable and no invoice is made; an unknown invoice, another user's and the same user's other profile's are 404 and stay open; Cancel and Revise share one cancel with the ledger's lock order; a unique index serves the replaces lookup",
-          "2": "unit: the same test: the old history ends with invoice.replaced naming the new invoice and number; the new created row names the old one",
-          "3": "unit: new-invoice-form.test sends replaces and shows an alert naming the old invoice after a 409 invoice_not_cancelable; New invoice with revise shows an error and Retry when the old invoice can't be read; screenshots in docs/runs/F282-shots, axe clean",
-          "4": "unit: the same backend test reads replacedBy (invoiceId, number, payToken) on the owner's and the public read and replaces on the new one; screenshots of the old owner page (Replaced by link), the new History (Replaces), and the old pay page linking to the new one",
-          "5": "lint: openapi.yaml (replaces, Revision, replacedBy required, related, 404 and 409), api.md, R-129 and DESIGN.md updated; unit, lint and typecheck pass"
+          "1": "unit",
+          "2": "unit",
+          "3": "unit",
+          "4": "unit",
+          "5": "lint"
         },
         "review": {
           "result": "pass",
@@ -773,11 +773,18 @@
           "summary": "The DESIGN.md follow-up matches what was built: Too late now includes already canceled, a bullet describes the could-not-load alert with Try again and no form, and the invoice-page paragraph is re-wrapped with no line over 120 characters. docs-check: 0 errors. No open findings.",
           "at": "2026-10-23T23:53:54Z",
           "filesHash": "d460d1e6f0e1277c"
-        }
+        },
+        "commit": "0958aba",
+        "doneAt": "2026-10-23T23:54:07Z"
       },
       "branch": "feat/f282-revise-replaces-an-invoice-before-any-pa",
       "baseCommit": "91060000ebc6a32e82737e1fbf8aa9303f36442c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f282-revise-replaces-an-invoice-before-any-pa",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
