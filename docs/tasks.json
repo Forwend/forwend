@@ -339,7 +339,7 @@
         "unit, lint, typecheck, build and e2e pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit"
       ],
@@ -422,11 +422,18 @@
           "summary": "The restore commit's comments are true, 1-2 lines, at most 120 characters, and carry the facts asked for (recover, sign nonce, replace fee, SetPayerEmail allow, receive-address spans, ClosedSQL detected, canary keccak). gofmt, go build, go vet, pnpm lint, forge build and forge test pass; a scan of all 498 changed files and a 20-file spot check found no code change beyond Biome reflow. Minor wording: ClosedSQL's 'detected may be money after it' has an unclear 'it' and drops 'until the chain is final'.",
           "at": "2026-10-23T13:55:27Z",
           "filesHash": "e0968ce834a6f78d"
-        }
+        },
+        "commit": "e799d4d",
+        "doneAt": "2026-10-23T13:55:55Z"
       },
       "branch": "chore/f274-comments-only-facts-the-code-can-t-show",
       "baseCommit": "f5a6693cee6a2d8beb43ddb2605ee15ccf386bda",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f274-comments-only-facts-the-code-can-t-show",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
