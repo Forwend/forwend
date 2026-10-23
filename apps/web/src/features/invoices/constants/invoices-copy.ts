@@ -453,36 +453,36 @@ export const INVOICE_COPY = {
     filter: "Show",
     filters: {
       [HISTORY_FILTERS.all]: "All",
-      [HISTORY_FILTERS.payments]: "Payments",
-      [HISTORY_FILTERS.changes]: "Changes",
+      [HISTORY_FILTERS.payment]: "Payments",
+      [HISTORY_FILTERS.change]: "Changes",
+      [HISTORY_FILTERS.email]: "Emails",
     } satisfies Record<HistoryFilter, string>,
+    columns: { event: "Event", by: "By", details: "Details", time: "Time" },
     none: "Nothing here yet.",
+    noDetails: "—",
     actors: {
       [HISTORY_ACTORS.owner]: "You",
       [HISTORY_ACTORS.payer]: "Payer",
       [HISTORY_ACTORS.system]: "Forwend",
     } satisfies Record<HistoryActor, string>,
-    // What happened; money and option are filled in when the row has them.
     kinds: {
-      [HISTORY_KINDS.created]: () => "Created",
-      [HISTORY_KINDS.canceled]: () => "Canceled",
-      [HISTORY_KINDS.payerEmail]: () => "Receipt email given",
-      [HISTORY_KINDS.optionChosen]: ({ symbol, network }) =>
-        `${symbol} on ${network} chosen: its money came first`,
-      [HISTORY_KINDS.open]: () => "Payment no longer on the chain; waiting for payment again",
-      [HISTORY_KINDS.detected]: () => "Payment detected",
-      [HISTORY_KINDS.partiallyPaid]: () => "Partially paid",
-      [HISTORY_KINDS.paid]: () => "Paid",
-      [HISTORY_KINDS.expired]: () => "Checkout closed unpaid",
-      [HISTORY_KINDS.expiredPartiallyPaid]: () => "Checkout closed partly paid",
-      [HISTORY_KINDS.held]: ({ money }) => `${money} held for the payer`,
-      [HISTORY_KINDS.settlementQueued]: () => "Settlement queued",
-      [HISTORY_KINDS.settled]: () => "Settled to your wallet",
-    } satisfies Record<
-      HistoryKind,
-      (v: { money: string; symbol: string; network: string }) => string
-    >,
-    other: (kind: string) => `Updated (${kind})`,
+      [HISTORY_KINDS.created]: "Created",
+      [HISTORY_KINDS.canceled]: "Canceled",
+      [HISTORY_KINDS.payerEmail]: "Receipt email added",
+      [HISTORY_KINDS.optionChosen]: "Token chosen",
+      [HISTORY_KINDS.open]: "Payment dropped",
+      [HISTORY_KINDS.detected]: "Payment detected",
+      [HISTORY_KINDS.partiallyPaid]: "Partially paid",
+      [HISTORY_KINDS.paid]: "Paid",
+      [HISTORY_KINDS.expired]: "Closed unpaid",
+      [HISTORY_KINDS.expiredPartiallyPaid]: "Closed partly paid",
+      [HISTORY_KINDS.held]: "Money held",
+      [HISTORY_KINDS.settlementQueued]: "Settlement queued",
+      [HISTORY_KINDS.settled]: "Settled",
+    } satisfies Record<HistoryKind, string>,
+    // Details a kind's label leaves out.
+    dropped: "No longer on the chain",
+    heldFor: (money: string, network: string) => `${money} for the payer · ${network}`,
     // R-125.
     notOpened: "No pay link opens counted yet.",
     opened: (count: number) =>

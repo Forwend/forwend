@@ -407,11 +407,16 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   time and hash with its explorer link, no status pill of its own; Details repeats none of them) and Check
   status only while the checkout can take money.
   - The main column then holds the Items panel, then Billed to and From side by side, as on a paper invoice.
-  - History (R-124) ends the main column, styled like a job's Record: one line per change, newest first.
-    - Each line: the time in quiet text, what happened, then " · " and who did it (You, Payer, Forwend) in quiet text.
-    - A settled line ends with its explorer link.
-    - A small segmented control in the head shows All, Payments or Changes.
-    - Under the lines, ruled off, one quiet line says how often the pay link was opened, first and last (R-125).
+  - History (R-124) ends the main column: a ruled table of changes, newest first, like the other tables.
+    - Columns: Event, By (You, Payer, Forwend), Details and Time, which sits on the right.
+    - Event is the short name in medium weight after a dot in its category's color: payments success, changes subtle,
+      emails info.
+    - Details holds what the name leaves out: the amount with its token, the network, a settle's hash and explorer link.
+      Without any, a quiet dash.
+    - Time is the short date and time; the year shows only for another year.
+    - Under 36rem of panel width each change is two lines: the event with the time on the right, then By and Details.
+    - A small segmented control in the head shows All, Payments, Changes or Emails.
+    - Under the table, ruled off, one quiet line says how often the pay link was opened, first and last (R-125).
     - An invoice made before pay links (R-114) has no such line.
   - Billed to and From share one height. They stack while the column is under 36rem; a request's From fills it.
   - Beside the main column, a third of the width, sits the details panel (empty rows left out).
