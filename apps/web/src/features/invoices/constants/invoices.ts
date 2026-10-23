@@ -64,6 +64,7 @@ export const HISTORY_KINDS = {
   receiptEmailed: "email.receipt_sent",
   receiptEmailFailed: "email.receipt_failed",
   edited: "invoice.edited",
+  replaced: "invoice.replaced",
 } as const;
 
 /** The fields an invoice.edited row names (R-127, R-128), as the API calls them. */
@@ -106,6 +107,7 @@ export const HISTORY_CATEGORY_OF = {
   [HISTORY_KINDS.receiptEmailed]: HISTORY_CATEGORIES.email,
   [HISTORY_KINDS.receiptEmailFailed]: HISTORY_CATEGORIES.email,
   [HISTORY_KINDS.edited]: HISTORY_CATEGORIES.change,
+  [HISTORY_KINDS.replaced]: HISTORY_CATEGORIES.change,
 } as const satisfies Record<HistoryKind, HistoryCategory>;
 
 /** The History panel's filter: every row, or one category. */
@@ -139,7 +141,7 @@ export const INVOICE_EXCEPTIONS = {
 } as const;
 
 /** `from` copies an invoice (R-91); `rest` asks only for what is left of a closed one (R-77, D-25). */
-export const RESTART_PARAMS = { from: "from", rest: "rest" } as const;
+export const RESTART_PARAMS = { from: "from", rest: "rest", revise: "revise" } as const;
 
 /** R-93, D-82; ISO 4217 decimals. Copies the API's invoice.AgreedCurrencies: a Go test checks both. */
 export const AGREED_CURRENCIES = {

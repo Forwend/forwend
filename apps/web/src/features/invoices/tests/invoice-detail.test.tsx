@@ -41,6 +41,7 @@ const OPEN = {
   returnUrl: null,
   nextCheckAt: null,
   updates: [],
+  replacedBy: null,
   lines: [],
   options: [
     {
@@ -166,6 +167,7 @@ describe("owner's invoice page", () => {
       field: null,
       from: null,
       to: null,
+      related: null,
     };
     serve({
       ...OPEN,

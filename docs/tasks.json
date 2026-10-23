@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 282,
+  "nextId": 283,
   "tasks": [
     {
       "id": "F276",
@@ -671,6 +671,113 @@
         "branch": "feat/f281-before-payment-the-owner-edits-the-refer",
         "base": "main"
       }
+    },
+    {
+      "id": "F282",
+      "type": "feat",
+      "behavior": "Revise replaces an invoice before any payment: a new invoice, number, address and pay link, and the old one canceled as Replaced by",
+      "acceptance": [
+        "Create takes replaces (the profile's invoice id): in one transaction it makes the new invoice and cancels the old one with Cancel's checks and locks, linking it to the new one; else 409 invoice_not_cancelable and nothing is made",
+        "History: the old invoice gets invoice.replaced and the new one's created row names the invoice it replaces, each with its number",
+        "Revise in More actions opens New invoice filled from the invoice, with a notice naming it and, when it was sent or its link opened, when and how often",
+        "Both reads return replacedBy; the old pay page hides the address and links to the new one; the owner pages link both ways",
+        "openapi.yaml, api.md, R-129 and DESIGN.md match; unit, lint and typecheck pass"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "lint",
+        "typecheck"
+      ],
+      "refs": [
+        "R-129",
+        "R-79",
+        "D-92"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-23 review fail by reviewer: Blocking: (1) migrations/00053_invoice_replaced_by.sql has no index on replaced_by, so the owner read (get.go:128, polled on the detail page) seq-scans all invoices (EXPLAIN confirmed); add CREATE UNIQUE INDEX invoices_replaced_by ON invoices (replaced_by) WHERE replaced_by IS NOT NULL, like invoices_main. (2) invoices_revise_test.go tests only an unknown id: add that replaces with another user's invoice and with the same user's other profile's invoice is 404 and leaves it open (auth rule, api.md and openapi promise it; checked by hand, it holds). Minor: openapi.yaml:2126 required lacks replacedBy; schemas/invoices.ts:177 says seven fields; revision helper in edit.go:154 belongs in get.go; new-invoice-form.tsx:338 maps any 409 to can't be replaced; new-invoice-screen.tsx:50 silently drops the Revise when the old invoice can't be read; DESIGN.md:405-406 broken reflow.",
+        "2026-10-23 review pass by reviewer: All earlier findings are fixed: a unique partial index on replaced_by, 404 tests for another user's and the same user's other profile's invoice, replacedBy required in openapi, the 409 checked by code, and an alert with Try again when the invoice to replace can't be read. Minor: DESIGN.md's Revise bullets omit that alert and 'already canceled' in Too late.",
+        "2026-10-23 review pass by reviewer: The DESIGN.md follow-up matches what was built: Too late now includes already canceled, a bullet describes the could-not-load alert with Try again and no form, and the invoice-page paragraph is re-wrapped with no line over 120 characters. docs-check: 0 errors. No open findings."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-23T23:47:23Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 123.3,
+            "log": "docs/runs/F282-20261023T234723Z-unit.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F282-20261023T234723Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F282-20261023T234723Z-typecheck.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F282-20261023T234723Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F282-20261023T234723Z-docs-check.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": "docs/runs/F282-20261023T234723Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 242.9,
+            "log": "docs/runs/F282-20261023T234723Z-e2e.log"
+          }
+        ],
+        "taskHash": "6294c618511791ec",
+        "filesHash": "d460d1e6f0e1277c",
+        "proof": {
+          "1": "unit: TestReviseReplacesTheInvoice: create with replaces makes the next number and cancels the old invoice with replacedBy; the same key again returns the same invoice; after money it is 409 invoice_not_cancelable and no invoice is made; an unknown invoice, another user's and the same user's other profile's are 404 and stay open; Cancel and Revise share one cancel with the ledger's lock order; a unique index serves the replaces lookup",
+          "2": "unit: the same test: the old history ends with invoice.replaced naming the new invoice and number; the new created row names the old one",
+          "3": "unit: new-invoice-form.test sends replaces and shows an alert naming the old invoice after a 409 invoice_not_cancelable; New invoice with revise shows an error and Retry when the old invoice can't be read; screenshots in docs/runs/F282-shots, axe clean",
+          "4": "unit: the same backend test reads replacedBy (invoiceId, number, payToken) on the owner's and the public read and replaces on the new one; screenshots of the old owner page (Replaced by link), the new History (Replaces), and the old pay page linking to the new one",
+          "5": "lint: openapi.yaml (replaces, Revision, replacedBy required, related, 404 and 409), api.md, R-129 and DESIGN.md updated; unit, lint and typecheck pass"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "The DESIGN.md follow-up matches what was built: Too late now includes already canceled, a bullet describes the could-not-load alert with Try again and no form, and the invoice-page paragraph is re-wrapped with no line over 120 characters. docs-check: 0 errors. No open findings.",
+          "at": "2026-10-23T23:53:54Z",
+          "filesHash": "d460d1e6f0e1277c"
+        }
+      },
+      "branch": "feat/f282-revise-replaces-an-invoice-before-any-pa",
+      "baseCommit": "91060000ebc6a32e82737e1fbf8aa9303f36442c",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

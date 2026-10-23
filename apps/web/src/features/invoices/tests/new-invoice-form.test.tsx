@@ -240,6 +240,38 @@ describe("new invoice form", () => {
     );
   });
 
+  // R-129.
+  it("sends the invoice it replaces, and says when that one can no longer be replaced", async () => {
+    const bodies: { replaces?: string }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (request: Request) => {
+        bodies.push(await request.json());
+        return Response.json(
+          { error: { code: "invoice_not_cancelable", message: "x" } },
+          { status: 409 },
+        );
+      }),
+    );
+    const old = `0x${"7".repeat(64)}`;
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <NewInvoiceForm
+          profileId={PROFILE}
+          tokens={[TOKEN]}
+          replaces={{ invoiceId: old, number: "INV-0007" }}
+        />
+      </Provider>,
+    );
+    fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    await settle();
+    expect(bodies.map((b) => b.replaces)).toEqual([old]);
+    expect(screen.getAllByRole("alert").some((a) => a.textContent?.includes("INV-0007"))).toBe(
+      true,
+    );
+  });
+
   it("keeps keyboard focus on the items as they are added and removed", () => {
     render(
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>

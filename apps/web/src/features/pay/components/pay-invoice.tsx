@@ -554,6 +554,18 @@ function PayBox({
       {pay.late > 0n ? (
         <p className="text-sm text-warning">{COPY.late(money(pay.late), payeeOf(invoice))}</p>
       ) : null}
+      {/* R-129: a Revise canceled it for a new invoice, whose own pay link takes the payment. */}
+      {invoice.replacedBy?.payToken ? (
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ink">
+          {COPY.replaced(invoiceNumber(invoice.replacedBy.number))}
+          <a
+            href={`/pay/${invoice.replacedBy.payToken}`}
+            className={buttonClasses({ size: "sm", variant: "secondary" })}
+          >
+            {COPY.openReplacement(invoiceNumber(invoice.replacedBy.number))}
+          </a>
+        </p>
+      ) : null}
       {pay.state === PAY_STATES.canceled && pay.received > 0n ? (
         <p className="text-sm text-warning">
           {COPY.canceledHeld(money(pay.received), payeeOf(invoice))}

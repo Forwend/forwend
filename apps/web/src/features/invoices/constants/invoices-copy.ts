@@ -43,6 +43,20 @@ export const timeLeft = (seconds: number) =>
   seconds < 60 ? "under a minute" : `about ${Math.ceil(seconds / 60)} min`;
 
 export const INVOICES_COPY = {
+  // R-129, on New invoice when it replaces one.
+  revise: {
+    title: (number: string) => `This replaces ${number}`,
+    body: (number: string) =>
+      `Creating it cancels ${number}. Its pay link then shows the new invoice, with a new number, address and link.`,
+    sent: (number: string, time: string) => `${number} was emailed to the client on ${time}.`,
+    opened: (count: number, time: string) =>
+      `Its pay link was opened ${count === 1 ? "once" : `${count.toLocaleString("en-US")} times`}, last on ${time}.`,
+    held: "Money still sent to its old address is held for the payer, not paid to you.",
+    tooLate: (number: string) =>
+      `${number} can't be replaced now: money arrived, its checkout closed or it was already canceled.`,
+    failed: "We could not load the invoice to replace.",
+    retry: "Try again",
+  },
   invoices: "Invoices",
   newInvoice: "New invoice",
   emptyTitle: "No invoices yet",
@@ -366,6 +380,9 @@ export const INVOICE_COPY = {
   agreedValue: "Agreed value",
   agreedOn: (value: string, date: string) => `${value} on ${date}`,
   duplicate: "Duplicate",
+  revise: "Revise",
+  replacedBy: "Replaced by",
+  replaces: "Replaces",
   expires: "Checkout closes",
   closed: "Checkout closed",
   created: "Created",
@@ -517,6 +534,7 @@ export const INVOICE_COPY = {
       [HISTORY_KINDS.receiptEmailed]: "Receipt emailed",
       [HISTORY_KINDS.receiptEmailFailed]: "Receipt email failed",
       [HISTORY_KINDS.edited]: "Edited",
+      [HISTORY_KINDS.replaced]: "Replaced",
     } satisfies Record<HistoryKind, string>,
     fields: {
       [HISTORY_FIELDS.memo]: "Memo",
@@ -529,6 +547,9 @@ export const INVOICE_COPY = {
     // An edited due date: its old and new day, or none.
     moved: (field: string, from: string, to: string) => `${field}: ${from} → ${to}`,
     noDate: "none",
+    // R-129: the other invoice of a Revise.
+    replacedBy: (number: string) => `By ${number}`,
+    replaces: (number: string) => `Replaces ${number}`,
     // Details a kind's label leaves out.
     dropped: "No longer on the chain",
     toClient: "To the client",

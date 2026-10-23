@@ -50,6 +50,7 @@ import type {
   InvoiceSummary,
   InvoiceToken,
   InvoiceViews,
+  Revision,
   SettlementWait,
 } from "@/features/invoices/types/invoices";
 import { TokenMark } from "@/shared/components/chains/token-mark";
@@ -461,6 +462,16 @@ function Loaded({
                   {TIME.format(new Date(invoice.canceledAt))}
                 </Row>
               ) : null}
+              {invoice.replacedBy ? (
+                <Row term={COPY.replacedBy}>
+                  <RevisionLink revision={invoice.replacedBy} />
+                </Row>
+              ) : null}
+              {invoice.replaces ? (
+                <Row term={COPY.replaces}>
+                  <RevisionLink revision={invoice.replaces} />
+                </Row>
+              ) : null}
               {invoice.note ? (
                 <Row term={COPY.note} stacked>
                   {invoice.note}
@@ -564,5 +575,17 @@ function PdfLink({ payToken, pdf }: { payToken: string | null; pdf: InvoicePdf }
       <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
       {COPY.pdf[pdf]}
     </a>
+  );
+}
+
+/** R-129: the other invoice of a Revise, on the owner's page. */
+function RevisionLink({ revision }: { revision: Revision }) {
+  return (
+    <Link
+      href={`${APP_ROUTES.invoices}/${revision.invoiceId}`}
+      className="text-accent underline-offset-4 hover:underline"
+    >
+      {invoiceNumber(revision.number)}
+    </Link>
   );
 }

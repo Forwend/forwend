@@ -82,7 +82,9 @@ type Request struct {
 	Reminders bool
 	// R-98: monthly; needs a due date and a client email.
 	Repeat *Repeat
-	cycle  *cycle
+	// R-129: the profile's invoice this one replaces, canceled in the same transaction.
+	Replaces string
+	cycle    *cycle
 	// After runs in the insert's transaction before commit, and not on an idempotent replay (R-100).
 	After func(ctx context.Context, tx pgx.Tx, invoiceID string) error `json:"-"`
 	// By is who makes the invoice, for its history (R-123); empty is the owner.
@@ -231,6 +233,15 @@ type Invoice struct {
 	Views          Views          // pay page loads (R-125); set by the owner's Get
 	Memo           string         // the owner's own note (R-127); set by the owner's Get
 	Updates        []Update       // edits the payer sees, newest first (R-128); set by Get
+	ReplacedBy     *Revision      // the invoice a Revise replaced it with (R-129); set by Get
+	Replaces       *Revision      // the invoice it replaced (R-129); set by the owner's Get
+}
+
+// Revision is the other invoice of a Revise (R-129); PayToken is set only for the replacement.
+type Revision struct {
+	ID       string
+	Number   int64
+	PayToken string
 }
 
 // Why a paid invoice still waits to settle (R-54).
@@ -423,7 +434,7 @@ func (d Details) check() error {
 // requestHash fingerprints the canonical request, so the same values sent again match and the body is never stored.
 // %q keeps the texts apart whatever they contain.
 func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn time.Duration, d Details, lines []line,
-	reminders bool, repeat *Repeat) []byte {
+	reminders bool, repeat *Repeat, replaces string) []byte {
 	b := fmt.Appendf(nil, "%d|%s|%s|%d|%q|%q|%q|%q|%q|%q|%q", chainID, token, amount,
 		int64(expiresIn/time.Second), d.Title, d.Note, d.DueDate, d.ClientName, d.ClientEmail, d.ClientAddress,
 		d.SenderName)
@@ -447,6 +458,9 @@ func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn ti
 	}
 	if repeat != nil {
 		b = fmt.Appendf(b, "|repeat=%q", repeat.EndDate)
+	}
+	if replaces != "" {
+		b = fmt.Appendf(b, "|replaces=%q", replaces)
 	}
 	for _, l := range lines { // and for lines: "7.5" and "7.50" are the same line
 		b = fmt.Appendf(b, "|%q|%s|%s", l.description, l.quantity.RatString(), l.price.RatString())

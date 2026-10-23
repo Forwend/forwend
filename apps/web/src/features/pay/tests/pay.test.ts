@@ -13,6 +13,7 @@ const invoice: Invoice = {
   closed: false,
   nextCheckAt: null,
   updates: [],
+  replacedBy: null,
   lines: [],
   options: [],
   number: 1,

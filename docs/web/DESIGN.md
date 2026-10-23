@@ -333,6 +333,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Left, then, as a hosted invoice page lists them:
     - Title, reference (R-90), agreed value (R-93), due date and "Closes in …": quiet rows with a small icon, no rules.
     - The note.
+    - Replaced (R-129): under the canceled line, "This invoice was replaced by INV-0012. Pay that one instead." and a
+      small Open INV-0012 button to its pay page.
     - Updates (R-128), when the issuer edited before payment: a small quiet heading over one line per change.
       - Newest first. Each line is the time, then "Due date moved from … to …", "Note updated" or "Reference updated".
     - Download invoice PDF: an underlined link with a file icon.
@@ -400,14 +402,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   is none); the timeline says the status, and Details the times: when the checkout closes ("Checkout closed" once
   past) and, once canceled, Canceled on. So the header has no status pill or time. At its top right sits one More
   actions menu: Copy link and Open pay page (a new tab) while the checkout can take money, Edit always (R-127),
-  Duplicate always (New invoice filled from this one, R-91), and while it can still be canceled, Cancel in
-  the danger color, which asks to confirm in a dialog. Copying keeps the menu open and the item says Link copied; if
-  the clipboard refuses, the whole link shows there to select. Below, two columns from extra-large screens up: the
-  amount ("Received X of Y" under it when partly paid) with the timeline, where the Paid step reads "Partially paid"
-  as a warning-tinted label when partly paid, the status line (only the confirming count or why settling waits; the
-  state itself is the timeline's), one Transactions list (each payment, then the settlement to the wallet, later refunds: kind, amount, the other side,
-  time and hash with its explorer link, no status pill of its own; Details repeats none of them) and Check
-  status only while the checkout can take money.
+  Revise while it can still be canceled (R-129), Duplicate always (New invoice filled from this one, R-91), and while
+  it can still be canceled, Cancel in the danger color, which asks to confirm in a dialog. Copying keeps the menu
+  open and the item says Link copied; if the clipboard refuses, the whole link shows there to select. Below, two
+  columns from extra-large screens up: the amount ("Received X of Y" under it when partly paid) with the timeline, where
+  the Paid step reads "Partially paid" as a warning-tinted label when partly paid, the status line (only the confirming
+  count or why settling waits; the state itself is the timeline's), one Transactions list (each payment, then the
+  settlement to the wallet, later refunds: kind, amount, the other side, time and hash with its explorer link, no status
+  pill of its own; Details repeats none of them) and Check status only while the checkout can take money.
   - The main column then holds the Items panel, then Billed to and From side by side, as on a paper invoice.
   - History (R-124) ends the main column: a ruled table of changes, newest first, like the other tables.
     - Columns: Event, By (You, Payer, Forwend), Details and Time, which sits on the right.
@@ -416,6 +418,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Details holds what the name leaves out: the amount with its token, the network, a settle's hash and explorer link.
       Without any, a quiet dash.
     - An email's Details say who it went to, or a reminder's step: "On the due date".
+    - A Revise's rows name the other invoice: "By INV-0012" on Replaced, "Replaces INV-0007" on the new one's Created.
     - Reminders stopped says it came from the reminder email's stop link.
     - Time is the short date and time; the year shows only for another year.
     - Under 36rem of panel width each change is two lines: the event with the time on the right, then By and Details.
@@ -425,10 +428,17 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Billed to and From share one height. They stack while the column is under 36rem; a request's From fills it.
   - Beside the main column, a third of the width, sits the details panel (empty rows left out).
   - Your memo (R-127) is a Details row after the note: the owner's own text, stacked under its term.
+  - Replaced by and Replaces (R-129) are Details rows after Canceled on, each the other invoice's number as a link.
   - From shows "None on this invoice" with a link to add billing details when there are none.
   - Narrower screens stack the amount, Items, Billed to, From, History, then the details.
   - A transaction is one row once its list is 42rem wide. Narrower, the list's own width, not the screen's, splits it
     in two lines.
+- Revise (R-129) opens New invoice filled from the invoice, under a warning-tinted notice:
+  - "This replaces INV-0007", then that creating it cancels the old one and its pay link shows the new one.
+  - When the old one was emailed or its link opened, when and how often, and that money still sent to it is held.
+  - Too late (money arrived, the checkout closed or it was already canceled): the form's error says it can't be
+    replaced now.
+  - When the invoice to replace can't be read, the page shows an alert with Try again and no form.
 - Edit (R-127, R-128) opens one dialog in two groups, each a small bold heading over its fields.
   - Any time: Memo (a text area with "Only you see it"), Client email and Return link.
   - Before payment: Reference, Note and Due date, with a line that the payer sees these under Updates.
