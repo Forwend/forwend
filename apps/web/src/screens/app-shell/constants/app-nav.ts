@@ -45,7 +45,6 @@ export const NAV = {
 const MONEY: NavGroup = { label: "Money", items: [NAV.overview, NAV.transactions, NAV.balances] };
 const INSIGHTS: NavGroup = { label: "Insights", items: [NAV.analytics] };
 
-/** The sidebar's groups for each profile type; checkout and analytics join as they are built. */
 export const APP_NAV: Readonly<Record<ProfileKind, readonly NavGroup[]>> = {
   [PROFILE_KINDS.personal]: [
     { ...MONEY, items: [...MONEY.items, NAV.requests, NAV.activity] },

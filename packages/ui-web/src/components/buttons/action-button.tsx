@@ -4,7 +4,7 @@ import { cx } from "../../lib/cx";
 export interface ActionButtonProps extends ComponentPropsWithoutRef<"button"> {
   icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   label: string;
-  /** Set when the action is not available yet; shown as the reason and the button does nothing. */
+  /** Set when the action is not available yet; shown as the reason. */
   disabledReason?: string;
   /** The page's main action: filled. */
   primary?: boolean;

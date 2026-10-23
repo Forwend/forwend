@@ -261,8 +261,8 @@ func (s *Signer) stall(ctx context.Context, in intent, reason string) error {
 	return err
 }
 
-// refuse stops an intent for good without sending anything; an operator reads the reason. Only for terms that
-// don't match, or a settler other than this executor.
+// refuse stops an intent for good without sending anything; an operator reads the reason. Only for terms that fail
+// the database checks, or a receive address the factory doesn't predict.
 func (s *Signer) refuse(ctx context.Context, in intent, reason string) error {
 	slog.Warn("settlement refused", "invoice", in.invoiceID, "reason", reason)
 	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'refused', reason = $2, wait = NULL,

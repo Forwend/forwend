@@ -3,7 +3,7 @@ export const NAV_VARIANTS = {
   bar: "bar",
 } as const;
 
-// UI colors used only by the three direction comps until F004 turns the chosen one into tokens.
+// UI colors used only by the three direction comps, not tokens.
 export const COMP_UI = {
   dawn: {
     ink: "#0F2219",

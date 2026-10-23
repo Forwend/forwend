@@ -41,7 +41,7 @@ func Deliver(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, site 
 	return nil
 }
 
-// deliverOne sends the oldest due event; false when none is due.
+// deliverOne sends the oldest due event; false when none is due or a send fails other than by refusal.
 func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, site Site) (bool, error) {
 	tx, err := pool.Begin(ctx)
 	if err != nil {

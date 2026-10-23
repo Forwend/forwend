@@ -12,7 +12,7 @@ import (
 	privyclient "github.com/privy-io/go-sdk"
 )
 
-// ErrNoWallet means Privy returned no wallet where one must exist.
+// ErrNoWallet means the profile has no Privy wallet yet.
 var ErrNoWallet = errors.New("privy returned no wallet")
 
 // Timeout bounds one ProfileWallet call, retries included, so a hanging Privy fails the request before the api's

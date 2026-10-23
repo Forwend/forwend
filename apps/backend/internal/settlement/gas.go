@@ -21,7 +21,7 @@ const MinGas = (160_000 + SettleGasFloor) * 6 / 5
 // Tempo's testnet flow (deployments.json) used 1,305,758 gas to deploy and 572,845 to settle.
 const TempoMinGas = (1_310_000 + 575_000) * 6 / 5
 
-// Tempo has no native coin (eth_getBalance is a placeholder): fees are paid in the payer's chosen TIP-20, else PathUSD.
+// Tempo has no native coin (eth_getBalance is a placeholder): fees are paid in the executor's fee token, else PathUSD.
 var (
 	tempoFeeManager = common.HexToAddress("0xfeec000000000000000000000000000000000000")
 	pathUSD         = common.HexToAddress("0x20c0000000000000000000000000000000000000")

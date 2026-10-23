@@ -37,7 +37,7 @@ func TestNewRPCsUsesEveryKeyThenThePublicRPCs(t *testing.T) {
 	if want := []string{"base-sepolia.infura.io", "base-sepolia.infura.io", "sepolia.base.org"}; !slices.Equal(got, want) {
 		t.Fatalf("hosts %v, want %v", got, want)
 	}
-	// Public RPCs only: Base Sepolia lists one public host, too few for D-15; Arc Testnet lists four.
+	// Public RPCs only: one host is too few for D-15; three are enough.
 	if _, err := NewRPCs(base, nil, 10); err == nil {
 		t.Fatal("one public host was accepted for both roles")
 	}

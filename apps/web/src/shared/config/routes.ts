@@ -1,4 +1,3 @@
-/** Signed-in app routes. */
 export const APP_ROUTES = {
   site: "/",
   signIn: "/sign-in",
