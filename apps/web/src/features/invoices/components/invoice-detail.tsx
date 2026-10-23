@@ -229,6 +229,16 @@ function Loaded({
             invoice.options.every((o) => o.deposits.length === 0)
           }
           onCanceled={() => setCanceling(true)}
+          editable={
+            mine
+              ? {
+                  memo: invoice.memo ?? null,
+                  clientEmail: client?.email ?? null,
+                  returnUrl: invoice.returnUrl,
+                  request,
+                }
+              : null
+          }
         />
       </header>
 
@@ -365,8 +375,8 @@ function Loaded({
                     payable={payable}
                   />
                 ) : null}
-                {/* Reminders go to the client's email, so they show only with one (R-96). */}
-                {client?.email && reminders ? (
+                {/* Reminders go to the client's email (R-96): shown with one, or while on so they can be turned off. */}
+                {(client?.email || reminders?.on) && reminders ? (
                   <PaymentReminders
                     profileId={profileId}
                     invoiceId={invoice.invoiceId}
@@ -447,6 +457,11 @@ function Loaded({
               {invoice.note ? (
                 <Row term={COPY.note} stacked>
                   {invoice.note}
+                </Row>
+              ) : null}
+              {invoice.memo ? (
+                <Row term={COPY.memo} stacked>
+                  {invoice.memo}
                 </Row>
               ) : null}
               <Row term={COPY.pdfs}>

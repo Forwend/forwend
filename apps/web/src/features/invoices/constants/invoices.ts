@@ -63,6 +63,14 @@ export const HISTORY_KINDS = {
   reminderEmailFailed: "email.reminder_failed",
   receiptEmailed: "email.receipt_sent",
   receiptEmailFailed: "email.receipt_failed",
+  edited: "invoice.edited",
+} as const;
+
+/** The fields an invoice.edited row names (R-127), as the API calls them. */
+export const HISTORY_FIELDS = {
+  memo: "memo",
+  clientEmail: "clientEmail",
+  returnUrl: "returnUrl",
 } as const;
 
 /** Who made a history change; system is Forwend. */
@@ -94,6 +102,7 @@ export const HISTORY_CATEGORY_OF = {
   [HISTORY_KINDS.reminderEmailFailed]: HISTORY_CATEGORIES.email,
   [HISTORY_KINDS.receiptEmailed]: HISTORY_CATEGORIES.email,
   [HISTORY_KINDS.receiptEmailFailed]: HISTORY_CATEGORIES.email,
+  [HISTORY_KINDS.edited]: HISTORY_CATEGORIES.change,
 } as const satisfies Record<HistoryKind, HistoryCategory>;
 
 /** The History panel's filter: every row, or one category. */
@@ -174,6 +183,7 @@ export const INVOICE_LIMITS = {
   reference: CLIENT_LIMITS.reference,
   senderName: 100,
   returnUrl: 2000,
+  memo: 2000,
 } as const;
 
 /** Form fields as the API names them in a 422 message. */
@@ -197,6 +207,7 @@ export const INVOICE_FIELDS = {
   amountUsd: "amountUsd",
   expiresIn: "expiresIn",
   returnUrl: "returnUrl",
+  memo: "memo",
   // R-88.
   lines: "lines",
   reminders: "reminders",

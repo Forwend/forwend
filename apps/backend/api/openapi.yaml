@@ -518,6 +518,44 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/invoices/{invoiceId}/details:
+    put:
+      operationId: editInvoice
+      summary: Replace what the owner may edit at any time on one of the profile's invoices
+      description: |
+        R-127. The whole editable set: a missing, null or blank field clears it. Fields are checked as on create; the
+        memo is the owner's own note, at most 2000 characters of plain text. Each field that changes writes one
+        invoice.edited history row naming the field. Answers the invoice.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                memo: { type: [string, "null"], maxLength: 2000 }
+                clientEmail: { type: [string, "null"], maxLength: 254 }
+                returnUrl: { type: [string, "null"], maxLength: 2000 }
+      responses:
+        "200":
+          description: The invoice
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/invoices/{invoiceId}/repeat/stop:
     post:
       operationId: stopRepeat
@@ -2204,14 +2242,14 @@ components:
                 Only in the owner's responses; the public GET leaves it out. Every change to the invoice (R-123, R-124),
                 newest first. kind is invoice.created, invoice.canceled, payer.email_given, payer.option_chosen,
                 invoice.held, invoice.settlement_queued, invoice.settled, "invoice." and the new payment status,
-                reminders.on, reminders.off, reminders.stopped, repeat.stopped, or email.invoice_, email.reminder_ or
-                email.receipt_ and sent or failed (R-126).
+                reminders.on, reminders.off, reminders.stopped, repeat.stopped, email.invoice_, email.reminder_ or
+                email.receipt_ and sent or failed (R-126), or invoice.edited (R-127).
                 actor system is Forwend. optionId names the option chosen, or the one money is held on, when the payer
                 chooses; amount is the base units held, in that option's token, else the shown option's; txHash is the
-                settle transaction; step is a reminder email's step.
+                settle transaction; step is a reminder email's step; field is the edited field.
               items:
                 type: object
-                required: [id, kind, actor, at, optionId, amount, txHash, step]
+                required: [id, kind, actor, at, optionId, amount, txHash, step, field]
                 properties:
                   id: { type: integer, minimum: 1, description: Ascending in the order the rows were written. }
                   kind: { type: string, pattern: "^[a-z]+\\.[a-z_]+$" }
@@ -2221,6 +2259,10 @@ components:
                   amount: { type: [string, "null"], pattern: "^[0-9]+$" }
                   txHash: { type: [string, "null"], pattern: "^0x[0-9a-f]{64}$" }
                   step: { type: [string, "null"], enum: [before, due, after, null] }
+                  field: { type: [string, "null"], enum: [memo, clientEmail, returnUrl, null] }
+            memo:
+              type: [string, "null"]
+              description: Only in the owner's responses; the public GET leaves it out. The owner's own note (R-127).
             views:
               type: object
               description: |

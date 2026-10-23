@@ -163,6 +163,7 @@ export function InvoiceHistory({ invoice, history, views }: InvoiceHistoryProps)
 }
 
 const STEPS: Record<string, string> = COPY.steps;
+const FIELDS: Record<string, string> = COPY.fields;
 
 function lineOf(row: InvoiceHistoryEvent, invoice: InvoiceHistoryProps["invoice"]): Line {
   const known = row.kind in COPY.kinds ? (row.kind as keyof typeof COPY.kinds) : null;
@@ -190,6 +191,8 @@ function detailsOf(row: InvoiceHistoryEvent, option: Option | undefined): ReactN
       return COPY.toPayer;
     case HISTORY_KINDS.remindersStopped:
       return COPY.stoppedByLink;
+    case HISTORY_KINDS.edited:
+      return row.field ? (FIELDS[row.field] ?? row.field) : null;
   }
   if (!option) return null;
   const network = chainName(option.chainId);

@@ -8,6 +8,7 @@ import { clientBodySchema } from "@/features/clients/schemas/clients";
 import { PAY_TOKEN_PATTERN, SETTLEMENT_WAITS } from "@/features/invoices/constants/invoices";
 import type {
   HistoryActor,
+  HistoryField,
   HistoryKind,
   InvoiceEventKind,
   OwedKind,
@@ -166,7 +167,7 @@ export const invoiceRetainerSchema = z.object({
   stoppedAt: apiTime.nullable(),
 });
 
-/** One history row (R-124, R-126); optionId, amount, txHash and step are null when the row has none. */
+/** One history row (R-124, R-126, R-127); optionId, amount, txHash, step and field are null when it has none. */
 export const invoiceHistoryEventSchema = z.object({
   id: count,
   kind: openEnum<HistoryKind>(),
@@ -176,6 +177,7 @@ export const invoiceHistoryEventSchema = z.object({
   amount: baseUnits.nullable(),
   txHash: hash32.nullable(),
   step: openEnum<ReminderStep>().nullable(),
+  field: openEnum<HistoryField>().nullable(),
 });
 
 /** Pay page loads (R-125); both times are null before the first. */
@@ -217,6 +219,8 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   history: z.array(invoiceHistoryEventSchema).optional(),
   // Only in the owner's reads.
   views: invoiceViewsSchema.optional(),
+  // Only in the owner's reads: the owner's own note (R-127).
+  memo: z.string().nullable().optional(),
 });
 
 /** POST /v1/invoices/{payToken}/recheck (R-55): what Check status found. Amounts in base units. */

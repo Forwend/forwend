@@ -45,13 +45,13 @@ export function SendToClient({
       setSent(false);
     }
   }, [sent, waiting]);
-  if (!email) {
+  if (!email && sends.length === 0) {
     return payable ? (
       <p className="px-4 pb-4 text-sm text-muted sm:px-5">{COPY.send.noEmail}</p>
     ) : null;
   }
 
-  const onSend = async () => {
+  const onSend = async (email: string) => {
     try {
       await send({ profileId, invoiceId, idempotencyKey: crypto.randomUUID() }).unwrap();
       toast({ tone: TONES.success, title: COPY.send.done(number, email) });
@@ -71,6 +71,7 @@ export function SendToClient({
   };
 
   if (sends.length === 0 && !payable) return null;
+  // Past sends name no address: the client email can change after them (R-127).
   return (
     <div className="flex flex-col items-start gap-3 border-t border-line px-4 py-4 sm:px-5">
       {sends.length > 0 ? (
@@ -78,20 +79,29 @@ export function SendToClient({
           {sends.map((s) => (
             <li key={s.requestedAt} className="break-words">
               {s.sentAt
-                ? COPY.send.sent(email, TIME.format(new Date(s.sentAt)))
+                ? COPY.send.sent(TIME.format(new Date(s.sentAt)))
                 : s.failedAt
-                  ? COPY.send.failed(email, TIME.format(new Date(s.requestedAt)))
+                  ? COPY.send.failed(TIME.format(new Date(s.requestedAt)))
                   : COPY.send.sending(email)}
             </li>
           ))}
         </ul>
       ) : null}
-      {waiting ? (
+      {!email ? (
+        payable ? (
+          <p className="text-sm text-muted">{COPY.send.noEmail}</p>
+        ) : null
+      ) : waiting ? (
         <p ref={again} tabIndex={-1} className="text-sm text-muted outline-none">
           {COPY.send.again(TIME.format(new Date(next)))}
         </p>
       ) : payable ? (
-        <Button size="sm" variant={BUTTON_VARIANTS.secondary} loading={isLoading} onClick={onSend}>
+        <Button
+          size="sm"
+          variant={BUTTON_VARIANTS.secondary}
+          loading={isLoading}
+          onClick={() => onSend(email)}
+        >
           <Send aria-hidden className="size-[var(--fw-icon-sm)]" />
           {COPY.send.action}
         </Button>
