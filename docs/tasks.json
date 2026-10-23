@@ -242,7 +242,9 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-23 review pass by reviewer: The six controls now pass axe 4.14 label-in-name (WCAG 2.5.3): each name has the visible text in order. Layout is unchanged, the e2e checks are as strict as before, and lint, typecheck and unit tests pass. Follow-up: an email that starts with a digit still fails in the collapsed-sidebar and phone-header account IconButtons, because the visible initial is not a word in the aria-label."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
@@ -306,6 +308,13 @@
           "2": "e2e: the a11y and privy e2e specs run blockingViolations under axe 4.14 with no label-content-name-mismatch: status menu, sidebar and phone profile switcher, account menu, counterparty link, truncated address",
           "3": "e2e: the privy specs find the switcher as Switch profile: E2E shop Merchant, the phone button by Switch profile at the end, the account menu as Account: <email>, and the short address 0xcccc…cccc, whose tooltip shows the full address on focus",
           "4": "e2e: unit, lint, typecheck, build and e2e (with the privy specs) pass"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "The six controls now pass axe 4.14 label-in-name (WCAG 2.5.3): each name has the visible text in order. Layout is unchanged, the e2e checks are as strict as before, and lint, typecheck and unit tests pass. Follow-up: an email that starts with a digit still fails in the collapsed-sidebar and phone-header account IconButtons, because the visible initial is not a word in the aria-label.",
+          "at": "2026-10-23T12:42:57Z",
+          "filesHash": "d683b827c1816012"
         }
       },
       "branch": "fix/f273-axe-core-4-14-passes-every-control-s-vis",
