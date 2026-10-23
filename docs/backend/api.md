@@ -218,12 +218,17 @@ R-19 and R-42; the full schema is in openapi.yaml.
   UTC), from the stored transfer.
 - `GET /v1/profiles/{profileId}/invoices?limit=&cursor=&status=&q=`: the list format above, highest number (newest)
   first; items have no `deposits`. Owner only, like every `{profileId}` route.
-- `GET /v1/profiles/{profileId}/invoices/{invoiceId}`: the public GET plus `client`, `settlementWait` and `history`.
+- `GET /v1/profiles/{profileId}/invoices/{invoiceId}`: the public GET plus `client`, `settlementWait`, `history` and `views`.
   Another profile's invoice is 404 (`invoice_not_found`), also when the same user owns both.
   - `history` (R-124) is every `history_events` row of the invoice, newest first, also in create and the other
     owner answers.
   - A row is `{id, kind, actor, at, optionId, amount, txHash}`; the last three are null when the row has none.
   - `amount` is in the token of `optionId`, or of the shown option when `optionId` is null.
+- `POST /v1/invoices/{payToken}/views` (R-125) counts one pay page load and answers 204.
+  - The page sends it once per load, not with each status refresh.
+  - `invoice_views` keeps a count, the first time and the last time; never an IP or user agent.
+  - The owner's reads return `views` `{count, firstAt, lastAt}`; the times are null before the first load.
+  - The R-51 canary blocks it, so its checks are not counted.
 - `POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel` (R-79, D-79): cancels the invoice and every option of
   it, only while all are open, the checkout is open and no transfer was ever seen; otherwise 409
   `invoice_not_cancelable`. It locks the rows the ledger locks. The watcher records transfers without that lock, so a
@@ -490,6 +495,8 @@ seconds (when the next token is back) and runs nothing else.
   read and no other holds unrecorded money, it is 503: another option's empty read never answers for it. A rescan is asked only when the address holds more than is
   recorded and no rescan finished in the last 10 minutes, so money no log explains (Arc native USDC) doesn't start a
   full rescan on every press.
+- `POST /v1/invoices/{payToken}/views` (R-125): per link, 5 at once, then one every 5 s. It slows a run-up of one link's
+  count; it can't stop one.
 - `POST /v1/jobs/{token}/accept` makes an invoice, so it has limits in `jobapi/routes.go`. Accepting a change has its
   own per-link limit and shares the one for everyone.
   - Per link: 3 at once, then one every 10 s.

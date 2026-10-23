@@ -411,6 +411,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Each line: the time in quiet text, what happened, then " · " and who did it (You, Payer, Forwend) in quiet text.
     - A settled line ends with its explorer link.
     - A small segmented control in the head shows All, Payments or Changes.
+    - Under the lines, ruled off, one quiet line says how often the pay link was opened, first and last (R-125).
+    - An invoice made before pay links (R-114) has no such line.
   - Billed to and From share one height. They stack while the column is under 36rem; a request's From fills it.
   - Beside the main column, a third of the width, sits the details panel (empty rows left out).
   - From shows "None on this invoice" with a link to add billing details when there are none.

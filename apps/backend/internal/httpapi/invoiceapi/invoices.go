@@ -272,3 +272,14 @@ func putPayerEmail(invoices *invoice.Service, emails *mid.Buckets) http.HandlerF
 		httpio.WriteJSON(w, http.StatusOK, map[string]string{"email": kept})
 	}
 }
+
+// R-125.
+func countView(invoices *invoice.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := invoices.CountView(r.Context(), r.PathValue("payToken")); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}

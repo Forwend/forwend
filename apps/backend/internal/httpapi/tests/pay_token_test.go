@@ -29,7 +29,7 @@ func TestPublicRoutesTakeOnlyThePayToken(t *testing.T) {
 	for _, onChain := range []string{id, option, strings.TrimPrefix(id, "0x")} {
 		for _, r := range []struct{ method, path, body string }{{"GET", onChain, ""}, {"GET", onChain + "/invoice.pdf", ""},
 			{"GET", onChain + "/receipt.pdf", ""}, {"POST", onChain + "/recheck", ""},
-			{"PUT", onChain + "/payer-email", `{"email": "a@example.com"}`}} {
+			{"PUT", onChain + "/payer-email", `{"email": "a@example.com"}`}, {"POST", onChain + "/views", ""}} {
 			if got := public(r.method, r.path, r.body); got != http.StatusNotFound {
 				t.Errorf("%s %s: %d, want 404", r.method, r.path, got)
 			}

@@ -12,6 +12,7 @@ import type {
   HistoryFilter,
   Invoice,
   InvoiceHistoryEvent,
+  InvoiceViews,
 } from "@/features/invoices/types/invoices";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { chainName } from "@/shared/lib/chains";
@@ -25,12 +26,13 @@ const FILTERS = Object.values(HISTORY_FILTERS).map((value) => ({
 }));
 
 export interface InvoiceHistoryProps {
-  invoice: Pick<Invoice, "optionId" | "options">;
+  invoice: Pick<Invoice, "optionId" | "options" | "payToken">;
   history: readonly InvoiceHistoryEvent[];
+  views: InvoiceViews | null;
 }
 
 /** R-124: every change to the invoice, newest first; each time is the server's. */
-export function InvoiceHistory({ invoice, history }: InvoiceHistoryProps) {
+export function InvoiceHistory({ invoice, history, views }: InvoiceHistoryProps) {
   const [filter, setFilter] = useState<HistoryFilter>(HISTORY_FILTERS.all);
   const rows = history.filter(
     (row) =>
@@ -84,6 +86,27 @@ export function InvoiceHistory({ invoice, history }: InvoiceHistoryProps) {
           })}
         </ol>
       )}
+      {/* An invoice made before pay links (R-114) has none to open. */}
+      {views && invoice.payToken ? (
+        <p className="border-t border-line px-4 py-3 text-sm text-muted sm:px-5">
+          {views.firstAt && views.lastAt ? (
+            <>
+              {COPY.opened(views.count)}
+              {" · "}
+              {views.count > 1 ? `${COPY.first} ` : null}
+              <time dateTime={views.firstAt}>{TIME.format(new Date(views.firstAt))}</time>
+              {views.count > 1 ? (
+                <>
+                  {` · ${COPY.last} `}
+                  <time dateTime={views.lastAt}>{TIME.format(new Date(views.lastAt))}</time>
+                </>
+              ) : null}
+            </>
+          ) : (
+            COPY.notOpened
+          )}
+        </p>
+      ) : null}
     </section>
   );
 }

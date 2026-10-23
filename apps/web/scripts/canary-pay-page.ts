@@ -28,6 +28,8 @@ function encodes(path: string, address: string) {
 }
 
 export async function readPayPage(page: Page, web: string, id: string): Promise<PayPage> {
+  // The canary is no payer: its loads must not count as views of the pay link (R-125).
+  await page.route("**/v1/invoices/*/views", (route) => route.abort());
   await page.goto(`${web}/pay/${id}`);
   // Scoped to main: Next's route announcer is also role=alert.
   const alert = page.locator("main [role=alert]");

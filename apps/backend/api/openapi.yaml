@@ -1201,6 +1201,24 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/invoices/{payToken}/views:
+    post:
+      operationId: countView
+      summary: Count one load of the pay page (public, like the checkout)
+      description: |
+        R-125. The pay page sends it once per load. It keeps a count, the first time and the last time, never an IP or
+        a user agent. Limited per invoice; per IP at the edge (Q-8).
+      security: []
+      parameters:
+        - name: payToken
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/PayToken" }
+      responses:
+        "204": { description: Counted }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/invoices/{payToken}/recheck:
     post:
       operationId: recheckInvoice
@@ -2200,6 +2218,16 @@ components:
                   optionId: { type: [string, "null"], pattern: "^0x[0-9a-f]{64}$" }
                   amount: { type: [string, "null"], pattern: "^[0-9]+$" }
                   txHash: { type: [string, "null"], pattern: "^0x[0-9a-f]{64}$" }
+            views:
+              type: object
+              description: |
+                Only in the owner's responses; the public GET leaves it out. Pay page loads (R-125): how many, the first
+                and the last; both times are null before the first load.
+              required: [count, firstAt, lastAt]
+              properties:
+                count: { type: integer, minimum: 0 }
+                firstAt: { type: [string, "null"], format: date-time }
+                lastAt: { type: [string, "null"], format: date-time }
     InvoiceSummary:
       type: object
       required: [invoiceId, payToken, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, agreedValue, senderName, returnUrl, issuer, chainId,
