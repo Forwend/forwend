@@ -16,7 +16,7 @@ import {
   HISTORY_KINDS,
 } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
-import { formatDueDate } from "@/features/invoices/lib/invoices";
+import { formatDueDate, invoiceNumber } from "@/features/invoices/lib/invoices";
 import type {
   HistoryCategory,
   HistoryFilter,
@@ -193,6 +193,10 @@ function detailsOf(row: InvoiceHistoryEvent, option: Option | undefined): ReactN
       return COPY.toPayer;
     case HISTORY_KINDS.remindersStopped:
       return COPY.stoppedByLink;
+    case HISTORY_KINDS.replaced:
+      return row.related ? COPY.replacedBy(invoiceNumber(row.related.number)) : null;
+    case HISTORY_KINDS.created:
+      return row.related ? COPY.replaces(invoiceNumber(row.related.number)) : null;
     case HISTORY_KINDS.edited: {
       const field = row.field ? (FIELDS[row.field] ?? row.field) : null;
       const day = (date: string | null) => (date ? formatDueDate(date) : COPY.noDate);

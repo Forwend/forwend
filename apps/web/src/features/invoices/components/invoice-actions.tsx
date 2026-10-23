@@ -15,13 +15,13 @@ import {
   useCopy,
   useToast,
 } from "@forwend/ui-web";
-import { Ban, Check, Copy, CopyPlus, Ellipsis, ExternalLink, Pencil } from "lucide-react";
+import { Ban, Check, Copy, CopyPlus, Ellipsis, ExternalLink, FilePen, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useRef } from "react";
 import { useCancelInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { EditInvoice, type EditInvoiceProps } from "@/features/invoices/components/edit-invoice";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
-import { invoiceCopyHref } from "@/features/invoices/lib/invoices";
+import { invoiceCopyHref, invoiceReviseHref } from "@/features/invoices/lib/invoices";
 
 const CONFLICT = 409;
 
@@ -41,8 +41,8 @@ export interface InvoiceActionsProps {
   editable: Omit<EditInvoiceProps, "profileId" | "invoiceId" | "number"> | null;
 }
 
-// Edit (R-127); duplicate (R-91); cancel before any money (R-79, D-79). Copy keeps the menu open: the item says it
-// worked.
+// Edit (R-127); revise (R-129) and cancel (R-79, D-79) before any money; duplicate (R-91). Copy keeps the menu open:
+// the item says it worked.
 export function InvoiceActions({
   profileId,
   invoiceId,
@@ -143,6 +143,15 @@ export function InvoiceActions({
             >
               <Pencil aria-hidden className="size-[var(--fw-icon-sm)]" />
               {COPY.edit.trigger}
+            </MenuItem>
+          ) : null}
+          {/* R-129: in the same window as cancel, which it does. */}
+          {cancelable ? (
+            <MenuItem asChild>
+              <Link href={invoiceReviseHref(invoiceId)}>
+                <FilePen aria-hidden className="size-[var(--fw-icon-sm)]" />
+                {COPY.revise}
+              </Link>
             </MenuItem>
           ) : null}
           <MenuItem asChild>

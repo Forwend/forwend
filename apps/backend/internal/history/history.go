@@ -23,7 +23,8 @@ const (
 	RemindersOff     = "reminders.off"
 	RemindersStopped = "reminders.stopped" // by the client's stop link (R-96)
 	RepeatStopped    = "repeat.stopped"
-	Edited           = "invoice.edited" // data names the field, never its value (R-127)
+	Edited           = "invoice.edited"   // data names the field, never its value (R-127)
+	Replaced         = "invoice.replaced" // canceled by a Revise; data names the new invoice (R-129)
 )
 
 // Emails the worker sent to the client or payer, or gave up on (R-126); a reminder's data has its step.
@@ -53,6 +54,9 @@ type Data struct {
 	Field  string `json:"field,omitempty"`
 	From   string `json:"from,omitempty"` // an edited due date's old and new value (R-128)
 	To     string `json:"to,omitempty"`
+	// The other invoice of a Revise (R-129): on the old one the new, on the new one's created row the old.
+	Invoice string `json:"invoice,omitempty"`
+	Number  int64  `json:"number,omitempty"`
 }
 
 // Add writes the event for the invoice that option belongs to.

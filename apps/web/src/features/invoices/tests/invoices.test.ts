@@ -48,6 +48,7 @@ const open: Invoice = {
   closed: false,
   nextCheckAt: null,
   updates: [],
+  replacedBy: null,
   lines: [],
   options: [],
   number: 1,

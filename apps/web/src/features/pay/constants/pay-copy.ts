@@ -88,6 +88,9 @@ export const PAY_COPY = {
     "Copy the address from this page for the rest, not from your wallet's history: scammers plant look-alike addresses there.",
   late: (late: string, payee: string) =>
     `${late} arrived after the checkout closed. It is held for you; ask ${payee} to get it back.`,
+  // R-129.
+  replaced: (number: string) => `This invoice was replaced by ${number}. Pay that one instead.`,
+  openReplacement: (number: string) => `Open ${number}`,
   canceledHeld: (received: string, payee: string) =>
     `The ${received} you sent is held for you; ask ${payee} to get it back.`,
   otherOption: (amount: string, network: string, payee: string) =>

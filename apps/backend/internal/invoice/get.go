@@ -63,6 +63,10 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 	if inv.Updates, err = s.updates(ctx, inv.ID); err != nil {
 		return Invoice{}, err
 	}
+	if inv.ReplacedBy, err = s.revision(ctx, `SELECT n.id, n.number, coalesce(n.pay_token, '') FROM invoices o
+		JOIN invoices n ON n.id = o.replaced_by WHERE o.id = $1`, inv.ID); err != nil {
+		return Invoice{}, err
+	}
 	// The last deposit that booked money to the creator is the one that completed the amount: later ones are held.
 	var paidAt *int64
 	var settledAt *time.Time
@@ -119,6 +123,10 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 			return Invoice{}, err
 		}
 		if inv.Memo, err = s.memo(ctx, inv.ID); err != nil {
+			return Invoice{}, err
+		}
+		if inv.Replaces, err = s.revision(ctx, `SELECT id, number, '' FROM invoices WHERE replaced_by = $1`,
+			inv.ID); err != nil {
 			return Invoice{}, err
 		}
 		inv.Retainer, err = s.retainer(ctx, inv.ID)
@@ -259,4 +267,16 @@ func (s *Service) lines(ctx context.Context, id string) ([]Line, error) {
 		l.Amount, _ = new(big.Int).SetString(amount, 10)
 		return l, err
 	})
+}
+
+// revision reads the other invoice of a Revise with query, nil when there is none.
+func (s *Service) revision(ctx context.Context, query, id string) (*Revision, error) {
+	var r Revision
+	err := s.pool.QueryRow(ctx, query, id).Scan(&r.ID, &r.Number, &r.PayToken)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("read invoice %s revision: %w", id, err)
+	}
+	return &r, nil
 }

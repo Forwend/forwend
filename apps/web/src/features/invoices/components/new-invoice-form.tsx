@@ -32,7 +32,11 @@ import {
   INVOICE_LIMITS,
   PAY_WITH,
 } from "@/features/invoices/constants/invoices";
-import { NEW_INVOICE_COPY, NEW_REQUEST_COPY } from "@/features/invoices/constants/invoices-copy";
+import {
+  INVOICES_COPY,
+  NEW_INVOICE_COPY,
+  NEW_REQUEST_COPY,
+} from "@/features/invoices/constants/invoices-copy";
 import {
   agreedDigits,
   customExpiresIn,
@@ -65,6 +69,8 @@ import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { chainName } from "@/shared/lib/chains";
 
 const INVALID_VALUE = 422;
+// R-129: the invoice it replaces can no longer be canceled.
+const NOT_CANCELABLE = "invoice_not_cancelable";
 const DAY_MS = 86_400_000;
 type Expiry = ExpiryChoice | typeof CUSTOM_EXPIRY;
 const localDate = (time: number) => new Date(time).toLocaleDateString("en-CA");
@@ -77,6 +83,8 @@ export interface NewInvoiceFormProps {
   start?: InvoiceStart;
   /** Saved clients (R-86): picking one fills the client fields with a copy. */
   clients?: readonly Client[];
+  /** R-129: the invoice this one replaces, canceled when it is created. */
+  replaces?: { invoiceId: string; number: string };
 }
 
 const NO_CLIENT: ClientBody = { name: "", email: "", address: "", country: "", taxId: "" };
@@ -89,6 +97,7 @@ export function NewInvoiceForm({
   request,
   start,
   clients,
+  replaces,
 }: NewInvoiceFormProps) {
   const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
   const [createInvoice] = useCreateInvoiceMutation();
@@ -274,6 +283,7 @@ export function NewInvoiceForm({
       ...(agreedValue ? { agreedValue } : {}),
       ...(reminders ? { reminders: true as const } : {}),
       ...(repeat ? { repeat: repeatEnd ? { endDate: repeatEnd } : {} } : {}),
+      ...(replaces ? { replaces: replaces.invoiceId } : {}),
       senderName: text("senderName"),
       returnUrl,
       client: {
@@ -316,7 +326,10 @@ export function NewInvoiceForm({
       if (request) request.onCreated(invoice);
       else router.push(`${APP_ROUTES.invoices}/${invoice.invoiceId}`);
     } catch (error) {
-      const failure = error as { status?: unknown; data?: { error?: { message?: string } } };
+      const failure = error as {
+        status?: unknown;
+        data?: { error?: { code?: string; message?: string } };
+      };
       const field =
         failure.status === INVALID_VALUE ? invalidField(failure.data?.error?.message ?? "") : null;
       const amountField = items.length > 0 ? INVOICE_FIELDS.lines : INVOICE_FIELDS.amount;
@@ -326,6 +339,8 @@ export function NewInvoiceForm({
             ? amountField
             : field]: COPY.fieldErrors[field],
         });
+      else if (replaces && failure.data?.error?.code === NOT_CANCELABLE)
+        setFormError(INVOICES_COPY.revise.tooLate(replaces.number));
       else setFormError(failure.status === INVALID_VALUE ? COPY.invalid : COPY.failed);
       setBusy(false);
     }

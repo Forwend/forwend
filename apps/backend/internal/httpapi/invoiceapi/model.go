@@ -35,7 +35,8 @@ type createInvoiceBody struct {
 	Repeat *struct {
 		EndDate string `json:"endDate"`
 	} `json:"repeat"`
-	Client struct {
+	Replaces string `json:"replaces"`
+	Client   struct {
 		Name    string `json:"name"`
 		Email   string `json:"email"`
 		Address string `json:"address"`
@@ -108,6 +109,22 @@ type invoiceDetailJSON struct {
 	NextCheckAt *string `json:"nextCheckAt"`
 	// R-128, newest first.
 	Updates []updateJSON `json:"updates"`
+	// R-129: null unless a Revise replaced it.
+	ReplacedBy *revisionJSON `json:"replacedBy"`
+}
+
+// R-129: payToken is the replacement's pay link; null for the invoice it replaced.
+type revisionJSON struct {
+	InvoiceID string  `json:"invoiceId"`
+	Number    int64   `json:"number"`
+	PayToken  *string `json:"payToken"`
+}
+
+func toRevisionJSON(r *invoice.Revision) *revisionJSON {
+	if r == nil {
+		return nil
+	}
+	return &revisionJSON{InvoiceID: r.ID, Number: r.Number, PayToken: httpio.OrNull(r.PayToken)}
 }
 
 // R-128: from and to are a due date's old and new value, null for the other fields.
@@ -155,6 +172,7 @@ type ownerInvoiceJSON struct {
 	History        []historyJSON       `json:"history"`
 	Views          viewsJSON           `json:"views"`
 	Memo           *string             `json:"memo"`
+	Replaces       *revisionJSON       `json:"replaces"`
 }
 
 // R-125: firstAt and lastAt are null before the first load.
@@ -164,19 +182,20 @@ type viewsJSON struct {
 	LastAt  *string `json:"lastAt"`
 }
 
-// R-124: optionId, amount, txHash, step, field, from and to are null when the row has none.
+// R-124: optionId, amount, txHash, step, field, from, to and related are null when the row has none.
 type historyJSON struct {
-	ID       int64   `json:"id"`
-	Kind     string  `json:"kind"`
-	Actor    string  `json:"actor"`
-	At       string  `json:"at"`
-	OptionID *string `json:"optionId"`
-	Amount   *string `json:"amount"`
-	TxHash   *string `json:"txHash"`
-	Step     *string `json:"step"`
-	Field    *string `json:"field"`
-	From     *string `json:"from"`
-	To       *string `json:"to"`
+	ID       int64         `json:"id"`
+	Kind     string        `json:"kind"`
+	Actor    string        `json:"actor"`
+	At       string        `json:"at"`
+	OptionID *string       `json:"optionId"`
+	Amount   *string       `json:"amount"`
+	TxHash   *string       `json:"txHash"`
+	Step     *string       `json:"step"`
+	Field    *string       `json:"field"`
+	From     *string       `json:"from"`
+	To       *string       `json:"to"`
+	Related  *revisionJSON `json:"related"`
 }
 
 // R-98: nextDueDate and nextOn are null once the retainer ended or stopped.
@@ -267,7 +286,7 @@ func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON
 	out := invoiceDetailJSON{invoiceJSON: toInvoiceJSON(inv, withClient), PaidAt: httpio.OrNullTime(inv.PaidAt),
 		SettledAt: httpio.OrNullTime(inv.SettledAt), CanceledAt: httpio.OrNullTime(inv.CanceledAt), Deposits: []depositJSON{}, Options: []optionJSON{},
 		Lines:       []lineJSON{},
-		NextCheckAt: httpio.OrNullTime(inv.NextCheckAt), Updates: []updateJSON{}}
+		NextCheckAt: httpio.OrNullTime(inv.NextCheckAt), Updates: []updateJSON{}, ReplacedBy: toRevisionJSON(inv.ReplacedBy)}
 	for _, u := range inv.Updates {
 		out.Updates = append(out.Updates, updateJSON{At: u.At.UTC().Format(time.RFC3339), Field: u.Field,
 			From: httpio.OrNull(u.From), To: httpio.OrNull(u.To)})
@@ -304,15 +323,19 @@ func toOwnerInvoiceJSON(inv invoice.Invoice) ownerInvoiceJSON {
 		Reminders: remindersJSON{On: inv.Reminders.On, StoppedAt: httpio.OrNullTime(inv.Reminders.StoppedAt),
 			Emails: []reminderJSON{}}, History: []historyJSON{},
 		Views: viewsJSON{Count: inv.Views.Count, FirstAt: httpio.OrNullTime(inv.Views.FirstAt),
-			LastAt: httpio.OrNullTime(inv.Views.LastAt)}, Memo: httpio.OrNull(inv.Memo)}
+			LastAt: httpio.OrNullTime(inv.Views.LastAt)}, Memo: httpio.OrNull(inv.Memo), Replaces: toRevisionJSON(inv.Replaces)}
 	for _, s := range inv.Sends {
 		out.Sends = append(out.Sends, toSendJSON(s))
 	}
 	for _, e := range inv.History {
-		out.History = append(out.History, historyJSON{ID: e.ID, Kind: e.Kind, Actor: string(e.Actor),
+		h := historyJSON{ID: e.ID, Kind: e.Kind, Actor: string(e.Actor),
 			At: e.At.UTC().Format(time.RFC3339), OptionID: httpio.OrNull(e.Option), Amount: httpio.OrNull(e.Amount),
 			TxHash: httpio.OrNull(e.TxHash), Step: httpio.OrNull(e.Step), Field: httpio.OrNull(e.Field),
-			From: httpio.OrNull(e.From), To: httpio.OrNull(e.To)})
+			From: httpio.OrNull(e.From), To: httpio.OrNull(e.To)}
+		if e.Invoice != "" {
+			h.Related = &revisionJSON{InvoiceID: e.Invoice, Number: e.Number}
+		}
+		out.History = append(out.History, h)
 	}
 	for _, r := range inv.Reminders.Emails {
 		out.Reminders.Emails = append(out.Reminders.Emails, reminderJSON{Step: r.Step, sendJSON: toSendJSON(r)})

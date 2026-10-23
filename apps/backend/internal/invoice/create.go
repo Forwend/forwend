@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/address"
@@ -41,11 +42,12 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	if err := checkRepeat(r); err != nil {
 		return Invoice{}, false, err
 	}
+	r.Replaces = strings.ToLower(r.Replaces)
 	var hash []byte
 	if usd != nil {
-		hash = requestHash(0, "usd", usd, expiresIn, r.Details, lines, r.Reminders, r.Repeat)
+		hash = requestHash(0, "usd", usd, expiresIn, r.Details, lines, r.Reminders, r.Repeat, r.Replaces)
 	} else {
-		hash = requestHash(r.ChainID, token, amount, expiresIn, r.Details, lines, r.Reminders, r.Repeat)
+		hash = requestHash(r.ChainID, token, amount, expiresIn, r.Details, lines, r.Reminders, r.Repeat, r.Replaces)
 	}
 	if inv, err := s.replay(ctx, profileID, idempotencyKey, hash); !errors.Is(err, ErrNotFound) {
 		return inv, false, err
@@ -194,7 +196,13 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	if by == "" {
 		by = history.Owner
 	}
-	if err := history.Add(ctx, tx, *mainID, history.Created, by, history.Data{}); err != nil {
+	var replaced history.Data
+	if r.Replaces != "" {
+		if replaced, err = s.replace(ctx, tx, profileID, r.Replaces, *mainID); err != nil {
+			return Invoice{}, false, err
+		}
+	}
+	if err := history.Add(ctx, tx, *mainID, history.Created, by, replaced); err != nil {
 		return Invoice{}, false, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -273,4 +281,22 @@ func (s *Service) replay(ctx context.Context, profileID, idempotencyKey string, 
 		return Invoice{}, ErrConflict
 	}
 	return s.get(ctx, profileID, id)
+}
+
+// replace cancels the profile's invoice old for next, made in tx (R-129), and returns what next's created row says.
+func (s *Service) replace(ctx context.Context, tx pgx.Tx, profileID, old, next string) (history.Data, error) {
+	var oldNumber, nextNumber int64
+	err := tx.QueryRow(ctx, `SELECT o.number, n.number FROM invoices o, invoices n
+		WHERE o.id = $1 AND o.profile_id = $2 AND o.main_id IS NULL AND n.id = $3`, old, profileID, next).
+		Scan(&oldNumber, &nextNumber)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return history.Data{}, ErrNotFound
+	} else if err != nil {
+		return history.Data{}, fmt.Errorf("read invoice %s to replace: %w", old, err)
+	}
+	if err := s.cancel(ctx, tx, profileID, old, next, history.Replaced,
+		history.Data{Invoice: next, Number: nextNumber}); err != nil {
+		return history.Data{}, err
+	}
+	return history.Data{Invoice: old, Number: oldNumber}, nil
 }

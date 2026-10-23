@@ -14,7 +14,8 @@ import {
   NEW_INVOICE_COPY,
   NEW_REQUEST_COPY,
 } from "@/features/invoices/constants/invoices-copy";
-import { restartFrom } from "@/features/invoices/lib/invoices";
+import { invoiceNumber, restartFrom } from "@/features/invoices/lib/invoices";
+import type { Invoice } from "@/features/invoices/types/invoices";
 import { useGetBillingDetailsQuery } from "@/features/profiles/api/profiles-api";
 import { BILLING_THEN, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
@@ -45,6 +46,8 @@ export function NewInvoiceScreen() {
         )
       : undefined;
   const loadingStart = Boolean(from) && owned.isLoading;
+  // R-129: ?revise=1 replaces that invoice once this one is created.
+  const replaced = params.has(RESTART_PARAMS.revise) ? owned.currentData : undefined;
   const tokens = balances.currentData?.tokens;
   const request = profile.kind === PROFILE_KINDS.personal;
   // R-92. If the billing details can't be read, the form shows and the API still checks.
@@ -68,6 +71,14 @@ export function NewInvoiceScreen() {
             {INVOICES_COPY.retry}
           </Button>
         </div>
+      ) : replaced === undefined && params.has(RESTART_PARAMS.revise) && owned.isError ? (
+        // Without the invoice to replace, a form would make an extra invoice and leave that one open.
+        <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
+          {INVOICES_COPY.revise.failed}
+          <Button size="sm" variant="secondary" onClick={() => void owned.refetch()}>
+            {INVOICES_COPY.revise.retry}
+          </Button>
+        </div>
       ) : !tokens || loadingStart || loadingBilling ? (
         <Skeleton className="h-96" />
       ) : billingNeeded ? (
@@ -87,23 +98,57 @@ export function NewInvoiceScreen() {
       ) : tokens.length === 0 ? (
         <p className="text-muted">{COPY.noTokens}</p>
       ) : (
-        <NewInvoiceForm
-          key={`${profile.profileId}:${from ?? ""}`}
-          profileId={profile.profileId}
-          tokens={tokens}
-          start={start}
-          clients={clients.currentData}
-          request={
-            request
-              ? {
-                  senderName: profile.name ?? "",
-                  onCreated: (invoice) =>
-                    router.push(`${APP_ROUTES.invoices}/${invoice.invoiceId}`),
-                }
-              : undefined
-          }
-        />
+        <>
+          {replaced ? <ReviseNotice invoice={replaced} /> : null}
+          <NewInvoiceForm
+            key={`${profile.profileId}:${from ?? ""}`}
+            profileId={profile.profileId}
+            tokens={tokens}
+            start={start}
+            clients={clients.currentData}
+            replaces={
+              replaced
+                ? { invoiceId: replaced.invoiceId, number: invoiceNumber(replaced.number) }
+                : undefined
+            }
+            request={
+              request
+                ? {
+                    senderName: profile.name ?? "",
+                    onCreated: (invoice) =>
+                      router.push(`${APP_ROUTES.invoices}/${invoice.invoiceId}`),
+                  }
+                : undefined
+            }
+          />
+        </>
       )}
     </div>
+  );
+}
+
+const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+
+/** R-129: what a Revise cancels, and whether the client may already have its pay link. */
+function ReviseNotice({ invoice }: { invoice: Invoice }) {
+  const COPY = INVOICES_COPY.revise;
+  const number = invoiceNumber(invoice.number);
+  const sent = invoice.sends?.findLast((s) => s.sentAt)?.sentAt;
+  const views = invoice.views;
+  return (
+    <section
+      aria-labelledby="revise-notice"
+      className="flex flex-col gap-1.5 rounded-lg border border-line bg-warning-soft px-4 py-3 text-sm text-ink sm:px-5"
+    >
+      <h2 id="revise-notice" className="font-semibold">
+        {COPY.title(number)}
+      </h2>
+      <p>{COPY.body(number)}</p>
+      {sent ? <p>{COPY.sent(number, TIME.format(new Date(sent)))}</p> : null}
+      {views?.lastAt ? (
+        <p>{COPY.opened(views.count, TIME.format(new Date(views.lastAt)))}</p>
+      ) : null}
+      {sent || views?.lastAt ? <p>{COPY.held}</p> : null}
+    </section>
   );
 }

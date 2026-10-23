@@ -167,7 +167,14 @@ export const invoiceRetainerSchema = z.object({
   stoppedAt: apiTime.nullable(),
 });
 
-/** One history row (R-124, R-126 to R-128); its last seven fields are null when the row has none. */
+/** The other invoice of a Revise (R-129); payToken is the replacement's pay link. */
+export const revisionSchema = z.object({
+  invoiceId: hash32,
+  number: z.number().int().positive(),
+  payToken: z.string().regex(PAY_TOKEN_PATTERN).nullable(),
+});
+
+/** One history row (R-124, R-126 to R-129); its last eight fields are null when the row has none. */
 export const invoiceHistoryEventSchema = z.object({
   id: count,
   kind: openEnum<HistoryKind>(),
@@ -180,6 +187,7 @@ export const invoiceHistoryEventSchema = z.object({
   field: openEnum<HistoryField>().nullable(),
   from: apiDate.nullable(),
   to: apiDate.nullable(),
+  related: revisionSchema.nullable(),
 });
 
 /** An edit the payer sees (R-128); from and to are a due date's old and new value. */
@@ -219,6 +227,10 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   lines: z.array(invoiceLineSchema),
   // The edits the payer sees, newest first (R-128).
   updates: z.array(invoiceUpdateSchema),
+  // The invoice a Revise replaced it with (R-129).
+  replacedBy: revisionSchema.nullable(),
+  // Only in the owner's reads: the invoice it replaced.
+  replaces: revisionSchema.nullable().optional(),
   // Only in the owner's reads: null while not paid or once settled.
   settlementWait: settlementWaitSchema.nullable().optional(),
   // Only in the owner's reads: each Send to client, oldest first.
@@ -249,6 +261,8 @@ export const invoicesPageSchema = pageOf(invoiceSummarySchema);
 
 /** Fixed: chainId, token and amount; payer chooses: amountUsd alone (R-56). */
 export const createInvoiceBodySchema = z.object({
+  // R-129: the invoice it replaces.
+  replaces: hash32.optional(),
   chainId: count.optional(),
   token: evmAddress.optional(),
   amount: baseUnits.optional(),

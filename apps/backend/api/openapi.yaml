@@ -392,6 +392,7 @@ paths:
         "400": { $ref: "#/components/responses/MalformedRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
         "409": { $ref: "#/components/responses/CreateInvoiceConflict" }
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
@@ -1938,6 +1939,12 @@ components:
           description: |
             Optional. true turns payment reminders on at once, as setReminders does (R-97); it needs dueDate and
             client.email, otherwise 422. Part of the idempotency hash only when true.
+        replaces:
+          allOf: [{ $ref: "#/components/schemas/InvoiceId" }]
+          description: |
+            Optional (R-129). The profile's invoice this one replaces: it is canceled in the same transaction with
+            Cancel's checks, else 409 invoice_not_cancelable and nothing is made; another profile's or an unknown
+            invoice is 404. Part of the idempotency hash only when set.
         repeat:
           type: object
           additionalProperties: false
@@ -2116,7 +2123,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/InvoiceSummary"
         - type: object
-          required: [paidAt, settledAt, deposits, options, nextCheckAt, lines, updates]
+          required: [paidAt, settledAt, deposits, options, nextCheckAt, lines, updates, replacedBy]
           properties:
             paidAt:
               type: [string, "null"]
@@ -2181,6 +2188,12 @@ components:
                       Transfers to this option's address that are not reorged, in chain order. On an option other than
                       the shown one they are held for the payer (D-76).
                     items: { $ref: "#/components/schemas/Deposit" }
+            replacedBy:
+              description: |
+                R-129. The invoice a Revise replaced this canceled one with, and its pay link; null when none.
+              oneOf:
+                - type: "null"
+                - $ref: "#/components/schemas/Revision"
             updates:
               type: array
               description: |
@@ -2262,14 +2275,15 @@ components:
                 newest first. kind is invoice.created, invoice.canceled, payer.email_given, payer.option_chosen,
                 invoice.held, invoice.settlement_queued, invoice.settled, "invoice." and the new payment status,
                 reminders.on, reminders.off, reminders.stopped, repeat.stopped, email.invoice_, email.reminder_ or
-                email.receipt_ and sent or failed (R-126), or invoice.edited (R-127).
+                email.receipt_ and sent or failed (R-126), invoice.edited (R-127) or invoice.replaced (R-129).
                 actor system is Forwend. optionId names the option chosen, or the one money is held on, when the payer
                 chooses; amount is the base units held, in that option's token, else the shown option's; txHash is the
                 settle transaction; step is a reminder email's step; field is the edited field, and from and to
-                an edited due date's old and new value.
+                an edited due date's old and new value. related is the other invoice of a Revise: on invoice.replaced
+                the new one, on the new one's invoice.created the old one.
               items:
                 type: object
-                required: [id, kind, actor, at, optionId, amount, txHash, step, field, from, to]
+                required: [id, kind, actor, at, optionId, amount, txHash, step, field, from, to, related]
                 properties:
                   id: { type: integer, minimum: 1, description: Ascending in the order the rows were written. }
                   kind: { type: string, pattern: "^[a-z]+\\.[a-z_]+$" }
@@ -2282,6 +2296,12 @@ components:
                   field: { type: [string, "null"], enum: [memo, clientEmail, returnUrl, reference, note, dueDate, null] }
                   from: { type: [string, "null"], format: date }
                   to: { type: [string, "null"], format: date }
+                  related: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/Revision" }] }
+            replaces:
+              description: Only in the owner's responses. The invoice this one replaced (R-129); null when none.
+              oneOf:
+                - type: "null"
+                - $ref: "#/components/schemas/Revision"
             memo:
               type: [string, "null"]
               description: Only in the owner's responses; the public GET leaves it out. The owner's own note (R-127).
@@ -2295,6 +2315,14 @@ components:
                 count: { type: integer, minimum: 0 }
                 firstAt: { type: [string, "null"], format: date-time }
                 lastAt: { type: [string, "null"], format: date-time }
+    Revision:
+      type: object
+      description: The other invoice of a Revise (R-129). payToken is the replacement's pay link, null otherwise.
+      required: [invoiceId, number, payToken]
+      properties:
+        invoiceId: { $ref: "#/components/schemas/InvoiceId" }
+        number: { type: integer, minimum: 1 }
+        payToken: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/PayToken" }] }
     InvoiceSummary:
       type: object
       required: [invoiceId, payToken, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, agreedValue, senderName, returnUrl, issuer, chainId,
@@ -2499,7 +2527,8 @@ components:
     CreateInvoiceConflict:
       description: |
         The Idempotency-Key was used with other values (idempotency_conflict), or a freelancer or merchant profile has
-        no billing details yet (billing_details_required, R-92); a personal profile's request needs none.
+        no billing details yet (billing_details_required, R-92); a personal profile's request needs none. With
+        replaces, the invoice it replaces can no longer be canceled (invoice_not_cancelable, R-129).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

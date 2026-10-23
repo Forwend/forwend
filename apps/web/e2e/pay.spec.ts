@@ -40,6 +40,7 @@ const OPEN = {
   returnUrl: null as string | null,
   nextCheckAt: null,
   updates: [],
+  replacedBy: null,
   lines: [],
   options: [MAIN_OPTION],
   number: 1,

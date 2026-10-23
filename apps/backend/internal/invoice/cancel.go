@@ -16,16 +16,23 @@ var ErrNotCancelable = errors.New("invoice can't be canceled")
 // after the cancel is held for the payer: the ledger treats canceled as final (D-26).
 func (s *Service) Cancel(ctx context.Context, profileID, id string) (Invoice, error) {
 	id = strings.ToLower(id)
-	tx, err := s.pool.Begin(ctx)
+	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		return s.cancel(ctx, tx, profileID, id, "", history.Canceled, history.Data{})
+	})
 	if err != nil {
-		return Invoice{}, fmt.Errorf("cancel invoice %s: %w", id, err)
+		return Invoice{}, err
 	}
-	defer tx.Rollback(ctx)
+	return s.GetOfProfile(ctx, profileID, id)
+}
+
+// cancel cancels the main invoice id and its options with Cancel's checks, and writes kind to its history. A Revise
+// (R-129) passes the invoice replacing it.
+func (s *Service) cancel(ctx context.Context, tx pgx.Tx, profileID, id, replacedBy, kind string, data history.Data) error {
 	// Options first, main row last, in the ledger's lock order, so the two can't deadlock.
 	rows, err := tx.Query(ctx, `SELECT payment_status, expires_at FROM invoices
 		WHERE coalesce(main_id, id) = $1 AND profile_id = $2 ORDER BY main_id IS NULL, id FOR UPDATE`, id, profileID)
 	if err != nil {
-		return Invoice{}, fmt.Errorf("lock invoice %s: %w", id, err)
+		return fmt.Errorf("lock invoice %s: %w", id, err)
 	}
 	type row struct {
 		Status    string
@@ -33,33 +40,27 @@ func (s *Service) Cancel(ctx context.Context, profileID, id string) (Invoice, er
 	}
 	locked, err := pgx.CollectRows(rows, pgx.RowToStructByPos[row])
 	if err != nil {
-		return Invoice{}, fmt.Errorf("lock invoice %s: %w", id, err)
+		return fmt.Errorf("lock invoice %s: %w", id, err)
 	}
 	if len(locked) == 0 {
-		return Invoice{}, ErrNotFound
+		return ErrNotFound
 	}
 	for _, r := range locked {
 		if r.Status != "open" || r.ExpiresAt <= s.now().Unix() {
-			return Invoice{}, ErrNotCancelable
+			return ErrNotCancelable
 		}
 	}
 	var seen bool
 	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
 		WHERE coalesce(i.main_id, i.id) = $1 AND t.status <> 'reorged')`, id).Scan(&seen); err != nil {
-		return Invoice{}, fmt.Errorf("read invoice %s transfers: %w", id, err)
+		return fmt.Errorf("read invoice %s transfers: %w", id, err)
 	}
 	if seen {
-		return Invoice{}, ErrNotCancelable
+		return ErrNotCancelable
 	}
-	if _, err := tx.Exec(ctx, `UPDATE invoices SET payment_status = 'canceled', canceled_at = now()
-		WHERE coalesce(main_id, id) = $1`, id); err != nil {
-		return Invoice{}, fmt.Errorf("cancel invoice %s: %w", id, err)
+	if _, err := tx.Exec(ctx, `UPDATE invoices SET payment_status = 'canceled', canceled_at = now(),
+		replaced_by = CASE WHEN id = $1 THEN nullif($2, '') END WHERE coalesce(main_id, id) = $1`, id, replacedBy); err != nil {
+		return fmt.Errorf("cancel invoice %s: %w", id, err)
 	}
-	if err := history.Add(ctx, tx, id, history.Canceled, history.Owner, history.Data{}); err != nil {
-		return Invoice{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return Invoice{}, fmt.Errorf("cancel invoice %s: %w", id, err)
-	}
-	return s.GetOfProfile(ctx, profileID, id)
+	return history.Add(ctx, tx, id, kind, history.Owner, data)
 }

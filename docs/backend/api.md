@@ -222,8 +222,8 @@ R-19 and R-42; the full schema is in openapi.yaml.
   Another profile's invoice is 404 (`invoice_not_found`), also when the same user owns both.
   - `history` (R-124) is every `history_events` row of the invoice, newest first, also in create and the other
     owner answers.
-  - A row is `{id, kind, actor, at, optionId, amount, txHash, step, field, from, to}`; the last seven are null when
-    the row has none.
+  - A row is `{id, kind, actor, at, optionId, amount, txHash, step, field, from, to, related}`; the last eight are null
+    when the row has none.
   - The worker writes a row for each Send to client, reminder and receipt it sends or gives up on (R-126).
   - By is who asked: the owner for Send to client, `system` for a retainer month, reminders and receipts.
   - Reminders on and off, the client's stop link and Stop repeating write a row only when they change something.
@@ -247,6 +247,12 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - `invoice_views` keeps a count, the first time and the last time; never an IP or user agent.
   - The owner's reads return `views` `{count, firstAt, lastAt}`; the times are null before the first load.
   - The R-51 canary blocks it, so its checks are not counted.
+- Create with `replaces` (R-129) is a Revise: it makes the new invoice and cancels the old one in one transaction.
+  - The old one is canceled with Cancel's checks and locks; otherwise 409 `invoice_not_cancelable` and nothing is made.
+  - Another profile's or an unknown invoice is 404. `replaces` is part of the idempotency hash only when set.
+  - Both reads of the old invoice return `replacedBy` `{invoiceId, number, payToken}`, the new one's pay link.
+  - The owner's reads of the new one return `replaces` `{invoiceId, number, payToken: null}`.
+  - History: `invoice.replaced` on the old one and the new one's `invoice.created` name each other in `related`.
 - `POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel` (R-79, D-79): cancels the invoice and every option of
   it, only while all are open, the checkout is open and no transfer was ever seen; otherwise 409
   `invoice_not_cancelable`. It locks the rows the ledger locks. The watcher records transfers without that lock, so a
