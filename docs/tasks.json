@@ -233,7 +233,7 @@
         "unit, lint, typecheck, build and e2e (with the privy specs) pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -315,11 +315,18 @@
           "summary": "The six controls now pass axe 4.14 label-in-name (WCAG 2.5.3): each name has the visible text in order. Layout is unchanged, the e2e checks are as strict as before, and lint, typecheck and unit tests pass. Follow-up: an email that starts with a digit still fails in the collapsed-sidebar and phone-header account IconButtons, because the visible initial is not a word in the aria-label.",
           "at": "2026-10-23T12:42:57Z",
           "filesHash": "d683b827c1816012"
-        }
+        },
+        "commit": "0714bea",
+        "doneAt": "2026-10-23T12:43:29Z"
       },
       "branch": "fix/f273-axe-core-4-14-passes-every-control-s-vis",
       "baseCommit": "90e3b706daf2ee6cc4da0658c526af8ddd2ba605",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f273-axe-core-4-14-passes-every-control-s-vis",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
