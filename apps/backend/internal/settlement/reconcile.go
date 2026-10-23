@@ -157,7 +157,7 @@ func (s *Signer) fillGap(ctx context.Context, client *ethclient.Client, chainID 
 	return nil
 }
 
-// Waits until the receiver is settled at the finalized block (D-45) and r's block, if any, is final too.
+// Records only once the receiver is settled at the finalized block (D-45) and r's block, if any, is final.
 // A reorg that drops our settle first leaves it without a receipt, handled like an unsent one.
 func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, in intent, r *types.Receipt) error {
 	head, err := client.HeaderByNumber(ctx, finalized)
@@ -238,7 +238,7 @@ const (
 	waitUnresolved = "unresolved"
 )
 
-// retry also drops a saved settle and every version of it, so a new one is signed.
+// retry drops a saved settle that can no longer mine, with every version of it, so a new one is signed.
 func (s *Signer) retry(ctx context.Context, in intent, reason string) error {
 	return s.postpone(ctx, in, waitRetry, reason)
 }

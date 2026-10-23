@@ -1015,7 +1015,7 @@ func (e env) overpriced(t *testing.T) {
 	e.anvil.Mine(1)
 }
 
-// Re-signed with the same nonce and an eighth more tip and fee cap, it and the next settle on the chain mine;
+// Re-signed with the same nonce and at least an eighth more tip and fee cap, it and the next settle on the chain mine;
 // it is booked once, with the replacement's hash.
 func TestStuckSettleIsReplacedWithAHigherFee(t *testing.T) {
 	e := setup(t)

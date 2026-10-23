@@ -183,7 +183,7 @@ func check(in intent) (address.Terms, string) {
 }
 
 // sign trusts the chain's own gas estimate (Tempo prices storage differently, S-5/S-6), with minGas as a floor.
-// The nonce never drops below after or the last saved settle's: a lagging node may not count our latest ones.
+// The nonce is never below after or the nonce after the last saved settle: a lagging node may miss our latest ones.
 func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uint64, to common.Address, data []byte,
 	after, minGas uint64, block *big.Int) (*types.Transaction, error) {
 	nonce, err := client.PendingNonceAt(ctx, s.sender)
@@ -230,8 +230,8 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 	return types.SignTx(tx, types.LatestSignerForChainID(new(big.Int).SetUint64(chainID)), s.key)
 }
 
-// replace bumps tip and fee cap by an eighth (geth wants a tenth) and saves the new version before it is sent,
-// keeping old's hash, since either may be mined. Over MaxFeeFactor it returns old, to be sent again as it is.
+// replace raises tip and fee cap by at least an eighth (geth wants a tenth) and to at least today's fees, saved before
+// it is sent with old's hash kept, since either may be mined. Over MaxFeeFactor it returns old, to be sent again as is.
 func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in intent, old *types.Transaction) (*types.Transaction, error) {
 	tip, feeCap, err := s.fees(ctx, client, in.chainID)
 	if err != nil {

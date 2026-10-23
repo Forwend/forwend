@@ -146,10 +146,11 @@ func checkInvoice(ctx context.Context, c config.Canary, rpcs map[uint64][2]*rpc.
 	if err != nil {
 		return fmt.Errorf("api: %w", err)
 	}
-	// The option's own terms overwrite the invoice's; the others are shared.
+	// The link's invoice id is keccak256 of its pay token.
 	if want := crypto.Keccak256Hash(common.FromHex(t.PayToken)).Hex(); api.InvoiceID != want {
 		return fmt.Errorf("api invoiceId %s, want %s", api.InvoiceID, want)
 	}
+	// The option's own terms overwrite the invoice's; the others are shared.
 	found := false
 	for _, o := range api.Options {
 		if o.OptionID == t.ID {

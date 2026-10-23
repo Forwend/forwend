@@ -106,7 +106,7 @@ contract InvoiceReceiver is ReentrancyGuard {
     }
 
     /// Returns other tokens, the native coin (`token == address(0)`) and anything off the intended chain. On it, the
-    /// invoice-token balance must not drop (on Arc native and USDC are one balance), unless that balance can't be read.
+    /// invoice-token balance must not drop (on Arc native and USDC are one balance); an unreadable token holds nothing.
     function recover(address token, address to, uint256 amount) external nonReentrant onlyClone {
         InvoiceTerms memory t = terms();
         if (msg.sender != factory.refundAuthority()) revert Unauthorized();

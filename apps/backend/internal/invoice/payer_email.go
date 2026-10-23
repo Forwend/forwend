@@ -18,8 +18,8 @@ import (
 
 var ErrReceiptSent = errors.New("receipt already sent")
 
-// SetPayerEmail sets this invoice's receipt address (R-82, D-68) until the receipt is sent. It locks the main row,
-// as the ledger does, so the two never decide at once. allow runs only when the receipt goes out now (R-117).
+// SetPayerEmail locks the main row as the ledger does, so the two never decide at once (R-82, D-68). allow runs only
+// when the receipt goes out now, so an unknown link or a bad address spends none of the shared limit (R-117).
 func (s *Service) SetPayerEmail(ctx context.Context, payToken, email string, allow func() time.Duration) (string, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	// As a client email is checked: plain text, and exactly one address with nothing around it.

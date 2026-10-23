@@ -18,7 +18,7 @@ const (
 // An invoice falls under exactly one filter (StatusFilterSQL).
 var StatusFilters = []string{"open", "paid", "settled", "expired", "canceled"}
 
-// ClosedSQL: the checkout closed, so every reader shows it expired before the ledger's status catches up (R-77).
+// ClosedSQL: every reader shows the checkout expired before the ledger does (R-77); detected may be money after it.
 // Paid on time but awaiting the second RPC is not closed. Before an option is chosen, every option counts (R-119).
 const ClosedSQL = `(invoices.payment_status IN ('open', 'detected', 'partially_paid')
 	AND invoices.expires_at < extract(epoch FROM now())

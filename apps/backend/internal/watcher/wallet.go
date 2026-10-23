@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-// tokens also holds, as false, each disabled token with detected rows (R-38): its logs are read until those rows
+// tokens holds, as false, each disabled token with detected rows (R-38): its logs are read until those rows
 // confirm or are reorged, so they never hold the scan's start, but none of its transfers is recorded anew.
 type wallets struct {
 	addresses map[common.Address]bool

@@ -45,6 +45,7 @@ export function ReceiveAddress({
           data-address
           className="font-mono text-[length:clamp(0.625rem,calc((100cqi_-_21px)/25.2),1rem)] leading-6 break-all text-muted select-all"
         >
+          {/* Adjacent spans: the text, a selection and Copy stay exactly the address. */}
           <span className="font-medium text-ink">{address.slice(0, START)}</span>
           <span>{address.slice(START, address.length - END)}</span>
           <span className="font-medium text-ink">{address.slice(address.length - END)}</span>

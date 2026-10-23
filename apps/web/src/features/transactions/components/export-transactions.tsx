@@ -26,7 +26,7 @@ export interface ExportTransactionsProps {
   disabled: boolean;
 }
 
-// R-109, R-113. Browser date fields: the kit's calendar opens inside its field and the dialog cuts it off.
+// R-108, R-109, R-113. Browser date fields: the kit's calendar opens inside its field and the dialog cuts it off.
 export function ExportTransactions({ profileId, disabled }: ExportTransactionsProps) {
   const [exportCsv, { isFetching }] = useLazyExportTransactionsQuery();
   const [statement, statementState] = useDownloadStatementMutation();
