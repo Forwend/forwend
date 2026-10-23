@@ -237,7 +237,7 @@
         "R-124 and DESIGN.md describe the table; unit, lint and typecheck pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "lint",
@@ -312,10 +312,10 @@
         "taskHash": "e3274db39f785ba4",
         "filesHash": "80c3a3c745f0b530",
         "proof": {
-          "1": "unit: invoice-detail.test reads the History table: Event, By and Details cells per row (Money held | Forwend | 1.50 DAI for the payer · Base Sepolia; Paid | Forwend | 1,250.00 USDC; Receipt email added | Payer | —; Created | You | —); screenshots in docs/runs/F278-shots at 390 (two-line rows), 768, 1280 and 1440 (table), light and dark, axe clean, no sideways scroll",
-          "2": "typecheck: HISTORY_CATEGORY_OF satisfies Record<HistoryKind, HistoryCategory> and the kind labels satisfy Record<HistoryKind, string>; lineOf shows an unknown kind's name as a change",
-          "3": "unit: the same test picks Changes (only Created) and Emails (only Receipt email added); the filter offers All, Payments, Changes and Emails",
-          "4": "lint: R-124 lists each category's kinds and DESIGN.md describes the table; unit, lint and typecheck pass"
+          "1": "unit",
+          "2": "typecheck",
+          "3": "unit",
+          "4": "lint"
         },
         "review": {
           "result": "pass",
@@ -323,11 +323,18 @@
           "summary": "Fixes check out: payer.email_given is in the email category, the test filters Emails, R-124 lists each category's kinds, HISTORY_CATEGORY_OF satisfies Record<HistoryKind, HistoryCategory>, rows have the hover tint, and the table sits in an overflow-x-auto wrapper. Amounts are right (paid and settled use the shown option's amount, held uses its row's option); the unit test and tsc pass; the 390/768/1280/1440 and Emails screenshots look right.",
           "at": "2026-10-23T20:50:39Z",
           "filesHash": "80c3a3c745f0b530"
-        }
+        },
+        "commit": "89d3ac7",
+        "doneAt": "2026-10-23T20:51:43Z"
       },
       "branch": "fix/f278-invoice-history-is-a-table-event-by-deta",
       "baseCommit": "a26b35767ca53ba7b34fcf8828a48845e80d1641",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f278-invoice-history-is-a-table-event-by-deta",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
