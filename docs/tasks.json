@@ -349,7 +349,8 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-23 review pass by reviewer: Money, safety, web, UI, database and HTTP API diffs read in full: no money or safety rule, lock-order trap, directive or requirement ID was lost, and 13 of 18 flags checked are correct. Minor wording notes: the recover NatSpec no longer says a broken token holds nothing, the sign nonce comment dropped the +1, replace says 'by an eighth' for 'at least an eighth', and SetPayerEmail lost why allow runs late."
+        "2026-10-23 review pass by reviewer: Money, safety, web, UI, database and HTTP API diffs read in full: no money or safety rule, lock-order trap, directive or requirement ID was lost, and 13 of 18 flags checked are correct. Minor wording notes: the recover NatSpec no longer says a broken token holds nothing, the sign nonce comment dropped the +1, replace says 'by an eighth' for 'at least an eighth', and SetPayerEmail lost why allow runs late.",
+        "2026-10-23 review pass by reviewer: The restore commit's comments are true, 1-2 lines, at most 120 characters, and carry the facts asked for (recover, sign nonce, replace fee, SetPayerEmail allow, receive-address spans, ClosedSQL detected, canary keccak). gofmt, go build, go vet, pnpm lint, forge build and forge test pass; a scan of all 498 changed files and a 20-file spot check found no code change beyond Biome reflow. Minor wording: ClosedSQL's 'detected may be money after it' has an unclear 'it' and drops 'until the chain is final'."
       ],
       "blockedReason": null,
       "evidence": {
@@ -414,6 +415,13 @@
           "2": "unit: a checker compares each changed file with main with comments removed (Go tokens, oxc AST for TS/TSX, Python tokens, Solidity/CSS/SQL stripped): all match; the one string literal change is a SQL -- comment inside a query; forge build and forge test pass",
           "3": "unit: 18 wrong comments that point at real code are left unchanged and listed as flag in the audit table",
           "4": "unit: unit, lint, typecheck, build and e2e pass"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "The restore commit's comments are true, 1-2 lines, at most 120 characters, and carry the facts asked for (recover, sign nonce, replace fee, SetPayerEmail allow, receive-address spans, ClosedSQL detected, canary keccak). gofmt, go build, go vet, pnpm lint, forge build and forge test pass; a scan of all 498 changed files and a 20-file spot check found no code change beyond Biome reflow. Minor wording: ClosedSQL's 'detected may be money after it' has an unclear 'it' and drops 'until the chain is final'.",
+          "at": "2026-10-23T13:55:27Z",
+          "filesHash": "e0968ce834a6f78d"
         }
       },
       "branch": "chore/f274-comments-only-facts-the-code-can-t-show",
