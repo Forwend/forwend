@@ -126,7 +126,7 @@
       "dependsOn": [
         "F276"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "lint",
@@ -202,10 +202,10 @@
         "taskHash": "ec940f1b823f5f34",
         "filesHash": "d861494b1e963623",
         "proof": {
-          "1": "e2e: pay.spec 'follows the payment' sees exactly one POST /views across four status polls; invoice_views holds only invoice_id, first_at, last_at and views; the canary script aborts the views request",
-          "2": "unit: TestPayPageLoadsCountAsViews: owner GET views {count 0, null, null} before, {2, UTC firstAt <= lastAt} after; past the per-link burst views are 429 and not counted; public GET has no views; an unknown token is 404; TestPublicRoutesTakeOnlyThePayToken: on-chain and option ids are 404 on /views; TestCreateInvoice treats views as owner-only",
-          "3": "unit: History panel ends with 'Pay link opened 3 times · first … · last …', 'Pay link opened once · …' or 'No pay link opens counted yet.', and has no such line without a pay token; screenshots in docs/runs/F277-shots at 390 and 1440, axe clean",
-          "4": "lint: openapi.yaml (countView path, Invoice.views), api.md (route, owner GET, rate limit), architecture.md data model, PROJECT R-114, DESIGN.md updated; unit, lint and typecheck pass"
+          "1": "e2e",
+          "2": "unit",
+          "3": "unit",
+          "4": "lint"
         },
         "review": {
           "result": "pass",
@@ -213,11 +213,18 @@
           "summary": "Pay page loads are counted once per load through a per-link limited public route with no IP or user agent; owner reads return UTC views and the History panel shows them. Tests cover 204, 404, 429 and the D-86 table, and the docs match the code.",
           "at": "2026-10-23T20:06:45Z",
           "filesHash": "d861494b1e963623"
-        }
+        },
+        "commit": "e9e3d6c",
+        "doneAt": "2026-10-23T20:06:57Z"
       },
       "branch": "feat/f277-the-owner-sees-how-often-the-pay-link-wa",
       "baseCommit": "d3ec865d17bdc1ddcf6f460ca66545a86d65ec7e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f277-the-owner-sees-how-often-the-pay-link-wa",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
