@@ -166,7 +166,7 @@ export const invoiceRetainerSchema = z.object({
   stoppedAt: apiTime.nullable(),
 });
 
-/** One history row (R-124); optionId, amount and txHash are null when the row has none. */
+/** One history row (R-124, R-126); optionId, amount, txHash and step are null when the row has none. */
 export const invoiceHistoryEventSchema = z.object({
   id: count,
   kind: openEnum<HistoryKind>(),
@@ -175,6 +175,7 @@ export const invoiceHistoryEventSchema = z.object({
   optionId: hash32.nullable(),
   amount: baseUnits.nullable(),
   txHash: hash32.nullable(),
+  step: openEnum<ReminderStep>().nullable(),
 });
 
 /** Pay page loads (R-125); both times are null before the first. */

@@ -103,7 +103,7 @@ func addCycle(ctx context.Context, tx pgx.Tx, c cycle, profileID, invoiceID, key
 	if left, _, err := outbox.ClientEmailsLeft(ctx, tx, profileID); err != nil || left == 0 {
 		return err
 	}
-	return outbox.QueueSend(ctx, tx, invoiceID, key)
+	return outbox.QueueSend(ctx, tx, invoiceID, key, history.System)
 }
 
 // nextMonthSQL joins c.n and c.due to retainers r: the next month due today (a SQL date) or later. A month that
@@ -165,10 +165,20 @@ func (s *Service) MakeRetainerInvoices(ctx context.Context) error {
 // StopRetainer (R-98): invoices already made stay; it answers the same when already stopped or not repeating.
 func (s *Service) StopRetainer(ctx context.Context, profileID, id string) (Invoice, error) {
 	id = strings.ToLower(id)
-	if _, err := s.pool.Exec(ctx, `UPDATE retainers SET stopped_at = coalesce(stopped_at, now())
-		WHERE id = (SELECT retainer_id FROM retainer_invoices WHERE invoice_id = $1) AND profile_id = $2`,
-		id, profileID); err != nil {
-		return Invoice{}, fmt.Errorf("stop retainer of invoice %s: %w", id, err)
+	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `UPDATE retainers SET stopped_at = now()
+			WHERE id = (SELECT retainer_id FROM retainer_invoices WHERE invoice_id = $1) AND profile_id = $2
+			  AND stopped_at IS NULL`, id, profileID)
+		if err != nil {
+			return fmt.Errorf("stop retainer of invoice %s: %w", id, err)
+		}
+		if tag.RowsAffected() == 0 {
+			return nil
+		}
+		return history.Add(ctx, tx, id, history.RepeatStopped, history.Owner, history.Data{})
+	})
+	if err != nil {
+		return Invoice{}, err
 	}
 	return s.GetOfProfile(ctx, profileID, id)
 }

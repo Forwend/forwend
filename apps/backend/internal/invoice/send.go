@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/history"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
@@ -78,7 +79,7 @@ func (s *Service) Send(ctx context.Context, profileID, id, key string, allow fun
 			return &TooSoonError{Wait: wait}
 		}
 		queued = true
-		return outbox.QueueSend(ctx, tx, id, key)
+		return outbox.QueueSend(ctx, tx, id, key, history.Owner)
 	})
 	if err != nil {
 		return Invoice{}, false, err

@@ -162,6 +162,8 @@ export function InvoiceHistory({ invoice, history, views }: InvoiceHistoryProps)
   );
 }
 
+const STEPS: Record<string, string> = COPY.steps;
+
 function lineOf(row: InvoiceHistoryEvent, invoice: InvoiceHistoryProps["invoice"]): Line {
   const known = row.kind in COPY.kinds ? (row.kind as keyof typeof COPY.kinds) : null;
   // A row without an option is about the invoice's current one.
@@ -171,11 +173,25 @@ function lineOf(row: InvoiceHistoryEvent, invoice: InvoiceHistoryProps["invoice"
     label: known ? COPY.kinds[known] : row.kind,
     category: known ? HISTORY_CATEGORY_OF[known] : HISTORY_CATEGORIES.change,
     by: COPY.actors[row.actor as keyof typeof COPY.actors] ?? row.actor,
-    details: option ? detailsOf(row, option) : null,
+    details: detailsOf(row, option),
   };
 }
 
-function detailsOf(row: InvoiceHistoryEvent, option: Option): ReactNode {
+function detailsOf(row: InvoiceHistoryEvent, option: Option | undefined): ReactNode {
+  switch (row.kind) {
+    case HISTORY_KINDS.invoiceEmailed:
+    case HISTORY_KINDS.invoiceEmailFailed:
+      return COPY.toClient;
+    case HISTORY_KINDS.reminderEmailed:
+    case HISTORY_KINDS.reminderEmailFailed:
+      return row.step ? (STEPS[row.step] ?? row.step) : null;
+    case HISTORY_KINDS.receiptEmailed:
+    case HISTORY_KINDS.receiptEmailFailed:
+      return COPY.toPayer;
+    case HISTORY_KINDS.remindersStopped:
+      return COPY.stoppedByLink;
+  }
+  if (!option) return null;
   const network = chainName(option.chainId);
   switch (row.kind) {
     case HISTORY_KINDS.paid:

@@ -413,6 +413,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       emails info.
     - Details holds what the name leaves out: the amount with its token, the network, a settle's hash and explorer link.
       Without any, a quiet dash.
+    - An email's Details say who it went to, or a reminder's step: "On the due date".
+    - Reminders stopped says it came from the reminder email's stop link.
     - Time is the short date and time; the year shows only for another year.
     - Under 36rem of panel width each change is two lines: the event with the time on the right, then By and Details.
     - A small segmented control in the head shows All, Payments, Changes or Emails.

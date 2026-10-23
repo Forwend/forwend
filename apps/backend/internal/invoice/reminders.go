@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/history"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
@@ -47,6 +48,12 @@ func PaidToOwnerSQL(option string) string {
 func (s *Service) SetReminders(ctx context.Context, profileID, id string, on bool) (Invoice, error) {
 	id = strings.ToLower(id)
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		// Changes take turns even before the reminders row exists. NO KEY: a history row's foreign key on this invoice,
+		// as the stop link writes holding that row, doesn't wait for it.
+		if _, err := tx.Exec(ctx, "SELECT 1 FROM invoices WHERE id = $1 AND profile_id = $2 FOR NO KEY UPDATE", id,
+			profileID); err != nil {
+			return fmt.Errorf("lock invoice %s: %w", id, err)
+		}
 		var email, due, status string
 		err := tx.QueryRow(ctx, "SELECT coalesce(client_email, ''), coalesce(due_date::text, ''), "+StatusFilterSQL+
 			" FROM "+invoicesCurrent+" WHERE id = $1 AND profile_id = $2", id, profileID).Scan(&email, &due, &status)
@@ -55,9 +62,9 @@ func (s *Service) SetReminders(ctx context.Context, profileID, id string, on boo
 		} else if err != nil {
 			return fmt.Errorf("read invoice %s: %w", id, err)
 		}
-		var stopped bool
-		err = tx.QueryRow(ctx, "SELECT stopped_at IS NOT NULL FROM invoice_reminders WHERE invoice_id = $1 FOR UPDATE",
-			id).Scan(&stopped)
+		var stopped, was bool
+		err = tx.QueryRow(ctx, `SELECT stopped_at IS NOT NULL, enabled FROM invoice_reminders WHERE invoice_id = $1
+			FOR UPDATE`, id).Scan(&stopped, &was)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("read invoice %s reminders: %w", id, err)
 		}
@@ -80,7 +87,14 @@ func (s *Service) SetReminders(ctx context.Context, profileID, id string, on boo
 			ON CONFLICT (invoice_id) DO UPDATE SET enabled = $2`, id, on, token); err != nil {
 			return fmt.Errorf("save invoice %s reminders: %w", id, err)
 		}
-		return nil
+		if on == was {
+			return nil
+		}
+		kind := history.RemindersOff
+		if on {
+			kind = history.RemindersOn
+		}
+		return history.Add(ctx, tx, id, kind, history.Owner, history.Data{})
 	})
 	if err != nil {
 		return Invoice{}, err
@@ -101,14 +115,30 @@ func (s *Service) StopReminders(ctx context.Context, token string) (number int64
 	if !stopToken.MatchString(token) {
 		return 0, "", ErrNotFound
 	}
-	err = s.pool.QueryRow(ctx, `WITH r AS (UPDATE invoice_reminders SET stopped_at = coalesce(stopped_at, now())
-		    WHERE stop_token = $1 RETURNING invoice_id)
-		SELECT m.number, coalesce(m.issuer_name, m.sender_name, '') FROM r JOIN invoices m ON m.id = r.invoice_id`,
-		token).Scan(&number, &from)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, "", ErrNotFound
-	} else if err != nil {
-		return 0, "", fmt.Errorf("stop reminders: %w", err)
+	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		var invoice string
+		var stopped bool
+		err := tx.QueryRow(ctx, `SELECT invoice_id, stopped_at IS NOT NULL FROM invoice_reminders WHERE stop_token = $1
+			FOR UPDATE`, token).Scan(&invoice, &stopped)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		} else if err != nil {
+			return fmt.Errorf("stop reminders: %w", err)
+		}
+		if !stopped {
+			if _, err := tx.Exec(ctx, "UPDATE invoice_reminders SET stopped_at = now() WHERE invoice_id = $1",
+				invoice); err != nil {
+				return fmt.Errorf("stop invoice %s reminders: %w", invoice, err)
+			}
+			if err := history.Add(ctx, tx, invoice, history.RemindersStopped, history.Payer, history.Data{}); err != nil {
+				return err
+			}
+		}
+		return tx.QueryRow(ctx, "SELECT number, coalesce(issuer_name, sender_name, '') FROM invoices WHERE id = $1",
+			invoice).Scan(&number, &from)
+	})
+	if err != nil {
+		return 0, "", err
 	}
 	return number, from, nil
 }

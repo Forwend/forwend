@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -12,6 +13,8 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
 	"github.com/ensp1re/forwend/apps/backend/internal/email"
+	"github.com/ensp1re/forwend/apps/backend/internal/history"
+	"github.com/ensp1re/forwend/apps/backend/internal/history/historytest"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -392,7 +395,7 @@ func TestDeliverSendsNoClientEmailWithoutAPayLink(t *testing.T) {
 	exec(t, pool, `INSERT INTO invoice_reminders (invoice_id, enabled, stop_token) VALUES ($1, true, $2)`, id,
 		strings.Repeat("cd", 32))
 	if err := pgx.BeginFunc(context.Background(), pool, func(tx pgx.Tx) error {
-		return outbox.QueueSend(context.Background(), tx, id, "k1")
+		return outbox.QueueSend(context.Background(), tx, id, "k1", history.Owner)
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -422,7 +425,7 @@ func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
 	send := func(invoice, key string) {
 		t.Helper()
 		if err := pgx.BeginFunc(context.Background(), pool, func(tx pgx.Tx) error {
-			return outbox.QueueSend(context.Background(), tx, invoice, key)
+			return outbox.QueueSend(context.Background(), tx, invoice, key, history.Owner)
 		}); err != nil {
 			t.Fatal(err)
 		}
@@ -578,6 +581,52 @@ func TestChangeEmailSaysWhenItIsDue(t *testing.T) {
 	for days, want := range map[int]string{0: "due the day it is invoiced.", 1: "due 1 day after.", 7: "due 7 days after."} {
 		if lead := change("Alice", "Logo", "Extra", "1.00 USD", days, "", "link").Lead[1]; !strings.HasSuffix(lead, want) {
 			t.Fatalf("%d days: %q, want it to end %q", days, lead, want)
+		}
+	}
+}
+
+// R-126: By is who asked; the owner's own emails are not the client's.
+func TestDeliverRecordsClientEmailsInHistory(t *testing.T) {
+	pool, id := setup(t, "owner@example.com")
+	exec(t, pool, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard, DISABLE TRIGGER invoices_number")
+	exec(t, pool, "UPDATE invoices SET client_email = 'ap@client.example', due_date = '2026-11-30' WHERE id = $1", id)
+	exec(t, pool, "ALTER TABLE invoices ENABLE TRIGGER invoices_guard, ENABLE TRIGGER invoices_number")
+	exec(t, pool, "INSERT INTO invoice_reminders (invoice_id, enabled, stop_token) VALUES ($1, true, $2)", id,
+		strings.Repeat("cd", 32))
+	if err := pgx.BeginFunc(context.Background(), pool, func(tx pgx.Tx) error {
+		return outbox.QueueSend(context.Background(), tx, id, "k1", history.Owner)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	remind := func(step string) {
+		exec(t, pool, `INSERT INTO outbox_events (kind, invoice_id, payload) VALUES ('invoice.reminder', $1,
+			jsonb_build_object('option', $1::text, 'step', $2::text))`, id, step)
+	}
+	remind("due")
+	queue(t, pool, outbox.Paid, id, nil)
+	f := &fake{}
+	if err := Deliver(context.Background(), pool, f, site); err != nil || len(f.sent) != 3 {
+		t.Fatalf("sent %d (%v), want 3", len(f.sent), err)
+	}
+	sent := []string{"email.invoice_sent by owner", `email.reminder_sent by system {"step": "due"}`}
+	if got := historytest.Events(t, pool, id); !slices.Equal(got, sent) {
+		t.Fatalf("history %q, want %q", got, sent)
+	}
+	// A failure to try again writes nothing; giving up writes the failed row.
+	remind("after")
+	f.fail = true
+	for _, attempts := range []int{0, MaxAttempts - 1} {
+		exec(t, pool, "UPDATE outbox_events SET attempts = $1, next_attempt_at = now() WHERE published_at IS NULL",
+			attempts)
+		if err := Deliver(context.Background(), pool, f, site); err != nil {
+			t.Fatal(err)
+		}
+		want := sent
+		if attempts > 0 {
+			want = append(slices.Clone(sent), `email.reminder_failed by system {"step": "after"}`)
+		}
+		if got := historytest.Events(t, pool, id); !slices.Equal(got, want) {
+			t.Fatalf("after a failure with %d attempts before: history %q, want %q", attempts, got, want)
 		}
 	}
 }
