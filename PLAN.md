@@ -105,11 +105,12 @@ code; a wallet connects only to claim a refund (D-37).
   - 11.11.1 History log: one append-only row per change, written in the same transaction, with the actor and typed
     data; no secrets, IP or user agent. A test fails when a Go writer of invoices writes no row. Invoices, requests,
     checkouts and jobs write to it; old invoices are backfilled; the job Record (R-104) moves onto it later.
-  - 11.11.2 History tab on the invoice page, newest first, with filters. The pay page shows the payer's rows as
-    Updates. Views count first view, last view and a total, with no IP. After 11.11.1.
+  - 11.11.2 History panel on the invoice page, newest first, with filters. Views count first view, last view and a
+    total, with no IP. After 11.11.1.
   - 11.11.3 Edits: memo, client email, reminders and return link at any time; reference, note and a due date inside
-    the checkout window before payment, shown to the payer as Updated. Any other change is a Revise before any deposit:
-    a new invoice with a new number, address and pay link, and the old one canceled as "Replaced by". After 11.11.1.
+    the checkout window before payment. The pay page lists the payer's history rows as Updates, an edit as Updated.
+    Any other change is a Revise before any deposit: a new invoice with a new number, address and pay link, and the
+    old one canceled as "Replaced by". After 11.11.1.
   - 11.11.4 Reopen an expired, partly paid invoice before its settle deadline: same address, and the payer sends the
     rest. The owner decides how long the settle grace after expiry is (D-92). After 11.11.1.
 - Before outside merchants: Q-11. The Privy key-quorum spike comes first; D-61 holds for the first outside merchants.

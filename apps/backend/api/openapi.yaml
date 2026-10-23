@@ -2180,6 +2180,26 @@ components:
                   requestedAt: { type: string, format: date-time }
                   sentAt: { type: [string, "null"], format: date-time }
                   failedAt: { type: [string, "null"], format: date-time }
+            history:
+              type: array
+              description: |
+                Only in the owner's responses; the public GET leaves it out. Every change to the invoice (R-123, R-124),
+                newest first. kind is invoice.created, invoice.canceled, payer.email_given, payer.option_chosen,
+                invoice.held, invoice.settlement_queued, invoice.settled, or "invoice." and the new payment status.
+                actor system is Forwend. optionId names the option chosen, or the one money is held on, when the payer
+                chooses; amount is the base units held, in that option's token, else the shown option's; txHash is the
+                settle transaction.
+              items:
+                type: object
+                required: [id, kind, actor, at, optionId, amount, txHash]
+                properties:
+                  id: { type: integer, minimum: 1, description: Ascending in the order the rows were written. }
+                  kind: { type: string, pattern: "^[a-z]+\\.[a-z_]+$" }
+                  actor: { type: string, enum: [owner, payer, system] }
+                  at: { type: string, format: date-time }
+                  optionId: { type: [string, "null"], pattern: "^0x[0-9a-f]{64}$" }
+                  amount: { type: [string, "null"], pattern: "^[0-9]+$" }
+                  txHash: { type: [string, "null"], pattern: "^0x[0-9a-f]{64}$" }
     InvoiceSummary:
       type: object
       required: [invoiceId, payToken, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, agreedValue, senderName, returnUrl, issuer, chainId,

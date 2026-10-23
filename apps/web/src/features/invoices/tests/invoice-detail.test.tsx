@@ -153,4 +153,42 @@ describe("owner's invoice page", () => {
     expect(items.getByText("1 × 500.00 USD")).toBeTruthy();
     expect(items.getByText("1,250.00 USD")).toBeTruthy();
   });
+
+  // R-124.
+  it("lists the history newest first, held money in its option's token, and filters to changes", async () => {
+    const dai = `0x${"ab".repeat(32)}`;
+    const row = { optionId: null, amount: null, txHash: null };
+    serve({
+      ...OPEN,
+      optionCount: 2,
+      options: [
+        ...OPEN.options,
+        { ...OPEN.options[0], optionId: dai, symbol: "DAI", decimals: 18 },
+      ],
+      history: [
+        {
+          ...row,
+          id: 3,
+          kind: "invoice.held",
+          actor: "system",
+          at: "2026-10-12T09:00:00Z",
+          optionId: dai,
+          amount: "1500000000000000000",
+        },
+        { ...row, id: 2, kind: "invoice.paid", actor: "system", at: "2026-10-11T09:00:00Z" },
+        { ...row, id: 1, kind: "invoice.created", actor: "owner", at: "2026-10-10T11:00:00Z" },
+      ],
+    });
+    show();
+    await settle();
+    const history = within(screen.getByRole("region", { name: "History" }));
+    const rows = () => history.getAllByRole("listitem").map((li) => li.textContent);
+    expect(rows()).toEqual([
+      expect.stringContaining("1.50 DAI held for the payer · Forwend"),
+      expect.stringContaining("Paid · Forwend"),
+      expect.stringContaining("Created · You"),
+    ]);
+    act(() => history.getByRole("radio", { name: "Changes" }).click());
+    expect(rows()).toEqual([expect.stringContaining("Created · You")]);
+  });
 });

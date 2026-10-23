@@ -6,7 +6,13 @@ import type {
 } from "@/features/activity/types/activity";
 import { clientBodySchema } from "@/features/clients/schemas/clients";
 import { PAY_TOKEN_PATTERN, SETTLEMENT_WAITS } from "@/features/invoices/constants/invoices";
-import type { InvoiceEventKind, OwedKind, ReminderStep } from "@/features/invoices/types/invoices";
+import type {
+  HistoryActor,
+  HistoryKind,
+  InvoiceEventKind,
+  OwedKind,
+  ReminderStep,
+} from "@/features/invoices/types/invoices";
 import {
   apiDate,
   apiTime,
@@ -160,6 +166,17 @@ export const invoiceRetainerSchema = z.object({
   stoppedAt: apiTime.nullable(),
 });
 
+/** One history row (R-124); optionId, amount and txHash are null when the row has none. */
+export const invoiceHistoryEventSchema = z.object({
+  id: count,
+  kind: openEnum<HistoryKind>(),
+  actor: openEnum<HistoryActor>(),
+  at: apiTime,
+  optionId: hash32.nullable(),
+  amount: baseUnits.nullable(),
+  txHash: hash32.nullable(),
+});
+
 /** POST /v1/reminders/{token}/stop. */
 export const stoppedRemindersSchema = z.object({
   number: z.number().int().positive(),
@@ -188,6 +205,8 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   reminders: invoiceRemindersSchema.optional(),
   // Only in the owner's reads: null when it doesn't repeat.
   retainer: invoiceRetainerSchema.nullable().optional(),
+  // Only in the owner's reads: every change, newest first.
+  history: z.array(invoiceHistoryEventSchema).optional(),
 });
 
 /** POST /v1/invoices/{payToken}/recheck (R-55): what Check status found. Amounts in base units. */

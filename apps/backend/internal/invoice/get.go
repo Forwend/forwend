@@ -109,6 +109,9 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 		if inv.Reminders, err = s.reminders(ctx, inv.ID); err != nil {
 			return Invoice{}, err
 		}
+		if inv.History, err = s.history(ctx, inv.ID); err != nil {
+			return Invoice{}, err
+		}
 		inv.Retainer, err = s.retainer(ctx, inv.ID)
 		return inv, err
 	}
