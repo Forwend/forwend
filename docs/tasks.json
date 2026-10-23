@@ -458,7 +458,7 @@
         "openapi.yaml, api.md, R-127 and DESIGN.md match; unit, lint and typecheck pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "lint",
@@ -535,10 +535,10 @@
         "taskHash": "dc0dfdc527a62f11",
         "filesHash": "f11c1dd57ab0a4c3",
         "proof": {
-          "1": "unit: TestOwnerEditsMemoClientEmailAndReturnLink: PUT details saves memo, client email and return link, and a missing or null field clears; a bad email, an http link and a 2001-character memo are 422, an unknown field 400; Alice's other profile is 404 invoice_not_found; Bob's profile is 403; refused edits change nothing; TestProfileRoutesAreAllListed covers the route",
-          "2": "unit: the same test: the same body twice writes rows only once, each changed field one invoice.edited owner row with its field name; TestInvoiceNumbers: the database refuses every other detail change and lets client_email, return_url and memo change",
-          "3": "unit: edit-invoice.test: the whole set is sent with a cleared field as null, a request keeps its client email, a 422 lands on its field; Edit shows only once the owner's read is in; past sends name no address; the public read has no memo; e2e navigation menus list Edit; screenshots in docs/runs/F280-shots at 390 and 1440, axe clean",
-          "4": "lint: openapi.yaml (editInvoice, memo, history field), api.md, D-92, R-124, R-127 and DESIGN.md updated; unit, lint and typecheck pass"
+          "1": "unit",
+          "2": "unit",
+          "3": "unit",
+          "4": "lint"
         },
         "review": {
           "result": "pass",
@@ -546,11 +546,18 @@
           "summary": "The send-to-client.tsx padding fix is right: the no-email line inside the padded list block now has no padding of its own, like the send-again line, and the standalone line keeps px-4 pb-4 sm:px-5. The earlier fixes stand. Minor notes from the last pass remain: a send queued and then left without an email is skipped with published_at set and reads 'Emailed'; reminders left on without an email still show their schedule.",
           "at": "2026-10-23T22:16:55Z",
           "filesHash": "f11c1dd57ab0a4c3"
-        }
+        },
+        "commit": "5a387ae",
+        "doneAt": "2026-10-23T22:17:08Z"
       },
       "branch": "feat/f280-the-owner-edits-an-invoice-s-memo-client",
       "baseCommit": "2e5ab64b3471015fce7df21bf055d513b288594c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f280-the-owner-edits-an-invoice-s-memo-client",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
