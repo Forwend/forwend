@@ -355,72 +355,65 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-23T13:26:57Z",
+        "at": "2026-10-23T13:45:28Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 128.5,
-            "log": "docs/runs/F274-20261023T132657Z-unit.log"
+            "seconds": 125.0,
+            "log": "docs/runs/F274-20261023T134528Z-unit.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.1,
-            "log": "docs/runs/F274-20261023T132657Z-harness.log"
+            "seconds": 1.6,
+            "log": "docs/runs/F274-20261023T134528Z-harness.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F274-20261023T132657Z-docs-check.log"
+            "seconds": 0.0,
+            "log": "docs/runs/F274-20261023T134528Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.4,
-            "log": "docs/runs/F274-20261023T132657Z-lint.log"
+            "seconds": 0.3,
+            "log": "docs/runs/F274-20261023T134528Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.2,
-            "log": "docs/runs/F274-20261023T132657Z-typecheck.log"
+            "log": "docs/runs/F274-20261023T134528Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 6.0,
-            "log": "docs/runs/F274-20261023T132657Z-build.log"
+            "seconds": 5.6,
+            "log": "docs/runs/F274-20261023T134528Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 278.9,
-            "log": "docs/runs/F274-20261023T132657Z-e2e.log"
+            "seconds": 240.8,
+            "log": "docs/runs/F274-20261023T134528Z-e2e.log"
           }
         ],
         "taskHash": "83feed134b8ee3ff",
-        "filesHash": "8dff27600c1f35ea",
+        "filesHash": "e0968ce834a6f78d",
         "proof": {
           "1": "unit: 3,776 comments audited (802 deleted, 967 shortened, 1,989 kept, 18 flagged); no comment block over 2 lines remains except the 2 flagged ones",
-          "2": "unit: a checker compares each of the 498 changed files with HEAD with comments removed (Go tokens, oxc AST for TS/TSX, Python tokens, Solidity/CSS/SQL stripped): all match; the one string literal change is a SQL -- comment inside a query; forge test passes (the receive-address vectors pin the bytecode)",
+          "2": "unit: a checker compares each changed file with main with comments removed (Go tokens, oxc AST for TS/TSX, Python tokens, Solidity/CSS/SQL stripped): all match; the one string literal change is a SQL -- comment inside a query; forge build and forge test pass",
           "3": "unit: 18 wrong comments that point at real code are left unchanged and listed as flag in the audit table",
           "4": "unit: unit, lint, typecheck, build and e2e pass"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Money, safety, web, UI, database and HTTP API diffs read in full: no money or safety rule, lock-order trap, directive or requirement ID was lost, and 13 of 18 flags checked are correct. Minor wording notes: the recover NatSpec no longer says a broken token holds nothing, the sign nonce comment dropped the +1, replace says 'by an eighth' for 'at least an eighth', and SetPayerEmail lost why allow runs late.",
-          "at": "2026-10-23T13:43:05Z",
-          "filesHash": "8dff27600c1f35ea"
         }
       },
       "branch": "chore/f274-comments-only-facts-the-code-can-t-show",
