@@ -347,7 +347,7 @@
         "openapi.yaml, api.md, R-126 and DESIGN.md match; unit, lint and typecheck pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "lint",
@@ -423,10 +423,10 @@
         "taskHash": "999a2c9a2072a3e4",
         "filesHash": "c7baa26919a384a1",
         "proof": {
-          "1": "unit: TestDeliverRecordsClientEmailsInHistory: after delivery the history is email.invoice_sent by owner and email.reminder_sent by system with step due; a failure to retry writes nothing; giving up writes email.reminder_failed with step after; the owner's paid email writes none",
-          "2": "unit: TestSettingChangesAreInTheHistory: reminders on, on again, off, on write on/off/on only; the stop link twice writes one payer row; Stop repeating twice writes one owner row; TestFirstReminderChangesAtOnceAreBothInTheHistory: an off that starts while a first on is open waits for it and writes off (failed before the invoice lock)",
-          "3": "unit: owner reads return step (TestOwnerReadsTheInvoiceHistory); web kinds, labels and categories satisfy Record<HistoryKind, …>; screenshots in docs/runs/F279-shots at 390 and 1440 with Emails and Changes filters, axe clean",
-          "4": "lint: openapi.yaml (kinds, step), api.md, R-124, R-126 and DESIGN.md updated; unit, lint and typecheck pass"
+          "1": "unit",
+          "2": "unit",
+          "3": "unit",
+          "4": "lint"
         },
         "review": {
           "result": "pass",
@@ -434,11 +434,18 @@
           "summary": "Re-review after fixes: SetReminders now locks the invoice FOR NO KEY UPDATE before reading enabled, so first toggles take turns and the stop link's history FK (KEY SHARE) can't deadlock with it; the regression test covers it. Email rows are written only on send and give-up in the delivery transaction (retry, skip and non-client kinds write nothing, now tested), stops write once, contracts and web agree; notify, invoice, history, httpapi tests (-race), tsc, vitest and docs-check pass.",
           "at": "2026-10-23T21:27:34Z",
           "filesHash": "c7baa26919a384a1"
-        }
+        },
+        "commit": "7ba082f",
+        "doneAt": "2026-10-23T21:27:51Z"
       },
       "branch": "feat/f279-history-records-sent-and-failed-emails-a",
       "baseCommit": "55f65d27da2b2ffbd7413bfde6dbd1c5d8d7626f",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f279-history-records-sent-and-failed-emails-a",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
