@@ -222,7 +222,10 @@ R-19 and R-42; the full schema is in openapi.yaml.
   Another profile's invoice is 404 (`invoice_not_found`), also when the same user owns both.
   - `history` (R-124) is every `history_events` row of the invoice, newest first, also in create and the other
     owner answers.
-  - A row is `{id, kind, actor, at, optionId, amount, txHash}`; the last three are null when the row has none.
+  - A row is `{id, kind, actor, at, optionId, amount, txHash, step}`; the last four are null when the row has none.
+  - The worker writes a row for each Send to client, reminder and receipt it sends or gives up on (R-126).
+  - By is who asked: the owner for Send to client, `system` for a retainer month, reminders and receipts.
+  - Reminders on and off, the client's stop link and Stop repeating write a row only when they change something.
   - `amount` is in the token of `optionId`, or of the shown option when `optionId` is null.
 - `POST /v1/invoices/{payToken}/views` (R-125) counts one pay page load and answers 204.
   - The page sends it once per load, not with each status refresh.

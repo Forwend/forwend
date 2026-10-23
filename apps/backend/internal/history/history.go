@@ -19,6 +19,20 @@ const (
 	Held             = "invoice.held"        // money held for the payer; data has its amount in base units
 	SettlementQueued = "invoice.settlement_queued"
 	Settled          = "invoice.settled" // data has the settle transaction's hash
+	RemindersOn      = "reminders.on"
+	RemindersOff     = "reminders.off"
+	RemindersStopped = "reminders.stopped" // by the client's stop link (R-96)
+	RepeatStopped    = "repeat.stopped"
+)
+
+// Emails the worker sent to the client or payer, or gave up on (R-126); a reminder's data has its step.
+const (
+	InvoiceEmailed      = "email.invoice_sent"
+	InvoiceEmailFailed  = "email.invoice_failed"
+	ReminderEmailed     = "email.reminder_sent"
+	ReminderEmailFailed = "email.reminder_failed"
+	ReceiptEmailed      = "email.receipt_sent"
+	ReceiptEmailFailed  = "email.receipt_failed"
 )
 
 type Actor string
@@ -34,6 +48,7 @@ type Data struct {
 	Option string `json:"option,omitempty"` // the option chosen, or the one money is held on, when there are several
 	Amount string `json:"amount,omitempty"` // base units of the invoice token
 	TxHash string `json:"txHash,omitempty"`
+	Step   string `json:"step,omitempty"` // a reminder's step (R-96)
 }
 
 // Add writes the event for the invoice that option belongs to.

@@ -53,6 +53,16 @@ export const HISTORY_KINDS = {
   held: INVOICE_EVENTS.held,
   settlementQueued: "invoice.settlement_queued",
   settled: INVOICE_EVENTS.settled,
+  remindersOn: "reminders.on",
+  remindersOff: "reminders.off",
+  remindersStopped: "reminders.stopped",
+  repeatStopped: "repeat.stopped",
+  invoiceEmailed: "email.invoice_sent",
+  invoiceEmailFailed: "email.invoice_failed",
+  reminderEmailed: "email.reminder_sent",
+  reminderEmailFailed: "email.reminder_failed",
+  receiptEmailed: "email.receipt_sent",
+  receiptEmailFailed: "email.receipt_failed",
 } as const;
 
 /** Who made a history change; system is Forwend. */
@@ -74,6 +84,16 @@ export const HISTORY_CATEGORY_OF = {
   [HISTORY_KINDS.held]: HISTORY_CATEGORIES.payment,
   [HISTORY_KINDS.settlementQueued]: HISTORY_CATEGORIES.payment,
   [HISTORY_KINDS.settled]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.remindersOn]: HISTORY_CATEGORIES.change,
+  [HISTORY_KINDS.remindersOff]: HISTORY_CATEGORIES.change,
+  [HISTORY_KINDS.remindersStopped]: HISTORY_CATEGORIES.change,
+  [HISTORY_KINDS.repeatStopped]: HISTORY_CATEGORIES.change,
+  [HISTORY_KINDS.invoiceEmailed]: HISTORY_CATEGORIES.email,
+  [HISTORY_KINDS.invoiceEmailFailed]: HISTORY_CATEGORIES.email,
+  [HISTORY_KINDS.reminderEmailed]: HISTORY_CATEGORIES.email,
+  [HISTORY_KINDS.reminderEmailFailed]: HISTORY_CATEGORIES.email,
+  [HISTORY_KINDS.receiptEmailed]: HISTORY_CATEGORIES.email,
+  [HISTORY_KINDS.receiptEmailFailed]: HISTORY_CATEGORIES.email,
 } as const satisfies Record<HistoryKind, HistoryCategory>;
 
 /** The History panel's filter: every row, or one category. */

@@ -157,7 +157,7 @@ describe("owner's invoice page", () => {
   // R-124.
   it("lists the history newest first, held money in its option's token, and filters to changes", async () => {
     const dai = `0x${"ab".repeat(32)}`;
-    const row = { optionId: null, amount: null, txHash: null };
+    const row = { optionId: null, amount: null, txHash: null, step: null };
     serve({
       ...OPEN,
       optionCount: 2,

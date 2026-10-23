@@ -2203,13 +2203,15 @@ components:
               description: |
                 Only in the owner's responses; the public GET leaves it out. Every change to the invoice (R-123, R-124),
                 newest first. kind is invoice.created, invoice.canceled, payer.email_given, payer.option_chosen,
-                invoice.held, invoice.settlement_queued, invoice.settled, or "invoice." and the new payment status.
+                invoice.held, invoice.settlement_queued, invoice.settled, "invoice." and the new payment status,
+                reminders.on, reminders.off, reminders.stopped, repeat.stopped, or email.invoice_, email.reminder_ or
+                email.receipt_ and sent or failed (R-126).
                 actor system is Forwend. optionId names the option chosen, or the one money is held on, when the payer
                 chooses; amount is the base units held, in that option's token, else the shown option's; txHash is the
-                settle transaction.
+                settle transaction; step is a reminder email's step.
               items:
                 type: object
-                required: [id, kind, actor, at, optionId, amount, txHash]
+                required: [id, kind, actor, at, optionId, amount, txHash, step]
                 properties:
                   id: { type: integer, minimum: 1, description: Ascending in the order the rows were written. }
                   kind: { type: string, pattern: "^[a-z]+\\.[a-z_]+$" }
@@ -2218,6 +2220,7 @@ components:
                   optionId: { type: [string, "null"], pattern: "^0x[0-9a-f]{64}$" }
                   amount: { type: [string, "null"], pattern: "^[0-9]+$" }
                   txHash: { type: [string, "null"], pattern: "^0x[0-9a-f]{64}$" }
+                  step: { type: [string, "null"], enum: [before, due, after, null] }
             views:
               type: object
               description: |

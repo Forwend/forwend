@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/history"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -53,10 +54,11 @@ func ClientEmailsLeft(ctx context.Context, tx pgx.Tx, profileID string) (left in
 }
 
 type Payload struct {
-	Option string `json:"option"`
-	Amount string `json:"amount,omitempty"`
-	Step   string `json:"step,omitempty"`
-	Change string `json:"change,omitempty"`
+	Option string        `json:"option"`
+	Amount string        `json:"amount,omitempty"`
+	Step   string        `json:"step,omitempty"`
+	Change string        `json:"change,omitempty"`
+	By     history.Actor `json:"by,omitempty"` // who asked for a Send to client, for its history row (R-126)
 }
 
 // QueueReceipt queues at most one receipt, and only once the payer gave an address (R-82).
@@ -74,9 +76,9 @@ func QueueReceipt(ctx context.Context, tx pgx.Tx, option string) error {
 	return nil
 }
 
-// QueueSend adds the owner's Send to client for the invoice's main row, under the request's Idempotency-Key (R-94).
-func QueueSend(ctx context.Context, tx pgx.Tx, invoice, key string) error {
-	payload, err := json.Marshal(Payload{Option: invoice})
+// QueueSend adds a Send to client for the invoice's main row, under the request's Idempotency-Key (R-94).
+func QueueSend(ctx context.Context, tx pgx.Tx, invoice, key string, by history.Actor) error {
+	payload, err := json.Marshal(Payload{Option: invoice, By: by})
 	if err != nil {
 		return fmt.Errorf("queue send for %s: %w", invoice, err)
 	}

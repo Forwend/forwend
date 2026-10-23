@@ -3,6 +3,7 @@
 package notify
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/ensp1re/forwend/apps/backend/internal/document"
 	"github.com/ensp1re/forwend/apps/backend/internal/email"
+	"github.com/ensp1re/forwend/apps/backend/internal/history"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
@@ -108,6 +110,9 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 		if attempts >= MaxAttempts {
 			slog.Error("email given up", "event", id, "kind", kind, "attempts", attempts, "err", sent)
 			_, err = tx.Exec(ctx, "UPDATE outbox_events SET attempts = $2, failed_at = now() WHERE id = $1", id, attempts)
+			if err == nil {
+				err = addHistory(ctx, tx, kind, invoice, payload, true)
+			}
 		} else {
 			slog.Warn("email failed; trying again later", "event", id, "kind", kind, "attempt", attempts, "err", sent)
 			_, err = tx.Exec(ctx, "UPDATE outbox_events SET attempts = $2, next_attempt_at = now() + $3 WHERE id = $1",
@@ -123,7 +128,31 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 	if _, err := tx.Exec(ctx, "UPDATE outbox_events SET attempts = attempts + 1, published_at = now() WHERE id = $1", id); err != nil {
 		return false, fmt.Errorf("record email event %d: %w", id, err)
 	}
+	if err := addHistory(ctx, tx, kind, invoice, payload, false); err != nil {
+		return false, err
+	}
 	return true, tx.Commit(ctx)
+}
+
+// The client's and payer's emails go in the invoice's history (R-126): sent, or failed once given up.
+var emailed = map[string]struct{ sent, failed string }{
+	outbox.Sent:     {history.InvoiceEmailed, history.InvoiceEmailFailed},
+	outbox.Reminder: {history.ReminderEmailed, history.ReminderEmailFailed},
+	outbox.Receipt:  {history.ReceiptEmailed, history.ReceiptEmailFailed},
+}
+
+func addHistory(ctx context.Context, tx pgx.Tx, kind, invoice string, payload []byte, failed bool) error {
+	h, ok := emailed[kind]
+	if !ok {
+		return nil
+	}
+	var p outbox.Payload
+	_ = json.Unmarshal(payload, &p) // read once already, to write the message
+	k := h.sent
+	if failed {
+		k = h.failed
+	}
+	return history.Add(ctx, tx, invoice, k, cmp.Or(p.By, history.System), history.Data{Step: p.Step})
 }
 
 // invoiceEmail goes to the owner when email is on, to the payer for a receipt, and to the client for a send.
