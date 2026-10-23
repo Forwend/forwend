@@ -140,6 +140,14 @@ export const invoicesApi = apiSlice
         }),
         responseSchema: recheckSchema,
       }),
+      /** One pay page load (R-125): public; a refused count is not sent again. */
+      countView: build.mutation<void, string>({
+        extraOptions: { answerFirst: true },
+        query: (payToken) => ({
+          url: `/v1/invoices/${encodeURIComponent(payToken)}/views`,
+          method: "POST",
+        }),
+      }),
       /** Email me the receipt (R-82): public, like the checkout; 409 once the receipt went out. */
       setPayerEmail: build.mutation<{ email: string }, { payToken: string; email: string }>({
         query: ({ payToken, email }) => ({
@@ -185,4 +193,5 @@ export const {
   useGetOwedQuery,
   useRecheckInvoiceMutation,
   useSetPayerEmailMutation,
+  useCountViewMutation,
 } = invoicesApi;

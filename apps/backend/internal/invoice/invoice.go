@@ -228,6 +228,7 @@ type Invoice struct {
 	Reminders      Reminders      // payment reminders (R-96); set by the owner's Get
 	Retainer       *Retainer      // the retainer it belongs to (R-98), nil when it doesn't repeat; set by the owner's Get
 	History        []HistoryEvent // newest first (R-124); set by the owner's Get
+	Views          Views          // pay page loads (R-125); set by the owner's Get
 }
 
 // Why a paid invoice still waits to settle (R-54).

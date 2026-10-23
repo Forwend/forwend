@@ -34,6 +34,7 @@ import type {
   invoiceSendSchema,
   invoiceSummarySchema,
   invoicesPageSchema,
+  invoiceViewsSchema,
   owedSchema,
   recheckSchema,
   settlementWaitSchema,
@@ -53,6 +54,7 @@ export type HistoryKind = (typeof HISTORY_KINDS)[keyof typeof HISTORY_KINDS];
 export type HistoryActor = (typeof HISTORY_ACTORS)[keyof typeof HISTORY_ACTORS];
 export type HistoryFilter = (typeof HISTORY_FILTERS)[keyof typeof HISTORY_FILTERS];
 export type InvoiceHistoryEvent = z.infer<typeof invoiceHistoryEventSchema>;
+export type InvoiceViews = z.infer<typeof invoiceViewsSchema>;
 export type InvoiceExceptionKind = (typeof INVOICE_EXCEPTIONS)[keyof typeof INVOICE_EXCEPTIONS];
 
 /** Base units of the shown option: received before expiry, still left to pay, and arrived after it (held). */

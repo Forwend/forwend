@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { notFound, usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { useGetInvoiceQuery } from "@/features/invoices/api/invoices-api";
+import { useCountViewMutation, useGetInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import { CheckStatus } from "@/features/invoices/components/check-status";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
 import { INVOICE_PDFS, INVOICE_STEPS } from "@/features/invoices/constants/invoices";
@@ -82,6 +82,14 @@ export interface PayInvoiceProps {
 
 export function PayInvoice({ linkToken, option }: PayInvoiceProps) {
   const invoice = useGetInvoiceQuery(linkToken, LIVE_QUERY);
+  const [countView] = useCountViewMutation();
+  // R-125: one view per load. The ref holds across React's dev double mount, and status refreshes don't count.
+  const counted = useRef(false);
+  useEffect(() => {
+    if (counted.current) return;
+    counted.current = true;
+    countView(linkToken);
+  }, [countView, linkToken]);
   const failure = invoice.error as { status?: unknown } | undefined;
   if (invoice.data) {
     // A failed poll keeps the last read: say so first, or a payer may think nothing arrived and send again.

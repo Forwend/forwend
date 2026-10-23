@@ -350,6 +350,12 @@ test.describe("pay page", () => {
   test("follows the payment from waiting to paid without a reload, and never shows Settled", async ({
     page,
   }) => {
+    // R-125: one view for the load, none for the status refreshes after it.
+    const views: string[] = [];
+    await page.route("**/api/v1/invoices/*/views", (route) => {
+      views.push(route.request().method());
+      return route.fulfill({ status: 204 });
+    });
     await openPay(page, OPEN, DETECTED, CONFIRMING, PAID, SETTLED);
     await page.evaluate(() => {
       (window as unknown as { stayed: boolean }).stayed = true;
@@ -399,6 +405,7 @@ test.describe("pay page", () => {
     expect(await page.evaluate(() => (window as unknown as { stayed?: boolean }).stayed)).toBe(
       true,
     );
+    expect(views).toEqual(["POST"]);
   });
 
   // R-82

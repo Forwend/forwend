@@ -483,6 +483,14 @@ export const INVOICE_COPY = {
       (v: { money: string; symbol: string; network: string }) => string
     >,
     other: (kind: string) => `Updated (${kind})`,
+    // R-125.
+    notOpened: "No pay link opens counted yet.",
+    opened: (count: number) =>
+      count === 1
+        ? "Pay link opened once"
+        : `Pay link opened ${count.toLocaleString("en-US")} times`,
+    first: "first",
+    last: "last",
   },
 } as const;
 

@@ -177,6 +177,13 @@ export const invoiceHistoryEventSchema = z.object({
   txHash: hash32.nullable(),
 });
 
+/** Pay page loads (R-125); both times are null before the first. */
+export const invoiceViewsSchema = z.object({
+  count,
+  firstAt: apiTime.nullable(),
+  lastAt: apiTime.nullable(),
+});
+
 /** POST /v1/reminders/{token}/stop. */
 export const stoppedRemindersSchema = z.object({
   number: z.number().int().positive(),
@@ -207,6 +214,8 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   retainer: invoiceRetainerSchema.nullable().optional(),
   // Only in the owner's reads: every change, newest first.
   history: z.array(invoiceHistoryEventSchema).optional(),
+  // Only in the owner's reads.
+  views: invoiceViewsSchema.optional(),
 });
 
 /** POST /v1/invoices/{payToken}/recheck (R-55): what Check status found. Amounts in base units. */

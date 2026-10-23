@@ -23,6 +23,9 @@ const (
 	PayerEmailAllRate, PayerEmailAllBurst = 5, 20
 )
 
+// A pay page load (R-125) is public too: each link's own budget keeps its count from being run up.
+const ViewRate, ViewBurst = 0.2, 5
+
 // balances reads each chain's second RPC (D-15); webURL is the web app's origin, for the pay link in PDFs.
 func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, balances ledger.BalanceOf, webURL string) {
 	rechecks := mid.NewBuckets(RecheckRate, RecheckBurst)
@@ -42,6 +45,8 @@ func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, balance
 	perInvoice := func(r *http.Request) string { return r.PathValue("payToken") }
 	mux.Handle("PUT /v1/invoices/{payToken}/payer-email",
 		mid.Limit(mid.NewBuckets(PayerEmailRate, PayerEmailBurst), perInvoice, putPayerEmail(invoices, emails)))
+	mux.Handle("POST /v1/invoices/{payToken}/views", mid.Limit(mid.NewBuckets(ViewRate, ViewBurst), perInvoice,
+		countView(invoices)))
 	mux.Handle("POST /v1/reminders/{token}/stop", stopReminders(invoices)) // the client's stop link: no sign-in
 	mux.Handle("GET /v1/invoices/{payToken}/invoice.pdf", invoicePDF(invoices, webURL))
 	mux.Handle("GET /v1/invoices/{payToken}/receipt.pdf", receiptPDF(invoices, webURL))

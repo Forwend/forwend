@@ -143,6 +143,14 @@ type ownerInvoiceJSON struct {
 	Reminders      remindersJSON       `json:"reminders"`
 	Retainer       *retainerJSON       `json:"retainer"`
 	History        []historyJSON       `json:"history"`
+	Views          viewsJSON           `json:"views"`
+}
+
+// R-125: firstAt and lastAt are null before the first load.
+type viewsJSON struct {
+	Count   int64   `json:"count"`
+	FirstAt *string `json:"firstAt"`
+	LastAt  *string `json:"lastAt"`
 }
 
 // R-124: optionId, amount and txHash are null when the row has none.
@@ -275,7 +283,9 @@ func toDepositsJSON(deposits []invoice.Deposit) []depositJSON {
 func toOwnerInvoiceJSON(inv invoice.Invoice) ownerInvoiceJSON {
 	out := ownerInvoiceJSON{invoiceDetailJSON: toInvoiceDetailJSON(inv, true), Sends: []sendJSON{},
 		Reminders: remindersJSON{On: inv.Reminders.On, StoppedAt: httpio.OrNullTime(inv.Reminders.StoppedAt),
-			Emails: []reminderJSON{}}, History: []historyJSON{}}
+			Emails: []reminderJSON{}}, History: []historyJSON{},
+		Views: viewsJSON{Count: inv.Views.Count, FirstAt: httpio.OrNullTime(inv.Views.FirstAt),
+			LastAt: httpio.OrNullTime(inv.Views.LastAt)}}
 	for _, s := range inv.Sends {
 		out.Sends = append(out.Sends, toSendJSON(s))
 	}

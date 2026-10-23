@@ -49,6 +49,7 @@ import type {
   InvoiceSend,
   InvoiceSummary,
   InvoiceToken,
+  InvoiceViews,
   SettlementWait,
 } from "@/features/invoices/types/invoices";
 import { TokenMark } from "@/shared/components/chains/token-mark";
@@ -104,6 +105,7 @@ export function InvoiceDetail({
           reminders={mine?.reminders ?? null}
           retainer={mine?.retainer ?? null}
           history={mine?.history ?? []}
+          views={mine?.views ?? null}
           clientFailed={invoice.isError}
           tokens={tokens}
           request={request}
@@ -133,6 +135,7 @@ function Loaded({
   reminders,
   retainer,
   history,
+  views,
   clientFailed,
   tokens,
   request,
@@ -145,6 +148,7 @@ function Loaded({
   reminders: InvoiceReminders | null;
   retainer: InvoiceRetainer | null;
   history: readonly InvoiceHistoryEvent[];
+  views: InvoiceViews | null;
   clientFailed: boolean;
   tokens: readonly InvoiceToken[] | null;
   request: boolean;
@@ -407,7 +411,7 @@ function Loaded({
               )}
             </section>
           </div>
-          <InvoiceHistory invoice={invoice} history={history} />
+          <InvoiceHistory invoice={invoice} history={history} views={views} />
         </div>
 
         <div className="flex flex-col gap-4">
