@@ -339,7 +339,7 @@
         "unit, lint, typecheck, build and e2e pass"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit"
       ],
@@ -350,9 +350,73 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-23T13:26:57Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 128.5,
+            "log": "docs/runs/F274-20261023T132657Z-unit.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F274-20261023T132657Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F274-20261023T132657Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F274-20261023T132657Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F274-20261023T132657Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.0,
+            "log": "docs/runs/F274-20261023T132657Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 278.9,
+            "log": "docs/runs/F274-20261023T132657Z-e2e.log"
+          }
+        ],
+        "taskHash": "83feed134b8ee3ff",
+        "filesHash": "8dff27600c1f35ea",
+        "proof": {
+          "1": "unit: 3,776 comments audited (802 deleted, 967 shortened, 1,989 kept, 18 flagged); no comment block over 2 lines remains except the 2 flagged ones",
+          "2": "unit: a checker compares each of the 498 changed files with HEAD with comments removed (Go tokens, oxc AST for TS/TSX, Python tokens, Solidity/CSS/SQL stripped): all match; the one string literal change is a SQL -- comment inside a query; forge test passes (the receive-address vectors pin the bytecode)",
+          "3": "unit: 18 wrong comments that point at real code are left unchanged and listed as flag in the audit table",
+          "4": "unit: unit, lint, typecheck, build and e2e pass"
+        }
+      },
       "branch": "chore/f274-comments-only-facts-the-code-can-t-show",
-      "baseCommit": "f5a6693cee6a2d8beb43ddb2605ee15ccf386bda"
+      "baseCommit": "f5a6693cee6a2d8beb43ddb2605ee15ccf386bda",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
