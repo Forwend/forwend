@@ -571,7 +571,7 @@
         "openapi.yaml, api.md, R-128 and DESIGN.md match; unit, lint and typecheck pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "lint",
@@ -647,11 +647,11 @@
         "taskHash": "d6b85120d81e5f6e",
         "filesHash": "6dbc6b05ef038aba",
         "proof": {
-          "1": "unit: TestOwnerEditsReferenceNoteAndDueDateBeforePayment: PUT details saves reference, note and a due date; a due date before today or after the checkout closes is 422; once a transfer is seen, and on a canceled invoice, a change to them is 409 invoice_not_editable; Edit locks the group FOR UPDATE in the ledger's order as Cancel does",
-          "2": "unit: the same test: one invoice.edited row each, the due date's with from and to; the database refuses a note change after money; TestInvoiceNumbers: note, due_date and reference change while open and are refused once expired",
-          "3": "unit: edit-invoice.test sends the saved reference, note and due date once locked, and starts the next edit from a due date just saved (failed before the keyed form); a request shows no reference or due date; screenshots in docs/runs/F281-shots",
-          "4": "unit: the same backend test reads updates on the public GET newest first (dueDate with from and to, note, reference); the public read has no memo and no update for memo, email or link edits; the pay page lists Updates",
-          "5": "lint: openapi.yaml (details body, 409 and its code, updates, history from/to), api.md, architecture.md, R-90, R-128 and DESIGN.md updated; unit, lint and typecheck pass"
+          "1": "unit",
+          "2": "unit",
+          "3": "unit",
+          "4": "unit",
+          "5": "lint"
         },
         "review": {
           "result": "pass",
@@ -659,11 +659,18 @@
           "summary": "Earlier findings fixed: EditInvoice remounts EditForm on a key of the saved values, so a saved due date is never sent back stale (regression test added); openapi lists invoice_not_editable; Edit locks FOR UPDATE as Cancel; architecture.md, R-90, R-128, api.md and DESIGN.md match; requests send reference and due date back as saved. Edit tests (web and Go) and TestInvoiceNumbers pass.",
           "at": "2026-10-23T22:55:42Z",
           "filesHash": "6dbc6b05ef038aba"
-        }
+        },
+        "commit": "ec0c6bd",
+        "doneAt": "2026-10-23T22:55:58Z"
       },
       "branch": "feat/f281-before-payment-the-owner-edits-the-refer",
       "baseCommit": "06ccf427d78dd04106c61aca65dd9cf904625916",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f281-before-payment-the-owner-edits-the-refer",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
