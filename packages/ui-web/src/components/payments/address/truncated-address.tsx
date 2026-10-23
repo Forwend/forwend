@@ -15,7 +15,6 @@ export function TruncatedAddress({ address, className }: TruncatedAddressProps) 
     <Tooltip content={address}>
       <button
         type="button"
-        aria-label={address}
         className={cx(
           "rounded-sm font-mono outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus",
           className,

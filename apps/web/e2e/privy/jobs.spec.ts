@@ -57,7 +57,7 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
     sidebar.getByRole("button", { name: /^Switch profile/ }).click(),
   );
   await expect(
-    sidebar.getByRole("button", { name: /^Switch profile: Freelancer · E2E studio/ }),
+    sidebar.getByRole("button", { name: /^Switch profile: E2E studio Freelancer/ }),
   ).toBeVisible();
   await sidebar.getByRole("link", { name: "Jobs" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Jobs" })).toBeAttached();

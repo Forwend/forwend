@@ -50,8 +50,7 @@ export function SelectMenu<T extends string>({
           className={cx("gap-2 pr-3 pl-3.5", className)}
         >
           {Icon ? <Icon aria-hidden className="size-[var(--fw-icon-sm)] text-muted" /> : null}
-          <span className="text-muted max-sm:sr-only">{label}</span>
-          <span>{chosen?.label}</span>
+          <span className="text-muted max-sm:sr-only">{label}</span> <span>{chosen?.label}</span>
           <ChevronDown aria-hidden className="size-[var(--fw-icon-sm)] text-muted" />
         </Button>
       </MenuTrigger>

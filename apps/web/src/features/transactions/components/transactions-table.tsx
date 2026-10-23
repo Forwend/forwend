@@ -422,7 +422,7 @@ function Counterparty({ t }: { t: Transaction }) {
       target="_blank"
       rel="noopener noreferrer"
       title={t.counterparty}
-      aria-label={TRANSACTIONS_COPY.counterpartyLink(t.counterparty, link.name)}
+      aria-label={TRANSACTIONS_COPY.counterpartyLink(short, link.name)}
       className="rounded-sm font-mono font-normal text-muted underline-offset-2 outline-none hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-focus"
     >
       {short}

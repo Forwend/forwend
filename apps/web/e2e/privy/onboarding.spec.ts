@@ -116,7 +116,9 @@ test("a new user picks what they want to do once and lands on the new profile wi
 
   // The freelancer profile it made opens, with its checklist computed from the (empty) data.
   const sidebar = page.locator("aside");
-  await expect(sidebar.getByRole("button", { name: /^Switch profile: Freelancer/ })).toBeVisible();
+  await expect(
+    sidebar.getByRole("button", { name: /^Switch profile: (.+ )?Freelancer$/ }),
+  ).toBeVisible();
   await expect(page).toHaveURL("/app");
   expect(user.choices).toEqual([["get_paid_by_clients", "accept_business_payments"]]);
   await sidebar.getByRole("button", { name: /^Switch profile/ }).click();
