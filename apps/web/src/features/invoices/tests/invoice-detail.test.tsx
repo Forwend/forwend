@@ -176,19 +176,28 @@ describe("owner's invoice page", () => {
           amount: "1500000000000000000",
         },
         { ...row, id: 2, kind: "invoice.paid", actor: "system", at: "2026-10-11T09:00:00Z" },
+        { ...row, id: 4, kind: "payer.email_given", actor: "payer", at: "2026-10-10T12:00:00Z" },
         { ...row, id: 1, kind: "invoice.created", actor: "owner", at: "2026-10-10T11:00:00Z" },
       ],
     });
     show();
     await settle();
     const history = within(screen.getByRole("region", { name: "History" }));
-    const rows = () => history.getAllByRole("listitem").map((li) => li.textContent);
+    // Event, By and Details of each body row; the time is the last cell.
+    const rows = () =>
+      within(history.getByRole("table"))
+        .getAllByRole("row")
+        .slice(1)
+        .map((tr) => [...tr.querySelectorAll("td")].slice(0, 3).map((td) => td.textContent));
     expect(rows()).toEqual([
-      expect.stringContaining("1.50 DAI held for the payer · Forwend"),
-      expect.stringContaining("Paid · Forwend"),
-      expect.stringContaining("Created · You"),
+      ["Money held", "Forwend", "1.50 DAI for the payer · Base Sepolia"],
+      ["Paid", "Forwend", "1,250.00 USDC"],
+      ["Receipt email added", "Payer", "—"],
+      ["Created", "You", "—"],
     ]);
     act(() => history.getByRole("radio", { name: "Changes" }).click());
-    expect(rows()).toEqual([expect.stringContaining("Created · You")]);
+    expect(rows()).toEqual([["Created", "You", "—"]]);
+    act(() => history.getByRole("radio", { name: "Emails" }).click());
+    expect(rows()).toEqual([["Receipt email added", "Payer", "—"]]);
   });
 });

@@ -1,5 +1,9 @@
 import { CLIENT_LIMITS } from "@/features/clients/constants/clients";
-import type { ExpiryChoice } from "@/features/invoices/types/invoices";
+import type {
+  ExpiryChoice,
+  HistoryCategory,
+  HistoryKind,
+} from "@/features/invoices/types/invoices";
 
 export const INVOICES_PAGE_SIZE = 20;
 
@@ -54,13 +58,26 @@ export const HISTORY_KINDS = {
 /** Who made a history change; system is Forwend. */
 export const HISTORY_ACTORS = { owner: "owner", payer: "payer", system: "system" } as const;
 
-/** The History panel's filter (R-124): changes are what someone did, payments everything else. */
-export const HISTORY_FILTERS = { all: "all", payments: "payments", changes: "changes" } as const;
-export const HISTORY_CHANGES: readonly string[] = [
-  HISTORY_KINDS.created,
-  HISTORY_KINDS.canceled,
-  HISTORY_KINDS.payerEmail,
-];
+/** Each history kind belongs to one category (R-124); a kind the page doesn't know yet is a change. */
+export const HISTORY_CATEGORIES = { payment: "payment", change: "change", email: "email" } as const;
+export const HISTORY_CATEGORY_OF = {
+  [HISTORY_KINDS.created]: HISTORY_CATEGORIES.change,
+  [HISTORY_KINDS.canceled]: HISTORY_CATEGORIES.change,
+  [HISTORY_KINDS.payerEmail]: HISTORY_CATEGORIES.email,
+  [HISTORY_KINDS.optionChosen]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.open]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.detected]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.partiallyPaid]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.paid]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.expired]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.expiredPartiallyPaid]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.held]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.settlementQueued]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.settled]: HISTORY_CATEGORIES.payment,
+} as const satisfies Record<HistoryKind, HistoryCategory>;
+
+/** The History panel's filter: every row, or one category. */
+export const HISTORY_FILTERS = { all: "all", ...HISTORY_CATEGORIES } as const;
 
 /** Payment reminder steps (R-96), in the order they go out: 3 days before the due date, on it, 7 days after. */
 export const REMINDER_STEPS = {
