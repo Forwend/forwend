@@ -39,6 +39,7 @@ const OPEN = {
   senderName: null as string | null,
   returnUrl: null as string | null,
   nextCheckAt: null,
+  updates: [],
   lines: [],
   options: [MAIN_OPTION],
   number: 1,

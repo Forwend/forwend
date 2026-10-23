@@ -156,9 +156,10 @@ with a test.
   `settle_deadline` as the contract's uint64 seconds, recipient, factory and receive address, `receive_method` (D-44)),
   separate **payment**, **settlement** and **refund** status columns, `idempotency_key` unique per profile with a
   SHA-256 `request_hash` of the create request. `number` is unique per profile, taken from `profiles.invoice_seq` by
-  the insert trigger (D-50); it and the details (`title`, `note`, `due_date`, `client_name`, `client_email`,
-  `client_address`, `client_country`, `client_tax_id`, `supply_date`, `reference`, and the agreed value's
-  `agreed_currency`, `agreed_amount` in minor units, `agreed_decimals` and `agreed_date`, R-93) never change. A saved
+  the insert trigger (D-50); it and the details (`title`, `client_name`, `client_address`, `client_country`,
+  `client_tax_id`, `supply_date`, and the agreed value's `agreed_currency`, `agreed_amount` in minor units,
+  `agreed_decimals` and `agreed_date`, R-93) never change. `client_email`, `return_url` and the owner's `memo` change
+  at any time (R-127); `note`, `reference` and `due_date` only before any money (R-128). A saved
   client is copied into these by the create request, not linked, so editing or deleting it changes no invoice (R-86).
   `invoice_lines(position, description, quantity, unit_price, amount)` (R-88, migration 00030) break a main row's amount
   down in its token's base units: inserted only in the transaction that makes the invoice, never updated or deleted, and

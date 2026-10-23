@@ -191,6 +191,12 @@ function Loaded({
         PAYMENT_STATUS.confirming,
       ] as string[]
     ).includes(status);
+  // Only before any money, on any option: cancel (R-79) and the edits the payer sees (R-128).
+  const beforePayment =
+    payable &&
+    status === PAYMENT_STATUS.open &&
+    invoice.deposits.length === 0 &&
+    invoice.options.every((o) => o.deposits.length === 0);
   return (
     <>
       {/* R-60: each thing is said once, so the header only names the invoice. */}
@@ -222,12 +228,7 @@ function Loaded({
           noun={request ? COPY.noun.request : COPY.noun.invoice}
           payable={payable}
           // Only before any money, on any option (R-79): after that the money decides, not a cancel.
-          cancelable={
-            payable &&
-            status === PAYMENT_STATUS.open &&
-            invoice.deposits.length === 0 &&
-            invoice.options.every((o) => o.deposits.length === 0)
-          }
+          cancelable={beforePayment}
           onCanceled={() => setCanceling(true)}
           editable={
             mine
@@ -235,6 +236,12 @@ function Loaded({
                   memo: invoice.memo ?? null,
                   clientEmail: client?.email ?? null,
                   returnUrl: invoice.returnUrl,
+                  reference: invoice.reference,
+                  note: invoice.note,
+                  dueDate: invoice.dueDate,
+                  beforePayment,
+                  closesOn: invoice.expiresAt.slice(0, 10),
+                  today: new Date().toISOString().slice(0, 10),
                   request,
                 }
               : null

@@ -230,6 +230,7 @@ type Invoice struct {
 	History        []HistoryEvent // newest first (R-124); set by the owner's Get
 	Views          Views          // pay page loads (R-125); set by the owner's Get
 	Memo           string         // the owner's own note (R-127); set by the owner's Get
+	Updates        []Update       // edits the payer sees, newest first (R-128); set by Get
 }
 
 // Why a paid invoice still waits to settle (R-54).

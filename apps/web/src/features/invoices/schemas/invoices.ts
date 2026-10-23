@@ -167,7 +167,7 @@ export const invoiceRetainerSchema = z.object({
   stoppedAt: apiTime.nullable(),
 });
 
-/** One history row (R-124, R-126, R-127); optionId, amount, txHash, step and field are null when it has none. */
+/** One history row (R-124, R-126 to R-128); its last seven fields are null when the row has none. */
 export const invoiceHistoryEventSchema = z.object({
   id: count,
   kind: openEnum<HistoryKind>(),
@@ -178,6 +178,16 @@ export const invoiceHistoryEventSchema = z.object({
   txHash: hash32.nullable(),
   step: openEnum<ReminderStep>().nullable(),
   field: openEnum<HistoryField>().nullable(),
+  from: apiDate.nullable(),
+  to: apiDate.nullable(),
+});
+
+/** An edit the payer sees (R-128); from and to are a due date's old and new value. */
+export const invoiceUpdateSchema = z.object({
+  at: apiTime,
+  field: openEnum<HistoryField>(),
+  from: apiDate.nullable(),
+  to: apiDate.nullable(),
 });
 
 /** Pay page loads (R-125); both times are null before the first. */
@@ -207,6 +217,8 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   nextCheckAt: apiTime.nullable(),
   // Its line items, empty without a breakdown (R-88).
   lines: z.array(invoiceLineSchema),
+  // The edits the payer sees, newest first (R-128).
+  updates: z.array(invoiceUpdateSchema),
   // Only in the owner's reads: null while not paid or once settled.
   settlementWait: settlementWaitSchema.nullable().optional(),
   // Only in the owner's reads: each Send to client, oldest first.

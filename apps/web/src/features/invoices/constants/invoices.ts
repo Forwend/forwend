@@ -66,11 +66,14 @@ export const HISTORY_KINDS = {
   edited: "invoice.edited",
 } as const;
 
-/** The fields an invoice.edited row names (R-127), as the API calls them. */
+/** The fields an invoice.edited row names (R-127, R-128), as the API calls them. */
 export const HISTORY_FIELDS = {
   memo: "memo",
   clientEmail: "clientEmail",
   returnUrl: "returnUrl",
+  reference: "reference",
+  note: "note",
+  dueDate: "dueDate",
 } as const;
 
 /** Who made a history change; system is Forwend. */

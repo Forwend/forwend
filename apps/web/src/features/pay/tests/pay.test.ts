@@ -12,6 +12,7 @@ const invoice: Invoice = {
   confirming: false,
   closed: false,
   nextCheckAt: null,
+  updates: [],
   lines: [],
   options: [],
   number: 1,

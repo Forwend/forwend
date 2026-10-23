@@ -32,7 +32,11 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useCountViewMutation, useGetInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import { CheckStatus } from "@/features/invoices/components/check-status";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
-import { INVOICE_PDFS, INVOICE_STEPS } from "@/features/invoices/constants/invoices";
+import {
+  HISTORY_FIELDS,
+  INVOICE_PDFS,
+  INVOICE_STEPS,
+} from "@/features/invoices/constants/invoices";
 import {
   formatAgreed,
   formatDueDate,
@@ -328,6 +332,29 @@ function Terms({
         <p className="max-w-prose border-l-2 border-line-strong pl-4 text-sm break-words whitespace-pre-line text-ink sm:text-base">
           {invoice.note}
         </p>
+      ) : null}
+      {invoice.updates.length > 0 ? (
+        <section aria-labelledby="pay-updates" className="flex flex-col gap-1.5 text-sm">
+          <h2 id="pay-updates" className="text-xs font-medium text-muted">
+            {COPY.updates.title}
+          </h2>
+          <ul className="flex flex-col gap-1 text-muted">
+            {invoice.updates.map((u) => (
+              <li key={`${u.at}-${u.field}-${u.from}-${u.to}`}>
+                <time dateTime={u.at}>{TIME.format(new Date(u.at))}</time>
+                {" · "}
+                {u.field === HISTORY_FIELDS.dueDate
+                  ? COPY.updates.dueDate(
+                      u.from ? formatDueDate(u.from) : null,
+                      u.to ? formatDueDate(u.to) : null,
+                    )
+                  : u.field === HISTORY_FIELDS.note
+                    ? COPY.updates.note
+                    : COPY.updates.reference}
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
       <a
         href={invoicePdfUrl(linkToken, INVOICE_PDFS.invoice)}

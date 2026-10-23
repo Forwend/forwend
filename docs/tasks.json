@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 281,
+  "nextId": 282,
   "tasks": [
     {
       "id": "F276",
@@ -558,6 +558,112 @@
         "branch": "feat/f280-the-owner-edits-an-invoice-s-memo-client",
         "base": "main"
       }
+    },
+    {
+      "id": "F281",
+      "type": "feat",
+      "behavior": "Before payment the owner edits the reference, note and due date, and the payer sees each change under Updates on the pay page",
+      "acceptance": [
+        "PUT details also takes reference, note and dueDate; a change to them needs every option open, the checkout open and no transfer seen, else 409 invoice_not_editable; a new due date lies between today and the day the checkout closes",
+        "Each change writes one invoice.edited row; a due date's row has from and to; the database refuses these changes once money was seen or the invoice is not open",
+        "The Edit dialog has the three fields under Before payment, disabled with the reason once money arrived or the checkout closed",
+        "Both invoice reads return updates (time, field, from, to) and the pay page lists them as Updates; History shows the due date's from and to",
+        "openapi.yaml, api.md, R-128 and DESIGN.md match; unit, lint and typecheck pass"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "lint",
+        "typecheck"
+      ],
+      "refs": [
+        "R-128",
+        "R-127",
+        "D-92"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-23 review fail by reviewer: 1) apps/web/src/features/invoices/components/edit-invoice.tsx:63-76: due is state that is reset on dialog close from the dueDate captured before the refetch, and never follows the prop. After saving a new due date the next open shows the old one, and any later Save (even memo only) sends it back, silently reverting the due date with a payer-visible Update; reproduced with a scratch vitest (clear due, close event, rerender with dueDate null, Save sends 2026-11-30). Keep due in sync with the saved prop and add that regression test. 2) apps/backend/api/openapi.yaml:2475: Error.code enum lacks invoice_not_editable. Minor: docs/backend/architecture.md:159-161 still says note, due_date and reference never change; R-90 says reference is never changed; Edit on a request shows Reference and Due date that Request money hides.",
+        "2026-10-23 review pass by reviewer: Earlier findings fixed: EditInvoice remounts EditForm on a key of the saved values, so a saved due date is never sent back stale (regression test added); openapi lists invoice_not_editable; Edit locks FOR UPDATE as Cancel; architecture.md, R-90, R-128, api.md and DESIGN.md match; requests send reference and due date back as saved. Edit tests (web and Go) and TestInvoiceNumbers pass."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-23T22:48:05Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 128.6,
+            "log": "docs/runs/F281-20261023T224805Z-unit.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F281-20261023T224805Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F281-20261023T224805Z-typecheck.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": "docs/runs/F281-20261023T224805Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F281-20261023T224805Z-docs-check.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.2,
+            "log": "docs/runs/F281-20261023T224805Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 265.6,
+            "log": "docs/runs/F281-20261023T224805Z-e2e.log"
+          }
+        ],
+        "taskHash": "d6b85120d81e5f6e",
+        "filesHash": "6dbc6b05ef038aba",
+        "proof": {
+          "1": "unit: TestOwnerEditsReferenceNoteAndDueDateBeforePayment: PUT details saves reference, note and a due date; a due date before today or after the checkout closes is 422; once a transfer is seen, and on a canceled invoice, a change to them is 409 invoice_not_editable; Edit locks the group FOR UPDATE in the ledger's order as Cancel does",
+          "2": "unit: the same test: one invoice.edited row each, the due date's with from and to; the database refuses a note change after money; TestInvoiceNumbers: note, due_date and reference change while open and are refused once expired",
+          "3": "unit: edit-invoice.test sends the saved reference, note and due date once locked, and starts the next edit from a due date just saved (failed before the keyed form); a request shows no reference or due date; screenshots in docs/runs/F281-shots",
+          "4": "unit: the same backend test reads updates on the public GET newest first (dueDate with from and to, note, reference); the public read has no memo and no update for memo, email or link edits; the pay page lists Updates",
+          "5": "lint: openapi.yaml (details body, 409 and its code, updates, history from/to), api.md, architecture.md, R-90, R-128 and DESIGN.md updated; unit, lint and typecheck pass"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Earlier findings fixed: EditInvoice remounts EditForm on a key of the saved values, so a saved due date is never sent back stale (regression test added); openapi lists invoice_not_editable; Edit locks FOR UPDATE as Cancel; architecture.md, R-90, R-128, api.md and DESIGN.md match; requests send reference and due date back as saved. Edit tests (web and Go) and TestInvoiceNumbers pass.",
+          "at": "2026-10-23T22:55:42Z",
+          "filesHash": "6dbc6b05ef038aba"
+        }
+      },
+      "branch": "feat/f281-before-payment-the-owner-edits-the-refer",
+      "baseCommit": "06ccf427d78dd04106c61aca65dd9cf904625916",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

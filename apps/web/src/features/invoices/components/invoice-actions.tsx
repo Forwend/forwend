@@ -38,7 +38,7 @@ export interface InvoiceActionsProps {
   // The page moves keyboard focus: the dialog and its trigger go away with the status.
   onCanceled: () => void;
   /** What Edit shows (R-127); null until the owner's read is in, so Edit never starts from another invoice's values. */
-  editable: Pick<EditInvoiceProps, "memo" | "clientEmail" | "returnUrl" | "request"> | null;
+  editable: Omit<EditInvoiceProps, "profileId" | "invoiceId" | "number"> | null;
 }
 
 // Edit (R-127); duplicate (R-91); cancel before any money (R-79, D-79). Copy keeps the menu open: the item says it

@@ -222,14 +222,21 @@ R-19 and R-42; the full schema is in openapi.yaml.
   Another profile's invoice is 404 (`invoice_not_found`), also when the same user owns both.
   - `history` (R-124) is every `history_events` row of the invoice, newest first, also in create and the other
     owner answers.
-  - A row is `{id, kind, actor, at, optionId, amount, txHash, step, field}`; the last five are null when the row has
-    none.
+  - A row is `{id, kind, actor, at, optionId, amount, txHash, step, field, from, to}`; the last seven are null when
+    the row has none.
   - The worker writes a row for each Send to client, reminder and receipt it sends or gives up on (R-126).
   - By is who asked: the owner for Send to client, `system` for a retainer month, reminders and receipts.
   - Reminders on and off, the client's stop link and Stop repeating write a row only when they change something.
   - `amount` is in the token of `optionId`, or of the shown option when `optionId` is null.
-- `PUT /v1/profiles/{profileId}/invoices/{invoiceId}/details` (R-127) replaces what the owner may edit at any time:
-  `memo`, `clientEmail` and `returnUrl`.
+- `PUT /v1/profiles/{profileId}/invoices/{invoiceId}/details` (R-127, R-128) replaces what the owner may edit:
+  `memo`, `clientEmail` and `returnUrl` at any time; `reference`, `note` and `dueDate` before any payment.
+  - A change to the last three needs every option open, the checkout open and no transfer seen; else 409
+    `invoice_not_editable`. It locks the rows the ledger locks, in its order and mode, as cancel does.
+  - A new `dueDate` lies between today and the day the checkout closes (UTC).
+  - A due date's history row has `from` and `to`.
+  - The database refuses these changes once money was seen.
+  - Both invoice reads return `updates`, newest first: `{at, field, from, to}` for these three fields (the payer's
+    view of them).
   - A missing, null or blank field clears it.
   - They are checked as on create; the memo is at most 2000 characters.
   - Each field that changes writes one `invoice.edited` history row with `field`, never the value.

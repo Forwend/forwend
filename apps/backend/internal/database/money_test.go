@@ -404,19 +404,29 @@ func TestInvoiceNumbers(t *testing.T) {
 			t.Fatalf("invoice %d has number %d, want %d", id, got, want)
 		}
 	}
-	for _, column := range []string{"number = 9", "title = 'Logo'", "note = 'Thanks'", "due_date = '2026-11-01'",
-		"client_name = 'Bob'", "client_address = 'Main St 1'",
+	for _, column := range []string{"number = 9", "title = 'Logo'", "client_name = 'Bob'", "client_address = 'Main St 1'",
 		"client_country = 'DE'", "client_tax_id = 'DE1'", "issuer_name = 'Alice'", "issuer_address = 'Main St 2'",
 		"issuer_country = 'DE'", "issuer_tax_id = 'DE1'", "issuer_email = 'alice@example.com'", "sender_name = 'Alice'",
-		"supply_date = '2026-10-31'", "reference = 'PO-1'",
+		"supply_date = '2026-10-31'",
 		"(agreed_currency, agreed_amount, agreed_decimals, agreed_date) = ('EUR', 100, 2, '2026-10-01')"} {
 		_, err := conn.Exec(ctx, "UPDATE invoices SET "+column+" WHERE id = $1", hex32(1))
 		wantCode(t, err, codeRaise, column)
 	}
-	// R-127: the owner may change these at any time.
+	// R-127: the owner may change these at any time; R-128: these only while it is open with no money seen.
 	_, err := conn.Exec(ctx, `UPDATE invoices SET client_email = 'bob@example.com', return_url = 'https://alice.example',
 		memo = 'Split in two' WHERE id = $1`, hex32(1))
 	must(t, err)
+	before := []string{"note = 'Thanks'", "due_date = '2026-11-01'", "reference = 'PO-1'"}
+	for _, column := range before {
+		_, err := conn.Exec(ctx, "UPDATE invoices SET "+column+" WHERE id = $1", hex32(1))
+		must(t, err)
+	}
+	_, err = conn.Exec(ctx, "UPDATE invoices SET payment_status = 'expired' WHERE id = $1", hex32(1))
+	must(t, err)
+	for _, column := range []string{"note = 'Late'", "due_date = '2026-12-01'", "reference = 'PO-2'"} {
+		_, err := conn.Exec(ctx, "UPDATE invoices SET "+column+" WHERE id = $1", hex32(1))
+		wantCode(t, err, codeRaise, column+" once expired")
+	}
 }
 
 // R-56, D-76.

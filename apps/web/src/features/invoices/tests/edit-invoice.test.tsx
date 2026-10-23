@@ -31,19 +31,27 @@ function serve(status: number, json: object) {
   return bodies;
 }
 
-function show(request = false) {
+const PROPS = {
+  profileId: PROFILE,
+  invoiceId: ID,
+  number: "INV-0007",
+  memo: "Split in two",
+  clientEmail: "ap@bob.example",
+  returnUrl: "https://shop.example/done",
+  reference: "PO-9",
+  note: "Thanks",
+  dueDate: "2026-11-30",
+  beforePayment: true,
+  closesOn: "2027-01-29",
+  today: "2026-10-24",
+  request: false,
+};
+
+function show(request = false, beforePayment = true) {
   render(
     <Provider store={makeStore({ getAccessToken: async () => "token" })}>
       <ToastProvider>
-        <EditInvoice
-          profileId={PROFILE}
-          invoiceId={ID}
-          number="INV-0007"
-          memo="Split in two"
-          clientEmail="ap@bob.example"
-          returnUrl="https://shop.example/done"
-          request={request}
-        />
+        <EditInvoice {...PROPS} beforePayment={beforePayment} request={request} />
       </ToastProvider>
     </Provider>,
   );
@@ -63,7 +71,14 @@ describe("Edit", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await settle();
     expect(bodies).toEqual([
-      { memo: "Paid in two parts", clientEmail: "ap@bob.example", returnUrl: null },
+      {
+        memo: "Paid in two parts",
+        clientEmail: "ap@bob.example",
+        returnUrl: null,
+        reference: "PO-9",
+        note: "Thanks",
+        dueDate: "2026-11-30",
+      },
     ]);
   });
 
@@ -78,8 +93,48 @@ describe("Edit", () => {
         memo: "Split in two",
         clientEmail: "ap@bob.example",
         returnUrl: "https://shop.example/done",
+        reference: "PO-9",
+        note: "Thanks",
+        dueDate: "2026-11-30",
       },
     ]);
+  });
+
+  // R-128: after money the locked fields go back as they are, whatever the form holds.
+  it("sends the saved reference, note and due date once they are locked", async () => {
+    const bodies = serve(500, {});
+    show(false, false);
+    expect(screen.getByLabelText("Reference").closest("fieldset")?.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Reference"), { target: { value: "PO-10" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await settle();
+    expect(bodies).toEqual([
+      expect.objectContaining({ reference: "PO-9", note: "Thanks", dueDate: "2026-11-30" }),
+    ]);
+  });
+
+  // A save closes the dialog before the new values arrive: the next edit still starts from them.
+  it("starts the next edit from the due date just saved", async () => {
+    const bodies = serve(500, {});
+    const edit = (dueDate: string | null) => (
+      <Provider store={store}>
+        <ToastProvider>
+          <dialog open>
+            <EditInvoice {...PROPS} dueDate={dueDate} />
+          </dialog>
+        </ToastProvider>
+      </Provider>
+    );
+    const store = makeStore({ getAccessToken: async () => "token" });
+    const { rerender, container } = render(edit("2026-11-30"));
+    fireEvent.click(screen.getByRole("button", { name: "Clear the due date" }));
+    act(() => {
+      container.querySelector("dialog")?.dispatchEvent(new Event("close"));
+    });
+    rerender(edit(null));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await settle();
+    expect(bodies).toEqual([expect.objectContaining({ dueDate: null })]);
   });
 
   it("puts a refused value's message on its field", async () => {

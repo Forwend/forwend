@@ -19,6 +19,18 @@ export const PAY_COPY = {
   reference: (reference: string) => `Reference ${reference}`,
   agreed: (value: string, date: string) => `Agreed value ${value} on ${date}`,
   due: (date: string) => `Due ${date}`,
+  // R-128: what the issuer changed before any payment.
+  updates: {
+    title: "Updates",
+    reference: "Reference updated",
+    note: "Note updated",
+    dueDate: (from: string | null, to: string | null) =>
+      to
+        ? from
+          ? `Due date moved from ${from} to ${to}`
+          : `Due date set to ${to}`
+        : "Due date removed",
+  },
   closesIn: (left: string) => `Closes in ${left}`,
   stale: "Can't reach Forwend right now. This page keeps retrying.",
   loading: "Loading invoice",

@@ -113,13 +113,20 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
-      /** R-127: the whole editable set; null clears a field. */
+      /** R-127, R-128: the whole editable set; null clears a field. 409 when a locked one changes. */
       editInvoice: build.mutation<
         Invoice,
         {
           profileId: string;
           invoiceId: string;
-          body: { memo: string | null; clientEmail: string | null; returnUrl: string | null };
+          body: {
+            memo: string | null;
+            clientEmail: string | null;
+            returnUrl: string | null;
+            reference: string | null;
+            note: string | null;
+            dueDate: string | null;
+          };
         }
       >({
         query: ({ profileId, invoiceId, body }) => ({

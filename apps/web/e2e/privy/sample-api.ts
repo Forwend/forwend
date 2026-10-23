@@ -62,6 +62,7 @@ export const sampleInvoice = (
       : null,
   canceledAt: null,
   nextCheckAt: null,
+  updates: [],
   lines: [],
 });
 export const CONFIRMING_INVOICE = sampleInvoice(

@@ -106,6 +106,16 @@ type invoiceDetailJSON struct {
 	Lines []lineJSON `json:"lines"`
 	// When Check status may run again; null when it may now (R-55).
 	NextCheckAt *string `json:"nextCheckAt"`
+	// R-128, newest first.
+	Updates []updateJSON `json:"updates"`
+}
+
+// R-128: from and to are a due date's old and new value, null for the other fields.
+type updateJSON struct {
+	At    string  `json:"at"`
+	Field string  `json:"field"`
+	From  *string `json:"from"`
+	To    *string `json:"to"`
 }
 
 // R-93: Amount is in the currency's minor units.
@@ -154,7 +164,7 @@ type viewsJSON struct {
 	LastAt  *string `json:"lastAt"`
 }
 
-// R-124: optionId, amount, txHash, step and field are null when the row has none.
+// R-124: optionId, amount, txHash, step, field, from and to are null when the row has none.
 type historyJSON struct {
 	ID       int64   `json:"id"`
 	Kind     string  `json:"kind"`
@@ -165,6 +175,8 @@ type historyJSON struct {
 	TxHash   *string `json:"txHash"`
 	Step     *string `json:"step"`
 	Field    *string `json:"field"`
+	From     *string `json:"from"`
+	To       *string `json:"to"`
 }
 
 // R-98: nextDueDate and nextOn are null once the retainer ended or stopped.
@@ -255,7 +267,11 @@ func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON
 	out := invoiceDetailJSON{invoiceJSON: toInvoiceJSON(inv, withClient), PaidAt: httpio.OrNullTime(inv.PaidAt),
 		SettledAt: httpio.OrNullTime(inv.SettledAt), CanceledAt: httpio.OrNullTime(inv.CanceledAt), Deposits: []depositJSON{}, Options: []optionJSON{},
 		Lines:       []lineJSON{},
-		NextCheckAt: httpio.OrNullTime(inv.NextCheckAt)}
+		NextCheckAt: httpio.OrNullTime(inv.NextCheckAt), Updates: []updateJSON{}}
+	for _, u := range inv.Updates {
+		out.Updates = append(out.Updates, updateJSON{At: u.At.UTC().Format(time.RFC3339), Field: u.Field,
+			From: httpio.OrNull(u.From), To: httpio.OrNull(u.To)})
+	}
 	for _, o := range inv.Options {
 		out.Options = append(out.Options, optionJSON{OptionID: o.ID, ChainID: o.ChainID, Network: o.Network,
 			Token: o.Token, Symbol: o.Symbol, Decimals: o.Decimals, Amount: o.Amount.String(),
@@ -295,7 +311,8 @@ func toOwnerInvoiceJSON(inv invoice.Invoice) ownerInvoiceJSON {
 	for _, e := range inv.History {
 		out.History = append(out.History, historyJSON{ID: e.ID, Kind: e.Kind, Actor: string(e.Actor),
 			At: e.At.UTC().Format(time.RFC3339), OptionID: httpio.OrNull(e.Option), Amount: httpio.OrNull(e.Amount),
-			TxHash: httpio.OrNull(e.TxHash), Step: httpio.OrNull(e.Step), Field: httpio.OrNull(e.Field)})
+			TxHash: httpio.OrNull(e.TxHash), Step: httpio.OrNull(e.Step), Field: httpio.OrNull(e.Field),
+			From: httpio.OrNull(e.From), To: httpio.OrNull(e.To)})
 	}
 	for _, r := range inv.Reminders.Emails {
 		out.Reminders.Emails = append(out.Reminders.Emails, reminderJSON{Step: r.Step, sendJSON: toSendJSON(r)})

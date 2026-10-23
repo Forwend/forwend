@@ -51,6 +51,8 @@ type Data struct {
 	TxHash string `json:"txHash,omitempty"`
 	Step   string `json:"step,omitempty"` // a reminder's step (R-96)
 	Field  string `json:"field,omitempty"`
+	From   string `json:"from,omitempty"` // an edited due date's old and new value (R-128)
+	To     string `json:"to,omitempty"`
 }
 
 // Add writes the event for the invoice that option belongs to.
