@@ -35,11 +35,12 @@ func TestOwnerReadsTheInvoiceHistory(t *testing.T) {
 		got = append(got, h)
 	}
 	none := func(kind, actor string) map[string]any {
-		return map[string]any{"kind": kind, "actor": actor, "optionId": nil, "amount": nil, "txHash": nil, "step": nil}
+		return map[string]any{"kind": kind, "actor": actor, "optionId": nil, "amount": nil, "txHash": nil, "step": nil,
+			"field": nil}
 	}
 	want := []any{none("invoice.canceled", "owner"),
 		map[string]any{"kind": "invoice.held", "actor": "system", "optionId": id, "amount": "5", "txHash": hash,
-			"step": nil},
+			"step": nil, "field": nil},
 		none("invoice.created", "owner")}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("history %v, want newest first %v", got, want)

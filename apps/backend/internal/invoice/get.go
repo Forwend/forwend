@@ -115,6 +115,9 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 		if inv.Views, err = s.views(ctx, inv.ID); err != nil {
 			return Invoice{}, err
 		}
+		if inv.Memo, err = s.memo(ctx, inv.ID); err != nil {
+			return Invoice{}, err
+		}
 		inv.Retainer, err = s.retainer(ctx, inv.ID)
 		return inv, err
 	}

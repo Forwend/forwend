@@ -113,6 +113,23 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
+      /** R-127: the whole editable set; null clears a field. */
+      editInvoice: build.mutation<
+        Invoice,
+        {
+          profileId: string;
+          invoiceId: string;
+          body: { memo: string | null; clientEmail: string | null; returnUrl: string | null };
+        }
+      >({
+        query: ({ profileId, invoiceId, body }) => ({
+          url: `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}/details`,
+          method: "PUT",
+          body,
+        }),
+        responseSchema: invoiceSchema,
+        invalidatesTags: [INVOICES_TAG],
+      }),
       /** Stops the invoice's retainer (R-98); the same answer twice, also for an invoice that doesn't repeat. */
       stopRepeat: build.mutation<Invoice, { profileId: string; invoiceId: string }>({
         query: ({ profileId, invoiceId }) => ({
@@ -194,4 +211,5 @@ export const {
   useRecheckInvoiceMutation,
   useSetPayerEmailMutation,
   useCountViewMutation,
+  useEditInvoiceMutation,
 } = invoicesApi;

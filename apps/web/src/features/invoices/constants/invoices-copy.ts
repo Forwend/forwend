@@ -5,6 +5,7 @@ import {
   EXPIRY_BOUNDS_S,
   EXPIRY_CHOICES,
   HISTORY_ACTORS,
+  HISTORY_FIELDS,
   HISTORY_FILTERS,
   HISTORY_KINDS,
   INVOICE_EVENTS,
@@ -21,6 +22,7 @@ import {
 } from "@/features/invoices/constants/invoices";
 import type {
   HistoryActor,
+  HistoryField,
   HistoryFilter,
   HistoryKind,
   InvoiceEventKind,
@@ -221,6 +223,7 @@ export const NEW_INVOICE_COPY = {
     [INVOICE_FIELDS.amountUsd]: "Enter an amount above 0 that every accepted token can hold.",
     [INVOICE_FIELDS.expiresIn]: "Pick a time from 15 minutes to 365 days from now.",
     [INVOICE_FIELDS.returnUrl]: "Enter an https link, like https://example.com/thanks.",
+    [INVOICE_FIELDS.memo]: atMost(INVOICE_LIMITS.memo),
     [INVOICE_FIELDS.lines]:
       "We could not save these items. Check each item's text, quantity and price.",
     [INVOICE_FIELDS.reminders]: "Reminders need a due date and a client email.",
@@ -382,6 +385,21 @@ export const INVOICE_COPY = {
   openPayPage: "Open pay page",
   inNewTab: "in a new tab",
   canceledOn: "Canceled on",
+  memo: "Your memo",
+  // R-127.
+  edit: {
+    trigger: "Edit",
+    title: (number: string) => `Edit ${number}`,
+    memo: "Memo",
+    memoHint: "Only you see it: never the client, the pay page or the PDFs.",
+    clientEmail: "Client email",
+    returnUrl: "Return link",
+    returnHint: "Your site's https link. The payer sees Back to it after paying.",
+    cancel: "Cancel",
+    save: "Save changes",
+    saved: (number: string) => `${number} saved`,
+    failed: "We could not save it. Try again.",
+  },
   // The bell's lines (R-81); the amount follows each.
   events: {
     [INVOICE_EVENTS.paid]: (number: string) => `${number} paid`,
@@ -406,9 +424,9 @@ export const INVOICE_COPY = {
     action: "Send to client",
     noEmail: "No client email on this invoice, so it can't be emailed. Share the pay link instead.",
     again: (time: string) => `You can send it again after ${time}.`,
-    sent: (email: string, time: string) => `Emailed to ${email} · ${time}`,
-    sending: (email: string) => `Sending to ${email}…`,
-    failed: (email: string, time: string) => `Could not email ${email} · asked ${time}`,
+    sent: (time: string) => `Emailed · ${time}`,
+    sending: (email: string | null) => (email ? `Sending to ${email}…` : "Sending…"),
+    failed: (time: string) => `Could not email · asked ${time}`,
     done: (number: string, email: string) => `${number} is on its way to ${email}`,
     closed: "It can't be sent: the invoice can no longer be paid.",
     limited: "You can't send more emails right now. Try again later.",
@@ -489,7 +507,13 @@ export const INVOICE_COPY = {
       [HISTORY_KINDS.reminderEmailFailed]: "Reminder email failed",
       [HISTORY_KINDS.receiptEmailed]: "Receipt emailed",
       [HISTORY_KINDS.receiptEmailFailed]: "Receipt email failed",
+      [HISTORY_KINDS.edited]: "Edited",
     } satisfies Record<HistoryKind, string>,
+    fields: {
+      [HISTORY_FIELDS.memo]: "Memo",
+      [HISTORY_FIELDS.clientEmail]: "Client email",
+      [HISTORY_FIELDS.returnUrl]: "Return link",
+    } satisfies Record<HistoryField, string>,
     // Details a kind's label leaves out.
     dropped: "No longer on the chain",
     toClient: "To the client",

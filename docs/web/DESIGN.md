@@ -397,8 +397,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - The invoice page (R-60) says each thing once: the header only names the invoice (its title, or its number when there
   is none); the timeline says the status, and Details the times: when the checkout closes ("Checkout closed" once
   past) and, once canceled, Canceled on. So the header has no status pill or time. At its top right sits one More
-  actions menu: Copy link and Open pay page (a new tab) while the checkout can take money, Duplicate always (New
-  invoice filled from this one, R-91), and while it can still be canceled, Cancel in
+  actions menu: Copy link and Open pay page (a new tab) while the checkout can take money, Edit always (R-127),
+  Duplicate always (New invoice filled from this one, R-91), and while it can still be canceled, Cancel in
   the danger color, which asks to confirm in a dialog. Copying keeps the menu open and the item says Link copied; if
   the clipboard refuses, the whole link shows there to select. Below, two columns from extra-large screens up: the
   amount ("Received X of Y" under it when partly paid) with the timeline, where the Paid step reads "Partially paid"
@@ -422,16 +422,25 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - An invoice made before pay links (R-114) has no such line.
   - Billed to and From share one height. They stack while the column is under 36rem; a request's From fills it.
   - Beside the main column, a third of the width, sits the details panel (empty rows left out).
+  - Your memo (R-127) is a Details row after the note: the owner's own text, stacked under its term.
   - From shows "None on this invoice" with a link to add billing details when there are none.
   - Narrower screens stack the amount, Items, Billed to, From, History, then the details.
   - A transaction is one row once its list is 42rem wide. Narrower, the list's own width, not the screen's, splits it
     in two lines.
+- Edit (R-127) opens one dialog: Memo (a text area with "Only you see it"), Client email and Return link.
+  - A request has no Client email field.
+  - Edit shows once the owner's read is in, so it never starts from another invoice's values.
+  - Save changes saves every field and closes with a toast.
+  - A refused value shows its error under its field.
+  - However the dialog closes, it opens next time on what is saved.
 - Billed to ends with Send to client (R-94), ruled off under the client:
-  - Each send in a quiet list: "Emailed to <address> · <time>", "Sending to <address>…" or "Could not email".
+  - Each send in a quiet list: "Emailed · <time>", "Sending to <address>…" or "Could not email · asked <time>".
+  - A past send names no address: the client email can change after it (R-127). The list stays without an email.
   - While the checkout can take money, a small secondary Send to client button. A day after the last send it returns;
     until then a quiet line says when.
   - Without a client email, while the checkout can take money, one quiet line says it can't be emailed.
 - Payment reminders (R-96) follow Send to client in Billed to, ruled off, as a settings row:
+  - They show with a client email, or while on after it was cleared, so they can be turned off.
   - The Payment reminders switch at the row's end, saved when flipped, with a toast.
   - Under it one quiet line: the schedule, "Reminders need a due date", or when the client stopped them.
   - Then each reminder: its step and "emailed <time>", "sending…" or "could not be sent".

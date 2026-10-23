@@ -536,7 +536,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
   // R-91
   await main.getByRole("button", { name: "More actions" }).click();
-  await expect(page.getByRole("menuitem")).toHaveText(["Duplicate"]);
+  await expect(page.getByRole("menuitem")).toHaveText(["Edit", "Duplicate"]);
   await page.keyboard.press("Escape");
 
   // R-69
@@ -632,7 +632,7 @@ test("the owner's invoice page names the next step of every exception", async ({
     "The checkout closed with nothing paid. A closed invoice can't take money again.",
   );
   await header.getByRole("button", { name: "More actions" }).click();
-  await expect(page.getByRole("menuitem")).toHaveText(["Duplicate"]);
+  await expect(page.getByRole("menuitem")).toHaveText(["Edit", "Duplicate"]);
   await page.keyboard.press("Escape");
   await header.getByRole("link", { name: "New invoice" }).click();
   await expect(page).toHaveURL(`/app/invoices/new?from=${OPEN_INVOICE.invoiceId}`);
@@ -761,7 +761,7 @@ test("the owner cancels an invoice before any money, after confirming", async ({
   await expect(canceledRow).toBeFocused();
   // R-91
   await header.getByRole("button", { name: "More actions" }).click();
-  await expect(page.getByRole("menuitem")).toHaveText(["Duplicate"]);
+  await expect(page.getByRole("menuitem")).toHaveText(["Edit", "Duplicate"]);
   await context.close();
 });
 

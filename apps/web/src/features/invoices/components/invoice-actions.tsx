@@ -15,10 +15,11 @@ import {
   useCopy,
   useToast,
 } from "@forwend/ui-web";
-import { Ban, Check, Copy, CopyPlus, Ellipsis, ExternalLink } from "lucide-react";
+import { Ban, Check, Copy, CopyPlus, Ellipsis, ExternalLink, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useRef } from "react";
 import { useCancelInvoiceMutation } from "@/features/invoices/api/invoices-api";
+import { EditInvoice, type EditInvoiceProps } from "@/features/invoices/components/edit-invoice";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import { invoiceCopyHref } from "@/features/invoices/lib/invoices";
 
@@ -36,9 +37,12 @@ export interface InvoiceActionsProps {
   cancelable: boolean;
   // The page moves keyboard focus: the dialog and its trigger go away with the status.
   onCanceled: () => void;
+  /** What Edit shows (R-127); null until the owner's read is in, so Edit never starts from another invoice's values. */
+  editable: Pick<EditInvoiceProps, "memo" | "clientEmail" | "returnUrl" | "request"> | null;
 }
 
-// Duplicate (R-91); cancel before any money (R-79, D-79). Copy keeps the menu open: the item says it worked.
+// Edit (R-127); duplicate (R-91); cancel before any money (R-79, D-79). Copy keeps the menu open: the item says it
+// worked.
 export function InvoiceActions({
   profileId,
   invoiceId,
@@ -48,6 +52,7 @@ export function InvoiceActions({
   payable: open,
   cancelable,
   onCanceled,
+  editable,
 }: InvoiceActionsProps) {
   const payable = open && payToken !== null;
   // The app renders only in the browser, after sign-in.
@@ -56,8 +61,9 @@ export function InvoiceActions({
   const [cancel, { isLoading, error }] = useCancelInvoiceMutation();
   const toast = useToast();
   const status = (error as { status?: unknown } | undefined)?.status;
-  // The dialog opens once the menu has closed, so the menu does not hand focus back to its trigger over the dialog.
-  const chosen = useRef(false);
+  // A dialog opens once the menu has closed, so the menu does not hand focus back to its trigger over the dialog.
+  const chosen = useRef<(() => void) | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
 
   const confirm = async () => {
     try {
@@ -78,10 +84,10 @@ export function InvoiceActions({
         ? COPY.copyFailed
         : COPY.copy;
 
-  const menu = (openCancel?: () => void) => (
+  const menu = (openEdit?: () => void, openCancel?: () => void) => (
     <>
       <Menu>
-        <MenuTrigger asChild>
+        <MenuTrigger asChild ref={trigger}>
           <IconButton label={COPY.moreActions} title={COPY.moreActions} size="md">
             <Ellipsis aria-hidden className="size-[var(--fw-icon-md)]" />
           </IconButton>
@@ -90,10 +96,13 @@ export function InvoiceActions({
           align="end"
           className="w-64"
           onCloseAutoFocus={(event) => {
-            if (!chosen.current) return;
-            chosen.current = false;
+            const open = chosen.current;
+            if (!open) return;
+            chosen.current = null;
             event.preventDefault();
-            openCancel?.();
+            // A closed dialog gives focus back to what had it when it opened.
+            trigger.current?.focus();
+            open();
           }}
         >
           {payable ? (
@@ -126,6 +135,16 @@ export function InvoiceActions({
             </>
           ) : null}
           {payable ? <MenuSeparator /> : null}
+          {openEdit ? (
+            <MenuItem
+              onSelect={() => {
+                chosen.current = openEdit;
+              }}
+            >
+              <Pencil aria-hidden className="size-[var(--fw-icon-sm)]" />
+              {COPY.edit.trigger}
+            </MenuItem>
+          ) : null}
           <MenuItem asChild>
             <Link href={invoiceCopyHref(invoiceId, false)}>
               <CopyPlus aria-hidden className="size-[var(--fw-icon-sm)]" />
@@ -137,7 +156,7 @@ export function InvoiceActions({
             <MenuItem
               className="text-danger data-[highlighted]:bg-danger-soft"
               onSelect={() => {
-                chosen.current = true;
+                chosen.current = openCancel ?? null;
               }}
             >
               <Ban aria-hidden className="size-[var(--fw-icon-sm)]" />
@@ -152,11 +171,11 @@ export function InvoiceActions({
     </>
   );
 
-  return cancelable ? (
+  const cancelDialog = (openEdit?: () => void) => (
     <Dialog
       triggerLabel={COPY.cancel.trigger(noun)}
       title={COPY.cancel.title(number)}
-      trigger={menu}
+      trigger={(openCancel) => menu(openEdit, openCancel)}
     >
       <p>{COPY.cancel.body}</p>
       {error ? (
@@ -178,6 +197,18 @@ export function InvoiceActions({
         </Button>
       </form>
     </Dialog>
+  );
+
+  return editable ? (
+    <Dialog
+      triggerLabel={COPY.edit.trigger}
+      title={COPY.edit.title(number)}
+      trigger={(openEdit) => (cancelable ? cancelDialog(openEdit) : menu(openEdit))}
+    >
+      <EditInvoice profileId={profileId} invoiceId={invoiceId} number={number} {...editable} />
+    </Dialog>
+  ) : cancelable ? (
+    cancelDialog()
   ) : (
     menu()
   );

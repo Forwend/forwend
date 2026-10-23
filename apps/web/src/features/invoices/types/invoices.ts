@@ -6,6 +6,7 @@ import type {
   EXPIRY_CHOICES,
   HISTORY_ACTORS,
   HISTORY_CATEGORIES,
+  HISTORY_FIELDS,
   HISTORY_FILTERS,
   HISTORY_KINDS,
   INVOICE_EVENTS,
@@ -53,6 +54,7 @@ export type Owed = z.infer<typeof owedSchema>;
 export type InvoiceEvent = z.infer<typeof invoiceEventSchema>;
 export type HistoryKind = (typeof HISTORY_KINDS)[keyof typeof HISTORY_KINDS];
 export type HistoryActor = (typeof HISTORY_ACTORS)[keyof typeof HISTORY_ACTORS];
+export type HistoryField = (typeof HISTORY_FIELDS)[keyof typeof HISTORY_FIELDS];
 export type HistoryCategory = (typeof HISTORY_CATEGORIES)[keyof typeof HISTORY_CATEGORIES];
 export type HistoryFilter = (typeof HISTORY_FILTERS)[keyof typeof HISTORY_FILTERS];
 export type InvoiceHistoryEvent = z.infer<typeof invoiceHistoryEventSchema>;

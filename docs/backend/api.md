@@ -222,11 +222,19 @@ R-19 and R-42; the full schema is in openapi.yaml.
   Another profile's invoice is 404 (`invoice_not_found`), also when the same user owns both.
   - `history` (R-124) is every `history_events` row of the invoice, newest first, also in create and the other
     owner answers.
-  - A row is `{id, kind, actor, at, optionId, amount, txHash, step}`; the last four are null when the row has none.
+  - A row is `{id, kind, actor, at, optionId, amount, txHash, step, field}`; the last five are null when the row has
+    none.
   - The worker writes a row for each Send to client, reminder and receipt it sends or gives up on (R-126).
   - By is who asked: the owner for Send to client, `system` for a retainer month, reminders and receipts.
   - Reminders on and off, the client's stop link and Stop repeating write a row only when they change something.
   - `amount` is in the token of `optionId`, or of the shown option when `optionId` is null.
+- `PUT /v1/profiles/{profileId}/invoices/{invoiceId}/details` (R-127) replaces what the owner may edit at any time:
+  `memo`, `clientEmail` and `returnUrl`.
+  - A missing, null or blank field clears it.
+  - They are checked as on create; the memo is at most 2000 characters.
+  - Each field that changes writes one `invoice.edited` history row with `field`, never the value.
+  - The memo is the owner's own note: only the owner's reads return `memo`, and no pay page, PDF or email shows it.
+  - It changes this invoice only: a retainer's later months keep the details it started with.
 - `POST /v1/invoices/{payToken}/views` (R-125) counts one pay page load and answers 204.
   - The page sends it once per load, not with each status refresh.
   - `invoice_views` keeps a count, the first time and the last time; never an IP or user agent.

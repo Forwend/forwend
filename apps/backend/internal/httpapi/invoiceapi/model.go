@@ -144,6 +144,7 @@ type ownerInvoiceJSON struct {
 	Retainer       *retainerJSON       `json:"retainer"`
 	History        []historyJSON       `json:"history"`
 	Views          viewsJSON           `json:"views"`
+	Memo           *string             `json:"memo"`
 }
 
 // R-125: firstAt and lastAt are null before the first load.
@@ -153,7 +154,7 @@ type viewsJSON struct {
 	LastAt  *string `json:"lastAt"`
 }
 
-// R-124: optionId, amount, txHash and step are null when the row has none.
+// R-124: optionId, amount, txHash, step and field are null when the row has none.
 type historyJSON struct {
 	ID       int64   `json:"id"`
 	Kind     string  `json:"kind"`
@@ -163,6 +164,7 @@ type historyJSON struct {
 	Amount   *string `json:"amount"`
 	TxHash   *string `json:"txHash"`
 	Step     *string `json:"step"`
+	Field    *string `json:"field"`
 }
 
 // R-98: nextDueDate and nextOn are null once the retainer ended or stopped.
@@ -286,14 +288,14 @@ func toOwnerInvoiceJSON(inv invoice.Invoice) ownerInvoiceJSON {
 		Reminders: remindersJSON{On: inv.Reminders.On, StoppedAt: httpio.OrNullTime(inv.Reminders.StoppedAt),
 			Emails: []reminderJSON{}}, History: []historyJSON{},
 		Views: viewsJSON{Count: inv.Views.Count, FirstAt: httpio.OrNullTime(inv.Views.FirstAt),
-			LastAt: httpio.OrNullTime(inv.Views.LastAt)}}
+			LastAt: httpio.OrNullTime(inv.Views.LastAt)}, Memo: httpio.OrNull(inv.Memo)}
 	for _, s := range inv.Sends {
 		out.Sends = append(out.Sends, toSendJSON(s))
 	}
 	for _, e := range inv.History {
 		out.History = append(out.History, historyJSON{ID: e.ID, Kind: e.Kind, Actor: string(e.Actor),
 			At: e.At.UTC().Format(time.RFC3339), OptionID: httpio.OrNull(e.Option), Amount: httpio.OrNull(e.Amount),
-			TxHash: httpio.OrNull(e.TxHash), Step: httpio.OrNull(e.Step)})
+			TxHash: httpio.OrNull(e.TxHash), Step: httpio.OrNull(e.Step), Field: httpio.OrNull(e.Field)})
 	}
 	for _, r := range inv.Reminders.Emails {
 		out.Reminders.Emails = append(out.Reminders.Emails, reminderJSON{Step: r.Step, sendJSON: toSendJSON(r)})

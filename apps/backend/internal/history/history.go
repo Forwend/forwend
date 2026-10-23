@@ -23,6 +23,7 @@ const (
 	RemindersOff     = "reminders.off"
 	RemindersStopped = "reminders.stopped" // by the client's stop link (R-96)
 	RepeatStopped    = "repeat.stopped"
+	Edited           = "invoice.edited" // data names the field, never its value (R-127)
 )
 
 // Emails the worker sent to the client or payer, or gave up on (R-126); a reminder's data has its step.
@@ -49,6 +50,7 @@ type Data struct {
 	Amount string `json:"amount,omitempty"` // base units of the invoice token
 	TxHash string `json:"txHash,omitempty"`
 	Step   string `json:"step,omitempty"` // a reminder's step (R-96)
+	Field  string `json:"field,omitempty"`
 }
 
 // Add writes the event for the invoice that option belongs to.
