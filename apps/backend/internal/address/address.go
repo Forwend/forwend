@@ -18,7 +18,6 @@ var (
 	Implementation = mustHex20("322F6c8dAf0a8bd7cF16eb62D0a04700eEA4b639")
 )
 
-// ErrAmount means the amount does not fit a uint256.
 var ErrAmount = errors.New("amount must be between 0 and 2^256-1")
 
 // Terms mirrors InvoiceTerms in packages/contracts/src/InvoiceTypes.sol, in ABI field order.
@@ -48,7 +47,6 @@ func Receive(t Terms) ([20]byte, error) {
 	code = append(code, mustHex("5af43d82803e903d91602b57fd5bf3")...)
 	code = append(code, args...)
 
-	// CREATE2: keccak256(0xff ++ factory ++ salt ++ keccak256(init code))[12:].
 	salt := keccak(args)
 	hash := keccak([]byte{0xff}, Factory[:], salt, keccak(code))
 	var out [20]byte
@@ -98,9 +96,8 @@ func InvoiceID(payToken [32]byte) [32]byte {
 	return [32]byte(keccak(payToken[:]))
 }
 
-// OptionID is the on-chain id of a payer-chooses invoice's further option (R-56): keccak256(abi.encode(invoice id,
-// chain id, token)). The pay page recomputes it, so an option's address stays tied to the
-// link's id as a fixed invoice's is.
+// OptionID is the on-chain id of a payer-chooses invoice's further option (R-56). The pay page recomputes it, so an
+// option's address stays tied to the link's id as a fixed invoice's is.
 func OptionID(invoiceID [32]byte, chainID uint64, token [20]byte) [32]byte {
 	words := make([]byte, 64)
 	binary.BigEndian.PutUint64(words[24:32], chainID)

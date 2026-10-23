@@ -1,5 +1,4 @@
-// Package profileapi serves sign-up, the user's profiles, their billing details, saved clients and email setting
-// (docs/backend/api.md).
+// Package profileapi serves the account and profile endpoints of docs/backend/api.md.
 package profileapi
 
 import (
@@ -9,8 +8,6 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
 
-// Routes mounts the account and profile endpoints on mux, all signed in; billing details, clients and notifications
-// also need the profile.
 func Routes(mux *http.ServeMux, g mid.Guards, profiles *profile.Service) {
 	mux.Handle("POST /v1/me", g.SignedIn(signUp(profiles)))
 	mux.Handle("GET /v1/me", g.SignedIn(getMe(profiles)))

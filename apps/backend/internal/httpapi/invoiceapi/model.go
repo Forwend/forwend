@@ -46,7 +46,7 @@ type createInvoiceBody struct {
 
 type invoiceJSON struct {
 	InvoiceID        string      `json:"invoiceId"`
-	PayToken         *string     `json:"payToken"` // the pay link's; null for an invoice made before D-86
+	PayToken         *string     `json:"payToken"` // null for an invoice made before D-86
 	OptionID         string      `json:"optionId"`
 	OptionLocked     bool        `json:"optionLocked"`
 	OptionCount      int         `json:"optionCount"`
@@ -86,7 +86,6 @@ type clientJSON struct {
 	TaxID   *string `json:"taxId"`
 }
 
-// issuerJSON is billing details as an invoice copied them.
 type issuerJSON struct {
 	Name    string  `json:"name"`
 	Address string  `json:"address"`
@@ -95,12 +94,11 @@ type issuerJSON struct {
 	Email   string  `json:"email"`
 }
 
-// invoiceDetailJSON is one invoice read alone: with its deposits and, once reached, the paid and settled times.
 type invoiceDetailJSON struct {
 	invoiceJSON
 	PaidAt    *string `json:"paidAt"`
 	SettledAt *string `json:"settledAt"`
-	// When the owner canceled it (R-79); null otherwise.
+	// R-79.
 	CanceledAt *string       `json:"canceledAt"`
 	Deposits   []depositJSON `json:"deposits"`
 	Options    []optionJSON  `json:"options"`
@@ -110,7 +108,7 @@ type invoiceDetailJSON struct {
 	NextCheckAt *string `json:"nextCheckAt"`
 }
 
-// agreedJSON is the price agreed with the client in fiat (R-93): Amount in the currency's minor units.
+// R-93: Amount is in the currency's minor units.
 type agreedJSON struct {
 	Currency string `json:"currency"`
 	Amount   string `json:"amount"`
@@ -125,7 +123,6 @@ type lineJSON struct {
 	Amount      string `json:"amount"`
 }
 
-// optionJSON is one token and network the invoice accepts, with the terms that differ per option.
 type optionJSON struct {
 	OptionID       string        `json:"optionId"`
 	ChainID        uint64        `json:"chainId"`
@@ -138,8 +135,7 @@ type optionJSON struct {
 	Deposits       []depositJSON `json:"deposits"`
 }
 
-// ownerInvoiceJSON is an invoice read by its owner: the detail plus why a paid invoice's money has not reached the
-// creator yet (null when it is not waiting) and the owner's sends to the client. The public read leaves them out.
+// Owner reads only; settlementWait is null when the money is not waiting.
 type ownerInvoiceJSON struct {
 	invoiceDetailJSON
 	SettlementWait *settlementWaitJSON `json:"settlementWait"`
@@ -148,7 +144,7 @@ type ownerInvoiceJSON struct {
 	Retainer       *retainerJSON       `json:"retainer"`
 }
 
-// retainerJSON is the retainer the invoice belongs to (R-98): nextDueDate and nextOn are null once it ended or stopped.
+// R-98: nextDueDate and nextOn are null once the retainer ended or stopped.
 type retainerJSON struct {
 	EndDate     *string `json:"endDate"`
 	NextDueDate *string `json:"nextDueDate"`
@@ -156,14 +152,14 @@ type retainerJSON struct {
 	StoppedAt   *string `json:"stoppedAt"`
 }
 
-// sendJSON is one email to the client (R-94, R-96): sentAt and failedAt stay null while the email waits.
+// R-94, R-96: sentAt and failedAt stay null while the email waits.
 type sendJSON struct {
 	RequestedAt string  `json:"requestedAt"`
 	SentAt      *string `json:"sentAt"`
 	FailedAt    *string `json:"failedAt"`
 }
 
-// remindersJSON is the invoice's payment reminders (R-96): stoppedAt is when the client stopped them.
+// R-96.
 type remindersJSON struct {
 	On        bool           `json:"on"`
 	StoppedAt *string        `json:"stoppedAt"`
@@ -206,7 +202,7 @@ type depositJSON struct {
 	SecondsLeft int64   `json:"secondsLeft"`
 }
 
-// toInvoiceJSON writes "" as null; withClient is for the owner only.
+// withClient is for the owner only.
 func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 	out := invoiceJSON{
 		InvoiceID: inv.ID, PayToken: httpio.OrNull(inv.PayToken), OptionID: inv.OptionID, OptionLocked: inv.OptionLocked, OptionCount: inv.OptionCount, Confirming: inv.Confirming, Closed: inv.Closed, Number: inv.Number, Title: httpio.OrNull(inv.Title), Note: httpio.OrNull(inv.Note),
@@ -296,7 +292,7 @@ type recheckJSON struct {
 	Unreadable  []uint64 `json:"unreadable"`
 }
 
-// stoppedJSON answers the client's stop link (R-96): which invoice, and who sent it.
+// R-96.
 type stoppedJSON struct {
 	Number int64   `json:"number"`
 	From   *string `json:"from"`
@@ -306,7 +302,7 @@ type owedListJSON struct {
 	Items []owedJSON `json:"items"`
 }
 
-// owedJSON is one Owed to you row (R-95): amount is what is left to pay, or the held amount for held.
+// R-95: Amount is what is left to pay, or the held amount for kind held.
 type owedJSON struct {
 	Kind        string  `json:"kind"`
 	InvoiceID   string  `json:"invoiceId"`

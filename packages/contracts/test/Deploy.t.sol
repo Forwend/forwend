@@ -15,7 +15,7 @@ contract DeployTest is Test {
         vm.setEnv("DEPLOYER_PRIVATE_KEY", vm.toString(uint256(0xA11CE)));
     }
 
-    /// The address commits to the first executor; after setExecutor the script returns the same factory.
+    /// The address commits to the first executor.
     function test_scriptKeepsFactoryAfterExecutorRotation() public {
         Deploy d = new Deploy();
         InvoiceReceiverFactory factory = d.deployFactory();

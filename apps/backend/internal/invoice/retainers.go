@@ -16,25 +16,23 @@ import (
 const (
 	// RetainerLead is how many UTC days before its due date each later month's invoice is made and emailed (R-98).
 	RetainerLead = 7
-	// MaxRetainers bounds a profile's running retainers: each emails a client every month without the owner's click.
+	// Each running retainer emails a client every month without the owner's click.
 	MaxRetainers = 50
 	// DueGraceDays is how long past its due date a checkout stays open (D-80), as the web form sets it.
 	DueGraceDays = 60
 )
 
-// errRetainerStopped: the owner stopped the retainer while the worker was making its next invoice.
 var errRetainerStopped = errors.New("retainer stopped")
 
-// Repeat makes a new invoice repeat every month (R-98). EndDate (YYYY-MM-DD) is the last due date it may reach; ""
-// repeats until stopped.
+// Repeat (R-98): EndDate (YYYY-MM-DD) is the last due date it may reach; "" repeats until stopped.
 type Repeat struct {
 	EndDate string
 }
 
-// Retainer is the retainer an invoice belongs to, for its owner. NextDue and NextOn are "" once it ended or stopped.
+// NextDue and NextOn are "" once the retainer ended or stopped.
 type Retainer struct {
 	EndDate   string
-	NextDue   string // the next invoice's due date
+	NextDue   string
 	NextOn    string // the UTC day the worker makes and emails it
 	StoppedAt time.Time
 }
@@ -45,7 +43,6 @@ type cycle struct {
 	n        int
 }
 
-// checkRepeat refuses a repeat without a due date or client email, or with an end date before the due date.
 func checkRepeat(r Request) error {
 	if r.Repeat == nil {
 		return nil
@@ -61,7 +58,7 @@ func checkRepeat(r Request) error {
 	return nil
 }
 
-// startRetainer saves the retainer of the invoice just inserted in tx, under the profile lock Create holds.
+// Runs under the profile lock Create holds, so the running count can't be stale.
 func (s *Service) startRetainer(ctx context.Context, tx pgx.Tx, profileID, invoiceID string, r Request) error {
 	var running int
 	if err := tx.QueryRow(ctx, `SELECT count(*) FROM retainers WHERE profile_id = $1 AND stopped_at IS NULL
@@ -88,9 +85,8 @@ func (s *Service) startRetainer(ctx context.Context, tx pgx.Tx, profileID, invoi
 	return nil
 }
 
-// addCycle records the month's invoice just inserted in tx and queues its email to the client, unless the user's client
-// emails are used up for the day (R-116). A retainer stopped in the meantime makes nothing: the row lock orders this
-// after StopRetainer.
+// The client email is skipped when the user's client emails are used up for the day (R-116). A retainer stopped
+// in the meantime makes nothing: the row lock orders this after StopRetainer.
 func addCycle(ctx context.Context, tx pgx.Tx, c cycle, profileID, invoiceID, key string) error {
 	var stopped bool
 	if err := tx.QueryRow(ctx, "SELECT stopped_at IS NOT NULL FROM retainers WHERE id = $1 FOR UPDATE",
@@ -110,9 +106,8 @@ func addCycle(ctx context.Context, tx pgx.Tx, c cycle, profileID, invoiceID, key
 	return outbox.QueueSend(ctx, tx, invoiceID, key)
 }
 
-// nextMonthSQL joins to retainers r the next month to make, as c.n and c.due: the first month after the last one
-// made whose due date is the UTC day today (a SQL date) or later. A month that passed unmade, as when the first due
-// date is in the past or the worker was down, is skipped: billing it then would email the client a late invoice.
+// nextMonthSQL joins c.n and c.due to retainers r: the next month due today (a SQL date) or later. A month that
+// passed unmade is skipped: billing it then would email the client a late invoice.
 func nextMonthSQL(today string) string {
 	return `CROSS JOIN LATERAL (SELECT (extract(year FROM age(` + today + `, r.first_due)) * 12
 		    + extract(month FROM age(` + today + `, r.first_due)))::int AS k) a
@@ -121,9 +116,8 @@ func nextMonthSQL(today string) string {
 		CROSS JOIN LATERAL (SELECT m.n, (r.first_due + make_interval(months => m.n))::date AS due) c`
 }
 
-// MakeRetainerInvoices makes, for each running retainer, its next month's invoice once that due date is RetainerLead
-// UTC days away or less, and emails it to the client (R-98). The worker calls it each round. A month starts with
-// reminders as the first invoice was created, unless the client stopped them on an earlier month (R-96).
+// MakeRetainerInvoices makes each next month's invoice RetainerLead UTC days before its due date (R-98). It keeps
+// the first invoice's reminders unless the client stopped them on an earlier month (R-96).
 func (s *Service) MakeRetainerInvoices(ctx context.Context) error {
 	type month struct {
 		retainer, profile string
@@ -168,8 +162,7 @@ func (s *Service) MakeRetainerInvoices(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-// StopRetainer stops the retainer the profile's invoice belongs to (R-98): no later month is made, and invoices
-// already made stay. It answers the invoice, the same when already stopped or when the invoice doesn't repeat.
+// StopRetainer (R-98): invoices already made stay; it answers the same when already stopped or not repeating.
 func (s *Service) StopRetainer(ctx context.Context, profileID, id string) (Invoice, error) {
 	id = strings.ToLower(id)
 	if _, err := s.pool.Exec(ctx, `UPDATE retainers SET stopped_at = coalesce(stopped_at, now())
@@ -180,7 +173,6 @@ func (s *Service) StopRetainer(ctx context.Context, profileID, id string) (Invoi
 	return s.GetOfProfile(ctx, profileID, id)
 }
 
-// retainer reads the retainer the invoice belongs to; nil when it doesn't repeat.
 func (s *Service) retainer(ctx context.Context, id string) (*Retainer, error) {
 	var r Retainer
 	var stopped *time.Time

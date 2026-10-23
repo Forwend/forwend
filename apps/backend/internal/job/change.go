@@ -13,15 +13,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// MaxChangeEmails caps a job's change emails in any 24 hours (R-107), so a change proposed and withdrawn again and
-// again doesn't flood its client; outbox.MaxClientEmails caps the user's client emails of every kind (R-116), since
-// the owner can accept their own link with any address.
+// Per job in 24 hours (R-107), so proposing and withdrawing again and again can't flood the client.
+// outbox.MaxClientEmails caps all the user's client emails (R-116): the owner can accept their own link.
 const MaxChangeEmails = 5
 
-// ProposeChange adds a scope change to the profile's accepted job (R-105): a payment at the end of its schedule that
-// the client accepts by the job's link. It is made once per (job, idempotency key), withdrawn or not: created is false
-// when the same request was already made, and another request under the key is ErrConflict. A job whose last payment
-// is done is ErrJobFinished.
+// ProposeChange (R-105) is idempotent per (job, key), even after a withdrawal: a repeat has created false, another
+// request under the key is ErrConflict.
 func (s *Service) ProposeChange(ctx context.Context, profileID, id, key string, r PaymentRequest) (Job, bool, error) {
 	if !jobID.MatchString(id) {
 		return Job{}, false, ErrNotFound
@@ -110,11 +107,8 @@ func (s *Service) ProposeChange(ctx context.Context, profileID, id, key string, 
 	return j, created, err
 }
 
-// AcceptChange records the client's acceptance of the change at position on the job its link names (R-105), with
-// their typed name and email, once; an accepted change answers the same. proposedAt is the change as the client read
-// it, to the microsecond the database keeps, so consent never lands on another change at that position: one withdrawn
-// and replaced is ErrNotFound, as is a position that is not a change. allow is the limit shared by everyone, asked only
-// for a change this accept would change (R-117).
+// AcceptChange (R-105) matches proposedAt to the microsecond, so consent never lands on a change withdrawn and
+// replaced at that position. allow is asked only when this accept would change the job (R-117).
 func (s *Service) AcceptChange(ctx context.Context, token string, position int, proposedAt time.Time, name,
 	email string, allow func() time.Duration) (Job, error) {
 	if err := checkTyped(name, email); err != nil {
@@ -147,8 +141,7 @@ func (s *Service) AcceptChange(ctx context.Context, token string, position int, 
 	return j, err
 }
 
-// WithdrawChange removes the profile's job's change at position while the client has not accepted it (R-105). Only
-// the last payment can go, so the schedule stays in order with no gap.
+// WithdrawChange (R-105): only the last payment can go, so the schedule stays in order with no gap.
 func (s *Service) WithdrawChange(ctx context.Context, profileID, id string, position int) error {
 	if !jobID.MatchString(id) {
 		return ErrNotFound

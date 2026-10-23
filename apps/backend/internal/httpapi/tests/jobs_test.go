@@ -13,8 +13,7 @@ const jobBody = `{"title": "Logo design", "scope": "Three logo ideas, two rounds
 	"payments": [{"title": "Deposit", "amountUsd": "300", "dueDays": 7, "onAccept": true},
 	             {"title": "Final delivery", "amountUsd": "700.50", "dueDays": 14}]}`
 
-// R-100, R-101: the owner creates a job once per Idempotency-Key with a copy of the billing details; the client reads it by
-// its link without the client block and accepts it once; the owner's list and read show each payment's invoice.
+// R-100, R-101.
 func TestJobs(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -39,7 +38,7 @@ func TestJobs(t *testing.T) {
 	if !reflect.DeepEqual(r.body["payments"], payments) {
 		t.Fatalf("payments %v", r.body["payments"])
 	}
-	// The same values again, "300.00" for "300", replay; other values under the same key are a conflict.
+	// "300.00" for "300" is the same request.
 	if again := e.call(t, "POST", jobs, alice, "job-1", strings.Replace(jobBody, `"300"`, `"300.00"`, 1)); again.status != http.StatusOK ||
 		again.body["jobId"] != id {
 		t.Fatalf("same request: %d %v", again.status, again.body)
@@ -70,7 +69,6 @@ func TestJobs(t *testing.T) {
 		t.Fatalf("Bob's profile: %d %v, want 403", r.status, r.body)
 	}
 
-	// The client's link: no client block, no typed email, no owner ids.
 	public := e.call(t, "GET", "/v1/jobs/"+token, "", "", "")
 	for _, owner := range []string{"client", "acceptedEmail", "jobId", "token"} {
 		if _, ok := public.body[owner]; ok || public.status != http.StatusOK {
@@ -100,7 +98,7 @@ func TestJobs(t *testing.T) {
 		if _, ok := r.body["acceptedEmail"]; ok {
 			t.Fatalf("accept answers the typed email: %v", r.body)
 		}
-		// The client pays by the pay link's token (D-86).
+		// D-86.
 		if pay, _ := deposit["payToken"].(string); e.get(t, pay).body["invoiceId"] != deposit["invoiceId"] {
 			t.Fatalf("deposit payToken %v opens no invoice %v", deposit["payToken"], deposit["invoiceId"])
 		}
@@ -111,7 +109,7 @@ func TestJobs(t *testing.T) {
 	}
 	waiting := e.call(t, "POST", jobs, alice, "job-5", jobBody).body["jobId"].(string)
 
-	// R-105: a change goes at the end; the client accepts it by the link, whose read never shows the typed email.
+	// R-105.
 	change := `{"title": "Extra page", "amountUsd": "150", "dueDays": 7}`
 	if r := e.call(t, "POST", jobs+"/"+waiting+"/payments", alice, "change-1", change); r.status != http.StatusConflict ||
 		errorCode(r) != "job_not_accepted" {
@@ -165,13 +163,12 @@ func TestJobs(t *testing.T) {
 	if r := e.call(t, "DELETE", jobs+"/"+id+"/payments/4", alice, "", ""); r.status != http.StatusNoContent {
 		t.Fatalf("withdraw: %d %v, want 204", r.status, r.body)
 	}
-	// A late retry of the withdrawn change's request replays and adds nothing.
 	if r := e.call(t, "POST", jobs+"/"+id+"/payments", alice, "change-2", change); r.status != http.StatusOK ||
 		len(r.body["payments"].([]any)) != 3 {
 		t.Fatalf("retry the withdrawn change: %d %v, want 200 with 3 payments", r.status, r.body)
 	}
 
-	// R-103: the next step marked done makes its invoice and keeps the delivery link, which the client's link shows.
+	// R-103.
 	if r := done(id, 9, `{}`); r.status != http.StatusNotFound {
 		t.Fatalf("payment 9: %d %v, want 404", r.status, r.body)
 	}
@@ -191,7 +188,7 @@ func TestJobs(t *testing.T) {
 		t.Fatalf("before acceptance: %d %v, want 409 job_not_accepted", r.status, r.body)
 	}
 	e.call(t, "DELETE", jobs+"/"+waiting, alice, "", "")
-	// R-105: once the last payment is done, more work is a new job.
+	// R-105.
 	if r := done(id, 3, `{}`); r.status != http.StatusOK {
 		t.Fatalf("mark the accepted change done: %d %v", r.status, r.body)
 	}
@@ -200,7 +197,7 @@ func TestJobs(t *testing.T) {
 		t.Fatalf("a change on a finished job: %d %v, want 409 job_finished", r.status, r.body)
 	}
 
-	// R-101: an accepted job can't be deleted; one not accepted can, once.
+	// R-101.
 	if r := e.call(t, "DELETE", jobs+"/"+id, alice, "", ""); r.status != http.StatusConflict || errorCode(r) != "job_accepted" {
 		t.Fatalf("delete an accepted job: %d %v, want 409 job_accepted", r.status, r.body)
 	}

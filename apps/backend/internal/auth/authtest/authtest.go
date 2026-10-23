@@ -16,7 +16,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// Privy serves its published keys at JWKSURL and counts the fetches.
 type Privy struct {
 	JWKSURL string
 	Fetches atomic.Int64
@@ -50,7 +49,6 @@ func NewPrivy(t *testing.T) *Privy {
 	return p
 }
 
-// AddKey publishes a new signing key.
 func (p *Privy) AddKey(t *testing.T, kid string) *ecdsa.PrivateKey {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -63,21 +61,19 @@ func (p *Privy) AddKey(t *testing.T, kid string) *ecdsa.PrivateKey {
 	return key
 }
 
-// RemoveKey stops publishing a key, as Privy would after rotating or revoking it.
 func (p *Privy) RemoveKey(kid string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	delete(p.keys, kid)
 }
 
-// Key returns a published key.
 func (p *Privy) Key(kid string) *ecdsa.PrivateKey {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.keys[kid]
 }
 
-// Sign makes an ES256 token with the given kid header ("" for none), signed by key.
+// Sign leaves out the kid header when kid is "".
 func Sign(t *testing.T, key *ecdsa.PrivateKey, kid string, claims jwt.MapClaims) string {
 	t.Helper()
 	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)

@@ -32,7 +32,7 @@ func newVerifier(t *testing.T, p *authtest.Privy) *Verifier {
 func TestVerifyUsesTheKeyNamedByKid(t *testing.T) {
 	ctx := context.Background()
 	p := authtest.NewPrivy(t)
-	p.AddKey(t, "key-2") // Privy publishes two keys
+	p.AddKey(t, "key-2")
 	v := newVerifier(t, p)
 
 	for _, kid := range []string{"key-1", "key-2"} {
@@ -51,7 +51,6 @@ func TestVerifyUsesTheKeyNamedByKid(t *testing.T) {
 	}
 }
 
-// An unknown kid fetches the keys again at most once per minute; a rotated-in key then works.
 func TestUnknownKidRefetchesAtMostOncePerMinute(t *testing.T) {
 	ctx := context.Background()
 	p := authtest.NewPrivy(t)
@@ -114,7 +113,6 @@ func TestNewVerifierNeedsKeys(t *testing.T) {
 	}
 }
 
-// A caller that hangs up must not abort the shared refetch: the rotated key still loads.
 func TestRefetchSurvivesACancelledRequest(t *testing.T) {
 	p := authtest.NewPrivy(t)
 	v := newVerifier(t, p)
@@ -131,7 +129,6 @@ func TestRefetchSurvivesACancelledRequest(t *testing.T) {
 	}
 }
 
-// A key Privy stops publishing is no longer trusted once the key list is older than MaxKeyAge.
 func TestWithdrawnKeyStopsVerifying(t *testing.T) {
 	ctx := context.Background()
 	p := authtest.NewPrivy(t)
@@ -156,7 +153,6 @@ func TestWithdrawnKeyStopsVerifying(t *testing.T) {
 	}
 }
 
-// A failed refresh must not count as a fresh list: once Privy is back, the next attempt drops a withdrawn key.
 func TestFailedRefreshDoesNotExtendKeyAge(t *testing.T) {
 	ctx := context.Background()
 	p := authtest.NewPrivy(t)
@@ -198,7 +194,7 @@ func TestFailedRefreshDoesNotExtendKeyAge(t *testing.T) {
 	if _, err := v.Verify(ctx, token); !errors.Is(err, ErrUnauthorized) {
 		t.Fatalf("Privy still down after another try: got %v, want 401", err)
 	}
-	down = false // Privy is back, with key-2 withdrawn
+	down = false
 	p.RemoveKey("key-2")
 	now = now.Add(RefetchInterval)
 	if _, err := v.Verify(ctx, token); !errors.Is(err, ErrUnauthorized) {

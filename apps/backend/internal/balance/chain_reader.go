@@ -15,17 +15,13 @@ import (
 )
 
 const (
-	// finalizedTTL is how long one read of a chain's finalized block serves every request. The web reads balances
-	// every 15 s; with 3 s the label is at most 3 s behind the chain, and any number of users costs one header read per
-	// chain per 3 s.
+	// With 3 s the balance label is at most 3 s behind, and any number of users costs one header read per chain per 3 s.
 	finalizedTTL = 3 * time.Second
-	// balanceTTL is how long a balance read at a block is kept. A balance at a finalized block never changes, so this
-	// only frees the memory of blocks that are no longer the finalized one; a block that still is gets read again.
+	// A balance at a finalized block never changes; this only frees the memory of blocks no longer finalized.
 	balanceTTL = time.Minute
 )
 
-// ChainReader reads wallet balances with each chain's second RPC (D-15). Each chain's RPCs rest and switch on their
-// own (chain.NewRPCs), so a slow chain never holds up another.
+// ChainReader reads with each chain's second RPC (D-15); a slow chain never holds up another.
 type ChainReader struct {
 	rpcs    map[uint64]chain.RPCs
 	errs    map[uint64]error // chains whose RPC list can't confirm balances
@@ -33,8 +29,7 @@ type ChainReader struct {
 	cache   cache
 }
 
-// NewChainReader reads the chains in specs through their Infura keys (where a chain lists Infura) and public RPCs,
-// sending each at most rate calls per second.
+// NewChainReader sends each RPC at most rate calls per second.
 func NewChainReader(specs map[uint64]chain.Spec, keys []string, rate float64) *ChainReader {
 	c := &ChainReader{rpcs: map[uint64]chain.RPCs{}, errs: map[uint64]error{}, clients: map[uint64]*ethclient.Client{},
 		cache: newMemoryCache()}
@@ -49,9 +44,8 @@ func NewChainReader(specs map[uint64]chain.Spec, keys []string, rate float64) *C
 	return c
 }
 
-// Read is a ledger.BalanceOf: the holder's token balance at the second RPC's finalized block. Requests share the
-// reads: one finalized block read per chain every finalizedTTL, and one balanceOf per chain, token, holder and block,
-// so a balance is always the one at the block it is returned with.
+// Read is a ledger.BalanceOf at the second RPC's finalized block. Requests share one finalized read per chain per
+// finalizedTTL and one balanceOf per block, so a balance is always the one at the block it is returned with.
 func (c *ChainReader) Read(ctx context.Context, chainID uint64, token, holder string) (*big.Int, uint64, error) {
 	if err := c.errs[chainID]; err != nil {
 		return nil, 0, err
@@ -90,7 +84,6 @@ func (c *ChainReader) Read(ctx context.Context, chainID uint64, token, holder st
 	return balance, block, nil
 }
 
-// Close closes every chain's RPC clients.
 func (c *ChainReader) Close() {
 	for _, r := range c.rpcs {
 		r.Close()

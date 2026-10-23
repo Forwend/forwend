@@ -21,7 +21,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Item kinds.
 const (
 	Invoice = "invoice"
 	Deposit = "deposit"
@@ -32,12 +31,10 @@ const (
 	MaxLimit     = 100
 )
 
-// ErrInvalid wraps a cursor, limit or filter that breaks a rule.
 var ErrInvalid = errors.New("invalid activity request")
 
-// Item is an invoice made or a deposit seen (reorged ones are left out). For an invoice, Status is its payment status,
-// SettlementStatus is set and TxHash is the settle transaction once settled; for a deposit, Status is detected or
-// confirmed and TxHash is set.
+// Item is an invoice or a non-reorged deposit. For an invoice, Status is its payment status, SettlementStatus is set
+// and TxHash is the settle transaction once settled; for a deposit, Status is detected or confirmed.
 type Item struct {
 	Kind             string
 	At               time.Time
@@ -58,7 +55,7 @@ type Item struct {
 	key  string
 }
 
-// Page is one page; NextCursor is "" on the last one.
+// NextCursor is "" on the last page.
 type Page struct {
 	Items      []Item
 	NextCursor string
@@ -72,9 +69,8 @@ func NewService(pool *pgxpool.Pool) *Service {
 	return &Service{pool: pool}
 }
 
-// List returns the page after cursor ("" for the first) of the items under status ("" for all; one of
-// invoice.StatusFilters, where a detected deposit is open, a confirmed one paid and a held one under none) whose transaction hash, token
-// symbol or amount matches q. The caller has checked that the user owns the profile.
+// List's status is "" or one of invoice.StatusFilters: a detected deposit is open, a confirmed one paid, a held
+// one under none. The caller has checked that the user owns the profile.
 func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status string, q search.Query) (Page, error) {
 	if limit < 1 || limit > MaxLimit {
 		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
@@ -111,9 +107,8 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 		           '', t.tx_hash, CASE WHEN h.held THEN NULL WHEN t.status = 'confirmed' THEN 'paid' ELSE 'open' END, 1, false,
 		           h.held
 		    FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id JOIN invoices m ON m.id = coalesce(i.main_id, i.id)
-		    -- Booked: held when none of it went to the owner, or when the invoice expired partly paid (the ledger's expiry
-		    -- book moved what was owed to the payer). Not yet: the ledger's split rule (ledger.Final, late, money on an
-		    -- option the client didn't pay with).
+		    -- Booked: held when none went to the owner, or after a partly paid expiry moved it to the payer.
+		    -- Not booked yet: the ledger's split rule (ledger.Final, late, money on an option the client didn't pay with).
 		    CROSS JOIN LATERAL (SELECT CASE WHEN t.booked THEN NOT EXISTS (SELECT 1 FROM ledger_transactions x
 		            JOIN ledger_entries e ON e.transaction_id = x.id WHERE x.chain_transfer_id = t.id
 		            AND e.account = 'recipient_payable') OR i.payment_status = 'expired_partially_paid'

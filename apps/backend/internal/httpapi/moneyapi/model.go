@@ -74,14 +74,14 @@ type transactionJSON struct {
 	RecordsValue   *recordsValueJSON       `json:"recordsValue"`
 }
 
-// recordsValueJSON is the value in the profile's other records currency at the ECB rate of rateDate (R-110).
+// R-110: at the ECB rate of RateDate.
 type recordsValueJSON struct {
 	Currency string `json:"currency"`
 	Amount   string `json:"amount"`
 	RateDate string `json:"rateDate"`
 }
 
-// transactionInvoiceJSON is the invoice money in paid (R-108); clientName is null when it has none.
+// R-108.
 type transactionInvoiceJSON struct {
 	InvoiceID  string  `json:"invoiceId"`
 	Number     int64   `json:"number"`
@@ -102,7 +102,6 @@ func toTransactionJSON(t activity.Transfer) transactionJSON {
 	return out
 }
 
-// tokenAmount is the amount in the token's units, with every decimal.
 func tokenAmount(t activity.Transfer) string {
 	return new(big.Rat).SetFrac(t.Amount, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(t.Decimals)), nil)).
 		FloatString(t.Decimals)
@@ -127,7 +126,6 @@ type tokenHistoryJSON struct {
 	Sent     []string `json:"sent"`
 }
 
-// baseUnits writes amounts as decimal strings; nil stays nil (JSON null).
 func baseUnits(amounts []*big.Int) []string {
 	if amounts == nil {
 		return nil

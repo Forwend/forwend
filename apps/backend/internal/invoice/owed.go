@@ -12,8 +12,7 @@ import (
 // Owed is one row of the Owed to you list (R-95). Amount is what is left to pay on the current option, or for held
 // money the held amount on the option it came to.
 type Owed struct {
-	// overdue: the payer can still pay it and its due date has passed; partlyPaid: the payer can still pay it and part
-	// of it is in; held: money on one of its options is held for the payer (D-26), not the owner's.
+	// overdue, partlyPaid, or held: money on an option held for the payer (D-26), not the owner's.
 	Kind        string
 	InvoiceID   string
 	Number      int64
@@ -26,9 +25,7 @@ type Owed struct {
 	Amount *big.Int
 }
 
-// Owed lists the profile's invoices the payer can still pay that are overdue (due date before today's UTC date) or
-// partly paid, with what is left (PaidToOwnerSQL), then every option with money held for the payer. The caller has
-// checked that the user owns the profile.
+// Overdue compares the due date with today's UTC date. The caller must check that the user owns the profile.
 func (s *Service) Owed(ctx context.Context, profileID string) ([]Owed, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT kind, id, number, title, client_name, due_date, days_late, option_count, chain_id, token, symbol, decimals,

@@ -28,7 +28,6 @@ export function LogoMark({ className, label }: LogoMarkProps) {
   );
 }
 
-/** Mark plus the "Forwend" wordmark, for the nav, footer and other brand spots. */
 export function Logo({ className }: LogoProps) {
   return (
     <span

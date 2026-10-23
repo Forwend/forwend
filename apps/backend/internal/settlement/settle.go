@@ -27,28 +27,20 @@ const ReceiptWait = time.Minute
 // CodeWait is how long one run waits for the RPC to show a receiver's code before it estimates settle gas.
 const CodeWait = 10 * time.Second
 
-// SettleGasFloor is the least gas a settle gets before the margin. A node that has not seen the receiver's deploy
-// estimates settle as a call to an address without code, 21,064 gas, which runs out. On Anvil with the test token a
-// settle used 122,832 gas paying a wallet with no tokens yet (logged by
-// TestSettleWaitsForTheReceiverCodeAndNeverUnderestimatesGas) and 105,732 paying one that has some. Real USDC behind
-// its proxy on a Base Sepolia fork used 135,632 (estimate 139,592) paying a wallet with none: the floor plus a fifth,
-// 150,000, covers it. On Arbitrum gas also counts the L1 data cost, which the floor does not cover; the estimate at
-// the deploy's block does.
+// A node that hasn't seen the receiver's deploy estimates settle at 21,064 gas, which runs out. Real USDC used up to
+// 135,632; the floor plus a fifth covers it. On Arbitrum the estimate at the deploy's block adds the L1 data cost.
 const SettleGasFloor = 125_000
 
 // TempoSettleGasFloor: Tempo prices storage far higher, and its testnet settle used 572,845 gas (deployments.json).
 const TempoSettleGasFloor = 580_000
 
-// ReplaceAfter is how long a saved settle may stay unmined before it is signed again with the same nonce and a
-// higher fee, so the settles after it on the chain are not held up.
+// An unmined settle is re-signed after this with a higher fee, so later settles on the chain aren't held up.
 const ReplaceAfter = 3 * time.Minute
 
-// SponsoredPerDay bounds the settlements one user's invoices get from the executor's gas in 24 hours: tiny invoices
-// paid back and forth would otherwise drain it for everyone (SEC-03).
+// Per user in 24 hours: tiny invoices paid back and forth would otherwise drain the executor's gas (SEC-03).
 const SponsoredPerDay = 50
 
-// MaxFeeFactor caps a replacement's fee cap at this many times the fee cap a new settle would get now, so repeated
-// bumps can't grow without end.
+// Caps a replacement's fee cap at this many times a new settle's, so repeated bumps can't grow without end.
 const MaxFeeFactor = 2
 
 func (s *Signer) settle(ctx context.Context, id int64) error {
@@ -76,7 +68,6 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 	if reason != "" {
 		return s.refuse(ctx, in, reason)
 	}
-	// Chain checks.
 	st, err := factoryStatus(ctx, client, terms)
 	if err != nil {
 		return err
@@ -170,8 +161,6 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 	return s.reconcile(ctx, client, in)
 }
 
-// check compares the stored terms with the profile wallet and the address the compiled factory gives; it returns
-// the terms, or why they are refused.
 func check(in intent) (address.Terms, string) {
 	switch {
 	case in.payment != ledger.Paid:
@@ -193,10 +182,8 @@ func check(in intent) (address.Terms, string) {
 	return terms, ""
 }
 
-// sign builds and signs a call from the executor, with the chain's own gas estimate (Tempo prices storage
-// differently, S-5/S-6) but at least minGas, plus a fifth. The estimate is at block when given (a deploy's), else at
-// latest. The nonce is the node's pending nonce, but never below after or the nonce after the last settle saved for
-// this chain and sender: a node that lags may not count our latest transactions yet. One signer per key (Signer).
+// sign trusts the chain's own gas estimate (Tempo prices storage differently, S-5/S-6), with minGas as a floor.
+// The nonce never drops below after or the last saved settle's: a lagging node may not count our latest ones.
 func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uint64, to common.Address, data []byte,
 	after, minGas uint64, block *big.Int) (*types.Transaction, error) {
 	nonce, err := client.PendingNonceAt(ctx, s.sender)
@@ -243,8 +230,7 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 	return types.SignTx(tx, types.LatestSignerForChainID(new(big.Int).SetUint64(chainID)), s.key)
 }
 
-// replace signs the saved settle old again with its nonce, a gas limit no lower, and a higher fee: at least an eighth more tip and
-// fee cap (geth wants a tenth) and at least what a new settle gets now. It saves the new version before it is sent,
+// replace bumps tip and fee cap by an eighth (geth wants a tenth) and saves the new version before it is sent,
 // keeping old's hash, since either may be mined. Over MaxFeeFactor it returns old, to be sent again as it is.
 func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in intent, old *types.Transaction) (*types.Transaction, error) {
 	tip, feeCap, err := s.fees(ctx, client, in.chainID)
@@ -291,9 +277,8 @@ func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in inten
 	return tx, nil
 }
 
-// overStuck moves a deploy onto the executor's next mined nonce when a transaction we never saved waits there: a
-// deploy from an earlier attempt that the fee left behind. Every later transaction on the chain would queue behind
-// it, and deploy is idempotent, so taking its place costs nothing. Twice today's fee outbids it.
+// overStuck: an unsaved transaction stuck at the next mined nonce (an earlier deploy) holds every later one.
+// Deploy is idempotent, so this deploy takes its place at twice today's fee.
 func (s *Signer) overStuck(ctx context.Context, client *ethclient.Client, chainID uint64, tx *types.Transaction) (*types.Transaction, error) {
 	mined, err := client.NonceAt(ctx, s.sender, nil)
 	if err != nil {
@@ -343,7 +328,6 @@ func (s *Signer) fees(ctx context.Context, client *ethclient.Client, chainID uin
 	return tip, feeCap, nil
 }
 
-// fees are the tip and fee cap the signer pays now: the node's suggested tip, and twice the base fee plus the tip.
 func fees(ctx context.Context, client *ethclient.Client, chainID uint64) (tip, feeCap *big.Int, err error) {
 	tip, err = client.SuggestGasTipCap(ctx)
 	if err != nil {
@@ -359,9 +343,7 @@ func fees(ctx context.Context, client *ethclient.Client, chainID uint64) (tip, f
 	return tip, new(big.Int).Add(new(big.Int).Mul(head.BaseFee, big.NewInt(2)), tip), nil
 }
 
-// awaitCode waits up to codeWait for the RPC to show the receiver's code at block (the deploy's; nil: latest) or
-// later. A node that has not seen the deploy estimates settle far too low; past the wait this attempt ends and the
-// intent is tried again later.
+// awaitCode: a node that hasn't seen the deploy estimates settle far too low.
 func (s *Signer) awaitCode(ctx context.Context, client *ethclient.Client, receiver common.Address, block *big.Int) error {
 	deadline := time.Now().Add(s.codeWait)
 	for {

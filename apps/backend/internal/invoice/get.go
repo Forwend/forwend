@@ -17,8 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Get reads an invoice by its pay link's token (64 hex, D-86). An on-chain id, the invoice's or an option's, is
-// ErrNotFound: the chain shows those.
+// Get takes the pay link's secret token (D-86), never an on-chain id: the chain makes those public.
 func (s *Service) Get(ctx context.Context, payToken string) (Invoice, error) {
 	id, ok := idOf(payToken)
 	if !ok {
@@ -27,7 +26,6 @@ func (s *Service) Get(ctx context.Context, payToken string) (Invoice, error) {
 	return s.get(ctx, "", id)
 }
 
-// idOf is the on-chain id of the invoice whose pay link carries payToken.
 func idOf(payToken string) (string, bool) {
 	var token [32]byte
 	if !payTokenShape.MatchString(payToken) {
@@ -117,8 +115,8 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 	return inv, err
 }
 
-// PaidAtSQL is the block time (unix seconds) of the last deposit the ledger booked to the owner on the option row whose
-// id is the SQL expression option: the one that completed the amount, as later ones are held. Read it once paid.
+// PaidAtSQL is the block time (unix seconds) of the last deposit booked to the owner on the option row whose id is
+// the SQL expression option; later deposits are held. Read it once paid.
 func PaidAtSQL(option string) string {
 	return `(SELECT max(ct.block_time) FROM chain_transfers ct
 		JOIN ledger_transactions l ON l.chain_transfer_id = ct.id
@@ -126,7 +124,6 @@ func PaidAtSQL(option string) string {
 		WHERE ct.invoice_id = ` + option + `)`
 }
 
-// settlementWait reads why a paid, unsettled invoice still waits, from its intent's status and stored wait kind.
 func (s *Service) settlementWait(ctx context.Context, inv Invoice, head finality.Block) (*SettlementWait, error) {
 	if inv.PaymentStatus != ledger.Paid || inv.SettlementStatus == "settled" {
 		return nil, nil
@@ -147,15 +144,13 @@ func (s *Service) settlementWait(ctx context.Context, inv Invoice, head finality
 	switch {
 	case status == "refused":
 		return &SettlementWait{Kind: WaitRefused}, nil
-	// A wait whose time has passed is over: the signer is on it again (a resolved stall can keep its kind until
-	// confirmed), so it reads as the status alone.
+	// A wait whose time has passed is over (a resolved stall can keep its kind), so it reads as the status alone.
 	case wait != nil && *wait == "cap" && next.After(time.Now()):
 		return &SettlementWait{Kind: WaitDailyLimit, Until: next.UTC()}, nil
 	case wait != nil && next.After(time.Now()): // retry, or a sent settle the signer can't resolve yet
 		return &SettlementWait{Kind: WaitRetrying, Until: next.UTC()}, nil
 	case status == "sent" && signed != nil:
-		// The settle mines within moments of signing, so its block time is about signed_at: what is left is the chain
-		// time the finalized head must still cover, as for a deposit (finality.ProgressOf).
+		// The settle mines moments after signing, so signed_at stands in for its block time.
 		w := &SettlementWait{Kind: WaitFinalizing}
 		if t := signed.Unix(); t > int64(head.Time) {
 			w.TimeLeft = time.Duration(t-int64(head.Time)) * time.Second
@@ -166,7 +161,6 @@ func (s *Service) settlementWait(ctx context.Context, inv Invoice, head finality
 	}
 }
 
-// deposits lists the invoice's transfers that are not reorged, with progress toward the chain's finalized block head.
 func (s *Service) deposits(ctx context.Context, id string, chainID uint64, expiresAt time.Time) ([]Deposit, error) {
 	head, err := s.head(ctx, chainID)
 	if err != nil {
@@ -210,7 +204,6 @@ func (s *Service) deposits(ctx context.Context, id string, chainID uint64, expir
 	return out, rows.Err()
 }
 
-// head is the chain's finalized block as the worker last read it; zero before its first scan.
 func (s *Service) head(ctx context.Context, chainID uint64) (finality.Block, error) {
 	var head finality.Block
 	err := s.pool.QueryRow(ctx, "SELECT last_finalized_block, last_finalized_time FROM chain_cursors WHERE chain_id = $1",
@@ -221,7 +214,6 @@ func (s *Service) head(ctx context.Context, chainID uint64) (finality.Block, err
 	return head, nil
 }
 
-// options lists the invoice's accepted options, ordered by chain and symbol: one for a fixed invoice.
 func (s *Service) options(ctx context.Context, id string) ([]Option, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT i.id, i.chain_id, i.token_contract, t.symbol, t.decimals, c.name, i.amount::text, i.receive_address
@@ -240,7 +232,7 @@ func (s *Service) options(ctx context.Context, id string) ([]Option, error) {
 	})
 }
 
-// lines reads the invoice's line items in order (R-88); none when it has no breakdown.
+// R-88.
 func (s *Service) lines(ctx context.Context, id string) ([]Line, error) {
 	rows, err := s.pool.Query(ctx, `SELECT description, quantity::text, unit_price::text, amount::text
 		FROM invoice_lines WHERE invoice_id = $1 ORDER BY position`, id)

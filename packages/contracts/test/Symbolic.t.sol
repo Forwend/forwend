@@ -70,7 +70,6 @@ contract SymbolicTest is Test {
         }
     }
 
-    /// recover() can never move the invoice token on the intended chain, whoever calls it.
     function check_recoverNeverTakesInvoiceToken(address caller, address to, uint256 deposit, uint256 amount) public {
         vm.assume(deposit <= type(uint128).max);
         token.mint(address(receiver), deposit);

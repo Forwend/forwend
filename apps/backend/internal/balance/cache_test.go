@@ -15,8 +15,6 @@ import (
 
 const sink = "0x2222222222222222222222222222222222222222"
 
-// Concurrent requests for one wallet share one finalized block read and one balanceOf, counted at the RPC; a new
-// finalized block gives a new read with the new balance.
 func TestReadsAreSharedUntilTheFinalizedBlockMoves(t *testing.T) {
 	anvil := chaintest.Start(t)
 	token := anvil.DeployToken()
@@ -92,7 +90,6 @@ func TestReadsAreSharedUntilTheFinalizedBlockMoves(t *testing.T) {
 	}
 }
 
-// A failed read is not kept: the next request reads again and gets the answer of an RPC that came back.
 func TestFailedReadIsNotKept(t *testing.T) {
 	m, ctx, calls := newMemoryCache(), context.Background(), 0
 	read := func(context.Context) (string, error) {
@@ -112,7 +109,6 @@ func TestFailedReadIsNotKept(t *testing.T) {
 	}
 }
 
-// The request that starts a read may leave; the read goes on for the requests still waiting for it.
 func TestReadOutlivesTheRequestThatStartedIt(t *testing.T) {
 	m := newMemoryCache()
 	release, reads := make(chan struct{}), atomic.Int32{}

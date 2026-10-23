@@ -1,6 +1,5 @@
-// Package document renders an invoice, its receipt and a profile's income statement as PDF files with a fixed layout
-// (R-47, R-61, R-112, D-51). Only what is stored goes in, nothing is read from the network or disk, and the same input
-// always gives the same bytes.
+// Package document renders invoices, receipts and income statements as PDFs (R-47, R-61, R-112, D-51). Nothing is
+// read from the network or disk, and the same input always gives the same bytes.
 package document
 
 import (
@@ -72,7 +71,6 @@ func TxURL(chainID uint64, txHash string) string {
 	return ""
 }
 
-// NetworkName is the network as people call it (Base Sepolia), or its chain ID when unknown.
 func NetworkName(chainID uint64) string {
 	if n, ok := networks[chainID]; ok {
 		return n.name
@@ -92,7 +90,6 @@ func anyOption(inv invoice.Invoice) bool {
 	return len(inv.Options) > 1
 }
 
-// accepted lists the invoice's tokens with their networks, one line per token: "USDC on Base Sepolia, Arc Testnet".
 func accepted(inv invoice.Invoice) []string {
 	var symbols []string
 	nets := map[string][]string{}
@@ -228,8 +225,7 @@ func start(inv invoice.Invoice, kind string) doc {
 	return d
 }
 
-// open starts a document: its metadata, a footer naming it on every page, and the header with the mark, its kind and
-// its label (an invoice's number, a statement's period).
+// label is an invoice's number or a statement's period.
 func open(kind, label, author string, date time.Time) doc {
 	d := doc{fpdf.New("P", "mm", "A4", "")}
 	d.SetMargins(margin, margin, margin)
@@ -256,7 +252,6 @@ func open(kind, label, author string, date time.Time) doc {
 	})
 	d.AddPage()
 
-	// The mark and name on the left, the document's kind and label on the right.
 	d.color(ink)
 	d.logo(margin, margin, 8)
 	d.SetXY(margin+10.5, margin)
@@ -354,8 +349,7 @@ func (d doc) facts(pairs ...[2]string) {
 	d.SetXY(margin, y+2*lineHeight+6)
 }
 
-// lines is the invoice's line table: its items (R-88), or one line for what it is for, with the network beside the
-// first and each amount in its token, then the total.
+// lines is the invoice's line table (R-88), then the total.
 func (d doc) lines(inv invoice.Invoice, total string, any bool) {
 	cols := [3]float64{88, 42, 40}
 	const pad = 3.0
@@ -503,7 +497,6 @@ func (d doc) note(text string) {
 	d.Ln(6)
 }
 
-// transaction writes what happened, then the full hash and a link to it on the network's explorer.
 func (d doc) transaction(net network, what, hash string) {
 	d.pageFor(3 * lineHeight)
 	d.SetFont(font, "", 10)
@@ -522,7 +515,6 @@ func (d doc) transaction(net network, what, hash string) {
 	d.Ln(3)
 }
 
-// code draws the link's QR code beside a heading, a line of help and the link itself.
 func (d doc) code(link, title, help string) {
 	const size, gap = 30.0, 6.0
 	d.Ln(2)
@@ -592,7 +584,6 @@ func (d doc) footer(inv invoice.Invoice) {
 	d.text(ink)
 }
 
-// pageFor starts a new page when h mm would not fit, so a block stays together.
 func (d doc) pageFor(h float64) {
 	if d.GetY()+h > pageHeight-margin {
 		d.AddPage()
@@ -631,13 +622,10 @@ func (d doc) output() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// amount writes base units exactly in whole tokens, with at least 2 decimals when the token has them and the
-// thousands grouped.
-// Amount formats base units as people read money: 1,250.00 USDC.
+// Amount writes base units exactly, with at least 2 decimals when the token has them: 1,250.00 USDC.
 func Amount(n *big.Int, decimals int, symbol string) string {
 	s := new(big.Rat).SetFrac(n, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)).FloatString(decimals)
 	whole, frac, ok := strings.Cut(s, ".")
-	// Thousands grouped as finance teams read them: 1,250.00.
 	for i := len(whole) - 3; i > 0; i -= 3 {
 		whole = whole[:i] + "," + whole[i:]
 	}

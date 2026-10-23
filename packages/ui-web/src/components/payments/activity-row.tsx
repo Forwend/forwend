@@ -41,8 +41,7 @@ export function ActivityRow({
   const Icon = request ? FileText : incoming ? ArrowDownLeft : ArrowUpRight;
   const sign = request ? "" : incoming ? "+" : "−";
   const size = amount.baseUnits < 0n ? -amount.baseUnits : amount.baseUnits;
-  // A wide row (a page's list) is one line: the status in its own column before the amount. A narrow one (a phone, a
-  // card) stacks the amount over the status.
+  // A wide row puts the status in its own column before the amount; a narrow one stacks the amount over it.
   return (
     <div className="@container flex items-center gap-4 py-3">
       <span className="relative flex size-10 shrink-0 items-center justify-center rounded-pill border border-line bg-surface-2 text-muted">

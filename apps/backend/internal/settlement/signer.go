@@ -26,7 +26,7 @@ const LockKey int64 = 0x666f7277656e6402 // "forwend" 2
 // errStopped ends a run early in tests that simulate the signer being killed.
 var errStopped = errors.New("signer stopped")
 
-// Signer runs settlement intents. Run one Signer per executor key: two would race for nonces.
+// Run one Signer per executor key: two would race for nonces.
 type Signer struct {
 	pool    *pgxpool.Pool
 	key     *ecdsa.PrivateKey
@@ -48,7 +48,6 @@ func NewSigner(pool *pgxpool.Pool, key *ecdsa.PrivateKey, clients, seconds map[u
 		attemptTimeout: AttemptTimeout, codeWait: CodeWait, replaceAfter: ReplaceAfter}
 }
 
-// intent is one settlement intent with its invoice's terms.
 type intent struct {
 	id                 int64
 	status             string
@@ -67,8 +66,7 @@ type intent struct {
 	expires, deadline  uint64
 }
 
-// Run works through every due pending or sent intent on the chains this signer serves (those with a client).
-// One intent's failure doesn't stop the others.
+// Run serves only the chains this signer has a client for; one intent's failure doesn't stop the others.
 func (s *Signer) Run(ctx context.Context) error {
 	chains := make([]int64, 0, len(s.clients))
 	for id := range s.clients {

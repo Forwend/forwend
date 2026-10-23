@@ -2,8 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import { sidewaysScroll } from "./sideways";
 
-// R-102: the page a job's link opens. The API answers are fixed here; the Go API test covers the real ones, and the
-// live suite opens a real job's link.
+// R-102: the API answers are mocked; the Go API test and the live suite cover the real ones.
 const TOKEN = "cd".repeat(32);
 const DEPOSIT = `0x${"9".repeat(64)}`;
 // The deposit's pay link token (D-86).
@@ -93,7 +92,6 @@ test.describe("job quote page", () => {
     await expect(page.getByRole("region", { name: "From" })).toContainText("Tax ID DE123456789");
     expect(await blocking(page)).toEqual([]);
 
-    // Nothing typed: the name is asked for first, and nothing is sent.
     await page.getByRole("button", { name: "Accept quote" }).click();
     await expect(page.getByRole("textbox", { name: "Your name" })).toBeFocused();
     expect(accepts).toHaveLength(0);
@@ -103,7 +101,7 @@ test.describe("job quote page", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Quote accepted" })).toBeFocused();
     expect(accepts).toEqual([{ name: "Jane Doe", email: "jane@bob.example" }]);
     await expect(page.getByRole("status")).toContainText("Accepted by Jane Doe on");
-    // R-104: the record lists the acceptance and the deposit it made, without the typed email.
+    // R-104
     const record = page.getByRole("region", { name: "Record" });
     await expect(record.getByRole("listitem")).toHaveText([
       /Quote made$/,
@@ -118,7 +116,7 @@ test.describe("job quote page", () => {
     expect(await blocking(page)).toEqual([]);
   });
 
-  // R-106: a change the freelancer proposed after acceptance; the client accepts it with the proposedAt the page read.
+  // R-106
   test("accepts a waiting change with the change's proposedAt, then shows it accepted", async ({
     page,
   }) => {
@@ -166,8 +164,7 @@ test.describe("job quote page", () => {
     expect(await blocking(page)).toEqual([]);
   });
 
-  // R-106: a change withdrawn before the client accepts it: the page reads the job again, which takes the form away,
-  // and says so where the payments start.
+  // R-106
   test("says when the change the client read was withdrawn", async ({ page }) => {
     const change = payment(3, "Extra page", "150.00", {
       dueDays: 7,
@@ -232,7 +229,6 @@ test.describe("job quote page", () => {
     await page.goto(`/w/${gone}`);
     await expect(page.getByRole("main").getByRole("alert")).toHaveText(/This quote isn't here/);
     expect(await blocking(page)).toEqual([]);
-    // A link that is not a token is no page at all.
     expect((await page.goto("/w/not-a-token"))?.status()).toBe(404);
     await context.close();
   });

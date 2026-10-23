@@ -3,7 +3,7 @@ import type { ExpiryChoice } from "@/features/invoices/types/invoices";
 
 export const INVOICES_PAGE_SIZE = 20;
 
-/** Checkout expiry choices in seconds, within the API's 900 to 31536000. */
+/** In seconds, within the API's bounds. */
 export const EXPIRY_CHOICES = {
   hour: 3_600,
   day: 86_400,
@@ -13,17 +13,17 @@ export const EXPIRY_CHOICES = {
 
 export const DEFAULT_EXPIRY: ExpiryChoice = "week";
 
-/** Checkout closes at a date and time the creator picks, within the API's bounds (R-58). */
+/** The creator picks the close date and time (R-58). */
 export const CUSTOM_EXPIRY = "custom";
 export const EXPIRY_BOUNDS_S = { min: 900, max: 31_536_000 } as const;
 
-/** R-98: each later month's invoice is made and emailed this many days before its due date (the API's RetainerLead). */
+/** R-98: later invoices go out this many days before their due date (the API's RetainerLead). */
 export const RETAINER_LEAD_DAYS = 7;
 
 /** D-80: with a due date the checkout stays open this many days past it, so a client who pays late still pays. */
 export const DUE_GRACE_DAYS = 60;
 
-/** How the payer pays (R-56): any enabled stablecoin and network, or one the creator fixes. */
+/** How the payer pays (R-56). */
 export const PAY_WITH = { any: "any", fixed: "fixed" } as const;
 
 /** GET /v1/profiles/{id}/events kinds (R-81), the same as the owner's email (R-80). */
@@ -40,10 +40,10 @@ export const REMINDER_STEPS = {
   after: "after",
 } as const;
 
-/** A payment reminder's stop token (R-96): 32 random bytes in lowercase hex. */
+/** A reminder's stop token (R-96). */
 export const STOP_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
 
-/** A pay link's token (D-86): 32 random bytes in lowercase hex; the invoice id is keccak256 of it. */
+/** A pay link's token (D-86); the invoice id is keccak256 of it. */
 export const PAY_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
 
 /** The rows of Owed to you (R-95), in the API's order. */
@@ -60,17 +60,10 @@ export const INVOICE_EXCEPTIONS = {
   closedPartial: "closedPartial",
 } as const;
 
-/**
- * `?from=<invoiceId>` fills a new invoice from that one (R-91); `rest` asks only for what is left of a closed one (R-77,
- * D-25).
- */
+/** `from` copies an invoice (R-91); `rest` asks only for what is left of a closed one (R-77, D-25). */
 export const RESTART_PARAMS = { from: "from", rest: "rest" } as const;
 
-/**
- * The currencies an agreed value can be in (R-93), with their ISO 4217 decimals: EUR and the ones the ECB publishes a
- * daily reference rate for (D-82). A copy of the API's invoice.AgreedCurrencies; a Go test fails when either changes
- * alone.
- */
+/** R-93, D-82; ISO 4217 decimals. Copies the API's invoice.AgreedCurrencies: a Go test checks both. */
 export const AGREED_CURRENCIES = {
   EUR: 2,
   USD: 2,
@@ -125,7 +118,7 @@ export const INVOICE_FIELDS = {
   dueDate: "dueDate",
   supplyDate: "supplyDate",
   reference: "reference",
-  // The API names them so in its 422 (R-93).
+  // R-93.
   agreedCurrency: "agreedValue.currency",
   agreedAmount: "agreedValue.amount",
   agreedDate: "agreedValue.date",
@@ -138,7 +131,7 @@ export const INVOICE_FIELDS = {
   amountUsd: "amountUsd",
   expiresIn: "expiresIn",
   returnUrl: "returnUrl",
-  // The API's word on the lines as a whole (R-88).
+  // R-88.
   lines: "lines",
   reminders: "reminders",
   repeat: "repeat",
@@ -151,7 +144,7 @@ export const AMOUNT_ERRORS = {
   zero: "zero",
 } as const;
 
-/** R-88: the API's line item limits, and what can be wrong with one line as typed. */
+/** R-88: the API's line item limits. */
 export const LINE_LIMITS = { count: 50, description: 200, quantityMax: 1_000_000 } as const;
 export const LINE_ERRORS = {
   description: "description",
@@ -178,7 +171,7 @@ export const INVOICE_PDFS = {
   receipt: "receipt",
 } as const;
 
-/** Why a paid invoice's money has not reached the profile wallet yet (openapi.yaml, Invoice.settlementWait). */
+/** openapi.yaml, Invoice.settlementWait. */
 export const SETTLEMENT_WAITS = {
   signing: "signing",
   finalizing: "finalizing",

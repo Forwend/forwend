@@ -31,7 +31,6 @@ func TestAPI(t *testing.T) {
 		got.RPCRate != 2.5 || got.PublicWebURL != "https://forwend.app" || got.UserBurst != 0 {
 		t.Fatalf("got %+v", got)
 	}
-	// The live e2e's api raises each user's burst; unset keeps the default.
 	t.Setenv("API_USER_BURST", "1000")
 	if got, err := config.LoadAPI(); err != nil || got.UserBurst != 1000 {
 		t.Fatalf("API_USER_BURST=1000: %d %v", got.UserBurst, err)
@@ -95,14 +94,12 @@ func TestWorkerAndSigner(t *testing.T) {
 		s.Chains.File != "chains.json" || s.Chains.RPCRate != 10 {
 		t.Fatalf("signer: %+v, %v", s.Chains, err)
 	}
-	// A bad key is named, never shown.
 	t.Setenv("EXECUTOR_PRIVATE_KEY", "0xnot-a-key")
 	if _, err := config.LoadSigner(); err == nil ||
 		!strings.Contains(err.Error(), "invalid environment variables EXECUTOR_PRIVATE_KEY") || strings.Contains(err.Error(), "not-a-key") {
 		t.Fatalf("bad key: got %v", err)
 	}
 
-	// No Infura keys: public RPCs only.
 	t.Setenv("INFURA_API_KEYS", "")
 	if w, err := config.LoadWorker(); err != nil || len(w.Chains.InfuraKeys) != 0 {
 		t.Fatalf("worker without Infura keys: %+v, %v", w, err)

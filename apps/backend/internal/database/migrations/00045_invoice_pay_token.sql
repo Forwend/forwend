@@ -5,7 +5,6 @@
 ALTER TABLE invoices ADD COLUMN pay_token text UNIQUE CHECK (pay_token ~ '^[0-9a-f]{64}$'),
     ADD CHECK (pay_token IS NULL OR main_id IS NULL);
 
--- The view lists its columns, so it is made again with the new one.
 CREATE OR REPLACE VIEW invoices_current AS
 SELECT m.id, m.profile_id, m.number, m.title, m.note, m.due_date, m.client_name, m.client_email, m.client_address,
        m.sender_name, m.issuer_name, m.issuer_address, m.issuer_country, m.issuer_tax_id, m.issuer_email, m.created_at,

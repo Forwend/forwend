@@ -18,8 +18,7 @@ export interface NewInvoicePreviewProps {
   closes: string;
 }
 
-// A visual echo of the form, in the reading order of the pay page; the fields above already say all of it to screen
-// readers, so it is hidden from them.
+// Hidden from screen readers: the form's fields already say all of it.
 export function NewInvoicePreview({
   copy,
   units,

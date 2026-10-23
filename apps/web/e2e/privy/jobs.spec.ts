@@ -3,7 +3,7 @@ import { sidewaysScroll } from "../sideways";
 import { blockingViolations } from "./axe";
 import { session } from "./session";
 
-// The freelancer profile the job tests share: made once for the test account, with billing details, then reused.
+// Made once for the test account, with billing details, then reused.
 // `open` shows the profile choices: the sidebar menu on desktop, the sheet on phones.
 async function chooseFreelancer(page: Page, open: () => Promise<void>) {
   await open();
@@ -18,9 +18,8 @@ async function chooseFreelancer(page: Page, open: () => Promise<void>) {
   await expect(page).toHaveURL("/app");
 }
 
-// New job from the Jobs list, inside the app: a full page load would read the shell's data again, and the suite shares
-// one user's API limit. A quote names who bills the client, so the shared profile saves its billing details once,
-// first (R-92).
+// From the Jobs list, not a page load: that reads the shell's data again against the suite's one API limit.
+// R-92: the shared profile saves its billing details once, first.
 async function openNewJob(page: Page) {
   await page.getByRole("main").getByRole("link", { name: "New job" }).first().click();
   const form = page.getByRole("button", { name: "Create job" });
@@ -40,9 +39,8 @@ async function openNewJob(page: Page) {
   await expect(form).toBeVisible();
 }
 
-// R-101: the job is deleted at the end, so no run leaves one behind toward the profile's 1000 (D-85). One test, which
-// starts on a light page and checks the phone width by resizing: every test signs in as one user, whose API rate limit
-// the suite comes close to, and switching profile loads the overview.
+// R-101. Deleted at the end, so no run leaves a job toward the profile's 1000 (D-85). One test, resized
+// for the phone: the suite nears the one test user's API rate limit.
 test("a freelancer writes a quote, opens the job with the client's link, and deletes it; it fits a phone", async ({
   browser,
 }) => {
@@ -65,7 +63,6 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   expect(await blockingViolations(page)).toEqual([]);
 
   await openNewJob(page);
-  // Nothing typed: the first field to fix takes focus, and nothing is sent.
   await page.getByRole("button", { name: "Create job" }).click();
   await expect(page.getByRole("textbox", { name: "Title" })).toBeFocused();
   const title = `E2E job ${Date.now()}`;
@@ -85,7 +82,6 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   expect((await created).status()).toBe(201);
   await expect(page).toHaveURL(/\/app\/jobs\/[0-9a-f-]{36}$/);
 
-  // The job's page: the payments, how each is invoiced, the total, and the client's link.
   await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
   const payments = page.getByRole("region", { name: "Payments" });
   await expect(payments).toContainText("Deposit");
@@ -99,8 +95,7 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   await expect(link.getByRole("button", { name: "Link copied" })).toBeVisible();
   const quoteLink = await page.evaluate(() => navigator.clipboard.readText());
   expect(quoteLink).toMatch(/^http:\/\/localhost:3000\/w\/[0-9a-f]{64}$/);
-  // R-102: the client opens it without an account and reads the real quote. Accepting stays in the mocked public
-  // suite: a real accept makes a deposit open 60 days and a job that can't be deleted (D-85).
+  // R-102. No real accept here: it opens a deposit for 60 days and a job that can't be deleted (D-85).
   const client = await browser.newContext();
   const quote = await client.newPage();
   await quote.goto(quoteLink);
@@ -114,13 +109,12 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
     "delivered@resend.dev",
   );
   await expect(page.getByRole("region", { name: "Scope" })).toContainText("A logo in three ideas.");
-  // R-104: the record starts with the quote, at the server's time.
+  // R-104
   await expect(page.getByRole("region", { name: "Record" }).getByRole("listitem")).toHaveText([
     /Quote made$/,
   ]);
   expect(await blockingViolations(page)).toEqual([]);
 
-  // In the list, waiting for acceptance.
   await sidebar.getByRole("link", { name: "Jobs" }).click();
   await page.getByRole("main").getByRole("searchbox", { name: "Search jobs" }).fill(title);
   const row = page.getByRole("row").filter({ hasText: title });
@@ -129,8 +123,7 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   await expect(row).toContainText("Waiting for acceptance");
   expect(await blockingViolations(page)).toEqual([]);
 
-  // R-103: once accepted, the next step can be marked done. The job reads as accepted here: a real acceptance makes a
-  // deposit invoice open 60 days and a job that can't be deleted (D-85). The Go tests cover the real rules.
+  // R-103. Mocked as accepted: a real acceptance opens a deposit for 60 days and a job that can't be deleted (D-85).
   const read = /\/api\/v1\/profiles\/[^/]+\/jobs\/[0-9a-f-]{36}$/;
   let changeWaits = true;
   await page.route(read, async (route) => {
@@ -180,7 +173,6 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   await expect(page.getByRole("region", { name: "Record" })).toContainText(
     "Accepted by Jane Doe (jane@client.example)",
   );
-  // The waiting change says so, stays out of the total and of Mark done, and can be withdrawn.
   await expect(payments).toContainText("Change · Waiting for the client to accept.");
   await expect(payments).toContainText("1,000.50 USD");
   await expect(payments.getByRole("button", { name: "Withdraw" })).toBeVisible();
@@ -197,7 +189,7 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   await expect.poll(() => sidewaysScroll(page)).toBeLessThanOrEqual(0);
   await page.setViewportSize(desktop);
   await expect(sidebar).toBeVisible();
-  // With no change waiting, the owner can propose one. The dialog is checked, not sent: the job isn't really accepted.
+  // The dialog is checked, not sent: the job isn't really accepted.
   changeWaits = false;
   const proposeButton = payments.getByRole("button", { name: "Propose a change" });
   await expect(async () => {
@@ -210,7 +202,6 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   expect(await blockingViolations(page)).toEqual([]);
   await propose.getByRole("button", { name: "Cancel" }).click();
   await expect(propose).toBeHidden();
-  // With no change waiting, the final step can be marked done.
   await payments.getByRole("button", { name: "Mark done" }).click();
   const markDone = page.getByRole("dialog", { name: "Mark Final payment done?" });
   await expect(markDone).toContainText("emailed to delivered@resend.dev");
@@ -224,7 +215,6 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   await readsAgain("Waiting for E2E client to accept.");
   await page.goBack();
 
-  // Deleted before the client accepts, after asking.
   await row.getByRole("link", { name: title }).click();
   await page.getByRole("main").getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Delete job" }).click();
@@ -235,7 +225,6 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   await expect(page.getByText(`${title} deleted`)).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: title })).toHaveCount(0);
 
-  // On a phone in the dark theme, Jobs is under More, and the list and New job fit.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ colorScheme: "dark" });
   // The shell swaps the sidebar for the tab bar after the resize; until then the old layout is wider than a phone.

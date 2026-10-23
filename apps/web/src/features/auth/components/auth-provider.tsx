@@ -10,8 +10,7 @@ const LOGIN_METHODS = ["email", "google", "passkey"] as const;
 
 const APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 
-// No wallet is made on login: the backend makes one per profile (D-21). Privy's dialog follows the page theme it
-// opens on.
+// No wallet is made on login: the backend makes one per profile (D-21).
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [theme, setTheme] = useState<Theme>(THEMES.light);
   useEffect(() => {

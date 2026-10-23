@@ -16,9 +16,7 @@ export interface RepeatsMonthlyProps {
   retainer: InvoiceRetainer;
 }
 
-// A retainer (R-99) under Payment reminders: when the next invoice is due and emailed, or when it ended or stopped.
-// Stop repeating asks first, since it can't be undone. The button goes once stopped, so focus moves to the line that
-// says so, when the refetch shows it.
+// R-99. The button goes once stopped, so focus moves to the line that says so, when the refetch shows it.
 export function RepeatsMonthly({ profileId, invoiceId, retainer }: RepeatsMonthlyProps) {
   const [stop, { isLoading, isError }] = useStopRepeatMutation();
   const toast = useToast();

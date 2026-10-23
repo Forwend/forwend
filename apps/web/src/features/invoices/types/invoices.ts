@@ -55,7 +55,6 @@ export interface InvoiceException {
   late: bigint;
 }
 
-/** Starting values of the new invoice form, as its fields hold them. */
 export interface InvoiceStart {
   payWith: PayWith;
   picked: string;
@@ -76,7 +75,6 @@ export type AmountError = (typeof AMOUNT_ERRORS)[keyof typeof AMOUNT_ERRORS];
 export type InvoiceStep = (typeof INVOICE_STEPS)[keyof typeof INVOICE_STEPS];
 export type InvoicePdf = (typeof INVOICE_PDFS)[keyof typeof INVOICE_PDFS];
 
-/** An enabled token, as GET /v1/profiles/{id}/balances lists it. */
 export type InvoiceToken = Pick<TokenBalance, "chainId" | "token" | "symbol" | "decimals">;
 
 export type InvoiceClient = z.infer<typeof invoiceClientSchema>;
@@ -92,7 +90,7 @@ export interface AgreedDraft {
   date: string | null;
 }
 
-/** A line item as the form holds it (R-88): the text typed in its fields. */
+/** R-88. */
 export interface LineDraft {
   id: string;
   description: string;

@@ -14,10 +14,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// MinGas is the gas for settling one invoice: a receiver deploy (159,990 gas on Anvil) and a settle (at least
-// SettleGasFloor), each signed with a fifth more. The signer starts only when the executor can pay it on every enabled
-// chain at the fee cap it would sign with now (CheckGas). On Arbitrum gas also counts the L1 data cost, which this
-// does not cover: it is a floor, not a budget.
+// MinGas covers one receiver deploy (159,990 gas on Anvil) and one settle, each plus a fifth. On Arbitrum it
+// leaves out the L1 data cost: it is a floor, not a budget.
 const MinGas = (160_000 + SettleGasFloor) * 6 / 5
 
 // Tempo's testnet flow (deployments.json) used 1,305,758 gas to deploy and 572,845 to settle.
@@ -30,9 +28,8 @@ var (
 	userTokens      = crypto.Keccak256([]byte("userTokens(address)"))[:4]
 )
 
-// CheckGas returns an error unless the executor holds MinGas at the chain's current fee cap: below that the node
-// refuses the signer's next deploy and settle. The error names the chain, the executor's address and its balance. A
-// failed read moves to the next client; a shortfall stops the check, since the signer sends through the first.
+// CheckGas fails unless the executor holds MinGas at the chain's current fee cap. A failed read tries the next
+// client; a shortfall stops the check, since the signer sends through the first.
 func CheckGas(ctx context.Context, chainID uint64, executor common.Address, clients ...*ethclient.Client) error {
 	var err error
 	for _, client := range clients {
@@ -115,7 +112,6 @@ func usd(units *big.Int) string {
 	return strings.TrimSuffix(strings.TrimRight(s, "0"), ".")
 }
 
-// ether writes wei in whole coins (18 decimals), exactly.
 func ether(wei *big.Int) string {
 	s := new(big.Rat).SetFrac(wei, big.NewInt(1e18)).FloatString(18)
 	return strings.TrimSuffix(strings.TrimRight(s, "0"), ".")

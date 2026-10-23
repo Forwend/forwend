@@ -9,7 +9,6 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
 
-// signUp is POST /v1/me: 201 when the personal profile is new, 200 when the user had signed up before.
 func signUp(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := mid.SignedInUser(r)
@@ -31,7 +30,6 @@ func signUp(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// getMe is GET /v1/me: the signed-in user's profiles, oldest first.
 func getMe(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := mid.SignedInUser(r)
@@ -49,7 +47,6 @@ func getMe(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// onboard is POST /v1/me/onboarding: 201 when this call made the first-run choice, 200 when it was made before.
 func onboard(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body onboardingBody
@@ -70,7 +67,6 @@ func onboard(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// createProfile is POST /v1/profiles: 201 when created, 200 when the same request is repeated.
 func createProfile(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key, err := httpio.IdempotencyKey(r)
@@ -96,7 +92,6 @@ func createProfile(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// putBillingDetails is PUT /v1/profiles/{profileId}/billing-details: creates or replaces them, 200 either way.
 func putBillingDetails(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body billingDetailsBody
@@ -114,7 +109,6 @@ func putBillingDetails(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// getBillingDetails is GET /v1/profiles/{profileId}/billing-details: 404 until they are saved.
 func getBillingDetails(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		d, err := profiles.BillingDetails(r.Context(), r.PathValue("profileId"))
@@ -126,7 +120,7 @@ func getBillingDetails(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// getNotifications is GET /v1/profiles/{profileId}/notifications (R-80).
+// R-80.
 func getNotifications(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		n, err := profiles.Notifications(r.Context(), r.PathValue("profileId"))
@@ -138,8 +132,7 @@ func getNotifications(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// putNotifications is PUT /v1/profiles/{profileId}/notifications: {"email": true|false}; the address is the login
-// email and can't be set here.
+// The address is the login email and can't be set here.
 func putNotifications(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body notificationsBody

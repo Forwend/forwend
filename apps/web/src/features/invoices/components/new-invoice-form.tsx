@@ -75,16 +75,14 @@ export interface NewInvoiceFormProps {
   request?: { senderName: string; onCreated: (invoice: Invoice) => void };
   // Filled from another invoice (R-91), or with what is left of a closed one (R-77).
   start?: InvoiceStart;
-  /** The profile's saved clients (R-86): picking one fills the client fields with a copy of its details. */
+  /** Saved clients (R-86): picking one fills the client fields with a copy. */
   clients?: readonly Client[];
 }
 
 const NO_CLIENT: ClientBody = { name: "", email: "", address: "", country: "", taxId: "" };
 
-// One idempotency key per filled-in form: a double click, or a retry of the same values after an error, makes one
-// invoice; changed values are a new request with a new key, never a 409. With `request` it is a personal profile's
-// request (D-52): amount, note, expiry, return link and the name the payer sees, handed to onCreated instead of
-// opening the invoice.
+// One idempotency key per filled-in form: a retry makes one invoice; changed values get a new key.
+// With `request` it is a personal profile's request (D-52), handed to onCreated.
 export function NewInvoiceForm({
   profileId,
   tokens,
@@ -104,11 +102,10 @@ export function NewInvoiceForm({
   const [closesOn, setClosesOn] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [supplyDate, setSupplyDate] = useState<string | null>(null);
-  // Picking a saved client fills in its default (R-90), so this one is held here, not read from the form. The default
-  // last filled in is kept too: another client's replaces it, but a reference the owner typed stays.
+  // R-90: a picked client's default replaces the last one filled in, but a reference the owner typed stays.
   const [reference, setReference] = useState(start?.reference ?? "");
   const [agreed, setAgreed] = useState<AgreedDraft | null>(start?.agreed ?? null);
-  // Payment reminders (R-97): filled from the picked saved client or the copied invoice; the owner can change it.
+  // R-97: from the picked saved client or the copied invoice.
   const [reminders, setReminders] = useState(start?.reminders ?? false);
   // Repeat every month (R-99), with an optional last due date; a duplicate starts without it.
   const [repeat, setRepeat] = useState(false);
@@ -125,8 +122,7 @@ export function NewInvoiceForm({
   // R-88: with items the amount is their total; the amount field stands in only while there are none.
   const [items, setItems] = useState<LineDraft[]>(start?.items ?? []);
   const [lineErrors, setLineErrors] = useState<Record<string, LineFieldErrors>>({});
-  // Add item under the amount field and removing the last item swap the amount field and the items, so focus moves to
-  // whichever is shown. Items filled in from another invoice (R-91) take no focus.
+  // The first item added or the last removed swaps the fields, so focus follows; copied items (R-91) take none.
   const amountId = useId();
   const itemsId = useId();
   const hadItems = useRef(items.length > 0);
@@ -214,7 +210,7 @@ export function NewInvoiceForm({
     const badLink = returnUrl !== "" && !isReturnLink(returnUrl);
     const badLines = Object.keys(problems).length > 0;
     flushSync(() => setLineErrors(problems));
-    // R-93: the agreed value as the API reads it, or what is wrong with it.
+    // R-93.
     const digits = agreed ? agreedDigits(agreed.currency) : undefined;
     const agreedUnits =
       agreed && digits !== undefined ? parseTokenAmount(agreed.amount, digits) : undefined;
@@ -323,7 +319,6 @@ export function NewInvoiceForm({
       const failure = error as { status?: unknown; data?: { error?: { message?: string } } };
       const field =
         failure.status === INVALID_VALUE ? invalidField(failure.data?.error?.message ?? "") : null;
-      // The amount field shows the API's word on either amount, or the items when they stand in for it.
       const amountField = items.length > 0 ? INVOICE_FIELDS.lines : INVOICE_FIELDS.amount;
       if (field)
         showErrors({
@@ -490,7 +485,6 @@ export function NewInvoiceForm({
                   setAmount(event.target.value);
                   clear(INVOICE_FIELDS.amount);
                 }}
-                // Too many decimals or a comma shows when the field is left, not only on Create; empty waits for submit.
                 onBlur={() =>
                   amount.trim() &&
                   setErrors((shown) => ({ ...shown, [INVOICE_FIELDS.amount]: amountError(amount) }))
@@ -752,7 +746,6 @@ export function NewInvoiceForm({
                   setReminders(picked.reminders);
                   clear(INVOICE_FIELDS.reminders);
                   setTyped((shown) => ({ ...shown, client: values.name }));
-                  // The client fields are drawn again with new values; errors elsewhere stay.
                   setErrors((shown) => ({
                     ...shown,
                     [INVOICE_FIELDS.clientName]: undefined,

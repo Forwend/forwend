@@ -10,7 +10,6 @@ export const TONES = {
 export type Tone = (typeof TONES)[keyof typeof TONES];
 
 // Text on its soft ground; every pair is covered by the design-tokens contrast test.
-/** Solid tone color for small marks such as a status dot. */
 export const TONE_DOT_CLASSES: Record<Tone, string> = {
   neutral: "bg-subtle",
   accent: "bg-accent",

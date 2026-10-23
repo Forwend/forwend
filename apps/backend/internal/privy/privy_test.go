@@ -49,8 +49,6 @@ func TestProfileWalletIsCreatedOnceAndFoundAgain(t *testing.T) {
 	}
 }
 
-// Another request created the wallet between our lookup and our create: Privy refuses the duplicate, and the
-// existing wallet is returned.
 func TestProfileWalletLosesTheCreateRace(t *testing.T) {
 	f, c := newFake(t)
 	ctx := context.Background()
@@ -102,7 +100,6 @@ func TestProfileWalletReportsPrivyErrors(t *testing.T) {
 	}
 }
 
-// A Privy that never answers fails the call within Timeout, instead of holding the request for minutes.
 func TestProfileWalletGivesUpOnAHangingPrivy(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { <-r.Context().Done() }))
 	defer srv.Close()
@@ -117,7 +114,6 @@ func TestProfileWalletGivesUpOnAHangingPrivy(t *testing.T) {
 	}
 }
 
-// A Privy error during create is reported, and the next call creates the wallet: no cached error blocks it.
 func TestProfileWalletRecoversFromAFailedCreate(t *testing.T) {
 	f, c := newFake(t)
 	ctx := context.Background()
@@ -133,7 +129,6 @@ func TestProfileWalletRecoversFromAFailedCreate(t *testing.T) {
 	}
 }
 
-// Another user asking for this profile's wallet gets an error, never the owner's wallet.
 func TestProfileWalletBelongsToItsUser(t *testing.T) {
 	_, c := newFake(t)
 	ctx := context.Background()

@@ -2,8 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import { sidewaysScroll } from "./sideways";
 
-// R-96: the page a payment reminder's Stop reminders link opens. The API answers are fixed here; the Go API test
-// covers the real ones.
+// R-96: the API answers are mocked; the Go API test covers the real ones.
 const TOKEN = "ab".repeat(32);
 
 const blocking = async (page: Page) =>
@@ -50,7 +49,6 @@ test.describe("stop reminders page", () => {
     );
     expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
     expect(await blocking(page)).toEqual([]);
-    // A link that is not a token is no page at all.
     expect((await page.goto("/reminders/not-a-token"))?.status()).toBe(404);
     await context.close();
   });

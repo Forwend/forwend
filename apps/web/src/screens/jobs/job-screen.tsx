@@ -17,8 +17,7 @@ export interface JobScreenProps {
   jobId: string;
 }
 
-// A job's page under Jobs (R-101): the title as the heading, with Delete in the More actions menu at the top right
-// until the client accepts. Read live, so an acceptance and each payment's status show without a reload.
+// R-101. Read live, so an acceptance and each payment's status show without a reload.
 export function JobScreen({ jobId }: JobScreenProps) {
   const { profile } = useAppSession();
   const job = useGetJobQuery({ profileId: profile.profileId, jobId }, LIVE_QUERY);

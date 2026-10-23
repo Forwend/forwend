@@ -14,10 +14,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
 )
 
-// The startup check passes an enabled chain whose primary and second answer from different hosts, then runs the
-// further check on it. It stops on a mistake: an enabled chain missing from the chain list, one listing a single host,
-// a role whose host serves another chain, or a further check that fails. A chain whose hosts don't answer is logged
-// and skipped (D-71). A disabled chain is not checked.
+// D-71: a mistake stops the process; a chain whose hosts don't answer is logged and skipped.
 func TestCheckEnabled(t *testing.T) {
 	ctx := context.Background()
 	a := chaintest.Start(t)

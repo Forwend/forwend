@@ -13,7 +13,6 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 )
 
-// createInvoice is POST /v1/profiles/{profileId}/invoices: 201 when created, 200 when the same request is repeated.
 func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key, err := httpio.IdempotencyKey(r)
@@ -63,7 +62,6 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// listInvoices is GET /v1/profiles/{profileId}/invoices?limit=&cursor=&status=&q=.
 func listInvoices(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		limit, err := httpio.IntQuery(r, "limit", invoice.DefaultLimit)
@@ -93,9 +91,7 @@ func listInvoices(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// getInvoice is GET /v1/invoices/{payToken}: public, so checkout can read the terms and recompute the address. The
-// pay link is the only key, so it leaves out the client's contact details; the issuer is who bills the payer, so it
-// stays.
+// Public: the pay link is the only key, so it leaves out the client's contact details but keeps the issuer.
 func getInvoice(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		inv, err := invoices.Get(r.Context(), r.PathValue("payToken"))
@@ -107,8 +103,7 @@ func getInvoice(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// cancelInvoice is POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel (R-79): 200 with the canceled invoice;
-// 409 invoice_not_cancelable once money was seen, the checkout closed or the invoice is not open.
+// R-79.
 func cancelInvoice(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		inv, err := invoices.Cancel(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"))
@@ -120,10 +115,7 @@ func cancelInvoice(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// sendInvoice is POST /v1/profiles/{profileId}/invoices/{invoiceId}/send (R-94): queues the invoice's email to its
-// client; 201 with the invoice, 200 when the same Idempotency-Key already queued it. 409 client_email_required or
-// invoice_closed; 429 with Retry-After within invoice.SendEvery of the invoice's last send, past the user's client
-// emails for the day (R-116), or past the shared emails budget.
+// R-94, R-116.
 func sendInvoice(invoices *invoice.Service, emails *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key, err := httpio.IdempotencyKey(r)
@@ -151,8 +143,7 @@ func sendInvoice(invoices *invoice.Service, emails *mid.Buckets) http.HandlerFun
 	}
 }
 
-// putReminders is PUT /v1/profiles/{profileId}/invoices/{invoiceId}/reminders (R-96): {"on": true|false}; 200 with the
-// invoice. On is 409 invoice_closed, due_date_required, client_email_required or reminders_stopped.
+// R-96.
 func putReminders(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -175,8 +166,7 @@ func putReminders(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// stopRepeat is POST /v1/profiles/{profileId}/invoices/{invoiceId}/repeat/stop (R-98): stops the retainer the invoice
-// belongs to; 200 with the invoice, the same when already stopped or not repeating.
+// R-98.
 func stopRepeat(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		inv, err := invoices.StopRetainer(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"))
@@ -188,8 +178,7 @@ func stopRepeat(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// stopReminders is POST /v1/reminders/{token}/stop (R-96): public, the client's stop link and one-click
-// List-Unsubscribe-Post. It reads no body, so the mail provider's "List-Unsubscribe=One-Click" form works too.
+// R-96. It reads no body, so the mail provider's "List-Unsubscribe=One-Click" POST works too.
 func stopReminders(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		number, from, err := invoices.StopReminders(r.Context(), r.PathValue("token"))
@@ -201,7 +190,6 @@ func stopReminders(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// getProfileInvoice is GET /v1/profiles/{profileId}/invoices/{invoiceId}: the public read with the client's details.
 func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		inv, err := invoices.GetOfProfile(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"))
@@ -213,8 +201,7 @@ func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// listOwed is GET /v1/profiles/{profileId}/owed (R-95): overdue and partly paid invoices with what is left, then money
-// held for the payer.
+// R-95.
 func listOwed(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		owed, err := invoices.Owed(r.Context(), r.PathValue("profileId"))
@@ -233,8 +220,7 @@ func listOwed(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// listEvents is GET /v1/profiles/{profileId}/events?limit= (R-81): the bell's paid, settled and held-money events,
-// newest first.
+// R-81.
 func listEvents(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		limit := invoice.MaxEvents
@@ -261,9 +247,7 @@ func listEvents(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// putPayerEmail is PUT /v1/invoices/{payToken}/payer-email (R-82): public, like the checkout. 200 with the address as
-// kept; 409 receipt_sent once the receipt went out; 429 with Retry-After when a receipt that would go now is past the
-// shared emails budget.
+// R-82.
 func putPayerEmail(invoices *invoice.Service, emails *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {

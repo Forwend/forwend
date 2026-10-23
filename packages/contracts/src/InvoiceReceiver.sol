@@ -15,8 +15,7 @@ import {
     tryBalanceOf
 } from "./InvoiceTypes.sol";
 
-/// One receiver per invoice: a clone of this contract deployed by the factory at the address payers already paid to.
-/// It can only pay `amount` to `recipient`, or return money through the refund authority. Rules: ../AGENTS.md.
+/// Can only pay `amount` to `recipient`, or return money through the refund authority. Rules: ../AGENTS.md.
 /// Deliberately has no receive/fallback, approve, signature validation, delegatecall or selfdestruct.
 contract InvoiceReceiver is ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -106,10 +105,8 @@ contract InvoiceReceiver is ReentrancyGuard {
         emit Refunded(t.invoiceId, to, amount);
     }
 
-    /// Returns a token that is not the invoice token, the native coin (`token == address(0)`), or anything on a
-    /// chain other than the intended one. On the intended chain the invoice-token balance must not drop: on Arc the
-    /// native coin and USDC are one balance. A broken invoice token (no code, reverting balanceOf) holds nothing and
-    /// must not block recovery of everything else.
+    /// Returns other tokens, the native coin (`token == address(0)`) and anything off the intended chain. On it, the
+    /// invoice-token balance must not drop (on Arc native and USDC are one balance), unless that balance can't be read.
     function recover(address token, address to, uint256 amount) external nonReentrant onlyClone {
         InvoiceTerms memory t = terms();
         if (msg.sender != factory.refundAuthority()) revert Unauthorized();

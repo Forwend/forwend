@@ -17,7 +17,6 @@ const (
 	dead   = 999
 )
 
-// hung accepts connections and never answers, like an RPC that hangs.
 func hung(t *testing.T) string {
 	t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -37,7 +36,6 @@ func hung(t *testing.T) string {
 	return "http://" + l.Addr().String()
 }
 
-// A chain whose RPCs hang never slows or blanks another chain's balance.
 func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 	anvil := chaintest.Start(t)
 	token := anvil.DeployToken()
@@ -79,8 +77,7 @@ func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 	}
 }
 
-// After a read that ran out of time the hung RPC rests, so a read whose deadline comes before the rest ends fails at
-// once instead of hanging on it again.
+// The rest outlasts the second read's deadline, so it fails at once instead of hanging again.
 func TestTimedOutRPCRests(t *testing.T) {
 	h := hung(t)
 	c := NewChainReader(map[uint64]chain.Spec{
@@ -100,7 +97,7 @@ func TestTimedOutRPCRests(t *testing.T) {
 	}
 }
 
-// A chain whose list has one host can't confirm balances (D-15): its reads fail, the other chains' don't.
+// D-15.
 func TestChainWithOneHostIsRefused(t *testing.T) {
 	anvil := chaintest.Start(t)
 	token := anvil.DeployToken()

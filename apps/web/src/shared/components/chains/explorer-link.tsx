@@ -8,10 +8,7 @@ export interface ExplorerLinkProps {
   className?: string;
 }
 
-/**
- * The transaction on its chain's block explorer, in a new tab; nothing for a chain without one. An icon alone, or with
- * the explorer's name beside it when `named`.
- */
+/** The transaction on its chain's explorer, in a new tab; nothing for a chain without one. */
 export function ExplorerLink({
   chainId,
   txHash,

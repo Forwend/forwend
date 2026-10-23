@@ -8,8 +8,7 @@ import (
 	"testing"
 )
 
-// Payer chooses over HTTP (R-56): amountUsd alone makes one option per enabled token; the invoice shows its first
-// option until one has money, lists every option with its own id and address, and an option's id reads the invoice.
+// R-56.
 func TestPayerChoosesInvoice(t *testing.T) {
 	e := invoiceAPI(t)
 	if _, err := e.pool.Exec(context.Background(), `INSERT INTO tokens (chain_id, chain_family, contract, symbol,
@@ -52,7 +51,6 @@ func TestPayerChoosesInvoice(t *testing.T) {
 		t.Fatalf("get by option id: %d %v", byOption.status, byOption.body)
 	}
 
-	// Until an option has money, the PDF prices the invoice in USD and leaves the choice to the payer.
 	mustContain(t, pdfText(t, e.pdf(t, id, "invoice.pdf", "").body),
 		"Payment\nAny\n12.50 USD\nTotal due\n12.50 USD",
 		"PAY WITH\nEURC on Base Sepolia\nUSDC on Base Sepolia\nSend only on these networks, 1 USD per token.",
@@ -68,7 +66,7 @@ func TestPayerChoosesInvoice(t *testing.T) {
 	}
 }
 
-// A return link (R-58) is an https link set at creation; the public read gives it to the pay page.
+// R-58.
 func TestInvoiceReturnURL(t *testing.T) {
 	e := invoiceAPI(t)
 	made := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", `{"amountUsd": "5", "returnUrl": "https://shop.example/thanks?order=7"}`)

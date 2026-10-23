@@ -13,11 +13,8 @@ export interface SegmentedControlProps<T extends string> {
   className?: string;
 }
 
-// Native radios in a recessed track; the chosen one is a raised segment (lighter than the track in both themes). With
-// room, every segment is as wide as the widest label and a wider track is shared equally; short of room, a segment
-// shrinks to its own label, and only then does the track scroll sideways, fading at the edge that has more. The track
-// clips anything outside it, so on touch screens it grows to 44px itself and each segment's hit area reaches into its
-// padding and the gaps: every point of the track picks a segment.
+// The track clips anything outside it, so on touch screens the track itself grows to 44px and each segment's hit
+// area reaches into the padding and gaps: every point of the track picks a segment.
 export function SegmentedControl<T extends string>({
   label,
   options,

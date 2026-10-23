@@ -1,4 +1,3 @@
-// Package database owns the Postgres pool and migrations.
 package database
 
 import (

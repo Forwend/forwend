@@ -11,8 +11,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 )
 
-// R-104: a payment's record times come from the server: when its invoice was made, and the block time of the deposit
-// that completed it, booked by the ledger as the worker does.
+// R-104: record times come from the server; PaidAt is the completing deposit's block time.
 func TestRecordTimes(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)

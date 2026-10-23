@@ -6,9 +6,8 @@ import {InvoiceReceiverFactory} from "../src/InvoiceReceiverFactory.sol";
 import {InvoiceTerms} from "../src/InvoiceTypes.sol";
 import {Deploy} from "./Deploy.s.sol";
 
-/// Deploys the factory if needed, then a probe receiver with identical terms on every chain: the deployed address must
-/// equal predict() and be the same everywhere (C-03). The payment flow runs with cast in deploy.sh, because Arc and
-/// Tempo tokens are built into the chain and Foundry cannot execute them locally.
+/// Deploys a probe receiver with identical terms on every chain: its address must equal predict() everywhere (C-03).
+/// The payment flow runs with cast in deploy.sh: Foundry can't execute Arc's and Tempo's built-in tokens locally.
 contract Smoke is Deploy {
     address internal constant TEST_RECIPIENT = address(uint160(uint256(keccak256("forwend.testnet.recipient"))));
 

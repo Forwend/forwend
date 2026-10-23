@@ -1,6 +1,5 @@
-// Copies of light-theme tokens for places CSS variables cannot reach: the generated Open Graph
-// image and the browser theme-color. No test compares them (colors are judged in screenshots): when one of
-// these tokens changes in packages/design-tokens/src/tokens.css, change it here in the same commit.
+// Copies of light-theme tokens for the Open Graph image and theme-color, where CSS variables can't reach. No test
+// compares them: change them with packages/design-tokens/src/tokens.css in the same commit.
 export const BRAND_COLORS = {
   bg: "#f4f8f7",
   ink: "#0f2219",

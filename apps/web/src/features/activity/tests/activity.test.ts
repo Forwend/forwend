@@ -52,7 +52,6 @@ describe("activityStatus", () => {
     expect(activityStatus({ ...closed, status: "partially_paid" })).toBe(
       PAYMENT_STATUS.expiredPartiallyPaid,
     );
-    // Money after the close reads detected until the chain is final; closed says it can't complete the invoice.
     expect(activityStatus({ ...closed, status: "detected" })).toBe(PAYMENT_STATUS.expired);
     expect(activityStatus({ ...closed, status: "paid" })).toBe(PAYMENT_STATUS.paid);
     expect(activityStatus({ ...base, status: "partially_paid" })).toBe(

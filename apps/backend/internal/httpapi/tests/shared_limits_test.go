@@ -7,8 +7,7 @@ import (
 	"testing"
 )
 
-// R-117: requests with an unknown link or a bad body spend nothing of a limit shared by everyone, so junk traffic
-// can't block the owner's Send to client or a client's accept (audit 2026-10-19).
+// R-117.
 func TestJunkSpendsNoSharedLimit(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

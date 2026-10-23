@@ -14,16 +14,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// StartupTimeout bounds the startup check of one chain.
 const StartupTimeout = 30 * time.Second
 
 // errUnavailable marks a chain whose RPC hosts don't answer at startup: an outage, not a mistake.
 var errUnavailable = errors.New("its RPCs did not answer")
 
-// CheckEnabled is the api's, worker's and signer's startup check: every chain enabled in the database must be in the
-// chain list and answer through a primary and a second RPC on different hosts (D-15). also, when not nil, runs a
-// further check per chain with its RPCs (the factory, the signer's executor gas). Each chain has StartupTimeout. A
-// mistake stops the process; a chain whose hosts don't answer is logged and skipped (D-71).
+// CheckEnabled checks every enabled chain at startup (D-15); also, when not nil, adds a check per chain.
+// A mistake stops the process; a chain whose hosts don't answer is logged and skipped (D-71).
 func CheckEnabled(ctx context.Context, db *pgxpool.Pool, specs map[uint64]Spec, keys []string, rate float64,
 	also func(ctx context.Context, chainID uint64, r RPCs) error) error {
 	ids, err := Enabled(ctx, db)

@@ -43,8 +43,7 @@ export interface JobsTableProps {
   profileId: string;
 }
 
-// R-101, laid out like Clients: the toolbar's search on the left and New job at its end (beside the title on phones),
-// then a table whose rows open the job. The list comes whole (at most 1000), so the search filters here.
+// R-101. The list comes whole (at most 1000), so the search filters here.
 export function JobsTable({ profileId }: JobsTableProps) {
   const list = useListJobsQuery(profileId);
   const [search, setSearch] = useState("");
@@ -101,7 +100,6 @@ export function JobsTable({ profileId }: JobsTableProps) {
         <NoMatch onClear={() => setSearch("")} clearLabel={COPY.clearSearch} />
       ) : (
         <div className="fw-panel overflow-hidden">
-          {/* Wide screens: a ruled table. Below xl rows stack as on phones, as Clients does. */}
           <div className="hidden overflow-x-auto xl:block">
             <table className="w-full min-w-[44rem] text-sm">
               <thead>
@@ -119,7 +117,6 @@ export function JobsTable({ profileId }: JobsTableProps) {
               </thead>
               <tbody className="divide-y divide-line">
                 {rows.map((job) => (
-                  // The title's link covers the row, so the whole row opens the job.
                   <tr
                     key={job.jobId}
                     className={`relative transition-colors duration-[var(--fw-duration-fast)] ${TABLE_ROW_CLASSES} ${ROW_INTERACTIVE_CLASSES}`}

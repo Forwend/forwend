@@ -2,8 +2,7 @@
 
 import { type KeyboardEvent, type PointerEvent, useEffect, useRef, useState } from "react";
 
-// Measured size rather than a scaled viewBox, so text in the SVG keeps its real size. `points` gives each point's x
-// for a width; a chart may group its points by width, so their count can change with it.
+// Measured size, not a scaled viewBox, so SVG text keeps its real size.
 export function useChart(points: (width: number) => number[]) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -57,7 +56,7 @@ export function useChart(points: (width: number) => number[]) {
     active,
     announce: byKey,
     handlers: {
-      // A tap shows the readout and a drag scrubs it; on touch it stays after the finger lifts.
+      // On touch the readout stays after the finger lifts.
       onPointerDown: onPointer,
       onPointerMove: onPointer,
       onPointerLeave: (event: PointerEvent<SVGSVGElement>) => {

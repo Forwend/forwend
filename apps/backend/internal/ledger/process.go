@@ -13,13 +13,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// BalanceTimeout bounds one second-RPC balance call.
 const BalanceTimeout = 10 * time.Second
 
-// ProcessChain runs Process for every invoice on the chain that can still change: not final yet and not waiting after
-// an unexplained balance (R-120), or with a confirmed deposit not booked yet. Those with a deposit to book go first,
-// so new money is booked even when the round runs out of time. ponytail: scans every open invoice each run; index by
-// due work if it grows.
+// Invoices with a deposit to book go first, so new money is booked even when the round runs out of time (R-120).
+// ponytail: scans every open invoice each run; index by due work if it grows.
 func (s *Service) ProcessChain(ctx context.Context, chainID uint64) error {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id FROM (SELECT i.id, i.payment_status, EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = i.id
@@ -44,8 +41,7 @@ func (s *Service) ProcessChain(ctx context.Context, chainID uint64) error {
 	return errors.Join(errs...)
 }
 
-// Process books the invoice's confirmed deposits in chain order, then sets its payment status, in one transaction
-// with the invoice row locked. Running it again changes nothing.
+// Process runs in one transaction with the invoice row locked; running it again changes nothing.
 func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -87,10 +83,8 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			return fmt.Errorf("read invoice %s chosen option: %w", group, err)
 		}
 		if chosen == nil {
-			// Chains are read one after another, so an earlier transfer may still come on a chain not read that far:
-			// the first one counts only once every other enabled option chain was read past its time (R-119), about
-			// one round later. Its own chain was read up to it. Until then no row changes, so no row expires while a
-			// payment waits on another option.
+			// An earlier transfer may still come on a chain not read that far, so the first counts only once every
+			// other enabled option chain was read past its time (R-119). Until then no row changes, so none expires.
 			var first string
 			var ready bool
 			err := tx.QueryRow(ctx, `SELECT t.invoice_id, NOT EXISTS (SELECT 1 FROM invoices o
@@ -207,8 +201,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		invoiceID, next, refund); err != nil {
 		return fmt.Errorf("update invoice %s status: %w", invoiceID, err)
 	}
-	// An option not chosen expires or holds money without changing the invoice's status, so only the shown row's
-	// status is history.
+	// Only the shown row's status is history: an option not chosen doesn't change the invoice's status.
 	if shown && next != current {
 		if err := history.Add(ctx, tx, invoiceID, "invoice."+next, history.System, history.Data{}); err != nil {
 			return err
@@ -287,8 +280,7 @@ func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, cha
 	return true, nil
 }
 
-// alertAgainLater counts one more unexplained balance and sets when the worker reads it again: 1 min, doubling to at
-// most a day (R-120). Each read costs second-RPC calls in the chain's round, so many such invoices can't use it up.
+// Backs off 1 min, doubling to at most a day, so unexplained balances can't use up the round's RPC calls (R-120).
 // The exponent stops at 11 (34 h, over the cap): a larger one overflows Postgres's interval.
 func alertAgainLater(ctx context.Context, tx pgx.Tx, invoiceID string) error {
 	if _, err := tx.Exec(ctx, `INSERT INTO invoice_balance_alerts (invoice_id, alerts, next_check_at)
@@ -302,8 +294,7 @@ func alertAgainLater(ctx context.Context, tx pgx.Tx, invoiceID string) error {
 	return nil
 }
 
-// compare returns the booked receiver balance and the second RPC's balance. onChain is nil when that RPC is behind
-// the watcher's finalized block: it may not see final deposits yet, so nothing is decided until it catches up.
+// onChain is nil when the second RPC is behind the watcher's finalized block: nothing is decided until it catches up.
 // ponytail: the RPC call runs inside the transaction holding the invoice lock, bounded by BalanceTimeout.
 func (s *Service) compare(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (booked, onChain *big.Int, err error) {
 	if booked, err = accountBalance(ctx, tx, invoiceID, "receiver"); err != nil {

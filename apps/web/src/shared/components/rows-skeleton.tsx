@@ -8,7 +8,7 @@ export interface RowsSkeletonProps {
   className?: string;
 }
 
-/** A loading list shaped like its rows (icon, two lines, amount over status), so the page does not jump when they arrive. */
+/** Shaped like the real rows, so the page does not jump when they arrive. */
 export function RowsSkeleton({ count, className = "" }: RowsSkeletonProps) {
   return (
     <ul aria-hidden className={`divide-y divide-line ${className}`}>

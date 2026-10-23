@@ -21,7 +21,6 @@ const LAYOUT = {
   },
 } as const;
 
-// One comp for every data-driven direction: the image fills the frame, the palette and face change.
 export function ImageComp({ image, comp, name }: ImageCompProps) {
   const layout = LAYOUT[comp.layout];
   return (

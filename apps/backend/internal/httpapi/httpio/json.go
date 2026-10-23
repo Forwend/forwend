@@ -23,7 +23,6 @@ func OrNullTime(t time.Time) *string {
 	return OrNull(t.Format(time.RFC3339))
 }
 
-// IdempotencyKey reads the Idempotency-Key header: 1 to 255 bytes of UTF-8.
 func IdempotencyKey(r *http.Request) (string, error) {
 	key := r.Header.Get("Idempotency-Key")
 	if key == "" || len(key) > 255 || !utf8.ValidString(key) {
@@ -32,7 +31,6 @@ func IdempotencyKey(r *http.Request) (string, error) {
 	return key, nil
 }
 
-// DecodeJSON reads one JSON object of at most 1 MB with no unknown fields.
 func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
 	dec.DisallowUnknownFields()

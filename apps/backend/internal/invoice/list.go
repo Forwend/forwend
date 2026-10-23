@@ -15,14 +15,11 @@ const (
 	MaxLimit     = 100
 )
 
-// StatusFilters are the owner's list filters; an invoice falls under exactly one (StatusFilterSQL).
+// An invoice falls under exactly one filter (StatusFilterSQL).
 var StatusFilters = []string{"open", "paid", "settled", "expired", "canceled"}
 
-// ClosedSQL is true for an invoices row (read through invoicesCurrent) whose checkout closed and that can no longer
-// be paid: open, detected or partly paid, past expiry, with no payment made before expiry still confirming and less
-// than the amount paid before it. Detected counts: money after the close also reads detected until the chain is final. Its status waits for the chain to be final past expiry (the ledger's rule), but every reader
-// already shows it expired (R-77). Paid on time and awaiting the second RPC is not closed: that money goes to the
-// creator. Until an option is chosen every option counts, each with its own amount: any of them may be chosen (R-119).
+// ClosedSQL: the checkout closed, so every reader shows it expired before the ledger's status catches up (R-77).
+// Paid on time but awaiting the second RPC is not closed. Before an option is chosen, every option counts (R-119).
 const ClosedSQL = `(invoices.payment_status IN ('open', 'detected', 'partially_paid')
 	AND invoices.expires_at < extract(epoch FROM now())
 	AND NOT EXISTS (SELECT 1 FROM invoices o
@@ -32,16 +29,12 @@ const ClosedSQL = `(invoices.payment_status IN ('open', 'detected', 'partially_p
 	           OR coalesce((SELECT sum(t.amount) FROM chain_transfers t WHERE t.invoice_id = o.id
 	                        AND t.status <> 'reorged' AND t.block_time <= o.expires_at), 0) >= o.amount)))`
 
-// StatusFilterSQL is the filter of an invoices row: settled once settled, otherwise its payment status, with open,
-// detected and partially paid as open, both expired ones and a closed checkout (ClosedSQL) as expired, and canceled.
 const StatusFilterSQL = `CASE WHEN settlement_status = 'settled' THEN 'settled' WHEN payment_status = 'paid' THEN 'paid'
 	WHEN payment_status = 'canceled' THEN 'canceled'
 	WHEN payment_status IN ('expired', 'expired_partially_paid') OR ` + ClosedSQL + ` THEN 'expired'
 	ELSE 'open' END`
 
-// searchText is what a search looks in: the number as shown (INV-0042), title, note, client name and email, the main
-// row's receive address and the reference. Read through invoicesCurrent, it must stay the expression of the
-// invoices_search trigram index (migration 00032) on the main row's columns.
+// Must stay the expression of the invoices_search trigram index (migration 00032) on the main row's columns.
 const searchText = `('INV-' || lpad(number::text, greatest(length(number::text), 4), '0') || ' ' || coalesce(title, '')
 	|| ' ' || coalesce(note, '') || ' ' || coalesce(client_name, '') || ' ' || coalesce(client_email, '') || ' '
 	|| main_receive_address || ' ' || coalesce(reference, ''))`
@@ -52,8 +45,7 @@ type Page struct {
 	NextCursor string
 }
 
-// List returns the profile's invoices under status ("" for all) that match q, after cursor ("" for the first), newest
-// first: by number, which only grows. The caller has checked that the user owns the profile.
+// Newest first by number, which only grows. The caller must check that the user owns the profile.
 func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status string, q search.Query) (Page, error) {
 	if limit < 1 || limit > MaxLimit {
 		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)

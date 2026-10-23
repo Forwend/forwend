@@ -7,9 +7,7 @@ import (
 	"time"
 )
 
-// R-98: each later month's invoice is made once, 7 UTC days before its due date, on the first due date's day (the
-// month's last day when shorter), until the end date, with the checkout open to the end of the 60th day after it and
-// one email to the client.
+// R-98: each month's due day is the first due date's day, or the month's last day when shorter.
 func TestRetainerMakesEachMonthOnce(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -95,7 +93,7 @@ func TestRetainerMakesEachMonthOnce(t *testing.T) {
 	}
 }
 
-// R-98: a stopped retainer makes nothing more, also when the stop lands while the worker is making a month.
+// R-98: also when the stop lands while the worker is making a month.
 func TestStoppedRetainerMakesNothing(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -135,8 +133,7 @@ func TestStoppedRetainerMakesNothing(t *testing.T) {
 	}
 }
 
-// R-98: a month whose due date passed unmade is skipped, not billed in a burst; a month starts with reminders as the
-// first invoice did, until the client stops them on one month (R-96).
+// R-98, R-96.
 func TestRetainerSkipsPassedMonthsAndKeepsAReminderStop(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)

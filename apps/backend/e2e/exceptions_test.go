@@ -18,7 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// mailbox is a fake Resend: it records every send and answers like Resend does.
 type mailbox struct {
 	*httptest.Server
 	mu   sync.Mutex
@@ -50,10 +49,7 @@ func (m *mailbox) mails() []sentMail {
 	return append([]sentMail{}, m.sent...)
 }
 
-// TestExceptionsCancelAndEmail is the phase 9 gate (R-83) with the real binaries on Anvil: partial -> top-up -> paid ->
-// settled; an expired partial payment held; a late deposit held; money after a cancel held; nothing held is ever
-// settled, the ledger matches the chain, and each owner email and the payer's receipt are sent exactly once, also
-// across a worker restart.
+// TestExceptionsCancelAndEmail is the phase 9 gate (R-83), run with the real binaries on Anvil.
 func TestExceptionsCancelAndEmail(t *testing.T) {
 	ctx := context.Background()
 	st := newStack(t)
@@ -98,7 +94,6 @@ func TestExceptionsCancelAndEmail(t *testing.T) {
 		t.Fatalf("payer email: %d %v", status, body)
 	}
 
-	// A: 2 of 5 USDC, then the other 3: paid and settled to the wallet.
 	st.anvil.Transfer(st.token, aReceive, "2000000")
 	reach(a, ledger.PartiallyPaid)
 	st.anvil.Transfer(st.token, aReceive, "3000000")
@@ -111,12 +106,10 @@ func TestExceptionsCancelAndEmail(t *testing.T) {
 	}
 	st.anvil.Transfer(st.token, dReceive, amount)
 
-	// B: 1 of 5 USDC on time.
 	st.anvil.Transfer(st.token, bReceive, "1000000")
 	reach(b, ledger.PartiallyPaid)
 
-	// A worker restart in the middle: a deploy. A's emails and D's go out before it, B's and C's after; nothing may be
-	// sent twice or lost.
+	// Restart the worker after A's and D's four emails; nothing may be sent twice or lost across it.
 	waitFor(t, "A's and D's emails before the restart", func() bool { st.anvil.Mine(1); return len(mail.mails()) >= 4 })
 	stopWorker()
 	start(t, st.bin, "worker", worker)
@@ -125,7 +118,6 @@ func TestExceptionsCancelAndEmail(t *testing.T) {
 	st.anvil.Wait(2 * 3600)
 	reach(b, ledger.ExpiredPartiallyPaid)
 	reach(c, ledger.Expired)
-	// C: money after the close is late and held.
 	st.anvil.Transfer(st.token, cReceive, amount)
 
 	held := func(id string) int64 {
@@ -145,7 +137,6 @@ func TestExceptionsCancelAndEmail(t *testing.T) {
 		t.Fatalf("canceled invoice reads %s after a payment", got)
 	}
 
-	// Nothing held was settled: one settlement, A's; the ledger's held money is what each receive address holds.
 	var settles int
 	if err := st.conn.QueryRow(ctx, "SELECT count(*) FROM settlement_intents").Scan(&settles); err != nil || settles != 1 {
 		t.Fatalf("%d settlement intents (%v), want A's alone", settles, err)
@@ -158,7 +149,6 @@ func TestExceptionsCancelAndEmail(t *testing.T) {
 		}
 	}
 
-	// Each email once: the owner's paid, settled and three held, and the payer's receipt.
 	want := map[string]string{
 		"owner@example.com|INV-0001 paid: 5.00 USDC":               "",
 		"owner@example.com|INV-0001: 5.00 USDC is in your wallet":  "",

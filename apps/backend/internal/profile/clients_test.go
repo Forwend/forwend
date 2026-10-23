@@ -7,8 +7,7 @@ import (
 	"time"
 )
 
-// A new client waits for a save of the same profile that is still in flight, so the cap counts it: with 999 clients
-// and another save about to commit the 1000th, the next new client is refused (R-86).
+// With 999 clients and another save about to commit the 1000th, the next new client waits and is refused (R-86).
 func TestSaveClientCapCountsASaveInFlight(t *testing.T) {
 	s, _, pool := newService(t)
 	ctx := context.Background()

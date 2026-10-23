@@ -6,7 +6,6 @@ import {InvoiceReceiver} from "../src/InvoiceReceiver.sol";
 import {InvoiceTerms, MAX_HOLD} from "../src/InvoiceTypes.sol";
 import {BrokenToken, MockToken, ReturnBombToken} from "./mocks/MockToken.sol";
 
-/// Money can never be held longer than MAX_HOLD after deployment, and a broken invoice token never blocks recovery.
 contract HoldTest is Base {
     function test_hugeDeadlineIsCappedForPartialPayment() public {
         InvoiceTerms memory t = terms();

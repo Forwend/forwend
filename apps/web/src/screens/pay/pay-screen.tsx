@@ -13,7 +13,7 @@ export interface PayScreenProps {
   option?: string;
 }
 
-/** The public checkout: the invoice beside how to pay it on wide screens, one column on phones (R-68). */
+/** The public checkout (R-68). */
 export function PayScreen({ linkToken, option }: PayScreenProps) {
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-8 fw-safe-x pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] lg:gap-12 lg:py-10">

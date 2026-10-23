@@ -19,11 +19,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// reconcile finishes a sent settle. Our own receipt, for the saved settle or any version it replaced, decides first: a
-// settle that succeeded and logged the receiver's Settled event is ours, keeps its hash and is booked once its block
-// is final, whatever a lagging node says about settled() meanwhile. Without a receipt, unmined decides. A settle that
-// reverted is recorded without our hash when the receiver is settled at the finalized block (another settler), waits
-// while it is settled only at latest, and is otherwise signed again.
+// reconcile: our receipt (any version) with the Settled log decides first, whatever a lagging node says. A reverted
+// settle is recorded without our hash if settled at the finalized block, waits if only at latest, else is re-signed.
 func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in intent) error {
 	tx := new(types.Transaction)
 	hash := common.HexToHash(*in.txHash)
@@ -69,12 +66,8 @@ func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in int
 	return s.retry(ctx, in, fmt.Sprintf("settle %s mined with status %d but the receiver is not settled", r.TxHash.Hex(), r.Status))
 }
 
-// unmined handles a saved settle without a receipt: not sent yet, waiting to be mined, dropped, or mined in a block
-// the answering node has not seen. Reads at one finalized block decide for good: the receiver settled there while our
-// nonce is still unused there is another settler's work (recorded without our hash); our nonce used there while the
-// receiver is not settled means ours can never mine (signed again). Otherwise the saved bytes are sent again while
-// their nonce is free and nobody settled, signed again with a higher fee (replace) once ReplaceAfter has passed since
-// they were signed, and the receipt is returned once mined. nil, nil ends this run's look.
+// unmined decides for good at one finalized block: settled with our nonce unused there is another settler's work;
+// our nonce used there while unsettled means ours never mines. Otherwise it resends, or replaces after ReplaceAfter.
 func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in intent, tx *types.Transaction) (*types.Receipt, error) {
 	sender, receive := common.HexToAddress(*in.sender), common.HexToAddress(in.receive)
 	head, err := client.HeaderByNumber(ctx, finalized)
@@ -128,16 +121,14 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 	return s.await(ctx, client, tx.Hash())
 }
 
-// holds is a node's answer to a transaction it already has: "already known" on most nodes, "transaction already
-// imported" on Anvil.
+// "already known" on most nodes, "transaction already imported" on Anvil.
 func holds(err error) bool {
 	msg := strings.ToLower(err.Error())
 	return strings.Contains(msg, "known") || strings.Contains(msg, "already imported")
 }
 
-// fillGap sends a zero-value transfer to the executor itself at nonce when nothing is pending there and no saved
-// settle holds it: a nonce no transaction will ever use (a settle saved but never sent, settled meanwhile by the refund
-// authority) would hold every later transaction on the chain.
+// fillGap sends a zero-value self-transfer at nonce when nothing else will use it (a settle saved but never sent,
+// settled meanwhile by the refund authority): a nonce gap holds every later transaction on the chain.
 func (s *Signer) fillGap(ctx context.Context, client *ethclient.Client, chainID uint64, nonce uint64) error {
 	pending, err := client.PendingNonceAt(ctx, s.sender)
 	if err != nil || pending > nonce {
@@ -166,10 +157,8 @@ func (s *Signer) fillGap(ctx context.Context, client *ethclient.Client, chainID 
 	return nil
 }
 
-// confirmIfFinal records the settlement once the receiver is settled at the finalized block (D-45) and, for our own
-// settle r, once r's block is final too, with our hash; without r the settlement has no hash of ours. Until then the
-// intent stays as it is and the next run looks again; a reorg that drops our settle before that leaves it without a
-// receipt, handled like an unsent one.
+// Waits until the receiver is settled at the finalized block (D-45) and r's block, if any, is final too.
+// A reorg that drops our settle first leaves it without a receipt, handled like an unsent one.
 func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, in intent, r *types.Receipt) error {
 	head, err := client.HeaderByNumber(ctx, finalized)
 	if err != nil {
@@ -188,7 +177,6 @@ func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, i
 	return s.confirm(ctx, in)
 }
 
-// confirm records the settlement once: the intent, the ledger and the invoice, in one transaction.
 func (s *Signer) confirm(ctx context.Context, in intent) error {
 	// D-15: like paid, settled needs the second RPC to agree.
 	second := s.seconds[in.chainID]
@@ -241,7 +229,6 @@ func (s *Signer) confirm(ctx context.Context, in intent) error {
 	return tx.Commit(ctx)
 }
 
-// backoff is the growing wait between tries: 1 min doubling, at most 1 h.
 const backoff = "now() + least(interval '1 minute' * power(2, least(attempts, 6)), interval '1 hour')"
 
 // Wait kinds stored with an intent for the invoice API (migration 00018); the reason text is for operators only.
@@ -251,13 +238,11 @@ const (
 	waitUnresolved = "unresolved"
 )
 
-// retry puts the intent back to pending for a temporary condition, with a growing wait. A saved settle that can no
-// longer mine is dropped, with every version of it, so a new one is signed.
+// retry also drops a saved settle and every version of it, so a new one is signed.
 func (s *Signer) retry(ctx context.Context, in intent, reason string) error {
 	return s.postpone(ctx, in, waitRetry, reason)
 }
 
-// postpone is retry with the wait kind the invoice API shows.
 func (s *Signer) postpone(ctx context.Context, in intent, wait, reason string) error {
 	slog.Warn("settlement waits", "invoice", in.invoiceID, "reason", reason)
 	// Only from the status this attempt loaded: a stale attempt never moves an intent that went on.
@@ -268,8 +253,7 @@ func (s *Signer) postpone(ctx context.Context, in intent, wait, reason string) e
 	return err
 }
 
-// stall keeps a sent settle the signer can't resolve yet: it stays sent, with a reason and a growing wait, and shows
-// in the operators' query (docs/backend/architecture.md#signer).
+// stall leaves the settle sent, shown in the operators' query (docs/backend/architecture.md#signer).
 func (s *Signer) stall(ctx context.Context, in intent, reason string) error {
 	slog.Warn("settlement unresolved", "invoice", in.invoiceID, "tx", *in.txHash, "reason", reason)
 	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET reason = $2, wait = $3, attempts = attempts + 1,

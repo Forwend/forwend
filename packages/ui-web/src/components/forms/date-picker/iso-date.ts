@@ -38,12 +38,10 @@ export function weekday(iso: string): number {
   return (new Date(toTime(iso)).getUTCDay() + 6) % 7;
 }
 
-/** The first day of the month that holds iso. */
 export function monthStart(iso: string): string {
   return `${iso.slice(0, 7)}-01`;
 }
 
-/** The six Monday-first weeks shown for the month of iso, as 42 ISO dates. */
 export function monthGrid(iso: string): string[] {
   const first = monthStart(iso);
   const start = addDays(first, -weekday(first));

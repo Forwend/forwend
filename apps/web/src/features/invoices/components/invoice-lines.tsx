@@ -12,8 +12,7 @@ export interface InvoiceLinesProps {
   total: bigint;
 }
 
-// R-88: the invoice's items, one row each with its quantity and unit price under the description and its amount on
-// the right, then the total; the same rows on every width, as the PDF lists them.
+// R-88: the same rows on every width, as the PDF lists them.
 export function InvoiceLines({ lines, decimals, unit, total }: InvoiceLinesProps) {
   const money = (units: string | bigint) => {
     const baseUnits = BigInt(units);

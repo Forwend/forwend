@@ -42,8 +42,7 @@ export interface JobRecordProps {
   acceptedEmail?: string | null;
 }
 
-// R-104: the job's dated record as dispute evidence, on the owner's job page and the client's quote page. Every time is
-// the server's.
+// R-104: dispute evidence, so every time is the server's.
 export function JobRecord({ job, acceptedEmail = null }: JobRecordProps) {
   return (
     <section aria-labelledby="job-record" className="fw-panel">

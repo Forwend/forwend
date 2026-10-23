@@ -1,6 +1,5 @@
--- Enabled-token Transfer logs from or to profile wallets (R-38). One row per wallet and direction, so a transfer
--- between two profile wallets is out for one and in for the other. Identity, statuses and reorg rules are those of
--- chain_transfers: (tx_hash, log_index) is unique only while not reorged; (block_hash, log_index) always is.
+-- Transfer logs of profile wallets (R-38): one row per wallet and direction, so a transfer between two profile
+-- wallets is out for one and in for the other. Reorg rules are those of chain_transfers.
 
 -- +goose Up
 CREATE TABLE wallet_transfers (

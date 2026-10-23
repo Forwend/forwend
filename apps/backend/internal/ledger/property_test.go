@@ -12,9 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Random deposit sequences: transfers that arrive on time or late, get confirmed or reorged, and expiry passing at
-// any point. After every step the ledger holds exactly the booked money, split between creator and payers, never
-// above the receive address balance; once everything is final it equals that balance.
+// Random deposit sequences with expiry passing at any point; checkInvariants runs after every step.
 func TestLedgerMatchesTheReceiverBalance(t *testing.T) {
 	ctx := context.Background()
 	url := databasetest.New(t)

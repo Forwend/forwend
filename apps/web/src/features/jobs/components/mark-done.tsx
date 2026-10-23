@@ -24,8 +24,7 @@ export interface MarkDoneProps {
   onDone: (position: number) => void;
 }
 
-// R-103: the next step of an accepted job, confirmed in a dialog with an optional link to the delivered work. Marking
-// it done makes its invoice; Send to client then emails it within its limits (R-94), and a toast says whether it went.
+// R-103: marking it done makes its invoice; Send to client then emails it within its limits (R-94).
 export function MarkDone({ profileId, job, payment, onDone }: MarkDoneProps) {
   const [markDone, { isLoading }] = useMarkPaymentDoneMutation();
   const [send] = useSendInvoiceMutation();

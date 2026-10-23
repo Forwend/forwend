@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { apiTime, baseUnits, count, evmAddress, usdAmount } from "@/shared/schemas/api";
 
-/** One enabled token's money for a profile (GET /v1/profiles/{id}/balances, TokenBalance). Amounts are base units. */
+/** GET /v1/profiles/{id}/balances, TokenBalance. Amounts are base units. */
 export const tokenBalanceSchema = z.object({
   chainId: count,
   token: evmAddress,
@@ -16,7 +16,7 @@ export const tokenBalanceSchema = z.object({
 
 export const balancesSchema = z.object({
   tokens: z.array(tokenBalanceSchema),
-  // Wallet balances at 1 USD per stablecoin, "12.50"; null when any balance is missing.
+  // At 1 USD per stablecoin; null when any balance is missing.
   estimatedUsdTotal: usdAmount.nullable(),
 });
 

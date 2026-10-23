@@ -2,7 +2,6 @@ import { WaitlistForm } from "@/features/waitlist/components/waitlist-form";
 import { FINAL_CTA, LANDING_SECTIONS } from "@/screens/landing/constants/landing-content";
 import { HalftoneRidge } from "@/shared/components/art/halftone-ridge";
 
-// Halftone Horizon raise: the dot ridge as a quiet texture behind the closing call to action.
 export function FinalCta() {
   return (
     <section

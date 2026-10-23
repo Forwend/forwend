@@ -15,7 +15,6 @@ export function transactionStatus(t: Transaction): PaymentStatus {
 export interface DayGroup<T> {
   /** The local calendar day, YYYY-MM-DD. */
   day: string;
-  /** "today", "yesterday", or the day itself, for the caller to word. */
   when: RelativeDay | Date;
   items: T[];
 }
@@ -23,7 +22,7 @@ export interface DayGroup<T> {
 const localDay = (time: Date) =>
   `${time.getFullYear()}-${String(time.getMonth() + 1).padStart(2, "0")}-${String(time.getDate()).padStart(2, "0")}`;
 
-/** Items in their order, cut into runs of the same local day, each with how to name that day from `now`. */
+/** Keeps the items' order: runs of the same local day, not sorted. */
 export function groupByDay<T extends { at: string }>(
   items: readonly T[],
   now: Date,

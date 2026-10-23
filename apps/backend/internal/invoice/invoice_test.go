@@ -12,7 +12,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/address"
 )
 
-// Every recipient settle() refuses is refused before an address is shown (InvoiceTypes.sol safeToSettle).
+// Mirrors InvoiceTypes.sol safeToSettle.
 func TestBuildTermsRefusesWhatSettleRefuses(t *testing.T) {
 	expires := time.Unix(1800000000, 0)
 	for name, recipient := range map[string]string{
@@ -62,8 +62,6 @@ func TestAgreedValueParse(t *testing.T) {
 	}
 }
 
-// The web's list (apps/web/src/features/invoices/constants/invoices.ts, AGREED_CURRENCIES) is a copy of
-// AgreedCurrencies: the form must offer what the API takes, with the same decimals.
 func TestAgreedCurrenciesMatchTheWeb(t *testing.T) {
 	src, err := os.ReadFile("../../../web/src/features/invoices/constants/invoices.ts")
 	if err != nil {

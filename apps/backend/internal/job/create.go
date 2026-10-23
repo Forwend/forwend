@@ -22,7 +22,6 @@ import (
 // usdCents is a USD amount with at most 2 decimals and at most 10 whole digits, so a job's total fits an int64.
 var usdCents = regexp.MustCompile(`^([0-9]{1,10})(?:\.([0-9]{1,2}))?$`)
 
-// check returns the request's payments in cents, or what breaks a rule.
 func (r Request) check() ([]int64, error) {
 	for _, f := range []struct {
 		name, value string
@@ -48,7 +47,6 @@ func (r Request) check() ([]int64, error) {
 	return checkPayments(r.Payments)
 }
 
-// checkPayments returns the payments in cents, or what breaks a rule: a quote's schedule or a scope change.
 func checkPayments(payments []PaymentRequest) ([]int64, error) {
 	cents := make([]int64, len(payments))
 	for i, p := range payments {
@@ -75,9 +73,8 @@ func checkPayments(payments []PaymentRequest) ([]int64, error) {
 	return cents, nil
 }
 
-// Create saves a job once per (profile, idempotency key): created is false when the same request was already made, and
-// the stored job is returned. It copies the profile's billing details as the issuer. The caller has checked that the
-// user owns the profile.
+// Create is idempotent per (profile, key): a repeat returns the stored job with created false. It copies the
+// profile's billing details as the issuer. The caller must check that the user owns the profile.
 func (s *Service) Create(ctx context.Context, profileID, key string, r Request) (j Job, created bool, err error) {
 	cents, err := r.check()
 	if err != nil {
@@ -147,7 +144,6 @@ func (s *Service) Create(ctx context.Context, profileID, key string, r Request) 
 	return j, err == nil, err
 }
 
-// replay returns the job made earlier with this key: ErrNotFound if none, ErrConflict if the request differed.
 func (s *Service) replay(ctx context.Context, profileID, key string, hash []byte) (Job, error) {
 	var id string
 	var stored []byte

@@ -8,7 +8,6 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
 )
 
-// getBalances is GET /v1/profiles/{profileId}/balances.
 func getBalances(balances *balance.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := balances.Of(r.Context(), r.PathValue("profileId"))
@@ -32,7 +31,6 @@ func getBalances(balances *balance.Service) http.HandlerFunc {
 	}
 }
 
-// getBalanceHistory is GET /v1/profiles/{profileId}/balance-history?days=.
 func getBalanceHistory(balances *balance.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		days, err := httpio.IntQuery(r, "days", balance.DefaultDays)

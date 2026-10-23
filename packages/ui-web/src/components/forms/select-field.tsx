@@ -29,7 +29,6 @@ export interface SelectFieldProps {
   className?: string;
 }
 
-// A custom listbox (Radix Select): keyboard and screen-reader support, styled with tokens.
 export function SelectField({
   label,
   hideLabel,

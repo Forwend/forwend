@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// R-88: an invoice's lines come with it, never change, and add up to its amount when the transaction commits.
+// R-88.
 func TestInvoiceLines(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
@@ -46,7 +46,6 @@ func TestInvoiceLines(t *testing.T) {
 	_, _ = conn.Exec(ctx, "SET session_replication_role = DEFAULT")
 	wantCode(t, err, codeRaise, "a changed line under replication")
 
-	// Short of the amount: refused when the transaction commits.
 	wantCode(t, inTx(func() error {
 		if err := insertInvoice(conn, profile, 2, hex20(101), "key-2", "5000000"); err != nil {
 			return err

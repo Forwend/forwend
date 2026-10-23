@@ -18,7 +18,6 @@ export const transactionsApi = apiSlice
   .enhanceEndpoints({ addTagTypes: [TRANSACTIONS_TAG, RECORDS_CURRENCY_TAG] })
   .injectEndpoints({
     endpoints: (build) => ({
-      /** In one direction and under the search when given. */
       getTransactions: build.query<
         TransactionsPage,
         { profileId: string; limit: number; direction?: TransactionDirection; q?: string }
@@ -61,10 +60,7 @@ export const transactionsApi = apiSlice
         responseSchema: recordsCurrencySchema,
         invalidatesTags: [TRANSACTIONS_TAG, RECORDS_CURRENCY_TAG],
       }),
-      /**
-       * The income statement of the UTC days given, both required (R-112). The PDF comes back as an object URL for the
-       * caller to save and revoke, so no file sits in the store; an error stays the API's JSON.
-       */
+      /** R-112: an object URL the caller saves and revokes, so no file sits in the store. */
       downloadStatement: build.mutation<string, { profileId: string; from: string; to: string }>({
         query: ({ profileId, from, to }) => ({
           url: `/v1/profiles/${encodeURIComponent(profileId)}/statement.pdf`,
@@ -73,7 +69,7 @@ export const transactionsApi = apiSlice
             response.ok ? URL.createObjectURL(await response.blob()) : response.json(),
         }),
       }),
-      /** Every transaction in the UTC days given (YYYY-MM-DD, both optional), as CSV text (R-108); an error stays JSON. */
+      /** CSV text of the UTC days given (R-108); an error stays JSON. */
       exportTransactions: build.query<string, { profileId: string; from?: string; to?: string }>({
         query: ({ profileId, ...params }) => ({
           url: `/v1/profiles/${encodeURIComponent(profileId)}/transactions.csv`,

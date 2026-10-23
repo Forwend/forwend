@@ -7,7 +7,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// List returns the user's profiles, oldest first.
 func (s *Service) List(ctx context.Context, privyUserID string) ([]Profile, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT p.id::text, p.kind, coalesce(p.name, ''), coalesce(w.address, ''), p.created_at

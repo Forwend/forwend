@@ -14,13 +14,11 @@ import (
 	"time"
 )
 
-// AppID and AppSecret are what the fake accepts.
 const (
 	AppID     = "app-1"
 	AppSecret = "secret-1"
 )
 
-// Fake records requests and holds wallets by external_id.
 type Fake struct {
 	URL string
 
@@ -43,7 +41,6 @@ type Fake struct {
 	FailUserReads int
 }
 
-// New starts the fake until the test ends.
 func New(t *testing.T) *Fake {
 	f := &Fake{t: t, wallets: map[string]map[string]any{}, failedKeys: map[string]bool{}, Emails: map[string]string{}}
 	srv := httptest.NewServer(f)
@@ -52,7 +49,6 @@ func New(t *testing.T) *Fake {
 	return f
 }
 
-// Wallets is the number of wallets held.
 func (f *Fake) Wallets() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()

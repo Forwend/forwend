@@ -19,11 +19,9 @@ export interface AgreedValueFieldsProps {
   errors: Partial<Record<keyof AgreedDraft, string>>;
 }
 
-// R-93: the price agreed with the client in fiat, typed by the owner (no exchange-rate API), beside the stablecoin
-// amount the invoice asks for. A day after today can't have been agreed yet.
+// R-93: typed by the owner (no exchange-rate API); a day after today can't have been agreed yet.
 export function AgreedValueFields({ id, value, onChange, today, errors }: AgreedValueFieldsProps) {
   const currencies = useMemo(() => currencyOptions(Object.keys(AGREED_CURRENCIES)), []);
-  // One fieldset, so a screen reader names the three fields together and reads the hint with them.
   const hintId = useId();
   return (
     <fieldset aria-describedby={hintId} className="flex min-w-0 flex-col gap-2">
@@ -57,7 +55,6 @@ export function AgreedValueFields({ id, value, onChange, today, errors }: Agreed
           error={errors.date}
           className="max-sm:col-span-full"
         />
-        {/* Beside the currency on phones, where the fields stack. */}
         <IconButton
           label={COPY.remove}
           onClick={() => onChange(null)}

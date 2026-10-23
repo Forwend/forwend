@@ -17,8 +17,7 @@ export interface BalanceFigureProps {
   onRetry: () => void;
 }
 
-// Never a made-up 0 while loading or when a read failed. The parent is the size container: the figure and its
-// skeleton scale with its width, and the figure also shrinks as its digits grow, so a large total never clips.
+// Never a made-up 0 while loading or after a failed read. The parent is the size container.
 export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps) {
   const tokens = balances?.tokens ?? [];
   const total = balances ? usdTotal(balances, "wallet") : null;
@@ -26,8 +25,7 @@ export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps)
   const figure =
     "text-[length:clamp(2rem,min(14cqi,160cqi_/_var(--chars)),5.25rem)] leading-none font-semibold tracking-[-0.03em] text-ink";
   const align = "items-center text-center lg:items-start lg:text-left";
-  // Room for the hanging hint on both sides keeps the total centered, and a large total wraps USD before the hint
-  // reaches the edge.
+  // px-7 leaves room for the hanging hint on both sides.
   const row = "flex flex-wrap items-baseline justify-center gap-x-2 px-7 lg:justify-start lg:px-0";
 
   if (!balances && failed) {

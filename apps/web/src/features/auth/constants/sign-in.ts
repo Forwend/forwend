@@ -3,10 +3,8 @@ export const SIGN_IN_STEPS = {
   code: "code",
 } as const;
 
-/** Privy's email codes have 6 digits. */
 export const CODE_LENGTH = 6;
 
-/** The OAuth provider behind "Continue with Google". */
 export const GOOGLE_PROVIDER = "google";
 
 export const SIGN_IN_COPY = {

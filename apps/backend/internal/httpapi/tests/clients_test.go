@@ -14,8 +14,7 @@ const (
 	clientB = "22222222-2222-4222-8222-222222222222"
 )
 
-// R-86: a profile saves clients by an id it picks, lists them by name, edits and deletes them; only its owner can, and
-// an invoice made from a client keeps its copy.
+// R-86.
 func TestClients(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
@@ -39,7 +38,6 @@ func TestClients(t *testing.T) {
 	if !reflect.DeepEqual(made.body, want) {
 		t.Fatalf("PUT returned %v, want %v", made.body, want)
 	}
-	// The same request again is the same client: a retried save never makes two.
 	if again := e.call(t, "PUT", path+"/"+clientB, alice, "", full); again.status != http.StatusOK {
 		t.Fatalf("PUT again: %d %v", again.status, again.body)
 	}
@@ -52,7 +50,6 @@ func TestClients(t *testing.T) {
 		t.Fatalf("list by name: %v", got)
 	}
 
-	// An invoice copies the client's details; editing and deleting the client leave it as it was.
 	invoice := e.post(t, alice, e.aliceProfile, "key-1", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1",
 		"client": `+strings.Replace(full, `, "reference": "PO-4500012345"`, "", 1)+`}`)
 	if invoice.status != http.StatusCreated {
@@ -73,7 +70,6 @@ func TestClients(t *testing.T) {
 		t.Fatalf("the invoice changed with its client: %v", c)
 	}
 
-	// Only the owner reads or writes the profile's clients, and another profile's client id is not found.
 	if r := list(bob); r.status != http.StatusForbidden {
 		t.Fatalf("Bob lists Alice's clients: %d", r.status)
 	}
@@ -96,7 +92,6 @@ func TestClients(t *testing.T) {
 		t.Fatalf("Bob changed Alice's clients: %v", got)
 	}
 
-	// Each case changes one field of a valid body.
 	for _, c := range []struct {
 		field, value, code string
 		status             int
@@ -128,8 +123,7 @@ func TestClients(t *testing.T) {
 		t.Fatalf("DELETE with a malformed id: %d %v", r.status, r.body)
 	}
 
-	// A profile keeps at most 1000 clients; editing one still works when full. Concurrent saves:
-	// TestSaveClientCapCountsASaveInFlight.
+	// The cap is 1000 clients; concurrent saves are in TestSaveClientCapCountsASaveInFlight.
 	if _, err := e.pool.Exec(context.Background(), `INSERT INTO clients (profile_id, name)
 		SELECT $1, 'filler ' || n FROM generate_series(1, 999) n`, e.aliceProfile); err != nil {
 		t.Fatal(err)

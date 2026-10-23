@@ -1,5 +1,4 @@
--- Scope change email (R-107): when the owner proposes a change, the client who accepted the quote gets an email with
--- the job's link. The outbox row names the job, and its payload the change's key.
+-- Scope change email (R-107). The outbox row names the job, and its payload the change's key.
 
 -- +goose Up
 ALTER TABLE outbox_events ADD COLUMN job_id uuid REFERENCES jobs (id);

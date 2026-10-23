@@ -17,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// strs returns each amount in base units.
 func strs(amounts []*big.Int) []string {
 	var out []string
 	for _, a := range amounts {
@@ -26,8 +25,6 @@ func strs(amounts []*big.Int) []string {
 	return out
 }
 
-// The watcher records the wallet's transfers on Anvil over three days; the history rebuilds each day's balance back
-// from the current finalized balance, with what came in and went out that day.
 func TestHistoryEndsAtTheCurrentBalance(t *testing.T) {
 	ctx := context.Background()
 	anvil := chaintest.Start(t)

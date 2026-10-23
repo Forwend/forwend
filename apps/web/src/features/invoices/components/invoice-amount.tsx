@@ -11,10 +11,7 @@ export interface InvoiceAmountProps {
   className?: string;
 }
 
-/**
- * The exact amount in the invoice's token; a token no longer enabled has no known decimals, so it shows base units.
- * An invoice that accepts several options shows USD.
- */
+/** A token no longer enabled has no known decimals, so it shows base units. */
 export function InvoiceAmount({ invoice, tokens, className }: InvoiceAmountProps) {
   if (!tokens) return <Skeleton className="inline-block h-4 w-24" />;
   const token = tokens.find((t) => tokenKey(t) === tokenKey(invoice));

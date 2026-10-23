@@ -1,27 +1,20 @@
-/*
- * Forwend design tokens. Source of truth for every color, size, radius, shadow and duration.
- * Direction: Dawn Path (light) with Dusk Ledger dark sections (D-13).
- * Light is the default; set data-theme="dark" on <html> or on any section to switch.
- * test/contrast.test.ts reads the color values from this file.
- */
+/* Forwend design tokens (D-13). Light is the default; data-theme="dark" on <html> or any section switches.
+   test/contrast.test.ts reads the color values from this file. */
 
 :root,
 [data-theme="light"] {
   color-scheme: light;
 
-  /* Grounds */
   --fw-bg: #f4f8f7;
   --fw-surface: #ffffff;
   --fw-surface-2: #eaf2f0;
   --fw-sunken: #e2ecea;
   --fw-glass: rgb(255 255 255 / 0.72);
 
-  /* Text */
   --fw-ink: #0f2219;
   --fw-muted: #3a5047;
   --fw-subtle: #566a62;
 
-  /* Lines */
   --fw-line: #dae5e1;
   --fw-line-strong: #a9bfb8;
   /* Fields: a quiet edge at rest, a gray-ink edge and a faint ring on focus (derived, so no new colors). */
@@ -29,14 +22,12 @@
   --fw-field-focus: color-mix(in oklab, var(--fw-ink) 40%, var(--fw-line-strong));
   --fw-field-ring: color-mix(in oklab, var(--fw-ink) 7%, transparent);
 
-  /* Actions */
   --fw-primary: #0f2219;
   --fw-on-primary: #f5faf7;
   --fw-accent: #1f6a8c;
   --fw-on-accent: #ffffff;
   --fw-focus: #1f6a8c;
 
-  /* Status */
   --fw-success: #1b6e45;
   --fw-success-soft: #e2f2e9;
   --fw-warning: #865500;
@@ -52,8 +43,7 @@
   --fw-art-ridge-near: #7da38f;
   --fw-art-dot: #8dbfd4;
 
-  /* Elevation */
-  /* Soft, layered and tinted with the ink: resting things barely lift, raised and floating ones more. */
+  /* Tinted with the ink color. */
   --fw-shadow-sm: 0 1px 2px rgb(15 34 25 / 0.05);
   --fw-shadow-md: 0 6px 18px -4px rgb(15 34 25 / 0.12), 0 1px 3px rgb(15 34 25 / 0.05);
   --fw-shadow-lg: 0 22px 52px -14px rgb(15 34 25 / 0.24), 0 3px 10px rgb(15 34 25 / 0.06);
@@ -112,14 +102,12 @@
   --fw-font-sans: var(--fw-font-sans-loaded, ui-sans-serif), system-ui, sans-serif;
   --fw-font-mono: var(--fw-font-mono-loaded, ui-monospace), "SFMono-Regular", monospace;
 
-  /* Radius */
   --fw-radius-sm: 0.5rem;
   --fw-radius-md: 0.75rem;
   --fw-radius-lg: 1.25rem;
   --fw-radius-xl: 1.75rem;
   --fw-radius-pill: 9999px;
 
-  /* Icon sizes */
   --fw-icon-sm: 1rem;
   --fw-icon-md: 1.125rem;
   --fw-icon-lg: 1.5rem;
@@ -127,7 +115,6 @@
   /* Glass blur, only where a panel sits on imagery */
   --fw-blur-glass: 14px;
 
-  /* Motion */
   --fw-duration-fast: 140ms;
   --fw-duration-base: 200ms;
   --fw-duration-slow: 400ms;
@@ -136,7 +123,6 @@
   --fw-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --fw-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
-  /* Layers */
   --fw-z-nav: 40;
   --fw-z-overlay: 50;
   --fw-z-toast: 60;

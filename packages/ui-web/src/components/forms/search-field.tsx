@@ -15,7 +15,6 @@ export interface SearchFieldProps {
   className?: string;
 }
 
-/** A compact search box for filtering a list or table in a toolbar. */
 export function SearchField({
   label,
   value,

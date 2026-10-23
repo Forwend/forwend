@@ -39,7 +39,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	// Startup checks: a setup mistake stops the worker with a message naming it.
 	pool, err := database.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
@@ -48,7 +47,7 @@ func run() error {
 	lock, err := database.TakeLock(ctx, pool, worker.LockKey, "worker", cfg.Chains.PollInterval)
 	if err != nil {
 		if ctx.Err() != nil {
-			return nil // stopped while waiting
+			return nil
 		}
 		return err
 	}

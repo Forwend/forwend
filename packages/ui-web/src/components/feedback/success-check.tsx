@@ -5,7 +5,6 @@ export interface SuccessCheckProps {
   className?: string;
 }
 
-/** A circle and a tick that draw themselves once, for "settled" and "you're on the list". */
 export function SuccessCheck({ label = "Done", className }: SuccessCheckProps) {
   return (
     <svg

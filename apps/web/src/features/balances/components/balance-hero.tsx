@@ -143,7 +143,7 @@ export function BalanceHero({
   );
 }
 
-// How the balance moved over the range, with direction in words and an icon, not color alone.
+// Direction in words and an icon, not color alone.
 function Change({ series, rangeName }: { series: HistorySeries; rangeName: string }) {
   const change = seriesChange(series);
   const amount = formatUsd(change < 0n ? -change : change);

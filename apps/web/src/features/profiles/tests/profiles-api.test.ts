@@ -56,7 +56,6 @@ describe("profiles API", () => {
       .unwrap();
     const create = fetch.mock.calls[1]?.[0] as Request;
     expect(create.headers.get("Idempotency-Key")).toBe("k-1");
-    // The list now has both, and no second POST /v1/me was made.
     expect(profilesApi.endpoints.signUp.select()(store.getState()).data?.profiles).toEqual([
       personal,
       merchant,

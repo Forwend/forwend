@@ -1,5 +1,4 @@
-// Package httpio reads requests and writes answers for every API module: JSON in and out, the one error
-// shape of docs/backend/api.md, and the query parameters lists share.
+// Package httpio holds the JSON and the error shape of docs/backend/api.md that every API module shares.
 package httpio
 
 import (
@@ -18,13 +17,11 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/search"
 )
 
-// ErrMalformed is a request the server can't parse: 400.
 var ErrMalformed = errors.New("malformed request")
 
 var ErrRateLimited = errors.New("rate limited")
 
-// WriteError maps a service error to the one error shape in docs/backend/api.md. Unknown errors are logged once and
-// answered as a 500 without details. 400 and 422 messages say what to fix: our rule text or the JSON decoder's.
+// WriteError uses the error shape of docs/backend/api.md. Only 400 and 422 show err's text, which says what to fix.
 func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	status, code, message := http.StatusInternalServerError, "internal", "internal error"
 	switch {

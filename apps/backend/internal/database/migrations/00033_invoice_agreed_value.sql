@@ -1,7 +1,5 @@
--- The price agreed with the client in fiat (R-93): what the freelancer and the client settled on, such as 1,000.00 EUR on
--- a day, typed by the owner (no exchange-rate API), beside the stablecoin amount the invoice asks for. In the currency's
--- minor units (cents) with its decimals, like every amount here, so a currency later dropped from the list still reads
--- right. A detail: written with the invoice and never changed.
+-- Agreed price in fiat (R-93), typed by the owner (no exchange-rate API). In minor units with its decimals, so a
+-- currency later dropped from the list still reads right.
 
 -- +goose Up
 ALTER TABLE invoices
@@ -44,7 +42,6 @@ END;
 $$;
 -- +goose StatementEnd
 
--- The view lists its columns, so it is made again with the new ones.
 CREATE OR REPLACE VIEW invoices_current AS
 SELECT m.id, m.profile_id, m.number, m.title, m.note, m.due_date, m.client_name, m.client_email, m.client_address,
        m.sender_name, m.issuer_name, m.issuer_address, m.issuer_country, m.issuer_tax_id, m.issuer_email, m.created_at,

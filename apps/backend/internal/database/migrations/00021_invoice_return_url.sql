@@ -1,5 +1,4 @@
--- A return link (R-58): an optional https address of the creator's site that the pay page offers once paid (R-62).
--- Like the other details it is set at creation and never changes; an option row has none (migration 00020).
+-- Return link (R-58, R-62): set at creation and never changes. An option row has none.
 
 -- +goose Up
 ALTER TABLE invoices ADD COLUMN return_url text
@@ -35,7 +34,6 @@ END;
 $$;
 -- +goose StatementEnd
 
--- The view lists its columns, so it is made again with the new one.
 CREATE OR REPLACE VIEW invoices_current AS
 SELECT m.id, m.profile_id, m.number, m.title, m.note, m.due_date, m.client_name, m.client_email, m.client_address,
        m.sender_name, m.issuer_name, m.issuer_address, m.issuer_country, m.issuer_tax_id, m.issuer_email, m.created_at,

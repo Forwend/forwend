@@ -24,9 +24,7 @@ func (e invoiceEnv) recheck(t *testing.T, srv *httptest.Server, id string) reply
 	return e.do(t, req)
 }
 
-// R-55: Check status compares the address's finalized balance (2500000 in this env) with the recorded transfers, asks
-// the worker to rescan when more is on chain, and runs once per invoice every 5 minutes; the invoice read says when
-// the next check is allowed.
+// R-55. The env's address holds 2500000 finalized.
 func TestRecheckInvoice(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
@@ -48,7 +46,6 @@ func TestRecheckInvoice(t *testing.T) {
 	if again.status != http.StatusTooManyRequests || errorCode(again) != "rate_limited" {
 		t.Fatalf("within 5 minutes: %d %v", again.status, again.body)
 	}
-	// A reload knows it too: the read gives the same next check time.
 	if got := e.get(t, id).body["nextCheckAt"]; got != r.body["nextCheckAt"] {
 		t.Fatalf("read nextCheckAt %v, want %v", got, r.body["nextCheckAt"])
 	}
@@ -67,8 +64,7 @@ func TestRecheckInvoice(t *testing.T) {
 		t.Fatalf("up to date: %d %v", r.status, r.body)
 	}
 
-	// A rescan that finished minutes ago is not started again, even when the address still holds more than recorded
-	// (money no log explains, such as Arc native USDC).
+	// A rescan that finished a minute ago is not started again, though the address holds more than recorded.
 	if _, err := e.pool.Exec(ctx, `
 		WITH t AS (DELETE FROM chain_transfers WHERE invoice_id = $1)
 		UPDATE invoice_rechecks SET checked_at = now() - interval '301 seconds', rescanned_at = now() - interval '1 minute'
@@ -84,7 +80,6 @@ func TestRecheckInvoice(t *testing.T) {
 	}
 }
 
-// A chain that can't be read answers 503 without the RPC URL's key; the global limit stops a burst over many invoices.
 func TestRecheckLimitsAndChainErrors(t *testing.T) {
 	e := invoiceAPI(t)
 	failing := httptest.NewServer(httpapi.NewMux(e.pool, nil, nil,
@@ -126,8 +121,7 @@ func TestUnknownInvoicesDoNotUseTheSharedCheckLimit(t *testing.T) {
 	}
 }
 
-// R-55: one owner's invoices take Check status from that owner's share first, so a free account that makes its own
-// invoices and checks them can't use up the budget everyone shares (audit 2026-10-19).
+// R-55.
 func TestRecheckBudgetHasAShareForEachOwner(t *testing.T) {
 	e := invoiceAPI(t)
 	victim := e.post(t, "did:privy:alice", e.aliceProfile, "victim", basicBody).body["invoiceId"].(string)

@@ -12,12 +12,8 @@ export interface ReceiveAddressProps {
   failedLabel?: string;
 }
 
-// The start and end stand out, the part look-alikes match, with everything between them in a quieter color (R-78).
-// The whole address always shows, on one line: a shortened one is what address-poisoning look-alikes copy. Its size
-// follows the width it has (its own container): 42 characters of Geist Mono at 0.6em are 25.2 times the size, and
-// where the browser draws each character on a whole pixel (Chromium on Linux) each can grow by half a pixel, so 21px
-// stay free. A narrow field gives the address its full width and puts the copy icon beside the label. The adjacent
-// spans keep the text, a selection and Copy exactly equal to the address.
+// The whole address shows on one line, its ends standing out (R-78): a shortened one is what look-alikes copy.
+// 42 characters at 0.6em are 25.2 times the size; 21px stay free for Chromium on Linux rounding each one up.
 const START = 6;
 const END = 4;
 export function ReceiveAddress({

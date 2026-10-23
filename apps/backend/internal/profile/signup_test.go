@@ -43,7 +43,6 @@ func TestSignUpConcurrently(t *testing.T) {
 	}
 }
 
-// Privy fails: the profile exists without a wallet, and the next signup makes the wallet.
 func TestSignUpRetriesAFailedWallet(t *testing.T) {
 	s, f, _ := newService(t)
 	ctx := context.Background()
@@ -62,7 +61,6 @@ func TestSignUpRetriesAFailedWallet(t *testing.T) {
 	}
 }
 
-// A wallet Privy returns that is already stored for another profile is an error, never a profile left without one.
 func TestSignUpRefusesAWalletStoredElsewhere(t *testing.T) {
 	s, _, pool := newService(t)
 	ctx := context.Background()
@@ -78,7 +76,6 @@ func TestSignUpRefusesAWalletStoredElsewhere(t *testing.T) {
 	}
 }
 
-// A slow Privy never holds signup past RepairBudget for profiles other than the personal one.
 func TestSignUpRepairIsBounded(t *testing.T) {
 	s, f, _ := newService(t)
 	ctx := context.Background()

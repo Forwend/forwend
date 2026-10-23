@@ -17,7 +17,7 @@ export const clientsApi = apiSlice
   .enhanceEndpoints({ addTagTypes: [CLIENTS_TAG] })
   .injectEndpoints({
     endpoints: (build) => ({
-      /** Every saved client of the profile, by name (at most 1000, so one request). */
+      /** At most 1000, so one request holds them all. */
       listClients: build.query<Client[], string>({
         query: (profileId) => clientsUrl(profileId),
         rawResponseSchema: clientsSchema,

@@ -6,9 +6,8 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Provider } from "react-redux";
 import { makeStore } from "@/store/store";
 
-// Inside Privy: requests take the current access token. A store belongs to one signed-in user: when the user changes
-// or signs out, by the Sign out button or because the session ended, the next render already has a fresh, empty
-// store, so nobody sees another user's cached answers. setupListeners lets queries read again when the tab comes back.
+// A store belongs to one signed-in user: a user change or sign-out gets a fresh, empty store on that same
+// render, so nobody sees another user's cached answers.
 export function StoreProvider({ children }: Readonly<{ children: ReactNode }>) {
   const { getAccessToken, user } = usePrivy();
   const userId = user?.id ?? null;

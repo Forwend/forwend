@@ -6,7 +6,6 @@ import { formatDueDate } from "@/features/invoices/lib/invoices";
 import { TRANSACTIONS_COPY as COPY } from "@/features/transactions/constants/transactions-copy";
 import type { TransactionRecordsValue } from "@/features/transactions/types/transactions";
 
-/** The value as people read money in its currency, with its ISO decimals: €1,125.00, ¥151. */
 function formatRecordsValue(value: TransactionRecordsValue): string {
   const digits = AGREED_CURRENCIES[value.currency as keyof typeof AGREED_CURRENCIES];
   return new Intl.NumberFormat(undefined, {
@@ -21,8 +20,7 @@ export interface RecordsValueProps {
   value: TransactionRecordsValue;
 }
 
-// R-111: the value in the records currency under the amount. Its ECB rate's day is in a tooltip that opens on hover,
-// focus and tap, and a screen reader hears it with the value.
+// R-111.
 export function RecordsValue({ value }: RecordsValueProps) {
   const rate = COPY.rateOf(formatDueDate(value.rateDate));
   const text = formatRecordsValue(value);

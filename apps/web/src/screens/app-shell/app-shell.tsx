@@ -36,9 +36,8 @@ const SHELL_COPY = {
   skip: "Skip to content",
 } as const;
 
-// Signed out: go to sign-in. Signed in: POST /v1/me (signs up on the first visit), then the frame (sidebar and header
-// on desktop; top bar and tab bar on phones) around the page for the chosen profile. The frame owns what opens from
-// anywhere: Receive, a personal profile's Request, the ⌘K menu and the phone profile sheet.
+// Signed in: POST /v1/me (signs up on the first visit), then the frame around the chosen profile's page.
+// The frame owns what opens from anywhere: Receive, a personal profile's Request, ⌘K and the phone profile sheet.
 export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const { ready, authenticated, logout, user } = usePrivy();
   const router = useRouter();
@@ -153,7 +152,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     );
   }
 
-  // R-50: the first-run choice, once, before the shell.
+  // R-50
   if (firstRun) {
     return (
       <FirstRun
@@ -185,7 +184,6 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
           onSignOut={signOut}
           collapsed={collapsed}
         />
-        {/* The sidebar is fixed on desktop; the content starts after it. */}
         <div className={`min-w-0 ${collapsed ? "lg:pl-16" : "lg:pl-64"}`}>
           <AppHeader
             active={active}

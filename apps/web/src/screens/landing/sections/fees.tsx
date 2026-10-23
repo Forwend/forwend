@@ -6,7 +6,6 @@ import {
 } from "@/screens/landing/constants/landing-content";
 import { Section } from "@/screens/landing/layout/section";
 
-// Demonstration amount for the withdrawal example.
 const USDC = { decimals: 6, token: "USDC" } as const;
 
 const SAMPLE_WITHDRAWAL = { baseUnits: 500000000n, ...USDC } as const;

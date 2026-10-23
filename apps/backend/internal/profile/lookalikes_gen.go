@@ -1,11 +1,7 @@
 //go:build ignore
 
-// Command lookalikes_gen writes lookalikes.go from Unicode's confusables.txt (UTS #39), for Impersonates (R-122):
-//
-//	curl -sO https://www.unicode.org/Public/security/latest/confusables.txt
-//	go run lookalikes_gen.go < confusables.txt > lookalikes.go
-//
-// It keeps each character whose prototype is one ASCII letter, as that letter in lower case.
+// Command lookalikes_gen writes lookalikes.go for Impersonates (R-122) from Unicode's confusables.txt (UTS #39):
+// curl -sO https://www.unicode.org/Public/security/latest/confusables.txt && go run lookalikes_gen.go < confusables.txt > lookalikes.go
 package main
 
 import (

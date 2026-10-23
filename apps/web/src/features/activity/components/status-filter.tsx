@@ -6,7 +6,7 @@ import { STATUS_FILTERS } from "@/features/activity/constants/activity";
 import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import type { StatusFilter as Status } from "@/features/activity/types/activity";
 
-// Each status with the icon its pill or its bell event uses, so a choice looks like the rows it leaves.
+// The same icons as the status pills and bell events.
 const ICONS = {
   all: ListFilter,
   open: Circle,
@@ -21,7 +21,6 @@ export interface StatusFilterProps {
   onValueChange: (value: Status) => void;
 }
 
-/** The status filter of Invoices, Requests and Activity: a menu beside the search. */
 export function StatusFilter({ value, onValueChange }: StatusFilterProps) {
   return (
     <SelectMenu

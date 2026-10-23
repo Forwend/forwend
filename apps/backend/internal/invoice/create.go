@@ -17,18 +17,16 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// accepted is one token and network an invoice takes, before it has an id.
 type accepted struct {
 	chainID       uint64
 	family, token string
 	amount        *big.Int
-	// scale is the decimals that turn the request's amounts into this token's base units: 0 for a fixed invoice, whose
-	// amounts are base units already; the token's decimals for payer chooses, whose amounts are USD (D-75).
+	// scale turns request amounts into base units: 0 for a fixed invoice, the token's decimals for USD (D-75).
 	scale int
 }
 
-// Create makes the invoice once per (profile, idempotency key). created is false when the same request was already
-// made: the stored invoice is returned. The caller has checked that the user owns the profile.
+// Create is idempotent per (profile, key): a repeat returns the stored invoice with created false.
+// The caller must check that the user owns the profile.
 func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, r Request) (inv Invoice, created bool, err error) {
 	token, amount, usd, lines, expiresIn, err := r.normalize()
 	if err != nil {
@@ -206,8 +204,6 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	return inv, err == nil, err
 }
 
-// accepted lists what the invoice takes: the one token named, or for payer chooses every enabled token on a watched
-// chain, ordered by chain and symbol, each with the amount in its own decimals.
 func (s *Service) accepted(ctx context.Context, chainID uint64, token string, amount *big.Int, usd *big.Rat) ([]accepted, error) {
 	if usd == nil {
 		var family string
@@ -262,7 +258,6 @@ func (s *Service) accepted(ctx context.Context, chainID uint64, token string, am
 	return out, nil
 }
 
-// replay returns the invoice made earlier with this key: ErrNotFound if none, ErrConflict if the request differed.
 func (s *Service) replay(ctx context.Context, profileID, idempotencyKey string, hash []byte) (Invoice, error) {
 	var id string
 	var stored []byte

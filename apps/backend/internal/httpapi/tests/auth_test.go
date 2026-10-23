@@ -23,7 +23,7 @@ import (
 
 const appID = "test-app"
 
-// testVerifier stands in for Privy with a local JWKS; tokens signed by the returned key carry kid "key-1".
+// Tokens signed by the returned key carry kid "key-1".
 func testVerifier(t *testing.T) (*auth.Verifier, *ecdsa.PrivateKey) {
 	t.Helper()
 	privy := authtest.NewPrivy(t)
@@ -34,7 +34,6 @@ func testVerifier(t *testing.T) (*auth.Verifier, *ecdsa.PrivateKey) {
 	return verifier, privy.Key("key-1")
 }
 
-// authServer serves GET /v1/profiles/{profileId}/probe behind both checks, with Alice owning one profile.
 func authServer(t *testing.T) (srv *httptest.Server, privyKey *ecdsa.PrivateKey, aliceProfile string) {
 	t.Helper()
 	ctx := context.Background()
@@ -179,7 +178,6 @@ func TestOnlyTheOwnerActsForAProfile(t *testing.T) {
 	}
 }
 
-// Without requireUser in front, the owner check denies instead of querying for an empty user.
 func TestOwnerCheckNeedsASignedInUser(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/profiles/x/probe", nil)
@@ -191,7 +189,6 @@ func TestOwnerCheckNeedsASignedInUser(t *testing.T) {
 	}
 }
 
-// Verification uses only the configured key: with every outgoing HTTP call failing, a valid token still passes.
 func TestVerificationMakesNoNetworkCall(t *testing.T) {
 	srv, privyKey, profile := authServer(t)
 	token := signES256(t, privyKey, claims("did:privy:alice"))

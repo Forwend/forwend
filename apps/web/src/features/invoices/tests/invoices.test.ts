@@ -113,7 +113,7 @@ describe("invoiceProgress", () => {
   it("labels detected and partly paid invoices as confirming while finality is pending", () => {
     const partly = { ...open, paymentStatus: "partially_paid" };
     expect(invoiceStatus(partly)).toBe(PAYMENT_STATUS.partiallyPaid);
-    // The API says when the checkout closed for good (R-77); a payment still confirming keeps it confirming.
+    // R-77.
     expect(invoiceStatus({ ...partly, closed: true })).toBe(PAYMENT_STATUS.expiredPartiallyPaid);
     expect(invoiceStatus({ ...open, closed: true })).toBe(PAYMENT_STATUS.expired);
     expect(invoiceStatus({ ...partly, confirming: true })).toBe(PAYMENT_STATUS.confirming);
@@ -184,7 +184,7 @@ describe("form values (R-58)", () => {
   });
 });
 
-// R-88: a line's total is what the invoice charges for it, so it must come out exactly in the token's base units.
+// R-88.
 describe("lineUnits", () => {
   const line = (quantity: string, price: string) =>
     lineUnits({ description: "Design", quantity, price }, 6);
@@ -204,7 +204,7 @@ describe("lineUnits", () => {
   });
 });
 
-// D-80: the close a due date sets decides whether a late client's payment is paid or held for them.
+// D-80.
 describe("dueCheckoutDate", () => {
   it("is the due date plus 60 days, across month, year and leap-day boundaries", () => {
     expect(addDays("2026-01-31", 1)).toBe("2026-02-01");
@@ -289,7 +289,7 @@ describe("restartFrom", () => {
       options: [option],
       deposits: [{ ...deposit, amount: "1250000" }],
     };
-    // R-91: the same order, so the same PO number, title, note and return link; dates are the new invoice's own.
+    // R-91.
     const start = {
       payWith: "fixed",
       picked: `84532:${open.token}`,
@@ -300,7 +300,7 @@ describe("restartFrom", () => {
       client: { name: "Bob Ltd", email: "bob@example.com", address: "", country: "", taxId: "" },
       reminders: false,
     };
-    // R-93: the price agreed for the whole amount; it does not describe the rest.
+    // R-93: the agreed price does not describe the rest.
     const agreed = { currency: "EUR", amount: "4.6", date: "2026-10-01" };
     expect(restartFrom(partly, client, false, undefined)).toEqual({
       ...start,
@@ -320,7 +320,7 @@ describe("restartFrom", () => {
     });
   });
 
-  // R-97: a duplicate keeps reminders the owner had on, unless the client stopped them; the rest starts without.
+  // R-97.
   it("copies reminders that are on and not stopped, only to a duplicate", () => {
     const on = { on: true, stoppedAt: null, emails: [] };
     expect(restartFrom(open, undefined, false, on).reminders).toBe(true);
@@ -352,8 +352,7 @@ describe("restartFrom", () => {
     });
   });
 
-  // R-88: lines are in the invoice's own option's base units, which can have other decimals than the option the client
-  // locked; 1 USD per token (D-75), so the copied prices read the same either way.
+  // R-88; 1 USD per token (D-75), so the copied prices read the same either way.
   it("copies items in the invoice's own option's decimals when the client locked another", () => {
     const dai = {
       ...option,

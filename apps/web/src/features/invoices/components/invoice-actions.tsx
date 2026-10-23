@@ -31,18 +31,14 @@ export interface InvoiceActionsProps {
   payToken: string | null;
   number: string;
   noun: string;
-  /** The pay link still takes money: it can be copied and opened. */
   payable: boolean;
-  /** Nothing paid yet, on any option (R-79): it can be canceled. */
+  /** Nothing paid yet, on any option (R-79). */
   cancelable: boolean;
-  // Called once canceled, so the page can move keyboard focus: the dialog and its trigger go away with the status.
+  // The page moves keyboard focus: the dialog and its trigger go away with the status.
   onCanceled: () => void;
 }
 
-// The invoice's actions behind one More actions menu: copy and open the pay link while it takes money, duplicate it
-// (R-91), and cancel before any money (R-79, D-79), confirmed in a dialog because it can't be undone. Copying keeps the
-// menu open, so the item itself says it worked; if the clipboard refuses, the whole link shows there to select. Keep
-// closes the native dialog through its form.
+// Duplicate (R-91); cancel before any money (R-79, D-79). Copy keeps the menu open: the item says it worked.
 export function InvoiceActions({
   profileId,
   invoiceId,

@@ -12,8 +12,7 @@ const COUNTRIES = [
 describe("ComboboxField", () => {
   afterEach(() => cleanup());
 
-  // The search decides what Enter picks: a label that starts with the words must come first, and accents must not stop
-  // a match (the browser tests type plain ASCII names only).
+  // The browser tests type plain ASCII names only, so accents are covered here.
   it("puts a label that starts with the search first, ignores accents, and picks with Enter", () => {
     // jsdom has no layout, and the list scrolls its active option into view.
     Element.prototype.scrollIntoView = vi.fn();

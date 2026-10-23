@@ -40,9 +40,8 @@ const (
 	amount = "5000000"
 )
 
-// TestMoneyLoop: create an invoice through the API, pay it on Anvil, and watch it go detected -> confirmed ->
-// paid -> settled through the worker and signer; the ledger then equals the chain. The same request again gives
-// the same invoice.
+// TestMoneyLoop pays an invoice on Anvil and follows it to settled through the worker and signer; the ledger then
+// equals the chain.
 func TestMoneyLoop(t *testing.T) {
 	ctx := context.Background()
 	st := newStack(t)
@@ -62,7 +61,6 @@ func TestMoneyLoop(t *testing.T) {
 	}
 	id, pay, receive := created["invoiceId"].(string), created["payToken"].(string), created["receiveAddress"].(string)
 
-	// Every state the API shows on the way, in order: the invoice's, and its deposit's with blocks left.
 	var seen, deposit []string
 	note := func(list *[]string, state string) {
 		if len(*list) == 0 || (*list)[len(*list)-1] != state {
@@ -103,7 +101,6 @@ func TestMoneyLoop(t *testing.T) {
 		t.Fatal("the rate-limited RPC refused no request: the loop did not meet a 429")
 	}
 	t.Logf("the first RPC answered %d of %d requests with 429", refused, len(limited.Calls()))
-	// The API names the signer's settle transaction: a call to the receive address.
 	hash, _ := get(t, api+"/v1/invoices/"+pay)["settlementTxHash"].(string)
 	settleTx, _, err := ethclient.NewClient(anvil.RPC).TransactionByHash(ctx, gethcommon.HexToHash(hash))
 	if err != nil || settleTx.To() == nil || !strings.EqualFold(settleTx.To().Hex(), receive) {
@@ -124,7 +121,6 @@ func TestMoneyLoop(t *testing.T) {
 		}
 	}
 
-	// The ledger equals the chain: the receive address is empty, the creator holds the amount.
 	balance := ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: ethclient.NewClient(anvil.RPC)})
 	for holder, want := range map[string]int64{receive: 0, wallet: 5000000} {
 		got, _, err := balance(ctx, chaintest.ChainID, token, holder)
@@ -142,8 +138,7 @@ func TestMoneyLoop(t *testing.T) {
 		t.Fatalf("ledger receiver %d owed %d held %d (%v), want all 0 like the chain", receiver, owed, held, err)
 	}
 
-	// The API shows the creator's money: the wallet holds the amount at the finalized block, nothing pending or held,
-	// and the invoice and its deposit are in the activity.
+	// The wallet's balance is read at the finalized block.
 	anvil.Mine(2)
 	money := authed(t, api+"/v1/profiles/"+profile+"/balances", privy)
 	tokens, _ := money["tokens"].([]any)
@@ -158,7 +153,6 @@ func TestMoneyLoop(t *testing.T) {
 		t.Fatalf("activity %v, want the deposit then the invoice", items)
 	}
 
-	// The same request with the same key: the same invoice, still one.
 	status, again := post(t, api+"/v1/profiles/"+profile+"/invoices", privy, "gate-1", body)
 	if status != http.StatusOK || again["invoiceId"] != id {
 		t.Fatalf("same key again: %d %v, want 200 with %s", status, again["invoiceId"], id)
@@ -169,8 +163,7 @@ func TestMoneyLoop(t *testing.T) {
 	}
 }
 
-// stack is the api, a database with the gate's user and freelancer profile, and an Anvil chain behind three RPCs, the
-// first of which answers every third request with 429. Tests start the worker and signer themselves.
+// stack runs the api; tests start the worker and signer themselves.
 type stack struct {
 	anvil          *chaintest.Anvil
 	limited        *chaintest.Proxy
@@ -193,8 +186,7 @@ func newStack(t *testing.T) *stack {
 	bin := build(t)
 
 	chains := filepath.Join(t.TempDir(), "chains.json")
-	// Public RPCs only, on three hosts. The first answers every third request with 429, so the binaries' calls must move
-	// to the next RPC; two host names for the one Anvil give the second, independent RPC for balances (D-15).
+	// Two host names for the one Anvil give the second, independent RPC for balances (D-15).
 	limited, requests := anvil.Proxy(), 0
 	limited.Fail(func(chaintest.Call) chaintest.Fault {
 		if requests++; requests%3 == 0 {
@@ -207,7 +199,7 @@ func newStack(t *testing.T) *stack {
 		chaintest.ChainID, limited.URL, anvil.URL, second), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	// The worker reads the ECB's rates (R-110) from this fake, never from the ECB.
+	// The worker's ECB rates (R-110).
 	ecbFake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `<Envelope><Cube><Cube time="2026-10-16"><Cube currency="USD" rate="1.1253"/></Cube></Cube></Envelope>`)
 	}))
@@ -253,7 +245,7 @@ func newStack(t *testing.T) *stack {
 			"ECB_RATES_URL="+ecbFake.URL))}
 }
 
-// waitScanned waits for the worker's first scan: invoices are made only once a chain is watched.
+// waitScanned: invoices are made only once a chain is watched.
 func (s *stack) waitScanned(t *testing.T) {
 	t.Helper()
 	waitFor(t, "the worker's first scan", func() bool {
@@ -262,7 +254,6 @@ func (s *stack) waitScanned(t *testing.T) {
 	})
 }
 
-// build compiles the three binaries once for this test.
 func build(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -273,8 +264,6 @@ func build(t *testing.T) string {
 	return dir
 }
 
-// start runs a binary with only the given environment; its output is shown if the test fails. stop ends it early, as
-// a deploy or a crash would.
 func start(t *testing.T, bin, name string, env []string) (stop func()) {
 	t.Helper()
 	var logs bytes.Buffer
@@ -326,7 +315,6 @@ func get(t *testing.T, url string) map[string]any {
 	return getAs(t, url, "")
 }
 
-// authed is a GET as the gate's user.
 func authed(t *testing.T, url string, privy *authtest.Privy) map[string]any {
 	t.Helper()
 	return getAs(t, url, token(t, privy))
@@ -379,7 +367,6 @@ func waitFor(t *testing.T, what string, ok func() bool) {
 	}
 }
 
-// inOrder reports whether want appears in seen in this order (other states may come between).
 func inOrder(seen []string, want ...string) bool {
 	i := 0
 	for _, s := range seen {

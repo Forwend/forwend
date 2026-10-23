@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 export const SEARCH_PARAM = "q";
 /** The API's longest search in characters. */
 export const SEARCH_MAX = 100;
-/** How long the search waits after the last key before it asks the API. */
 export const SEARCH_DELAY_MS = 300;
 
 /** The query string with name set to value, or removed when value is empty: "?a=1&q=x", or "" when none is left. */
@@ -17,7 +16,6 @@ export function withParam(query: string, name: string, value: string): string {
   return next ? `?${next}` : "";
 }
 
-/** The search as the API takes it: trimmed and cut to its limit, undefined when blank (no search). */
 export function apiSearch(search: string): string | undefined {
   return search.trim().slice(0, SEARCH_MAX) || undefined;
 }
@@ -28,12 +26,8 @@ function setParam(name: string, value: string) {
   window.history.replaceState(null, "", `${pathname}${withParam(search, name, value)}${hash}`);
 }
 
-/**
- * A list's filter and search, kept in the URL (?<filterParam>= and ?q=) so reload and Back keep them. `filter` is
- * all unless the URL names one of filters; `search` is the field's text, which reaches ?q SEARCH_DELAY_MS after the
- * last change. `apiFilter` and `apiQuery` are what the API takes (undefined: all, no search); `filtered` is whether
- * either narrows the list, and `key` names the pair.
- */
+/** A list's filter and search, kept in the URL so reload and Back keep them; the search reaches ?q SEARCH_DELAY_MS
+ * after the last change. `apiFilter` and `apiQuery` are undefined for all and no search. */
 export function useListFilters<F extends string, All extends F>(
   filterParam: string,
   filters: readonly F[],
@@ -83,10 +77,7 @@ export function useListFilters<F extends string, All extends F>(
   };
 }
 
-/**
- * The answer a list shows when "Show more" asks again with a larger limit: the current one, else, while that loads,
- * the last one under the same filter and search (key). Never the answer to another filter or search.
- */
+/** While "Show more" loads, the last answer under the same key (filter and search); never another key's answer. */
 export function useShownData<T>(
   key: string,
   current: T | undefined,

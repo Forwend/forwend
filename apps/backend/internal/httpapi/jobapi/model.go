@@ -30,7 +30,7 @@ type acceptBody struct {
 	Email string `json:"email"`
 }
 
-// publicJobJSON is a job as its client's link shows it: no client block and no typed email.
+// The client's link view: no client block and no typed email.
 type publicJobJSON struct {
 	Title        string        `json:"title"`
 	Scope        *string       `json:"scope"`
@@ -42,12 +42,11 @@ type publicJobJSON struct {
 	CreatedAt    string        `json:"createdAt"`
 }
 
-// jobJSON is a job read by its owner: the public view plus its id, link token, client and the typed email.
 type jobJSON struct {
 	JobID string `json:"jobId"`
 	Token string `json:"token"`
 	publicJobJSON
-	// The public payments with each change's typed email; it shadows the embedded field.
+	// Shadows publicJobJSON's Payments, adding each change's typed email.
 	Payments      []ownerPaymentJSON `json:"payments"`
 	Client        clientJSON         `json:"client"`
 	AcceptedEmail *string            `json:"acceptedEmail"`
@@ -75,8 +74,7 @@ type paymentJSON struct {
 	AcceptedAt   *string `json:"acceptedAt"`
 }
 
-// ownerPaymentJSON adds, for the owner only, the client's typed email on an accepted change and whether the client
-// was emailed about the change (R-107).
+// Owner only (R-107).
 type ownerPaymentJSON struct {
 	paymentJSON
 	AcceptedEmail *string `json:"acceptedEmail"`

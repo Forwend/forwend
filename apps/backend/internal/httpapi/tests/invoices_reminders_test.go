@@ -10,8 +10,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 )
 
-// R-96, D-69: the owner turns reminders on for an open invoice with a due date and a client email; each worker round
-// queues the latest due step once; the client's stop link stops them for good, and the owner can't turn them on again.
+// R-96, D-69.
 func TestPaymentReminders(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -93,7 +92,6 @@ func TestPaymentReminders(t *testing.T) {
 		t.Fatalf("bell events %v: reminders go to the client, not the owner", r.body)
 	}
 
-	// The client's stop link: the same answer twice, then nothing more is queued and the owner can't turn them on.
 	var token string
 	if err := e.pool.QueryRow(t.Context(), "SELECT stop_token FROM invoice_reminders WHERE invoice_id = $1", early).
 		Scan(&token); err != nil {
@@ -121,7 +119,6 @@ func TestPaymentReminders(t *testing.T) {
 		t.Fatal("the owner's read does not say the client stopped them")
 	}
 
-	// On needs a due date, a client email and an invoice the payer can still pay; off and on are both required words.
 	closed := create("closed", day(-1), "ap@client.example")
 	e.closeCheckout(t, closed)
 	for _, c := range []struct{ id, code string }{
@@ -144,8 +141,7 @@ func TestPaymentReminders(t *testing.T) {
 	}
 }
 
-// R-97: a saved client keeps whether its new invoices start with reminders on; a create with reminders turns them on
-// at once, needs a due date and a client email, and the choice is part of the request an Idempotency-Key names.
+// R-97.
 func TestRemindersFromCreate(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

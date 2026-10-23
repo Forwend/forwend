@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# Deploys the factory (idempotent) and the probe receiver on one testnet. With a token and an amount it also runs a
-# real invoice: plain transfer with 10% extra, deploy, settle by the executor, refund of the extra by the refund
-# authority. Reads keys from packages/contracts/.env (git-ignored) and never prints them.
-# Usage: script/deploy.sh <chain> [<token> <amount in base units>]
+# Usage: script/deploy.sh <chain> [<token> <amount in base units>]; with a token it also runs a real invoice flow.
+# Reads keys from packages/contracts/.env and never prints them.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 set -a && . ./.env && set +a

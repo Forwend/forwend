@@ -19,7 +19,6 @@ export interface ProfileSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// The phone switcher: the sidebar's profile choices, opened from More in a bottom sheet.
 export function ProfileSheet({
   profiles,
   active,
@@ -27,8 +26,7 @@ export function ProfileSheet({
   open,
   onOpenChange,
 }: ProfileSheetProps) {
-  // The sheet belongs to the phone layout: close it when the window turns desktop-wide (a tablet rotated), or it
-  // would stay open over the desktop page.
+  // Close when the window turns desktop-wide (a tablet rotated), or the sheet stays over the desktop page.
   useEffect(() => {
     const desktop = window.matchMedia(DESKTOP_QUERY);
     const onChange = () => desktop.matches && onOpenChange(false);

@@ -19,7 +19,7 @@ export const jobsApi = apiSlice
   .enhanceEndpoints({ addTagTypes: [JOBS_TAG, PUBLIC_JOB_TAG] })
   .injectEndpoints({
     endpoints: (build) => ({
-      /** The profile's jobs, newest first (at most 1000, so one request). */
+      /** At most 1000, so one request holds them all. */
       listJobs: build.query<JobSummary[], string>({
         query: (profileId) => jobsUrl(profileId),
         rawResponseSchema: jobsSchema,
@@ -99,7 +99,7 @@ export const jobsApi = apiSlice
         responseSchema: jobSchema,
         invalidatesTags: [JOBS_TAG],
       }),
-      /** Withdraws the change waiting for the client (R-105). */
+      /** R-105. */
       withdrawChange: build.mutation<void, { profileId: string; jobId: string; position: number }>({
         query: ({ profileId, jobId, position }) => ({
           url: `${jobUrl(profileId, jobId)}/payments/${position}`,

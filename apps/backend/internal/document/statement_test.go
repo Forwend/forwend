@@ -73,7 +73,7 @@ func pages(t *testing.T, pdf []byte) []string {
 	}
 }
 
-// R-112: the same statement always gives the same bytes, so a copy can be compared with the original.
+// R-112: a copy can be compared with the original.
 func TestStatementIsTheSameEachTime(t *testing.T) {
 	first, err := StatementPDF(statement(3))
 	if err != nil {
@@ -85,8 +85,7 @@ func TestStatementIsTheSameEachTime(t *testing.T) {
 	}
 }
 
-// R-112: however many lines, each page that lists payments or the total starts with the table's header, a line never
-// breaks across pages, and the total keeps its label and both amounts on one page.
+// R-112.
 func TestStatementPagesKeepTheTableTogether(t *testing.T) {
 	// Lines of every count over several pages, under holder blocks of 1 to 4 address lines: the table then starts at
 	// different heights, so the total meets the end of the first page too.

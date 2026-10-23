@@ -20,21 +20,15 @@ export interface LineItemsProps {
   items: readonly LineDraft[];
   onChange: (items: LineDraft[]) => void;
   decimals: number;
-  /** The amount's unit: the token's symbol, or USD when the client chooses. */
   unit: string;
-  /** By item id, set when Create finds a line it can't send. */
   errors: Readonly<Record<string, LineFieldErrors>>;
-  /** The API's word on the lines as a whole. */
   error?: string;
 }
 
-// R-88: the invoice's items, each a description, a quantity and a unit price, with its amount and the total, which
-// becomes the invoice's amount. Phones stack each item; from small screens up the items line up under one header row,
-// so each field's label is for screen readers only there.
+// R-88: the items' total becomes the invoice's amount.
 export function LineItems({ id, items, onChange, decimals, unit, errors, error }: LineItemsProps) {
   const list = useRef<HTMLUListElement>(null);
-  // Add item and the remove buttons take away the button that had focus: it moves to the new row, or to the row that
-  // took the removed one's place (else the one before).
+  // Add and remove take away the focused button: focus moves to the new row, or the one in its place.
   const focusRow = (row: number) =>
     list.current?.querySelectorAll("li")[row]?.querySelector("input")?.focus();
   const set = (itemId: string, field: LineField, value: string) =>

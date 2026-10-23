@@ -13,7 +13,6 @@ struct InvoiceTerms {
     uint256 intendedChainId;
 }
 
-/// Read-only snapshot of one invoice, for the backend, support, explorers and Safe owners.
 struct InvoiceStatus {
     address receiver; // predicted address; equals the deployed one
     bool deployed;

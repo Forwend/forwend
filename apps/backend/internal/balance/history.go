@@ -11,27 +11,21 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Bounds of a balance history, in days.
 const (
 	DefaultDays = 30
 	MaxDays     = 365
 )
 
-// ErrInvalid wraps a days value out of range.
 var ErrInvalid = errors.New("invalid balance history request")
 
-// Point is one UTC day of a history. At is the day's end (00:00 UTC of the next day), or now for today. The day's
-// bucket runs from the previous point (for the first, the day's start), included, to At, excluded: a transfer at
-// 00:00 UTC belongs to the day that starts then. Today's has no end, so it holds every transfer the current balance
-// includes. The USD fields count each token as 1 USD with 2 decimals; "" when a wallet balance is missing, as in
-// Balances.
+// At is the day's end (00:00 UTC of the next day), or now for today; a day's bucket runs from the previous At,
+// included, to At, excluded. USD fields count 1 USD per token, 2 decimals; "" when a wallet balance is missing.
 type Point struct {
 	At                                 time.Time
 	EstimatedUSD, ReceivedUSD, SentUSD string
 }
 
-// TokenHistory is one token's series, one value per point: the wallet balance at At, and the sum of final transfers
-// in and out during its bucket. All three are nil when the current wallet balance is missing.
+// One value per point: the balance at At and the final transfers in its bucket; all nil when the balance is missing.
 type TokenHistory struct {
 	chain.Asset
 	Balances, Received, Sent []*big.Int
@@ -42,10 +36,8 @@ type History struct {
 	Tokens []TokenHistory
 }
 
-// History returns the profile's balances over the last days UTC days, today included, oldest first (R-38). The last
-// balance is the current one from Of; each earlier one undoes the recorded wallet transfers after it that the current
-// balance includes: not reorged and at or below the finalized block it was read at. The caller has checked that the
-// user owns the profile.
+// History covers the last days UTC days, oldest first (R-38): each earlier balance undoes the wallet transfers the
+// current one includes. The caller has checked that the user owns the profile.
 func (s *Service) History(ctx context.Context, profileID string, days int, now time.Time) (History, error) {
 	if days < 1 || days > MaxDays {
 		return History{}, fmt.Errorf("%w: days must be 1 to %d", ErrInvalid, MaxDays)
@@ -61,9 +53,8 @@ func (s *Service) History(ctx context.Context, profileID string, days int, now t
 	}
 	h.Points[days-1].At = now.UTC()
 
-	// Each token's final transfers in and out per day, summed in the database: dust sent to the wallet must not make
-	// this read every row (R-118). Only transfers at or below the block the token's balance was read at count, as the
-	// balance includes those.
+	// Summed in the database: dust sent to the wallet must not make this read every row (R-118). Only transfers at or
+	// below the block a balance was read at count, as the balance includes those.
 	var chains, blocks []int64
 	var tokens []string
 	for _, t := range current.Tokens {
@@ -132,7 +123,6 @@ func (s *Service) History(ctx context.Context, profileID string, days int, now t
 	return h, nil
 }
 
-// usd sums one amount per token at 1 USD per token, cut to cents.
 func usd(tokens []TokenHistory, amount func(TokenHistory) *big.Int) string {
 	sum := new(big.Rat)
 	for _, t := range tokens {

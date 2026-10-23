@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Rounds keeps the signer's RPC clients in step with the enabled chains and runs the signer once per round.
 type Rounds struct {
 	pool    *pgxpool.Pool
 	specs   map[uint64]chain.Spec
@@ -22,8 +21,7 @@ type Rounds struct {
 	signer  *Signer
 }
 
-// NewRounds signs with key on the chains in specs, through their Infura keys (where a chain lists Infura) and public
-// RPCs, sending each at most rate calls per second.
+// rate is the most calls per second sent to each RPC.
 func NewRounds(pool *pgxpool.Pool, key *ecdsa.PrivateKey, specs map[uint64]chain.Spec, keys []string, rate float64,
 	held func(context.Context) error) *Rounds {
 	clients, seconds := map[uint64]*ethclient.Client{}, map[uint64]*ethclient.Client{}
@@ -33,8 +31,7 @@ func NewRounds(pool *pgxpool.Pool, key *ecdsa.PrivateKey, specs map[uint64]chain
 		seconds: seconds, signer: signer}
 }
 
-// Round serves the enabled chains, then settles what is due. A failing or rate-limited RPC is rested and its calls
-// move to the chain's next one (chain.NewRPCs).
+// A failing or rate-limited RPC is rested and its calls move to the chain's next one (chain.NewRPCs).
 func (r *Rounds) Round(ctx context.Context) {
 	ids, err := chain.Enabled(ctx, r.pool)
 	if err != nil {
@@ -79,7 +76,6 @@ func (r *Rounds) close(id uint64) {
 	delete(r.seconds, id)
 }
 
-// Close closes every chain's RPC clients.
 func (r *Rounds) Close() {
 	for id := range r.rpcs {
 		r.close(id)

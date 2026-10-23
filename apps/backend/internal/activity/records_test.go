@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// R-108: each transfer says what it was, and money in that Forwend can't classify takes the user's label.
+// R-108.
 func TestTransferClassification(t *testing.T) {
 	pool := open(t)
 	ctx := context.Background()
@@ -38,7 +38,6 @@ func TestTransferClassification(t *testing.T) {
 		SELECT $2, id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
 		    recipient_address, receive_method, factory_address, $3, idempotency_key, request_hash
 		FROM invoices WHERE id = $1`, invoice, fmt.Sprintf("0x%064x", 3), fmt.Sprintf("0x33%038x", 3))
-	// Another user's wallet.
 	const theirs = "0x000000000000000000000000000000000000000d"
 	exec(t, pool, `WITH u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:bob') RETURNING id),
 		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'personal' FROM u RETURNING id)
@@ -125,8 +124,7 @@ func TestTransferClassification(t *testing.T) {
 	}
 }
 
-// R-110: with a records currency each transfer has its value at the ECB's rates of the latest day on or before its
-// UTC day, rounded half up to the currency's decimals; without a currency or a rate it has none.
+// R-110.
 func TestRecordsValue(t *testing.T) {
 	pool := open(t)
 	ctx := context.Background()
@@ -217,7 +215,6 @@ func TestRecordsValue(t *testing.T) {
 	}
 }
 
-// collect is EachTransfer's transfers in a slice.
 func collect(s *Service, profile string, from, to time.Time) ([]Transfer, error) {
 	var out []Transfer
 	err := s.EachTransfer(context.Background(), profile, from, to, func(t Transfer) error {

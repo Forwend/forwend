@@ -4,8 +4,7 @@ import { blockingViolations } from "./axe";
 import { SETTLED_INVOICE, TRANSFERS } from "./sample-api";
 import { session } from "./session";
 
-// First run and checklists (R-50) on a mocked API: a user who has not made the first-run choice yet, with a personal
-// profile; POST /v1/me/onboarding adds the profiles the choices need, as the backend does.
+// R-50. The mock's POST /v1/me/onboarding adds the profiles the choices need, as the backend does.
 const PERSONAL_ID = "33333333-3333-3333-3333-333333333333";
 const FREELANCER_ID = "44444444-4444-4444-4444-444444444444";
 const MERCHANT_NEW_ID = "55555555-5555-5555-5555-555555555555";
@@ -91,18 +90,15 @@ test("a new user picks what they want to do once and lands on the new profile wi
   await mockNewUser(page, user);
   await page.goto("/app");
 
-  // The first run has its own address and title.
   await expect(page).toHaveURL("/app/onboarding?next=%2Fapp");
   await expect(page).toHaveTitle("Forwend | Get started");
   await expect(
     page.getByRole("heading", { level: 1, name: "What do you want to do?" }),
   ).toBeVisible();
-  // The first run stands alone: no sidebar until the choice is made.
   await expect(page.locator("aside")).toHaveCount(0);
   const choices = page.getByRole("group", { name: "Uses" });
   await expect(choices.getByRole("checkbox")).toHaveCount(4);
   expect(await blockingViolations(page)).toEqual([]);
-  // A card is its checkbox's label: a click anywhere on it toggles it.
   const pick = (title: string) => choices.getByText(title, { exact: true }).click();
   const box = (title: string) => choices.getByRole("checkbox", { name: new RegExp(`^${title}`) });
   await pick("Get paid by clients");
@@ -114,7 +110,6 @@ test("a new user picks what they want to do once and lands on the new profile wi
   expect(await blockingViolations(page)).toEqual([]);
   await page.getByRole("button", { name: "Continue" }).click();
 
-  // The freelancer profile it made opens, with its checklist computed from the (empty) data.
   const sidebar = page.locator("aside");
   await expect(
     sidebar.getByRole("button", { name: /^Switch profile: (.+ )?Freelancer$/ }),
@@ -136,7 +131,6 @@ test("a new user picks what they want to do once and lands on the new profile wi
   await expect(step(page, "Get an invoice paid")).toContainText("Not done");
   expect(await blockingViolations(page)).toEqual([]);
 
-  // Billing details: the step's page saves them, and the step is done from the data.
   await step(page, "Add billing details").getByRole("link", { name: "Add details" }).click();
   await expect(page).toHaveURL("/app/billing-details");
   await page.getByRole("button", { name: "Save details" }).click();
@@ -157,7 +151,6 @@ test("a new user picks what they want to do once and lands on the new profile wi
   expect(user.billing).toMatchObject({ name: "Ada Design", country: "DE", taxId: null });
   await expect(step(page, "Add billing details")).toContainText("Done");
 
-  // Made once: a reload goes straight to the app.
   await page.reload();
   await expect(sidebar.getByRole("button", { name: /^Switch profile/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "What do you want to do?" })).toHaveCount(0);
@@ -189,7 +182,6 @@ test("on a phone a new user skips the first run and gets the personal checklist"
   expect(user.profiles).toHaveLength(1);
   await expect(checklist(page).getByRole("listitem")).toHaveCount(4);
   await expect(step(page, "Add billing details")).toHaveCount(0);
-  // A personal profile's first invoice is a request, made on its own page.
   await step(page, "Request money").getByRole("button", { name: "Request", exact: true }).click();
   await expect(page).toHaveURL("/app/invoices/new");
   await expect(page.getByRole("heading", { level: 1, name: "Request money" })).toBeAttached();
@@ -215,7 +207,6 @@ test("the first run keeps the page a new user asked for, and is closed once done
   await expect(page).toHaveURL("/app/invoices");
   await expect(page.locator("aside")).toBeVisible();
 
-  // Done: the first run's address goes to the overview, also from the back button.
   await page.goto("/app/onboarding");
   await expect(page).toHaveURL("/app");
   await page.goBack();
@@ -238,7 +229,6 @@ test("the checklist reads its steps from the data, and a skipped step or a close
   await mockNewUser(page, user);
   await page.goto("/app");
 
-  // A paid request: requested and paid are done; money still confirming, or sent out, is not received.
   await expect(step(page, "Request money")).toContainText("Done");
   await expect(step(page, "Get a request paid")).toContainText("Done");
   await expect(step(page, "Request money").getByRole("button")).toHaveCount(0);
@@ -251,7 +241,6 @@ test("the checklist reads its steps from the data, and a skipped step or a close
   await expect(page.getByRole("dialog", { name: /Receive/ })).toBeVisible();
   await page.keyboard.press("Escape");
 
-  // Skipping a step hides it on this browser, also after a reload.
   if (!passkeyDone) {
     await step(page, "Add a passkey").getByRole("button", { name: "Skip: Add a passkey" }).click();
     await expect(step(page, "Add a passkey")).toHaveCount(0);
@@ -260,13 +249,11 @@ test("the checklist reads its steps from the data, and a skipped step or a close
     await expect(step(page, "Add a passkey")).toHaveCount(0);
   }
 
-  // Once the money is final the only step left is done, so the card hides.
   user.transfers = [{ ...TRANSFERS[0], direction: "in", status: "confirmed" }];
   await page.reload();
   await expect(page.getByRole("region", { name: "Total balance" })).toBeVisible();
   await expect(checklist(page)).toHaveCount(0);
 
-  // Closing the card hides it for good on this browser.
   user.transfers = [];
   await page.reload();
   await expect(checklist(page)).toBeVisible();

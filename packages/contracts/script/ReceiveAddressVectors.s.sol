@@ -5,10 +5,8 @@ import {Script} from "forge-std/Script.sol";
 import {InvoiceReceiverFactory} from "../src/InvoiceReceiverFactory.sol";
 import {InvoiceTerms} from "../src/InvoiceTypes.sol";
 
-/// Writes vectors/receive-address.json: terms and factory.predict(terms) for the v1 factory, deployed like Deploy does
-/// (CREATE2 deployer, same salt) with the testnet refund authority and first executor. Takes no environment variables:
-/// forge runs test suites in parallel and Deploy.t.sol sets them. The Go address code is tested against this file.
-/// Regenerate with `pnpm vectors` in this package.
+/// Writes vectors/receive-address.json for the Go address tests; regenerate with `pnpm vectors`. Reads no environment
+/// variables: forge runs test suites in parallel and Deploy.t.sol sets them.
 contract ReceiveAddressVectors is Script {
     address internal constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
     bytes32 internal constant SALT = keccak256("forwend.invoice-receiver-factory.v1");

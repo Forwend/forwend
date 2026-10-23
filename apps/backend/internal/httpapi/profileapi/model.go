@@ -37,7 +37,6 @@ type billingDetailsBody struct {
 	Email   string `json:"email"`
 }
 
-// billingDetailsJSON is a profile's billing details, as GET answers them.
 type billingDetailsJSON struct {
 	Name      string  `json:"name"`
 	Address   string  `json:"address"`
@@ -54,7 +53,7 @@ func toBillingDetailsJSON(d profile.BillingDetails) billingDetailsJSON {
 	}
 }
 
-// clientBody is the PUT /v1/profiles/{profileId}/clients/{clientId} body (R-86); empty means none.
+// R-86: an empty field means none.
 type clientBody struct {
 	Name      string `json:"name"`
 	Email     string `json:"email"`
@@ -65,7 +64,6 @@ type clientBody struct {
 	Reminders bool   `json:"reminders"`
 }
 
-// clientJSON is a saved client; a field it doesn't have is null.
 type clientJSON struct {
 	ClientID  string  `json:"clientId"`
 	Name      string  `json:"name"`

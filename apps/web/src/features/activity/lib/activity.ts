@@ -7,7 +7,6 @@ import {
 } from "@/features/activity/constants/activity";
 import type { ActivityItem } from "@/features/activity/types/activity";
 
-// API payment statuses (openapi.yaml, Invoice.paymentStatus) to the statuses users see.
 const INVOICE_STATUSES: Readonly<Record<string, PaymentStatus>> = {
   [API_PAYMENT_STATUSES.open]: PAYMENT_STATUS.open,
   [API_PAYMENT_STATUSES.detected]: PAYMENT_STATUS.confirming,
@@ -18,13 +17,7 @@ const INVOICE_STATUSES: Readonly<Record<string, PaymentStatus>> = {
   [API_PAYMENT_STATUSES.canceled]: PAYMENT_STATUS.canceled,
 };
 
-/**
- * What an activity row shows: a deposit is "Confirming" until its block is final, then "Confirmed"; an invoice shows
- * "Settled" once its money reached the wallet, otherwise its payment status. Unknown values show as "Detected" rather
- * than claiming money arrived. The API keeps an invoice open until the chain is final past expiry; `closed` says sooner
- * that it can no longer be paid, so open and partly paid read as expired then, as the API's list filter files them
- * (R-77).
- */
+/** Unknown values read "Detected", never as arrived money; a closed invoice reads expired (R-77). */
 export function activityStatus(
   item: Pick<ActivityItem, "kind" | "status" | "settlementStatus" | "closed">,
 ): PaymentStatus {

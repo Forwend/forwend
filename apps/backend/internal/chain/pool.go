@@ -23,9 +23,8 @@ import (
 const (
 	// AttemptTimeout bounds one request to one endpoint: a slower endpoint rests and the request moves on.
 	AttemptTimeout = 5 * time.Second
-	// RestBase is the rest of an endpoint after one failure; each failure in a row doubles it, up to RestMax.
-	RestBase = time.Second
-	RestMax  = 5 * time.Minute
+	RestBase       = time.Second
+	RestMax        = 5 * time.Minute
 )
 
 type endpoint struct {
@@ -43,7 +42,7 @@ type endpoint struct {
 
 type pool struct {
 	chainID uint64
-	perCall time.Duration // 1 / the rate: the pause one call takes from an endpoint's pace
+	perCall time.Duration
 	timeout time.Duration // per attempt
 	http    *http.Client
 
@@ -66,9 +65,8 @@ func (r role) RoundTrip(req *http.Request) (*http.Response, error) {
 	return r.p.do(req.Context(), r.second, req.Header, body)
 }
 
-// do sends one request for a role. When an endpoint fails (no answer in time, a connection error, an HTTP error status
-// or a rate-limit answer), it rests and the request goes to the next endpoint at once, at most once per endpoint and
-// once more. Any other answer, a JSON-RPC error such as a revert included, is the call's and is returned as it is.
+// do rests a failing endpoint (timeout, connection or HTTP error, rate limit) and moves the request to the next,
+// up to once per endpoint and once more. Any other answer, a JSON-RPC revert included, is returned as it is.
 func (p *pool) do(ctx context.Context, second bool, header http.Header, body []byte) (*http.Response, error) {
 	calls := 1
 	if b := bytes.TrimSpace(body); len(b) > 0 && b[0] == '[' {
@@ -91,7 +89,7 @@ func (p *pool) do(ctx context.Context, second bool, header http.Header, body []b
 			return nil, werr
 		}
 		if !ready || p.resting(e) {
-			continue // it was resting, or began to while this request waited its turn: pick again, the roles may have moved
+			continue // it rests, or began to while this request waited: pick again
 		}
 		tries++
 		res, err = p.send(ctx, e, header, body)
@@ -116,10 +114,8 @@ func (p *pool) do(ctx context.Context, second bool, header http.Header, body []b
 	return nil, err
 }
 
-// pick returns the endpoint for a role's next request and when it may start: the first host in list order of the
-// role's own hosts with an endpoint that is not resting. Within the host the endpoint free soonest is taken and the
-// request's calls are added to its pace. When every endpoint the role may use rests, ready is false and at is when the
-// first one is back.
+// pick takes the role's first non-resting host in list order and its endpoint free soonest, adding calls to its
+// pace. When every endpoint rests, ready is false and at is when the first one is back.
 func (p *pool) pick(second bool, calls int) (e *endpoint, at time.Time, ready bool, err error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -192,7 +188,6 @@ func (p *pool) done(e *endpoint, failure error) {
 	slog.Warn("RPC rests", "chain", p.chainID, "rpc", e.name, "for", rest.Round(time.Millisecond), "err", failure)
 }
 
-// answered counts the hosts with an endpoint that matched the chain ID and answered its last request, and all hosts.
 func (p *pool) answered() (ok, all int) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -206,7 +201,6 @@ func (p *pool) answered() (ok, all int) {
 	return len(good), len(hosts)
 }
 
-// serves reports whether a role still has a host not found serving another chain.
 func (p *pool) serves(second bool) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -224,8 +218,7 @@ func (p *pool) resting(e *endpoint) bool {
 	return e.restUntil.After(time.Now())
 }
 
-// restFor is the rest after failures in a row. Its second half is random (0 ≤ jitter < 1), so endpoints that failed
-// together don't all come back at once.
+// restFor's second half is random (0 ≤ jitter < 1) so endpoints that failed together don't come back at once.
 func restFor(failures int, jitter float64) time.Duration {
 	d := RestMax
 	if failures <= 16 {
@@ -363,9 +356,8 @@ func outage(raw []byte) string {
 	return ""
 }
 
-// rateLimited reports a JSON-RPC error that means "slow down", not an answer to the call: code 429, -32005 (EIP-1474
-// "limit exceeded", Infura's rate limits), -32007 (QuickNode's request limit), or a message that says so. Infura also
-// answers -32005 when a log query has too many results: that is about the call, and the watcher narrows its range.
+// rateLimited: code 429, -32005 (EIP-1474, Infura), -32007 (QuickNode) or a message saying so. Infura's -32005 for
+// too many log results is about the call (tooLarge), and the watcher narrows its range.
 func rateLimited(code int, message string) bool {
 	m := strings.ToLower(message)
 	if tooLarge(m) {

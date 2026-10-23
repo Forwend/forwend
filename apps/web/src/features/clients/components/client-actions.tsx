@@ -23,12 +23,10 @@ import { APP_ROUTES } from "@/shared/config/routes";
 export interface ClientActionsProps {
   profileId: string;
   client: Client;
-  /** Called once deleted, before the page leaves for the list. */
   onDeleted: () => void;
 }
 
-// The client's actions behind one More actions menu, as on an invoice: Delete, confirmed in a dialog because it can't
-// be undone. Invoices keep their copy of the client, so nothing else changes. Deleting leaves for the list.
+// Invoices keep their copy of the client, so deleting one changes nothing else.
 export function ClientActions({ profileId, client, onDeleted }: ClientActionsProps) {
   const [remove, { isLoading, isError }] = useDeleteClientMutation();
   const toast = useToast();

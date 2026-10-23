@@ -146,7 +146,7 @@ const waiting = payment(3, "Extra page", { proposedAt: "2026-10-19T09:00:00.1234
 afterEach(cleanup);
 
 describe("scope changes", () => {
-  // R-105, R-106: the change the owner proposes, with one key per filled-in form.
+  // R-105, R-106.
   it("proposes a change in cents-exact decimals and retries with the same key", async () => {
     const calls: Call[] = [];
     capture(calls);
@@ -174,7 +174,7 @@ describe("scope changes", () => {
     expect(calls[1]?.key).toBe(calls[0]?.key);
   });
 
-  // R-105: the accept names the change by its proposedAt exactly as read, microseconds and all.
+  // R-105.
   it("accepts a change with the proposedAt it read, untouched", async () => {
     const calls: Call[] = [];
     capture(calls);
@@ -217,7 +217,7 @@ describe("scope changes", () => {
     });
   });
 
-  // R-106: with every agreed payment invoiced, the waiting change is not the next step; Withdraw takes it away.
+  // R-106.
   it("never offers Mark done for a waiting change, and withdraws it", async () => {
     const calls: { method: string; url: string }[] = [];
     vi.stubGlobal(
@@ -246,7 +246,7 @@ describe("scope changes", () => {
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Payments" }));
   });
 
-  // R-107: the toast names the address when the client was emailed; a finished job's 409 says to start a new job.
+  // R-107.
   it("says where the change's link went, and why a finished job takes no change", async () => {
     const emailed = { ...waiting, clientEmailed: true };
     answer(201, {
@@ -261,7 +261,6 @@ describe("scope changes", () => {
     ).toBeTruthy();
   });
 
-  // A refused change makes the page read the job again, which takes the dialog away: the reason is a toast that stays.
   it("says in a toast why a change or the final was refused, and closes the dialog", async () => {
     const dialogOpen = () => document.querySelector("dialog")?.open;
     answer(409, { error: { code: "job_finished", message: "the job's last payment is done" } });
@@ -295,7 +294,7 @@ describe("scope changes", () => {
     expect(dialogOpen()).toBe(false);
   });
 
-  // R-105: the final invoice waits for a waiting change; a finished job takes no change, but a deposit-only one does.
+  // R-105.
   it("holds the final while a change waits, and offers a change only until the job is finished", () => {
     answer(500, {});
     renderJob({
@@ -330,7 +329,7 @@ describe("scope changes", () => {
     expect(screen.getByRole("button", { name: "Propose a change" })).toBeTruthy();
   });
 
-  // R-106: a change withdrawn or replaced before the accept is the page's to say, since its form goes.
+  // R-106.
   it("tells the page when the change it read is gone", async () => {
     answer(404, { error: { code: "job_not_found", message: "job not found" } });
     const onAccepted = vi.fn();

@@ -53,7 +53,6 @@ describe("API schema validation", () => {
       status: "CUSTOM_ERROR",
       error: "responseSchema failed validation",
     });
-    // The log names the endpoint and the field, never the value.
     expect(log).toHaveBeenCalledWith("getBalances: responseSchema failed at tokens.0.wallet");
     expect(String(log.mock.calls)).not.toContain("1.25");
   });

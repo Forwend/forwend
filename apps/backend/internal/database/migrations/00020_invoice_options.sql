@@ -1,9 +1,5 @@
--- Payer chooses (R-56, D-75, D-76): an invoice may accept several tokens and networks. Each accepted option is an
--- invoice row of its own, with its own on-chain id, terms and receive address, so the watcher, the ledger and the
--- signer handle it like any invoice. The first row (main_id NULL) is the invoice people see: its id is the pay link
--- and it holds the number and details; the other options point to it with main_id and share its recipient, expiry and
--- settle deadline. chosen_id on the main row names the option that received money first; money on any other option
--- is held for the payer. A fixed invoice is a main row alone.
+-- Payer chooses (R-56, D-75, D-76): each option is an invoice row of its own. The main row (main_id NULL) is the
+-- one people see; chosen_id names the option paid first, and money on any other option is held for the payer.
 
 -- +goose Up
 ALTER TABLE invoices
@@ -19,7 +15,6 @@ CREATE UNIQUE INDEX invoices_profile_number ON invoices (profile_id, number) WHE
 ALTER TABLE invoices DROP CONSTRAINT invoices_profile_id_idempotency_key_key;
 CREATE UNIQUE INDEX invoices_profile_idempotency_key ON invoices (profile_id, idempotency_key) WHERE main_id IS NULL;
 
--- An option takes its main row's number and no issuer copy; only a main row moves the profile's counter.
 -- +goose StatementBegin
 CREATE OR REPLACE FUNCTION invoices_number() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
@@ -81,8 +76,7 @@ $$;
 CREATE TRIGGER invoices_options BEFORE INSERT OR UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION invoices_options();
 ALTER TABLE invoices ENABLE ALWAYS TRIGGER invoices_options;
 
--- One row per invoice people see: the main row's number and details with the current option's terms and statuses
--- (the chosen option, else the main row's own).
+-- One row per invoice people see: the main row's details with the chosen option's terms, else its own.
 CREATE VIEW invoices_current AS
 SELECT m.id, m.profile_id, m.number, m.title, m.note, m.due_date, m.client_name, m.client_email, m.client_address,
        m.sender_name, m.issuer_name, m.issuer_address, m.issuer_country, m.issuer_tax_id, m.issuer_email, m.created_at,

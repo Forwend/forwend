@@ -49,15 +49,14 @@ export interface NotificationsMenuProps {
   className?: string;
 }
 
-// The icon and tint of each invoice event (R-81): paid and settled are good news, held money is the payer's.
+// R-81.
 const EVENT_LOOK = {
   [INVOICE_EVENTS.paid]: { Icon: CircleCheck, tint: "bg-success-soft text-success" },
   [INVOICE_EVENTS.settled]: { Icon: Wallet, tint: "bg-success-soft text-success" },
   [INVOICE_EVENTS.held]: { Icon: Hand, tint: "bg-warning-soft text-warning" },
 } as const;
 
-// Incoming payments and the profile's invoice events (paid, settled, held money) in one list, newest first. "New"
-// means since the menu was last opened, remembered per profile in this browser.
+// "New" means since the menu was last opened, remembered per profile in this browser.
 export function NotificationsMenu({ profileId, className }: NotificationsMenuProps) {
   const list = useGetTransactionsQuery({ profileId, limit: 20 }, LIVE_QUERY);
   const events = useGetInvoiceEventsQuery(profileId, LIVE_QUERY);

@@ -13,7 +13,6 @@ export const TRANSACTION_FILTERS = {
   ...TRANSACTION_DIRECTIONS,
 } as const;
 
-/** Days a group names in words; any other day is named by its date. */
 export const RELATIVE_DAYS = {
   today: "today",
   yesterday: "yesterday",

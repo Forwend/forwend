@@ -6,11 +6,8 @@ interface Explorer {
   url: string;
 }
 
-/**
- * The chains the API may return (packages/contracts/chains.json); every one today is a test network. Explorers from
- * each network's docs: docs.base.org, docs.arbitrum.io (chain info), docs.arc.io (connect to Arc),
- * tempo.xyz/developers (connection details). A local chain has none.
- */
+/** The chains the API may return (packages/contracts/chains.json); all are test networks today. Explorers come from
+ * each network's docs; a local chain has none. */
 export const CHAINS: Readonly<
   Record<
     number,
@@ -48,7 +45,6 @@ export const CHAINS: Readonly<
   31337: { name: "Anvil (local)" },
 };
 
-/** Token logos by symbol. */
 export const TOKEN_ICONS: Readonly<Record<string, BrandIconName>> = {
   USDC: "usdc",
   USDT: "usdt",

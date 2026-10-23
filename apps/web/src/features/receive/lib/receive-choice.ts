@@ -1,6 +1,5 @@
 import type { ReceiveOption } from "@/features/receive/types/receive-choice";
 
-/** The token is picked first, then the network; when only one is on offer it is picked for the user. */
 export function receiveChoice<T extends ReceiveOption>(
   options: readonly T[],
   symbol: string | null,

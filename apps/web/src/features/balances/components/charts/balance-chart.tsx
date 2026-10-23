@@ -27,10 +27,8 @@ function amountLabel(series: HistorySeries, index: number): string {
   return `${formatUsd(series.values[index] ?? 0n)} ${MONEY_COPY.usd}`;
 }
 
-// No value axis and no grid: the readout gives each exact amount, and the dates stay under the plot.
 const PAD = { top: 16, right: 10, bottom: 28, left: 10 } as const;
 const PAD_COMPACT = { top: 14, right: 8, bottom: 22, left: 8 } as const;
-// Room above the highest point, so the line never touches the top edge.
 const HEADROOM = 1.12;
 
 export interface BalanceChartProps {
@@ -38,7 +36,6 @@ export interface BalanceChartProps {
   label: string;
   compact?: boolean;
   className?: string;
-  /** A second line in the readout, such as what one day added to a running total. */
   readoutNote?: (index: number) => string;
 }
 
@@ -91,7 +88,6 @@ export function BalanceChart({
               <stop offset="70%" stopColor="var(--fw-ink)" stopOpacity="0.03" />
               <stop offset="100%" stopColor="var(--fw-ink)" stopOpacity="0" />
             </linearGradient>
-            {/* While scrubbing, the days up to the chosen one stay full and the rest step back. */}
             <clipPath id={`${id}-past`}>
               <rect x="0" y="0" width={point === null ? width : pointX} height={height} />
             </clipPath>
@@ -142,7 +138,6 @@ export function BalanceChart({
           />
           {point === null ? (
             <g>
-              {/* Today is live: a soft ring leaves the last point now and then. */}
               <circle
                 cx={lastX}
                 cy={lastY}
@@ -245,8 +240,7 @@ function ChartReadout({
           ? ""
           : `${dateLabel(active)}: ${amountLabel(series, active)}${note ? `, ${note(active)}` : ""}`}
       </p>
-      {/* sr-only on the table itself does not hold: a table grows to its rows, and a year of rows ran far below the
-          page, leaving an empty area to scroll through. A block wrapper clips it. */}
+      {/* A wrapper, because sr-only on a table doesn't clip it: a table grows to its rows. */}
       <div className="sr-only">
         <table>
           <caption>{label}</caption>

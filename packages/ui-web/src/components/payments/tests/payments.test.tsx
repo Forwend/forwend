@@ -73,7 +73,6 @@ describe("ReceiveAddress", () => {
     const parts = Array.from(shown.children, (part) => part.textContent);
     expect(parts[0]).toBe("0x5861");
     expect(parts.at(-1)).toBe("0078");
-    // The ends a look-alike copies stand out from everything between them.
     expect(shown.children[0]?.className).toContain("text-ink");
     expect(shown.children[2]?.className).toContain("text-ink");
     expect(shown.children[1]?.className).not.toContain("text-ink");

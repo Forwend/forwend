@@ -7,9 +7,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// ensureWallet stores the profile's Privy wallet unless it has one. Concurrent calls get the same wallet from Privy
-// (looked up by external_id); the profile row lock lets one store it and the others see it. Any other conflict, such
-// as a wallet already stored for another profile, is an error.
+// ensureWallet: concurrent calls get the same wallet from Privy (by external_id), and the profile row lock lets one
+// store it. Any other conflict, such as a wallet already stored for another profile, is an error.
 func (s *Service) ensureWallet(ctx context.Context, privyUserID, profileID string) error {
 	has, err := s.hasWallet(ctx, s.pool, profileID)
 	if err != nil || has {

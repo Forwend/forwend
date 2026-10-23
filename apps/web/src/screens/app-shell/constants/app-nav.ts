@@ -22,8 +22,7 @@ import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transaction
 import type { NavGroup, NavItem } from "@/screens/app-shell/types/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-// Pages not built yet are listed as coming, never as links: the owner chose to show what each profile type will have
-// (PLAN phases 8-10).
+// Pages not built yet show as coming, not links: the owner chose to show what each profile will have (PLAN 8-10).
 export const NAV = {
   overview: { href: APP_ROUTES.home, label: "Overview", icon: LayoutGrid },
   transactions: {

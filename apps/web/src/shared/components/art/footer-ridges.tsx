@@ -51,7 +51,6 @@ export interface FooterRidgesProps {
   className?: string;
 }
 
-// Grainy layered ridges behind the footer (the Ironclad-style reference), drawn in code.
 export function FooterRidges({ className }: FooterRidgesProps) {
   return (
     <svg

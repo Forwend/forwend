@@ -9,9 +9,7 @@ export interface ThemeSwitchProps {
   className?: string;
 }
 
-// THEME_INIT_SCRIPT sets the theme before paint; this button changes it and remembers the choice.
 export function ThemeSwitch({ className }: ThemeSwitchProps) {
-  // The icon and name follow data-theme through CSS, so the switch only needs the setter.
   const [, setTheme] = useTheme();
 
   return (

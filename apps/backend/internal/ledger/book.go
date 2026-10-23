@@ -8,8 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// book writes one balanced ledger transaction: the receiver changes by intoReceiver, the creator's account by
-// toCreator and the payer's by toHeld (credits are negative; a positive amount is owed).
+// book writes a balanced transaction, so intoReceiver = toCreator + toHeld; a positive toCreator or toHeld is owed.
 func book(ctx context.Context, tx pgx.Tx, invoiceID, kind string, transferID *int64, intoReceiver, toCreator, toHeld *big.Int) error {
 	var id int64
 	if err := tx.QueryRow(ctx, `INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id) VALUES ($1, $2, $3)
@@ -43,8 +42,7 @@ func accountBalance(ctx context.Context, tx pgx.Tx, invoiceID, account string) (
 	return n, nil
 }
 
-// BookSettlement records that amount left the receive address for the creator: what was owed to them is paid.
-// Call it in the transaction that marks the settlement confirmed; a second one for the invoice is rejected.
+// Call BookSettlement in the transaction that marks the settlement confirmed; a second one is rejected.
 func BookSettlement(ctx context.Context, tx pgx.Tx, invoiceID string, amount *big.Int) error {
 	out := new(big.Int).Neg(amount)
 	return book(ctx, tx, invoiceID, "settlement", nil, out, out, new(big.Int))

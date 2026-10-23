@@ -13,8 +13,6 @@ export interface SheetProps {
   children: ReactNode;
 }
 
-// A modal on the native <dialog>: focus moves in and is trapped, Escape and the backdrop close it, focus returns to
-// the opener. A bottom sheet on phones, a centered panel from sm up.
 export function Sheet({ open, onOpenChange, title, closeLabel = "Close", children }: SheetProps) {
   const ref = useRef<HTMLDialogElement>(null);
 

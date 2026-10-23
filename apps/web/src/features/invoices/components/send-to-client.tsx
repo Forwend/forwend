@@ -17,15 +17,12 @@ export interface SendToClientProps {
   profileId: string;
   invoiceId: string;
   number: string;
-  /** The invoice's client email; null when it has none. */
   email: string | null;
   sends: readonly InvoiceSend[];
-  /** The pay link still takes money: only then can it be sent. */
   payable: boolean;
 }
 
-// Send to client (R-94) under Billed to: each send with how it went, then the button while the invoice can be paid and
-// a day has passed since the last send. Without a client email it says why instead.
+// R-94.
 export function SendToClient({
   profileId,
   invoiceId,

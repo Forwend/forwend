@@ -21,8 +21,7 @@ func mustHexID(t *testing.T, id string) []byte {
 	return b
 }
 
-// Payer chooses (R-56, D-75, D-76): one option per enabled token on a watched chain, each with the USD amount in its
-// own decimals and its own on-chain id and receive address computed from its own terms.
+// R-56, D-75, D-76.
 func TestCreatePayerChooses(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -62,8 +61,7 @@ func TestCreatePayerChooses(t *testing.T) {
 		t.Fatalf("both options share %s", inv.Options[0].ReceiveAddress)
 	}
 
-	// An option's id reads the invoice for its owner, never in public (D-86); the list shows it once; the next invoice
-	// takes the next number.
+	// An option's id reads the invoice for its owner, never in public (D-86).
 	if byOption, err := s.GetOfProfile(ctx, profile, inv.Options[1].ID); err != nil || byOption.ID != inv.ID {
 		t.Fatalf("get by option: %s, %v", byOption.ID, err)
 	}
@@ -106,8 +104,7 @@ func TestCreatePayerChooses(t *testing.T) {
 	}
 }
 
-// Check status (F144): one option's network not answering leaves the others checked and names it; only when none
-// answers is the whole check unavailable.
+// F144: only when no option's network answers is the whole check unavailable.
 func TestRecheckWithOneNetworkDown(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)

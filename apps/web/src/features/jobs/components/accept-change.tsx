@@ -16,8 +16,7 @@ export interface AcceptChangeProps {
   onGone: () => void;
 }
 
-// R-106: the client's accept of a scope change on the quote page. It sends the change's proposedAt exactly as read, so
-// the consent names this change and no other (R-105).
+// R-106: proposedAt goes back exactly as read, so the consent names this change and no other (R-105).
 export function AcceptChange({ token, change, onAccepted, onGone }: AcceptChangeProps) {
   const [accept, { isLoading }] = useAcceptChangeMutation();
   return (

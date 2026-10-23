@@ -1,7 +1,5 @@
 import type { Page } from "@playwright/test";
 
-// The app pages on sample data: the API is mocked, so the rows, statuses and transactions are known. One merchant
-// profile with four invoices, the payments to two of them, and transfers on Base Sepolia.
 const MERCHANT_ID = "22222222-2222-2222-2222-222222222222";
 const USDC = "0x036cbd53842c5426634e7929541ec2318f3dcf7e";
 export const hash = (c: string) => `0x${c.repeat(64)}`;
@@ -131,7 +129,7 @@ const ACTIVITY = INVOICES.flatMap((inv) => [
 ]);
 export const sampleTransfer = (i: number) => {
   const out = i % 4 === 3;
-  // R-108: every fifth transfer in paid an invoice; the rest in is money Forwend can't classify.
+  // R-108
   const paid = !out && i % 5 === 0;
   return {
     chainId: 84532,
@@ -216,7 +214,7 @@ function listPage<T>(
   };
 }
 
-// The merchant's billing details, which a business invoice needs (R-92).
+// R-92
 const SAMPLE_BILLING = {
   name: "Sample shop GmbH",
   address: "Hauptstr. 1\n10115 Berlin",
@@ -234,7 +232,6 @@ export async function mockApi(
 ) {
   // The profile's email setting (R-80), changed by PUT for the rest of the page's life.
   const notifications = { email: true, address: "owner@example.com" };
-  // Saved by PUT for the rest of the page's life, as the notifications are.
   let details = billing;
   // R-110: the records currency PUT saves; with one, each transaction has its value at a fixed 0.90 per USD.
   let recordsCurrency: string | null = null;
@@ -311,12 +308,12 @@ export async function mockApi(
         recordsCurrency = route.request().postDataJSON().currency;
       return route.fulfill({ json: { currency: recordsCurrency } });
     }
-    // R-108: a label is saved; the export is a header-only CSV.
+    // R-108
     if (what?.startsWith("transactions/") && what.endsWith("/label"))
       return route.fulfill({ status: 204 });
     if (what === "transactions.csv")
       return route.fulfill({ contentType: "text/csv", body: "Date (UTC),Direction\r\n" });
-    // R-112: the statement is a stand-in PDF.
+    // R-112
     if (what === "statement.pdf")
       return route.fulfill({ contentType: "application/pdf", body: "%PDF-1.4" });
     if (what?.startsWith("events")) return route.fulfill({ json: { items: lists.events ?? [] } });
@@ -355,7 +352,6 @@ export async function mockApi(
       });
     }
     if (what === "balance-history") {
-      // A point per day: a year of them is what once ran the chart's hidden table far below the page.
       const days = Number(url.searchParams.get("days"));
       const zeros = Array.from({ length: days }, () => "0");
       // 25 USDC in every 7th day: a range with nothing received shows a sentence, not the chart.

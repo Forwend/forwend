@@ -1,7 +1,5 @@
--- An invoice's reference (R-90): the client's purchase order (PO) number or their own reference, which their accounts
--- team matches the invoice by. A detail like the title: written with the invoice and never changed. A saved client
--- may keep a default that New invoice fills in. The list search finds an invoice by it, so the trigram index
--- (migration 00014) is made again with it; internal/invoice/list.go, searchText, must stay the same expression.
+-- Invoice reference (R-90), such as the client's PO number. The search index (00014) is made again with it:
+-- internal/invoice/list.go, searchText, must stay the same expression.
 
 -- +goose Up
 ALTER TABLE invoices ADD COLUMN reference text CHECK (char_length(reference) BETWEEN 1 AND 100);
@@ -37,7 +35,6 @@ END;
 $$;
 -- +goose StatementEnd
 
--- The view lists its columns, so it is made again with the new one.
 CREATE OR REPLACE VIEW invoices_current AS
 SELECT m.id, m.profile_id, m.number, m.title, m.note, m.due_date, m.client_name, m.client_email, m.client_address,
        m.sender_name, m.issuer_name, m.issuer_address, m.issuer_country, m.issuer_tax_id, m.issuer_email, m.created_at,

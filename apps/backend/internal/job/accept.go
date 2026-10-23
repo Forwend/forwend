@@ -14,10 +14,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Accept records the client's acceptance of the job its link names, with their typed name and email (R-100). A job
-// with a deposit makes its invoice in the same transaction. An accepted job answers the same, whoever accepts again.
-// allow is the limit shared by everyone, asked only for a job this accept would change, so an unknown link or a bad
-// body spends none of it (R-117).
+// Accept (R-100) makes a deposit invoice in the same transaction; an accepted job answers the same. allow is asked
+// only when this accept would change the job, so an unknown link or a bad body spends none of it (R-117).
 func (s *Service) Accept(ctx context.Context, token, name, email string, allow func() time.Duration) (Job, error) {
 	if err := checkTyped(name, email); err != nil {
 		return Job{}, err
@@ -32,8 +30,7 @@ func (s *Service) Accept(ctx context.Context, token, name, email string, allow f
 	return s.accept(ctx, j, name, email)
 }
 
-// accept records the acceptance of the job as read, and makes its deposit. A job deleted since that read is
-// ErrNotFound, and its deposit invoice is not made.
+// A job deleted since j was read is ErrNotFound, and its deposit invoice is not made.
 func (s *Service) accept(ctx context.Context, j Job, name, email string) (Job, error) {
 	var err error
 	accept := func(ctx context.Context, tx pgx.Tx) error {
@@ -82,7 +79,6 @@ func (s *Service) accept(ctx context.Context, j Job, name, email string) (Job, e
 	return s.ByToken(ctx, j.Token)
 }
 
-// checkTyped refuses the client's typed name and email unless they are plain text and an address.
 func checkTyped(name, email string) error {
 	if name == "" || !utf8.ValidString(name) || utf8.RuneCountInString(name) > profile.MaxClientName ||
 		!profile.PlainText(name, false) {
@@ -94,9 +90,8 @@ func checkTyped(name, email string) error {
 	return nil
 }
 
-// paymentRequest is the invoice for one payment: payer chooses in USD (D-75), the job's title and client, one line for
-// the payment, due its days after today's UTC date. The checkout stays open DueGraceDays past that (D-80). It closes
-// at most a day later than that, so the same request made again the same day is the same (its idempotency hash).
+// paymentRequest is a payer-chooses invoice (D-75), open DueGraceDays past its due date (D-80), and up to a day
+// longer, so the same request made again the same UTC day has the same idempotency hash.
 func (s *Service) paymentRequest(j Job, p Payment) invoice.Request {
 	usd := USD(p.AmountCents)
 	today := s.now().UTC().Truncate(24 * time.Hour)

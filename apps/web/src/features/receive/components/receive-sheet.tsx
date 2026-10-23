@@ -29,8 +29,7 @@ export interface ReceiveSheetProps {
   onRetry: () => void;
 }
 
-// Receive, in a sheet over the dashboard. The user picks the token, then the network; the address never shows without
-// the warning naming that exact network and token, so while the enabled tokens load, or if they fail, it stays hidden.
+// The address never shows without the warning naming its network and token, so it hides while tokens load or fail.
 export function ReceiveSheet({
   open,
   onOpenChange,
@@ -198,7 +197,6 @@ function Initial({ text }: { text: string }) {
   );
 }
 
-// The choice so far, folded into one row; Change opens the choice again.
 function Summary({ onChange, children }: { onChange: (() => void) | null; children: ReactNode }) {
   return (
     <div className="flex min-h-14 items-center gap-3 border-b border-line pb-3">

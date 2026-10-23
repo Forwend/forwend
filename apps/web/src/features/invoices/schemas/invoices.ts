@@ -72,7 +72,6 @@ export const invoiceSummarySchema = z.object({
   optionId: hash32,
   // An option received money, so the payer can't pick another (R-56).
   optionLocked: z.boolean(),
-  // How many tokens and networks it accepts; 1 for a fixed invoice.
   optionCount: z.number().int().positive(),
   // A payment before expiry is seen and not final: a partly paid invoice reads as confirming meanwhile (R-69).
   confirming: z.boolean(),
@@ -121,7 +120,6 @@ export const settlementWaitSchema = z.object({
 export const invoiceOptionSchema = z.object({
   optionId: hash32,
   chainId: count,
-  // The API's chain name, such as base-sepolia.
   network: z.string(),
   token: evmAddress,
   symbol: z.string(),
@@ -147,14 +145,14 @@ export const invoiceSendSchema = z.object({
   failedAt: apiTime.nullable(),
 });
 
-/** Payment reminders (R-96): stoppedAt is when the client stopped them; each reminder queued, with its step. */
+/** Payment reminders (R-96); stoppedAt is when the client stopped them. */
 export const invoiceRemindersSchema = z.object({
   on: z.boolean(),
   stoppedAt: apiTime.nullable(),
   emails: z.array(invoiceSendSchema.extend({ step: openEnum<ReminderStep>() })),
 });
 
-/** The retainer an invoice belongs to (R-98): the next due date and the day it is emailed, null once ended or stopped. */
+/** R-98: the next dates are null once the retainer ended or stopped. */
 export const invoiceRetainerSchema = z.object({
   endDate: apiDate.nullable(),
   nextDueDate: apiDate.nullable(),
@@ -162,13 +160,12 @@ export const invoiceRetainerSchema = z.object({
   stoppedAt: apiTime.nullable(),
 });
 
-/** POST /v1/reminders/{token}/stop: which invoice the client stopped reminders for, and who sent it. */
+/** POST /v1/reminders/{token}/stop. */
 export const stoppedRemindersSchema = z.object({
   number: z.number().int().positive(),
   from: z.string().nullable(),
 });
 
-/** An invoice read alone or just created. */
 export const invoiceSchema = invoiceSummarySchema.extend({
   // Every accepted option, the shown one included: one for a fixed invoice.
   options: z.array(invoiceOptionSchema),

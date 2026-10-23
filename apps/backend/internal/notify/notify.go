@@ -1,8 +1,5 @@
-// Package notify sends the email for each outbox event: the owner's paid, settled and held-money emails (R-80), the
-// payer's receipt (R-82), a new account's welcome (R-84), the invoice the owner sends to the client (R-94), the
-// client's payment reminders (R-96) and a job's scope changes (R-107).
-// One worker claims each event once (FOR UPDATE SKIP LOCKED); invoice, user or job, event id and address make Resend's
-// Idempotency-Key, the same on every retry, so a retry after a lost answer sends nothing twice. Nothing logs an address, a subject or a body.
+// Package notify sends the email for each outbox event (R-80, R-82, R-84, R-94, R-96, R-107), each under one Resend
+// Idempotency-Key on every retry, so a lost answer sends nothing twice. Nothing logs an address, a subject or a body.
 package notify
 
 import (
@@ -24,19 +21,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// MaxAttempts: after this many failed sends the event is given up. With Backoff that ends within a few hours, inside
-// Resend's 24-hour idempotency window.
+// With Backoff, MaxAttempts ends within a few hours, inside Resend's 24-hour idempotency window.
 const MaxAttempts = 10
 
 // Batch bounds the events one call sends, so a backlog never holds up the worker's chain rounds.
 const Batch = 20
 
-// Backoff is the wait after the n-th failed send: 1 min doubling, at most 1 h.
 func Backoff(n int) time.Duration {
 	return min(time.Minute<<min(n-1, 6), time.Hour)
 }
 
-// Deliver sends up to Batch due events.
 func Deliver(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, site Site) error {
 	for range Batch {
 		more, err := deliverOne(ctx, pool, sender, site)
@@ -101,9 +95,8 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 		}
 		return true, tx.Commit(ctx)
 	}
-	// The invoice, user or job id too: event ids start again in another database (a reset, staging) that may share the
-	// Resend team. And the address: a receipt sent again to a changed address is a new request, which Resend would
-	// refuse under a key it already saw with another body.
+	// The key holds the invoice, user or job id because event ids restart in another database sharing the Resend team,
+	// and the address because Resend refuses a key it already saw with another body.
 	m, err := message(site, v)
 	if err != nil {
 		return false, fmt.Errorf("render email event %d: %w", id, err)
@@ -123,9 +116,8 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 		if err != nil {
 			return false, fmt.Errorf("record email event %d failure: %w", id, err)
 		}
-		// A message Resend refused goes on to the next one: stopping would let one bad address hold up every email
-		// behind it (R-115). Any other failure stops this round: a Resend that fails or hangs must not hold up the
-		// worker's chain rounds for a whole batch.
+		// A refused message goes on to the next: one bad address must not hold up every email behind it (R-115). Any
+		// other failure stops the round, so a failing or hanging Resend doesn't hold up the worker's chain rounds.
 		return errors.Is(sent, email.ErrRefused), tx.Commit(ctx)
 	}
 	if _, err := tx.Exec(ctx, "UPDATE outbox_events SET attempts = attempts + 1, published_at = now() WHERE id = $1", id); err != nil {
@@ -134,8 +126,7 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 	return true, tx.Commit(ctx)
 }
 
-// invoiceEmail builds an invoice event's email and says where it goes: the owner's login email when the profile has
-// email on, the payer's address for the receipt, or the client's email for a send.
+// invoiceEmail goes to the owner when email is on, to the payer for a receipt, and to the client for a send.
 func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload []byte,
 	webURL string) (view, *string, bool, error) {
 	var p outbox.Payload
@@ -199,7 +190,6 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 		webURL+"/app/invoices/"+invoice, webURL+"/app/notifications"), to, on, nil
 }
 
-// compose says what happened, with the invoice link and where to turn email off.
 func compose(kind, number, amount, symbol, network, link, settings string) view {
 	v := view{Amount: amount, Tone: "success", Button: button{"View invoice", link},
 		Details: []row{{Label: "Invoice", Value: number}, {Label: "Network", Value: network}, {Label: "Token", Value: symbol}},
@@ -222,7 +212,7 @@ func compose(kind, number, amount, symbol, network, link, settings string) view 
 	return v
 }
 
-// welcome is a new account's one welcome email (R-84): what Forwend does and where to start.
+// welcome is a new account's one welcome email (R-84).
 func welcome(app string) view {
 	return view{Subject: "Welcome to Forwend", Preheader: "Your Forwend account is ready.", Title: "Welcome to Forwend",
 		Lead: []string{"Your Forwend account is ready. Create an invoice or a payment request, share its pay link, " +
@@ -231,8 +221,7 @@ func welcome(app string) view {
 		Button: button{"Open Forwend", app}, Reason: "You get this email once, because you created a Forwend account."}
 }
 
-// receipt is the payer's one email (R-82): what they paid, to whom, the transaction and the receipt PDF. Nothing else
-// is ever sent to this address.
+// receipt is the payer's one email (R-82): nothing else is ever sent to this address.
 func receipt(number, amount, symbol, network, issuer, sender, tx, pdf string) view {
 	v := view{Subject: "Your receipt for " + number, Badge: "Paid", Tone: "success", Title: "Receipt for " + number,
 		Amount: amount, Button: button{"Download receipt (PDF)", pdf}, Details: []row{{Label: "Invoice", Value: number}},
@@ -243,7 +232,7 @@ func receipt(number, amount, symbol, network, issuer, sender, tx, pdf string) vi
 	case issuer != "":
 		to = issuer
 	case sender != "":
-		// A name the invoice's creator typed, as the pay page and PDF say: not checked by Forwend.
+		// Same wording as the pay page and PDF.
 		to, v.Note = sender, "The name is what the invoice's creator gave; Forwend doesn't check it."
 	}
 	if to != "" {
@@ -259,8 +248,7 @@ func receipt(number, amount, symbol, network, issuer, sender, tx, pdf string) vi
 	return v
 }
 
-// sent is the invoice the owner sends to the client (R-94): who bills them, how much, by when, the pay page and the
-// PDF. A reply goes to the issuer's billing email, not to Forwend. network is empty when the client chooses.
+// sent is the invoice email to the client (R-94); network is empty when the client chooses.
 func sent(number, amount, network, issuer, sender, due, replyTo, pay, pdf string) view {
 	v := view{Subject: "Invoice " + number, Badge: "Invoice", Tone: "neutral", Title: "Invoice " + number,
 		Amount: amount, Button: button{"View and pay", pay}, ReplyTo: replyTo, Details: []row{{Label: "Invoice", Value: number}}}
@@ -292,8 +280,7 @@ func sent(number, amount, network, issuer, sender, due, replyTo, pay, pdf string
 	return v
 }
 
-// changeEmail builds a scope change's email (R-107) for the address the client typed accepting the job. It goes only
-// while the change waits for them: checked again now, since the owner may have withdrawn it or the client accepted it.
+// changeEmail sends only while the change still waits for the client (R-107): it may since be withdrawn or accepted.
 func changeEmail(ctx context.Context, tx pgx.Tx, job string, payload []byte, webURL string) (view, *string, bool, error) {
 	var p outbox.Payload
 	if err := json.Unmarshal(payload, &p); err != nil {
@@ -319,8 +306,7 @@ func changeEmail(ctx context.Context, tx pgx.Tx, job string, payload []byte, web
 		to, true, nil
 }
 
-// change tells the client who proposes what change to the job and for how much, with the job's page to accept it
-// (R-107).
+// change is a scope change's email to the client (R-107).
 func change(issuer, job, title, amount string, days int, replyTo, link string) view {
 	due := fmt.Sprintf("due %d days after", days)
 	switch days {
@@ -338,9 +324,8 @@ func change(issuer, job, title, amount string, days int, replyTo, link string) v
 			"Reply to this email to reach them."}
 }
 
-// reminderEmail builds a payment reminder (R-96) for the client's email. It goes only while reminders are on and not
-// stopped and something is left to pay on an invoice the payer can still pay: checked again now, since the invoice
-// may have been paid or the reminders stopped after the step was queued.
+// reminderEmail sends only while reminders are on and something is left to pay on an open invoice (R-96): checked
+// again now, since it may have been paid or the reminders stopped after the step was queued.
 func reminderEmail(ctx context.Context, tx pgx.Tx, id string, p outbox.Payload, webURL string) (view, *string, bool, error) {
 	var (
 		on, locked                       bool
@@ -377,8 +362,7 @@ func reminderEmail(ctx context.Context, tx pgx.Tx, id string, p outbox.Payload, 
 	return v, &to, on, nil
 }
 
-// reminder says what is left to pay on an invoice and by when, before the due date, on it or after it (R-96). network
-// is empty when the client chooses.
+// reminder is a payment reminder (R-96); network is empty when the client chooses.
 func reminder(step, number, left, network, issuer, sender, due, replyTo, pay, pdf string) view {
 	v := view{Badge: "Reminder", Tone: "neutral", Amount: left, Button: button{"View and pay", pay}, ReplyTo: replyTo,
 		Details: []row{{Label: "Invoice", Value: number}}}

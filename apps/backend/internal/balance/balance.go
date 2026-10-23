@@ -1,6 +1,5 @@
-// Package balance shows a profile's money per chain and token (R-33): the wallet's balance read at the second RPC's
-// finalized block (D-15, D-45), and apart from it what is on its way to the wallet and what is held for payers. It
-// also rebuilds the wallet balance per day from the recorded wallet transfers (R-38).
+// Package balance shows a profile's money per chain and token (R-33): the wallet balance at the second RPC's
+// finalized block (D-15, D-45), pending and held money apart from it, and the daily wallet balance (R-38).
 package balance
 
 import (
@@ -21,23 +20,20 @@ import (
 // the api's 30 s write timeout.
 var ReadTimeout = 10 * time.Second
 
-// Token is the profile's money in one enabled token.
 type Token struct {
 	chain.Asset
 	// Wallet is the wallet's balance at Block, the second RPC's finalized block; nil when it could not be read or the
 	// profile has no wallet yet.
 	Wallet *big.Int
 	Block  uint64
-	// Pending is not in the wallet yet: deposits the ledger has not booked (a late or extra one later moves to Held),
-	// plus booked money owed to the creator and not settled yet. Held is booked money held for payers, never the
-	// creator's. Wallet comes from the chain and these from our records at a different moment, so right after a
-	// settlement the amount can briefly show in both or in neither.
+	// Pending: unbooked deposits plus booked money owed to the creator. Held: booked money for payers, never the creator's.
+	// Both come from our records at another moment than Wallet, so after a settlement an amount can show in both or neither.
 	Pending *big.Int
 	Held    *big.Int
 }
 
-// Balances are the profile's tokens. EstimatedUSD is the sum of the wallet balances at 1 USD per token (all enabled
-// tokens are USD stablecoins), with 2 decimals; "" when a wallet balance is missing.
+// EstimatedUSD sums the wallet balances at 1 USD per token (all enabled tokens are USD stablecoins), with 2
+// decimals; "" when a wallet balance is missing.
 type Balances struct {
 	Tokens       []Token
 	EstimatedUSD string
@@ -53,8 +49,7 @@ func NewService(pool *pgxpool.Pool, read ledger.BalanceOf) *Service {
 	return &Service{pool: pool, read: read}
 }
 
-// Of returns the profile's balances in every enabled token on every enabled chain. The caller has checked that the
-// user owns the profile.
+// The caller has checked that the user owns the profile.
 func (s *Service) Of(ctx context.Context, profileID string) (Balances, error) {
 	var wallet string
 	if err := s.pool.QueryRow(ctx, `SELECT coalesce((SELECT address FROM profile_wallets

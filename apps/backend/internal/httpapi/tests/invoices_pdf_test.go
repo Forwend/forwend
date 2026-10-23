@@ -49,9 +49,8 @@ func (r pdfReply) errorCode() string {
 	return v.Error.Code
 }
 
-// pdfText returns the strings the PDF's page streams draw, one per line. fpdf deflates each stream and writes text as
-// (UTF-16BE)Tj with \, ( and ) escaped and \r as \r; text in the Courier core font (hashes and IDs) is one byte per
-// character, told apart by having only printable ASCII bytes, which no UTF-16BE text the tests draw has.
+// pdfText returns the strings the deflated page streams draw, one per line: (UTF-16BE)Tj with \, ( and ) escaped,
+// but Courier text (hashes, IDs) is one byte per character, told apart by being all printable ASCII.
 func pdfText(t *testing.T, pdf []byte) string {
 	t.Helper()
 	var lines []string
@@ -115,9 +114,7 @@ func mustContain(t *testing.T, text string, want ...string) {
 	}
 }
 
-// The invoice PDF is public: the logo, who bills whom from the invoice's copies, the dates, a line with the exact
-// amount, token and network, the agreed value, and the pay link with its QR code; never the client's email. A request
-// names its sender instead of an issuer (D-52).
+// D-52.
 func TestInvoicePDF(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -166,7 +163,6 @@ func TestInvoicePDF(t *testing.T) {
 		t.Fatalf("the pay link is not clickable")
 	}
 
-	// The same invoice gives the same bytes; the ETag answers 304 while they don't change.
 	if again := e.pdf(t, id, "invoice.pdf", ""); !bytes.Equal(again.body, r.body) {
 		t.Fatalf("a second render differs")
 	}
@@ -178,7 +174,6 @@ func TestInvoicePDF(t *testing.T) {
 	mustContain(t, text, "INV-0001", "Description\nNetwork\nAmount\nPayment\nBase Sepolia")
 	mustContain(t, strings.ReplaceAll(text, "\n", ""), webURL+"/pay/"+e.link(t, plain))
 
-	// A request names its sender, marked as not checked.
 	mustContain(t, pdfText(t, e.pdf(t, request, "invoice.pdf", "").body),
 		"FROM", "Mara Ilić", "Name not checked by Forwend")
 	for _, block := range []string{"BILL TO", "Reference", "Supply date", "Due date", "Agreed value", "NOTE"} {
@@ -188,7 +183,7 @@ func TestInvoicePDF(t *testing.T) {
 	}
 }
 
-// The longest texts are wrapped and cut so the layout holds; characters fpdf can't draw become "?".
+// Characters fpdf can't draw, such as the emoji, become "?".
 func TestInvoicePDFFitsLongTexts(t *testing.T) {
 	e := invoiceAPI(t)
 	r := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", `{"chainId": 84532, "token": "`+usdc+`", "amount": "`+
@@ -219,10 +214,7 @@ func TestInvoicePDFNotFound(t *testing.T) {
 	}
 }
 
-// The receipt answers 409 until the invoice is paid, then shows the paid time (the block time of the deposit that
-// completed it), each payment with its full tx hash and explorer link, and the pay link with its QR code. It never
-// mentions the settlement, the creator's business (R-61), so settling leaves it unchanged. The public GET gives the same
-// paid time and, once settled, the time the ledger booked the settlement.
+// R-61: the receipt never mentions the settlement, so settling leaves it unchanged.
 func TestReceiptPDF(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
@@ -319,11 +311,9 @@ func TestReceiptPDF(t *testing.T) {
 		t.Fatal(err)
 	}
 	times("settled", paid, settledAt.UTC().Format(time.RFC3339))
-	// Settling changes nothing the payer reads: the same receipt, so the paid receipt's ETag still matches.
 	if after := e.pdf(t, id, "receipt.pdf", r.header.Get("ETag")); after.status != http.StatusNotModified {
 		t.Fatalf("settled, with the paid receipt's ETag: %d", after.status)
 	}
-	// The invoice itself still renders once settled.
 	mustContain(t, strings.ReplaceAll(pdfText(t, e.pdf(t, id, "invoice.pdf", "").body), "\n", ""), "InvoiceINV-0001", link)
 
 	// A deposit after the checkout closed is held for the payer (D-26), so the receipt leaves it out.
@@ -361,7 +351,7 @@ func qrDrawn(t *testing.T, pdf []byte) bool {
 	}
 }
 
-// R-88: an invoice with lines lists each with its quantity and unit price under the title, then the total.
+// R-88.
 func TestInvoicePDFLines(t *testing.T) {
 	e := invoiceAPI(t)
 	made := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", `{"chainId": 84532, "token": "`+usdc+`",

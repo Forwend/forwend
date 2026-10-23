@@ -20,7 +20,7 @@ export type JobPayment = z.infer<typeof jobPaymentSchema>;
 export type JobSummary = z.infer<typeof jobSummarySchema>;
 export type CreateJobBody = z.infer<typeof createJobBodySchema>;
 
-/** A payment's invoice status: the API's invoice status filter, which names a status pill. */
+/** The API's invoice status filter values. */
 export type JobPaymentStatus = Extract<
   PaymentStatus,
   "open" | "paid" | "settled" | "expired" | "canceled"
@@ -29,7 +29,7 @@ export type JobPaymentStatus = Extract<
 export type JobField = (typeof JOB_FIELDS)[keyof typeof JOB_FIELDS];
 export type RecordEventKind = (typeof RECORD_EVENTS)[keyof typeof RECORD_EVENTS];
 
-/** One dated event of a job's record (R-104); payment is set for the events of one payment. */
+/** R-104; payment is set for the events of one payment. */
 export interface RecordEvent {
   kind: RecordEventKind;
   at: string;
@@ -38,7 +38,6 @@ export interface RecordEvent {
 export type PaymentField = (typeof PAYMENT_FIELDS)[keyof typeof PAYMENT_FIELDS];
 export type AcceptField = (typeof ACCEPT_FIELDS)[keyof typeof ACCEPT_FIELDS];
 
-/** A payment row as typed on New job. */
 export interface PaymentDraft {
   id: string;
   title: string;

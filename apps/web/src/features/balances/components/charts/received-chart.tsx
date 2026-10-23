@@ -15,8 +15,6 @@ export interface ReceivedChartProps {
   className?: string;
 }
 
-// Money in as a running total over the range: it climbs with each payment and ends on the range's whole amount, which
-// says more than a row of mostly empty days. The readout adds what the chosen day brought in.
 export function ReceivedChart({ series, label, compact, className }: ReceivedChartProps) {
   const total = useMemo(() => runningTotal(series), [series]);
   return (

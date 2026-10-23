@@ -10,13 +10,10 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
 )
 
-// A signed-in tab polls about six routes every 15 s and a page load sends about ten at once, so a user with several
-// tabs stays well under these, and a script that loops on the API does not. Public routes are limited per IP at the
-// edge (docs/backend/api.md#rate-limits): Next's /api rewrite adds no X-Forwarded-For of its own and passes a client's
-// header through unchanged (measured 2026-10-15), so the api can neither see nor trust a payer's address.
+// Tabs poll about six routes every 15 s and a page load sends about ten, well under this; a looping script is not.
+// Public routes are limited per IP at the edge (docs/backend/api.md#rate-limits): the api can't trust a payer's IP.
 const UserRate, UserBurst = 2, 60
 
-// Everyone is the one key of a limit shared by all callers.
 func Everyone(*http.Request) string { return "all" }
 
 // Buckets live in each api process, so each replica counts on its own (docs/backend/architecture.md#scaling).
@@ -55,8 +52,7 @@ func (b *Buckets) Wait(key string) time.Duration {
 	return time.Duration((1 - k.tokens) / b.rate * float64(time.Second))
 }
 
-// sweep forgets full Buckets once a minute; a key that comes back starts full, as its bucket would be. Call it with mu
-// held.
+// Dropping a full bucket loses nothing: a key that comes back starts full. Call it with mu held.
 func (b *Buckets) sweep(now time.Time) {
 	if now.Sub(b.swept) < time.Minute {
 		return

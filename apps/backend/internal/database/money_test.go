@@ -23,7 +23,6 @@ const (
 	codeRaise  = "P0001"
 )
 
-// moneyDB migrates a fresh database with one chain, token, user and profile.
 func moneyDB(t *testing.T) (*pgx.Conn, string) {
 	t.Helper()
 	ctx := context.Background()
@@ -49,7 +48,6 @@ func moneyDB(t *testing.T) (*pgx.Conn, string) {
 	return conn, profile
 }
 
-// hex32 and hex20 build distinct lowercase hex values for ids, hashes and addresses.
 func hex32(n int) string { return fmt.Sprintf("0x%064x", n) }
 func hex20(n int) string { return fmt.Sprintf("0x%040x", n) }
 
@@ -128,7 +126,6 @@ func TestTransferIsUniqueUntilReorged(t *testing.T) {
 	_, err = insertTransfer(conn, 1, hex20(101), 8, 1000, 4)
 	wantCode(t, err, codeFK, "transfer to an address that is not the invoice's")
 
-	// The block is reorged out and the same transaction is mined again with the same log index.
 	_, err = conn.Exec(ctx, "UPDATE chain_transfers SET status = 'reorged' WHERE id = $1", first)
 	must(t, err)
 	_, err = insertTransfer(conn, 1, hex20(100), 7, 1001, 3)
@@ -199,7 +196,7 @@ func TestLedgerTransactionsBalance(t *testing.T) {
 	_, err = conn.Exec(ctx, "UPDATE chain_transfers SET status = 'confirmed' WHERE id = $1", transfer)
 	must(t, err)
 
-	// Checked at commit: the receiver gets 6 but only 5 is owed.
+	// Unbalanced, but checked only at commit.
 	tx, err := conn.Begin(ctx)
 	must(t, err)
 	_, err = tx.Exec(ctx, `
@@ -319,8 +316,6 @@ func bookingRacesReorg(t *testing.T, level pgx.TxIsoLevel) {
 	wantCode(t, <-reorg, want, "reorg after a concurrent booking")
 }
 
-// A 5 USDC invoice paid in three 2 USDC transfers: each is booked once, the third splits into 1 owed to the creator
-// and 1 held for the payer, and the receiver balance equals the 6 on chain.
 func TestInvoicePaidInSeveralTransfers(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
@@ -358,7 +353,7 @@ func TestInvoicePaidInSeveralTransfers(t *testing.T) {
 	}
 }
 
-// Payment status moves only along the state machine, and invoice terms never change (R-21).
+// R-21.
 func TestInvoiceStatusTransitionsAndTerms(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
@@ -391,8 +386,7 @@ func TestInvoiceStatusTransitionsAndTerms(t *testing.T) {
 	}
 }
 
-// Each profile numbers its invoices from 1 inside the insert itself: a failed insert uses no number, and the number
-// and the invoice's details never change (D-50).
+// D-50: a failed insert uses no number.
 func TestInvoiceNumbers(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
@@ -421,8 +415,7 @@ func TestInvoiceNumbers(t *testing.T) {
 	}
 }
 
-// An option row (R-56, D-76) shares its main invoice's number, recipient, expiry and request, moves no counter, and
-// the main row's chosen option is set once, to one of its own options.
+// R-56, D-76.
 func TestInvoiceOptions(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
@@ -462,7 +455,7 @@ func TestInvoiceOptions(t *testing.T) {
 	wantCode(t, err, codeRaise, "leaving the group")
 	must(t, choose(3, 3))
 
-	// An option joins only an open invoice with no money (F144).
+	// F144.
 	must(t, insertInvoice(conn, profile, 5, hex20(105), "key-5", "5000000"))
 	_, err = insertTransfer(conn, 5, hex20(105), 50, 50, 0)
 	must(t, err)

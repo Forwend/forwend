@@ -1,8 +1,7 @@
--- Settlement (R-22): refused intents, what the signer needs to reconcile after a crash, one settlement per invoice.
+-- Settlement (R-22).
 
 -- +goose Up
--- The signed settle transaction is saved before it is broadcast: after a crash the same bytes (same hash, same
--- nonce) are sent again, never a second settle.
+-- raw_tx is saved before it is broadcast: after a crash the same bytes are sent again, never a second settle.
 ALTER TABLE settlement_intents ADD COLUMN sender text CHECK (sender ~ '^0x[0-9a-f]{40}$');
 ALTER TABLE settlement_intents ADD COLUMN raw_tx bytea;
 ALTER TABLE settlement_intents ADD COLUMN reason text;

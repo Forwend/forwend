@@ -27,12 +27,10 @@ type Field = ClientTextField;
 
 export interface ClientFormProps {
   profileId: string;
-  /** The client to edit; a new one when left out. */
   client?: Client;
 }
 
-// R-86: one PUT replaces every field; the API checks them again. A new client's id is made once, so a retried save
-// after an error makes one client. A save leaves for the list, so a toast says it worked.
+// R-86: a new client's id is made once, so a retried save after an error makes one client.
 export function ClientForm({ profileId, client }: ClientFormProps) {
   const [save] = useSaveClientMutation();
   const toast = useToast();

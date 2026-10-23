@@ -50,13 +50,11 @@ const draft = (title: string, days: string): PaymentDraft => ({
 
 export interface JobFormProps {
   profileId: string;
-  /** The profile's saved clients (R-86): picking one fills the client fields with a copy of its details. */
+  /** Saved clients (R-86): picking one fills the client fields with a copy. */
   clients?: readonly Client[];
 }
 
-// R-101, laid out like New invoice: Work, Client and Payments panels. The payments sit in rows like an invoice's items,
-// with the total under them. One idempotency key per filled-in form: a double click, or a retry of the same values
-// after an error, makes one job.
+// R-101. One idempotency key per filled-in form: a double click or a retry makes one job.
 export function JobForm({ profileId, clients }: JobFormProps) {
   const [createJob] = useCreateJobMutation();
   const router = useRouter();
@@ -78,8 +76,7 @@ export function JobForm({ profileId, clients }: JobFormProps) {
   const [busy, setBusy] = useState(false);
   const depositId = useId();
   const list = useRef<HTMLUListElement>(null);
-  // Add payment and the remove buttons take away the button that had focus: it moves to the new row, or to the row
-  // that took the removed one's place (else the one before).
+  // Add and remove take away the focused button: focus moves to the new row, or the one in its place.
   const focusRow = (row: number) =>
     list.current?.querySelectorAll("li")[row]?.querySelector("input")?.focus();
   const set = (id: string, field: keyof Omit<PaymentDraft, "id">, value: string) => {

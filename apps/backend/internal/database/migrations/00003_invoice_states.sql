@@ -1,11 +1,10 @@
--- Invoice states (R-21): allowed payment transitions, fixed terms, the expiry ledger kind and the finalized time.
+-- Invoice states (R-21).
 
 -- +goose Up
 -- An expired partial payment is never settled to the creator (D-26): an expiry transaction moves it to payer_held.
 ALTER TABLE ledger_transactions DROP CONSTRAINT ledger_transactions_kind_check;
 ALTER TABLE ledger_transactions ADD CONSTRAINT ledger_transactions_kind_check
     CHECK (kind IN ('deposit', 'settlement', 'refund', 'reversal', 'expiry'));
--- At most one expiry per invoice.
 CREATE UNIQUE INDEX ledger_transactions_one_expiry ON ledger_transactions (invoice_id) WHERE kind = 'expiry';
 
 -- The finalized block's time: expiry and the payer's countdown are decided by chain time (D-45, R-28).

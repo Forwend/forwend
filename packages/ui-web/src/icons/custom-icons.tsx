@@ -23,7 +23,6 @@ function Base({ children, strokeWidth = 1.75, ...props }: CustomIconProps) {
   );
 }
 
-/** A shopfront with an awning and a coin slot: taking payments at a store. */
 export function MerchantIcon(props: CustomIconProps) {
   return (
     <Base {...props}>
@@ -35,7 +34,6 @@ export function MerchantIcon(props: CustomIconProps) {
   );
 }
 
-/** A laptop showing an invoice with a tick: independent work that gets billed and paid. */
 export function FreelancerIcon(props: CustomIconProps) {
   return (
     <Base {...props}>
@@ -47,7 +45,6 @@ export function FreelancerIcon(props: CustomIconProps) {
   );
 }
 
-/** A route from one stop to the next, ending in an arrow: a payment moving forward. */
 export function PaymentPathIcon(props: CustomIconProps) {
   return (
     <Base {...props}>

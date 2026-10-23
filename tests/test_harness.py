@@ -314,7 +314,6 @@ class HarnessTests(unittest.TestCase):
         git('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-qm', 'base')
         self.task['baseCommit'] = 'f' * 40
         self.assertTrue(h.needs_review(h.State(self.root), self.task))
-        # Untracked code counts, and only task records (JSON) under the archive are docs.
         self.task['baseCommit'] = git('rev-parse', 'HEAD').strip()
         (self.root / 'new.py').write_text('x = 1\n')
         self.assertIn('new.py', h.changed_since(self.root, self.task['baseCommit']))

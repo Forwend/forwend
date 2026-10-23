@@ -6,8 +6,7 @@ import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
-// The balances' tokens give each invoice's token its symbol and decimals. A personal profile's invoices are its
-// requests (D-52).
+// The balances' tokens give each invoice's token its symbol and decimals; a personal profile's are requests (D-52).
 export function InvoicesScreen() {
   const { profile, openRequest } = useAppSession();
   const balances = useGetBalancesQuery(profile.profileId, LIVE_QUERY);

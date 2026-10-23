@@ -29,8 +29,7 @@ const KIND_ICONS = {
   [PROFILE_KINDS.merchant]: MerchantIcon,
 } as const;
 
-// One idempotency key per filled-in form: a double click, or a retry of the same values after an error, makes one
-// profile (and the retry finishes its wallet); changed values are a new request with a new key, never a 409.
+// One idempotency key per filled-in form: a retry makes one profile and finishes its wallet.
 export function NewProfileForm() {
   const { chooseProfile } = useAppSession();
   const [createProfile] = useCreateProfileMutation();

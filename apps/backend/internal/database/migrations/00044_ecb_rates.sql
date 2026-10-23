@@ -1,5 +1,4 @@
--- Records in an ECB currency (R-110, D-82): the ECB's daily euro reference rates the worker keeps, and the one currency
--- a profile values its records in besides USD.
+-- Records in an ECB currency (R-110, D-82): the ECB's daily euro rates, and a profile's currency besides USD.
 
 -- +goose Up
 CREATE TABLE ecb_rates (

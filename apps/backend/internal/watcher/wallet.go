@@ -11,15 +11,13 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-// wallets is what wallet transfers are looked for: every profile wallet, in this chain's enabled tokens (R-38).
-// tokens also holds, as false, each disabled token with detected rows: its logs are read until those rows confirm or
-// are reorged, so they never hold the scan's start, but none of its transfers is recorded anew.
+// tokens also holds, as false, each disabled token with detected rows (R-38): its logs are read until those rows
+// confirm or are reorged, so they never hold the scan's start, but none of its transfers is recorded anew.
 type wallets struct {
 	addresses map[common.Address]bool
 	tokens    map[common.Address]bool // token -> enabled
 }
 
-// walletTransfer is one wallet's side of a Transfer log: out for the sender's wallet, in for the receiver's.
 type walletTransfer struct {
 	token, wallet, direction, counterparty string
 	txHash, blockHash                      string
@@ -50,8 +48,7 @@ func (c *Chain) wallets(ctx context.Context) (wallets, error) {
 	return w, nil
 }
 
-// walletLogs returns the Transfer logs in [lo, hi] of a token in w that a profile wallet sends or receives; a log
-// between two of our wallets comes once.
+// walletLogs returns a log between two of our wallets once.
 func (c *Chain) walletLogs(ctx context.Context, lo, hi uint64, w wallets) ([]types.Log, error) {
 	if len(w.addresses) == 0 || len(w.tokens) == 0 {
 		return nil, nil
@@ -92,8 +89,7 @@ func (c *Chain) walletLogs(ctx context.Context, lo, hi uint64, w wallets) ([]typ
 	return out, nil
 }
 
-// transfers turns each log whose block this scan judged into a row per wallet side, and marks the log seen. A
-// disabled token's log counts only when it is one of the detected rows in open.
+// transfers marks each kept log in seen; a disabled token's log counts only when it is a detected row in open.
 func (w wallets) transfers(logs []types.Log, open []pending, headers map[uint64]header, finalized uint64,
 	seen map[logKey]bool) []walletTransfer {
 	detected := map[logKey]bool{}

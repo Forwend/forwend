@@ -12,9 +12,8 @@ export type MenuRadioItemProps = RadixMenu.DropdownMenuRadioItemProps;
 
 export type MenuCheckboxItemProps = RadixMenu.DropdownMenuCheckboxItemProps;
 
-// A dropdown menu on Radix (keyboard, focus and screen-reader roles), styled with tokens. It moves in from the edge it
-// opens on and closes at once: a fade-out would hand focus back to the trigger late, and so close a menu opened again
-// in the meantime. Reduced motion drops the movement.
+// Menus close at once: a fade-out would hand focus back to the trigger late, and so close a menu opened again in
+// the meantime.
 
 /** Not modal: the page stays readable behind an open menu; Escape and a click outside still close it. */
 export function Menu(props: RadixMenu.DropdownMenuProps) {

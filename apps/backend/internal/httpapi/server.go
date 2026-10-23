@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-// Serve stops accepting requests on cancellation, drains active responses, then returns.
-// On deadline it closes the remaining connections and returns the shutdown error.
 func Serve(ctx context.Context, server *http.Server, listener net.Listener, grace time.Duration) error {
 	served := make(chan error, 1)
 	go func() { served <- server.Serve(listener) }()

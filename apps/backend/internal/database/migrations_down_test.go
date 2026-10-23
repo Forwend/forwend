@@ -10,7 +10,6 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-// Every Down section must undo its Up, so a migration can be rolled back and applied again.
 func TestMigrationsRollBackAndReapply(t *testing.T) {
 	ctx := context.Background()
 	conn, err := sql.Open("pgx", databasetest.New(t))

@@ -1,6 +1,5 @@
 // Package canary checks invoices' receive addresses apart from the code that makes them (R-51). It must not import
-// internal/address, internal/invoice or anything else holding the factory address: a tampered constant there would
-// fool it too. TestImportsNoAppCode keeps it that way.
+// anything holding the factory address, or a tampered constant there would fool it too (TestImportsNoAppCode).
 package canary
 
 import (
@@ -36,9 +35,8 @@ var (
 	predict   = crypto.Keccak256([]byte("predict((bytes32,address,address,uint256,uint64,uint64,uint256))"))[:4]
 )
 
-// terms is one stdin line, as the database holds the invoice or one of its accepted options:
-// id chain_id recipient_address token_contract amount expires_at settle_deadline symbol network pay_token.
-// PayToken is the pay link's token of the invoice the line belongs to (D-86).
+// terms is one stdin line: the invoice or one of its accepted options, as the database holds it. PayToken is the
+// pay link's token of the invoice the line belongs to (D-86).
 type terms struct {
 	ID, PayToken, Recipient, Token, Amount, Symbol, Network string
 	ChainID, ExpiresAt, SettleDeadline                      uint64
@@ -148,8 +146,7 @@ func checkInvoice(ctx context.Context, c config.Canary, rpcs map[uint64][2]*rpc.
 	if err != nil {
 		return fmt.Errorf("api: %w", err)
 	}
-	// The link's invoice is the one whose id is keccak256 of its token; then the option's own terms, beside the
-	// invoice's shared ones.
+	// The option's own terms overwrite the invoice's; the others are shared.
 	if want := crypto.Keccak256Hash(common.FromHex(t.PayToken)).Hex(); api.InvoiceID != want {
 		return fmt.Errorf("api invoiceId %s, want %s", api.InvoiceID, want)
 	}
@@ -254,7 +251,6 @@ func parseTerms(line string) (terms, error) {
 	return t, nil
 }
 
-// predictCall is the calldata of factory.predict(InvoiceTerms): seven static ABI words.
 func (t terms) predictCall() []byte {
 	word := func(n *big.Int) []byte { return n.FillBytes(make([]byte, 32)) }
 	address := func(s string) []byte { return word(new(big.Int).SetBytes(common.HexToAddress(s).Bytes())) }

@@ -19,7 +19,6 @@ import {
   Wallet,
 } from "lucide-react";
 
-// The Lucide icons the product uses, one stroke weight (1.75).
 export const KIT_ICONS = [
   { name: "Wallet", Icon: Wallet },
   { name: "Invoice", Icon: FileText },

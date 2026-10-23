@@ -1,5 +1,4 @@
--- Billing details (R-43): one editable row per profile with who bills (name, address, country, tax ID, contact
--- email). Each new invoice keeps a copy as its issuer, and like its other details the copy never changes.
+-- Billing details (R-43). Each new invoice keeps a copy as its issuer, which never changes.
 
 -- +goose Up
 CREATE TABLE profile_billing_details (
@@ -20,8 +19,7 @@ ALTER TABLE invoices
     ADD COLUMN issuer_tax_id text,
     ADD COLUMN issuer_email text;
 
--- The insert copies the profile's billing details in the same statement that takes the number, so the copy is the
--- details as they were when the invoice was made, whatever the insert says. A profile without details gives no issuer.
+-- The trigger copies the profile's billing details over whatever the insert says, so the issuer is as at creation.
 -- +goose StatementBegin
 CREATE OR REPLACE FUNCTION invoices_number() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN

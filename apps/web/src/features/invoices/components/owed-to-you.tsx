@@ -15,12 +15,9 @@ import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { exactDigits } from "@/shared/lib/money";
 
-// The longest overdue rows first; the rest wait behind Show all.
 const SHOWN = 5;
 
-// Owed to you (R-95) on the business overview: overdue and partly paid invoices with what is left, then money held for
-// the payer, each row opening its invoice. The header totals what is left at 1 USD per stablecoin; held money is the
-// payer's, so it is not in the total.
+// R-95. Held money is the payer's, so it is not in the total.
 export function OwedToYou({ profileId }: { profileId: string }) {
   const owed = useGetOwedQuery(profileId, LIVE_QUERY);
   const [all, setAll] = useState(false);

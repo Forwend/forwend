@@ -42,7 +42,7 @@ type invoiceEnv struct {
 	bobProfile   string
 }
 
-// invoiceAPI serves the real routes on Postgres, a fake Privy and wallet balances of 2500000 at block 100, with Base Sepolia, enabled USDC and a disabled token.
+// invoiceAPI: wallet balances read 2500000 at block 100, and Base Sepolia has enabled USDC and a disabled token.
 func invoiceAPI(t *testing.T) invoiceEnv {
 	t.Helper()
 	ctx := context.Background()
@@ -119,8 +119,8 @@ func (e invoiceEnv) get(t *testing.T, id string) reply {
 	return e.do(t, req)
 }
 
-// link is the pay link's token of the invoice with this id, as the owner's read gives it (D-86). An id without one (an
-// option's, an unknown one) stays as it is, so a test can show that the public routes refuse it.
+// link returns the pay token of the invoice with this id (D-86). An id without one stays as it is, so a test can
+// show that the public routes refuse it.
 func (e invoiceEnv) link(t *testing.T, id string) string {
 	t.Helper()
 	var token *string
@@ -238,8 +238,6 @@ const detailsBody = `{"chainId": 84532, "token": "` + usdc + `", "amount": "5000
 	"senderName": "Alice Design", "client": {"name": "Bob Ltd", "email": "bob@example.com", "address": "Main St 1\nBerlin", "country": "DE",
 	"taxId": "DE999999999"}}`
 
-// The details are stored and returned to the owner; the public GET gives the payer the number, title, note, due and
-// supply dates, reference and sender name, never the client's contact details.
 func TestCreateInvoiceStoresDetails(t *testing.T) {
 	e := invoiceAPI(t)
 	r := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", detailsBody)
@@ -280,7 +278,7 @@ func TestCreateInvoiceStoresDetails(t *testing.T) {
 	}
 }
 
-// An invoice keeps the billing details the profile had when it was made: editing them later changes no invoice (R-43).
+// R-43.
 func TestInvoiceKeepsItsIssuerCopy(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -316,8 +314,7 @@ func TestInvoiceKeepsItsIssuerCopy(t *testing.T) {
 	}
 }
 
-// R-92: a freelancer or merchant profile saves its billing details before its first invoice, so the payer always sees
-// who bills them; a personal profile's request needs none and names its sender instead (D-52).
+// R-92, D-52.
 func TestBusinessInvoiceNeedsBillingDetails(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
@@ -372,7 +369,6 @@ func TestCreateInvoiceIsIdempotent(t *testing.T) {
 	}
 }
 
-// Ten requests with one key at once: one invoice, one 201, the rest 200.
 func TestCreateInvoiceSameKeyConcurrently(t *testing.T) {
 	e := invoiceAPI(t)
 	replies := make([]reply, 10)
@@ -486,8 +482,7 @@ func TestGetInvoiceNotFound(t *testing.T) {
 	}
 }
 
-// The m of "Confirming (n/m)" counts from the finalized block when the deposit was first seen, so it stays the same as
-// the head moves and after a reload (R-73); a row from before that was kept counts from what is left.
+// R-73. A row without detected_finalized_block counts from what is left.
 func TestGetInvoiceKeepsTheConfirmingTotal(t *testing.T) {
 	e := invoiceAPI(t)
 	created := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody)
@@ -523,7 +518,7 @@ func TestGetInvoiceKeepsTheConfirmingTotal(t *testing.T) {
 	}
 }
 
-// Terms settle() would refuse are refused here, before any payer sees the address: a wallet equal to the token.
+// A wallet equal to the token: terms settle() would refuse.
 func TestCreateInvoiceRefusesUnsettleableTerms(t *testing.T) {
 	e := invoiceAPI(t)
 	_, err := e.pool.Exec(context.Background(), `INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id,
@@ -539,8 +534,6 @@ func TestCreateInvoiceRefusesUnsettleableTerms(t *testing.T) {
 	}
 }
 
-// GET lists deposits that are not reorged with their sender and block time; a detected one shows how far the
-// finalized block still has to go. The owner's route lists the same deposits.
 func TestGetInvoiceListsDepositsWithProgress(t *testing.T) {
 	e := invoiceAPI(t)
 	created := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody)
@@ -579,7 +572,7 @@ func TestGetInvoiceListsDepositsWithProgress(t *testing.T) {
 	if !reflect.DeepEqual(owner.body["deposits"], r.body["deposits"]) {
 		t.Fatalf("owner deposits %v, public %v", owner.body["deposits"], r.body["deposits"])
 	}
-	// A detected payment before expiry: the read and the owner's list say it is confirming (R-69).
+	// R-69: a detected payment before expiry is confirming.
 	list := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/invoices", "did:privy:alice", "", "")
 	items, _ := list.body["items"].([]any)
 	if r.body["confirming"] != true || owner.body["confirming"] != true || len(items) != 1 ||
@@ -593,8 +586,6 @@ func TestGetInvoiceListsDepositsWithProgress(t *testing.T) {
 	}
 }
 
-// The owner lists the profile's invoices newest first in cursor pages, with client details and, once settled, the
-// settlement transaction hash.
 func TestListInvoices(t *testing.T) {
 	e := invoiceAPI(t)
 	path := "/v1/profiles/" + e.aliceProfile + "/invoices"
@@ -633,7 +624,6 @@ func TestListInvoices(t *testing.T) {
 		t.Fatalf("got %v\nwant %v", got, want)
 	}
 
-	// A sent settle is not a settlement yet; a confirmed one shows its hash in the list and the public GET.
 	first := ids[0].(string)
 	sent, settled := "0x"+strings.Repeat("0a", 32), "0x"+strings.Repeat("0b", 32)
 	if _, err := e.pool.Exec(context.Background(), `INSERT INTO settlement_intents (invoice_id, status, nonce, tx_hash, raw_tx)
@@ -677,8 +667,7 @@ func TestListInvoices(t *testing.T) {
 	}
 }
 
-// R-54: the owner's read says why a paid invoice's money still waits, from the intent's status and stored wait kind;
-// the public read leaves it out, and an invoice that is not paid or already settled has none.
+// R-54.
 func TestOwnerSeesWhyAPaidInvoiceWaits(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
@@ -743,8 +732,6 @@ func TestOwnerSeesWhyAPaidInvoiceWaits(t *testing.T) {
 	}
 }
 
-// The owner reads one invoice of the profile as the public GET does, with the client's details; an invoice of another
-// profile, even the user's own, is not found there, and another user's profile is forbidden.
 func TestGetProfileInvoice(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", detailsBody).body["invoiceId"].(string)

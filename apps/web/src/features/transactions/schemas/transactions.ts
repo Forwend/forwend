@@ -29,9 +29,8 @@ export const transactionSchema = z.object({
   logIndex: count,
   blockNumber: count,
   at: apiTime,
-  // Other values may come from a newer API.
   status: openEnum<(typeof TRANSACTION_STATUSES)[keyof typeof TRANSACTION_STATUSES]>(),
-  // R-108: the value at receipt, what it was, whether the user may label it, and the invoice money in paid.
+  // R-108.
   usdValue: usdAmount,
   classification: openEnum<TransactionClass>(),
   labelable: z.boolean(),

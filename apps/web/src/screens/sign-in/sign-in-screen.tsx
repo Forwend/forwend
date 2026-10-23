@@ -12,7 +12,6 @@ import { SIGN_IN_COPY } from "@/features/auth/constants/sign-in";
 import { HERO_IMAGE, HERO_NIGHT_IMAGE } from "@/shared/assets/images";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-// The landing hero's horizon, cropped to sky and mountains, fades into the page; the form stands alone below it.
 export function SignInScreen() {
   const { ready, authenticated } = usePrivy();
   const router = useRouter();

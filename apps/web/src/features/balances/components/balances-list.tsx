@@ -11,8 +11,6 @@ export interface BalancesListProps {
   onRetry: () => void;
 }
 
-// Every enabled token on every network: what the wallet holds there (read at the network's finalized block), and
-// apart from it what is on its way and what is held for payers.
 export function BalancesList({ balances, failed, onRetry }: BalancesListProps) {
   if (!balances && failed) {
     return (

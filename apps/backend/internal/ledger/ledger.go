@@ -30,9 +30,8 @@ func Final(status string) bool {
 	return status == Paid || status == Expired || status == ExpiredPartiallyPaid || status == Canceled
 }
 
-// BalanceOf reads a token balance from an RPC independent of the watcher's, at that RPC's own finalized block, so
-// one bad provider can't mark an invoice paid with money that isn't final (D-15, D-45). It also returns the block it
-// read at: an answer from behind the watcher's finalized block can miss final deposits and is not used.
+// BalanceOf reads from an RPC other than the watcher's, at its finalized block, so one bad provider can't mark an
+// invoice paid (D-15, D-45). An answer from behind the watcher's finalized block can miss deposits and is not used.
 type BalanceOf func(ctx context.Context, chainID uint64, token, holder string) (balance *big.Int, block uint64, err error)
 
 // split divides a deposit between what is still owed to the creator and what is held for the payer (D-24, D-26).
@@ -51,8 +50,8 @@ func split(amount, owedSoFar, deposit *big.Int, late, final bool) (toCreator, to
 	return toCreator, new(big.Int).Sub(deposit, toCreator)
 }
 
-// status is the next payment status from the booked money. funded means the second RPC agrees the receive address
-// holds every booked deposit; mayExpire means expiry has passed and the chain holds exactly what is booked.
+// funded: the second RPC agrees the receive address holds every booked deposit; mayExpire: expiry has passed and
+// the chain holds exactly what is booked.
 func status(current string, amount, owed *big.Int, anyTransfer, mayExpire, funded bool) string {
 	switch {
 	case Final(current):
@@ -62,8 +61,7 @@ func status(current string, amount, owed *big.Int, anyTransfer, mayExpire, funde
 	case owed.Cmp(amount) >= 0 && current == PartiallyPaid:
 		return PartiallyPaid // the database allows no way back to detected
 	case owed.Cmp(amount) >= 0:
-		// Paid in full and on time, waiting for the second RPC to agree: money seen, not a partial payment. It never
-		// expires.
+		// Paid in full and on time, waiting for the second RPC to agree; it never expires.
 		return Detected
 	case mayExpire && owed.Sign() > 0:
 		return ExpiredPartiallyPaid
@@ -79,7 +77,7 @@ func status(current string, amount, owed *big.Int, anyTransfer, mayExpire, funde
 
 // BalanceFrom reads balances with one client per chain: give it RPCs other than the watcher's (D-15).
 func BalanceFrom(clients map[uint64]*ethclient.Client) BalanceOf {
-	// Every RPC in the chain list serves eth_call at its finalized block (checked 2026-10-09).
+	// Every RPC in the chain list serves eth_call at its finalized block.
 	return func(ctx context.Context, chainID uint64, token, holder string) (*big.Int, uint64, error) {
 		client, ok := clients[chainID]
 		if !ok {
@@ -98,8 +96,7 @@ func BalanceFrom(clients map[uint64]*ethclient.Client) BalanceOf {
 	}
 }
 
-// ErrNoToken is an empty balanceOf answer: no token contract at that block. The ledger never reads it as 0 (an RPC
-// that answers empty must not let an invoice expire with money in it).
+// The ledger never reads an empty answer as 0: it must not let an invoice expire with money in it.
 var ErrNoToken = errors.New("no token contract at the block")
 
 func BalanceAt(ctx context.Context, client *ethclient.Client, chainID uint64, token, holder string,

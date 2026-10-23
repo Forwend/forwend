@@ -31,7 +31,6 @@ import type {
 const atMost = (n: number) =>
   `Use at most ${n.toLocaleString("en-US")} characters, with no hidden characters.`;
 
-/** "about 19 min" or "under a minute": how long a payment has left to confirm. */
 export const timeLeft = (seconds: number) =>
   seconds < 60 ? "under a minute" : `about ${Math.ceil(seconds / 60)} min`;
 
@@ -59,7 +58,7 @@ export const INVOICES_COPY = {
   baseUnits: (token: string) => `base units of ${token}`,
 } as const;
 
-/** A personal profile's invoices are requests (PRODUCT.md): the list's words where they differ. */
+/** A personal profile's invoices are requests (PRODUCT.md). */
 export const REQUESTS_COPY = {
   ...INVOICES_COPY,
   invoices: "Requests",
@@ -139,7 +138,7 @@ export const NEW_INVOICE_COPY = {
   remindersLabel: "Send payment reminders",
   remindersHint:
     "Emails the client 3 days before the due date, on it and 7 days after, until it is paid. Needs a due date and a client email.",
-  // Repeat every month (R-99): a retainer.
+  // R-99.
   repeatLabel: "Repeat every month",
   repeatHint: `Each month a new invoice is due on the due date's day (the last day in a shorter month) and emailed to the client ${RETAINER_LEAD_DAYS} days before. Needs a due date and a client email.`,
   repeatEndLabel: "Last due date (optional)",
@@ -307,7 +306,7 @@ export const INVOICE_COPY = {
       "Stopped for a manual check. The money stays at the invoice's address until Forwend resolves it",
   } satisfies Record<SettlementWaitKind, (network: string, seconds: number, at: string) => string>,
   checkStatus: "Check status",
-  // What Check status found (R-55); `money` formats base units with the token's symbol.
+  // What Check status found (R-55).
   recheck: (r: Recheck, network: string, money: (units: bigint) => string) => {
     const missing = BigInt(r.onChain) - BigInt(r.recorded);
     if (r.rescanning && missing > 0n) return `Found ${money(missing)}. Recording it now.`;
@@ -321,13 +320,12 @@ export const INVOICE_COPY = {
   recheckUnreadable: (networks: string) => `${networks} did not answer.`,
   recheckTooSoon: "Checked recently.",
   nextCheck: (left: string) => `Next check in ${left}`,
-  // Every transaction of the invoice: payments in, the settlement to the wallet, later refunds (R-69).
+  // R-69.
   deposits: "Transactions",
   payment: "Payment",
   to: "To",
   late: "After the checkout closed",
-  // What happened and what to do, under the status (R-77). Amounts arrive formatted with their symbol; `noun` is
-  // invoice or request.
+  // Under the status (R-77); amounts arrive formatted with their symbol.
   next: {
     // Only said when money came: with nothing sent, Details' Canceled on row says it.
     [INVOICE_EXCEPTIONS.canceled]: ({ held, noun }) =>
@@ -384,7 +382,7 @@ export const INVOICE_COPY = {
     [INVOICE_EVENTS.settled]: (number: string) => `${number} in your wallet`,
     [INVOICE_EVENTS.held]: (number: string) => `${number} held for the payer`,
   } satisfies Record<InvoiceEventKind, (number: string) => string>,
-  // Cancel before any money (R-79, D-79): the confirm dialog and its outcome.
+  // Cancel before any money (R-79, D-79).
   moreActions: "More actions",
   cancel: {
     trigger: (noun: string) => `Cancel ${noun}`,
@@ -397,7 +395,7 @@ export const INVOICE_COPY = {
     tooLate: "It can't be canceled anymore: money was seen or the checkout closed.",
   },
   noIssuer: "None on this invoice.",
-  // Send to client (R-94), under Billed to.
+  // R-94.
   send: {
     action: "Send to client",
     noEmail: "No client email on this invoice, so it can't be emailed. Share the pay link instead.",
@@ -410,7 +408,7 @@ export const INVOICE_COPY = {
     limited: "You can't send more emails right now. Try again later.",
     error: "We could not send it. Try again.",
   },
-  // Payment reminders (R-96), under Send to client.
+  // R-96.
   reminders: {
     toggle: "Payment reminders",
     hint: "Emails the client 3 days before the due date, on it and 7 days after, until it is paid.",
@@ -428,7 +426,7 @@ export const INVOICE_COPY = {
     conflict: "Reminders can't be turned on for this invoice now.",
     error: "We could not save it. Try again.",
   },
-  // A retainer (R-99), under Payment reminders.
+  // R-99.
   repeat: {
     title: "Repeats every month",
     next: (due: string, on: string) => `Next invoice due ${due}, emailed to the client on ${on}.`,
@@ -445,7 +443,7 @@ export const INVOICE_COPY = {
   },
 } as const;
 
-// The client's page to stop payment reminders (R-96).
+// R-96.
 export const STOP_REMINDERS_COPY = {
   title: "Stop payment reminders?",
   body: "You will get no more payment reminders for this invoice. The invoice and its payment page stay as they are.",
@@ -459,11 +457,10 @@ export const STOP_REMINDERS_COPY = {
   failed: "We could not stop them. Try again.",
 } as const;
 
-// Owed to you on the business overview (R-95).
+// R-95.
 export const OWED_COPY = {
   title: "Owed to you",
   totalLabel: "Left to pay",
-  // What each row is, after its number; overdue counts the days.
   kinds: {
     [OWED_KINDS.overdue]: (days: number) => (days === 1 ? "1 day late" : `${days} days late`),
     [OWED_KINDS.partlyPaid]: () => "Partly paid",

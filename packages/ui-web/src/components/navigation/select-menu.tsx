@@ -28,10 +28,7 @@ export interface SelectMenuProps<T extends string> {
   className?: string;
 }
 
-/**
- * One choice from a list too long for a segmented control (a list's status filter): a button that shows the choice
- * with its icon, opening a menu of every option. The label shows beside the choice from small screens up.
- */
+/** For a list too long for a segmented control, such as a list's status filter. */
 export function SelectMenu<T extends string>({
   label,
   options,

@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-// Theme choice: set before first paint, follows the system, remembers the visitor's choice.
 test.describe("theme", () => {
   test("the theme script runs in <head>, before any page content", async ({ request }) => {
     const html = await (await request.get("/")).text();

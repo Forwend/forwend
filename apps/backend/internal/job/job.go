@@ -24,28 +24,22 @@ const (
 
 var (
 	ErrNotFound = errors.New("job not found")
-	// ErrInvalid wraps a request value that breaks a rule; the message names it.
-	ErrInvalid = errors.New("invalid job request")
-	// ErrConflict means the idempotency key was used with another request.
+	ErrInvalid  = errors.New("invalid job request")
 	ErrConflict = errors.New("idempotency key reused with another request")
 	// ErrAccepted: the client accepted the job, so it can't be deleted.
-	ErrAccepted = errors.New("the client accepted the job")
-	// ErrNotAccepted: a step is marked done only once the client accepted the job.
+	ErrAccepted    = errors.New("the client accepted the job")
 	ErrNotAccepted = errors.New("the client has not accepted the job")
 	// ErrOutOfOrder: the steps are marked done in order, and an earlier payment has no invoice yet.
-	ErrOutOfOrder = errors.New("an earlier payment has no invoice yet")
-	// ErrChangeNotAccepted: a scope change is marked done only once the client accepted it.
+	ErrOutOfOrder        = errors.New("an earlier payment has no invoice yet")
 	ErrChangeNotAccepted = errors.New("the client has not accepted this change")
-	// ErrChangePending: one change waits for the client at a time, so each is accepted in order, and the final invoice
-	// waits until no change does.
+	// One change waits for the client at a time, and the final invoice waits until none does.
 	ErrChangePending = errors.New("a change waits for the client's acceptance")
 	// ErrJobFinished: the last payment is done, so more work is a new job.
-	ErrJobFinished = errors.New("the job's last payment is done")
-	// ErrNotWithdrawable: only the last payment, a change the client has not accepted, can be withdrawn.
+	ErrJobFinished     = errors.New("the job's last payment is done")
 	ErrNotWithdrawable = errors.New("only the last payment, a change not accepted yet, can be withdrawn")
 )
 
-// Request is a new job as the owner sends it. Client needs a name and an email: payments are billed there.
+// Client needs a name and an email: payments are billed there.
 type Request struct {
 	Title    string
 	Scope    string
@@ -53,8 +47,7 @@ type Request struct {
 	Payments []PaymentRequest
 }
 
-// PaymentRequest is one payment of the schedule: AmountUSD is a decimal with at most 2 decimals. Only the first may be
-// OnAccept, the deposit.
+// AmountUSD has at most 2 decimals. Only the first payment may be OnAccept, the deposit.
 type PaymentRequest struct {
 	Title     string
 	AmountUSD string
@@ -62,7 +55,6 @@ type PaymentRequest struct {
 	OnAccept  bool
 }
 
-// Payment is one payment of a job's schedule; its invoice is set once made.
 type Payment struct {
 	Position    int
 	Title       string
@@ -77,12 +69,10 @@ type Payment struct {
 	// deposit is made at acceptance, so it has neither.
 	DoneAt       time.Time
 	DeliveryLink string
-	// For the job's record (R-104): when its invoice was made, and the block time of the payment that completed it;
-	// zero until then.
+	// For the job's record (R-104): PaidAt is the block time of the payment that completed it; zero until then.
 	InvoicedAt time.Time
 	PaidAt     time.Time
-	// A scope change (R-105): when the owner proposed it, and the client's typed name, email and time once they
-	// accepted it; zero and "" for the payments of the quote.
+	// A scope change (R-105); zero and "" for the payments of the quote.
 	ProposedAt    time.Time
 	AcceptedName  string
 	AcceptedEmail string
@@ -91,7 +81,6 @@ type Payment struct {
 	ClientEmailed bool
 }
 
-// Job is a quote and what came of it. The client's typed name and email are set once accepted.
 type Job struct {
 	ID            string
 	Token         string // the secret in the client's link /w/<token>
@@ -107,13 +96,11 @@ type Job struct {
 	profileID     string
 }
 
-// USD is cents as a decimal with 2 decimals, like 300.00.
 func USD(cents int64) string {
 	return fmt.Sprintf("%d.%02d", cents/100, cents%100)
 }
 
-// TotalCents is what the whole job costs: the sum of its payments the client agreed to, so a change counts once
-// accepted (R-105).
+// TotalCents counts a change only once the client accepted it (R-105).
 func (j Job) TotalCents() int64 {
 	var total int64
 	for _, p := range j.Payments {
@@ -124,7 +111,6 @@ func (j Job) TotalCents() int64 {
 	return total
 }
 
-// Summary is a job in the owner's list.
 type Summary struct {
 	ID         string
 	Title      string

@@ -11,8 +11,7 @@ import { BILLING_THEN } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-// New job (R-101), laid out like New invoice. A job copies the billing details as its issuer, so the owner adds them
-// first (R-92); if they can't be read, the form shows and the API still checks.
+// R-101, R-92: billing details first; if they can't be read, the form shows and the API still checks.
 export function NewJobScreen() {
   const { profile } = useAppSession();
   const billing = useGetBillingDetailsQuery(profile.profileId);

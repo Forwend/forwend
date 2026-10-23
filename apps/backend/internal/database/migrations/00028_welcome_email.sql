@@ -1,5 +1,4 @@
--- Welcome email (R-84): one per account made from now on, at its verified login email. Accounts that exist before
--- this migration keep welcome false and never get one.
+-- Welcome email (R-84): accounts made before this migration keep welcome false and never get one.
 
 -- +goose Up
 ALTER TABLE users ADD COLUMN welcome boolean NOT NULL DEFAULT false;

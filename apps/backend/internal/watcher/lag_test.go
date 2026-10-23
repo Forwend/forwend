@@ -51,7 +51,6 @@ func node(t *testing.T, target string, hook func(method string) (result string))
 	return c
 }
 
-// laggingNode answers eth_getLogs with [] while lag is set: a load-balanced node that is behind.
 func laggingNode(t *testing.T, target string, lag *atomic.Bool) *rpc.Client {
 	return node(t, target, func(method string) string {
 		if method == "eth_getLogs" && lag.Load() {
@@ -61,8 +60,7 @@ func laggingNode(t *testing.T, target string, lag *atomic.Bool) *rpc.Client {
 	})
 }
 
-// The chain moves past the latest block this scan read before it reads finalized: the cursor must not skip the
-// blocks in between (Arc and Tempo finalize every block, so a slow scan meets this).
+// Blocks mined between reading latest and finalized must not be skipped (Arc and Tempo finalize every block).
 func TestChainMovingDuringAScanLosesNothing(t *testing.T) {
 	e := setup(t)
 	var once atomic.Bool
@@ -83,7 +81,6 @@ func TestChainMovingDuringAScanLosesNothing(t *testing.T) {
 	}
 }
 
-// A node far behind answers eth_blockNumber once: the cursor must not jump past what was scanned.
 func TestLaggingLatestBlockLosesNothing(t *testing.T) {
 	e := setup(t)
 	e.anvil.Transfer(e.token, receive, "5000000")
@@ -108,7 +105,6 @@ func TestLaggingLatestBlockLosesNothing(t *testing.T) {
 	}
 }
 
-// An empty eth_getLogs answer in the scan where the deposit's block becomes final doesn't lose the deposit.
 func TestLaggingNodeDoesNotLoseADeposit(t *testing.T) {
 	e := setup(t)
 	var lag atomic.Bool
@@ -125,7 +121,6 @@ func TestLaggingNodeDoesNotLoseADeposit(t *testing.T) {
 	}
 }
 
-// An empty eth_getLogs answer doesn't reorg a detected deposit whose block is still on the chain.
 func TestLaggingNodeDoesNotReorgADeposit(t *testing.T) {
 	e := setup(t)
 	var lag atomic.Bool

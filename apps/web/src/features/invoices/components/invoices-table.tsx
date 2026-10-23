@@ -37,7 +37,6 @@ import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { useListFilters } from "@/shared/hooks/use-list-filters";
 import { chainName } from "@/shared/lib/chains";
 
-// A personal profile's requests open the request sheet; invoices have their own page.
 function NewInvoiceLink({
   className = "",
   size = "md",
@@ -139,8 +138,7 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
         <NoMatch onClear={filters.clear} />
       ) : (
         <div className="fw-panel overflow-hidden">
-          {/* Wide screens: a ruled table, scrolled sideways rather than squeezed when its column is narrow. Below xl
-              the sidebar leaves too little room for five columns, so rows stack as on phones, as requests always do. */}
+          {/* Below xl the sidebar leaves too little room for five columns, so rows stack as on phones. */}
           <div className={onRequest ? "hidden" : "hidden overflow-x-auto xl:block"}>
             <table className="w-full min-w-[44rem] text-sm">
               <thead>
@@ -158,7 +156,6 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
               </thead>
               <tbody className="divide-y divide-line">
                 {rows.map((inv) => (
-                  // The number's link covers the row, so the whole row opens the invoice.
                   <tr
                     key={inv.invoiceId}
                     className={`relative transition-colors duration-[var(--fw-duration-fast)] ${TABLE_ROW_CLASSES} ${ROW_INTERACTIVE_CLASSES}`}
@@ -222,9 +219,7 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
                   href={invoiceHref(inv)}
                   className={`flex min-h-16 items-center gap-3 px-4 py-3 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus sm:px-5 ${ROW_INTERACTIVE_CLASSES}`}
                 >
-                  {/* Who it is for leads; the number and due date sit under it, and one network rides on the
-                      avatar as its logo (and in words for screen readers), so a narrow row cuts neither. A request's
-                      note is no name, so its avatar keeps the document icon. */}
+                  {/* A request's note is no name, so its avatar keeps the document icon. */}
                   <Avatar
                     name={onRequest ? null : label(inv)}
                     chainId={inv.optionCount > 1 ? null : inv.chainId}
@@ -250,8 +245,6 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
                       )}
                     </span>
                   </span>
-                  {/* Phones stack the amount over the status; wider rows put the status before the amount, in a
-                      column of its own, so every row is one line. */}
                   <span className="flex shrink-0 flex-col items-end gap-1 sm:flex-row-reverse sm:items-center sm:gap-6">
                     <InvoiceAmount
                       invoice={inv}
@@ -295,7 +288,6 @@ function Avatar({
   small = false,
 }: {
   name: string | null;
-  /** The one network the invoice is paid on, shown as its logo on the corner. */
   chainId?: number | null;
   small?: boolean;
 }) {

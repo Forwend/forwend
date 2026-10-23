@@ -9,8 +9,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
 
-// StatementLine is one payment a statement lists (R-112). USDCents is its USD value in cents and Other its value in the
-// records currency in minor units, nil without a rate.
+// USDCents is the USD value in cents; Other the records-currency value in minor units, nil without a rate (R-112).
 type StatementLine struct {
 	At       time.Time
 	What     string // the invoice's number and client, or Income
@@ -21,9 +20,8 @@ type StatementLine struct {
 	TxHash   string
 }
 
-// Statement is a profile's income for a period (R-112): its account holder, the UTC days From to To (both
-// included), the income oldest first, and how much money in it leaves out unclassified. Currency is the records
-// currency ("" for none) with its minor unit digits.
+// Statement is a profile's income (R-112) for the UTC days From to To, both included, oldest first. Unclassified
+// counts the money in it leaves out; Currency is the records currency ("" for none) with Decimals minor digits.
 type Statement struct {
 	Holder       profile.Issuer
 	From, To     time.Time
@@ -34,7 +32,6 @@ type Statement struct {
 	Unclassified int
 }
 
-// StatementPDF renders the statement; the same statement always gives the same bytes.
 func StatementPDF(s Statement) ([]byte, error) {
 	period := s.From.Format(time.DateOnly) + " to " + s.To.Format(time.DateOnly)
 	d := open("Statement", period, bmp(s.Holder.Name), s.Issued)
@@ -61,7 +58,7 @@ func StatementPDF(s Statement) ([]byte, error) {
 		heads = append(heads, s.Currency)
 	}
 	const pad, rowHeight = 2.0, 3*lineHeight + 3
-	// row writes one line of cells; a number too wide for its column gets a smaller size, never a cut.
+	// A number too wide for its column gets a smaller size, never a cut.
 	row := func(cells []string, style string, y float64) {
 		x := margin
 		for i, c := range cells {
@@ -78,7 +75,6 @@ func StatementPDF(s Statement) ([]byte, error) {
 			x += cols[i]
 		}
 	}
-	// header heads the table, and again at the top of each page it continues on.
 	header := func() {
 		d.color(surface)
 		d.text(muted)

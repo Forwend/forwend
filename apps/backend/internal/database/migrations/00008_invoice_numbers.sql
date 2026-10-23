@@ -1,6 +1,4 @@
--- Invoice numbers and details (R-42, D-50). Each profile numbers its invoices 1, 2, … (shown as INV-0001) from a
--- counter row. The invoice also keeps a title, a note, a due date and the client's name, email and address; like the
--- terms, an issued invoice's number and details never change.
+-- Invoice numbers and details (R-42, D-50).
 
 -- +goose Up
 ALTER TABLE profiles ADD COLUMN invoice_seq bigint NOT NULL DEFAULT 0 CHECK (invoice_seq >= 0);
@@ -14,7 +12,6 @@ ALTER TABLE invoices
     ADD COLUMN client_email text CHECK (char_length(client_email) BETWEEN 1 AND 254),
     ADD COLUMN client_address text CHECK (char_length(client_address) BETWEEN 1 AND 500);
 
--- Existing invoices are numbered in the order they were made.
 UPDATE invoices i SET number = n.number
 FROM (SELECT id, row_number() OVER (PARTITION BY profile_id ORDER BY created_at, id) AS number FROM invoices) n
 WHERE n.id = i.id;
@@ -25,9 +22,8 @@ ALTER TABLE invoices
     ALTER COLUMN number SET NOT NULL,
     ADD CONSTRAINT invoices_profile_id_number_key UNIQUE (profile_id, number);
 
--- The insert takes the next number itself, so every way of creating an invoice gets one. The counter row stays locked
--- until the invoice's transaction ends: creates for one profile take turns, and a failed insert rolls the counter back,
--- so numbers have no gaps.
+-- A trigger, so every way of creating an invoice gets a number. The counter row stays locked until the transaction
+-- ends: creates for one profile take turns, and a failed insert rolls the counter back, so numbers have no gaps.
 -- +goose StatementBegin
 CREATE FUNCTION invoices_number() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN

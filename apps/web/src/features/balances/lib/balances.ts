@@ -6,7 +6,7 @@ export function formatUsd(cents: bigint): string {
   return formatTokenAmount({ baseUnits: cents, decimals: USD_DECIMALS });
 }
 
-// Each stablecoin counts as 1 USD; cut to cents once, never rounded up. Null when a wallet balance is missing.
+// Each stablecoin counts as 1 USD; cut to cents once, never rounded up.
 export function usdTotal(balances: Balances, field: "wallet" | "pending" | "held"): bigint | null {
   if (balances.tokens.length === 0) return null;
   // Added at the finest decimals of any token, so no cent is lost per token.

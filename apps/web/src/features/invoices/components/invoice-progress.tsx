@@ -16,11 +16,7 @@ export interface InvoiceTimelineProps {
   steps?: readonly InvoiceStep[];
 }
 
-/**
- * The status timeline. While a payment confirms, its bar fills as blocks pass of those it had to wait (R-73); until one
- * passes it shows a sweep. `waiting` false shows no step in progress (a closed checkout). `steps` picks which steps
- * show: the payer's end at Paid (R-68).
- */
+/** Status timeline (R-73, R-68). `waiting` false shows no step in progress (a closed checkout). */
 export function InvoiceTimeline({
   invoice,
   label,
@@ -32,8 +28,7 @@ export function InvoiceTimeline({
   const done = useStepped(reached);
   const confirming = current === INVOICE_STEPS.confirming && done === reached;
 
-  // Partly paid shows on the Paid step itself, as a tinted label, filled by the share received (R-69); not while
-  // the next payment still confirms: that step is the one in progress.
+  // Partly paid shows on the Paid step (R-69), unless the next payment is still confirming.
   const partly =
     current !== INVOICE_STEPS.confirming &&
     (invoice.paymentStatus === API_PAYMENT_STATUSES.partiallyPaid ||
@@ -59,8 +54,7 @@ export function InvoiceTimeline({
           : i === done && (done < reached || (step === current && waiting))
             ? STEP_STATES.current
             : STEP_STATES.upcoming,
-      // The waiting step moves, so it never reads as stuck: confirming fills by blocks, partly paid by the share,
-      // anything else sweeps (paid out while settling included). A step passed through on the way shows full.
+      // The waiting step always moves, so it never reads as stuck.
       ...(i === done && done === reached && step === current
         ? {
             progress: confirming

@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	// The pay link's token of the line's invoice; its id is keccak256 of it (D-86).
+	// The line's invoice's pay link token (D-86).
 	payToken  = "1c0ffee0000000000000000000000000000000000000000000000000000000ab"
 	recipient = "0x1111111111111111111111111111111111111111"
 	token     = "0x2222222222222222222222222222222222222222"
@@ -35,8 +35,7 @@ const (
 
 var (
 	id, otherID = idOf(payToken), idOf(otherToken)
-	// line is the invoice as the database lists it on the canary's stdin.
-	line = lineOf(payToken)
+	line        = lineOf(payToken)
 )
 
 func idOf(pay string) string { return crypto.Keccak256Hash(common.FromHex(pay)).Hex() }
@@ -46,7 +45,6 @@ func lineOf(pay string) string {
 		expiresAt, deadline, pay)
 }
 
-// setup is what one case serves and configures.
 type setup struct {
 	rpc2, codeHash, pageAddress, qrAddress, network, payToken string
 	chainKey                                                  uint64
@@ -167,9 +165,8 @@ func TestImportsNoAppCode(t *testing.T) {
 	}
 }
 
-// serve answers the api's GET /v1/invoices/<pay> with api, and /pay/<pay> with a page laid out like the real one that
-// shows address and a QR code drawn as qr once Show address is pressed, or a closed invoice without it when address
-// is "". The page must be asked for by ?option=<id>.
+// serve fakes the api's invoice and a pay page that shows address and its QR once Show address is pressed; the page
+// needs ?option=<id>, and address "" makes it a closed invoice.
 func serve(t *testing.T, pay string, api map[string]any, address, qr, network string) string {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/pay/"+pay && r.URL.Query().Get("option") != id {

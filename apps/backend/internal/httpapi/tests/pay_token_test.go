@@ -10,8 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// D-86: the chain shows an invoice's id and its options' ids (ReceiverDeployed, Settled, the deploy calldata), so
-// none of them opens a public route; only the pay link's token does, and the id is keccak256 of it.
+// D-86.
 func TestPublicRoutesTakeOnlyThePayToken(t *testing.T) {
 	e := invoiceAPI(t)
 	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
@@ -44,8 +43,7 @@ func TestPublicRoutesTakeOnlyThePayToken(t *testing.T) {
 		t.Fatalf("payer email by the token: %d", got)
 	}
 
-	// An invoice made before D-86 has no token: its id, random, opens nothing public, like every id, and the owner's
-	// read has no pay link.
+	// An invoice made before D-86 has no token.
 	old := e.post(t, "did:privy:alice", e.aliceProfile, "key-2", basicBody).body["invoiceId"].(string)
 	e.exec(t, "UPDATE invoices SET pay_token = NULL WHERE id = $1", old)
 	if got := public("GET", old, ""); got != http.StatusNotFound {

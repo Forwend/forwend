@@ -12,7 +12,7 @@ export interface PanelProps extends ComponentPropsWithoutRef<"div"> {
   tone?: PanelTone;
 }
 
-/** Solid surface by default. Glass only where the panel sits on imagery. */
+/** Glass only where the panel sits on imagery. */
 export function Panel({ tone = PANEL_TONES.solid, className, ...props }: PanelProps) {
   return (
     <div

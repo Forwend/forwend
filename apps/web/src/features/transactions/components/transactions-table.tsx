@@ -48,7 +48,6 @@ import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
 import { addressLink, chainName } from "@/shared/lib/chains";
 
 const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
-// Phone rows sit under the day they happened on, so a row shows only its time.
 const TIME = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
 const DAY = new Intl.DateTimeFormat(undefined, {
   weekday: "short",
@@ -61,14 +60,12 @@ const DAY_WITH_YEAR = new Intl.DateTimeFormat(undefined, {
   day: "numeric",
   year: "numeric",
 });
-// Another year's day says its year, so last October's transfers don't read as this October's.
 const dayName = (when: DayGroup<Transaction>["when"]) =>
   when === RELATIVE_DAYS.today
     ? TRANSACTIONS_COPY.today
     : when === RELATIVE_DAYS.yesterday
       ? TRANSACTIONS_COPY.yesterday
       : (when.getFullYear() === new Date().getFullYear() ? DAY : DAY_WITH_YEAR).format(when);
-// The table's Date column: the same day without its weekday, the time beside it.
 const SHORT_DAY = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
 const SHORT_DAY_WITH_YEAR = new Intl.DateTimeFormat(undefined, {
   month: "short",
@@ -94,8 +91,7 @@ export function TransactionsTable(props: TransactionsTableProps) {
   return <ProfileTransactions key={props.profileId} {...props} />;
 }
 
-// "Show more" asks for more rows in one request (up to the API's 100), so a refresh never skips or repeats one. The
-// API applies the direction and search, kept in the URL; a preview has neither.
+// "Show more" grows one request (up to the API's 100), so a refresh never skips or repeats a row.
 function ProfileTransactions({ profileId, title, pageHeading, preview }: TransactionsTableProps) {
   const [shownLimit, setShownLimit] = useState<number>(TRANSACTIONS_PAGE_SIZE);
   const filters = useListFilters(
@@ -168,7 +164,6 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
               label={TRANSACTIONS_COPY.filterLabel}
               value={filters.filter}
               onValueChange={filters.setFilter}
-              // On phones the direction takes a row of its own: too wide to sit beside the search, then all of it.
               className="max-sm:min-w-56 max-sm:flex-1"
               options={Object.values(TRANSACTION_FILTERS).map((value) => ({
                 value,
@@ -207,7 +202,6 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
         <NoMatch onClear={filters.clear} compact={!pageHeading} />
       ) : (
         <div className={pageHeading ? "fw-panel overflow-hidden" : ""}>
-          {/* Wide screens: a ruled table, scrolled sideways rather than squeezed when its column is narrow. */}
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[36rem] text-sm">
               <thead>
@@ -226,7 +220,6 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                   </th>
                 </tr>
               </thead>
-              {/* One ruled body: the date is a column, so no day breaks the table into bands. */}
               <tbody className="divide-y divide-line">
                 {days.map((group) =>
                   group.items.map((t) => (
@@ -235,7 +228,6 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                       className={`transition-colors duration-[var(--fw-duration-fast)] ${TABLE_ROW_CLASSES} hover:bg-[color-mix(in_oklab,var(--fw-surface-2)_50%,transparent)]`}
                     >
                       <td>
-                        {/* Below 2xl the network moves under the counterparty, so no amount lacks it. */}
                         <Party
                           t={t}
                           detail={<NetworkName chainId={t.chainId} />}
@@ -283,8 +275,6 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                   {group.items.map((t) => (
                     <li key={transactionKey(t)} className="min-h-16 px-4 py-3">
                       <div className="flex items-center gap-3">
-                        {/* Two lines that never cut: the network rides on the icon as its logo (and in words for
-                          screen readers), the time and the explorer link sit under the other side. */}
                         <Party
                           t={t}
                           short
@@ -303,7 +293,6 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                             </>
                           }
                         />
-                        {/* A phone row names only a status that still needs waiting for, as banking apps do. */}
                         <span className="ml-auto flex shrink-0 flex-col items-end gap-1">
                           <Amount t={t} />
                           {transactionStatus(t) === PAYMENT_STATUS.confirmed ? null : (
@@ -313,7 +302,6 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                           )}
                         </span>
                       </div>
-                      {/* The type sits under the party, in line with its text. */}
                       {preview ? null : (
                         <div className="mt-2 pl-12 text-sm">
                           <TransactionType profileId={profileId} t={t} />
@@ -368,7 +356,6 @@ function Party({
   detail?: ReactNode;
   detailClassName?: string;
   short?: boolean;
-  /** The network's logo on the direction icon's corner, where a row has no room for its name. */
   chainBadge?: boolean;
 }) {
   const incoming = t.direction === TRANSACTION_DIRECTIONS.in;
@@ -412,7 +399,6 @@ function Party({
   );
 }
 
-// The other side's address, linked to its page on the chain's explorer when the chain has one.
 function Counterparty({ t }: { t: Transaction }) {
   const link = addressLink(t.chainId, t.counterparty);
   const short = shortAddress(t.counterparty);
@@ -434,7 +420,6 @@ function Counterparty({ t }: { t: Transaction }) {
   );
 }
 
-// Confirmed is the usual end state, so only a transfer still confirming gets a pill.
 function Status({ t }: { t: Transaction }) {
   const status = transactionStatus(t);
   return status === PAYMENT_STATUS.confirmed ? (

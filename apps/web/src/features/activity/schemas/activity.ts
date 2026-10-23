@@ -25,7 +25,6 @@ export const activityItemSchema = z.object({
   symbol: z.string(),
   decimals: count,
   amount: baseUnits,
-  // An invoice's payment status or a deposit's status; other values may come from a newer API.
   status: openEnum<ApiPaymentStatus | ApiDepositStatus>(),
   settlementStatus: openEnum<ApiSettlementStatus>().optional(),
   txHash: hash32.optional(),

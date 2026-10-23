@@ -14,12 +14,10 @@ export interface PaymentRemindersProps {
   invoiceId: string;
   reminders: InvoiceReminders;
   hasDueDate: boolean;
-  /** The pay link still takes money: only then can reminders be turned on. */
   payable: boolean;
 }
 
-// Payment reminders (R-96, D-69) under Send to client: one switch, saved when flipped, then each reminder with how it
-// went. The client's stop is final, so the switch stays off and says when.
+// R-96, D-69. The client's stop is final, so the switch stays off and says when.
 export function PaymentReminders({
   profileId,
   invoiceId,

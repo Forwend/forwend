@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// MaxEvents bounds one read of the bell's events.
 const MaxEvents = 50
 
 // Event is a paid, settled or held-money event of one of the profile's invoices (R-81), the same as the owner's email
@@ -25,7 +24,7 @@ type Event struct {
 	At          time.Time
 }
 
-// Events lists the profile's newest events first; the caller has checked that the user owns the profile.
+// The caller must check that the user owns the profile.
 func (s *Service) Events(ctx context.Context, profileID string, limit int) ([]Event, error) {
 	if limit < 1 || limit > MaxEvents {
 		return nil, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxEvents)

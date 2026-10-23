@@ -30,8 +30,7 @@ export interface TransactionTypeProps {
   t: Transaction;
 }
 
-// R-109: what a transaction was. An invoice payment links its invoice; money in that Forwend can't classify takes the
-// user's label from a select; anything else is plain text.
+// R-109.
 export function TransactionType({ profileId, t }: TransactionTypeProps) {
   const [label] = useLabelTransactionMutation();
   const toast = useToast();

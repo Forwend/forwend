@@ -71,10 +71,8 @@ export interface InvoiceDetailProps {
   request?: boolean;
 }
 
-// The profile's own read gives the terms, statuses, deposits and the client, and is read again every REFRESH_MS; its 404
-// tells that this profile did not make the invoice (the public read needs the pay link's token, D-86). On desktop the
-// header's breadcrumb leads back; phones have no breadcrumb, so they get a back link. A personal profile's invoice is a
-// request: it has no client and no due date.
+// A 404 means another profile made the invoice (the public read needs the pay token, D-86).
+// A personal profile's invoice is a request: it has no client and no due date.
 export function InvoiceDetail({
   invoiceId,
   profileId,
@@ -155,8 +153,7 @@ function Loaded({
   const main = invoice.options.find((o) => o.optionId === invoice.invoiceId);
   const client = mine?.client;
   const issuer = invoice.issuer;
-  // The checkout closes at expiry by the local clock (pay link, Checkout closed in Details); the status follows the
-  // API's closed flag, at most one poll later.
+  // By the local clock; the status follows the API's closed flag, at most one poll later.
   const closed = Date.parse(invoice.expiresAt) <= Date.now();
   const status = invoiceStatus(invoice);
   const exception = invoiceException(invoice, status);
@@ -187,14 +184,10 @@ function Loaded({
     ).includes(status);
   return (
     <>
-      {/* Each thing said once (R-60): the timeline says the status and Details the times (when the checkout closes,
-          when it was canceled), so the header only names the invoice. Its actions (copy and open the pay link while it
-          takes money, duplicate it, cancel before any money) wait behind one More actions menu at the header's top
-          right. */}
+      {/* R-60: each thing is said once, so the header only names the invoice. */}
       <header className="flex items-start justify-between gap-3 lg:items-center">
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          {/* Above a title the number is a quiet label on phones, so the title reads as the heading; on desktop the
-              breadcrumb's last step already shows it. With no title the number is the heading everywhere. */}
+          {/* With a title, the number is a quiet label; on desktop the breadcrumb shows it. */}
           <h1
             className={`flex min-h-7 items-center ${invoice.title ? "text-sm font-medium text-muted lg:sr-only" : "text-2xl font-semibold tracking-tight text-ink"}`}
           >
@@ -274,8 +267,7 @@ function Loaded({
               <p role="status" className="text-sm text-ink empty:sr-only">
                 {current === INVOICE_STEPS.confirming ? (
                   <ConfirmingStatus blocks={blocksLeft} total={blocksTotal} seconds={secondsLeft} />
-                ) : // The timeline says the state; this line says only why money still waits.
-                wait ? (
+                ) : wait ? (
                   COPY.settling[wait.kind](
                     chainName(invoice.chainId),
                     wait.secondsLeft ?? 0,
@@ -298,8 +290,7 @@ function Loaded({
                     : null
                 }
               />
-              {/* Money sent to an option the client did not end up paying with is the payer's (D-76), once one was
-                  chosen (R-119). */}
+              {/* Money on an option the client didn't pay with is the payer's (D-76, R-119). */}
               {invoice.options
                 .filter((o) => invoice.optionLocked && o.optionId !== invoice.optionId)
                 .map((o) => (
@@ -310,7 +301,6 @@ function Loaded({
                     title={COPY.heldOn(o.symbol, chainName(o.chainId))}
                   />
                 ))}
-              {/* Only while the checkout can take money: paid, settled or expired has nothing left to look for. */}
               {payable && invoice.payToken ? (
                 <CheckStatus
                   payToken={invoice.payToken}
@@ -329,7 +319,6 @@ function Loaded({
               total={BigInt(main.amount)}
             />
           ) : null}
-          {/* Side by side, as on a paper invoice, once the column has room; one height, so neither leaves a gap. */}
           <div className="grid gap-4 @xl:grid-cols-2 *:only:col-span-full">
             {request ? null : (
               <section aria-labelledby="invoice-client" className={PANEL}>
@@ -466,10 +455,7 @@ function Loaded({
   );
 }
 
-/**
- * What happened and what to do next, under the status (R-77): what is left while partly paid; a new invoice once the
- * checkout closed, never the old one reopened (D-25); and money after the close, which is held for the payer (D-26).
- */
+/** Under the status (R-77): a new invoice after the close, never the old one reopened (D-25). */
 function NextStep({
   invoiceId,
   exception,
@@ -507,8 +493,6 @@ function NextStep({
   );
 }
 
-// A term and its value on one line, as a statement reads; free text (a note) stacks under its term instead. A row
-// given a ref can take focus from script (Canceled on, after a cancel).
 function Row({
   term,
   stacked = false,

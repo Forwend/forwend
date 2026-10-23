@@ -80,7 +80,6 @@ export interface PayInvoiceProps {
   option?: string;
 }
 
-// The public read, again every REFRESH_MS while the tab is visible: the payer sees the status move without a reload.
 export function PayInvoice({ linkToken, option }: PayInvoiceProps) {
   const invoice = useGetInvoiceQuery(linkToken, LIVE_QUERY);
   const failure = invoice.error as { status?: unknown } | undefined;
@@ -145,8 +144,7 @@ function Loaded({
   const now = useNow();
   const router = useRouter();
   const path = usePathname();
-  // Payer chooses (R-57): until an option has money, the payer picks the network, then the token; the link keeps the
-  // pick (?option=), so a reload shows the same.
+  // Payer chooses (R-57): the link keeps the pick (?option=), so a reload shows the same.
   const choosing = !answer.optionLocked && answer.options.length > 1;
   const [picked, setPicked] = useState(option?.toLowerCase());
   const invoice = useMemo(() => withOption(answer, picked), [answer, picked]);
@@ -198,8 +196,7 @@ function Loaded({
 
 type Pay = ReturnType<typeof payState>;
 
-// Who asks and how much: payee, number, amount. On phones the pay panel follows right under it and the terms after
-// the panel, so a payer reaches the address without scrolling past the note; wide screens keep them in one column.
+// On phones the pay panel follows right under it, so a payer reaches the address without scrolling.
 function Summary({
   invoice,
   token,
@@ -267,8 +264,6 @@ function Summary({
   );
 }
 
-// What the invoice is for, its terms, its note and its PDF, as a hosted invoice page lists them: under the amount on
-// wide screens and after the pay panel on phones, so the top of the page is only who asks and how much.
 function Terms({
   invoice,
   linkToken,
@@ -311,7 +306,6 @@ function Terms({
               {COPY.due(formatDueDate(invoice.dueDate))}
             </li>
           ) : null}
-          {/* Once paid or closed the countdown no longer matters to the payer. */}
           {pay.canSend ? (
             <li className="flex items-center gap-2.5">
               <Clock aria-hidden className={ICON} />
@@ -338,7 +332,7 @@ function Terms({
   );
 }
 
-// The payer's side: how to pay while money is due; once money is seen, the steps it goes through and each payment (R-68).
+// R-68.
 function PayBox({
   invoice,
   linkToken,
@@ -401,7 +395,6 @@ function PayBox({
   const money = (units: bigint) => formatMoney(units, token);
   const done = pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled;
   const sending = shown === optionId && !picking;
-  // Money seen and not yet paid: the box keeps its place and follows it, instead of a bare line.
   const seen =
     pay.state === PAY_STATES.confirming ||
     pay.state === PAY_STATES.checking ||
@@ -450,7 +443,6 @@ function PayBox({
                 <h2 id="pay-send" ref={sendHeading} tabIndex={-1} className="sr-only">
                   {COPY.sendTo(token.symbol, network)}
                 </h2>
-                {/* What to send and where beside the code a phone scans; the address itself runs full width. */}
                 <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:gap-4">
                   <QrCode
                     value={address}
@@ -459,7 +451,6 @@ function PayBox({
                   />
                   <div className="flex min-w-0 flex-col gap-3">
                     <ExactAmount amount={pay.remaining} token={token} />
-                    {/* The small size on phones, so the warning fits its narrow column on one line. */}
                     <p
                       role="note"
                       className="flex items-start gap-1.5 text-xs font-medium text-warning sm:gap-2 sm:text-sm"
@@ -521,8 +512,7 @@ function PayBox({
             )}
           </>
         )}
-        {/* The receipt by email as the panel's last row, once there is a payment to send it for: from the first
-            money seen, so a payer can leave before the final check, and after paying (R-82). */}
+        {/* From the first money seen, so a payer can leave before the final check (R-82). */}
         {seen || done ? <ReceiptEmail linkToken={linkToken} paid={done} /> : null}
       </div>
       {/* Overpaid gets its own handling later (PLAN 11.10.1); late money is held for the payer now. */}
@@ -552,8 +542,6 @@ function PayBox({
   );
 }
 
-// Before money is seen, or once the checkout closed: one line that updates by itself; waiting moves so it never reads
-// as stuck.
 function StatusLine({
   invoice,
   linkToken,
@@ -571,8 +559,7 @@ function StatusLine({
 }) {
   const pending = pay.state === PAY_STATES.waiting;
   return (
-    // The status and Check status share the first row; what a check found takes the full row under them, so the
-    // button never moves when it answers.
+    // What a check found takes its own row, so the button never moves when it answers.
     <div
       className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 p-4 sm:p-5 ${bordered ? "border-t border-line" : ""}`}
     >
@@ -609,8 +596,7 @@ const values = (invoice: Invoice, pay: Pay, money: (units: bigint) => string) =>
   payee: payeeOf(invoice),
 });
 
-// A picked network and token, folded once the address shows. Changing takes two presses, so a payer who already sent
-// money does not switch by accident and pay again on another network (R-68). Leaving the button cancels.
+// Changing takes two presses, so a payer who already sent can't switch by accident and pay twice (R-68).
 function PickedOption({
   chainId,
   symbol,
@@ -638,7 +624,6 @@ function PickedOption({
   );
 }
 
-// Money seen: the steps to Paid, where they stand, and each payment with its transaction on the explorer.
 function Received({
   invoice,
   linkToken,
@@ -719,7 +704,7 @@ function Received({
   );
 }
 
-// Done for the payer: paid is the end. Whether the money already reached the sender is the sender's business (R-68).
+// Paid is the end for the payer: settling is the sender's business (R-68).
 function Paid({
   invoice,
   linkToken,
@@ -735,7 +720,6 @@ function Paid({
   const name = invoice.issuer?.name ?? invoice.senderName;
   const back = invoice.returnUrl && isReturnLink(invoice.returnUrl) ? invoice.returnUrl : null;
   const backLabel = back ? COPY.backTo(new URL(back).host) : "";
-  // A receipt, read top to bottom: what happened, then its facts as label and value rows, then what to keep.
   return (
     <div className="flex flex-col gap-5 p-4 sm:p-5">
       <div className="flex items-center gap-3">
@@ -847,7 +831,6 @@ function ExactAmount({ amount, token }: { amount: bigint; token: PayToken }) {
   );
 }
 
-/** The time now, once a second: the checkout countdown, and closing the checkout when it runs out. */
 function useNow(): number {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {

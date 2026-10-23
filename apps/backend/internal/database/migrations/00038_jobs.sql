@@ -1,6 +1,5 @@
--- Jobs (R-100, D-81): a quote with a payment schedule that the client accepts at /w/<token>. The job keeps a copy of
--- the issuer's billing details, like an invoice (R-43), and the accepting client's typed name, email and time. Each
--- payment becomes a normal invoice once made: the deposit at acceptance.
+-- Jobs (R-100, D-81): a quote the client accepts at /w/<token>. Each payment becomes a normal invoice once made,
+-- the deposit at acceptance.
 
 -- +goose Up
 CREATE TABLE jobs (

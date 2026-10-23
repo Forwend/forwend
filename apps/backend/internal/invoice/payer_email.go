@@ -16,14 +16,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// ErrReceiptSent: the receipt already went to the address given, so it can't change any more.
 var ErrReceiptSent = errors.New("receipt already sent")
 
-// SetPayerEmail keeps, and returns as kept, the address the payer gave on the pay page for this invoice's receipt only (R-82, D-68). It can
-// change until the receipt is sent. An invoice already paid queues its receipt now; otherwise the ledger queues it when
-// paid. It locks the invoice's main row, as the ledger does, so the two never decide at once. allow is the limit
-// shared by everyone, asked only when the receipt goes out now, so an unknown link or a bad address spends none of it
-// (R-117).
+// SetPayerEmail sets this invoice's receipt address (R-82, D-68) until the receipt is sent. It locks the main row,
+// as the ledger does, so the two never decide at once. allow runs only when the receipt goes out now (R-117).
 func (s *Service) SetPayerEmail(ctx context.Context, payToken, email string, allow func() time.Duration) (string, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	// As a client email is checked: plain text, and exactly one address with nothing around it.
@@ -43,8 +39,7 @@ func (s *Service) SetPayerEmail(ctx context.Context, payToken, email string, all
 		} else if err != nil {
 			return fmt.Errorf("lock invoice %s: %w", id, err)
 		}
-		// The receipt row too: the worker holds it while it sends, so a change waits for that send and then sees it sent,
-		// instead of answering "on its way" to an address the email did not go to.
+		// Lock the receipt row too: the worker holds it while sending, so a change waits and then sees it sent.
 		var sent bool
 		err = tx.QueryRow(ctx, `SELECT published_at IS NOT NULL FROM outbox_events WHERE invoice_id = $1 AND kind = $2
 			FOR UPDATE`, main, outbox.Receipt).Scan(&sent)

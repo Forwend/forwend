@@ -1,4 +1,4 @@
-// What the /kit page displays. Values mirror packages/design-tokens/src/{tokens,theme}.css.
+// Values mirror packages/design-tokens/src/{tokens,theme}.css.
 export const KIT_SECTIONS = [
   "Logo",
   "Colors",
@@ -52,7 +52,6 @@ export const EASINGS = [
   },
 ] as const;
 
-// Role sizes from theme.css: fluid, each with its own line height and letter spacing.
 export const TYPE_ROLES = [
   { token: "text-hero", className: "font-display text-hero", sample: "Get paid in stablecoins." },
   { token: "text-section", className: "font-display text-section", sample: "See every step." },

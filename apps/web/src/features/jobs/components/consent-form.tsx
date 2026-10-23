@@ -15,19 +15,17 @@ const TOO_MANY = 429;
 export interface ConsentFormProps {
   text: string;
   action: string;
-  /** Sends the typed name and email; a rejection is the API's failure. */
+  /** A rejection is the API's failure. */
   onConsent: (name: string, email: string) => Promise<void>;
   loading: boolean;
   /** Said when the API answers 404, unless onConsent handles it. */
   notFound?: string;
-  /** The smaller form a change uses inside its payment line. */
   compact?: boolean;
   className?: string;
   "aria-label"?: string;
 }
 
-// The client's typed name and email, the consent a quote (R-102) and each scope change (R-106) are accepted with. Empty
-// or wrong fields are named before anything is sent, and the first takes focus.
+// The consent a quote (R-102) and each scope change (R-106) are accepted with.
 export function ConsentForm({
   text,
   action,

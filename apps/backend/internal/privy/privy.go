@@ -25,7 +25,6 @@ type Wallet struct {
 	Address string
 }
 
-// Client talks to Privy with the app secret.
 type Client struct {
 	sdk *privyclient.PrivyClient
 }
@@ -35,10 +34,8 @@ func NewClient(appID, appSecret, apiURL string) *Client {
 	return &Client{sdk: privyclient.NewPrivyClient(privyclient.PrivyClientOptions{AppID: appID, AppSecret: appSecret, APIUrl: apiURL})}
 }
 
-// ProfileWallet returns the profile's wallet, creating it once: owned by the Privy user, external_id = profile id.
-// A repeated or concurrent call finds the existing wallet by external_id, which Privy keeps unique per app, instead
-// of creating a second one. No idempotency key: Privy replays a cached error for a key for 24 hours, so one failed
-// create would block the wallet. The lookup also filters by owner, so another user never gets this wallet.
+// ProfileWallet finds the wallet by external_id = profile id and owner, else creates it. No idempotency key: Privy
+// replays a cached error for a key for 24 hours, so one failed create would block the wallet.
 func (c *Client) ProfileWallet(ctx context.Context, privyUserID, profileID string) (Wallet, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
@@ -60,8 +57,7 @@ func (c *Client) ProfileWallet(ctx context.Context, privyUserID, profileID strin
 	return Wallet{ID: created.ID, Address: strings.ToLower(created.Address)}, nil
 }
 
-// LoginEmail is the user's verified login email: their email account, else their Google account's email; "" when
-// they sign in with neither (a passkey alone).
+// LoginEmail is the user's verified login email; "" for a passkey alone.
 func (c *Client) LoginEmail(ctx context.Context, privyUserID string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()

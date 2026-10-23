@@ -10,8 +10,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
 )
 
-// R-116: a user's reminders fit in what is left of outbox.MaxClientEmails, and the rest wait for room; Send to client
-// past the cap waits too. One account can't mail strangers in bulk with overdue invoices (audit 2026-10-19).
+// R-116. Send to client past the cap waits too.
 func TestRemindersFitTheUsersClientEmails(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -50,7 +49,7 @@ func TestRemindersFitTheUsersClientEmails(t *testing.T) {
 	}
 }
 
-// R-116: a retainer month past the user's cap is still made, without its email.
+// R-116: the month is still made.
 func TestRetainerMonthPastTheCapSendsNoEmail(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)

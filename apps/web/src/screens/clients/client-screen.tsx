@@ -15,8 +15,7 @@ export interface ClientScreenProps {
   clientId?: string;
 }
 
-// A form page under Clients, laid out like New invoice: field groups in panels, with the client's More actions menu at
-// the page's top right, as on an invoice. The client comes from the list the page above loaded (one request for all).
+// The client comes from the list the page above loaded (one request for all).
 export function ClientScreen({ clientId }: ClientScreenProps) {
   const { profile } = useAppSession();
   const list = useListClientsQuery(profile.profileId, { skip: !clientId });

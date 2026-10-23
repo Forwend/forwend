@@ -32,7 +32,6 @@ export interface ButtonProps extends ComponentPropsWithoutRef<"button">, ButtonS
   loading?: boolean;
 }
 
-// A press answers with a small scale on a fast ease-out, like a physical key; reduced motion keeps only the color.
 // On touch screens the pseudo element stretches the hit area to 44px without changing the look.
 const BASE =
   "relative inline-flex items-center justify-center gap-2 font-medium whitespace-nowrap transition-[background-color,border-color,color,box-shadow,scale] duration-[var(--fw-duration-fast)] ease-[var(--fw-ease-out)] before:absolute before:inset-x-0 active:scale-[0.98] aria-disabled:active:scale-100 motion-reduce:active:scale-100 disabled:border-line disabled:bg-surface-2 disabled:text-subtle disabled:shadow-none disabled:active:scale-100";
@@ -54,15 +53,13 @@ const VARIANTS: Record<ButtonVariant, string> = {
 const TOUCH =
   "pointer-coarse:before:top-1/2 pointer-coarse:before:h-11 pointer-coarse:before:-translate-y-1/2";
 
-// One height scale for every control: 32px in dense rows, 40px by default and in toolbars, 48px for a screen's main
-// action.
+// One height scale for every control: 32px in dense rows, 40px by default and in toolbars, 48px for a main action.
 const SIZES: Record<ButtonSize, string> = {
   sm: `h-8 px-3 text-sm ${TOUCH}`,
   md: `h-10 px-4 text-sm ${TOUCH}`,
   lg: "h-12 px-6 text-base",
 };
 
-/** Classes for anything that should look like a button, such as a link. */
 export function buttonClasses({
   variant = BUTTON_VARIANTS.primary,
   size = BUTTON_SIZES.md,
@@ -85,8 +82,7 @@ export function Button({
   onClick,
   ...props
 }: ButtonProps) {
-  // Loading keeps the button's own colors and ignores clicks; disabled greys it out. While loading only the spinner
-  // shows: the label stays in place, transparent, so the width holds and screen readers keep the button's name.
+  // While loading the label stays in place, transparent, so the width holds and screen readers keep the name.
   return (
     <button
       type={type}
