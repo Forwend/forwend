@@ -135,7 +135,7 @@ func (s *Service) settlementWait(ctx context.Context, inv Invoice, head finality
 	err := s.pool.QueryRow(ctx, `SELECT status, wait, next_attempt_at, signed_at FROM settlement_intents
 		WHERE invoice_id = $1`, inv.OptionID).Scan(&status, &wait, &next, &signed)
 	if errors.Is(err, pgx.ErrNoRows) {
-		// The ledger queues the intent in the same transaction as paid; none yet means the next round makes it.
+		// Not expected: the ledger inserts the intent in the transaction that marks the invoice paid.
 		return &SettlementWait{Kind: WaitSigning}, nil
 	}
 	if err != nil {

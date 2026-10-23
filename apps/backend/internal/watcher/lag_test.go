@@ -17,7 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-// node forwards JSON-RPC to Anvil; hook may answer a single call itself (a non-nil result) or act before it is
+// node forwards JSON-RPC to Anvil; hook may answer a single call itself (a non-empty result) or act before it is
 // forwarded. Batches go straight through.
 func node(t *testing.T, target string, hook func(method string) (result string)) *rpc.Client {
 	t.Helper()

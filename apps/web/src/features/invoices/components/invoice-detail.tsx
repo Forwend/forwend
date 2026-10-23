@@ -164,7 +164,6 @@ function Loaded({
       : units.toString();
   // Payer chooses with no money yet: the amount is USD in any accepted option (R-56, D-75).
   const choosing = invoice.options.length > 1 && !invoice.optionLocked;
-  // The pay link takes money only while these last; sharing it later only creates money held for a refund.
   const canceledRow = useRef<HTMLDivElement>(null);
   // Focus waits for Details' Canceled on row to render: until the dialog is gone everything else is inert.
   const [canceling, setCanceling] = useState(false);
@@ -172,6 +171,7 @@ function Loaded({
   useEffect(() => {
     if (canceling && canceled) canceledRow.current?.focus();
   }, [canceling, canceled]);
+  // The pay link takes money only while these last; sharing it later only creates money held for a refund.
   const payable =
     !closed &&
     (

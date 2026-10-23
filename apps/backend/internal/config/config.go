@@ -1,5 +1,5 @@
 // Package config reads every environment variable the binaries use. Locally they come from apps/backend/.env
-// (copy .env.example); nothing has a default.
+// (copy .env.example).
 package config
 
 import (

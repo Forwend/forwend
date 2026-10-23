@@ -54,7 +54,6 @@ func TestExceptionsCancelAndEmail(t *testing.T) {
 	ctx := context.Background()
 	st := newStack(t)
 	mail := newMailbox(t)
-	// Fresh slices: an append to st.loop could write into the other's backing array (the signer's key into the worker).
 	worker := append(append([]string{}, st.loop...), "RESEND_API_KEY=test", "RESEND_API_URL="+mail.URL,
 		"PUBLIC_WEB_URL=http://localhost:3000")
 	stopWorker := start(t, st.bin, "worker", worker)

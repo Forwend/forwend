@@ -382,8 +382,6 @@ func TestDeliverSendsTheWelcome(t *testing.T) {
 	}
 }
 
-// R-94: the owner's send goes to the client's email whatever the owner's setting, from the issuer, with replies to the
-// issuer's billing email, the pay page and the PDF. A payer-chooses invoice is priced in USD on any network.
 // D-86: an invoice made before the pay token has no pay link, so nothing that would link it goes to the client or payer.
 func TestDeliverSendsNoClientEmailWithoutAPayLink(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
@@ -412,6 +410,8 @@ func TestDeliverSendsNoClientEmailWithoutAPayLink(t *testing.T) {
 	}
 }
 
+// R-94: the owner's send goes to the client's email whatever the owner's setting, from the issuer, with replies to the
+// issuer's billing email, the pay page and the PDF. A payer-chooses invoice is priced in USD on any network.
 func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	exec(t, pool, "UPDATE profiles SET email_notifications = false")

@@ -1,5 +1,5 @@
-// Package settlement is the signer: it settles each paid invoice once, with the executor key, after checking the
-// terms against the database and the chain (R-22). It signs only factory.deploy(terms) and receiver.settle().
+// Package settlement is the signer: it settles each paid invoice once with the executor key, after checking the terms
+// against the database and the chain (R-22). It signs only deploy, settle and a self-transfer that fills a nonce gap.
 package settlement
 
 import (

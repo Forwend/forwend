@@ -1,7 +1,5 @@
--- Check status (R-55, D-77): one row per invoice someone asked to check again. checked_at spaces the checks 30 s apart
--- across api replicas; rescan_requested_at asks the worker to look for deposits to the invoice's address again, from
--- rescan_from_block (NULL: the invoice's creation block, found by the worker) in bounded steps; rescanned_at is when
--- the last rescan finished, so money that no log explains (Arc native USDC) does not start a full rescan every time.
+-- Check status (R-55, D-77). checked_at spaces checks across api replicas (invoice.RecheckEvery); a NULL
+-- rescan_from_block is the creation block; rescanned_at stops money no log explains (Arc USDC) rescanning each time.
 
 -- +goose Up
 CREATE TABLE invoice_rechecks (
