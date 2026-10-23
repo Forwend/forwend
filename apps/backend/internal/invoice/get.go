@@ -60,6 +60,9 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 	if inv.Lines, err = s.lines(ctx, inv.ID); err != nil {
 		return Invoice{}, err
 	}
+	if inv.Updates, err = s.updates(ctx, inv.ID); err != nil {
+		return Invoice{}, err
+	}
 	// The last deposit that booked money to the creator is the one that completed the amount: later ones are held.
 	var paidAt *int64
 	var settledAt *time.Time

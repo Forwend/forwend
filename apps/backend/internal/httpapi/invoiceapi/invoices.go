@@ -284,20 +284,24 @@ func countView(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// R-127: the whole editable set; a missing, null or blank field clears it.
+// R-127, R-128: the whole editable set; a missing, null or blank field clears it.
 func putDetails(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Memo        string `json:"memo"`
 			ClientEmail string `json:"clientEmail"`
 			ReturnURL   string `json:"returnUrl"`
+			Reference   string `json:"reference"`
+			Note        string `json:"note"`
+			DueDate     string `json:"dueDate"`
 		}
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
 		inv, err := invoices.Edit(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"),
-			invoice.Editable{Memo: body.Memo, ClientEmail: body.ClientEmail, ReturnURL: body.ReturnURL})
+			invoice.Editable{Memo: body.Memo, ClientEmail: body.ClientEmail, ReturnURL: body.ReturnURL,
+				Reference: body.Reference, Note: body.Note, DueDate: body.DueDate})
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

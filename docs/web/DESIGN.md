@@ -333,6 +333,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Left, then, as a hosted invoice page lists them:
     - Title, reference (R-90), agreed value (R-93), due date and "Closes in …": quiet rows with a small icon, no rules.
     - The note.
+    - Updates (R-128), when the issuer edited before payment: a small quiet heading over one line per change.
+      - Newest first. Each line is the time, then "Due date moved from … to …", "Note updated" or "Reference updated".
     - Download invoice PDF: an underlined link with a file icon.
   - Right: one panel. While money is due, top to bottom:
     - Pay with: the one option as a token mark, or Network and Token selects (they scale to many chains and tokens).
@@ -427,7 +429,12 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Narrower screens stack the amount, Items, Billed to, From, History, then the details.
   - A transaction is one row once its list is 42rem wide. Narrower, the list's own width, not the screen's, splits it
     in two lines.
-- Edit (R-127) opens one dialog: Memo (a text area with "Only you see it"), Client email and Return link.
+- Edit (R-127, R-128) opens one dialog in two groups, each a small bold heading over its fields.
+  - Any time: Memo (a text area with "Only you see it"), Client email and Return link.
+  - Before payment: Reference, Note and Due date, with a line that the payer sees these under Updates.
+  - A request shows only Note there, as its form has no reference or due date.
+  - The due date picker runs from today to the day the checkout closes, which its hint names.
+  - Once money arrived or the checkout closed, the group is disabled and its line says why.
   - A request has no Client email field.
   - Edit shows once the owner's read is in, so it never starts from another invoice's values.
   - Save changes saves every field and closes with a toast.

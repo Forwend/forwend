@@ -11,10 +11,12 @@ import { type ReactNode, useState } from "react";
 import {
   HISTORY_CATEGORIES,
   HISTORY_CATEGORY_OF,
+  HISTORY_FIELDS,
   HISTORY_FILTERS,
   HISTORY_KINDS,
 } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
+import { formatDueDate } from "@/features/invoices/lib/invoices";
 import type {
   HistoryCategory,
   HistoryFilter,
@@ -191,8 +193,13 @@ function detailsOf(row: InvoiceHistoryEvent, option: Option | undefined): ReactN
       return COPY.toPayer;
     case HISTORY_KINDS.remindersStopped:
       return COPY.stoppedByLink;
-    case HISTORY_KINDS.edited:
-      return row.field ? (FIELDS[row.field] ?? row.field) : null;
+    case HISTORY_KINDS.edited: {
+      const field = row.field ? (FIELDS[row.field] ?? row.field) : null;
+      const day = (date: string | null) => (date ? formatDueDate(date) : COPY.noDate);
+      return field && row.field === HISTORY_FIELDS.dueDate
+        ? COPY.moved(field, day(row.from), day(row.to))
+        : field;
+    }
   }
   if (!option) return null;
   const network = chainName(option.chainId);
