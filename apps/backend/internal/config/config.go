@@ -33,7 +33,8 @@ type API struct {
 	PublicWebURL string
 	// UserBurst is each signed-in user's burst of requests; 0 keeps the default (mid.UserBurst). Only the live e2e,
 	// whose tests all run as one user, sets it.
-	UserBurst int
+	UserBurst         int
+	EnableTestnetUSDC bool
 }
 
 type Worker struct {
@@ -88,7 +89,8 @@ func LoadAPI() (API, error) {
 	c := API{DatabaseURL: r.get("DATABASE_URL"), Addr: r.get("API_ADDR"),
 		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyJWKSURL: r.keysURL("PRIVY_JWKS_URL"), PrivyAppSecret: r.get("PRIVY_APP_SECRET"),
 		ChainsFile: r.get("CHAINS_FILE"), InfuraKeys: r.infuraKeys(), RPCRate: r.rate(),
-		PublicWebURL: r.origin("PUBLIC_WEB_URL"), UserBurst: r.count("API_USER_BURST")}
+		PublicWebURL: r.origin("PUBLIC_WEB_URL"), UserBurst: r.count("API_USER_BURST"),
+		EnableTestnetUSDC: r.flag("ENABLE_TESTNET_USDC")}
 	return c, r.err()
 }
 
@@ -241,6 +243,14 @@ func (r *reader) rate() float64 {
 		r.invalid = append(r.invalid, "RPC_RATE_PER_SECOND (calls per second, such as 10)")
 	}
 	return v
+}
+
+func (r *reader) flag(name string) bool {
+	raw := os.Getenv(name)
+	if raw != "" && raw != "0" && raw != "1" {
+		r.invalid = append(r.invalid, name+" (0 or 1)")
+	}
+	return raw == "1"
 }
 
 func (r *reader) count(name string) int {
