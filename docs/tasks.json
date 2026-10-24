@@ -14,7 +14,7 @@
         "API, worker and signer share a weighted provider budget across processes, with no credentials stored or logged."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -101,11 +101,18 @@
           "summary": "Approved after correcting pending-range batching, preserving invoice overlap, using consistent non-key group locks, releasing the user signing gate before receipt waits, and preserving recovery progress across subscription changes. Full verification passed all seven checks, including concurrency, missed-transfer recovery, shared budget, and real payment-loop tests.",
           "at": "2026-10-24T16:01:58Z",
           "filesHash": "ac831bfdb31ddd3e"
-        }
+        },
+        "commit": "f9638c6",
+        "doneAt": "2026-10-24T16:11:32Z"
       },
       "branch": "perf/f289-reduce-repeated-rpc-reads-and-isolate-sl",
       "baseCommit": "f6bee1a3e764f8dcd8990e0acac13570aae83ee5",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "perf/f289-reduce-repeated-rpc-reads-and-isolate-sl",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
