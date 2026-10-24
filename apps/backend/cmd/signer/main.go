@@ -53,22 +53,28 @@ func run() error {
 		return err
 	}
 	executor := crypto.PubkeyToAddress(cfg.ExecutorKey.PublicKey)
+	budget, err := chain.NewBudget(ctx, pool, cfg.Chains.RPCRate)
+	if err != nil {
+		return err
+	}
+	defer budget.Close()
+
 	err = chain.CheckEnabled(ctx, pool, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate,
 		func(ctx context.Context, id uint64, r chain.RPCs) error {
 			return settlement.CheckGas(ctx, id, executor, ethclient.NewClient(r.Primary), ethclient.NewClient(r.Second))
-		})
+		}, budget)
 	if err != nil {
 		return err
 	}
 
-	rounds := settlement.NewRounds(pool, cfg.ExecutorKey, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate, lock.Held)
+	rounds := settlement.NewRounds(pool, cfg.ExecutorKey, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate, lock.Held, budget)
 	defer rounds.Close()
 	slog.Info("signer ready", "executor", executor.Hex(), "every", cfg.Chains.PollInterval)
 	for {
 		if err := lock.Held(ctx); err != nil {
 			return err
 		}
-		rounds.Round(ctx)
+		rounds.Tick(ctx)
 		if !wait(ctx, cfg.Chains.PollInterval) {
 			return nil
 		}

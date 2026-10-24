@@ -165,7 +165,7 @@ func TestReorgBackToTheFirstBlock(t *testing.T) {
 	}
 	for i, step := range steps {
 		reorged, deposits := step()
-		if err := e.chain.record(ctx, reorged, deposits, nil, nil, header{Number: 50, Timestamp: 1}, header{Number: 200, Timestamp: 2}); err != nil {
+		if err := e.chain.record(ctx, reorged, deposits, nil, nil, header{Number: 50, Timestamp: 1}, header{Number: 200, Timestamp: 2}, nil); err != nil {
 			t.Fatalf("step %d: %v", i, err)
 		}
 	}

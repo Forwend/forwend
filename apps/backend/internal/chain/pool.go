@@ -45,6 +45,7 @@ type pool struct {
 	perCall time.Duration
 	timeout time.Duration // per attempt
 	http    *http.Client
+	budget  *Budget
 
 	mu        sync.Mutex
 	endpoints []*endpoint // every Infura key, then the public RPCs, in list order
@@ -93,6 +94,10 @@ func (p *pool) do(ctx context.Context, second bool, header http.Header, body []b
 		}
 		tries++
 		res, err = p.send(ctx, e, header, body)
+		var budgetErr budgetError
+		if errors.As(err, &budgetErr) {
+			return nil, err
+		}
 		if err == nil {
 			p.done(e, nil)
 			return res, nil
@@ -264,6 +269,11 @@ func (p *pool) check(ctx context.Context, e *endpoint, header http.Header) error
 const maxAnswer = 64 << 20
 
 func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body []byte) (*http.Response, error) {
+	if p.budget != nil {
+		if err := p.budget.wait(ctx, e.url, body); err != nil {
+			return nil, err
+		}
+	}
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.url, bytes.NewReader(body))

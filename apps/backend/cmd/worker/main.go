@@ -55,11 +55,17 @@ func run() error {
 	if err := database.CheckSchema(ctx, pool); err != nil {
 		return err
 	}
-	if err := chain.CheckEnabled(ctx, pool, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate, nil); err != nil {
+	budget, err := chain.NewBudget(ctx, pool, cfg.Chains.RPCRate)
+	if err != nil {
+		return err
+	}
+	defer budget.Close()
+
+	if err := chain.CheckEnabled(ctx, pool, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate, nil, budget); err != nil {
 		return err
 	}
 
-	w := worker.New(pool, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate)
+	w := worker.New(pool, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate, budget)
 	defer w.Close()
 	// Owner email (R-80): without a key nothing is sent, and the events wait in the outbox.
 	var sender email.Sender
@@ -77,7 +83,7 @@ func run() error {
 		if err := lock.Held(ctx); err != nil {
 			return err
 		}
-		w.Round(ctx)
+		w.Tick(ctx)
 		// Payment reminders (R-96) wait in the outbox like the other emails when there is no key.
 		if err := invoices.QueueReminders(ctx); err != nil {
 			slog.Error("queue reminders", "err", err)

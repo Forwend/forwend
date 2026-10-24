@@ -96,43 +96,68 @@ func (c *Chain) Scan(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	latest = min(latest, from+scanLimit-1)
+	return c.scanRange(ctx, from, min(latest, from+scanLimit-1), nil, from)
+}
+
+func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *recoveryProgress, walletFrom uint64) error {
 	invoices, err := c.invoices(ctx)
 	if err != nil {
 		return err
 	}
+	var emptyWallets wallets
 	wallets, err := c.wallets(ctx)
 	if err != nil {
 		return err
 	}
-	var logs, walletLogs []types.Log
-	for lo := from; lo <= latest; {
-		hi := min(lo+c.span-1, latest)
-		var found, foundWallet []types.Log
-		var err error
-		if len(invoices) > 0 {
-			found, err = c.logs(ctx, lo, hi, invoices)
+	logs, _, err := c.scanLogs(ctx, from, latest, invoices, emptyWallets)
+	if err != nil {
+		return err
+	}
+	_, walletLogs, err := c.scanLogs(ctx, walletFrom, latest, nil, wallets)
+	if err != nil {
+		return err
+	}
+	open, err := c.pending(ctx, "chain_transfers", 0)
+	if err != nil {
+		return err
+	}
+	openWallet, err := c.pending(ctx, "wallet_transfers", 0)
+	if err != nil {
+		return err
+	}
+
+	pendingBlocks := map[uint64]bool{}
+	for _, p := range open {
+		if p.blockNumber < from && p.blockNumber <= latest {
+			pendingBlocks[p.blockNumber] = true
 		}
-		if err == nil {
-			foundWallet, err = c.walletLogs(ctx, lo, hi, wallets)
+	}
+	for _, p := range openWallet {
+		if p.blockNumber < walletFrom && p.blockNumber <= latest {
+			pendingBlocks[p.blockNumber] = true
 		}
-		if next, ok := narrower(err, c.span); ok {
-			c.span = next
-			continue
+	}
+	var heights []uint64
+	for n := range pendingBlocks {
+		heights = append(heights, n)
+	}
+	slices.Sort(heights)
+	for len(heights) > 0 {
+		lo, hi, used := heights[0], heights[0], 1
+		for used < len(heights) && heights[used]-lo < MaxRange {
+			hi = heights[used]
+			used++
 		}
+		pendingInvoices := invoices
+		if lo >= from {
+			pendingInvoices = nil
+		}
+		found, foundWallet, err := c.scanLogs(ctx, lo, hi, pendingInvoices, wallets)
 		if err != nil {
 			return err
 		}
 		logs, walletLogs = append(logs, found...), append(walletLogs, foundWallet...)
-		lo, c.span = hi+1, min(c.span*2, MaxRange)
-	}
-	open, err := c.pending(ctx, "chain_transfers", from)
-	if err != nil {
-		return err
-	}
-	openWallet, err := c.pending(ctx, "wallet_transfers", from)
-	if err != nil {
-		return err
+		heights = heights[used:]
 	}
 
 	// The finalized block and every block we judge come from one batch, so usually from one node.
@@ -181,7 +206,33 @@ func (c *Chain) Scan(ctx context.Context) error {
 	if !ok { // a node behind the one that answered latest: the scanned time stays safe, at the finalized block's
 		head = header{Number: hexutil.Uint64(latest), Timestamp: final.Timestamp}
 	}
-	return c.record(ctx, reorgedOf(open), deposits, reorgedOf(openWallet), transfers, final, head)
+	return c.record(ctx, reorgedOf(open), deposits, reorgedOf(openWallet), transfers, final, head, recovery)
+}
+
+func (c *Chain) scanLogs(ctx context.Context, from, latest uint64, invoices map[common.Address]receiver,
+	wallets wallets) ([]types.Log, []types.Log, error) {
+	var logs, walletLogs []types.Log
+	for lo := from; lo <= latest; {
+		hi := min(lo+c.span-1, latest)
+		var found, foundWallet []types.Log
+		var err error
+		if len(invoices) > 0 {
+			found, err = c.logs(ctx, lo, hi, invoices)
+		}
+		if err == nil {
+			foundWallet, err = c.walletLogs(ctx, lo, hi, wallets)
+		}
+		if next, ok := narrower(err, c.span); ok {
+			c.span = next
+			continue
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+		logs, walletLogs = append(logs, found...), append(walletLogs, foundWallet...)
+		lo, c.span = hi+1, min(c.span*2, MaxRange)
+	}
+	return logs, walletLogs, nil
 }
 
 func depositsOf(logs []types.Log, headers map[uint64]header, invoices map[common.Address]receiver,
@@ -446,7 +497,7 @@ func (c *Chain) headers(ctx context.Context, numbers []uint64) (header, map[uint
 
 // record marks reorged rows first, so a re-mined copy of one can be live.
 func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit, reorgedWallet []int64,
-	transfers []walletTransfer, finalized, scanned header) error {
+	transfers []walletTransfer, finalized, scanned header, recovery *recoveryProgress) error {
 	tx, err := c.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("record chain %d scan: %w", c.chainID, err)
@@ -482,6 +533,21 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 			return fmt.Errorf("record chain %d wallet transfer %s/%d: %w", c.chainID, t.txHash, t.logIndex, err)
 		}
 	}
+
+	if recovery != nil {
+		if recovery.next > recovery.target {
+			_, err = tx.Exec(ctx, `UPDATE chain_recoveries SET completed_block = greatest(completed_block, $2),
+				next_block = NULL, target_block = NULL, next_at = now() + interval '1 minute' WHERE chain_id = $1`,
+				c.chainID, min(recovery.target, uint64(finalized.Number)))
+		} else {
+			_, err = tx.Exec(ctx, "UPDATE chain_recoveries SET next_block = $2 WHERE chain_id = $1", c.chainID, recovery.next)
+		}
+		if err != nil {
+			return fmt.Errorf("advance chain %d recovery: %w", c.chainID, err)
+		}
+		return tx.Commit(ctx)
+	}
+
 	_, err = tx.Exec(ctx, `
 		INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block, last_finalized_time,
 		    last_scanned_time)

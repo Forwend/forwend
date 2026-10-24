@@ -55,13 +55,19 @@ func run() error {
 			return err
 		}
 	}
-	err = chain.CheckEnabled(ctx, pool, specs, cfg.InfuraKeys, cfg.RPCRate, func(ctx context.Context, id uint64, r chain.RPCs) error {
-		return address.FactoryDeployed(ctx, id, ethclient.NewClient(r.Primary), ethclient.NewClient(r.Second))
-	})
+	budget, err := chain.NewBudget(ctx, pool, cfg.RPCRate)
 	if err != nil {
 		return err
 	}
-	balances := balance.NewChainReader(specs, cfg.InfuraKeys, cfg.RPCRate)
+	defer budget.Close()
+
+	err = chain.CheckEnabled(ctx, pool, specs, cfg.InfuraKeys, cfg.RPCRate, func(ctx context.Context, id uint64, r chain.RPCs) error {
+		return address.FactoryDeployed(ctx, id, ethclient.NewClient(r.Primary), ethclient.NewClient(r.Second))
+	}, budget)
+	if err != nil {
+		return err
+	}
+	balances := balance.NewChainReader(specs, cfg.InfuraKeys, cfg.RPCRate, budget)
 	defer balances.Close()
 
 	verifier, err := auth.NewVerifier(ctx, cfg.PrivyAppID, cfg.PrivyJWKSURL, &http.Client{Timeout: 10 * time.Second})

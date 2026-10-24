@@ -43,7 +43,7 @@ const SponsoredPerDay = 50
 // Caps a replacement's fee cap at this many times a new settle's, so repeated bumps can't grow without end.
 const MaxFeeFactor = 2
 
-func (s *Signer) settle(ctx context.Context, id int64) error {
+func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 	in, err := s.load(ctx, id)
 	if err != nil {
 		return err
@@ -152,6 +152,7 @@ func (s *Signer) settle(ctx context.Context, id int64) error {
 	if tag.RowsAffected() != 1 {
 		return fmt.Errorf("save settle transaction: intent %d is no longer pending", in.id)
 	}
+	release()
 	slog.Info("settle signed", "invoice", in.invoiceID, "tx", tx.Hash().Hex(), "nonce", tx.Nonce())
 	if s.stopAfter == "save" {
 		return errStopped
@@ -368,6 +369,7 @@ func (s *Signer) awaitCode(ctx context.Context, client *ethclient.Client, receiv
 // await polls for a receipt up to ReceiptWait; nil means not mined yet.
 func (s *Signer) await(ctx context.Context, client *ethclient.Client, hash common.Hash) (*types.Receipt, error) {
 	deadline := time.Now().Add(ReceiptWait)
+	delay := time.Second
 	for {
 		r, err := client.TransactionReceipt(ctx, hash)
 		if err == nil {
@@ -382,7 +384,8 @@ func (s *Signer) await(ctx context.Context, client *ethclient.Client, hash commo
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(min(delay, time.Until(deadline))):
 		}
+		delay = min(2*delay, 4*time.Second)
 	}
 }

@@ -1266,8 +1266,8 @@ func TestSettlementIsBookedOnlyWhenTheSecondRPCAgrees(t *testing.T) {
 }
 
 // SEC-03: the next one waits, unsent, with the reason.
-func TestSponsoredSettlementsPerUserAreCapped(t *testing.T) {
-	e := setup(t)
+func (e env) sponsoredHistory(t *testing.T, count int, sender string) {
+	t.Helper()
 	ctx := context.Background()
 	if _, err := e.pool.Exec(ctx, `
 		WITH i AS (
@@ -1280,9 +1280,15 @@ func TestSponsoredSettlementsPerUserAreCapped(t *testing.T) {
 		    FROM generate_series(1, $4::int) n, profile_wallets w RETURNING id)
 		INSERT INTO settlement_intents (invoice_id, status, sender, nonce, tx_hash, raw_tx, signed_at)
 		SELECT id, 'confirmed', $5, row_number() OVER (), '0x' || repeat('ab', 32), '\x00', now() FROM i`,
-		chaintest.ChainID, e.token, wallet, SponsoredPerDay, strings.ToLower(chaintest.Sender)); err != nil {
+		chaintest.ChainID, e.token, wallet, count, sender); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestSponsoredSettlementsPerUserAreCapped(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	e.sponsoredHistory(t, SponsoredPerDay, strings.ToLower(chaintest.Sender))
 	id, _ := e.paidInvoice(t)
 	before := e.nonce(t)
 	if err := e.signer(t).Run(ctx); err != nil {

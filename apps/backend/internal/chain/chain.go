@@ -70,7 +70,7 @@ func (r RPCs) Close() {
 }
 
 // NewRPCs sends each endpoint at most rate calls per second and refuses a chain with fewer than two hosts (D-15).
-func NewRPCs(spec Spec, infuraKeys []string, rate float64) (RPCs, error) {
+func NewRPCs(spec Spec, infuraKeys []string, rate float64, budgets ...*Budget) (RPCs, error) {
 	var urls []string
 	if spec.Infura != "" {
 		for _, k := range infuraKeys {
@@ -83,6 +83,9 @@ func NewRPCs(spec Spec, infuraKeys []string, rate float64) (RPCs, error) {
 	transport.MaxIdleConnsPerHost = 100
 	p := &pool{chainID: spec.ChainID, perCall: time.Duration(float64(time.Second) / rate), timeout: AttemptTimeout,
 		http: &http.Client{Transport: transport}}
+	if len(budgets) > 0 {
+		p.budget = budgets[0]
+	}
 	// Hosts alternate between the roles in list order and never fail over to the other role's: one provider must never
 	// answer both a deposit and the balance that confirms it, even after an outage moved the primary.
 	hosts := map[string]bool{}

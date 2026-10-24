@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -40,12 +41,13 @@ type Signer struct {
 	replaceAfter   time.Duration
 	// held reports whether this signer still holds its lock (D-71): checked before each intent, since a round can
 	// outlast a dropped lock connection.
-	held func(context.Context) error
+	held  func(context.Context) error
+	users *userTurns
 }
 
 func NewSigner(pool *pgxpool.Pool, key *ecdsa.PrivateKey, clients, seconds map[uint64]*ethclient.Client) *Signer {
 	return &Signer{pool: pool, key: key, sender: crypto.PubkeyToAddress(key.PublicKey), clients: clients, seconds: seconds,
-		attemptTimeout: AttemptTimeout, codeWait: CodeWait, replaceAfter: ReplaceAfter}
+		attemptTimeout: AttemptTimeout, codeWait: CodeWait, replaceAfter: ReplaceAfter, users: &userTurns{}}
 }
 
 type intent struct {
@@ -72,25 +74,46 @@ func (s *Signer) Run(ctx context.Context) error {
 	for id := range s.clients {
 		chains = append(chains, int64(id))
 	}
-	rows, err := s.pool.Query(ctx, `SELECT si.id FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
+	rows, err := s.pool.Query(ctx, `SELECT si.id, p.user_id::text, si.status FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
+		JOIN profiles p ON p.id = i.profile_id
 		WHERE si.status IN ('pending', 'sent') AND si.next_attempt_at <= now() AND i.chain_id = ANY($1)
 		ORDER BY si.id`, chains)
 	if err != nil {
 		return fmt.Errorf("list settlement intents: %w", err)
 	}
-	ids, err := pgx.CollectRows(rows, pgx.RowTo[int64])
+	type work struct {
+		ID     int64
+		User   string
+		Status string
+	}
+	ids, err := pgx.CollectRows(rows, pgx.RowToStructByPos[work])
 	if err != nil {
 		return fmt.Errorf("list settlement intents: %w", err)
 	}
 	var errs []error
-	for _, id := range ids {
+	for _, item := range ids {
+		id := item.ID
 		if s.held != nil {
 			if err := s.held(ctx); err != nil {
 				return errors.Join(append(errs, err)...)
 			}
 		}
 		attempt, cancel := context.WithTimeout(ctx, s.attemptTimeout)
-		err := s.settle(attempt, id)
+		release := func() {}
+		var err error
+		if item.Status == "pending" {
+			release, err = s.users.take(attempt, item.User)
+		}
+		if err == nil {
+			release = sync.OnceFunc(release)
+			if s.held != nil {
+				err = s.held(attempt)
+			}
+			if err == nil {
+				err = s.settle(attempt, id, release)
+			}
+			release()
+		}
 		cancel()
 		if errors.Is(err, errStopped) {
 			return err
