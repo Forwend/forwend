@@ -70,7 +70,7 @@
 | `PRIVY_APP_SECRET` | That test Privy app's secret from `apps/backend/.env`. |
 | `EXECUTOR_PRIVATE_KEY` | The existing authorized testnet executor key from `apps/backend/.env`. |
 | `INFURA_API_KEYS` | Existing comma-separated Infura keys; empty uses the configured public RPCs. |
-| `RPC_RATE_PER_SECOND` | `10` by default, per backend process and RPC endpoint. |
+| `RPC_RATE_PER_SECOND` | `10` by default. Also sets the shared weighted budget to 800 units/second; see [RPC pacing](backend/architecture.md#running-the-loop). |
 | `POLL_INTERVAL` | `5s` by default, for the worker and signer. |
 | `RESEND_API_KEY` | Existing send-only Resend key; empty leaves emails queued without sending them. |
 | `EMAIL_FROM` | `Forwend <notifications@mail.forwend.com>` by default; use a sender verified by Resend. |

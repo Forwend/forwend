@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -11,7 +12,10 @@ import (
 )
 
 // Lock is a session advisory lock on its own connection: Postgres frees it when the connection ends, even on a crash.
-type Lock struct{ conn *pgx.Conn }
+type Lock struct {
+	mu   sync.Mutex
+	conn *pgx.Conn
+}
 
 func TakeLock(ctx context.Context, pool *pgxpool.Pool, key int64, name string, every time.Duration) (*Lock, error) {
 	c, err := pool.Acquire(ctx)
@@ -26,7 +30,7 @@ func TakeLock(ctx context.Context, pool *pgxpool.Pool, key int64, name string, e
 			return nil, fmt.Errorf("take the %s lock: %w", name, err)
 		}
 		if got {
-			return &Lock{conn}, nil
+			return &Lock{conn: conn}, nil
 		}
 		slog.Warn("another "+name+" is running; waiting", "retry", every)
 		select {
@@ -40,6 +44,8 @@ func TakeLock(ctx context.Context, pool *pgxpool.Pool, key int64, name string, e
 
 // Held errors once the lock's connection is lost: another process may hold the lock now, so the caller must stop.
 func (l *Lock) Held(ctx context.Context) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	if err := l.conn.Ping(ctx); err != nil {
 		return fmt.Errorf("lost the advisory lock's database connection: %w", err)
 	}
@@ -47,5 +53,7 @@ func (l *Lock) Held(ctx context.Context) error {
 }
 
 func (l *Lock) Close() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	_ = l.conn.Close(context.Background())
 }

@@ -1,122 +1,124 @@
 {
   "schemaVersion": 2,
-  "nextId": 289,
+  "nextId": 290,
   "tasks": [
     {
-      "id": "F288",
-      "type": "feat",
-      "behavior": "Enable the supported USDC testnet pairs by default in staging",
+      "id": "F289",
+      "type": "perf",
+      "behavior": "Reduce repeated RPC reads and isolate slow chains",
       "acceptance": [
-        "The staging Compose stack enables USDC on Base Sepolia, Arbitrum Sepolia and Arc Testnet before startup checks, for fresh and existing databases.",
-        "Repeated activation is safe, leaves other pairs unchanged, and can be disabled explicitly; local isolated tests keep their existing behavior.",
-        "The staging guide and backend configuration document activation, gas requirements and restarting backend processes."
+        "Forward wallet scans avoid repeating historical ranges; durable recovery finds missed transfers; invoice safety overlap remains frequent for payment ordering.",
+        "Receipt polling backs off and worker balance checks share finalized headers without weakening payment checks.",
+        "Worker and signer isolate slow chains while preserving invoice choice, sponsored limits and per-chain nonce ordering.",
+        "Coherent header batches remain together; no unused partial-retry interface is introduced.",
+        "API, worker and signer share a weighted provider budget across processes, with no credentials stored or logged."
       ],
       "dependsOn": [],
       "state": "passing",
       "verification": [
         "unit",
-        "docs-check"
+        "e2e"
       ],
       "refs": [
-        "R-132",
-        "R-131",
-        "D-38",
-        "D-71"
+        "R-133",
+        "D-15",
+        "D-45"
       ],
       "keep": [],
-      "review": false,
+      "review": true,
       "notes": [
-        "2026-10-24 Reproduced the missing default activation flag in staging Compose. Focused Go config and chain tests passed on real PostgreSQL. The isolated Compose stack built and started with exactly Base Sepolia, Arbitrum Sepolia and Arc Testnet USDC enabled. Worker and signer reached ready, the homepage returned 200, and an API restart preserved the same three pairs. Temporary containers, volumes and images were removed.",
-        "2026-10-24 F288 enables the exact three supported USDC pairs by default in Dokploy before startup checks. Full verification and isolated container startup/restart checks passed. Independent source review found no blockers. Delivery will use the authorized PR merge into main and staging fast-forward. VPS redeployment remains manual; credential files are excluded.",
-        "2026-10-24 review pass by independent reviewer: No blocking findings. Atomic activation uses exact chain/address pairs and preserves other rows. API ordering is migration, activation, then chain checks. Configuration, shared readers, tests and docs match the requested staging defaults. All seven verification checks passed; isolated container startup and API restart checks passed."
+        "2026-10-24 review pass by independent reviewer: Approved after correcting pending-range batching, preserving invoice overlap, using consistent non-key group locks, releasing the user signing gate before receipt waits, and preserving recovery progress across subscription changes. Full verification passed all seven checks, including concurrency, missed-transfer recovery, shared budget, and real payment-loop tests.",
+        "2026-10-24 F289 implemented and independently reviewed; all seven verify checks passed. Wallet recovery, receipt backoff, shared header snapshots, independent chain jobs and shared weighted RPC budgets are ready for the approved PR to main and staging fast-forward. Invoice overlap and coherent header retries remain for money safety."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-24T15:02:04Z",
+        "at": "2026-10-24T15:54:49Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 144.7,
-            "log": "docs/runs/F288-20261024T150204Z-unit.log"
+            "seconds": 180.4,
+            "log": "docs/runs/F289-20261024T155449Z-unit.log"
           },
           {
-            "id": "docs-check",
+            "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F288-20261024T150204Z-docs-check.log"
+            "seconds": 223.6,
+            "log": "docs/runs/F289-20261024T155449Z-e2e.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 1.9,
-            "log": "docs/runs/F288-20261024T150204Z-harness.log"
+            "log": "docs/runs/F289-20261024T155449Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F289-20261024T155449Z-docs-check.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.5,
-            "log": "docs/runs/F288-20261024T150204Z-lint.log"
+            "seconds": 0.4,
+            "log": "docs/runs/F289-20261024T155449Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.2,
-            "log": "docs/runs/F288-20261024T150204Z-typecheck.log"
+            "log": "docs/runs/F289-20261024T155449Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.2,
-            "log": "docs/runs/F288-20261024T150204Z-build.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 242.3,
-            "log": "docs/runs/F288-20261024T150204Z-e2e.log"
+            "seconds": 2.5,
+            "log": "docs/runs/F289-20261024T155449Z-build.log"
           }
         ],
-        "taskHash": "2864a399a26fd202",
-        "filesHash": "96ce0dfaf8324783",
+        "taskHash": "52a06ca7cfe16c09",
+        "filesHash": "ac831bfdb31ddd3e",
         "proof": {
-          "1": "unit: real PostgreSQL tests enable the exact three USDC pairs on fresh and existing network configuration",
-          "2": "unit: repeated activation preserves other pairs; configuration accepts explicit opt-out and rejects invalid flags",
-          "3": "docs-check: staging defaults, backend startup order, activation controls and gas requirements documented"
+          "1": "unit: recovery tests cover missed wallet transfers across 12000 blocks, failed chunks, restarts, subscription changes, disabled-token pending and grouped log queries; invoice overlap preserves earlier-payment choice.",
+          "2": "unit: receipt regression reproduced seven reads in 1.3 seconds; backoff bounds it to two; ten balance checks share one finalized header and a new round advances the snapshot.",
+          "3": "unit: hung-chain scheduler allows repeated healthy rounds; concurrent options choose and book once; concurrent signers preserve the sponsored cap and sent intents bypass the user gate.",
+          "4": "unit: existing coherent header batch, failover, chain-role separation and reorg tests remain passing; no partial-batch retry was added.",
+          "5": "unit: separate budget instances share weighted reservations across Infura chain hosts, store hashed buckets, respect deadlines and send no requests when budget storage fails."
         },
         "review": {
           "result": "pass",
           "by": "independent reviewer",
-          "summary": "No blocking findings. Atomic activation uses exact chain/address pairs and preserves other rows. API ordering is migration, activation, then chain checks. Configuration, shared readers, tests and docs match the requested staging defaults. All seven verification checks passed; isolated container startup and API restart checks passed.",
-          "at": "2026-10-24T15:15:53Z",
-          "filesHash": "96ce0dfaf8324783"
+          "summary": "Approved after correcting pending-range batching, preserving invoice overlap, using consistent non-key group locks, releasing the user signing gate before receipt waits, and preserving recovery progress across subscription changes. Full verification passed all seven checks, including concurrency, missed-transfer recovery, shared budget, and real payment-loop tests.",
+          "at": "2026-10-24T16:01:58Z",
+          "filesHash": "ac831bfdb31ddd3e"
         },
-        "commit": "c2a97a5",
-        "doneAt": "2026-10-24T15:16:58Z"
+        "commit": "f9638c6",
+        "doneAt": "2026-10-24T16:11:32Z"
       },
-      "branch": "feat/f288-enable-the-supported-usdc-testnet-pairs",
-      "baseCommit": "f340f8d3a76bade24691bbd37c3c3246f70e3d7c",
+      "branch": "perf/f289-reduce-repeated-rpc-reads-and-isolate-sl",
+      "baseCommit": "f6bee1a3e764f8dcd8990e0acac13570aae83ee5",
       "failedVerifies": 0,
       "delivery": {
         "mode": "pr",
-        "branch": "feat/f288-enable-the-supported-usdc-testnet-pairs",
+        "branch": "perf/f289-reduce-repeated-rpc-reads-and-isolate-sl",
         "base": "main"
       }
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-24T15:15:33Z",
+    "at": "2026-10-24T16:10:28Z",
     "clean": true,
     "problems": [],
-    "note": "F288 enables the exact three supported USDC pairs by default in Dokploy before startup checks. Full verification and isolated container startup/restart checks passed. Independent source review found no blockers. Delivery will use the authorized PR merge into main and staging fast-forward. VPS redeployment remains manual; credential files are excluded."
+    "note": "F289 implemented and independently reviewed; all seven verify checks passed. Wallet recovery, receipt backoff, shared header snapshots, independent chain jobs and shared weighted RPC budgets are ready for the approved PR to main and staging fast-forward. Invoice overlap and coherent header retries remain for money safety."
   }
 }

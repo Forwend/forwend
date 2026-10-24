@@ -48,6 +48,12 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		return fmt.Errorf("process invoice %s: %w", invoiceID, err)
 	}
 	defer tx.Rollback(ctx)
+	// Options share a winner. Use cancel/reopen's order so different chain jobs cannot lock each other out.
+	if _, err := tx.Exec(ctx, `SELECT id FROM invoices
+		WHERE coalesce(main_id, id) = (SELECT coalesce(main_id, id) FROM invoices WHERE id = $1)
+		ORDER BY main_id IS NULL, id FOR NO KEY UPDATE`, invoiceID); err != nil {
+		return fmt.Errorf("lock invoice %s options: %w", invoiceID, err)
+	}
 
 	var (
 		amountText, current, refund, token, receive, factory, group string
@@ -60,7 +66,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		       i.factory_address, i.chain_id, i.closes_at, coalesce(c.last_finalized_time, 0),
 		       coalesce(c.last_finalized_block, 0),
 		       coalesce(i.main_id, i.id), i.main_id IS NOT NULL OR EXISTS (SELECT 1 FROM invoices o WHERE o.main_id = i.id)
-		FROM invoices i LEFT JOIN chain_cursors c ON c.chain_id = i.chain_id WHERE i.id = $1 FOR UPDATE OF i`,
+		FROM invoices i LEFT JOIN chain_cursors c ON c.chain_id = i.chain_id WHERE i.id = $1 FOR NO KEY UPDATE OF i`,
 		invoiceID).Scan(&amountText, &current, &refund, &token, &receive, &factory, &chainID, &closesAt, &finalizedTime,
 		&finalizedBlock, &group, &options)
 	if err != nil {
@@ -80,7 +86,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	closedEverywhere := true
 	if options {
 		var chosen *string
-		if err := tx.QueryRow(ctx, "SELECT chosen_id FROM invoices WHERE id = $1 FOR UPDATE", group).Scan(&chosen); err != nil {
+		if err := tx.QueryRow(ctx, "SELECT chosen_id FROM invoices WHERE id = $1 FOR NO KEY UPDATE", group).Scan(&chosen); err != nil {
 			return fmt.Errorf("read invoice %s chosen option: %w", group, err)
 		}
 		if chosen == nil {

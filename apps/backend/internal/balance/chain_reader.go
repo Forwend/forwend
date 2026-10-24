@@ -30,11 +30,11 @@ type ChainReader struct {
 }
 
 // NewChainReader sends each RPC at most rate calls per second.
-func NewChainReader(specs map[uint64]chain.Spec, keys []string, rate float64) *ChainReader {
+func NewChainReader(specs map[uint64]chain.Spec, keys []string, rate float64, budgets ...*chain.Budget) *ChainReader {
 	c := &ChainReader{rpcs: map[uint64]chain.RPCs{}, errs: map[uint64]error{}, clients: map[uint64]*ethclient.Client{},
 		cache: newMemoryCache()}
 	for id, spec := range specs {
-		r, err := chain.NewRPCs(spec, keys, rate)
+		r, err := chain.NewRPCs(spec, keys, rate, budgets...)
 		if err != nil {
 			c.errs[id] = err
 			continue

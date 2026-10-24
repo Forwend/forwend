@@ -111,7 +111,7 @@ Redis is the next step when more than a few replicas run: the cache sits behind 
   only frees memory. A failed read is not kept: the requests waiting for it get the error and the next request reads
   again. The read keeps the deadline of the request that started it but not its cancel, so one closed tab does not
   fail the others. `/balance-history` reads through the same cache, so a dashboard poll of both routes costs one
-  `balanceOf` per token. The worker's paid check does not use it: it reads its own second-RPC balance.
+  `balanceOf` per token. The worker reads its own second-provider balances, sharing one finalized header within each chain round.
 - The RPC pool keeps up to 100 idle connections per host. With net/http's default of 2, each call beyond 2 at once
   opened a new connection (and TLS session), and under load the api ran out of local ports ([load test](#load-test)).
 - Postgres: `pool_max_conns` in `DATABASE_URL` sets each process's pool (without it pgxpool takes the larger of 4 and
@@ -129,7 +129,7 @@ everything) 10,000 users gave p95 2.4 ms, 0 errors and 1,333 RPC calls/s (334 wh
 60 s). What keeps it there:
 
 - RPC demand ≈ users × tokens ÷ max(15 s, how long a finalized block stays) + chains ÷ 3 s. It has to fit
-  `RPC_RATE_PER_SECOND` times the second role's endpoints; batching `balanceOf` (Multicall) is the next step if not.
+  the endpoint limits and shared weighted budget described below. These figures exclude worker and signer traffic.
 - `/balances` needs the `ledger_transactions_invoice` index (migration 00011): 21.5 ms without it, 0.37 ms with it.
 - The RPC pool keeps up to 100 idle connections per host ([scaling](#scaling)).
 
@@ -280,11 +280,24 @@ endpoint of the role rests, the call waits for the first one back if that comes 
 other answer, a revert or invalid params included, is the call's. HTTP 401, 403 or 404, or an answer that is not
 JSON-RPC, rests the endpoint 5 min at once (half of it random). A refused key, a blocked region or an unreadable
 answer doesn't heal in seconds, and each try of such a host would delay a call. No answer in time or a connection
-error rests every endpoint of that host: its other keys would each hang a call the same way. Each endpoint gets at
-most `RPC_RATE_PER_SECOND` calls a second per process, a batch counting each call. Errors and logs name an endpoint
-by host and position, never
-by URL (an Infura URL holds the key). Each chain's round has a 2-minute limit. Every `POLL_INTERVAL` the worker runs, per chain, a watcher scan then the ledger; the
-signer runs its due intents. The gate starts all three binaries against Postgres and Anvil (public RPCs only, the first
+error rests every endpoint of that host: its other keys would each hang a call the same way. Each endpoint keeps its local pacing, with every batch item counted.
+- API, worker and signer also share a weighted budget in PostgreSQL (`rpc_budgets`, R-133).
+- Its rate is `RPC_RATE_PER_SECOND × 80` units per second.
+- Ordinary calls cost 80 units; `eth_chainId` costs 5, logs 255, gas estimates 300, and block receipts 1,000.
+- These weights follow [Infura's credit costs](https://docs.infura.io/get-started/pricing/credit-cost/).
+- Public endpoints use the same conservative weights; these are pacing units, not their billing prices.
+- Each Infura key shares one bucket across chain hosts; other URLs have separate buckets.
+- Only SHA-256 bucket identifiers are stored. URLs and credentials never enter the table or logs.
+- Every attempt and chain-ID probe takes budget; waiting releases the database connection.
+- Budget exhaustion or a database failure stops the request without marking the provider unhealthy.
+- The budget uses a separate two-connection pool because ledger reads can hold invoice transactions.
+- Related header batches retry together to preserve their provider view.
+- Every `POLL_INTERVAL`, worker and signer start a job for each enabled, idle chain.
+- Busy chains keep their own jobs; healthy chains can complete more rounds meanwhile.
+- Each worker chain job has a two-minute deadline.
+- Disabling a chain cancels its job; shutdown cancels and joins jobs before closing their connections.
+
+The gate starts all three binaries against Postgres and Anvil (public RPCs only, the first
 answering every third request with 429), creates an invoice through
 the API, pays it and waits for detected → paid → settled with the deposit going detected → confirmed.
 
@@ -292,15 +305,25 @@ the API, pays it and waits for detected → paid → settled with the deposit go
 
 `internal/watcher` (R-20), one `Chain` per chain; never two at once for one chain (they would race on the cursor; the
 worker's lock, [startup](#startup)).
-Each `Scan` reads `latest`, then `eth_getLogs` for `Transfer` from the invoices' tokens to their receive addresses,
-from `RescanDepth` (2,000) blocks below the last finalized block (or from the oldest `detected` row) to latest, so a
-log one answer missed is read again for 15 minutes or more even where finalized is latest (Arc, Tempo), in ranges of at most
-2,000 blocks; a range the RPC refuses for its rate (after every endpoint was tried) is read again in half, down to
-50 blocks; one refused for its size is halved down to one block, and a single block still refused is read from
-`eth_getBlockReceipts` and filtered the same way, so zero-value Transfer spam (gas only) can't stop the chain. The
-range doubles back after each answer. One scan reads at most 40,000 blocks, so a long backlog (a
-worker down for days) is caught up over several rounds, each recorded, instead of needing one round longer than its
-timeout. Receive addresses and wallets go into topic lists of at most 1,000: go-ethereum nodes, Arbitrum's public RPC
+- `ScanNew` follows new wallet blocks and keeps the existing invoice overlap, at most 40,000 blocks per round.
+- Invoice overlap stays frequent so an earlier missed payment is found before a later payment decides ownership.
+- It also re-reads detected transfers' block heights, so confirmation still requires fresh logs and matching headers.
+- An unchanged head without detected wallet transfers needs no wallet log queries.
+- `Recover` keeps a separate durable checkpoint in `chain_recoveries`.
+- Each sweep starts 2,000 blocks before its previous completed checkpoint and pins its target before reading.
+- Each round recovers at most 10,000 blocks; successful chunks commit their progress with their transfers.
+- Fast scans never move the recovery checkpoint. Recovery never moves the fast cursor.
+- Failed chunks retain their position; restarts resume unfinished sweeps.
+- A completed sweep schedules the next sweep one minute later.
+- Changed wallet or token subscriptions trigger recovery without waiting for that timer.
+- Subscription changes preserve unfinished progress, rewinding only when the new wallet overlap requires it.
+- Startup uses the existing full `Scan` to establish a new chain's cursor.
+- Log queries cover at most 2,000 blocks each.
+- Rate-limited ranges shrink to 50 blocks; oversized ranges shrink to one block.
+- An oversized single block uses `eth_getBlockReceipts`, filtered by the same token and topic rules.
+- Successful queries grow the range back toward 2,000 blocks.
+
+Receive addresses and wallets go into topic lists of at most 1,000: go-ethereum nodes, Arbitrum's public RPC
 among them, refuse more with "exceed max topics". Invoices leave the scan 30 days after their settle deadline (the
 contracts' `MAX_HOLD`), unless a deposit to them is still detected: later money is moved only by the refund authority, from the chain. A transfer already recorded
 under another block and then mined again is skipped with an `ALERT` log, so the chain's scan goes on.
@@ -311,16 +334,13 @@ from one node. One transaction then:
   from one answer (a lagging or overloaded node) proves nothing;
 - inserts each deposit whose block hash matches, `confirmed` when the block is at or below `finalized` (D-45), else
   `detected`; a `reorged` row whose block is canonical again comes back;
-- moves `chain_cursors`, never below the last finalized block.
+- advances the fast cursor or the recovery checkpoint, according to the scan type.
 The same scan records profile-wallet transfers (R-38): `Transfer` logs of the chain's enabled tokens with any profile
 wallet as sender, then as receiver (two `eth_getLogs` per range), one row per wallet side, by the deposit rules above
 (detected, confirmed at or below `finalized`, reorged only when the chain shows another block at its height, a
-re-mined copy gets a new row, the oldest detected row holds the scan's start). A token disabled while one of its
-transfers is still detected stays in the scan until those rows confirm or are reorged, so they never hold the start;
-its new transfers are not recorded. Start rule: a wallet's transfers are
-recorded from the first scan that lists it, which reads from 2,000 blocks below the last finalized block. We make each
-wallet before anyone can know its address and the next scan follows within one poll interval, so that is its whole
-history; as for invoices, only a scan longer than 2,000 blocks could miss a transfer to a wallet made while it ran.
+re-mined copy gets a new row). A token disabled while one of its
+transfers is still detected stays in the scan until those rows confirm or are reorged, so their pending state can still resolve;
+its new transfers are not recorded. New wallet subscriptions trigger recovery through the previous checkpoint's 2,000-block overlap.
 Transfers older than that window are not looked for: those of wallets made before this table existed, or before a
 chain's first scan. Arc native-coin sends log no token `Transfer`, so they are not recorded.
 Only the invoice's own
@@ -331,7 +351,7 @@ Scanning again changes nothing, so a restarted worker resumes from the cursor.
 Check status (R-55) asks for a rescan of one invoice in `invoice_rechecks`. After each scan the worker takes up to
 `watcher.RescanLimit` (5) asked invoices of the chain and reads their address's logs from the invoice's creation block
 (found by a binary search over block times, a minute early for clock differences), at most `5 × MaxRange` blocks per
-invoice per round, saving where it stopped, within its own 30 s (`worker.RescanTimeout`) so the ledger keeps its time.
+invoice per round, saving where it stopped. Scheduled recovery and requested rescans share a 30-second deadline (`worker.RescanTimeout`).
 What it finds is recorded like a scan, then booked by the ledger in the same round. A rescan never moves the chain's
 cursor: that would let the regular scan skip blocks for the other invoices. An invoice outside the regular scan's watch
 window (30 days after its settle deadline) is not rescanned: the request is dropped, since that money is the refund
@@ -402,8 +422,13 @@ signer:
    is reconciled like an unsent one.
 A waiting intent also stores its wait kind (`retry`, `cap` for the sponsored limit, `unresolved`), cleared when a
 settle is signed, so the invoice API can tell the owner why the money waits (R-54) without reading the reason text.
-Each intent's attempt has a 3-minute limit, so an RPC that stops answering can't stall the others. Before each intent
-the signer checks it still holds its lock; without it the round stops.
+- Each intent has a three-minute deadline; its chain processes intents sequentially to preserve nonce ordering.
+- Different chains run independently.
+- New signing attempts for the same user take turns across chains until their signed settlement is saved.
+- Sent intents bypass that user gate; receipt waits do not hold it.
+- Receipt waits start with one second, double to four seconds, and stop after one minute.
+- Advisory-lock checks are serialized on their dedicated connection.
+- The signer checks that lock before each intent and again after waiting for the user's turn.
 It signs only `factory.deploy(terms)` and `receiver.settle()`, and only for chains enabled in the database: a chain
 disabled there is dropped next round, and a round whose enabled list can't be read sends nothing. A receiver settled
 outside our signer (the refund authority after the deadline) still confirms its intent, with no tx hash: a saved
@@ -438,9 +463,9 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
   whose transfer that is not reorged came first on chain (block time, then block and log) becomes `chosen_id`; deposits on any other option are booked entirely to `payer_held`, as late money
   is, so that option is never paid or settled and expires like any invoice. A choice made on a detected transfer that
   a reorg later drops stays.
-  - The worker reads chains one after another, so the choice waits until every other enabled option chain was read
-    past that first transfer (`chain_cursors.last_scanned_time`, R-119), about one round. Until then nothing of the
-    invoice is booked, and it stays `open`.
+  - Choice waits until every enabled option chain was scanned past the first transfer (`chain_cursors.last_scanned_time`, R-119).
+  - Until then nothing is booked, and the invoice stays `open`.
+  - Concurrent ledger jobs lock the entire option group in cancel/reopen order: children by ID, then the main row.
   - Before a choice, no row of the invoice expires until every other enabled option chain was read past the close.
     A payment made before the close may still come on one of them, and it would be chosen.
 - Payment status: `open` → `detected` (a transfer seen) → `partially_paid` → `paid` when the full amount is owed and

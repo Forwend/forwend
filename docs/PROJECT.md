@@ -182,6 +182,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-132 | Staging enables the supported USDC testnet pairs by default. | With `ENABLE_TESTNET_USDC=1`, API startup enables USDC on Base Sepolia, Arbitrum Sepolia and Arc Testnet after migrations and before chain checks. Existing databases get the same pairs. Repeated startup creates no duplicates and leaves other pairs unchanged. Setting it to 0 leaves network configuration unchanged. Dokploy defaults to 1; local development defaults to 0. | unit, build, e2e | R-131, D-38, D-71 |
 
+| R-133 | RPC reads cost less and one slow chain does not delay other chains. | Wallet scans follow new blocks; durable recovery finds missed transfers. Invoice overlap stays frequent to preserve payment ordering. Receipt polling backs off. Worker balance checks share finalized headers. Related header batches retain one provider view. API, worker and signer share a weighted provider budget. Chains run independently while payment finality, provider separation, invoice choice and nonce ordering remain enforced. | unit, e2e | R-20, R-21, R-22, D-15, D-45, D-71 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.
