@@ -13,7 +13,9 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
   - The settle deadline is expiry + 7 days, or + 24 h for invoices made before this window (D-18).
   - The contract accepts any terms, so these checks live only here.
 - Reopen (R-130) gives money held for the payer back to the creator. Only for an option that closed partly paid.
-  - Once per invoice, a day or more before its settle deadline, so a payment at the new close still settles.
+  - Once per invoice, a day or more before its receiver's settle deadline, so a payment at the new close still settles.
+  - A receiver deployed early, by a recovery, settles only until 30 days after its deploy (`MAX_HOLD`).
+  - So the ledger stores the deploy time when the option closes partly paid, and the reopen ends before that limit.
   - Not while a refund is under way: that money goes back to the payer.
   - The database allows the status back only with `reopened_until`, once.
   - It allows reopen rows only between the first expiry and a second.

@@ -566,8 +566,8 @@ export const INVOICE_COPY = {
     // R-129: the other invoice of a Revise.
     replacedBy: (number: string) => `By ${number}`,
     replaces: (number: string) => `Replaces ${number}`,
-    // R-130: the day the reopened checkout closes.
-    reopenedUntil: (day: string) => `Until ${day}`,
+    // R-130: when the reopened checkout closes.
+    reopenedUntil: (close: string) => `Until ${close}`,
     // Details a kind's label leaves out.
     dropped: "No longer on the chain",
     toClient: "To the client",

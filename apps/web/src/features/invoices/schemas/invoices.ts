@@ -176,7 +176,7 @@ export const revisionSchema = z.object({
   payToken: z.string().regex(PAY_TOKEN_PATTERN).nullable(),
 });
 
-/** One history row (R-124, R-126 to R-129); its last eight fields are null when the row has none. */
+/** One history row (R-124, R-126 to R-130); its last nine fields are null when the row has none. */
 export const invoiceHistoryEventSchema = z.object({
   id: count,
   kind: openEnum<HistoryKind>(),
@@ -189,6 +189,7 @@ export const invoiceHistoryEventSchema = z.object({
   field: openEnum<HistoryField>().nullable(),
   from: apiDate.nullable(),
   to: apiDate.nullable(),
+  until: apiTime.nullable(),
   related: revisionSchema.nullable(),
 });
 

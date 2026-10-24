@@ -81,3 +81,29 @@ func TestReopenCountsHeldAndNewMoneyUntilTheNewClose(t *testing.T) {
 		t.Fatal("reopened twice")
 	}
 }
+
+// R-130: an option that closes partly paid records its receiver's deploy time, 0 when not deployed; one that closes
+// with nothing paid can't reopen and is not read.
+func TestPartialCloseRecordsTheReceiverDeployTime(t *testing.T) {
+	s := newSim(t)
+	early, earlyReceive := s.invoice()
+	never, neverReceive := s.invoice()
+	unpaid, _ := s.invoice()
+	s.deployed[earlyReceive] = 500
+	s.transfer(early, earlyReceive, 1000000, 900, "confirmed")
+	s.transfer(never, neverReceive, 1000000, 900, "confirmed")
+	s.finalizedAt(1100)
+	for _, id := range []string{early, never, unpaid} {
+		s.process(id)
+	}
+	for id, want := range map[string]string{early: "500", never: "0", unpaid: "none"} {
+		var got string
+		if err := s.pool.QueryRow(context.Background(), `SELECT coalesce(receiver_deployed_at::text, 'none')
+			FROM invoices WHERE id = $1`, id).Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		if got != want {
+			t.Errorf("invoice %s: receiver deployed at %s, want %s", id, got, want)
+		}
+	}
+}

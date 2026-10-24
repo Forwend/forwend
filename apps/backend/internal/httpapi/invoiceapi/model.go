@@ -184,7 +184,7 @@ type viewsJSON struct {
 	LastAt  *string `json:"lastAt"`
 }
 
-// R-124: optionId, amount, txHash, step, field, from, to and related are null when the row has none.
+// R-124: optionId, amount, txHash, step, field, from, to, until and related are null when the row has none.
 type historyJSON struct {
 	ID       int64         `json:"id"`
 	Kind     string        `json:"kind"`
@@ -197,6 +197,7 @@ type historyJSON struct {
 	Field    *string       `json:"field"`
 	From     *string       `json:"from"`
 	To       *string       `json:"to"`
+	Until    *string       `json:"until"`
 	Related  *revisionJSON `json:"related"`
 }
 
@@ -335,7 +336,7 @@ func toOwnerInvoiceJSON(inv invoice.Invoice) ownerInvoiceJSON {
 		h := historyJSON{ID: e.ID, Kind: e.Kind, Actor: string(e.Actor),
 			At: e.At.UTC().Format(time.RFC3339), OptionID: httpio.OrNull(e.Option), Amount: httpio.OrNull(e.Amount),
 			TxHash: httpio.OrNull(e.TxHash), Step: httpio.OrNull(e.Step), Field: httpio.OrNull(e.Field),
-			From: httpio.OrNull(e.From), To: httpio.OrNull(e.To)}
+			From: httpio.OrNull(e.From), To: httpio.OrNull(e.To), Until: httpio.OrNull(e.Until)}
 		if e.Invoice != "" {
 			h.Related = &revisionJSON{InvoiceID: e.Invoice, Number: e.Number}
 		}

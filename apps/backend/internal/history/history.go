@@ -25,7 +25,7 @@ const (
 	RepeatStopped    = "repeat.stopped"
 	Edited           = "invoice.edited"   // data names the field, never its value (R-127)
 	Replaced         = "invoice.replaced" // canceled by a Revise; data names the new invoice (R-129)
-	Reopened         = "invoice.reopened" // data has the new close's day in to (R-130)
+	Reopened         = "invoice.reopened" // data has the new close in until (R-130)
 )
 
 // Emails the worker sent to the client or payer, or gave up on (R-126); a reminder's data has its step.
@@ -55,6 +55,7 @@ type Data struct {
 	Field  string `json:"field,omitempty"`
 	From   string `json:"from,omitempty"` // an edited due date's old and new value (R-128)
 	To     string `json:"to,omitempty"`
+	Until  string `json:"until,omitempty"` // a reopen's new close (R-130), RFC 3339 in UTC
 	// The other invoice of a Revise (R-129): on the old one the new, on the new one's created row the old.
 	Invoice string `json:"invoice,omitempty"`
 	Number  int64  `json:"number,omitempty"`

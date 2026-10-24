@@ -525,8 +525,9 @@ paths:
       summary: Reopen one of the profile's invoices that closed partly paid
       description: |
         R-130. Only for an invoice that closed partly paid (expired_partially_paid), not reopened before, a day or
-        more before its settle deadline, with no refund under way. Its checkout opens again until a day before the
-        settle deadline, at the same address. The money held for the payer, up to the amount, is the creator's again;
+        more before its receiver's settle deadline, with no refund under way. That deadline is settleDeadline, or 30
+        days after an early receiver deploy if sooner. Its checkout opens again until a day before that deadline, at
+        the same address. The money held for the payer, up to the amount, is the creator's again;
         deposits until the new close count as payment. Answers the invoice, its closesAt the new close.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
@@ -2303,7 +2304,7 @@ components:
                 invoice.held, invoice.settlement_queued, invoice.settled, "invoice." and the new payment status,
                 reminders.on, reminders.off, reminders.stopped, repeat.stopped, email.invoice_, email.reminder_ or
                 email.receipt_ and sent or failed (R-126), invoice.edited (R-127), invoice.replaced (R-129) or
-                invoice.reopened (R-130), whose to is the new close's day.
+                invoice.reopened (R-130), whose until is the new close.
                 actor system is Forwend. optionId names the option chosen, or the one money is held on, when the payer
                 chooses; amount is the base units held, in that option's token, else the shown option's; txHash is the
                 settle transaction; step is a reminder email's step; field is the edited field, and from and to
@@ -2311,7 +2312,7 @@ components:
                 the new one, on the new one's invoice.created the old one.
               items:
                 type: object
-                required: [id, kind, actor, at, optionId, amount, txHash, step, field, from, to, related]
+                required: [id, kind, actor, at, optionId, amount, txHash, step, field, from, to, until, related]
                 properties:
                   id: { type: integer, minimum: 1, description: Ascending in the order the rows were written. }
                   kind: { type: string, pattern: "^[a-z]+\\.[a-z_]+$" }
@@ -2324,6 +2325,7 @@ components:
                   field: { type: [string, "null"], enum: [memo, clientEmail, returnUrl, reference, note, dueDate, null] }
                   from: { type: [string, "null"], format: date }
                   to: { type: [string, "null"], format: date }
+                  until: { type: [string, "null"], format: date-time }
                   related: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/Revision" }] }
             reopenUntil:
               type: [string, "null"]
@@ -2658,7 +2660,7 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     InvoiceNotReopenable:
-      description: Not closed partly paid, reopened before, a refund under way, or less than a day before its settle deadline (invoice_not_reopenable)
+      description: Not closed partly paid, reopened before, a refund under way, or less than a day before its receiver's settle deadline (invoice_not_reopenable)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

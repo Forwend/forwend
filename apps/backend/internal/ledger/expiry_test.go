@@ -17,14 +17,15 @@ import (
 
 // sim: transfers are written directly and the test sets the second RPC's answers.
 type sim struct {
-	t       *testing.T
-	pool    *pgxpool.Pool
-	service *Service
-	answer  map[string]*big.Int // second RPC balance per receive address
-	down    map[string]bool     // second RPC errors for these addresses
-	behind  map[string]bool     // second RPC answers 0 from a block before the finalized one
-	calls   []string            // second RPC balance calls, by receive address
-	n       int
+	t        *testing.T
+	pool     *pgxpool.Pool
+	service  *Service
+	answer   map[string]*big.Int // second RPC balance per receive address
+	down     map[string]bool     // second RPC errors for these addresses
+	behind   map[string]bool     // second RPC answers 0 from a block before the finalized one
+	deployed map[string]uint64   // factory.deployedAt per receive address
+	calls    []string            // second RPC balance calls, by receive address
+	n        int
 }
 
 const simToken, simExpires = "0x00000000000000000000000000000000000000ee", 1000
@@ -51,7 +52,8 @@ func newSim(t *testing.T) *sim {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := &sim{t: t, pool: pool, answer: map[string]*big.Int{}, down: map[string]bool{}, behind: map[string]bool{}}
+	s := &sim{t: t, pool: pool, answer: map[string]*big.Int{}, down: map[string]bool{}, behind: map[string]bool{},
+		deployed: map[string]uint64{}}
 	s.service = NewService(pool, func(_ context.Context, _ uint64, _, holder string) (*big.Int, uint64, error) {
 		s.calls = append(s.calls, holder)
 		switch {
@@ -61,6 +63,8 @@ func newSim(t *testing.T) *sim {
 			return new(big.Int), 99, nil
 		}
 		return new(big.Int).Set(s.answer[holder]), 1000, nil
+	}, func(_ context.Context, _ uint64, _, receiver string) (uint64, error) {
+		return s.deployed[receiver], nil
 	})
 	return s
 }

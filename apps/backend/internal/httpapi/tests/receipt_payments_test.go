@@ -31,7 +31,8 @@ func TestReceiptListsOnlyMoneyPaidToTheCreator(t *testing.T) {
 		balances := func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 			return big.NewInt(5500000), 100, nil
 		}
-		if err := ledger.NewService(e.pool, balances).Process(ctx, id); err != nil {
+		notDeployed := func(context.Context, uint64, string, string) (uint64, error) { return 0, nil }
+		if err := ledger.NewService(e.pool, balances, notDeployed).Process(ctx, id); err != nil {
 			t.Fatal(err)
 		}
 	}

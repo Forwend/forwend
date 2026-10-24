@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 )
@@ -93,6 +94,36 @@ func BalanceFrom(clients map[uint64]*ethclient.Client) BalanceOf {
 			return nil, 0, err
 		}
 		return balance, head, nil
+	}
+}
+
+// DeployedAt reads factory.deployedAt(receiver) at the finalized block: 0 when the receiver is not deployed. An early
+// deploy, a refund authority recovery, ends the receiver's settle window at deployedAt + 30 days (R-130).
+type DeployedAt func(ctx context.Context, chainID uint64, factory, receiver string) (uint64, error)
+
+// DeployedFrom reads with BalanceFrom's clients, the second RPC per chain.
+func DeployedFrom(clients map[uint64]*ethclient.Client) DeployedAt {
+	return func(ctx context.Context, chainID uint64, factory, receiver string) (uint64, error) {
+		client, ok := clients[chainID]
+		if !ok {
+			return 0, fmt.Errorf("no deployedAt RPC for chain %d", chainID)
+		}
+		final, err := client.HeaderByNumber(ctx, big.NewInt(int64(rpc.FinalizedBlockNumber)))
+		if err != nil {
+			return 0, fmt.Errorf("deployedAt %s on chain %d: read finalized block: %w", receiver, chainID, err)
+		}
+		to := common.HexToAddress(factory)
+		data := append(crypto.Keccak256([]byte("deployedAt(address)"))[:4],
+			common.LeftPadBytes(common.HexToAddress(receiver).Bytes(), 32)...)
+		out, err := client.CallContract(ctx, ethereum.CallMsg{To: &to, Data: data}, final.Number)
+		if err != nil {
+			return 0, fmt.Errorf("deployedAt %s on chain %d: %w", receiver, chainID, err)
+		}
+		// Empty means no factory there: never read as "not deployed".
+		if len(out) != 32 {
+			return 0, fmt.Errorf("deployedAt %s on chain %d: %d-byte answer", receiver, chainID, len(out))
+		}
+		return new(big.Int).SetBytes(out).Uint64(), nil
 	}
 }
 

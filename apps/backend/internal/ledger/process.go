@@ -50,17 +50,18 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	defer tx.Rollback(ctx)
 
 	var (
-		amountText, current, refund, token, receive, group string
-		chainID, finalizedBlock                            uint64
-		closesAt, finalizedTime                            int64
-		options                                            bool
+		amountText, current, refund, token, receive, factory, group string
+		chainID, finalizedBlock                                     uint64
+		closesAt, finalizedTime                                     int64
+		options                                                     bool
 	)
 	err = tx.QueryRow(ctx, `
-		SELECT i.amount::text, i.payment_status, i.refund_status, i.token_contract, i.receive_address, i.chain_id,
-		       i.closes_at, coalesce(c.last_finalized_time, 0), coalesce(c.last_finalized_block, 0),
+		SELECT i.amount::text, i.payment_status, i.refund_status, i.token_contract, i.receive_address,
+		       i.factory_address, i.chain_id, i.closes_at, coalesce(c.last_finalized_time, 0),
+		       coalesce(c.last_finalized_block, 0),
 		       coalesce(i.main_id, i.id), i.main_id IS NOT NULL OR EXISTS (SELECT 1 FROM invoices o WHERE o.main_id = i.id)
 		FROM invoices i LEFT JOIN chain_cursors c ON c.chain_id = i.chain_id WHERE i.id = $1 FOR UPDATE OF i`,
-		invoiceID).Scan(&amountText, &current, &refund, &token, &receive, &chainID, &closesAt, &finalizedTime,
+		invoiceID).Scan(&amountText, &current, &refund, &token, &receive, &factory, &chainID, &closesAt, &finalizedTime,
 		&finalizedBlock, &group, &options)
 	if err != nil {
 		return fmt.Errorf("read invoice %s: %w", invoiceID, err)
@@ -189,6 +190,17 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			return err
 		}
 		newlyHeld.Add(newlyHeld, owed)
+		// A reopen must end before the receiver's settle window does (R-130).
+		readCtx, cancel := context.WithTimeout(ctx, BalanceTimeout)
+		deployedAt, err := s.deployed(readCtx, chainID, factory, receive)
+		cancel()
+		if err != nil {
+			return fmt.Errorf("check invoice %s receiver: %w", invoiceID, err)
+		}
+		if _, err := tx.Exec(ctx, "UPDATE invoices SET receiver_deployed_at = $2 WHERE id = $1",
+			invoiceID, int64(deployedAt)); err != nil {
+			return fmt.Errorf("record invoice %s receiver deploy time: %w", invoiceID, err)
+		}
 	}
 	held, err := accountBalance(ctx, tx, invoiceID, "payer_held")
 	if err != nil {

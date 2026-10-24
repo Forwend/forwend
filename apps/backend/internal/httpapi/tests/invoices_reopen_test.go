@@ -41,7 +41,7 @@ func TestReopenAnInvoiceThatClosedPartlyPaid(t *testing.T) {
 		WHERE chain_id = 84532`, expires.Unix()+120)
 	ledgers := ledger.NewService(e.pool, func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 		return new(big.Int).Set(onChain), 10, nil
-	})
+	}, func(context.Context, uint64, string, string) (uint64, error) { return 0, nil })
 	if err := ledgers.Process(ctx, id); err != nil {
 		t.Fatal(err)
 	}
@@ -83,8 +83,15 @@ func TestReopenAnInvoiceThatClosedPartlyPaid(t *testing.T) {
 		t.Fatalf("activity doesn't show the late deposit the reopen paid as paid: %v", activity.body["items"])
 	}
 	if events := historytest.Events(t, e.pool, id); !slices.Contains(events,
-		`invoice.reopened by owner {"to": "`+until[:10]+`"}`) {
+		`invoice.reopened by owner {"until": "`+until+`"}`) {
 		t.Fatalf("no reopen in the history: %q", events)
+	}
+	// The exact close, so the page shows it in the reader's time; to is an edited due date's.
+	if !slices.ContainsFunc(paid["history"].([]any), func(row any) bool {
+		h := row.(map[string]any)
+		return h["kind"] == "invoice.reopened" && h["until"] == until && h["to"] == nil
+	}) {
+		t.Fatalf("the API's reopened row has no until %s: %v", until, paid["history"])
 	}
 	if public := e.get(t, id).body; public["closesAt"] != until {
 		t.Fatalf("the public read closes at %v, want %v", public["closesAt"], until)
@@ -132,6 +139,8 @@ func TestReopenThePaidOptionOfAPayerChoosesInvoice(t *testing.T) {
 		WHERE chain_id = 84532`, expires+120)
 	if err := ledger.NewService(e.pool, func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 		return big.NewInt(2000000), 10, nil
+	}, func(context.Context, uint64, string, string) (uint64, error) {
+		return 0, nil
 	}).Process(context.Background(), usdcOption); err != nil {
 		t.Fatal(err)
 	}

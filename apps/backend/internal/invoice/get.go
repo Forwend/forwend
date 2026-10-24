@@ -129,8 +129,9 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 			inv.ID); err != nil {
 			return Invoice{}, err
 		}
-		if until := inv.SettleDeadline.Add(-ReopenMargin); inv.PaymentStatus == ledger.ExpiredPartiallyPaid &&
-			inv.RefundStatus == "held" && inv.ClosesAt.Equal(inv.ExpiresAt) && s.now().Before(until) {
+		until := reopenClose(inv.SettleDeadline, inv.receiverDeployedAt)
+		if inv.PaymentStatus == ledger.ExpiredPartiallyPaid && inv.RefundStatus == "held" &&
+			inv.ClosesAt.Equal(inv.ExpiresAt) && s.now().Before(until) {
 			inv.ReopenUntil = until
 		}
 		inv.Retainer, err = s.retainer(ctx, inv.ID)

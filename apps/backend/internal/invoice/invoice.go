@@ -238,6 +238,8 @@ type Invoice struct {
 	ReplacedBy     *Revision      // the invoice a Revise replaced it with (R-129); set by Get
 	Replaces       *Revision      // the invoice it replaced (R-129); set by the owner's Get
 	ReopenUntil    time.Time      // the close a reopen now gives (R-130); zero when it can't; set by the owner's Get
+	// factory.deployedAt of the receiver, read when the option closed partly paid (R-130); nil before
+	receiverDeployedAt *int64
 }
 
 // Revision is the other invoice of a Revise (R-129); PayToken is set only for the replacement.
