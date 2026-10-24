@@ -252,3 +252,63 @@ func TestRetainerMonthKeepsAReturnLinkItsStoreDropped(t *testing.T) {
 		t.Fatalf("return links by month: %v, want the first one's twice", links)
 	}
 }
+
+// R-136: the client agreed to the token, so turning it off later stops no month.
+func TestFixedRetainerMonthKeepsATokenTurnedOff(t *testing.T) {
+	ctx := context.Background()
+	pool, profile := open(t)
+	s := NewService(pool)
+	at := func(day string) {
+		now, _ := time.Parse(time.DateOnly, day)
+		s.now = func() time.Time { return now.Add(12 * time.Hour) }
+	}
+	at("2027-01-10")
+	if _, _, err := s.Create(ctx, profile, "k1", Request{ChainID: 84532, Token: usdc, Amount: "5000000",
+		ExpiresInSeconds: new(int64(86400)), Repeat: &Repeat{},
+		Details: Details{DueDate: "2027-01-31", ClientEmail: "ap@bob.example"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO profile_tokens_off (profile_id, chain_id, token_contract)
+		VALUES ($1, 84532, $2)`, profile, usdc); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.Create(ctx, profile, "k2", Request{ChainID: 84532, Token: usdc, Amount: "1"}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("a new invoice on the token turned off: %v, want ErrInvalid", err)
+	}
+	at("2027-02-21")
+	if err := s.MakeRetainerInvoices(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var months int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM retainer_invoices").Scan(&months); err != nil || months != 2 {
+		t.Fatalf("%d months made (%v), want the first and February", months, err)
+	}
+}
+
+// R-136: a payer-chooses month offers what is on when it is made, so with its only token off it is not made.
+func TestPayerChoosesRetainerMonthOffersWhatIsOn(t *testing.T) {
+	ctx := context.Background()
+	pool, profile := open(t)
+	s := NewService(pool)
+	at := func(day string) {
+		now, _ := time.Parse(time.DateOnly, day)
+		s.now = func() time.Time { return now.Add(12 * time.Hour) }
+	}
+	at("2027-01-10")
+	if _, _, err := s.Create(ctx, profile, "k1", Request{AmountUSD: "5", ExpiresInSeconds: new(int64(86400)),
+		Repeat: &Repeat{}, Details: Details{DueDate: "2027-01-31", ClientEmail: "ap@bob.example"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO profile_tokens_off (profile_id, chain_id, token_contract)
+		VALUES ($1, 84532, $2)`, profile, usdc); err != nil {
+		t.Fatal(err)
+	}
+	at("2027-02-21")
+	if err := s.MakeRetainerInvoices(ctx); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("the month with every token off: %v, want ErrInvalid", err)
+	}
+	var months int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM retainer_invoices").Scan(&months); err != nil || months != 1 {
+		t.Fatalf("%d months made (%v), want only the first", months, err)
+	}
+}

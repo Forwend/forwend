@@ -1,7 +1,13 @@
 import type { StoreField } from "@/features/stores/types/stores";
 import { API_BASE } from "@/shared/config/api";
 
-const FIELDS: StoreField[] = ["name", "defaultExpiresIn", "allowedOrigins", "brandColor"];
+const FIELDS: StoreField[] = [
+  "name",
+  "defaultExpiresIn",
+  "allowedOrigins",
+  "brandColor",
+  "tokensOff",
+];
 
 /** One origin per line; blank lines are dropped. */
 export function originLines(text: string): string[] {

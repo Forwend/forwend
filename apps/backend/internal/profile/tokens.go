@@ -1,0 +1,122 @@
+package profile
+
+import (
+	"cmp"
+	"context"
+	"fmt"
+	"slices"
+	"strings"
+
+	"github.com/jackc/pgx/v5"
+)
+
+// TokenPair names a token by its chain and contract, in lowercase hex.
+type TokenPair struct {
+	ChainID uint64
+	Token   string
+}
+
+// TokenSwitch is an enabled token and whether the profile has it on (R-136).
+type TokenSwitch struct {
+	TokenPair
+	Symbol   string
+	Decimals int
+	Network  string // the chain's name
+	On       bool
+}
+
+// Tokens lists every enabled token, each on until the profile turns it off.
+func (s *Service) Tokens(ctx context.Context, profileID string) ([]TokenSwitch, error) {
+	rows, err := s.pool.Query(ctx, `SELECT t.chain_id, t.contract, t.symbol, t.decimals, c.name,
+		    NOT EXISTS (SELECT 1 FROM profile_tokens_off o
+		                WHERE o.profile_id = $1 AND o.chain_id = t.chain_id AND o.token_contract = t.contract)
+		FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
+		WHERE t.enabled AND c.enabled ORDER BY t.chain_id, t.symbol, t.contract`, profileID)
+	if err != nil {
+		return nil, fmt.Errorf("list tokens: %w", err)
+	}
+	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (TokenSwitch, error) {
+		var t TokenSwitch
+		err := row.Scan(&t.ChainID, &t.Token, &t.Symbol, &t.Decimals, &t.Network, &t.On)
+		return t, err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list tokens: %w", err)
+	}
+	return list, nil
+}
+
+// SetTokensOff replaces the tokens the profile has off.
+func (s *Service) SetTokensOff(ctx context.Context, profileID string, off []TokenPair) ([]TokenSwitch, error) {
+	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		// The profile row lock makes concurrent saves replace the list one after another.
+		if _, err := tx.Exec(ctx, "SELECT 1 FROM profiles WHERE id = $1 FOR UPDATE", profileID); err != nil {
+			return fmt.Errorf("lock profile: %w", err)
+		}
+		off, err := enabledOff(ctx, tx, "off", off)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, "DELETE FROM profile_tokens_off WHERE profile_id = $1", profileID); err != nil {
+			return fmt.Errorf("save tokens off: %w", err)
+		}
+		for _, t := range off {
+			if _, err := tx.Exec(ctx, `INSERT INTO profile_tokens_off (profile_id, chain_id, token_contract)
+				VALUES ($1, $2, $3)`, profileID, t.ChainID, t.Token); err != nil {
+				return fmt.Errorf("save tokens off: %w", err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return s.Tokens(ctx, profileID)
+}
+
+// enabledOff puts off in its stored form, without repeats. Each must be an enabled token, and one must stay on, so
+// the profile or store can still invoice. field names the list in an error.
+func enabledOff(ctx context.Context, tx pgx.Tx, field string, off []TokenPair) ([]TokenPair, error) {
+	rows, err := tx.Query(ctx, `SELECT t.chain_id, t.contract FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
+		WHERE t.enabled AND c.enabled`)
+	if err != nil {
+		return nil, fmt.Errorf("read enabled tokens: %w", err)
+	}
+	enabled, err := pgx.CollectRows(rows, pgx.RowToStructByPos[TokenPair])
+	if err != nil {
+		return nil, fmt.Errorf("read enabled tokens: %w", err)
+	}
+	var out []TokenPair
+	for _, t := range off {
+		t.Token = strings.ToLower(t.Token)
+		if !slices.Contains(enabled, t) {
+			return nil, fmt.Errorf("%w: %s must list enabled tokens by chainId and token", ErrInvalid, field)
+		}
+		if !slices.Contains(out, t) {
+			out = append(out, t)
+		}
+	}
+	// With nothing enabled, as on a new database, out is empty and there is nothing to keep on.
+	if len(out) > 0 && len(out) == len(enabled) {
+		return nil, fmt.Errorf("%w: %s can't list every token: one stays on", ErrInvalid, field)
+	}
+	slices.SortFunc(out, func(a, b TokenPair) int {
+		return cmp.Or(cmp.Compare(a.ChainID, b.ChainID), strings.Compare(a.Token, b.Token))
+	})
+	return out, nil
+}
+
+// TokensOff are the tokens a new invoice of the profile, and of its store when storeID is set, can't take.
+func TokensOff(ctx context.Context, tx pgx.Tx, profileID, storeID string) ([]TokenPair, error) {
+	rows, err := tx.Query(ctx, `SELECT chain_id, token_contract FROM profile_tokens_off WHERE profile_id = $1
+		UNION SELECT chain_id, token_contract FROM store_tokens_off WHERE store_id = nullif($2, '')::uuid`,
+		profileID, storeID)
+	if err != nil {
+		return nil, fmt.Errorf("read tokens off: %w", err)
+	}
+	off, err := pgx.CollectRows(rows, pgx.RowToStructByPos[TokenPair])
+	if err != nil {
+		return nil, fmt.Errorf("read tokens off: %w", err)
+	}
+	return off, nil
+}

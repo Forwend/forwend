@@ -41,6 +41,7 @@ import type {
   LineField,
   Owed,
 } from "@/features/invoices/types/invoices";
+import type { TokenRef } from "@/features/profiles/types/tokens";
 import { API_BASE } from "@/shared/config/api";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -162,6 +163,17 @@ export function isReturnLink(text: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** R-136: the tokens not in off; all of them when off would leave none, and the API then says why. */
+export function tokensOn<T extends TokenRef>(
+  tokens: readonly T[],
+  off: readonly TokenRef[],
+): readonly T[] {
+  const on = tokens.filter(
+    (t) => !off.some((o) => o.chainId === t.chainId && o.token === t.token.toLowerCase()),
+  );
+  return on.length > 0 ? on : tokens;
 }
 
 /** The choice whose seconds a store's default close has (R-134); New invoice's default otherwise. */

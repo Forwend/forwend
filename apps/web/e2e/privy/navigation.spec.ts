@@ -811,6 +811,70 @@ test("the owner turns email notifications off from the account menu", async ({ b
   await context.close();
 });
 
+// R-136
+test("the account menu opens Networks and tokens, where a switch turns a token off", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page);
+  const arbitrum = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d";
+  let tokens = [
+    {
+      chainId: 84532,
+      token: OPEN_INVOICE.token,
+      symbol: "USDC",
+      decimals: 6,
+      network: "base-sepolia",
+      on: true,
+    },
+    {
+      chainId: 421614,
+      token: arbitrum,
+      symbol: "USDC",
+      decimals: 6,
+      network: "arbitrum-sepolia",
+      on: true,
+    },
+  ];
+  const puts: unknown[] = [];
+  await page.route("/api/v1/profiles/*/tokens", async (route) => {
+    if (route.request().method() === "PUT") {
+      const { off } = route.request().postDataJSON() as {
+        off: { chainId: number; token: string }[];
+      };
+      puts.push(off);
+      tokens = tokens.map((t) => ({ ...t, on: !off.some((o) => o.chainId === t.chainId) }));
+    }
+    await route.fulfill({ json: { tokens } });
+  });
+  await page.goto("/app");
+  await page
+    .getByRole("button", { name: /^Account:/ })
+    .first()
+    .click({ timeout: 15_000 });
+  await page.getByRole("menuitem", { name: "Networks and tokens" }).click();
+  await expect(page).toHaveURL("/app/networks");
+  const main = page.getByRole("main");
+  const base = main.getByRole("switch", { name: "USDC on Base Sepolia" });
+  const arb = main.getByRole("switch", { name: "USDC on Arbitrum Sepolia" });
+  await expect(base).toBeChecked();
+  await expect(arb).toBeChecked();
+  expect(await blockingViolations(page)).toEqual([]);
+  await arb.click();
+  await expect(arb).not.toBeChecked();
+  await expect(page.getByText("USDC on Arbitrum Sepolia turned off")).toBeVisible();
+  expect(puts).toEqual([[{ chainId: 421614, token: arbitrum }]]);
+  // The last one on stays on, as the API refuses turning every token off.
+  await expect(base).toBeDisabled();
+  await expect(main).toContainText("One token stays on");
+  expect(await blockingViolations(page)).toEqual([]);
+  await context.close();
+});
+
 // R-81
 test("the bell lists paid, settled and held-money events beside payments", async ({ browser }) => {
   const context = await browser.newContext({

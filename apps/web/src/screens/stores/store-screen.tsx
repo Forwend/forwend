@@ -2,6 +2,7 @@
 
 import { Button, buttonClasses, Skeleton } from "@forwend/ui-web";
 import Link from "next/link";
+import { useGetProfileTokensQuery } from "@/features/profiles/api/profiles-api";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
 import { StoreForm } from "@/features/stores/components/store-form";
@@ -19,10 +20,13 @@ export function StoreScreen({ storeId }: StoreScreenProps) {
   const { profile } = useAppSession();
   const list = useListStoresQuery(profile.profileId, { skip: !storeId });
   const store = list.currentData?.find((s) => s.storeId === storeId);
+  // Without them the form keeps the store's tokens off as saved and shows no Tokens panel.
+  const tokens = useGetProfileTokensQuery(profile.profileId);
   const form = {
     profileId: profile.profileId,
     closeChoices: CLOSE_CHOICES,
     defaultClose: DEFAULT_CLOSE,
+    tokens: tokens.currentData ?? [],
   };
   return (
     <div className="flex flex-col gap-6">

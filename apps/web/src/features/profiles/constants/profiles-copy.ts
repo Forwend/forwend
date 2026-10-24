@@ -59,6 +59,20 @@ export const BILLING_DETAILS_COPY = {
   },
 } as const;
 
+/** R-136. */
+export const TOKENS_COPY = {
+  title: "Networks and tokens",
+  intro:
+    "Turn off what you don't want to be paid in. New invoices and requests of this profile offer only what is on; ones you already sent keep theirs.",
+  toggle: (symbol: string, network: string) => `${symbol} on ${network}`,
+  lastOn: "One token stays on, so this profile can still be paid.",
+  loadFailed: "We could not load the networks and tokens.",
+  saveFailed: "We could not save this setting. Try again.",
+  retry: "Try again",
+  saved: (symbol: string, network: string, on: boolean) =>
+    `${symbol} on ${network} turned ${on ? "on" : "off"}`,
+} as const;
+
 /** R-80. */
 export const NOTIFICATIONS_COPY = {
   title: "Email notifications",

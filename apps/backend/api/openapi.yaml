@@ -325,6 +325,47 @@ paths:
         "404": { $ref: "#/components/responses/ClientNotFound" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/tokens:
+    get:
+      operationId: listProfileTokens
+      summary: The enabled tokens and whether the profile has each on (R-136)
+      description: Every enabled token is on until the profile turns it off.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200": { $ref: "#/components/responses/ProfileTokens" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+    put:
+      operationId: putProfileTokens
+      summary: Replace the tokens the profile has off (R-136)
+      description: |
+        A new invoice of the profile offers only the tokens on. Each one listed must be an enabled token, and one must
+        stay on; otherwise 422 and nothing changes. Invoices made earlier keep their options.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [off]
+              properties:
+                off:
+                  type: array
+                  items: { $ref: "#/components/schemas/TokenRef" }
+      responses:
+        "200": { $ref: "#/components/responses/ProfileTokens" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/stores:
     get:
       operationId: listStores
@@ -494,7 +535,8 @@ paths:
         the same number. The insert also copies the profile's billing details as issuer (null without them). The number,
         title, note, due and supply dates, line items, agreed value, sender name, client and issuer never change after
         creation. Send chainId, token and amount for one fixed token and network, or amountUsd alone to let the payer
-        choose (R-56): the invoice then accepts every enabled token on every chain the worker watches, each as its own
+        choose (R-56): the invoice then accepts every enabled token on every chain the worker watches, less the ones the
+        profile or its store has off (R-136), each as its own
         option with the amount in its decimals at 1 USD per stablecoin (D-75), its own on-chain id and receive address
         (D-76). Each option counts toward the profile's limits on open receive addresses.
       parameters:
@@ -1727,9 +1769,15 @@ components:
           type: string
           pattern: "^(#[0-9a-fA-F]{6})?$"
           description: The store's accent color (R-135), kept in lower case; empty or left out means none.
+        tokensOff:
+          type: array
+          items: { $ref: "#/components/schemas/TokenRef" }
+          description: |
+            Tokens off for the store's invoices on top of the profile's (R-136). Each must be an enabled token, and
+            one must stay on; otherwise 422. Left out means none.
     Store:
       type: object
-      required: [storeId, name, defaultExpiresIn, allowedOrigins, brandColor, logoAt, updatedAt]
+      required: [storeId, name, defaultExpiresIn, allowedOrigins, brandColor, logoAt, tokensOff, updatedAt]
       description: A merchant profile's store. storeId is its project ID, public and with no authority (D-31).
       properties:
         storeId: { type: string, format: uuid }
@@ -1741,7 +1789,31 @@ components:
           type: [string, "null"]
           format: date-time
           description: When the logo was saved (R-135); null without one.
+        tokensOff:
+          type: array
+          items: { $ref: "#/components/schemas/TokenRef" }
+          description: |
+            By chain id, then contract. Only enabled tokens: one switched off for everyone leaves the list, and the
+            next save drops it.
         updatedAt: { type: string, format: date-time }
+    TokenRef:
+      type: object
+      additionalProperties: false
+      required: [chainId, token]
+      description: A token by its chain and contract; any letter case in, lowercase out.
+      properties:
+        chainId: { type: integer }
+        token: { $ref: "#/components/schemas/Address" }
+    TokenSwitch:
+      type: object
+      required: [chainId, token, symbol, decimals, network, on]
+      properties:
+        chainId: { type: integer }
+        token: { $ref: "#/components/schemas/Address" }
+        symbol: { type: string }
+        decimals: { type: integer, minimum: 0 }
+        network: { type: string, description: The chain's name, like base-sepolia. }
+        on: { type: boolean }
     Issuer:
       type: object
       required: [name, address, country, taxId, email]
@@ -2074,11 +2146,13 @@ components:
           pattern: "^[0-9]{1,60}(\\.[0-9]{1,18})?$"
           description: |
             Payer chooses: the amount in USD, above 0, such as "12.50". 422 when an accepted token's decimals can't
-            hold it exactly.
+            hold it exactly. The tokens the profile or its store has off are left out; none left is 422 (R-136).
         chainId: { type: integer, minimum: 1, maximum: 9223372036854775807 }
         token:
           type: string
-          description: Contract of an enabled token on chainId; any letter case.
+          description: |
+            Contract of an enabled token on chainId; any letter case. A token the profile or its store has off is
+            422 (R-136).
           pattern: "^0x[0-9a-fA-F]{40}$"
         amount: { $ref: "#/components/schemas/Uint256" }
         expiresIn:
@@ -2850,6 +2924,17 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    ProfileTokens:
+      description: The enabled tokens, by chain id, with the profile's switch
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [tokens]
+            properties:
+              tokens:
+                type: array
+                items: { $ref: "#/components/schemas/TokenSwitch" }
     LogoNotFound:
       description: No store with this id has a logo (logo_not_found)
       content:

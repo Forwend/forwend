@@ -5,6 +5,7 @@ import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import {
   BILLING_DETAILS_COPY,
   NOTIFICATIONS_COPY,
+  TOKENS_COPY,
 } from "@/features/profiles/constants/profiles-copy";
 import type { ProfileKind } from "@/features/profiles/types/profile";
 import { STORES_COPY } from "@/features/stores/constants/stores-copy";
@@ -29,6 +30,9 @@ export function breadcrumb(
       trail: [{ label: NOTIFICATIONS_COPY.title, href: APP_ROUTES.notifications }],
       invoiceId: null,
     };
+  }
+  if (pathname === APP_ROUTES.networks) {
+    return { trail: [{ label: TOKENS_COPY.title, href: APP_ROUTES.networks }], invoiceId: null };
   }
   if (pathname === APP_ROUTES.billingDetails) {
     return {

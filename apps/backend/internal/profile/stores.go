@@ -39,6 +39,8 @@ type StoreDetails struct {
 	DefaultExpiresIn int64
 	AllowedOrigins   []string
 	BrandColor       string // "#rrggbb" or "" (R-135)
+	// More tokens off for the store's invoices than the profile has off (R-136).
+	TokensOff []TokenPair
 }
 
 // Store's ID is its project ID: public, with no authority (D-31).
@@ -104,11 +106,24 @@ func (d *StoreDetails) check() error {
 
 var brandColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
-const storeColumns = `id::text, name, default_expires_in, allowed_origins, coalesce(brand_color, ''), updated_at, logo_at`
+const storeColumns = `id::text, name, default_expires_in, allowed_origins, coalesce(brand_color, ''), updated_at, logo_at,
+	coalesce((SELECT array_agg(o.chain_id::text || ':' || o.token_contract ORDER BY o.chain_id, o.token_contract)
+	          FROM store_tokens_off o JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
+	          JOIN chains c ON c.chain_id = t.chain_id
+	          WHERE o.store_id = stores.id AND t.enabled AND c.enabled), '{}')`
 
 func scanStore(row pgx.CollectableRow) (Store, error) {
 	var s Store
-	err := row.Scan(&s.ID, &s.Name, &s.DefaultExpiresIn, &s.AllowedOrigins, &s.BrandColor, &s.UpdatedAt, &s.LogoAt)
+	var off []string
+	err := row.Scan(&s.ID, &s.Name, &s.DefaultExpiresIn, &s.AllowedOrigins, &s.BrandColor, &s.UpdatedAt, &s.LogoAt, &off)
+	s.TokensOff = make([]TokenPair, 0, len(off))
+	for _, o := range off {
+		chainID, token, _ := strings.Cut(o, ":")
+		var t TokenPair
+		fmt.Sscan(chainID, &t.ChainID)
+		t.Token = token
+		s.TokensOff = append(s.TokensOff, t)
+	}
 	return s, err
 }
 
@@ -151,6 +166,10 @@ func (s *Service) SaveStore(ctx context.Context, profileID, id string, d StoreDe
 	if kind != Merchant {
 		return Store{}, false, ErrNotMerchant
 	}
+	off, err := enabledOff(ctx, tx, "tokensOff", d.TokensOff)
+	if err != nil {
+		return Store{}, false, err
+	}
 	// An id that belongs to another profile neither inserts (the conflict) nor updates (the WHERE), so no row comes back.
 	var st Store
 	var created bool
@@ -164,7 +183,7 @@ func (s *Service) SaveStore(ctx context.Context, profileID, id string, d StoreDe
 		RETURNING `+storeColumns+`, xmax = 0`, profileID, id, d.Name, d.DefaultExpiresIn, d.AllowedOrigins, MaxStores,
 		d.BrandColor).
 		Scan(&st.ID, &st.Name, &st.DefaultExpiresIn, &st.AllowedOrigins, &st.BrandColor, &st.UpdatedAt, &st.LogoAt,
-			&created)
+			new([]string), &created)
 	if errors.Is(err, pgx.ErrNoRows) {
 		var taken bool
 		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM stores WHERE id = $1)`, id).Scan(&taken); err != nil {
@@ -178,9 +197,19 @@ func (s *Service) SaveStore(ctx context.Context, profileID, id string, d StoreDe
 	if err != nil {
 		return Store{}, false, fmt.Errorf("save store: %w", err)
 	}
+	if _, err := tx.Exec(ctx, "DELETE FROM store_tokens_off WHERE store_id = $1", id); err != nil {
+		return Store{}, false, fmt.Errorf("save store tokens off: %w", err)
+	}
+	for _, t := range off {
+		if _, err := tx.Exec(ctx, `INSERT INTO store_tokens_off (store_id, chain_id, token_contract) VALUES ($1, $2, $3)`,
+			id, t.ChainID, t.Token); err != nil {
+			return Store{}, false, fmt.Errorf("save store tokens off: %w", err)
+		}
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return Store{}, false, fmt.Errorf("save store: %w", err)
 	}
+	st.TokensOff = append([]TokenPair{}, off...)
 	return st, created, nil
 }
 

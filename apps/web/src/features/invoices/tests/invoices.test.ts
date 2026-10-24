@@ -14,6 +14,7 @@ import {
   owedCents,
   parseTokenAmount,
   restartFrom,
+  tokensOn,
 } from "@/features/invoices/lib/invoices";
 import type { Deposit, Invoice, Owed } from "@/features/invoices/types/invoices";
 
@@ -414,5 +415,25 @@ describe("owedCents (R-95)", () => {
     expect(owedCents(rows)).toBe(223n);
     expect(owedCents([row("held", "9000000", 6)])).toBe(0n);
     expect(owedCents([])).toBe(0n);
+  });
+});
+
+// R-136: New invoice offers only the tokens on; the API refuses the rest anyway.
+describe("tokensOn", () => {
+  const base = { chainId: 84532, token: "0x036CBD53842c5426634e7929541eC2318f3dCF7e" };
+  const arb = { chainId: 421614, token: "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d" };
+
+  it("leaves out the tokens off, whatever the letter case", () => {
+    expect(tokensOn([base, arb], [{ chainId: 84532, token: base.token.toLowerCase() }])).toEqual([
+      arb,
+    ]);
+  });
+
+  it("keeps a token with the same contract on another chain", () => {
+    expect(tokensOn([base, arb], [{ chainId: 1, token: arb.token }])).toEqual([base, arb]);
+  });
+
+  it("keeps every token when the list would leave none, so the API says why", () => {
+    expect(tokensOn([base], [{ chainId: 84532, token: base.token.toLowerCase() }])).toEqual([base]);
   });
 });

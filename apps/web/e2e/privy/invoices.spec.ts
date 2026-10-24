@@ -184,6 +184,8 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   await expect(page.getByRole("img", { name: "E2E shop logo" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Replace logo" })).toBeVisible();
   await page.getByRole("textbox", { name: "Accent color (optional)" }).fill("#1F6A8C");
+  // R-136: the store narrows the profile's tokens; Base Sepolia, used below, stays on.
+  await expect(page.getByRole("checkbox", { name: "USDC on Base Sepolia" })).toBeChecked();
   expect(await blockingViolations(page)).toEqual([]);
   await page.getByRole("button", { name: "Save store" }).click();
   await expect(page).toHaveURL("/app/stores");

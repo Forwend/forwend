@@ -14,9 +14,12 @@ import {
   NEW_INVOICE_COPY,
   NEW_REQUEST_COPY,
 } from "@/features/invoices/constants/invoices-copy";
-import { invoiceNumber, restartFrom } from "@/features/invoices/lib/invoices";
+import { invoiceNumber, restartFrom, tokensOn } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
-import { useGetBillingDetailsQuery } from "@/features/profiles/api/profiles-api";
+import {
+  useGetBillingDetailsQuery,
+  useGetProfileTokensQuery,
+} from "@/features/profiles/api/profiles-api";
 import { BILLING_THEN, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
@@ -49,7 +52,17 @@ export function NewInvoiceScreen() {
   const loadingStart = Boolean(from) && owned.isLoading;
   // R-129: ?revise=1 replaces that invoice once this one is created.
   const replaced = params.has(RESTART_PARAMS.revise) ? owned.currentData : undefined;
-  const tokens = balances.currentData?.tokens;
+  // R-136: only the tokens the profile has on. Without the switches every token shows, and the API still checks.
+  const switches = useGetProfileTokensQuery(profile.profileId);
+  const loadingSwitches = switches.currentData === undefined && !switches.isError;
+  const all = balances.currentData?.tokens;
+  const tokens =
+    all && switches.currentData
+      ? tokensOn(
+          all,
+          switches.currentData.filter((t) => !t.on),
+        )
+      : all;
   const request = profile.kind === PROFILE_KINDS.personal;
   // R-92. If the billing details can't be read, the form shows and the API still checks.
   const billing = useGetBillingDetailsQuery(profile.profileId, { skip: request });
@@ -84,7 +97,7 @@ export function NewInvoiceScreen() {
             {INVOICES_COPY.revise.retry}
           </Button>
         </div>
-      ) : !tokens || loadingStart || loadingBilling || loadingStores ? (
+      ) : !tokens || loadingStart || loadingBilling || loadingStores || loadingSwitches ? (
         <Skeleton className="h-96" />
       ) : billingNeeded ? (
         <EmptyState
