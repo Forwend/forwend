@@ -796,7 +796,7 @@
         "D-18 and money-safety.md say so; unit, lint and typecheck pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "lint",
@@ -871,9 +871,9 @@
         "taskHash": "4fa5a66a39731ab0",
         "filesHash": "47c4d9e1f1192dd4",
         "proof": {
-          "1": "unit: TestCreateInvoice: settleDeadline is expiresAt + 7 days",
-          "2": "unit: receive-address.test gives the address for a 7-day window as for a 1-day one and none for a deadline 1 s off or 2 days after expiry; TestCheckRejectsMalformedInput alerts on a deadline 1 s off and on 2 days, and not on a 7-day window",
-          "3": "lint: D-18, money-safety.md, openapi.yaml settleDeadline and PLAN 11.11.4 say 7 days, or 24 h for invoices made before; unit, lint and typecheck pass"
+          "1": "unit",
+          "2": "unit",
+          "3": "lint"
         },
         "review": {
           "result": "pass",
@@ -881,11 +881,18 @@
           "summary": "All earlier findings are fixed: openapi settleDeadline says 7 days (24 h for older invoices), the money-safety.md sentences are at most 25 words, and PLAN 11.11.4 cites D-18. A 2-day refusal case is added to both term-check tests. Both checks accept only exactly 1 or 7 days, and nothing else depends on the window.",
           "at": "2026-10-24T00:18:49Z",
           "filesHash": "47c4d9e1f1192dd4"
-        }
+        },
+        "commit": "4b7d8e4",
+        "doneAt": "2026-10-24T00:19:04Z"
       },
       "branch": "feat/f283-new-invoices-settle-until-7-days-after-t",
       "baseCommit": "b50899865abbcb022901c3aacf04c7b8fe3259d0",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f283-new-invoices-settle-until-7-days-after-t",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
