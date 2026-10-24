@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 283,
+  "nextId": 284,
   "tasks": [
     {
       "id": "F276",
@@ -783,6 +783,114 @@
       "delivery": {
         "mode": "pr",
         "branch": "feat/f282-revise-replaces-an-invoice-before-any-pa",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F283",
+      "type": "feat",
+      "behavior": "New invoices settle until 7 days after the checkout closes, and the pay page and canary accept a 1-day or 7-day window",
+      "acceptance": [
+        "Create sets settleDeadline to expiresAt plus 7 days",
+        "The pay page's term check and the canary accept a settle deadline exactly 1 day (invoices made before) or 7 days after expiry, and refuse any other",
+        "D-18 and money-safety.md say so; unit, lint and typecheck pass"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "lint",
+        "typecheck"
+      ],
+      "refs": [
+        "D-18",
+        "R-15"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-24 review fail by reviewer: Code is right; docs are not. (1) apps/backend/api/openapi.yaml:2431 still says settleDeadline is 'expiresAt + 24 h'; say expiresAt + 7 days (24 h for older invoices, D-18). (2) D-84: docs/backend/money-safety.md:12-13 grows from 26 to 34 words; :46-49 (53) and :63-64 (33) get longer. Split them. (3) PLAN.md:114-115 (11.11.4) still says the owner will decide the grace and cites D-92; it is now 7 days, D-18. Checked OK: no other code uses the 24 h window; MAX_HOLD caps 30 days after deploy, unaffected; both term checks accept only exactly 86400 or 604800 s; the three new tests fail on base and pass now; old 1-day fixtures pass.",
+        "2026-10-24 review pass by reviewer: All earlier findings are fixed: openapi settleDeadline says 7 days (24 h for older invoices), the money-safety.md sentences are at most 25 words, and PLAN 11.11.4 cites D-18. A 2-day refusal case is added to both term-check tests. Both checks accept only exactly 1 or 7 days, and nothing else depends on the window."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-24T00:11:41Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 137.5,
+            "log": "docs/runs/F283-20261024T001141Z-unit.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F283-20261024T001141Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F283-20261024T001141Z-typecheck.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F283-20261024T001141Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F283-20261024T001141Z-docs-check.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.1,
+            "log": "docs/runs/F283-20261024T001141Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 251.5,
+            "log": "docs/runs/F283-20261024T001141Z-e2e.log"
+          }
+        ],
+        "taskHash": "4fa5a66a39731ab0",
+        "filesHash": "47c4d9e1f1192dd4",
+        "proof": {
+          "1": "unit",
+          "2": "unit",
+          "3": "lint"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "All earlier findings are fixed: openapi settleDeadline says 7 days (24 h for older invoices), the money-safety.md sentences are at most 25 words, and PLAN 11.11.4 cites D-18. A 2-day refusal case is added to both term-check tests. Both checks accept only exactly 1 or 7 days, and nothing else depends on the window.",
+          "at": "2026-10-24T00:18:49Z",
+          "filesHash": "47c4d9e1f1192dd4"
+        },
+        "commit": "4b7d8e4",
+        "doneAt": "2026-10-24T00:19:04Z"
+      },
+      "branch": "feat/f283-new-invoices-settle-until-7-days-after-t",
+      "baseCommit": "b50899865abbcb022901c3aacf04c7b8fe3259d0",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f283-new-invoices-settle-until-7-days-after-t",
         "base": "main"
       }
     }

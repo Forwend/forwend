@@ -2428,7 +2428,7 @@ components:
         settleDeadline:
           type: string
           format: date-time
-          description: expiresAt + 24 h.
+          description: expiresAt + 7 days (24 h for invoices made before this window; D-18).
         paymentStatus:
           type: string
           enum: [open, detected, partially_paid, paid, expired, expired_partially_paid, canceled]

@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os/exec"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -246,11 +247,15 @@ func parseTerms(line string) (terms, error) {
 	}
 	// The rules create applies: terms that break them leave a payer's money refundable only.
 	switch zero := "0x0000000000000000000000000000000000000000"; {
-	case amount.Sign() == 0, t.SettleDeadline != t.ExpiresAt+86400, t.Recipient == zero, t.Recipient == t.Token:
+	case amount.Sign() == 0, !slices.Contains(settleWindows, t.SettleDeadline-t.ExpiresAt), t.Recipient == zero,
+		t.Recipient == t.Token:
 		return terms{}, errors.New("the terms break create's rules")
 	}
 	return t, nil
 }
+
+// Seconds from expiry to the settle deadline that create used: 7 days (invoice.SettleWindow), 1 day before it (D-18).
+var settleWindows = []uint64{604800, 86400}
 
 func (t terms) predictCall() []byte {
 	word := func(n *big.Int) []byte { return n.FillBytes(make([]byte, 32)) }

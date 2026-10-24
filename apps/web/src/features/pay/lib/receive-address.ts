@@ -4,8 +4,8 @@ import type { Invoice } from "@/features/invoices/types/invoices";
 import { FACTORY, IMPLEMENTATION } from "@/features/pay/constants/receive-address";
 import type { InvoiceTerms } from "@/features/pay/types/receive-address";
 
-// invoice.SettleWindow and the longest expiry the API accepts (internal/invoice).
-const SETTLE_WINDOW_S = 86_400n;
+// invoice.SettleWindow (7 days; 1 day for invoices made before, D-18) and the longest expiry the API accepts.
+const SETTLE_WINDOWS_S = [604_800n, 86_400n];
 const MAX_EXPIRY_S = 365n * 86_400n;
 // expiresAt comes from the API's clock and createdAt from the database's.
 const CLOCK_SKEW_S = 300n;
@@ -67,7 +67,7 @@ export function checkedReceiveAddress(inv: Invoice, payToken: string): string | 
     const recipient = terms.recipient.toLowerCase().replace(/^0x/, "");
     const invalid =
       terms.amount <= 0n ||
-      terms.settleDeadline !== terms.expiresAt + SETTLE_WINDOW_S ||
+      !SETTLE_WINDOWS_S.includes(terms.settleDeadline - terms.expiresAt) ||
       terms.expiresAt > unixSeconds(inv.createdAt) + MAX_EXPIRY_S + CLOCK_SKEW_S ||
       [ZERO, terms.token.toLowerCase().replace(/^0x/, ""), FACTORY, IMPLEMENTATION].includes(
         recipient,

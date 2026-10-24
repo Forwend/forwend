@@ -112,7 +112,7 @@ code; a wallet connects only to claim a refund (D-37).
     Any other change is a Revise before any deposit: a new invoice with a new number, address and pay link, and the
     old one canceled as "Replaced by". After 11.11.1.
   - 11.11.4 Reopen an expired, partly paid invoice before its settle deadline: same address, and the payer sends the
-    rest. The owner decides how long the settle grace after expiry is (D-92). After 11.11.1.
+    rest. The settle grace is 7 days (D-18). After 11.11.1.
 - Before outside merchants: Q-11. The Privy key-quorum spike comes first; D-61 holds for the first outside merchants.
 
 ## Phase 12: account security, send and bank withdrawal

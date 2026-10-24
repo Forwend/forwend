@@ -9,8 +9,9 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - `(chain_id, receive_address)` is unique. The signer refuses to settle when the stored terms do not recompute the
   receive address or `factory.predict` gives another one (`internal/settlement/settle.go`); the canary checks open
   invoices ([Canary](#canary)).
-- Before showing an address, run the same term checks as `settle`, plus expiry ≤ 365 days and settle deadline =
-  expiry + 24 h. The contract accepts any terms, so these checks live only here.
+- Before showing an address, run the same term checks as `settle`, plus expiry ≤ 365 days and the settle window.
+  - The settle deadline is expiry + 7 days, or + 24 h for invoices made before this window (D-18).
+  - The contract accepts any terms, so these checks live only here.
 - Go address code and `predict` share test vectors: `packages/contracts/vectors/receive-address.json`, written by
   `pnpm vectors` in `packages/contracts`. `forge test` fails while the file is stale.
 - The recipient is the profile wallet read from Privy, never from the request. The contract can't tell a wrong one.
@@ -43,9 +44,11 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - The page shows an address only for the invoice its link names: the invoice id must be keccak256 of the link's token
   (`address.InvoiceID`, D-86). For a payer-chooses invoice's further option, only when the option's id is
   `keccak256(abi.encode(invoice id, chain id, token))`, as `address.OptionID` makes it, so no other invoice's terms
-  pass under the link. Only for terms the API would create (amount above
-  0, settle deadline 24 h after expiry, expiry at most a year after creation, a recipient that is not zero, the token,
-  the factory or the implementation), and only when the terms compute to it.
+  pass under the link.
+  - Only for terms the API would create: amount above 0, the settle window above, and expiry at most a year after
+    creation.
+  - The recipient is not zero, the token, the factory or the implementation.
+  - The terms must compute to the address.
 - No third-party scripts; pinned dependencies.
 
 ## Canary
@@ -59,10 +62,10 @@ different hosts per chain ID and the script path.
 
 Stdin holds one open invoice or accepted option per line, its terms as the database stores them, then its token's
 symbol, its chain's name and the pay link's token of the invoice it belongs to (D-86):
-`id chain_id recipient_address token_contract amount expires_at settle_deadline symbol network pay_token`. A line whose
-terms break create's rules (amount 0, a settle deadline other than expiry + 24 h, a recipient that is zero or the
-token) is an alert. A line within 6 minutes of its expiry is skipped: the pay page stops showing the address 5
-minutes before expiry. The canary then:
+`id chain_id recipient_address token_contract amount expires_at settle_deadline symbol network pay_token`. A line
+whose terms break create's rules is an alert: amount 0, a recipient that is zero or the token, or another settle
+window. A line within 6 minutes of its expiry is skipped: the pay page stops showing the address 5 minutes before
+expiry. The canary then:
 
 1. On both RPCs of every configured chain, requires `eth_chainId` to equal the chain ID and the keccak256 of the
    factory's code to equal `CANARY_FACTORY_CODE_HASH`. A receiver's init-code hash differs per invoice (its init
