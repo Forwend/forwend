@@ -12,7 +12,7 @@
         "The staging guide and backend configuration document activation, gas requirements and restarting backend processes."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "docs-check"
@@ -99,11 +99,18 @@
           "summary": "No blocking findings. Atomic activation uses exact chain/address pairs and preserves other rows. API ordering is migration, activation, then chain checks. Configuration, shared readers, tests and docs match the requested staging defaults. All seven verification checks passed; isolated container startup and API restart checks passed.",
           "at": "2026-10-24T15:15:53Z",
           "filesHash": "96ce0dfaf8324783"
-        }
+        },
+        "commit": "c2a97a5",
+        "doneAt": "2026-10-24T15:16:58Z"
       },
       "branch": "feat/f288-enable-the-supported-usdc-testnet-pairs",
       "baseCommit": "f340f8d3a76bade24691bbd37c3c3246f70e3d7c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f288-enable-the-supported-usdc-testnet-pairs",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
