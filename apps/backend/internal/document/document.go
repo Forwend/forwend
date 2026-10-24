@@ -114,8 +114,9 @@ func Number(n int64) string {
 	return fmt.Sprintf("INV-%04d", n)
 }
 
-func Invoice(inv invoice.Invoice, payLink string) ([]byte, error) {
-	d := start(inv, "Invoice")
+// logo is the invoice's store logo, a PNG the API encoded (R-135); nil shows Forwend's.
+func Invoice(inv invoice.Invoice, payLink string, logo []byte) ([]byte, error) {
+	d := start(inv, "Invoice", logo)
 	canceled := inv.PaymentStatus == ledger.Canceled
 	if canceled {
 		// A canceled invoice keeps its number and PDF as a record (D-79), and never asks for money again: no total
@@ -153,12 +154,12 @@ func Invoice(inv invoice.Invoice, payLink string) ([]byte, error) {
 	return d.output()
 }
 
-func Receipt(inv invoice.Invoice, payLink string) ([]byte, error) {
+func Receipt(inv invoice.Invoice, payLink string, logo []byte) ([]byte, error) {
 	if inv.PaymentStatus != ledger.Paid {
 		return nil, ErrNotPaid
 	}
 	// The payer's proof of payment: when and how they paid. Settling is the creator's business (R-61).
-	d := start(inv, "Receipt")
+	d := start(inv, "Receipt", logo)
 	d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Supply date", inv.SupplyDate},
 		[2]string{"Paid", stamp(inv.PaidAt)})
 	d.lines(inv, "Amount paid", false)
@@ -178,7 +179,7 @@ func Receipt(inv invoice.Invoice, payLink string) ([]byte, error) {
 
 type doc struct{ *fpdf.Fpdf }
 
-func start(inv invoice.Invoice, kind string) doc {
+func start(inv invoice.Invoice, kind string, logo []byte) doc {
 	author := bmp(inv.SenderName)
 	if inv.Issuer != nil {
 		author = bmp(inv.Issuer.Name)
@@ -187,7 +188,7 @@ func start(inv invoice.Invoice, kind string) doc {
 	if kind == "Receipt" {
 		date = inv.PaidAt
 	}
-	d := open(kind, Number(inv.Number), author, date)
+	d := open(kind, Number(inv.Number), author, date, logo)
 	// The client's accounts team matches the invoice by it (R-90). Never cut: each line holds at least one byte.
 	if text := "Reference " + inv.Reference; inv.Reference != "" {
 		for _, l := range d.fit(text, width/2, len(text)) {
@@ -196,7 +197,13 @@ func start(inv invoice.Invoice, kind string) doc {
 		}
 	}
 	d.Ln(4)
-	d.rule()
+	if c, ok := hexColor(inv.BrandColor); ok {
+		d.SetDrawColor(c[0], c[1], c[2])
+		d.SetLineWidth(0.6)
+		d.Line(margin, d.GetY(), margin+width, d.GetY())
+	} else {
+		d.rule()
+	}
 	d.Ln(6)
 
 	// Side by side. Each block is cut to fit, so neither reaches the end of the page.
@@ -225,8 +232,8 @@ func start(inv invoice.Invoice, kind string) doc {
 	return d
 }
 
-// label is an invoice's number or a statement's period.
-func open(kind, label, author string, date time.Time) doc {
+// label is an invoice's number or a statement's period; logo replaces Forwend's mark and name when set.
+func open(kind, label, author string, date time.Time, logo []byte) doc {
 	d := doc{fpdf.New("P", "mm", "A4", "")}
 	d.SetMargins(margin, margin, margin)
 	d.SetAutoPageBreak(true, margin)
@@ -252,11 +259,24 @@ func open(kind, label, author string, date time.Time) doc {
 	})
 	d.AddPage()
 
-	d.color(ink)
-	d.logo(margin, margin, 8)
-	d.SetXY(margin+10.5, margin)
-	d.SetFont(font, "B", 14)
-	d.CellFormat(40, 8, "Forwend", "", 0, "L", false, 0, "")
+	if logo != nil {
+		// Fitted into the space Forwend's mark and name take, keeping its shape.
+		opts := fpdf.ImageOptions{ImageType: "PNG"}
+		info := d.RegisterImageOptionsReader("logo", opts, bytes.NewReader(logo))
+		w, h := 50.0, 10.0
+		if info != nil && info.Width()*h > info.Height()*w {
+			h = w * info.Height() / info.Width()
+		} else if info != nil {
+			w = h * info.Width() / info.Height()
+		}
+		d.ImageOptions("logo", margin, margin, w, h, false, opts, 0, "")
+	} else {
+		d.color(ink)
+		d.logo(margin, margin, 8)
+		d.SetXY(margin+10.5, margin)
+		d.SetFont(font, "B", 14)
+		d.CellFormat(40, 8, "Forwend", "", 0, "L", false, 0, "")
+	}
 	d.SetXY(margin+width/2, margin-1)
 	d.SetFont(font, "B", 20)
 	d.CellFormat(width/2, 9, kind, "", 2, "R", false, 0, "")
@@ -268,6 +288,13 @@ func open(kind, label, author string, date time.Time) doc {
 
 func (d doc) color(c [3]int) { d.SetFillColor(c[0], c[1], c[2]) }
 func (d doc) text(c [3]int)  { d.SetTextColor(c[0], c[1], c[2]) }
+
+// hexColor reads a store's "#rrggbb" (R-135).
+func hexColor(s string) ([3]int, bool) {
+	var c [3]int
+	_, err := fmt.Sscanf(s, "#%02x%02x%02x", &c[0], &c[1], &c[2])
+	return c, err == nil && len(s) == 7
+}
 
 func (d doc) rule() {
 	d.SetDrawColor(line[0], line[1], line[2])

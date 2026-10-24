@@ -174,6 +174,16 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   await expect(page.getByRole("alert").filter({ hasText: "without a path" })).toBeVisible();
   await expect(origins).toBeFocused();
   await origins.fill("https://shop.example");
+  // R-135: the logo uploads at once; the color saves with the store. Any PNG will do: a screenshot of a corner.
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "logo.png",
+    mimeType: "image/png",
+    buffer: await page.screenshot({ clip: { x: 0, y: 0, width: 120, height: 40 } }),
+  });
+  await expect(page.getByText("Logo saved")).toBeVisible();
+  await expect(page.getByRole("img", { name: "E2E shop logo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Replace logo" })).toBeVisible();
+  await page.getByRole("textbox", { name: "Accent color (optional)" }).fill("#1F6A8C");
   expect(await blockingViolations(page)).toEqual([]);
   await page.getByRole("button", { name: "Save store" }).click();
   await expect(page).toHaveURL("/app/stores");
@@ -419,6 +429,13 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(pdf("Invoice PDF")).toHaveAttribute("href", pdfPath("invoice.pdf"));
     const file = await page.request.get(pdfPath("invoice.pdf"));
     expect([file.status(), file.headers()["content-type"]]).toEqual([200, "application/pdf"]);
+    // R-135: the store's logo is the PDF's one image (its QR code is drawn), and every read carries the brand.
+    expect((await file.body()).includes("/Subtype /Image")).toBe(true);
+    const publicRead = await (
+      await page.request.get(`/api/v1/invoices/${invoice.payToken}`)
+    ).json();
+    expect(publicRead.brand).toMatchObject({ color: "#1f6a8c" });
+    expect(publicRead.brand.logoAt).not.toBeNull();
     await expect(pdf("Receipt PDF")).toHaveCount(0);
     expect(await blockingViolations(page)).toEqual([]);
     await page.route(`**${read}`, async (route) => {

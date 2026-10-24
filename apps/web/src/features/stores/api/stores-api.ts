@@ -27,7 +27,31 @@ export const storesApi = apiSlice.enhanceEndpoints({ addTagTypes: [STORES_TAG] }
       responseSchema: storeSchema,
       invalidatesTags: [STORES_TAG],
     }),
+    /** R-135: the body is the image file itself. */
+    saveStoreLogo: build.mutation<Store, { profileId: string; storeId: string; logo: File }>({
+      query: ({ profileId, storeId, logo }) => ({
+        url: `${storesUrl(profileId)}/${encodeURIComponent(storeId)}/logo`,
+        method: "PUT",
+        body: logo,
+        headers: { "Content-Type": logo.type },
+      }),
+      responseSchema: storeSchema,
+      invalidatesTags: [STORES_TAG],
+    }),
+    deleteStoreLogo: build.mutation<Store, { profileId: string; storeId: string }>({
+      query: ({ profileId, storeId }) => ({
+        url: `${storesUrl(profileId)}/${encodeURIComponent(storeId)}/logo`,
+        method: "DELETE",
+      }),
+      responseSchema: storeSchema,
+      invalidatesTags: [STORES_TAG],
+    }),
   }),
 });
 
-export const { useListStoresQuery, useSaveStoreMutation } = storesApi;
+export const {
+  useListStoresQuery,
+  useSaveStoreMutation,
+  useSaveStoreLogoMutation,
+  useDeleteStoreLogoMutation,
+} = storesApi;

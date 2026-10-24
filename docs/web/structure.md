@@ -65,6 +65,8 @@ features/invoices/
   - `screens/app-shell/command-menu.tsx`: the search box is an ARIA combobox inside its own dialog.
   - `screens/app-shell/app-header.tsx`: the two search triggers that look like a field and open the command menu.
   - `screens/app-shell/phone-tab-bar.tsx`: the More tab is a button styled exactly like its sibling tab links.
+  - `features/stores/components/store-form.tsx`: the browser's color picker, as the Accent color field's action.
+  - `features/stores/components/store-logo.tsx`: a hidden file input that the Upload logo button opens.
   Add a kit component instead the second time any of these is needed.
 
 ## Landing sections

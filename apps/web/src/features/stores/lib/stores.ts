@@ -1,6 +1,7 @@
 import type { StoreField } from "@/features/stores/types/stores";
+import { API_BASE } from "@/shared/config/api";
 
-const FIELDS: StoreField[] = ["name", "defaultExpiresIn", "allowedOrigins"];
+const FIELDS: StoreField[] = ["name", "defaultExpiresIn", "allowedOrigins", "brandColor"];
 
 /** One origin per line; blank lines are dropped. */
 export function originLines(text: string): string[] {
@@ -23,4 +24,9 @@ export function allowsReturnLink(origins: readonly string[], link: string): bool
   } catch {
     return false;
   }
+}
+
+/** R-135: the logo's public address; its save time keeps a cached older logo from showing. */
+export function storeLogoUrl(storeId: string, logoAt: string): string {
+  return `${API_BASE}/v1/stores/${encodeURIComponent(storeId)}/logo.png?v=${Date.parse(logoAt)}`;
 }

@@ -383,6 +383,75 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/stores/{storeId}/logo:
+    put:
+      operationId: putStoreLogo
+      summary: Set a store's logo (R-135)
+      description: |
+        The body is the image itself: a PNG or JPEG of at most 1048576 bytes and 1024 pixels a side. Anything else
+        is 422. The API keeps an 8-bit PNG of the same pixels. So no metadata or other content the upload carried is
+        ever served. Answers the store.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/StoreId"
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema: { type: string, format: binary }
+          image/jpeg:
+            schema: { type: string, format: binary }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Store" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/StoreNotFound" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+    delete:
+      operationId: deleteStoreLogo
+      summary: Remove a store's logo (R-135); answers the store, also when it had none
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/StoreId"
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Store" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/StoreNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/stores/{storeId}/logo.png:
+    get:
+      operationId: getStoreLogo
+      summary: A store's logo (R-135)
+      description: |
+        Public: pay pages and PDFs show it, and the store id is the public project ID (D-31). A PNG the API encoded,
+        served with `Content-Security-Policy: default-src 'none'`, an ETag and `Cache-Control: public, max-age=300`.
+      security: []
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The logo
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+        "304": { description: The If-None-Match ETag still matches }
+        "404": { $ref: "#/components/responses/LogoNotFound" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/invoices:
     get:
       operationId: listInvoices
@@ -1406,11 +1475,11 @@ paths:
       summary: Download the invoice as a PDF
       description: |
         Public like GET /v1/invoices/{payToken} (R-47, R-61, D-51). Built on the server from the stored invoice only:
-        the Forwend mark, number, reference, issuer (left out when the profile had no billing details), bill-to with the
-        client's name and address (never the email), created time, supply date, due date, checkout expiry, a line with
-        the title, network and amount with the token's symbol (or one per line item, with the title above them), the
-        agreed value under the total, note, the pay link with its QR code and the invoice id. The same invoice always
-        gives the same bytes.
+        the Forwend mark (or the store's logo, with its color on the header rule, R-135), number, reference, issuer
+        (left out when the profile had no billing details), bill-to with the client's name and address (never the
+        email), created time, supply date, due date, checkout expiry, a line with the title, network and amount with
+        the token's symbol (or one per line item, with the title above them), the agreed value under the total, note,
+        the pay link with its QR code and the invoice id. The same invoice always gives the same bytes.
       security: []
       parameters:
         - name: payToken
@@ -1654,15 +1723,24 @@ components:
           description: |
             https origins like https://shop.example.com, without a path, query or fragment; repeats count once. They are
             kept in lower case without the default port. A return link must start with one of them; empty allows none.
+        brandColor:
+          type: string
+          pattern: "^(#[0-9a-fA-F]{6})?$"
+          description: The store's accent color (R-135), kept in lower case; empty or left out means none.
     Store:
       type: object
-      required: [storeId, name, defaultExpiresIn, allowedOrigins, updatedAt]
+      required: [storeId, name, defaultExpiresIn, allowedOrigins, brandColor, logoAt, updatedAt]
       description: A merchant profile's store. storeId is its project ID, public and with no authority (D-31).
       properties:
         storeId: { type: string, format: uuid }
         name: { type: string }
         defaultExpiresIn: { type: integer }
         allowedOrigins: { type: array, items: { type: string } }
+        brandColor: { type: [string, "null"], pattern: "^#[0-9a-f]{6}$" }
+        logoAt:
+          type: [string, "null"]
+          format: date-time
+          description: When the logo was saved (R-135); null without one.
         updatedAt: { type: string, format: date-time }
     Issuer:
       type: object
@@ -2465,7 +2543,7 @@ components:
       type: object
       required: [invoiceId, payToken, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, agreedValue, senderName, returnUrl, issuer, chainId,
         token, amount, recipient, factory, receiveAddress, expiresAt, closesAt, settleDeadline, paymentStatus, settlementStatus,
-        refundStatus, settlementTxHash, createdAt]
+        refundStatus, settlementTxHash, createdAt, brand]
       description: |
         With several options (payer chooses), the terms and statuses are the current option's: the one that received
         money first, else the first listed.
@@ -2554,6 +2632,16 @@ components:
           properties:
             storeId: { type: string, format: uuid }
             name: { type: string }
+        brand:
+          type: [object, "null"]
+          required: [storeId, color, logoAt]
+          description: |
+            A merchant invoice's store branding (R-135), in every response, the public GET too; null for a personal or
+            freelancer profile's invoice. The logo is at /v1/stores/{storeId}/logo.png while logoAt is set.
+          properties:
+            storeId: { type: string, format: uuid }
+            color: { type: [string, "null"], pattern: "^#[0-9a-f]{6}$" }
+            logoAt: { type: [string, "null"], format: date-time }
         issuer:
           description: |
             The profile's billing details as they were when the invoice was made; null when it had none. Editing the
@@ -2651,7 +2739,7 @@ components:
             code:
               type: string
               enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found, job_not_found, job_accepted, job_not_accepted, payment_out_of_order, change_not_accepted, change_pending, job_finished, payment_not_withdrawable, transaction_not_found, not_labelable, too_many_transactions,
-                billing_details_not_found, billing_details_required, client_not_found, store_not_found, not_merchant, idempotency_conflict, invoice_not_paid,
+                billing_details_not_found, billing_details_required, client_not_found, store_not_found, not_merchant, logo_not_found, idempotency_conflict, invoice_not_paid,
                 invoice_not_cancelable, invoice_not_editable, invoice_not_reopenable, receipt_sent, client_email_required, invoice_closed, due_date_required,
                 reminders_stopped, invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
@@ -2759,6 +2847,11 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     StoreNotFound:
       description: The store belongs to another profile (store_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    LogoNotFound:
+      description: No store with this id has a logo (logo_not_found)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

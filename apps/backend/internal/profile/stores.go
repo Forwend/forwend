@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -37,6 +38,7 @@ type StoreDetails struct {
 	Name             string
 	DefaultExpiresIn int64
 	AllowedOrigins   []string
+	BrandColor       string // "#rrggbb" or "" (R-135)
 }
 
 // Store's ID is its project ID: public, with no authority (D-31).
@@ -44,6 +46,7 @@ type Store struct {
 	StoreDetails
 	ID        string
 	UpdatedAt time.Time
+	LogoAt    *time.Time // when the logo was saved; nil without one (R-135)
 }
 
 // Allows reports whether link's origin is one of the store's allowed origins.
@@ -74,6 +77,10 @@ func (d *StoreDetails) check() error {
 	if Impersonates(d.Name) {
 		return fmt.Errorf("%w: name can't name Forwend", ErrInvalid)
 	}
+	if d.BrandColor != "" && !brandColor.MatchString(d.BrandColor) {
+		return fmt.Errorf("%w: brandColor must be a color like #1f6a8c", ErrInvalid)
+	}
+	d.BrandColor = strings.ToLower(d.BrandColor)
 	if d.DefaultExpiresIn < MinStoreExpiresIn || d.DefaultExpiresIn > MaxStoreExpiresIn {
 		return fmt.Errorf("%w: defaultExpiresIn must be seconds from %d to %d", ErrInvalid, MinStoreExpiresIn,
 			MaxStoreExpiresIn)
@@ -95,11 +102,13 @@ func (d *StoreDetails) check() error {
 	return nil
 }
 
-const storeColumns = `id::text, name, default_expires_in, allowed_origins, updated_at`
+var brandColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
+const storeColumns = `id::text, name, default_expires_in, allowed_origins, coalesce(brand_color, ''), updated_at, logo_at`
 
 func scanStore(row pgx.CollectableRow) (Store, error) {
 	var s Store
-	err := row.Scan(&s.ID, &s.Name, &s.DefaultExpiresIn, &s.AllowedOrigins, &s.UpdatedAt)
+	err := row.Scan(&s.ID, &s.Name, &s.DefaultExpiresIn, &s.AllowedOrigins, &s.BrandColor, &s.UpdatedAt, &s.LogoAt)
 	return s, err
 }
 
@@ -146,14 +155,16 @@ func (s *Service) SaveStore(ctx context.Context, profileID, id string, d StoreDe
 	var st Store
 	var created bool
 	err = tx.QueryRow(ctx, `
-		INSERT INTO stores (id, profile_id, name, default_expires_in, allowed_origins)
-		SELECT $2, $1, $3, $4, $5
+		INSERT INTO stores (id, profile_id, name, default_expires_in, allowed_origins, brand_color)
+		SELECT $2, $1, $3, $4, $5, nullif($7, '')
 		WHERE (SELECT count(*) FROM stores WHERE profile_id = $1) < $6 OR EXISTS (SELECT 1 FROM stores WHERE id = $2)
 		ON CONFLICT (id) DO UPDATE SET name = excluded.name, default_expires_in = excluded.default_expires_in,
-		    allowed_origins = excluded.allowed_origins, updated_at = now()
+		    allowed_origins = excluded.allowed_origins, brand_color = excluded.brand_color, updated_at = now()
 		    WHERE stores.profile_id = excluded.profile_id
-		RETURNING `+storeColumns+`, xmax = 0`, profileID, id, d.Name, d.DefaultExpiresIn, d.AllowedOrigins, MaxStores).
-		Scan(&st.ID, &st.Name, &st.DefaultExpiresIn, &st.AllowedOrigins, &st.UpdatedAt, &created)
+		RETURNING `+storeColumns+`, xmax = 0`, profileID, id, d.Name, d.DefaultExpiresIn, d.AllowedOrigins, MaxStores,
+		d.BrandColor).
+		Scan(&st.ID, &st.Name, &st.DefaultExpiresIn, &st.AllowedOrigins, &st.BrandColor, &st.UpdatedAt, &st.LogoAt,
+			&created)
 	if errors.Is(err, pgx.ErrNoRows) {
 		var taken bool
 		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM stores WHERE id = $1)`, id).Scan(&taken); err != nil {

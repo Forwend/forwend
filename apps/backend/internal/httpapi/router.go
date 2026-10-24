@@ -29,7 +29,7 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 	profiles := profile.NewService(pool, wallets)
 	profileapi.Routes(mux, guards, profiles)
 	invoices := invoice.NewService(pool)
-	invoiceapi.Routes(mux, guards, invoices, balances, webURL)
+	invoiceapi.Routes(mux, guards, invoices, profiles, balances, webURL)
 	jobapi.Routes(mux, guards, job.NewService(pool, invoices))
 	moneyapi.Routes(mux, guards, balance.NewService(pool, balances), activity.NewService(pool), profiles)
 	return mid.SecureHeaders(mux)
