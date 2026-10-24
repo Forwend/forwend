@@ -59,16 +59,20 @@ func authServer(t *testing.T) (srv *httptest.Server, privyKey *ecdsa.PrivateKey,
 
 	mux := http.NewServeMux()
 	probe := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
-	mux.Handle("GET /v1/profiles/{profileId}/probe", mid.RequireUser(verifier, mid.RequireProfileOwner(auth.NewService(pool), probe)))
+	mux.Handle("GET /v1/profiles/{profileId}/probe", mid.RequireUser(verifier, auth.NewService(pool),
+		mid.RequireProfileOwner(auth.NewService(pool), probe)))
 	srv = httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv, privyKey, aliceProfile
 }
 
+// signedInAt is every test token's iat. invoiceAPI sets it when a test starts, and its Privy fake reports a passkey
+// sign-in at it, so a token counts as fresh (R-137) unless the test says otherwise. No test here runs in parallel.
+var signedInAt = time.Now()
+
 func claims(subject string) jwt.MapClaims {
-	now := time.Now()
 	return jwt.MapClaims{"sid": "session-1", "sub": subject, "iss": "privy.io", "aud": appID,
-		"iat": now.Unix(), "exp": now.Add(time.Hour).Unix()}
+		"iat": signedInAt.Unix(), "exp": signedInAt.Add(time.Hour).Unix()}
 }
 
 func signES256(t *testing.T, key *ecdsa.PrivateKey, c jwt.MapClaims) string {

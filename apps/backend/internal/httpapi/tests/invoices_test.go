@@ -57,6 +57,8 @@ func invoiceAPI(t *testing.T) invoiceEnv {
 	}
 	t.Cleanup(pool.Close)
 	e := invoiceEnv{pool: pool, privyKey: privyKey, wallets: privytest.New(t)}
+	signedInAt = time.Now()
+	e.wallets.PasskeySignIn = signedInAt.Unix()
 	err = pool.QueryRow(ctx, `
 		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true)
 		            RETURNING chain_id),

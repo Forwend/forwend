@@ -15,6 +15,8 @@ export interface DialogProps {
   triggerClassName?: string;
   /** Opens the dialog from something else than its own button, such as a menu item. */
   trigger?: (open: () => void) => ReactNode;
+  /** Runs however the dialog closes: its close button, Escape, the backdrop or a form inside it. */
+  onClose?: () => void;
 }
 
 export function Dialog({
@@ -25,6 +27,7 @@ export function Dialog({
   triggerVariant = BUTTON_VARIANTS.secondary,
   triggerClassName,
   trigger,
+  onClose,
 }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const open = () => ref.current?.showModal();
@@ -41,6 +44,7 @@ export function Dialog({
       <dialog
         ref={ref}
         aria-label={title}
+        onClose={onClose}
         onClick={(event) => {
           if (event.target === ref.current) ref.current.close(); // a click on the backdrop
         }}

@@ -2,6 +2,9 @@
 
 import { THEMES } from "@forwend/design-tokens";
 import {
+  BUTTON_VARIANTS,
+  Button,
+  Dialog,
   Menu,
   MenuCheckboxItem,
   MenuContent,
@@ -12,10 +15,11 @@ import {
   RowButton,
   useTheme,
 } from "@forwend/ui-web";
-import { Bell, ChevronsUpDown, Coins, LogOut, Moon, Settings } from "lucide-react";
+import { Bell, ChevronsUpDown, Coins, LogOut, MonitorX, Moon, Settings } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
+import { type ReactNode, useRef } from "react";
+import { useSignOutEverywhereMutation } from "@/features/auth/api/auth-api";
+import { AUTH_COPY, SIGN_OUT_EVERYWHERE_COPY } from "@/features/auth/constants/auth-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface AccountMenuProps {
@@ -27,55 +31,114 @@ export interface AccountMenuProps {
 
 export function AccountMenu({ email, onSignOut, trigger, side = "top" }: AccountMenuProps) {
   const [theme, setTheme] = useTheme();
+  const [signOutEverywhere, { isLoading, isError, reset }] = useSignOutEverywhereMutation();
+  // The dialog opens once the menu has closed and given focus back, so it keeps focus (as on Delete client).
+  const chosen = useRef(false);
+  const confirm = async () => {
+    try {
+      await signOutEverywhere().unwrap();
+      onSignOut();
+    } catch {
+      // The dialog shows the error.
+    }
+  };
   return (
-    <Menu>
-      <MenuTrigger asChild>
-        {trigger ?? (
-          <RowButton size="md">
-            <AccountInitial email={email} />
-            <span className="min-w-0 flex-1">
-              <span className="sr-only">{AUTH_COPY.account}: </span>
-              <span className="block truncate text-sm font-medium text-ink">{email}</span>{" "}
-              <span className="block text-xs text-muted">{AUTH_COPY.signedIn}</span>
-            </span>
-            <ChevronsUpDown aria-hidden className="size-[var(--fw-icon-md)] shrink-0 text-muted" />
-          </RowButton>
-        )}
-      </MenuTrigger>
-      <MenuContent side={side} className="w-64">
-        <MenuLabel className="truncate">{email}</MenuLabel>
-        <MenuCheckboxItem
-          checked={theme === THEMES.dark}
-          onCheckedChange={(dark) => setTheme(dark ? THEMES.dark : THEMES.light)}
+    <Dialog
+      triggerLabel={SIGN_OUT_EVERYWHERE_COPY.item}
+      title={SIGN_OUT_EVERYWHERE_COPY.title}
+      // A failed try's error is gone when the dialog opens again.
+      onClose={reset}
+      trigger={(open) => (
+        <Menu>
+          <MenuTrigger asChild>
+            {trigger ?? (
+              <RowButton size="md">
+                <AccountInitial email={email} />
+                <span className="min-w-0 flex-1">
+                  <span className="sr-only">{AUTH_COPY.account}: </span>
+                  <span className="block truncate text-sm font-medium text-ink">{email}</span>{" "}
+                  <span className="block text-xs text-muted">{AUTH_COPY.signedIn}</span>
+                </span>
+                <ChevronsUpDown
+                  aria-hidden
+                  className="size-[var(--fw-icon-md)] shrink-0 text-muted"
+                />
+              </RowButton>
+            )}
+          </MenuTrigger>
+          <MenuContent
+            side={side}
+            className="w-64"
+            onCloseAutoFocus={(event) => {
+              if (!chosen.current) return;
+              chosen.current = false;
+              event.preventDefault();
+              open();
+            }}
+          >
+            <MenuLabel className="truncate">{email}</MenuLabel>
+            <MenuCheckboxItem
+              checked={theme === THEMES.dark}
+              onCheckedChange={(dark) => setTheme(dark ? THEMES.dark : THEMES.light)}
+            >
+              <Moon aria-hidden className="size-[var(--fw-icon-md)]" />
+              {AUTH_COPY.darkMode}
+            </MenuCheckboxItem>
+            <MenuItem asChild>
+              <Link href={APP_ROUTES.notifications}>
+                <Bell aria-hidden className="size-[var(--fw-icon-md)]" />
+                {AUTH_COPY.notifications}
+              </Link>
+            </MenuItem>
+            <MenuItem asChild>
+              <Link href={APP_ROUTES.networks}>
+                <Coins aria-hidden className="size-[var(--fw-icon-md)]" />
+                {AUTH_COPY.networks}
+              </Link>
+            </MenuItem>
+            {/* Not built yet: shown as coming (the owner's choice), it does nothing. */}
+            <MenuItem disabled>
+              <Settings aria-hidden className="size-[var(--fw-icon-md)]" />
+              {AUTH_COPY.settings}
+              <span className="ml-auto text-xs">{AUTH_COPY.soon}</span>
+            </MenuItem>
+            <MenuSeparator />
+            <MenuItem onSelect={onSignOut}>
+              <LogOut aria-hidden className="size-[var(--fw-icon-md)]" />
+              {AUTH_COPY.signOut}
+            </MenuItem>
+            <MenuItem
+              onSelect={() => {
+                chosen.current = true;
+              }}
+            >
+              <MonitorX aria-hidden className="size-[var(--fw-icon-md)]" />
+              {SIGN_OUT_EVERYWHERE_COPY.item}
+            </MenuItem>
+          </MenuContent>
+        </Menu>
+      )}
+    >
+      <p>{SIGN_OUT_EVERYWHERE_COPY.body}</p>
+      {isError ? (
+        <p role="alert" className="mt-3 text-sm text-danger">
+          {SIGN_OUT_EVERYWHERE_COPY.failed}
+        </p>
+      ) : null}
+      <form method="dialog" className="mt-5 flex flex-wrap justify-end gap-2">
+        <Button type="submit" variant={BUTTON_VARIANTS.secondary}>
+          {SIGN_OUT_EVERYWHERE_COPY.keep}
+        </Button>
+        <Button
+          type="button"
+          variant={BUTTON_VARIANTS.danger}
+          loading={isLoading}
+          onClick={() => void confirm()}
         >
-          <Moon aria-hidden className="size-[var(--fw-icon-md)]" />
-          {AUTH_COPY.darkMode}
-        </MenuCheckboxItem>
-        <MenuItem asChild>
-          <Link href={APP_ROUTES.notifications}>
-            <Bell aria-hidden className="size-[var(--fw-icon-md)]" />
-            {AUTH_COPY.notifications}
-          </Link>
-        </MenuItem>
-        <MenuItem asChild>
-          <Link href={APP_ROUTES.networks}>
-            <Coins aria-hidden className="size-[var(--fw-icon-md)]" />
-            {AUTH_COPY.networks}
-          </Link>
-        </MenuItem>
-        {/* Not built yet: shown as coming (the owner's choice), it does nothing. */}
-        <MenuItem disabled>
-          <Settings aria-hidden className="size-[var(--fw-icon-md)]" />
-          {AUTH_COPY.settings}
-          <span className="ml-auto text-xs">{AUTH_COPY.soon}</span>
-        </MenuItem>
-        <MenuSeparator />
-        <MenuItem onSelect={onSignOut}>
-          <LogOut aria-hidden className="size-[var(--fw-icon-md)]" />
-          {AUTH_COPY.signOut}
-        </MenuItem>
-      </MenuContent>
-    </Menu>
+          {SIGN_OUT_EVERYWHERE_COPY.confirm}
+        </Button>
+      </form>
+    </Dialog>
   );
 }
 

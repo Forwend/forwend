@@ -152,3 +152,14 @@ func putNotifications(profiles *profile.Service) http.HandlerFunc {
 		httpio.WriteJSON(w, http.StatusOK, toNotificationsJSON(n))
 	}
 }
+
+// R-137: every session ends, this one too; the web signs out.
+func signOutEverywhere(profiles *profile.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := profiles.SignOutEverywhere(r.Context(), mid.SignedInUser(r)); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}

@@ -2,8 +2,10 @@
 
 import { usePrivy } from "@privy-io/react-auth";
 import { setupListeners } from "@reduxjs/toolkit/query";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Provider } from "react-redux";
+import { FreshSignIn } from "@/features/auth/components/fresh-sign-in";
+import type { AskFreshSignIn } from "@/shared/api/fresh-sign-in";
 import { makeStore } from "@/store/store";
 
 // A store belongs to one signed-in user: a user change or sign-out gets a fresh, empty store on that same
@@ -15,7 +17,13 @@ export function StoreProvider({ children }: Readonly<{ children: ReactNode }>) {
   useEffect(() => {
     token.current = getAccessToken;
   }, [getAccessToken]);
-  const newStore = () => makeStore({ getAccessToken: () => token.current() });
+  // R-137: the dialog below opens when a request needs a fresh sign-in.
+  const ask = useRef<AskFreshSignIn>(async () => false);
+  const register = useCallback((fn: AskFreshSignIn) => {
+    ask.current = fn;
+  }, []);
+  const newStore = () =>
+    makeStore({ getAccessToken: () => token.current(), freshSignIn: () => ask.current() });
   const [owned, setOwned] = useState(() => ({ userId, store: newStore() }));
   let { store } = owned;
   if (owned.userId !== userId) {
@@ -23,5 +31,10 @@ export function StoreProvider({ children }: Readonly<{ children: ReactNode }>) {
     setOwned({ userId, store });
   }
   useEffect(() => setupListeners(store.dispatch), [store]);
-  return <Provider store={store}>{children}</Provider>;
+  return (
+    <Provider store={store}>
+      {children}
+      <FreshSignIn register={register} />
+    </Provider>
+  );
 }

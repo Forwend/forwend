@@ -141,7 +141,7 @@ Privy.
 Built in `internal/database/migrations` (R-17), except rows marked planned; Postgres enforces the rules below, each
 with a test.
 
-- `users(onboarded_at)` (set once by the first-run choice, R-50), `profiles(kind: personal|freelancer|merchant, name, idempotency_key, invoice_seq)` (one personal per user, made at
+- `users(onboarded_at, sessions_revoked_at)` (set once by the first-run choice, R-50; Sign out everywhere's cutoff, R-137), `profiles(kind: personal|freelancer|merchant, name, idempotency_key, invoice_seq)` (one personal per user, made at
   signup without a key; other kinds once per user and key, or without a key by the first-run choice), `profile_wallets(provider, provider_wallet_id, address, chain_family)` (one per profile and family),
   `profile_billing_details(name, address, country, tax_id, contact_email, updated_at)` (at most one per profile, editable; R-43),
   `clients(name, email, address, country, tax_id, reference, reminders, updated_at)` (a profile's saved clients, editable, at

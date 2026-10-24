@@ -174,7 +174,7 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
     .getByRole("button", { name: /^Account: / })
     .click();
   await expect(page.getByRole("menuitemcheckbox", { name: "Dark mode" })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "Sign out" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Sign out", exact: true })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
   const theme = await page.locator("html").getAttribute("data-theme");
   await page.getByRole("menuitemcheckbox", { name: "Dark mode" }).click();

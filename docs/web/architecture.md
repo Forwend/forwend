@@ -34,6 +34,12 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   overview checklist (Privy's `useLinkWithPasskey`) and sign in with it (`useLoginWithPasskey`). Privy loads only in the
   `(app)` route group (`/sign-in`, `/app`), never on the landing page or checkout. `/app` sends signed-out visitors to
   `/sign-in` and calls `POST /v1/me` each time it loads, which makes the personal profile and its wallet once (R-34).
+- A fresh sign-in (R-137): when the API answers 401 `reauth_required`, `shared/api/fresh-sign-in.ts` holds the request.
+  - It opens `features/auth/components/fresh-sign-in.tsx`, which `providers/store-provider.tsx` mounts once.
+  - The dialog signs in again with the email code (`useLoginWithEmail`), which Privy counts as a sign-in, not a refresh.
+  - The request then goes once more with the new token; requests that need it together share one dialog.
+  - Public pages give no `freshSignIn`, so their 401s pass through.
+  - Signing in again replaces the browser's Privy session; its other tabs share the new one (measured 2026-10-25).
 - Pages, the app shell and the dashboard look as [DESIGN.md](DESIGN.md) says. Wiring behind them:
   - Navigation comes from one `APP_NAV`; switching profile opens the new profile's `/app` (R-76).
   - Receive's choice is keyed by chain family (`features/receive/lib/receive-choice.ts`), so non-EVM families fit

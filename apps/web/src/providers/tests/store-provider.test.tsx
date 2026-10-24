@@ -9,6 +9,8 @@ import type { AppStore } from "@/store/store";
 const privy = vi.hoisted(() => ({ user: { id: "did:privy:a" } as { id: string } | null }));
 vi.mock("@privy-io/react-auth", () => ({
   usePrivy: () => ({ user: privy.user, getAccessToken: async () => "token" }),
+  // The fresh sign-in dialog the provider mounts (R-137); it stays closed here.
+  useLoginWithEmail: () => ({ sendCode: async () => {}, loginWithCode: async () => {} }),
 }));
 
 let seen: AppStore | null = null;

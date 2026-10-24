@@ -534,6 +534,15 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
 ## Auth
 
 - `Authorization: Bearer <Privy access token>`, checked by middleware on every route not marked `security: []`.
+- Every signed-in route refuses a token issued before the user's `sessions_revoked_at` with 401 (R-137).
+  - `POST /v1/me/sign-out-everywhere` freezes and unfreezes the user at Privy, then sets it to now.
+  - Privy goes first: when the freeze fails, the cutoff is not set and the answer is 500.
+  - The unfreeze is always sent, as a failed freeze may still have landed and a frozen user can't sign in.
+  - Once the freeze worked, the cutoff is set even if the unfreeze failed. A disconnect stops neither.
+- `mid.RequireFreshSignIn` (the `FreshSignIn` guard) protects the changes D-63 names; today that is billing details.
+  - The token must be at most 5 minutes old (`auth.FreshWindow`).
+  - Its `iat` must equal the `latest_verified_at` of the user's email or passkey account, read from Privy each time.
+  - Otherwise 401 `reauth_required`; when Privy can't answer, 500, and nothing runs.
 - Public routes (checkout reads) are marked `security: []` in the spec. `/healthz` is also public and uses its own status response. No other route is public by default.
 - Profile-scoped routes check that the user owns the profile: 403 otherwise, also for an unknown or malformed
   profile ID, so callers can't probe which profiles exist.
@@ -546,7 +555,7 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   10 more minutes (`KeyGrace`), then nothing does. `PRIVY_JWKS_URL` must be https. The Privy Go SDK (D-12) has no local token check, so this
   uses `golang-jwt/jwt/v5` as in Privy's Go guide (https://docs.privy.io/authentication/user-authentication/access-tokens).
 - `mid.RequireUser` and `mid.RequireProfileOwner` wrap the protected handlers, through `mid.Guards` (`SignedIn`,
-  `ProfileScoped`) that each module's `routes.go` applies. `/v1/me` and `POST /v1/profiles` act
+  `ProfileScoped`, `FreshSignIn`) that each module's `routes.go` applies. `/v1/me` and `POST /v1/profiles` act
   only for the token's user. Every `{profileId}` route is listed in `profileRoutes` in `internal/httpapi/tests/profiles_test.go`, which checks
   that another user gets 403 on each.
 

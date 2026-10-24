@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -22,6 +23,24 @@ var ErrUnauthorized = errors.New("invalid access token")
 
 // ErrForbidden means the user does not own the profile, or it does not exist.
 var ErrForbidden = errors.New("profile not owned by user")
+
+// ErrReauthRequired means the action needs a token from a sign-in within FreshWindow, not from a refresh (D-49).
+var ErrReauthRequired = errors.New("fresh sign-in required")
+
+// FreshWindow is how old a token may be for a money action or another change D-63 names.
+const FreshWindow = 5 * time.Minute
+
+// Token is a verified access token: the user's Privy DID and when Privy issued it.
+type Token struct {
+	User     string
+	IssuedAt time.Time
+}
+
+// IsFresh reports whether t comes from a sign-in, not a refresh: Privy sets an email or passkey account's
+// latest_verified_at (signIns, Unix seconds) to the iat of the token that sign-in issues, and a refresh leaves it (S-8).
+func IsFresh(t Token, now time.Time, signIns []int64) bool {
+	return now.Sub(t.IssuedAt) <= FreshWindow && slices.Contains(signIns, t.IssuedAt.Unix())
+}
 
 // RefetchInterval is the shortest time between two JWKS fetches caused by tokens with an unknown kid.
 const RefetchInterval = time.Minute
@@ -78,23 +97,27 @@ type accessClaims struct {
 	LinkedAccounts json.RawMessage `json:"linked_accounts"`
 }
 
-// Verify returns the user's Privy DID (the token's subject).
-func (v *Verifier) Verify(ctx context.Context, token string) (string, error) {
+func (v *Verifier) Verify(ctx context.Context, token string) (Token, error) {
 	var claims accessClaims
 	_, err := v.parser.ParseWithClaims(token, &claims, func(t *jwt.Token) (any, error) {
 		kid, _ := t.Header["kid"].(string)
 		return v.keysFor(ctx, kid)
 	})
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrUnauthorized, err)
+		return Token{}, fmt.Errorf("%w: %w", ErrUnauthorized, err)
 	}
 	if claims.Subject == "" {
-		return "", fmt.Errorf("%w: no subject", ErrUnauthorized)
+		return Token{}, fmt.Errorf("%w: no subject", ErrUnauthorized)
 	}
 	if claims.SessionID == "" || claims.LinkedAccounts != nil {
-		return "", fmt.Errorf("%w: not an access token", ErrUnauthorized)
+		return Token{}, fmt.Errorf("%w: not an access token", ErrUnauthorized)
 	}
-	return claims.Subject, nil
+	// No iat reads as the Unix epoch: before any sign-out cutoff, and never fresh.
+	t := Token{User: claims.Subject, IssuedAt: time.Unix(0, 0)}
+	if claims.IssuedAt != nil {
+		t.IssuedAt = claims.IssuedAt.Time
+	}
+	return t, nil
 }
 
 // keysFor: a token without a kid may match any published key. The lock is not held during the fetch, so known keys

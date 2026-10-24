@@ -39,10 +39,22 @@ type Fake struct {
 	UserReads int
 	// FailUserReads answers that many user reads with 500.
 	FailUserReads int
+	// SignedInAt is a user's email latest_verified_at (1 when unset). PasskeySignIn, when set, gives every user a
+	// passkey account verified at that time.
+	SignedInAt    map[string]int64
+	PasskeySignIn int64
+	// GoogleSignIn, when set, gives every user a Google account verified at that time.
+	GoogleSignIn int64
+	// Freezes lists "freeze <id>" and "unfreeze <id>" calls in order. FailFreezes and FailUnfreezes answer that many
+	// freezes and unfreezes with 500; the calls are listed either way.
+	Freezes       []string
+	FailFreezes   int
+	FailUnfreezes int
 }
 
 func New(t *testing.T) *Fake {
-	f := &Fake{t: t, wallets: map[string]map[string]any{}, failedKeys: map[string]bool{}, Emails: map[string]string{}}
+	f := &Fake{t: t, wallets: map[string]map[string]any{}, failedKeys: map[string]bool{}, Emails: map[string]string{},
+		SignedInAt: map[string]int64{}}
 	srv := httptest.NewServer(f)
 	t.Cleanup(srv.Close)
 	f.URL = srv.URL
@@ -116,6 +128,19 @@ func (f *Fake) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"policy_ids": []any{}, "additional_signers": []any{}}
 		f.wallets[ext] = wallet
 		_ = json.NewEncoder(w).Encode(wallet)
+	case strings.HasPrefix(r.URL.Path, "/v1/users/") && strings.HasSuffix(r.URL.Path, "/freeze"):
+		id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v1/users/"), "/freeze")
+		call, fails := "freeze ", &f.FailFreezes
+		if r.Method == http.MethodDelete {
+			call, fails = "unfreeze ", &f.FailUnfreezes
+		}
+		f.Freezes = append(f.Freezes, call+id)
+		if *fails > 0 {
+			*fails--
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"success": true})
 	case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v1/users/"):
 		f.UserReads++
 		if f.FailUserReads > 0 {
@@ -126,8 +151,21 @@ func (f *Fake) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimPrefix(r.URL.Path, "/v1/users/")
 		accounts := []any{}
 		if email, ok := f.Emails[id]; ok {
+			at := f.SignedInAt[id]
+			if at == 0 {
+				at = 1
+			}
 			accounts = append(accounts, map[string]any{"type": "email", "address": email, "first_verified_at": 1,
-				"latest_verified_at": 1, "verified_at": 1})
+				"latest_verified_at": at, "verified_at": 1})
+		}
+		if f.GoogleSignIn != 0 {
+			accounts = append(accounts, map[string]any{"type": "google_oauth", "email": "g@example.com",
+				"subject": "g-1", "name": "G", "first_verified_at": 1, "latest_verified_at": f.GoogleSignIn,
+				"verified_at": 1})
+		}
+		if f.PasskeySignIn != 0 {
+			accounts = append(accounts, map[string]any{"type": "passkey", "credential_id": "cred-1",
+				"first_verified_at": 1, "latest_verified_at": f.PasskeySignIn, "verified_at": 1})
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"id": id, "created_at": 1, "has_accepted_terms": true,
 			"is_guest": false, "linked_accounts": accounts, "mfa_methods": []any{}})
