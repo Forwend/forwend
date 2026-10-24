@@ -71,6 +71,7 @@ type invoiceJSON struct {
 	Factory          string      `json:"factory"`
 	ReceiveAddress   string      `json:"receiveAddress"`
 	ExpiresAt        string      `json:"expiresAt"`
+	ClosesAt         string      `json:"closesAt"` // expiresAt, or the reopened close (R-130)
 	SettleDeadline   string      `json:"settleDeadline"`
 	PaymentStatus    string      `json:"paymentStatus"`
 	SettlementStatus string      `json:"settlementStatus"`
@@ -173,6 +174,7 @@ type ownerInvoiceJSON struct {
 	Views          viewsJSON           `json:"views"`
 	Memo           *string             `json:"memo"`
 	Replaces       *revisionJSON       `json:"replaces"`
+	Reopenable     bool                `json:"reopenable"`
 }
 
 // R-125: firstAt and lastAt are null before the first load.
@@ -264,6 +266,7 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 		Recipient: inv.Recipient, Factory: inv.Factory, ReceiveAddress: inv.ReceiveAddress,
 		ExpiresAt: inv.ExpiresAt.Format(time.RFC3339), SettleDeadline: inv.SettleDeadline.Format(time.RFC3339),
 		PaymentStatus: inv.PaymentStatus, SettlementStatus: inv.SettlementStatus, RefundStatus: inv.RefundStatus,
+		ClosesAt:         inv.ClosesAt.Format(time.RFC3339),
 		SettlementTxHash: httpio.OrNull(inv.SettlementTxHash), CreatedAt: inv.CreatedAt.UTC().Format(time.RFC3339),
 	}
 	if a := inv.Agreed; a != nil {
@@ -323,7 +326,8 @@ func toOwnerInvoiceJSON(inv invoice.Invoice) ownerInvoiceJSON {
 		Reminders: remindersJSON{On: inv.Reminders.On, StoppedAt: httpio.OrNullTime(inv.Reminders.StoppedAt),
 			Emails: []reminderJSON{}}, History: []historyJSON{},
 		Views: viewsJSON{Count: inv.Views.Count, FirstAt: httpio.OrNullTime(inv.Views.FirstAt),
-			LastAt: httpio.OrNullTime(inv.Views.LastAt)}, Memo: httpio.OrNull(inv.Memo), Replaces: toRevisionJSON(inv.Replaces)}
+			LastAt: httpio.OrNullTime(inv.Views.LastAt)}, Memo: httpio.OrNull(inv.Memo), Replaces: toRevisionJSON(inv.Replaces),
+		Reopenable: inv.Reopenable}
 	for _, s := range inv.Sends {
 		out.Sends = append(out.Sends, toSendJSON(s))
 	}

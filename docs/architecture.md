@@ -42,11 +42,13 @@ Diagram: [who can move money](diagrams/security-keys.json).
    paid becomes the invoice's, and money sent to another is held for the payer.
 2. The payer sends an ordinary token transfer to that address, from a wallet or an exchange.
 3. The worker sees the transfer, waits for the confirm rule, and moves the invoice through detected → partially paid
-   or paid. Deposits after expiry are late and held.
+   or paid. Deposits after the checkout closes are late and held.
 4. For a paid invoice the signer deploys the receiver (if needed) and calls `settle`: exactly the invoice amount goes
    to the profile wallet. Any excess stays held in the receiver.
 5. Held money (excess, late, expired partial) goes back to the payer through a verified claim and a delayed Safe
    refund (claims come in PLAN 11.10; until then the Safe returns it by hand). Policy, not a contract rule: before the deadline the executor could still settle it to the recipient.
+   The one exception: the owner may reopen a partly paid invoice once, and its held money, up to the amount, becomes
+   the creator's (R-130).
 
 Diagrams: [full contract workflow](diagrams/contracts-workflow.json), [invoice states](diagrams/invoice-lifecycle.json).
 Open one with `npx mapgrain@0.2.5 studio <file>.json`.

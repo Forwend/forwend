@@ -26,7 +26,7 @@ type Token struct {
 	// profile has no wallet yet.
 	Wallet *big.Int
 	Block  uint64
-	// Pending: unbooked deposits plus booked money owed to the creator. Held: booked money for payers, never the creator's.
+	// Pending: unbooked deposits plus booked money owed to the creator. Held: booked money for payers, unless reopened (R-130).
 	// Both come from our records at another moment than Wallet, so after a settlement an amount can show in both or neither.
 	Pending *big.Int
 	Held    *big.Int

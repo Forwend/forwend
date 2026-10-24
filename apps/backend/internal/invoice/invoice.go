@@ -173,7 +173,7 @@ type line struct {
 type Details struct {
 	Title         string
 	Note          string
-	DueDate       string // YYYY-MM-DD; only shown: payment still closes at ExpiresAt
+	DueDate       string // YYYY-MM-DD; only shown: payment still closes at ClosesAt
 	SupplyDate    string // YYYY-MM-DD: when the work was done or delivered (R-89)
 	Reference     string // the client's PO number or their reference (R-90)
 	Agreed        *AgreedValue
@@ -197,7 +197,7 @@ type Invoice struct {
 	OptionID     string // the on-chain id of the terms below; ID for a fixed invoice
 	OptionLocked bool   // an option received money, so the payer can't pick another
 	OptionCount  int    // accepted options: 1 for a fixed invoice
-	// Confirming: a payment before expiry is seen, not final. A partly paid invoice stays confirming while the rest
+	// Confirming: a payment before the close is seen, not final. A partly paid invoice stays confirming while the rest
 	// confirms, since the database allows no way back to detected (R-69).
 	Confirming bool
 	// Closed: the checkout closed and the invoice can no longer be paid, before its status catches up (ClosedSQL).
@@ -211,6 +211,7 @@ type Invoice struct {
 	Factory          string
 	ReceiveAddress   string
 	ExpiresAt        time.Time
+	ClosesAt         time.Time // the checkout's close: ExpiresAt, or the reopened one (R-130)
 	SettleDeadline   time.Time
 	PaymentStatus    string
 	SettlementStatus string
@@ -236,6 +237,7 @@ type Invoice struct {
 	Updates        []Update       // edits the payer sees, newest first (R-128); set by Get
 	ReplacedBy     *Revision      // the invoice a Revise replaced it with (R-129); set by Get
 	Replaces       *Revision      // the invoice it replaced (R-129); set by the owner's Get
+	Reopenable     bool           // the owner may reopen it now (R-130); set by the owner's Get
 }
 
 // Revision is the other invoice of a Revise (R-129); PayToken is set only for the replacement.
@@ -280,7 +282,7 @@ type Deposit struct {
 	BlockNumber uint64
 	BlockTime   time.Time
 	Status      string // detected or confirmed
-	Late        bool   // block time after expiresAt: held for the payer (D-26)
+	Late        bool   // block time after the close (ClosesAt): held for the payer (D-26)
 	// Paid is the part the ledger booked to the creator (R-121); nil until booked. An expired partial payment
 	// keeps it, though the expiry later holds that money for the payer.
 	Paid *big.Int

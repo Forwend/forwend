@@ -84,7 +84,7 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		return Invoice{}, false, ErrBillingDetailsRequired
 	}
 	var open, today int
-	if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE expires_at > $2),
+	if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE closes_at > $2),
 		count(*) FILTER (WHERE created_at > now() - interval '1 day') FROM invoices WHERE profile_id = $1`,
 		profileID, s.now().Unix()).Scan(&open, &today); err != nil {
 		return Invoice{}, false, fmt.Errorf("count open invoices: %w", err)

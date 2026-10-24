@@ -132,7 +132,7 @@ func Invoice(inv invoice.Invoice, payLink string) ([]byte, error) {
 		return d.output()
 	}
 	d.facts([2]string{"Issued", stamp(inv.CreatedAt)}, [2]string{"Supply date", inv.SupplyDate},
-		[2]string{"Due date", inv.DueDate}, [2]string{"Checkout closes", stamp(inv.ExpiresAt)})
+		[2]string{"Due date", inv.DueDate}, [2]string{"Checkout closes", stamp(inv.ClosesAt)})
 	d.lines(inv, "Total due", anyOption(inv))
 	help := "Scan the code or open the link. Send only " + inv.Symbol + " on " + networkOf(inv).name + "."
 	if anyOption(inv) {

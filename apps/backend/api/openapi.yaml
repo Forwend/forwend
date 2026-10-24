@@ -519,6 +519,33 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/invoices/{invoiceId}/reopen:
+    post:
+      operationId: reopenInvoice
+      summary: Reopen one of the profile's invoices that closed partly paid
+      description: |
+        R-130. Only for an invoice that closed partly paid (expired_partially_paid), not reopened before, a day or
+        more before its settle deadline, with no refund under way. Its checkout opens again until a day before the
+        settle deadline, at the same address. The money held for the payer, up to the amount, is the creator's again;
+        deposits until the new close count as payment. Answers the invoice, its closesAt the new close.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+      responses:
+        "200":
+          description: The invoice
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "409": { $ref: "#/components/responses/InvoiceNotReopenable" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/invoices/{invoiceId}/details:
     put:
       operationId: editInvoice
@@ -1658,7 +1685,7 @@ components:
         held:
           type: string
           pattern: "^[0-9]+$"
-          description: Booked money held for payers (late or extra payments); never the creator's.
+          description: Booked money held for payers (late or extra payments); the creator's only if the owner reopens the invoice (R-130).
     Activity:
       type: object
       required: [items, nextCursor]
@@ -2275,7 +2302,8 @@ components:
                 newest first. kind is invoice.created, invoice.canceled, payer.email_given, payer.option_chosen,
                 invoice.held, invoice.settlement_queued, invoice.settled, "invoice." and the new payment status,
                 reminders.on, reminders.off, reminders.stopped, repeat.stopped, email.invoice_, email.reminder_ or
-                email.receipt_ and sent or failed (R-126), invoice.edited (R-127) or invoice.replaced (R-129).
+                email.receipt_ and sent or failed (R-126), invoice.edited (R-127), invoice.replaced (R-129) or
+                invoice.reopened (R-130), whose to is the new close's day.
                 actor system is Forwend. optionId names the option chosen, or the one money is held on, when the payer
                 chooses; amount is the base units held, in that option's token, else the shown option's; txHash is the
                 settle transaction; step is a reminder email's step; field is the edited field, and from and to
@@ -2297,6 +2325,9 @@ components:
                   from: { type: [string, "null"], format: date }
                   to: { type: [string, "null"], format: date }
                   related: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/Revision" }] }
+            reopenable:
+              type: boolean
+              description: Only in the owner's responses. The owner may reopen it now (R-130).
             replaces:
               description: Only in the owner's responses. The invoice this one replaced (R-129); null when none.
               oneOf:
@@ -2326,7 +2357,7 @@ components:
     InvoiceSummary:
       type: object
       required: [invoiceId, payToken, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, agreedValue, senderName, returnUrl, issuer, chainId,
-        token, amount, recipient, factory, receiveAddress, expiresAt, settleDeadline, paymentStatus, settlementStatus,
+        token, amount, recipient, factory, receiveAddress, expiresAt, closesAt, settleDeadline, paymentStatus, settlementStatus,
         refundStatus, settlementTxHash, createdAt]
       description: |
         With several options (payer chooses), the terms and statuses are the current option's: the one that received
@@ -2350,16 +2381,16 @@ components:
         confirming:
           type: boolean
           description: >-
-            A payment made before expiry is seen and not final yet. A partially_paid invoice keeps that status while the
-            rest confirms, so show it as confirming.
+            A payment made before the close (closesAt) is seen and not final yet. A partially_paid invoice keeps that
+            status while the rest confirms, so show it as confirming.
         closed:
           type: boolean
           description: >-
-            The checkout closed and the invoice can no longer be paid: open, detected or partially_paid, past expiresAt,
-            with no payment made before expiry still confirming and less than the amount paid before it (money after
+            The checkout closed and the invoice can no longer be paid: open, detected or partially_paid, past closesAt,
+            with no payment made before the close still confirming and less than the amount paid before it (money after
             the close reads detected until the chain is final). Before an option is chosen, every option's money
             counts, each against its own amount. Its paymentStatus
-            changes once the chain is final past expiry; show it as expired (or expired, partially paid) meanwhile.
+            changes once the chain is final past the close; show it as expired (or expired, partially paid) meanwhile.
         optionLocked:
           type: boolean
           description: |
@@ -2424,7 +2455,11 @@ components:
         receiveAddress:
           allOf: [{ $ref: "#/components/schemas/Address" }]
           description: Where the payer sends the token; factory.predict of these terms.
-        expiresAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time, description: The terms' expiry, which the receive address commits to. }
+        closesAt:
+          type: string
+          format: date-time
+          description: When the checkout closes. expiresAt, or the reopened close once the owner reopened it (R-130).
         settleDeadline:
           type: string
           format: date-time
@@ -2466,14 +2501,15 @@ components:
           description: confirmed once the block is at or below the chain's finalized block (D-45).
         late:
           type: boolean
-          description: Block time after expiresAt; held for the payer, never paid to the creator.
+          description: Block time after the close (closesAt); held for the payer unless the owner reopens the invoice (R-130).
         paid:
           type: [string, "null"]
           pattern: "^[0-9]+$"
           description: >-
-            The part the ledger booked to the creator when it booked the deposit (R-121): all of it, the part that
-            completed the amount, or 0 when it was held for the payer. Null until the ledger books it. An expired
-            partial payment keeps its paid part here, though the expiry later holds it for the payer.
+            The part the ledger booked to the creator for the deposit (R-121): all of it, the part that completed the
+            amount, or 0 when it was held for the payer. A reopen adds the held part it gives back (R-130). Null until
+            the ledger books it. An expired partial payment keeps its paid part here, though the expiry later holds it
+            for the payer.
         blocksLeft:
           type: integer
           minimum: 0
@@ -2500,7 +2536,7 @@ components:
               type: string
               enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found, job_not_found, job_accepted, job_not_accepted, payment_out_of_order, change_not_accepted, change_pending, job_finished, payment_not_withdrawable, transaction_not_found, not_labelable, too_many_transactions,
                 billing_details_not_found, billing_details_required, client_not_found, idempotency_conflict, invoice_not_paid,
-                invoice_not_cancelable, invoice_not_editable, receipt_sent, client_email_required, invoice_closed, due_date_required,
+                invoice_not_cancelable, invoice_not_editable, invoice_not_reopenable, receipt_sent, client_email_required, invoice_closed, due_date_required,
                 reminders_stopped, invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
   responses:
@@ -2617,6 +2653,11 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     InvoiceNotCancelable:
       description: Money was seen, the checkout closed, or the invoice is no longer open (invoice_not_cancelable)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    InvoiceNotReopenable:
+      description: Not closed partly paid, reopened before, a refund under way, or less than a day before its settle deadline (invoice_not_reopenable)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

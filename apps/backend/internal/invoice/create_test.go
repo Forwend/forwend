@@ -136,20 +136,33 @@ func TestCreateNumbersInvoicesAtOnce(t *testing.T) {
 }
 
 func TestOpenInvoicesPerProfileAreCapped(t *testing.T) {
-	ctx := context.Background()
-	pool, profile := open(t)
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
-		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
-		SELECT '0x' || lpad(to_hex(n), 64, '0'), $1, 84532, 'evm', $2, 5000000, 4000000000, 4000086400,
-		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
-		    '0x' || lpad(to_hex(n), 40, '0'), 'bulk-' || n, decode(repeat('00', 32), 'hex')
-		FROM generate_series(1, $3::int) n`, profile, usdc, MaxOpen); err != nil {
-		t.Fatal(err)
-	}
-	req := Request{ChainID: 84532, Token: usdc, Amount: "5000000"}
-	if _, _, err := NewService(pool).Create(ctx, profile, "one-more", req); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("over the open invoice cap: %v, want ErrInvalid", err)
+	// A reopened invoice's address is watched again until its new close, so it counts too (R-130).
+	for _, terms := range []string{"4000000000, 4000086400, NULL", "1000, 4000086400, 4000000000"} {
+		ctx := context.Background()
+		pool, profile := open(t)
+		// The guard lets an invoice start only open, never reopened.
+		if _, err := pool.Exec(ctx, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard"); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+			    reopened_until, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
+			    request_hash, created_at)
+			SELECT '0x' || lpad(to_hex(n), 64, '0'), $1, 84532, 'evm', $2, 5000000, `+terms+`,
+			    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
+			    '0x' || lpad(to_hex(n), 40, '0'), 'bulk-' || n, decode(repeat('00', 32), 'hex'), now() - interval '2 days'
+			FROM generate_series(1, $3::int) n`, profile, usdc, MaxOpen); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, "ALTER TABLE invoices ENABLE TRIGGER invoices_guard"); err != nil {
+			t.Fatal(err)
+		}
+		req := Request{ChainID: 84532, Token: usdc, Amount: "5000000"}
+		// Made two days ago, so only the open cap applies.
+		if _, _, err := NewService(pool).Create(ctx, profile, "one-more", req); !errors.Is(err, ErrInvalid) ||
+			!strings.Contains(err.Error(), "open at once") {
+			t.Fatalf("%s: over the open invoice cap: %v, want ErrInvalid", terms, err)
+		}
 	}
 }
 

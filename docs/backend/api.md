@@ -209,7 +209,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
   gets none of it (late, on a final or canceled invoice, on one that expired partly paid, or on an option the client did
   not pay with), so it is filed
   under no status filter, only the full list (D-26).
-- An invoice (read, list, create) carries `confirming`: a payment before expiry is seen and not final. A
+- An invoice (read, list, create) carries `confirming`: a payment before the close is seen and not final. A
   `partially_paid` invoice keeps that status while the rest confirms, so readers show it as confirming (R-69).
 - An invoice read alone (either GET, and create) also has `paidAt` and `settledAt`, null until reached. `paidAt`
   is the receipt's paid time (below); `settledAt` is when the settlement was recorded as final: the `created_at` of
@@ -253,6 +253,16 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - Both reads of the old invoice return `replacedBy` `{invoiceId, number, payToken}`, the new one's pay link.
   - The owner's reads of the new one return `replaces` `{invoiceId, number, payToken: null}`.
   - History: `invoice.replaced` on the old one and the new one's `invoice.created` name each other in `related`.
+- `POST /v1/profiles/{profileId}/invoices/{invoiceId}/reopen` (R-130) reopens an invoice that closed partly paid.
+  - Only once, and a day or more before its settle deadline.
+  - Not while a refund is under way.
+  - Otherwise 409 `invoice_not_reopenable`.
+  - Its checkout opens again until a day before the settle deadline, at the same address and terms.
+  - It locks the rows the ledger locks, in its order.
+  - `ledger.Reopen` books the reopen (see architecture.md).
+  - Every read returns `closesAt`: `expiresAt`, or the reopened close. Readers decide "closed" from it.
+  - The owner's reads return `reopenable`.
+  - History gets `invoice.reopened`, its `to` the new close's day.
 - `POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel` (R-79, D-79): cancels the invoice and every option of
   it, only while all are open, the checkout is open and no transfer was ever seen; otherwise 409
   `invoice_not_cancelable`. It locks the rows the ledger locks. The watcher records transfers without that lock, so a

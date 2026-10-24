@@ -21,13 +21,13 @@ var StatusFilters = []string{"open", "paid", "settled", "expired", "canceled"}
 // ClosedSQL: every reader shows the checkout expired before the ledger does (R-77); detected may be money after it.
 // Paid on time but awaiting the second RPC is not closed. Before an option is chosen, every option counts (R-119).
 const ClosedSQL = `(invoices.payment_status IN ('open', 'detected', 'partially_paid')
-	AND invoices.expires_at < extract(epoch FROM now())
+	AND invoices.closes_at < extract(epoch FROM now())
 	AND NOT EXISTS (SELECT 1 FROM invoices o
 	    WHERE (o.id = invoices.option_id OR invoices.chosen_id IS NULL AND o.main_id = invoices.id)
 	      AND (EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = o.id AND t.status = 'detected'
-	                   AND t.block_time <= o.expires_at)
+	                   AND t.block_time <= o.closes_at)
 	           OR coalesce((SELECT sum(t.amount) FROM chain_transfers t WHERE t.invoice_id = o.id
-	                        AND t.status <> 'reorged' AND t.block_time <= o.expires_at), 0) >= o.amount)))`
+	                        AND t.status <> 'reorged' AND t.block_time <= o.closes_at), 0) >= o.amount)))`
 
 const StatusFilterSQL = `CASE WHEN settlement_status = 'settled' THEN 'settled' WHEN payment_status = 'paid' THEN 'paid'
 	WHEN payment_status = 'canceled' THEN 'canceled'

@@ -52,15 +52,15 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	var (
 		amountText, current, refund, token, receive, group string
 		chainID, finalizedBlock                            uint64
-		expiresAt, finalizedTime                           int64
+		closesAt, finalizedTime                            int64
 		options                                            bool
 	)
 	err = tx.QueryRow(ctx, `
 		SELECT i.amount::text, i.payment_status, i.refund_status, i.token_contract, i.receive_address, i.chain_id,
-		       i.expires_at, coalesce(c.last_finalized_time, 0), coalesce(c.last_finalized_block, 0),
+		       i.closes_at, coalesce(c.last_finalized_time, 0), coalesce(c.last_finalized_block, 0),
 		       coalesce(i.main_id, i.id), i.main_id IS NOT NULL OR EXISTS (SELECT 1 FROM invoices o WHERE o.main_id = i.id)
 		FROM invoices i LEFT JOIN chain_cursors c ON c.chain_id = i.chain_id WHERE i.id = $1 FOR UPDATE OF i`,
-		invoiceID).Scan(&amountText, &current, &refund, &token, &receive, &chainID, &expiresAt, &finalizedTime,
+		invoiceID).Scan(&amountText, &current, &refund, &token, &receive, &chainID, &closesAt, &finalizedTime,
 		&finalizedBlock, &group, &options)
 	if err != nil {
 		return fmt.Errorf("read invoice %s: %w", invoiceID, err)
@@ -111,13 +111,13 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 				chosen = &first
 			}
 		}
-		if chosen == nil && finalizedTime > expiresAt {
+		if chosen == nil && finalizedTime > closesAt {
 			// A payment made before the close may still come on an option chain not read past it.
 			if err := tx.QueryRow(ctx, `SELECT NOT EXISTS (SELECT 1 FROM invoices o
 				    JOIN chains c ON c.chain_id = o.chain_id AND c.enabled
 				    LEFT JOIN chain_cursors cur ON cur.chain_id = o.chain_id
 				    WHERE (o.id = $1 OR o.main_id = $1) AND o.chain_id <> $2
-				      AND coalesce(cur.last_scanned_time, 0) <= $3)`, group, chainID, expiresAt).Scan(&closedEverywhere); err != nil {
+				      AND coalesce(cur.last_scanned_time, 0) <= $3)`, group, chainID, closesAt).Scan(&closedEverywhere); err != nil {
 				return fmt.Errorf("read invoice %s option chains past its close: %w", group, err)
 			}
 		}
@@ -155,7 +155,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	newlyHeld := new(big.Int) // told to the owner once per run (R-80)
 	for _, d := range deposits {
 		value, _ := new(big.Int).SetString(d.Amount, 10)
-		toCreator, toHeld := split(amount, owed, value, d.BlockTime > expiresAt, final || superseded)
+		toCreator, toHeld := split(amount, owed, value, d.BlockTime > closesAt, final || superseded)
 		if err := book(ctx, tx, invoiceID, "deposit", &d.ID, value, toCreator, toHeld); err != nil {
 			return err
 		}
@@ -175,7 +175,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		if funded, err = s.funded(ctx, tx, invoiceID, chainID, finalizedBlock, token, receive); err != nil {
 			return err
 		}
-	case finalizedTime > expiresAt && !anyPending && closedEverywhere:
+	case finalizedTime > closesAt && !anyPending && closedEverywhere:
 		// Expiry is final, so the ledger must explain the whole balance first: more on chain than booked is a
 		// deposit the watcher hasn't booked yet (a missed log, an Arc native-coin payment).
 		if mayExpire, err = s.balanced(ctx, tx, invoiceID, chainID, finalizedBlock, token, receive); err != nil {
@@ -184,7 +184,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	}
 	next := status(current, amount, owed, anyTransfer, mayExpire, funded)
 	if next == ExpiredPartiallyPaid && current != ExpiredPartiallyPaid {
-		// Never settled to the creator (D-26): what was owed to them is now held for the payer.
+		// Held for the payer (D-26): what was owed to the creator is theirs again only if the owner reopens (R-130).
 		if err := book(ctx, tx, invoiceID, "expiry", nil, new(big.Int), new(big.Int).Neg(owed), owed); err != nil {
 			return err
 		}
