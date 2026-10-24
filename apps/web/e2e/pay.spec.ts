@@ -66,6 +66,7 @@ const OPEN = {
   factory: "0xece745390524e4d0b05d26f56af7f1d38fdb7546",
   receiveAddress: RECEIVE,
   expiresAt: "2026-10-17T15:00:00Z",
+  closesAt: "2026-10-17T15:00:00Z",
   settleDeadline: "2026-10-18T15:00:00Z",
   paymentStatus: "open",
   settlementStatus: "none",
@@ -531,6 +532,21 @@ test.describe("pay page", () => {
     );
     await expect(showAddress(page)).toHaveCount(0);
     await expect(page.getByText(/Copy the address from this page/)).toHaveCount(0);
+  });
+
+  // R-130: past the terms' expiry, a reopened invoice takes money until its new close.
+  test("a reopened invoice shows its address and time left until the new close", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: new Date("2026-10-17T20:00:00Z") });
+    await mockInvoice(page, { ...PARTIAL, closesAt: "2026-10-18T10:00:00Z" });
+    await page.goto(`/pay/${PAY}`);
+    await expect(status(page)).toHaveText(
+      "250.00 USDC of 1,250.00 USDC received. Send the remaining 1,000.00 USDC.",
+    );
+    await expect(page.getByText(/^Closes in/)).toBeVisible();
+    await showAddress(page).click();
+    await expect(page.getByText(RECEIVE)).toBeVisible();
   });
 
   test("lets the payer pick the network and token with selects, keeps the pick after a reload, and locks it once money arrives", async ({

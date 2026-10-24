@@ -65,12 +65,13 @@ DOM and imports nothing from `src/`. It reads only its own `CANARY_*` variables 
 `apps/backend/.env.example`): the api and web origins, the factory address, the factory's code hash, two RPCs on
 different hosts per chain ID and the script path.
 
-Stdin holds one open invoice or accepted option per line, its terms as the database stores them, then its token's
-symbol, its chain's name and the pay link's token of the invoice it belongs to (D-86):
-`id chain_id recipient_address token_contract amount expires_at settle_deadline symbol network pay_token`. A line
-whose terms break create's rules is an alert: amount 0, a recipient that is zero or the token, or another settle
-window. A line within 6 minutes of its expiry is skipped: the pay page stops showing the address 5 minutes before
-expiry. The canary then:
+Stdin holds one open invoice or accepted option per line. A line has its terms as the database stores them, then its
+token's symbol and its chain's name. Then come the pay link's token of its invoice (D-86) and its close (`closes_at`,
+later than `expires_at` after a reopen, R-130):
+`id chain_id recipient_address token_contract amount expires_at settle_deadline symbol network pay_token closes_at`.
+A line whose terms break create's rules is an alert: amount 0, a recipient that is zero or the token, or another settle
+window. So is a close before expiry or at the settle deadline. A line within 6 minutes of its close is skipped: the
+pay page stops showing the address 5 minutes before the close. The canary then:
 
 1. On both RPCs of every configured chain, requires `eth_chainId` to equal the chain ID and the keccak256 of the
    factory's code to equal `CANARY_FACTORY_CODE_HASH`. A receiver's init-code hash differs per invoice (its init
@@ -97,10 +98,10 @@ check on the last `canary passed`):
 
 ```sh
 psql "$READONLY_DATABASE_URL" -At -F ' ' -c "SELECT i.id, i.chain_id, i.recipient_address, i.token_contract,
-  i.amount, i.expires_at, i.settle_deadline, t.symbol, c.name, m.pay_token FROM invoices i
+  i.amount, i.expires_at, i.settle_deadline, t.symbol, c.name, m.pay_token, i.closes_at FROM invoices i
   JOIN invoices m ON m.id = coalesce(i.main_id, i.id)
   JOIN tokens t ON t.chain_id = i.chain_id AND t.contract = i.token_contract JOIN chains c ON c.chain_id = i.chain_id
-  WHERE i.payment_status IN ('open', 'partially_paid') AND i.expires_at > extract(epoch FROM now()) + 60
+  WHERE i.payment_status IN ('open', 'partially_paid') AND i.closes_at > extract(epoch FROM now()) + 60
     AND (m.chosen_id IS NULL OR m.chosen_id = i.id) AND m.pay_token IS NOT NULL" |
   pnpm --silent --filter @forwend/backend canary
 ```

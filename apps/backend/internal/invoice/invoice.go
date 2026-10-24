@@ -237,7 +237,7 @@ type Invoice struct {
 	Updates        []Update       // edits the payer sees, newest first (R-128); set by Get
 	ReplacedBy     *Revision      // the invoice a Revise replaced it with (R-129); set by Get
 	Replaces       *Revision      // the invoice it replaced (R-129); set by the owner's Get
-	Reopenable     bool           // the owner may reopen it now (R-130); set by the owner's Get
+	ReopenUntil    time.Time      // the close a reopen now gives (R-130); zero when it can't; set by the owner's Get
 }
 
 // Revision is the other invoice of a Revise (R-129); PayToken is set only for the replacement.

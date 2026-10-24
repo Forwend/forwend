@@ -83,7 +83,7 @@ export const RULES = {
     },
     {
       status: PAYMENT_STATUS.expiredPartiallyPaid,
-      body: "An expired invoice cannot be reopened. What arrived is held until a verified refund.",
+      body: "You can reopen it once, within 6 days after it closes, to collect the rest. Otherwise what arrived is held until a verified refund.",
     },
   ],
   wrongNetwork: {

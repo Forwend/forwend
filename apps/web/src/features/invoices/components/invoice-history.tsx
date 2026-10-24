@@ -197,6 +197,8 @@ function detailsOf(row: InvoiceHistoryEvent, option: Option | undefined): ReactN
       return row.related ? COPY.replacedBy(invoiceNumber(row.related.number)) : null;
     case HISTORY_KINDS.created:
       return row.related ? COPY.replaces(invoiceNumber(row.related.number)) : null;
+    case HISTORY_KINDS.reopened:
+      return row.to ? COPY.reopenedUntil(formatDueDate(row.to)) : null;
     case HISTORY_KINDS.edited: {
       const field = row.field ? (FIELDS[row.field] ?? row.field) : null;
       const day = (date: string | null) => (date ? formatDueDate(date) : COPY.noDate);

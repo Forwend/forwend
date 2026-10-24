@@ -2325,9 +2325,10 @@ components:
                   from: { type: [string, "null"], format: date }
                   to: { type: [string, "null"], format: date }
                   related: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/Revision" }] }
-            reopenable:
-              type: boolean
-              description: Only in the owner's responses. The owner may reopen it now (R-130).
+            reopenUntil:
+              type: [string, "null"]
+              format: date-time
+              description: Only in the owner's responses. The close a reopen would give now (R-130); null when it can't reopen.
             replaces:
               description: Only in the owner's responses. The invoice this one replaced (R-129); null when none.
               oneOf:

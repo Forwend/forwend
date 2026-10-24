@@ -361,6 +361,9 @@ export const INVOICE_COPY = {
     InvoiceExceptionKind,
     (v: { left: string; held: string; noun: string }) => string
   >,
+  // R-130: while it can reopen, that is the first way to collect the rest.
+  nextReopen: ({ held, left, noun }: { left: string; held: string; noun: string }) =>
+    `${held} is held for the payer. To collect the remaining ${left}, reopen the checkout or send a new ${noun}.`,
   lateHeld: (late: string) =>
     `${late} arrived after the checkout closed and is held for the payer.`,
   noun: { invoice: "invoice", request: "request" },
@@ -443,6 +446,18 @@ export const INVOICE_COPY = {
     done: (number: string) => `${number} canceled`,
     failed: "We could not cancel it. Try again.",
     tooLate: "It can't be canceled anymore: money was seen or the checkout closed.",
+  },
+  // R-130.
+  reopen: {
+    trigger: "Reopen checkout",
+    title: (number: string) => `Reopen ${number}?`,
+    body: (until: string, noun: string) =>
+      `The checkout opens again until ${until}, at the same address. The money held for the payer counts toward this ${noun}, up to its amount. It reopens only once.`,
+    keep: "Keep closed",
+    confirm: "Reopen",
+    done: (number: string, until: string) => `${number} reopened until ${until}`,
+    failed: "We could not reopen it. Try again.",
+    tooLate: "It can't be reopened anymore.",
   },
   noIssuer: "None on this invoice.",
   // R-94.
@@ -535,6 +550,7 @@ export const INVOICE_COPY = {
       [HISTORY_KINDS.receiptEmailFailed]: "Receipt email failed",
       [HISTORY_KINDS.edited]: "Edited",
       [HISTORY_KINDS.replaced]: "Replaced",
+      [HISTORY_KINDS.reopened]: "Reopened",
     } satisfies Record<HistoryKind, string>,
     fields: {
       [HISTORY_FIELDS.memo]: "Memo",
@@ -550,6 +566,8 @@ export const INVOICE_COPY = {
     // R-129: the other invoice of a Revise.
     replacedBy: (number: string) => `By ${number}`,
     replaces: (number: string) => `Replaces ${number}`,
+    // R-130: the day the reopened checkout closes.
+    reopenedUntil: (day: string) => `Until ${day}`,
     // Details a kind's label leaves out.
     dropped: "No longer on the chain",
     toClient: "To the client",

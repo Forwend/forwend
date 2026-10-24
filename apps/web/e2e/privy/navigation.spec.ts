@@ -625,7 +625,7 @@ test("the owner's invoice page names the next step of every exception", async ({
   expect(await blockingViolations(page)).toEqual([]);
 
   // The API's status still says open; `closed` says it sooner.
-  body = { ...OPEN_INVOICE, expiresAt: closedAt, closed: true, deposits: [] };
+  body = { ...OPEN_INVOICE, expiresAt: closedAt, closesAt: closedAt, closed: true, deposits: [] };
   await open();
   await expect(main.getByRole("region", { name: "Details" })).toContainText("Checkout closed");
   await expect(header).toContainText(
@@ -643,6 +643,7 @@ test("the owner's invoice page names the next step of every exception", async ({
     ...OPEN_INVOICE,
     paymentStatus: "expired_partially_paid",
     expiresAt: closedAt,
+    closesAt: closedAt,
     closed: false,
     deposits: [paid("500000")],
   };
@@ -651,6 +652,20 @@ test("the owner's invoice page names the next step of every exception", async ({
   await expect(header).toContainText(
     "0.50 USDC is held for the payer. To collect the remaining 1.50 USDC, send a new invoice.",
   );
+  await expect(header.getByRole("button", { name: "Reopen checkout" })).toHaveCount(0);
+
+  // R-130: while the API allows it, Reopen checkout comes first and asks to confirm.
+  body = { ...body, reopenUntil: new Date(Date.now() + 5 * 86_400_000).toISOString() };
+  await open();
+  await expect(header).toContainText(
+    "0.50 USDC is held for the payer. To collect the remaining 1.50 USDC, reopen the checkout or send a new invoice.",
+  );
+  await header.getByRole("button", { name: "Reopen checkout" }).click();
+  const reopen = page.getByRole("dialog", { name: /^Reopen INV-\d{4}\?$/ });
+  await expect(reopen).toContainText("It reopens only once.");
+  expect(await blockingViolations(page)).toEqual([]);
+  await reopen.getByRole("button", { name: "Keep closed" }).click();
+  await expect(header.getByRole("button", { name: "Reopen checkout" })).toBeFocused();
   await header.getByRole("link", { name: "New invoice for the rest" }).click();
   await expect(page).toHaveURL(`/app/invoices/new?from=${OPEN_INVOICE.invoiceId}&rest=1`);
   await expect(main.getByLabel("Amount")).toHaveValue("1.5");
@@ -849,11 +864,8 @@ test("the invoice list and activity show a closed checkout as expired", async ({
     storageState: session,
   });
   const page = await context.newPage();
-  const closed = {
-    ...OPEN_INVOICE,
-    expiresAt: new Date(Date.now() - 60_000).toISOString(),
-    closed: true,
-  };
+  const closedAt = new Date(Date.now() - 60_000).toISOString();
+  const closed = { ...OPEN_INVOICE, expiresAt: closedAt, closesAt: closedAt, closed: true };
   await mockApi(page, { invoices: [closed], activity: [activityItem(closed)], transfers: [] });
   const main = page.getByRole("main");
   await page.goto("/app/invoices");

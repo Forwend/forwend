@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { ToastProvider } from "@forwend/ui-web";
+import { ToastProvider, TooltipProvider } from "@forwend/ui-web";
 import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InvoiceDetail } from "@/features/invoices/components/invoice-detail";
+import { formatDueDate } from "@/features/invoices/lib/invoices";
 import { makeStore } from "@/store/store";
 
 vi.stubGlobal("matchMedia", () => ({
@@ -21,6 +22,10 @@ vi.stubGlobal(
     }
   },
 );
+// jsdom has no modal dialogs.
+HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
+  this.open = true;
+};
 
 const ID = "0x7f3a9c1e5b2d4086a1c3e5f7092b4d6f8a0c2e4f6a8b0d2f4e6c8a0b2d4f6e81";
 const TOKEN = {
@@ -71,6 +76,7 @@ const OPEN = {
   recipient: "0x1111111111111111111111111111111111111111",
   receiveAddress: "0x586134f74b654f5835860ca198ae725344670078",
   expiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+  closesAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
   settleDeadline: new Date(Date.now() + 8 * 86_400_000).toISOString(),
   paymentStatus: "open",
   settlementStatus: "none",
@@ -83,6 +89,52 @@ const OPEN = {
   settlementWait: null,
 };
 
+const DEPOSIT = {
+  txHash: `0x${"3".repeat(64)}`,
+  logIndex: 0,
+  from: `0x${"5".repeat(40)}`,
+  amount: "400000000",
+  blockNumber: 100,
+  blockTime: "2026-10-10T12:00:00Z",
+  status: "confirmed",
+  late: false,
+  paid: "400000000",
+  blocksLeft: 0,
+  blocksTotal: 0,
+  secondsLeft: 0,
+};
+// Closed a day ago with 400 of 1,250 USDC paid; the API says until when a reopen would run (R-130).
+function closedPartly(reopenUntil: string | null) {
+  const closedAt = new Date(Date.now() - 86_400_000).toISOString();
+  return {
+    ...OPEN,
+    expiresAt: closedAt,
+    closesAt: closedAt,
+    paymentStatus: "expired_partially_paid",
+    deposits: [DEPOSIT],
+    options: [{ ...OPEN.options[0], deposits: [DEPOSIT] }],
+    reopenUntil,
+    history: [],
+  };
+}
+
+// The owner's read answers current(); a POST answers posted, or with status when it fails.
+function serveReopen(current: () => object, posted: () => void, status = 200) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (request: Request) => {
+      if (request.method !== "POST") return Response.json(current());
+      posted();
+      return Response.json(
+        status === 200 ? current() : { error: { code: "invoice_not_reopenable" } },
+        {
+          status,
+        },
+      );
+    }),
+  );
+}
+
 function serve(invoice: object) {
   vi.stubGlobal(
     "fetch",
@@ -93,13 +145,15 @@ function serve(invoice: object) {
 function show(tokens: (typeof TOKEN)[] | null = [TOKEN]) {
   render(
     <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-      <ToastProvider>
-        <InvoiceDetail
-          invoiceId={ID}
-          profileId="6f9619ff-8b86-4011-b42d-00c04fc964ff"
-          tokens={tokens}
-        />
-      </ToastProvider>
+      <TooltipProvider>
+        <ToastProvider>
+          <InvoiceDetail
+            invoiceId={ID}
+            profileId="6f9619ff-8b86-4011-b42d-00c04fc964ff"
+            tokens={tokens}
+          />
+        </ToastProvider>
+      </TooltipProvider>
     </Provider>,
   );
 }
@@ -111,7 +165,8 @@ afterEach(cleanup);
 describe("owner's invoice page", () => {
   it("does not offer the pay link, or say it waits for payment, once the checkout has closed", async () => {
     // As the API answers once nothing can complete it (R-77).
-    serve({ ...OPEN, expiresAt: new Date(Date.now() - 10 * 60_000).toISOString(), closed: true });
+    const past = new Date(Date.now() - 10 * 60_000).toISOString();
+    serve({ ...OPEN, expiresAt: past, closesAt: past, closed: true });
     show();
     await settle();
     expect(screen.getByText(/Checkout closed/)).toBeTruthy();
@@ -210,5 +265,88 @@ describe("owner's invoice page", () => {
     expect(rows()).toEqual([["Created", "You", "—"]]);
     act(() => history.getByRole("radio", { name: "Emails" }).click());
     expect(rows()).toEqual([["Receipt email added", "Payer", "—"]]);
+  });
+
+  // R-130.
+  it("reopens an invoice that closed partly paid, then shows the new close and the History row", async () => {
+    const until = new Date(Date.now() + 5 * 86_400_000).toISOString();
+    const day = new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(until));
+    const closed = closedPartly(until);
+    const reopened = {
+      ...closed,
+      closesAt: until,
+      paymentStatus: "partially_paid",
+      reopenUntil: null,
+      history: [
+        {
+          id: 1,
+          kind: "invoice.reopened",
+          actor: "owner",
+          at: new Date().toISOString(),
+          optionId: null,
+          amount: null,
+          txHash: null,
+          step: null,
+          field: null,
+          from: null,
+          to: until.slice(0, 10),
+          related: null,
+        },
+      ],
+    };
+    let current: object = closed;
+    serveReopen(
+      () => current,
+      () => {
+        current = reopened;
+      },
+    );
+    show();
+    await settle();
+    expect(
+      screen.getByText(/To collect the remaining 850\.00 USDC, reopen the checkout/),
+    ).toBeTruthy();
+    act(() => screen.getByRole("button", { name: "Reopen checkout" }).click());
+    const dialog = within(screen.getByRole("dialog", { name: "Reopen INV-0001?" }));
+    expect(
+      dialog.getByText(`The checkout opens again until ${day}`, { exact: false }),
+    ).toBeTruthy();
+    await act(async () => dialog.getByRole("button", { name: "Reopen" }).click());
+    await settle();
+
+    expect(screen.getByText(`INV-0001 reopened until ${day}`)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Reopen checkout" })).toBeNull();
+    const closes = screen.getByText("Checkout closes").parentElement as HTMLElement;
+    expect(closes.textContent).toContain(day);
+    expect(document.activeElement).toBe(closes);
+    const history = within(screen.getByRole("region", { name: "History" }));
+    const [, row] = within(history.getByRole("table")).getAllByRole("row");
+    expect(
+      [...(row?.querySelectorAll("td") ?? [])].slice(0, 3).map((td) => td.textContent),
+    ).toEqual(["Reopened", "You", `Until ${formatDueDate(until.slice(0, 10))}`]);
+  });
+
+  // R-130: the reopen window ended, or another tab reopened it, after the page loaded.
+  it("says it can't reopen anymore when the API refuses", async () => {
+    let current: object = closedPartly(new Date(Date.now() + 86_400_000).toISOString());
+    serveReopen(
+      () => current,
+      () => {
+        current = closedPartly(null);
+      },
+      409,
+    );
+    show();
+    await settle();
+    act(() => screen.getByRole("button", { name: "Reopen checkout" }).click());
+    const dialog = within(screen.getByRole("dialog", { name: "Reopen INV-0001?" }));
+    await act(async () => dialog.getByRole("button", { name: "Reopen" }).click());
+    await settle();
+
+    expect(screen.getByText("It can't be reopened anymore.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Reopen checkout" })).toBeNull();
   });
 });

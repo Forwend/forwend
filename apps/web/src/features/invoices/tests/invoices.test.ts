@@ -67,6 +67,7 @@ const open: Invoice = {
   recipient: `0x${"4".repeat(40)}`,
   receiveAddress: `0x${"2".repeat(40)}`,
   expiresAt: "2026-10-17T10:00:00Z",
+  closesAt: "2026-10-17T10:00:00Z",
   settleDeadline: "2026-10-18T10:00:00Z",
   paymentStatus: "open",
   settlementStatus: "none",

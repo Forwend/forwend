@@ -88,6 +88,15 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
+      /** R-130: once, while reopenUntil is set; 409 otherwise. */
+      reopenInvoice: build.mutation<Invoice, { profileId: string; invoiceId: string }>({
+        query: ({ profileId, invoiceId }) => ({
+          url: `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}/reopen`,
+          method: "POST",
+        }),
+        responseSchema: invoiceSchema,
+        invalidatesTags: [INVOICES_TAG],
+      }),
       /** R-94: one email per idempotency key; 409 when it can't be sent, 429 past a send limit. */
       sendInvoice: build.mutation<
         Invoice,
@@ -209,6 +218,7 @@ export const {
   useGetProfileInvoiceQuery,
   useCreateInvoiceMutation,
   useCancelInvoiceMutation,
+  useReopenInvoiceMutation,
   useSendInvoiceMutation,
   useSetRemindersMutation,
   useStopRepeatMutation,
