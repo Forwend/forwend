@@ -29,7 +29,8 @@ const (
 	DefaultExpiresIn = time.Hour
 	MinExpiresIn     = 15 * time.Minute
 	MaxExpiresIn     = 365 * 24 * time.Hour
-	SettleWindow     = 24 * time.Hour
+	// D-18: from expiry to the settle deadline. Invoices made before this window have 24 h; the term checks accept both.
+	SettleWindow = 7 * 24 * time.Hour
 )
 
 // Longest details, in characters (R-42).

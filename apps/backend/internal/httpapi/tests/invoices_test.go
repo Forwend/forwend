@@ -193,8 +193,8 @@ func TestCreateInvoice(t *testing.T) {
 	if d := expiresAt.Sub(before); d < time.Hour || d > time.Hour+5*time.Second {
 		t.Fatalf("expiresAt %v is not now + 1h", expiresAt)
 	}
-	if settleDeadline.Sub(expiresAt) != 24*time.Hour {
-		t.Fatalf("settleDeadline %v is not expiresAt + 24h", settleDeadline)
+	if settleDeadline.Sub(expiresAt) != 7*24*time.Hour { // D-18
+		t.Fatalf("settleDeadline %v is not expiresAt + 7 days", settleDeadline)
 	}
 
 	// The stored terms recompute to the receive address the API returned.

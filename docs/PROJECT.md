@@ -200,7 +200,7 @@ All D- IDs are defined here. The roadmap refers to these decisions.
 | D-15 | Infura first for Base and Arbitrum; public RPC fallback only after chain-ID validation. A second independent provider confirms balances before paid and the receiver's settled() before settled. | Independent balance confirmation. |
 | D-16 | Go net/http, pgx + sqlc, embedded goose migrations, go-ethereum; Postgres 17. | Explicit SQL and few dependencies. |
 | D-17 | Database and chain integration tests use real Postgres and Anvil, not SQL or chain mocks. | Prove constraints, transactions and reorg behavior. |
-| D-18 | Checkout expiry: default 1 h, the creator may set 15 min to 365 days; `settleDeadline` = `expiresAt` + 24 h | 15 min leaves time for confirmations; 365 days matches the contract rules |
+| D-18 | Checkout expiry: default 1 h, the creator may set 15 min to 365 days; `settleDeadline` = `expiresAt` + 7 days (24 h for invoices made before this window) | 15 min leaves time for confirmations; 365 days matches the contract rules. The 7-day settle grace lets an expired, partly paid invoice reopen (PLAN 11.11.4); short payments wait as long before a refund (owner choice 2026-10-24) |
 | D-19 | Go binaries in cmd/, application packages in internal/: feature services, database queries and one HTTP boundary. | See backend/rules.md. |
 | D-20 | One login holds many profiles: personal, freelancer, merchant. Developer is a team role and workflow, not a profile. | Product policy |
 | D-21 | Privy handles login/onboarding **and** creates one default wallet per profile. Our database owns profiles, settings, permissions and links to Privy wallet IDs. A personal profile and wallet are created at signup. | Product policy |

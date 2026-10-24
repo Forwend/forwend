@@ -140,6 +140,21 @@ describe("checkedReceiveAddress", () => {
     }
   });
 
+  // D-18: invoices made since settle 7 days after expiry, those before 1 day.
+  it("gives the address for a 7-day settle window as for a 1-day one", () => {
+    const week = { ...invoice, settleDeadline: "2026-10-24T10:00:00Z" };
+    const address = receiveAddress({
+      invoiceId: week.optionId,
+      recipient: week.recipient,
+      token: week.token,
+      amount: BigInt(week.amount),
+      expiresAt: BigInt(Date.parse(week.expiresAt) / 1000),
+      settleDeadline: BigInt(Date.parse(week.settleDeadline) / 1000),
+      intendedChainId: BigInt(week.chainId),
+    });
+    expect(checkedReceiveAddress({ ...week, receiveAddress: address }, payToken)).toBe(address);
+  });
+
   it("gives none for a link whose token is not 32 bytes of hex, or is the invoice id itself", () => {
     for (const link of [
       "ab".repeat(31),
@@ -212,6 +227,7 @@ describe("checkedReceiveAddress", () => {
     const broken: Partial<Invoice>[] = [
       { amount: "0" },
       { settleDeadline: "2026-10-18T10:00:01Z" },
+      { settleDeadline: "2026-10-19T10:00:00Z" },
       { expiresAt: "2027-10-11T10:00:00Z", settleDeadline: "2027-10-12T10:00:00Z" },
       { recipient: `0x${"0".repeat(40)}` },
       { recipient: terms.token },

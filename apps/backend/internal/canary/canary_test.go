@@ -139,11 +139,19 @@ func TestCheck(t *testing.T) {
 func TestCheckRejectsMalformedInput(t *testing.T) {
 	for _, bad := range []string{id, strings.Replace(line, recipient, "0x11", 1), strings.Replace(line, amount, "-1", 1),
 		strings.Replace(line, amount, "0", 1), strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(deadline+1), 1),
+		strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(expiresAt+2*86400), 1),
 		strings.Replace(line, recipient, "0x0000000000000000000000000000000000000000", 1),
 		strings.Replace(line, recipient, token, 1)} {
 		alerts := canary.Check(context.Background(), config.Canary{}, []string{bad})
 		if len(alerts) != 1 || !strings.Contains(alerts[0], "input line") {
 			t.Errorf("%q: got alerts %q", bad, alerts)
+		}
+	}
+	// D-18: invoices made before the 7-day window settle 1 day after expiry; both are create's rules.
+	week := strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(expiresAt+7*86400), 1)
+	for _, alert := range canary.Check(context.Background(), config.Canary{}, []string{week}) {
+		if strings.Contains(alert, "input line") {
+			t.Errorf("a 7-day settle window: %q", alert)
 		}
 	}
 }
