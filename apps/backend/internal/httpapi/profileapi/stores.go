@@ -1,6 +1,10 @@
 package profileapi
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
 	"net/http"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
@@ -34,7 +38,7 @@ func putStore(profiles *profile.Service) http.HandlerFunc {
 		}
 		s, created, err := profiles.SaveStore(r.Context(), r.PathValue("profileId"), r.PathValue("storeId"),
 			profile.StoreDetails{Name: body.Name, DefaultExpiresIn: body.DefaultExpiresIn,
-				AllowedOrigins: body.AllowedOrigins})
+				AllowedOrigins: body.AllowedOrigins, BrandColor: body.BrandColor})
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -44,5 +48,51 @@ func putStore(profiles *profile.Service) http.HandlerFunc {
 			status = http.StatusCreated
 		}
 		httpio.WriteJSON(w, status, toStoreJSON(s))
+	}
+}
+
+// R-135: the body is the image itself, a PNG or JPEG.
+func putStoreLogo(profiles *profile.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// One byte over the limit is enough for SaveStoreLogo to refuse it.
+		upload, err := io.ReadAll(io.LimitReader(r.Body, profile.MaxLogoBytes+1))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		s, err := profiles.SaveStoreLogo(r.Context(), r.PathValue("profileId"), r.PathValue("storeId"), upload)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, toStoreJSON(s))
+	}
+}
+
+func deleteStoreLogo(profiles *profile.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s, err := profiles.DeleteStoreLogo(r.Context(), r.PathValue("profileId"), r.PathValue("storeId"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, toStoreJSON(s))
+	}
+}
+
+// Public: pay pages show it. The API encoded the PNG itself, and the policy keeps a browser from running anything in it.
+func getStoreLogo(profiles *profile.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logo, at, err := profiles.StoreLogo(r.Context(), r.PathValue("storeId"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		sum := sha256.Sum256(logo)
+		w.Header().Set("ETag", `"`+hex.EncodeToString(sum[:16])+`"`)
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'")
+		http.ServeContent(w, r, "", at, bytes.NewReader(logo))
 	}
 }

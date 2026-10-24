@@ -19,7 +19,12 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useSaveStoreMutation } from "@/features/stores/api/stores-api";
-import { STORE_LIMITS } from "@/features/stores/constants/stores";
+import { StoreLogo } from "@/features/stores/components/store-logo";
+import {
+  BRAND_COLOR_PATTERN,
+  COLOR_PICKER_START,
+  STORE_LIMITS,
+} from "@/features/stores/constants/stores";
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { invalidStoreField, originLines } from "@/features/stores/lib/stores";
 import type { Store, StoreBody, StoreField } from "@/features/stores/types/stores";
@@ -42,6 +47,7 @@ export function StoreForm({ profileId, store, closeChoices, defaultClose }: Stor
   const router = useRouter();
   const storeId = useRef(store?.storeId ?? crypto.randomUUID());
   const [closes, setCloses] = useState(String(store?.defaultExpiresIn ?? defaultClose));
+  const [color, setColor] = useState(store?.brandColor ?? "");
   const [errors, setErrors] = useState<Partial<Record<StoreField, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -54,9 +60,12 @@ export function StoreForm({ profileId, store, closeChoices, defaultClose }: Stor
       name: String(data.get("name") ?? "").trim(),
       defaultExpiresIn: Number(closes),
       allowedOrigins: originLines(String(data.get("allowedOrigins") ?? "")),
+      brandColor: color.trim(),
     };
     const shown: Partial<Record<StoreField, string>> = {};
     if (!body.name) shown.name = COPY.errors.required;
+    if (!BRAND_COLOR_PATTERN.test(body.brandColor))
+      shown.brandColor = COPY.errors.invalid.brandColor;
     if (body.allowedOrigins.length > STORE_LIMITS.origins)
       shown.allowedOrigins = COPY.errors.tooMany;
     flushSync(() => {
@@ -97,6 +106,39 @@ export function StoreForm({ profileId, store, closeChoices, defaultClose }: Stor
             error={errors.name}
           />
           {store ? <ProjectId storeId={store.storeId} /> : null}
+        </div>
+      </FieldGroup>
+      <FieldGroup title={COPY.brandGroup}>
+        {store ? (
+          <StoreLogo profileId={profileId} store={store} />
+        ) : (
+          <p className="text-sm text-muted">{COPY.logoAfterSave}</p>
+        )}
+        <div className="grid gap-5 sm:grid-cols-2">
+          <TextField
+            label={COPY.color}
+            name="brandColor"
+            value={color}
+            onChange={(event) => setColor(event.target.value)}
+            placeholder="#1f6a8c"
+            autoComplete="off"
+            spellCheck={false}
+            maxLength={7}
+            hint={COPY.colorHint}
+            error={errors.brandColor}
+            action={
+              // The kit has no color picker; the browser's own one fills the field (docs/web/structure.md).
+              <input
+                type="color"
+                aria-label={COPY.pickColor}
+                value={
+                  color.length === 7 && BRAND_COLOR_PATTERN.test(color) ? color : COLOR_PICKER_START
+                }
+                onChange={(event) => setColor(event.target.value)}
+                className="aspect-square cursor-pointer rounded-md border border-field bg-surface p-1"
+              />
+            }
+          />
         </div>
       </FieldGroup>
       <FieldGroup title={COPY.checkoutGroup}>

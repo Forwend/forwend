@@ -146,10 +146,12 @@ with a test.
   `profile_billing_details(name, address, country, tax_id, contact_email, updated_at)` (at most one per profile, editable; R-43),
   `clients(name, email, address, country, tax_id, reference, reminders, updated_at)` (a profile's saved clients, editable, at
   most 1000 per profile, counted under the profile row lock; R-86).
-- `stores(name, default_expires_in, allowed_origins, updated_at)`: a merchant profile's stores (R-134).
+- `stores(name, default_expires_in, allowed_origins, brand_color, logo, logo_at, updated_at)`: a merchant profile's
+  stores (R-134). `logo` is a PNG the API encoded from an upload of at most 1 MB; the PNG itself can reach about
+  4.2 MB (R-135).
   - The first is made with the profile by a trigger; at most 20 per profile, counted under the profile row lock.
   - Its id is the project ID (D-31). `invoices.store_id` names a store of the same profile and never changes.
-- Planned (PLAN 11.1, 11.2): store branding, `team_members(role, store scope)`.
+- Planned (PLAN 11.2): `team_members(role, store scope)`.
 - `chains(chain_id, chain_family, enabled)`, `tokens(chain_id, contract, decimals, enabled)`. One confirm rule for all
   chains (D-45), so no per-chain rule columns. From `00015` on, migrations add each planned network and its token
   switched off (Arbitrum Sepolia USDC in `00015`, Arc testnet USDC in `00016`, Tempo Moderato OUSD in `00017`), so

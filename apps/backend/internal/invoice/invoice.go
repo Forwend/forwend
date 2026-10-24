@@ -244,6 +244,9 @@ type Invoice struct {
 	receiverDeployedAt *int64
 	// A merchant invoice's store (R-134); "" for a personal or freelancer profile's.
 	StoreID, StoreName string
+	// The store's accent color ("" none) and when its logo was saved (nil none) (R-135).
+	BrandColor string
+	LogoAt     *time.Time
 }
 
 // Revision is the other invoice of a Revise (R-129); PayToken is set only for the replacement.

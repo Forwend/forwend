@@ -3,159 +3,121 @@
   "nextId": 293,
   "tasks": [
     {
-      "id": "F290",
+      "id": "F291",
       "type": "feat",
-      "behavior": "A merchant profile has stores, and each of its invoices records one",
+      "behavior": "A store's logo and color brand its pay page and PDFs",
       "acceptance": [
-        "A merchant profile has stores with a name, a project ID, a default checkout close and up to 20 allowed https origins; its first store is made with it (a trigger), migration 58 backfills one per merchant profile with its return links' origins, and every merchant invoice records its store, which never changes",
-        "GET /v1/profiles/{profileId}/stores lists them (none for a personal or freelancer profile); PUT .../stores/{storeId} saves one by a browser-picked UUID, at most 20 per profile; another user 403, another profile's store 404 store_not_found, a personal or freelancer profile 409 not_merchant, a broken rule 422",
-        "Create takes storeId (default the first store; 422 on a non-merchant or unknown store), uses the store's default close without expiresIn, and refuses a merchant return link outside the store's allowed origins on create and when Edit changes it; owner reads return store {storeId, name}",
-        "The web app has a Stores page for merchant profiles to list, add and edit stores with a copyable project ID; New invoice picks the store when there are two or more and starts the close from its default; the invoice list and page name the store; axe finds 0 serious or critical violations",
-        "R-134, api.md, openapi.yaml, both architecture docs and DESIGN.md describe stores; required checks, backend-e2e and a11y-e2e pass"
+        "PUT /v1/profiles/{profileId}/stores/{storeId}/logo keeps a PNG or JPEG (at most 1 MB, 1024 px a side) as a PNG of the same pixels; SVG, other formats and larger images are 422; DELETE removes it; GET /v1/stores/{storeId}/logo.png serves it publicly, 404 logo_not_found without one; owner routes are 403 for another user and 404 store_not_found for another profile's store",
+        "A store saves brandColor (#rrggbb or none) and reads back logoAt; invoice reads return brand {storeId, color, logoAt} for a merchant invoice and null otherwise",
+        "The pay page shows the store's logo in place of the payee's initial tile and the color as that box's edge; the invoice and receipt PDFs show the logo in the header in place of Forwend's and the color on the header rule",
+        "Edit store uploads, previews and removes the logo and sets the color; axe finds 0 serious or critical violations on Edit store and the branded pay page",
+        "R-135, api.md, openapi.yaml, the architecture docs, DESIGN.md and web/structure.md describe it; required checks and a11y-e2e pass"
       ],
-      "dependsOn": [],
-      "state": "passing",
+      "dependsOn": [
+        "F290"
+      ],
+      "state": "verified",
       "verification": [
         "unit",
-        "backend-e2e",
         "e2e",
         "a11y-e2e",
         "docs-check"
       ],
       "refs": [
-        "R-134",
+        "R-135",
         "D-30",
-        "D-31"
+        "D-32"
       ],
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-24 review fail by reviewer: BLOCKING: apps/backend/internal/database/migrations/00058_stores.sql:31-32 backfill matches '^https://' case-sensitively before lower(), so an existing return_url like 'HTTPS://Shop.example.com/x' (accepted today: Go url.Parse lowercases the scheme, web isReturnLink uses URL.protocol) yields NULL, and array_agg keeps NULLs. allowed_origins then holds a NULL element; pgx cannot scan it into []string (verified: 'cannot scan NULL into *string'), so GET stores, every invoice create (profile.InvoiceStore) and returnUrl edits 500 for that merchant. Fix: substring(lower(i.return_url) FROM ...) and drop NULLs (FILTER (WHERE o IS NOT NULL)); add an upper-case-scheme row to TestStoresForExistingMerchants. NON-BLOCKING: (1) invoice/create.go:46 hashes a missing expiresIn as 3600, so for a merchant an omitted expiresIn (store default) and an explicit 3600 share a hash; a reused key with the other form replays instead of 409 (documented in api.md). (2) invoice/retainers.go:158 later months re-check returnUrl against the store's current origins; removing an origin makes every later month fail in the worker with only a log line. (3) new-invoice-form.tsx:352 maps a server 'allowed origins' 422 to the generic return-link error; edit-invoice.tsx:124 handles it. (4) new-invoice-form.tsx:120 expiryChoice falls back to 7 days for an API-set store default that is not a menu choice. (5) docs/PROJECT.md:186 R-134 sentence 'A store has a name...' is 26 words (D-84). (6) features/stores/tests/stores.test.ts tests the client mirror of a rule the server tests already guard; borderline under Which tests to keep. Checked OK: route auth (ProfileScoped + 403/401 tests), 404/409/422 paths, 20-store cap under profile lock, trigger, store-fixed trigger, FK (store_id, profile_id), view change (readers use named columns), Down migration, jobs/retainers/revise still create (revise carries storeId via restartFrom), features/stores imports no other feature, docs match code. Backend tests TestStores, TestMerchantInvoicesRecordTheirStore, TestStoresForExistingMerchants pass.",
-        "2026-10-24 review pass by reviewer: Re-review of the delta. Fixed: 00058_stores.sql:31-32 now lowercases before matching and filters NULLs from array_agg; my original trigger (upper-case scheme) can't be stored per 00021's CHECK, but a host-less https:/// link could, and TestStoresForExistingMerchants now covers it. create.go:104 skips the origin check only for a retainer's later month (r.cycle is unexported, so API callers can't bypass it); TestRetainerMonthKeepsAReturnLinkItsStoreDropped guards it. offStoreOrigins (features/invoices/lib/invoices.ts:174) now drives the origins message on a server 422 in New invoice and Edit. R-134 sentence split (D-84); R-134 and api.md describe the retainer rule. Reran TestStoresForExistingMerchants, TestRetainer*, TestStores, TestMerchantInvoicesRecordTheirStore: all pass; verify at 17:17:47Z passed. Accepted as is (non-blocking): the idempotency hash treats a missing expiresIn as 3600 for merchants too (documented in api.md); New invoice falls back to 7 days for a store close that isn't a menu choice (only the web writes it today); the allowsReturnLink unit test stays (redirect rule)."
+        "2026-10-24 review fail by reviewer: BLOCKING: (1) apps/backend/internal/profile/store_logo.go:99 with migrations/00059_store_branding.sql:6 caps the re-encoded PNG at 1 MiB, so uploads that meet R-135 (<=1 MB, <=1024 px) are refused 422. Repro: a 135 KB 1024x1024 photo-like JPEG re-encodes (same NRGBA+png.Encode path) to 1.42 MB. A palette PNG that becomes truecolor hits the same cap. The 422 message and the web copy (COPY.errors.logo) name limits the file already meets, so the owner cannot fix it. This breaks accept 1, R-135, api.md and openapi. No test covers it. Fix: allow the kept PNG's worst case for 1024 px (DB check too), or define and document a separate limit with its own error. NON-BLOCKING: (2) docs/PROJECT.md:187 R-135's first sentence is 37 words, and openapi.yaml:391-393 is 26 (D-84). (3) openapi.yaml:392 and docs/backend/api.md:181 say '8-bit with alpha'; Go writes an opaque logo as 8-bit RGB (color type 2). (4) openapi.yaml:2544 InvoiceSummary.required lacks brand, though it is always sent; web invoices.ts:109 uses .nullish() while its comment says 'in every answer'. (5) No test asserts CSP default-src 'none' or nosniff on GET /v1/stores/{id}/logo.png, so removing them fails nothing. (6) e2e/pay.spec.ts:644-655 asserts border colors and naturalWidth; web/rules.md says colors are judged in screenshots. Keep the axe part. (7) docs/web/architecture.md:72-74: the existing over-long 'Features import each other' sentence grew. (8) In dark mode a transparent dark logo sits on a dark bg-surface box (pay page, Edit store preview) and can vanish. JPEG EXIF orientation is dropped. Checked and fine: owner routes use ProfileScoped; setLogo filters by profile_id; the public route serves only API-encoded PNG with image/png, CSP, nosniff and an ETag. DecodeConfig dimension and format checks run before Decode. Color is validated by regex and a DB CHECK (lowercase) and by zod before React style. Migration Down is fine. The statement PDF path is unchanged (open(...,nil)). RTK File body and tag invalidation are fine; currentData keeps the form mounted. No cross-feature import cycle. The raw-controls list is updated. TestStoreBranding and TestStores pass; go build/vet are clean; document tests pass; docs-check reports 0 errors.",
+        "2026-10-24 review fail by reviewer: Re-review of the fix delta. BLOCKING: (1) docs/backend/architecture.md:150 still says 'logo is a PNG the API encoded, at most 1 MB (R-135)'. The fix removed that cap; migration 00059 now allows 5242880 bytes, and a kept PNG reaches ~4.2 MB. The doc that owns the schema states the wrong limit (accept 5). One-line fix. NON-BLOCKING: (2) The comments at apps/web/src/features/pay/components/pay-invoice.tsx:251 and features/stores/components/store-logo.tsx:74 justify 'unoptimized' with 'the API already serves a small PNG'. That is no longer true. A payer may now download up to ~4.2 MB to show a logo 36 px tall, and the PDF embeds the same file. Fix the comment at least; consider resizing (server-side, or via the Next optimizer). (3) data-theme=\"light\" in both boxes repeats THEMES.light from packages/design-tokens/src/constants/themes.ts; checkout-preview.tsx sets a precedent with a literal. FIXED AND CHECKED: The 1 MB limit now applies to the upload only. I re-measured: the test's photo JPEG is 372195 B and makes a 1772680 B PNG, so the new case fails on the old code. The worst case, random NRGBA, is 4197254 B, under the 5 MiB DB check. The public GET's CSP, nosniff and Content-Type are now asserted. The R-135 and openapi sentences are at most 25 words; docs-check reports 0 errors. '8-bit' wording is fixed. brand is in InvoiceSummary.required. pay.spec no longer asserts colors. The web architecture edges are split. The logo boxes use data-theme light, and the tokens re-scope under [data-theme=light]. TestStoreBranding and TestStores pass; go vet is clean.",
+        "2026-10-24 review pass by reviewer: Re-review of the last delta. FIXED: docs/backend/architecture.md:150 now says the logo is encoded from an upload of at most 1 MB, and the PNG can reach about 4.2 MB. That matches store_logo.go and the 5 MiB check in migration 00059; the sentence is 24 words. The stale 'small PNG' comments are removed from pay-invoice.tsx and store-logo.tsx. docs-check reports 0 errors. The changed file set is unchanged. NON-BLOCKING, open: (1) A payer may download a logo of up to ~4.2 MB to show it 36 px tall, and the PDF embeds the same file. Resizing is left as an owner follow-up. (2) data-theme=\"light\" is a literal instead of THEMES.light, matching checkout-preview.tsx. (3) JPEG EXIF orientation is ignored on purpose; reported to the owner. Earlier rounds checked security, authorization, migration, PDF, web upload flow, tests and docs; see the previous reviews."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-24T17:17:47Z",
+        "at": "2026-10-24T19:00:02Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 178.3,
-            "log": "docs/runs/F290-20261024T171747Z-unit.log"
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 19.2,
-            "log": "docs/runs/F290-20261024T171747Z-backend-e2e.log"
+            "seconds": 173.7,
+            "log": "docs/runs/F291-20261024T190002Z-unit.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 220.8,
-            "log": "docs/runs/F290-20261024T171747Z-e2e.log"
+            "seconds": 232.0,
+            "log": "docs/runs/F291-20261024T190002Z-e2e.log"
           },
           {
             "id": "a11y-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 15.6,
-            "log": "docs/runs/F290-20261024T171747Z-a11y-e2e.log"
+            "seconds": 16.7,
+            "log": "docs/runs/F291-20261024T190002Z-a11y-e2e.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "docs/runs/F290-20261024T171747Z-docs-check.log"
+            "seconds": 0.1,
+            "log": "docs/runs/F291-20261024T190002Z-docs-check.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.7,
-            "log": "docs/runs/F290-20261024T171747Z-harness.log"
+            "seconds": 1.8,
+            "log": "docs/runs/F291-20261024T190002Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F290-20261024T171747Z-lint.log"
+            "log": "docs/runs/F291-20261024T190002Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.7,
-            "log": "docs/runs/F290-20261024T171747Z-typecheck.log"
+            "seconds": 0.8,
+            "log": "docs/runs/F291-20261024T190002Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.6,
-            "log": "docs/runs/F290-20261024T171747Z-build.log"
+            "seconds": 3.5,
+            "log": "docs/runs/F291-20261024T190002Z-build.log"
           }
         ],
-        "taskHash": "22a78073cfe7e82b",
-        "filesHash": "6b3c6b9a334d20f3",
+        "taskHash": "2904488965a2fa6a",
+        "filesHash": "e557ee5cc3b06f5d",
         "proof": {
-          "1": "unit: TestStoresForExistingMerchants, TestMerchantInvoicesRecordTheirStore (store_id never changes)",
-          "2": "unit: TestStores, TestProfileRoutesAreAllListed, TestProfilesBelongToTheirUser",
-          "3": "unit: TestMerchantInvoicesRecordTheirStore, TestRetainerMonthKeepsAReturnLinkItsStoreDropped, allowsReturnLink",
-          "4": "e2e: live e2e/privy/invoices.spec.ts merchant test (Stores, store picker, origins, axe); a11y-e2e",
-          "5": "docs-check: R-134, api.md, openapi.yaml, architecture docs, DESIGN.md; backend-e2e"
+          "1": "unit: internal/httpapi/tests TestStoreBranding (PNG with bytes after its end served without them and same pixels; public route sends CSP default-src 'none', nosniff, image/png; JPEG, 16-bit PNG and a 1024 px photo JPEG whose PNG passes 1 MB are kept; GIF/SVG/1025 px/over 1 MB/empty are 422; 403/401; 404 store_not_found on another profile; 404 logo_not_found before and after DELETE); TestProfileRoutesAreAllListed and TestProfilesBelongToTheirUser cover the logo routes",
+          "2": "unit: TestStoreBranding (brandColor kept lower case, five malformed colors 422, logoAt back on the store, public invoice read brand {storeId, color, logoAt}, a freelancer invoice's brand null); TestStores expects brandColor and logoAt null on a new store",
+          "3": "e2e: e2e/pay.spec.ts shows the logo in place of the initial tile and the tile without a logo; TestStoreBranding finds the logo image in invoice.pdf and none after DELETE; docs/runs/F291 has pay page screenshots (light, dark, tile) and a sample invoice PDF with the logo and colored rule",
+          "4": "e2e: live e2e/privy/invoices.spec.ts uploads a logo on Edit store (preview and Replace logo shown), sets the color, saves with axe at [], then the public read carries the brand and the PDF holds the logo; a11y-e2e and the pay page axe tests in both themes pass",
+          "5": "docs-check: R-135, api.md Stores branding, openapi.yaml logo routes/brandColor/brand, backend and web architecture docs, DESIGN.md and web/structure.md raw controls updated"
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Re-review of the delta. Fixed: 00058_stores.sql:31-32 now lowercases before matching and filters NULLs from array_agg; my original trigger (upper-case scheme) can't be stored per 00021's CHECK, but a host-less https:/// link could, and TestStoresForExistingMerchants now covers it. create.go:104 skips the origin check only for a retainer's later month (r.cycle is unexported, so API callers can't bypass it); TestRetainerMonthKeepsAReturnLinkItsStoreDropped guards it. offStoreOrigins (features/invoices/lib/invoices.ts:174) now drives the origins message on a server 422 in New invoice and Edit. R-134 sentence split (D-84); R-134 and api.md describe the retainer rule. Reran TestStoresForExistingMerchants, TestRetainer*, TestStores, TestMerchantInvoicesRecordTheirStore: all pass; verify at 17:17:47Z passed. Accepted as is (non-blocking): the idempotency hash treats a missing expiresIn as 3600 for merchants too (documented in api.md); New invoice falls back to 7 days for a store close that isn't a menu choice (only the web writes it today); the allowsReturnLink unit test stays (redirect rule).",
-          "at": "2026-10-24T17:26:09Z",
-          "filesHash": "6b3c6b9a334d20f3"
-        },
-        "commit": "590a2f8",
-        "doneAt": "2026-10-24T17:58:04Z"
+          "summary": "Re-review of the last delta. FIXED: docs/backend/architecture.md:150 now says the logo is encoded from an upload of at most 1 MB, and the PNG can reach about 4.2 MB. That matches store_logo.go and the 5 MiB check in migration 00059; the sentence is 24 words. The stale 'small PNG' comments are removed from pay-invoice.tsx and store-logo.tsx. docs-check reports 0 errors. The changed file set is unchanged. NON-BLOCKING, open: (1) A payer may download a logo of up to ~4.2 MB to show it 36 px tall, and the PDF embeds the same file. Resizing is left as an owner follow-up. (2) data-theme=\"light\" is a literal instead of THEMES.light, matching checkout-preview.tsx. (3) JPEG EXIF orientation is ignored on purpose; reported to the owner. Earlier rounds checked security, authorization, migration, PDF, web upload flow, tests and docs; see the previous reviews.",
+          "at": "2026-10-24T19:07:36Z",
+          "filesHash": "e557ee5cc3b06f5d"
+        }
       },
-      "branch": "feat/f290-a-merchant-profile-has-stores-and-each-o",
-      "baseCommit": "387b06353a1b2a295f6294be5c6c19037994e9cb",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f290-a-merchant-profile-has-stores-and-each-o",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F291",
-      "type": "feat",
-      "behavior": "A store's logo and color brand its pay page",
-      "acceptance": [
-        "The owner sets a store's logo and accent color; the pay page and the invoice PDF of that store's invoices show them, with contrast checked; where the logo is stored is decided with the owner first"
-      ],
-      "dependsOn": [
-        "F290"
-      ],
-      "state": "not_started",
-      "verification": [
-        "unit",
-        "e2e",
-        "a11y-e2e"
-      ],
-      "refs": [
-        "D-30",
-        "D-32"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": null
+      "branch": "feat/f291-a-store-s-logo-and-color-brand-its-pay-p",
+      "baseCommit": "0c4c0f76fde38d3047016896fb9d713c8fd0a95e",
+      "failedVerifies": 0
     },
     {
       "id": "F292",
@@ -185,9 +147,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-24T16:10:28Z",
+    "at": "2026-10-24T18:05:18Z",
     "clean": true,
     "problems": [],
-    "note": "F289 implemented and independently reviewed; all seven verify checks passed. Wallet recovery, receipt backoff, shared header snapshots, independent chain jobs and shared weighted RPC budgets are ready for the approved PR to main and staging fast-forward. Invoice overlap and coherent header retries remain for money safety."
+    "note": null
   }
 }

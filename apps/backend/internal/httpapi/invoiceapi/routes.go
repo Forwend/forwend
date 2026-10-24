@@ -7,6 +7,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
+	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
 
 // Check status reads a chain RPC per call, so this bounds those reads per api process (R-55). Each owner's invoices
@@ -27,7 +28,8 @@ const (
 const ViewRate, ViewBurst = 0.2, 5
 
 // balances reads each chain's second RPC (D-15); webURL is the web app's origin, for the pay link in PDFs.
-func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, balances ledger.BalanceOf, webURL string) {
+func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, profiles *profile.Service,
+	balances ledger.BalanceOf, webURL string) {
 	rechecks := mid.NewBuckets(RecheckRate, RecheckBurst)
 	owners := mid.NewBuckets(RecheckOwnerRate, RecheckOwnerBurst)
 	emails := mid.NewBuckets(PayerEmailAllRate, PayerEmailAllBurst)
@@ -50,6 +52,6 @@ func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, balance
 	mux.Handle("POST /v1/invoices/{payToken}/views", mid.Limit(mid.NewBuckets(ViewRate, ViewBurst), perInvoice,
 		countView(invoices)))
 	mux.Handle("POST /v1/reminders/{token}/stop", stopReminders(invoices)) // the client's stop link: no sign-in
-	mux.Handle("GET /v1/invoices/{payToken}/invoice.pdf", invoicePDF(invoices, webURL))
-	mux.Handle("GET /v1/invoices/{payToken}/receipt.pdf", receiptPDF(invoices, webURL))
+	mux.Handle("GET /v1/invoices/{payToken}/invoice.pdf", invoicePDF(invoices, profiles, webURL))
+	mux.Handle("GET /v1/invoices/{payToken}/receipt.pdf", receiptPDF(invoices, profiles, webURL))
 }

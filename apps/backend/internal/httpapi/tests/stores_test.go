@@ -1,13 +1,20 @@
 package tests
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"image"
+	"image/gif"
+	"image/jpeg"
+	"image/png"
 	"net/http"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
 
 const (
@@ -51,7 +58,7 @@ func TestStores(t *testing.T) {
 	delete(got, "storeId")
 	delete(got, "updatedAt")
 	if want := map[string]any{"name": "Alice Shop", "defaultExpiresIn": float64(604800),
-		"allowedOrigins": []any{}}; !reflect.DeepEqual(got, want) {
+		"allowedOrigins": []any{}, "brandColor": nil, "logoAt": nil}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("the first store is %v, want %v", got, want)
 	}
 
@@ -63,7 +70,8 @@ func TestStores(t *testing.T) {
 	}
 	delete(made.body, "updatedAt")
 	want := map[string]any{"storeId": storeB, "name": "Pro shop", "defaultExpiresIn": float64(3600),
-		"allowedOrigins": []any{"https://shop.example.com", "https://dev.example.com:8443"}}
+		"allowedOrigins": []any{"https://shop.example.com", "https://dev.example.com:8443"}, "brandColor": nil,
+		"logoAt": nil}
 	if !reflect.DeepEqual(made.body, want) {
 		t.Fatalf("PUT returned %v, want %v", made.body, want)
 	}
@@ -275,4 +283,162 @@ func storeIDs(t *testing.T, e invoiceEnv, profile string) []string {
 		ids = append(ids, id)
 	}
 	return ids
+}
+
+// R-135.
+func TestStoreBranding(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice, bob = "did:privy:alice", "did:privy:bob"
+	shop := e.merchant(t)
+	store := storeIDs(t, e, shop)[0]
+	logoPath := "/v1/profiles/" + shop + "/stores/" + store + "/logo"
+	public := "/v1/stores/" + store + "/logo.png"
+	upload := func(user string, body []byte) reply {
+		t.Helper()
+		req, err := http.NewRequest("PUT", e.srv.URL+logoPath, bytes.NewReader(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if user != "" {
+			req.Header.Set("Authorization", "Bearer "+signES256(t, e.privyKey, claims(user)))
+		}
+		return e.do(t, req)
+	}
+	encode := func(img image.Image, as string) []byte {
+		t.Helper()
+		var b bytes.Buffer
+		var err error
+		switch as {
+		case "png":
+			err = png.Encode(&b, img)
+		case "jpeg":
+			err = jpeg.Encode(&b, img, nil)
+		case "gif":
+			err = gif.Encode(&b, img, nil)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b.Bytes()
+	}
+	red := image.NewNRGBA(image.Rect(0, 0, 40, 20))
+	for i := range red.Pix {
+		red.Pix[i] = []byte{0xd0, 0x10, 0x20, 0xff}[i%4]
+	}
+
+	if r := e.call(t, "GET", public, "", "", ""); r.status != http.StatusNotFound || errorCode(r) != "logo_not_found" {
+		t.Fatalf("no logo yet: %d %v", r.status, r.body)
+	}
+	// Bytes after the image's end, as a file made to be both an image and a script carries them.
+	tail := append(encode(red, "png"), []byte("<script>alert(1)</script>")...)
+	saved := upload(alice, tail)
+	if saved.status != http.StatusOK || saved.body["logoAt"] == nil {
+		t.Fatalf("PUT logo: %d %v", saved.status, saved.body)
+	}
+	got := e.call(t, "GET", public, "", "", "")
+	if got.status != http.StatusOK || strings.Contains(got.raw, "script") {
+		t.Fatalf("GET logo: %d, %q", got.status, got.raw)
+	}
+	head, err := e.srv.Client().Get(e.srv.URL + public)
+	if err != nil {
+		t.Fatal(err)
+	}
+	head.Body.Close()
+	if h := head.Header; h.Get("Content-Security-Policy") != "default-src 'none'" ||
+		h.Get("X-Content-Type-Options") != "nosniff" || h.Get("Content-Type") != "image/png" {
+		t.Fatalf("the public logo's headers: %v", h)
+	}
+	served, err := png.Decode(strings.NewReader(got.raw))
+	if err != nil || served.Bounds() != red.Bounds() {
+		t.Fatalf("the served logo is a %v PNG (%v), want 40x20", served.Bounds(), err)
+	}
+	if r, g, b, a := served.At(3, 3).RGBA(); r>>8 != 0xd0 || g>>8 != 0x10 || b>>8 != 0x20 || a>>8 != 0xff {
+		t.Fatalf("the served logo's pixel is %x %x %x %x", r>>8, g>>8, b>>8, a>>8)
+	}
+	if r := upload(alice, encode(red, "jpeg")); r.status != http.StatusOK {
+		t.Fatalf("PUT a JPEG: %d %v", r.status, r.body)
+	}
+	if got := e.call(t, "GET", public, "", "", ""); got.status != http.StatusOK || !strings.HasPrefix(got.raw, "\x89PNG") {
+		t.Fatalf("a JPEG is served as a PNG: %d", got.status)
+	}
+	if r := upload(alice, encode(image.NewRGBA64(image.Rect(0, 0, 8, 8)), "png")); r.status != http.StatusOK {
+		t.Fatalf("PUT a 16-bit PNG: %d %v", r.status, r.body)
+	}
+	// A photo-like JPEG within the limits makes a PNG of more than 1 MB; it is still taken.
+	photo := image.NewNRGBA(image.Rect(0, 0, profile.MaxLogoSide, profile.MaxLogoSide))
+	for i := range photo.Pix {
+		photo.Pix[i] = byte(i*7919%251) | 0x80
+	}
+	if jpg := encode(photo, "jpeg"); len(jpg) > profile.MaxLogoBytes {
+		t.Fatalf("the photo JPEG is %d bytes, over the limit", len(jpg))
+	} else if r := upload(alice, jpg); r.status != http.StatusOK {
+		t.Fatalf("PUT a 1024 px photo JPEG of %d bytes: %d %v", len(jpg), r.status, r.body)
+	}
+	for name, body := range map[string][]byte{
+		"a GIF":          encode(red, "gif"),
+		"an SVG":         []byte(`<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`),
+		"too wide":       encode(image.NewNRGBA(image.Rect(0, 0, 1025, 1)), "png"),
+		"too many bytes": append(encode(red, "png"), make([]byte, profile.MaxLogoBytes)...),
+		"nothing":        nil,
+	} {
+		if r := upload(alice, body); r.status != http.StatusUnprocessableEntity || errorCode(r) != "invalid_value" {
+			t.Fatalf("PUT %s: %d %v", name, r.status, r.body)
+		}
+	}
+	if r := upload(bob, encode(red, "png")); r.status != http.StatusForbidden {
+		t.Fatalf("Bob uploads Alice's logo: %d", r.status)
+	}
+	if r := upload("", encode(red, "png")); r.status != http.StatusUnauthorized {
+		t.Fatalf("upload without a token: %d", r.status)
+	}
+	other := "/v1/profiles/" + e.walletless + "/stores/" + store + "/logo"
+	if r := e.call(t, "DELETE", other, alice, "", ""); r.status != http.StatusNotFound || errorCode(r) != "store_not_found" {
+		t.Fatalf("another profile deletes the logo: %d %v", r.status, r.body)
+	}
+
+	if r := e.call(t, "PUT", "/v1/profiles/"+shop+"/stores/"+store, alice, "", `{"name": "Alice Shop",
+		"defaultExpiresIn": 3600, "brandColor": "#1F6A8C"}`); r.status != http.StatusOK || r.body["brandColor"] != "#1f6a8c" ||
+		r.body["logoAt"] == nil {
+		t.Fatalf("PUT brandColor: %d %v", r.status, r.body)
+	}
+	for _, color := range []string{`"1f6a8c"`, `"#1f6a8"`, `"#1f6a8cc"`, `"red"`, `"#gggggg"`} {
+		if r := e.call(t, "PUT", "/v1/profiles/"+shop+"/stores/"+store, alice, "", `{"name": "Alice Shop",
+			"defaultExpiresIn": 3600, "brandColor": `+color+`}`); r.status != http.StatusUnprocessableEntity {
+			t.Fatalf("PUT brandColor %s: %d %v", color, r.status, r.body)
+		}
+	}
+
+	inv := e.post(t, alice, shop, "key-1", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1"}`)
+	if inv.status != http.StatusCreated {
+		t.Fatalf("invoice: %d %v", inv.status, inv.body)
+	}
+	brand, _ := e.get(t, inv.body["invoiceId"].(string)).body["brand"].(map[string]any)
+	if brand["storeId"] != store || brand["color"] != "#1f6a8c" || brand["logoAt"] == nil {
+		t.Fatalf("the public read's brand: %v", brand)
+	}
+	pdf := func() string {
+		t.Helper()
+		r := e.call(t, "GET", "/v1/invoices/"+e.link(t, inv.body["invoiceId"].(string))+"/invoice.pdf", "", "", "")
+		if r.status != http.StatusOK {
+			t.Fatalf("invoice.pdf: %d %v", r.status, r.body)
+		}
+		return r.raw
+	}
+	// The QR code is drawn, not an image, so an image in the PDF is the logo.
+	if !strings.Contains(pdf(), "/Subtype /Image") {
+		t.Fatal("the invoice PDF has no logo")
+	}
+	if r := e.call(t, "DELETE", logoPath, alice, "", ""); r.status != http.StatusOK || r.body["logoAt"] != nil {
+		t.Fatalf("DELETE logo: %d %v", r.status, r.body)
+	}
+	if strings.Contains(pdf(), "/Subtype /Image") {
+		t.Fatal("the invoice PDF keeps a deleted logo")
+	}
+	if r := e.call(t, "GET", public, "", "", ""); r.status != http.StatusNotFound {
+		t.Fatalf("GET a deleted logo: %d", r.status)
+	}
+	free := e.post(t, alice, e.aliceProfile, "key-2", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1"}`)
+	if free.status != http.StatusCreated || free.body["brand"] != nil {
+		t.Fatalf("a freelancer's invoice has a brand: %v", free.body["brand"])
+	}
 }

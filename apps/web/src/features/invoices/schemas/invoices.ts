@@ -14,6 +14,7 @@ import type {
   OwedKind,
   ReminderStep,
 } from "@/features/invoices/types/invoices";
+import { BRAND_COLOR_PATTERN } from "@/features/stores/constants/stores";
 import {
   apiDate,
   apiTime,
@@ -98,6 +99,14 @@ export const invoiceSummarySchema = z.object({
   client: invoiceClientSchema.optional(),
   // A merchant invoice's store (R-134), in the owner's answers only.
   store: z.object({ storeId: z.guid(), name: z.string() }).optional(),
+  // Its store's branding (R-135); null without a store.
+  brand: z
+    .object({
+      storeId: z.guid(),
+      color: z.string().regex(BRAND_COLOR_PATTERN).nullable(),
+      logoAt: apiTime.nullable(),
+    })
+    .nullish(),
   issuer: invoiceIssuerSchema.nullable(),
   // The name the payer sees when there is no issuer, such as on a personal profile's request.
   senderName: z.string().nullable(),

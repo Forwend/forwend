@@ -202,6 +202,8 @@ var profileRoutes = []struct{ method, path, body string }{
 	{"DELETE", "/v1/profiles/%s/clients/" + clientA, ""},
 	{"PUT", "/v1/profiles/%s/stores/" + storeA, `{"name": "Shop", "defaultExpiresIn": 3600}`},
 	{"GET", "/v1/profiles/%s/stores", ""},
+	{"PUT", "/v1/profiles/%s/stores/" + storeA + "/logo", ""},
+	{"DELETE", "/v1/profiles/%s/stores/" + storeA + "/logo", ""},
 	{"POST", "/v1/profiles/%s/invoices/0x" + strings.Repeat("0", 64) + "/send", ""},
 	{"PUT", "/v1/profiles/%s/invoices/0x" + strings.Repeat("0", 64) + "/reminders", `{"on": false}`},
 	{"PUT", "/v1/profiles/%s/invoices/0x" + strings.Repeat("0", 64) + "/details", `{}`},

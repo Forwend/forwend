@@ -70,11 +70,14 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   its schema is never sent. `openapi-typescript` is not used: it needs the TypeScript compiler API, which TypeScript 7
   does not have.
 - Features import each other only here: receive → balances; invoices → activity, balances, clients (the client block
-  an invoice copies, R-86), stores (the store a merchant invoice records and its return-link origins, R-134); clients → profiles (the country list); pay → activity, invoices
+  an invoice copies, R-86); clients → profiles (the country list); pay → activity, invoices
   (including the `check-status` and `invoice-progress` components); jobs → clients, invoices (the pay link's token
   pattern, Send to client); onboarding → activity, invoices, profiles,
   transactions; transactions → invoices (the bell's invoice events, R-81, the invoice numbers on Transactions, R-109, and the ECB currencies, R-111); transactions → profiles (the statement's way back from billing details, R-113). No cycles ([structure.md](structure.md)); money helpers and words that several features show live in
   `shared/lib/money.ts` and `shared/constants/money-copy.ts`. Add no new edge without listing it here.
+- Two more edges lead to stores: invoices → stores and pay → stores.
+  - invoices: the store a merchant invoice records, its return-link origins and the brand color's pattern (R-134, R-135).
+  - pay: the logo's address (R-135).
 - Checkout `/pay/<token>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed token
   (an on-chain id too, D-86) is a 404; a token the API does not know shows the 404 page. It reads the public
   `GET /v1/invoices/{payToken}` every 15 s through a

@@ -175,6 +175,15 @@ R-134; the full schema is in openapi.yaml. Owner only, like every `{profileId}` 
   - Origins are kept in lower case without the default port, and repeats count once.
   - A personal or freelancer profile is 409 `not_merchant`; another profile's store id is 404 `store_not_found`.
 - The store id is the project ID: public, with no authority (D-31). There is no delete yet: invoices point at stores.
+- Branding (R-135): `brandColor` is `#rrggbb` (kept in lower case) or empty for none; stores read back `logoAt`.
+  - `PUT .../stores/{storeId}/logo` takes the image itself as the body: a PNG or JPEG.
+  - It is at most 1 MB and 1024 pixels a side; anything else is 422.
+  - The API keeps an 8-bit PNG it encodes from the pixels, so nothing else the upload carried is served.
+  - `DELETE .../stores/{storeId}/logo` removes it; both answer the store.
+  - `GET /v1/stores/{storeId}/logo.png` is public, with `Content-Security-Policy: default-src 'none'` and an ETag.
+  - Without a logo it is 404 `logo_not_found`.
+  - Every invoice read, the public one too, has `brand` `{storeId, color, logoAt}`; null without a store.
+  - The invoice and receipt PDFs show the logo in place of Forwend's mark and the color on the header rule.
 
 ## Invoices
 

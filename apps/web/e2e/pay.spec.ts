@@ -628,6 +628,30 @@ test.describe("pay page", () => {
     await expect(page.getByRole("button", { name: "Check status" })).toHaveCount(0);
   });
 
+  test("shows a merchant store's logo in place of the initial tile (R-135)", async ({ page }) => {
+    const store = "33333333-3333-4333-8333-333333333333";
+    // Any PNG will do: a screenshot of the blank page.
+    const png = await page.screenshot({ clip: { x: 0, y: 0, width: 40, height: 20 } });
+    await page.route(`**/api/v1/stores/${store}/logo.png*`, (route) =>
+      route.fulfill({ contentType: "image/png", body: png }),
+    );
+    const brand = { storeId: store, color: "#d01020", logoAt: "2026-10-10T10:00:00Z" };
+    await openPay(page, { ...OPEN, brand });
+    const logo = page.locator(`img[src^="/api/v1/stores/${store}/logo.png?v="]`);
+    await expect(logo).toBeVisible();
+    expect(await logo.evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBe(40);
+    await expect(page.getByRole("heading", { level: 1, name: "Alice Design GmbH" })).toBeVisible();
+    const blocking = async () =>
+      (await new AxeBuilder({ page }).analyze()).violations
+        .filter((v) => v.impact === "serious" || v.impact === "critical")
+        .map((v) => v.id);
+    expect(await blocking()).toEqual([]);
+    await mockInvoice(page, { ...OPEN, brand: { ...brand, logoAt: null } });
+    await page.reload();
+    await expect(page.getByText("A", { exact: true })).toBeVisible();
+    await expect(logo).toHaveCount(0);
+  });
+
   test("shows no address and warns the payer when a term does not match the address", async ({
     page,
   }) => {

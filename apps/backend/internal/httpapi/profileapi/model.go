@@ -88,6 +88,7 @@ type storeBody struct {
 	Name             string   `json:"name"`
 	DefaultExpiresIn int64    `json:"defaultExpiresIn"`
 	AllowedOrigins   []string `json:"allowedOrigins"`
+	BrandColor       string   `json:"brandColor"`
 }
 
 type storeJSON struct {
@@ -95,12 +96,19 @@ type storeJSON struct {
 	Name             string   `json:"name"`
 	DefaultExpiresIn int64    `json:"defaultExpiresIn"`
 	AllowedOrigins   []string `json:"allowedOrigins"`
+	BrandColor       *string  `json:"brandColor"`
+	LogoAt           *string  `json:"logoAt"` // R-135: null without a logo
 	UpdatedAt        string   `json:"updatedAt"`
 }
 
 func toStoreJSON(s profile.Store) storeJSON {
-	return storeJSON{StoreID: s.ID, Name: s.Name, DefaultExpiresIn: s.DefaultExpiresIn,
-		AllowedOrigins: s.AllowedOrigins, UpdatedAt: s.UpdatedAt.UTC().Format(time.RFC3339)}
+	out := storeJSON{StoreID: s.ID, Name: s.Name, DefaultExpiresIn: s.DefaultExpiresIn,
+		AllowedOrigins: s.AllowedOrigins, BrandColor: httpio.OrNull(s.BrandColor),
+		UpdatedAt: s.UpdatedAt.UTC().Format(time.RFC3339)}
+	if s.LogoAt != nil {
+		out.LogoAt = httpio.OrNullTime(*s.LogoAt)
+	}
+	return out
 }
 
 func toMeJSON(list []profile.Profile, onboardedAt *time.Time) meJSON {

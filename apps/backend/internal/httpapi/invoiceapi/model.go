@@ -63,6 +63,7 @@ type invoiceJSON struct {
 	AgreedValue      *agreedJSON `json:"agreedValue"`
 	Client           *clientJSON `json:"client,omitempty"` // owner routes only
 	Store            *storeJSON  `json:"store,omitempty"`  // owner routes only; a merchant invoice's (R-134)
+	Brand            *brandJSON  `json:"brand"`            // a merchant invoice's store branding (R-135)
 	Issuer           *issuerJSON `json:"issuer"`
 	SenderName       *string     `json:"senderName"`
 	ReturnURL        *string     `json:"returnUrl"`
@@ -93,6 +94,12 @@ type clientJSON struct {
 type storeJSON struct {
 	StoreID string `json:"storeId"`
 	Name    string `json:"name"`
+}
+
+type brandJSON struct {
+	StoreID string  `json:"storeId"`
+	Color   *string `json:"color"`
+	LogoAt  *string `json:"logoAt"`
 }
 
 type issuerJSON struct {
@@ -284,6 +291,12 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 	if i := inv.Issuer; i != nil {
 		out.Issuer = &issuerJSON{Name: i.Name, Address: i.Address, Country: i.Country, TaxID: httpio.OrNull(i.TaxID),
 			Email: i.Email}
+	}
+	if inv.StoreID != "" {
+		out.Brand = &brandJSON{StoreID: inv.StoreID, Color: httpio.OrNull(inv.BrandColor)}
+		if inv.LogoAt != nil {
+			out.Brand.LogoAt = httpio.OrNullTime(*inv.LogoAt)
+		}
 	}
 	if withClient {
 		out.Client = &clientJSON{Name: httpio.OrNull(inv.ClientName), Email: httpio.OrNull(inv.ClientEmail),

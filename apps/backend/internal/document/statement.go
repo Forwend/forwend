@@ -34,7 +34,7 @@ type Statement struct {
 
 func StatementPDF(s Statement) ([]byte, error) {
 	period := s.From.Format(time.DateOnly) + " to " + s.To.Format(time.DateOnly)
-	d := open("Statement", period, bmp(s.Holder.Name), s.Issued)
+	d := open("Statement", period, bmp(s.Holder.Name), s.Issued, nil)
 	d.Ln(4)
 	d.rule()
 	d.Ln(6)

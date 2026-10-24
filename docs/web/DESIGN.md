@@ -212,6 +212,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The table shows the store, its project ID, when its checkout closes and its allowed origins.
   - New store and Edit store are form pages laid out like New client, with Store and Checkout panels.
   - Edit store shows the project ID with a Copy button. There is no delete yet.
+  - A Brand panel holds the logo and the accent color (R-135).
+  - The logo shows in a bordered box with Upload or Replace logo, and Remove logo; a chosen file uploads at once.
+  - New store says to save first, then add the logo.
+  - Accent color is a text field for `#rrggbb` with the browser's color picker as its action.
   - New invoice shows a Store select in Details when the profile has two or more stores.
   - Picking a store sets the close to its default, unless a due date or the owner set one.
   - The return link's hint names the store's origins. The invoice list adds the store after the title.
@@ -336,6 +340,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     the address first.
   - Left, top. It says only who asks and how much:
     - The payee name (no display serif) beside a square tile with its initial, on a bordered surface tile.
+    - A merchant store's logo (R-135) takes the tile's place, in a bordered box as tall as the tile.
+    - The box stays light in the dark theme too, since most logos are drawn for a light page.
+    - The store's color is that box's or tile's edge. It never sits behind text, so any color keeps the contrast.
     - "Invoice INV-0001" under the name.
     - The amount (Geist, tabular, featured size) and "on <network>". USD until the payer picks.
   - Left, then, as a hosted invoice page lists them:
