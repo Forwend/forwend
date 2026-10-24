@@ -905,7 +905,7 @@
         "History gets invoice.reopened by the owner; openapi.yaml, the backend and root docs, the diagrams, D-25, D-26, R-21 and R-130 match; unit, lint and typecheck pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "lint",
@@ -985,10 +985,10 @@
         "taskHash": "ed119a62c07bc201",
         "filesHash": "a071ff0035ca1717",
         "proof": {
-          "1": "unit: TestReopenAnInvoiceThatClosedPartlyPaid (expiresAt moved 2 h into the past): reopenable after a partly paid close; reopen 200, partially_paid, closed false, closesAt a day before the settle deadline, expiresAt unchanged, PDF shows the new close; again, and on an open invoice, 409 invoice_not_reopenable; another profile 404; TestReopenThePaidOptionOfAPayerChoosesInvoice reopens the chosen option and keeps the other option's later deposit late; TestReopenNeedsADayBeforeTheSettleDeadline: refused at the margin and while a refund is pending, allowed a second before",
-          "2": "unit: TestReopenCountsHeldAndNewMoneyUntilTheNewClose: 2M on time + 4M late on 5M: paid, owed 5M, 1M stays held, the late deposit's reopen row pays 3M; a deposit before the new close counts; a short close expires it again; a second reopen is refused; TestReopenRules: the database orders expiries and reopen rows, one per deposit, guards the status and refuses an invoice made reopened",
-          "3": "unit: readers use the generated closes_at column; after the reopen and a deposit in the new window, the API shows deposits paid 2M/2M/1M with late false, paidAt the completing deposit, activity not holding the late deposit; undoing ClosedSQL, the deposit paid reader, the late flag, the ledger split or the PDF close each fails the test; TestOpenInvoicesPerProfileAreCapped counts reopened invoices (fails without the fix)",
-          "4": "lint: history invoice.reopened with to; D-25, D-26, R-21, R-77, R-130, openapi.yaml, docs/architecture.md, the backend docs and both diagrams updated; the e2e axe helper scans under reduced motion and restores the page's own setting (e2e/axe-scan.spec.ts failed 4 of 4 before, passes after); unit, lint, typecheck and e2e pass"
+          "1": "unit",
+          "2": "unit",
+          "3": "unit",
+          "4": "lint"
         },
         "review": {
           "result": "pass",
@@ -996,11 +996,18 @@
           "summary": "Delta re-checked, no blocking findings. balance.go:29 comment names the reopen; openapi:1924 dueDate back to the create-time text, matching api.md:174; openapi:527-530 reopen description rewrapped; architecture.md:164 data model names reopened_until and closes_at; get.go deposits() computes late in SQL against each option's own closes_at, and TestReopenThePaidOptionOfAPayerChoosesInvoice checks an unchosen option's deposit after its close reads late. Still open, non-blocking: D-92 'open owner choice' (predates F284); a11y.spec.ts keeps its own axe helper copy. go test for invoice, httpapi/tests, balance, document, job pass; gofmt and vet clean; docs-check 0 errors.",
           "at": "2026-10-24T02:53:15Z",
           "filesHash": "a071ff0035ca1717"
-        }
+        },
+        "commit": "e4dbd54",
+        "doneAt": "2026-10-24T02:53:48Z"
       },
       "branch": "feat/f284-the-owner-reopens-an-expired-partly-paid",
       "baseCommit": "560d2b31fa72fb78303bcd272831dc16f3017382",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f284-the-owner-reopens-an-expired-partly-paid",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
