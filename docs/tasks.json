@@ -1132,7 +1132,7 @@
         "R-130, money-safety.md, api.md and openapi.yaml say the cap and the until field; backend, backend-e2e, unit, lint, typecheck and e2e pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "backend-e2e",
@@ -1225,10 +1225,10 @@
         "taskHash": "4611fcc4f5a663a2",
         "filesHash": "368c94ace80b3019",
         "proof": {
-          "1": "unit: invoice-detail.test.tsx shows the History row as Until <medium date, short time>, the same string as Details and the toast",
-          "2": "backend-e2e: the money-loop gate and exceptions run the worker binary, whose partial close now reads deployedAt from the deployed factory",
-          "3": "backend: database TestMigrationsKeepAReopenedInvoice: DownTo 53 refuses with '1 reopened invoice(s)' and keeps version 54 (it rolled back silently before the guard); TestMigrationsRollBackAndReapply runs every Down and Up again",
-          "4": "e2e: web and live Privy e2e pass on the restarted dev servers at migration 55"
+          "1": "unit",
+          "2": "backend-e2e",
+          "3": "backend",
+          "4": "e2e"
         },
         "review": {
           "result": "pass",
@@ -1236,11 +1236,18 @@
           "summary": "Re-review after the 12:55:11Z verify. Only delta: docs/backend/architecture.md:453-454 now splits the deploy-time bullet into 'It stores 0 when the receiver isn't deployed.' and 'An option without a stored value can't reopen.' (D-84 fixed). Checked: git diff of architecture.md; find for files newer than the 12:39Z verify log shows only docs/backend/architecture.md and docs/tasks.json (harness state) among tracked or new files; diff stat 35 files, same file list and status as the first review. python3 scripts/check-docs.py: 0 errors. Earlier pass stands: no blocking findings; non-blocking: ledger/process.go:195 partial expiry waits on the factory read (safe direction); invoices that closed before migration 55 can't reopen.",
           "at": "2026-10-24T13:04:14Z",
           "filesHash": "368c94ace80b3019"
-        }
+        },
+        "commit": "a3ac2c4",
+        "doneAt": "2026-10-24T13:04:40Z"
       },
       "branch": "fix/f286-a-reopen-ends-a-day-before-the-receiver",
       "baseCommit": "fb72ea3607267eab15a0e8823546f5caf8976e95",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f286-a-reopen-ends-a-day-before-the-receiver",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
