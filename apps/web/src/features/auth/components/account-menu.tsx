@@ -12,7 +12,7 @@ import {
   RowButton,
   useTheme,
 } from "@forwend/ui-web";
-import { Bell, ChevronsUpDown, LogOut, Moon, Settings } from "lucide-react";
+import { Bell, ChevronsUpDown, Coins, LogOut, Moon, Settings } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
@@ -55,6 +55,12 @@ export function AccountMenu({ email, onSignOut, trigger, side = "top" }: Account
           <Link href={APP_ROUTES.notifications}>
             <Bell aria-hidden className="size-[var(--fw-icon-md)]" />
             {AUTH_COPY.notifications}
+          </Link>
+        </MenuItem>
+        <MenuItem asChild>
+          <Link href={APP_ROUTES.networks}>
+            <Coins aria-hidden className="size-[var(--fw-icon-md)]" />
+            {AUTH_COPY.networks}
           </Link>
         </MenuItem>
         {/* Not built yet: shown as coming (the owner's choice), it does nothing. */}

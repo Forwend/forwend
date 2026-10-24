@@ -51,6 +51,7 @@ import {
   offStoreOrigins,
   parseTokenAmount,
   tokenKey,
+  tokensOn,
 } from "@/features/invoices/lib/invoices";
 import type {
   AgreedDraft,
@@ -98,7 +99,7 @@ const NO_CLIENT: ClientBody = { name: "", email: "", address: "", country: "", t
 // With `request` it is a personal profile's request (D-52), handed to onCreated.
 export function NewInvoiceForm({
   profileId,
-  tokens,
+  tokens: profileTokens,
   request,
   start,
   clients,
@@ -118,6 +119,8 @@ export function NewInvoiceForm({
     stores?.find((s) => s.storeId === start?.storeId)?.storeId ?? stores?.[0]?.storeId ?? "",
   );
   const store = stores?.find((s) => s.storeId === storeId);
+  // R-136: the store narrows the profile's tokens.
+  const tokens = tokensOn(profileTokens, store?.tokensOff ?? []);
   const [expiry, setExpiry] = useState<Expiry>(expiryChoice(store?.defaultExpiresIn));
   const [closesOn, setClosesOn] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null);

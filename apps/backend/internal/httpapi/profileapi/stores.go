@@ -38,7 +38,7 @@ func putStore(profiles *profile.Service) http.HandlerFunc {
 		}
 		s, created, err := profiles.SaveStore(r.Context(), r.PathValue("profileId"), r.PathValue("storeId"),
 			profile.StoreDetails{Name: body.Name, DefaultExpiresIn: body.DefaultExpiresIn,
-				AllowedOrigins: body.AllowedOrigins, BrandColor: body.BrandColor})
+				AllowedOrigins: body.AllowedOrigins, BrandColor: body.BrandColor, TokensOff: toPairs(body.TokensOff)})
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

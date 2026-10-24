@@ -162,6 +162,21 @@ R-86; the full schema is in openapi.yaml. Owner only, like every `{profileId}` r
 - An invoice holds no link to a saved client: the web copies the client's details into the create request, so editing
   or deleting a client changes no invoice.
 
+## Networks and tokens
+
+R-136; the full schema is in openapi.yaml. Owner only, like every `{profileId}` route.
+
+- An enabled token is on for a profile until the owner turns it off.
+- `GET /v1/profiles/{profileId}/tokens` lists the enabled tokens with `on`, by chain id.
+- `PUT /v1/profiles/{profileId}/tokens` takes `{"off": [{chainId, token}]}` and replaces the list.
+  - An unknown or disabled token is 422, and so is turning every token off; nothing changes then.
+- A store's `tokensOff` turns more off for its invoices, with the same rules.
+  - Reads list only enabled tokens: one switched off for everyone leaves the lists, and the next save drops it.
+- Create leaves out the tokens off for the profile or its store; a fixed token that is off is 422.
+  - Nothing left is 422 too.
+  - A fixed retainer's later month keeps its token; a payer-chooses month offers what is on then.
+  - Invoices made earlier keep their options.
+
 ## Stores
 
 R-134; the full schema is in openapi.yaml. Owner only, like every `{profileId}` route.
@@ -337,7 +352,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - Payer chooses (R-56, D-75, D-76): create with `amountUsd` alone (a decimal like `"12.50"`) instead of `chainId`,
   `token` and `amount`. The invoice accepts every enabled token on every enabled chain the worker already watches
   (others would miss payments), each at 1 USD per token: the amount in the token's decimals, 422 when they
-  can't hold it exactly. Each option is an `invoices` row of its own with its own on-chain id (the first random, the
+  can't hold it exactly. It leaves out the tokens the profile or its store has off (R-136). Each option is an `invoices` row of its own with its own on-chain id (the first random, the
   others `keccak256(abi.encode(first id, chain id, token))`, so the pay page can tie them to the link), terms and
   receive address, so the watcher, ledger and signer treat it as any invoice; the first row is the invoice (its token is the pay
   link, its number and details are the invoice's). Each option counts toward the profile's open and daily limits.

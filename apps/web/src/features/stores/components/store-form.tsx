@@ -3,6 +3,7 @@
 import {
   Button,
   buttonClasses,
+  Checkbox,
   COPY_STATUS,
   Form,
   SelectField,
@@ -18,6 +19,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { TOKENS_COPY } from "@/features/profiles/constants/profiles-copy";
+import type { TokenRef, TokenSwitch } from "@/features/profiles/types/tokens";
 import { useSaveStoreMutation } from "@/features/stores/api/stores-api";
 import { StoreLogo } from "@/features/stores/components/store-logo";
 import {
@@ -30,6 +33,7 @@ import { invalidStoreField, originLines } from "@/features/stores/lib/stores";
 import type { Store, StoreBody, StoreField } from "@/features/stores/types/stores";
 import { FieldGroup } from "@/shared/components/field-group";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { chainName } from "@/shared/lib/chains";
 
 export interface StoreFormProps {
   profileId: string;
@@ -38,16 +42,28 @@ export interface StoreFormProps {
   closeChoices: readonly SelectOption[];
   /** A new store's close: New invoice's default. */
   defaultClose: number;
+  /** The profile's tokens (R-136): the store narrows the ones on. */
+  tokens: readonly TokenSwitch[];
 }
 
+const tokenKey = (t: TokenRef) => `${t.chainId}:${t.token}`;
+
 // R-134: a new store's id is made once, so a retried save after an error makes one store.
-export function StoreForm({ profileId, store, closeChoices, defaultClose }: StoreFormProps) {
+export function StoreForm({
+  profileId,
+  store,
+  closeChoices,
+  defaultClose,
+  tokens,
+}: StoreFormProps) {
   const [save] = useSaveStoreMutation();
   const toast = useToast();
   const router = useRouter();
   const storeId = useRef(store?.storeId ?? crypto.randomUUID());
   const [closes, setCloses] = useState(String(store?.defaultExpiresIn ?? defaultClose));
   const [color, setColor] = useState(store?.brandColor ?? "");
+  const shownTokens = tokens.filter((t) => t.on);
+  const [tokensOff, setTokensOff] = useState(() => new Set(store?.tokensOff.map(tokenKey)));
   const [errors, setErrors] = useState<Partial<Record<StoreField, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -61,6 +77,15 @@ export function StoreForm({ profileId, store, closeChoices, defaultClose }: Stor
       defaultExpiresIn: Number(closes),
       allowedOrigins: originLines(String(data.get("allowedOrigins") ?? "")),
       brandColor: color.trim(),
+      // Ones the profile has off stay as the store had them: the store can't turn them on.
+      tokensOff: [
+        ...(store?.tokensOff ?? []).filter(
+          (t) => !shownTokens.some((s) => tokenKey(s) === tokenKey(t)),
+        ),
+        ...shownTokens
+          .filter((t) => tokensOff.has(tokenKey(t)))
+          .map(({ chainId, token }) => ({ chainId, token })),
+      ],
     };
     const shown: Partial<Record<StoreField, string>> = {};
     if (!body.name) shown.name = COPY.errors.required;
@@ -68,6 +93,8 @@ export function StoreForm({ profileId, store, closeChoices, defaultClose }: Stor
       shown.brandColor = COPY.errors.invalid.brandColor;
     if (body.allowedOrigins.length > STORE_LIMITS.origins)
       shown.allowedOrigins = COPY.errors.tooMany;
+    if (shownTokens.length > 0 && shownTokens.every((t) => tokensOff.has(tokenKey(t))))
+      shown.tokensOff = COPY.errors.noToken;
     flushSync(() => {
       setErrors(shown);
       setFormError("");
@@ -141,6 +168,33 @@ export function StoreForm({ profileId, store, closeChoices, defaultClose }: Stor
           />
         </div>
       </FieldGroup>
+      {shownTokens.length > 0 ? (
+        <FieldGroup title={COPY.tokensGroup}>
+          <fieldset aria-describedby="store-tokens-hint" className="flex flex-col gap-1">
+            <legend className="sr-only">{COPY.tokensGroup}</legend>
+            {shownTokens.map((t) => (
+              <Checkbox
+                key={tokenKey(t)}
+                label={TOKENS_COPY.toggle(t.symbol, chainName(t.chainId))}
+                checked={!tokensOff.has(tokenKey(t))}
+                onChange={(event) => {
+                  const next = new Set(tokensOff);
+                  if (event.target.checked) next.delete(tokenKey(t));
+                  else next.add(tokenKey(t));
+                  setTokensOff(next);
+                  setErrors((current) => ({ ...current, tokensOff: undefined }));
+                }}
+              />
+            ))}
+          </fieldset>
+          <p role="alert" className="text-sm text-danger empty:hidden">
+            {errors.tokensOff}
+          </p>
+          <p id="store-tokens-hint" className="text-sm text-muted">
+            {COPY.tokensHint}
+          </p>
+        </FieldGroup>
+      ) : null}
       <FieldGroup title={COPY.checkoutGroup}>
         <div className="grid gap-5 sm:grid-cols-2">
           <SelectField

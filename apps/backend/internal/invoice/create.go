@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 	"strings"
 	"time"
 
@@ -108,6 +109,22 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		storeID = &store.ID
 	case r.StoreID != "":
 		return Invoice{}, false, fmt.Errorf("%w: storeId: only a merchant profile has stores", ErrInvalid)
+	}
+	// R-136. A fixed retainer's later month keeps the token the client agreed to.
+	if r.cycle == nil || usd != nil {
+		off, err := profile.TokensOff(ctx, tx, profileID, derefOr(storeID))
+		if err != nil {
+			return Invoice{}, false, err
+		}
+		options = slices.DeleteFunc(options, func(o accepted) bool {
+			return slices.Contains(off, profile.TokenPair{ChainID: o.chainID, Token: o.token})
+		})
+		if len(options) == 0 && usd == nil {
+			return Invoice{}, false, fmt.Errorf("%w: token is turned off for this profile or its store", ErrInvalid)
+		}
+		if len(options) == 0 {
+			return Invoice{}, false, fmt.Errorf("%w: every token is turned off for this profile or its store", ErrInvalid)
+		}
 	}
 	var open, today int
 	if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE closes_at > $2),
@@ -325,4 +342,11 @@ func (s *Service) replace(ctx context.Context, tx pgx.Tx, profileID, old, next s
 		return history.Data{}, err
 	}
 	return history.Data{Invoice: old, Number: oldNumber}, nil
+}
+
+func derefOr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

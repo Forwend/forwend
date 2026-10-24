@@ -85,26 +85,63 @@ func toClientJSON(c profile.Client) clientJSON {
 
 // R-134.
 type storeBody struct {
-	Name             string   `json:"name"`
-	DefaultExpiresIn int64    `json:"defaultExpiresIn"`
-	AllowedOrigins   []string `json:"allowedOrigins"`
-	BrandColor       string   `json:"brandColor"`
+	Name             string      `json:"name"`
+	DefaultExpiresIn int64       `json:"defaultExpiresIn"`
+	AllowedOrigins   []string    `json:"allowedOrigins"`
+	BrandColor       string      `json:"brandColor"`
+	TokensOff        []tokenJSON `json:"tokensOff"`
+}
+
+// R-136: a token by its chain and contract.
+type tokenJSON struct {
+	ChainID uint64 `json:"chainId"`
+	Token   string `json:"token"`
+}
+
+type tokenSwitchJSON struct {
+	ChainID  uint64 `json:"chainId"`
+	Token    string `json:"token"`
+	Symbol   string `json:"symbol"`
+	Decimals int    `json:"decimals"`
+	Network  string `json:"network"`
+	On       bool   `json:"on"`
+}
+
+func toPairs(in []tokenJSON) []profile.TokenPair {
+	out := make([]profile.TokenPair, 0, len(in))
+	for _, t := range in {
+		out = append(out, profile.TokenPair{ChainID: t.ChainID, Token: t.Token})
+	}
+	return out
+}
+
+func toTokensJSON(list []profile.TokenSwitch) []tokenSwitchJSON {
+	out := make([]tokenSwitchJSON, 0, len(list))
+	for _, t := range list {
+		out = append(out, tokenSwitchJSON{ChainID: t.ChainID, Token: t.Token, Symbol: t.Symbol, Decimals: t.Decimals,
+			Network: t.Network, On: t.On})
+	}
+	return out
 }
 
 type storeJSON struct {
-	StoreID          string   `json:"storeId"`
-	Name             string   `json:"name"`
-	DefaultExpiresIn int64    `json:"defaultExpiresIn"`
-	AllowedOrigins   []string `json:"allowedOrigins"`
-	BrandColor       *string  `json:"brandColor"`
-	LogoAt           *string  `json:"logoAt"` // R-135: null without a logo
-	UpdatedAt        string   `json:"updatedAt"`
+	StoreID          string      `json:"storeId"`
+	Name             string      `json:"name"`
+	DefaultExpiresIn int64       `json:"defaultExpiresIn"`
+	AllowedOrigins   []string    `json:"allowedOrigins"`
+	BrandColor       *string     `json:"brandColor"`
+	LogoAt           *string     `json:"logoAt"` // R-135: null without a logo
+	TokensOff        []tokenJSON `json:"tokensOff"`
+	UpdatedAt        string      `json:"updatedAt"`
 }
 
 func toStoreJSON(s profile.Store) storeJSON {
 	out := storeJSON{StoreID: s.ID, Name: s.Name, DefaultExpiresIn: s.DefaultExpiresIn,
-		AllowedOrigins: s.AllowedOrigins, BrandColor: httpio.OrNull(s.BrandColor),
+		AllowedOrigins: s.AllowedOrigins, BrandColor: httpio.OrNull(s.BrandColor), TokensOff: []tokenJSON{},
 		UpdatedAt: s.UpdatedAt.UTC().Format(time.RFC3339)}
+	for _, t := range s.TokensOff {
+		out.TokensOff = append(out.TokensOff, tokenJSON{ChainID: t.ChainID, Token: t.Token})
+	}
 	if s.LogoAt != nil {
 		out.LogoAt = httpio.OrNullTime(*s.LogoAt)
 	}

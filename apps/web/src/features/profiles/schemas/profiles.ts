@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
-import { apiTime, evmAddress } from "@/shared/schemas/api";
+import { apiTime, count, evmAddress } from "@/shared/schemas/api";
 
 /** One profile as the API returns it (apps/backend/api/openapi.yaml, Profile). */
 export const profileSchema = z.object({
@@ -36,6 +36,21 @@ export const billingDetailsBodySchema = z.object({
 
 /** GET /v1/profiles/{profileId}/billing-details. */
 export const billingDetailsSchema = billingDetailsBodySchema.extend({ updatedAt: apiTime });
+
+/** A token by its chain and contract (R-136). */
+export const tokenRefSchema = z.object({ chainId: count, token: evmAddress });
+
+/** GET and PUT /v1/profiles/{id}/tokens (R-136): every enabled token, on until the profile turns it off. */
+export const profileTokensSchema = z.object({
+  tokens: z.array(
+    tokenRefSchema.extend({
+      symbol: z.string(),
+      decimals: count,
+      network: z.string(),
+      on: z.boolean(),
+    }),
+  ),
+});
 
 /** GET and PUT /v1/profiles/{id}/notifications (R-80); a null address means none. */
 export const notificationsSchema = z.object({

@@ -78,6 +78,7 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
 - Two more edges lead to stores: invoices → stores and pay → stores.
   - invoices: the store a merchant invoice records, its return-link origins and the brand color's pattern (R-134, R-135).
   - pay: the logo's address (R-135).
+- invoices → profiles and stores → profiles: the token switches and their types (R-136).
 - Checkout `/pay/<token>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed token
   (an on-chain id too, D-86) is a 404; a token the API does not know shows the 404 page. It reads the public
   `GET /v1/invoices/{payToken}` every 15 s through a

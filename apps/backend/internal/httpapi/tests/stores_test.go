@@ -58,7 +58,7 @@ func TestStores(t *testing.T) {
 	delete(got, "storeId")
 	delete(got, "updatedAt")
 	if want := map[string]any{"name": "Alice Shop", "defaultExpiresIn": float64(604800),
-		"allowedOrigins": []any{}, "brandColor": nil, "logoAt": nil}; !reflect.DeepEqual(got, want) {
+		"allowedOrigins": []any{}, "brandColor": nil, "logoAt": nil, "tokensOff": []any{}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("the first store is %v, want %v", got, want)
 	}
 
@@ -71,7 +71,7 @@ func TestStores(t *testing.T) {
 	delete(made.body, "updatedAt")
 	want := map[string]any{"storeId": storeB, "name": "Pro shop", "defaultExpiresIn": float64(3600),
 		"allowedOrigins": []any{"https://shop.example.com", "https://dev.example.com:8443"}, "brandColor": nil,
-		"logoAt": nil}
+		"logoAt": nil, "tokensOff": []any{}}
 	if !reflect.DeepEqual(made.body, want) {
 		t.Fatalf("PUT returned %v, want %v", made.body, want)
 	}

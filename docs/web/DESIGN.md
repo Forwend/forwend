@@ -212,6 +212,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The table shows the store, its project ID, when its checkout closes and its allowed origins.
   - New store and Edit store are form pages laid out like New client, with Store and Checkout panels.
   - Edit store shows the project ID with a Copy button. There is no delete yet.
+  - A Networks and tokens panel (R-136) has a checkbox per token the profile has on; one must stay checked.
   - A Brand panel holds the logo and the accent color (R-135).
   - The logo shows in a bordered box with Upload or Replace logo, and Remove logo; a chosen file uploads at once.
   - New store says to save first, then add the logo.
@@ -219,6 +220,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - New invoice shows a Store select in Details when the profile has two or more stores.
   - Picking a store sets the close to its default, unless a due date or the owner set one.
   - The return link's hint names the store's origins. The invoice list adds the store after the title.
+- Networks and tokens (R-136) opens from the account menu, after Email notifications, for every profile.
+  - It is laid out like Email notifications: one panel with a switch per token, named "USDC on Base Sepolia".
+  - A switch saves at once and says so in a toast.
+  - The last token on can't be turned off; a quiet line under the panel says one stays on.
+  - New invoice offers only the tokens on for the profile and the picked store.
 - Jobs (R-101) sits in a freelancer's Get paid group after Invoices. It is laid out like Clients:
   - The toolbar searches the title and client, with New job at its end (beside the title on phones).
   - The table shows the job, client, total, state and created day.

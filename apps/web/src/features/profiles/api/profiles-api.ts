@@ -6,10 +6,12 @@ import {
   meSchema,
   notificationsSchema,
   profileSchema,
+  profileTokensSchema,
 } from "@/features/profiles/schemas/profiles";
 import type { BillingDetails, BillingDetailsBody } from "@/features/profiles/types/billing-details";
 import type { Notifications } from "@/features/profiles/types/notifications";
 import type { Me, Profile, ProfileKind } from "@/features/profiles/types/profile";
+import type { TokenRef, TokenSwitch } from "@/features/profiles/types/tokens";
 import { apiSlice } from "@/shared/api/api-slice";
 
 const NOT_FOUND = 404;
@@ -18,6 +20,7 @@ const billingDetailsUrl = (profileId: string) =>
   `/v1/profiles/${encodeURIComponent(profileId)}/billing-details`;
 const notificationsUrl = (profileId: string) =>
   `/v1/profiles/${encodeURIComponent(profileId)}/notifications`;
+const tokensUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/tokens`;
 
 export const profilesApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
@@ -100,6 +103,26 @@ export const profilesApi = apiSlice.injectEndpoints({
         }
       },
     }),
+    /** R-136: every enabled token, on until the profile turns it off. */
+    // The schema checks the list itself, as upsertQueryData below runs the endpoint's schemas on it.
+    getProfileTokens: build.query<TokenSwitch[], string>({
+      query: (profileId) => tokensUrl(profileId),
+      transformResponse: (data: { tokens: TokenSwitch[] }) => data.tokens,
+      responseSchema: profileTokensSchema.shape.tokens,
+    }),
+    saveProfileTokens: build.mutation<TokenSwitch[], { profileId: string; off: TokenRef[] }>({
+      query: ({ profileId, off }) => ({ url: tokensUrl(profileId), method: "PUT", body: { off } }),
+      transformResponse: (data: { tokens: TokenSwitch[] }) => data.tokens,
+      responseSchema: profileTokensSchema.shape.tokens,
+      async onQueryStarted({ profileId }, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(profilesApi.util.upsertQueryData("getProfileTokens", profileId, data));
+        } catch {
+          // The page shows the error.
+        }
+      },
+    }),
   }),
 });
 
@@ -110,4 +133,6 @@ export const {
   useSaveBillingDetailsMutation,
   useGetNotificationsQuery,
   useSaveNotificationsMutation,
+  useGetProfileTokensQuery,
+  useSaveProfileTokensMutation,
 } = profilesApi;

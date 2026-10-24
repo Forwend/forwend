@@ -38,6 +38,9 @@ export const STORES_COPY = {
     "Like #1f6a8c. It edges your logo on the pay page and colors the line under the PDF header.",
   pickColor: "Pick the accent color",
   checkoutGroup: "Checkout",
+  tokensGroup: "Networks and tokens",
+  tokensHint:
+    "This store's invoices offer only the ones checked. The rest of your profile's are off on its Networks and tokens page.",
   name: "Store name",
   projectId: "Project ID",
   projectIdHint: "Public. It names this store in the developer tools and gives no access.",
@@ -57,6 +60,7 @@ export const STORES_COPY = {
     required: "Fill in this field.",
     failed: "We could not save the store. Check the details and try again.",
     tooMany: `Use at most ${STORE_LIMITS.origins} origins.`,
+    noToken: "Keep at least one token on.",
     logo: `Use a PNG or JPEG of at most 1 MB and ${STORE_LIMITS.logoSide} px a side.`,
     logoFailed: "We could not change the logo. Try again.",
     invalid: {
@@ -64,6 +68,8 @@ export const STORES_COPY = {
       defaultExpiresIn: "Choose when the checkout closes.",
       allowedOrigins: `Use https origins only, like https://shop.example.com, without a path. At most ${STORE_LIMITS.origins}.`,
       brandColor: "Enter a color like #1f6a8c, or leave it empty.",
+      tokensOff:
+        "Keep at least one token on. If a token was just switched off for everyone, reload the page.",
     },
   },
 } as const;

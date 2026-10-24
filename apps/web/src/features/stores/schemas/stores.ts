@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tokenRefSchema } from "@/features/profiles/schemas/profiles";
 import { BRAND_COLOR_PATTERN } from "@/features/stores/constants/stores";
 import { apiTime } from "@/shared/schemas/api";
 
@@ -8,6 +9,8 @@ export const storeBodySchema = z.object({
   defaultExpiresIn: z.number().int(),
   allowedOrigins: z.array(z.string()),
   brandColor: z.string().regex(BRAND_COLOR_PATTERN),
+  // More tokens off for the store's invoices than the profile has off (R-136).
+  tokensOff: z.array(tokenRefSchema),
 });
 
 /** One store (apps/backend/api/openapi.yaml, Store); storeId is its project ID (D-31). */
