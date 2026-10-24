@@ -23,7 +23,7 @@ import (
 // balances reads each chain's second RPC (D-15); webURL is the pay links' origin; userBurst 0 keeps mid.UserBurst.
 func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, balances ledger.BalanceOf,
 	webURL string, userBurst int) http.Handler {
-	guards := mid.NewGuards(verifier, auth.NewService(pool), userBurst)
+	guards := mid.NewGuards(verifier, auth.NewService(pool), wallets, userBurst)
 	mux := http.NewServeMux()
 	healthapi.Routes(mux, pool)
 	profiles := profile.NewService(pool, wallets)

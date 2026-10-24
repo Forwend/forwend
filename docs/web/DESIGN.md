@@ -114,6 +114,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - ⌘K (or the search field) opens one command dialog: pages, actions, other profiles and recent transactions,
   filtered as you type. Arrow keys move, Enter opens, Escape closes.
 - The account menu holds the app's one theme control, a Dark mode switch item, on desktop and phones.
+  - Sign out everywhere (R-137) follows Sign out and asks first: Keep me signed in, or the danger Sign out everywhere.
+- Confirm it's you (R-137) opens over any page when a change needs a fresh sign-in.
+  - It sends the code to the login email at once and says where; the code boxes are the sign-in page's.
+  - Send a new code, Cancel and Confirm sit at its foot. Confirm repeats the change; Cancel leaves it unsaved.
+  - A user with no email login reads that they need one, with Close.
 - Phones: the header becomes a top bar with the account initial, a search pill and notifications. A bottom tab bar has Home, Transactions, Balances and More;
   large icons over labels, with the whole current tab on the second surface. More opens a sheet: first a profile card
   (avatar, name, Switch profile and an up/down selector icon, then Billing details for businesses), then the remaining

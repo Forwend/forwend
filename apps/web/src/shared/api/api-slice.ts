@@ -1,24 +1,30 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { type AskFreshSignIn, withFreshSignIn } from "@/shared/api/fresh-sign-in";
 import { withRateLimit } from "@/shared/api/rate-limit";
 import { API_BASE } from "@/shared/config/api";
 
-/** What the store gives each request: a fresh Privy access token, or null when signed out. */
+/** What the store gives each request: a fresh Privy access token, or null when signed out. freshSignIn asks the
+ * signed-in user to sign in again (R-137); public pages have none. */
 export interface ApiExtra {
   getAccessToken: () => Promise<string | null>;
+  freshSignIn?: AskFreshSignIn;
 }
 
 // One slice for our backend; each feature adds its endpoints with injectEndpoints.
 export const apiSlice = createApi({
   reducerPath: "api",
-  baseQuery: withRateLimit(
-    fetchBaseQuery({
-      baseUrl: API_BASE,
-      prepareHeaders: async (headers, { extra }) => {
-        const token = await (extra as ApiExtra).getAccessToken();
-        if (token) headers.set("Authorization", `Bearer ${token}`);
-        return headers;
-      },
-    }),
+  baseQuery: withFreshSignIn(
+    withRateLimit(
+      fetchBaseQuery({
+        baseUrl: API_BASE,
+        prepareHeaders: async (headers, { extra }) => {
+          const token = await (extra as ApiExtra).getAccessToken();
+          if (token) headers.set("Authorization", `Bearer ${token}`);
+          return headers;
+        },
+      }),
+    ),
+    (extra) => (extra as ApiExtra).freshSignIn,
   ),
   // A response that breaks its schema is a failed request, shown like any other failure: the page never draws money
   // from a value it cannot trust. The log names the endpoint and the fields, never the values.

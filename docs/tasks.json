@@ -1,138 +1,154 @@
 {
   "schemaVersion": 2,
-  "nextId": 293,
+  "nextId": 295,
   "tasks": [
     {
-      "id": "F292",
+      "id": "F293",
       "type": "feat",
-      "behavior": "A profile turns tokens off, and a store narrows them",
+      "behavior": "Saving billing details needs a fresh sign-in, and Sign out everywhere ends every session",
       "acceptance": [
-        "GET /v1/profiles/{profileId}/tokens lists the enabled tokens with on; PUT replaces the off list; an unknown or disabled token, or every token off, is 422; another user 403",
-        "A store saves tokensOff (enabled tokens, never all of them; otherwise 422) and reads it back",
-        "Create offers only the tokens on for the profile and the store: payer chooses leaves the rest out, a fixed token that is off is 422, nothing left is 422; a fixed retainer's later month keeps its token and a payer-chooses month offers what is on then; invoices made earlier keep theirs",
-        "The Networks and tokens page (account menu) switches each token by network; the store form narrows the profile's tokens; New invoice offers only what is on; axe finds 0 serious or critical violations",
-        "R-136, api.md, openapi.yaml, the architecture docs and DESIGN.md describe it; required checks, backend-e2e and a11y-e2e pass"
+        "PUT billing-details needs a token at most 5 minutes old whose iat equals the latest_verified_at of the user's email or passkey account at Privy; otherwise 401 reauth_required and nothing is saved; a Privy failure saves nothing",
+        "Every signed-in route refuses a token issued before the user's sessions_revoked_at with 401; POST /v1/me/sign-out-everywhere freezes and unfreezes the user at Privy, then sets it; a failed freeze sets nothing, the unfreeze is always sent, and a failed unfreeze still sets it",
+        "On reauth_required the web opens a dialog that sends a code to the login email, signs in again and repeats the request with the new token; Cancel leaves it unsaved; a user with no email login is told so",
+        "The account menu offers Sign out everywhere behind a confirm dialog and signs out; axe finds 0 serious or critical violations on both dialogs",
+        "R-137, api.md, openapi.yaml and the architecture docs describe it; required checks and a11y-e2e pass"
       ],
-      "dependsOn": [
-        "F290"
-      ],
+      "dependsOn": [],
       "state": "passing",
       "verification": [
         "unit",
-        "backend-e2e",
         "e2e",
         "a11y-e2e",
         "docs-check"
       ],
       "refs": [
-        "R-136",
-        "D-75",
-        "D-30"
+        "R-137",
+        "D-49",
+        "D-63"
       ],
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-24 review fail by reviewer: BLOCKING: (1) apps/backend/internal/profile/stores.go:109-111 reads every store_tokens_off row, including tokens later disabled; store-form.tsx:80-87 resends them, and enabledOff (profile/tokens.go:89) refuses them with 422. Once an operator disables a token a store had off, every save of that store fails with the generic error, and the owner cannot uncheck it (it is not shown). Reproduced with a go test -overlay repro: GET returns the token, PUT of the same tokensOff is 422. Fix: list only enabled tokens in the read (or drop disabled ones in enabledOff). (2) apps/backend/internal/profile/tokens.go:95: with no enabled token, len(out) >= len(enabled) is 0 >= 0, so every store save (even without tokensOff) and PUT tokens {off: []} is 422 'one stays on'. Tokens are disabled by default (00002) and local dev runs ENABLE_TESTNET_USDC=0, so this breaks R-134 store saves on a fresh database. Reproduced. Fix: refuse only when len(enabled) > 0 and every one is off; add both cases to TestTokensOff. NON-BLOCKING: (3) profile/tokens.go:50 SetTokensOff does not lock the profile row (SaveStore does, stores.go:161); two concurrent PUTs can leave every token off, or one gets a primary-key 500. (4) profile/tokens.go:89,96 name 'off' on the store route, whose field is tokensOff; web invalidStoreField (stores/lib/stores.ts:21) cannot map it, so stores-copy.ts:72 never shows. (5) No test covers a payer-chooses retainer month (dropping '|| usd != nil' at invoice/create.go:114 fails nothing), and none shows New invoice hiding an off token (invoices.ts:169, new-invoice-screen.tsx:56-65) though proof 4 claims it; the API still enforces it. (6) No screenshots in docs/runs for the new page and store panel (workflow step 4). (7) D-84: docs/PROJECT.md:188 'A new invoice offers only ... is 422.' is 28 words. (8) Stale: docs/backend/api.md:352 and openapi.yaml:538 (and R-56) still say payer chooses accepts every enabled token. (9) profiles-copy.ts:62-63: the R-80 comment now sits above TOKENS_COPY; NOTIFICATIONS_COPY lost it. (10) Duplicates: stores-copy.ts:44 tokenLabel equals TOKENS_COPY.toggle; stores-copy.ts:64 and :72 are the same text. OK: the create filter runs after the profile lock and store lookup and before the open/daily caps; lines use the remaining first option; replay comes before the filter; jobs and revise go through Create; the fixed-retainer rule holds; routes are ProfileScoped and in the auth table; the upsert works with responseSchema on the list (RTK 2.13 runs both schemas, not transformResponse, on upsert); no import cycles, new edges are listed. Ran TestTokensOff, TestStores, TestProfileRoutes*, TestProfilesBelong*, TestFixedRetainer*: pass.",
-        "2026-10-24 review pass by reviewer: Re-review of the delta after the first fail. Both blocking findings are fixed. (1) profile/stores.go storeColumns now reads only tokensOff rows whose token and chain are enabled, so a read saves back; (2) profile/tokens.go:100 refuses every token off only when one is enabled. TestTokensOff guards both: reverting each fix (checked with go test -overlay mutations) fails at tokens_test.go:122 and :133. Earlier non-blocking notes addressed: SetTokensOff locks the profile row; 422s name off or tokensOff and invalidStoreField maps tokensOff; TestPayerChoosesRetainerMonthOffersWhatIsOn added; tokensOn unit tests added; screenshots in docs/runs/F292 (light, dark, store panel) look right; R-136 split; R-80 comment restored; store form uses TOKENS_COPY.toggle. NON-BLOCKING: (a) openapi.yaml:1795 Store.tokensOff and docs/backend/api.md Networks and tokens do not say that a disabled token leaves the store read and the next save drops its row. (b) D-84: the R-56 sentence (docs/PROJECT.md:105) grew to about 46 words and the payer-chooses sentence at docs/backend/api.md:352-354 grew too; both were over 25 before. (c) stores-copy.ts:71 'reload the page' also shows for the local all-unchecked check (store-form.tsx:97), where it does not apply. Ran TestTokensOff, TestStores, TestProfileRoutesAreAllListed, TestProfilesBelongToTheirUser, TestFixedRetainerMonthKeepsATokenTurnedOff, TestPayerChoosesRetainerMonthOffersWhatIsOn and the tokensOn vitest: all pass.",
-        "2026-10-24 review pass by reviewer: Re-review of the last delta: all three notes fixed. Store form: unchecking every token shows COPY.errors.noToken (store-form.tsx:97, stores-copy.ts:63); the reload text (stores-copy.ts:72) shows only for the API's tokensOff 422 through invalidStoreField. openapi.yaml:1796 Store.tokensOff and docs/backend/api.md Networks and tokens say reads list only enabled tokens and the next save drops a disabled one, matching profile/stores.go. R-56 keeps its original first sentence (38 words, as on main) and adds 'Payer chooses offers only what the profile and store have on (R-136).'; api.md:353 adds the R-136 rule as its own short sentence. No added sentence is over 25 words. Earlier passes still hold. NON-BLOCKING: api.md:355 is a 183-character line (the file already has others), and openapi.yaml:538-539 still carries the R-136 clause inside the long createInvoice sentence."
+        "2026-10-24 review fail by reviewer: BLOCKING 1: apps/backend/internal/privy/privy.go:101-111 EndSessions sends the freeze on the request context. If the client disconnects (closes the tab) or the SDK times out while the freeze is in flight, Privy may have frozen the user, but the function returns before the unfreeze. The comment says the unfreeze runs even if the caller gives up, which is false for this phase. Request contexts do get canceled here: the e2e log shows 'context canceled' errors. A retry then starts with Freeze on a user who is already frozen, and that case is not measured; if Privy refuses it, the unfreeze never runs again. The user is then locked out with no self-service way back. Fix: run EndSessions and the UPDATE in profile/sessions.go:15 on context.WithoutCancel, and send the unfreeze whenever a freeze was sent, even when the freeze failed. Add a test for an unfreeze failure: the fake's FailFreezes fails only POST. BLOCKING 2: docs/PROJECT.md:189 R-137, and accept 2, say sign-out-everywhere 'sets it, then freezes and unfreezes'. The code and api.md do Privy first, then the cutoff. The written order is the unsafe one: on a Privy failure the user is cut off, but the attacker's refresh tokens live and give post-cutoff tokens. Fix the row and the accept line. NON-BLOCKING: (a) profile/sessions.go:15 date_trunc plus auth/service.go:24 strict > let a token issued in the cutoff second, before the freeze, pass. Hard to exploit, but dropping date_trunc closes it at no cost. (b) httpapi/tests/auth_test.go:71 signedInAt is fixed at package init, so every billing PUT in the package fails once it has run 5 minutes. It runs about 61s now; -count=5 or a slow CI breaks it. (c) Test gaps: other account types (google_oauth, wallet) not shown to be ignored; the dialog's Cancel resolving false is untested, and a broken onClose would hang the save; no test that a second reauth_required is not asked again. (d) apps/web/e2e/privy/navigation.spec.ts:911: the reasoning holds (workers 1, file order, the next test mocks logout and the API). But the state is saved only at the end, so a failure after the re-sign-in leaves later tests on the replaced session; save it right after the dialog closes. Both API answers are mocked, so the real iat = latest_verified_at match rests on S-8 only. (e) mid/auth.go:29 CheckSession queries the DB before the rate limit, one query per flooded request; acceptable trade-off, worth knowing. (f) account-menu.tsx:34/121 the mutation's isError persists, so reopening the dialog shows the old error. (g) D-49 limit: a stolen session can link its own passkey at Privy, sign in with it and pass the fresh check; record it for D-49/F294. (h) docs/backend/api.md:555 the Guards list does not name FreshSignIn. Checked fine: guard order (user, cutoff, limit, owner, then Privy), every signed-in route goes through the guards, missing iat reads as epoch, a Privy failure gives 500 with nothing saved, logs hold only the route and the DID, web retry once with one shared dialog, public stores have no freshSignIn, kit Dialog onClose, the auth-api placement, doc sentence lengths. Backend tests TestBillingDetailsNeedAFreshSignIn and TestSignOutEverywhere pass; vitest src/shared/api and src/providers: 12 pass.",
+        "2026-10-24 review pass by reviewer: Re-review of the delta. Both blocking findings are fixed. (1) privy.go EndSessions runs on context.WithoutCancel, gives each call its own timeout and always sends the unfreeze. profile/sessions.go sets the cutoff only after a freeze that worked, also on WithoutCancel. TestSignOutEverywhere covers a failed freeze (unfreeze sent last, session kept) and a failed unfreeze (500, older token 401). The fake records failed calls and has FailUnfreezes. (2) R-137, accept 2, api.md and openapi.yaml give the code's order: freeze and unfreeze, then the cutoff. The earlier notes are addressed. The cutoff is now() with no date_trunc. signedInAt is set per invoiceAPI, and no test runs in parallel. There are tests for Google not counting, for a second reauth_required being the answer, and for Cancel in the live test. The live test saves the session right after the dialog closes. The menu dialog resets on close. Q-13 records the passkey-linking gap, and the api.md guards list names FreshSignIn. NON-BLOCKING: after a freeze that worked, a failed unfreeze (after the SDK's retries) still locks the user out. The cutoff now refuses their own token, so Try again in the dialog answers 401, and a frozen user can't sign in. Recovery is by hand at Privy, from the error log line that names the DID. This trade-off is chosen and documented. Consider an alert or a later retry. Ran: go test -race on TestBillingDetailsNeedAFreshSignIn, TestSignOutEverywhere, TestBusinessInvoiceNeedsBillingDetails and TestProfileRoutes*: ok. vitest src/shared/api and src/providers: 13 pass. The verify logs from 2026-10-24T23:01:30Z show the live suite at 44 passed, including both new tests."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-24T20:31:35Z",
+        "at": "2026-10-24T23:01:30Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 175.1,
-            "log": "docs/runs/F292-20261024T203135Z-unit.log"
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 19.2,
-            "log": "docs/runs/F292-20261024T203135Z-backend-e2e.log"
+            "seconds": 180.2,
+            "log": "docs/runs/F293-20261024T230130Z-unit.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 218.1,
-            "log": "docs/runs/F292-20261024T203135Z-e2e.log"
+            "seconds": 230.2,
+            "log": "docs/runs/F293-20261024T230130Z-e2e.log"
           },
           {
             "id": "a11y-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 15.9,
-            "log": "docs/runs/F292-20261024T203135Z-a11y-e2e.log"
+            "seconds": 15.6,
+            "log": "docs/runs/F293-20261024T230130Z-a11y-e2e.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F292-20261024T203135Z-docs-check.log"
+            "log": "docs/runs/F293-20261024T230130Z-docs-check.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.9,
-            "log": "docs/runs/F292-20261024T203135Z-harness.log"
+            "seconds": 1.6,
+            "log": "docs/runs/F293-20261024T230130Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F292-20261024T203135Z-lint.log"
+            "log": "docs/runs/F293-20261024T230130Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.8,
-            "log": "docs/runs/F292-20261024T203135Z-typecheck.log"
+            "log": "docs/runs/F293-20261024T230130Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
             "seconds": 3.8,
-            "log": "docs/runs/F292-20261024T203135Z-build.log"
+            "log": "docs/runs/F293-20261024T230130Z-build.log"
           }
         ],
-        "taskHash": "29da77f410fdfcfe",
-        "filesHash": "8f02914530e974d5",
+        "taskHash": "9cc91265dfe4dba1",
+        "filesHash": "b51686cb1a21223a",
         "proof": {
-          "1": "unit: TestTokensOff, TestProfileRoutesAreAllListed, TestProfilesBelongToTheirUser",
-          "2": "unit: TestTokensOff (store tokensOff, disabled token, no token enabled), TestStores",
-          "3": "unit: TestTokensOff, TestFixedRetainerMonthKeepsATokenTurnedOff, TestPayerChoosesRetainerMonthOffersWhatIsOn, tokensOn",
-          "4": "e2e: live navigation.spec.ts Networks and tokens, invoices.spec.ts store token checkbox; docs/runs/F292 screenshots; a11y-e2e",
-          "5": "docs-check: R-136, R-56, api.md, openapi.yaml, architecture docs, DESIGN.md; backend-e2e"
+          "1": "unit: TestBillingDetailsNeedAFreshSignIn",
+          "2": "unit: TestSignOutEverywhere, TestProfilesBelongToTheirUser",
+          "3": "e2e: live navigation.spec.ts fresh sign-in test; fresh-sign-in.test.ts",
+          "4": "e2e: live navigation.spec.ts Sign out everywhere test; a11y-e2e",
+          "5": "docs-check: R-137, D-93, Q-13, api.md, openapi.yaml, architecture docs, DESIGN.md"
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Re-review of the last delta: all three notes fixed. Store form: unchecking every token shows COPY.errors.noToken (store-form.tsx:97, stores-copy.ts:63); the reload text (stores-copy.ts:72) shows only for the API's tokensOff 422 through invalidStoreField. openapi.yaml:1796 Store.tokensOff and docs/backend/api.md Networks and tokens say reads list only enabled tokens and the next save drops a disabled one, matching profile/stores.go. R-56 keeps its original first sentence (38 words, as on main) and adds 'Payer chooses offers only what the profile and store have on (R-136).'; api.md:353 adds the R-136 rule as its own short sentence. No added sentence is over 25 words. Earlier passes still hold. NON-BLOCKING: api.md:355 is a 183-character line (the file already has others), and openapi.yaml:538-539 still carries the R-136 clause inside the long createInvoice sentence.",
-          "at": "2026-10-24T20:39:25Z",
-          "filesHash": "8f02914530e974d5"
+          "summary": "Re-review of the delta. Both blocking findings are fixed. (1) privy.go EndSessions runs on context.WithoutCancel, gives each call its own timeout and always sends the unfreeze. profile/sessions.go sets the cutoff only after a freeze that worked, also on WithoutCancel. TestSignOutEverywhere covers a failed freeze (unfreeze sent last, session kept) and a failed unfreeze (500, older token 401). The fake records failed calls and has FailUnfreezes. (2) R-137, accept 2, api.md and openapi.yaml give the code's order: freeze and unfreeze, then the cutoff. The earlier notes are addressed. The cutoff is now() with no date_trunc. signedInAt is set per invoiceAPI, and no test runs in parallel. There are tests for Google not counting, for a second reauth_required being the answer, and for Cancel in the live test. The live test saves the session right after the dialog closes. The menu dialog resets on close. Q-13 records the passkey-linking gap, and the api.md guards list names FreshSignIn. NON-BLOCKING: after a freeze that worked, a failed unfreeze (after the SDK's retries) still locks the user out. The cutoff now refuses their own token, so Try again in the dialog answers 401, and a frozen user can't sign in. Recovery is by hand at Privy, from the error log line that names the DID. This trade-off is chosen and documented. Consider an alert or a later retry. Ran: go test -race on TestBillingDetailsNeedAFreshSignIn, TestSignOutEverywhere, TestBusinessInvoiceNeedsBillingDetails and TestProfileRoutes*: ok. vitest src/shared/api and src/providers: 13 pass. The verify logs from 2026-10-24T23:01:30Z show the live suite at 44 passed, including both new tests.",
+          "at": "2026-10-24T23:10:28Z",
+          "filesHash": "b51686cb1a21223a"
         },
-        "commit": "fd0cf5d",
-        "doneAt": "2026-10-24T21:31:26Z"
+        "commit": "a6a8dbe",
+        "doneAt": "2026-10-24T23:50:15Z"
       },
-      "branch": "feat/f292-a-profile-turns-chains-and-tokens-off-an",
-      "baseCommit": "bf4c9e216ff5ca41bfb5a9107fa56f3e0d56a954",
+      "branch": "feat/f293-saving-billing-details-needs-a-fresh-sig",
+      "baseCommit": "571374f06d35a6a6ae3e3fc1f4b0ada8dcd21c89",
       "failedVerifies": 0,
       "delivery": {
         "mode": "pr",
-        "branch": "feat/f292-a-profile-turns-chains-and-tokens-off-an",
+        "branch": "feat/f293-saving-billing-details-needs-a-fresh-sig",
         "base": "main"
       }
+    },
+    {
+      "id": "F294",
+      "type": "feat",
+      "behavior": "A merchant profile has a team with Admin, Developer and Finance roles",
+      "acceptance": [
+        "Email invites are single use, hashed, bound to the invited email and expire in 7 days; roles follow D-93, every profile route asks for a permission from one map, and a test fails when a route has none; changing a role needs a fresh sign-in (D-63); the last Admin can't leave"
+      ],
+      "dependsOn": [
+        "F293"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e",
+        "a11y-e2e"
+      ],
+      "refs": [
+        "D-93",
+        "D-30",
+        "D-61"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

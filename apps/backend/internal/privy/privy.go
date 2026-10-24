@@ -79,6 +79,43 @@ func (c *Client) LoginEmail(ctx context.Context, privyUserID string) (string, er
 	return google, nil
 }
 
+// SignInTimes are the latest_verified_at of the user's email and passkey accounts, in Unix seconds (D-49).
+func (c *Client) SignInTimes(ctx context.Context, privyUserID string) ([]int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, Timeout)
+	defer cancel()
+	u, err := c.sdk.Users.Get(ctx, privyUserID)
+	if err != nil {
+		return nil, fmt.Errorf("read Privy user: %w", err)
+	}
+	var times []int64
+	for _, a := range u.LinkedAccounts {
+		if a.Type == "email" || a.Type == "passkey" {
+			times = append(times, int64(a.LatestVerifiedAt))
+		}
+	}
+	return times, nil
+}
+
+// EndSessions freezes the user, which ends every session and refresh token at Privy, then unfreezes them so they can
+// sign in again (D-49). ended reports that the freeze succeeded. Neither call stops when the caller gives up, and the
+// unfreeze is sent even after a failed freeze, which may still have landed: a frozen user can't sign in.
+func (c *Client) EndSessions(ctx context.Context, privyUserID string) (ended bool, err error) {
+	ctx = context.WithoutCancel(ctx)
+	freezeCtx, cancelFreeze := context.WithTimeout(ctx, Timeout)
+	defer cancelFreeze()
+	_, freezeErr := c.sdk.Users.Freeze(freezeCtx, privyUserID)
+	unfreezeCtx, cancelUnfreeze := context.WithTimeout(ctx, Timeout)
+	defer cancelUnfreeze()
+	_, unfreezeErr := c.sdk.Users.Unfreeze(unfreezeCtx, privyUserID)
+	if freezeErr != nil {
+		return false, fmt.Errorf("freeze Privy user: %w", errors.Join(freezeErr, unfreezeErr))
+	}
+	if unfreezeErr != nil {
+		return true, fmt.Errorf("unfreeze Privy user, who can't sign in until it works: %w", unfreezeErr)
+	}
+	return true, nil
+}
+
 func (c *Client) find(ctx context.Context, privyUserID, profileID string) (Wallet, error) {
 	page, err := c.sdk.Wallets.List(ctx, privyclient.WalletListParams{ExternalID: privyclient.String(profileID),
 		UserID: privyclient.String(privyUserID)})
