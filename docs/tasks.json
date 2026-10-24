@@ -12,7 +12,7 @@
         "The staging guide lists all deployment variables, Dokploy settings and verification steps."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "build",
         "backend-e2e",
@@ -107,11 +107,18 @@
           "summary": "No blocking findings. Compose validates; migration and startup ordering, credential separation, persistent PostgreSQL, local development commands, and standalone assets match requirements. All eight verification logs and seven wrapup logs passed. Archived F276 through F286 records exactly match the prior task queue.",
           "at": "2026-10-24T14:00:46Z",
           "filesHash": "63387a23269d47cd"
-        }
+        },
+        "commit": "2de130a",
+        "doneAt": "2026-10-24T14:02:15Z"
       },
       "branch": "build/f287-run-the-staging-app-in-dokploy-from-infr",
       "baseCommit": "fb18b8175a37bf6d287eca11f46f707ef1546c10",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "build/f287-run-the-staging-app-in-dokploy-from-infr",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
