@@ -180,6 +180,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-131 | Dokploy runs the staging app from `./infra/docker-compose.yml`. | The Compose stack builds web, API, worker and signer, persists PostgreSQL data, and exposes only web through Dokploy. Workers wait for API migrations. Local development keeps its existing PostgreSQL setup. The staging guide lists every deployment variable and the domain setup. | build, backend-e2e, docs-check | D-34, D-71, R-14 |
 
+| R-132 | Staging enables the supported USDC testnet pairs by default. | With `ENABLE_TESTNET_USDC=1`, API startup enables USDC on Base Sepolia, Arbitrum Sepolia and Arc Testnet after migrations and before chain checks. Existing databases get the same pairs. Repeated startup creates no duplicates and leaves other pairs unchanged. Setting it to 0 leaves network configuration unchanged. Dokploy defaults to 1; local development defaults to 0. | unit, build, e2e | R-131, D-38, D-71 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.
@@ -223,7 +225,7 @@ All D- IDs are defined here. The roadmap refers to these decisions.
 | D-35 | KYC is deferred for the private prototype only. It must be resolved before other people use real money. | Product policy |
 | D-36 | Planned chains: Base, Arbitrum, Arc, Tempo (BNB optional). Planned tokens: USDC, USDT; on Tempo, OUSD (Open USD), its recommended stablecoin. Each chain/token pair is enabled only after its exact contract is verified. | Product policy |
 | D-37 | Payers never connect a wallet to pay: `/pay` shows the address, amount, network and QR code, and the payer sends an ordinary transfer. A wallet connects only to sign a refund claim (PLAN 11.10.2). Cross-chain send (until a bridge provider spike) and recurring wallet billing are later. | Owner choice 2026-10-22: a forced wallet connection cost Coinbase Commerce merchants their sales ([research](research/phase-11-merchants.md)). |
-| D-38 | Start with Base + USDC; enable Arbitrum, Arc, Tempo and other token pairs one at a time after their tests pass. | Product scope |
+| D-38 | Dokploy staging enables USDC on Base Sepolia, Arbitrum Sepolia and Arc Testnet by default. Other pairs stay under operator control. | Owner choice: default USDC pairs for staging. R-132. |
 | D-39 | Build the invoice engine and hosted checkout before the merchant developer API. Both use the same invoice service. | Product scope |
 | D-40 | Use a deterministic deployer for matching factory addresses across supported chains. No nonce-based fallback; a chain with another factory has no cross-chain recovery. | Product scope |
 | D-41 | Receiver terms are immutable clone arguments. Deploy only for settlement, refund or recovery; never merely to accept a payment. | Product scope |

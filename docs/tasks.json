@@ -1,130 +1,122 @@
 {
   "schemaVersion": 2,
-  "nextId": 288,
+  "nextId": 289,
   "tasks": [
     {
-      "id": "F287",
-      "type": "build",
-      "behavior": "Run the staging app in Dokploy from infra/docker-compose.yml",
+      "id": "F288",
+      "type": "feat",
+      "behavior": "Enable the supported USDC testnet pairs by default in staging",
       "acceptance": [
-        "Compose builds web, API, worker and signer with persistent PostgreSQL and internal service connections.",
-        "Local PostgreSQL startup and the existing money loop still work.",
-        "The staging guide lists all deployment variables, Dokploy settings and verification steps."
+        "The staging Compose stack enables USDC on Base Sepolia, Arbitrum Sepolia and Arc Testnet before startup checks, for fresh and existing databases.",
+        "Repeated activation is safe, leaves other pairs unchanged, and can be disabled explicitly; local isolated tests keep their existing behavior.",
+        "The staging guide and backend configuration document activation, gas requirements and restarting backend processes."
       ],
       "dependsOn": [],
       "state": "passing",
       "verification": [
-        "build",
-        "backend-e2e",
+        "unit",
         "docs-check"
       ],
       "refs": [
+        "R-132",
         "R-131",
-        "R-14",
+        "D-38",
         "D-71"
       ],
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-24 Docker Compose config and all four image builds passed. An isolated stack reached API/web health and worker/signer readiness. Web returned 200, the API rewrite returned invoice_not_found JSON with 404, and PostgreSQL data survived container replacement. Local postgres:up passed. Temporary stacks, volumes, images and standalone output were removed; shared caches were preserved. Owner will deploy staging.forwend.com manually. Deployment variables are in ignored apps/backend/.env.dokploy. No commit, push or remote deployment was authorized.",
-        "2026-10-24 Prepared and verified the Dokploy staging stack and deployment guide. All eight checks and isolated Docker runtime/persistence checks passed. Owner will deploy manually. Changes remain local on the task branch; review, commit, push and PR delivery remain. Credentials stay in ignored apps/backend/.env.dokploy; shared caches were preserved.",
-        "2026-10-24 Owner authorized committing, PR delivery into main and promotion to staging. VPS deployment remains manual.",
-        "2026-10-24 review pass by independent reviewer: No blocking findings. Compose validates; migration and startup ordering, credential separation, persistent PostgreSQL, local development commands, and standalone assets match requirements. All eight verification logs and seven wrapup logs passed. Archived F276 through F286 records exactly match the prior task queue."
+        "2026-10-24 Reproduced the missing default activation flag in staging Compose. Focused Go config and chain tests passed on real PostgreSQL. The isolated Compose stack built and started with exactly Base Sepolia, Arbitrum Sepolia and Arc Testnet USDC enabled. Worker and signer reached ready, the homepage returned 200, and an API restart preserved the same three pairs. Temporary containers, volumes and images were removed.",
+        "2026-10-24 F288 enables the exact three supported USDC pairs by default in Dokploy before startup checks. Full verification and isolated container startup/restart checks passed. Independent source review found no blockers. Delivery will use the authorized PR merge into main and staging fast-forward. VPS redeployment remains manual; credential files are excluded.",
+        "2026-10-24 review pass by independent reviewer: No blocking findings. Atomic activation uses exact chain/address pairs and preserves other rows. API ordering is migration, activation, then chain checks. Configuration, shared readers, tests and docs match the requested staging defaults. All seven verification checks passed; isolated container startup and API restart checks passed."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-24T13:39:19Z",
+        "at": "2026-10-24T15:02:04Z",
         "checks": [
           {
-            "id": "build",
+            "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 7.0,
-            "log": "docs/runs/F287-20261024T133919Z-build.log"
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 20.5,
-            "log": "docs/runs/F287-20261024T133919Z-backend-e2e.log"
+            "seconds": 144.7,
+            "log": "docs/runs/F288-20261024T150204Z-unit.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F287-20261024T133919Z-docs-check.log"
+            "log": "docs/runs/F288-20261024T150204Z-docs-check.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 1.9,
-            "log": "docs/runs/F287-20261024T133919Z-harness.log"
+            "log": "docs/runs/F288-20261024T150204Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.4,
-            "log": "docs/runs/F287-20261024T133919Z-lint.log"
+            "seconds": 0.5,
+            "log": "docs/runs/F288-20261024T150204Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.8,
-            "log": "docs/runs/F287-20261024T133919Z-typecheck.log"
+            "seconds": 0.2,
+            "log": "docs/runs/F288-20261024T150204Z-typecheck.log"
           },
           {
-            "id": "unit",
+            "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 205.3,
-            "log": "docs/runs/F287-20261024T133919Z-unit.log"
+            "seconds": 3.2,
+            "log": "docs/runs/F288-20261024T150204Z-build.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 264.3,
-            "log": "docs/runs/F287-20261024T133919Z-e2e.log"
+            "seconds": 242.3,
+            "log": "docs/runs/F288-20261024T150204Z-e2e.log"
           }
         ],
-        "taskHash": "e946fd5691f8b13d",
-        "filesHash": "63387a23269d47cd",
+        "taskHash": "2864a399a26fd202",
+        "filesHash": "96ce0dfaf8324783",
         "proof": {
-          "1": "build: production builds and Docker Compose configuration and image checks",
-          "2": "backend-e2e: existing local PostgreSQL and real money-loop checks",
-          "3": "docs-check: complete deployment settings and environment inventory"
+          "1": "unit: real PostgreSQL tests enable the exact three USDC pairs on fresh and existing network configuration",
+          "2": "unit: repeated activation preserves other pairs; configuration accepts explicit opt-out and rejects invalid flags",
+          "3": "docs-check: staging defaults, backend startup order, activation controls and gas requirements documented"
         },
         "review": {
           "result": "pass",
           "by": "independent reviewer",
-          "summary": "No blocking findings. Compose validates; migration and startup ordering, credential separation, persistent PostgreSQL, local development commands, and standalone assets match requirements. All eight verification logs and seven wrapup logs passed. Archived F276 through F286 records exactly match the prior task queue.",
-          "at": "2026-10-24T14:00:46Z",
-          "filesHash": "63387a23269d47cd"
+          "summary": "No blocking findings. Atomic activation uses exact chain/address pairs and preserves other rows. API ordering is migration, activation, then chain checks. Configuration, shared readers, tests and docs match the requested staging defaults. All seven verification checks passed; isolated container startup and API restart checks passed.",
+          "at": "2026-10-24T15:15:53Z",
+          "filesHash": "96ce0dfaf8324783"
         },
-        "commit": "2de130a",
-        "doneAt": "2026-10-24T14:02:15Z"
+        "commit": "c2a97a5",
+        "doneAt": "2026-10-24T15:16:58Z"
       },
-      "branch": "build/f287-run-the-staging-app-in-dokploy-from-infr",
-      "baseCommit": "fb18b8175a37bf6d287eca11f46f707ef1546c10",
+      "branch": "feat/f288-enable-the-supported-usdc-testnet-pairs",
+      "baseCommit": "f340f8d3a76bade24691bbd37c3c3246f70e3d7c",
       "failedVerifies": 0,
       "delivery": {
         "mode": "pr",
-        "branch": "build/f287-run-the-staging-app-in-dokploy-from-infr",
+        "branch": "feat/f288-enable-the-supported-usdc-testnet-pairs",
         "base": "main"
       }
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-24T13:54:48Z",
+    "at": "2026-10-24T15:15:33Z",
     "clean": true,
     "problems": [],
-    "note": "Prepared and verified the Dokploy staging stack and deployment guide. All eight checks and isolated Docker runtime/persistence checks passed. Owner will deploy manually. Changes remain local on the task branch; review, commit, push and PR delivery remain. Credentials stay in ignored apps/backend/.env.dokploy; shared caches were preserved."
+    "note": "F288 enables the exact three supported USDC pairs by default in Dokploy before startup checks. Full verification and isolated container startup/restart checks passed. Independent source review found no blockers. Delivery will use the authorized PR merge into main and staging fast-forward. VPS redeployment remains manual; credential files are excluded."
   }
 }

@@ -50,6 +50,11 @@ func run() error {
 	if err := database.Migrate(ctx, cfg.DatabaseURL); err != nil {
 		return err
 	}
+	if cfg.EnableTestnetUSDC {
+		if err := chain.EnableTestnetUSDC(ctx, pool); err != nil {
+			return err
+		}
+	}
 	err = chain.CheckEnabled(ctx, pool, specs, cfg.InfuraKeys, cfg.RPCRate, func(ctx context.Context, id uint64, r chain.RPCs) error {
 		return address.FactoryDeployed(ctx, id, ethclient.NewClient(r.Primary), ethclient.NewClient(r.Second))
 	})

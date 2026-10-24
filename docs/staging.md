@@ -23,6 +23,10 @@
 - The stack runs PostgreSQL, the API, worker, signer and web app.
 - Only the web service receives a public domain. Browser API requests pass through its `/api/v1` rewrite.
 - The API applies migrations before becoming healthy. The worker, signer and web app wait for that check.
+- API startup enables USDC on Base Sepolia, Arbitrum Sepolia and Arc Testnet before checking their factories.
+- This applies to fresh and existing databases. Each API restart enables those three pairs again, without duplicating rows.
+- Other token pairs keep their existing settings. Tempo's OUSD stays disabled on a fresh database.
+- Set `ENABLE_TESTNET_USDC=0` to keep the database's current network settings unchanged at startup.
 - PostgreSQL keeps its data in the `postgres-data` named volume. Keep the Dokploy service and Compose project name stable.
 - Keep one worker and one signer. Their existing database locks prevent duplicate work during restarts.
 - The executor must already be authorized by the deployed testnet factories and funded for gas on every enabled chain.
@@ -60,6 +64,7 @@
 | `POSTGRES_USER` | `forwend` |
 | `POSTGRES_PASSWORD` | A new random hexadecimal password. |
 | `POSTGRES_DB` | `forwend` |
+| `ENABLE_TESTNET_USDC` | `1` by default; API startup enables the three supported USDC testnet pairs. `0` leaves network settings unchanged. |
 | `PUBLIC_WEB_URL` | Your staging HTTPS origin, without a trailing slash. |
 | `NEXT_PUBLIC_PRIVY_APP_ID` | The test Privy app ID; must match the secret below. |
 | `PRIVY_APP_SECRET` | That test Privy app's secret from `apps/backend/.env`. |
@@ -88,6 +93,8 @@ docker compose --env-file apps/backend/.env.dokploy -f infra/docker-compose.yml 
 ```
 
 - In Dokploy, PostgreSQL, API and web must be healthy. Check worker and signer logs for `worker ready` and `signer ready`.
+- Redeploy all backend services after changing activation settings. The signer checks gas on every newly enabled chain before reporting ready.
+- Sign in and confirm Balances, Receive and New invoice list USDC on Base Sepolia, Arbitrum Sepolia and Arc Testnet.
 - Check the public homepage and API rewrite, replacing the example domain:
 
 ```sh

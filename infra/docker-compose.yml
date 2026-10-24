@@ -32,6 +32,7 @@ services:
     environment:
       <<: *chain-environment
       API_ADDR: :8080
+      ENABLE_TESTNET_USDC: ${ENABLE_TESTNET_USDC:-1}
       PRIVY_APP_ID: ${NEXT_PUBLIC_PRIVY_APP_ID:?set NEXT_PUBLIC_PRIVY_APP_ID}
       PRIVY_JWKS_URL: https://auth.privy.io/api/v1/apps/${NEXT_PUBLIC_PRIVY_APP_ID:?set NEXT_PUBLIC_PRIVY_APP_ID}/jwks.json
       PRIVY_APP_SECRET: ${PRIVY_APP_SECRET:?set PRIVY_APP_SECRET}

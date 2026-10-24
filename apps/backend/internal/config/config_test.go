@@ -22,15 +22,27 @@ func TestAPI(t *testing.T) {
 	t.Setenv("RPC_RATE_PER_SECOND", "2.5")
 	t.Setenv("PUBLIC_WEB_URL", "https://forwend.app/")
 	t.Setenv("API_USER_BURST", "")
+	t.Setenv("ENABLE_TESTNET_USDC", "")
 	got, err := config.LoadAPI()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.DatabaseURL != "postgres://x" || got.Addr != ":9" || got.PrivyAppID != "app" || got.PrivyJWKSURL != "https://jwks" ||
 		got.PrivyAppSecret != "secret" || got.ChainsFile != "chains.json" || !slices.Equal(got.InfuraKeys, []string{"a", "b"}) ||
-		got.RPCRate != 2.5 || got.PublicWebURL != "https://forwend.app" || got.UserBurst != 0 {
+		got.RPCRate != 2.5 || got.PublicWebURL != "https://forwend.app" || got.UserBurst != 0 || got.EnableTestnetUSDC {
 		t.Fatalf("got %+v", got)
 	}
+	for _, value := range []string{"1", "0"} {
+		t.Setenv("ENABLE_TESTNET_USDC", value)
+		if got, err := config.LoadAPI(); err != nil || got.EnableTestnetUSDC != (value == "1") {
+			t.Fatalf("ENABLE_TESTNET_USDC=%s: %v, %v", value, got.EnableTestnetUSDC, err)
+		}
+	}
+	t.Setenv("ENABLE_TESTNET_USDC", "yes")
+	if _, err := config.LoadAPI(); err == nil || !strings.Contains(err.Error(), "ENABLE_TESTNET_USDC (0 or 1)") {
+		t.Fatalf("invalid ENABLE_TESTNET_USDC: %v", err)
+	}
+	t.Setenv("ENABLE_TESTNET_USDC", "")
 	t.Setenv("API_USER_BURST", "1000")
 	if got, err := config.LoadAPI(); err != nil || got.UserBurst != 1000 {
 		t.Fatalf("API_USER_BURST=1000: %d %v", got.UserBurst, err)

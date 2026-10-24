@@ -53,6 +53,9 @@ Each binary checks what it needs before it serves. A setup mistake stops it with
 D-71); a chain whose RPCs don't answer is logged and skipped:
 - `DATABASE_URL` answers within 10 s. The api then applies migrations. The worker and signer only read that every
   migration they embed is applied; if not, they stop and ask for the api to be started first (only the api migrates).
+- With `ENABLE_TESTNET_USDC=1`, the API then enables the three USDC testnet pairs before chain checks.
+  - Dokploy defaults to 1. Local development leaves it off; `0` leaves existing network settings unchanged.
+  - Repeated startup enables those pairs again. Other pairs keep their settings; see [staging](../staging.md#dokploy-staging).
 - Every chain enabled in the `chains` table is in the chain list and answers through a primary and a second RPC on
   different hosts (D-15), within 30 s per chain.
   - A mistake stops the process: the chain is missing from the list or lists one host, or every host of a role
@@ -147,11 +150,13 @@ with a test.
 - `chains(chain_id, chain_family, enabled)`, `tokens(chain_id, contract, decimals, enabled)`. One confirm rule for all
   chains (D-45), so no per-chain rule columns. From `00015` on, migrations add each planned network and its token
   switched off (Arbitrum Sepolia USDC in `00015`, Arc testnet USDC in `00016`, Tempo Moderato OUSD in `00017`), so
-  test and fresh databases never need their RPCs or gas; Base Sepolia is still a row added by hand. A database turns
-  one on (D-38) after the executor has gas there and the chain list has two working hosts for it:
+  isolated tests need no public RPCs or testnet gas. Schema migrations omit Base Sepolia; activation below adds it.
+  An operator can enable another pair after the executor has gas and the chain list has two working hosts:
   `UPDATE chains SET enabled = true WHERE chain_id = 421614; UPDATE tokens SET enabled = true WHERE chain_id = 421614;`
   Then restart the api, worker and signer so their startup checks cover it. A chain they log as unavailable at
   startup is not checked yet: restart them again once it answers.
+  - With `ENABLE_TESTNET_USDC=1`, startup adds Base Sepolia and enables its USDC alongside Arbitrum Sepolia and Arc Testnet USDC.
+  - This activation runs after migrations on fresh and existing databases. Schema migrations alone still leave the pairs disabled.
 - `invoices`: immutable terms (`id` = the on-chain invoice id, profile, chain, token, `amount`, `expires_at` and
   `settle_deadline` as the contract's uint64 seconds, recipient, factory and receive address, `receive_method` (D-44)),
   separate **payment**, **settlement** and **refund** status columns, `idempotency_key` unique per profile with a
