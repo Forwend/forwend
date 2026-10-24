@@ -14,7 +14,7 @@
         "R-134, api.md, openapi.yaml, both architecture docs and DESIGN.md describe stores; required checks, backend-e2e and a11y-e2e pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "backend-e2e",
@@ -106,11 +106,11 @@
         "taskHash": "22a78073cfe7e82b",
         "filesHash": "6b3c6b9a334d20f3",
         "proof": {
-          "1": "unit: internal/database TestStoresForExistingMerchants (migration 58 backfills one store per merchant profile with its return links' origins, a host-less link adds no NULL origin, sets store_id on merchant invoices only, a new merchant profile gets a first store, rolls back and reapplies); TestMerchantInvoicesRecordTheirStore refuses UPDATE of store_id",
-          "2": "unit: internal/httpapi/tests TestStores (list, PUT 201/200, origin normalization, 403/401, 404 store_not_found, 409 not_merchant on freelancer and personal, 422 table, 20-store cap); TestProfileRoutesAreAllListed and TestProfilesBelongToTheirUser cover both new routes",
-          "3": "unit: TestMerchantInvoicesRecordTheirStore (first store by default with its 7-day close, storeId with its 1-hour close, expiresIn wins, replay and 409 on another store, 422 for another profile's/unknown/malformed/freelancer store and links off the origins, list and owner read return store, public read has none, Edit checks a changed link and keeps an unchanged one); TestRetainerMonthKeepsAReturnLinkItsStoreDropped; web allowsReturnLink unit test",
-          "4": "e2e: live e2e/privy/invoices.spec.ts merchant test adds store E2E pop-up, edits the first store (project ID copied, path origin refused on its field), switches stores on New invoice (close follows each store), refuses a link off the origins, then Details and the list name E2E shop; blockingViolations is [] on Stores, the store form and New invoice; a11y-e2e passes",
-          "5": "docs-check: R-134, api.md Stores and storeId, openapi.yaml, backend and web architecture docs and DESIGN.md updated; backend-e2e passes"
+          "1": "unit: TestStoresForExistingMerchants, TestMerchantInvoicesRecordTheirStore (store_id never changes)",
+          "2": "unit: TestStores, TestProfileRoutesAreAllListed, TestProfilesBelongToTheirUser",
+          "3": "unit: TestMerchantInvoicesRecordTheirStore, TestRetainerMonthKeepsAReturnLinkItsStoreDropped, allowsReturnLink",
+          "4": "e2e: live e2e/privy/invoices.spec.ts merchant test (Stores, store picker, origins, axe); a11y-e2e",
+          "5": "docs-check: R-134, api.md, openapi.yaml, architecture docs, DESIGN.md; backend-e2e"
         },
         "review": {
           "result": "pass",
@@ -118,11 +118,18 @@
           "summary": "Re-review of the delta. Fixed: 00058_stores.sql:31-32 now lowercases before matching and filters NULLs from array_agg; my original trigger (upper-case scheme) can't be stored per 00021's CHECK, but a host-less https:/// link could, and TestStoresForExistingMerchants now covers it. create.go:104 skips the origin check only for a retainer's later month (r.cycle is unexported, so API callers can't bypass it); TestRetainerMonthKeepsAReturnLinkItsStoreDropped guards it. offStoreOrigins (features/invoices/lib/invoices.ts:174) now drives the origins message on a server 422 in New invoice and Edit. R-134 sentence split (D-84); R-134 and api.md describe the retainer rule. Reran TestStoresForExistingMerchants, TestRetainer*, TestStores, TestMerchantInvoicesRecordTheirStore: all pass; verify at 17:17:47Z passed. Accepted as is (non-blocking): the idempotency hash treats a missing expiresIn as 3600 for merchants too (documented in api.md); New invoice falls back to 7 days for a store close that isn't a menu choice (only the web writes it today); the allowsReturnLink unit test stays (redirect rule).",
           "at": "2026-10-24T17:26:09Z",
           "filesHash": "6b3c6b9a334d20f3"
-        }
+        },
+        "commit": "590a2f8",
+        "doneAt": "2026-10-24T17:58:04Z"
       },
       "branch": "feat/f290-a-merchant-profile-has-stores-and-each-o",
       "baseCommit": "387b06353a1b2a295f6294be5c6c19037994e9cb",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f290-a-merchant-profile-has-stores-and-each-o",
+        "base": "main"
+      }
     },
     {
       "id": "F291",
