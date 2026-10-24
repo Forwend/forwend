@@ -16,7 +16,7 @@
       "dependsOn": [
         "F290"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "backend-e2e",
@@ -109,11 +109,11 @@
         "taskHash": "29da77f410fdfcfe",
         "filesHash": "8f02914530e974d5",
         "proof": {
-          "1": "unit: internal/httpapi/tests TestTokensOff (GET lists enabled tokens with on and leaves disabled ones out; PUT replaces off, mixed letter case and repeats count once; every token, a disabled, an unknown or a malformed one is 422 and changes nothing; with no token enabled PUT {off: []} saves; Bob 403); TestProfileRoutesAreAllListed and TestProfilesBelongToTheirUser cover both routes",
-          "2": "unit: TestTokensOff (a store's tokensOff saved and listed; every token off is 422; a token disabled later leaves the store's list so the read saves again; a store saves with no token enabled; both failed before the fix); TestStores expects tokensOff [] on a new store",
-          "3": "unit: TestTokensOff (payer chooses leaves the profile's and the store's off tokens out, a fixed token that is off is 422, nothing left is 422, an invoice made before keeps both options); internal/invoice TestFixedRetainerMonthKeepsATokenTurnedOff and TestPayerChoosesRetainerMonthOffersWhatIsOn each fail without their half of the retainer rule; web tokensOn unit test",
-          "4": "e2e: live e2e/privy/navigation.spec.ts opens Networks and tokens from the account menu, turns Arbitrum off (PUT body checked), keeps the last one on and disabled, axe []; live invoices.spec.ts sees the store form's token checkbox and creates the invoice with the token on; docs/runs/F292 has screenshots of the page (light, dark) and the store panel; a11y-e2e passes",
-          "5": "docs-check: R-136, R-56, api.md Networks and tokens and payer chooses, openapi.yaml token routes, TokenRef, TokenSwitch, tokensOff and createInvoice, backend and web architecture docs and DESIGN.md updated; backend-e2e passes"
+          "1": "unit: TestTokensOff, TestProfileRoutesAreAllListed, TestProfilesBelongToTheirUser",
+          "2": "unit: TestTokensOff (store tokensOff, disabled token, no token enabled), TestStores",
+          "3": "unit: TestTokensOff, TestFixedRetainerMonthKeepsATokenTurnedOff, TestPayerChoosesRetainerMonthOffersWhatIsOn, tokensOn",
+          "4": "e2e: live navigation.spec.ts Networks and tokens, invoices.spec.ts store token checkbox; docs/runs/F292 screenshots; a11y-e2e",
+          "5": "docs-check: R-136, R-56, api.md, openapi.yaml, architecture docs, DESIGN.md; backend-e2e"
         },
         "review": {
           "result": "pass",
@@ -121,11 +121,18 @@
           "summary": "Re-review of the last delta: all three notes fixed. Store form: unchecking every token shows COPY.errors.noToken (store-form.tsx:97, stores-copy.ts:63); the reload text (stores-copy.ts:72) shows only for the API's tokensOff 422 through invalidStoreField. openapi.yaml:1796 Store.tokensOff and docs/backend/api.md Networks and tokens say reads list only enabled tokens and the next save drops a disabled one, matching profile/stores.go. R-56 keeps its original first sentence (38 words, as on main) and adds 'Payer chooses offers only what the profile and store have on (R-136).'; api.md:353 adds the R-136 rule as its own short sentence. No added sentence is over 25 words. Earlier passes still hold. NON-BLOCKING: api.md:355 is a 183-character line (the file already has others), and openapi.yaml:538-539 still carries the R-136 clause inside the long createInvoice sentence.",
           "at": "2026-10-24T20:39:25Z",
           "filesHash": "8f02914530e974d5"
-        }
+        },
+        "commit": "fd0cf5d",
+        "doneAt": "2026-10-24T21:31:26Z"
       },
       "branch": "feat/f292-a-profile-turns-chains-and-tokens-off-an",
       "baseCommit": "bf4c9e216ff5ca41bfb5a9107fa56f3e0d56a954",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f292-a-profile-turns-chains-and-tokens-off-an",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
