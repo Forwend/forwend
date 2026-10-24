@@ -42,7 +42,7 @@ func TestLedgerMatchesTheReceiverBalance(t *testing.T) {
 			return new(big.Int), 99, nil
 		}
 		return new(big.Int).Set(onChain[holder]), 1000, nil
-	})
+	}, func(context.Context, uint64, string, string) (uint64, error) { return 0, nil })
 
 	const expires = 1_000_000
 	var txCounter int

@@ -90,6 +90,18 @@ FROM invoices m JOIN invoices c ON c.id = coalesce(m.chosen_id, m.id)
 WHERE m.main_id IS NULL;
 
 -- +goose Down
+-- +goose StatementBegin
+-- A reopen moved held money to the creator; the old ledger has no row for that, and deleting it would lose money.
+DO $$
+DECLARE
+    reopened bigint := (SELECT count(*) FROM invoices WHERE reopened_until IS NOT NULL);
+BEGIN
+    IF reopened > 0 THEN
+        RAISE EXCEPTION 'can''t roll back: % reopened invoice(s) moved held money to the creator (R-130)', reopened;
+    END IF;
+END;
+$$;
+-- +goose StatementEnd
 DROP VIEW invoices_current;
 CREATE VIEW invoices_current AS
 SELECT m.id, m.profile_id, m.number, m.title, m.note, m.due_date, m.client_name, m.client_email, m.client_address,

@@ -57,5 +57,5 @@ func Reopen(ctx context.Context, tx pgx.Tx, option string, until int64) error {
 		return fmt.Errorf("reopen invoice %s: %w", option, err)
 	}
 	return history.Add(ctx, tx, option, history.Reopened, history.Owner,
-		history.Data{To: time.Unix(until, 0).UTC().Format(time.DateOnly)})
+		history.Data{Until: time.Unix(until, 0).UTC().Format(time.RFC3339)})
 }

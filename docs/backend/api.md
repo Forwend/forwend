@@ -254,15 +254,16 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - The owner's reads of the new one return `replaces` `{invoiceId, number, payToken: null}`.
   - History: `invoice.replaced` on the old one and the new one's `invoice.created` name each other in `related`.
 - `POST /v1/profiles/{profileId}/invoices/{invoiceId}/reopen` (R-130) reopens an invoice that closed partly paid.
-  - Only once, and a day or more before its settle deadline.
+  - Only once, and a day or more before its receiver's settle deadline.
+  - That deadline is the settle deadline, or 30 days after an early receiver deploy if sooner.
   - Not while a refund is under way.
   - Otherwise 409 `invoice_not_reopenable`.
-  - Its checkout opens again until a day before the settle deadline, at the same address and terms.
+  - Its checkout opens again until a day before that deadline, at the same address and terms.
   - It locks the rows the ledger locks, in its order.
   - `ledger.Reopen` books the reopen (see architecture.md).
   - Every read returns `closesAt`: `expiresAt`, or the reopened close. Readers decide "closed" from it.
   - The owner's reads return `reopenUntil`: the close a reopen would give now, or null.
-  - History gets `invoice.reopened`, its `to` the new close's day.
+  - History gets `invoice.reopened`, its `until` the new close.
 - `POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel` (R-79, D-79): cancels the invoice and every option of
   it, only while all are open, the checkout is open and no transfer was ever seen; otherwise 409
   `invoice_not_cancelable`. It locks the rows the ledger locks. The watcher records transfers without that lock, so a

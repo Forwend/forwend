@@ -33,7 +33,7 @@ const invoiceColumns = `id, option_id, chosen_id IS NOT NULL,
 	EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = invoices.option_id AND t.status = 'detected'
 	        AND t.block_time <= invoices.closes_at), ` + ClosedSQL + `, canceled_at,
 	coalesce(to_char(supply_date, 'YYYY-MM-DD'), ''), coalesce(reference, ''), agreed_currency, agreed_amount,
-	agreed_decimals, to_char(agreed_date, 'YYYY-MM-DD'), coalesce(pay_token, ''), closes_at`
+	agreed_decimals, to_char(agreed_date, 'YYYY-MM-DD'), coalesce(pay_token, ''), closes_at, receiver_deployed_at`
 
 // The invoices_current view (migration 00020) aliased as invoices, so filters written for the table work on it.
 const invoicesCurrent = "invoices_current invoices"
@@ -54,7 +54,7 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 		&inv.ReceiveAddress, &expiresAt, &settleDeadline, &inv.PaymentStatus, &inv.SettlementStatus, &inv.RefundStatus,
 		&inv.SettlementTxHash, &inv.CreatedAt, &inv.ClientCountry, &inv.ClientTaxID, &inv.Confirming, &inv.Closed, &canceledAt,
 		&inv.SupplyDate, &inv.Reference, &agreedCurrency, &agreedAmount, &agreedDecimals, &agreedDate, &inv.PayToken,
-		&closesAt}
+		&closesAt, &inv.receiverDeployedAt}
 	if err := row.Scan(dest...); errors.Is(err, pgx.ErrNoRows) {
 		return Invoice{}, ErrNotFound
 	} else if err != nil {

@@ -37,7 +37,7 @@ type Worker struct {
 func New(pool *pgxpool.Pool, specs map[uint64]chain.Spec, keys []string, rate float64) *Worker {
 	w := &Worker{pool: pool, specs: specs, keys: keys, rate: rate, rpcs: map[uint64]chain.RPCs{},
 		watchers: map[uint64]*watcher.Chain{}, balances: map[uint64]*ethclient.Client{}}
-	w.ledger = ledger.NewService(pool, ledger.BalanceFrom(w.balances))
+	w.ledger = ledger.NewService(pool, ledger.BalanceFrom(w.balances), ledger.DeployedFrom(w.balances))
 	return w
 }
 

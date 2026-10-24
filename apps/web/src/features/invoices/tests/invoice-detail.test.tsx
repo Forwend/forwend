@@ -4,7 +4,6 @@ import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InvoiceDetail } from "@/features/invoices/components/invoice-detail";
-import { formatDueDate } from "@/features/invoices/lib/invoices";
 import { makeStore } from "@/store/store";
 
 vi.stubGlobal("matchMedia", () => ({
@@ -222,6 +221,7 @@ describe("owner's invoice page", () => {
       field: null,
       from: null,
       to: null,
+      until: null,
       related: null,
     };
     serve({
@@ -292,7 +292,8 @@ describe("owner's invoice page", () => {
           step: null,
           field: null,
           from: null,
-          to: until.slice(0, 10),
+          to: null,
+          until,
           related: null,
         },
       ],
@@ -326,7 +327,7 @@ describe("owner's invoice page", () => {
     const [, row] = within(history.getByRole("table")).getAllByRole("row");
     expect(
       [...(row?.querySelectorAll("td") ?? [])].slice(0, 3).map((td) => td.textContent),
-    ).toEqual(["Reopened", "You", `Until ${formatDueDate(until.slice(0, 10))}`]);
+    ).toEqual(["Reopened", "You", `Until ${day}`]);
   });
 
   // R-130: the reopen window ended, or another tab reopened it, after the page loaded.

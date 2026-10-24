@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 286,
+  "nextId": 287,
   "tasks": [
     {
       "id": "F276",
@@ -1118,6 +1118,134 @@
       "delivery": {
         "mode": "pr",
         "branch": "feat/f285-the-owner-reopens-a-partly-paid-invoice",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F286",
+      "type": "fix",
+      "behavior": "A reopen ends a day before the receiver's real settle deadline, History shows its exact close in local time, and rolling back migration 54 after a reopen stops with a clear message",
+      "acceptance": [
+        "The invoice.reopened history row has the exact new close as until (date-time, null on other rows), and History shows it in local time like Details and the toast; migration 55 moves earlier reopened rows from the to day to until",
+        "When an option closes partly paid, the ledger reads factory.deployedAt of its receive address at the finalized block and stores it (0 when not deployed); a reopen ends a day before min(settle deadline, deployedAt + 30 days), and is 409 with reopenUntil null when that is not in the future or the deploy time was never read",
+        "Rolling back migration 54 with a reopened invoice stops before any change with a message naming the count; without one, it rolls back and applies again; migration 55 rolls back and applies again",
+        "R-130, money-safety.md, api.md and openapi.yaml say the cap and the until field; backend, backend-e2e, unit, lint, typecheck and e2e pass"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend",
+        "backend-e2e",
+        "unit",
+        "lint",
+        "typecheck",
+        "e2e"
+      ],
+      "refs": [
+        "R-130",
+        "D-92",
+        "R-21"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-24 review pass by reviewer: No blocking findings. Checked against contracts: effectiveDeadline=min(settleDeadline, deployedAt+MAX_HOLD); one read at the partial close is enough because a deploy after the close gives a cap past close+30d, beyond the 7-day settle grace (SettleWindow, D-18), and a deploy before the close is in a block at or before the finalized one. DeployedFrom selector deployedAt(address), finalized block, empty or short answer is an error (never 0). GET reopenUntil and POST reopen both call reopenClose on the shown option's settle_deadline and receiver_deployed_at. View column added last; all readers list columns. Migration 55 maps history (main id) through coalesce(main_id,id) to the option with reopened_until, re-enables the trigger ALWAYS, and Down reverses it. The 54 Down guard runs first in the migration's transaction. Non-blocking: (1) apps/backend/internal/ledger/process.go:195 partial expiry now waits on the factory read; a chain whose factory read keeps failing never moves money to payer_held (logged each round; safe direction). (2) Invoices that closed partly paid before migration 55 keep NULL and lose the reopen offer; no backfill (R-130 says so). (3) docs/backend/architecture.md:453 holds two facts in one bullet (D-84). Ran: go test ./internal/ledger/ ./internal/invoice/ ./internal/database/ ./internal/httpapi/tests/ -count=1 (all ok); pnpm vitest run src/features/invoices/ (42 passed); python3 scripts/check-docs.py (0 errors).",
+        "2026-10-24 review pass by reviewer: Re-review after the 12:55:11Z verify. Only delta: docs/backend/architecture.md:453-454 now splits the deploy-time bullet into 'It stores 0 when the receiver isn't deployed.' and 'An option without a stored value can't reopen.' (D-84 fixed). Checked: git diff of architecture.md; find for files newer than the 12:39Z verify log shows only docs/backend/architecture.md and docs/tasks.json (harness state) among tracked or new files; diff stat 35 files, same file list and status as the first review. python3 scripts/check-docs.py: 0 errors. Earlier pass stands: no blocking findings; non-blocking: ledger/process.go:195 partial expiry waits on the factory read (safe direction); invoices that closed before migration 55 can't reopen."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-24T12:55:11Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 122.2,
+            "log": "docs/runs/F286-20261024T125511Z-backend.log"
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 18.2,
+            "log": "docs/runs/F286-20261024T125511Z-backend-e2e.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 121.9,
+            "log": "docs/runs/F286-20261024T125511Z-unit.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F286-20261024T125511Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F286-20261024T125511Z-typecheck.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 239.7,
+            "log": "docs/runs/F286-20261024T125511Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.2,
+            "log": "docs/runs/F286-20261024T125511Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F286-20261024T125511Z-docs-check.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.6,
+            "log": "docs/runs/F286-20261024T125511Z-build.log"
+          }
+        ],
+        "taskHash": "4611fcc4f5a663a2",
+        "filesHash": "368c94ace80b3019",
+        "proof": {
+          "1": "unit",
+          "2": "backend-e2e",
+          "3": "backend",
+          "4": "e2e"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review after the 12:55:11Z verify. Only delta: docs/backend/architecture.md:453-454 now splits the deploy-time bullet into 'It stores 0 when the receiver isn't deployed.' and 'An option without a stored value can't reopen.' (D-84 fixed). Checked: git diff of architecture.md; find for files newer than the 12:39Z verify log shows only docs/backend/architecture.md and docs/tasks.json (harness state) among tracked or new files; diff stat 35 files, same file list and status as the first review. python3 scripts/check-docs.py: 0 errors. Earlier pass stands: no blocking findings; non-blocking: ledger/process.go:195 partial expiry waits on the factory read (safe direction); invoices that closed before migration 55 can't reopen.",
+          "at": "2026-10-24T13:04:14Z",
+          "filesHash": "368c94ace80b3019"
+        },
+        "commit": "a3ac2c4",
+        "doneAt": "2026-10-24T13:04:40Z"
+      },
+      "branch": "fix/f286-a-reopen-ends-a-day-before-the-receiver",
+      "baseCommit": "fb72ea3607267eab15a0e8823546f5caf8976e95",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f286-a-reopen-ends-a-day-before-the-receiver",
         "base": "main"
       }
     }

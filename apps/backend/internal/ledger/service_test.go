@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"reflect"
 	"testing"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/address"
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
@@ -20,6 +22,7 @@ type chainEnv struct {
 	anvil   *chaintest.Anvil
 	pool    *pgxpool.Pool
 	token   string
+	factory string // no code there until a test deploys the factory
 	watch   *watcher.Chain
 	service *Service
 }
@@ -54,8 +57,10 @@ func newChainEnv(t *testing.T) chainEnv {
 		t.Fatal(err)
 	}
 	t.Cleanup(second.Close)
+	clients := map[uint64]*ethclient.Client{chaintest.ChainID: second}
 	e := chainEnv{anvil: a, pool: pool, token: token, watch: watcher.NewChain(pool, chaintest.ChainID, a.RPC),
-		service: NewService(pool, BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: second}))}
+		factory: "0x2222222222222222222222222222222222222222",
+		service: NewService(pool, BalanceFrom(clients), DeployedFrom(clients))}
 	e.run(t)
 	return e
 }
@@ -67,8 +72,8 @@ func (e chainEnv) invoice(t *testing.T, n int, amount int64, expiresAt int64) (i
 		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
 		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
 		SELECT $1, id, $2, 'evm', $3, $4, $5::bigint, $5::bigint + 86400, '0x1111111111111111111111111111111111111111', 'evm_create2',
-		    '0x2222222222222222222222222222222222222222', $6, $1, decode(repeat('00', 32), 'hex') FROM profiles`,
-		id, chaintest.ChainID, e.token, amount, expiresAt, receive)
+		    $7, $6, $1, decode(repeat('00', 32), 'hex') FROM profiles`,
+		id, chaintest.ChainID, e.token, amount, expiresAt, receive, e.factory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,6 +172,7 @@ func TestPaidNeedsTheSecondRPCToAgree(t *testing.T) {
 // Expiry follows chain time.
 func TestExpiryHoldsPartialAndLatePayments(t *testing.T) {
 	e := newChainEnv(t)
+	e.factory = e.anvil.DeployFactory() // the partial close reads it
 	expires := e.anvil.Now() + 1000
 	partial, receive := e.invoice(t, 1, 5000000, expires)
 	unpaid, _ := e.invoice(t, 2, 5000000, expires)
@@ -251,5 +257,46 @@ func TestEmptyBalanceAnswerIsAnError(t *testing.T) {
 		"0x1111111111111111111111111111111111111111", block)
 	if !errors.Is(err, ErrNoToken) {
 		t.Fatalf("got %v, want ErrNoToken", err)
+	}
+}
+
+// The read a partial close makes (R-130): the block time the factory deployed a receiver, once that block is final;
+// 0 for a receiver not deployed; an error where no factory answers.
+func TestDeployedFromReadsTheFactory(t *testing.T) {
+	ctx := context.Background()
+	a := chaintest.Start(t)
+	factory := a.DeployFactory()
+	terms := address.Terms{InvoiceID: [32]byte{1}, Recipient: [20]byte{0x11}, Token: [20]byte{0x22},
+		Amount: big.NewInt(5), ExpiresAt: 1800000000, SettleDeadline: 1800086400, IntendedChainID: chaintest.ChainID}
+	receiver, err := address.Receive(terms)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The refund authority deploys early, as a recovery does.
+	a.AsAuthority(factory, "deploy((bytes32,address,address,uint256,uint64,uint64,uint256))",
+		fmt.Sprintf("(0x%x,0x%x,0x%x,5,1800000000,1800086400,%d)", terms.InvoiceID, terms.Recipient, terms.Token,
+			chaintest.ChainID))
+	at := a.Now()
+	client, err := ethclient.Dial(a.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	read := DeployedFrom(map[uint64]*ethclient.Client{chaintest.ChainID: client})
+	deployed := fmt.Sprintf("0x%x", receiver)
+
+	if got, err := read(ctx, chaintest.ChainID, factory, deployed); err != nil || got != 0 {
+		t.Fatalf("before the deploy is final: %d, %v; want 0", got, err)
+	}
+	a.Mine(2)
+	if got, err := read(ctx, chaintest.ChainID, factory, deployed); err != nil || got != uint64(at) {
+		t.Fatalf("once final: %d, %v; want %d", got, err, at)
+	}
+	if got, err := read(ctx, chaintest.ChainID, factory, "0x3333333333333333333333333333333333333333"); err != nil ||
+		got != 0 {
+		t.Fatalf("not deployed: %d, %v; want 0", got, err)
+	}
+	if _, err := read(ctx, chaintest.ChainID, chaintest.Sender, deployed); err == nil {
+		t.Fatal("no factory there: no error")
 	}
 }

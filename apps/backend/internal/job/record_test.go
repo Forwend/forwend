@@ -46,7 +46,8 @@ func TestRecordTimes(t *testing.T) {
 		t.Fatal(err)
 	}
 	balances := func(context.Context, uint64, string, string) (*big.Int, uint64, error) { return inv.Amount, 100, nil }
-	if err := ledger.NewService(pool, balances).Process(ctx, inv.OptionID); err != nil {
+	notDeployed := func(context.Context, uint64, string, string) (uint64, error) { return 0, nil }
+	if err := ledger.NewService(pool, balances, notDeployed).Process(ctx, inv.OptionID); err != nil {
 		t.Fatal(err)
 	}
 	got, err := s.Get(ctx, profileID, j.ID)

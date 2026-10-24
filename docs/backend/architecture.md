@@ -162,6 +162,7 @@ with a test.
   at any time (R-127); `note`, `reference` and `due_date` only before any money (R-128). A saved
   client is copied into these by the create request, not linked, so editing or deleting it changes no invoice (R-86).
   `reopened_until` holds a reopen's close (R-130); the generated `closes_at` is the close every reader uses.
+  `receiver_deployed_at` is `factory.deployedAt` of the receiver, read when the option closed partly paid (R-130).
   `invoice_lines(position, description, quantity, unit_price, amount)` (R-88, migration 00030) break a main row's amount
   down in its token's base units: inserted only in the transaction that makes the invoice, never updated or deleted, and
   a deferred constraint trigger checks at commit that they add up to the invoice's amount. The insert trigger also
@@ -445,18 +446,25 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
   an invoice is read again after a growing wait (R-120), and a round books invoices with new deposits first. An expired partial
   payment is moved to `payer_held` by an `expiry` ledger transaction. `refund_status` becomes `held` while
   `payer_held` > 0. One invoice's error doesn't stop the others; each balance call has a 10 s limit.
-- Reopen (R-130): the owner may reopen an `expired_partially_paid` option once, a day or more before its settle
-  deadline.
+- Reopen (R-130): the owner may reopen an `expired_partially_paid` option once, a day or more before its receiver's
+  settle deadline.
+  - That deadline is the earlier of `settle_deadline` and `receiver_deployed_at` + 30 days, as in the contract.
+  - When an option closes partly paid, the ledger reads `factory.deployedAt` at the second RPC's finalized block.
+  - It stores 0 when the receiver isn't deployed.
+  - An option without a stored value can't reopen.
+  - Only a refund authority recovery deploys a receiver of an unpaid option early.
+  - A deploy after the close can't end the window sooner: the settle grace is at most 7 days.
   - Not while a refund is under way: `refund_status` must be `held`.
   - `reopen` ledger transactions move `payer_held`, up to the amount, back to `recipient_payable`.
   - First the money the expiry moved, then each deposit's held part in chain order.
   - Each deposit's part names its transfer, so readers see which deposits paid the creator.
-  - The status goes back to `partially_paid`, and `reopened_until` is set to a day before the settle deadline.
+  - The status goes back to `partially_paid`, and `reopened_until` is set to a day before the receiver's deadline.
   - `refund_status` becomes `none` when nothing stays held.
   - From then on the close is `closes_at`, a generated column: `greatest(expires_at, reopened_until)`.
   - Deposits until the close count; later ones are late.
   - A short close books a second `expiry`. A trigger allows reopen rows only between the first expiry and a second.
   - The guard allows `expired_partially_paid` → `partially_paid` only in the update that sets `reopened_until`, once.
+  - Migration 54 refuses to roll back once an invoice reopened: the old ledger has no row for that money.
 - The second RPC reads `balanceOf` at its own finalized block and reports that block, so a primary RPC that calls a
   deposit final too early can't get an invoice paid (D-15, D-45). An answer from behind the watcher's finalized block
   may miss final deposits, so it decides nothing (neither paid nor expired) until the node catches up. Every RPC in

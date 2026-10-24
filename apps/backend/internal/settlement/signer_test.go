@@ -78,8 +78,9 @@ func setup(t *testing.T) env {
 		t.Fatal(err)
 	}
 	t.Cleanup(client.Close)
+	clients := map[uint64]*ethclient.Client{chaintest.ChainID: client}
 	e := env{anvil: a, pool: pool, client: client, token: token, watch: watcher.NewChain(pool, chaintest.ChainID, a.RPC),
-		ledger: ledger.NewService(pool, ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: client}))}
+		ledger: ledger.NewService(pool, ledger.BalanceFrom(clients), ledger.DeployedFrom(clients))}
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -392,7 +393,8 @@ func TestPaidWhileTheWorkerWasDownSettlesAfterARestart(t *testing.T) {
 			if err := watcher.NewChain(e.pool, chaintest.ChainID, e.anvil.RPC).Scan(ctx); err != nil {
 				t.Fatal(err)
 			}
-			if err := ledger.NewService(e.pool, ledger.BalanceFrom(client)).ProcessChain(ctx, chaintest.ChainID); err != nil {
+			ledgers := ledger.NewService(e.pool, ledger.BalanceFrom(client), ledger.DeployedFrom(client))
+			if err := ledgers.ProcessChain(ctx, chaintest.ChainID); err != nil {
 				t.Fatal(err)
 			}
 			var payment, refund string
