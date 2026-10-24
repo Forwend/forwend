@@ -16,7 +16,7 @@
       "dependsOn": [
         "F290"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
@@ -101,11 +101,11 @@
         "taskHash": "2904488965a2fa6a",
         "filesHash": "e557ee5cc3b06f5d",
         "proof": {
-          "1": "unit: internal/httpapi/tests TestStoreBranding (PNG with bytes after its end served without them and same pixels; public route sends CSP default-src 'none', nosniff, image/png; JPEG, 16-bit PNG and a 1024 px photo JPEG whose PNG passes 1 MB are kept; GIF/SVG/1025 px/over 1 MB/empty are 422; 403/401; 404 store_not_found on another profile; 404 logo_not_found before and after DELETE); TestProfileRoutesAreAllListed and TestProfilesBelongToTheirUser cover the logo routes",
-          "2": "unit: TestStoreBranding (brandColor kept lower case, five malformed colors 422, logoAt back on the store, public invoice read brand {storeId, color, logoAt}, a freelancer invoice's brand null); TestStores expects brandColor and logoAt null on a new store",
-          "3": "e2e: e2e/pay.spec.ts shows the logo in place of the initial tile and the tile without a logo; TestStoreBranding finds the logo image in invoice.pdf and none after DELETE; docs/runs/F291 has pay page screenshots (light, dark, tile) and a sample invoice PDF with the logo and colored rule",
-          "4": "e2e: live e2e/privy/invoices.spec.ts uploads a logo on Edit store (preview and Replace logo shown), sets the color, saves with axe at [], then the public read carries the brand and the PDF holds the logo; a11y-e2e and the pay page axe tests in both themes pass",
-          "5": "docs-check: R-135, api.md Stores branding, openapi.yaml logo routes/brandColor/brand, backend and web architecture docs, DESIGN.md and web/structure.md raw controls updated"
+          "1": "unit: TestStoreBranding (re-encoded PNG, refusals, public headers, 403/401/404), TestProfileRoutesAreAllListed, TestProfilesBelongToTheirUser",
+          "2": "unit: TestStoreBranding (brandColor, logoAt, invoice brand), TestStores",
+          "3": "e2e: e2e/pay.spec.ts store logo test; TestStoreBranding logo image in invoice.pdf; docs/runs/F291 screenshots and sample PDF",
+          "4": "e2e: live e2e/privy/invoices.spec.ts logo upload, color and brand; a11y-e2e",
+          "5": "docs-check: R-135, api.md, openapi.yaml, architecture docs, DESIGN.md, web/structure.md"
         },
         "review": {
           "result": "pass",
@@ -113,11 +113,18 @@
           "summary": "Re-review of the last delta. FIXED: docs/backend/architecture.md:150 now says the logo is encoded from an upload of at most 1 MB, and the PNG can reach about 4.2 MB. That matches store_logo.go and the 5 MiB check in migration 00059; the sentence is 24 words. The stale 'small PNG' comments are removed from pay-invoice.tsx and store-logo.tsx. docs-check reports 0 errors. The changed file set is unchanged. NON-BLOCKING, open: (1) A payer may download a logo of up to ~4.2 MB to show it 36 px tall, and the PDF embeds the same file. Resizing is left as an owner follow-up. (2) data-theme=\"light\" is a literal instead of THEMES.light, matching checkout-preview.tsx. (3) JPEG EXIF orientation is ignored on purpose; reported to the owner. Earlier rounds checked security, authorization, migration, PDF, web upload flow, tests and docs; see the previous reviews.",
           "at": "2026-10-24T19:07:36Z",
           "filesHash": "e557ee5cc3b06f5d"
-        }
+        },
+        "commit": "1484ca3",
+        "doneAt": "2026-10-24T19:34:57Z"
       },
       "branch": "feat/f291-a-store-s-logo-and-color-brand-its-pay-p",
       "baseCommit": "0c4c0f76fde38d3047016896fb9d713c8fd0a95e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f291-a-store-s-logo-and-color-brand-its-pay-p",
+        "base": "main"
+      }
     },
     {
       "id": "F292",
