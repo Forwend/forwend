@@ -14,7 +14,7 @@
         "R-137, api.md, openapi.yaml and the architecture docs describe it; required checks and a11y-e2e pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
@@ -98,11 +98,11 @@
         "taskHash": "9cc91265dfe4dba1",
         "filesHash": "b51686cb1a21223a",
         "proof": {
-          "1": "unit: internal/httpapi/tests TestBillingDetailsNeedAFreshSignIn (a passkey sign-in token saves; a refreshed token, a sign-in 6 minutes ago and a Google sign-in are 401 reauth_required and save nothing; an email sign-in counts; Privy failing is 500 and saves nothing; a GET needs no fresh sign-in)",
-          "2": "unit: TestSignOutEverywhere (a failed freeze is 500, keeps the session and is still followed by an unfreeze; then 204 with freeze then unfreeze, an older token 401, a later one 200, another user's older token 200; a failed unfreeze is 500 but the cutoff holds); the other API tests pass with the cutoff on every route",
-          "3": "e2e: live e2e/privy/navigation.spec.ts saving billing details: Cancel leaves it unsaved, then the dialog sends a code, the real Privy sign-in repeats the PUT with a new token, axe []; web shared/api/tests/fresh-sign-in.test.ts (retry once after a sign-in, a second reauth_required is the answer, none on cancel, other 401s and public pages untouched, one dialog for requests together)",
-          "4": "e2e: live navigation.spec.ts Sign out everywhere: Keep me signed in sends nothing, confirm calls the API once and lands on /sign-in, axe []; a11y-e2e passes",
-          "5": "docs-check: R-137, D-93, Q-13, api.md Auth, openapi.yaml sign-out route, ReauthRequired and reauth_required, backend and web architecture docs and DESIGN.md updated"
+          "1": "unit: TestBillingDetailsNeedAFreshSignIn",
+          "2": "unit: TestSignOutEverywhere, TestProfilesBelongToTheirUser",
+          "3": "e2e: live navigation.spec.ts fresh sign-in test; fresh-sign-in.test.ts",
+          "4": "e2e: live navigation.spec.ts Sign out everywhere test; a11y-e2e",
+          "5": "docs-check: R-137, D-93, Q-13, api.md, openapi.yaml, architecture docs, DESIGN.md"
         },
         "review": {
           "result": "pass",
@@ -110,11 +110,18 @@
           "summary": "Re-review of the delta. Both blocking findings are fixed. (1) privy.go EndSessions runs on context.WithoutCancel, gives each call its own timeout and always sends the unfreeze. profile/sessions.go sets the cutoff only after a freeze that worked, also on WithoutCancel. TestSignOutEverywhere covers a failed freeze (unfreeze sent last, session kept) and a failed unfreeze (500, older token 401). The fake records failed calls and has FailUnfreezes. (2) R-137, accept 2, api.md and openapi.yaml give the code's order: freeze and unfreeze, then the cutoff. The earlier notes are addressed. The cutoff is now() with no date_trunc. signedInAt is set per invoiceAPI, and no test runs in parallel. There are tests for Google not counting, for a second reauth_required being the answer, and for Cancel in the live test. The live test saves the session right after the dialog closes. The menu dialog resets on close. Q-13 records the passkey-linking gap, and the api.md guards list names FreshSignIn. NON-BLOCKING: after a freeze that worked, a failed unfreeze (after the SDK's retries) still locks the user out. The cutoff now refuses their own token, so Try again in the dialog answers 401, and a frozen user can't sign in. Recovery is by hand at Privy, from the error log line that names the DID. This trade-off is chosen and documented. Consider an alert or a later retry. Ran: go test -race on TestBillingDetailsNeedAFreshSignIn, TestSignOutEverywhere, TestBusinessInvoiceNeedsBillingDetails and TestProfileRoutes*: ok. vitest src/shared/api and src/providers: 13 pass. The verify logs from 2026-10-24T23:01:30Z show the live suite at 44 passed, including both new tests.",
           "at": "2026-10-24T23:10:28Z",
           "filesHash": "b51686cb1a21223a"
-        }
+        },
+        "commit": "a6a8dbe",
+        "doneAt": "2026-10-24T23:50:15Z"
       },
       "branch": "feat/f293-saving-billing-details-needs-a-fresh-sig",
       "baseCommit": "571374f06d35a6a6ae3e3fc1f4b0ada8dcd21c89",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f293-saving-billing-details-needs-a-fresh-sig",
+        "base": "main"
+      }
     },
     {
       "id": "F294",
