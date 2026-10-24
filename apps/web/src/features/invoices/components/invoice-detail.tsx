@@ -450,6 +450,16 @@ function Loaded({
               {COPY.details}
             </h2>
             <dl className="divide-y divide-line">
+              {invoice.store ? (
+                <Row term={COPY.store}>
+                  <Link
+                    href={`${APP_ROUTES.stores}/${invoice.store.storeId}`}
+                    className="text-accent hover:underline"
+                  >
+                    {invoice.store.name}
+                  </Link>
+                </Row>
+              ) : null}
               {invoice.reference ? <Row term={COPY.reference}>{invoice.reference}</Row> : null}
               {invoice.dueDate ? (
                 <Row term={COPY.dueDate}>{formatDueDate(invoice.dueDate)}</Row>

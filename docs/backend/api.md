@@ -162,6 +162,20 @@ R-86; the full schema is in openapi.yaml. Owner only, like every `{profileId}` r
 - An invoice holds no link to a saved client: the web copies the client's details into the create request, so editing
   or deleting a client changes no invoice.
 
+## Stores
+
+R-134; the full schema is in openapi.yaml. Owner only, like every `{profileId}` route.
+
+- A merchant profile's stores (D-30). The first is made with the profile, named after it (a database trigger).
+- `GET /v1/profiles/{profileId}/stores` lists them, the first first; a personal or freelancer profile has none.
+- `PUT /v1/profiles/{profileId}/stores/{storeId}` creates or replaces one by a lowercase UUID the caller picks.
+  - 201 the first time, 200 after; the 21st store is 422.
+  - `name` (1–64 characters on one line, not naming Forwend) and `defaultExpiresIn` (900–31536000 seconds) are required.
+  - `allowedOrigins`: up to 20 https origins without a path, query or fragment.
+  - Origins are kept in lower case without the default port, and repeats count once.
+  - A personal or freelancer profile is 409 `not_merchant`; another profile's store id is 404 `store_not_found`.
+- The store id is the project ID: public, with no authority (D-31). There is no delete yet: invoices point at stores.
+
 ## Invoices
 
 R-19 and R-42; the full schema is in openapi.yaml.
@@ -181,6 +195,14 @@ R-19 and R-42; the full schema is in openapi.yaml.
   (the rules of a saved client, R-86; `country` and `taxId` are part of the idempotency hash only when set). Empty means
   none and is returned as null. Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken
   rule is 422 `invalid_value`; these fields are part of the idempotency hash.
+- Optional `storeId` (R-134): a merchant invoice's store, the profile's first store when left out.
+  - A personal or freelancer profile's, or one that is not the profile's store, is 422.
+  - Without `expiresIn` the checkout closes after the store's `defaultExpiresIn`.
+  - `returnUrl` must start with one of the store's `allowedOrigins`; a store without origins takes no return link.
+  - The idempotency hash has `storeId` only when sent, and 3600 for a missing `expiresIn`, whatever the store's default.
+  - The store never changes (a trigger). The owner's reads return `store` `{storeId, name}`; others leave it out.
+  - Edit checks a changed `returnUrl` against the store's origins; an unchanged link stays.
+  - A retainer's later month keeps the first month's `returnUrl`, also after the store drops its origin.
 - Optional `reminders: true` (R-97) turns payment reminders on with the invoice, as the reminders route does. It needs
   `dueDate` and `client.email`, otherwise 422 `invalid_value`. It is part of the idempotency hash only when true.
 - Optional `repeat` `{ endDate? }` (R-98, D-58) makes the invoice repeat every month: a retainer.

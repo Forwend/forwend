@@ -26,7 +26,6 @@ import { NewInvoicePreview } from "@/features/invoices/components/new-invoice-pr
 import {
   AMOUNT_ERRORS,
   CUSTOM_EXPIRY,
-  DEFAULT_EXPIRY,
   EXPIRY_CHOICES,
   INVOICE_FIELDS,
   INVOICE_LIMITS,
@@ -43,11 +42,13 @@ import {
   decimalText,
   dueCheckoutDate,
   dueCheckoutTarget,
+  expiryChoice,
   formatDueDate,
   invalidField,
   isReturnLink,
   lineErrorField,
   lineUnits,
+  offStoreOrigins,
   parseTokenAmount,
   tokenKey,
 } from "@/features/invoices/lib/invoices";
@@ -63,6 +64,8 @@ import type {
   LineError,
   PayWith,
 } from "@/features/invoices/types/invoices";
+import { allowsReturnLink } from "@/features/stores/lib/stores";
+import type { Store } from "@/features/stores/types/stores";
 import { FieldGroup } from "@/shared/components/field-group";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
@@ -85,6 +88,8 @@ export interface NewInvoiceFormProps {
   clients?: readonly Client[];
   /** R-129: the invoice this one replaces, canceled when it is created. */
   replaces?: { invoiceId: string; number: string };
+  /** A merchant profile's stores (R-134), the first one first; the invoice records one. */
+  stores?: readonly Store[];
 }
 
 const NO_CLIENT: ClientBody = { name: "", email: "", address: "", country: "", taxId: "" };
@@ -98,6 +103,7 @@ export function NewInvoiceForm({
   start,
   clients,
   replaces,
+  stores,
 }: NewInvoiceFormProps) {
   const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
   const [createInvoice] = useCreateInvoiceMutation();
@@ -107,7 +113,12 @@ export function NewInvoiceForm({
   const [payWith, setPayWith] = useState<PayWith>(start?.payWith ?? PAY_WITH.any);
   const [picked, setPicked] = useState(start?.picked ?? "");
   const [amount, setAmount] = useState(start?.amount ?? "");
-  const [expiry, setExpiry] = useState<Expiry>(DEFAULT_EXPIRY);
+  // A copied invoice keeps its store while the profile still has it.
+  const [storeId, setStoreId] = useState(
+    stores?.find((s) => s.storeId === start?.storeId)?.storeId ?? stores?.[0]?.storeId ?? "",
+  );
+  const store = stores?.find((s) => s.storeId === storeId);
+  const [expiry, setExpiry] = useState<Expiry>(expiryChoice(store?.defaultExpiresIn));
   const [closesOn, setClosesOn] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [supplyDate, setSupplyDate] = useState<string | null>(null);
@@ -217,6 +228,8 @@ export function NewInvoiceForm({
         : EXPIRY_CHOICES[expiry];
     const returnUrl = text("returnUrl");
     const badLink = returnUrl !== "" && !isReturnLink(returnUrl);
+    const badOrigin =
+      !badLink && !!store && returnUrl !== "" && !allowsReturnLink(store.allowedOrigins, returnUrl);
     const badLines = Object.keys(problems).length > 0;
     flushSync(() => setLineErrors(problems));
     // R-93.
@@ -240,7 +253,8 @@ export function NewInvoiceForm({
       badRepeatEnd ||
       missingName ||
       expiresIn === null ||
-      badLink
+      badLink ||
+      badOrigin
     ) {
       showErrors({
         [INVOICE_FIELDS.agreedCurrency]:
@@ -259,7 +273,11 @@ export function NewInvoiceForm({
             : undefined,
         [INVOICE_FIELDS.senderName]: missingName ? NEW_REQUEST_COPY.senderMissing : undefined,
         [INVOICE_FIELDS.expiresIn]: expiresIn === null ? COPY.customError : undefined,
-        [INVOICE_FIELDS.returnUrl]: badLink ? COPY.returnError : undefined,
+        [INVOICE_FIELDS.returnUrl]: badLink
+          ? COPY.returnError
+          : badOrigin
+            ? NEW_INVOICE_COPY.returnOriginError
+            : undefined,
         [INVOICE_FIELDS.reminders]: badReminders
           ? COPY.fieldErrors[INVOICE_FIELDS.reminders]
           : undefined,
@@ -284,6 +302,7 @@ export function NewInvoiceForm({
       ...(reminders ? { reminders: true as const } : {}),
       ...(repeat ? { repeat: repeatEnd ? { endDate: repeatEnd } : {} } : {}),
       ...(replaces ? { replaces: replaces.invoiceId } : {}),
+      ...(store ? { storeId: store.storeId } : {}),
       senderName: text("senderName"),
       returnUrl,
       client: {
@@ -330,14 +349,16 @@ export function NewInvoiceForm({
         status?: unknown;
         data?: { error?: { code?: string; message?: string } };
       };
-      const field =
-        failure.status === INVALID_VALUE ? invalidField(failure.data?.error?.message ?? "") : null;
+      const message = failure.data?.error?.message ?? "";
+      const field = failure.status === INVALID_VALUE ? invalidField(message) : null;
       const amountField = items.length > 0 ? INVOICE_FIELDS.lines : INVOICE_FIELDS.amount;
       if (field)
         showErrors({
           [field === INVOICE_FIELDS.amountUsd || field === INVOICE_FIELDS.amount
             ? amountField
-            : field]: COPY.fieldErrors[field],
+            : field]: offStoreOrigins(message)
+            ? NEW_INVOICE_COPY.returnOriginError
+            : COPY.fieldErrors[field],
         });
       else if (replaces && failure.data?.error?.code === NOT_CANCELABLE)
         setFormError(INVOICES_COPY.revise.tooLate(replaces.number));
@@ -360,7 +381,7 @@ export function NewInvoiceForm({
       setCloseBy("due");
       clear(INVOICE_FIELDS.expiresIn);
     } else if (!iso && closeBy === "due") {
-      setExpiry(DEFAULT_EXPIRY);
+      setExpiry(expiryChoice(store?.defaultExpiresIn));
       setClosesOn(null);
       setCloseBy("default");
     }
@@ -441,7 +462,13 @@ export function NewInvoiceForm({
       autoComplete="url"
       placeholder="https://"
       maxLength={INVOICE_LIMITS.returnUrl}
-      hint={COPY.returnHint}
+      hint={
+        !store
+          ? COPY.returnHint
+          : store.allowedOrigins.length > 0
+            ? NEW_INVOICE_COPY.returnOrigins(store.allowedOrigins.join(", "))
+            : NEW_INVOICE_COPY.returnNoOrigins
+      }
       error={errors[INVOICE_FIELDS.returnUrl]}
       onChange={() => clear(INVOICE_FIELDS.returnUrl)}
     />
@@ -594,6 +621,24 @@ export function NewInvoiceForm({
         </FieldGroup>
 
         <FieldGroup title={COPY.detailsGroup}>
+          {stores && stores.length > 1 ? (
+            <div className="grid gap-5 sm:grid-cols-2">
+              <SelectField
+                label={NEW_INVOICE_COPY.storeLabel}
+                value={storeId}
+                onValueChange={(value) => {
+                  setStoreId(value);
+                  // Its own close, unless a due date or the owner set one.
+                  if (closeBy === "default")
+                    setExpiry(
+                      expiryChoice(stores.find((s) => s.storeId === value)?.defaultExpiresIn),
+                    );
+                  clear(INVOICE_FIELDS.returnUrl);
+                }}
+                options={stores.map((s) => ({ value: s.storeId, label: s.name }))}
+              />
+            </div>
+          ) : null}
           <div className="grid gap-5 empty:hidden sm:grid-cols-2">
             {request ? null : (
               <TextField

@@ -70,7 +70,7 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   its schema is never sent. `openapi-typescript` is not used: it needs the TypeScript compiler API, which TypeScript 7
   does not have.
 - Features import each other only here: receive → balances; invoices → activity, balances, clients (the client block
-  an invoice copies, R-86); clients → profiles (the country list); pay → activity, invoices
+  an invoice copies, R-86), stores (the store a merchant invoice records and its return-link origins, R-134); clients → profiles (the country list); pay → activity, invoices
   (including the `check-status` and `invoice-progress` components); jobs → clients, invoices (the pay link's token
   pattern, Send to client); onboarding → activity, invoices, profiles,
   transactions; transactions → invoices (the bell's invoice events, R-81, the invoice numbers on Transactions, R-109, and the ECB currencies, R-111); transactions → profiles (the statement's way back from billing details, R-113). No cycles ([structure.md](structure.md)); money helpers and words that several features show live in

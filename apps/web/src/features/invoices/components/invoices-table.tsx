@@ -64,6 +64,9 @@ const invoiceHref = (inv: InvoiceSummary) => `${APP_ROUTES.invoices}/${inv.invoi
 
 const clientName = (inv: InvoiceSummary) => inv.client?.name ?? inv.client?.email ?? null;
 
+// A merchant invoice's store (R-134) follows its title.
+const subtitle = (inv: InvoiceSummary) => [inv.title, inv.store?.name].filter(Boolean).join(" · ");
+
 export interface InvoicesTableProps {
   profileId: string;
   tokens: readonly InvoiceToken[] | null;
@@ -167,9 +170,9 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
                       >
                         {invoiceNumber(inv.number)}
                       </Link>
-                      {inv.title ? (
-                        <span title={inv.title} className="block truncate text-xs text-muted">
-                          {inv.title}
+                      {subtitle(inv) ? (
+                        <span title={subtitle(inv)} className="block truncate text-xs text-muted">
+                          {subtitle(inv)}
                         </span>
                       ) : null}
                     </td>
@@ -243,6 +246,7 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
                       ) : (
                         ` · ${chainName(inv.chainId)}`
                       )}
+                      {inv.store ? ` · ${inv.store.name}` : null}
                     </span>
                   </span>
                   <span className="flex shrink-0 flex-col items-end gap-1 sm:flex-row-reverse sm:items-center sm:gap-6">

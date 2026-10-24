@@ -11,6 +11,8 @@ export const APP_ROUTES = {
   newProfile: "/app/profiles/new",
   clients: "/app/clients",
   newClient: "/app/clients/new",
+  stores: "/app/stores",
+  newStore: "/app/stores/new",
   jobs: "/app/jobs",
   newJob: "/app/jobs/new",
   billingDetails: "/app/billing-details",

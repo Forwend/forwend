@@ -83,6 +83,26 @@ func toClientJSON(c profile.Client) clientJSON {
 	}
 }
 
+// R-134.
+type storeBody struct {
+	Name             string   `json:"name"`
+	DefaultExpiresIn int64    `json:"defaultExpiresIn"`
+	AllowedOrigins   []string `json:"allowedOrigins"`
+}
+
+type storeJSON struct {
+	StoreID          string   `json:"storeId"`
+	Name             string   `json:"name"`
+	DefaultExpiresIn int64    `json:"defaultExpiresIn"`
+	AllowedOrigins   []string `json:"allowedOrigins"`
+	UpdatedAt        string   `json:"updatedAt"`
+}
+
+func toStoreJSON(s profile.Store) storeJSON {
+	return storeJSON{StoreID: s.ID, Name: s.Name, DefaultExpiresIn: s.DefaultExpiresIn,
+		AllowedOrigins: s.AllowedOrigins, UpdatedAt: s.UpdatedAt.UTC().Format(time.RFC3339)}
+}
+
 func toMeJSON(list []profile.Profile, onboardedAt *time.Time) meJSON {
 	out := meJSON{Profiles: []profileJSON{}}
 	if onboardedAt != nil {

@@ -13,7 +13,12 @@ import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } fr
 import { useEditInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { INVOICE_FIELDS, INVOICE_LIMITS } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY, NEW_INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
-import { formatDueDate, invalidField, isReturnLink } from "@/features/invoices/lib/invoices";
+import {
+  formatDueDate,
+  invalidField,
+  isReturnLink,
+  offStoreOrigins,
+} from "@/features/invoices/lib/invoices";
 import type { InvoiceField } from "@/features/invoices/types/invoices";
 
 const COPY = INVOICE_COPY.edit;
@@ -120,9 +125,11 @@ function EditForm({
       const message =
         field === INVOICE_FIELDS.dueDate
           ? COPY.dueHint(formatDueDate(closesOn))
-          : field
-            ? (NEW_INVOICE_COPY.fieldErrors as Record<string, string>)[field]
-            : null;
+          : offStoreOrigins(body?.error?.message ?? "")
+            ? NEW_INVOICE_COPY.returnOriginError
+            : field
+              ? (NEW_INVOICE_COPY.fieldErrors as Record<string, string>)[field]
+              : null;
       if (field && message) setErrors({ [field]: message });
       else setFailed(status === CONFLICT ? COPY.locked : COPY.failed);
     }

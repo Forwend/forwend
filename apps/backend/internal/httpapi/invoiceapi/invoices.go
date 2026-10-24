@@ -50,6 +50,7 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 				ClientCountry: body.Client.Country, ClientTaxID: body.Client.TaxID,
 				SenderName: body.SenderName, ReturnURL: body.ReturnURL, Reference: body.Reference},
 			Replaces: body.Replaces,
+			StoreID:  body.StoreID,
 		})
 		if err != nil {
 			httpio.WriteError(w, r, err)

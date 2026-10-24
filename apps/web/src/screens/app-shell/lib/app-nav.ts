@@ -7,6 +7,7 @@ import {
   NOTIFICATIONS_COPY,
 } from "@/features/profiles/constants/profiles-copy";
 import type { ProfileKind } from "@/features/profiles/types/profile";
+import { STORES_COPY } from "@/features/stores/constants/stores-copy";
 import { APP_NAV, NAV } from "@/screens/app-shell/constants/app-nav";
 import type { Crumb } from "@/screens/app-shell/types/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -58,6 +59,18 @@ export function breadcrumb(
         crumb,
         {
           label: pathname === APP_ROUTES.newClient ? CLIENTS_COPY.newTitle : CLIENTS_COPY.editTitle,
+          href: pathname,
+        },
+      ],
+      invoiceId: null,
+    };
+  }
+  if (page.href === APP_ROUTES.stores && pathname !== APP_ROUTES.stores) {
+    return {
+      trail: [
+        crumb,
+        {
+          label: pathname === APP_ROUTES.newStore ? STORES_COPY.newTitle : STORES_COPY.editTitle,
           href: pathname,
         },
       ],

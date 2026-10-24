@@ -86,6 +86,8 @@ type Request struct {
 	// R-129: the profile's invoice this one replaces, canceled in the same transaction.
 	Replaces string
 	cycle    *cycle
+	// R-134: a merchant invoice's store; "" is the profile's first store.
+	StoreID string
 	// After runs in the insert's transaction before commit, and not on an idempotent replay (R-100).
 	After func(ctx context.Context, tx pgx.Tx, invoiceID string) error `json:"-"`
 	// By is who makes the invoice, for its history (R-123); empty is the owner.
@@ -240,6 +242,8 @@ type Invoice struct {
 	ReopenUntil    time.Time      // the close a reopen now gives (R-130); zero when it can't; set by the owner's Get
 	// factory.deployedAt of the receiver, read when the option closed partly paid (R-130); nil before
 	receiverDeployedAt *int64
+	// A merchant invoice's store (R-134); "" for a personal or freelancer profile's.
+	StoreID, StoreName string
 }
 
 // Revision is the other invoice of a Revise (R-129); PayToken is set only for the replacement.
@@ -439,7 +443,7 @@ func (d Details) check() error {
 // requestHash fingerprints the canonical request, so the same values sent again match and the body is never stored.
 // %q keeps the texts apart whatever they contain.
 func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn time.Duration, d Details, lines []line,
-	reminders bool, repeat *Repeat, replaces string) []byte {
+	reminders bool, repeat *Repeat, replaces, storeID string) []byte {
 	b := fmt.Appendf(nil, "%d|%s|%s|%d|%q|%q|%q|%q|%q|%q|%q", chainID, token, amount,
 		int64(expiresIn/time.Second), d.Title, d.Note, d.DueDate, d.ClientName, d.ClientEmail, d.ClientAddress,
 		d.SenderName)
@@ -466,6 +470,9 @@ func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn ti
 	}
 	if replaces != "" {
 		b = fmt.Appendf(b, "|replaces=%q", replaces)
+	}
+	if storeID != "" {
+		b = fmt.Appendf(b, "|store=%q", storeID)
 	}
 	for _, l := range lines { // and for lines: "7.5" and "7.50" are the same line
 		b = fmt.Appendf(b, "|%q|%s|%s", l.description, l.quantity.RatString(), l.price.RatString())

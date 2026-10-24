@@ -94,8 +94,8 @@ func (d ClientDetails) checkSaved() error {
 	return nil
 }
 
-// clientID matches a client's id, so a malformed one is not found rather than a database error.
-var clientID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+// lowercaseUUID matches a client's or a store's id, so a malformed one is not found rather than a database error.
+var lowercaseUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
 // The callers below have checked that the user owns the profile; every query also names the profile, so a client id
 // from another profile is not found.
@@ -119,7 +119,7 @@ func (s *Service) SaveClient(ctx context.Context, profileID, id string, d Client
 	if err := d.checkSaved(); err != nil {
 		return Client{}, false, err
 	}
-	if !clientID.MatchString(id) {
+	if !lowercaseUUID.MatchString(id) {
 		return Client{}, false, fmt.Errorf("%w: clientId must be a UUID", ErrInvalid)
 	}
 	tx, err := s.pool.Begin(ctx)
@@ -167,7 +167,7 @@ func (s *Service) SaveClient(ctx context.Context, profileID, id string, d Client
 
 // Invoices made earlier keep their own copy.
 func (s *Service) DeleteClient(ctx context.Context, profileID, id string) error {
-	if !clientID.MatchString(id) {
+	if !lowercaseUUID.MatchString(id) {
 		return ErrClientNotFound
 	}
 	tag, err := s.pool.Exec(ctx, `DELETE FROM clients WHERE profile_id = $1 AND id = $2`, profileID, id)

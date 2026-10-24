@@ -19,6 +19,7 @@ import type { Invoice } from "@/features/invoices/types/invoices";
 import { useGetBillingDetailsQuery } from "@/features/profiles/api/profiles-api";
 import { BILLING_THEN, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
+import { useListStoresQuery } from "@/features/stores/api/stores-api";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -56,6 +57,10 @@ export function NewInvoiceScreen() {
   const loadingBilling = !request && billing.currentData === undefined && !billing.isError;
   // A request has no client. Without the list the form still works: the picker just doesn't show.
   const clients = useListClientsQuery(profile.profileId, { skip: request });
+  // R-134: the form starts from the store's close, so it waits for them; without them the API picks the first store.
+  const merchant = profile.kind === PROFILE_KINDS.merchant;
+  const stores = useListStoresQuery(profile.profileId, { skip: !merchant });
+  const loadingStores = merchant && stores.currentData === undefined && !stores.isError;
   const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
   return (
     <div className="flex flex-col gap-6">
@@ -79,7 +84,7 @@ export function NewInvoiceScreen() {
             {INVOICES_COPY.revise.retry}
           </Button>
         </div>
-      ) : !tokens || loadingStart || loadingBilling ? (
+      ) : !tokens || loadingStart || loadingBilling || loadingStores ? (
         <Skeleton className="h-96" />
       ) : billingNeeded ? (
         <EmptyState
@@ -106,6 +111,7 @@ export function NewInvoiceScreen() {
             tokens={tokens}
             start={start}
             clients={clients.currentData}
+            stores={stores.currentData}
             replaces={
               replaced
                 ? { invoiceId: replaced.invoiceId, number: invoiceNumber(replaced.number) }

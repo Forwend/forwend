@@ -42,12 +42,15 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	if err := checkRepeat(r); err != nil {
 		return Invoice{}, false, err
 	}
-	r.Replaces = strings.ToLower(r.Replaces)
+	r.Replaces, r.StoreID = strings.ToLower(r.Replaces), strings.ToLower(r.StoreID)
+	// Without expiresIn the hash has DefaultExpiresIn, not the store's default, so a retry after the store changed
+	// still replays.
 	var hash []byte
 	if usd != nil {
-		hash = requestHash(0, "usd", usd, expiresIn, r.Details, lines, r.Reminders, r.Repeat, r.Replaces)
+		hash = requestHash(0, "usd", usd, expiresIn, r.Details, lines, r.Reminders, r.Repeat, r.Replaces, r.StoreID)
 	} else {
-		hash = requestHash(r.ChainID, token, amount, expiresIn, r.Details, lines, r.Reminders, r.Repeat, r.Replaces)
+		hash = requestHash(r.ChainID, token, amount, expiresIn, r.Details, lines, r.Reminders, r.Repeat, r.Replaces,
+			r.StoreID)
 	}
 	if inv, err := s.replay(ctx, profileID, idempotencyKey, hash); !errors.Is(err, ErrNotFound) {
 		return inv, false, err
@@ -74,14 +77,37 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	defer tx.Rollback(ctx)
 	// The profile row lock makes concurrent creates count one after another, so none passes a cap on a stale count.
 	// Billing details are never removed, so once there they stay for the insert trigger to copy.
-	var business, billed bool
-	if err := tx.QueryRow(ctx, `SELECT kind <> $2,
+	var kind string
+	var billed bool
+	if err := tx.QueryRow(ctx, `SELECT kind,
 		EXISTS (SELECT 1 FROM profile_billing_details WHERE profile_id = $1) FROM profiles WHERE id = $1 FOR UPDATE`,
-		profileID, profile.Personal).Scan(&business, &billed); err != nil {
+		profileID).Scan(&kind, &billed); err != nil {
 		return Invoice{}, false, fmt.Errorf("lock profile: %w", err)
 	}
-	if business && !billed {
+	if kind != profile.Personal && !billed {
 		return Invoice{}, false, ErrBillingDetailsRequired
+	}
+	var storeID *string
+	switch {
+	case kind == profile.Merchant:
+		store, err := profile.InvoiceStore(ctx, tx, profileID, r.StoreID)
+		if errors.Is(err, profile.ErrStoreNotFound) {
+			return Invoice{}, false, fmt.Errorf("%w: storeId is not one of the profile's stores", ErrInvalid)
+		}
+		if err != nil {
+			return Invoice{}, false, err
+		}
+		if r.ExpiresInSeconds == nil {
+			expiresIn = time.Duration(store.DefaultExpiresIn) * time.Second
+		}
+		// A retainer's later month copies the first one's link, so it stays as Edit keeps an unchanged one.
+		if r.ReturnURL != "" && r.cycle == nil && !store.Allows(r.ReturnURL) {
+			return Invoice{}, false, fmt.Errorf("%w: returnUrl must start with one of the store's allowed origins",
+				ErrInvalid)
+		}
+		storeID = &store.ID
+	case r.StoreID != "":
+		return Invoice{}, false, fmt.Errorf("%w: storeId: only a merchant profile has stores", ErrInvalid)
 	}
 	var open, today int
 	if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE closes_at > $2),
@@ -128,16 +154,16 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 			    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
 			    request_hash, title, note, due_date, client_name, client_email, client_address, sender_name, return_url,
 			    client_country, client_tax_id, supply_date, reference, agreed_currency, agreed_amount, agreed_decimals,
-			    agreed_date, pay_token)
+			    agreed_date, pay_token, store_id)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'evm_create2', $11, $12, $13, $14, NULLIF($15, ''),
 			    NULLIF($16, ''), NULLIF($17, '')::date, NULLIF($18, ''), NULLIF($19, ''), NULLIF($20, ''), NULLIF($21, ''),
 			    NULLIF($22, ''), NULLIF($23, ''), NULLIF($24, ''), NULLIF($25, '')::date, NULLIF($26, ''), $27, $28, $29, $30::date,
-			    NULLIF($31, ''))`,
+			    NULLIF($31, ''), $32)`,
 			hexID(id), mainID, profileID, o.chainID, o.family, o.token, o.amount.String(), expiresAt.Unix(),
 			settleDeadline.Unix(), recipient, hexAddress(address.Factory), receive, idempotencyKey, hash, details.Title,
 			details.Note, details.DueDate, details.ClientName, details.ClientEmail, details.ClientAddress, details.SenderName,
 			details.ReturnURL, details.ClientCountry, details.ClientTaxID, details.SupplyDate, details.Reference,
-			agreedCurrency, agreedAmount, agreedDecimals, agreedDate, pay)
+			agreedCurrency, agreedAmount, agreedDecimals, agreedDate, pay, storeID)
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.ConstraintName == "invoices_profile_idempotency_key" {
 			// A concurrent request with the same key won the insert.

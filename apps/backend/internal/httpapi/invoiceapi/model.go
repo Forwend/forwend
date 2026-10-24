@@ -36,6 +36,7 @@ type createInvoiceBody struct {
 		EndDate string `json:"endDate"`
 	} `json:"repeat"`
 	Replaces string `json:"replaces"`
+	StoreID  string `json:"storeId"`
 	Client   struct {
 		Name    string `json:"name"`
 		Email   string `json:"email"`
@@ -61,6 +62,7 @@ type invoiceJSON struct {
 	Reference        *string     `json:"reference"`
 	AgreedValue      *agreedJSON `json:"agreedValue"`
 	Client           *clientJSON `json:"client,omitempty"` // owner routes only
+	Store            *storeJSON  `json:"store,omitempty"`  // owner routes only; a merchant invoice's (R-134)
 	Issuer           *issuerJSON `json:"issuer"`
 	SenderName       *string     `json:"senderName"`
 	ReturnURL        *string     `json:"returnUrl"`
@@ -86,6 +88,11 @@ type clientJSON struct {
 	Address *string `json:"address"`
 	Country *string `json:"country"`
 	TaxID   *string `json:"taxId"`
+}
+
+type storeJSON struct {
+	StoreID string `json:"storeId"`
+	Name    string `json:"name"`
 }
 
 type issuerJSON struct {
@@ -282,6 +289,9 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 		out.Client = &clientJSON{Name: httpio.OrNull(inv.ClientName), Email: httpio.OrNull(inv.ClientEmail),
 			Address: httpio.OrNull(inv.ClientAddress), Country: httpio.OrNull(inv.ClientCountry),
 			TaxID: httpio.OrNull(inv.ClientTaxID)}
+		if inv.StoreID != "" {
+			out.Store = &storeJSON{StoreID: inv.StoreID, Name: inv.StoreName}
+		}
 	}
 	return out
 }

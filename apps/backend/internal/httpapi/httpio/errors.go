@@ -59,6 +59,10 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusNotFound, "billing_details_not_found", "the profile has no billing details yet"
 	case errors.Is(err, profile.ErrClientNotFound):
 		status, code, message = http.StatusNotFound, "client_not_found", "client not found"
+	case errors.Is(err, profile.ErrStoreNotFound):
+		status, code, message = http.StatusNotFound, "store_not_found", "store not found"
+	case errors.Is(err, profile.ErrNotMerchant):
+		status, code, message = http.StatusConflict, "not_merchant", "only a merchant profile has stores"
 	case errors.Is(err, profile.ErrNotSignedUp):
 		status, code, message = http.StatusNotFound, "not_signed_up", "sign up first with POST /v1/me"
 	case errors.Is(err, document.ErrNotPaid):

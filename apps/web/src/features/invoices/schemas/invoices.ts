@@ -96,6 +96,8 @@ export const invoiceSummarySchema = z.object({
   agreedValue: agreedValueSchema.nullable(),
   // Only in the owner's answers (create, list and the profile's read); the public GET leaves it out.
   client: invoiceClientSchema.optional(),
+  // A merchant invoice's store (R-134), in the owner's answers only.
+  store: z.object({ storeId: z.guid(), name: z.string() }).optional(),
   issuer: invoiceIssuerSchema.nullable(),
   // The name the payer sees when there is no issuer, such as on a personal profile's request.
   senderName: z.string().nullable(),
@@ -268,6 +270,8 @@ export const invoicesPageSchema = pageOf(invoiceSummarySchema);
 export const createInvoiceBodySchema = z.object({
   // R-129: the invoice it replaces.
   replaces: hash32.optional(),
+  // R-134: a merchant invoice's store.
+  storeId: z.guid().optional(),
   chainId: count.optional(),
   token: evmAddress.optional(),
   amount: baseUnits.optional(),
