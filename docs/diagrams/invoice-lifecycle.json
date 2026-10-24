@@ -183,7 +183,7 @@
       },
       "type": "transition",
       "direction": "forward",
-      "guard": "expiresAt passes"
+      "guard": "the close passes"
     },
     {
       "id": "l8",
@@ -195,7 +195,7 @@
       },
       "type": "transition",
       "direction": "forward",
-      "guard": "expiresAt passes or creator cancels"
+      "guard": "the close passes or creator cancels"
     },
     {
       "id": "l9",
@@ -208,6 +208,19 @@
       "type": "transition",
       "direction": "forward",
       "label": "funds stay in receiver"
+    },
+    {
+      "id": "l17",
+      "source": {
+        "nodeId": "expired_partial"
+      },
+      "target": {
+        "nodeId": "partial"
+      },
+      "type": "transition",
+      "direction": "forward",
+      "label": "owner reopens once (R-130)",
+      "guard": "a day or more before the settle deadline"
     },
     {
       "id": "l10",

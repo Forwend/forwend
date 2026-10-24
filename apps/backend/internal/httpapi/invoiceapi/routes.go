@@ -35,6 +35,7 @@ func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, balance
 	mux.Handle("GET /v1/profiles/{profileId}/invoices", g.ProfileScoped(listInvoices(invoices)))
 	mux.Handle("GET /v1/profiles/{profileId}/invoices/{invoiceId}", g.ProfileScoped(getProfileInvoice(invoices)))
 	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel", g.ProfileScoped(cancelInvoice(invoices)))
+	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/reopen", g.ProfileScoped(reopenInvoice(invoices)))
 	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/send", g.ProfileScoped(sendInvoice(invoices, emails)))
 	mux.Handle("PUT /v1/profiles/{profileId}/invoices/{invoiceId}/reminders", g.ProfileScoped(putReminders(invoices)))
 	mux.Handle("PUT /v1/profiles/{profileId}/invoices/{invoiceId}/details", g.ProfileScoped(putDetails(invoices)))

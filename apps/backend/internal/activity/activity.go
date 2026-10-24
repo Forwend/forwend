@@ -112,7 +112,7 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 		    CROSS JOIN LATERAL (SELECT CASE WHEN t.booked THEN NOT EXISTS (SELECT 1 FROM ledger_transactions x
 		            JOIN ledger_entries e ON e.transaction_id = x.id WHERE x.chain_transfer_id = t.id
 		            AND e.account = 'recipient_payable') OR i.payment_status = 'expired_partially_paid'
-		        ELSE t.block_time > i.expires_at OR i.payment_status IN ('paid', 'expired', 'expired_partially_paid', 'canceled')
+		        ELSE t.block_time > i.closes_at OR i.payment_status IN ('paid', 'expired', 'expired_partially_paid', 'canceled')
 		            OR coalesce(m.chosen_id <> i.id, false) END AS held) h
 		    WHERE i.profile_id = $1 AND t.status <> 'reorged'
 		) a JOIN tokens tk ON tk.chain_id = a.chain_id AND tk.contract = a.token

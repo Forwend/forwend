@@ -169,7 +169,7 @@
     {
       "id": "intime",
       "kind": "decision",
-      "label": "Block time before expiresAt?",
+      "label": "Block time before the close?",
       "groupId": "backend",
       "ports": []
     },
@@ -192,10 +192,10 @@
     {
       "id": "expiry",
       "kind": "job",
-      "label": "expiresAt passes",
+      "label": "The close passes",
       "groupId": "backend",
       "ports": [],
-      "description": "Expired partial stays in the receiver"
+      "description": "Expired partial stays in the receiver. The close is expiresAt, or the owner's one reopen (R-130)"
     },
     {
       "id": "final",
@@ -287,7 +287,7 @@
       "label": "Held for the payer",
       "groupId": "backend",
       "ports": [],
-      "description": "Overpay excess, expired partial, late deposit, dust, or money after cancel. Never settled to the creator, never revenue"
+      "description": "Overpay excess, expired partial, late deposit, dust, or money after cancel. Settled to the creator only after the owner's reopen (R-130), up to the amount"
     },
     {
       "id": "claim",

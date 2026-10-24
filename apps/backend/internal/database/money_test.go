@@ -497,3 +497,51 @@ func TestInvoiceOptions(t *testing.T) {
 		t.Fatalf("invoices_current: invoice 1 shows option %s of %d rows, want %s of 4", current, count, hex32(2))
 	}
 }
+
+// R-130: reopen rows come once, between the first expiry and a second; the status goes back only with the close.
+func TestReopenRules(t *testing.T) {
+	conn, profile := moneyDB(t)
+	ctx := context.Background()
+	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
+	_, err := conn.Exec(ctx, `INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount,
+		    expires_at, settle_deadline, reopened_until, recipient_address, receive_method, factory_address, receive_address,
+		    idempotency_key, request_hash)
+		VALUES ($1, $2, 84532, 'evm', $3, 5000000, 1800000000, 1800086400, 1800003600, $4, 'evm_create2', $5, $6, 'key-2', $7)`,
+		hex32(2), profile, token, hex20(1), hex20(2), hex20(101), make([]byte, 32))
+	wantCode(t, err, codeRaise, "an invoice made reopened")
+	transfer, err := insertTransfer(conn, 1, hex20(100), 7, 1000, 3)
+	must(t, err)
+	book := func(kind string, transfer *int64) error {
+		_, err := conn.Exec(ctx, `
+			WITH t AS (INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id) VALUES ($1, $2, $3) RETURNING id)
+			INSERT INTO ledger_entries (transaction_id, account, amount)
+			SELECT id, 'recipient_payable', 1 FROM t UNION ALL SELECT id, 'payer_held', -1 FROM t`, hex32(1), kind, transfer)
+		return err
+	}
+	wantCode(t, book("reopen", nil), codeRaise, "a reopen before any expiry")
+	must(t, book("expiry", nil))
+	wantCode(t, book("expiry", nil), codeRaise, "a second expiry before a reopen")
+	must(t, book("reopen", nil))
+	wantCode(t, book("reopen", nil), codeUnique, "a second reopen of the expiry's money")
+	must(t, book("reopen", &transfer))
+	wantCode(t, book("reopen", &transfer), codeUnique, "a second reopen of one deposit")
+	wantCode(t, book("settlement", &transfer), codeCheck, "a settlement naming a transfer")
+	must(t, book("expiry", nil))
+	wantCode(t, book("expiry", nil), codeRaise, "a third expiry")
+	wantCode(t, book("reopen", nil), codeRaise, "a reopen after the second expiry")
+
+	set := func(sql string, args ...any) error {
+		_, err := conn.Exec(ctx, "UPDATE invoices SET "+sql+" WHERE id = $1", append([]any{hex32(1)}, args...)...)
+		return err
+	}
+	must(t, set("payment_status = 'partially_paid'"))
+	must(t, set("payment_status = 'expired_partially_paid'"))
+	wantCode(t, set("payment_status = 'partially_paid'"), codeRaise, "back to partly paid without a close")
+	wantCode(t, set("reopened_until = 1800003600"), codeRaise, "a close without the status")
+	wantCode(t, set("payment_status = 'partially_paid', reopened_until = 1800086400"), codeCheck,
+		"a close at the settle deadline")
+	must(t, set("payment_status = 'partially_paid', reopened_until = 1800003600"))
+	wantCode(t, set("reopened_until = 1800007200"), codeRaise, "a second close")
+	must(t, set("payment_status = 'expired_partially_paid'"))
+	wantCode(t, set("payment_status = 'partially_paid'"), codeRaise, "a second reopen")
+}

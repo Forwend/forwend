@@ -310,3 +310,15 @@ func putDetails(invoices *invoice.Service) http.HandlerFunc {
 		httpio.WriteJSON(w, http.StatusOK, toOwnerInvoiceJSON(inv))
 	}
 }
+
+// R-130.
+func reopenInvoice(invoices *invoice.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		inv, err := invoices.Reopen(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, toOwnerInvoiceJSON(inv))
+	}
+}

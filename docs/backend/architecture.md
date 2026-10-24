@@ -161,6 +161,7 @@ with a test.
   `agreed_decimals` and `agreed_date`, R-93) never change. `client_email`, `return_url` and the owner's `memo` change
   at any time (R-127); `note`, `reference` and `due_date` only before any money (R-128). A saved
   client is copied into these by the create request, not linked, so editing or deleting it changes no invoice (R-86).
+  `reopened_until` holds a reopen's close (R-130); the generated `closes_at` is the close every reader uses.
   `invoice_lines(position, description, quantity, unit_price, amount)` (R-88, migration 00030) break a main row's amount
   down in its token's base units: inserted only in the transaction that makes the invoice, never updated or deleted, and
   a deferred constraint trigger checks at commit that they add up to the invoice's amount. The insert trigger also
@@ -425,7 +426,8 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
 `internal/ledger` (R-21) runs after each scan, per invoice, in one transaction with the invoice row locked:
 - Books each `confirmed`, not yet booked transfer in chain order: `receiver` gets the transfer amount; what is still
   owed up to the invoice amount goes to `recipient_payable`, the rest to `payer_held`. A late deposit (block time
-  after `expires_at`) and any deposit after the invoice is final go entirely to `payer_held` (D-24, D-26).
+  after the close, `expires_at` or the reopened one) and any deposit after the invoice is final go entirely to
+  `payer_held` (D-24, D-26).
 - Payer chooses (D-76): an option's processing also locks its main row. When the first option gets a transfer, the option
   whose transfer that is not reorged came first on chain (block time, then block and log) becomes `chosen_id`; deposits on any other option are booked entirely to `payer_held`, as late money
   is, so that option is never paid or settled and expires like any invoice. A choice made on a detected transfer that
@@ -438,24 +440,38 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
 - Payment status: `open` → `detected` (a transfer seen) → `partially_paid` → `paid` when the full amount is owed and
   a second RPC's `balanceOf` covers every booked deposit (D-15). An invoice owed in full never expires; it waits for
   the second RPC. Otherwise it becomes `expired` or `expired_partially_paid` once the chain's finalized block time
-  passes `expires_at`, no transfer is still `detected`, and the second RPC's balance equals the booked amount. More on
+  passes `closes_at`, no transfer is still `detected`, and the second RPC's balance equals the booked amount. More on
   chain than booked (a missed log, an Arc native-coin payment) blocks expiry and logs a warning; so does less. Such
   an invoice is read again after a growing wait (R-120), and a round books invoices with new deposits first. An expired partial
   payment is moved to `payer_held` by an `expiry` ledger transaction. `refund_status` becomes `held` while
   `payer_held` > 0. One invoice's error doesn't stop the others; each balance call has a 10 s limit.
+- Reopen (R-130): the owner may reopen an `expired_partially_paid` option once, a day or more before its settle
+  deadline.
+  - Not while a refund is under way: `refund_status` must be `held`.
+  - `reopen` ledger transactions move `payer_held`, up to the amount, back to `recipient_payable`.
+  - First the money the expiry moved, then each deposit's held part in chain order.
+  - Each deposit's part names its transfer, so readers see which deposits paid the creator.
+  - The status goes back to `partially_paid`, and `reopened_until` is set to a day before the settle deadline.
+  - `refund_status` becomes `none` when nothing stays held.
+  - From then on the close is `closes_at`, a generated column: `greatest(expires_at, reopened_until)`.
+  - Deposits until the close count; later ones are late.
+  - A short close books a second `expiry`. A trigger allows reopen rows only between the first expiry and a second.
+  - The guard allows `expired_partially_paid` → `partially_paid` only in the update that sets `reopened_until`, once.
 - The second RPC reads `balanceOf` at its own finalized block and reports that block, so a primary RPC that calls a
   deposit final too early can't get an invoice paid (D-15, D-45). An answer from behind the watcher's finalized block
   may miss final deposits, so it decides nothing (neither paid nor expired) until the node catches up. Every RPC in
   the chain list serves `eth_call` at the finalized block (checked 2026-10-09).
-- `paid`, `expired`, `expired_partially_paid` and `canceled` are final (`ledger.Final`). Only the owner cancels, from
-  `open` before any transfer (`invoice.Cancel`, R-79); every later deposit is held. A trigger rejects any other status
-  change, any change to invoice terms, and an invoice created with any status but `open`.
+- `paid`, `expired`, `expired_partially_paid` and `canceled` are final (`ledger.Final`), but for the one reopen above.
+  Only the owner cancels, from `open` before any transfer (`invoice.Cancel`, R-79); every later deposit is held. A
+  trigger rejects any other status change, any change to invoice terms, and an invoice created with any status but
+  `open`.
 - `GET /v1/invoices/{payToken}` lists deposits with `blocksLeft`/`secondsLeft` from the finalized block (R-28) and `blocksTotal`, the wait counted
   from the finalized block kept on the transfer row when it was first seen (`detected_finalized_block`, R-73).
 
 ```
 open ──transfer seen──▶ detected ──booked < amount──▶ partially_paid ──booked ≥ amount and balanceOf agrees──▶ paid
-open/detected/partially_paid ──finalized block time > expires_at──▶ expired / expired_partially_paid (held)
-any deposit with block_time > expires_at ──▶ held for the payer, never owed to the creator
+open/detected/partially_paid ──finalized block time > the close──▶ expired / expired_partially_paid (held)
+expired_partially_paid ──owner reopens once (R-130)──▶ partially_paid, held money owed up to the amount
+any deposit with block_time > the close ──▶ held for the payer, owed to the creator only by a reopen
 paid ──settlement confirmed──▶ settled    held funds ──verified claim + approval──▶ refunded (later)
 ```

@@ -12,6 +12,11 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - Before showing an address, run the same term checks as `settle`, plus expiry ≤ 365 days and the settle window.
   - The settle deadline is expiry + 7 days, or + 24 h for invoices made before this window (D-18).
   - The contract accepts any terms, so these checks live only here.
+- Reopen (R-130) gives money held for the payer back to the creator. Only for an option that closed partly paid.
+  - Once per invoice, a day or more before its settle deadline, so a payment at the new close still settles.
+  - Not while a refund is under way: that money goes back to the payer.
+  - The database allows the status back only with `reopened_until`, once.
+  - It allows reopen rows only between the first expiry and a second.
 - Go address code and `predict` share test vectors: `packages/contracts/vectors/receive-address.json`, written by
   `pnpm vectors` in `packages/contracts`. `forge test` fails while the file is stale.
 - The recipient is the profile wallet read from Privy, never from the request. The contract can't tell a wrong one.

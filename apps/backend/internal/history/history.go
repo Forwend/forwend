@@ -25,6 +25,7 @@ const (
 	RepeatStopped    = "repeat.stopped"
 	Edited           = "invoice.edited"   // data names the field, never its value (R-127)
 	Replaced         = "invoice.replaced" // canceled by a Revise; data names the new invoice (R-129)
+	Reopened         = "invoice.reopened" // data has the new close's day in to (R-130)
 )
 
 // Emails the worker sent to the client or payer, or gave up on (R-126); a reminder's data has its step.

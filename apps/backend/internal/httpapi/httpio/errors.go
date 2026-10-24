@@ -71,6 +71,9 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, invoice.ErrNotEditable):
 		status, code, message = http.StatusConflict, "invoice_not_editable",
 			"the reference, note and due date change only before any payment while the checkout is open"
+	case errors.Is(err, invoice.ErrNotReopenable):
+		status, code, message = http.StatusConflict, "invoice_not_reopenable",
+			"only an invoice that closed partly paid, with no refund under way, can reopen, once, a day or more before its settle deadline"
 	case errors.Is(err, invoice.ErrNoClientEmail):
 		status, code, message = http.StatusConflict, "client_email_required", "the invoice has no client email to send it to"
 	case errors.Is(err, invoice.ErrClosed):

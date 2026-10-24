@@ -95,7 +95,7 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 	}
 	// Each option's own deposits: on an option that was not chosen they are held for the payer (D-76).
 	for i, o := range inv.Options {
-		if inv.Options[i].Deposits, err = s.deposits(ctx, o.ID, o.ChainID, inv.ExpiresAt); err != nil {
+		if inv.Options[i].Deposits, err = s.deposits(ctx, o.ID, o.ChainID); err != nil {
 			return Invoice{}, err
 		}
 		if o.ID == inv.OptionID {
@@ -129,6 +129,8 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 			inv.ID); err != nil {
 			return Invoice{}, err
 		}
+		inv.Reopenable = inv.PaymentStatus == ledger.ExpiredPartiallyPaid && inv.RefundStatus == "held" &&
+			inv.ClosesAt.Equal(inv.ExpiresAt) && s.now().Before(inv.SettleDeadline.Add(-ReopenMargin))
 		inv.Retainer, err = s.retainer(ctx, inv.ID)
 		return inv, err
 	}
@@ -181,7 +183,7 @@ func (s *Service) settlementWait(ctx context.Context, inv Invoice, head finality
 	}
 }
 
-func (s *Service) deposits(ctx context.Context, id string, chainID uint64, expiresAt time.Time) ([]Deposit, error) {
+func (s *Service) deposits(ctx context.Context, id string, chainID uint64) ([]Deposit, error) {
 	head, err := s.head(ctx, chainID)
 	if err != nil {
 		return nil, err
@@ -190,7 +192,8 @@ func (s *Service) deposits(ctx context.Context, id string, chainID uint64, expir
 		       coalesce(detected_finalized_block, 0),
 		       (SELECT coalesce(-sum(e.amount) FILTER (WHERE e.account = 'recipient_payable'), 0)::text
 		        FROM ledger_transactions x JOIN ledger_entries e ON e.transaction_id = x.id
-		        WHERE x.chain_transfer_id = t.id AND x.kind = 'deposit' HAVING count(*) > 0)
+		        WHERE x.chain_transfer_id = t.id AND x.kind IN ('deposit', 'reopen') HAVING count(*) > 0),
+		       t.block_time > (SELECT closes_at FROM invoices WHERE id = t.invoice_id)
 		FROM chain_transfers t WHERE invoice_id = $1 AND status <> 'reorged' ORDER BY block_number, log_index`, id)
 	if err != nil {
 		return nil, fmt.Errorf("read invoice %s deposits: %w", id, err)
@@ -203,7 +206,7 @@ func (s *Service) deposits(ctx context.Context, id string, chainID uint64, expir
 		var paid *string
 		var blockTime, seenFinalized uint64
 		if err := rows.Scan(&d.TxHash, &d.LogIndex, &d.From, &amount, &d.BlockNumber, &blockTime, &d.Status,
-			&seenFinalized, &paid); err != nil {
+			&seenFinalized, &paid, &d.Late); err != nil {
 			return nil, fmt.Errorf("read invoice %s deposits: %w", id, err)
 		}
 		d.Amount, _ = new(big.Int).SetString(amount, 10)
@@ -211,7 +214,6 @@ func (s *Service) deposits(ctx context.Context, id string, chainID uint64, expir
 			d.Paid, _ = new(big.Int).SetString(*paid, 10)
 		}
 		d.BlockTime = time.Unix(int64(blockTime), 0).UTC()
-		d.Late = int64(blockTime) > expiresAt.Unix()
 		if d.Status != "confirmed" {
 			d.Progress = finality.ProgressOf(finality.Block{Number: d.BlockNumber, Time: blockTime}, head)
 			d.BlocksTotal = d.BlocksLeft

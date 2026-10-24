@@ -13,8 +13,8 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-// Payment statuses. paid, expired, expired_partially_paid and canceled are final; the database rejects any other
-// transition. The owner cancels (invoice.Cancel); the ledger never does.
+// Payment statuses. paid, expired, expired_partially_paid and canceled are final but for one Reopen (R-130); the
+// database rejects any other transition. The owner cancels (invoice.Cancel); the ledger never does.
 const (
 	Open                 = "open"
 	Detected             = "detected"
