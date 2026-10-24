@@ -65,6 +65,7 @@ export const HISTORY_KINDS = {
   receiptEmailFailed: "email.receipt_failed",
   edited: "invoice.edited",
   replaced: "invoice.replaced",
+  reopened: "invoice.reopened",
 } as const;
 
 /** The fields an invoice.edited row names (R-127, R-128), as the API calls them. */
@@ -108,6 +109,7 @@ export const HISTORY_CATEGORY_OF = {
   [HISTORY_KINDS.receiptEmailFailed]: HISTORY_CATEGORIES.email,
   [HISTORY_KINDS.edited]: HISTORY_CATEGORIES.change,
   [HISTORY_KINDS.replaced]: HISTORY_CATEGORIES.change,
+  [HISTORY_KINDS.reopened]: HISTORY_CATEGORIES.change,
 } as const satisfies Record<HistoryKind, HistoryCategory>;
 
 /** The History panel's filter: every row, or one category. */

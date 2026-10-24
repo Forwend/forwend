@@ -47,16 +47,16 @@ func TestReopenAnInvoiceThatClosedPartlyPaid(t *testing.T) {
 	}
 	owned := "/v1/profiles/" + e.aliceProfile + "/invoices/" + id
 	closes := expires.Format(time.RFC3339)
+	until := deadline.Add(-24 * time.Hour).Format(time.RFC3339)
 	if r := e.call(t, "GET", owned, alice, "", ""); r.body["paymentStatus"] != "expired_partially_paid" ||
-		r.body["reopenable"] != true || r.body["closesAt"] != closes {
-		t.Fatalf("closed partly paid: %v, reopenable %v, closes %v", r.body["paymentStatus"], r.body["reopenable"],
+		r.body["reopenUntil"] != until || r.body["closesAt"] != closes {
+		t.Fatalf("closed partly paid: %v, reopenUntil %v, closes %v", r.body["paymentStatus"], r.body["reopenUntil"],
 			r.body["closesAt"])
 	}
 
 	r := e.call(t, "POST", owned+"/reopen", alice, "", "")
-	until := deadline.Add(-24 * time.Hour).Format(time.RFC3339)
 	if r.status != http.StatusOK || r.body["paymentStatus"] != "partially_paid" || r.body["closesAt"] != until ||
-		r.body["expiresAt"] != closes || r.body["reopenable"] != false || r.body["closed"] != false {
+		r.body["expiresAt"] != closes || r.body["reopenUntil"] != nil || r.body["closed"] != false {
 		t.Fatalf("reopen: %d %v", r.status, r.body)
 	}
 	mustContain(t, pdfText(t, e.pdf(t, id, "invoice.pdf", "").body),

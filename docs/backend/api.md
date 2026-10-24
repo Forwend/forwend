@@ -261,7 +261,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - It locks the rows the ledger locks, in its order.
   - `ledger.Reopen` books the reopen (see architecture.md).
   - Every read returns `closesAt`: `expiresAt`, or the reopened close. Readers decide "closed" from it.
-  - The owner's reads return `reopenable`.
+  - The owner's reads return `reopenUntil`: the close a reopen would give now, or null.
   - History gets `invoice.reopened`, its `to` the new close's day.
 - `POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel` (R-79, D-79): cancels the invoice and every option of
   it, only while all are open, the checkout is open and no transfer was ever seen; otherwise 409

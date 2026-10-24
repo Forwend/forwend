@@ -265,7 +265,7 @@ export function invoiceReviseHref(invoiceId: string): string {
   return `${APP_ROUTES.newInvoice}?${RESTART_PARAMS.from}=${invoiceId}&${RESTART_PARAMS.revise}=1`;
 }
 
-// R-91, R-77: an invoice is never reopened (D-25); payer-chooses amounts are USD at 1 per token (D-75).
+// R-91, R-77: a new invoice, never the old one topped up (D-25); payer-chooses amounts are USD at 1 per token (D-75).
 // The rest is asked in the token paid with on time: a late payment also locks an option.
 export function restartFrom(
   inv: Invoice,

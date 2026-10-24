@@ -433,6 +433,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Narrower screens stack the amount, Items, Billed to, From, History, then the details.
   - A transaction is one row once its list is 42rem wide. Narrower, the list's own width, not the screen's, splits it
     in two lines.
+- Under the title, an exception says what happened and offers its next step (R-77).
+  - A checkout that closed partly paid offers New invoice for the rest.
+  - While the API's `reopenUntil` is set, Reopen checkout sits before it (R-130).
+  - Reopen asks to confirm in a dialog that names the new close and says it happens once.
+  - Once reopened, focus moves to Details' Checkout closes row, which shows the new close.
 - Revise (R-129) opens New invoice filled from the invoice, under a warning-tinted notice:
   - "This replaces INV-0007", then that creating it cancels the old one and its pay link shows the new one.
   - When the old one was emailed or its link opened, when and how often, and that money still sent to it is held.

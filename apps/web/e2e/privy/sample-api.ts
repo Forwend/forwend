@@ -48,6 +48,7 @@ export const sampleInvoice = (
   recipient: `0x${"7a21".repeat(10)}`,
   receiveAddress: `0x${"c".repeat(40)}`,
   expiresAt: new Date(NOW + 86_400_000).toISOString(),
+  closesAt: new Date(NOW + 86_400_000).toISOString(),
   settleDeadline: new Date(NOW + 2 * 86_400_000).toISOString(),
   paymentStatus,
   settlementStatus,

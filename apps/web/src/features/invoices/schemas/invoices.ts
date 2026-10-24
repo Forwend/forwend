@@ -87,7 +87,7 @@ export const invoiceSummarySchema = z.object({
   number: z.number().int().positive(),
   title: z.string().nullable(),
   note: z.string().nullable(),
-  // YYYY-MM-DD; shown only, payment closes at expiresAt.
+  // YYYY-MM-DD; shown only, payment closes at closesAt.
   dueDate: apiDate.nullable(),
   // When the work was done or delivered (R-89).
   supplyDate: apiDate.nullable(),
@@ -107,7 +107,9 @@ export const invoiceSummarySchema = z.object({
   // The profile wallet that settlement pays.
   recipient: evmAddress,
   receiveAddress: evmAddress,
+  // The terms' expiry, which the receive address commits to; checkout closes at closesAt (R-130).
   expiresAt: apiTime,
+  closesAt: apiTime,
   settleDeadline: apiTime,
   paymentStatus: openEnum<ApiPaymentStatus>(),
   settlementStatus: openEnum<ApiSettlementStatus>(),
@@ -245,6 +247,8 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   views: invoiceViewsSchema.optional(),
   // Only in the owner's reads: the owner's own note (R-127).
   memo: z.string().nullable().optional(),
+  // Only in the owner's reads: the close a reopen would give now (R-130); null when it can't reopen.
+  reopenUntil: apiTime.nullable().optional(),
 });
 
 /** POST /v1/invoices/{payToken}/recheck (R-55): what Check status found. Amounts in base units. */

@@ -174,7 +174,7 @@ type ownerInvoiceJSON struct {
 	Views          viewsJSON           `json:"views"`
 	Memo           *string             `json:"memo"`
 	Replaces       *revisionJSON       `json:"replaces"`
-	Reopenable     bool                `json:"reopenable"`
+	ReopenUntil    *string             `json:"reopenUntil"`
 }
 
 // R-125: firstAt and lastAt are null before the first load.
@@ -327,7 +327,7 @@ func toOwnerInvoiceJSON(inv invoice.Invoice) ownerInvoiceJSON {
 			Emails: []reminderJSON{}}, History: []historyJSON{},
 		Views: viewsJSON{Count: inv.Views.Count, FirstAt: httpio.OrNullTime(inv.Views.FirstAt),
 			LastAt: httpio.OrNullTime(inv.Views.LastAt)}, Memo: httpio.OrNull(inv.Memo), Replaces: toRevisionJSON(inv.Replaces),
-		Reopenable: inv.Reopenable}
+		ReopenUntil: httpio.OrNullTime(inv.ReopenUntil)}
 	for _, s := range inv.Sends {
 		out.Sends = append(out.Sends, toSendJSON(s))
 	}

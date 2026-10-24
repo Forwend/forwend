@@ -29,14 +29,14 @@ export function payToken(inv: Invoice) {
   return PAY_TOKENS[tokenKey(inv)] ?? null;
 }
 
-// A last-moment transfer lands after expiry and is held, not paid out; the browser clock may run behind.
+// A last-moment transfer lands after the close and is held, not paid out; the browser clock may run behind.
 const CLOSE_EARLY_MS = 5 * 60_000;
 
-export function checkoutClosesAt(inv: Pick<Invoice, "expiresAt">): number {
-  return Date.parse(inv.expiresAt) - CLOSE_EARLY_MS;
+export function checkoutClosesAt(inv: Pick<Invoice, "closesAt">): number {
+  return Date.parse(inv.closesAt) - CLOSE_EARLY_MS;
 }
 
-/** Paid and settled come only from the API (D-29); deposits after expiry are held for the payer. */
+/** Paid and settled come only from the API (D-29); deposits after the close are held for the payer. */
 export function payState(inv: Invoice, now: number) {
   const amount = BigInt(inv.amount);
   const sum = (late: boolean) =>

@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -41,8 +42,8 @@ var (
 func idOf(pay string) string { return crypto.Keccak256Hash(common.FromHex(pay)).Hex() }
 
 func lineOf(pay string) string {
-	return fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil %s", id, chaintest.ChainID, recipient, token, amount,
-		expiresAt, deadline, pay)
+	return fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil %s %d", id, chaintest.ChainID, recipient, token, amount,
+		expiresAt, deadline, pay, expiresAt)
 }
 
 type setup struct {
@@ -137,7 +138,9 @@ func TestCheck(t *testing.T) {
 }
 
 func TestCheckRejectsMalformedInput(t *testing.T) {
-	for _, bad := range []string{id, strings.Replace(line, recipient, "0x11", 1), strings.Replace(line, amount, "-1", 1),
+	// The line ends with its close (R-130).
+	closing := func(at int) string { return strings.TrimSuffix(line, fmt.Sprint(expiresAt)) + fmt.Sprint(at) }
+	for _, bad := range []string{id, closing(expiresAt - 1), closing(deadline), strings.Replace(line, recipient, "0x11", 1), strings.Replace(line, amount, "-1", 1),
 		strings.Replace(line, amount, "0", 1), strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(deadline+1), 1),
 		strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(expiresAt+2*86400), 1),
 		strings.Replace(line, recipient, "0x0000000000000000000000000000000000000000", 1),
@@ -149,9 +152,11 @@ func TestCheckRejectsMalformedInput(t *testing.T) {
 	}
 	// D-18: invoices made before the 7-day window settle 1 day after expiry; both are create's rules.
 	week := strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(expiresAt+7*86400), 1)
-	for _, alert := range canary.Check(context.Background(), config.Canary{}, []string{week}) {
-		if strings.Contains(alert, "input line") {
-			t.Errorf("a 7-day settle window: %q", alert)
+	for _, good := range []string{week, closing(deadline - 1)} {
+		for _, alert := range canary.Check(context.Background(), config.Canary{}, []string{good}) {
+			if strings.Contains(alert, "input line") {
+				t.Errorf("%q: %q", good, alert)
+			}
 		}
 	}
 }
@@ -289,13 +294,21 @@ func TestCheckSkipsInvoicesThePayPageClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	soon := time.Now().Add(2 * time.Minute).Unix()
-	input := fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil %s", id, chaintest.ChainID, recipient, token, amount, soon,
-		soon+86400, payToken)
+	input := fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil %s %d", id, chaintest.ChainID, recipient, token, amount, soon,
+		soon+86400, payToken, soon)
 	origin := serve(t, payToken, map[string]any{}, "", "", "Anvil (local)")
 	cfg := config.Canary{APIURL: origin, WebURL: origin, Factory: factory,
 		FactoryCodeHash: cast(t, "codehash", factory, "--rpc-url", a.URL),
 		RPCURLs:         map[uint64][2]string{chaintest.ChainID: {a.URL, a.URL}}, PageScript: script}
 	if alerts := canary.Check(context.Background(), cfg, []string{input}); len(alerts) != 0 {
 		t.Fatalf("an invoice 2 minutes from expiry alerts: %q", alerts)
+	}
+	// R-130: a reopened invoice is checked until its new close, so this empty answer alerts.
+	past := time.Now().Add(-time.Hour).Unix()
+	reopened := fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil %s %d", id, chaintest.ChainID, recipient, token, amount,
+		past, past+604800, payToken, past+518400)
+	alerts := canary.Check(context.Background(), cfg, []string{reopened})
+	if len(alerts) == 0 || slices.ContainsFunc(alerts, func(a string) bool { return strings.Contains(a, "input line") }) {
+		t.Fatalf("a reopened invoice past its expiry was skipped or refused: %q", alerts)
 	}
 }

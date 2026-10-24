@@ -69,6 +69,7 @@ describe("checkedReceiveAddress", () => {
   };
   const invoice: Invoice = {
     ...terms,
+    closesAt: terms.expiresAt,
     payToken,
     optionId: terms.invoiceId,
     optionLocked: false,

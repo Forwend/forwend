@@ -27,7 +27,7 @@ import (
 
 const timeout = 30 * time.Second
 
-// The pay page hides the address 5 minutes before expiry (CLOSE_EARLY_MS in apps/web); one more for the run.
+// The pay page hides the address 5 minutes before the close (CLOSE_EARLY_MS in apps/web); one more for the run.
 const payPageCloses = 6 * time.Minute
 
 var (
@@ -37,10 +37,10 @@ var (
 )
 
 // terms is one stdin line: the invoice or one of its accepted options, as the database holds it. PayToken is the
-// pay link's token of the invoice the line belongs to (D-86).
+// pay link's token of the invoice the line belongs to (D-86); ClosesAt is when its checkout closes (R-130).
 type terms struct {
 	ID, PayToken, Recipient, Token, Amount, Symbol, Network string
-	ChainID, ExpiresAt, SettleDeadline                      uint64
+	ChainID, ExpiresAt, SettleDeadline, ClosesAt            uint64
 }
 
 // apiInvoice is the part of GET /v1/invoices/{payToken} the canary compares.
@@ -98,7 +98,7 @@ func Check(ctx context.Context, c config.Canary, lines []string) []string {
 			alerts = append(alerts, fmt.Sprintf("input line %q: %v", line, err))
 			continue
 		}
-		if time.Until(time.Unix(int64(t.ExpiresAt), 0)) < payPageCloses {
+		if time.Until(time.Unix(int64(t.ClosesAt), 0)) < payPageCloses {
 			continue
 		}
 		invoices = append(invoices, t)
@@ -231,24 +231,25 @@ func sameTerms(c config.Canary, t terms, api apiInvoice) error {
 
 func parseTerms(line string) (terms, error) {
 	f := strings.Fields(line)
-	if len(f) != 10 {
-		return terms{}, errors.New("want: id chain_id recipient token amount expires_at settle_deadline symbol network pay_token")
+	if len(f) != 11 {
+		return terms{}, errors.New("want: id chain_id recipient token amount expires_at settle_deadline symbol network pay_token closes_at")
 	}
 	t := terms{ID: f[0], PayToken: f[9], Recipient: strings.ToLower(f[2]), Token: strings.ToLower(f[3]), Amount: f[4],
 		Symbol: f[7], Network: f[8]}
-	var err1, err2, err3 error
+	var err1, err2, err3, err4 error
 	t.ChainID, err1 = strconv.ParseUint(f[1], 10, 64)
 	t.ExpiresAt, err2 = strconv.ParseUint(f[5], 10, 64)
 	t.SettleDeadline, err3 = strconv.ParseUint(f[6], 10, 64)
+	t.ClosesAt, err4 = strconv.ParseUint(f[10], 10, 64)
 	amount, ok := new(big.Int).SetString(t.Amount, 10)
 	if !invoiceID.MatchString(t.ID) || !payToken.MatchString(t.PayToken) || !common.IsHexAddress(t.Recipient) || !common.IsHexAddress(t.Token) || !ok ||
-		amount.Sign() < 0 || amount.BitLen() > 256 || amount.String() != t.Amount || errors.Join(err1, err2, err3) != nil {
+		amount.Sign() < 0 || amount.BitLen() > 256 || amount.String() != t.Amount || errors.Join(err1, err2, err3, err4) != nil {
 		return terms{}, errors.New("a value is malformed")
 	}
 	// The rules create applies: terms that break them leave a payer's money refundable only.
 	switch zero := "0x0000000000000000000000000000000000000000"; {
 	case amount.Sign() == 0, !slices.Contains(settleWindows, t.SettleDeadline-t.ExpiresAt), t.Recipient == zero,
-		t.Recipient == t.Token:
+		t.Recipient == t.Token, t.ClosesAt < t.ExpiresAt, t.ClosesAt >= t.SettleDeadline:
 		return terms{}, errors.New("the terms break create's rules")
 	}
 	return t, nil

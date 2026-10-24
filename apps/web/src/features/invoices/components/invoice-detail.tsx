@@ -20,6 +20,7 @@ import { InvoiceHistory } from "@/features/invoices/components/invoice-history";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
 import { PaymentReminders } from "@/features/invoices/components/payment-reminders";
+import { ReopenInvoice } from "@/features/invoices/components/reopen-invoice";
 import { RepeatsMonthly } from "@/features/invoices/components/repeats-monthly";
 import { SendToClient } from "@/features/invoices/components/send-to-client";
 import {
@@ -164,7 +165,7 @@ function Loaded({
   const client = mine?.client;
   const issuer = invoice.issuer;
   // By the local clock; the status follows the API's closed flag, at most one poll later.
-  const closed = Date.parse(invoice.expiresAt) <= Date.now();
+  const closed = Date.parse(invoice.closesAt) <= Date.now();
   const status = invoiceStatus(invoice);
   const exception = invoiceException(invoice, status);
   const received = exception.received;
@@ -181,6 +182,13 @@ function Loaded({
   useEffect(() => {
     if (canceling && canceled) canceledRow.current?.focus();
   }, [canceling, canceled]);
+  // Reopen (R-130) works the same way: focus goes to Details' new close once it shows.
+  const closesRow = useRef<HTMLDivElement>(null);
+  const [reopening, setReopening] = useState(false);
+  const reopened = invoice.closesAt !== invoice.expiresAt;
+  useEffect(() => {
+    if (reopening && reopened) closesRow.current?.focus();
+  }, [reopening, reopened]);
   // The pay link takes money only while these last; sharing it later only creates money held for a refund.
   const payable =
     !closed &&
@@ -215,10 +223,14 @@ function Loaded({
             </p>
           ) : null}
           <NextStep
+            profileId={profileId}
             invoiceId={invoice.invoiceId}
+            number={invoiceNumber(invoice.number)}
             exception={exception}
             money={money}
             request={request}
+            reopenUntil={invoice.reopenUntil ?? null}
+            onReopened={() => setReopening(true)}
           />
         </div>
         <InvoiceActions
@@ -442,8 +454,12 @@ function Loaded({
               {invoice.dueDate ? (
                 <Row term={COPY.dueDate}>{formatDueDate(invoice.dueDate)}</Row>
               ) : null}
-              <Row term={closed ? COPY.closed : COPY.expires}>
-                {TIME.format(new Date(invoice.expiresAt))}
+              {/* Focusable only for the reopen that moves focus here. */}
+              <Row
+                term={closed ? COPY.closed : COPY.expires}
+                ref={reopening ? closesRow : undefined}
+              >
+                {TIME.format(new Date(invoice.closesAt))}
               </Row>
               <Row term={COPY.created}>{TIME.format(new Date(invoice.createdAt))}</Row>
               {invoice.supplyDate ? (
@@ -498,17 +514,25 @@ function Loaded({
   );
 }
 
-/** Under the status (R-77): a new invoice after the close, never the old one reopened (D-25). */
+/** Under the status (R-77): a new invoice after the close, or once, a partly paid one reopened (R-130, D-25). */
 function NextStep({
+  profileId,
   invoiceId,
+  number,
   exception,
   money,
   request,
+  reopenUntil,
+  onReopened,
 }: {
+  profileId: string;
   invoiceId: string;
+  number: string;
   exception: InvoiceException;
   money: (units: bigint) => string;
   request: boolean;
+  reopenUntil: string | null;
+  onReopened: () => void;
 }) {
   const noun = request ? COPY.noun.request : COPY.noun.invoice;
   const { received, left, late } = exception;
@@ -516,21 +540,35 @@ function NextStep({
   const kind =
     exception.kind === INVOICE_EXCEPTIONS.canceled && received === 0n ? null : exception.kind;
   if (!kind && late === 0n) return null;
+  const reopen = kind === INVOICE_EXCEPTIONS.closedPartial ? reopenUntil : null;
+  const values = { left: money(left), held: money(received), noun };
   return (
     <div className="flex flex-col items-start gap-2 text-sm text-ink">
-      {kind ? <p>{COPY.next[kind]({ left: money(left), held: money(received), noun })}</p> : null}
+      {kind ? <p>{reopen ? COPY.nextReopen(values) : COPY.next[kind](values)}</p> : null}
       {late > 0n ? <p>{COPY.lateHeld(money(late))}</p> : null}
       {kind === INVOICE_EXCEPTIONS.closedUnpaid || kind === INVOICE_EXCEPTIONS.closedPartial ? (
-        <Link
-          href={invoiceCopyHref(invoiceId, kind === INVOICE_EXCEPTIONS.closedPartial)}
-          className={buttonClasses({ variant: "secondary", size: "sm" })}
-        >
-          {kind === INVOICE_EXCEPTIONS.closedPartial
-            ? COPY.newForRest(noun)
-            : request
-              ? COPY.newRequest
-              : COPY.newInvoice}
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          {reopen ? (
+            <ReopenInvoice
+              profileId={profileId}
+              invoiceId={invoiceId}
+              number={number}
+              noun={noun}
+              until={reopen}
+              onReopened={onReopened}
+            />
+          ) : null}
+          <Link
+            href={invoiceCopyHref(invoiceId, kind === INVOICE_EXCEPTIONS.closedPartial)}
+            className={buttonClasses({ variant: "secondary", size: "sm" })}
+          >
+            {kind === INVOICE_EXCEPTIONS.closedPartial
+              ? COPY.newForRest(noun)
+              : request
+                ? COPY.newRequest
+                : COPY.newInvoice}
+          </Link>
+        </div>
       ) : null}
     </div>
   );

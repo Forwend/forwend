@@ -32,6 +32,7 @@ const invoice: Invoice = {
   recipient: `0x${"4".repeat(40)}`,
   receiveAddress: `0x${"2".repeat(40)}`,
   expiresAt: "2026-10-17T10:00:00Z",
+  closesAt: "2026-10-17T10:00:00Z",
   settleDeadline: "2026-10-18T10:00:00Z",
   paymentStatus: "open",
   settlementStatus: "none",
@@ -64,7 +65,7 @@ describe("payState", () => {
   it("lets the payer send only while the checkout is open and money is still owed", () => {
     expect(payState(invoice, before)).toMatchObject({ state: PAY_STATES.waiting, canSend: true });
     expect(payState(invoice, after)).toMatchObject({ state: PAY_STATES.closed, canSend: false });
-    const fiveMinutesBefore = Date.parse(invoice.expiresAt) - 5 * 60_000;
+    const fiveMinutesBefore = Date.parse(invoice.closesAt) - 5 * 60_000;
     expect(payState(invoice, fiveMinutesBefore - 1).canSend).toBe(true);
     expect(payState(invoice, fiveMinutesBefore)).toMatchObject({
       state: PAY_STATES.closed,
@@ -83,6 +84,26 @@ describe("payState", () => {
     });
     const full = { ...invoice, paymentStatus: "detected", deposits: [deposit("1000")] };
     expect(payState(full, before)).toMatchObject({ state: PAY_STATES.checking, canSend: false });
+  });
+
+  // R-130: the terms' expiry has passed, but the reopened checkout takes money until its new close.
+  it("takes payments until a reopened invoice's new close", () => {
+    const reopened = {
+      ...invoice,
+      closesAt: "2026-10-23T10:00:00Z",
+      paymentStatus: "partially_paid",
+      deposits: [deposit("400"), deposit("100")],
+    };
+    expect(payState(reopened, after)).toMatchObject({
+      state: PAY_STATES.partial,
+      canSend: true,
+      received: 500n,
+      remaining: 500n,
+    });
+    expect(payState(reopened, Date.parse(reopened.closesAt))).toMatchObject({
+      state: PAY_STATES.closedPartial,
+      canSend: false,
+    });
   });
 
   it("confirms while a deposit is not final, and counts only the API as paid", () => {
