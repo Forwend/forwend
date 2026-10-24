@@ -1,118 +1,187 @@
 {
   "schemaVersion": 2,
-  "nextId": 290,
+  "nextId": 293,
   "tasks": [
     {
-      "id": "F289",
-      "type": "perf",
-      "behavior": "Reduce repeated RPC reads and isolate slow chains",
+      "id": "F290",
+      "type": "feat",
+      "behavior": "A merchant profile has stores, and each of its invoices records one",
       "acceptance": [
-        "Forward wallet scans avoid repeating historical ranges; durable recovery finds missed transfers; invoice safety overlap remains frequent for payment ordering.",
-        "Receipt polling backs off and worker balance checks share finalized headers without weakening payment checks.",
-        "Worker and signer isolate slow chains while preserving invoice choice, sponsored limits and per-chain nonce ordering.",
-        "Coherent header batches remain together; no unused partial-retry interface is introduced.",
-        "API, worker and signer share a weighted provider budget across processes, with no credentials stored or logged."
+        "A merchant profile has stores with a name, a project ID, a default checkout close and up to 20 allowed https origins; its first store is made with it (a trigger), migration 58 backfills one per merchant profile with its return links' origins, and every merchant invoice records its store, which never changes",
+        "GET /v1/profiles/{profileId}/stores lists them (none for a personal or freelancer profile); PUT .../stores/{storeId} saves one by a browser-picked UUID, at most 20 per profile; another user 403, another profile's store 404 store_not_found, a personal or freelancer profile 409 not_merchant, a broken rule 422",
+        "Create takes storeId (default the first store; 422 on a non-merchant or unknown store), uses the store's default close without expiresIn, and refuses a merchant return link outside the store's allowed origins on create and when Edit changes it; owner reads return store {storeId, name}",
+        "The web app has a Stores page for merchant profiles to list, add and edit stores with a copyable project ID; New invoice picks the store when there are two or more and starts the close from its default; the invoice list and page name the store; axe finds 0 serious or critical violations",
+        "R-134, api.md, openapi.yaml, both architecture docs and DESIGN.md describe stores; required checks, backend-e2e and a11y-e2e pass"
       ],
       "dependsOn": [],
       "state": "passing",
       "verification": [
         "unit",
-        "e2e"
+        "backend-e2e",
+        "e2e",
+        "a11y-e2e",
+        "docs-check"
       ],
       "refs": [
-        "R-133",
-        "D-15",
-        "D-45"
+        "R-134",
+        "D-30",
+        "D-31"
       ],
       "keep": [],
-      "review": true,
+      "review": false,
       "notes": [
-        "2026-10-24 review pass by independent reviewer: Approved after correcting pending-range batching, preserving invoice overlap, using consistent non-key group locks, releasing the user signing gate before receipt waits, and preserving recovery progress across subscription changes. Full verification passed all seven checks, including concurrency, missed-transfer recovery, shared budget, and real payment-loop tests.",
-        "2026-10-24 F289 implemented and independently reviewed; all seven verify checks passed. Wallet recovery, receipt backoff, shared header snapshots, independent chain jobs and shared weighted RPC budgets are ready for the approved PR to main and staging fast-forward. Invoice overlap and coherent header retries remain for money safety."
+        "2026-10-24 review fail by reviewer: BLOCKING: apps/backend/internal/database/migrations/00058_stores.sql:31-32 backfill matches '^https://' case-sensitively before lower(), so an existing return_url like 'HTTPS://Shop.example.com/x' (accepted today: Go url.Parse lowercases the scheme, web isReturnLink uses URL.protocol) yields NULL, and array_agg keeps NULLs. allowed_origins then holds a NULL element; pgx cannot scan it into []string (verified: 'cannot scan NULL into *string'), so GET stores, every invoice create (profile.InvoiceStore) and returnUrl edits 500 for that merchant. Fix: substring(lower(i.return_url) FROM ...) and drop NULLs (FILTER (WHERE o IS NOT NULL)); add an upper-case-scheme row to TestStoresForExistingMerchants. NON-BLOCKING: (1) invoice/create.go:46 hashes a missing expiresIn as 3600, so for a merchant an omitted expiresIn (store default) and an explicit 3600 share a hash; a reused key with the other form replays instead of 409 (documented in api.md). (2) invoice/retainers.go:158 later months re-check returnUrl against the store's current origins; removing an origin makes every later month fail in the worker with only a log line. (3) new-invoice-form.tsx:352 maps a server 'allowed origins' 422 to the generic return-link error; edit-invoice.tsx:124 handles it. (4) new-invoice-form.tsx:120 expiryChoice falls back to 7 days for an API-set store default that is not a menu choice. (5) docs/PROJECT.md:186 R-134 sentence 'A store has a name...' is 26 words (D-84). (6) features/stores/tests/stores.test.ts tests the client mirror of a rule the server tests already guard; borderline under Which tests to keep. Checked OK: route auth (ProfileScoped + 403/401 tests), 404/409/422 paths, 20-store cap under profile lock, trigger, store-fixed trigger, FK (store_id, profile_id), view change (readers use named columns), Down migration, jobs/retainers/revise still create (revise carries storeId via restartFrom), features/stores imports no other feature, docs match code. Backend tests TestStores, TestMerchantInvoicesRecordTheirStore, TestStoresForExistingMerchants pass.",
+        "2026-10-24 review pass by reviewer: Re-review of the delta. Fixed: 00058_stores.sql:31-32 now lowercases before matching and filters NULLs from array_agg; my original trigger (upper-case scheme) can't be stored per 00021's CHECK, but a host-less https:/// link could, and TestStoresForExistingMerchants now covers it. create.go:104 skips the origin check only for a retainer's later month (r.cycle is unexported, so API callers can't bypass it); TestRetainerMonthKeepsAReturnLinkItsStoreDropped guards it. offStoreOrigins (features/invoices/lib/invoices.ts:174) now drives the origins message on a server 422 in New invoice and Edit. R-134 sentence split (D-84); R-134 and api.md describe the retainer rule. Reran TestStoresForExistingMerchants, TestRetainer*, TestStores, TestMerchantInvoicesRecordTheirStore: all pass; verify at 17:17:47Z passed. Accepted as is (non-blocking): the idempotency hash treats a missing expiresIn as 3600 for merchants too (documented in api.md); New invoice falls back to 7 days for a store close that isn't a menu choice (only the web writes it today); the allowsReturnLink unit test stays (redirect rule)."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-24T15:54:49Z",
+        "at": "2026-10-24T17:17:47Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 180.4,
-            "log": "docs/runs/F289-20261024T155449Z-unit.log"
+            "seconds": 178.3,
+            "log": "docs/runs/F290-20261024T171747Z-unit.log"
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 19.2,
+            "log": "docs/runs/F290-20261024T171747Z-backend-e2e.log"
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 223.6,
-            "log": "docs/runs/F289-20261024T155449Z-e2e.log"
+            "seconds": 220.8,
+            "log": "docs/runs/F290-20261024T171747Z-e2e.log"
           },
           {
-            "id": "harness",
+            "id": "a11y-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.9,
-            "log": "docs/runs/F289-20261024T155449Z-harness.log"
+            "seconds": 15.6,
+            "log": "docs/runs/F290-20261024T171747Z-a11y-e2e.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
-            "log": "docs/runs/F289-20261024T155449Z-docs-check.log"
+            "log": "docs/runs/F290-20261024T171747Z-docs-check.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.7,
+            "log": "docs/runs/F290-20261024T171747Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F289-20261024T155449Z-lint.log"
+            "log": "docs/runs/F290-20261024T171747Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F289-20261024T155449Z-typecheck.log"
+            "seconds": 0.7,
+            "log": "docs/runs/F290-20261024T171747Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.5,
-            "log": "docs/runs/F289-20261024T155449Z-build.log"
+            "seconds": 3.6,
+            "log": "docs/runs/F290-20261024T171747Z-build.log"
           }
         ],
-        "taskHash": "52a06ca7cfe16c09",
-        "filesHash": "ac831bfdb31ddd3e",
+        "taskHash": "22a78073cfe7e82b",
+        "filesHash": "6b3c6b9a334d20f3",
         "proof": {
-          "1": "unit: recovery tests cover missed wallet transfers across 12000 blocks, failed chunks, restarts, subscription changes, disabled-token pending and grouped log queries; invoice overlap preserves earlier-payment choice.",
-          "2": "unit: receipt regression reproduced seven reads in 1.3 seconds; backoff bounds it to two; ten balance checks share one finalized header and a new round advances the snapshot.",
-          "3": "unit: hung-chain scheduler allows repeated healthy rounds; concurrent options choose and book once; concurrent signers preserve the sponsored cap and sent intents bypass the user gate.",
-          "4": "unit: existing coherent header batch, failover, chain-role separation and reorg tests remain passing; no partial-batch retry was added.",
-          "5": "unit: separate budget instances share weighted reservations across Infura chain hosts, store hashed buckets, respect deadlines and send no requests when budget storage fails."
+          "1": "unit: TestStoresForExistingMerchants, TestMerchantInvoicesRecordTheirStore (store_id never changes)",
+          "2": "unit: TestStores, TestProfileRoutesAreAllListed, TestProfilesBelongToTheirUser",
+          "3": "unit: TestMerchantInvoicesRecordTheirStore, TestRetainerMonthKeepsAReturnLinkItsStoreDropped, allowsReturnLink",
+          "4": "e2e: live e2e/privy/invoices.spec.ts merchant test (Stores, store picker, origins, axe); a11y-e2e",
+          "5": "docs-check: R-134, api.md, openapi.yaml, architecture docs, DESIGN.md; backend-e2e"
         },
         "review": {
           "result": "pass",
-          "by": "independent reviewer",
-          "summary": "Approved after correcting pending-range batching, preserving invoice overlap, using consistent non-key group locks, releasing the user signing gate before receipt waits, and preserving recovery progress across subscription changes. Full verification passed all seven checks, including concurrency, missed-transfer recovery, shared budget, and real payment-loop tests.",
-          "at": "2026-10-24T16:01:58Z",
-          "filesHash": "ac831bfdb31ddd3e"
+          "by": "reviewer",
+          "summary": "Re-review of the delta. Fixed: 00058_stores.sql:31-32 now lowercases before matching and filters NULLs from array_agg; my original trigger (upper-case scheme) can't be stored per 00021's CHECK, but a host-less https:/// link could, and TestStoresForExistingMerchants now covers it. create.go:104 skips the origin check only for a retainer's later month (r.cycle is unexported, so API callers can't bypass it); TestRetainerMonthKeepsAReturnLinkItsStoreDropped guards it. offStoreOrigins (features/invoices/lib/invoices.ts:174) now drives the origins message on a server 422 in New invoice and Edit. R-134 sentence split (D-84); R-134 and api.md describe the retainer rule. Reran TestStoresForExistingMerchants, TestRetainer*, TestStores, TestMerchantInvoicesRecordTheirStore: all pass; verify at 17:17:47Z passed. Accepted as is (non-blocking): the idempotency hash treats a missing expiresIn as 3600 for merchants too (documented in api.md); New invoice falls back to 7 days for a store close that isn't a menu choice (only the web writes it today); the allowsReturnLink unit test stays (redirect rule).",
+          "at": "2026-10-24T17:26:09Z",
+          "filesHash": "6b3c6b9a334d20f3"
         },
-        "commit": "f9638c6",
-        "doneAt": "2026-10-24T16:11:32Z"
+        "commit": "590a2f8",
+        "doneAt": "2026-10-24T17:58:04Z"
       },
-      "branch": "perf/f289-reduce-repeated-rpc-reads-and-isolate-sl",
-      "baseCommit": "f6bee1a3e764f8dcd8990e0acac13570aae83ee5",
+      "branch": "feat/f290-a-merchant-profile-has-stores-and-each-o",
+      "baseCommit": "387b06353a1b2a295f6294be5c6c19037994e9cb",
       "failedVerifies": 0,
       "delivery": {
         "mode": "pr",
-        "branch": "perf/f289-reduce-repeated-rpc-reads-and-isolate-sl",
+        "branch": "feat/f290-a-merchant-profile-has-stores-and-each-o",
         "base": "main"
       }
+    },
+    {
+      "id": "F291",
+      "type": "feat",
+      "behavior": "A store's logo and color brand its pay page",
+      "acceptance": [
+        "The owner sets a store's logo and accent color; the pay page and the invoice PDF of that store's invoices show them, with contrast checked; where the logo is stored is decided with the owner first"
+      ],
+      "dependsOn": [
+        "F290"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e",
+        "a11y-e2e"
+      ],
+      "refs": [
+        "D-30",
+        "D-32"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F292",
+      "type": "feat",
+      "behavior": "A profile turns chains and tokens off, and a store narrows them",
+      "acceptance": [
+        "A profile turns each enabled chain and token on or off, and a store can narrow that; payer-chooses invoices offer only what is left, a fixed invoice on a turned-off pair is 422, and invoices made earlier keep their options"
+      ],
+      "dependsOn": [
+        "F290"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "backend-e2e",
+        "e2e"
+      ],
+      "refs": [
+        "D-75",
+        "D-30"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

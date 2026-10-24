@@ -8,6 +8,7 @@ import {
   History,
   LayoutGrid,
   ShoppingBag,
+  Store,
   Users,
   WalletCards,
 } from "lucide-react";
@@ -18,6 +19,7 @@ import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/constants/invo
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import type { ProfileKind } from "@/features/profiles/types/profile";
+import { STORES_COPY } from "@/features/stores/constants/stores-copy";
 import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
 import type { NavGroup, NavItem } from "@/screens/app-shell/types/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -37,6 +39,7 @@ export const NAV = {
   requests: { href: APP_ROUTES.invoices, label: REQUESTS_COPY.invoices, icon: HandCoins },
   clients: { href: APP_ROUTES.clients, label: CLIENTS_COPY.title, icon: Users },
   jobs: { href: APP_ROUTES.jobs, label: JOBS_COPY.title, icon: BriefcaseBusiness },
+  stores: { href: APP_ROUTES.stores, label: STORES_COPY.title, icon: Store },
   checkout: { href: null, label: "Checkout", icon: ShoppingBag },
   developers: { href: null, label: "Developers", icon: Code },
   analytics: { href: null, label: "Analytics", icon: ChartLine },
@@ -57,7 +60,10 @@ export const APP_NAV: Readonly<Record<ProfileKind, readonly NavGroup[]>> = {
   ],
   [PROFILE_KINDS.merchant]: [
     MONEY,
-    { label: "Payments", items: [NAV.invoices, NAV.clients, NAV.checkout, NAV.activity] },
+    {
+      label: "Payments",
+      items: [NAV.invoices, NAV.clients, NAV.stores, NAV.checkout, NAV.activity],
+    },
     { label: "Build", items: [NAV.developers] },
     INSIGHTS,
   ],

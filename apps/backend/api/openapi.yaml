@@ -325,6 +325,64 @@ paths:
         "404": { $ref: "#/components/responses/ClientNotFound" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/stores:
+    get:
+      operationId: listStores
+      summary: The merchant profile's stores, the first one first (R-134)
+      description: At most 20 per profile, so the list comes whole. A personal or freelancer profile has none.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: The stores
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [stores]
+                properties:
+                  stores:
+                    type: array
+                    items: { $ref: "#/components/schemas/Store" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/stores/{storeId}:
+    put:
+      operationId: putStore
+      summary: Create or replace a store of a merchant profile (R-134)
+      description: |
+        The caller picks the id (a lowercase UUID), so the same request sent twice saves one store: 201 when it makes
+        the store, 200 when it replaces every field. A new store is refused with 422 once the profile has 20. Invoices
+        made earlier keep their close; changed origins apply to return links set from then on.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/StoreId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StoreRequest" }
+      responses:
+        "200":
+          description: Replaced
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Store" }
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Store" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/StoreNotFound" }
+        "409": { $ref: "#/components/responses/NotMerchant" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/invoices:
     get:
       operationId: listInvoices
@@ -556,7 +614,8 @@ paths:
         create; the memo is the owner's own note, at most 2000 characters of plain text. memo, clientEmail and
         returnUrl change at any time. reference, note and dueDate change only while every option is open, the checkout
         is open and no transfer was seen (else 409), and a new dueDate lies between today and the day the checkout
-        closes. Each field that changes writes one invoice.edited history row naming the field. Answers the invoice.
+        closes. A changed returnUrl on a merchant invoice must start with one of its store's allowedOrigins (R-134).
+        Each field that changes writes one invoice.edited history row naming the field. Answers the invoice.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - name: invoiceId
@@ -1406,6 +1465,12 @@ components:
       required: true
       description: A saved client of this profile; a client of another profile is 404.
       schema: { type: string, format: uuid }
+    StoreId:
+      name: storeId
+      in: path
+      required: true
+      description: A store of this profile; a store of another profile is 404.
+      schema: { type: string, format: uuid }
     StatusFilter:
       name: status
       in: query
@@ -1566,6 +1631,38 @@ components:
         taxId: { type: [string, "null"] }
         reference: { type: [string, "null"] }
         reminders: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+    StoreRequest:
+      type: object
+      additionalProperties: false
+      required: [name, defaultExpiresIn]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Plain text on one line; it can't name Forwend.
+        defaultExpiresIn:
+          type: integer
+          minimum: 900
+          maximum: 31536000
+          description: Seconds until the checkout closes for an invoice made without expiresIn.
+        allowedOrigins:
+          type: array
+          maxItems: 20
+          items: { type: string, maxLength: 300 }
+          description: |
+            https origins like https://shop.example.com, without a path, query or fragment; repeats count once. They are
+            kept in lower case without the default port. A return link must start with one of them; empty allows none.
+    Store:
+      type: object
+      required: [storeId, name, defaultExpiresIn, allowedOrigins, updatedAt]
+      description: A merchant profile's store. storeId is its project ID, public and with no authority (D-31).
+      properties:
+        storeId: { type: string, format: uuid }
+        name: { type: string }
+        defaultExpiresIn: { type: integer }
+        allowedOrigins: { type: array, items: { type: string } }
         updatedAt: { type: string, format: date-time }
     Issuer:
       type: object
@@ -1908,7 +2005,7 @@ components:
         amount: { $ref: "#/components/schemas/Uint256" }
         expiresIn:
           type: integer
-          description: Seconds until expiry; default 3600.
+          description: Seconds until expiry; default 3600, or the store's defaultExpiresIn for a merchant invoice.
           minimum: 900
           maximum: 31536000
         title:
@@ -1961,12 +2058,19 @@ components:
           maxLength: 2000
           description: |
             Optional https link to the creator's site, offered to the payer once paid (R-58, R-62); empty means none.
-            No user or password in it.
+            No user or password in it. A merchant invoice's must start with one of its store's allowedOrigins (R-134).
         reminders:
           type: boolean
           description: |
             Optional. true turns payment reminders on at once, as setReminders does (R-97); it needs dueDate and
             client.email, otherwise 422. Part of the idempotency hash only when true.
+        storeId:
+          type: string
+          format: uuid
+          description: |
+            Optional (R-134). The merchant profile's store the invoice records; left out, the profile's first store.
+            Not one of the profile's stores, or sent for a personal or freelancer profile: 422. Part of the idempotency
+            hash only when set.
         replaces:
           allOf: [{ $ref: "#/components/schemas/InvoiceId" }]
           description: |
@@ -2441,6 +2545,15 @@ components:
             address: { type: [string, "null"] }
             country: { type: [string, "null"] }
             taxId: { type: [string, "null"] }
+        store:
+          type: object
+          required: [storeId, name]
+          description: |
+            A merchant invoice's store (R-134), only in the owner's responses; left out for a personal or freelancer
+            profile's invoice and in the public GET. It never changes.
+          properties:
+            storeId: { type: string, format: uuid }
+            name: { type: string }
         issuer:
           description: |
             The profile's billing details as they were when the invoice was made; null when it had none. Editing the
@@ -2538,7 +2651,7 @@ components:
             code:
               type: string
               enum: [malformed_request, unauthorized, forbidden, not_signed_up, invoice_not_found, job_not_found, job_accepted, job_not_accepted, payment_out_of_order, change_not_accepted, change_pending, job_finished, payment_not_withdrawable, transaction_not_found, not_labelable, too_many_transactions,
-                billing_details_not_found, billing_details_required, client_not_found, idempotency_conflict, invoice_not_paid,
+                billing_details_not_found, billing_details_required, client_not_found, store_not_found, not_merchant, idempotency_conflict, invoice_not_paid,
                 invoice_not_cancelable, invoice_not_editable, invoice_not_reopenable, receipt_sent, client_email_required, invoice_closed, due_date_required,
                 reminders_stopped, invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
@@ -2641,6 +2754,16 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     ClientNotFound:
       description: The profile has no client with this id (client_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    StoreNotFound:
+      description: The store belongs to another profile (store_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotMerchant:
+      description: Only a merchant profile has stores (not_merchant)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

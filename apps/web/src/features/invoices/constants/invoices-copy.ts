@@ -125,6 +125,13 @@ export const NEW_INVOICE_COPY = {
   returnLabel: "Return link (optional)",
   returnHint: "Your site's https link. The client sees Back to it after paying.",
   returnError: "Enter an https link, like https://example.com/thanks.",
+  // R-134: a merchant invoice's store.
+  storeLabel: "Store",
+  returnOrigins: (origins: string) =>
+    `Your site's https link, starting with ${origins}. The client sees Back to it after paying.`,
+  returnNoOrigins:
+    "This store allows no return link yet. Add your site's origin to the store under Stores.",
+  returnOriginError: "Use a link that starts with one of this store's allowed origins.",
   agreed: {
     add: "Add agreed value",
     group: "Agreed value",
@@ -379,6 +386,7 @@ export const INVOICE_COPY = {
   itemsTotal: "Total",
   dueDate: "Due date",
   supplyDate: "Supply date",
+  store: "Store",
   reference: "Reference",
   agreedValue: "Agreed value",
   agreedOn: (value: string, date: string) => `${value} on ${date}`,

@@ -10,6 +10,7 @@ import { USD_DECIMALS } from "@/features/balances/constants/balances";
 import {
   AGREED_CURRENCIES,
   AMOUNT_ERRORS,
+  DEFAULT_EXPIRY,
   DUE_GRACE_DAYS,
   EXPIRY_BOUNDS_S,
   EXPIRY_CHOICES,
@@ -26,6 +27,7 @@ import type {
   AgreedValue,
   AmountError,
   Deposit,
+  ExpiryChoice,
   Invoice,
   InvoiceClient,
   InvoiceException,
@@ -160,6 +162,17 @@ export function isReturnLink(text: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** The choice whose seconds a store's default close has (R-134); New invoice's default otherwise. */
+export function expiryChoice(seconds: number | undefined): ExpiryChoice {
+  const choices = Object.entries(EXPIRY_CHOICES) as [ExpiryChoice, number][];
+  return choices.find(([, value]) => value === seconds)?.[0] ?? DEFAULT_EXPIRY;
+}
+
+/** R-134: the API refused a merchant invoice's return link for its store's origins, not for its form. */
+export function offStoreOrigins(message: string): boolean {
+  return invalidField(message) === INVOICE_FIELDS.returnUrl && message.includes("allowed origins");
 }
 
 // The API's 422 names the field only in its message: "invalid invoice request: client.email must be …".
@@ -305,6 +318,7 @@ export function restartFrom(
           },
     // Reminders the client stopped stay off on the copy (R-97); the rest of a closed invoice starts without them.
     reminders: !rest && !!reminders?.on && !reminders.stoppedAt,
+    ...(inv.store ? { storeId: inv.store.storeId } : {}),
     client: {
       name: client?.name ?? "",
       email: client?.email ?? "",

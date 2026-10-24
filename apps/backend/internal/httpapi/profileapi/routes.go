@@ -18,6 +18,8 @@ func Routes(mux *http.ServeMux, g mid.Guards, profiles *profile.Service) {
 	mux.Handle("GET /v1/profiles/{profileId}/clients", g.ProfileScoped(listClients(profiles)))
 	mux.Handle("PUT /v1/profiles/{profileId}/clients/{clientId}", g.ProfileScoped(putClient(profiles)))
 	mux.Handle("DELETE /v1/profiles/{profileId}/clients/{clientId}", g.ProfileScoped(deleteClient(profiles)))
+	mux.Handle("GET /v1/profiles/{profileId}/stores", g.ProfileScoped(listStores(profiles)))
+	mux.Handle("PUT /v1/profiles/{profileId}/stores/{storeId}", g.ProfileScoped(putStore(profiles)))
 	mux.Handle("GET /v1/profiles/{profileId}/notifications", g.ProfileScoped(getNotifications(profiles)))
 	mux.Handle("PUT /v1/profiles/{profileId}/notifications", g.ProfileScoped(putNotifications(profiles)))
 }

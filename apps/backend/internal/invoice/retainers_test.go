@@ -197,3 +197,58 @@ func TestRetainerSkipsPassedMonthsAndKeepsAReminderStop(t *testing.T) {
 		t.Fatalf("after the client's stop: %+v, want June 15 without reminders", got)
 	}
 }
+
+// R-134: a later month copies the first invoice's return link, as Edit keeps a link its store no longer allows.
+func TestRetainerMonthKeepsAReturnLinkItsStoreDropped(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := open(t)
+	s := NewService(pool)
+	var shop string
+	if err := pool.QueryRow(ctx, `
+		WITH p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'merchant' FROM users RETURNING id),
+		     w AS (INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
+		           SELECT id, 'privy', 'w2', 'evm', '0x2222222222222222222222222222222222222222' FROM p),
+		     b AS (INSERT INTO profile_billing_details (profile_id, name, address, country, contact_email)
+		           SELECT id, 'Shop', 'Main St 1', 'DE', 'shop@example.com' FROM p)
+		SELECT id::text FROM p`).Scan(&shop); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE stores SET allowed_origins = '{https://shop.example}' WHERE profile_id = $1",
+		shop); err != nil {
+		t.Fatal(err)
+	}
+	at := func(day string) {
+		now, _ := time.Parse(time.DateOnly, day)
+		s.now = func() time.Time { return now.Add(12 * time.Hour) }
+	}
+	at("2027-01-10")
+	if _, _, err := s.Create(ctx, shop, "k1", Request{ChainID: 84532, Token: usdc, Amount: "5000000",
+		ExpiresInSeconds: new(int64(86400)), Repeat: &Repeat{},
+		Details: Details{DueDate: "2027-01-31", ClientEmail: "ap@bob.example", ReturnURL: "https://shop.example/thanks"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE stores SET allowed_origins = '{}' WHERE profile_id = $1", shop); err != nil {
+		t.Fatal(err)
+	}
+	at("2027-02-21")
+	if err := s.MakeRetainerInvoices(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var links []string
+	rows, err := pool.Query(ctx, `SELECT i.return_url FROM retainer_invoices ri JOIN invoices i ON i.id = ri.invoice_id
+		ORDER BY ri.cycle`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var link string
+		if err := rows.Scan(&link); err != nil {
+			t.Fatal(err)
+		}
+		links = append(links, link)
+	}
+	if len(links) != 2 || links[1] != "https://shop.example/thanks" {
+		t.Fatalf("return links by month: %v, want the first one's twice", links)
+	}
+}

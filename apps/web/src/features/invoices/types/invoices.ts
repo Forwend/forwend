@@ -85,6 +85,8 @@ export interface InvoiceStart {
   agreed: AgreedDraft | null;
   client: ClientBody;
   reminders: boolean;
+  // A merchant invoice's store (R-134).
+  storeId?: string;
 }
 
 export type ExpiryChoice = keyof typeof EXPIRY_CHOICES;

@@ -140,6 +140,45 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   await expect(clientRow).toContainText("Germany");
   await expect(clientRow).toContainText("DE123456789");
   expect(await blockingViolations(page)).toEqual([]);
+
+  // R-134: the first store came with the profile; the return link below must start with one of its origins. A
+  // second store with its own close is made once and reused: a profile has at most 20.
+  await sidebar.getByRole("link", { name: "Stores" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Stores" })).toBeAttached();
+  expect(await blockingViolations(page)).toEqual([]);
+  const popUp = page.getByRole("row").filter({ hasText: "E2E pop-up" });
+  if ((await popUp.count()) === 0) {
+    await page.getByRole("link", { name: "Add store" }).first().click();
+    await expect(page).toHaveURL("/app/stores/new");
+    await page.getByRole("textbox", { name: "Store name" }).fill("E2E pop-up");
+    await page.getByRole("combobox", { name: "Checkout closes after" }).click();
+    await page.getByRole("option", { name: "1 hour" }).click();
+    await page
+      .getByRole("textbox", { name: "Allowed origins (optional)" })
+      .fill("https://popup.example");
+    expect(await blockingViolations(page)).toEqual([]);
+    await page.getByRole("button", { name: "Save store" }).click();
+    await expect(page).toHaveURL("/app/stores");
+  }
+  await expect(popUp).toContainText("1 hour");
+  await page.getByRole("row").nth(1).getByRole("link").click();
+  await expect(page).toHaveURL(/\/app\/stores\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole("textbox", { name: "Store name" })).toHaveValue("E2E shop");
+  await page.getByRole("button", { name: "Copy project ID" }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    page.url().split("/").at(-1),
+  );
+  const origins = page.getByRole("textbox", { name: "Allowed origins (optional)" });
+  await origins.fill("https://shop.example/thanks");
+  await page.getByRole("button", { name: "Save store" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "without a path" })).toBeVisible();
+  await expect(origins).toBeFocused();
+  await origins.fill("https://shop.example");
+  expect(await blockingViolations(page)).toEqual([]);
+  await page.getByRole("button", { name: "Save store" }).click();
+  await expect(page).toHaveURL("/app/stores");
+  await expect(page.getByRole("row").nth(1)).toContainText("https://shop.example");
+
   await sidebar.getByRole("link", { name: "Invoices" }).click();
   await page.getByRole("link", { name: "New invoice" }).first().click();
 
@@ -149,6 +188,16 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   let lastDue = "";
   const invoice = await createInvoice(page, async () => {
     await fixUsdcOnBase(page);
+    // R-134: the first store is picked with its close, and another store brings its own.
+    const store = page.getByRole("combobox", { name: "Store" });
+    await expect(store).toContainText("E2E shop");
+    await expect(page.getByRole("radio", { name: "7 days" })).toBeChecked();
+    await store.click();
+    await page.getByRole("option", { name: "E2E pop-up" }).click();
+    await expect(page.getByRole("radio", { name: "1 hour" })).toBeChecked();
+    await store.click();
+    await page.getByRole("option", { name: "E2E shop" }).click();
+    await expect(page.getByRole("radio", { name: "7 days" })).toBeChecked();
     // An amount the token can't hold and a link that is not https.
     const amount = page.getByRole("textbox", { name: "Amount" });
     const link = page.getByRole("textbox", { name: "Return link (optional)" });
@@ -161,6 +210,11 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(link).toHaveAttribute("aria-invalid", "true");
     await expect(amount).toBeFocused();
     expect(await blockingViolations(page)).toEqual([]);
+    await link.fill("https://elsewhere.example/thanks");
+    await page.getByRole("button", { name: "Create invoice" }).click();
+    await expect(
+      page.getByRole("alert").filter({ hasText: "one of this store's allowed origins" }),
+    ).toBeVisible();
     await amount.fill("12.5");
     await link.fill("https://shop.example/thanks");
     await page.getByRole("textbox", { name: "Title (optional)" }).fill(title);
@@ -248,6 +302,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       ),
     );
     await expect(details.locator("div").filter({ hasText: /^Reference/ })).toContainText(po);
+    await expect(details.locator("div").filter({ hasText: /^Store/ })).toContainText("E2E shop");
     await expect(details.locator("div").filter({ hasText: /^Agreed value/ })).toContainText(
       "€1,150.50",
     );
@@ -429,7 +484,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await page.getByRole("main").getByRole("searchbox", { name: "Search invoices" }).fill(po);
     await expect(page.getByRole("row")).toHaveCount(2);
     const row = page.getByRole("row").filter({ hasText: invoice.number });
-    await expect(row).toContainText(title);
+    await expect(row).toContainText(`${title} · E2E shop`);
     await expect(row).toContainText(clientName);
     await expect(row).toContainText(dueText);
     await expect(row).toContainText("12.50 USDC");

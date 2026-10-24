@@ -46,8 +46,8 @@ func (s *Service) Edit(ctx context.Context, profileID, id string, e Editable) (I
 		// Options first, main row last, in the ledger's lock order, as Cancel: FOR UPDATE also holds off the watcher's
 		// new transfers, whose foreign key needs a share lock on the row.
 		rows, err := tx.Query(ctx, `SELECT main_id IS NULL, payment_status = 'open' AND expires_at > $3, expires_at,
-			    id, coalesce(memo, ''), coalesce(client_email, ''), coalesce(return_url, ''), coalesce(reference, ''),
-			    coalesce(note, ''), coalesce(to_char(due_date, 'YYYY-MM-DD'), '')
+			    id, coalesce(store_id::text, ''), coalesce(memo, ''), coalesce(client_email, ''), coalesce(return_url, ''),
+			    coalesce(reference, ''), coalesce(note, ''), coalesce(to_char(due_date, 'YYYY-MM-DD'), '')
 			FROM invoices WHERE coalesce(main_id, id) = (SELECT coalesce(main_id, id) FROM invoices WHERE id = $1)
 			  AND profile_id = $2
 			ORDER BY main_id IS NULL, id FOR UPDATE`, strings.ToLower(id), profileID, s.now().Unix())
@@ -57,13 +57,13 @@ func (s *Service) Edit(ctx context.Context, profileID, id string, e Editable) (I
 		type row struct {
 			Main, Open bool
 			ExpiresAt  int64
-			ID         string
+			ID, Store  string
 			Editable
 		}
 		locked, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (row, error) {
 			var w row
-			err := r.Scan(&w.Main, &w.Open, &w.ExpiresAt, &w.ID, &w.Memo, &w.ClientEmail, &w.ReturnURL, &w.Reference,
-				&w.Note, &w.DueDate)
+			err := r.Scan(&w.Main, &w.Open, &w.ExpiresAt, &w.ID, &w.Store, &w.Memo, &w.ClientEmail, &w.ReturnURL,
+				&w.Reference, &w.Note, &w.DueDate)
 			return w, err
 		})
 		if err != nil {
@@ -76,6 +76,16 @@ func (s *Service) Edit(ctx context.Context, profileID, id string, e Editable) (I
 		was := main.Editable
 		if was == e {
 			return nil
+		}
+		// A link set before its store's origins changed stays until the owner changes it.
+		if e.ReturnURL != was.ReturnURL && e.ReturnURL != "" && main.Store != "" {
+			store, err := profile.InvoiceStore(ctx, tx, profileID, main.Store)
+			if err != nil {
+				return err
+			}
+			if !store.Allows(e.ReturnURL) {
+				return fmt.Errorf("%w: returnUrl must start with one of the store's allowed origins", ErrInvalid)
+			}
 		}
 		if was.Reference != e.Reference || was.Note != e.Note || was.DueDate != e.DueDate {
 			for _, r := range locked {
