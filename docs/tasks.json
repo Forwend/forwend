@@ -1020,7 +1020,7 @@
         "Text saying an invoice never reopens (landing, web comments, R-77, D-92) matches R-130; unit, lint, typecheck and e2e pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "lint",
@@ -1097,10 +1097,10 @@
         "taskHash": "1c47eb681bec61aa",
         "filesHash": "026f2bee4a1407d2",
         "proof": {
-          "1": "unit: invoice-detail.test.tsx reopens a partly paid invoice: the line offers reopen, the dialog names the new close and says once, Reopen posts, the toast says reopened until, Details shows the new close and takes focus, History shows Reopened, You, Until the day; a 409 shows It can't be reopened anymore (fails without the toast); navigation.spec.ts shows Reopen checkout only while reopenUntil is set, the dialog passes axe and Keep closed returns focus; the API returns reopenUntil (TestReopenAnInvoiceThatClosedPartlyPaid)",
-          "2": "e2e: pay.spec.ts a reopened invoice past its expiry shows the remaining amount, Closes in and the address (fails when the page closes at expiresAt); pay.test.ts payState takes payments until closesAt; the owner's page reads closesAt for closed and Details",
-          "3": "unit: canary reads closes_at as its eleventh field and checks a reopened invoice past its expiry without refusing its line (fails when it skips by expiresAt); a close before expiry or at the settle deadline is an input alert (fails without the rule); the money-safety.md query runs on the dev database and gives 11 fields",
-          "4": "lint: landing copy (plain timing), web comments, R-77, R-130, D-92 and DESIGN.md match R-130; unit, lint, typecheck and e2e pass"
+          "1": "unit",
+          "2": "e2e",
+          "3": "unit",
+          "4": "lint"
         },
         "review": {
           "result": "pass",
@@ -1108,11 +1108,18 @@
           "summary": "Rechecked delta: reopen-invoice.tsx toasts tooLate on 409 like cancel, with a test whose refetch drops reopenUntil; landing copy says within 6 days after it closes; canary tests cover close<expiry, close at deadline, and fail on input-line refusals; money-safety.md sentences <=25 words. Canary Go tests, invoice-detail vitest and biome pass. Follow-up, non-blocking: History 'Until' is the UTC day while Details and toasts show local time.",
           "at": "2026-10-24T03:32:38Z",
           "filesHash": "026f2bee4a1407d2"
-        }
+        },
+        "commit": "38ce91f",
+        "doneAt": "2026-10-24T03:32:56Z"
       },
       "branch": "feat/f285-the-owner-reopens-a-partly-paid-invoice",
       "baseCommit": "1ea33c2b45d2b72abc000c5190be64cdb3f4c377",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f285-the-owner-reopens-a-partly-paid-invoice",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
