@@ -1,0 +1,13 @@
+.git
+**/node_modules
+**/.next
+**/.turbo
+**/.env*
+**/coverage
+**/test-results
+**/playwright-report
+**/__pycache__
+packages/contracts/cache
+packages/contracts/out
+docs/runs
+docs/archive

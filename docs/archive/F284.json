@@ -1,0 +1,115 @@
+{
+  "id": "F284",
+  "type": "feat",
+  "behavior": "The owner reopens an expired, partly paid invoice before its settle deadline, and the ledger counts the rest as payment until the new close",
+  "acceptance": [
+    "POST .../invoices/{id}/reopen, for an expired, partly paid invoice not reopened before, with no refund under way, while now is a day or more before its settle deadline: the checkout reopens until a day before the deadline; else 409 invoice_not_reopenable",
+    "The ledger's reopen rows move the held money, up to the amount, back to the creator, each deposit's part naming its transfer; deposits until the new close count as payment; a second short close expires it again; the database allows reopen rows only between the first expiry and a second, and the status back only once",
+    "Every backend reader of the close uses the closes_at column: the ledger, the closed flag and filters, the open-invoice cap, activity's held flag and the PDF; per-deposit paid amounts count the reopen; reads return closesAt and the owner's reopenable",
+    "History gets invoice.reopened by the owner; openapi.yaml, the backend and root docs, the diagrams, D-25, D-26, R-21 and R-130 match; unit, lint and typecheck pass"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "lint",
+    "typecheck"
+  ],
+  "refs": [
+    "R-130",
+    "D-92",
+    "D-18",
+    "D-26"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [
+    "2026-10-24 review fail by reviewer: Blocking: (1) docs/PROJECT.md:212 D-26 still says expired partial payments and late deposits are never settled to the merchant, and docs/backend/architecture.md:471 still says a deposit after expires_at is held, never owed to the creator; R-130 does both, so acceptance 4 (docs match) fails; fix like D-25. (2) apps/backend/internal/ledger/reopen.go:13-16 is a 4-line comment, the only 3+ line comment in the backend, mostly restating the code; cut to at most 2 lines of why. Non-blocking: money-safety.md:73 claims a reopened invoice keeps an address the canary checked, but a short-expiry invoice may never have been checked and the canary query (expires_at > now+60) and canary.go:101 skip reopened ones for up to 6 days once F285 shows the address; e2e/privy/axe.ts:19 emulateMedia reducedMotion null overrides contexts made with reduce (auth.spec.ts:9, money-requests.spec.ts:129); stale: ledger.go:16-17 and architecture.md:462 call expired_partially_paid final with no other transition, invoice.go:200 'before expiry'; PROJECT.md:179 R-130 first sentence is 39 words, api.md:260 and :262 hold two facts per bullet; create.go:87 MaxOpen ignores reopened_until; no test reopens a payer-chooses invoice (reopen.go:24-46 lock order). Go tests for ledger, invoice, database, httpapi/tests, activity, document, notify, history pass; gofmt and vet clean.",
+    "2026-10-24 review fail by reviewer: Blocking: (1) apps/backend/api/openapi.yaml still defines the fields this change redefined by expiresAt: :2504 late 'Block time after expiresAt; held for the payer, never paid to the creator' (get.go:216 now compares closesAt, and a reopen pays late money to the creator); :2389-2393 closed 'past expiresAt ... before expiry ... final past expiry' (ClosedSQL now uses the reopened close, so a reopened invoice past expiresAt reads closed false); :2508-2511 paid 'booked to the creator when it booked the deposit' (now includes the reopen row's part); :2384 confirming 'before expiry'. Same class as the earlier blocking D-26/architecture.md:471 finding; acceptance 3-4 (closed flag, openapi match). Fix with docs/backend/architecture.md:442 'passes expires_at' and api.md:212 'before expiry'. Non-blocking: ledger/process.go:188 comment 'Never settled to the creator (D-26)' and docs/diagrams/contracts-workflow.json:290 'Never settled to the creator' are now false after a reopen; architecture.md:462 says 'the one reopen below' but the reopen bullet is above, and :463 is a broken reflow ('Only the owner cancels, from'); PROJECT.md:212 D-26 second sentence is 26 words; migration 00054 invoices_guard lets an INSERT set reopened_until (no Go path does). All earlier findings are fixed. Go tests for ledger, invoice, database, activity, document, notify, history and httpapi/tests pass; gofmt and vet clean; docs-check 0 errors.",
+    "2026-10-24 review fail by reviewer: Blocking (same class as the earlier D-26/openapi findings; docs still contradict R-130 on late and held money): (1) docs/architecture.md:44-49, the root money-flow doc, says 'Deposits after expiry are late and held' and that held money (excess, late, expired partial) goes back to the payer through a claim and Safe refund; R-130 makes deposits until the reopened close count and gives held money to the creator up to the amount; no reopen step. (2) docs/PROJECT.md:71 R-21, which internal/ledger cites, still defines late as block time after expiresAt, expiry as 'when expiresAt passes', and says 'The database rejects any other transition'; migration 00054 now allows expired_partially_paid -> partially_paid and late/expiry use greatest(expires_at, reopened_until). Non-blocking: openapi.yaml:1688 balance held 'never the creator's' (a reopen moves it to the creator), fix in the same pass; R-77 (PROJECT.md:126) 'closed flag (past expiry...)' and 'new invoice for the rest (D-25)'; web copy and comments for F285: landing-content.ts:86 'An expired invoice cannot be reopened', invoices.ts:268 and invoice-detail.tsx:501 'never reopened (D-25)'; reminders queue again after a reopen (StatusFilterSQL = open, reminders.go:155) and link to a pay page that still reads expiresAt until F285; broken reflows at architecture.md:442-444, :465 and api.md:174-176; greatest(expires_at, coalesce(reopened_until, 0)) repeats in 8 SQL sites, the view could expose it once. All last-round findings are fixed. Go tests for ledger, invoice, database, httpapi/tests, activity, document, notify, history pass; gofmt and vet clean; docs-check 0 errors.",
+    "2026-10-24 review pass by reviewer: No blocking findings. All last-round findings are fixed: architecture.md money flow names late as after the close and the reopen exception; R-21 defines late and expiry by the close and allows the one reopen; R-77 says past the close; openapi balance held names the reopen; reflows in architecture.md and api.md fixed; closes_at is one stored generated column read by the ledger, ClosedSQL, the cap, activity, deposits, the view and the PDF. Ledger math checked: expiry leaves recipient_payable 0, reopen moves payer_held in chain order up to the amount, per-deposit paid and paidAt include reopen rows; lock order matches Process; trigger and guard enforce once and order; Down passes migrations_down_test. Non-blocking: balance/balance.go:29 comment still says held is never the creator's (openapi:1688 was fixed); api.md:174 says payment closes at expiresAt while openapi:1924 says closesAt; openapi.yaml:528 broken wrap; architecture.md:155 data model omits reopened_until/closes_at; get.go:98 computes late on non-chosen options against the chosen option's reopened close; PROJECT.md:277 D-92 calls the grace an open owner choice though D-18 records it (pre-existing); the e2e axe fix is outside F284's acceptance and a11y.spec.ts keeps its own copy. go test ./internal/... passes; gofmt and vet clean; docs-check 0 errors.",
+    "2026-10-24 review pass by reviewer: Delta re-checked, no blocking findings. balance.go:29 comment names the reopen; openapi:1924 dueDate back to the create-time text, matching api.md:174; openapi:527-530 reopen description rewrapped; architecture.md:164 data model names reopened_until and closes_at; get.go deposits() computes late in SQL against each option's own closes_at, and TestReopenThePaidOptionOfAPayerChoosesInvoice checks an unchosen option's deposit after its close reads late. Still open, non-blocking: D-92 'open owner choice' (predates F284); a11y.spec.ts keeps its own axe helper copy. go test for invoice, httpapi/tests, balance, document, job pass; gofmt and vet clean; docs-check 0 errors."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-24T02:46:59Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 125.3,
+        "log": "docs/runs/F284-20261024T024659Z-unit.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.3,
+        "log": "docs/runs/F284-20261024T024659Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F284-20261024T024659Z-typecheck.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.6,
+        "log": "docs/runs/F284-20261024T024659Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.0,
+        "log": "docs/runs/F284-20261024T024659Z-docs-check.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 2.2,
+        "log": "docs/runs/F284-20261024T024659Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 236.5,
+        "log": "docs/runs/F284-20261024T024659Z-e2e.log"
+      }
+    ],
+    "taskHash": "ed119a62c07bc201",
+    "filesHash": "a071ff0035ca1717",
+    "proof": {
+      "1": "unit",
+      "2": "unit",
+      "3": "unit",
+      "4": "lint"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Delta re-checked, no blocking findings. balance.go:29 comment names the reopen; openapi:1924 dueDate back to the create-time text, matching api.md:174; openapi:527-530 reopen description rewrapped; architecture.md:164 data model names reopened_until and closes_at; get.go deposits() computes late in SQL against each option's own closes_at, and TestReopenThePaidOptionOfAPayerChoosesInvoice checks an unchosen option's deposit after its close reads late. Still open, non-blocking: D-92 'open owner choice' (predates F284); a11y.spec.ts keeps its own axe helper copy. go test for invoice, httpapi/tests, balance, document, job pass; gofmt and vet clean; docs-check 0 errors.",
+      "at": "2026-10-24T02:53:15Z",
+      "filesHash": "a071ff0035ca1717"
+    },
+    "commit": "e4dbd54",
+    "doneAt": "2026-10-24T02:53:48Z"
+  },
+  "branch": "feat/f284-the-owner-reopens-an-expired-partly-paid",
+  "baseCommit": "560d2b31fa72fb78303bcd272831dc16f3017382",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f284-the-owner-reopens-an-expired-partly-paid",
+    "base": "main"
+  }
+}

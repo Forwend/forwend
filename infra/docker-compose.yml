@@ -1,15 +1,94 @@
-# Local services for apps/backend. Values come from apps/backend/.env: pnpm --filter @forwend/backend postgres:up
+x-backend: &backend
+  build:
+    context: ..
+    dockerfile: infra/backend.Dockerfile
+  restart: unless-stopped
+
+x-chain-environment: &chain-environment
+  DATABASE_URL: postgres://${POSTGRES_USER:?set POSTGRES_USER}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB}?sslmode=disable&pool_max_conns=20
+  CHAINS_FILE: /app/chains.json
+  INFURA_API_KEYS: ${INFURA_API_KEYS:-}
+  RPC_RATE_PER_SECOND: ${RPC_RATE_PER_SECOND:-10}
+
 services:
   postgres:
     image: postgres:17
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?set in apps/backend/.env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in apps/backend/.env}
-      POSTGRES_DB: ${POSTGRES_DB:?set in apps/backend/.env}
-    ports:
-      - "127.0.0.1:${POSTGRES_PORT:?set in apps/backend/.env}:5432"
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 2s
       timeout: 3s
       retries: 30
+
+  api:
+    <<: *backend
+    command: ["api"]
+    environment:
+      <<: *chain-environment
+      API_ADDR: :8080
+      PRIVY_APP_ID: ${NEXT_PUBLIC_PRIVY_APP_ID:?set NEXT_PUBLIC_PRIVY_APP_ID}
+      PRIVY_JWKS_URL: https://auth.privy.io/api/v1/apps/${NEXT_PUBLIC_PRIVY_APP_ID:?set NEXT_PUBLIC_PRIVY_APP_ID}/jwks.json
+      PRIVY_APP_SECRET: ${PRIVY_APP_SECRET:?set PRIVY_APP_SECRET}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:?set PUBLIC_WEB_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 150s
+
+  worker:
+    <<: *backend
+    command: ["worker"]
+    environment:
+      <<: *chain-environment
+      POLL_INTERVAL: ${POLL_INTERVAL:-5s}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:?set PUBLIC_WEB_URL}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-Forwend <notifications@mail.forwend.com>}
+      EMAIL_POSTAL_ADDRESS: ${EMAIL_POSTAL_ADDRESS:-}
+    depends_on:
+      api:
+        condition: service_healthy
+
+  signer:
+    <<: *backend
+    command: ["signer"]
+    environment:
+      <<: *chain-environment
+      POLL_INTERVAL: ${POLL_INTERVAL:-5s}
+      EXECUTOR_PRIVATE_KEY: ${EXECUTOR_PRIVATE_KEY:?set EXECUTOR_PRIVATE_KEY}
+    depends_on:
+      api:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/web.Dockerfile
+      args:
+        NEXT_PUBLIC_PRIVY_APP_ID: ${NEXT_PUBLIC_PRIVY_APP_ID:?set NEXT_PUBLIC_PRIVY_APP_ID}
+    restart: unless-stopped
+    expose:
+      - "3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  postgres-data:

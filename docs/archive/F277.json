@@ -1,0 +1,113 @@
+{
+  "id": "F277",
+  "type": "feat",
+  "behavior": "The owner sees how often the pay link was opened: first view, last view and a total, with no IP",
+  "acceptance": [
+    "Each pay page load counts one view; status refreshes don't; no IP or user agent is stored",
+    "The owner's invoice reads return views {count, firstAt, lastAt}; the public read has none",
+    "The History panel shows the view count with the first and last view",
+    "openapi.yaml and api.md match; unit, lint and typecheck pass"
+  ],
+  "dependsOn": [
+    "F276"
+  ],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "lint",
+    "typecheck"
+  ],
+  "refs": [
+    "R-125",
+    "D-92"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [
+    "2026-10-23 review fail by reviewer: 1) firstAt/lastAt are not UTC: invoice/views.go:38 scans timestamptz in local time and invoiceapi/model.go:287-288 format it without .UTC() (history does .UTC() at model.go:294); pgx here gives +03:00, which breaks api.md 'Times: RFC 3339 in UTC'. 2) No 429 test for POST /v1/invoices/{payToken}/views (api.md 'Handlers and tests': every error code; payer-email has one): add a burst-then-429 check with Retry-After and an unchanged count to invoices_views_test.go.",
+    "2026-10-23 review fail by reviewer: Code fixes are right (UTC times, 429 test, CountView, D-86 table, payToken-hidden line, <time> elements; tests pass). One doc error: docs/backend/architecture.md:196 puts the invoice_views bullet between history_events (line 195) and its sub-bullets, so lines 197-201 now say history.Add writes invoice_views and that it is append-only. Move the invoice_views line below 'Rows marked backfilled...' (after line 201).",
+    "2026-10-23 review pass by reviewer: Pay page loads are counted once per load through a per-link limited public route with no IP or user agent; owner reads return UTC views and the History panel shows them. Tests cover 204, 404, 429 and the D-86 table, and the docs match the code."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-23T20:00:18Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 125.8,
+        "log": "docs/runs/F277-20261023T200018Z-unit.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F277-20261023T200018Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.2,
+        "log": "docs/runs/F277-20261023T200018Z-typecheck.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.9,
+        "log": "docs/runs/F277-20261023T200018Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F277-20261023T200018Z-docs-check.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.6,
+        "log": "docs/runs/F277-20261023T200018Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 246.9,
+        "log": "docs/runs/F277-20261023T200018Z-e2e.log"
+      }
+    ],
+    "taskHash": "ec940f1b823f5f34",
+    "filesHash": "d861494b1e963623",
+    "proof": {
+      "1": "e2e",
+      "2": "unit",
+      "3": "unit",
+      "4": "lint"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Pay page loads are counted once per load through a per-link limited public route with no IP or user agent; owner reads return UTC views and the History panel shows them. Tests cover 204, 404, 429 and the D-86 table, and the docs match the code.",
+      "at": "2026-10-23T20:06:45Z",
+      "filesHash": "d861494b1e963623"
+    },
+    "commit": "e9e3d6c",
+    "doneAt": "2026-10-23T20:06:57Z"
+  },
+  "branch": "feat/f277-the-owner-sees-how-often-the-pay-link-wa",
+  "baseCommit": "d3ec865d17bdc1ddcf6f460ca66545a86d65ec7e",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f277-the-owner-sees-how-often-the-pay-link-wa",
+    "base": "main"
+  }
+}

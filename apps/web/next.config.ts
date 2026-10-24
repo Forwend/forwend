@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 import { API_BASE } from "./src/shared/config/api";
 
@@ -30,6 +31,8 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
   poweredByHeader: false,
   transpilePackages: ["@forwend/design-tokens", "@forwend/ui-web"],
   images: { formats: ["image/avif", "image/webp"] },
