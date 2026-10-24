@@ -9,7 +9,7 @@ if ! grep -Eq "^[[:space:]]*(export[[:space:]]+)?EXECUTOR_PRIVATE_KEY=[\"']?[^\"
     "(see .env.example)" >&2
   exit 1
 fi
-docker compose --env-file .env -f ../../infra/docker-compose.yml up -d --wait
+docker compose --env-file .env -f ../../infra/docker-compose.local.yml up -d --wait
 
 tmp=$(mktemp -d)
 pids=

@@ -1,0 +1,111 @@
+{
+  "id": "F279",
+  "type": "feat",
+  "behavior": "History records sent and failed emails and the reminder and repeat settings, with who caused each",
+  "acceptance": [
+    "The worker writes one history row when it sends Send to client, a reminder (with its step) or the receipt, and a failed row when it gives up; By is the owner for Send to client and Forwend otherwise",
+    "Reminders on and off write one owner row only when the setting changes; the client's stop link writes one payer row once; Stop repeating writes one owner row once; each in the change's transaction",
+    "The owner's reads return each row's step; History shows the new kinds with labels, categories (emails, changes) and the step as details",
+    "openapi.yaml, api.md, R-126 and DESIGN.md match; unit, lint and typecheck pass"
+  ],
+  "dependsOn": [],
+  "state": "passing",
+  "verification": [
+    "unit",
+    "lint",
+    "typecheck"
+  ],
+  "refs": [
+    "R-126",
+    "R-124",
+    "D-92"
+  ],
+  "keep": [],
+  "review": false,
+  "notes": [
+    "2026-10-23 review fail by reviewer: apps/backend/internal/invoice/reminders.go:59-60: SetReminders reads enabled FOR UPDATE, but on an invoice with no invoice_reminders row nothing is locked, so two first toggles race. Repro: A turns on (uncommitted), B turns off and waits on the insert; result is enabled=false with history only 'reminders.on' (two on calls write two rows). Lock the invoice row first as payer_email.go:36 does (SELECT id FROM invoices WHERE id = $1 AND profile_id = $2 FOR UPDATE). Rest is correct: deliverOne writes only on send and give-up in its tx, skip/retry/owner/welcome/job paths write nothing, StopReminders/StopRetainer write once with unchanged answers, contracts agree, tests pass.",
+    "2026-10-23 review pass by reviewer: Re-review after fixes: SetReminders now locks the invoice FOR NO KEY UPDATE before reading enabled, so first toggles take turns and the stop link's history FK (KEY SHARE) can't deadlock with it; the regression test covers it. Email rows are written only on send and give-up in the delivery transaction (retry, skip and non-client kinds write nothing, now tested), stops write once, contracts and web agree; notify, invoice, history, httpapi tests (-race), tsc, vitest and docs-check pass."
+  ],
+  "blockedReason": null,
+  "evidence": {
+    "version": 3,
+    "status": "passed",
+    "at": "2026-10-23T21:17:59Z",
+    "checks": [
+      {
+        "id": "unit",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 122.5,
+        "log": "docs/runs/F279-20261023T211759Z-unit.log"
+      },
+      {
+        "id": "lint",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.4,
+        "log": "docs/runs/F279-20261023T211759Z-lint.log"
+      },
+      {
+        "id": "typecheck",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.9,
+        "log": "docs/runs/F279-20261023T211759Z-typecheck.log"
+      },
+      {
+        "id": "harness",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 1.8,
+        "log": "docs/runs/F279-20261023T211759Z-harness.log"
+      },
+      {
+        "id": "docs-check",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 0.1,
+        "log": "docs/runs/F279-20261023T211759Z-docs-check.log"
+      },
+      {
+        "id": "build",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 5.1,
+        "log": "docs/runs/F279-20261023T211759Z-build.log"
+      },
+      {
+        "id": "e2e",
+        "outcome": "passed",
+        "exit": 0,
+        "seconds": 292.8,
+        "log": "docs/runs/F279-20261023T211759Z-e2e.log"
+      }
+    ],
+    "taskHash": "999a2c9a2072a3e4",
+    "filesHash": "c7baa26919a384a1",
+    "proof": {
+      "1": "unit",
+      "2": "unit",
+      "3": "unit",
+      "4": "lint"
+    },
+    "review": {
+      "result": "pass",
+      "by": "reviewer",
+      "summary": "Re-review after fixes: SetReminders now locks the invoice FOR NO KEY UPDATE before reading enabled, so first toggles take turns and the stop link's history FK (KEY SHARE) can't deadlock with it; the regression test covers it. Email rows are written only on send and give-up in the delivery transaction (retry, skip and non-client kinds write nothing, now tested), stops write once, contracts and web agree; notify, invoice, history, httpapi tests (-race), tsc, vitest and docs-check pass.",
+      "at": "2026-10-23T21:27:34Z",
+      "filesHash": "c7baa26919a384a1"
+    },
+    "commit": "7ba082f",
+    "doneAt": "2026-10-23T21:27:51Z"
+  },
+  "branch": "feat/f279-history-records-sent-and-failed-emails-a",
+  "baseCommit": "55f65d27da2b2ffbd7413bfde6dbd1c5d8d7626f",
+  "failedVerifies": 0,
+  "delivery": {
+    "mode": "pr",
+    "branch": "feat/f279-history-records-sent-and-failed-emails-a",
+    "base": "main"
+  }
+}
