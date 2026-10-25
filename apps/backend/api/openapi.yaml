@@ -2163,6 +2163,7 @@ paths:
         "404": { $ref: "#/components/responses/DeliveryNotFound" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+        "503": { $ref: "#/components/responses/WebhooksNotConfigured" }
   /v1/profiles/{profileId}/webhooks/{endpointId}/deliveries/resend-failed:
     post:
       operationId: resendFailedWebhookDeliveries
@@ -2197,6 +2198,7 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+        "503": { $ref: "#/components/responses/WebhooksNotConfigured" }
   /v1/profiles/{profileId}/webhooks/{endpointId}/test:
     post:
       operationId: sendWebhookTestEvent
@@ -2219,6 +2221,7 @@ paths:
         "404": { $ref: "#/components/responses/EndpointNotFound" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+        "503": { $ref: "#/components/responses/WebhooksNotConfigured" }
 webhooks:
   invoiceEvent:
     post:

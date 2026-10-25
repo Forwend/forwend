@@ -29,6 +29,7 @@ import {
 import { WEBHOOKS_COPY as COPY } from "@/features/webhooks/constants/webhooks-copy";
 import type { Delivery, DeliveryStatus, WebhookEndpoint } from "@/features/webhooks/types/webhooks";
 import { RowsSkeleton } from "@/shared/components/rows-skeleton";
+import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface DeliveriesProps {
@@ -49,7 +50,8 @@ const TONE: Record<DeliveryStatus, Tone> = {
 // failed ones in a window.
 export function Deliveries({ profileId, endpoint }: DeliveriesProps) {
   const arg = { profileId, endpointId: endpoint.endpointId };
-  const deliveries = useListDeliveriesQuery(arg);
+  // The worker sends while the sheet is open: a test event turns Delivered without a reload.
+  const deliveries = useListDeliveriesQuery(arg, LIVE_QUERY);
   const [sendTest, testing] = useSendTestMutation();
   const [resendFailed, resending] = useResendFailedMutation();
   const [hours, setHours] = useState(String(DEFAULT_FAILED_SINCE_HOURS));
@@ -198,8 +200,9 @@ function DeliveryRow({
             {COPY.attempts(d.attempts.length)}
           </summary>
           <ol className="mt-2 flex flex-col gap-1">
-            {d.attempts.map((a) => (
-              <li key={a.at + a.durationMs} className="flex flex-wrap gap-x-3 text-muted">
+            {d.attempts.map((a, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: attempts only append, so the position names one
+              <li key={i} className="flex flex-wrap gap-x-3 text-muted">
                 <span>{WHEN.format(new Date(a.at))}</span>
                 <span className="font-mono text-ink">{a.statusCode ?? COPY.noAnswer}</span>
                 {a.error ? <span className="break-words">{a.error}</span> : null}

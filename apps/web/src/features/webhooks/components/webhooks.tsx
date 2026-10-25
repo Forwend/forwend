@@ -24,11 +24,20 @@ export function Webhooks({ profileId, merchant }: WebhooksProps) {
   const stores = useListStoresQuery(profileId, { skip: !merchant });
   const names = new Map((stores.currentData ?? []).map((s) => [s.storeId, s.name]));
 
-  if (endpoints.isError && !endpoints.currentData) {
+  // A merchant's rows wait for the store names, so a failed stores load needs the same way out.
+  const storesFailed = merchant && stores.isError && !stores.currentData;
+  if ((endpoints.isError && !endpoints.currentData) || storesFailed) {
     return (
       <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
         {COPY.loadFailed}
-        <Button size="sm" variant="secondary" onClick={() => void endpoints.refetch()}>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            void endpoints.refetch();
+            if (storesFailed) void stores.refetch();
+          }}
+        >
           {COPY.retry}
         </Button>
       </div>

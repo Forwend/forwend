@@ -25,15 +25,19 @@ import (
 // receiver is an endpoint's server: it answers each request with the next code it is given.
 type receiver struct {
 	*httptest.Server
-	mu   sync.Mutex
-	code int
-	got  []*http.Request
-	body [][]byte
+	mu     sync.Mutex
+	code   int
+	got    []*http.Request
+	body   [][]byte
+	during func() // runs while a request waits for its answer
 }
 
 func newReceiver(t *testing.T) *receiver {
 	r := &receiver{code: http.StatusOK}
 	r.Server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if r.during != nil {
+			r.during()
+		}
 		b, _ := io.ReadAll(req.Body)
 		r.mu.Lock()
 		defer r.mu.Unlock()
@@ -442,5 +446,31 @@ func TestOwnerResendsAndTestsDeliveries(t *testing.T) {
 		if r := h.call(t, c.method, c.path, alice, "", c.body); errorCode(r) != c.code {
 			t.Errorf("%s %s: %d %v, want %s", c.method, c.path, r.status, r.body, c.code)
 		}
+	}
+}
+
+// R-149: an attempt in flight when the owner resends its delivery is logged, but its answer doesn't undo the resend.
+func TestAnAttemptInFlightKeepsAResend(t *testing.T) {
+	h := newHookEnv(t)
+	event := h.canceled(t, "key-1")
+	// The last attempt: its failure would turn the endpoint off.
+	h.exec(t, "UPDATE webhook_deliveries SET attempts = $1", len(webhook.Retries))
+	h.recv.answer(http.StatusInternalServerError)
+	resent := make(chan error, 1)
+	h.recv.during = func() { resent <- h.hooks.Resend(context.Background(), h.shop, h.endpoint, event) }
+	h.deliver(t)
+	if err := <-resent; err != nil {
+		t.Fatal(err)
+	}
+	if state, next := h.delivery(t, h.endpoint, event); state != "pending 0" || next > time.Second {
+		t.Fatalf("after the attempt: %s, next in %v", state, next)
+	}
+	var on bool
+	if err := h.pool.QueryRow(context.Background(), "SELECT enabled FROM webhook_endpoints WHERE id = $1", h.endpoint).
+		Scan(&on); err != nil || !on {
+		t.Fatalf("the endpoint is on: %v %v", on, err)
+	}
+	if got := h.attempts(t, h.endpoint); !slices.Equal(got, []string{"500"}) {
+		t.Fatalf("attempts %q, want the one in flight logged", got)
 	}
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 307,
+  "nextId": 308,
   "tasks": [
     {
       "id": "F295",
@@ -1328,6 +1328,115 @@
       "delivery": {
         "mode": "pr",
         "branch": "feat/f306-the-developers-page-manages-webhook-endp",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F307",
+      "type": "fix",
+      "behavior": "Webhooks follow-ups: the Developers page has no duplicate key, and resends, refreshes and errors behave",
+      "acceptance": [
+        "The Developers page renders API keys and Webhooks without two children of the same key",
+        "An attempt that was in flight when the owner resent its delivery does not undo the resend",
+        "Test, resend and resend-failed answer 503 webhooks_not_configured without WEBHOOK_SECRET_KEY",
+        "The open Deliveries sheet refreshes itself; a failed stores load on Webhooks, API keys and Team shows Try again; Delete is tested through the menu"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-149",
+        "D-99"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-25 review fail by reviewer: BLOCKING 1: the failed-stores fix in features/webhooks/components/webhooks.tsx:28 does not cover the other places with the same stuck skeleton, and does not name them (AGENTS.md: a fix covers every place). features/api-keys/components/api-keys.tsx:50 is on the same Developers page and waits on stores.currentData, but its error branch (line 40) checks only keys. A probe with a 500 on /stores leaves ApiKeys on RowsSkeleton with no alert. features/team/components/team-members.tsx:52 has the same gate (error branch line 42 checks only team). new-invoice-screen.tsx:75 and link-screen.tsx:27 already handle stores.isError. BLOCKING 2: acceptance 4 proof cites e2e/privy/webhooks.spec.ts. That spec is unchanged and never fails the stores load or waits for a poll. So 'a failed stores load shows Try again' has no test, though it is a bug fix (needs a test that fails before the fix). A scratch probe (merchant, /stores 500, then Try again with stores OK) fails on the HEAD webhooks.tsx and passes on the new one, so it is easy to add to webhooks.test.tsx. A test for the 15 s poll is optional (it would restate LIVE_QUERY). Non-blocking: (a) deliver.go:199 also skips turning the endpoint off on a 410 from a stale attempt. The resent delivery's own attempt gets the 410 and turns it off, so the cost is one extra request; it matches api.md. (b) shared/config/refresh.ts:3 lists 'money, and webhook deliveries', but LIVE_QUERY also drives jobs (job-screen.tsx:23) and invoice events (notifications-menu.tsx:67). Drop the list. (c) DESIGN.md:249 (no-description row) documents F306 behavior that this diff does not change. It is accurate. Checked OK: dev screen key on the root div. A probe that rerenders with a second profile remounts both ApiKeys and Webhooks. The repo test fails on the HEAD screen ('Encountered two children with the same key') and passes now. No other screen has two siblings with one key; every other key={profile.profileId} is the only keyed child. Resend race: no trigger on webhook_deliveries. Between a claim and its record, updated_at is written only by Resend, by ResendFailed (failed rows only), and by another round's record after the lease ends. The claim and the body fill leave it alone. Skipping a stale record is right in all three cases. updated_at is timestamptz (microseconds) and pgx round-trips it exactly; the retry tests would fail otherwise. TestAnAttemptInFlightKeepsAResend fails with the HEAD deliver.go via -overlay ('failed 12'). It passes under -race 16 times, with no race reported. All 6 delivery tests and 3 endpoint tests pass under -race. TestWebhooksWithoutAKey fails with the HEAD deliveries.go (404 for test, resend and resend-failed) and passes now. openapi.yaml has 503 WebhooksNotConfigured on all three routes, and api.md:361 says so. Deliveries mounts only while the sheet is open (endpoint-actions.tsx:222), so polling stops on close. The attempt index key is safe: attempts are ORDER BY id, append-only, and kept by a resend. The Delete test goes through the menu and checks no write before confirm. choose is identical to the two removed copies. Every added doc sentence is at most 25 words. Ran: go test -race on the webhook delivery and endpoint tests (-count=1 and -count=15); go test -overlay with the HEAD deliver.go and deliveries.go; pnpm exec vitest run on developers-screen.test.tsx and features/webhooks/tests (8 passed); scratch vitest probes for the key, the remount, the HEAD screen, and the stores failure in Webhooks (old and new) and ApiKeys.",
+        "2026-10-25 review pass by reviewer: Re-review after the fail. Both blocking findings are fixed. (1) The failed-stores way out now covers all three readers that wait on stores: features/webhooks/components/webhooks.tsx:28, features/api-keys/components/api-keys.tsx (merchant only; the stores query is skipped otherwise) and features/team/components/team-members.tsx. In each, Try again refetches the list, and the stores query too when that one failed. new-invoice-screen.tsx:75 and link-screen.tsx:27 already handle isError. stores-table and store-screen read the stores list itself and have their own error branch. (2) One test per component: webhooks.test.tsx, api-keys.test.tsx and the new team/tests/team-members.test.tsx. With the HEAD components swapped in by vitest aliases, exactly these 3 tests fail and the other 10 pass; on the current code all pass. Acceptance 4 names Webhooks, API keys and Team, and its proof cites the unit tests. refresh.ts:3 no longer lists users. Non-blocking, left as is: the 410 from an out-of-date attempt does not turn the endpoint off; the resent delivery's own 410 does (deliver.go:199, matches api.md). The DESIGN.md:249 no-description bullet is accurate. The Deliveries poll has no test; it would only repeat LIVE_QUERY. My first review's backend and key checks still hold; the backend diff is unchanged. Ran: pnpm exec vitest run on the webhooks, api-keys, team and developers tests (5 files, 15 passed); a scratch vitest config with HEAD copies of the three components (3 failed, 10 passed); go test -race on the 8 webhook delivery and endpoint tests (ok)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-25T23:48:56Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 189.2,
+            "log": "docs/runs/F307-20261025T234856Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 319.5,
+            "log": "docs/runs/F307-20261025T234856Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.4,
+            "log": "docs/runs/F307-20261025T234856Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F307-20261025T234856Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F307-20261025T234856Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": "docs/runs/F307-20261025T234856Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.9,
+            "log": "docs/runs/F307-20261025T234856Z-build.log"
+          }
+        ],
+        "taskHash": "bfdbe33774a57bbc",
+        "filesHash": "f2c8d51478fa4783",
+        "proof": {
+          "1": "unit: developers-screen.test.tsx",
+          "2": "unit: TestAnAttemptInFlightKeepsAResend",
+          "3": "unit: TestWebhooksWithoutAKey",
+          "4": "unit: the stores-failure tests in webhooks, api-keys and team-members; the Delete test through the menu"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review after the fail. Both blocking findings are fixed. (1) The failed-stores way out now covers all three readers that wait on stores: features/webhooks/components/webhooks.tsx:28, features/api-keys/components/api-keys.tsx (merchant only; the stores query is skipped otherwise) and features/team/components/team-members.tsx. In each, Try again refetches the list, and the stores query too when that one failed. new-invoice-screen.tsx:75 and link-screen.tsx:27 already handle isError. stores-table and store-screen read the stores list itself and have their own error branch. (2) One test per component: webhooks.test.tsx, api-keys.test.tsx and the new team/tests/team-members.test.tsx. With the HEAD components swapped in by vitest aliases, exactly these 3 tests fail and the other 10 pass; on the current code all pass. Acceptance 4 names Webhooks, API keys and Team, and its proof cites the unit tests. refresh.ts:3 no longer lists users. Non-blocking, left as is: the 410 from an out-of-date attempt does not turn the endpoint off; the resent delivery's own 410 does (deliver.go:199, matches api.md). The DESIGN.md:249 no-description bullet is accurate. The Deliveries poll has no test; it would only repeat LIVE_QUERY. My first review's backend and key checks still hold; the backend diff is unchanged. Ran: pnpm exec vitest run on the webhooks, api-keys, team and developers tests (5 files, 15 passed); a scratch vitest config with HEAD copies of the three components (3 failed, 10 passed); go test -race on the 8 webhook delivery and endpoint tests (ok).",
+          "at": "2026-10-25T23:58:47Z",
+          "filesHash": "f2c8d51478fa4783"
+        },
+        "commit": "be08aef",
+        "doneAt": "2026-10-25T23:59:33Z"
+      },
+      "branch": "fix/f307-webhooks-follow-ups-the-developers-page",
+      "baseCommit": "847205be68e5a4a9910f2297be4f32c0f21150bd",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f307-webhooks-follow-ups-the-developers-page",
         "base": "main"
       }
     }

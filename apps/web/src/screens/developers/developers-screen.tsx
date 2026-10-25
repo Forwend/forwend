@@ -12,7 +12,8 @@ import { Webhooks } from "@/features/webhooks/components/webhooks";
 export function DevelopersScreen() {
   const { profile } = useAppSession();
   return (
-    <div className="flex flex-col gap-6">
+    // One key for the page: a profile switch starts both sections afresh.
+    <div key={profile.profileId} className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
         <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">{COPY.title}</h1>
@@ -21,15 +22,10 @@ export function DevelopersScreen() {
         </p>
       </div>
       {profile.kind === PROFILE_KINDS.personal ? null : (
-        <ApiKeys
-          key={profile.profileId}
-          profileId={profile.profileId}
-          merchant={profile.kind === PROFILE_KINDS.merchant}
-        />
+        <ApiKeys profileId={profile.profileId} merchant={profile.kind === PROFILE_KINDS.merchant} />
       )}
       {profile.kind === PROFILE_KINDS.personal || !can(profile, PERMISSIONS.webhooks) ? null : (
         <Webhooks
-          key={profile.profileId}
           profileId={profile.profileId}
           merchant={profile.kind === PROFILE_KINDS.merchant}
         />

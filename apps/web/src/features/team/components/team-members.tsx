@@ -39,11 +39,20 @@ export function TeamMembers({ profileId }: TeamMembersProps) {
     }
   };
 
-  if (team.isError && !team.currentData) {
+  // The rows wait for the store names, so a failed stores load needs the same way out.
+  const storesFailed = stores.isError && !stores.currentData;
+  if ((team.isError && !team.currentData) || storesFailed) {
     return (
       <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
         {COPY.loadFailed}
-        <Button size="sm" variant="secondary" onClick={() => void team.refetch()}>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            void team.refetch();
+            if (storesFailed) void stores.refetch();
+          }}
+        >
           {COPY.retry}
         </Button>
       </div>

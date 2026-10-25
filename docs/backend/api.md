@@ -357,6 +357,8 @@ R-149, D-99. These need the `webhooks` permission and no fresh sign-in: they sen
 - `POST .../test` queues a `webhook.test` event for this endpoint alone and answers its `eventId` (201).
   - Its body is `{id, type, livemode, timestamp, data: {}}`: no invoice and no sequence.
 - A resend or test waits while the endpoint is off, and goes once it is on.
+- An attempt in flight when a resend lands is logged, but its answer does not undo the resend.
+- Without `WEBHOOK_SECRET_KEY` nothing can be signed, so the test and both resends answer 503.
 
 ## Invoices
 

@@ -1,6 +1,6 @@
 export const REFRESH_MS = 15_000;
 
-/** Query options for money that changes on its own. */
+/** Query options for server data that changes on its own. */
 export const LIVE_QUERY = {
   pollingInterval: REFRESH_MS,
   skipPollingIfUnfocused: true,

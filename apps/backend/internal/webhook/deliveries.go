@@ -86,6 +86,9 @@ func (s *Service) Deliveries(ctx context.Context, profileID, endpointID string) 
 
 // Resend sends a delivery again from a first attempt, with the body it first sent. It waits while the endpoint is off.
 func (s *Service) Resend(ctx context.Context, profileID, endpointID, event string) error {
+	if s.key == nil {
+		return ErrNotConfigured
+	}
 	if !lowercaseUUID.MatchString(endpointID) || !eventID.MatchString(event) {
 		return ErrNoDelivery
 	}
@@ -104,6 +107,9 @@ func (s *Service) Resend(ctx context.Context, profileID, endpointID, event strin
 
 // ResendFailed sends again every delivery to the endpoint that failed since that time, and says how many.
 func (s *Service) ResendFailed(ctx context.Context, profileID, endpointID string, since time.Time) (int64, error) {
+	if s.key == nil {
+		return 0, ErrNotConfigured
+	}
 	if err := s.owned(ctx, profileID, endpointID); err != nil {
 		return 0, err
 	}
@@ -118,6 +124,9 @@ func (s *Service) ResendFailed(ctx context.Context, profileID, endpointID string
 
 // SendTest queues a test event for the endpoint alone, of its mode, and returns its id.
 func (s *Service) SendTest(ctx context.Context, profileID, endpointID string) (string, error) {
+	if s.key == nil {
+		return "", ErrNotConfigured
+	}
 	if !lowercaseUUID.MatchString(endpointID) {
 		return "", ErrNotFound
 	}
