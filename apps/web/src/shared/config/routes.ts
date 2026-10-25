@@ -21,4 +21,5 @@ export const APP_ROUTES = {
   notifications: "/app/notifications",
   networks: "/app/networks",
   team: "/app/team",
+  developers: "/app/developers",
 } as const;

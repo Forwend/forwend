@@ -29,6 +29,7 @@ export const ROLE_LABELS = {
 /** What a role may do, as GET /v1/me lists it for each profile (D-93); the app shows only what its role can use. */
 export const PERMISSIONS = {
   invoicesRead: "invoices.read",
+  invoicesWrite: "invoices.write",
   storesRead: "stores.read",
   storesWrite: "stores.write",
   clientsRead: "clients.read",
@@ -39,6 +40,7 @@ export const PERMISSIONS = {
   notifications: "notifications",
   team: "team",
   leave: "team.leave",
+  keys: "keys",
 } as const;
 
 /** ?then= on the billing details page: where saving them leads instead of home (R-92). */

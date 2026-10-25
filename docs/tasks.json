@@ -800,7 +800,7 @@
       "dependsOn": [
         "F301"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -811,9 +811,90 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-25 review pass by reviewer: Developers page lists keys with name, last 4, store, scopes, last use and stop time; New key, Roll with overlap and Revoke match the F301 API. Create and roll go through withFreshSignIn. The secret shows once in a dialog owned by ApiKeys, so a 0 h roll keeps it; each mutation's answer is dropped from the store with pending.reset(), and closing the dialog clears it. Labels carry the last 4; Copy takes focus; form errors focus the first invalid field. Unit test api-keys.test.tsx covers the store and the 0 h roll; keys.spec covers the acceptance lines. Docs R-145, DESIGN and architecture match. Left as is: phone truncation of the secret, Escape dropping it, stores skeleton without retry, DevTools."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-25T19:24:22Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 180.1,
+            "log": "docs/runs/F302-20261025T192422Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 267.0,
+            "log": "docs/runs/F302-20261025T192422Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F302-20261025T192422Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F302-20261025T192422Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F302-20261025T192422Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": "docs/runs/F302-20261025T192422Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.3,
+            "log": "docs/runs/F302-20261025T192422Z-build.log"
+          }
+        ],
+        "taskHash": "0f52702cbbd80852",
+        "filesHash": "9037c10c98cb697b",
+        "proof": {
+          "1": "e2e: privy keys.spec.ts lists a key with its name, fw_test_ and last 4, store, scopes, last use and Test mode badge, shows Never used for a new one and Stops with the date for a rolled one",
+          "2": "e2e: keys.spec.ts makes a key and shows its text once with Copy focused, rolls with a 7-day and a stops-now overlap with the text kept, and revokes after a confirm; unit api-keys.test.tsx checks the text never stays in the store or the page",
+          "3": "docs-check: R-145, DESIGN.md and architecture.md describe it"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Developers page lists keys with name, last 4, store, scopes, last use and stop time; New key, Roll with overlap and Revoke match the F301 API. Create and roll go through withFreshSignIn. The secret shows once in a dialog owned by ApiKeys, so a 0 h roll keeps it; each mutation's answer is dropped from the store with pending.reset(), and closing the dialog clears it. Labels carry the last 4; Copy takes focus; form errors focus the first invalid field. Unit test api-keys.test.tsx covers the store and the 0 h roll; keys.spec covers the acceptance lines. Docs R-145, DESIGN and architecture match. Left as is: phone truncation of the secret, Escape dropping it, stores skeleton without retry, DevTools.",
+          "at": "2026-10-25T19:33:09Z",
+          "filesHash": "9037c10c98cb697b"
+        },
+        "commit": "e102f3f",
+        "doneAt": "2026-10-25T19:33:35Z"
+      },
+      "branch": "feat/f302-an-owner-manages-secret-api-keys-on-an-a",
+      "baseCommit": "264a5d05e403d6210b65ce2073e4adde495fb5be",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f302-an-owner-manages-secret-api-keys-on-an-a",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {

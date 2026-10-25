@@ -1,3 +1,4 @@
+import { API_KEYS_COPY } from "@/features/api-keys/constants/api-keys-copy";
 import { CLIENTS_COPY } from "@/features/clients/constants/clients-copy";
 import { NEW_INVOICE_COPY, NEW_REQUEST_COPY } from "@/features/invoices/constants/invoices-copy";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
@@ -79,6 +80,13 @@ export function breadcrumb(
   }
   if (pathname === APP_ROUTES.team) {
     return { trail: [{ label: TEAM_COPY.title, href: APP_ROUTES.team }], invoiceId: null };
+  }
+  // A personal profile reaches it only by its address, and its sidebar has no such page to name it.
+  if (pathname === APP_ROUTES.developers) {
+    return {
+      trail: [{ label: API_KEYS_COPY.title, href: APP_ROUTES.developers }],
+      invoiceId: null,
+    };
   }
   if (pathname === APP_ROUTES.billingDetails) {
     return {

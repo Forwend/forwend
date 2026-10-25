@@ -23,6 +23,7 @@ export const OWNER = {
     "notifications",
     "team",
     "team.leave",
+    "keys",
   ],
 };
 const NOW = Date.now();
