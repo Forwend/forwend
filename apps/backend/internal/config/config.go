@@ -4,6 +4,7 @@ package config
 
 import (
 	"crypto/ecdsa"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -35,6 +36,8 @@ type API struct {
 	// whose tests all run as one user, sets it.
 	UserBurst         int
 	EnableTestnetUSDC bool
+	// WebhookKey seals webhook signing secrets (R-146): 32 bytes, or nil to leave webhooks off. Never log it.
+	WebhookKey []byte
 }
 
 type Worker struct {
@@ -90,7 +93,7 @@ func LoadAPI() (API, error) {
 		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyJWKSURL: r.keysURL("PRIVY_JWKS_URL"), PrivyAppSecret: r.get("PRIVY_APP_SECRET"),
 		ChainsFile: r.get("CHAINS_FILE"), InfuraKeys: r.infuraKeys(), RPCRate: r.rate(),
 		PublicWebURL: r.origin("PUBLIC_WEB_URL"), UserBurst: r.count("API_USER_BURST"),
-		EnableTestnetUSDC: r.flag("ENABLE_TESTNET_USDC")}
+		EnableTestnetUSDC: r.flag("ENABLE_TESTNET_USDC"), WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY")}
 	return c, r.err()
 }
 
@@ -251,6 +254,19 @@ func (r *reader) flag(name string) bool {
 		r.invalid = append(r.invalid, name+" (0 or 1)")
 	}
 	return raw == "1"
+}
+
+// base64Key is 32 bytes in standard base64, or nil when unset.
+func (r *reader) base64Key(name string) []byte {
+	raw := os.Getenv(name)
+	if raw == "" {
+		return nil
+	}
+	key, err := base64.StdEncoding.DecodeString(raw)
+	if err != nil || len(key) != 32 {
+		r.invalid = append(r.invalid, name+" (32 bytes in base64)")
+	}
+	return key
 }
 
 func (r *reader) count(name string) int {

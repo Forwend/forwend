@@ -160,6 +160,9 @@ with a test.
   - A payer's Pay makes that invoice through `invoice.Create`, with its key under the link's own prefix (R-142).
 - `api_keys(profile_id, store_id, name, livemode, secret_hash, last4, scopes, created_by, last_used_at, expires_at,
   revoked_at)` (R-144). Only the SHA-256 of a key's text is kept; a rolled key works until `expires_at`.
+- `webhook_endpoints(profile_id, store_id, url, description, events, enabled, livemode)` and
+  `webhook_secrets(endpoint_id, sealed, expires_at)` (R-146). A secret is AES-256-GCM under `WEBHOOK_SECRET_KEY`, its
+  endpoint's id as the associated data, so a sealed secret copied to another endpoint does not open.
 - `profile_invites(profile_id, email, role, stores, token_hash, expires_at, accepted_at, revoked_at)` (R-139).
   - `token_hash` is the SHA-256 of the link's token; the token itself is never kept here.
   - One open invite per address and profile (a unique index); a new one revokes the last.

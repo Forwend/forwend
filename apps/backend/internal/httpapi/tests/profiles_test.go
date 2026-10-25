@@ -217,6 +217,12 @@ var profileRoutes = []struct{ method, path, body string }{
 	{"POST", "/v1/profiles/%s/keys", `{"name": "Server", "scopes": ["invoices.read"]}`},
 	{"POST", "/v1/profiles/%s/keys/00000000-0000-4000-8000-000000000000/roll", "{}"},
 	{"DELETE", "/v1/profiles/%s/keys/00000000-0000-4000-8000-000000000000", ""},
+	{"GET", "/v1/profiles/%s/webhooks", ""},
+	{"PUT", "/v1/profiles/%s/webhooks/00000000-0000-4000-8000-000000000000",
+		`{"url": "https://example.com/hooks", "events": ["invoice.paid"]}`},
+	{"DELETE", "/v1/profiles/%s/webhooks/00000000-0000-4000-8000-000000000000", ""},
+	{"GET", "/v1/profiles/%s/webhooks/00000000-0000-4000-8000-000000000000/secret", ""},
+	{"POST", "/v1/profiles/%s/webhooks/00000000-0000-4000-8000-000000000000/secret/rotate", ""},
 	{"PUT", "/v1/profiles/%s/stores/" + storeA + "/logo", ""},
 	{"DELETE", "/v1/profiles/%s/stores/" + storeA + "/logo", ""},
 	{"POST", "/v1/profiles/%s/invoices/0x" + strings.Repeat("0", 64) + "/send", ""},
@@ -270,7 +276,8 @@ func TestProfileRoutesAreAllListed(t *testing.T) {
 }
 
 func TestProfilesBelongToTheirUser(t *testing.T) {
-	e := invoiceAPI(t)
+	// Each user calls every profile route here; the limit per user has its own test (TestUserRateLimit).
+	e := invoiceAPIWith(t, 1000, webhookKey)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
 	e.call(t, "POST", "/v1/me", alice, "", "")
 	e.call(t, "POST", "/v1/me", bob, "", "")
@@ -294,7 +301,7 @@ func TestProfilesBelongToTheirUser(t *testing.T) {
 		t.Fatalf("Bob with Alice's key: %d %v", r.status, r.body)
 	}
 
-	// One of Alice's profiles per route in turn: every pair would exceed the user's limit of 60 requests at once.
+	// One of Alice's profiles per route in turn.
 	for i, route := range profileRoutes {
 		id := alices[i%len(alices)]
 		path := fmt.Sprintf(route.path, id)

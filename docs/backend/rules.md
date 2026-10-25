@@ -27,6 +27,7 @@ apps/backend/
       teamapi/
       linkapi/
       keyapi/
+      webhookapi/
       healthapi/
       tests/              API tests through the whole router, one file per module
     profile/              profile domain and operations
@@ -39,6 +40,7 @@ apps/backend/
     team/                 a merchant profile's members and invites; what each role may do is auth's map
     link/                 payment links: templates a payer pays through
     apikey/               secret API keys: their text, scopes and checks
+    webhook/              webhook endpoints, their sealed secrets and the public-address rule
     balance/
     activity/
     ledger/

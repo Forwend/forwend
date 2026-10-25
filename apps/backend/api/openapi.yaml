@@ -2006,6 +2006,120 @@ paths:
         "404": { $ref: "#/components/responses/KeyNotFound" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/webhooks:
+    get:
+      operationId: listWebhookEndpoints
+      summary: The profile's webhook endpoints, newest first (R-146)
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: The endpoints; never their secrets
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [endpoints]
+                properties:
+                  endpoints:
+                    type: array
+                    items: { $ref: "#/components/schemas/WebhookEndpoint" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/webhooks/{endpointId}:
+    put:
+      operationId: putWebhookEndpoint
+      summary: Create or replace a webhook endpoint (R-146)
+      description: |
+        Needs a fresh sign-in (D-63). The caller picks the id, so the same request sent twice saves one endpoint: 201
+        when it makes it, with a first secret that only the secret route shows, and 200 when it replaces every field.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/EndpointId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WebhookEndpointRequest" }
+      responses:
+        "200":
+          description: Replaced
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebhookEndpoint" }
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebhookEndpoint" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/ReauthRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/EndpointNotFound" }
+        "409":
+          description: A personal profile has no webhooks (personal_profile)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "503": { $ref: "#/components/responses/WebhooksNotConfigured" }
+    delete:
+      operationId: deleteWebhookEndpoint
+      summary: Remove a webhook endpoint and its secrets (R-146)
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/EndpointId"
+      responses:
+        "204": { description: Removed }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/EndpointNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/webhooks/{endpointId}/secret:
+    get:
+      operationId: revealWebhookSecrets
+      summary: The endpoint's working signing secrets, newest first (R-146)
+      description: Needs a fresh sign-in (D-63). During a rotation's overlap the old secret is listed too.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/EndpointId"
+      responses:
+        "200":
+          description: The secrets
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebhookSecrets" }
+        "401": { $ref: "#/components/responses/ReauthRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/EndpointNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "503": { $ref: "#/components/responses/WebhooksNotConfigured" }
+  /v1/profiles/{profileId}/webhooks/{endpointId}/secret/rotate:
+    post:
+      operationId: rotateWebhookSecret
+      summary: Give the endpoint a new secret; the old one signs 24 hours more (R-146)
+      description: Needs a fresh sign-in (D-63). The answer lists the working secrets, the new one first.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/EndpointId"
+      responses:
+        "201":
+          description: Rotated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebhookSecrets" }
+        "401": { $ref: "#/components/responses/ReauthRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/EndpointNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "503": { $ref: "#/components/responses/WebhooksNotConfigured" }
 components:
   securitySchemes:
     privyAccessToken:
@@ -2086,6 +2200,12 @@ components:
       required: true
       description: A payment link's slug (D-94); any other value is 404 link_not_found.
       schema: { type: string, pattern: "^[a-z0-9]{12}$" }
+    EndpointId:
+      name: endpointId
+      in: path
+      required: true
+      description: A webhook endpoint of this profile; another profile's is 404.
+      schema: { type: string, format: uuid }
     KeyId:
       name: keyId
       in: path
@@ -2156,6 +2276,51 @@ components:
           maximum: 1000000
           description: The most paid invoices the link takes.
         active: { type: boolean, description: "The on or off switch; left out: on." }
+    WebhookEndpoint:
+      type: object
+      required: [endpointId, url, description, storeId, events, enabled, livemode, createdAt, updatedAt]
+      properties:
+        endpointId: { type: string, format: uuid }
+        url: { type: string, maxLength: 2048 }
+        description: { type: string, maxLength: 200 }
+        storeId: { type: [string, "null"], format: uuid, description: "A merchant endpoint's one store; null for all, and for a freelancer." }
+        events:
+          type: array
+          items: { type: string, enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held] }
+        enabled: { type: boolean }
+        livemode: { type: boolean, description: "False: test mode (D-87)." }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    WebhookEndpointRequest:
+      type: object
+      additionalProperties: false
+      required: [url, events]
+      properties:
+        url:
+          type: string
+          maxLength: 2048
+          description: https, with no credentials and a public host; no private, loopback, link-local or CGNAT address.
+        description: { type: string, maxLength: 200 }
+        storeId: { type: string, format: uuid, description: "A merchant's store to narrow it to; left out for all." }
+        events:
+          type: array
+          minItems: 1
+          items: { type: string, enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held] }
+        enabled: { type: boolean, default: true }
+    WebhookSecrets:
+      type: object
+      required: [secrets]
+      properties:
+        secrets:
+          type: array
+          description: The working secrets, newest first.
+          items:
+            type: object
+            required: [secret, createdAt, expiresAt]
+            properties:
+              secret: { type: string, pattern: "^whsec_[A-Za-z0-9+/]{43}=$", description: Standard Webhooks secret. }
+              createdAt: { type: string, format: date-time }
+              expiresAt: { type: [string, "null"], format: date-time, description: Set once rotated; it signs until then. }
     ApiKey:
       type: object
       required: [keyId, name, storeId, livemode, last4, scopes, createdAt, lastUsedAt, expiresAt]
@@ -2335,7 +2500,7 @@ components:
             type: string
             enum: [invoices.read, invoices.write, stores.read, stores.write, clients.read, clients.write, money.read,
               money.write, billing.read, billing.write, tokens.read, tokens.write, jobs, notifications, team, team.leave,
-              keys]
+              keys, webhooks]
         name:
           type: [string, "null"]
           description: null when none was given; always null for the personal profile.
@@ -3512,6 +3677,7 @@ components:
                 invoice_not_cancelable, invoice_not_editable, invoice_not_reopenable, receipt_sent, client_email_required, invoice_closed, due_date_required,
                 reminders_stopped, member_not_found, invite_not_found, invite_for_another_email, already_on_team,
                 link_not_found, personal_profile, link_off, link_ended, link_full, invalid_api_key, key_not_found,
+                endpoint_not_found, webhooks_not_configured,
                 invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
   responses:
@@ -3645,6 +3811,16 @@ components:
                 items: { $ref: "#/components/schemas/TokenSwitch" }
     LogoNotFound:
       description: No store with this id has a logo (logo_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    EndpointNotFound:
+      description: No webhook endpoint of this profile has this id (endpoint_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    WebhooksNotConfigured:
+      description: The server has no WEBHOOK_SECRET_KEY, so webhooks are off (webhooks_not_configured)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

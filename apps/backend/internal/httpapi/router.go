@@ -16,6 +16,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/moneyapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/profileapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/teamapi"
+	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/webhookapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/job"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
@@ -23,12 +24,14 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/privy"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 	"github.com/ensp1re/forwend/apps/backend/internal/team"
+	"github.com/ensp1re/forwend/apps/backend/internal/webhook"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// balances reads each chain's second RPC (D-15); webURL is the pay links' origin; userBurst 0 keeps mid.UserBurst.
+// balances reads each chain's second RPC (D-15); webURL is the pay links' origin; userBurst 0 keeps mid.UserBurst;
+// webhookKey seals webhook secrets, and nil leaves webhooks off (R-146).
 func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, balances ledger.BalanceOf,
-	webURL string, userBurst int) http.Handler {
+	webURL string, userBurst int, webhookKey []byte) http.Handler {
 	keys := apikey.NewService(pool)
 	guards := mid.NewGuards(verifier, auth.NewService(pool), keys, wallets, userBurst)
 	mux := http.NewServeMux()
@@ -42,5 +45,6 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 	teamapi.Routes(mux, guards, team.NewService(pool, wallets))
 	linkapi.Routes(mux, guards, link.NewService(pool, invoices))
 	keyapi.Routes(mux, guards, keys)
+	webhookapi.Routes(mux, guards, webhook.NewService(pool, webhookKey))
 	return mid.SecureHeaders(mux)
 }

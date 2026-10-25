@@ -49,15 +49,17 @@ const (
 	Leave Permission = "team.leave"
 	// The profile's secret API keys (R-144).
 	Keys Permission = "keys"
+	// The profile's webhook endpoints and their secrets (R-146).
+	Webhooks Permission = "webhooks"
 )
 
 var permissions = []Permission{InvoicesRead, InvoicesWrite, StoresRead, StoresWrite, ClientsRead, ClientsWrite, MoneyRead,
-	MoneyWrite, BillingRead, BillingWrite, TokensRead, TokensWrite, Jobs, Notifications, Team, Leave, Keys}
+	MoneyWrite, BillingRead, BillingWrite, TokensRead, TokensWrite, Jobs, Notifications, Team, Leave, Keys, Webhooks}
 
 // The one map of who may do what (D-93). The owner has every permission, these and the ones no role has.
 var rolePermissions = map[Role][]Permission{
 	Admin: {InvoicesRead, InvoicesWrite, StoresRead, StoresWrite, ClientsRead, ClientsWrite, MoneyRead, MoneyWrite,
-		BillingRead, BillingWrite, TokensRead, TokensWrite, Jobs, Team, Leave, Keys},
+		BillingRead, BillingWrite, TokensRead, TokensWrite, Jobs, Team, Leave, Keys, Webhooks},
 	Developer: {InvoicesRead, InvoicesWrite, StoresRead, StoresWrite, TokensRead, Leave},
 	Finance: {InvoicesRead, InvoicesWrite, StoresRead, ClientsRead, ClientsWrite, MoneyRead, MoneyWrite, BillingRead,
 		TokensRead, Leave},

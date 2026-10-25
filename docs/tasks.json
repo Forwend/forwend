@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 303,
+  "nextId": 307,
   "tasks": [
     {
       "id": "F295",
@@ -895,6 +895,195 @@
         "branch": "feat/f302-an-owner-manages-secret-api-keys-on-an-a",
         "base": "main"
       }
+    },
+    {
+      "id": "F303",
+      "type": "feat",
+      "behavior": "An owner adds webhook endpoints with encrypted signing secrets",
+      "acceptance": [
+        "An owner or Admin adds, changes and deletes webhook endpoints with a fresh sign-in: an https URL that names no private address, the events it takes, a merchant's store or all of them, and an on switch",
+        "Each endpoint has a whsec_ signing secret kept encrypted with WEBHOOK_SECRET_KEY; the owner reveals it with a fresh sign-in and rotates it, the old one working 24 hours more; without the key the routes answer 503",
+        "R-146, api.md and openapi.yaml describe it; required checks pass"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "D-42",
+        "D-63",
+        "D-87"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-25 review fail by reviewer: BLOCKING 1: no test proves the fresh sign-in on PUT, GET secret and POST rotate. With all three g.FreshSignIn(auth.Webhooks) changed to g.Can in webhookapi/routes.go (go test -overlay), TestWebhookEndpoints, TestWebhooksNeedTheWebhooksPermission and TestProfileRoutesAreAllListed still pass. The behavior itself is right: a probe with e.signedAt 10 min old got 401 reauth_required on all three. Fix: add those three signedAt checks to webhooks_test.go. BLOCKING 2: accept 2 says the routes answer 503 without the key, but webhooks_test.go:126 only calls Service.Save with a nil key. With the ErrNotConfigured case removed from httpio/errors.go:77, every test still passes. Fix: one route-level 503 test through a mux with a nil webhookKey. BLOCKING 3: the save-time host rule in webhook/address.go:37-50 can be bypassed. Each of these PUTs returned 201: https://localhost./ (trailing dot also gets past .local and .internal), https://2130706433/, https://127.1/, https://0x7f000001/, https://0177.0.0.1/, https://0/, a fullwidth-letter localhost, and the IP literals [64:ff9b::a00:1] (NAT64 to 10.0.0.1), [::127.0.0.1] and [2002:7f00:1::]. On this Mac the libc resolver (PreferGo=false) turns 2130706433, 127.1 and 0x7f000001 into 127.0.0.1, and 0 into 0.0.0.0. So these are not harmless names, and accept 1 (names no private address) does not hold. Fix: strip one trailing dot before the name checks; refuse non-ASCII hosts; refuse a host whose last label is all digits or starts with 0x; add 64:ff9b::/96, 64:ff9b:1::/48, 2002::/16 and ::/96 to notPublic. DNS names, rebinding and redirects can wait for F305, which must check the dialed address (Dialer.Control). Non-blocking: (a) HTTPS://shop.example.com/ answers 500. Go lowercases the scheme, but the DB CHECK url ~ '^https://' (00068:10) is case-sensitive. Store u.String() or refuse it with a 422. (b) docs/backend/api.md:288 says these routes answer 503, but list and delete work without the key; openapi gets it right. (c) api.md:291 and openapi.yaml:2037 say 201 with its first secret, which reads as if the body holds the secret; it does not. (d) The R-146 sentence 'An endpoint has an https URL ... an on switch' is 26 words (D-84). (e) With a wrong or changed WEBHOOK_SECRET_KEY, GET secret answers 500. Rotate commits the new secret, then answers 500 from Secrets (endpoints.go:216), and each retry adds one more secret. (f) Optional: a partial unique index on webhook_secrets(endpoint_id) WHERE expires_at IS NULL. (g) Note for F304/F305: ON DELETE CASCADE (00068:23) plus a hard delete will lose delivery records (D-42); plan a soft delete or SET NULL. Checked OK: whsec_ plus std base64 of 32 bytes fits Standard Webhooks (24-64 bytes); Go 1.27 rand.Read cannot fail; AES-256-GCM with a fresh 12-byte nonce, the lowercase endpoint id as associated data, and a 32-byte key checked in config without printing it; no secret in logs, errors, list or PUT answers; Cache-Control no-store; Webhooks is Admin and owner only; keys cannot pass (FreshSignIn refuses a key; apikey.Scopes and the api_keys CHECK leave out webhooks); every SQL statement is scoped to the profile; the upsert WHERE, xmax=0, the store FK and the Rotate FOR UPDATE lock are right; burst 1000 in TestProfilesBelongToTheirUser is fine, because TestUserRateLimit still uses invoiceAPI with burst 0, which is mid.UserBurst 60. Ran: go test ./internal/httpapi/tests -run 'TestWebhook|TestProfileRoutesAreAllListed|TestProfilesBelongToTheirUser|TestUserRateLimit' (pass); go test ./internal/webhook ./internal/config ./internal/auth (pass); go build ./...; overlay probes of checkURL, the resolvers and the API; overlay mutants for FreshSignIn and the 503 case (both survived).",
+        "2026-10-25 review pass by reviewer: Re-review: all three earlier blockers are fixed, and mutants now die. 1) Fresh sign-in: changing the three g.FreshSignIn to g.Can in webhookapi/routes.go fails TestWebhookEndpoints (webhooks_test.go:71: PUT 200, GET secret 200, rotate 201 with an old sign-in). 2) 503: removing the ErrNotConfigured case in httpio/errors.go fails TestWebhooksWithoutAKey (webhooks_test.go:161, 500 on all three routes). 3) address.go: each check dropped alone fails the refused-URL list (webhooks_test.go:51): the numeric last label (2130706433, 127.1, 0x7f000001, 0177.0.0.1, 0), the ASCII check (fullwidth localhost), the 64:ff9b::/96 prefix and the lowercase https:// prefix (HTTPS:// gave 500). Moving the Rotate read after commit fails the other-key check (count 3, want 2). Probes of checkURL: refused local%68ost, %30, 127.0.0.1., localhost.., foo.local.., 0x7f.1, 1.0X1, a.b.c.123, [::ffff:10.0.0.1], [FE80::1], and metadata.google.internal. with a trailing dot. Allowed example.com, xn-- names, 8.8.8.8 and 2606:4700::1111. The unique index webhook_secrets_current holds one current secret per endpoint. api.md and openapi now say 503 covers only save, reveal and rotate. Every new doc sentence is 25 words or fewer. Non-blocking: (a) PROJECT.md R-146 still says 'Without the key, the routes answer 503'; list and delete still work, as api.md says. (b) address.go TrimSuffix(host, \".\") only lets example.com. through: without it, the empty last label is refused anyway, so no test covers it. Keep it or drop it, both are safe. (c) A stray blank line at webhooks_test.go:147. (d) For F305: PublicAddr allows Teredo 2001::/32 and DNS-only names such as home.arpa. Check the dialed address in Dialer.Control. (e) For F304/F305: the ON DELETE CASCADE hard delete loses delivery records (D-42). Ran: go test ./internal/httpapi/tests -run 'TestWebhook|TestProfileRoutesAreAllListed|TestProfilesBelongToTheirUser|TestUserRateLimit' (pass); go vet ./internal/webhook ./internal/httpapi/... (ok); gofmt -l (clean); 7 overlay mutants (all killed except the trailing-dot strip, see b); overlay checkURL and PublicAddr probes; harness status showed verified (verify passed, run started 20:00:17Z)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-25T20:00:17Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 197.7,
+            "log": "docs/runs/F303-20261025T200017Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 250.6,
+            "log": "docs/runs/F303-20261025T200017Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.7,
+            "log": "docs/runs/F303-20261025T200017Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F303-20261025T200017Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F303-20261025T200017Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F303-20261025T200017Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.8,
+            "log": "docs/runs/F303-20261025T200017Z-build.log"
+          }
+        ],
+        "taskHash": "062767db1c138e39",
+        "filesHash": "64397cf42c4797c9",
+        "proof": {
+          "1": "unit: TestWebhookEndpoints creates, replaces, lists and deletes endpoints, needs a fresh sign-in to save, refuses http, uppercase, localhost, trailing-dot, numeric and non-ASCII hosts, private, link-local, metadata, CGNAT, NAT64, 6to4 and IPv4-compatible addresses, credentials, unknown events, another profile's id, a freelancer's store and a personal profile; TestWebhooksNeedTheWebhooksPermission lets an Admin and not a Developer",
+          "2": "unit: TestWebhookEndpoints reveals a sealed whsec_ secret and rotates it with fresh sign-ins, the old one signing 24 hours then gone, refuses a secret moved to another endpoint, and rotates nothing under another key; TestWebhooksWithoutAKey answers 503 on save, reveal and rotate with no key",
+          "3": "docs-check: R-146, D-96, api.md, openapi.yaml, architecture.md and rules.md describe it"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review: all three earlier blockers are fixed, and mutants now die. 1) Fresh sign-in: changing the three g.FreshSignIn to g.Can in webhookapi/routes.go fails TestWebhookEndpoints (webhooks_test.go:71: PUT 200, GET secret 200, rotate 201 with an old sign-in). 2) 503: removing the ErrNotConfigured case in httpio/errors.go fails TestWebhooksWithoutAKey (webhooks_test.go:161, 500 on all three routes). 3) address.go: each check dropped alone fails the refused-URL list (webhooks_test.go:51): the numeric last label (2130706433, 127.1, 0x7f000001, 0177.0.0.1, 0), the ASCII check (fullwidth localhost), the 64:ff9b::/96 prefix and the lowercase https:// prefix (HTTPS:// gave 500). Moving the Rotate read after commit fails the other-key check (count 3, want 2). Probes of checkURL: refused local%68ost, %30, 127.0.0.1., localhost.., foo.local.., 0x7f.1, 1.0X1, a.b.c.123, [::ffff:10.0.0.1], [FE80::1], and metadata.google.internal. with a trailing dot. Allowed example.com, xn-- names, 8.8.8.8 and 2606:4700::1111. The unique index webhook_secrets_current holds one current secret per endpoint. api.md and openapi now say 503 covers only save, reveal and rotate. Every new doc sentence is 25 words or fewer. Non-blocking: (a) PROJECT.md R-146 still says 'Without the key, the routes answer 503'; list and delete still work, as api.md says. (b) address.go TrimSuffix(host, \".\") only lets example.com. through: without it, the empty last label is refused anyway, so no test covers it. Keep it or drop it, both are safe. (c) A stray blank line at webhooks_test.go:147. (d) For F305: PublicAddr allows Teredo 2001::/32 and DNS-only names such as home.arpa. Check the dialed address in Dialer.Control. (e) For F304/F305: the ON DELETE CASCADE hard delete loses delivery records (D-42). Ran: go test ./internal/httpapi/tests -run 'TestWebhook|TestProfileRoutesAreAllListed|TestProfilesBelongToTheirUser|TestUserRateLimit' (pass); go vet ./internal/webhook ./internal/httpapi/... (ok); gofmt -l (clean); 7 overlay mutants (all killed except the trailing-dot strip, see b); overlay checkURL and PublicAddr probes; harness status showed verified (verify passed, run started 20:00:17Z).",
+          "at": "2026-10-25T20:08:13Z",
+          "filesHash": "64397cf42c4797c9"
+        },
+        "commit": "b0ea3d1",
+        "doneAt": "2026-10-25T20:08:46Z"
+      },
+      "branch": "feat/f303-an-owner-adds-webhook-endpoints-with-enc",
+      "baseCommit": "27f68862cec9232a1813aed60112262152caab54",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f303-an-owner-adds-webhook-endpoints-with-enc",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F304",
+      "type": "feat",
+      "behavior": "Invoice changes become webhook events with a per-invoice sequence",
+      "acceptance": [
+        "Each invoice change that an event names (detected, partially paid, paid, settled, expired, canceled, held with its reason) writes one event per endpoint that takes it, in the transaction that makes the change",
+        "An event's body has its id, type, livemode, the invoice's sequence number for it and the invoice as the API reads it",
+        "R-147, api.md and openapi.yaml describe it; required checks pass"
+      ],
+      "dependsOn": [
+        "F303"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "D-42",
+        "D-92",
+        "D-87"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F305",
+      "type": "feat",
+      "behavior": "A delivery process sends signed webhooks with retries and an outbound filter",
+      "acceptance": [
+        "A process with no signer key sends each event with Standard Webhooks headers signed by every working secret, through a filter that refuses private, loopback and metadata addresses after DNS",
+        "A failure retries on the Svix schedule for about 3 days; a redirect fails; 410 or the last failure disables the endpoint and emails the owner; each attempt is logged",
+        "R-148, api.md and architecture.md describe it; required checks pass"
+      ],
+      "dependsOn": [
+        "F304"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "D-42"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F306",
+      "type": "feat",
+      "behavior": "The Developers page manages webhook endpoints and their deliveries",
+      "acceptance": [
+        "The Developers page lists endpoints, adds and edits them, reveals and rotates a secret with a fresh sign-in, and turns one on or off",
+        "An endpoint's deliveries show each event's attempts; the owner resends one, sends a test event, and resends every failed one since a time",
+        "R-149 and DESIGN.md describe it; required checks pass"
+      ],
+      "dependsOn": [
+        "F305"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "D-42",
+        "D-63"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
