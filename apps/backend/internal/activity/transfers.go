@@ -104,7 +104,7 @@ type TransferPage struct {
 }
 
 // Transfers returns a page in direction ("" for both) matching q, newest block time first. The caller has checked
-// that the user owns the profile.
+// the user's access to the profile.
 func (s *Service) Transfers(ctx context.Context, profileID, cursor string, limit int, direction string,
 	q search.Query) (TransferPage, error) {
 	if limit < 1 || limit > MaxLimit {

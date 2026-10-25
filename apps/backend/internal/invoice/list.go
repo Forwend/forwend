@@ -45,8 +45,10 @@ type Page struct {
 	NextCursor string
 }
 
-// Newest first by number, which only grows. The caller must check that the user owns the profile.
-func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status string, q search.Query) (Page, error) {
+// Newest first by number, which only grows. The caller must check the user's access to the profile.
+// stores, when not nil, keeps only those stores' invoices: a Developer's or Finance member's (R-138).
+func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status string, q search.Query,
+	stores []string) (Page, error) {
 	if limit < 1 || limit > MaxLimit {
 		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
 	}
@@ -67,6 +69,10 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 	if status != "" {
 		args = append(args, status)
 		where += fmt.Sprintf(" AND %s = $%d", StatusFilterSQL, len(args))
+	}
+	if stores != nil {
+		args = append(args, stores)
+		where += fmt.Sprintf(" AND store_id = ANY($%d::uuid[])", len(args))
 	}
 	if q.Like != nil {
 		args = append(args, *q.Like)

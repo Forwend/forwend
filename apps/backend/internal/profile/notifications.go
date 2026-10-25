@@ -11,7 +11,7 @@ type Notifications struct {
 	Address string
 }
 
-// The caller has checked that the user owns the profile.
+// The caller has checked the user's access to the profile.
 func (s *Service) Notifications(ctx context.Context, profileID string) (Notifications, error) {
 	var n Notifications
 	if err := s.pool.QueryRow(ctx, `SELECT p.email_notifications, coalesce(u.login_email, '')

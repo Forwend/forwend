@@ -60,7 +60,7 @@ func authServer(t *testing.T) (srv *httptest.Server, privyKey *ecdsa.PrivateKey,
 	mux := http.NewServeMux()
 	probe := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 	mux.Handle("GET /v1/profiles/{profileId}/probe", mid.RequireUser(verifier, auth.NewService(pool),
-		mid.RequireProfileOwner(auth.NewService(pool), probe)))
+		mid.RequireAccess(auth.NewService(pool), auth.InvoicesRead, probe)))
 	srv = httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv, privyKey, aliceProfile
@@ -182,10 +182,10 @@ func TestOnlyTheOwnerActsForAProfile(t *testing.T) {
 	}
 }
 
-func TestOwnerCheckNeedsASignedInUser(t *testing.T) {
+func TestAccessCheckNeedsASignedInUser(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/profiles/x/probe", nil)
-	mid.RequireProfileOwner(nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	mid.RequireAccess(nil, auth.InvoicesRead, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Fatal("handler ran without a user")
 	})).ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {

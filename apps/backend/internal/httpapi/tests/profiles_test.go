@@ -233,13 +233,18 @@ func TestProfileRoutesAreAllListed(t *testing.T) {
 		t.Fatalf("route files %v %v", files, err)
 	}
 	files = append(files, "../router.go")
-	registered := regexp.MustCompile(`mux\.Handle(?:Func)?\("(\w+) (/v1/profiles/\{profileId\}[^"]*)"`)
+	registered := regexp.MustCompile(`mux\.Handle(?:Func)?\("(\w+) (/v1/profiles/\{profileId\}[^"]*)",\s*([^\n]*)`)
+	// R-138: every profile route asks for a permission from the one map.
+	guarded := regexp.MustCompile(`^g\.(Can|FreshSignIn)\(auth\.\w+\)`)
 	for _, file := range files {
 		src, err := os.ReadFile(file)
 		if err != nil {
 			t.Fatal(err)
 		}
 		for _, m := range registered.FindAllStringSubmatch(string(src), -1) {
+			if !guarded.MatchString(strings.TrimSpace(m[3])) {
+				t.Errorf("%s %s (%s) asks for no permission", m[1], m[2], file)
+			}
 			pattern := regexp.MustCompile("^" + regexp.MustCompile(`\{\w+\}`).ReplaceAllString(m[2], `[^/]+`) + "$")
 			if !slices.ContainsFunc(profileRoutes, func(r struct{ method, path, body string }) bool {
 				path, _, _ := strings.Cut(fmt.Sprintf(r.path, "p"), "?")

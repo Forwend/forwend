@@ -18,7 +18,7 @@ apps/backend/
     httpapi/              the HTTP layer
       router.go           NewMux: shared middleware, then every module's Routes; the one place modules are mounted
       server.go           Serve: drain and shut down
-      mid/                middleware: sign-in, profile ownership (Guards), rate limits, security headers
+      mid/                middleware: sign-in, profile access (Guards), rate limits, security headers
       httpio/             JSON in and out, the error shape and its codes, query parsing
       invoiceapi/         one package per module: routes.go (its routes), model.go (its JSON), handler files
       jobapi/

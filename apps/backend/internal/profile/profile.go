@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+// Owner is a Profile's Role for the user who made it; a member's role is auth's (R-138).
+const Owner = "owner"
+
 // Profile kinds (D-20). Personal is made at signup; the others by request.
 const (
 	Personal   = "personal"
@@ -25,11 +28,13 @@ var (
 	ErrNotSignedUp = errors.New("user has not signed up")
 )
 
-// WalletAddress is "" until Privy has made the wallet; repeating the request retries a failed create.
+// WalletAddress is "" until Privy has made the wallet; repeating the request retries a failed create. Role is the
+// user's on it: "owner", or a member's role (R-138).
 type Profile struct {
 	ID            string
 	Kind          string
 	Name          string
 	WalletAddress string
 	CreatedAt     time.Time
+	Role          string
 }

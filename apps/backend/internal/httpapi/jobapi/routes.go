@@ -4,6 +4,7 @@ package jobapi
 import (
 	"net/http"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/auth"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/ensp1re/forwend/apps/backend/internal/job"
 )
@@ -16,13 +17,13 @@ const (
 )
 
 func Routes(mux *http.ServeMux, g mid.Guards, jobs *job.Service) {
-	mux.Handle("POST /v1/profiles/{profileId}/jobs", g.ProfileScoped(createJob(jobs)))
-	mux.Handle("GET /v1/profiles/{profileId}/jobs", g.ProfileScoped(listJobs(jobs)))
-	mux.Handle("GET /v1/profiles/{profileId}/jobs/{jobId}", g.ProfileScoped(getJob(jobs)))
-	mux.Handle("DELETE /v1/profiles/{profileId}/jobs/{jobId}", g.ProfileScoped(deleteJob(jobs)))
-	mux.Handle("POST /v1/profiles/{profileId}/jobs/{jobId}/payments/{position}/done", g.ProfileScoped(markDone(jobs)))
-	mux.Handle("POST /v1/profiles/{profileId}/jobs/{jobId}/payments", g.ProfileScoped(proposeChange(jobs)))
-	mux.Handle("DELETE /v1/profiles/{profileId}/jobs/{jobId}/payments/{position}", g.ProfileScoped(withdrawChange(jobs)))
+	mux.Handle("POST /v1/profiles/{profileId}/jobs", g.Can(auth.Jobs)(createJob(jobs)))
+	mux.Handle("GET /v1/profiles/{profileId}/jobs", g.Can(auth.Jobs)(listJobs(jobs)))
+	mux.Handle("GET /v1/profiles/{profileId}/jobs/{jobId}", g.Can(auth.Jobs)(getJob(jobs)))
+	mux.Handle("DELETE /v1/profiles/{profileId}/jobs/{jobId}", g.Can(auth.Jobs)(deleteJob(jobs)))
+	mux.Handle("POST /v1/profiles/{profileId}/jobs/{jobId}/payments/{position}/done", g.Can(auth.Jobs)(markDone(jobs)))
+	mux.Handle("POST /v1/profiles/{profileId}/jobs/{jobId}/payments", g.Can(auth.Jobs)(proposeChange(jobs)))
+	mux.Handle("DELETE /v1/profiles/{profileId}/jobs/{jobId}/payments/{position}", g.Can(auth.Jobs)(withdrawChange(jobs)))
 	mux.Handle("GET /v1/jobs/{token}", getPublicJob(jobs))
 	// Accepting the quote and accepting a change share the budget for everyone; each has its own per link.
 	all := mid.NewBuckets(AcceptAllRate, AcceptAllBurst)

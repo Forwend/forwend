@@ -74,7 +74,7 @@ func checkPayments(payments []PaymentRequest) ([]int64, error) {
 }
 
 // Create is idempotent per (profile, key): a repeat returns the stored job with created false. It copies the
-// profile's billing details as the issuer. The caller must check that the user owns the profile.
+// profile's billing details as the issuer. The caller must check the user's access to the profile.
 func (s *Service) Create(ctx context.Context, profileID, key string, r Request) (j Job, created bool, err error) {
 	cents, err := r.check()
 	if err != nil {

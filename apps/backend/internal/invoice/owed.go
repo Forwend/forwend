@@ -25,8 +25,9 @@ type Owed struct {
 	Amount *big.Int
 }
 
-// Overdue compares the due date with today's UTC date. The caller must check that the user owns the profile.
-func (s *Service) Owed(ctx context.Context, profileID string) ([]Owed, error) {
+// Overdue compares the due date with today's UTC date. The caller must check the user's access to the profile.
+// stores, when not nil, keeps only those stores' invoices (R-138).
+func (s *Service) Owed(ctx context.Context, profileID string, stores []string) ([]Owed, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT kind, id, number, title, client_name, due_date, days_late, option_count, chain_id, token, symbol, decimals,
 		       amount::text
@@ -41,6 +42,7 @@ func (s *Service) Owed(ctx context.Context, profileID string) ([]Owed, error) {
 		           invoices.amount + `+PaidToOwnerSQL("invoices.option_id")+` AS amount
 		    FROM `+invoicesCurrent+` JOIN tokens t ON t.chain_id = invoices.chain_id AND t.contract = invoices.token_contract
 		    WHERE invoices.profile_id = $1 AND `+StatusFilterSQL+` = 'open'
+		      AND ($2::uuid[] IS NULL OR invoices.store_id = ANY($2))
 		      AND (invoices.due_date < (now() AT TIME ZONE 'UTC')::date OR invoices.payment_status = 'partially_paid')
 		    UNION ALL
 		    SELECT 'held', m.id, m.number, coalesce(m.title, ''), coalesce(m.client_name, ''),
@@ -50,13 +52,13 @@ func (s *Service) Owed(ctx context.Context, profileID string) ([]Owed, error) {
 		    FROM ledger_entries e JOIN ledger_transactions x ON x.id = e.transaction_id
 		    JOIN invoices o ON o.id = x.invoice_id JOIN invoices m ON m.id = coalesce(o.main_id, o.id)
 		    JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
-		    WHERE m.profile_id = $1 AND e.account = 'payer_held'
+		    WHERE m.profile_id = $1 AND e.account = 'payer_held' AND ($2::uuid[] IS NULL OR m.store_id = ANY($2))
 		    GROUP BY m.id, o.id, t.symbol, t.decimals
 		    HAVING sum(e.amount) <> 0
 		) owed
 		WHERE amount > 0 -- paid in full and waiting for the second RPC: nothing is left
 		ORDER BY CASE kind WHEN 'overdue' THEN 0 WHEN 'partlyPaid' THEN 1 ELSE 2 END, days_late DESC, number DESC, token`,
-		profileID)
+		profileID, stores)
 	if err != nil {
 		return nil, fmt.Errorf("read owed: %w", err)
 	}

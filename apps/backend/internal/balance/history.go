@@ -37,7 +37,7 @@ type History struct {
 }
 
 // History covers the last days UTC days, oldest first (R-38): each earlier balance undoes the wallet transfers the
-// current one includes. The caller has checked that the user owns the profile.
+// current one includes. The caller has checked the user's access to the profile.
 func (s *Service) History(ctx context.Context, profileID string, days int, now time.Time) (History, error) {
 	if days < 1 || days > MaxDays {
 		return History{}, fmt.Errorf("%w: days must be 1 to %d", ErrInvalid, MaxDays)

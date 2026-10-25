@@ -9,18 +9,22 @@ import (
 
 const arbUSDC = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d"
 
+// enableArbUSDC turns on a second token: Arbitrum Sepolia USDC comes switched off (migration 00015), and the worker
+// would add the cursor.
+func (e invoiceEnv) enableArbUSDC(t *testing.T) {
+	t.Helper()
+	e.exec(t, `
+		WITH c AS (UPDATE chains SET enabled = true WHERE chain_id = 421614 RETURNING chain_id),
+		     cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block)
+		             SELECT chain_id, 0, 0 FROM c)
+		UPDATE tokens SET enabled = true WHERE chain_id = 421614 AND contract = $1`, arbUSDC)
+}
+
 // R-136.
 func TestTokensOff(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
-	// Arbitrum Sepolia USDC comes switched off (migration 00015); the worker would add the cursor.
-	if _, err := e.pool.Exec(context.Background(), `
-		WITH c AS (UPDATE chains SET enabled = true WHERE chain_id = 421614 RETURNING chain_id),
-		     cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block)
-		             SELECT chain_id, 0, 0 FROM c)
-		UPDATE tokens SET enabled = true WHERE chain_id = 421614 AND contract = $1`, arbUSDC); err != nil {
-		t.Fatal(err)
-	}
+	e.enableArbUSDC(t)
 	path := "/v1/profiles/" + e.aliceProfile + "/tokens"
 	on := func(r reply) map[string]bool {
 		out := map[string]bool{}

@@ -70,7 +70,7 @@ func NewService(pool *pgxpool.Pool) *Service {
 }
 
 // List's status is "" or one of invoice.StatusFilters: a detected deposit is open, a confirmed one paid, a held
-// one under none. The caller has checked that the user owns the profile.
+// one under none. The caller has checked the user's access to the profile.
 func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status string, q search.Query) (Page, error) {
 	if limit < 1 || limit > MaxLimit {
 		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)

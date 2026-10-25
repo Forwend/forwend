@@ -7,7 +7,9 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/auth"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
 
@@ -22,8 +24,11 @@ func listStores(profiles *profile.Service) http.HandlerFunc {
 		out := struct {
 			Stores []storeJSON `json:"stores"`
 		}{Stores: []storeJSON{}}
+		access := mid.ProfileAccess(r)
 		for _, s := range list {
-			out.Stores = append(out.Stores, toStoreJSON(s))
+			if access.InStores(s.ID) {
+				out.Stores = append(out.Stores, toStoreJSON(s))
+			}
 		}
 		httpio.WriteJSON(w, http.StatusOK, out)
 	}
@@ -38,7 +43,8 @@ func putStore(profiles *profile.Service) http.HandlerFunc {
 		}
 		s, created, err := profiles.SaveStore(r.Context(), r.PathValue("profileId"), r.PathValue("storeId"),
 			profile.StoreDetails{Name: body.Name, DefaultExpiresIn: body.DefaultExpiresIn,
-				AllowedOrigins: body.AllowedOrigins, BrandColor: body.BrandColor, TokensOff: toPairs(body.TokensOff)})
+				AllowedOrigins: body.AllowedOrigins, BrandColor: body.BrandColor, TokensOff: toPairs(body.TokensOff),
+				TokensFixed: !mid.ProfileAccess(r).Can(auth.TokensWrite)})
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

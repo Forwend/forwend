@@ -22,7 +22,7 @@ const jobColumns = `j.id::text, j.token, j.profile_id::text, j.title, coalesce(j
 	j.issuer_address, j.issuer_country, coalesce(j.issuer_tax_id, ''), j.issuer_email, coalesce(j.accepted_name, ''),
 	coalesce(j.accepted_email, ''), j.accepted_at, j.created_at`
 
-// The caller must check that the user owns the profile.
+// The caller must check the user's access to the profile.
 func (s *Service) Get(ctx context.Context, profileID, id string) (Job, error) {
 	if !jobID.MatchString(id) {
 		return Job{}, ErrNotFound

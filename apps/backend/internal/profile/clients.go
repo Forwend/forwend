@@ -97,7 +97,7 @@ func (d ClientDetails) checkSaved() error {
 // lowercaseUUID matches a client's or a store's id, so a malformed one is not found rather than a database error.
 var lowercaseUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
-// The callers below have checked that the user owns the profile; every query also names the profile, so a client id
+// The callers below have checked the user's access to the profile; every query also names the profile, so a client id
 // from another profile is not found.
 
 func (s *Service) Clients(ctx context.Context, profileID string) ([]Client, error) {
