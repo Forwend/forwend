@@ -1,4 +1,4 @@
-// Package notify sends the email for each outbox event (R-80, R-82, R-84, R-94, R-96, R-107), each under one Resend
+// Package notify sends the email for each outbox event (R-80, R-82, R-84, R-94, R-96, R-107, R-148), each under one Resend
 // Idempotency-Key on every retry, so a lost answer sends nothing twice. Nothing logs an address, a subject or a body.
 package notify
 
@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"net/url"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/history"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
+	"github.com/ensp1re/forwend/apps/backend/internal/webhook"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -55,15 +57,16 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 	}
 	defer tx.Rollback(ctx)
 	var (
-		id                               int64
-		kind, invoice, user, job, invite string
-		payload                          []byte
-		attempts                         int
+		id                                         int64
+		kind, invoice, user, job, invite, endpoint string
+		payload                                    []byte
+		attempts                                   int
 	)
 	err = tx.QueryRow(ctx, `SELECT id, kind, coalesce(invoice_id, ''), coalesce(user_id::text, ''),
-		    coalesce(job_id::text, ''), coalesce(invite_id::text, ''), payload, attempts
+		    coalesce(job_id::text, ''), coalesce(invite_id::text, ''), coalesce(endpoint_id::text, ''), payload, attempts
 		FROM outbox_events WHERE published_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()
-		ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED`).Scan(&id, &kind, &invoice, &user, &job, &invite, &payload, &attempts)
+		ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED`).Scan(&id, &kind, &invoice, &user, &job, &invite, &endpoint, &payload,
+		&attempts)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	} else if err != nil {
@@ -90,6 +93,11 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 	case outbox.Invite:
 		scope = "invite-" + invite
 		if v, to, on, err = inviteEmail(ctx, tx, invite, payload, site.WebURL); err != nil {
+			return false, fmt.Errorf("read email event %d: %w", id, err)
+		}
+	case outbox.WebhookDisabled:
+		scope = "endpoint-" + endpoint
+		if v, to, on, err = disabledEmail(ctx, tx, endpoint, payload, site.WebURL); err != nil {
 			return false, fmt.Errorf("read email event %d: %w", id, err)
 		}
 	default:
@@ -365,6 +373,39 @@ func inviteEmail(ctx context.Context, tx pgx.Tx, invite string, payload []byte, 
 		return view{}, nil, false, fmt.Errorf("team invite: %w", err)
 	}
 	return invitation(name, roleNames[role], replyTo, webURL+"/invite/"+p.Token), &to, true, nil
+}
+
+// disabledEmail goes to the profile owner whatever their email setting (R-148): nothing else tells them that
+// deliveries stopped.
+func disabledEmail(ctx context.Context, tx pgx.Tx, endpoint string, payload []byte, webURL string) (view, *string, bool,
+	error) {
+	var p outbox.Payload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return view{}, nil, false, err
+	}
+	var to *string
+	var raw string
+	if err := tx.QueryRow(ctx, `SELECT u.login_email, w.url FROM webhook_endpoints w
+		JOIN profiles p ON p.id = w.profile_id JOIN users u ON u.id = p.user_id WHERE w.id = $1`, endpoint).
+		Scan(&to, &raw); err != nil {
+		return view{}, nil, false, fmt.Errorf("webhook endpoint: %w", err)
+	}
+	u, _ := url.Parse(raw) // saved only once it parsed
+	return disabled(u.Hostname(), p.Reason, webURL+"/app/developers"), to, true, nil
+}
+
+// disabled names only the endpoint's host: its path or query may hold the receiver's own token.
+func disabled(host, reason, link string) view {
+	why := "Forwend could not deliver an event to " + host + " for about 3 days, so it stopped sending events there."
+	if reason == webhook.Gone {
+		why = host + " answered 410 Gone, so Forwend stopped sending events there."
+	}
+	return view{Subject: "Webhook endpoint turned off: " + host, Preheader: why, Badge: "Turned off", Tone: "warning",
+		Title: "A webhook endpoint was turned off", Button: button{"Open Developers", link},
+		Lead: []string{why, "Fix the endpoint, then turn it on again on the Developers page. Events from while it " +
+			"was off are not sent to it."},
+		Details: []row{{Label: "Endpoint", Value: host}},
+		Reason:  "You get this email because a webhook endpoint of your profile was turned off."}
 }
 
 var roleNames = map[string]string{"admin": "Admin", "developer": "Developer", "finance": "Finance"}

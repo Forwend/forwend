@@ -12,6 +12,7 @@ apps/backend/
     api/main.go           process startup and dependency wiring only
     worker/main.go
     signer/main.go
+    webhooks/main.go
   api/openapi.yaml         HTTP request and response contract
   internal/
     config/               environment loading and validation
@@ -40,7 +41,7 @@ apps/backend/
     team/                 a merchant profile's members and invites; what each role may do is auth's map
     link/                 payment links: templates a payer pays through
     apikey/               secret API keys: their text, scopes and checks
-    webhook/              webhook endpoints, their sealed secrets and the public-address rule
+    webhook/              webhook endpoints, sealed secrets, events and their signed delivery
     balance/
     activity/
     ledger/

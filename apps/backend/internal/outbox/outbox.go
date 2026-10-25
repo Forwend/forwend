@@ -25,6 +25,8 @@ const (
 	Reminder = "invoice.reminder"
 	Change   = "job.change"  // a scope change, to the email the client typed accepting the job (R-107)
 	Invite   = "team.invite" // a team invite, to the address invited (R-139)
+	// A webhook endpoint Forwend turned off, to the profile owner's login email (R-148); payload has the reason.
+	WebhookDisabled = "webhook.disabled"
 )
 
 // MaxClientEmails caps a user's client emails (Sent, reminders, job changes, invites) in any 24 hours (R-116), so one
@@ -64,6 +66,8 @@ type Payload struct {
 	By     history.Actor `json:"by,omitempty"` // who asked for a Send to client, for its history row (R-126)
 	// An invite's link token (R-139): the only copy, until the worker drops it once the email is sent or given up.
 	Token string `json:"token,omitempty"`
+	// Why Forwend turned a webhook endpoint off: webhook.Gone or webhook.Failing.
+	Reason string `json:"reason,omitempty"`
 }
 
 // QueueReceipt queues at most one receipt, and only once the payer gave an address (R-82).

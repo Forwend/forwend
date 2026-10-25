@@ -678,3 +678,30 @@ func TestDeliverSendsTheInviteThenDropsItsToken(t *testing.T) {
 		t.Fatalf("%d invite rows still hold a token or wait", n)
 	}
 }
+
+// R-148: whatever the profile's email setting, and naming only the endpoint's host.
+func TestDeliverSendsTheTurnedOffEndpoint(t *testing.T) {
+	pool, _ := setup(t, "owner@example.com")
+	exec(t, pool, "UPDATE profiles SET email_notifications = false")
+	var endpoint string
+	if err := pool.QueryRow(context.Background(), `WITH w AS (INSERT INTO webhook_endpoints (id, profile_id, url, events,
+		    enabled) SELECT gen_random_uuid(), id, 'https://shop.example.com/hooks?token=receiver-secret',
+		    '{invoice.paid}', false FROM profiles RETURNING id)
+		INSERT INTO outbox_events (kind, endpoint_id, payload) SELECT 'webhook.disabled', id, '{"reason": "gone"}' FROM w
+		RETURNING endpoint_id::text`).Scan(&endpoint); err != nil {
+		t.Fatal(err)
+	}
+	f := &fake{}
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.sent) != 1 {
+		t.Fatalf("%d emails, want one", len(f.sent))
+	}
+	m := f.sent[0]
+	if m.To != "owner@example.com" || m.Subject != "Webhook endpoint turned off: shop.example.com" ||
+		!strings.Contains(m.Text, "shop.example.com answered 410 Gone") || !strings.Contains(m.Text, web+"/app/developers") ||
+		strings.Contains(m.Text+m.HTML, "receiver-secret") || !strings.HasPrefix(m.Key, "forwend-endpoint-"+endpoint+"-") {
+		t.Fatalf("email %+v", m)
+	}
+}

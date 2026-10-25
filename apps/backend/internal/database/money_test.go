@@ -197,7 +197,7 @@ func TestWebhookEventsAreAppendOnly(t *testing.T) {
 	for _, stmt := range []string{
 		"UPDATE webhook_events SET livemode = true",
 		"DELETE FROM webhook_events",
-		"TRUNCATE webhook_events, webhook_deliveries",
+		"TRUNCATE webhook_events CASCADE", // the tables that reference it would refuse a plain one first
 	} {
 		_, err := conn.Exec(ctx, stmt)
 		wantCode(t, err, codeRaise, stmt)

@@ -32,8 +32,7 @@ Read only the sections your task touches:
   to active receiver addresses), confirmation/finality tracking, reorg handling, invoice state
   machine and ledger booking, Check status rescans, payment reminders and retainer invoices (R-96, R-98), and the
   email from `outbox_events` after each round
-  (`internal/notify`, R-80, R-82, R-84; only the worker holds `RESEND_API_KEY`, and without it nothing is sent). Webhooks come in
-  PLAN 11.5.
+  (`internal/notify`, R-80, R-82, R-84; only the worker holds `RESEND_API_KEY`, and without it nothing is sent).
   - It also keeps the ECB's reference rates (`internal/ecb`, R-110): at start, every 6 hours, 10 minutes after a failure.
   - It reads the ECB's 90-day file only, so rates from before its first read, or gaps over 90 days, never arrive.
   - Only tests set `ECB_RATES_URL`: the e2e gate points the worker at a fake ECB.
@@ -43,6 +42,10 @@ Read only the sections your task touches:
   itself before signing, and settles at most `SponsoredPerDay` (50) invoices per user a day on the executor's gas.
   Writes settlement intents, the settlement ledger transaction and `settlement_status`. Every process uses one
   `DATABASE_URL` today; a separate signer database role is planned for deployment (Q-8).
+- `webhooks`: sends the webhook deliveries every second, 16 at a time (R-148). Of the secrets it holds only
+  `DATABASE_URL` and `WEBHOOK_SECRET_KEY`. It calls any URL an owner gives, so it gets no signer, Privy, email or RPC key.
+  - Its client checks the address after DNS (`webhook.Client`); without the key it sends nothing.
+  - A delivery it claims is leased for a minute, so copies can run side by side and a crash resends it later.
 - `canary`: run on its own host by a scheduler, not beside the others. Checks open invoices' receive addresses
   against `factory.predict` on two RPCs, the api and the pay page drawn in Chromium (address text and QR code), with
   its own config and no shared address code ([money safety](money-safety.md#canary), R-51).
@@ -90,9 +93,9 @@ is gone, so is the lock, and the process stops rather than run beside the copy t
 exiting suits rolling deploys: the new copy starts as soon as the old one stops.
 
 Root `pnpm dev` (`apps/backend/scripts/dev.sh`) stops at once when `EXECUTOR_PRIVATE_KEY` is missing or empty in
-`apps/backend/.env`. It starts Postgres and builds the three binaries, starts the api and waits until it logs
-`api listening` and `/healthz` answers 200, then starts the worker and signer, which need the api's migrations, and
-waits for their ready lines. Each process has 120 s. When one stops or is not ready in time, the script names it,
+`apps/backend/.env`. It starts Postgres, builds the four binaries and starts the api. Once the api logs `api listening`
+and `/healthz` answers 200, it starts the worker, signer and webhooks, which need its migrations. Then it waits for their
+ready lines. Each process has 120 s. When one stops or is not ready in time, the script names it,
 stops the others and exits 1; the same when one stops later. Ctrl+C stops them all.
 
 ## Scaling
@@ -166,6 +169,9 @@ with a test.
 - `webhook_events(history_id, profile_id, invoice_id, type, livemode, sequence)` and `webhook_deliveries(endpoint_id,
   event_id)` (R-147). `history.Add` writes both with the history row, so an event can't miss a change.
   - Events are append-only. The key `(invoice_id, sequence)` stops two writers that skip the invoice's lock.
+- A delivery also keeps `status`, `attempts`, `next_attempt_at` and the `body` first sent (R-148).
+  - `webhook_attempts(endpoint_id, event_id, status_code, error, duration_ms)` logs each attempt.
+  - `outbox_events.endpoint_id` names the endpoint of a `webhook.disabled` email.
 - `profile_invites(profile_id, email, role, stores, token_hash, expires_at, accepted_at, revoked_at)` (R-139).
   - `token_hash` is the SHA-256 of the link's token; the token itself is never kept here.
   - One open invite per address and profile (a unique index); a new one revokes the last.

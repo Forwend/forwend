@@ -1,6 +1,6 @@
 #!/bin/sh
-# Root `pnpm dev` runs this beside the web app. The worker and signer start once the api answers: it applies the
-# migrations they check.
+# Root `pnpm dev` runs this beside the web app. The worker, signer and webhooks start once the api answers: it applies
+# the migrations they check.
 set -e
 cd "$(dirname "$0")/.."
 # Only the key's presence is checked; the value is never read here.
@@ -26,7 +26,7 @@ fail() {
 }
 trap 'stop; exit 130' INT TERM
 
-go build -o "$tmp/" ./cmd/api ./cmd/worker ./cmd/signer || fail "go build failed"
+go build -o "$tmp/" ./cmd/api ./cmd/worker ./cmd/signer ./cmd/webhooks || fail "go build failed"
 # start: $! is then the binary's PID, not tail's.
 start() {
   : >"$tmp/$1.log"
@@ -58,12 +58,16 @@ start worker
 worker=$!
 start signer
 signer=$!
+start webhooks
+webhooks=$!
 ready worker "$worker" grep -q "worker ready" "$tmp/worker.log"
 ready signer "$signer" grep -q "signer ready" "$tmp/signer.log"
-echo "dev: api, worker and signer are ready"
+ready webhooks "$webhooks" grep -q "webhooks ready" "$tmp/webhooks.log"
+echo "dev: api, worker, signer and webhooks are ready"
 while :; do
   kill -0 "$api" 2>/dev/null || fail "api stopped: its log is above"
   kill -0 "$worker" 2>/dev/null || fail "worker stopped: its log is above"
   kill -0 "$signer" 2>/dev/null || fail "signer stopped: its log is above"
+  kill -0 "$webhooks" 2>/dev/null || fail "webhooks stopped: its log is above"
   sleep 2
 done
