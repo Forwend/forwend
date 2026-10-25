@@ -1342,7 +1342,7 @@
         "The open Deliveries sheet refreshes itself; a failed stores load on Webhooks, API keys and Team shows Try again; Delete is tested through the menu"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -1416,10 +1416,10 @@
         "taskHash": "bfdbe33774a57bbc",
         "filesHash": "f2c8d51478fa4783",
         "proof": {
-          "1": "unit: screens/developers/tests/developers-screen.test.tsx fails on the duplicate-key warning before the fix",
-          "2": "unit: TestAnAttemptInFlightKeepsAResend fails before the fix (failed 12, endpoint off)",
-          "3": "unit: TestWebhooksWithoutAKey covers test, resend and resend-failed; 404 before the fix",
-          "4": "unit: the stores-failure tests in webhooks, api-keys and team-members fail on the old components; the Delete test goes through the menu"
+          "1": "unit: developers-screen.test.tsx",
+          "2": "unit: TestAnAttemptInFlightKeepsAResend",
+          "3": "unit: TestWebhooksWithoutAKey",
+          "4": "unit: the stores-failure tests in webhooks, api-keys and team-members; the Delete test through the menu"
         },
         "review": {
           "result": "pass",
@@ -1427,11 +1427,18 @@
           "summary": "Re-review after the fail. Both blocking findings are fixed. (1) The failed-stores way out now covers all three readers that wait on stores: features/webhooks/components/webhooks.tsx:28, features/api-keys/components/api-keys.tsx (merchant only; the stores query is skipped otherwise) and features/team/components/team-members.tsx. In each, Try again refetches the list, and the stores query too when that one failed. new-invoice-screen.tsx:75 and link-screen.tsx:27 already handle isError. stores-table and store-screen read the stores list itself and have their own error branch. (2) One test per component: webhooks.test.tsx, api-keys.test.tsx and the new team/tests/team-members.test.tsx. With the HEAD components swapped in by vitest aliases, exactly these 3 tests fail and the other 10 pass; on the current code all pass. Acceptance 4 names Webhooks, API keys and Team, and its proof cites the unit tests. refresh.ts:3 no longer lists users. Non-blocking, left as is: the 410 from an out-of-date attempt does not turn the endpoint off; the resent delivery's own 410 does (deliver.go:199, matches api.md). The DESIGN.md:249 no-description bullet is accurate. The Deliveries poll has no test; it would only repeat LIVE_QUERY. My first review's backend and key checks still hold; the backend diff is unchanged. Ran: pnpm exec vitest run on the webhooks, api-keys, team and developers tests (5 files, 15 passed); a scratch vitest config with HEAD copies of the three components (3 failed, 10 passed); go test -race on the 8 webhook delivery and endpoint tests (ok).",
           "at": "2026-10-25T23:58:47Z",
           "filesHash": "f2c8d51478fa4783"
-        }
+        },
+        "commit": "be08aef",
+        "doneAt": "2026-10-25T23:59:33Z"
       },
       "branch": "fix/f307-webhooks-follow-ups-the-developers-page",
       "baseCommit": "847205be68e5a4a9910f2297be4f32c0f21150bd",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f307-webhooks-follow-ups-the-developers-page",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
