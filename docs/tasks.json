@@ -1126,7 +1126,7 @@
       "dependsOn": [
         "F304"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -1209,11 +1209,18 @@
           "summary": "Re-review after the fix: no blocking findings. Blocker fixed: apps/backend/internal/webhook/deliver.go reason() now cuts with strings.ToValidUTF8(text[:300], ''). Both new tests fail when the old cut is restored through an overlay mutant. TestReasonIsValidUTF8 fails with 300 bytes ending in \\xc3. TestAHostileAnswerIsLogged fails with 'invalid byte sequence for encoding UTF8: 0xc3 (SQLSTATE 22021)'. With the fix, my earlier probe of 3 rounds is now counted on the schedule: pending 1/5 s, 2/5 min, 3/30 min, with 3 attempt rows. A header line of 300 x 'é' added to the probe is also handled. Non-blocking fixes checked. (1) with-env.sh unsets INFURA_API_KEYS and CANARY_RPC_URLS for webhooks. A stub binary named webhooks saw only DATABASE_URL set, and no signer, Privy, email or RPC key. (2) attempt() reads the secrets first. With a wrong 32-byte key: an error, 0 requests, no body built or kept. (4) MaxResponseHeaderBytes is 64 KiB. (6b) TestAClaimedDeliveryIsSentOnce has no t.Fatal in a goroutine, and its wait gives up after 10 s. (7) D-98 and the dev.sh paragraph are split; the added doc sentences are 25 words or fewer. The rules.md webhook/ line no longer names the public-address rule (nit). Open follow-ups the user was told about, not blocking: (3) no late-attempt guard in record() (deliver.go UPDATE webhook_deliveries); (5) throughput, and the claim rescanning turned-off endpoints' pending rows; (6a) no fresh-timestamp test; (8) staging needs cmd/webhooks in backend.Dockerfile, a webhooks service with only DATABASE_URL and WEBHOOK_SECRET_KEY, the key on the api, and 443 egress. Earlier checks still hold: SSRF filter, no proxy, no redirects, timeouts, signing, body bytes, schedule, lease under 4 copies, one email, outbox constraints, Down, truncate guard. Ran: gofmt -l and go vet on webhook, httpapi/tests, cmd/webhooks (clean). go test -race ./internal/webhook (ok). go test -race ./internal/httpapi/tests -run 'Webhook|Claimed|Hostile' (8 pass). Overlay mutant with the old cut (both new tests fail). Local overlay probes for the wrong key, hostile rounds and header limit (pass). with-env.sh stub env check. e2e TestMoneyLoop PASS 7.2 s; pgrep -x anvil empty. verify F305 passed at 2026-10-25T21:31:52Z. This round sent nothing to outside hosts.",
           "at": "2026-10-25T21:42:08Z",
           "filesHash": "2a4f6c6b15ec7767"
-        }
+        },
+        "commit": "612d7b8",
+        "doneAt": "2026-10-25T21:42:43Z"
       },
       "branch": "feat/f305-a-delivery-process-sends-signed-webhooks",
       "baseCommit": "34897358cd6fa3ce0bd4553b0aed7d1dc64933c5",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f305-a-delivery-process-sends-signed-webhooks",
+        "base": "main"
+      }
     },
     {
       "id": "F306",
