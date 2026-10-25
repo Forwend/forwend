@@ -9,6 +9,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/auth"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
+	"github.com/ensp1re/forwend/apps/backend/internal/link"
 	"github.com/ensp1re/forwend/apps/backend/internal/privy"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
@@ -39,7 +40,8 @@ func RequireUser(v *auth.Verifier, sessions *auth.Service, next http.Handler) ht
 type accessKey struct{}
 
 // RequireAccess lets through the profile's owner and members whose role has p (R-138). For an invoice or store
-// permission, a Developer's or Finance member's request about another store's invoice or store is not found.
+// permission, a Developer's or Finance member's request about another store's invoice, payment link or store is not
+// found.
 func RequireAccess(s *auth.Service, p auth.Permission, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := SignedInUser(r)
@@ -73,6 +75,15 @@ func inStores(r *http.Request, s *auth.Service, access auth.Access) error {
 		}
 		if found && !access.InStores(store) {
 			return invoice.ErrNotFound
+		}
+	}
+	if id := r.PathValue("linkId"); id != "" {
+		store, found, err := s.LinkStore(r.Context(), r.PathValue("profileId"), id)
+		if err != nil {
+			return err
+		}
+		if found && !access.InStores(store) {
+			return link.ErrNotFound
 		}
 	}
 	return nil

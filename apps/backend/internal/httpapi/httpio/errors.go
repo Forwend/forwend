@@ -13,6 +13,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/document"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/job"
+	"github.com/ensp1re/forwend/apps/backend/internal/link"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 	"github.com/ensp1re/forwend/apps/backend/internal/search"
 	"github.com/ensp1re/forwend/apps/backend/internal/team"
@@ -69,6 +70,11 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusNotFound, "logo_not_found", "the store has no logo"
 	case errors.Is(err, profile.ErrNotMerchant):
 		status, code, message = http.StatusConflict, "not_merchant", "only a merchant profile has stores"
+	case errors.Is(err, link.ErrNotFound):
+		status, code, message = http.StatusNotFound, "link_not_found", "payment link not found"
+	case errors.Is(err, link.ErrPersonal):
+		status, code, message = http.StatusConflict, "personal_profile",
+			"a personal profile asks for money with requests, not payment links"
 	case errors.Is(err, team.ErrNotMerchant):
 		status, code, message = http.StatusConflict, "not_merchant", "only a merchant profile has a team"
 	case errors.Is(err, team.ErrMemberNotFound):
@@ -109,7 +115,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, invoice.ErrConflict), errors.Is(err, profile.ErrConflict), errors.Is(err, job.ErrConflict):
 		status, code, message = http.StatusConflict, "idempotency_conflict", "Idempotency-Key was used with another request"
 	case errors.Is(err, invoice.ErrInvalid), errors.Is(err, profile.ErrInvalid), errors.Is(err, job.ErrInvalid),
-		errors.Is(err, activity.ErrInvalid), errors.Is(err, team.ErrInvalid),
+		errors.Is(err, activity.ErrInvalid), errors.Is(err, team.ErrInvalid), errors.Is(err, link.ErrInvalid),
 		errors.Is(err, balance.ErrInvalid), errors.Is(err, search.ErrInvalid):
 		status, code, message = http.StatusUnprocessableEntity, "invalid_value", err.Error()
 	case errors.Is(err, activity.ErrTooMany):

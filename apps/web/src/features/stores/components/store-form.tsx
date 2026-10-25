@@ -4,17 +4,14 @@ import {
   Button,
   buttonClasses,
   Checkbox,
-  COPY_STATUS,
   Form,
   SelectField,
   type SelectOption,
   TextAreaField,
   TextField,
   TONES,
-  useCopy,
   useToast,
 } from "@forwend/ui-web";
-import { Check, Copy } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
@@ -31,6 +28,7 @@ import {
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { invalidStoreField, originLines } from "@/features/stores/lib/stores";
 import type { Store, StoreBody, StoreField } from "@/features/stores/types/stores";
+import { CopyValue } from "@/shared/components/copy-value";
 import { FieldGroup } from "@/shared/components/field-group";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { chainName } from "@/shared/lib/chains";
@@ -132,7 +130,14 @@ export function StoreForm({
             maxLength={STORE_LIMITS.name}
             error={errors.name}
           />
-          {store ? <ProjectId storeId={store.storeId} /> : null}
+          {store ? (
+            <CopyValue
+              label={COPY.projectId}
+              value={store.storeId}
+              hint={COPY.projectIdHint}
+              copyLabel={COPY.copyLabel}
+            />
+          ) : null}
         </div>
       </FieldGroup>
       <FieldGroup title={COPY.brandGroup}>
@@ -229,38 +234,5 @@ export function StoreForm({
         {formError}
       </p>
     </Form>
-  );
-}
-
-function ProjectId({ storeId }: { storeId: string }) {
-  const [status, copy] = useCopy(storeId);
-  const said =
-    status === COPY_STATUS.copied
-      ? COPY.copied
-      : status === COPY_STATUS.failed
-        ? COPY.copyFailed
-        : "";
-  return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <p className="text-sm font-medium text-ink">{COPY.projectId}</p>
-      <div className="flex min-w-0 items-center gap-2">
-        <code className="min-w-0 truncate font-mono text-sm text-ink" title={storeId}>
-          {storeId}
-        </code>
-        <Button size="sm" variant="secondary" onClick={() => void copy()}>
-          {status === COPY_STATUS.copied ? (
-            <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
-          ) : (
-            <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
-          )}
-          <span aria-hidden>{said || COPY.copy}</span>
-          <span className="sr-only">{COPY.copyLabel}</span>
-        </Button>
-      </div>
-      <p className="text-sm text-muted">{COPY.projectIdHint}</p>
-      <p role="status" className="sr-only">
-        {said}
-      </p>
-    </div>
   );
 }

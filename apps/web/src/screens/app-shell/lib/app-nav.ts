@@ -1,6 +1,7 @@
 import { CLIENTS_COPY } from "@/features/clients/constants/clients-copy";
 import { NEW_INVOICE_COPY, NEW_REQUEST_COPY } from "@/features/invoices/constants/invoices-copy";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
+import { LINKS_COPY } from "@/features/links/constants/links-copy";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import {
   BILLING_DETAILS_COPY,
@@ -120,6 +121,18 @@ export function breadcrumb(
         crumb,
         {
           label: pathname === APP_ROUTES.newStore ? STORES_COPY.newTitle : STORES_COPY.editTitle,
+          href: pathname,
+        },
+      ],
+      invoiceId: null,
+    };
+  }
+  if (page.href === APP_ROUTES.links && pathname !== APP_ROUTES.links) {
+    return {
+      trail: [
+        crumb,
+        {
+          label: pathname === APP_ROUTES.newLink ? LINKS_COPY.newTitle : LINKS_COPY.editTitle,
           href: pathname,
         },
       ],

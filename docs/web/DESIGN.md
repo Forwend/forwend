@@ -225,6 +225,13 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - New invoice shows a Store select in Details when the profile has two or more stores.
   - Picking a store sets the close to its default, unless a due date or the owner set one.
   - The return link's hint names the store's origins. The invoice list adds the store after the title.
+- Payment links (R-140) sits after Invoices in a merchant's Payments group and a freelancer's Get paid group.
+  - It is laid out like Stores: a one-line intro with New link at its end, then a table.
+  - The table shows the link with its `/l/<slug>`, the amount, a status badge and "N visits, M paid".
+  - The status is On, Off, Ended (past its last day) or Cap reached; only On is green.
+  - New and Edit are form pages like Edit store, with Link, Amount and Limits panels.
+  - Amount has two choice cards: A fixed amount, or The payer enters it with an optional min and max.
+  - A new link opens on its page after saving, where the address shows with a Copy button.
 - Networks and tokens (R-136) opens from the account menu, after Email notifications, for every profile.
   - It is laid out like Email notifications: one panel with a switch per token, named "USDC on Base Sepolia".
   - A switch saves at once and says so in a toast.

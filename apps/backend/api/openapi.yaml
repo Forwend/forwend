@@ -1748,6 +1748,88 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/links:
+    get:
+      operationId: listPaymentLinks
+      summary: The profile's payment links, newest first (R-140)
+      description: A Developer or Finance member sees only the links of their stores (D-93).
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: The links
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [links]
+                properties:
+                  links:
+                    type: array
+                    items: { $ref: "#/components/schemas/PaymentLink" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/links/{linkId}:
+    get:
+      operationId: getPaymentLink
+      summary: One payment link (R-140)
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/LinkId"
+      responses:
+        "200":
+          description: The link
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentLink" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/LinkNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+    put:
+      operationId: putPaymentLink
+      summary: Create or replace a payment link (R-140)
+      description: |
+        The caller picks the id (a lowercase UUID), so the same request sent twice saves one link: 201 when it makes the
+        link, 200 when it replaces every field. Forwend makes the slug once (D-94).
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/LinkId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PaymentLinkRequest" }
+      responses:
+        "200":
+          description: Replaced
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentLink" }
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentLink" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Another profile's or store's link (link_not_found), or not one of the profile's stores (store_not_found)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: A personal profile asks with requests, not payment links (personal_profile)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
 components:
   securitySchemes:
     privyAccessToken:
@@ -1767,6 +1849,12 @@ components:
       in: path
       required: true
       description: A saved client of this profile; a client of another profile is 404.
+      schema: { type: string, format: uuid }
+    LinkId:
+      name: linkId
+      in: path
+      required: true
+      description: A payment link of this profile; another profile's or another store's link is 404.
       schema: { type: string, format: uuid }
     MemberId:
       name: memberId
@@ -1843,6 +1931,59 @@ components:
         profiles:
           type: array
           items: { $ref: "#/components/schemas/Profile" }
+    PaymentLinkRequest:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, description: 1 to 200 characters of plain text on one line. }
+        storeId:
+          type: string
+          format: uuid
+          description: A merchant's store, its first store when left out; a freelancer sends none.
+        amountUsd:
+          type: [string, "null"]
+          pattern: "^[0-9]{1,12}(\\.[0-9]{1,2})?$"
+          description: A fixed amount in USD, above 0. Left out, the payer enters the amount.
+        minUsd:
+          type: [string, "null"]
+          pattern: "^[0-9]{1,12}(\\.[0-9]{1,2})?$"
+          description: An open amount's lowest, at most maxUsd. No default (D-94).
+        maxUsd:
+          type: [string, "null"]
+          pattern: "^[0-9]{1,12}(\\.[0-9]{1,2})?$"
+          description: An open amount's highest. No default cap (D-94).
+        endsAt:
+          type: [string, "null"]
+          format: date-time
+          description: When the link stops taking payments.
+        maxPayments:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 1000000
+          description: The most paid invoices the link takes.
+        active: { type: boolean, description: "The on or off switch; left out: on." }
+    PaymentLink:
+      type: object
+      required: [linkId, slug, title, storeId, amountUsd, minUsd, maxUsd, endsAt, maxPayments, active, visits, paid,
+        createdAt, updatedAt]
+      properties:
+        linkId: { type: string, format: uuid }
+        slug:
+          type: string
+          pattern: "^[a-z0-9]{12}$"
+          description: The /l/<slug> address; random, and it never changes (D-94).
+        title: { type: string }
+        storeId: { type: [string, "null"], format: uuid, description: null for a freelancer. }
+        amountUsd: { type: [string, "null"], description: "Two decimals; null for an open amount." }
+        minUsd: { type: [string, "null"] }
+        maxUsd: { type: [string, "null"] }
+        endsAt: { type: [string, "null"], format: date-time }
+        maxPayments: { type: [integer, "null"] }
+        active: { type: boolean }
+        visits: { type: integer, description: Times the link's page was opened. }
+        paid: { type: integer, description: The link's invoices that are paid or settled. }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     GrantRequest:
       type: object
       required: [role]
@@ -3230,6 +3371,11 @@ components:
                 items: { $ref: "#/components/schemas/TokenSwitch" }
     LogoNotFound:
       description: No store with this id has a logo (logo_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    LinkNotFound:
+      description: No payment link of this profile, in the user's stores, has this id (link_not_found)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
