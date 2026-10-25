@@ -65,7 +65,8 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 	}
 	// Each condition is added only when used: a cached generic plan of "$n IS NULL OR ..." never uses the index.
 	args := []any{profileID, before, limit + 1}
-	where := "profile_id = $1 AND ($2::bigint IS NULL OR number < $2)"
+	// A link invoice reaches the owner with its number, at its first deposit (R-141).
+	where := "profile_id = $1 AND number IS NOT NULL AND ($2::bigint IS NULL OR number < $2)"
 	if status != "" {
 		args = append(args, status)
 		where += fmt.Sprintf(" AND %s = $%d", StatusFilterSQL, len(args))
@@ -96,7 +97,7 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 	page := Page{Items: items}
 	if len(items) > limit {
 		page.Items = items[:limit]
-		page.NextCursor = strconv.FormatInt(page.Items[limit-1].Number, 10)
+		page.NextCursor = strconv.FormatInt(*page.Items[limit-1].Number, 10)
 	}
 	return page, nil
 }

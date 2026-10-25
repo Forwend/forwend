@@ -41,7 +41,7 @@ func (s *Service) Owed(ctx context.Context, profileID string, stores []string) (
 		           invoices.chain_id, invoices.token_contract AS token, t.symbol, t.decimals,
 		           invoices.amount + `+PaidToOwnerSQL("invoices.option_id")+` AS amount
 		    FROM `+invoicesCurrent+` JOIN tokens t ON t.chain_id = invoices.chain_id AND t.contract = invoices.token_contract
-		    WHERE invoices.profile_id = $1 AND `+StatusFilterSQL+` = 'open'
+		    WHERE invoices.profile_id = $1 AND invoices.number IS NOT NULL AND `+StatusFilterSQL+` = 'open'
 		      AND ($2::uuid[] IS NULL OR invoices.store_id = ANY($2))
 		      AND (invoices.due_date < (now() AT TIME ZONE 'UTC')::date OR invoices.payment_status = 'partially_paid')
 		    UNION ALL

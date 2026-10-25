@@ -240,13 +240,13 @@
       "behavior": "A payment-link invoice takes its number at its first deposit",
       "acceptance": [
         "A payment-link invoice has no INV- number until its first deposit, then takes the profile's next number in the transaction that books it: no gaps, never changed",
-        "Until it has a number, the invoice reads and its pay page, PDF and emails show it without one, and the owner's Invoices list, search and Owed leave it out",
+        "Until it has a number, only its payer sees it: the pay page and PDF show it without one, and the owner's invoice routes, Invoices list, search, Owed and Activity leave it out",
         "R-141, api.md and openapi.yaml describe it; required checks pass"
       ],
       "dependsOn": [
         "F296"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "backend-e2e"
@@ -257,9 +257,91 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-25 review fail by reviewer: BLOCKING: apps/backend/internal/activity/transfers.go:57,92 - the wallet-transfer lateral join can now return an invoice id with a NULL number, and scanTransfer dereferences *number. The claim that wallet-transfer activity only concerns numbered invoices fails when money leaves an unnumbered link receiver for the owner's wallet without a booked deposit: a refund-authority settle after the deadline, a recover() of another enabled token, or the documented Arc native-USDC refund (money-safety.md) when the payer is the owner's own wallet. A probe in a scratch copy (wallet_transfers row from an unnumbered link invoice's receive address, then activity.Transfers) panicked: nil pointer dereference. That breaks GET /transactions, transactions.csv and statement.pdf (moneyapi/activity.go:116,301) for that profile, with no end, since such an invoice never gets a number. Fix: add 'AND m.number IS NOT NULL' to the lateral join, plus a regression test. Non-blocking: (a) ledger/process.go:176-187 takes the profile row lock before funded/balanced/deployed make second-RPC calls (up to BalanceTimeout 10s each), so Create (create.go:84), Send (send.go:36) and token, wallet and client saves wait. No deadlock found: no transaction that holds the profile lock then locks an unnumbered invoice, and replace() refuses one before cancel. Moving the numbering just before Commit shortens the hold. (b) balance.go:62-64 'pending' counts an unnumbered link invoice's unbooked deposits, so the owner sees money they can't trace. Name it or filter it. (c) PROJECT.md R-141 'leave it out, so no email names it' gives the wrong cause: no email names it because Paid, Held, Settled and Receipt follow a booked deposit, and Send and Reminder need guarded owner routes. Checked: process.go numbers before outbox.Queue; payer_email.go:71; events.go:38. (d) architecture.md '...invoice's is null...' leaves out a noun, and 'It and the details never change' now reads wrong. (e) tasks.json acceptance line 2 changed during the task: 'the invoice reads ... emails show it without one' was dropped. The new wording matches the code. Say so in the PR. (f) Create accepts LinkID together with Replaces, Repeat or Reminders. replace() scans n.number into int64 (create.go:335) and would fail. The API can't reach this (LinkID is json:\"-\"), but F298 must refuse those combinations. (g) The 00065 down migration's SET NOT NULL fails once unnumbered link invoices exist. (h) Add a test for a link invoice where the payer picks the token, paid on a second option: the scratch probe showed the main and option rows both got number 1 and the next invoice got 2. Verified correct: the trigger guard against 00052 (diffed, only coalesce(OLD.number, NEW.number) and the link_id branch changed, and down equals 00052); the unique index invoices_profile_number allows NULLs; no gap on rollback; no double use, because the profile row update re-reads invoice_seq after the lock wait; the group lock serializes options. Readers: owed held, events, notify, reminders, job (coalesce) and revisions are safe by construction. TestLinkInvoiceNumbers checks are not vacuous (an overdue due date puts the invoice in Owed; the detected-deposit Activity row is covered). Ran: go test ./internal/httpapi/tests -run 'TestLinkInvoiceNumbers|TestPaymentLinks|TestOwedToYou|TestListInvoicesFilterAndSearch' ok; go test ./internal/invoice ./internal/ledger ./internal/activity ./internal/document ./internal/notify ./internal/database ok; after the update, TestLinkInvoiceNumbers, TestProfileRoutesAreAllListed, TestInvoiceWritersKeepHistory and ledger ok; scratch-copy probes: option numbering PASS, transfers panic FAIL.",
+        "2026-10-25 review pass by reviewer: Re-review after the fixes; all earlier findings are resolved. Blocking, fixed: activity/transfers.go:60 adds 'AND m.number IS NOT NULL' to the invoice join, so scanTransfer never dereferences a nil number. TestLinkInvoiceNumbers puts a wallet_transfers row from the unnumbered receive address and checks GET /transactions before money and while detected. Mutation check in a scratch copy: removing the filter makes the test fail (the server panics, the client gets EOF at links_test.go:238). (a) Fixed: numbering in ledger/process.go:259-273 now runs last, after funded/balanced/deployed, under len(deposits) > 0. No early return between booking and Commit. Outbox rows commit in the same transaction, so emails see the number. (b, c, d) Fixed: api.md, R-141 and architecture.md are now accurate, and every new sentence is 25 words or fewer. (g) Fixed: the 00065 Down refuses while any number is NULL; TestMigrationsKeepAnUnnumberedLinkInvoice checks the refusal and that version 65 stays. (h) Fixed: TestLinkInvoiceNumbers numbers a link invoice where the payer picks the token, paid on its second option: the main and option rows both get 6. Non-blocking: invoice.numbered is now written after invoice.paid and settlement_queued in the same transaction, so the owner's newest-first History lists 'Number given' above 'Paid'. This is cosmetic. (e) goes in the commit message. (f) Refusing LinkID with Replaces, Repeat or Reminders is for F298. Ran with with-env.sh, all ok: go test ./internal/httpapi/tests -run 'TestLinkInvoiceNumbers|TestProfileRoutesAreAllListed|TestPaymentLinks|TestOwedToYou|Transaction|Statement|Money'; go test ./internal/database ./internal/activity ./internal/ledger ./internal/history ./internal/invoice. Status showed verify passed at 2026-10-25T16:05:10Z."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-25T16:05:10Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 178.9,
+            "log": "docs/runs/F297-20261025T160510Z-unit.log"
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 20.1,
+            "log": "docs/runs/F297-20261025T160510Z-backend-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.7,
+            "log": "docs/runs/F297-20261025T160510Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F297-20261025T160510Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": "docs/runs/F297-20261025T160510Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F297-20261025T160510Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F297-20261025T160510Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 240.7,
+            "log": "docs/runs/F297-20261025T160510Z-e2e.log"
+          }
+        ],
+        "taskHash": "1d5660feea156056",
+        "filesHash": "7b6961a7f5cbb748",
+        "proof": {
+          "1": "unit: TestLinkInvoiceNumbers books a deposit on a link invoice and checks it takes number 3 between 2 and 4 with an invoice.numbered history row, money on a payer-chosen second option numbers main and option rows alike, an unpaid one takes none, and the number can't be cleared",
+          "2": "unit: TestLinkInvoiceNumbers checks the payer read and PDF show no number and the owner routes, list, search, Owed, Activity, Transactions and revise leave it out, before money and while detected; e2e pay.spec.ts shows 'Invoice' with no number",
+          "3": "docs-check: R-141, api.md, openapi.yaml and architecture.md describe it"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review after the fixes; all earlier findings are resolved. Blocking, fixed: activity/transfers.go:60 adds 'AND m.number IS NOT NULL' to the invoice join, so scanTransfer never dereferences a nil number. TestLinkInvoiceNumbers puts a wallet_transfers row from the unnumbered receive address and checks GET /transactions before money and while detected. Mutation check in a scratch copy: removing the filter makes the test fail (the server panics, the client gets EOF at links_test.go:238). (a) Fixed: numbering in ledger/process.go:259-273 now runs last, after funded/balanced/deployed, under len(deposits) > 0. No early return between booking and Commit. Outbox rows commit in the same transaction, so emails see the number. (b, c, d) Fixed: api.md, R-141 and architecture.md are now accurate, and every new sentence is 25 words or fewer. (g) Fixed: the 00065 Down refuses while any number is NULL; TestMigrationsKeepAnUnnumberedLinkInvoice checks the refusal and that version 65 stays. (h) Fixed: TestLinkInvoiceNumbers numbers a link invoice where the payer picks the token, paid on its second option: the main and option rows both get 6. Non-blocking: invoice.numbered is now written after invoice.paid and settlement_queued in the same transaction, so the owner's newest-first History lists 'Number given' above 'Paid'. This is cosmetic. (e) goes in the commit message. (f) Refusing LinkID with Replaces, Repeat or Reminders is for F298. Ran with with-env.sh, all ok: go test ./internal/httpapi/tests -run 'TestLinkInvoiceNumbers|TestProfileRoutesAreAllListed|TestPaymentLinks|TestOwedToYou|Transaction|Statement|Money'; go test ./internal/database ./internal/activity ./internal/ledger ./internal/history ./internal/invoice. Status showed verify passed at 2026-10-25T16:05:10Z.",
+          "at": "2026-10-25T16:12:48Z",
+          "filesHash": "7b6961a7f5cbb748"
+        }
+      },
+      "branch": "feat/f297-a-payment-link-invoice-takes-its-number",
+      "baseCommit": "da6e023ce755c2f9c10e60ad89ae94636cdfebef",
+      "failedVerifies": 0
     },
     {
       "id": "F298",

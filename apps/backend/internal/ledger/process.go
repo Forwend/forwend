@@ -256,6 +256,21 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			return err
 		}
 	}
+	if len(deposits) > 0 {
+		// A payment-link invoice takes the profile's next number with its first booked deposit (D-50, R-141). Last,
+		// so the profile row isn't locked while the second RPC is read.
+		tag, err := tx.Exec(ctx, `WITH n AS (UPDATE profiles p SET invoice_seq = invoice_seq + 1 FROM invoices m
+			    WHERE m.id = $1 AND m.number IS NULL AND p.id = m.profile_id RETURNING p.invoice_seq)
+			UPDATE invoices i SET number = n.invoice_seq FROM n WHERE coalesce(i.main_id, i.id) = $1`, group)
+		if err != nil {
+			return fmt.Errorf("number invoice %s: %w", group, err)
+		}
+		if tag.RowsAffected() > 0 {
+			if err := history.Add(ctx, tx, group, history.Numbered, history.System, history.Data{}); err != nil {
+				return err
+			}
+		}
+	}
 	return tx.Commit(ctx)
 }
 

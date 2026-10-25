@@ -559,6 +559,7 @@ export const INVOICE_COPY = {
       [HISTORY_KINDS.edited]: "Edited",
       [HISTORY_KINDS.replaced]: "Replaced",
       [HISTORY_KINDS.reopened]: "Reopened",
+      [HISTORY_KINDS.numbered]: "Number given",
     } satisfies Record<HistoryKind, string>,
     fields: {
       [HISTORY_FIELDS.memo]: "Memo",

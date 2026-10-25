@@ -114,6 +114,14 @@ func Number(n int64) string {
 	return fmt.Sprintf("INV-%04d", n)
 }
 
+// InvoiceNumber is "" for a link invoice before its first deposit (R-141).
+func InvoiceNumber(inv invoice.Invoice) string {
+	if inv.Number == nil {
+		return ""
+	}
+	return Number(*inv.Number)
+}
+
 // logo is the invoice's store logo, a PNG the API encoded (R-135); nil shows Forwend's.
 func Invoice(inv invoice.Invoice, payLink string, logo []byte) ([]byte, error) {
 	d := start(inv, "Invoice", logo)
@@ -188,7 +196,7 @@ func start(inv invoice.Invoice, kind string, logo []byte) doc {
 	if kind == "Receipt" {
 		date = inv.PaidAt
 	}
-	d := open(kind, Number(inv.Number), author, date, logo)
+	d := open(kind, InvoiceNumber(inv), author, date, logo)
 	// The client's accounts team matches the invoice by it (R-90). Never cut: each line holds at least one byte.
 	if text := "Reference " + inv.Reference; inv.Reference != "" {
 		for _, l := range d.fit(text, width/2, len(text)) {
@@ -232,15 +240,16 @@ func start(inv invoice.Invoice, kind string, logo []byte) doc {
 	return d
 }
 
-// label is an invoice's number or a statement's period; logo replaces Forwend's mark and name when set.
+// label is an invoice's number, if it has one, or a statement's period; logo replaces Forwend's mark and name when set.
 func open(kind, label, author string, date time.Time, logo []byte) doc {
+	name := strings.TrimSpace(kind + " " + label)
 	d := doc{fpdf.New("P", "mm", "A4", "")}
 	d.SetMargins(margin, margin, margin)
 	d.SetAutoPageBreak(true, margin)
 	d.SetCellMargin(0)
 	d.AddUTF8FontFromBytes(font, "", regular)
 	d.AddUTF8FontFromBytes(font, "B", bold)
-	d.SetTitle(kind+" "+label, true)
+	d.SetTitle(name, true)
 	d.SetAuthor(author, true)
 	d.SetCreator("Forwend", true)
 	d.SetLang("en")
@@ -253,7 +262,7 @@ func open(kind, label, author string, date time.Time, logo []byte) doc {
 		d.SetY(-margin + 6)
 		d.SetFont(font, "", 8)
 		d.text(subtle)
-		d.CellFormat(width/2, lineHeight, kind+" "+label, "", 0, "L", false, 0, "")
+		d.CellFormat(width/2, lineHeight, name, "", 0, "L", false, 0, "")
 		d.CellFormat(width/2, lineHeight, fmt.Sprintf("Page %d of {pages}", d.PageNo()), "", 0, "R", false, 0, "")
 		d.text(ink)
 	})

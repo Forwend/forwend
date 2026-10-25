@@ -48,8 +48,11 @@ func servePDF(invoices *invoice.Service, profiles *profile.Service, webURL, kind
 		w.Header().Set("ETag", `"`+hex.EncodeToString(sum[:16])+`"`)
 		w.Header().Set("Cache-Control", "private, no-cache")
 		w.Header().Set("Content-Type", "application/pdf")
-		w.Header().Set("Content-Disposition",
-			`attachment; filename="forwend-`+document.Number(inv.Number)+"-"+kind+`.pdf"`)
+		name := "forwend-" + kind
+		if number := document.InvoiceNumber(inv); number != "" {
+			name = "forwend-" + number + "-" + kind
+		}
+		w.Header().Set("Content-Disposition", `attachment; filename="`+name+`.pdf"`)
 		http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(pdf))
 	}
 }

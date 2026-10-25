@@ -45,8 +45,9 @@ import type { TokenRef } from "@/features/profiles/types/tokens";
 import { API_BASE } from "@/shared/config/api";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-export function invoiceNumber(n: number): string {
-  return `INV-${String(n).padStart(4, "0")}`;
+/** "" for a payment-link invoice before its first deposit (R-141). */
+export function invoiceNumber(n: number | null): string {
+  return n === null ? "" : `INV-${String(n).padStart(4, "0")}`;
 }
 
 export function invoicePdfUrl(payToken: string, pdf: InvoicePdf): string {

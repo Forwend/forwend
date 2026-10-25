@@ -42,7 +42,8 @@ type rates struct {
 }
 
 // transferSQL selects a profile's transfers ($1) with what classifies them (R-108): the invoice paid from one of
-// its receive addresses, an own-profile counterparty, the user's label, and the ECB rates that value it (R-110).
+// its receive addresses (a link invoice once it has a number, R-141), an own-profile counterparty, the user's label,
+// and the ECB rates that value it (R-110).
 const transferSQL = `
 	SELECT t.id, t.chain_id, t.token_contract, tk.symbol, tk.decimals, t.direction, t.amount::text, t.counterparty,
 	       t.tx_hash, t.log_index, t.block_number, t.block_time, t.status, inv.id, inv.number, inv.client_name,
@@ -56,7 +57,7 @@ const transferSQL = `
 	JOIN tokens tk ON tk.chain_id = t.chain_id AND tk.contract = t.token_contract
 	LEFT JOIN LATERAL (SELECT m.id, m.number, m.client_name FROM invoices o JOIN invoices m ON m.id = coalesce(o.main_id, o.id)
 	                   WHERE t.direction = 'in' AND o.chain_id = t.chain_id AND o.receive_address = t.counterparty
-	                     AND m.profile_id = p.id) inv ON true
+	                     AND m.profile_id = p.id AND m.number IS NOT NULL) inv ON true
 	LEFT JOIN transfer_labels l ON l.profile_id = p.id AND l.chain_id = t.chain_id AND l.tx_hash = t.tx_hash
 	     AND l.log_index = t.log_index
 	LEFT JOIN LATERAL (SELECT u.day, u.per_eur AS usd, CASE WHEN p.records_currency = 'EUR' THEN 1 ELSE c.per_eur END AS cur

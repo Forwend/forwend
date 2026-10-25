@@ -101,3 +101,46 @@ func TestMigrationsKeepAReopenedInvoice(t *testing.T) {
 	}
 	data(`{"to": "2027-01-15"}`)
 }
+
+// R-141: 65 never rolls back while a link invoice has no number, which the old schema can't hold.
+func TestMigrationsKeepAnUnnumberedLinkInvoice(t *testing.T) {
+	ctx := context.Background()
+	conn, err := sql.Open("pgx", databasetest.New(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	files, err := fs.Sub(migrations, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider, err := goose.NewProvider(goose.DialectPostgres, conn, files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, 65); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.ExecContext(ctx, `
+		WITH c AS (INSERT INTO chains (chain_id, chain_family, name) VALUES (84532, 'evm', 'base-sepolia')),
+		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals)
+		            VALUES (84532, 'evm', '0x036cbd53842c5426634e7929541ec2318f3dcf7e', 'USDC', 6)),
+		     u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:1') RETURNING id),
+		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id),
+		     l AS (INSERT INTO payment_links (id, profile_id, slug, title)
+		           SELECT 'aaaaaaaa-0000-4000-8000-000000000001', id, 'k3f9q2m7x1ab', 'Hourly' FROM p RETURNING id, profile_id)
+		INSERT INTO invoices (id, profile_id, link_id, chain_id, chain_family, token_contract, amount, expires_at,
+		    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
+		    request_hash)
+		SELECT '0x' || repeat('01', 32), profile_id, id, 84532, 'evm', '0x036cbd53842c5426634e7929541ec2318f3dcf7e', 5,
+		    1800000000, 1800086400, '0x' || repeat('11', 20), 'evm_create2', '0x' || repeat('22', 20),
+		    '0x' || repeat('33', 20), 'key-1', decode(repeat('00', 32), 'hex') FROM l`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.DownTo(ctx, 64); err == nil || !strings.Contains(err.Error(), "1 payment-link invoice row(s)") {
+		t.Fatalf("rolling back with an unnumbered link invoice: %v, want a refusal naming 1 row", err)
+	}
+	if version, err := provider.GetDBVersion(ctx); err != nil || version != 65 {
+		t.Fatalf("after the refusal: version %d, %v; want 65 kept", version, err)
+	}
+}

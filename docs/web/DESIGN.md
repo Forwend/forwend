@@ -374,7 +374,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - A merchant store's logo (R-135) takes the tile's place, in a bordered box as tall as the tile.
     - The box stays light in the dark theme too, since most logos are drawn for a light page.
     - The store's color is that box's or tile's edge. It never sits behind text, so any color keeps the contrast.
-    - "Invoice INV-0001" under the name.
+    - "Invoice INV-0001" under the name; a payment-link invoice before its first deposit reads "Invoice" alone (R-141).
     - The amount (Geist, tabular, featured size) and "on <network>". USD until the payer picks.
   - Left, then, as a hosted invoice page lists them:
     - Title, reference (R-90), agreed value (R-93), due date and "Closes in …": quiet rows with a small icon, no rules.

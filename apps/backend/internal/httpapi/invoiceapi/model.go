@@ -54,7 +54,7 @@ type invoiceJSON struct {
 	OptionCount      int         `json:"optionCount"`
 	Confirming       bool        `json:"confirming"`
 	Closed           bool        `json:"closed"`
-	Number           int64       `json:"number"`
+	Number           *int64      `json:"number"` // null for a link invoice before its first deposit (R-141)
 	Title            *string     `json:"title"`
 	Note             *string     `json:"note"`
 	DueDate          *string     `json:"dueDate"`

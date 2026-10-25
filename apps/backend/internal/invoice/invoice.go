@@ -94,6 +94,8 @@ type Request struct {
 	After func(ctx context.Context, tx pgx.Tx, invoiceID string) error `json:"-"`
 	// By is who makes the invoice, for its history (R-123); empty is the owner.
 	By history.Actor `json:"-"`
+	// LinkID is the payment link a payer made it from: it has no number until its first deposit (R-141).
+	LinkID string `json:"-"`
 }
 
 type AgreedRequest struct {
@@ -208,7 +210,7 @@ type Invoice struct {
 	Closed           bool
 	NextCheckAt      time.Time // when Check status may run again; zero when it may now. Set by Get
 	Options          []Option  // every accepted option, the current one included; set by Get
-	Number           int64     // per profile, from 1; shown as INV-0001
+	Number           *int64    // per profile, from 1; shown as INV-0001. Nil until a link invoice's first deposit
 	chain.Asset                // Symbol and Decimals set by Get
 	Amount           *big.Int
 	Recipient        string
