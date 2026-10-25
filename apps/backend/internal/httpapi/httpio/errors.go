@@ -72,6 +72,12 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusConflict, "not_merchant", "only a merchant profile has stores"
 	case errors.Is(err, link.ErrNotFound):
 		status, code, message = http.StatusNotFound, "link_not_found", "payment link not found"
+	case errors.Is(err, link.ErrOff):
+		status, code, message = http.StatusConflict, "link_off", "the owner turned this payment link off"
+	case errors.Is(err, link.ErrEnded):
+		status, code, message = http.StatusConflict, "link_ended", "this payment link has ended"
+	case errors.Is(err, link.ErrFull):
+		status, code, message = http.StatusConflict, "link_full", "this payment link has taken all its payments"
 	case errors.Is(err, link.ErrPersonal):
 		status, code, message = http.StatusConflict, "personal_profile",
 			"a personal profile asks for money with requests, not payment links"

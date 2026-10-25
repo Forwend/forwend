@@ -37,6 +37,6 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 	jobapi.Routes(mux, guards, job.NewService(pool, invoices))
 	moneyapi.Routes(mux, guards, balance.NewService(pool, balances), activity.NewService(pool), profiles)
 	teamapi.Routes(mux, guards, team.NewService(pool, wallets))
-	linkapi.Routes(mux, guards, link.NewService(pool))
+	linkapi.Routes(mux, guards, link.NewService(pool, invoices))
 	return mid.SecureHeaders(mux)
 }

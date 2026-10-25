@@ -1832,6 +1832,81 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/links/{slug}:
+    get:
+      operationId: getPublicPaymentLink
+      summary: A payment link as its payer sees it (public, R-142)
+      description: |
+        Public: anyone with the link may pay. Opening it makes nothing (D-54); state says why a link takes no payment.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/LinkSlug"
+      responses:
+        "200":
+          description: The link
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicPaymentLink" }
+        "404": { $ref: "#/components/responses/PublicLinkNotFound" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/links/{slug}/visits:
+    post:
+      operationId: countLinkVisit
+      summary: Count one load of a payment link's page (public, R-142)
+      description: |
+        The page sends it once per load; the owner sees the count as visits. It keeps only the count. Limited per link;
+        per IP at the edge (Q-8).
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/LinkSlug"
+      responses:
+        "204": { description: Counted }
+        "404": { $ref: "#/components/responses/PublicLinkNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/links/{slug}/pay:
+    post:
+      operationId: payPaymentLink
+      summary: Make the payer's invoice from a payment link (public, R-142)
+      description: |
+        Makes a payer-chooses invoice (R-56) with the link's title and store, the tokens on for that store and its
+        default close. It has no number until its first deposit (R-141). The same Idempotency-Key, at most 200 bytes
+        here, answers 200 with the same invoice; a payer's key never replays the owner's invoices. Limited per link and
+        for all links together; the second is spent only by a Pay that makes an invoice.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/LinkSlug"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LinkPayRequest" }
+      responses:
+        "200":
+          description: The invoice this key made before
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LinkPay" }
+        "201":
+          description: Made
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LinkPay" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "404": { $ref: "#/components/responses/PublicLinkNotFound" }
+        "409":
+          description: |
+            The owner turned the link off (link_off), it is past its last day (link_ended) or it took all its payments
+            (link_full). Or the owner has no billing details yet (billing_details_required), or the key was used with
+            another amount (idempotency_conflict).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "503": { $ref: "#/components/responses/NetworkNotReady" }
 components:
   securitySchemes:
     privyAccessToken:
@@ -1900,6 +1975,12 @@ components:
       required: true
       description: The secret in the client's link /w/<token>
       schema: { type: string, pattern: "^[0-9a-f]{64}$" }
+    LinkSlug:
+      name: slug
+      in: path
+      required: true
+      description: A payment link's slug (D-94); any other value is 404 link_not_found.
+      schema: { type: string, pattern: "^[a-z0-9]{12}$" }
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -1964,6 +2045,40 @@ components:
           maximum: 1000000
           description: The most paid invoices the link takes.
         active: { type: boolean, description: "The on or off switch; left out: on." }
+    PublicPaymentLink:
+      type: object
+      required: [slug, title, payee, brand, amountUsd, minUsd, maxUsd, state]
+      properties:
+        slug: { type: string, pattern: "^[a-z0-9]{12}$" }
+        title: { type: string }
+        payee: { type: [string, "null"], description: "The billing name; null before the owner saves billing details." }
+        brand:
+          type: [object, "null"]
+          required: [storeId, color, logoAt]
+          description: A merchant store's branding (R-135); null for a freelancer's link.
+          properties:
+            storeId: { type: string, format: uuid }
+            color: { type: [string, "null"], pattern: "^#[0-9a-f]{6}$" }
+            logoAt: { type: [string, "null"], format: date-time }
+        amountUsd: { type: [string, "null"], description: "A fixed link's USD amount; null for an open one." }
+        minUsd: { type: [string, "null"], description: "An open link's least amount, if any." }
+        maxUsd: { type: [string, "null"], description: "An open link's greatest amount, if any." }
+        state:
+          type: string
+          enum: [on, off, ended, full]
+          description: Only on takes payments; off is the owner's switch, ended past its last day, full at its cap.
+    LinkPayRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        amountUsd:
+          type: string
+          description: An open link's amount, USD with at most two decimals within its limits; left out for a fixed link.
+    LinkPay:
+      type: object
+      required: [payToken]
+      properties:
+        payToken: { $ref: "#/components/schemas/PayToken" }
     PaymentLink:
       type: object
       required: [linkId, slug, title, storeId, amountUsd, minUsd, maxUsd, endsAt, maxPayments, active, visits, paid,
@@ -3375,6 +3490,11 @@ components:
                 items: { $ref: "#/components/schemas/TokenSwitch" }
     LogoNotFound:
       description: No store with this id has a logo (logo_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    PublicLinkNotFound:
+      description: No payment link has this slug (link_not_found)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

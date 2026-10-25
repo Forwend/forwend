@@ -363,7 +363,7 @@
       "dependsOn": [
         "F297"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "e2e",
@@ -376,9 +376,93 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-25 review fail by reviewer: BLOCKING 1 (R-117): shared Pay budget is spent by Pays that make no invoice. apps/backend/internal/link/checkout.go:126 asks allow() before invoice.Create, which can still refuse: replay of a key (create.go:56), no wallet (create.go:65-69), billing_details_required (create.go:88-90), every token off (create.go:125), MaxOpen/MaxPerDay (create.go:136-141), network_not_ready (create.go:60). Probe (go test -overlay, no repo edit): 5 links on e.walletless (merchant, no billing, no wallet), 5 Pays each -> 20 invalid_value + 5 rate_limited; then a real payer's first Pay on Alice's link -> 429 rate_limited. A same-key replay also asked allow twice for one invoice. So any signed-up user with ~10 links at 0.1 req/s each keeps every payment link's Pay at 429 while making nothing. This contradicts linkapi/routes.go:10-11, docs/backend/api.md:673 and openapi.yaml:1875 ('spent only by a Pay that makes an invoice'). Fix: ask allow where Create is about to insert (after replay, billing, tokens and caps), e.g. an allow hook on invoice.Request; add a regression test like TestJunkSpendsNoSharedLimit over HTTP (junk on a no-billing profile's links, then a real Pay works; a replay does not ask). Non-blocking: (2) checkout.go:122-124 allows keys up to 213 bytes, not 200 as api.md:265, openapi.yaml:1873 and the error message say. (3) Shared-bucket HTTP wiring (routes.go:30-31, links.go:117) has no HTTP test; link_checkout_test.go:170-195 checks only the service with a fake allow and only junk that fails before allow. (4) A link whose owner has no billing details shows Pay; every Pay is 409 billing_details_required and the page says 'Try again' (link-checkout.tsx:131). The links UI does not gate on billing details as new-invoice and new-job do. Consider a state or message for it. (5) link-checkout.tsx:105-118: if reading the saved invoice fails (network, 5xx), it falls through and makes a new invoice, so a payer whose first invoice is confirming could be sent to a fresh one. Show the error instead unless the read says closed/paid. (6) After a 409 link_off/ended/full, onClosed refetch unmounts the focused Pay button; focus drops to body and the inserted role=status may not be announced. (7) Brand shape defined three times: invoices/schemas/invoices.ts:104-110, links/schemas/links.ts:39, payee.tsx:10; reuse one schema/type. CLOSED_CODES (link-checkout.tsx:26) repeats API codes in a component; derive from LINK_STATES or keep in constants/. (8) Docs gaps: apps/web/AGENTS.md lists the public pages without /l/<slug>; docs/web/structure.md:116 lists public-store-provider routes without /l; api.md link Pay bullets omit 409 billing_details_required (openapi has it). Checked OK: key prefix link:<id>: keeps payer keys off owner/other-link invoices (test non-vacuous: without it the owner's 'shared-key' gives 409); public read exposes no profile id, visits or invoices; amount parsing rejects 1e3, Arabic digits, 13-digit, +5, 12., .5, 0x10, 1,5, 0.00, 0.001; min/max check correct; ends_at uses now > endsAt like linkState; Create gets store, title, LinkID, By=payer, store default close, tokens off (tested); reuse rules match payState (closed/paid/settled make new); Payee extraction keeps the pay page unchanged; feature edges listed, no cycles; D-84 sentence lengths OK. Ran: go test ./internal/httpapi/tests -run 'TestLinkCheckout|TestLinkPayIsRateLimited|TestLinks|TestJunkSpendsNoSharedLimit' (ok); go vet ./internal/link ./internal/httpapi/... (clean); go test -race -run 'Link|Junk|RateLimit|PayToken' (ok); probe tests via -overlay (results above); python3 scripts/check-docs.py (0 errors).",
+        "2026-10-25 review pass by reviewer: Re-review after the fix. Finding 1 (R-117) is fixed: invoice/create.go:142-146 asks Request.Allow after replay, wallet, billing, tokens-off and the MaxOpen/MaxPerDay caps, just before the insert; link/checkout.go:129-130 passes allow only through Request.Allow. Mutation check via go test -overlay (Allow moved to the top of Create): TestLinkPayRefusedByCreateSpendsNoSharedBudget fails (429 on link 4) and TestLinkPayIsRateLimited fails (replay asked the budget), so both tests guard it. Fixed too: MaxPayKey 200 is checked before the prefix (checkout.go:124) and matches api.md and openapi; 409 billing_details_required has its own message (link-checkout.tsx:140); a failed read of the saved invoice throws instead of making a second invoice (link-checkout.tsx:113-115, e2e keeps pays at 1); focus moves to the reason box after a closing 409 (link-checkout.tsx:77-82, 196-203); storeBrandSchema/StoreBrand is the one brand shape; LINK_CLOSED_CODES derives from LINK_STATES; AGENTS.md, structure.md and api.md updated. Non-blocking, left for later: (a) the shared bucket's HTTP wiring (linkapi/routes.go:30-31) still has no HTTP test that a real Pay is refused once it is spent. (b) TestLinkPayRefusedByCreateSpendsNoSharedBudget (link_checkout_test.go:212-214) does not check the link PUT status: a failed PUT gives slug '' and the junk loop would pass without testing anything; today the PUT succeeds and the mutation fails it. (c) NOT_READY 'billing_details_required' sits in link-checkout.tsx:25 rather than in constants/. (d) docs/web/architecture.md:95 still says invoices -> stores is for the brand color's pattern; it is now the brand schema. (e) The owner's links page still lets an owner without billing details make a link that payers can't pay (author accepts). Ran: go vet ./internal/link ./internal/invoice ./internal/httpapi/... (clean); go test -race ./internal/httpapi/tests -run 'Link|Junk|RateLimit|PayToken|TestCreate|Invoice' -count=1 (ok, 19.9s); the overlay mutation (2 tests fail as expected; overlay files removed); python3 scripts/check-docs.py (0 errors); harness status: verify passed at 2026-10-25T17:21:12Z.",
+        "2026-10-25 review pass by reviewer: Short re-review of the three follow-ups; the earlier pass stands (R-117 fix in invoice/create.go:142-146, mutation-checked). (b) TestLinkPayRefusedByCreateSpendsNoSharedBudget now fails if a junk link's PUT is not 201 (link_checkout_test.go:215-217). (c) LINK_NOT_READY_CODE lives in features/links/constants/links.ts:11 beside LINK_CLOSED_CODES; link-checkout.tsx:16,144 imports it. (d) docs/web/architecture.md: invoices -> stores says the brand's schema; links -> stores adds the payer's read brand (R-142). Still open, non-blocking: no HTTP test that a real Pay is refused once the shared bucket is spent (linkapi/routes.go:30-31); no owner-side warning for a link without billing details. Ran: go test ./internal/httpapi/tests -run 'TestLinkPayRefusedByCreateSpendsNoSharedBudget|TestLinkPayIsRateLimited|TestLinkCheckout' -count=1 (ok); python3 scripts/check-docs.py (0 errors); status: verify passed at 2026-10-25T17:30:14Z."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-25T17:30:14Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 183.2,
+            "log": "docs/runs/F298-20261025T173014Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 271.3,
+            "log": "docs/runs/F298-20261025T173014Z-e2e.log"
+          },
+          {
+            "id": "a11y-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 17.4,
+            "log": "docs/runs/F298-20261025T173014Z-a11y-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.2,
+            "log": "docs/runs/F298-20261025T173014Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F298-20261025T173014Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F298-20261025T173014Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": "docs/runs/F298-20261025T173014Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.9,
+            "log": "docs/runs/F298-20261025T173014Z-build.log"
+          }
+        ],
+        "taskHash": "282d29f92f4159fc",
+        "filesHash": "eb73f6b8fa8b0848",
+        "proof": {
+          "1": "unit: TestLinkCheckout reads /v1/links/{slug} with its title, payee, store brand and amounts, counts two visits and finds no invoice made; e2e link-pay.spec.ts shows the payee, amount or amount field within its limits and one visit per load",
+          "2": "unit: TestLinkCheckout checks Pay makes a payer-made, unnumbered payer-chooses invoice with the link's store, that store's tokens and its 2 h close, the same key gives it back and a payer key never replays the owner's; e2e link-pay.spec.ts opens /pay/<token>, reuses the open invoice for the same amount and makes none when its read fails",
+          "3": "unit: TestLinkCheckout checks off, ended and full links answer link_off, link_ended and link_full and make nothing; TestLinkPayIsRateLimited and TestLinkPayRefusedByCreateSpendsNoSharedBudget check the per-link 429 and that only a Pay that inserts an invoice spends the shared budget",
+          "4": "docs-check: R-142, api.md, openapi.yaml and the backend and web architecture docs describe it"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Short re-review of the three follow-ups; the earlier pass stands (R-117 fix in invoice/create.go:142-146, mutation-checked). (b) TestLinkPayRefusedByCreateSpendsNoSharedBudget now fails if a junk link's PUT is not 201 (link_checkout_test.go:215-217). (c) LINK_NOT_READY_CODE lives in features/links/constants/links.ts:11 beside LINK_CLOSED_CODES; link-checkout.tsx:16,144 imports it. (d) docs/web/architecture.md: invoices -> stores says the brand's schema; links -> stores adds the payer's read brand (R-142). Still open, non-blocking: no HTTP test that a real Pay is refused once the shared bucket is spent (linkapi/routes.go:30-31); no owner-side warning for a link without billing details. Ran: go test ./internal/httpapi/tests -run 'TestLinkPayRefusedByCreateSpendsNoSharedBudget|TestLinkPayIsRateLimited|TestLinkCheckout' -count=1 (ok); python3 scripts/check-docs.py (0 errors); status: verify passed at 2026-10-25T17:30:14Z.",
+          "at": "2026-10-25T17:38:30Z",
+          "filesHash": "eb73f6b8fa8b0848"
+        }
+      },
+      "branch": "feat/f298-a-payer-pays-through-a-payment-link",
+      "baseCommit": "a722a545aaca25f5b84a30d14766683c864dd0fd",
+      "failedVerifies": 0
     },
     {
       "id": "F299",

@@ -1,7 +1,8 @@
 # Web app
 
 Next.js app: landing page, private `/kit`, signed-in `/app`, public checkout `/pay/<token>`, the public
-stop reminders page `/reminders/<token>` and the public quote page `/w/<token>`. Team invites open `/invite/<token>`.
+stop reminders page `/reminders/<token>`, the public quote page `/w/<token>` and the public payment link page
+`/l/<slug>`. Team invites open `/invite/<token>`.
 
 ## Commands
 

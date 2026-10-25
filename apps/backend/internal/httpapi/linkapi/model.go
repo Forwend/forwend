@@ -3,6 +3,7 @@ package linkapi
 import (
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/ensp1re/forwend/apps/backend/internal/job"
 	"github.com/ensp1re/forwend/apps/backend/internal/link"
 )
@@ -58,6 +59,36 @@ func toLinkJSON(l link.Link) linkJSON {
 	}
 	if l.MaxPayments > 0 {
 		out.MaxPayments = &l.MaxPayments
+	}
+	return out
+}
+
+// publicLinkJSON is a link as /l/<slug> shows it to its payer (R-142).
+type publicLinkJSON struct {
+	Slug      string           `json:"slug"`
+	Title     string           `json:"title"`
+	Payee     *string          `json:"payee"` // the billing name; null before the owner saves billing details
+	Brand     *publicBrandJSON `json:"brand"` // a merchant store's (R-135); null for a freelancer
+	AmountUSD *string          `json:"amountUsd"`
+	MinUSD    *string          `json:"minUsd"`
+	MaxUSD    *string          `json:"maxUsd"`
+	State     string           `json:"state"`
+}
+
+type publicBrandJSON struct {
+	StoreID string  `json:"storeId"`
+	Color   *string `json:"color"`
+	LogoAt  *string `json:"logoAt"`
+}
+
+func toPublicLinkJSON(p link.Public) publicLinkJSON {
+	out := publicLinkJSON{Slug: p.Slug, Title: p.Title, Payee: httpio.OrNull(p.Payee), AmountUSD: usd(p.AmountCents),
+		MinUSD: usd(p.MinCents), MaxUSD: usd(p.MaxCents), State: p.State}
+	if p.StoreID != "" {
+		out.Brand = &publicBrandJSON{StoreID: p.StoreID, Color: httpio.OrNull(p.BrandColor)}
+		if p.LogoAt != nil {
+			out.Brand.LogoAt = httpio.OrNullTime(*p.LogoAt)
+		}
 	}
 	return out
 }

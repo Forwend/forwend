@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -51,9 +52,10 @@ type Details struct {
 }
 
 type Service struct {
-	pool *pgxpool.Pool
+	pool     *pgxpool.Pool
+	invoices *invoice.Service // makes a payer's invoice (R-142)
 }
 
-func NewService(pool *pgxpool.Pool) *Service {
-	return &Service{pool: pool}
+func NewService(pool *pgxpool.Pool, invoices *invoice.Service) *Service {
+	return &Service{pool: pool, invoices: invoices}
 }

@@ -1,6 +1,13 @@
 import { z } from "zod";
-import { linkBodySchema, linkSchema, linksSchema } from "@/features/links/schemas/links";
-import type { Link, LinkBody } from "@/features/links/types/links";
+import {
+  linkBodySchema,
+  linkPayArgSchema,
+  linkPaySchema,
+  linkSchema,
+  linksSchema,
+  publicLinkSchema,
+} from "@/features/links/schemas/links";
+import type { Link, LinkBody, LinkPay, LinkPayArg, PublicLink } from "@/features/links/types/links";
 import { apiSlice } from "@/shared/api/api-slice";
 
 const LINKS_TAG = "Links";
@@ -26,7 +33,35 @@ export const linksApi = apiSlice.enhanceEndpoints({ addTagTypes: [LINKS_TAG] }).
       responseSchema: linkSchema,
       invalidatesTags: [LINKS_TAG],
     }),
+    /** The payer's read (R-142): public, like the checkout. */
+    getPublicLink: build.query<PublicLink, string>({
+      query: (slug) => `/v1/links/${encodeURIComponent(slug)}`,
+      responseSchema: publicLinkSchema,
+    }),
+    /** One page load (R-142); the page makes nothing (D-54). */
+    countLinkVisit: build.mutation<void, string>({
+      extraOptions: { answerFirst: true },
+      query: (slug) => ({ url: `/v1/links/${encodeURIComponent(slug)}/visits`, method: "POST" }),
+    }),
+    /** Makes the payer's invoice; the same key again answers with the same one. A 429 says to try again later. */
+    payLink: build.mutation<LinkPay, LinkPayArg>({
+      extraOptions: { answerFirst: true },
+      query: ({ slug, amountUsd, idempotencyKey }) => ({
+        url: `/v1/links/${encodeURIComponent(slug)}/pay`,
+        method: "POST",
+        body: amountUsd ? { amountUsd } : {},
+        headers: { "Idempotency-Key": idempotencyKey },
+      }),
+      argSchema: linkPayArgSchema,
+      responseSchema: linkPaySchema,
+    }),
   }),
 });
 
-export const { useListLinksQuery, useSaveLinkMutation } = linksApi;
+export const {
+  useListLinksQuery,
+  useSaveLinkMutation,
+  useGetPublicLinkQuery,
+  useCountLinkVisitMutation,
+  usePayLinkMutation,
+} = linksApi;

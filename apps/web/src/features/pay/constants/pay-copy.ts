@@ -128,6 +128,30 @@ export const PAY_COPY = {
   newTab: " (opens in a new tab)",
 } as const;
 
+/** R-142: a payment link's page, before Pay makes the payer's invoice. */
+export const LINK_PAY_COPY = {
+  title: "Payment link",
+  loading: "Loading the payment link",
+  amount: "Amount",
+  amountField: "Amount (USD)",
+  amountHint: (limits: string) => `${limits}. You pay in a stablecoin worth 1 USD each.`,
+  fixedHint: "You pay in a stablecoin worth 1 USD each.",
+  pay: "Pay",
+  next: "You pick the token and network on the next page.",
+  closed: {
+    off: "This link is off. Ask the seller for another way to pay.",
+    ended: "This link has ended. Ask the seller for another way to pay.",
+    full: "This link has taken all the payments it allows.",
+  },
+  errors: {
+    amount: "Enter an amount like 25 or 25.50.",
+    limits: (limits: string) => `Enter an amount within the limits: ${limits}.`,
+    busy: "Many payments are starting right now. Try again in a minute.",
+    notReady: "This seller can't take payments yet. Ask them for another way to pay.",
+    failed: "We could not start the payment. Try again.",
+  },
+} as const;
+
 interface StateValues {
   received: string;
   remaining: string;

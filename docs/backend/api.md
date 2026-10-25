@@ -253,6 +253,17 @@ R-140, D-54, D-94; the full schema is in openapi.yaml. Members reach them with `
   - A merchant link is for `storeId`, the profile's first store when left out. A freelancer's link has no store.
   - A member's link is for one of their stores, their first by default; another store is 422.
   - A personal profile is 409 `personal_profile`.
+- The payer's routes need no sign-in (R-142). A slug that isn't 12 lowercase letters and digits, or no link's, is 404.
+  - `GET /v1/links/{slug}` gives `title`, `payee` (the billing name), a merchant store's `brand` and the amounts.
+  - Its `state` is `on`, `off`, `ended` or `full`; only `on` takes payments.
+  - `POST /v1/links/{slug}/visits` counts one load of the page (204). The page makes nothing (D-54).
+  - `POST /v1/links/{slug}/pay` makes the payer's invoice and answers its `payToken`: 201, or 200 for a key it saw.
+  - The invoice is payer-chooses (R-56), with the link's title, store, that store's tokens and its default close.
+  - Its history says the payer made it, and it has no number until its first deposit (R-141).
+  - An open link takes `amountUsd` within its limits; a fixed link takes none. Either mistake is 422.
+  - A link that is off, ended or full is 409 `link_off`, `link_ended` or `link_full`, and nothing is made.
+  - An owner with no billing details yet is 409 `billing_details_required`.
+  - The Idempotency-Key is at most 200 bytes. A payer's key is kept apart from the owner's, so it never replays theirs.
 
 ## Invoices
 
@@ -657,12 +668,17 @@ seconds (when the next token is back) and runs nothing else.
   full rescan on every press.
 - `POST /v1/invoices/{payToken}/views` (R-125): per link, 5 at once, then one every 5 s. It slows a run-up of one link's
   count; it can't stop one.
+- `POST /v1/links/{slug}/visits` (R-142): per link, 5 at once, then one every 5 s.
+- `POST /v1/links/{slug}/pay` makes an invoice, so it has limits in `linkapi/routes.go` (R-142).
+  - Per link: 5 at once, then one every 10 s.
+  - For all links together: 20 at once, then one a second, spent only by a Pay that makes an invoice (R-117).
+  - It is asked just before the insert, so any Pay that makes no invoice spends none, a repeated key included.
 - `POST /v1/jobs/{token}/accept` makes an invoice, so it has limits in `jobapi/routes.go`. Accepting a change has its
   own per-link limit and shares the one for everyone.
   - Per link: 3 at once, then one every 10 s.
   - For everyone together: 20 at once, then 5 a second, spent only by an accept that changes a job (R-117).
   - A bad body, an unknown link or a job already accepted answers before it.
-- The other public routes (`GET /v1/invoices/{payToken}`, `GET /v1/jobs/{token}`, both PDFs and `POST /v1/reminders/{token}/stop`) have no limit in the api. Next's `/api` rewrite adds
+- The other public routes (`GET /v1/invoices/{payToken}`, `GET /v1/jobs/{token}`, `GET /v1/links/{slug}`, both PDFs and `POST /v1/reminders/{token}/stop`) have no limit in the api. Next's `/api` rewrite adds
   no `X-Forwarded-For` of its own and passes a client's header through unchanged (measured 2026-10-15 with a stub
   behind `next start`: no header without one, a sent `1.2.3.4` arrived as is), so the api sees one address for every
   payer and cannot trust the header. Limit them
