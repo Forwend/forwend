@@ -139,6 +139,11 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	if today+len(options) > MaxPerDay {
 		return Invoice{}, false, fmt.Errorf("%w: a profile creates at most %d receive addresses a day", ErrInvalid, MaxPerDay)
 	}
+	if r.Allow != nil {
+		if wait := r.Allow(); wait > 0 {
+			return Invoice{}, false, &TooSoonError{Wait: wait}
+		}
+	}
 	expiresAt := s.now().UTC().Truncate(time.Second).Add(expiresIn)
 	settleDeadline := expiresAt.Add(SettleWindow)
 	var mainID *string

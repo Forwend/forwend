@@ -365,6 +365,12 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 
 ## Checkout
 
+- `/l/<slug>` (R-142), a payment link's page, is one narrow column with the pay page's logo and footer.
+  - Top: the pay page's payee tile and name, "Payment link" under it, then the link's title.
+  - A fixed link shows its amount in USD; an open one has an Amount (USD) field whose hint gives the limits.
+  - Pay is the one button, with "You pick the token and network on the next page" under it.
+  - A link that is off, ended or full shows why in a quiet box, with no Pay.
+  - A bad amount shows on the field and focuses it; a busy or failed Pay says so under the button.
 - `/pay/<token>` (R-68) is one short screen. The logo links home.
   - Wide screens: the invoice on the left, how to pay on the right.
   - Phones: the pay panel comes right after the amount; the title, dates, note and PDF link follow it. The payer reaches

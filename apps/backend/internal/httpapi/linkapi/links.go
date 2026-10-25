@@ -1,12 +1,17 @@
 package linkapi
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
+	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/link"
 )
 
@@ -69,5 +74,64 @@ func putLink(links *link.Service) http.HandlerFunc {
 			status = http.StatusCreated
 		}
 		httpio.WriteJSON(w, status, toLinkJSON(l))
+	}
+}
+
+// R-142: no sign-in; anyone with the link may pay.
+func getPublicLink(links *link.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		p, err := links.Public(r.Context(), r.PathValue("slug"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, toPublicLinkJSON(p))
+	}
+}
+
+func countVisit(links *link.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := links.Visit(r.Context(), r.PathValue("slug")); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// payLink answers with the new invoice's pay token; the same Idempotency-Key again answers 200 with the same one.
+func payLink(links *link.Service, all *mid.Buckets) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		key, err := httpio.IdempotencyKey(r)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		var body struct {
+			AmountUSD string `json:"amountUsd"`
+		}
+		if err := httpio.DecodeJSON(w, r, &body); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		allow := func() time.Duration { return all.Wait(mid.Everyone(r)) }
+		inv, created, err := links.Pay(r.Context(), r.PathValue("slug"), strings.TrimSpace(body.AmountUSD), key, allow)
+		var soon *invoice.TooSoonError
+		if errors.As(err, &soon) {
+			w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))
+			httpio.WriteError(w, r, httpio.ErrRateLimited)
+			return
+		}
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		status := http.StatusOK
+		if created {
+			status = http.StatusCreated
+		}
+		httpio.WriteJSON(w, status, struct {
+			PayToken string `json:"payToken"`
+		}{inv.PayToken})
 	}
 }

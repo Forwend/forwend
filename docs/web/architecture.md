@@ -88,12 +88,15 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   pattern, Send to client); onboarding → activity, invoices, profiles,
   transactions; transactions → invoices (the bell's invoice events, R-81, the invoice numbers on Transactions, R-109, and the ECB currencies, R-111); transactions → profiles (the statement's way back from billing details, R-113). No cycles ([structure.md](structure.md)); money helpers and words that several features show live in
   `shared/lib/money.ts` and `shared/constants/money-copy.ts`. Add no new edge without listing it here.
+- Payment links' checkout (R-142) adds pay → links and links → invoices.
+  - pay: the public link read and Pay, the link states, the USD pattern and the amount label.
+  - links: the pay token's pattern in Pay's answer.
 - Two more edges lead to stores: invoices → stores and pay → stores.
-  - invoices: the store a merchant invoice records, its return-link origins and the brand color's pattern (R-134, R-135).
+  - invoices: the store a merchant invoice records, its return-link origins and the brand's schema (R-134, R-135).
   - pay: the logo's address (R-135).
 - invoices → profiles and stores → profiles: the token switches and their types (R-136).
 - Team (R-139) leads to profiles (roles, permissions and the profile list) and to stores (the store names it offers).
-- Links (R-140) lead to stores: a merchant's link names one of its stores.
+- Links (R-140) lead to stores: a merchant's link names one of its stores, and the payer's read has its brand (R-142).
 - Checkout `/pay/<token>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed token
   (an on-chain id too, D-86) is a 404; a token the API does not know shows the 404 page. It reads the public
   `GET /v1/invoices/{payToken}` every 15 s through a

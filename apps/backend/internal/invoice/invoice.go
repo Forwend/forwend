@@ -96,6 +96,9 @@ type Request struct {
 	By history.Actor `json:"-"`
 	// LinkID is the payment link a payer made it from: it has no number until its first deposit (R-141).
 	LinkID string `json:"-"`
+	// Allow, when set, is asked just before the insert, so a refused or replayed create spends none of a public
+	// caller's shared budget (R-117).
+	Allow func() time.Duration `json:"-"`
 }
 
 type AgreedRequest struct {

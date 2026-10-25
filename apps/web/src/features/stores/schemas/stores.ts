@@ -22,5 +22,12 @@ export const storeSchema = storeBodySchema.extend({
   updatedAt: apiTime,
 });
 
+/** A store's branding as its checkouts show it (R-135): the logo is at /v1/stores/{storeId}/logo.png once saved. */
+export const storeBrandSchema = z.object({
+  storeId: z.guid(),
+  color: z.string().regex(BRAND_COLOR_PATTERN).nullable(),
+  logoAt: apiTime.nullable(),
+});
+
 /** GET /v1/profiles/{profileId}/stores. */
 export const storesSchema = z.object({ stores: z.array(storeSchema) });

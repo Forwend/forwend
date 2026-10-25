@@ -215,6 +215,7 @@ export const invoicesApi = apiSlice
 export const {
   useGetInvoicesInfiniteQuery,
   useGetInvoiceQuery,
+  useLazyGetInvoiceQuery,
   useGetProfileInvoiceQuery,
   useCreateInvoiceMutation,
   useCancelInvoiceMutation,

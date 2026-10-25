@@ -27,7 +27,6 @@ import {
   TriangleAlert,
   WifiOff,
 } from "lucide-react";
-import Image from "next/image";
 import { notFound, usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useCountViewMutation, useGetInvoiceQuery } from "@/features/invoices/api/invoices-api";
@@ -48,6 +47,7 @@ import {
 } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { type Choice, OptionPicker } from "@/features/pay/components/option-picker";
+import { Payee } from "@/features/pay/components/payee";
 import { ReceiptEmail } from "@/features/pay/components/receipt-email";
 import { PAY_STATES } from "@/features/pay/constants/pay";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
@@ -61,7 +61,6 @@ import {
 } from "@/features/pay/lib/pay";
 import { checkedReceiveAddress } from "@/features/pay/lib/receive-address";
 import type { PayToken } from "@/features/pay/types/pay";
-import { storeLogoUrl } from "@/features/stores/lib/stores";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -238,43 +237,11 @@ function Summary({
     >
       {/* Top of the first column: the first thing on the page at any width (the grid pins every block's row). */}
       {stale}
-      <div className="flex min-w-0 items-center gap-3">
-        {/* R-135: a merchant store's logo, edged in its color. The color is never behind text, so contrast holds.
-            The box stays light in both themes: most logos are drawn for a light page. */}
-        {brand?.logoAt ? (
-          <span
-            aria-hidden
-            data-theme="light"
-            className="grid h-10 max-w-40 shrink-0 place-items-center rounded-md border border-line bg-surface px-1.5 sm:h-11"
-            style={brand.color ? { borderColor: brand.color } : undefined}
-          >
-            <Image
-              src={storeLogoUrl(brand.storeId, brand.logoAt)}
-              alt=""
-              width={152}
-              height={36}
-              unoptimized
-              className="h-7 w-auto max-w-36 object-contain sm:h-8"
-            />
-          </span>
-        ) : (
-          <span
-            aria-hidden
-            className="grid size-10 shrink-0 place-items-center rounded-md border border-line bg-surface text-base font-semibold text-ink sm:size-11 sm:text-lg"
-            style={brand?.color ? { borderColor: brand.color } : undefined}
-          >
-            {(payee ?? COPY.noIssuer).trim().charAt(0).toUpperCase()}
-          </span>
-        )}
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <h1 className="text-lg font-semibold break-words text-ink sm:text-xl">
-            {payee ?? COPY.noIssuer}
-          </h1>
-          <p className="text-sm text-muted">
-            {invoice.issuer ? COPY.invoice(number) : COPY.request(number)}
-          </p>
-        </div>
-      </div>
+      <Payee
+        name={payee ?? COPY.noIssuer}
+        subtitle={invoice.issuer ? COPY.invoice(number) : COPY.request(number)}
+        brand={brand}
+      />
       <div className="flex flex-col gap-1.5">
         <h2 id="pay-amount" className="text-sm text-muted">
           {done

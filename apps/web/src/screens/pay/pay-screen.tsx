@@ -1,8 +1,7 @@
-import { Logo, LogoMark } from "@forwend/ui-web";
+import { Logo } from "@forwend/ui-web";
 import Link from "next/link";
-import { NeedHelp } from "@/features/pay/components/need-help";
 import { PayInvoice } from "@/features/pay/components/pay-invoice";
-import { PAY_COPY } from "@/features/pay/constants/pay-copy";
+import { CheckoutFooter } from "@/screens/pay/checkout-footer";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const LINK = "rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-focus";
@@ -23,22 +22,7 @@ export function PayScreen({ linkToken, option }: PayScreenProps) {
       <main className="grid flex-1 grid-cols-[minmax(0,1fr)] content-start items-start gap-8 has-[>[data-load-error]]:content-center lg:grid-cols-[minmax(0,1fr)_minmax(0,32rem)] lg:grid-rows-[auto_1fr] lg:has-[>[data-load-error]]:grid-rows-none lg:gap-x-16 lg:gap-y-8">
         <PayInvoice linkToken={linkToken} option={option} />
       </main>
-      {/* A new tab: the payer keeps the checkout open. */}
-      <footer className="mt-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-subtle">
-        <a
-          href={APP_ROUTES.site}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`${LINK} inline-flex items-center gap-1.5 hover:text-ink`}
-        >
-          {PAY_COPY.paymentsBy}
-          <LogoMark className="size-3.5" />
-          {PAY_COPY.forwend}
-          <span className="sr-only">{PAY_COPY.newTab}</span>
-        </a>
-        <span aria-hidden>·</span>
-        <NeedHelp />
-      </footer>
+      <CheckoutFooter />
     </div>
   );
 }
