@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "allowJs": false,
-    "incremental": true,
+    "incremental": false,
     "plugins": [
       {
         "name": "next"

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 299,
+  "nextId": 300,
   "tasks": [
     {
       "id": "F295",
@@ -379,6 +379,100 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F299",
+      "type": "fix",
+      "behavior": "The web typecheck checks every file each run, so a stale build cache can't hide type errors",
+      "acceptance": [
+        "With a stale apps/web/tsconfig.tsbuildinfo that records no errors, pnpm typecheck still reports a type error in a file that depends on a changed one",
+        "Required checks pass"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "typecheck"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-25 review pass by reviewer: Pass. Reproduced in a copy-on-write clone outside the repo (apps/web at da6e023 + the one nullable line in invoiceSummarySchema, author's f297 cache as apps/web/tsconfig.tsbuildinfo). Old command (next typegen && tsc --noEmit -p tsconfig.json): exit 0, 0 errors, check time 0.015s. New command (tsc --noEmit --incremental false -p tsconfig.json): exit 1, 11 errors in 5 files, same list as an old-command run with no cache; the stale cache file was left byte-identical. The bad cache records the HEAD schema (version 11add9, nullable shape signature 287a6b) beside lib/invoices.ts at da6e023 with no errors, a state no correct check produces; a normal edit sequence (da6e023 -> HEAD -> da6e023 + nullable line) from a fresh cache reported the 11 errors, so the tsgo 7.0.2 trigger stays unknown. Lever: --incremental false on the CLI overrides incremental:true and neither reads nor writes the buildinfo; ui-web and design-tokens are not incremental and have no buildinfo. Cost: full script 0.9s vs 0.6s with a warm cache (M4 Pro). Not blocking, for follow-up: (1) next build runs its own incremental type check: runTypeCheckCli.js passes --tsBuildInfoFile .next/cache/.tsbuildinfo when tsconfig has incremental; tsc with those exact args and the stale cache exits 0 with 0 errors, so pnpm build can print Finished TypeScript over errors. The required typecheck, pre-commit hook and fresh CI still catch them. Setting incremental:false in apps/web/tsconfig.json would cover both; Next re-adds incremental:true only when the key is missing (writeConfigurationDefaults.js). Name this in the PR at least. (2) turbo typecheck hashes ignore root tsconfig.base.json (globalCacheInputs.files is empty; editing noUncheckedIndexedAccess there left all three typecheck hashes unchanged, an apps/web/tsconfig.json edit changed the web hash), so a root config change replays a cached pass; fix with globalDependencies [tsconfig.base.json]. (3) F299 has no refs. Commands: harness show F299; git diff; turbo run typecheck --filter=@forwend/web --dry=json; tsc runs in the clone with and without the stale cache; tsc --extendedDiagnostics; /usr/bin/time x3. Clone and temp files removed; main tree unchanged.",
+        "2026-10-25 review pass by reviewer: Re-review of the new diff: apps/web/tsconfig.json incremental:false (package.json flag reverted) and turbo.json globalDependencies [tsconfig.base.json]. Pass. Verify passed at 2026-10-25T16:37:47Z, after the change. I checked it in a copy-on-write clone outside the repo: apps/web at da6e023 plus the one nullable line, with the author's f297 cache. (A) Old tsconfig (incremental true) with the cache rewritten to paths relative to .next/cache, matching Next's own .next/cache/.tsbuildinfo: real next build exits 0 with Finished TypeScript in 993ms over 11 errors. So finding 1 reproduces through next build. The coordinator's copy kept paths relative to apps/web, so tsgo saw new files and checked everything. (B) New tsconfig, same cache: next build exits 1 with the 11 errors, and the cache file stays byte-identical. (C) New tsconfig, typecheck script (next typegen && tsc --noEmit -p tsconfig.json) with the stale apps/web/tsconfig.tsbuildinfo: exit 1, 11 errors in 5 files, and the cache stays untouched. Next build left incremental:false in tsconfig.json; Next adds incremental:true only when the key is missing. (D) With the new turbo.json, turbo run typecheck/build --dry=json lists tsconfig.base.json in the global files. Flipping noUncheckedIndexedAccess changed every typecheck and build hash. Notes, not blocking: globalDependencies also invalidates Go and contracts tasks on a root tsconfig change (rare, cheap); the old apps/web/.next/cache/.tsbuildinfo is now unused and gitignored; F299 still has no refs. No docs describe these settings. Clone removed; main tree unchanged."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-25T16:37:47Z",
+        "checks": [
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": "docs/runs/F299-20261025T163747Z-typecheck.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": "docs/runs/F299-20261025T163747Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "docs/runs/F299-20261025T163747Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F299-20261025T163747Z-lint.log"
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 186.6,
+            "log": "docs/runs/F299-20261025T163747Z-unit.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.3,
+            "log": "docs/runs/F299-20261025T163747Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 245.2,
+            "log": "docs/runs/F299-20261025T163747Z-e2e.log"
+          }
+        ],
+        "taskHash": "9de8d33ebbbecd8a",
+        "filesHash": "22e8cb914ad44ac9",
+        "proof": {
+          "1": "typecheck: with the cache the F297 run left and its code state put back, the old setup exited 0 over 11 type errors; with incremental false in apps/web/tsconfig.json pnpm typecheck and next build both exit 1 on all 11",
+          "2": "typecheck: every required check passes on the branch; turbo's typecheck hash now changes with tsconfig.base.json"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review of the new diff: apps/web/tsconfig.json incremental:false (package.json flag reverted) and turbo.json globalDependencies [tsconfig.base.json]. Pass. Verify passed at 2026-10-25T16:37:47Z, after the change. I checked it in a copy-on-write clone outside the repo: apps/web at da6e023 plus the one nullable line, with the author's f297 cache. (A) Old tsconfig (incremental true) with the cache rewritten to paths relative to .next/cache, matching Next's own .next/cache/.tsbuildinfo: real next build exits 0 with Finished TypeScript in 993ms over 11 errors. So finding 1 reproduces through next build. The coordinator's copy kept paths relative to apps/web, so tsgo saw new files and checked everything. (B) New tsconfig, same cache: next build exits 1 with the 11 errors, and the cache file stays byte-identical. (C) New tsconfig, typecheck script (next typegen && tsc --noEmit -p tsconfig.json) with the stale apps/web/tsconfig.tsbuildinfo: exit 1, 11 errors in 5 files, and the cache stays untouched. Next build left incremental:false in tsconfig.json; Next adds incremental:true only when the key is missing. (D) With the new turbo.json, turbo run typecheck/build --dry=json lists tsconfig.base.json in the global files. Flipping noUncheckedIndexedAccess changed every typecheck and build hash. Notes, not blocking: globalDependencies also invalidates Go and contracts tasks on a root tsconfig change (rare, cheap); the old apps/web/.next/cache/.tsbuildinfo is now unused and gitignored; F299 still has no refs. No docs describe these settings. Clone removed; main tree unchanged.",
+          "at": "2026-10-25T16:48:03Z",
+          "filesHash": "22e8cb914ad44ac9"
+        }
+      },
+      "branch": "fix/f299-the-web-typecheck-checks-every-file-each",
+      "baseCommit": "f32f598b82bc7075a88bf3c0302fabecfe6b81ff",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
