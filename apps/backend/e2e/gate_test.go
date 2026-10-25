@@ -7,6 +7,7 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,13 +20,16 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/auth/authtest"
 	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
+	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
+	"github.com/ensp1re/forwend/apps/backend/internal/webhook"
 	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -53,6 +57,26 @@ func TestMoneyLoop(t *testing.T) {
 		var n int
 		return conn.QueryRow(ctx, "SELECT count(*) FROM ecb_rates").Scan(&n) == nil && n > 0
 	})
+
+	// R-148: an endpoint whose URL names this machine; saving refuses that, so the test sets it. Saved here, not
+	// through the API, whose fresh sign-in check asks the real Privy.
+	var hooked atomic.Int32
+	hookServer := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { hooked.Add(1) }))
+	t.Cleanup(hookServer.Close)
+	pool, err := database.Open(ctx, st.db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	key, _ := base64.StdEncoding.DecodeString(webhookKey)
+	if _, _, err := webhook.NewService(pool, key).Save(ctx, profile, "eeeeeeee-0000-4000-8000-000000000001",
+		webhook.Details{URL: "https://hooks.example.com/", Events: []string{webhook.InvoicePaid}, Enabled: true}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Exec(ctx, "UPDATE webhook_endpoints SET url = $1", hookServer.URL+"/hooks"); err != nil {
+		t.Fatal(err)
+	}
+	start(t, st.bin, "webhooks", st.hooks)
 
 	body := fmt.Sprintf(`{"chainId": %d, "token": %q, "amount": %q}`, chaintest.ChainID, token, amount)
 	status, created := post(t, api+"/v1/profiles/"+profile+"/invoices", privy, "gate-1", body)
@@ -91,6 +115,15 @@ func TestMoneyLoop(t *testing.T) {
 			"blocks left -> confirmed", seen, deposit)
 	}
 	t.Logf("invoice: %v; deposit (status/blocks left): %v", seen, deposit)
+	// The webhooks process built, signed and tried the paid event; its filter refused this machine's address.
+	waitFor(t, "the paid event's attempt", func() bool {
+		var refused string
+		return conn.QueryRow(ctx, "SELECT coalesce(error, '') FROM webhook_attempts ORDER BY id LIMIT 1").
+			Scan(&refused) == nil && refused == "address not public"
+	})
+	if n := hooked.Load(); n != 0 {
+		t.Fatalf("the receiver on this machine got %d requests", n)
+	}
 	refused := 0
 	for _, c := range limited.Calls() {
 		if c.Fault == chaintest.HTTP429 {
@@ -169,10 +202,14 @@ type stack struct {
 	limited        *chaintest.Proxy
 	privy          *authtest.Privy
 	conn           *pgx.Conn
-	bin, api       string
+	bin, api, db   string
 	token, profile string
 	loop           []string // the worker's and signer's environment
+	hooks          []string // the webhooks process's: the database and the webhook key, nothing else
 }
+
+// webhookKey stands in for WEBHOOK_SECRET_KEY: 32 bytes in base64.
+const webhookKey = "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc="
 
 func newStack(t *testing.T) *stack {
 	t.Helper()
@@ -209,7 +246,7 @@ func newStack(t *testing.T) *stack {
 	rpcs := []string{"CHAINS_FILE=" + chains, "INFURA_API_KEYS=", "RPC_RATE_PER_SECOND=100"}
 	start(t, bin, "api", append(append(common, rpcs...), "API_ADDR="+apiAddr, "PRIVY_APP_ID="+appID,
 		"PRIVY_JWKS_URL="+privy.JWKSURL, "PRIVY_APP_SECRET=unused", // this test makes its profile in the database
-		"PUBLIC_WEB_URL=http://localhost:3000"))
+		"PUBLIC_WEB_URL=http://localhost:3000", "WEBHOOK_SECRET_KEY="+webhookKey))
 	api := "http://" + apiAddr
 	waitFor(t, "api healthy", func() bool {
 		res, err := http.Get(api + "/healthz")
@@ -239,10 +276,10 @@ func newStack(t *testing.T) *stack {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &stack{anvil: anvil, limited: limited, privy: privy, conn: conn, bin: bin, api: api, token: token,
+	return &stack{anvil: anvil, limited: limited, privy: privy, conn: conn, bin: bin, api: api, db: dbURL, token: token,
 		// Clipped: an append for one binary must never write into another's environment.
 		profile: profile, loop: slices.Clip(append(append(common, rpcs...), "POLL_INTERVAL=200ms",
-			"ECB_RATES_URL="+ecbFake.URL))}
+			"ECB_RATES_URL="+ecbFake.URL)), hooks: slices.Clip(append(common, "WEBHOOK_SECRET_KEY="+webhookKey))}
 }
 
 // waitScanned: invoices are made only once a chain is watched.
@@ -257,7 +294,8 @@ func (s *stack) waitScanned(t *testing.T) {
 func build(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	out, err := exec.Command("go", "build", "-o", dir+"/", "../cmd/api", "../cmd/worker", "../cmd/signer").CombinedOutput()
+	out, err := exec.Command("go", "build", "-o", dir+"/", "../cmd/api", "../cmd/worker", "../cmd/signer",
+		"../cmd/webhooks").CombinedOutput()
 	if err != nil {
 		t.Fatalf("go build: %v\n%s", err, out)
 	}

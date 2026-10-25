@@ -326,6 +326,23 @@ R-147, D-97; the body is `WebhookEvent` under `webhooks` in openapi.yaml.
   - It can also be `canceled`, or `other_option` (sent to an option the payer did not choose, D-76).
 - A payment-link invoice's `invoice.detected` can come before it has a number (R-141).
 
+### Delivery
+
+R-148, D-98. `cmd/webhooks` sends each delivery as a `POST` of the event's body, `Content-Type: application/json`.
+
+- Standard Webhooks headers: `webhook-id` (the event's id), `webhook-timestamp` (Unix seconds) and `webhook-signature`.
+  - The signature is `v1,` and the base64 HMAC-SHA256 of `id.timestamp.body`, keyed by the secret's bytes after `whsec_`.
+  - It holds one such entry per working secret, space-separated: during a rotation's 24 hours, the new and the old.
+- Only a 2xx answer within 15 seconds counts. A 3xx fails: no redirect is followed.
+- The client refuses an address that is not public, checked on the address it connects to after DNS.
+  - That covers this machine, private networks, link-local and cloud metadata addresses, and a name that rebinds to one.
+- A failure retries after 5 s, 5 min, 30 min, 2 h and 5 h, then every 10 h: 12 attempts in about 3 days.
+  - Every retry sends the body built for the first attempt, signed again with its own timestamp.
+- A `410`, or a delivery's last failure, turns the endpoint off (`enabled` false).
+  - The profile owner gets one email naming the endpoint's host, whatever the profile's email setting.
+  - Its waiting deliveries go out once the owner turns it on again; events from while it was off are not sent to it.
+- Each attempt is kept with its status code, a short error without the URL, and how long it took.
+
 ## Invoices
 
 R-19 and R-42; the full schema is in openapi.yaml.

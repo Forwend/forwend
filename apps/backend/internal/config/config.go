@@ -48,6 +48,13 @@ type Worker struct {
 	RatesURL string
 }
 
+// Webhooks is what cmd/webhooks needs (R-148): the database and the key that opens the signing secrets, nothing else.
+type Webhooks struct {
+	DatabaseURL string
+	// WebhookKey opens the signing secrets: 32 bytes, or nil, and nothing is sent. Never log it.
+	WebhookKey []byte
+}
+
 // Email is the owner's email (R-80, D-65). Without ResendKey the worker sends nothing and the events wait.
 type Email struct {
 	ResendKey    string // send-only Resend API key; never log it
@@ -112,6 +119,12 @@ func LoadWorker() (Worker, error) {
 	if c.Email.ResendKey != "" {
 		c.Email.PublicWebURL = r.origin("PUBLIC_WEB_URL")
 	}
+	return c, r.err()
+}
+
+func LoadWebhooks() (Webhooks, error) {
+	var r reader
+	c := Webhooks{DatabaseURL: r.get("DATABASE_URL"), WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY")}
 	return c, r.err()
 }
 

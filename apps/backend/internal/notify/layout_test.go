@@ -10,6 +10,7 @@ import (
 
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
+	"github.com/ensp1re/forwend/apps/backend/internal/webhook"
 )
 
 func samples() map[string]view {
@@ -31,7 +32,9 @@ func samples() map[string]view {
 			"", web+"/pay/0xdef", web+"/api/v1/invoices/0xdef/invoice.pdf")),
 		"change": change("Alice Design GmbH", "Logo design", "Extra page", "150.00 USD", 7, "billing@alice.example",
 			web+"/w/"+strings.Repeat("cd", 32)),
-		"invite": invitation("Alice Shop", "Developer", "alice@example.com", web+"/invite/"+strings.Repeat("ef", 32)),
+		"invite":          invitation("Alice Shop", "Developer", "alice@example.com", web+"/invite/"+strings.Repeat("ef", 32)),
+		"webhook-failing": disabled("shop.example.com", webhook.Failing, web+"/app/developers"),
+		"webhook-gone":    disabled("shop.example.com", webhook.Gone, web+"/app/developers"),
 	}
 }
 
