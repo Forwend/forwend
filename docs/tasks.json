@@ -800,7 +800,7 @@
       "dependsOn": [
         "F301"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -883,11 +883,18 @@
           "summary": "Developers page lists keys with name, last 4, store, scopes, last use and stop time; New key, Roll with overlap and Revoke match the F301 API. Create and roll go through withFreshSignIn. The secret shows once in a dialog owned by ApiKeys, so a 0 h roll keeps it; each mutation's answer is dropped from the store with pending.reset(), and closing the dialog clears it. Labels carry the last 4; Copy takes focus; form errors focus the first invalid field. Unit test api-keys.test.tsx covers the store and the 0 h roll; keys.spec covers the acceptance lines. Docs R-145, DESIGN and architecture match. Left as is: phone truncation of the secret, Escape dropping it, stores skeleton without retry, DevTools.",
           "at": "2026-10-25T19:33:09Z",
           "filesHash": "9037c10c98cb697b"
-        }
+        },
+        "commit": "e102f3f",
+        "doneAt": "2026-10-25T19:33:35Z"
       },
       "branch": "feat/f302-an-owner-manages-secret-api-keys-on-an-a",
       "baseCommit": "264a5d05e403d6210b65ce2073e4adde495fb5be",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f302-an-owner-manages-secret-api-keys-on-an-a",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
