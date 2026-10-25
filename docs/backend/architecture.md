@@ -158,6 +158,8 @@ with a test.
 - `payment_links(profile_id, store_id, slug, title, amount_cents | min_cents, max_cents, ends_at, max_payments, active,
   visits)` (R-140). Amounts are USD cents. `invoices.link_id` names the link an invoice was made from.
   - A payer's Pay makes that invoice through `invoice.Create`, with its key under the link's own prefix (R-142).
+- `api_keys(profile_id, store_id, name, livemode, secret_hash, last4, scopes, created_by, last_used_at, expires_at,
+  revoked_at)` (R-144). Only the SHA-256 of a key's text is kept; a rolled key works until `expires_at`.
 - `profile_invites(profile_id, email, role, stores, token_hash, expires_at, accepted_at, revoked_at)` (R-139).
   - `token_hash` is the SHA-256 of the link's token; the token itself is never kept here.
   - One open invite per address and profile (a unique index); a new one revokes the last.

@@ -26,6 +26,7 @@ apps/backend/
       moneyapi/
       teamapi/
       linkapi/
+      keyapi/
       healthapi/
       tests/              API tests through the whole router, one file per module
     profile/              profile domain and operations
@@ -37,6 +38,7 @@ apps/backend/
     job/                  jobs: quotes with a payment schedule, each payment an invoice
     team/                 a merchant profile's members and invites; what each role may do is auth's map
     link/                 payment links: templates a payer pays through
+    apikey/               secret API keys: their text, scopes and checks
     balance/
     activity/
     ledger/

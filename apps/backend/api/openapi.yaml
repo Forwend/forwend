@@ -10,6 +10,7 @@ servers:
     description: Local (pnpm --filter @forwend/backend api)
 security:
   - privyAccessToken: []
+  - secretApiKey: []
 paths:
   /v1/me:
     post:
@@ -1907,6 +1908,104 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
         "503": { $ref: "#/components/responses/NetworkNotReady" }
+  /v1/profiles/{profileId}/keys:
+    get:
+      operationId: listApiKeys
+      summary: The profile's working secret API keys, newest first (R-144)
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: The keys; never their text
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [keys]
+                properties:
+                  keys:
+                    type: array
+                    items: { $ref: "#/components/schemas/ApiKey" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+    post:
+      operationId: createApiKey
+      summary: Make a test-mode secret API key (R-144)
+      description: |
+        Needs a fresh sign-in (D-63). The answer has the key's text in secret, the one time it is shown. A merchant's
+        key is for one of its stores; a freelancer's has none. Its scopes never move money (D-61, D-95).
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ApiKeyRequest" }
+      responses:
+        "201":
+          description: Made
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NewApiKey" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/ReauthRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: A personal profile has no API keys (personal_profile)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/keys/{keyId}/roll:
+    post:
+      operationId: rollApiKey
+      summary: Make a key's new key; the old one works for the overlap (R-144)
+      description: |
+        Needs a fresh sign-in (D-63). The new key has the old one's name, store and scopes, and its text in secret. A
+        key rolls once: a rolled key is 404 here.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/KeyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                overlapHours: { type: integer, minimum: 0, maximum: 168, default: 24 }
+      responses:
+        "201":
+          description: The new key
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NewApiKey" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/ReauthRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/KeyNotFound" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/keys/{keyId}:
+    delete:
+      operationId: revokeApiKey
+      summary: Stop a key at once (R-144)
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/KeyId"
+      responses:
+        "204": { description: Revoked }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/KeyNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
 components:
   securitySchemes:
     privyAccessToken:
@@ -1914,6 +2013,12 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Privy access token (ES256, issuer privy.io, audience = app ID), verified locally.
+    secretApiKey:
+      type: http
+      scheme: bearer
+      description: |
+        A secret API key, fw_test_ and 36 characters (R-144). It works only on its profile's routes whose permission is
+        in its scopes, for its store. It never passes a route that needs a fresh sign-in (403) or a person's route (401).
   parameters:
     ProfileId:
       name: profileId
@@ -1981,6 +2086,12 @@ components:
       required: true
       description: A payment link's slug (D-94); any other value is 404 link_not_found.
       schema: { type: string, pattern: "^[a-z0-9]{12}$" }
+    KeyId:
+      name: keyId
+      in: path
+      required: true
+      description: A working secret API key of this profile; another profile's, a revoked or an expired key is 404.
+      schema: { type: string, format: uuid }
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -2045,6 +2156,42 @@ components:
           maximum: 1000000
           description: The most paid invoices the link takes.
         active: { type: boolean, description: "The on or off switch; left out: on." }
+    ApiKey:
+      type: object
+      required: [keyId, name, storeId, livemode, last4, scopes, createdAt, lastUsedAt, expiresAt]
+      properties:
+        keyId: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        storeId: { type: [string, "null"], format: uuid, description: "A merchant key's store; null for a freelancer's." }
+        livemode: { type: boolean, description: "False: a test-mode key (D-87). Live keys wait for a live chain." }
+        last4: { type: string, pattern: "^[0-9A-Za-z]{4}$", description: The last 4 characters of its text. }
+        scopes:
+          type: array
+          items: { type: string, enum: [invoices.read, invoices.write, stores.read, tokens.read] }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, "null"], format: date-time, description: Kept to the minute. }
+        expiresAt: { type: [string, "null"], format: date-time, description: Set once rolled; it works until then. }
+    NewApiKey:
+      allOf:
+        - $ref: "#/components/schemas/ApiKey"
+        - type: object
+          required: [secret]
+          properties:
+            secret:
+              type: string
+              pattern: "^fw_test_[0-9A-Za-z]{36}$"
+              description: The key's text, in this answer alone; only its SHA-256 is kept.
+    ApiKeyRequest:
+      type: object
+      additionalProperties: false
+      required: [name, scopes]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        storeId: { type: string, format: uuid, description: "A merchant key's store, one of the profile's; a freelancer leaves it out." }
+        scopes:
+          type: array
+          minItems: 1
+          items: { type: string, enum: [invoices.read, invoices.write, stores.read, tokens.read] }
     PublicPaymentLink:
       type: object
       required: [slug, title, payee, brand, amountUsd, minUsd, maxUsd, state]
@@ -2187,7 +2334,8 @@ components:
           items:
             type: string
             enum: [invoices.read, invoices.write, stores.read, stores.write, clients.read, clients.write, money.read,
-              money.write, billing.read, billing.write, tokens.read, tokens.write, jobs, notifications, team, team.leave]
+              money.write, billing.read, billing.write, tokens.read, tokens.write, jobs, notifications, team, team.leave,
+              keys]
         name:
           type: [string, "null"]
           description: null when none was given; always null for the personal profile.
@@ -3362,7 +3510,9 @@ components:
               enum: [malformed_request, unauthorized, reauth_required, forbidden, not_signed_up, invoice_not_found, job_not_found, job_accepted, job_not_accepted, payment_out_of_order, change_not_accepted, change_pending, job_finished, payment_not_withdrawable, transaction_not_found, not_labelable, too_many_transactions,
                 billing_details_not_found, billing_details_required, client_not_found, store_not_found, not_merchant, logo_not_found, idempotency_conflict, invoice_not_paid,
                 invoice_not_cancelable, invoice_not_editable, invoice_not_reopenable, receipt_sent, client_email_required, invoice_closed, due_date_required,
-                reminders_stopped, invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
+                reminders_stopped, member_not_found, invite_not_found, invite_for_another_email, already_on_team,
+                link_not_found, personal_profile, link_off, link_ended, link_full, invalid_api_key, key_not_found,
+                invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
   responses:
     MalformedRequest:
@@ -3378,14 +3528,16 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     Unauthorized:
-      description: Missing or invalid access token, or one issued before Sign out everywhere (unauthorized)
+      description: |
+        Missing or invalid access token, or one issued before Sign out everywhere (unauthorized). An unknown, revoked
+        or expired API key is invalid_api_key (R-144).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     Forbidden:
       description: |
         The user is neither the profile's owner nor a member whose role has the route's permission, or the profile
-        does not exist (forbidden, R-138)
+        does not exist (forbidden, R-138). An API key gets it for a scope it lacks, another profile or a fresh sign-in.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -3493,6 +3645,11 @@ components:
                 items: { $ref: "#/components/schemas/TokenSwitch" }
     LogoNotFound:
       description: No store with this id has a logo (logo_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    KeyNotFound:
+      description: No working API key of this profile has this id (key_not_found)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

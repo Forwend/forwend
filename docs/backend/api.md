@@ -265,6 +265,22 @@ R-140, D-54, D-94; the full schema is in openapi.yaml. Members reach them with `
   - An owner with no billing details yet is 409 `billing_details_required`.
   - The Idempotency-Key is at most 200 bytes. A payer's key is kept apart from the owner's, so it never replays theirs.
 
+## API keys
+
+R-144, D-95; the full schema is in openapi.yaml. Owners and Admins manage keys with the `keys` permission (D-93).
+
+- `GET /v1/profiles/{profileId}/keys` lists the working keys, newest first: a key past its overlap or revoked is gone.
+  - Each has its `name`, `last4`, `storeId`, `scopes`, `livemode`, `createdAt`, `lastUsedAt` and `expiresAt`.
+  - `lastUsedAt` is kept to the minute; `expiresAt` is set once the key was rolled.
+- `POST /v1/profiles/{profileId}/keys` makes a key and needs a fresh sign-in (D-63). It answers 201 with its `secret`.
+  - The `secret` is in that answer alone; only its SHA-256 is kept.
+  - It is `fw_test_`, 30 random base62 characters and a 6-character CRC32 of the rest. Live keys wait for a live chain.
+  - `name` is 1–100 characters of plain text; `scopes` are one or more of the four D-95 names.
+  - A merchant key needs `storeId`, one of the profile's stores. A freelancer's key has none; a personal profile is 409.
+- `POST /v1/profiles/{profileId}/keys/{keyId}/roll` makes its new key, with a fresh sign-in, and answers 201 with it.
+  - `overlapHours` (0–168, default 24) is how long the old key keeps working. A key rolls once.
+- `DELETE /v1/profiles/{profileId}/keys/{keyId}` revokes the key at once (204). An unknown or stopped key is 404.
+
 ## Invoices
 
 R-19 and R-42; the full schema is in openapi.yaml.
@@ -612,10 +628,15 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   - Privy goes first: when the freeze fails, the cutoff is not set and the answer is 500.
   - The unfreeze is always sent, as a failed freeze may still have landed and a frozen user can't sign in.
   - Once the freeze worked, the cutoff is set even if the unfreeze failed. A disconnect stops neither.
-- `mid.RequireFreshSignIn` (the `FreshSignIn` guard) protects the changes D-63 names; today that is billing details.
+- `mid.RequireFreshSignIn` (the `FreshSignIn` guard) protects the changes D-63 names: billing details, giving a role,
+  and making or rolling an API key.
   - The token must be at most 5 minutes old (`auth.FreshWindow`).
   - Its `iat` must equal the `latest_verified_at` of the user's email or passkey account, read from Privy each time.
   - Otherwise 401 `reauth_required`; when Privy can't answer, 500, and nothing runs.
+- A secret API key (R-144) goes in the same header: `Authorization: Bearer fw_test_…`.
+  - It works only on its profile's routes whose permission is in its scopes, and only for its store's invoices.
+  - It never passes a `FreshSignIn` route (403), and `/v1/me` and the other routes for a person answer 401.
+  - An unknown, revoked or expired key is 401 `invalid_api_key`; each key has its own rate limit, as a user has.
 - Public routes (checkout reads) are marked `security: []` in the spec. `/healthz` is also public and uses its own status response. No other route is public by default.
 - Profile-scoped routes let in the profile's owner and its members (R-138), and give anyone else 403.
   - An unknown or malformed profile ID is 403 too, so callers can't probe which profiles exist.
@@ -637,7 +658,7 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   fetched again first, so a key Privy withdrew stops verifying (R-30); if Privy is unreachable, the last list verifies for
   10 more minutes (`KeyGrace`), then nothing does. `PRIVY_JWKS_URL` must be https. The Privy Go SDK (D-12) has no local token check, so this
   uses `golang-jwt/jwt/v5` as in Privy's Go guide (https://docs.privy.io/authentication/user-authentication/access-tokens).
-- `mid.RequireUser` and `mid.RequireAccess` wrap the protected handlers, through `mid.Guards` (`SignedIn`,
+- `mid.RequireUser` (or `mid.RequireKey` for a key) and `mid.RequireAccess` wrap the protected handlers, through `mid.Guards` (`SignedIn`,
   `Can`, `FreshSignIn`) that each module's `routes.go` applies. `/v1/me` and `POST /v1/profiles` act
   only for the token's user. Every `{profileId}` route is listed in `profileRoutes` in `internal/httpapi/tests/profiles_test.go`, which checks
   that another user gets 403 on each.
@@ -656,7 +677,7 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
 come back at a fixed rate up to the burst size. An empty bucket answers 429 `rate_limited` with `Retry-After` in whole
 seconds (when the next token is back) and runs nothing else.
 
-- Routes that need a token: per Privy user, after the token is checked; 2 requests a second, 60 at once.
+- Routes that need a token: per Privy user or per API key, after it is checked; 2 requests a second, 60 at once.
   - `API_USER_BURST` raises the 60. Only the live e2e sets it (1000): all its tests sign in as one user (D-85).
 - `POST /v1/invoices/{payToken}/recheck` (Check status, R-55) reads a chain RPC, so it is limited in the api: one
   check per invoice every 5 minutes (the invoice read gives `nextCheckAt`, so a reloaded page still waits), kept in Postgres so every replica agrees (`invoice_rechecks.checked_at`), and a
