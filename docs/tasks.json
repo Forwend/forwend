@@ -1016,7 +1016,7 @@
       "dependsOn": [
         "F303"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -1101,11 +1101,18 @@
           "summary": "PASS on re-review of the follow-up changes; no blocking findings. (1) 00069_webhook_events.sql:20-23 adds webhook_events_no_truncate (BEFORE TRUNCATE, ENABLE ALWAYS). TestWebhookEventsAreAppendOnly (database/money_test.go:190) expects P0001 on UPDATE, DELETE, TRUNCATE of both tables, and DELETE in replica mode. With the trigger and its ALTER removed by an -overlay of the migration, it fails: 'TRUNCATE webhook_events, webhook_deliveries: want SQLSTATE P0001, got <nil>'. (2) TestCanceledInvoiceHoldsEveryDeposit (ledger/expiry_test.go:317) now checks the history is the one held row with reason canceled. It fails when heldReason's canceled case returns overpaid. (3) TestOneRunHoldsForTwoReasons (ledger/webhooks_test.go:54) checks one held outbox row of 3000000, and held late 1000000 then held expired 2000000. It fails with told [1000000 2000000] when outbox.Queue moves into the per-reason loop. (5) ledger.go: Final's doc comment is back above func Final. (6) openapi.yaml timestamp reads 'When the change was written: its transaction's start.' (7) R-146 wording goes in the commit message. Still open, reported to the user, not blocking: event types for reopen and reorg; mixed-mode USD options from F300; EventBody wiring for F305. RAN: sh scripts/with-env.sh go test ./internal/database/ ./internal/ledger/ -count=1 (ok). Three go test -overlay mutations, each failing the new check as stated. verify F304 passed at 20:46:40Z. pgrep anvil empty after; probe files removed.",
           "at": "2026-10-25T20:54:35Z",
           "filesHash": "b9a21e5850970e4f"
-        }
+        },
+        "commit": "c735e4d",
+        "doneAt": "2026-10-25T20:55:01Z"
       },
       "branch": "feat/f304-invoice-changes-become-webhook-events-wi",
       "baseCommit": "b302b883352c813e572cf446a5b0d91bca605beb",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f304-invoice-changes-become-webhook-events-wi",
+        "base": "main"
+      }
     },
     {
       "id": "F305",
